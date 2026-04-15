@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 function DivisionTable({ division, standings, myTeamId }) {
@@ -42,7 +43,7 @@ function DivisionTable({ division, standings, myTeamId }) {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     {isMe && <span className="w-1.5 h-1.5 rounded-full bg-[#e8c547]" />}
-                    <span className={`font-medium ${isMe ? "text-[#e8c547]" : "text-white"}`}>{s.team?.name || "Ukendt"}</span>
+                    <span className={`font-medium cursor-pointer hover:underline ${isMe ? "text-[#e8c547]" : "text-white"}`} onClick={() => navigate(`/teams/${s.team_id}`)}>{s.team?.name || "Ukendt"}</span>
                     {s.team?.is_ai && <span className="text-[9px] uppercase text-white/20 bg-white/5 px-1.5 py-0.5 rounded">AI</span>}
                   </div>
                 </td>

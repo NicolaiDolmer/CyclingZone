@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, NavLink, useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase, signOut } from "../lib/supabase";
 
@@ -10,6 +10,7 @@ const NAV = [
   { to: "/team", label: "Mit Hold", icon: "◈" },
   { to: "/standings", label: "Rangliste", icon: "◉" },
   { to: "/board", label: "Bestyrelse", icon: "◧" },
+  { to: "/notifications", label: "Notifikationer", icon: "🔔" },
 ];
 
 export default function Layout({ session }) {
@@ -109,7 +110,7 @@ export default function Layout({ session }) {
           <button className="lg:hidden text-white/60 hover:text-white" onClick={() => setMobileOpen(true)}>☰</button>
           <div className="flex items-center gap-3 ml-auto">
             <div className="relative">
-              <button onClick={() => setShowNotif(!showNotif)}
+              <Link to="/notifications"
                 className="relative w-9 h-9 rounded-lg flex items-center justify-center text-white/50 hover:text-white hover:bg-white/5 transition-all">
                 🔔
                 {notifications.length > 0 && (
@@ -118,28 +119,7 @@ export default function Layout({ session }) {
                   </span>
                 )}
               </button>
-              {showNotif && (
-                <div className="absolute right-0 top-11 w-80 bg-[#0f0f18] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-                    <span className="text-sm font-semibold text-white">Notifikationer</span>
-                    {notifications.length > 0 && (
-                      <button onClick={markAllRead} className="text-xs text-[#e8c547] hover:underline">Marker alle læst</button>
-                    )}
-                  </div>
-                  {notifications.length === 0 ? (
-                    <div className="px-4 py-8 text-center text-white/30 text-sm">Ingen nye notifikationer</div>
-                  ) : (
-                    <div className="max-h-80 overflow-y-auto">
-                      {notifications.map(n => (
-                        <div key={n.id} className="px-4 py-3 border-b border-white/5 hover:bg-white/3">
-                          <p className="text-white text-sm font-medium">{n.title}</p>
-                          <p className="text-white/50 text-xs mt-0.5">{n.message}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+
             </div>
             <div className="h-7 w-px bg-white/10" />
             <span className="text-white/40 text-sm hidden sm:block">{session.user.email}</span>

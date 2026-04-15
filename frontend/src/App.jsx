@@ -11,6 +11,8 @@ import AdminPage from "./pages/AdminPage";
 import StandingsPage from "./pages/StandingsPage";
 import BoardPage from "./pages/BoardPage";
 import RiderStatsPage from "./pages/RiderStatsPage";
+import TeamProfilePage from "./pages/TeamProfilePage";
+import NotificationsPage from "./pages/NotificationsPage";
 import Layout from "./components/Layout";
 
 function ProtectedRoute({ children, session }) {
@@ -50,6 +52,8 @@ export default function App() {
           <Route path="standings" element={<StandingsPage />} />
           <Route path="board" element={<BoardPage />} />
           <Route path="riders/:id" element={<RiderStatsPage />} />
+          <Route path="teams/:id" element={<TeamProfilePage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="admin" element={<AdminPage />} />
         </Route>
       </Routes>
