@@ -129,10 +129,11 @@ function RiderDetail({ rider, onClose, myTeamId }) {
           </div>
 
           {/* Auction section — only if rider is on my team */}
-          {rider.team?.id === myTeamId && (
+          {/* Show auction section if: own rider OR free agent/AI rider */}
+          {(rider.team?.id === myTeamId || !rider.team?.id) && (
             <div className="mt-5 pt-5 border-t border-white/5">
               <p className="text-white/30 text-xs uppercase tracking-widest mb-3">
-                Sæt til auktion
+                {rider.team?.id === myTeamId ? "Sæt til auktion" : "Byd på rytter — start auktion"}
               </p>
               <div className="flex gap-2">
                 <input

@@ -189,8 +189,22 @@ router.post("/auctions", requireAuth, async (req, res) => {
     .single();
 
   if (!rider) return res.status(404).json({ error: "Rider not found" });
-  if (rider.team_id !== req.team.id) {
-    return res.status(403).json({ error: "You don't own this rider" });
+
+  // Allow auction if:
+  // 1. Rider is on manager's own team, OR
+  // 2. Rider is a free agent (no team_id) — AI/unowned rider
+  // Block if rider belongs to another manager's team
+  if (rider.team_id && rider.team_id !== req.team.id) {
+    // Check if the owning team is a human team
+    const { data: owningTeam } = await supabase
+      .from("teams")
+      .select("is_ai, user_id")
+      .eq("id", rider.team_id)
+      .single();
+    // If owned by a human manager (not AI), block the auction
+    if (owningTeam && !owningTeam.is_ai && owningTeam.user_id) {
+      return res.status(403).json({ error: "Denne rytter tilhører en anden manager" });
+    }
   }
 
   // Check no active auction for this rider
