@@ -10,6 +10,7 @@ import TeamPage from "./pages/TeamPage";
 import AdminPage from "./pages/AdminPage";
 import StandingsPage from "./pages/StandingsPage";
 import BoardPage from "./pages/BoardPage";
+import RiderStatsPage from "./pages/RiderStatsPage";
 import Layout from "./components/Layout";
 
 function ProtectedRoute({ children, session }) {
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="team" element={<TeamPage />} />
           <Route path="standings" element={<StandingsPage />} />
           <Route path="board" element={<BoardPage />} />
+          <Route path="riders/:id" element={<RiderStatsPage />} />
           <Route path="admin" element={<AdminPage />} />
         </Route>
       </Routes>

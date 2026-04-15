@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 const STATS = [
@@ -169,6 +170,7 @@ function RiderDetail({ rider, onClose, myTeamId }) {
 }
 
 export default function RidersPage() {
+  const navigate = useNavigate();
   const [riders, setRiders] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -317,7 +319,7 @@ export default function RidersPage() {
                   </td>
                 </tr>
               ) : riders.map(r => (
-                <RiderRow key={r.id} rider={r} onSelect={setSelected} />
+                <RiderRow key={r.id} rider={r} onSelect={(r) => navigate(`/riders/${r.id}`)} />
               ))}
             </tbody>
           </table>
