@@ -419,6 +419,22 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
 // TRANSFERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// POST /api/transfers/:id/withdraw — withdraw a transfer listing
+router.post("/transfers/:id/withdraw", requireAuth, async (req, res) => {
+  const { data: listing } = await supabase
+    .from("transfer_listings")
+    .select("seller_team_id")
+    .eq("id", req.params.id)
+    .single();
+  if (!listing || listing.seller_team_id !== req.team.id) {
+    return res.status(403).json({ error: "Ikke dit udbud" });
+  }
+  await supabase.from("transfer_listings")
+    .update({ status: "withdrawn" })
+    .eq("id", req.params.id);
+  res.json({ success: true });
+});
+
 // GET /api/transfers — list transfer listings
 router.get("/transfers", requireAuth, async (req, res) => {
   const { status = "open" } = req.query;
