@@ -22,17 +22,22 @@ function ManualOverride({ supabase, onMsg, onRefresh, teams }) {
   async function moveRider() {
     if (!selectedRider) { onMsg("❌ Vælg en rytter", "error"); return; }
     setLoading(true);
-    const teamId = selectedTeam || null;
-    const { error } = await supabase.from("riders")
-      .update({ team_id: teamId, pending_team_id: null })
-      .eq("id", selectedRider.id);
-    if (error) onMsg(`❌ ${error.message}`, "error");
-    else {
-      onMsg(`✅ ${selectedRider.firstname} ${selectedRider.lastname} flyttet til ${teamId ? teams.find(t => t.id === teamId)?.name : "fri agent"}`);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/override-rider`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ rider_id: selectedRider.id, team_id: selectedTeam || null }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      onMsg(`✅ ${data.message}`);
       setSelectedRider(null);
       setRiderSearch("");
       setRiderResults([]);
       setSelectedTeam("");
+      onRefresh();
+    } else {
+      onMsg(`❌ ${data.error}`, "error");
     }
     setLoading(false);
   }
