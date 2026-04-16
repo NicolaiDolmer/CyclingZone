@@ -96,10 +96,7 @@ export default function TeamProfilePage() {
             </div>
             <p className="text-white/40 text-sm">Division {team.division}</p>
           </div>
-          <div className="text-right">
-            <p className="text-[#e8c547] font-mono font-bold text-xl">{team.balance?.toLocaleString("da-DK")} CZ$</p>
-            <p className="text-white/30 text-xs mt-0.5">Balance</p>
-          </div>
+
         </div>
 
         <div className="grid grid-cols-4 gap-3 mt-5">
@@ -107,7 +104,7 @@ export default function TeamProfilePage() {
             { label: "Ryttere nu", value: currentRiders.length },
             { label: "Indgående", value: incomingRiders.length, color: incomingRiders.length > 0 ? "text-green-400" : "text-white" },
             { label: "Udgående", value: outgoingRiders.length, color: outgoingRiders.length > 0 ? "text-red-400" : "text-white" },
-            { label: "Holdværdi", value: `${totalValue.toLocaleString("da-DK")} CZ$`, color: "text-[#e8c547]" },
+            { label: "Holdværdi", value: `${totalValue.toLocaleString("da-DK")} CZ$`, color: "text-[#e8c547]" }, // value shown, balance hidden
           ].map(s => (
             <div key={s.label} className="bg-white/3 rounded-lg p-3 text-center">
               <p className="text-white/25 text-[9px] uppercase tracking-wider mb-1">{s.label}</p>

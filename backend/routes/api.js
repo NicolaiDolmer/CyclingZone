@@ -26,6 +26,14 @@ config({ path: join(__dirname, "../.env") });
 
 const router = express.Router();
 
+// Squad size limits per division
+const SQUAD_LIMITS = {
+  1: { min: 20, max: 30 },
+  2: { min: 14, max: 20 },
+  3: { min: 8,  max: 10 },
+};
+const MIN_RIDERS_FOR_RACE = 8;
+
 // Supabase admin client
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -354,11 +362,49 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
   }
 
   if (auction.current_bidder_id) {
-    // Transfer rider to winning team
-    await supabase.from("riders").update({
-      team_id: auction.current_bidder_id,
-      salary: Math.ceil(auction.current_price * 0.1), // 10% salary
-    }).eq("id", auction.rider.id);
+    // Check squad size limit for buyer
+    const { data: buyerTeam } = await supabase
+      .from("teams").select("division").eq("id", auction.current_bidder_id).single();
+    const buyerDiv = buyerTeam?.division || 3;
+    const maxRiders = SQUAD_LIMITS[buyerDiv]?.max || 10;
+    const { count: currentCount } = await supabase
+      .from("riders").select("id", { count: "exact", head: true })
+      .eq("team_id", auction.current_bidder_id);
+    const { count: pendingCount } = await supabase
+      .from("riders").select("id", { count: "exact", head: true })
+      .eq("pending_team_id", auction.current_bidder_id);
+    const totalAfter = (currentCount || 0) + (pendingCount || 0) + 1;
+
+    if (totalAfter > maxRiders) {
+      await supabase.from("auctions")
+        .update({ status: "completed", actual_end: new Date().toISOString() })
+        .eq("id", auction.id);
+      await notifyTeamOwner(auction.current_bidder_id, "auction_lost",
+        "Auktion annulleret — hold fuldt",
+        `Dit hold (Div ${buyerDiv}) kan max have ${maxRiders} ryttere. ${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages.`,
+        auction.id);
+      return res.json({ success: false, reason: "squad_full" });
+    }
+
+    // Check transfer window
+    const { data: tw } = await supabase
+      .from("transfer_windows").select("status")
+      .order("created_at", { ascending: false }).limit(1).single();
+    const windowOpen = tw?.status === "open";
+
+    // Transfer rider — immediately if window open, else set pending
+    if (windowOpen) {
+      await supabase.from("riders").update({
+        team_id: auction.current_bidder_id,
+        pending_team_id: null,
+        salary: Math.ceil(auction.current_price * 0.1),
+      }).eq("id", auction.rider.id);
+    } else {
+      await supabase.from("riders").update({
+        pending_team_id: auction.current_bidder_id,
+        salary: Math.ceil(auction.current_price * 0.1),
+      }).eq("id", auction.rider.id);
+    }
 
     // Deduct from buyer
     const { data: buyer } = await supabase

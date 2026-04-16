@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
+const SQUAD_LIMITS = {
+  1: { min: 20, max: 30 },
+  2: { min: 14, max: 20 },
+  3: { min: 8,  max: 10 },
+};
+
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
 const STAT_LABELS = ["FL","BJ","KB","BK","TT","PRL","Bro","SP","ACC","NED","UDH","MOD","RES","FTR"];

@@ -126,9 +126,7 @@ export default function TeamsPage() {
                         </div>
                         <p className="text-white/30 text-xs mt-0.5">{riderCount} ryttere</p>
                       </div>
-                      <p className="text-[#e8c547] font-mono font-bold text-sm">
-                        {team.balance?.toLocaleString("da-DK")} CZ$
-                      </p>
+            
                     </div>
 
                     {/* Stats */}

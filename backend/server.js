@@ -105,11 +105,34 @@ app.post("/api/admin/import-results", requireAdmin, upload.single("file"), async
 
 app.post("/api/admin/seasons/:id/start", requireAdmin, async (req, res) => {
   try {
+    // 1. Close any open transfer windows
+    await supabase.from("transfer_windows")
+      .update({ status: "closed", closed_at: new Date().toISOString() })
+      .eq("status", "open");
+
+    // 2. Process all pending transfers (move pending_team_id → team_id)
+    const { data: pendingRiders } = await supabase
+      .from("riders").select("id, pending_team_id").not("pending_team_id", "is", null);
+    for (const rider of (pendingRiders || [])) {
+      await supabase.from("riders")
+        .update({ team_id: rider.pending_team_id, pending_team_id: null })
+        .eq("id", rider.id);
+    }
+
+    // 3. Recalculate all salaries to 10% of current UCI price
+    const { data: allRiders } = await supabase
+      .from("riders").select("id, uci_points").not("team_id", "is", null);
+    for (const rider of (allRiders || [])) {
+      const newSalary = Math.max(1, Math.round((rider.uci_points || 1) * 0.10));
+      await supabase.from("riders").update({ salary: newSalary }).eq("id", rider.id);
+    }
+
+    // 4. Start season
     await supabase.from("seasons").update({status:"active"}).eq("id",req.params.id);
     const results = await processSeasonStart(req.params.id);
     const { data: s } = await supabase.from("seasons").select("number").eq("id",req.params.id).single();
     notifySeasonEvent({ type:"season_started", seasonNumber: s?.number }).catch(()=>{});
-    res.json({success:true,results}); }
+    res.json({success:true, results, pending_transfers: pendingRiders?.length || 0, salaries_updated: allRiders?.length || 0}); }
   catch (err) { res.status(500).json({error:err.message}); }
 });
 
