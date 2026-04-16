@@ -191,15 +191,17 @@ export default function RiderStatsPage() {
       </div>
 
       {/* Stats */}
-      {tab === "stats" && <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
-        <h2 className="text-white font-semibold text-sm mb-4">Evner</h2>
-        <div className="grid md:grid-cols-2 gap-x-8">
-          {STATS.map(s => <StatRow key={s.key} label={s.label} icon={s.icon} value={rider[s.key]} />)}
+      {tab === "stats" && (
+        <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
+          <h2 className="text-white font-semibold text-sm mb-4">Evner</h2>
+          <div className="grid md:grid-cols-2 gap-x-8">
+            {STATS.map(s => <StatRow key={s.key} label={s.label} icon={s.icon} value={rider[s.key]} />)}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Race history */}
-      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
+      {tab === "results" && <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
         <h2 className="text-white font-semibold text-sm mb-4">Løbshistorik ({results.length} resultater)</h2>
         {results.length === 0 ? (
           <p className="text-white/20 text-sm text-center py-6">Ingen løbsresultater endnu</p>
