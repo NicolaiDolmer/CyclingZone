@@ -34,6 +34,31 @@ const SQUAD_LIMITS = {
 };
 const MIN_RIDERS_FOR_RACE = 8;
 
+// XP amounts for different actions
+const XP_REWARDS = {
+  bid_placed: 2,
+  auction_won: 15,
+  auction_sold: 10,
+  transfer_offer_sent: 3,
+  transfer_accepted: 10,
+};
+
+async function awardXP(userId, action) {
+  if (!userId || !XP_REWARDS[action]) return;
+  const amount = XP_REWARDS[action];
+  try {
+    // Get current XP and level
+    const { data: user } = await supabase.from("users").select("xp, level").eq("id", userId).single();
+    if (!user) return;
+    const newXp = (user.xp || 0) + amount;
+    const newLevel = Math.min(50, Math.floor(newXp / 100) + 1);
+    await supabase.from("users").update({ xp: newXp, level: newLevel }).eq("id", userId);
+    await supabase.from("xp_log").insert({ user_id: userId, amount, reason: action });
+  } catch (e) { /* silent fail */ }
+}
+
+
+
 // Supabase admin client
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -340,6 +365,10 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
     );
   }
 
+  // Award XP for bidding
+  const { data: bidUser } = await supabase.from("users").select("id").eq("id", (await supabase.from("teams").select("user_id").eq("id", req.team.id).single()).data?.user_id).single();
+  if (bidUser) awardXP(bidUser.id, "bid_placed").catch(() => {});
+
   res.json({
     success: true,
     new_price: amount,
@@ -448,6 +477,12 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
     ]);
 
     // Notify winner and seller
+    // Award XP
+    const { data: winnerUser } = await supabase.from("teams").select("user_id").eq("id", auction.current_bidder_id).single();
+    if (winnerUser) awardXP(winnerUser.user_id, "auction_won").catch(() => {});
+    const { data: sellerUser } = await supabase.from("teams").select("user_id").eq("id", auction.seller_team_id).single();
+    if (sellerUser) awardXP(sellerUser.user_id, "auction_sold").catch(() => {});
+
     await notifyTeamOwner(auction.current_bidder_id, "auction_won",
       "Du vandt auktionen! 🎉",
       `${auction.rider.firstname} ${auction.rider.lastname} er nu på dit hold for ${auction.current_price} pts`,

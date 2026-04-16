@@ -44,6 +44,7 @@ export default function RiderStatsPage() {
   const [watchlistId, setWatchlistId] = useState(null);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('stats');
   const [myTeamId, setMyTeamId] = useState(null);
 
   useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); }, [id]);
@@ -174,8 +175,23 @@ export default function RiderStatsPage() {
         )}
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-2 mb-4">
+        {[
+          { key: "stats", label: "Evner" },
+          { key: "season", label: "Sæsonhistorik" },
+          { key: "results", label: "Løbsresultater" },
+        ].map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+              ${tab === t.key ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20" : "text-white/40 hover:text-white bg-[#0f0f18] border-white/5"}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {/* Stats */}
-      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
+      {tab === "stats" && <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
         <h2 className="text-white font-semibold text-sm mb-4">Evner</h2>
         <div className="grid md:grid-cols-2 gap-x-8">
           {STATS.map(s => <StatRow key={s.key} label={s.label} icon={s.icon} value={rider[s.key]} />)}
@@ -223,7 +239,104 @@ export default function RiderStatsPage() {
             </tbody>
           </table>
         )}
-      </div>
+      </div>}
+    </div>
+  );
+}
+
+function SeasonHistoryTab({ riderId }) {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      // Get all completed auctions involving this rider (team changes)
+      const { data: transfers } = await supabase
+        .from("auctions")
+        .select("current_price, actual_end, seller:seller_team_id(name), buyer:current_bidder_id(name)")
+        .eq("rider_id", riderId)
+        .eq("status", "completed")
+        .order("actual_end", { ascending: false });
+
+      // Get race results per season
+      const { data: results } = await supabase
+        .from("race_results")
+        .select("rank, result_type, prize_money, points_earned, race:race_id(name, start_date, season_id)")
+        .eq("rider_id", riderId)
+        .order("imported_at", { ascending: false });
+
+      // Group results by season
+      const bySeason = {};
+      (results || []).forEach(r => {
+        const sid = r.race?.season_id || "unknown";
+        if (!bySeason[sid]) bySeason[sid] = { results: [], totalPrize: 0, wins: 0, top3: 0 };
+        bySeason[sid].results.push(r);
+        bySeason[sid].totalPrize += r.prize_money || 0;
+        if (r.rank === 1) bySeason[sid].wins++;
+        if (r.rank <= 3) bySeason[sid].top3++;
+      });
+
+      setHistory({ transfers: transfers || [], bySeason });
+      setLoading(false);
+    }
+    load();
+  }, [riderId]);
+
+  if (loading) return <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" /></div>;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Team history */}
+      {history.transfers?.length > 0 && (
+        <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
+          <h3 className="text-white font-semibold text-sm mb-3">Holdhistorik</h3>
+          <div className="flex flex-col gap-2">
+            {history.transfers.map((t, i) => (
+              <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                <div>
+                  <p className="text-white text-sm">{t.buyer?.name || "Ukendt"}</p>
+                  <p className="text-white/30 text-xs">Købt fra: {t.seller?.name || "Fri agent"}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[#e8c547] font-mono text-sm">{t.current_price?.toLocaleString("da-DK")} CZ$</p>
+                  <p className="text-white/30 text-xs">{t.actual_end ? new Date(t.actual_end).toLocaleDateString("da-DK") : "—"}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Season stats */}
+      {Object.entries(history.bySeason || {}).length > 0 && (
+        <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
+          <h3 className="text-white font-semibold text-sm mb-3">Sæsonresultater</h3>
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-white/5">
+              <th className="py-2 text-left text-white/30 font-medium text-xs uppercase">Sæson</th>
+              <th className="py-2 text-right text-white/30 font-medium text-xs uppercase">Sejre</th>
+              <th className="py-2 text-right text-white/30 font-medium text-xs uppercase">Top 3</th>
+              <th className="py-2 text-right text-white/30 font-medium text-xs uppercase">Præmier</th>
+            </tr></thead>
+            <tbody>
+              {Object.entries(history.bySeason).map(([sid, data]) => (
+                <tr key={sid} className="border-b border-white/4">
+                  <td className="py-2 text-white/50 text-xs">{sid === "unknown" ? "—" : sid.slice(0, 8)}</td>
+                  <td className="py-2 text-right text-[#e8c547] font-mono">{data.wins}</td>
+                  <td className="py-2 text-right text-white/50 font-mono">{data.top3}</td>
+                  <td className="py-2 text-right text-green-400 font-mono text-xs">+{data.totalPrize.toLocaleString("da-DK")} CZ$</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {history.transfers?.length === 0 && Object.keys(history.bySeason || {}).length === 0 && (
+        <div className="text-center py-10 text-white/20">
+          <p>Ingen historik endnu</p>
+        </div>
+      )}
     </div>
   );
 }

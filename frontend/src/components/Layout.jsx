@@ -15,6 +15,9 @@ const NAV = [
   { to: "/notifications",  label: "Notifikationer",   icon: "🔔" },
   { to: "/watchlist",      label: "Talentspejder",     icon: "⭐" },
   { to: "/help",           label: "Hjælp & Regler",    icon: "?" },
+  { to: "/hall-of-fame",   label: "Hall of Fame",      icon: "🏆" },
+  { to: "/season-preview", label: "Sæson Preview",     icon: "📊" },
+  { to: "/head-to-head",   label: "Head-to-Head",      icon: "⚔" },
   { to: "/profile",        label: "Min Profil",        icon: "👤" },
 ];
 
