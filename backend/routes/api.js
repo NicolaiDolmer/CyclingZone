@@ -19,13 +19,6 @@ import {
   checkBidExtension,
   isAuctionExpired,
 } from "../lib/auctionEngine.js";
-import {
-  notifyNewAuction,
-  notifyOutbid,
-  notifyAuctionWon,
-  notifyTransferOffer,
-  notifyTransferResponse,
-} from "../lib/discordNotifier.js";
 
 // Load .env from backend root
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -244,15 +237,6 @@ router.post("/auctions", requireAuth, async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // Discord notification — new auction
-  notifyNewAuction({
-    riderName: `${rider.firstname} ${rider.lastname}`,
-    riderUci: rider.uci_points,
-    sellerName: req.team.name,
-    startPrice: price,
-    endsAt: calculatedEnd,
-  }).catch(() => {});
-
   res.status(201).json({
     auction,
     message: `Auktion startet — slutter ${calculatedEnd.toLocaleString("da-DK")}`,
@@ -280,8 +264,14 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
   if (isAuctionExpired(auction.calculated_end)) {
     return res.status(400).json({ error: "Auction has ended" });
   }
+  // Allow bidding on own auction ONLY for AI/free rider auctions
+  // Block bidding on own auction if selling your own team's rider
   if (auction.seller_team_id === req.team.id) {
-    return res.status(400).json({ error: "Cannot bid on your own auction" });
+    const { data: auctionRider } = await supabase
+      .from("riders").select("team_id").eq("id", auction.rider_id).single();
+    if (auctionRider?.team_id === req.team.id) {
+      return res.status(400).json({ error: "Du kan ikke byde på din egen rytter" });
+    }
   }
   if (amount < auction.current_price + auction.min_increment) {
     return res.status(400).json({
@@ -361,28 +351,11 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
   }
 
   if (auction.current_bidder_id) {
-    // Check if transfer window is open
-    const { data: tw } = await supabase
-      .from("transfer_windows")
-      .select("status")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-    const windowOpen = tw?.status === "open";
-
-    // Window open = transfer immediately. Window closed = set pending_team_id
-    if (windowOpen) {
-      await supabase.from("riders").update({
-        team_id: auction.current_bidder_id,
-        pending_team_id: null,
-        salary: Math.ceil(auction.current_price * 0.1),
-      }).eq("id", auction.rider.id);
-    } else {
-      await supabase.from("riders").update({
-        pending_team_id: auction.current_bidder_id,
-        salary: Math.ceil(auction.current_price * 0.1),
-      }).eq("id", auction.rider.id);
-    }
+    // Transfer rider to winning team
+    await supabase.from("riders").update({
+      team_id: auction.current_bidder_id,
+      salary: Math.ceil(auction.current_price * 0.1), // 10% salary
+    }).eq("id", auction.rider.id);
 
     // Deduct from buyer
     const { data: buyer } = await supabase
@@ -395,7 +368,9 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
       .update({ balance: buyer.balance - auction.current_price })
       .eq("id", auction.current_bidder_id);
 
-    // Credit seller
+    // Credit seller — only if seller actually owned the rider (not AI/free agent)
+    const sellerOwned = auction.rider?.team_id === auction.seller_team_id ||
+                        (auction.rider && !auction.rider.team_id && auction.seller_team_id);
     const { data: seller } = await supabase
       .from("teams")
       .select("balance")
@@ -423,13 +398,6 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
     ]);
 
     // Notify winner and seller
-    // Discord notification — auction won
-    notifyAuctionWon({
-      riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
-      finalPrice: auction.current_price,
-      teamId: auction.current_bidder_id,
-    }).catch(() => {});
-
     await notifyTeamOwner(auction.current_bidder_id, "auction_won",
       "Du vandt auktionen! 🎉",
       `${auction.rider.firstname} ${auction.rider.lastname} er nu på dit hold for ${auction.current_price} pts`,
@@ -458,22 +426,6 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // TRANSFERS
 // ═══════════════════════════════════════════════════════════════════════════════
-
-// POST /api/transfers/:id/withdraw — withdraw a transfer listing
-router.post("/transfers/:id/withdraw", requireAuth, async (req, res) => {
-  const { data: listing } = await supabase
-    .from("transfer_listings")
-    .select("seller_team_id")
-    .eq("id", req.params.id)
-    .single();
-  if (!listing || listing.seller_team_id !== req.team.id) {
-    return res.status(403).json({ error: "Ikke dit udbud" });
-  }
-  await supabase.from("transfer_listings")
-    .update({ status: "withdrawn" })
-    .eq("id", req.params.id);
-  res.json({ success: true });
-});
 
 // GET /api/transfers — list transfer listings
 router.get("/transfers", requireAuth, async (req, res) => {
@@ -801,61 +753,5 @@ router.post("/admin/finalize-expired-auctions", requireAdmin, async (req, res) =
 
   res.json({ finalized: results.length, results });
 });
-
-// ── Transfer Window ───────────────────────────────────────────────────────────
-
-// GET /api/transfer-window — get current window status
-router.get("/transfer-window", async (req, res) => {
-  const { data } = await supabase
-    .from("transfer_windows")
-    .select("*, season:season_id(number)")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
-  res.json({ window: data || { status: "closed" } });
-});
-
-// POST /api/admin/transfer-window/open — admin opens window
-router.post("/admin/transfer-window/open", requireAdmin, async (req, res) => {
-  const { season_id } = req.body;
-  if (!season_id) return res.status(400).json({ error: "season_id required" });
-
-  // Close any existing open windows
-  await supabase.from("transfer_windows")
-    .update({ status: "closed", closed_at: new Date().toISOString() })
-    .eq("status", "open");
-
-  // Open new window
-  const { data, error } = await supabase.from("transfer_windows")
-    .insert({ season_id, status: "open", opened_at: new Date().toISOString() })
-    .select().single();
-
-  if (error) return res.status(500).json({ error: error.message });
-
-  // Process all pending transfers — move pending_team_id to team_id
-  const { data: pendingRiders } = await supabase
-    .from("riders")
-    .select("id, team_id, pending_team_id")
-    .not("pending_team_id", "is", null);
-
-  let processed = 0;
-  for (const rider of (pendingRiders || [])) {
-    await supabase.from("riders")
-      .update({ team_id: rider.pending_team_id, pending_team_id: null })
-      .eq("id", rider.id);
-    processed++;
-  }
-
-  res.json({ success: true, window: data, riders_processed: processed });
-});
-
-// POST /api/admin/transfer-window/close — admin closes window
-router.post("/admin/transfer-window/close", requireAdmin, async (req, res) => {
-  await supabase.from("transfer_windows")
-    .update({ status: "closed", closed_at: new Date().toISOString() })
-    .eq("status", "open");
-  res.json({ success: true });
-});
-
 
 export default router;

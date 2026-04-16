@@ -11,6 +11,7 @@ const NAV = [
   { to: "/teams",          label: "Hold",             icon: "◫" },
   { to: "/standings",      label: "Rangliste",        icon: "◉" },
   { to: "/board",          label: "Bestyrelse",       icon: "◧" },
+  { to: "/activity",       label: "Min Aktivitet",    icon: "📋" },
   { to: "/notifications",  label: "Notifikationer",   icon: "🔔" },
   { to: "/profile",        label: "Min Profil",        icon: "👤" },
 ];

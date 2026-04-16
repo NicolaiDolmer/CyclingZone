@@ -17,6 +17,7 @@ import TeamsPage from "./pages/TeamsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import RiderComparePage from "./pages/RiderComparePage";
 import ProfilePage from "./pages/ProfilePage";
+import ActivityPage from "./pages/ActivityPage";
 import Layout from "./components/Layout";
 
 function ProtectedRoute({ children, session }) {
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="compare" element={<RiderComparePage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="activity" element={<ActivityPage />} />
           <Route path="admin" element={<AdminPage />} />
 
           {/* 404 fallback */}
