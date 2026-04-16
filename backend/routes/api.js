@@ -320,14 +320,17 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
     );
   }
 
-  // Notify seller
-  await notifyTeamOwner(
-    auction.seller_team_id,
-    "bid_received",
-    "Nyt bud modtaget",
-    `${req.team.name} bød ${amount} på ${auction.rider.firstname} ${auction.rider.lastname}`,
-    auction.id
-  );
+  // Only notify seller if they're a real human manager selling their own rider
+  // Don't spam seller with every bid on AI/free rider auctions
+  if (auction.rider?.team_id === auction.seller_team_id) {
+    await notifyTeamOwner(
+      auction.seller_team_id,
+      "bid_received",
+      "Nyt bud modtaget",
+      `${req.team.name} bød ${amount.toLocaleString()} CZ$ på ${auction.rider.firstname} ${auction.rider.lastname}`,
+      auction.id
+    );
+  }
 
   res.json({
     success: true,
