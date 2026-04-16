@@ -13,6 +13,8 @@ const NAV = [
   { to: "/board",          label: "Bestyrelse",       icon: "◧" },
   { to: "/activity",       label: "Min Aktivitet",    icon: "📋" },
   { to: "/notifications",  label: "Notifikationer",   icon: "🔔" },
+  { to: "/watchlist",      label: "Talentspejder",     icon: "⭐" },
+  { to: "/help",           label: "Hjælp & Regler",    icon: "?" },
   { to: "/profile",        label: "Min Profil",        icon: "👤" },
 ];
 

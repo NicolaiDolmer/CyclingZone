@@ -40,11 +40,33 @@ export default function RiderStatsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [rider, setRider] = useState(null);
+  const [onWatchlist, setOnWatchlist] = useState(false);
+  const [watchlistId, setWatchlistId] = useState(null);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [myTeamId, setMyTeamId] = useState(null);
 
-  useEffect(() => { loadRider(); loadMyTeam(); }, [id]);
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); }, [id]);
+
+  async function loadWatchlistStatus() {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data } = await supabase.from("rider_watchlist")
+      .select("id").eq("user_id", user.id).eq("rider_id", id).single();
+    if (data) { setOnWatchlist(true); setWatchlistId(data.id); }
+    else { setOnWatchlist(false); setWatchlistId(null); }
+  }
+
+  async function toggleWatchlist() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (onWatchlist) {
+      await supabase.from("rider_watchlist").delete().eq("id", watchlistId);
+      setOnWatchlist(false); setWatchlistId(null);
+    } else {
+      const { data } = await supabase.from("rider_watchlist")
+        .insert({ user_id: user.id, rider_id: id }).select("id").single();
+      setOnWatchlist(true); setWatchlistId(data?.id);
+    }
+  }
 
   async function loadMyTeam() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -114,7 +136,14 @@ export default function RiderStatsPage() {
       <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-6 mb-4">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">{rider.firstname} {rider.lastname}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-white">{rider.firstname} {rider.lastname}</h1>
+              <button onClick={toggleWatchlist}
+                title={onWatchlist ? "Fjern fra ønskeliste" : "Tilføj til ønskeliste"}
+                className={`text-2xl transition-all hover:scale-110 ${onWatchlist ? "text-[#e8c547]" : "text-white/20 hover:text-white/50"}`}>
+                {onWatchlist ? "★" : "☆"}
+              </button>
+            </div>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {rider.is_u25 && <span className="text-xs uppercase bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">U25</span>}
               <span className="text-white/40 text-sm">{typeLabel}</span>

@@ -1,6 +1,84 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
+
+function ManualOverride({ supabase, onMsg, onRefresh, teams }) {
+  const [riderSearch, setRiderSearch] = useState("");
+  const [riderResults, setRiderResults] = useState([]);
+  const [selectedRider, setSelectedRider] = useState(null);
+  const [selectedTeam, setSelectedTeam] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function searchRiders(q) {
+    setRiderSearch(q);
+    if (q.length < 2) { setRiderResults([]); return; }
+    const { data } = await supabase.from("riders")
+      .select("id, firstname, lastname, uci_points, team:team_id(name)")
+      .or(`firstname.ilike.%${q}%,lastname.ilike.%${q}%`)
+      .order("uci_points", { ascending: false }).limit(8);
+    setRiderResults(data || []);
+  }
+
+  async function moveRider() {
+    if (!selectedRider) { onMsg("❌ Vælg en rytter", "error"); return; }
+    setLoading(true);
+    const teamId = selectedTeam || null;
+    const { error } = await supabase.from("riders")
+      .update({ team_id: teamId, pending_team_id: null })
+      .eq("id", selectedRider.id);
+    if (error) onMsg(`❌ ${error.message}`, "error");
+    else {
+      onMsg(`✅ ${selectedRider.firstname} ${selectedRider.lastname} flyttet til ${teamId ? teams.find(t => t.id === teamId)?.name : "fri agent"}`);
+      setSelectedRider(null);
+      setRiderSearch("");
+      setRiderResults([]);
+      setSelectedTeam("");
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="relative">
+        <label className="block text-white/30 text-xs mb-1">Søg rytter</label>
+        <input type="text" value={riderSearch} onChange={e => searchRiders(e.target.value)}
+          placeholder="Efternavn..."
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#e8c547]/50" />
+        {riderResults.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f0f18] border border-white/10 rounded-xl z-20 overflow-hidden">
+            {riderResults.map(r => (
+              <div key={r.id}
+                className="px-3 py-2 hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0"
+                onClick={() => { setSelectedRider(r); setRiderSearch(`${r.firstname} ${r.lastname}`); setRiderResults([]); }}>
+                <p className="text-white text-sm">{r.firstname} {r.lastname}</p>
+                <p className="text-white/30 text-xs">{r.team?.name || "Fri agent"} — {r.uci_points?.toLocaleString()} CZ$</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {selectedRider && (
+          <p className="text-[#e8c547] text-xs mt-1">✓ {selectedRider.firstname} {selectedRider.lastname}</p>
+        )}
+      </div>
+      <div>
+        <label className="block text-white/30 text-xs mb-1">Flyt til hold</label>
+        <select value={selectedTeam} onChange={e => setSelectedTeam(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+          <option value="">Fri agent (intet hold)</option>
+          {teams.map(t => <option key={t.id} value={t.id}>{t.name} (Div {t.division})</option>)}
+        </select>
+      </div>
+      <div className="flex items-end">
+        <button onClick={moveRider} disabled={loading || !selectedRider}
+          className="w-full px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm
+            hover:bg-[#f0d060] disabled:opacity-50 transition-all">
+          {loading ? "Flytter..." : "Flyt rytter"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Section({ title, children }) {
   return (
     <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
@@ -427,6 +505,16 @@ export default function AdminPage() {
             </tbody>
           </table>
         </div>
+      </Section>
+
+
+      {/* Manual override */}
+      <Section title="Manuel Override — Flyt Rytter">
+        <p className="text-white/30 text-xs mb-4">
+          Flyt en rytter direkte til et hold. Bruges til korrektioner og special-situationer.
+          Handlingen logges ikke som en transaktion.
+        </p>
+        <ManualOverride supabase={supabase} onMsg={(text, type) => showMsg(text, type)} onRefresh={loadAll} teams={teams} />
       </Section>
 
       {/* Discord webhooks */}

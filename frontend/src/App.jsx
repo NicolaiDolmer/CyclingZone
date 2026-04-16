@@ -18,6 +18,8 @@ import NotificationsPage from "./pages/NotificationsPage";
 import RiderComparePage from "./pages/RiderComparePage";
 import ProfilePage from "./pages/ProfilePage";
 import ActivityPage from "./pages/ActivityPage";
+import WatchlistPage from "./pages/WatchlistPage";
+import HelpPage from "./pages/HelpPage";
 import Layout from "./components/Layout";
 
 function ProtectedRoute({ children, session }) {
@@ -68,6 +70,8 @@ export default function App() {
           <Route path="compare" element={<RiderComparePage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="activity" element={<ActivityPage />} />
+          <Route path="watchlist" element={<WatchlistPage />} />
+          <Route path="help" element={<HelpPage />} />
           <Route path="admin" element={<AdminPage />} />
 
           {/* 404 fallback */}

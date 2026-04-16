@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate, Link } from "react-router-dom";
 
@@ -47,11 +47,13 @@ function StatBar({ value }) {
 // Mobile card view
 function RiderCard({ rider, onClick }) {
   return (
+    <div className="relative">
     <div onClick={() => onClick(rider)}
       className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 hover:border-white/10
         cursor-pointer transition-all active:scale-98">
       <div className="flex items-start justify-between mb-3">
-        <div>
+        <div className="flex items-start justify-between mb-3 w-full">
+          <div>
           <p className="text-white font-medium text-sm">
             {rider.firstname} {rider.lastname}
           </p>
@@ -116,6 +118,8 @@ function RiderRow({ rider, onSelect }) {
 export default function RidersPage() {
   const navigate = useNavigate();
   const [riders, setRiders] = useState([]);
+  const [watchlist, setWatchlist] = useState(new Set());
+  const [userId, setUserId] = useState(null);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -130,7 +134,27 @@ export default function RidersPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserId(user.id);
+      supabase.from("rider_watchlist").select("rider_id").eq("user_id", user.id)
+        .then(({ data }) => setWatchlist(new Set((data || []).map(w => w.rider_id))));
+    });
+  }, []);
+
   useEffect(() => { loadRiders(); }, [filters]);
+
+  async function toggleWatchlist(e, riderId) {
+    e.stopPropagation();
+    if (!userId) return;
+    if (watchlist.has(riderId)) {
+      await supabase.from("rider_watchlist").delete().eq("user_id", userId).eq("rider_id", riderId);
+      setWatchlist(prev => { const s = new Set(prev); s.delete(riderId); return s; });
+    } else {
+      await supabase.from("rider_watchlist").insert({ user_id: userId, rider_id: riderId });
+      setWatchlist(prev => new Set([...prev, riderId]));
+    }
+  }
 
   async function loadRiders() {
     setLoading(true);
