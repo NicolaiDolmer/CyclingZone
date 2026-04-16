@@ -5,6 +5,7 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import RidersPage from "./pages/RidersPage";
 import AuctionsPage from "./pages/AuctionsPage";
+import AuctionHistoryPage from "./pages/AuctionHistoryPage";
 import TransfersPage from "./pages/TransfersPage";
 import TeamPage from "./pages/TeamPage";
 import AdminPage from "./pages/AdminPage";
@@ -12,10 +13,9 @@ import StandingsPage from "./pages/StandingsPage";
 import BoardPage from "./pages/BoardPage";
 import RiderStatsPage from "./pages/RiderStatsPage";
 import TeamProfilePage from "./pages/TeamProfilePage";
-import NotificationsPage from "./pages/NotificationsPage";
-import AuctionHistoryPage from "./pages/AuctionHistoryPage";
-import RiderComparePage from "./pages/RiderComparePage";
 import TeamsPage from "./pages/TeamsPage";
+import NotificationsPage from "./pages/NotificationsPage";
+import RiderComparePage from "./pages/RiderComparePage";
 import ProfilePage from "./pages/ProfilePage";
 import Layout from "./components/Layout";
 
@@ -44,26 +44,36 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={session ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
         <Route path="/" element={
-          <ProtectedRoute session={session}><Layout session={session} /></ProtectedRoute>
+          <ProtectedRoute session={session}><Layout /></ProtectedRoute>
         }>
-          <Route index element={<DashboardPage />} />
+          {/* Redirect root to dashboard */}
+          <Route index element={<Navigate to="/dashboard" replace />} />
+
+          {/* Main pages */}
+          <Route path="dashboard" element={<DashboardPage />} />
           <Route path="riders" element={<RidersPage />} />
+          <Route path="riders/:id" element={<RiderStatsPage />} />
           <Route path="auctions" element={<AuctionsPage />} />
+          <Route path="auctions/history" element={<AuctionHistoryPage />} />
           <Route path="transfers" element={<TransfersPage />} />
           <Route path="team" element={<TeamPage />} />
+          <Route path="teams" element={<TeamsPage />} />
+          <Route path="teams/:id" element={<TeamProfilePage />} />
           <Route path="standings" element={<StandingsPage />} />
           <Route path="board" element={<BoardPage />} />
-          <Route path="riders/:id" element={<RiderStatsPage />} />
-          <Route path="teams/:id" element={<TeamProfilePage />} />
           <Route path="notifications" element={<NotificationsPage />} />
-          <Route path="auctions/history" element={<AuctionHistoryPage />} />
           <Route path="compare" element={<RiderComparePage />} />
-          <Route path="teams" element={<TeamsPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="admin" element={<AdminPage />} />
+
+          {/* 404 fallback */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
+
+        {/* Global 404 fallback */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

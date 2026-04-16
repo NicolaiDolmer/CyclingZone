@@ -23,7 +23,7 @@ const MOBILE_NAV = [
   { to: "/team",       label: "Mit Hold",   icon: "◈" },
 ];
 
-export default function Layout({ isAdmin }) {
+export default function Layout() {
   const navigate = useNavigate();
   const [session, setSession] = useState(null);
   const [teamName, setTeamName] = useState("");
