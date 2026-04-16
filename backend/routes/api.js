@@ -344,6 +344,7 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
     success: true,
     new_price: amount,
     extended: shouldExtend,
+    new_end: shouldExtend ? newEnd?.toISOString() : undefined,
     new_end: shouldExtend ? newEnd : undefined,
   });
 });

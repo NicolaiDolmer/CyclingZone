@@ -274,6 +274,18 @@ export default function AuctionsPage() {
     );
     const data = await res.json();
     if (res.ok) {
+      // Update auction card immediately — don't wait for Realtime
+      setAuctions(prev => prev.map(a => {
+        if (a.id !== auctionId) return a;
+        return {
+          ...a,
+          current_price: amount,
+          current_bidder_id: myTeamId,
+          current_bidder: { id: myTeamId, name: "Dig" },
+          status: data.extended ? "extended" : a.status,
+          calculated_end: data.new_end || a.calculated_end,
+        };
+      }));
       loadMyTeam(); // refresh balance
       return { ok: true, extended: data.extended };
     }
