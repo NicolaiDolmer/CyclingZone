@@ -1,30 +1,20 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate, Link } from "react-router-dom";
 
 const STATS = [
-  { key: "stat_fl", label: "FL" },
-  { key: "stat_bj", label: "BJ" },
-  { key: "stat_kb", label: "KB" },
-  { key: "stat_bk", label: "BK" },
-  { key: "stat_tt", label: "TT" },
-  { key: "stat_prl", label: "PRL" },
-  { key: "stat_bro", label: "Bro" },
-  { key: "stat_sp", label: "SP" },
-  { key: "stat_acc", label: "ACC" },
-  { key: "stat_ned", label: "NED" },
-  { key: "stat_udh", label: "UDH" },
-  { key: "stat_mod", label: "MOD" },
-  { key: "stat_res", label: "RES" },
-  { key: "stat_ftr", label: "FTR" },
+  { key: "stat_fl", label: "FL" }, { key: "stat_bj", label: "BJ" },
+  { key: "stat_kb", label: "KB" }, { key: "stat_bk", label: "BK" },
+  { key: "stat_tt", label: "TT" }, { key: "stat_prl", label: "PRL" },
+  { key: "stat_bro", label: "Bro" }, { key: "stat_sp", label: "SP" },
+  { key: "stat_acc", label: "ACC" }, { key: "stat_ned", label: "NED" },
+  { key: "stat_udh", label: "UDH" }, { key: "stat_mod", label: "MOD" },
+  { key: "stat_res", label: "RES" }, { key: "stat_ftr", label: "FTR" },
 ];
 
-// Top 5 stats to show in mobile card view
 const MOBILE_STATS = [
-  { key: "stat_bj", label: "BJ" },
-  { key: "stat_sp", label: "SP" },
-  { key: "stat_tt", label: "TT" },
-  { key: "stat_fl", label: "FL" },
+  { key: "stat_bj", label: "BJ" }, { key: "stat_sp", label: "SP" },
+  { key: "stat_tt", label: "TT" }, { key: "stat_fl", label: "FL" },
   { key: "stat_udh", label: "UDH" },
 ];
 
@@ -36,44 +26,53 @@ function StatBar({ value }) {
       <div className="w-full bg-white/8 rounded-full h-1.5">
         <div className={`${color} h-1.5 rounded-full`} style={{ width: `${pct}%` }} />
       </div>
-      <span className={`text-[11px] font-mono w-5 text-right flex-shrink-0
-        ${value >= 80 ? "text-[#e8c547]" : "text-white/50"}`}>
+      <span className={`text-[11px] font-mono w-5 text-right flex-shrink-0 ${value >= 80 ? "text-[#e8c547]" : "text-white/50"}`}>
         {value ?? "—"}
       </span>
     </div>
   );
 }
 
-// Mobile card view
-function RiderCard({ rider, onClick }) {
+function StarButton({ riderId, watchlist, onToggle }) {
+  const isWatched = watchlist.has(riderId);
   return (
-    <div className="relative">
-    <div onClick={() => onClick(rider)}
-      className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 hover:border-white/10
-        cursor-pointer transition-all active:scale-98">
+    <button
+      onClick={e => { e.stopPropagation(); onToggle(riderId); }}
+      title={isWatched ? "Fjern fra ønskeliste" : "Tilføj til ønskeliste"}
+      className={`text-lg transition-all hover:scale-110 flex-shrink-0 ${isWatched ? "text-[#e8c547]" : "text-white/20 hover:text-white/50"}`}>
+      {isWatched ? "★" : "☆"}
+    </button>
+  );
+}
+
+function RiderCard({ rider, onClick, watchlist, onToggleWatchlist }) {
+  return (
+    <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 hover:border-white/10
+      cursor-pointer transition-all active:scale-98">
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-start justify-between mb-3 w-full">
-          <div>
-          <p className="text-white font-medium text-sm">
+        <div onClick={() => onClick(rider)} className="flex-1 min-w-0">
+          <p className="text-white font-medium text-sm truncate">
             {rider.firstname} {rider.lastname}
           </p>
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             {rider.is_u25 && (
               <span className="text-[9px] uppercase bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">U25</span>
             )}
             <span className="text-white/30 text-xs">{rider.team?.name || "Fri"}</span>
           </div>
         </div>
-        <span className="text-[#e8c547] font-mono font-bold text-sm">
-          {rider.uci_points?.toLocaleString("da-DK")} CZ$
-        </span>
+        <div className="flex items-center gap-2 ml-2">
+          <span className="text-[#e8c547] font-mono font-bold text-sm whitespace-nowrap">
+            {rider.uci_points?.toLocaleString("da-DK")} CZ$
+          </span>
+          <StarButton riderId={rider.id} watchlist={watchlist} onToggle={onToggleWatchlist} />
+        </div>
       </div>
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-5 gap-2" onClick={() => onClick(rider)}>
         {MOBILE_STATS.map(({ key, label }) => (
           <div key={key} className="text-center">
             <p className="text-white/20 text-[9px] uppercase mb-0.5">{label}</p>
-            <p className={`font-mono text-xs font-bold
-              ${rider[key] >= 80 ? "text-[#e8c547]" : "text-white/50"}`}>
+            <p className={`font-mono text-xs font-bold ${rider[key] >= 80 ? "text-[#e8c547]" : "text-white/50"}`}>
               {rider[key] || "—"}
             </p>
           </div>
@@ -83,16 +82,12 @@ function RiderCard({ rider, onClick }) {
   );
 }
 
-// Desktop table row
-function RiderRow({ rider, onSelect }) {
+function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist }) {
   return (
-    <tr className="border-b border-white/4 hover:bg-white/3 cursor-pointer transition-colors"
-      onClick={() => onSelect(rider)}>
-      <td className="px-3 py-2.5">
+    <tr className="border-b border-white/4 hover:bg-white/3 cursor-pointer transition-colors">
+      <td className="px-3 py-2.5" onClick={() => onSelect(rider)}>
         <div>
-          <p className="text-white text-sm font-medium">
-            {rider.firstname} {rider.lastname}
-          </p>
+          <p className="text-white text-sm font-medium">{rider.firstname} {rider.lastname}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             {rider.is_u25 && (
               <span className="text-[9px] uppercase bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">U25</span>
@@ -101,16 +96,19 @@ function RiderRow({ rider, onSelect }) {
           </div>
         </div>
       </td>
-      <td className="px-3 py-2.5 text-right">
+      <td className="px-3 py-2.5 text-right" onClick={() => onSelect(rider)}>
         <span className="text-[#e8c547] font-mono text-sm font-bold">
           {rider.uci_points?.toLocaleString("da-DK")}
         </span>
       </td>
       {STATS.map(({ key }) => (
-        <td key={key} className="px-1.5 py-2.5 w-14">
+        <td key={key} className="px-1.5 py-2.5 w-14" onClick={() => onSelect(rider)}>
           <StatBar value={rider[key]} />
         </td>
       ))}
+      <td className="px-3 py-2.5">
+        <StarButton riderId={rider.id} watchlist={watchlist} onToggle={onToggleWatchlist} />
+      </td>
     </tr>
   );
 }
@@ -118,11 +116,11 @@ function RiderRow({ rider, onSelect }) {
 export default function RidersPage() {
   const navigate = useNavigate();
   const [riders, setRiders] = useState([]);
-  const [watchlist, setWatchlist] = useState(new Set());
-  const [userId, setUserId] = useState(null);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [watchlist, setWatchlist] = useState(new Set());
+  const [userId, setUserId] = useState(null);
   const [filters, setFilters] = useState({
     q: "", free_agent: false, u25: false, min_uci: "", max_uci: "",
     sort: "uci_points", page: 1,
@@ -136,6 +134,7 @@ export default function RidersPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
       setUserId(user.id);
       supabase.from("rider_watchlist").select("rider_id").eq("user_id", user.id)
         .then(({ data }) => setWatchlist(new Set((data || []).map(w => w.rider_id))));
@@ -144,8 +143,7 @@ export default function RidersPage() {
 
   useEffect(() => { loadRiders(); }, [filters]);
 
-  async function toggleWatchlist(e, riderId) {
-    e.stopPropagation();
+  async function toggleWatchlist(riderId) {
     if (!userId) return;
     if (watchlist.has(riderId)) {
       await supabase.from("rider_watchlist").delete().eq("user_id", userId).eq("rider_id", riderId);
@@ -158,13 +156,11 @@ export default function RidersPage() {
 
   async function loadRiders() {
     setLoading(true);
+    const statKeys = STATS.map(s => s.key).join(", ");
     let query = supabase
       .from("riders")
       .select(`id, firstname, lastname, birthdate, uci_points, is_u25,
-        stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
-        stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,
-        stat_res, stat_ftr,
-        team:team_id(id, name)`, { count: "exact" })
+        ${statKeys}, team:team_id(id, name)`, { count: "exact" })
       .order(filters.sort, { ascending: false })
       .range((filters.page - 1) * 50, filters.page * 50 - 1);
 
@@ -191,7 +187,11 @@ export default function RidersPage() {
           <h1 className="text-xl font-bold text-white">Rytterdatabase</h1>
           <p className="text-white/30 text-sm">{total.toLocaleString("da-DK")} ryttere</p>
         </div>
-        <Link to="/compare" className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white/50 text-xs hover:text-white hover:bg-white/10 transition-all">⚖ Sammenlign ryttere</Link>
+        <Link to="/watchlist"
+          className="px-3 py-1.5 bg-[#e8c547]/10 text-[#e8c547] border border-[#e8c547]/20
+            rounded-lg text-xs font-medium hover:bg-[#e8c547]/20 transition-all">
+          ⭐ Min ønskeliste ({watchlist.size})
+        </Link>
       </div>
 
       {/* Filters */}
@@ -213,16 +213,12 @@ export default function RidersPage() {
             focus:outline-none focus:border-[#e8c547]/50" />
         <button onClick={() => setFilter("free_agent", !filters.free_agent)}
           className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border
-            ${filters.free_agent
-              ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/30"
-              : "bg-[#0f0f18] text-white/40 border-white/8 hover:text-white"}`}>
+            ${filters.free_agent ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/30" : "bg-[#0f0f18] text-white/40 border-white/8 hover:text-white"}`}>
           Fri agents
         </button>
         <button onClick={() => setFilter("u25", !filters.u25)}
           className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border
-            ${filters.u25
-              ? "bg-blue-500/10 text-blue-400 border-blue-500/30"
-              : "bg-[#0f0f18] text-white/40 border-white/8 hover:text-white"}`}>
+            ${filters.u25 ? "bg-blue-500/10 text-blue-400 border-blue-500/30" : "bg-[#0f0f18] text-white/40 border-white/8 hover:text-white"}`}>
           U25
         </button>
         <select value={filters.sort} onChange={e => setFilter("sort", e.target.value)}
@@ -241,14 +237,15 @@ export default function RidersPage() {
           <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : isMobile ? (
-        /* Mobile card view */
         <div className="flex flex-col gap-3">
           {riders.map(r => (
-            <RiderCard key={r.id} rider={r} onClick={(r) => navigate(`/riders/${r.id}`)} />
+            <RiderCard key={r.id} rider={r}
+              onClick={r => navigate(`/riders/${r.id}`)}
+              watchlist={watchlist}
+              onToggleWatchlist={toggleWatchlist} />
           ))}
         </div>
       ) : (
-        /* Desktop table view */
         <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -259,11 +256,15 @@ export default function RidersPage() {
                   {STATS.map(({ label }) => (
                     <th key={label} className="px-1.5 py-3 text-center text-white/20 font-medium w-14">{label}</th>
                   ))}
+                  <th className="px-3 py-3 w-8" />
                 </tr>
               </thead>
               <tbody>
                 {riders.map(r => (
-                  <RiderRow key={r.id} rider={r} onSelect={(r) => navigate(`/riders/${r.id}`)} />
+                  <RiderRow key={r.id} rider={r}
+                    onSelect={r => navigate(`/riders/${r.id}`)}
+                    watchlist={watchlist}
+                    onToggleWatchlist={toggleWatchlist} />
                 ))}
               </tbody>
             </table>
