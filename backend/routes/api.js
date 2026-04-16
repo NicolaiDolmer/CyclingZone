@@ -345,11 +345,28 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
   }
 
   if (auction.current_bidder_id) {
-    // Transfer rider to winning team
-    await supabase.from("riders").update({
-      team_id: auction.current_bidder_id,
-      salary: Math.ceil(auction.current_price * 0.1), // 10% salary
-    }).eq("id", auction.rider.id);
+    // Check if transfer window is open
+    const { data: tw } = await supabase
+      .from("transfer_windows")
+      .select("status")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    const windowOpen = tw?.status === "open";
+
+    // Window open = transfer immediately. Window closed = set pending_team_id
+    if (windowOpen) {
+      await supabase.from("riders").update({
+        team_id: auction.current_bidder_id,
+        pending_team_id: null,
+        salary: Math.ceil(auction.current_price * 0.1),
+      }).eq("id", auction.rider.id);
+    } else {
+      await supabase.from("riders").update({
+        pending_team_id: auction.current_bidder_id,
+        salary: Math.ceil(auction.current_price * 0.1),
+      }).eq("id", auction.rider.id);
+    }
 
     // Deduct from buyer
     const { data: buyer } = await supabase
@@ -761,5 +778,61 @@ router.post("/admin/finalize-expired-auctions", requireAdmin, async (req, res) =
 
   res.json({ finalized: results.length, results });
 });
+
+// ── Transfer Window ───────────────────────────────────────────────────────────
+
+// GET /api/transfer-window — get current window status
+router.get("/transfer-window", async (req, res) => {
+  const { data } = await supabase
+    .from("transfer_windows")
+    .select("*, season:season_id(number)")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+  res.json({ window: data || { status: "closed" } });
+});
+
+// POST /api/admin/transfer-window/open — admin opens window
+router.post("/admin/transfer-window/open", requireAdmin, async (req, res) => {
+  const { season_id } = req.body;
+  if (!season_id) return res.status(400).json({ error: "season_id required" });
+
+  // Close any existing open windows
+  await supabase.from("transfer_windows")
+    .update({ status: "closed", closed_at: new Date().toISOString() })
+    .eq("status", "open");
+
+  // Open new window
+  const { data, error } = await supabase.from("transfer_windows")
+    .insert({ season_id, status: "open", opened_at: new Date().toISOString() })
+    .select().single();
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  // Process all pending transfers — move pending_team_id to team_id
+  const { data: pendingRiders } = await supabase
+    .from("riders")
+    .select("id, team_id, pending_team_id")
+    .not("pending_team_id", "is", null);
+
+  let processed = 0;
+  for (const rider of (pendingRiders || [])) {
+    await supabase.from("riders")
+      .update({ team_id: rider.pending_team_id, pending_team_id: null })
+      .eq("id", rider.id);
+    processed++;
+  }
+
+  res.json({ success: true, window: data, riders_processed: processed });
+});
+
+// POST /api/admin/transfer-window/close — admin closes window
+router.post("/admin/transfer-window/close", requireAdmin, async (req, res) => {
+  await supabase.from("transfer_windows")
+    .update({ status: "closed", closed_at: new Date().toISOString() })
+    .eq("status", "open");
+  res.json({ success: true });
+});
+
 
 export default router;

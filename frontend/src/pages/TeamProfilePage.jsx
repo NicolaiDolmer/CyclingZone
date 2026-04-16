@@ -12,8 +12,9 @@ export default function TeamProfilePage() {
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [standing, setStanding] = useState(null);
-  const [board, setBoard] = useState(null);
-  const [activeAuctions, setActiveAuctions] = useState([]);
+  const [windowOpen, setWindowOpen] = useState(false);
+  const [showIncoming, setShowIncoming] = useState(true);
+  const [showOutgoing, setShowOutgoing] = useState(true);
   const [loading, setLoading] = useState(true);
   const [myTeamId, setMyTeamId] = useState(null);
 
@@ -25,32 +26,31 @@ export default function TeamProfilePage() {
     const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
     if (myTeam) setMyTeamId(myTeam.id);
 
-    const [teamRes, ridersRes, standingRes, boardRes, auctionsRes] = await Promise.all([
+    const [teamRes, ridersRes, pendingRes, standingRes, windowRes] = await Promise.all([
       supabase.from("teams").select("*").eq("id", id).single(),
       supabase.from("riders")
-        .select(`id, firstname, lastname, uci_points, salary, is_u25, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, ${STATS.join(", ")}`)
         .eq("team_id", id)
         .order("uci_points", { ascending: false }),
+      supabase.from("riders")
+        .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, ${STATS.join(", ")}`)
+        .eq("pending_team_id", id)
+        .order("uci_points", { ascending: false }),
       supabase.from("season_standings")
-        .select("*")
-        .eq("team_id", id)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .single(),
-      supabase.from("board_profiles").select("focus, plan_type, satisfaction").eq("team_id", id).single(),
-      supabase.from("auctions")
-        .select(`id, current_price, calculated_end, status,
-          rider:rider_id(firstname, lastname, uci_points)`)
-        .eq("seller_team_id", id)
-        .in("status", ["active", "extended"])
-        .order("calculated_end"),
+        .select("*").eq("team_id", id)
+        .order("updated_at", { ascending: false }).limit(1).single(),
+      supabase.from("transfer_windows")
+        .select("status").order("created_at", { ascending: false }).limit(1).single(),
     ]);
 
     setTeam(teamRes.data);
-    setRiders(ridersRes.data || []);
+    const current = (ridersRes.data || []).map(r => ({
+      ...r, _isOutgoing: r.pending_team_id && r.pending_team_id !== id,
+    }));
+    const incoming = (pendingRes.data || []).map(r => ({ ...r, _isIncoming: true }));
+    setRiders([...current, ...incoming]);
     setStanding(standingRes.data);
-    setBoard(boardRes.data);
-    setActiveAuctions(auctionsRes.data || []);
+    setWindowOpen(windowRes.data?.status === "open");
     setLoading(false);
   }
 
@@ -62,15 +62,19 @@ export default function TeamProfilePage() {
 
   if (!team) return <div className="text-center py-16 text-white/30">Hold ikke fundet</div>;
 
-  const totalValue = riders.reduce((s, r) => s + (r.uci_points || 0), 0);
-  const totalSalary = riders.reduce((s, r) => s + (r.salary || 0), 0);
-  const u25Count = riders.filter(r => r.is_u25).length;
+  const currentRiders = riders.filter(r => !r._isIncoming);
+  const incomingRiders = riders.filter(r => r._isIncoming);
+  const outgoingRiders = riders.filter(r => r._isOutgoing);
   const isMyTeam = team.id === myTeamId;
 
-  const topRiders = riders.slice(0, 5);
-  const satisfactionColor = !board ? "text-white/40" :
-    board.satisfaction >= 70 ? "text-green-400" :
-    board.satisfaction >= 40 ? "text-[#e8c547]" : "text-red-400";
+  const displayRiders = [
+    ...riders.filter(r => !r._isIncoming && !r._isOutgoing),
+    ...(showIncoming ? incomingRiders : []),
+    ...(showOutgoing ? outgoingRiders : []),
+  ];
+
+  const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
+  const totalValue = currentRiders.reduce((s, r) => s + (r.uci_points || 0), 0);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -83,142 +87,107 @@ export default function TeamProfilePage() {
       <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-6 mb-4">
         <div className="flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-1 flex-wrap">
               <h1 className="text-2xl font-bold text-white">{team.name}</h1>
-              {isMyTeam && (
-                <span className="text-xs bg-[#e8c547]/10 text-[#e8c547] border border-[#e8c547]/20
-                  px-2 py-0.5 rounded-full">Dit hold</span>
-              )}
-              {team.is_ai && (
-                <span className="text-xs bg-white/5 text-white/30 px-2 py-0.5 rounded-full">AI</span>
-              )}
+              {isMyTeam && <span className="text-xs bg-[#e8c547]/10 text-[#e8c547] border border-[#e8c547]/20 px-2 py-0.5 rounded-full">Dit hold</span>}
+              <span className={`text-xs px-2 py-0.5 rounded-full border ${windowOpen ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-white/5 text-white/30 border-white/8"}`}>
+                {windowOpen ? "🟢 Vindue åbent" : "🔒 Vindue lukket"}
+              </span>
             </div>
             <p className="text-white/40 text-sm">Division {team.division}</p>
           </div>
           <div className="text-right">
-            <p className="text-[#e8c547] font-mono font-bold text-xl">
-              {team.balance?.toLocaleString("da-DK")} CZ$
-            </p>
+            <p className="text-[#e8c547] font-mono font-bold text-xl">{team.balance?.toLocaleString("da-DK")} CZ$</p>
             <p className="text-white/30 text-xs mt-0.5">Balance</p>
           </div>
         </div>
 
-        {/* Stats row */}
         <div className="grid grid-cols-4 gap-3 mt-5">
           {[
-            { label: "Ryttere", value: riders.length },
-            { label: "U25", value: u25Count, color: "text-blue-400" },
+            { label: "Ryttere nu", value: currentRiders.length },
+            { label: "Indgående", value: incomingRiders.length, color: incomingRiders.length > 0 ? "text-green-400" : "text-white" },
+            { label: "Udgående", value: outgoingRiders.length, color: outgoingRiders.length > 0 ? "text-red-400" : "text-white" },
             { label: "Holdværdi", value: `${totalValue.toLocaleString("da-DK")} CZ$`, color: "text-[#e8c547]" },
-            { label: "Løn/sæson", value: `${totalSalary.toLocaleString("da-DK")} CZ$` },
           ].map(s => (
             <div key={s.label} className="bg-white/3 rounded-lg p-3 text-center">
-              <p className="text-white/30 text-xs uppercase tracking-wider mb-1">{s.label}</p>
+              <p className="text-white/25 text-[9px] uppercase tracking-wider mb-1">{s.label}</p>
               <p className={`font-mono font-bold text-sm ${s.color || "text-white"}`}>{s.value}</p>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4 mb-4">
-        {/* Season standing */}
-        {standing && (
-          <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
-            <h2 className="text-white font-semibold text-sm mb-3">Sæsonresultater</h2>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: "Point", value: standing.total_points?.toLocaleString("da-DK") || 0, color: "text-[#e8c547]" },
-                { label: "Etapesejre", value: standing.stage_wins || 0 },
-                { label: "GC-sejre", value: standing.gc_wins || 0 },
-              ].map(s => (
-                <div key={s.label} className="bg-white/3 rounded-lg p-3 text-center">
-                  <p className="text-white/30 text-xs uppercase tracking-wider mb-1">{s.label}</p>
-                  <p className={`font-mono font-bold text-lg ${s.color || "text-white"}`}>{s.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Board */}
-        {board && (
-          <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
-            <h2 className="text-white font-semibold text-sm mb-3">Bestyrelse</h2>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex-1 bg-white/5 rounded-full h-2">
-                <div className={`h-2 rounded-full ${board.satisfaction >= 70 ? "bg-green-400" : board.satisfaction >= 40 ? "bg-[#e8c547]" : "bg-red-400"}`}
-                  style={{ width: `${board.satisfaction}%` }} />
-              </div>
-              <span className={`font-mono text-sm font-bold ${satisfactionColor}`}>{board.satisfaction}%</span>
-            </div>
-            <div className="flex gap-3">
-              <div className="bg-white/3 rounded-lg p-3 flex-1">
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Fokus</p>
-                <p className="text-white text-sm font-medium capitalize">{board.focus?.replace(/_/g, " ") || "—"}</p>
-              </div>
-              <div className="bg-white/3 rounded-lg p-3 flex-1">
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Plan</p>
-                <p className="text-white text-sm font-medium">{board.plan_type || "—"}</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Active auctions */}
-      {activeAuctions.length > 0 && (
+      {/* Season standing */}
+      {standing && (
         <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
-          <h2 className="text-white font-semibold text-sm mb-3">
-            Aktive Auktioner ({activeAuctions.length})
-          </h2>
-          <div className="flex flex-col gap-2">
-            {activeAuctions.map(a => (
-              <div key={a.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                <p className="text-white text-sm">{a.rider?.firstname} {a.rider?.lastname}</p>
-                <div className="text-right">
-                  <p className="text-[#e8c547] font-mono text-sm font-bold">
-                    {a.current_price?.toLocaleString("da-DK")} CZ$
-                  </p>
-                  {a.status === "extended" && (
-                    <span className="text-[9px] text-orange-400">⚡ Forlænget</span>
-                  )}
-                </div>
+          <h2 className="text-white font-semibold text-sm mb-3">Sæsonresultater</h2>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Point", value: standing.total_points?.toLocaleString("da-DK") || 0, color: "text-[#e8c547]" },
+              { label: "Etapesejre", value: standing.stage_wins || 0 },
+              { label: "GC-sejre", value: standing.gc_wins || 0 },
+            ].map(s => (
+              <div key={s.label} className="bg-white/3 rounded-lg p-3 text-center">
+                <p className="text-white/30 text-xs uppercase tracking-wider mb-1">{s.label}</p>
+                <p className={`font-mono font-bold text-lg ${s.color || "text-white"}`}>{s.value}</p>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Squad */}
+      {/* Squad with FM toggle */}
       <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/5">
-          <h2 className="text-white font-semibold text-sm">Trup ({riders.length} ryttere)</h2>
+        <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between flex-wrap gap-3">
+          <h2 className="text-white font-semibold text-sm">Trup ({currentRiders.length} ryttere)</h2>
+          {hasTransfers && (
+            <div className="flex gap-2 flex-wrap">
+              {incomingRiders.length > 0 && (
+                <button onClick={() => setShowIncoming(!showIncoming)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all
+                    ${showIncoming ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-white/5 text-white/30 border-white/5"}`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                  Indgående ({incomingRiders.length})
+                </button>
+              )}
+              {outgoingRiders.length > 0 && (
+                <button onClick={() => setShowOutgoing(!showOutgoing)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all
+                    ${showOutgoing ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-white/5 text-white/30 border-white/5"}`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                  Udgående ({outgoingRiders.length})
+                </button>
+              )}
+            </div>
+          )}
         </div>
-        {riders.length === 0 ? (
-          <div className="text-center py-12 text-white/20">
-            <p>Ingen ryttere på holdet endnu</p>
-          </div>
+        {displayRiders.length === 0 ? (
+          <div className="text-center py-12 text-white/20"><p>Ingen ryttere</p></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="px-4 py-3 text-left text-white/30 font-medium uppercase tracking-wider">Rytter</th>
-                  <th className="px-4 py-3 text-right text-white/30 font-medium uppercase tracking-wider">UCI</th>
-                  {STAT_LABELS.map(l => (
-                    <th key={l} className="px-1.5 py-3 text-center text-white/20 font-medium w-10">{l}</th>
-                  ))}
+                  <th className="px-4 py-3 text-left text-white/30 font-medium uppercase">Rytter</th>
+                  <th className="px-4 py-3 text-right text-white/30 font-medium">UCI</th>
+                  {STAT_LABELS.map(l => <th key={l} className="px-1.5 py-3 text-center text-white/20 font-medium w-10">{l}</th>)}
                 </tr>
               </thead>
               <tbody>
-                {riders.map(r => (
+                {displayRiders.map(r => (
                   <tr key={r.id}
-                    className="border-b border-white/4 hover:bg-white/3 cursor-pointer"
+                    className={`border-b border-white/4 hover:bg-white/3 cursor-pointer
+                      ${r._isIncoming ? "bg-green-500/3" : r._isOutgoing ? "bg-red-500/3" : ""}`}
                     onClick={() => navigate(`/riders/${r.id}`)}>
                     <td className="px-4 py-2.5">
-                      <span className="text-white font-medium">{r.firstname} {r.lastname}</span>
-                      {r.is_u25 && (
-                        <span className="ml-2 text-[9px] uppercase bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">U25</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {r._isIncoming && <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />}
+                        {r._isOutgoing && <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />}
+                        <span className="text-white font-medium">{r.firstname} {r.lastname}</span>
+                        {r.is_u25 && <span className="text-[9px] uppercase bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">U25</span>}
+                        {r._isIncoming && <span className="text-[9px] uppercase bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">Indgående</span>}
+                        {r._isOutgoing && <span className="text-[9px] uppercase bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">Udgående</span>}
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 text-right text-[#e8c547] font-mono font-bold">
                       {r.uci_points?.toLocaleString("da-DK")}
