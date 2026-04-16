@@ -59,7 +59,7 @@ function TransferCard({ listing, myTeamId, onAction }) {
         <div className="flex items-center gap-4">
           <div className="text-right">
             <p className="text-[#e8c547] font-mono font-bold text-sm">
-              {listing.asking_price?.toLocaleString("da-DK")} pts
+              {listing.asking_price?.toLocaleString("da-DK")} CZ$
             </p>
             <p className="text-white/20 text-xs">UCI: {listing.rider?.uci_points?.toLocaleString("da-DK")}</p>
           </div>
@@ -145,12 +145,12 @@ function OfferCard({ offer, isSeller, onAction }) {
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[#e8c547] font-mono font-bold">{offer.offer_amount?.toLocaleString("da-DK")} pts</p>
+          <p className="text-[#e8c547] font-mono font-bold">{offer.offer_amount?.toLocaleString("da-DK")} CZ$</p>
           <p className={`text-xs capitalize ${statusColor}`}>{
             offer.status === "pending" ? "Afventer" :
             offer.status === "accepted" ? "Accepteret" :
             offer.status === "rejected" ? "Afvist" :
-            offer.status === "countered" ? `Modbud: ${offer.counter_amount?.toLocaleString("da-DK")} pts` :
+            offer.status === "countered" ? `Modbud: ${offer.counter_amount?.toLocaleString("da-DK")} CZ$` :
             offer.status
           }</p>
         </div>
@@ -191,7 +191,7 @@ function OfferCard({ offer, isSeller, onAction }) {
 
       {!isSeller && offer.status === "countered" && (
         <div className="mt-3">
-          <p className="text-white/40 text-xs mb-2">Sælger sendte modbud på {offer.counter_amount?.toLocaleString("da-DK")} pts</p>
+          <p className="text-white/40 text-xs mb-2">Sælger sendte modbud på {offer.counter_amount?.toLocaleString("da-DK")} CZ$</p>
           <div className="flex gap-2">
             <button onClick={() => respond("accept")}
               className="flex-1 py-1.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg text-xs font-medium">

@@ -281,7 +281,7 @@ export default function AdminPage() {
               className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#e8c547]/50" />
           </div>
           <div>
-            <label className="block text-white/30 text-xs mb-1">Præmiepulje (pts)</label>
+            <label className="block text-white/30 text-xs mb-1">Præmiepulje (CZ$)</label>
             <input type="number" min={0} value={raceForm.prize_pool}
               onChange={e => setRaceForm(f => ({ ...f, prize_pool: e.target.value }))}
               className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#e8c547]/50" />
@@ -335,7 +335,7 @@ export default function AdminPage() {
               {teams.map(t => (
                 <tr key={t.id} className="border-b border-white/4">
                   <td className="px-3 py-2 text-white font-medium">{t.name}</td>
-                  <td className="px-3 py-2 text-right text-[#e8c547] font-mono">{t.balance?.toLocaleString("da-DK")} pts</td>
+                  <td className="px-3 py-2 text-right text-[#e8c547] font-mono">{t.balance?.toLocaleString("da-DK")} CZ$</td>
                   <td className="px-3 py-2 text-right text-white/50">{t.division}</td>
                 </tr>
               ))}

@@ -47,7 +47,7 @@ function RiderActionModal({ rider, onClose, onAction }) {
         <div className="flex items-start justify-between p-5 border-b border-white/5">
           <div>
             <h2 className="text-white font-bold text-lg">{rider.firstname} {rider.lastname}</h2>
-            <p className="text-[#e8c547] font-mono text-sm mt-0.5">{rider.uci_points?.toLocaleString("da-DK")} UCI pts</p>
+            <p className="text-[#e8c547] font-mono text-sm mt-0.5">{rider.uci_points?.toLocaleString("da-DK")} UCI CZ$</p>
           </div>
           <button onClick={onClose} className="text-white/30 hover:text-white text-xl">×</button>
         </div>
@@ -143,11 +143,11 @@ export function TeamPage() {
       <div className="mb-5">
         <h1 className="text-xl font-bold text-white">{team?.name || "Mit Hold"}</h1>
         <div className="flex gap-4 mt-1 flex-wrap">
-          <span className="text-[#e8c547] font-mono text-sm font-bold">{team?.balance?.toLocaleString("da-DK")} pts</span>
+          <span className="text-[#e8c547] font-mono text-sm font-bold">{team?.balance?.toLocaleString("da-DK")} CZ$</span>
           <span className="text-white/30 text-sm">Division {team?.division}</span>
           <span className="text-white/30 text-sm">{riders.length} ryttere</span>
-          <span className="text-white/30 text-sm">Løn/sæson: {totalSalary.toLocaleString("da-DK")} pts</span>
-          <span className="text-white/30 text-sm">Holdværdi: {totalValue.toLocaleString("da-DK")} pts</span>
+          <span className="text-white/30 text-sm">Løn/sæson: {totalSalary.toLocaleString("da-DK")} CZ$</span>
+          <span className="text-white/30 text-sm">Holdværdi: {totalValue.toLocaleString("da-DK")} CZ$</span>
         </div>
       </div>
 
@@ -243,7 +243,7 @@ export function TeamPage() {
                     </td>
                     <td className="px-4 py-2.5 text-white/50 text-sm">{t.description}</td>
                     <td className={`px-4 py-2.5 text-right font-mono font-bold ${t.amount > 0 ? "text-green-400" : "text-red-400"}`}>
-                      {t.amount > 0 ? "+" : ""}{t.amount?.toLocaleString("da-DK")} pts
+                      {t.amount > 0 ? "+" : ""}{t.amount?.toLocaleString("da-DK")} CZ$
                     </td>
                   </tr>
                 ))}

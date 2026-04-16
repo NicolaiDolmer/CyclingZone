@@ -198,7 +198,7 @@ export default function BoardPage() {
         <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4">
           <p className="text-white/30 text-xs uppercase tracking-widest mb-1">Næste sponsor</p>
           <p className={`font-mono font-bold ${modifier >= 1 ? "text-green-400" : "text-red-400"}`}>
-            {Math.round((team?.sponsor_income || 100) * modifier).toLocaleString()} pts
+            {Math.round((team?.sponsor_income || 100) * modifier).toLocaleString()} CZ$
           </p>
         </div>
       </div>

@@ -73,7 +73,7 @@ export default function Layout({ session }) {
             <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Dit Hold</p>
             <p className="text-white font-semibold text-sm truncate">{teamName}</p>
             {balance !== null && (
-              <p className="text-[#e8c547] font-mono text-sm mt-1">{balance.toLocaleString("da-DK")} pts</p>
+              <p className="text-[#e8c547] font-mono text-sm mt-1">{balance.toLocaleString("da-DK")} CZ$</p>
             )}
           </div>
         )}

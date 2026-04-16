@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
+import { useNavigate } from "react-router-dom";
 
-function Countdown({ end }) {
+function Countdown({ end, status }) {
   const [text, setText] = useState("");
   const [urgent, setUrgent] = useState(false);
 
@@ -9,7 +10,7 @@ function Countdown({ end }) {
     function update() {
       const diff = new Date(end) - new Date();
       if (diff <= 0) { setText("Afsluttet"); setUrgent(false); return; }
-      setUrgent(diff < 600000); // < 10 min
+      setUrgent(diff < 600000);
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
       const s = Math.floor((diff % 60000) / 1000);
@@ -24,8 +25,9 @@ function Countdown({ end }) {
 
   return (
     <span className={`font-mono text-sm font-bold transition-colors
-      ${urgent ? "text-red-400 animate-pulse" : "text-white/60"}`}>
-      {text}
+      ${urgent ? "text-red-400 animate-pulse" : "text-white/60"}
+      ${status === "extended" ? "text-orange-400" : ""}`}>
+      {text}{status === "extended" ? " ⚡" : ""}
     </span>
   );
 }
@@ -37,22 +39,31 @@ const STATS_BRIEF = [
   { key: "stat_fl", label: "FL" },
 ];
 
-function AuctionCard({ auction, myTeamId, onBid }) {
+function AuctionCard({ auction, myTeamId, onBid, onNavigate }) {
   const [bidAmount, setBidAmount] = useState(
     (auction.current_price || 1) + (auction.min_increment || 1)
   );
   const isMine = auction.seller_team_id === myTeamId;
   const imWinning = auction.current_bidder_id === myTeamId;
+  const isOutbid = auction._wasWinning && !imWinning;
+
+  // Update bid amount when current price changes
+  useEffect(() => {
+    setBidAmount((auction.current_price || 1) + (auction.min_increment || 1));
+  }, [auction.current_price]);
 
   return (
     <div className={`bg-[#0f0f18] border rounded-xl p-4 transition-all
       ${imWinning ? "border-[#e8c547]/30 shadow-[0_0_20px_rgba(232,197,71,0.08)]" :
-        isMine ? "border-blue-500/20" : "border-white/5 hover:border-white/10"}`}>
+        isMine ? "border-blue-500/20" :
+        isOutbid ? "border-red-500/20" :
+        "border-white/5 hover:border-white/10"}`}>
 
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-white font-semibold text-sm">
+          <p className="text-white font-semibold text-sm cursor-pointer hover:text-[#e8c547] transition-colors"
+            onClick={() => onNavigate(auction.rider?.id)}>
             {auction.rider?.firstname} {auction.rider?.lastname}
           </p>
           <p className="text-white/30 text-xs mt-0.5">
@@ -60,18 +71,10 @@ function AuctionCard({ auction, myTeamId, onBid }) {
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
-          {imWinning && (
-            <span className="text-[9px] uppercase tracking-wider bg-[#e8c547]/15
-              text-[#e8c547] px-2 py-0.5 rounded-full">Vinder</span>
-          )}
-          {isMine && (
-            <span className="text-[9px] uppercase tracking-wider bg-blue-500/15
-              text-blue-400 px-2 py-0.5 rounded-full">Dit udbud</span>
-          )}
-          {auction.status === "extended" && (
-            <span className="text-[9px] uppercase tracking-wider bg-red-500/15
-              text-red-400 px-2 py-0.5 rounded-full">Forlænget</span>
-          )}
+          {imWinning && <span className="text-[9px] uppercase tracking-wider bg-[#e8c547]/15 text-[#e8c547] px-2 py-0.5 rounded-full">Vinder</span>}
+          {isMine && <span className="text-[9px] uppercase tracking-wider bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full">Dit udbud</span>}
+          {auction.status === "extended" && <span className="text-[9px] uppercase tracking-wider bg-orange-500/15 text-orange-400 px-2 py-0.5 rounded-full">Forlænget</span>}
+          {isOutbid && <span className="text-[9px] uppercase tracking-wider bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full">Overbudt!</span>}
         </div>
       </div>
 
@@ -100,7 +103,7 @@ function AuctionCard({ auction, myTeamId, onBid }) {
           <p className="text-white/30 text-[10px] uppercase tracking-wider">Nuværende bud</p>
           <p className="text-white font-bold font-mono text-lg">
             {auction.current_price?.toLocaleString("da-DK")}
-            <span className="text-white/30 text-xs ml-1 font-normal">pts</span>
+            <span className="text-white/30 text-xs ml-1 font-normal">CZ$</span>
           </p>
           {auction.current_bidder && (
             <p className="text-white/30 text-xs">{auction.current_bidder.name}</p>
@@ -108,11 +111,11 @@ function AuctionCard({ auction, myTeamId, onBid }) {
         </div>
         <div className="text-right">
           <p className="text-white/30 text-[10px] uppercase tracking-wider">Slutter</p>
-          <Countdown end={auction.calculated_end} />
+          <Countdown end={auction.calculated_end} status={auction.status} />
         </div>
       </div>
 
-      {/* Bid input — hide if own auction */}
+      {/* Bid input */}
       {!isMine && (
         <div className="flex gap-2">
           <input
@@ -139,20 +142,24 @@ export default function AuctionsPage() {
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [myTeamId, setMyTeamId] = useState(null);
+  const [myBalance, setMyBalance] = useState(null);
   const [msg, setMsg] = useState({ text: "", type: "" });
-  const [filter, setFilter] = useState("all"); // all | mine | winning
+  const [filter, setFilter] = useState("all");
+  const prevAuctionsRef = useRef({});
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadMyTeam();
     loadAuctions();
-    subscribeToAuctions();
+    const unsub = subscribeToAuctions();
+    return unsub;
   }, []);
 
   async function loadMyTeam() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: team } = await supabase
-      .from("teams").select("id").eq("user_id", user.id).single();
-    if (team) setMyTeamId(team.id);
+      .from("teams").select("id, balance").eq("user_id", user.id).single();
+    if (team) { setMyTeamId(team.id); setMyBalance(team.balance); }
   }
 
   async function loadAuctions() {
@@ -168,7 +175,17 @@ export default function AuctionsPage() {
       .in("status", ["active", "extended"])
       .order("calculated_end", { ascending: true });
 
-    setAuctions(data || []);
+    if (data) {
+      // Track which auctions I was winning before update
+      const enriched = data.map(a => ({
+        ...a,
+        _wasWinning: prevAuctionsRef.current[a.id]?.winning || false,
+      }));
+      prevAuctionsRef.current = Object.fromEntries(
+        data.map(a => [a.id, { winning: a.current_bidder_id === myTeamId }])
+      );
+      setAuctions(enriched);
+    }
     setLoading(false);
   }
 
@@ -177,33 +194,38 @@ export default function AuctionsPage() {
       .channel("auctions-live")
       .on("postgres_changes", {
         event: "*", schema: "public", table: "auctions"
-      }, () => loadAuctions())
+      }, () => {
+        loadAuctions();
+        loadMyTeam(); // Refresh balance too
+      })
       .subscribe();
     return () => supabase.removeChannel(channel);
   }
 
   async function handleBid(auctionId, amount) {
+    if (myBalance !== null && amount > myBalance) {
+      setMsg({ text: `Ikke nok balance — du har ${myBalance.toLocaleString("da-DK")} CZ$`, type: "error" });
+      setTimeout(() => setMsg({ text: "", type: "" }), 4000);
+      return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch(
       `${import.meta.env.VITE_API_URL}/api/auctions/${auctionId}/bid`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ amount }),
       }
     );
     const data = await res.json();
     setMsg({
       text: res.ok
-        ? `Bud på ${amount} pts afgivet! ${data.extended ? "⚡ Auktion forlænget" : ""}`
+        ? `✅ Bud på ${amount.toLocaleString("da-DK")} CZ$ afgivet!${data.extended ? " ⚡ Auktion forlænget" : ""}`
         : data.error,
       type: res.ok ? "success" : "error",
     });
     setTimeout(() => setMsg({ text: "", type: "" }), 4000);
-    if (res.ok) loadAuctions();
   }
 
   const filtered = auctions.filter(a => {
@@ -212,13 +234,22 @@ export default function AuctionsPage() {
     return true;
   });
 
+  const winningCount = auctions.filter(a => a.current_bidder_id === myTeamId).length;
+  const myListedCount = auctions.filter(a => a.seller_team_id === myTeamId).length;
+
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-white">Auktioner</h1>
           <p className="text-white/30 text-sm">{auctions.length} aktive</p>
         </div>
+        {myBalance !== null && (
+          <div className="bg-[#0f0f18] border border-white/5 rounded-lg px-4 py-2">
+            <p className="text-white/30 text-xs">Din balance</p>
+            <p className="text-[#e8c547] font-mono font-bold text-sm">{myBalance.toLocaleString("da-DK")} CZ$</p>
+          </div>
+        )}
       </div>
 
       {msg.text && (
@@ -231,11 +262,11 @@ export default function AuctionsPage() {
       )}
 
       {/* Filter tabs */}
-      <div className="flex gap-2 mb-5">
+      <div className="flex gap-2 mb-5 flex-wrap">
         {[
-          { key: "all", label: "Alle" },
-          { key: "mine", label: "Mine udbud" },
-          { key: "winning", label: "Jeg vinder" },
+          { key: "all", label: `Alle (${auctions.length})` },
+          { key: "mine", label: `Mine udbud (${myListedCount})` },
+          { key: "winning", label: `Jeg vinder (${winningCount})` },
         ].map(({ key, label }) => (
           <button key={key} onClick={() => setFilter(key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all
@@ -255,6 +286,7 @@ export default function AuctionsPage() {
         <div className="text-center py-16 text-white/20">
           <p className="text-4xl mb-3">⚡</p>
           <p>Ingen aktive auktioner</p>
+          <p className="text-sm mt-2">Gå til Ryttere og start en auktion</p>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -264,6 +296,7 @@ export default function AuctionsPage() {
               auction={a}
               myTeamId={myTeamId}
               onBid={handleBid}
+              onNavigate={(riderId) => navigate(`/riders/${riderId}`)}
             />
           ))}
         </div>

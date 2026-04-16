@@ -97,7 +97,7 @@ export default function TeamProfilePage() {
           </div>
           <div className="text-right">
             <p className="text-[#e8c547] font-mono font-bold text-xl">
-              {team.balance?.toLocaleString("da-DK")} pts
+              {team.balance?.toLocaleString("da-DK")} CZ$
             </p>
             <p className="text-white/30 text-xs mt-0.5">Balance</p>
           </div>
@@ -108,8 +108,8 @@ export default function TeamProfilePage() {
           {[
             { label: "Ryttere", value: riders.length },
             { label: "U25", value: u25Count, color: "text-blue-400" },
-            { label: "Holdværdi", value: `${totalValue.toLocaleString("da-DK")} pts`, color: "text-[#e8c547]" },
-            { label: "Løn/sæson", value: `${totalSalary.toLocaleString("da-DK")} pts` },
+            { label: "Holdværdi", value: `${totalValue.toLocaleString("da-DK")} CZ$`, color: "text-[#e8c547]" },
+            { label: "Løn/sæson", value: `${totalSalary.toLocaleString("da-DK")} CZ$` },
           ].map(s => (
             <div key={s.label} className="bg-white/3 rounded-lg p-3 text-center">
               <p className="text-white/30 text-xs uppercase tracking-wider mb-1">{s.label}</p>
@@ -176,7 +176,7 @@ export default function TeamProfilePage() {
                 <p className="text-white text-sm">{a.rider?.firstname} {a.rider?.lastname}</p>
                 <div className="text-right">
                   <p className="text-[#e8c547] font-mono text-sm font-bold">
-                    {a.current_price?.toLocaleString("da-DK")} pts
+                    {a.current_price?.toLocaleString("da-DK")} CZ$
                   </p>
                   {a.status === "extended" && (
                     <span className="text-[9px] text-orange-400">⚡ Forlænget</span>

@@ -185,7 +185,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-[#e8c547] font-mono text-sm font-bold">
-                    {a.current_price?.toLocaleString("da-DK")} pts
+                    {a.current_price?.toLocaleString("da-DK")} CZ$
                   </p>
                   <AuctionCountdown end={a.calculated_end} status={a.status} />
                 </div>
@@ -219,7 +219,7 @@ export default function DashboardPage() {
                     </span>
                     {race.prize_pool > 0 && (
                       <span className="text-[10px] uppercase tracking-wider bg-[#e8c547]/10 px-2 py-0.5 rounded text-[#e8c547]">
-                        {race.prize_pool.toLocaleString()} pts
+                        {race.prize_pool.toLocaleString()} CZ$
                       </span>
                     )}
                   </div>
