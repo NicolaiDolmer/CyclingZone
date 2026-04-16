@@ -61,7 +61,10 @@ export default function NotificationsPage() {
   }
 
   async function markAllRead() {
-    await supabase.from("notifications").update({ is_read: true }).eq("user_id", userId);
+    await supabase.from("notifications")
+      .update({ is_read: true })
+      .eq("user_id", userId)
+      .eq("is_read", false); // Only update actually unread ones
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   }
 
