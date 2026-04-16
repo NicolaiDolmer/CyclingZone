@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 const STATS = [
   { key: "stat_fl", label: "FL" },
@@ -167,6 +167,7 @@ export default function RidersPage() {
           <h1 className="text-xl font-bold text-white">Rytterdatabase</h1>
           <p className="text-white/30 text-sm">{total.toLocaleString("da-DK")} ryttere</p>
         </div>
+        <Link to="/compare" className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white/50 text-xs hover:text-white hover:bg-white/10 transition-all">⚖ Sammenlign ryttere</Link>
       </div>
 
       {/* Filters */}

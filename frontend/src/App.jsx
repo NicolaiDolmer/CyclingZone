@@ -13,6 +13,8 @@ import BoardPage from "./pages/BoardPage";
 import RiderStatsPage from "./pages/RiderStatsPage";
 import TeamProfilePage from "./pages/TeamProfilePage";
 import NotificationsPage from "./pages/NotificationsPage";
+import AuctionHistoryPage from "./pages/AuctionHistoryPage";
+import RiderComparePage from "./pages/RiderComparePage";
 import Layout from "./components/Layout";
 
 function ProtectedRoute({ children, session }) {
@@ -54,6 +56,8 @@ export default function App() {
           <Route path="riders/:id" element={<RiderStatsPage />} />
           <Route path="teams/:id" element={<TeamProfilePage />} />
           <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="auctions/history" element={<AuctionHistoryPage />} />
+          <Route path="compare" element={<RiderComparePage />} />
           <Route path="admin" element={<AdminPage />} />
         </Route>
       </Routes>

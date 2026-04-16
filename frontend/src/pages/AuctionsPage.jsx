@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 function Countdown({ end, status }) {
   const [text, setText] = useState("");
@@ -243,6 +243,10 @@ export default function AuctionsPage() {
         <div>
           <h1 className="text-xl font-bold text-white">Auktioner</h1>
           <p className="text-white/30 text-sm">{auctions.length} aktive</p>
+        </div>
+        <div className="flex gap-2">
+          <Link to="/compare" className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white/50 text-xs hover:text-white hover:bg-white/10 transition-all">⚖ Sammenlign</Link>
+          <Link to="/auctions/history" className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white/50 text-xs hover:text-white hover:bg-white/10 transition-all">◎ Historik</Link>
         </div>
         {myBalance !== null && (
           <div className="bg-[#0f0f18] border border-white/5 rounded-lg px-4 py-2">
