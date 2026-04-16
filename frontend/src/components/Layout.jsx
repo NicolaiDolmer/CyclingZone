@@ -118,7 +118,7 @@ export default function Layout({ session }) {
                     {notifications.length > 9 ? "9+" : notifications.length}
                   </span>
                 )}
-              </button>
+              </Link>
 
             </div>
             <div className="h-7 w-px bg-white/10" />
