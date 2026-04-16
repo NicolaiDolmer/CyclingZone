@@ -12,6 +12,7 @@ const NAV = [
   { to: "/standings",      label: "Rangliste",        icon: "◉" },
   { to: "/board",          label: "Bestyrelse",       icon: "◧" },
   { to: "/notifications",  label: "Notifikationer",   icon: "🔔" },
+  { to: "/profile",        label: "Min Profil",        icon: "👤" },
 ];
 
 const MOBILE_NAV = [

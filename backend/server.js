@@ -17,6 +17,7 @@ import apiRoutes from "./routes/api.js";
 import { startCron } from "./cron.js";
 import { handleSyncRequest } from "./lib/sheetsSync.js";
 import { processSeasonStart, processSeasonEnd } from "./lib/economyEngine.js";
+import { notifySeasonEvent } from "./lib/discordNotifier.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -103,12 +104,21 @@ app.post("/api/admin/import-results", requireAdmin, upload.single("file"), async
 });
 
 app.post("/api/admin/seasons/:id/start", requireAdmin, async (req, res) => {
-  try { await supabase.from("seasons").update({status:"active"}).eq("id",req.params.id); const results = await processSeasonStart(req.params.id); res.json({success:true,results}); }
+  try {
+    await supabase.from("seasons").update({status:"active"}).eq("id",req.params.id);
+    const results = await processSeasonStart(req.params.id);
+    const { data: s } = await supabase.from("seasons").select("number").eq("id",req.params.id).single();
+    notifySeasonEvent({ type:"season_started", seasonNumber: s?.number }).catch(()=>{});
+    res.json({success:true,results}); }
   catch (err) { res.status(500).json({error:err.message}); }
 });
 
 app.post("/api/admin/seasons/:id/end", requireAdmin, async (req, res) => {
-  try { await processSeasonEnd(req.params.id); res.json({success:true}); }
+  try {
+    await processSeasonEnd(req.params.id);
+    const { data: s } = await supabase.from("seasons").select("number").eq("id",req.params.id).single();
+    notifySeasonEvent({ type:"season_ended", seasonNumber: s?.number }).catch(()=>{});
+    res.json({success:true}); }
   catch (err) { res.status(500).json({error:err.message}); }
 });
 

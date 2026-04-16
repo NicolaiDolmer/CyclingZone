@@ -19,6 +19,13 @@ import {
   checkBidExtension,
   isAuctionExpired,
 } from "../lib/auctionEngine.js";
+import {
+  notifyNewAuction,
+  notifyOutbid,
+  notifyAuctionWon,
+  notifyTransferOffer,
+  notifyTransferResponse,
+} from "../lib/discordNotifier.js";
 
 // Load .env from backend root
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -237,6 +244,15 @@ router.post("/auctions", requireAuth, async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
+  // Discord notification — new auction
+  notifyNewAuction({
+    riderName: `${rider.firstname} ${rider.lastname}`,
+    riderUci: rider.uci_points,
+    sellerName: req.team.name,
+    startPrice: price,
+    endsAt: calculatedEnd,
+  }).catch(() => {});
+
   res.status(201).json({
     auction,
     message: `Auktion startet — slutter ${calculatedEnd.toLocaleString("da-DK")}`,
@@ -407,6 +423,13 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
     ]);
 
     // Notify winner and seller
+    // Discord notification — auction won
+    notifyAuctionWon({
+      riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
+      finalPrice: auction.current_price,
+      teamId: auction.current_bidder_id,
+    }).catch(() => {});
+
     await notifyTeamOwner(auction.current_bidder_id, "auction_won",
       "Du vandt auktionen! 🎉",
       `${auction.rider.firstname} ${auction.rider.lastname} er nu på dit hold for ${auction.current_price} pts`,

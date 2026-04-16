@@ -8,6 +8,80 @@ function Section({ title, children }) {
         <span className="w-1 h-4 bg-red-400 rounded-full" />{title}
       </h2>
       {children}
+    
+      {/* Discord webhooks */}
+      <Section title="Discord Integration">
+        <p className="text-white/30 text-xs mb-4">
+          Tilføj webhook URLs fra Discord. Beskeder sendes til den kanal du opretter webhook'en i.
+          Find/opret webhook: Discord kanal → Redigér kanal → Integrationer → Webhooks.
+        </p>
+        {webhooks.length > 0 && (
+          <div className="mb-4 flex flex-col gap-2">
+            {webhooks.map(w => (
+              <div key={w.id} className="flex items-center justify-between bg-white/3 rounded-lg px-4 py-3">
+                <div>
+                  <p className="text-white text-sm font-medium">{w.webhook_name}</p>
+                  <p className="text-white/20 text-xs font-mono">{w.webhook_url.slice(0, 50)}...</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {w.is_default && (
+                    <span className="text-[9px] uppercase bg-[#e8c547]/10 text-[#e8c547] border border-[#e8c547]/20 px-2 py-0.5 rounded-full">Standard</span>
+                  )}
+                  <button
+                    onClick={async () => {
+                      await supabase.from("discord_settings").update({ is_default: false }).neq("id", w.id);
+                      await supabase.from("discord_settings").update({ is_default: true }).eq("id", w.id);
+                      loadAll(); showMsg("✅ Standard webhook opdateret");
+                    }}
+                    className="px-2 py-1 bg-white/5 text-white/40 hover:text-white rounded text-xs border border-white/5">
+                    Sæt standard
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await supabase.from("discord_settings").delete().eq("id", w.id);
+                      loadAll();
+                    }}
+                    className="px-2 py-1 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded text-xs border border-red-500/20">
+                    Slet
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-3 flex-wrap">
+          <div className="flex-1 min-w-48">
+            <label className="block text-white/30 text-xs mb-1">Kanalnavn</label>
+            <input type="text" placeholder="f.eks. #cycling-zone" value={newWebhook.webhook_name}
+              onChange={e => setNewWebhook(w => ({ ...w, webhook_name: e.target.value }))}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#5865F2]/50" />
+          </div>
+          <div className="flex-1 min-w-64">
+            <label className="block text-white/30 text-xs mb-1">Webhook URL</label>
+            <input type="text" placeholder="https://discord.com/api/webhooks/..." value={newWebhook.webhook_url}
+              onChange={e => setNewWebhook(w => ({ ...w, webhook_url: e.target.value }))}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#5865F2]/50" />
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={async () => {
+                if (!newWebhook.webhook_name || !newWebhook.webhook_url) return;
+                const isFirst = webhooks.length === 0;
+                await supabase.from("discord_settings").insert({
+                  webhook_name: newWebhook.webhook_name,
+                  webhook_url: newWebhook.webhook_url,
+                  is_default: isFirst,
+                });
+                setNewWebhook({ webhook_name: '', webhook_url: '' });
+                loadAll();
+                showMsg("✅ Webhook tilføjet" + (isFirst ? " og sat som standard" : ""));
+              }}
+              className="px-4 py-2 bg-[#5865F2] text-white font-bold rounded-lg text-sm hover:bg-[#4752c4] transition-all">
+              Tilføj webhook
+            </button>
+          </div>
+        </div>
+      </Section>
     </div>
   );
 }
@@ -25,6 +99,8 @@ export default function AdminPage() {
   const [importStage, setImportStage] = useState(1);
   const [loading, setLoading] = useState({});
   const [editingPrize, setEditingPrize] = useState(null);
+  const [webhooks, setWebhooks] = useState([]);
+  const [newWebhook, setNewWebhook] = useState({ webhook_name: '', webhook_url: '' });
 
   useEffect(() => { loadAll(); }, []);
 
@@ -41,6 +117,7 @@ export default function AdminPage() {
     setTeams(t.data || []);
     setWindow_(w.data || null);
     setPrizes(p.data || []);
+    setWebhooks(w2?.data || []);
   }
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
@@ -412,6 +489,80 @@ export default function AdminPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      </Section>
+    
+      {/* Discord webhooks */}
+      <Section title="Discord Integration">
+        <p className="text-white/30 text-xs mb-4">
+          Tilføj webhook URLs fra Discord. Beskeder sendes til den kanal du opretter webhook'en i.
+          Find/opret webhook: Discord kanal → Redigér kanal → Integrationer → Webhooks.
+        </p>
+        {webhooks.length > 0 && (
+          <div className="mb-4 flex flex-col gap-2">
+            {webhooks.map(w => (
+              <div key={w.id} className="flex items-center justify-between bg-white/3 rounded-lg px-4 py-3">
+                <div>
+                  <p className="text-white text-sm font-medium">{w.webhook_name}</p>
+                  <p className="text-white/20 text-xs font-mono">{w.webhook_url.slice(0, 50)}...</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {w.is_default && (
+                    <span className="text-[9px] uppercase bg-[#e8c547]/10 text-[#e8c547] border border-[#e8c547]/20 px-2 py-0.5 rounded-full">Standard</span>
+                  )}
+                  <button
+                    onClick={async () => {
+                      await supabase.from("discord_settings").update({ is_default: false }).neq("id", w.id);
+                      await supabase.from("discord_settings").update({ is_default: true }).eq("id", w.id);
+                      loadAll(); showMsg("✅ Standard webhook opdateret");
+                    }}
+                    className="px-2 py-1 bg-white/5 text-white/40 hover:text-white rounded text-xs border border-white/5">
+                    Sæt standard
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await supabase.from("discord_settings").delete().eq("id", w.id);
+                      loadAll();
+                    }}
+                    className="px-2 py-1 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded text-xs border border-red-500/20">
+                    Slet
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-3 flex-wrap">
+          <div className="flex-1 min-w-48">
+            <label className="block text-white/30 text-xs mb-1">Kanalnavn</label>
+            <input type="text" placeholder="f.eks. #cycling-zone" value={newWebhook.webhook_name}
+              onChange={e => setNewWebhook(w => ({ ...w, webhook_name: e.target.value }))}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#5865F2]/50" />
+          </div>
+          <div className="flex-1 min-w-64">
+            <label className="block text-white/30 text-xs mb-1">Webhook URL</label>
+            <input type="text" placeholder="https://discord.com/api/webhooks/..." value={newWebhook.webhook_url}
+              onChange={e => setNewWebhook(w => ({ ...w, webhook_url: e.target.value }))}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#5865F2]/50" />
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={async () => {
+                if (!newWebhook.webhook_name || !newWebhook.webhook_url) return;
+                const isFirst = webhooks.length === 0;
+                await supabase.from("discord_settings").insert({
+                  webhook_name: newWebhook.webhook_name,
+                  webhook_url: newWebhook.webhook_url,
+                  is_default: isFirst,
+                });
+                setNewWebhook({ webhook_name: '', webhook_url: '' });
+                loadAll();
+                showMsg("✅ Webhook tilføjet" + (isFirst ? " og sat som standard" : ""));
+              }}
+              className="px-4 py-2 bg-[#5865F2] text-white font-bold rounded-lg text-sm hover:bg-[#4752c4] transition-all">
+              Tilføj webhook
+            </button>
+          </div>
         </div>
       </Section>
     </div>
