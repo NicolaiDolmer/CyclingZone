@@ -58,10 +58,10 @@ export default function Layout() {
   useEffect(() => {
     if (!session) return;
     const channel = supabase.channel("layout-notifs")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications",
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications",
         filter: `user_id=eq.${session.user.id}` },
         async () => {
-          // Only re-fetch on NEW notifications, not when marking as read
+          // Re-fetch badge count on any notification change (new or marked read)
           const { data } = await supabase.from("notifications")
             .select("id").eq("user_id", session.user.id).eq("is_read", false).limit(9);
           setNotifications(data || []);
