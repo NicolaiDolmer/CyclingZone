@@ -105,12 +105,13 @@ export default function AdminPage() {
   useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
-    const [s, r, t, w, p] = await Promise.all([
+    const [s, r, t, w, p, w2] = await Promise.all([
       supabase.from("seasons").select("*").order("number", { ascending: false }),
       supabase.from("races").select("*").order("start_date"),
       supabase.from("teams").select("id,name,balance,division").eq("is_ai", false).order("name"),
       supabase.from("transfer_windows").select("*").order("created_at", { ascending: false }).limit(1).single(),
       supabase.from("prize_tables").select("*").order("race_type").order("result_type").order("rank"),
+      supabase.from("discord_settings").select("*").order("created_at"),
     ]);
     setSeasons(s.data || []);
     setRaces(r.data || []);
