@@ -78,9 +78,8 @@ export default function DashboardPage() {
         .limit(20),
       supabase.from("races")
         .select("*")
-        .gte("start_date", new Date().toISOString().split("T")[0])
-        .eq("status", "scheduled")
-        .order("start_date")
+        .not("status", "eq", "completed")
+        .order("start_date", { ascending: true, nullsFirst: false })
         .limit(3),
       supabase.from("season_standings")
         .select("*")

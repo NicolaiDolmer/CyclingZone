@@ -23,6 +23,7 @@ import HelpPage from "./pages/HelpPage";
 import HallOfFamePage from "./pages/HallOfFamePage";
 import SeasonPreviewPage from "./pages/SeasonPreviewPage";
 import HeadToHeadPage from "./pages/HeadToHeadPage";
+import PatchNotesPage from "./pages/PatchNotesPage";
 import Layout from "./components/Layout";
 
 function ProtectedRoute({ children, session }) {
@@ -78,6 +79,7 @@ export default function App() {
           <Route path="hall-of-fame" element={<HallOfFamePage />} />
           <Route path="season-preview" element={<SeasonPreviewPage />} />
           <Route path="head-to-head" element={<HeadToHeadPage />} />
+          <Route path="patch-notes" element={<PatchNotesPage />} />
           <Route path="admin" element={<AdminPage />} />
 
           {/* 404 fallback */}

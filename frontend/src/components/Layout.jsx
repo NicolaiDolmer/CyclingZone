@@ -18,6 +18,7 @@ const NAV = [
   { to: "/hall-of-fame",   label: "Hall of Fame",      icon: "🏆" },
   { to: "/season-preview", label: "Sæson Preview",     icon: "📊" },
   { to: "/head-to-head",   label: "Head-to-Head",      icon: "⚔" },
+  { to: "/patch-notes",    label: "Patch Notes",       icon: "📋" },
   { to: "/profile",        label: "Min Profil",        icon: "👤" },
 ];
 
