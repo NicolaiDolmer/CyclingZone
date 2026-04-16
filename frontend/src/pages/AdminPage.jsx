@@ -8,80 +8,6 @@ function Section({ title, children }) {
         <span className="w-1 h-4 bg-red-400 rounded-full" />{title}
       </h2>
       {children}
-    
-      {/* Discord webhooks */}
-      <Section title="Discord Integration">
-        <p className="text-white/30 text-xs mb-4">
-          Tilføj webhook URLs fra Discord. Beskeder sendes til den kanal du opretter webhook'en i.
-          Find/opret webhook: Discord kanal → Redigér kanal → Integrationer → Webhooks.
-        </p>
-        {webhooks.length > 0 && (
-          <div className="mb-4 flex flex-col gap-2">
-            {webhooks.map(w => (
-              <div key={w.id} className="flex items-center justify-between bg-white/3 rounded-lg px-4 py-3">
-                <div>
-                  <p className="text-white text-sm font-medium">{w.webhook_name}</p>
-                  <p className="text-white/20 text-xs font-mono">{w.webhook_url.slice(0, 50)}...</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {w.is_default && (
-                    <span className="text-[9px] uppercase bg-[#e8c547]/10 text-[#e8c547] border border-[#e8c547]/20 px-2 py-0.5 rounded-full">Standard</span>
-                  )}
-                  <button
-                    onClick={async () => {
-                      await supabase.from("discord_settings").update({ is_default: false }).neq("id", w.id);
-                      await supabase.from("discord_settings").update({ is_default: true }).eq("id", w.id);
-                      loadAll(); showMsg("✅ Standard webhook opdateret");
-                    }}
-                    className="px-2 py-1 bg-white/5 text-white/40 hover:text-white rounded text-xs border border-white/5">
-                    Sæt standard
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await supabase.from("discord_settings").delete().eq("id", w.id);
-                      loadAll();
-                    }}
-                    className="px-2 py-1 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded text-xs border border-red-500/20">
-                    Slet
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="flex gap-3 flex-wrap">
-          <div className="flex-1 min-w-48">
-            <label className="block text-white/30 text-xs mb-1">Kanalnavn</label>
-            <input type="text" placeholder="f.eks. #cycling-zone" value={newWebhook.webhook_name}
-              onChange={e => setNewWebhook(w => ({ ...w, webhook_name: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#5865F2]/50" />
-          </div>
-          <div className="flex-1 min-w-64">
-            <label className="block text-white/30 text-xs mb-1">Webhook URL</label>
-            <input type="text" placeholder="https://discord.com/api/webhooks/..." value={newWebhook.webhook_url}
-              onChange={e => setNewWebhook(w => ({ ...w, webhook_url: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#5865F2]/50" />
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={async () => {
-                if (!newWebhook.webhook_name || !newWebhook.webhook_url) return;
-                const isFirst = webhooks.length === 0;
-                await supabase.from("discord_settings").insert({
-                  webhook_name: newWebhook.webhook_name,
-                  webhook_url: newWebhook.webhook_url,
-                  is_default: isFirst,
-                });
-                setNewWebhook({ webhook_name: '', webhook_url: '' });
-                loadAll();
-                showMsg("✅ Webhook tilføjet" + (isFirst ? " og sat som standard" : ""));
-              }}
-              className="px-4 py-2 bg-[#5865F2] text-white font-bold rounded-lg text-sm hover:bg-[#4752c4] transition-all">
-              Tilføj webhook
-            </button>
-          </div>
-        </div>
-      </Section>
     </div>
   );
 }
@@ -93,14 +19,14 @@ export default function AdminPage() {
   const [teams, setTeams] = useState([]);
   const [window_, setWindow_] = useState(null);
   const [prizes, setPrizes] = useState([]);
+  const [webhooks, setWebhooks] = useState([]);
   const [seasonForm, setSeasonForm] = useState({ number: "", race_days_total: 60 });
   const [raceForm, setRaceForm] = useState({ season_id: "", name: "", race_type: "stage_race", stages: 21, start_date: "", prize_pool: 1000 });
   const [importRaceId, setImportRaceId] = useState("");
   const [importStage, setImportStage] = useState(1);
   const [loading, setLoading] = useState({});
   const [editingPrize, setEditingPrize] = useState(null);
-  const [webhooks, setWebhooks] = useState([]);
-  const [newWebhook, setNewWebhook] = useState({ webhook_name: '', webhook_url: '' });
+  const [newWebhook, setNewWebhook] = useState({ webhook_name: "", webhook_url: "" });
 
   useEffect(() => { loadAll(); }, []);
 
@@ -118,11 +44,14 @@ export default function AdminPage() {
     setTeams(t.data || []);
     setWindow_(w.data || null);
     setPrizes(p.data || []);
-    setWebhooks(w2?.data || []);
+    setWebhooks(w2.data || []);
   }
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
-  function showMsg(text, type = "success") { setMsg({ text, type }); setTimeout(() => setMsg({ text: "" }), 4000); }
+  function showMsg(text, type = "success") {
+    setMsg({ text, type });
+    setTimeout(() => setMsg({ text: "" }), 4000);
+  }
 
   async function getAuth() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -148,9 +77,10 @@ export default function AdminPage() {
       method: "POST", headers: await getAuth(),
     });
     const data = await res.json();
-    if (res.ok) { showMsg(`✅ ${action === "start" ? "Sæson startet" : "Sæson afsluttet"}`); loadAll(); }
+    if (res.ok) showMsg(`✅ ${action === "start" ? "Sæson startet" : "Sæson afsluttet"}`);
     else showMsg(`❌ ${data.error}`, "error");
     setLoad(`${action}_${seasonId}`, false);
+    loadAll();
   }
 
   async function handleCreateRace(e) {
@@ -180,7 +110,7 @@ export default function AdminPage() {
       method: "POST", headers: { Authorization: `Bearer ${session.access_token}` }, body: formData,
     });
     const data = await res.json();
-    if (res.ok) showMsg(`✅ ${data.records_imported} resultater — ${data.teams_paid} holds fik præmiepenge`);
+    if (res.ok) showMsg(`✅ ${data.records_imported} resultater importeret — ${data.teams_paid} holds fik præmiepenge`);
     else showMsg(`❌ ${data.error}`, "error");
     setLoad("import", false);
     e.target.value = "";
@@ -196,37 +126,56 @@ export default function AdminPage() {
       method: "POST", headers: await getAuth(), body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (res.ok) {
-      showMsg(isOpen
-        ? "✅ Transfervindue lukket"
-        : `✅ Transfervindue åbnet — ${data.riders_processed} ryttere behandlet`);
-      loadAll();
-    } else showMsg(`❌ ${data.error}`, "error");
+    if (res.ok) showMsg(isOpen ? "✅ Transfervindue lukket" : `✅ Transfervindue åbnet — ${data.riders_processed} ryttere behandlet`);
+    else showMsg(`❌ ${data.error}`, "error");
     setLoad("window", false);
+    loadAll();
   }
 
   async function savePrize(prize) {
-    await supabase.from("prize_tables")
-      .upsert({ ...prize }, { onConflict: "race_type,result_type,rank" });
+    await supabase.from("prize_tables").upsert({ ...prize }, { onConflict: "race_type,result_type,rank" });
     setEditingPrize(null);
     loadAll();
     showMsg("✅ Præmiepenge gemt");
   }
 
+  async function addWebhook() {
+    if (!newWebhook.webhook_name || !newWebhook.webhook_url) return;
+    const isFirst = webhooks.length === 0;
+    await supabase.from("discord_settings").insert({
+      webhook_name: newWebhook.webhook_name,
+      webhook_url: newWebhook.webhook_url,
+      is_default: isFirst,
+    });
+    setNewWebhook({ webhook_name: "", webhook_url: "" });
+    loadAll();
+    showMsg("✅ Webhook tilføjet" + (isFirst ? " og sat som standard" : ""));
+  }
+
+  async function setDefaultWebhook(id) {
+    await supabase.from("discord_settings").update({ is_default: false }).neq("id", id);
+    await supabase.from("discord_settings").update({ is_default: true }).eq("id", id);
+    loadAll();
+    showMsg("✅ Standard webhook opdateret");
+  }
+
+  async function deleteWebhook(id) {
+    await supabase.from("discord_settings").delete().eq("id", id);
+    loadAll();
+  }
+
   const windowOpen = window_?.status === "open";
   const statusColor = { upcoming: "text-white/40", active: "text-green-400", completed: "text-white/20" };
   const statusLabel = { upcoming: "Kommende", active: "Aktiv", completed: "Afsluttet" };
+  const resultTypeLabels = { stage: "Etape", gc: "Samlet", points: "Point", mountain: "Bjerg", young: "Unge", team: "Hold" };
+  const raceTypeLabels = { stage_race: "Etapeløb", single: "Enkeltdagsløb" };
 
-  // Group prizes by race_type + result_type
   const prizeGroups = prizes.reduce((acc, p) => {
     const key = `${p.race_type}__${p.result_type}`;
     if (!acc[key]) acc[key] = [];
     acc[key].push(p);
     return acc;
   }, {});
-
-  const resultTypeLabels = { stage:"Etape", gc:"Samlet", points:"Point", mountain:"Bjerg", young:"Unge", team:"Hold" };
-  const raceTypeLabels = { stage_race:"Etapeløb", single:"Enkeltdagsløb" };
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -254,14 +203,7 @@ export default function AdminPage() {
               </span>
             </p>
             {window_?.opened_at && (
-              <p className="text-white/30 text-xs mt-0.5">
-                Åbnede: {new Date(window_.opened_at).toLocaleString("da-DK")}
-              </p>
-            )}
-            {window_?.closed_at && !windowOpen && (
-              <p className="text-white/30 text-xs">
-                Lukkede: {new Date(window_.closed_at).toLocaleString("da-DK")}
-              </p>
+              <p className="text-white/30 text-xs mt-0.5">Åbnede: {new Date(window_.opened_at).toLocaleString("da-DK")}</p>
             )}
           </div>
           <button onClick={toggleTransferWindow} disabled={loading.window}
@@ -272,9 +214,7 @@ export default function AdminPage() {
             {loading.window ? "..." : windowOpen ? "Luk vindue" : "Åbn vindue"}
           </button>
         </div>
-        <p className="text-white/20 text-xs">
-          Når vinduet åbnes behandles alle ventende transfers automatisk. Ryttere skifter hold med det samme.
-        </p>
+        <p className="text-white/20 text-xs">Når vinduet åbnes behandles alle ventende transfers automatisk.</p>
       </Section>
 
       {/* Seasons */}
@@ -286,7 +226,7 @@ export default function AdminPage() {
                 <div>
                   <span className="text-white font-medium text-sm">Sæson {s.number}</span>
                   <span className={`ml-3 text-xs ${statusColor[s.status]}`}>{statusLabel[s.status]}</span>
-                  <p className="text-white/20 text-xs mt-0.5 font-mono">{s.id}</p>
+                  <p className="text-white/20 text-xs mt-0.5 font-mono truncate">{s.id}</p>
                 </div>
                 <div className="flex gap-2">
                   {s.status === "upcoming" && (
@@ -347,9 +287,7 @@ export default function AdminPage() {
                     <td className="px-3 py-2 text-white font-medium">{r.name}</td>
                     <td className="px-3 py-2 text-white/50 hidden sm:table-cell">{r.start_date ? new Date(r.start_date).toLocaleDateString("da-DK") : "—"}</td>
                     <td className="px-3 py-2 text-right text-[#e8c547] font-mono">{r.prize_pool?.toLocaleString("da-DK")}</td>
-                    <td className="px-3 py-2 text-right">
-                      {importRaceId === r.id && <span className="text-[#e8c547] text-xs">✓ Valgt</span>}
-                    </td>
+                    <td className="px-3 py-2 text-right">{importRaceId === r.id && <span className="text-[#e8c547] text-xs">✓</span>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -425,8 +363,9 @@ export default function AdminPage() {
         </div>
         <label className="block cursor-pointer">
           <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-all
-            ${!importRaceId ? "border-white/5 opacity-50" : "border-white/10 hover:border-[#e8c547]/30"}`}>
-            <p className="text-white/30 text-sm">Klik for at uploade PCM Excel-fil (.xlsx)</p>
+            ${!importRaceId ? "border-white/5 opacity-50 cursor-not-allowed" : "border-white/10 hover:border-[#e8c547]/30"}`}>
+            <p className="text-white/30 text-sm">📁 Klik for at uploade PCM Excel-fil (.xlsx)</p>
+            <p className="text-white/20 text-xs mt-1">Vælg et løb ovenfor inden du uploader</p>
           </div>
           <input type="file" accept=".xlsx" className="hidden" onChange={handleImportResults} disabled={!importRaceId} />
         </label>
@@ -434,7 +373,7 @@ export default function AdminPage() {
 
       {/* Prize tables */}
       <Section title="Præmiepenge (CZ$ per placering)">
-        <p className="text-white/30 text-xs mb-4">Klik på et beløb for at redigere det.</p>
+        <p className="text-white/30 text-xs mb-4">Klik på et beløb for at redigere det. Tryk Enter for at gemme.</p>
         {Object.entries(prizeGroups).map(([key, group]) => {
           const [race_type, result_type] = key.split("__");
           return (
@@ -447,18 +386,15 @@ export default function AdminPage() {
                   <div key={p.id} className="flex items-center gap-1 bg-white/3 border border-white/8 rounded-lg px-2 py-1">
                     <span className="text-white/40 text-xs w-4">#{p.rank}</span>
                     {editingPrize?.id === p.id ? (
-                      <input
-                        type="number"
+                      <input type="number"
                         value={editingPrize.prize_amount}
                         onChange={e => setEditingPrize({ ...editingPrize, prize_amount: parseInt(e.target.value) })}
                         onBlur={() => savePrize(editingPrize)}
                         onKeyDown={e => e.key === "Enter" && savePrize(editingPrize)}
                         className="bg-transparent text-[#e8c547] font-mono text-xs w-16 focus:outline-none"
-                        autoFocus
-                      />
+                        autoFocus />
                     ) : (
-                      <button
-                        onClick={() => setEditingPrize(p)}
+                      <button onClick={() => setEditingPrize(p)}
                         className="text-[#e8c547] font-mono text-xs hover:underline">
                         {p.prize_amount} CZ$
                       </button>
@@ -471,7 +407,7 @@ export default function AdminPage() {
         })}
       </Section>
 
-      {/* Teams */}
+      {/* Teams overview */}
       <Section title="Holds oversigt">
         <div className="overflow-hidden rounded-lg border border-white/5">
           <table className="w-full text-xs">
@@ -492,11 +428,11 @@ export default function AdminPage() {
           </table>
         </div>
       </Section>
-    
+
       {/* Discord webhooks */}
       <Section title="Discord Integration">
         <p className="text-white/30 text-xs mb-4">
-          Tilføj webhook URLs fra Discord. Beskeder sendes til den kanal du opretter webhook'en i.
+          Tilføj webhook URLs fra Discord — beskeder sendes til den kanal du opretter webhook'en i.
           Find/opret webhook: Discord kanal → Redigér kanal → Integrationer → Webhooks.
         </p>
         {webhooks.length > 0 && (
@@ -511,20 +447,11 @@ export default function AdminPage() {
                   {w.is_default && (
                     <span className="text-[9px] uppercase bg-[#e8c547]/10 text-[#e8c547] border border-[#e8c547]/20 px-2 py-0.5 rounded-full">Standard</span>
                   )}
-                  <button
-                    onClick={async () => {
-                      await supabase.from("discord_settings").update({ is_default: false }).neq("id", w.id);
-                      await supabase.from("discord_settings").update({ is_default: true }).eq("id", w.id);
-                      loadAll(); showMsg("✅ Standard webhook opdateret");
-                    }}
+                  <button onClick={() => setDefaultWebhook(w.id)}
                     className="px-2 py-1 bg-white/5 text-white/40 hover:text-white rounded text-xs border border-white/5">
                     Sæt standard
                   </button>
-                  <button
-                    onClick={async () => {
-                      await supabase.from("discord_settings").delete().eq("id", w.id);
-                      loadAll();
-                    }}
+                  <button onClick={() => deleteWebhook(w.id)}
                     className="px-2 py-1 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded text-xs border border-red-500/20">
                     Slet
                   </button>
@@ -534,32 +461,20 @@ export default function AdminPage() {
           </div>
         )}
         <div className="flex gap-3 flex-wrap">
-          <div className="flex-1 min-w-48">
+          <div className="flex-1 min-w-40">
             <label className="block text-white/30 text-xs mb-1">Kanalnavn</label>
             <input type="text" placeholder="f.eks. #cycling-zone" value={newWebhook.webhook_name}
               onChange={e => setNewWebhook(w => ({ ...w, webhook_name: e.target.value }))}
               className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#5865F2]/50" />
           </div>
-          <div className="flex-1 min-w-64">
+          <div className="flex-1 min-w-60">
             <label className="block text-white/30 text-xs mb-1">Webhook URL</label>
             <input type="text" placeholder="https://discord.com/api/webhooks/..." value={newWebhook.webhook_url}
               onChange={e => setNewWebhook(w => ({ ...w, webhook_url: e.target.value }))}
               className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#5865F2]/50" />
           </div>
           <div className="flex items-end">
-            <button
-              onClick={async () => {
-                if (!newWebhook.webhook_name || !newWebhook.webhook_url) return;
-                const isFirst = webhooks.length === 0;
-                await supabase.from("discord_settings").insert({
-                  webhook_name: newWebhook.webhook_name,
-                  webhook_url: newWebhook.webhook_url,
-                  is_default: isFirst,
-                });
-                setNewWebhook({ webhook_name: '', webhook_url: '' });
-                loadAll();
-                showMsg("✅ Webhook tilføjet" + (isFirst ? " og sat som standard" : ""));
-              }}
+            <button onClick={addWebhook}
               className="px-4 py-2 bg-[#5865F2] text-white font-bold rounded-lg text-sm hover:bg-[#4752c4] transition-all">
               Tilføj webhook
             </button>
