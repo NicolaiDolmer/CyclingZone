@@ -9,6 +9,7 @@ const NAV = [
   { to: "/transfers", label: "Transfers", icon: "↔" },
   { to: "/team", label: "Mit Hold", icon: "◈" },
   { to: "/standings", label: "Rangliste", icon: "◉" },
+  { to: "/teams", label: "Hold", icon: "◫" },
   { to: "/board", label: "Bestyrelse", icon: "◧" },
   { to: "/notifications", label: "Notifikationer", icon: "🔔" },
 ];

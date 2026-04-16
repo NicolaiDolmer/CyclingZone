@@ -127,7 +127,7 @@ export default function LoginPage() {
             <span className="text-[#0a0a0f] font-black text-3xl">C</span>
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
-            Cycling Zone Manager
+            Cycling Zone
           </h1>
           <p className="text-white/40 text-sm mt-1">
             {mode === "login" ? "Log ind for at fortsætte" : "Opret din managerkonto"}
@@ -241,7 +241,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-white/20 text-xs mt-6">
-          Cycling Zone Manager — Multiplayer Edition
+          Cycling Zone — Multiplayer Edition
         </p>
       </div>
     </div>
