@@ -125,11 +125,13 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
   const incomingRiders = riders.filter(r => r._isIncoming);
   const outgoingRiders = riders.filter(r => r._isOutgoing);
 
-  const displayRiders = [
+  const displayRidersBase = [
     ...riders.filter(r => !r._isIncoming && !r._isOutgoing),
     ...(showIncoming ? incomingRiders : []),
     ...(showOutgoing ? outgoingRiders : []),
   ];
+  const riderFilters = useClientRiderFilters(displayRidersBase);
+  const displayRiders = riderFilters.filtered;
 
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
 
