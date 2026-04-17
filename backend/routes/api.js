@@ -1,9 +1,27 @@
+/**
+ * Cycling Zone Manager — Backend API Routes
+ * ==========================================
+ * Express router covering:
+ *   /api/auctions   — create, bid, list, finalize
+ *   /api/transfers  — list, offer, negotiate
+ *   /api/teams      — team info, squad, finances
+ *   /api/admin      — season, races, overrides
+ */
+
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import {
+  calculateAuctionEnd,
+  checkBidExtension,
+  isAuctionExpired,
+} from "../lib/auctionEngine.js";
+
+// Load .env from backend root
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: join(__dirname, "../.env") });
 
 const router = express.Router();
 
@@ -831,13 +849,5 @@ router.post("/admin/approve-results", requireAdmin, async (req, res) => {
  */
 
   calculateAuctionEnd,
-  checkBidExtension,
-  isAuctionExpired,
-} from "../lib/auctionEngine.js";
-
-// Load .env from backend root
-const __dirname = dirname(fileURLToPath(import.meta.url));
-config({ path: join(__dirname, "../.env") });
-
 
 export default router;
