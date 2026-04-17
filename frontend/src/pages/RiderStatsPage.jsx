@@ -112,6 +112,8 @@ export default function RiderStatsPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('stats');
   const [myTeamId, setMyTeamId] = useState(null);
+  const [myTeam, setMyTeam] = useState(null);
+  const [myBalance, setMyBalance] = useState(0);
 
   useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); }, [id]);
 
@@ -137,8 +139,8 @@ export default function RiderStatsPage() {
 
   async function loadMyTeam() {
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: t } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
-    if (t) setMyTeamId(t.id);
+    const { data: t } = await supabase.from("teams").select("id, balance, division, name").eq("user_id", user.id).single();
+    if (t) { setMyTeamId(t.id); setMyTeam(t); setMyBalance(t.balance || 0); }
   }
 
   async function loadRider() {
