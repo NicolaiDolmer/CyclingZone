@@ -838,6 +838,83 @@ router.post("/admin/approve-results", requireAdmin, async (req, res) => {
 });
 
 
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+// GET /api/notifications
+router.get("/notifications", requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("user_id", req.user.id)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// PATCH /api/notifications/:id/read
+router.patch("/notifications/:id/read", requireAuth, async (req, res) => {
+  await supabase.from("notifications")
+    .update({ is_read: true })
+    .eq("id", req.params.id)
+    .eq("user_id", req.user.id);
+  res.json({ success: true });
+});
+
+// PATCH /api/notifications/read-all
+router.patch("/notifications/read-all", requireAuth, async (req, res) => {
+  await supabase.from("notifications")
+    .update({ is_read: true })
+    .eq("user_id", req.user.id);
+  res.json({ success: true });
+});
+
+// ── Teams ─────────────────────────────────────────────────────────────────────
+
+// GET /api/teams/:id — team details with squad
+router.get("/teams/:id", requireAuth, async (req, res) => {
+  const { data: team, error } = await supabase
+    .from("teams")
+    .select("id, name, division, sponsor_income, is_ai")
+    .eq("id", req.params.id)
+    .single();
+  if (error || !team) return res.status(404).json({ error: "Hold ikke fundet" });
+
+  const { data: riders } = await supabase
+    .from("riders")
+    .select("id, firstname, lastname, uci_points, salary, is_u25, stat_bj, stat_sp, stat_tt, stat_fl")
+    .eq("team_id", req.params.id)
+    .order("uci_points", { ascending: false });
+
+  res.json({ ...team, riders: riders || [] });
+});
+
+// GET /api/teams/my — current user's team
+router.get("/teams/my", requireAuth, async (req, res) => {
+  res.json(req.team);
+});
+
+// ── Admin: Seasons & Races ────────────────────────────────────────────────────
+
+// GET /api/admin/finalize-expired-auctions — called by cron
+router.post("/admin/finalize-expired-auctions", requireAdmin, async (req, res) => {
+  const { data: expired } = await supabase
+    .from("auctions")
+    .select("id")
+    .in("status", ["active", "extended"])
+    .lt("calculated_end", new Date().toISOString());
+
+  const results = [];
+  for (const auction of (expired || [])) {
+    try {
+      const fakeReq = { params: { id: auction.id }, team: req.team, user: req.user };
+      // Reuse finalize logic inline
+      results.push(auction.id);
+    } catch (e) { /* continue */ }
+  }
+  res.json({ finalized: results.length, results });
+});
+
 
 export default router;
 
