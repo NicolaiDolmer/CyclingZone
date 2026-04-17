@@ -210,7 +210,6 @@ export default function RidersPage() {
       ) : (
         <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
-          <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-white/5">
