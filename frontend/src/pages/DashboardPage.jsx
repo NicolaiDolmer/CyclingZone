@@ -128,7 +128,7 @@ export default function DashboardPage() {
     <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">{team?.name || "Mit Hold"}</h1>
+        <h1 className="text-xl font-bold text-white">{team?.name || "Mit Hold"}</h1>
         <p className="text-white/40 text-sm mt-0.5">Manager Dashboard</p>
       </div>
 

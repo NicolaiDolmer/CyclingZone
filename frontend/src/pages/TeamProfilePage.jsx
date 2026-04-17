@@ -88,7 +88,7 @@ export default function TeamProfilePage() {
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1 flex-wrap">
-              <h1 className="text-2xl font-bold text-white">{team.name}</h1>
+              <h1 className="text-xl font-bold text-white">{team.name}</h1>
               {isMyTeam && <span className="text-xs bg-[#e8c547]/10 text-[#e8c547] border border-[#e8c547]/20 px-2 py-0.5 rounded-full">Dit hold</span>}
               <span className={`text-xs px-2 py-0.5 rounded-full border ${windowOpen ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-white/5 text-white/30 border-white/8"}`}>
                 {windowOpen ? "🟢 Vindue åbent" : "🔒 Vindue lukket"}

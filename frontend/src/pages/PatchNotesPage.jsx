@@ -2,6 +2,50 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.1",
+    date: "2026-04-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Nyt",
+        items: [
+          "Løbskalender — dedikeret side med alle løb, detaljer og resultater",
+          "Resultatindberetning — managers kan selv uploade PCM Excel-filer til godkendelse",
+          "Admin godkendelse — admin gennemgår og godkender indberetninger inden de er officielle",
+          "Sæsonresultater — altid tilgængelig side med slutstillinger og op/nedrykning",
+          "Pointudviklingsgraf — se dit holds pointudvikling løb for løb i sæsonen",
+          "Op/nedrykning markeret visuelt — grøn for oprykningsplads, rød for nedrykning",
+        ],
+      },
+    ],
+  },
+  {
+    version: "1.0",
+    date: "2026-04-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Nyt",
+        items: [
+          "Fold-ud navigation — menuen er nu organiseret i grupper (Overblik, Marked, Mit Hold, Liga)",
+          "Hjælp & Regler udvidet med Talentspejder og Manager Niveau sektioner",
+          "Patch Notes side — se alle ændringer per version",
+          "Dashboard viser nu løb korrekt uanset status",
+          "Ryttersammenligning tilgængelig fra alle steder med rytterlister",
+        ],
+      },
+      {
+        category: "Forbedringer",
+        items: [
+          "Alle sideoverskrifter ensrettet til samme størrelse",
+          "Navigation auto-åbner den aktive gruppe ved sideload",
+          "Balance og division vist direkte i sidebaren",
+          "Mobilnavigation forbedret med overlay og top-bar",
+        ],
+      },
+    ],
+  },
+  {
     version: "0.9",
     date: "2026-04-17",
     label: "Beta",

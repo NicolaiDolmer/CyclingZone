@@ -193,6 +193,94 @@ const SECTIONS = [
     ],
   },
   {
+    key: "races",
+    label: "Løb & Resultater",
+    icon: "🏁",
+    content: [
+      {
+        title: "Løbskalender",
+        text: "Under Løbskalender kan du se alle løb i den aktive sæson. Klik på et løb for at se detaljer, præmiepulje og resultater når de er importeret.",
+      },
+      {
+        title: "Indberét resultater fra PCM",
+        steps: [
+          "Gå til Løbskalender → Indberét resultater.",
+          "Vælg løb, etapenummer og type (etape, samlet osv.).",
+          "Upload en Excel-fil fra PCM med kolonner: Placering (A) og Rytternavn (B).",
+          "Klik 'Auto-match navne' for at matche navne til databasen.",
+          "Ret eventuelle fejlmatchninger manuelt.",
+          "Klik 'Indsend til godkendelse' — admin godkender inden det er officielt.",
+        ],
+      },
+      {
+        title: "Admin godkendelse",
+        text: "Alle indberetninger skal godkendes af admin inden de træder i kraft. Når admin godkender, beregnes og udbetales præmiepenge automatisk til de relevante holds.",
+      },
+    ],
+  },
+  {
+    key: "watchlist",
+    label: "Talentspejder",
+    icon: "⭐",
+    content: [
+      {
+        title: "Hvad er Talentspejder?",
+        text: "Talentspejder er din private ønskeliste. Her kan du gemme ryttere du følger med i — uanset om de er fri eller ejet af et andet hold. Ønskelisten er kun synlig for dig.",
+      },
+      {
+        title: "Sådan tilføjer du en rytter",
+        steps: [
+          "Find en rytter i Rytterdatabasen eller på en rytters statistikside.",
+          "Klik på ☆ stjernen ved siden af rytterens navn.",
+          "Stjernen bliver gul (★) og rytteren er nu på din ønskeliste.",
+          "Gå til Talentspejder i menuen for at se din fulde liste.",
+        ],
+      },
+      {
+        title: "Hvad kan du se i Talentspejder?",
+        text: "Du får et fuldt overblik over dine gemte ryttere med alle stats, UCI-pris, hold og status. Du kan sortere, filtrere på U25 eller fri agents, og tilføje private noter til hver rytter. På fri agents kan du starte en auktion direkte fra ønskelisten.",
+      },
+    ],
+  },
+  {
+    key: "manager",
+    label: "Manager Niveau",
+    icon: "👤",
+    content: [
+      {
+        title: "XP og niveau",
+        text: "Du optjener XP (erfaringspoint) for aktivitet i spillet. Når du samler nok XP stiger du i niveau. Dit niveau vises i Hall of Fame.",
+      },
+      {
+        title: "XP-belønninger",
+        rows: [
+          ["Handling", "XP"],
+          ["Bud afgivet", "+2 XP"],
+          ["Auktion vundet", "+15 XP"],
+          ["Auktion solgt", "+10 XP"],
+          ["Transfer tilbud sendt", "+3 XP"],
+          ["Transfer accepteret", "+10 XP"],
+        ],
+      },
+      {
+        title: "Manager titler",
+        rows: [
+          ["Niveau", "Titel"],
+          ["1–4", "Rookie"],
+          ["5–9", "Amateur"],
+          ["10–14", "Continental"],
+          ["15–19", "Pro"],
+          ["20–24", "Pro Team"],
+          ["25–29", "WorldTour"],
+          ["30–34", "Monument"],
+          ["35–39", "GC Contender"],
+          ["40–44", "Grand Tour"],
+          ["45–50", "Legende"],
+        ],
+      },
+    ],
+  },
+  {
     key: "board",
     label: "Bestyrelse",
     icon: "◧",
@@ -214,6 +302,10 @@ const SECTIONS = [
 ];
 
 const FAQ = [
+  { q: "Hvad er Talentspejder og kan andre se min liste?", a: "Talentspejder er din private ønskeliste over ryttere du følger. Den er kun synlig for dig — ingen andre managers kan se hvem du holder øje med." },
+  { q: "Hvad bruges XP til?", a: "XP viser din aktivitet og erfaring som manager. Det giver dig et niveau og en titel der vises i Hall of Fame. Der er ingen gameplay-fordele ved et højt niveau — det er udelukkende et prestige-system." },
+  { q: "Hvad er Sæson Preview?", a: "Sæson Preview viser alle holds styrker baseret på den samlede holdværdi. Du kan se hvem der er favoritterne inden sæsonen starter, og sammenligne dit hold med konkurrenterne." },
+  { q: "Hvad er Head-to-Head?", a: "Head-to-Head lader dig sammenligne to managers direkte — point, etapesejre, transfers mellem hinanden og nuværende trup. Find det under Liga-gruppen i menuen." },
   { q: "Hvad sker der hvis jeg ikke har råd til lønninger?", a: "Din balance går i minus. Du kan stadig spille, men du betaler 10% renter på gælden ved hver sæsonafslutning." },
   { q: "Kan jeg fjerne en rytter fra mit hold uden at sælge den?", a: "Nej, du skal enten sætte rytteren til auktion eller på transfermarkedet." },
   { q: "Hvornår skifter ryttere hold efter en handel?", a: "Ryttere skifter kun hold fysisk når transfervinduet er åbent. Lukkede handler vises som 'indgående' eller 'udgående' transfers." },

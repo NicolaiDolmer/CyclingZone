@@ -1,229 +1,273 @@
-import { Outlet, NavLink, useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { supabase, signOut } from "../lib/supabase";
+import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 
-const NAV = [
-  { to: "/dashboard",      label: "Dashboard",       icon: "◎" },
-  { to: "/riders",         label: "Ryttere",          icon: "🚴" },
-  { to: "/auctions",       label: "Auktioner",        icon: "⚡" },
-  { to: "/transfers",      label: "Transfers",        icon: "↔" },
-  { to: "/team",           label: "Mit Hold",         icon: "◈" },
-  { to: "/teams",          label: "Hold",             icon: "◫" },
-  { to: "/standings",      label: "Rangliste",        icon: "◉" },
-  { to: "/board",          label: "Bestyrelse",       icon: "◧" },
-  { to: "/activity",       label: "Min Aktivitet",    icon: "📋" },
-  { to: "/notifications",  label: "Notifikationer",   icon: "🔔" },
-  { to: "/watchlist",      label: "Talentspejder",     icon: "⭐" },
-  { to: "/help",           label: "Hjælp & Regler",    icon: "?" },
-  { to: "/hall-of-fame",   label: "Hall of Fame",      icon: "🏆" },
-  { to: "/season-preview", label: "Sæson Preview",     icon: "📊" },
-  { to: "/head-to-head",   label: "Head-to-Head",      icon: "⚔" },
-  { to: "/patch-notes",    label: "Patch Notes",       icon: "📋" },
-  { to: "/profile",        label: "Min Profil",        icon: "👤" },
+const NAV_GROUPS = [
+  {
+    key: "overblik",
+    label: "Overblik",
+    icon: "◎",
+    items: [
+      { to: "/dashboard",      label: "Dashboard",      icon: "◎" },
+      { to: "/standings",      label: "Rangliste",      icon: "◉" },
+      { to: "/races",          label: "Løbskalender",   icon: "🏁" },
+      { to: "/season-preview", label: "Sæson Preview",  icon: "📊" },
+      { to: "/hall-of-fame",   label: "Hall of Fame",   icon: "🏆" },
+      { to: "/season-end",     label: "Sæsonresultater",icon: "🏆" },
+    ],
+  },
+  {
+    key: "marked",
+    label: "Marked",
+    icon: "⚡",
+    items: [
+      { to: "/riders",    label: "Ryttere",    icon: "🚴" },
+      { to: "/auctions",  label: "Auktioner",  icon: "⚡" },
+      { to: "/transfers", label: "Transfers",  icon: "↔" },
+    ],
+  },
+  {
+    key: "mithold",
+    label: "Mit Hold",
+    icon: "◈",
+    items: [
+      { to: "/team",       label: "Mit Hold",      icon: "◈" },
+      { to: "/board",      label: "Bestyrelse",    icon: "◧" },
+      { to: "/watchlist",  label: "Talentspejder", icon: "⭐" },
+      { to: "/activity",   label: "Min Aktivitet", icon: "📋" },
+    ],
+  },
+  {
+    key: "liga",
+    label: "Liga",
+    icon: "◫",
+    items: [
+      { to: "/teams",       label: "Hold",        icon: "◫" },
+      { to: "/head-to-head", label: "Head-to-Head", icon: "⚔" },
+    ],
+  },
 ];
 
-const MOBILE_NAV = [
-  { to: "/dashboard",  label: "Hjem",       icon: "◎" },
-  { to: "/riders",     label: "Ryttere",    icon: "🚴" },
-  { to: "/auctions",   label: "Auktioner",  icon: "⚡" },
-  { to: "/transfers",  label: "Transfers",  icon: "↔" },
-  { to: "/team",       label: "Mit Hold",   icon: "◈" },
+const BOTTOM_ITEMS = [
+  { to: "/notifications", label: "Notifikationer", icon: "🔔" },
+  { to: "/help",          label: "Hjælp & Regler", icon: "?" },
+  { to: "/patch-notes",   label: "Patch Notes",    icon: "📋" },
+  { to: "/profile",       label: "Min Profil",     icon: "👤" },
 ];
 
 export default function Layout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [session, setSession] = useState(null);
-  const [teamName, setTeamName] = useState("");
+  const [team, setTeam] = useState(null);
   const [balance, setBalance] = useState(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const [isAdmin_, setIsAdmin_] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState({});
+
+  // Auto-open the group containing the current route
+  useEffect(() => {
+    const path = location.pathname;
+    const activeGroup = NAV_GROUPS.find(g => g.items.some(i => path.startsWith(i.to)));
+    if (activeGroup) {
+      setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
+    }
+    setMobileOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) return;
       setSession(session);
-      if (session) loadTeam(session.user.id);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      setSession(session);
-      if (session) loadTeam(session.user.id);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+      const { data: userData } = await supabase.from("users")
+        .select("role, username").eq("id", session.user.id).single();
+      setIsAdmin(userData?.role === "admin");
 
-  async function loadTeam(userId) {
-    const { data: team } = await supabase.from("teams").select("name, balance").eq("user_id", userId).single();
-    if (team) { setTeamName(team.name); setBalance(team.balance); }
-    const { data: u } = await supabase.from("users").select("role").eq("id", userId).single();
-    if (u?.role === "admin") setIsAdmin_(true);
-    const { data: notifs } = await supabase.from("notifications")
-      .select("id").eq("user_id", userId).eq("is_read", false).limit(9);
-    setNotifications(notifs || []);
-  }
+      const { data: teamData } = await supabase.from("teams")
+        .select("id, name, balance, division").eq("user_id", session.user.id).single();
+      if (teamData) { setTeam(teamData); setBalance(teamData.balance); }
+
+      const { data: notifs } = await supabase.from("notifications")
+        .select("id").eq("user_id", session.user.id).eq("is_read", false).limit(9);
+      setNotifications(notifs || []);
+    });
+  }, []);
 
   useEffect(() => {
     if (!session) return;
-    const channel = supabase.channel("layout-notifs")
+    const channel = supabase.channel("layout-notifs-v2")
       .on("postgres_changes", { event: "*", schema: "public", table: "notifications",
         filter: `user_id=eq.${session.user.id}` },
         async () => {
-          // Re-fetch badge count on any notification change (new or marked read)
           const { data } = await supabase.from("notifications")
             .select("id").eq("user_id", session.user.id).eq("is_read", false).limit(9);
           setNotifications(data || []);
-          // Refresh balance
-          const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).single();
+          const { data: t } = await supabase.from("teams")
+            .select("balance").eq("user_id", session.user.id).single();
           if (t) setBalance(t.balance);
         })
       .subscribe();
     return () => supabase.removeChannel(channel);
   }, [session]);
 
-  if (!session) return <Outlet />;
+  async function signOut() {
+    await supabase.auth.signOut();
+    navigate("/login");
+  }
 
-  const navItems = isAdmin_ ? [...NAV, { to: "/admin", label: "Admin", icon: "⚙" }] : NAV;
+  function toggleGroup(key) {
+    setOpenGroups(prev => ({ ...prev, [key]: !prev[key] }));
+  }
+
   const unread = notifications.length;
+  const navGroups = isAdmin
+    ? [...NAV_GROUPS, { key: "admin", label: "Admin", icon: "⚙", items: [{ to: "/admin", label: "Admin", icon: "⚙" }] }]
+    : NAV_GROUPS;
 
-  return (
-    <div className="min-h-screen bg-[#0a0a0f] flex">
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-56 bg-[#0d0d16] border-r border-white/5 fixed h-full z-20">
+  function NavItem({ to, label, icon, onClick }) {
+    const isActive = location.pathname === to || (to !== "/dashboard" && location.pathname.startsWith(to));
+    const showBadge = to === "/notifications" && unread > 0;
+    return (
+      <NavLink to={to}
+        onClick={onClick}
+        className={`flex items-center gap-2.5 px-4 py-2 text-sm transition-all
+          ${isActive
+            ? "text-[#e8c547] bg-[#e8c547]/8"
+            : "text-white/40 hover:text-white hover:bg-white/4"}`}>
+        <span className="w-4 text-center text-xs flex-shrink-0">{icon}</span>
+        <span className="flex-1">{label}</span>
+        {showBadge && (
+          <span className="bg-[#e8c547] text-[#0a0a0f] text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </NavLink>
+    );
+  }
+
+  function SidebarContent({ onNav }) {
+    return (
+      <div className="flex flex-col h-full">
         {/* Logo */}
-        <div className="px-5 py-5 border-b border-white/5">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#e8c547] flex items-center justify-center flex-shrink-0">
-              <span className="text-[#0a0a0f] font-black text-xs">CZ</span>
-            </div>
-            <div>
-              <p className="text-white font-bold text-sm">Cycling Zone</p>
-              <p className="text-[#e8c547] font-mono text-xs">{balance?.toLocaleString("da-DK")} CZ$</p>
-            </div>
+        <div className="flex items-center gap-2.5 px-4 py-4 border-b border-white/5">
+          <div className="w-7 h-7 bg-[#e8c547] rounded-md flex items-center justify-center
+            text-[10px] font-black text-[#0a0a0f] flex-shrink-0">CZ</div>
+          <div className="min-w-0">
+            <p className="text-white text-xs font-bold leading-tight">Cycling Zone</p>
+            <p className="text-white/30 text-[10px] truncate">{team?.name || "..."}</p>
           </div>
-          {teamName && <p className="text-white/30 text-xs mt-1 truncate">{teamName}</p>}
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 overflow-y-auto">
-          {navItems.map(({ to, label, icon }) => (
-            <NavLink key={to} to={to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm mb-0.5 transition-all
-                ${isActive
-                  ? "bg-[#e8c547]/10 text-[#e8c547]"
-                  : "text-white/40 hover:text-white hover:bg-white/5"}`}>
-              <span className="text-base">{icon}</span>
-              <span>{label}</span>
-              {to === "/notifications" && unread > 0 && (
-                <span className="ml-auto w-5 h-5 bg-[#e8c547] rounded-full text-[#0a0a0f] text-[10px] font-bold flex items-center justify-center">
-                  {unread > 9 ? "9+" : unread}
-                </span>
-              )}
-            </NavLink>
+        {/* Balance */}
+        {balance !== null && (
+          <div className="px-4 py-2.5 border-b border-white/5">
+            <p className="text-[9px] text-white/25 uppercase tracking-wider">Balance</p>
+            <p className="text-[#e8c547] font-mono font-bold text-sm">
+              {balance.toLocaleString("da-DK")} CZ$
+            </p>
+            {team && (
+              <p className="text-white/25 text-[10px]">Division {team.division}</p>
+            )}
+          </div>
+        )}
+
+        {/* Grouped nav */}
+        <nav className="flex-1 overflow-y-auto py-2">
+          {navGroups.map(group => {
+            const isOpen = openGroups[group.key];
+            const hasActive = group.items.some(i =>
+              location.pathname === i.to ||
+              (i.to !== "/dashboard" && location.pathname.startsWith(i.to))
+            );
+            return (
+              <div key={group.key}>
+                <button
+                  onClick={() => toggleGroup(group.key)}
+                  className={`w-full flex items-center justify-between px-4 py-2 text-xs
+                    font-semibold uppercase tracking-wider transition-all
+                    ${hasActive ? "text-white/70" : "text-white/25 hover:text-white/50"}`}>
+                  <span className="flex items-center gap-2">
+                    <span>{group.icon}</span>
+                    <span>{group.label}</span>
+                  </span>
+                  <span className={`text-[8px] transition-transform duration-200
+                    ${isOpen ? "rotate-180" : ""}`}>▾</span>
+                </button>
+                {isOpen && (
+                  <div className="mb-1">
+                    {group.items.map(item => (
+                      <NavItem key={item.to} {...item} onClick={onNav} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Divider */}
+          <div className="h-px bg-white/5 my-2 mx-4" />
+
+          {/* Bottom items */}
+          {BOTTOM_ITEMS.map(item => (
+            <NavItem key={item.to} {...item} onClick={onNav} />
           ))}
         </nav>
 
         {/* Sign out */}
-        <div className="px-3 py-4 border-t border-white/5">
-          <button onClick={async () => { await signOut(); navigate("/login"); }}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/30
-              hover:text-white hover:bg-white/5 transition-all w-full">
-            <span>→</span><span>Log ud</span>
+        <div className="border-t border-white/5 p-3">
+          <button onClick={signOut}
+            className="w-full text-xs text-white/25 hover:text-white/50 py-2 transition-colors text-left px-1">
+            ← Log ud
           </button>
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] flex">
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex flex-col w-52 flex-shrink-0
+        bg-[#0a0a14] border-r border-white/5 fixed top-0 left-0 h-full z-30">
+        <SidebarContent onNav={() => {}} />
       </aside>
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-64 bg-[#0d0d16] border-r border-white/5 flex flex-col">
-            <div className="px-5 py-5 border-b border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#e8c547] flex items-center justify-center">
-                  <span className="text-[#0a0a0f] font-black text-xs">CZ</span>
-                </div>
-                <div>
-                  <p className="text-white font-bold text-sm">Cycling Zone</p>
-                  <p className="text-[#e8c547] font-mono text-xs">{balance?.toLocaleString("da-DK")} CZ$</p>
-                </div>
-              </div>
-              <button onClick={() => setMobileOpen(false)} className="text-white/40 hover:text-white text-xl">×</button>
-            </div>
-            <nav className="flex-1 px-3 py-4 overflow-y-auto">
-              {navItems.map(({ to, label, icon }) => (
-                <NavLink key={to} to={to} onClick={() => setMobileOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-0.5 transition-all
-                    ${isActive ? "bg-[#e8c547]/10 text-[#e8c547]" : "text-white/50 hover:text-white hover:bg-white/5"}`}>
-                  <span className="text-base w-5">{icon}</span>
-                  <span>{label}</span>
-                  {to === "/notifications" && unread > 0 && (
-                    <span className="ml-auto w-5 h-5 bg-[#e8c547] rounded-full text-[#0a0a0f] text-[10px] font-bold flex items-center justify-center">
-                      {unread > 9 ? "9+" : unread}
-                    </span>
-                  )}
-                </NavLink>
-              ))}
-            </nav>
-            <div className="px-3 py-4 border-t border-white/5">
-              <button onClick={async () => { await signOut(); navigate("/login"); setMobileOpen(false); }}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/30 hover:text-white hover:bg-white/5 w-full">
-                <span>→</span><span>Log ud</span>
-              </button>
-            </div>
-          </div>
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute left-0 top-0 h-full w-52 bg-[#0a0a14] border-r border-white/5 z-50">
+            <SidebarContent onNav={() => setMobileOpen(false)} />
+          </aside>
         </div>
       )}
 
       {/* Main content */}
-      <div className="flex-1 lg:ml-56 flex flex-col min-h-screen">
+      <main className="flex-1 md:ml-52 min-h-screen">
         {/* Mobile top bar */}
-        <header className="lg:hidden flex items-center px-4 py-3 bg-[#0d0d16] border-b border-white/5 sticky top-0 z-10">
-          <button onClick={() => setMobileOpen(true)} className="text-white/60 hover:text-white mr-3">☰</button>
+        <div className="md:hidden flex items-center justify-between px-4 py-3
+          bg-[#0a0a14] border-b border-white/5 sticky top-0 z-20">
+          <button onClick={() => setMobileOpen(true)} className="text-white/50 hover:text-white text-xl">☰</button>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-[#e8c547] flex items-center justify-center">
-              <span className="text-[#0a0a0f] font-black text-[9px]">CZ</span>
-            </div>
-            <span className="text-white font-bold text-sm">Cycling Zone</span>
+            <div className="w-6 h-6 bg-[#e8c547] rounded flex items-center justify-center text-[9px] font-black text-[#0a0a0f]">CZ</div>
+            <span className="text-white text-sm font-bold">Cycling Zone</span>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <span className="text-[#e8c547] font-mono text-xs">{balance?.toLocaleString("da-DK")} CZ$</span>
-            <Link to="/notifications" className="relative w-8 h-8 flex items-center justify-center text-white/50 hover:text-white">
-              🔔
-              {unread > 0 && (
-                <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-[#e8c547] rounded-full text-[#0a0a0f] text-[9px] font-bold flex items-center justify-center">
-                  {unread > 9 ? "9+" : unread}
-                </span>
-              )}
-            </Link>
-          </div>
-        </header>
+          <NavLink to="/notifications" className="relative">
+            <span className="text-white/50 hover:text-white text-lg">🔔</span>
+            {unread > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#e8c547] text-[#0a0a0f]
+                text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
+                {unread > 9 ? "9" : unread}
+              </span>
+            )}
+          </NavLink>
+        </div>
 
-        {/* Page content */}
-        <main className="flex-1 p-4 lg:p-6 pb-24 lg:pb-6">
+        <div className="p-4 md:p-6 max-w-6xl mx-auto">
           <Outlet />
-        </main>
-
-        {/* Mobile bottom navigation */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0d0d16] border-t border-white/8 z-10">
-          <div className="flex">
-            {MOBILE_NAV.map(({ to, label, icon }) => (
-              <NavLink key={to} to={to}
-                className={({ isActive }) =>
-                  `flex-1 flex flex-col items-center justify-center py-2.5 text-xs transition-all
-                  ${isActive ? "text-[#e8c547]" : "text-white/30 hover:text-white/60"}`}>
-                <span className="text-lg mb-0.5">{icon}</span>
-                <span className="text-[9px] uppercase tracking-wider">{label}</span>
-              </NavLink>
-            ))}
-            <button onClick={() => setMobileOpen(true)}
-              className="flex-1 flex flex-col items-center justify-center py-2.5 text-xs text-white/30 hover:text-white/60">
-              <span className="text-lg mb-0.5">☰</span>
-              <span className="text-[9px] uppercase tracking-wider">Mere</span>
-            </button>
-          </div>
-        </nav>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

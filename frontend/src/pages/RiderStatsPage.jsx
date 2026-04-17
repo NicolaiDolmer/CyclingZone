@@ -138,7 +138,7 @@ export default function RiderStatsPage() {
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-white">{rider.firstname} {rider.lastname}</h1>
+              <h1 className="text-xl font-bold text-white">{rider.firstname} {rider.lastname}</h1>
               <button onClick={toggleWatchlist}
                 title={onWatchlist ? "Fjern fra ønskeliste" : "Tilføj til ønskeliste"}
                 className={`text-2xl transition-all hover:scale-110 ${onWatchlist ? "text-[#e8c547]" : "text-white/20 hover:text-white/50"}`}>
