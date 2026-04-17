@@ -13,11 +13,11 @@ const SECTIONS = [
       {
         title: "Sådan kommer du i gang",
         steps: [
-          "Opret en konto — dit holdnavn vælges ved oprettelse og kan ikke ændres.",
+          "Opret en konto — dit holdnavn vælges ved oprettelse.",
           "Du starter med 500 CZ$ i balance og er placeret i Division 3.",
           "Gå til Ryttere og find ryttere du vil byde på. Klik på en rytter og start en auktion.",
           "Vind auktioner for at fylde dit hold op. Du skal have mindst 8 ryttere for at deltage i løb.",
-          "Følg med på Dashboard og Auktioner for at holde øje med aktive bud.",
+          "Følg med på Dashboard for overblik over balance, auktioner og transfers.",
         ],
       },
     ],
@@ -29,7 +29,7 @@ const SECTIONS = [
     content: [
       {
         title: "Valuta — CZ$",
-        text: "Al økonomi i spillet foregår i CZ$. Din balance vises øverst til venstre i menuen og er kun synlig for dig selv og admin.",
+        text: "Al økonomi i spillet foregår i CZ$. Din balance vises øverst i sidebaren og er kun synlig for dig selv og admin.",
       },
       {
         title: "Startbalance",
@@ -37,11 +37,11 @@ const SECTIONS = [
       },
       {
         title: "Sponsorindtægt",
-        text: "Hvert hold modtager 100 CZ$ i sponsorindtægt pr. sæson. Dette udbetales automatisk når admin starter en ny sæson.",
+        text: "Hvert hold modtager 100 CZ$ i sponsorindtægt pr. sæson, modificeret af bestyrelsens tilfredshedsmultiplikator. En tilfredsstillelse på over 70% giver mere end 100 CZ$, under 40% giver mindre.",
       },
       {
         title: "Lønninger",
-        text: "Hver rytter på dit hold koster 10% af hans UCI-pris i løn pr. sæson. En rytter med 1.000 UCI-point koster altså 100 CZ$ i løn. Lønninger trækkes automatisk ved sæsonstart og genberegnes baseret på rytterens aktuelle UCI-pris.",
+        text: "Hver rytter koster 10% af hans UCI-pris i løn pr. sæson. En rytter med 1.000 UCI-point koster 100 CZ$ i løn. Lønninger trækkes automatisk ved sæsonstart og genberegnes baseret på rytterens aktuelle UCI-pris.",
       },
       {
         title: "Præmiepenge",
@@ -59,33 +59,33 @@ const SECTIONS = [
     icon: "⚡",
     content: [
       {
+        title: "Hvad bruges auktioner til?",
+        text: "Auktioner bruges primært til at købe frie ryttere (ryttere uden hold). Du sætter en rytter til auktion, alle managers kan byde, og højeste bud vinder. Du kan også sætte dine egne ryttere til auktion.",
+      },
+      {
         title: "Sådan starter du en auktion",
         steps: [
-          "Gå til Ryttere og find en fri rytter (markeret 'Fri rytter').",
+          "Gå til Ryttere og find en fri rytter.",
           "Klik på rytterens navn for at åbne statistiksiden.",
-          "Sæt en startpris og klik 'Start auktion'.",
-          "Auktionen er nu synlig for alle managers under Auktioner.",
+          "Klik 'Start auktion' og sæt en startpris.",
+          "Auktionen er nu synlig for alle under Auktioner.",
         ],
       },
       {
-        title: "Hvornår kører auktioner?",
-        text: "Auktioner kører på alle tidspunkter. Sluttidspunktet beregnes automatisk baseret på hvornår auktionen startes.",
+        title: "Byde på auktioner",
+        text: "Gå til Auktioner og find en auktion du vil byde på. Indtast dit bud og klik 'Byd'. Du kan se om du vinder (🏆 Vinder) eller om du har budt men er overbudt (⚡ Du har budt). Minimumsbuddet vises under inputfeltet.",
       },
       {
         title: "10-minutters forlængelse",
         text: "Hvis der afgives et bud inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter. Dette fortsætter indtil der ikke afgives bud i de sidste 10 minutter.",
       },
       {
-        title: "Byde på fri rytter vs. holdets ryttere",
-        text: "Du kan byde på alle frie ryttere — også auktioner du selv har startet. Du kan ikke byde på ryttere der tilhører en anden managers hold via auktion, men du kan sende et transfertilbud.",
+        title: "Frie ryttere vs. andre managers ryttere",
+        text: "Du kan byde på frie ryttere via auktion — også auktioner du selv har startet. Vil du købe en rytter fra en anden manager, bruger du transfersystemet i stedet (se Transfers).",
       },
       {
         title: "Holdstørrelse og auktioner",
         text: "Hvis du vinder en auktion men dit hold allerede er fuldt (se holdgrænser under Divisioner), annulleres overdragelsen og du får besked.",
-      },
-      {
-        title: "Transfervindue",
-        text: "Ryttere skifter kun hold fysisk når transfervinduet er åbent. Hvis vinduet er lukket, registreres handler men ryttere vises som 'indgående' eller 'udgående' transfers indtil vinduet åbnes. På dit hold kan du til- og frakoble visning af indgående og udgående transfers.",
       },
     ],
   },
@@ -95,25 +95,37 @@ const SECTIONS = [
     icon: "↔",
     content: [
       {
-        title: "Transfermarkedet",
-        text: "Du kan sætte dine egne ryttere til salg på transfermarkedet med en fast pris. Andre managers kan sende tilbud på din udbudspris eller lavere.",
+        title: "Hvad er transfersystemet?",
+        text: "Transfersystemet lader dig forhandle direkte med andre managers om at købe eller sælge ryttere — ligesom i Football Manager. Du kan sende et tilbud på enhver rytter, uanset om den er sat til salg eller ej.",
       },
       {
-        title: "Tilbud og modbud",
+        title: "Send et tilbud",
         steps: [
-          "Find en rytter på Transfermarkedet og send et tilbud.",
-          "Sælger kan acceptere, afvise eller sende et modbud.",
-          "Hvis sælger sender modbud, kan du acceptere eller afvise.",
-          "Ved accept overdrages rytteren — enten straks (åbent vindue) eller ved næste vindue (lukket vindue).",
+          "Find rytteren du vil købe under Ryttere og klik på hans navn.",
+          "Klik '↔ Send transfertilbud' nederst på siden.",
+          "Indtast dit tilbud i CZ$ og en valgfri besked.",
+          "Klik 'Send tilbud' — sælger modtager en notifikation.",
         ],
       },
       {
-        title: "Transfervindue",
-        text: "Der er ét transfervindue per sæson. Admin åbner og lukker vinduet manuelt. Handler kan indgås hele sæsonen, men ryttere skifter kun hold fysisk når vinduet er åbent.",
+        title: "Modtage og besvare tilbud",
+        text: "Gå til Transfers → Modtagne tilbud. Her ser du alle tilbud på dine ryttere. Du kan acceptere (✓), afvise (✕) eller sende et modbud (↔) med din egen pris.",
       },
       {
-        title: "Løn ved transfer",
-        text: "Når du køber en rytter via auktion sættes lønnen automatisk til 10% af auktionsprisen. Ved transfermarked overføres den eksisterende løn.",
+        title: "Forhandling frem og tilbage",
+        text: "Forhandlingen kan fortsætte ubegrænset. Sælger sender modbud → køber kan acceptere modbud, sende nyt bud eller trække sig. Runde-tælleren viser hvor langt I er i forhandlingen.",
+      },
+      {
+        title: "Privathed",
+        text: "Tilbud er private — kun du og sælger kan se jeres forhandling. Andre managers kan ikke se hvem der har budt på samme rytter.",
+      },
+      {
+        title: "Transfervindue",
+        text: "Du kan forhandle hele sæsonen, men rytteren skifter kun hold fysisk når transfervinduet åbner. Admin åbner og lukker vinduet manuelt.",
+      },
+      {
+        title: "Sæt en rytter til salg",
+        text: "Du kan også sætte en rytter på transfermarkedet med en fast udbudspris under Transfers → Marked. Andre managers kan derefter sende tilbud på udbudsprisen.",
       },
     ],
   },
@@ -126,14 +138,14 @@ const SECTIONS = [
         title: "Sæsonforløb",
         steps: [
           "Admin lukker transfervinduet og starter ny sæson.",
-          "Ved sæsonstart: ventende transfers behandles, lønninger genberegnes, sponsorpenge udbetales.",
-          "Løb køres i Pro Cycling Manager og resultaterne importeres af admin.",
+          "Ved sæsonstart: ventende transfers behandles, lønninger genberegnes til 10% af UCI-pris, sponsorpenge udbetales.",
+          "Løb køres i Pro Cycling Manager og resultaterne indberettes af en manager og godkendes af admin.",
           "Ved sæsonafslutning: point tælles op, op/nedrykning afgøres, lønninger trækkes, gældsrenter tilskrives.",
         ],
       },
       {
-        title: "Løb og point",
-        text: "Point optjenes baseret på dine rytteres placeringer i løb. Præmiepenge tildeles automatisk når admin importerer resultater fra PCM.",
+        title: "Løb og resultater",
+        text: "Alle managers kan indberette løbsresultater fra PCM via Løbskalender → Indberét resultater. Upload en Excel-fil, match navne og indsend til admin-godkendelse. Præmiepenge beregnes automatisk når admin godkender.",
       },
       {
         title: "Op- og nedrykning",
@@ -148,7 +160,7 @@ const SECTIONS = [
     content: [
       {
         title: "Divisionsoversigt",
-        text: "Spillet har 3 divisioner. Division 1 er den højeste. Alle starts i Division 3.",
+        text: "Spillet har 3 divisioner. Division 1 er den højeste. Alle starter i Division 3.",
       },
       {
         title: "Holdstørrelse per division",
@@ -161,7 +173,7 @@ const SECTIONS = [
       },
       {
         title: "Minimumsryttere for løb",
-        text: "Du skal have mindst 8 ryttere på dit hold for at deltage i løb. Hvis du er under minimum vises en advarsel på 'Mit Hold'.",
+        text: "Du skal have mindst 8 ryttere på dit hold for at deltage i løb. Hvis du er under minimum vises en advarsel på Dashboard og Mit Hold.",
       },
       {
         title: "Op- og nedrykning",
@@ -183,12 +195,12 @@ const SECTIONS = [
         text: "Hver rytter har 14 stats: FL (Flad), BJ (Bjerg), KB (Mellembjerg), BK (Bakke), TT (Enkeltstart), PRL (Prolog), Bro (Brosten), SP (Sprint), ACC (Acceleration), NED (Nedkørsel), UDH (Udholdenhed), MOD (Modstandsdygtighed), RES (Restituering), FTR (Fighter).",
       },
       {
-        title: "U25 ryttere",
-        text: "Ryttere under 25 år er markeret med 'U25'. Du kan filtrere på U25 i rytterdatabasen.",
+        title: "U25 og U23 ryttere",
+        text: "Ryttere under 25 og 23 år er markeret. Du kan filtrere på U25/U23 i rytterdatabasen og ønskelisten.",
       },
       {
-        title: "Lønninger",
-        text: "Rytterens løn sættes til 10% af UCI-prisen ved køb og genberegnes ved hver sæsonstart.",
+        title: "Filtrering og sortering",
+        text: "I rytterdatabasen kan du filtrere på navn, UCI-pris (min/max), alder (min/max), hold, U25, U23 og fri agent. Du kan sortere på alle stats og UCI-pris. Det samme filterpanel er tilgængeligt på Mit Hold, Auktioner, Transfers og Ønskeliste.",
       },
     ],
   },
@@ -214,7 +226,7 @@ const SECTIONS = [
       },
       {
         title: "Admin godkendelse",
-        text: "Alle indberetninger skal godkendes af admin inden de træder i kraft. Når admin godkender, beregnes og udbetales præmiepenge automatisk til de relevante holds.",
+        text: "Alle indberetninger skal godkendes af admin inden de træder i kraft. Når admin godkender, beregnes og udbetales præmiepenge automatisk.",
       },
     ],
   },
@@ -225,20 +237,20 @@ const SECTIONS = [
     content: [
       {
         title: "Hvad er Talentspejder?",
-        text: "Talentspejder er din private ønskeliste. Her kan du gemme ryttere du følger med i — uanset om de er fri eller ejet af et andet hold. Ønskelisten er kun synlig for dig.",
+        text: "Talentspejder er din private ønskeliste over ryttere du følger med i. Listen er kun synlig for dig.",
       },
       {
         title: "Sådan tilføjer du en rytter",
         steps: [
           "Find en rytter i Rytterdatabasen eller på en rytters statistikside.",
           "Klik på ☆ stjernen ved siden af rytterens navn.",
-          "Stjernen bliver gul (★) og rytteren er nu på din ønskeliste.",
+          "Stjernen bliver gul (★) og rytteren er nu på din liste.",
           "Gå til Talentspejder i menuen for at se din fulde liste.",
         ],
       },
       {
-        title: "Hvad kan du se i Talentspejder?",
-        text: "Du får et fuldt overblik over dine gemte ryttere med alle stats, UCI-pris, hold og status. Du kan sortere, filtrere på U25 eller fri agents, og tilføje private noter til hver rytter. På fri agents kan du starte en auktion direkte fra ønskelisten.",
+        title: "Funktioner i Talentspejder",
+        text: "Du kan sortere og filtrere dine gemte ryttere på alle stats, UCI-pris, alder, U25/U23 og fri agent. Du kan tilføje private noter til hver rytter. På fri agents kan du starte en auktion direkte fra ønskelisten.",
       },
     ],
   },
@@ -249,13 +261,13 @@ const SECTIONS = [
     content: [
       {
         title: "XP og niveau",
-        text: "Du optjener XP (erfaringspoint) for aktivitet i spillet. Når du samler nok XP stiger du i niveau. Dit niveau vises i Hall of Fame.",
+        text: "Du optjener XP for aktivitet i spillet. Når du samler nok XP stiger du i niveau. Dit niveau og din titel vises i Hall of Fame.",
       },
       {
         title: "XP-belønninger",
         rows: [
           ["Handling", "XP"],
-          ["Bud afgivet", "+2 XP"],
+          ["Bud afgivet på auktion", "+2 XP"],
           ["Auktion vundet", "+15 XP"],
           ["Auktion solgt", "+10 XP"],
           ["Transfer tilbud sendt", "+3 XP"],
@@ -290,30 +302,37 @@ const SECTIONS = [
         text: "Din bestyrelse sætter mål for dit hold og evaluerer din præstation. Tilfredshed påvirker din sponsorindtægt via en multiplikator.",
       },
       {
-        title: "Mål og tilfredshed",
-        text: "Bestyrelsen sætter typisk mål som: top 4 i divisionen, mindst 8 ryttere, mindst 1 etapesejr. Opfylder du målene stiger tilfredsheden — gør du ikke falder den.",
+        title: "Tilfredshedsniveauer",
+        rows: [
+          ["Tilfredshed", "Effekt"],
+          ["70–100%", "Sponsor × > 1.0 — ekstra indtægt"],
+          ["40–69%", "Sponsor × 1.0 — normal indtægt"],
+          ["0–39%", "Sponsor × < 1.0 — reduceret indtægt"],
+        ],
       },
       {
-        title: "Budget-multiplikator",
-        text: "En høj bestyrelsestilfredshed giver en multiplikator over 1.0 på sponsorindtægten. Lav tilfredshed kan reducere sponsorindtægten.",
+        title: "Mål og plan",
+        text: "Du kan vælge fokus (offensiv, balanceret, ungdomsudvikling osv.) og tidshorisont (1-, 3- eller 5-årsplan). Bestyrelsen sætter mål baseret på dit valg. Opfylder du målene stiger tilfredsheden — gør du ikke, falder den.",
       },
     ],
   },
 ];
 
 const FAQ = [
-  { q: "Hvad er Talentspejder og kan andre se min liste?", a: "Talentspejder er din private ønskeliste over ryttere du følger. Den er kun synlig for dig — ingen andre managers kan se hvem du holder øje med." },
-  { q: "Hvad bruges XP til?", a: "XP viser din aktivitet og erfaring som manager. Det giver dig et niveau og en titel der vises i Hall of Fame. Der er ingen gameplay-fordele ved et højt niveau — det er udelukkende et prestige-system." },
-  { q: "Hvad er Sæson Preview?", a: "Sæson Preview viser alle holds styrker baseret på den samlede holdværdi. Du kan se hvem der er favoritterne inden sæsonen starter, og sammenligne dit hold med konkurrenterne." },
-  { q: "Hvad er Head-to-Head?", a: "Head-to-Head lader dig sammenligne to managers direkte — point, etapesejre, transfers mellem hinanden og nuværende trup. Find det under Liga-gruppen i menuen." },
-  { q: "Hvad sker der hvis jeg ikke har råd til lønninger?", a: "Din balance går i minus. Du kan stadig spille, men du betaler 10% renter på gælden ved hver sæsonafslutning." },
-  { q: "Kan jeg fjerne en rytter fra mit hold uden at sælge den?", a: "Nej, du skal enten sætte rytteren til auktion eller på transfermarkedet." },
-  { q: "Hvornår skifter ryttere hold efter en handel?", a: "Ryttere skifter kun hold fysisk når transfervinduet er åbent. Lukkede handler vises som 'indgående' eller 'udgående' transfers." },
-  { q: "Kan jeg byde på en auktion jeg selv har startet?", a: "Ja — når du sætter en fri/AI-rytter til auktion kan du godt byde på den selv. Du kan ikke byde på dine egne ryttere fra dit hold." },
-  { q: "Hvad er forskellen på en auktion og et transfertilbud?", a: "En auktion er åben for alle og vindes af højeste bud. Et transfertilbud sendes direkte til en sælger og kan forhandles med modbud." },
+  { q: "Hvad er forskellen på auktion og transfer?", a: "En auktion er åben for alle managers og vindes af højeste bud — bruges primært til frie ryttere. Et transfertilbud sendes privat direkte til en manager og kan forhandles frem og tilbage." },
+  { q: "Kan jeg byde på en rytter der tilhører en anden manager?", a: "Ikke via auktion. Du skal sende et transfertilbud direkte til manageren via rytterens side. Klik på rytteren og brug 'Send transfertilbud' knappen." },
+  { q: "Hvornår skifter en rytter hold efter en handel?", a: "Ryttere skifter kun hold fysisk når transfervinduet er åbent. Admin åbner og lukker vinduet. Handler indgået med lukket vindue afventer næste åbning." },
+  { q: "Kan flere managers sende tilbud på samme rytter?", a: "Ja — men tilbudene er private. Du kan ikke se hvad andre har budt. Sælger håndterer hvert tilbud separat." },
+  { q: "Hvad sker der hvis jeg ikke har råd til lønninger?", a: "Din balance går i minus. Du kan stadig spille, men du betaler 10% renter på gælden ved sæsonafslutning." },
+  { q: "Kan jeg fjerne en rytter fra mit hold?", a: "Ja — sæt rytteren til auktion eller på transfermarkedet. Du kan ikke bare frigive en rytter gratis." },
+  { q: "Hvad er U25 og U23?", a: "Ryttere under 25 henholdsvis 23 år. Du kan filtrere på disse i rytterdatabasen, ønskelisten og auktioner." },
   { q: "Kan jeg se andre managers balance?", a: "Nej. Din balance er kun synlig for dig selv og admin." },
   { q: "Hvad sker der hvis mit hold er for stort efter en divisionsskifte?", a: "Du får en advarsel og skal sælge ryttere ned til maksimum for din nye division." },
-  { q: "Hvornår udbetales præmiepenge?", a: "Præmiepenge udbetales automatisk når admin importerer løbsresultater fra PCM." },
+  { q: "Hvornår udbetales præmiepenge?", a: "Præmiepenge udbetales automatisk når admin godkender løbsresultater." },
+  { q: "Hvad er Talentspejder?", a: "Din private ønskeliste. Tilføj ryttere med ☆ stjernen. Kun du kan se din liste." },
+  { q: "Hvad bruges XP til?", a: "XP giver dig et niveau og en titel der vises i Hall of Fame. Det er et prestige-system uden gameplay-fordele." },
+  { q: "Kan jeg sende en besked med mit transfertilbud?", a: "Ja — der er et valgfrit besked-felt på alle tilbud og modbud." },
+  { q: "Hvad er et modbud?", a: "Når sælger ikke accepterer dit tilbud direkte, kan han sende et modbud med sin ønskede pris. Du kan acceptere modbud, sende et nyt bud eller trække dit tilbud tilbage." },
 ];
 
 export default function HelpPage() {
@@ -329,7 +348,7 @@ export default function HelpPage() {
         const inTitle = item.title?.toLowerCase().includes(q);
         const inText = item.text?.toLowerCase().includes(q);
         const inSteps = item.steps?.some(s => s.toLowerCase().includes(q));
-        const inRows = item.rows?.flat().some(r => r.toLowerCase().includes(q));
+        const inRows = item.rows?.flat().some(r => String(r).toLowerCase().includes(q));
         if (inTitle || inText || inSteps || inRows) {
           results.push({ section: section.label, icon: section.icon, item, sectionKey: section.key });
         }
@@ -362,17 +381,11 @@ export default function HelpPage() {
         <p className="text-white/30 text-sm">Alt du skal vide om Cycling Zone</p>
       </div>
 
-      {/* Search */}
       <div className="relative mb-6">
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Søg i regler og FAQ..."
           className="w-full bg-[#0f0f18] border border-white/10 rounded-xl px-4 py-3
-            text-white placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50
-            pl-10"
-        />
+            text-white placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50 pl-10" />
         <span className="absolute left-3.5 top-3.5 text-white/30">🔍</span>
         {search && (
           <button onClick={() => setSearch("")}
@@ -380,7 +393,6 @@ export default function HelpPage() {
         )}
       </div>
 
-      {/* Search results */}
       {search && (
         <div className="mb-6">
           {searchResults.length === 0 ? (
@@ -389,8 +401,7 @@ export default function HelpPage() {
             <div className="flex flex-col gap-3">
               <p className="text-white/40 text-xs uppercase tracking-wider">{searchResults.length} resultater</p>
               {searchResults.map((r, i) => (
-                <div key={i}
-                  className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 cursor-pointer hover:border-white/10"
+                <div key={i} className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 cursor-pointer hover:border-white/10"
                   onClick={() => { setActiveSection(r.sectionKey); setSearch(""); }}>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-sm">{r.icon}</span>
@@ -409,7 +420,6 @@ export default function HelpPage() {
 
       {!search && (
         <div className="flex gap-4">
-          {/* Sidebar */}
           <aside className="w-48 flex-shrink-0 hidden md:block">
             <nav className="flex flex-col gap-1 sticky top-4">
               {SECTIONS.map(s => (
@@ -433,7 +443,6 @@ export default function HelpPage() {
             </nav>
           </aside>
 
-          {/* Mobile tabs */}
           <div className="flex md:hidden gap-2 mb-4 overflow-x-auto pb-1 w-full">
             {[...SECTIONS, { key: "faq", label: "FAQ", icon: "❓" }].map(s => (
               <button key={s.key} onClick={() => setActiveSection(s.key)}
@@ -446,29 +455,23 @@ export default function HelpPage() {
             ))}
           </div>
 
-          {/* Content */}
           <div className="flex-1 min-w-0">
             {activeSection !== "faq" && activeData && (
               <div>
                 <h2 className="text-lg font-bold text-white mb-5 flex items-center gap-2">
-                  <span>{activeData.icon}</span>
-                  {activeData.label}
+                  <span>{activeData.icon}</span>{activeData.label}
                 </h2>
                 <div className="flex flex-col gap-5">
                   {activeData.content.map((item, i) => (
                     <div key={i} className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
                       <h3 className="text-white font-semibold text-sm mb-3">{item.title}</h3>
-                      {item.text && (
-                        <p className="text-white/50 text-sm leading-relaxed">{item.text}</p>
-                      )}
+                      {item.text && <p className="text-white/50 text-sm leading-relaxed">{item.text}</p>}
                       {item.steps && (
                         <ol className="space-y-2">
                           {item.steps.map((step, j) => (
                             <li key={j} className="flex gap-3 text-sm">
                               <span className="w-5 h-5 rounded-full bg-[#e8c547]/20 text-[#e8c547] text-xs
-                                flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">
-                                {j + 1}
-                              </span>
+                                flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">{j + 1}</span>
                               <span className="text-white/50">{step}</span>
                             </li>
                           ))}
@@ -506,9 +509,7 @@ export default function HelpPage() {
                   <span>❓</span> Ofte stillede spørgsmål
                 </h2>
                 <div className="flex flex-col gap-3">
-                  {FAQ.map((f, i) => (
-                    <FAQItem key={i} q={f.q} a={f.a} />
-                  ))}
+                  {FAQ.map((f, i) => <FAQItem key={i} q={f.q} a={f.a} />)}
                 </div>
               </div>
             )}
