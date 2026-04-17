@@ -67,6 +67,7 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
   const isAIAuction = !auction.rider?.team_id;
   const isSeller = auction.seller_team_id === myTeamId;
   const imWinning = auction.current_bidder_id === myTeamId;
+  const imBidding = !imWinning && (auction.myHighestBid > 0);
   const canBid = !isMyRider; // can bid as long as it's not your own team's rider
 
   useEffect(() => {
@@ -122,6 +123,7 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
         </div>
         <div className="flex flex-col items-end gap-1">
           {imWinning && <span className="text-[9px] uppercase tracking-wider bg-[#e8c547]/15 text-[#e8c547] px-2 py-0.5 rounded-full">🏆 Vinder</span>}
+                {imBidding && <span className="text-[9px] uppercase tracking-wider bg-orange-500/15 text-orange-400 px-2 py-0.5 rounded-full">⚡ Du har budt</span>}
           {isMyRider && <span className="text-[9px] uppercase tracking-wider bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full">Din rytter</span>}
           {isAIAuction && <span className="text-[9px] uppercase tracking-wider bg-white/8 text-white/30 px-2 py-0.5 rounded-full">Fri rytter</span>}
           {auction.status === "extended" && <span className="text-[9px] uppercase tracking-wider bg-orange-500/15 text-orange-400 px-2 py-0.5 rounded-full">⚡ Forlænget</span>}
@@ -156,6 +158,9 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
           </p>
           {auction.current_bidder && !imWinning && (
             <p className="text-white/30 text-xs">{auction.current_bidder.name}</p>
+          )}
+          {imBidding && auction.myHighestBid && (
+            <p className="text-orange-400/70 text-xs">Dit bud: {auction.myHighestBid.toLocaleString("da-DK")} CZ$</p>
           )}
           {imWinning && (
             <p className="text-green-400 text-xs font-medium">Du vinder lige nu</p>

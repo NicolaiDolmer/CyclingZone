@@ -42,10 +42,10 @@ export default function HallOfFamePage() {
       supabase.from("season_standings")
         .select("*, team:team_id(id, name, is_ai), season:season_id(number)")
         .order("total_points", { ascending: false }),
-      supabase.from("users")
-        .select("id, username, level, xp, role")
-        .order("level", { ascending: false })
-        .order("xp", { ascending: false }),
+      supabase.from("teams")
+        .select("id, name, division, user:user_id(id, username, level, xp, role)")
+        .eq("is_ai", false)
+        .order("name"),
     ]);
 
     // Group HoF by category
@@ -56,7 +56,11 @@ export default function HallOfFamePage() {
     });
     setRecords(grouped);
     setStandings(standingsRes.data || []);
-    setManagers(managersRes.data || []);
+    // Flatten team + user data for managers tab
+    setManagers((managersRes.data || [])
+      .map(t => ({ ...t.user, team_name: t.name, team_division: t.division }))
+      .filter(m => m.username)
+      .sort((a, b) => (b.level || 1) - (a.level || 1) || (b.xp || 0) - (a.xp || 0)));
     setLoading(false);
   }
 
@@ -193,7 +197,8 @@ export default function HallOfFamePage() {
               </tr>
             </thead>
             <tbody>
-              {managers.filter(m => m.role !== "admin" || managers.length <= 3).map((m, i) => {
+              {managers.map((m, i) => {
+                const isMe = m.id === myUserId;
                 const levelInfo = getLevelInfo(m.level || 1);
                 const xpForNext = (m.level || 1) * 100;
                 const xpProgress = ((m.xp || 0) % 100);
