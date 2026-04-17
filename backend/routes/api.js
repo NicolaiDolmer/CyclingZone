@@ -837,17 +837,7 @@ router.post("/admin/approve-results", requireAdmin, async (req, res) => {
   res.json({ success: true, rows_imported: insertRows.length, teams_paid: Object.keys(teamPrizes).length });
 });
 
-/**
- * Cycling Zone Manager — Backend API Routes
- * ==========================================
- * Express router covering:
- *   /api/auctions   — create, bid, list, finalize
- *   /api/transfers  — list, offer, counter, accept/reject
- *   /api/riders     — search, browse, detail
- *   /api/teams      — team info, squad, finances
- *   /api/admin      — import riders, import results, manage seasons
- */
 
-  calculateAuctionEnd,
 
 export default router;
+
