@@ -231,6 +231,33 @@ const SECTIONS = [
     ],
   },
   {
+    key: "activityfeed",
+    label: "Aktivitetsfeed",
+    icon: "◉",
+    content: [
+      {
+        title: "Hvad er Aktivitetsfeed?",
+        text: "Aktivitetsfeed er en offentlig strøm af hvad der sker i spillet. Du kan se hvem der vinder auktioner, gennemfører transfers og hvornår sæsoner starter og slutter. Feedet opdateres i realtid.",
+      },
+      {
+        title: "Hvad vises i feedet?",
+        rows: [
+          ["Hændelse", "Beskrivelse"],
+          ["🏆 Auktion vundet", "Hold vandt en auktion — viser rytter og pris"],
+          ["⚡ Auktion startet", "Et hold har sat en rytter til auktion"],
+          ["↔ Transfer gennemført", "En transfer mellem to managers er accepteret"],
+          ["📋 Rytter til salg", "Et hold har sat en rytter på transfermarkedet"],
+          ["🚀 Sæson startet", "Admin har startet en ny sæson"],
+          ["🏅 Resultater godkendt", "Admin har godkendt løbsresultater"],
+        ],
+      },
+      {
+        title: "Transferrygter",
+        text: "Hvis en manager kigger på en af dine ryttere, modtager du en anonym notifikation: 'En manager holder øje med din rytter X'. Du får maksimalt én notifikation per rytter per time for at undgå spam. Dette giver dig et tip om at en rytter er efterspurgt.",
+      },
+    ],
+  },
+  {
     key: "watchlist",
     label: "Talentspejder",
     icon: "⭐",
@@ -316,6 +343,10 @@ const SECTIONS = [
       },
     ],
   },
+  { q: "Hvad er Aktivitetsfeed?", a: "En offentlig strøm af alle vigtige hændelser i spillet — auktionsvindere, gennemførte transfers, sæsonstart og løbsresultater. Opdateres i realtid." },
+  { q: "Hvad er et transferrygte?", a: "Hvis en manager kigger på en af dine ryttere, får du en anonym notifikation. Du kan ikke se hvem der kigger — kun at nogen er interesseret." },
+  { q: "Hvad er Deadline Day?", a: "Når transfervinduet lukker inden for 48 timer, vises et rødt countdown-banner på dit Dashboard. Det minder dig om at handle inden vinduet lukker." },
+  { q: "Hvad er onboarding-guiden?", a: "Første gang du logger ind og ikke har nogen ryttere, vises en kort guide med 3 trin til at komme i gang. Den forsvinder permanent når du lukker den." },
 ];
 
 const FAQ = [

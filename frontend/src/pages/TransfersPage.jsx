@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { ConfettiModal } from "../components/ConfettiModal";
 import { useNavigate } from "react-router-dom";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -116,6 +117,7 @@ function ReceivedOfferCard({ offer, onAction, myBalance }) {
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -308,6 +310,7 @@ export default function TransfersPage() {
   const [myTeamId, setMyTeamId] = useState(null);
   const [myBalance, setMyBalance] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [celebration, setCelebration] = useState(null);
   const [msg, setMsg] = useState({ text: "", type: "success" });
 
   useEffect(() => { loadAll(); }, []);
@@ -366,7 +369,16 @@ export default function TransfersPage() {
         counter: "↔ Modbud sendt", accept_counter: "✅ Transfer gennemført!",
         new_offer: "↔ Nyt bud sendt", withdraw: "Tilbud trukket tilbage",
       };
-      showMsg(msgs[action] || "✅ Opdateret");
+      if (action === "accept" || action === "accept_counter") {
+        setCelebration({
+          title: "Transfer gennemført! 🎉",
+          subtitle: "Rytteren skifter hold ved næste vindueåbning",
+          amount: data.price || 0,
+          icon: "↔",
+        });
+      } else {
+        showMsg(msgs[action] || "✅ Opdateret");
+      }
       loadAll();
     } else showMsg(`❌ ${data.error}`, "error");
   }
@@ -379,7 +391,16 @@ export default function TransfersPage() {
   const filteredListings = listings.filter(l => !l.rider || filteredIds.has(l.rider.id));
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <>
+      <ConfettiModal
+        show={!!celebration}
+        onClose={() => setCelebration(null)}
+        title={celebration?.title || ""}
+        subtitle={celebration?.subtitle}
+        amount={celebration?.amount}
+        icon={celebration?.icon || "🎉"}
+      />
+      <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-white">Transfers</h1>

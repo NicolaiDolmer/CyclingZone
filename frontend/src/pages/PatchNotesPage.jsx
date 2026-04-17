@@ -2,6 +2,33 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.4",
+    date: "2026-04-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Nyt",
+        items: [
+          "Aktivitetsfeed — offentlig realtidsstrøm af auktioner, transfers og sæsonhændelser",
+          "Transferrygter — anonym notifikation når en manager kigger på din rytter (max 1/time per rytter)",
+          "Deadline Day — rødt countdown-banner på Dashboard de sidste 48 timer inden transfervinduet lukker",
+          "Onboarding guide — 3-trins velkomstguide til nye spillere der endnu ikke har ryttere",
+          "Fejringsanimation — konfetti-modal med animation når du vinder en auktion eller en transfer accepteres",
+          "Mobil forbedringer — RidersPage med horisontal scroll, bedre padding på alle sider",
+        ],
+      },
+      {
+        category: "Forbedringer",
+        items: [
+          "Hjælp & Regler — ny sektion om Aktivitetsfeed og Transferrygter",
+          "FAQ opdateret med 4 nye spørgsmål",
+          "Auktioner logger automatisk til aktivitetsfeed ved start og sejr",
+          "Transfers logger automatisk til aktivitetsfeed ved gennemførelse",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.3",
     date: "2026-04-17",
     label: "Beta",

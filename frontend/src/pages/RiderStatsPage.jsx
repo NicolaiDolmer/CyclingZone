@@ -157,6 +157,39 @@ export default function RiderStatsPage() {
     ]);
     setRider(riderRes.data);
     setResults(resultsRes.data || []);
+
+    // Feature: Transfer rumour — anonymously notify owner when someone views their rider
+    const loadedRider = riderRes.data;
+    if (loadedRider?.team_id) {
+      try {
+        const { data: myTeamCheck } = await supabase
+          .from("teams").select("id").eq("user_id", user.id).single();
+        if (myTeamCheck && loadedRider.team_id !== myTeamCheck.id) {
+          // Only notify once per hour per rider to avoid spam
+          const { data: recent } = await supabase
+            .from("notifications")
+            .select("id")
+            .eq("type", "transfer_rumour")
+            .eq("related_id", loadedRider.id)
+            .gte("created_at", new Date(Date.now() - 3600000).toISOString())
+            .limit(1);
+          if (!recent?.length) {
+            const { data: ownerTeam } = await supabase
+              .from("teams").select("user_id").eq("id", loadedRider.team_id).single();
+            if (ownerTeam) {
+              await supabase.from("notifications").insert({
+                user_id: ownerTeam.user_id,
+                type: "transfer_rumour",
+                title: "⚠️ Transferrygte",
+                message: `En manager holder øje med ${loadedRider.firstname} ${loadedRider.lastname}`,
+                related_id: loadedRider.id,
+                is_read: false,
+              });
+            }
+          }
+        }
+      } catch (e) { /* silent — never block page load */ }
+    }
     setLoading(false);
   }
 

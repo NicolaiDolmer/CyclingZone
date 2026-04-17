@@ -25,6 +25,22 @@ config({ path: join(__dirname, "../.env") });
 
 const router = express.Router();
 
+
+// Log to public activity feed
+async function logActivity(type, data = {}) {
+  try {
+    await supabase.from("activity_feed").insert({
+      type,
+      team_id: data.team_id || null,
+      team_name: data.team_name || null,
+      rider_id: data.rider_id || null,
+      rider_name: data.rider_name || null,
+      amount: data.amount || null,
+      meta: data.meta || {},
+    });
+  } catch (e) { /* silent — never block main flow */ }
+}
+
 // Squad size limits per division
 const SQUAD_LIMITS = {
   1: { min: 20, max: 30 },
@@ -269,6 +285,15 @@ router.post("/auctions", requireAuth, async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
+  // Log to activity feed
+  await logActivity("auction_started", {
+    team_id: req.team.id,
+    team_name: req.team.name,
+    rider_id: rider.id,
+    rider_name: `${rider.firstname} ${rider.lastname}`,
+    amount: price,
+  });
+
   res.status(201).json({
     auction,
     message: `Auktion startet — slutter ${calculatedEnd.toLocaleString("da-DK")}`,
@@ -487,6 +512,16 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
       `${auction.rider.firstname} ${auction.rider.lastname} er nu på dit hold for ${auction.current_price} pts`,
       auction.id);
 
+    // Log to activity feed
+    const { data: winnerTeam } = await supabase.from("teams").select("name").eq("id", auction.current_bidder_id).single();
+    await logActivity("auction_won", {
+      team_id: auction.current_bidder_id,
+      team_name: winnerTeam?.name,
+      rider_id: auction.rider.id,
+      rider_name: `${auction.rider.firstname} ${auction.rider.lastname}`,
+      amount: auction.current_price,
+    });
+
     await notifyTeamOwner(auction.seller_team_id, "auction_won",
       "Auktion afsluttet",
       `${auction.rider.firstname} ${auction.rider.lastname} solgt for ${auction.current_price} pts`,
@@ -673,6 +708,16 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
       .eq("status", "pending");
 
     await supabase.from("transfer_offers").update({ status: "accepted" }).eq("id", offer.id);
+
+    // Log to activity feed
+    const { data: sellerTeamData } = await supabase.from("teams").select("name").eq("id", req.team.id).single();
+    await logActivity("transfer_accepted", {
+      team_id: req.team.id,
+      team_name: sellerTeamData?.name,
+      rider_id: rider.id,
+      rider_name: `${rider.firstname} ${rider.lastname}`,
+      amount: price,
+    });
 
     await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted",
       "Transfer accepteret! 🎉",

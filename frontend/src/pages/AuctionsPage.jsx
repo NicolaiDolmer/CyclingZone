@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
+import { ConfettiModal } from "../components/ConfettiModal";
 import { useNavigate, Link } from "react-router-dom";
 
 function Countdown({ end, status }) {
@@ -53,6 +54,7 @@ function BidFeedback({ status, amount }) {
       {status === "error" && <span>❌</span>}
       <span>{amount}</span>
     </div>
+    </>
   );
 }
 
@@ -224,6 +226,7 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
 export default function AuctionsPage() {
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [celebration, setCelebration] = useState(null);
   const [myTeamId, setMyTeamId] = useState(null);
   const [myBalance, setMyBalance] = useState(null);
   const [filter, setFilter] = useState("all");
@@ -316,7 +319,16 @@ export default function AuctionsPage() {
   });
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <>
+      <ConfettiModal
+        show={!!celebration}
+        onClose={() => setCelebration(null)}
+        title={celebration?.title || ""}
+        subtitle={celebration?.subtitle}
+        amount={celebration?.amount}
+        icon="🏆"
+      />
+      <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-white">Auktioner</h1>

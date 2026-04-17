@@ -40,6 +40,10 @@ export default function DashboardPage() {
   const [activeOffers, setActiveOffers] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [transferWindow, setTransferWindow] = useState(null);
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
@@ -73,6 +77,20 @@ export default function DashboardPage() {
     setStandings(standingsRes.data || []);
     setBoard(boardRes.data);
     setActiveOffers(offersRes.data || []);
+
+    // Transfer window status
+    const { data: tw } = await supabase
+      .from("transfer_windows").select("*")
+      .order("created_at", { ascending: false }).limit(1).single();
+    setTransferWindow(tw);
+
+    // Onboarding — show if user has no riders
+    const riderCount = (ridersRes.data || []).length;
+    if (riderCount === 0 && !localStorage.getItem("cz_onboarding_done")) {
+      setIsNewUser(true);
+      setShowOnboarding(true);
+    }
+
     setLoading(false);
   }
 
@@ -124,6 +142,64 @@ export default function DashboardPage() {
           <span>⚠️</span>
           <span>{squadWarning.msg}</span>
           <Link to="/team" className="ml-auto text-xs underline opacity-70 hover:opacity-100">Mit Hold →</Link>
+        </div>
+      )}
+
+      {/* Deadline Day banner */}
+      {transferWindow?.status === "open" && (() => {
+        const closes = transferWindow.closes_at ? new Date(transferWindow.closes_at) : null;
+        if (!closes) return null;
+        const diff = closes - new Date();
+        if (diff <= 0 || diff > 86400000 * 2) return null; // Only show last 48h
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        return (
+          <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/25 rounded-xl
+            flex items-center justify-between animate-pulse">
+            <div className="flex items-center gap-2">
+              <span className="text-red-400 text-lg">🔔</span>
+              <div>
+                <p className="text-red-400 font-bold text-sm">DEADLINE DAY</p>
+                <p className="text-red-400/70 text-xs">Transfervinduet lukker om {h}t {m}m</p>
+              </div>
+            </div>
+            <Link to="/transfers"
+              className="px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30
+                rounded-lg text-xs font-bold hover:bg-red-500/30 transition-all">
+              Gå til transfers →
+            </Link>
+          </div>
+        );
+      })()}
+
+      {/* Onboarding guide for new users */}
+      {showOnboarding && (
+        <div className="mb-4 bg-[#0f0f18] border border-[#e8c547]/20 rounded-xl p-5">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="text-[#e8c547] font-bold text-sm">🚴 Velkommen til Cycling Zone!</p>
+              <p className="text-white/40 text-xs mt-0.5">Kom i gang med disse tre trin</p>
+            </div>
+            <button onClick={() => { setShowOnboarding(false); localStorage.setItem("cz_onboarding_done", "1"); }}
+              className="text-white/20 hover:text-white/50 text-xl">×</button>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            {[
+              { step: "1", title: "Find ryttere", desc: "Gå til Ryttere og filtrer på stats og pris", link: "/riders", linkLabel: "Åbn ryttere →" },
+              { step: "2", title: "Start en auktion", desc: "Klik på en fri rytter og tryk 'Start auktion'", link: "/riders", linkLabel: "Find fri rytter →" },
+              { step: "3", title: "Følg med", desc: "Hold øje med dine bud under Auktioner", link: "/auctions", linkLabel: "Se auktioner →" },
+            ].map(s => (
+              <div key={s.step} className="bg-white/3 rounded-lg p-3 border border-white/5">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-5 h-5 rounded-full bg-[#e8c547]/20 text-[#e8c547] text-xs
+                    font-bold flex items-center justify-center">{s.step}</span>
+                  <p className="text-white font-medium text-sm">{s.title}</p>
+                </div>
+                <p className="text-white/40 text-xs mb-2">{s.desc}</p>
+                <Link to={s.link} className="text-[#e8c547] text-xs hover:underline">{s.linkLabel}</Link>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
