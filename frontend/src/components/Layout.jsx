@@ -33,6 +33,7 @@ const NAV_GROUPS = [
     items: [
       { to: "/team",       label: "Mit Hold",      icon: "◈" },
       { to: "/board",      label: "Bestyrelse",    icon: "◧" },
+      { to: "/finance",    label: "Finanser",      icon: "💰" },
       { to: "/watchlist",  label: "Talentspejder", icon: "⭐" },
       { to: "/activity",        label: "Min Aktivitet",  icon: "📋" },
       { to: "/activity-feed",   label: "Aktivitetsfeed", icon: "◉" },
