@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import RiderFilters from "../components/RiderFilters";
+import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { useNavigate, Link } from "react-router-dom";
 
@@ -296,6 +298,7 @@ export default function AuctionsPage() {
   const myListedCount = auctions.filter(a => a.seller_team_id === myTeamId).length;
 
   const filtered = auctions.filter(a => {
+    if (!filteredRiderIds.has(a.rider?.id)) return false;
     if (filter === "mine") return a.seller_team_id === myTeamId;
     if (filter === "winning") return a.current_bidder_id === myTeamId;
     if (filter === "other") return a.rider?.team_id && a.rider.team_id !== myTeamId;
@@ -303,6 +306,8 @@ export default function AuctionsPage() {
   });
 
   const otherManagerCount = auctions.filter(a => a.rider?.team_id && a.rider.team_id !== myTeamId).length;
+  const riderFilters = useClientRiderFilters(auctions.map(a => a.rider).filter(Boolean));
+  const filteredRiderIds = new Set(riderFilters.filtered.map(r => r.id));
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -326,7 +331,7 @@ export default function AuctionsPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 mb-5 flex-wrap">
+      <div className="flex gap-2 mb-4 flex-wrap">
         {[
           { key: "all", label: `Alle (${auctions.length})` },
           { key: "other", label: `Andre managers (${otherManagerCount})` },
@@ -342,6 +347,7 @@ export default function AuctionsPage() {
           </button>
         ))}
       </div>
+      <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange} onReset={riderFilters.onReset} showTeamFilter={false} />
 
       {loading ? (
         <div className="flex justify-center py-16">

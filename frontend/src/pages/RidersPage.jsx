@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import RiderFilters, { DEFAULT_FILTERS } from "../components/RiderFilters";
+import { buildSupabaseQuery } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { useNavigate, Link } from "react-router-dom";
 
@@ -121,10 +123,7 @@ export default function RidersPage() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [watchlist, setWatchlist] = useState(new Set());
   const [userId, setUserId] = useState(null);
-  const [filters, setFilters] = useState({
-    q: "", free_agent: false, u25: false, min_uci: "", max_uci: "",
-    sort: "uci_points", page: 1,
-  });
+  const [filters, setFilters] = useState({ ...DEFAULT_FILTERS, page: 1 });
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -161,14 +160,9 @@ export default function RidersPage() {
       .from("riders")
       .select(`id, firstname, lastname, birthdate, uci_points, is_u25,
         ${statKeys}, team:team_id(id, name)`, { count: "exact" })
-      .order(filters.sort, { ascending: false })
       .range((filters.page - 1) * 50, filters.page * 50 - 1);
 
-    if (filters.q) query = query.or(`firstname.ilike.%${filters.q}%,lastname.ilike.%${filters.q}%`);
-    if (filters.free_agent) query = query.is("team_id", null);
-    if (filters.u25) query = query.eq("is_u25", true);
-    if (filters.min_uci) query = query.gte("uci_points", parseInt(filters.min_uci));
-    if (filters.max_uci) query = query.lte("uci_points", parseInt(filters.max_uci));
+    query = buildSupabaseQuery(query, filters);
 
     const { data, count } = await query;
     setRiders(data || []);
@@ -178,6 +172,10 @@ export default function RidersPage() {
 
   function setFilter(key, value) {
     setFilters(f => ({ ...f, [key]: value, page: 1 }));
+  }
+
+  function onReset() {
+    setFilters({ ...DEFAULT_FILTERS, page: 1 });
   }
 
   return (
@@ -194,43 +192,7 @@ export default function RidersPage() {
         </Link>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <input type="text" placeholder="Søg rytter..." value={filters.q}
-          onChange={e => setFilter("q", e.target.value)}
-          className="bg-[#0f0f18] border border-white/8 rounded-lg px-3 py-2
-            text-white text-sm placeholder-white/20 w-full sm:w-48
-            focus:outline-none focus:border-[#e8c547]/50" />
-        <input type="number" placeholder="Min UCI" value={filters.min_uci}
-          onChange={e => setFilter("min_uci", e.target.value)}
-          className="bg-[#0f0f18] border border-white/8 rounded-lg px-3 py-2
-            text-white text-sm placeholder-white/20 w-24
-            focus:outline-none focus:border-[#e8c547]/50" />
-        <input type="number" placeholder="Max UCI" value={filters.max_uci}
-          onChange={e => setFilter("max_uci", e.target.value)}
-          className="bg-[#0f0f18] border border-white/8 rounded-lg px-3 py-2
-            text-white text-sm placeholder-white/20 w-24
-            focus:outline-none focus:border-[#e8c547]/50" />
-        <button onClick={() => setFilter("free_agent", !filters.free_agent)}
-          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border
-            ${filters.free_agent ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/30" : "bg-[#0f0f18] text-white/40 border-white/8 hover:text-white"}`}>
-          Fri agents
-        </button>
-        <button onClick={() => setFilter("u25", !filters.u25)}
-          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border
-            ${filters.u25 ? "bg-blue-500/10 text-blue-400 border-blue-500/30" : "bg-[#0f0f18] text-white/40 border-white/8 hover:text-white"}`}>
-          U25
-        </button>
-        <select value={filters.sort} onChange={e => setFilter("sort", e.target.value)}
-          className="bg-[#0f0f18] border border-white/8 rounded-lg px-3 py-2
-            text-white text-sm focus:outline-none focus:border-[#e8c547]/50">
-          <option value="uci_points">UCI Point</option>
-          <option value="stat_bj">Bjerg</option>
-          <option value="stat_sp">Sprint</option>
-          <option value="stat_tt">TT</option>
-          <option value="stat_fl">Flad</option>
-        </select>
-      </div>
+      <RiderFilters filters={filters} onChange={setFilter} onReset={onReset} showTeamFilter={false} />
 
       {loading ? (
         <div className="flex justify-center py-16">

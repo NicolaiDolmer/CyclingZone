@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import RiderFilters from "../components/RiderFilters";
+import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
@@ -11,10 +13,8 @@ export default function WatchlistPage() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
-  const [sortBy, setSortBy] = useState("uci_points");
   const [editingNote, setEditingNote] = useState(null);
   const [noteText, setNoteText] = useState("");
-  const [filter, setFilter] = useState({ q: "", u25: false, free: false });
 
   useEffect(() => { loadWatchlist(); }, []);
 
@@ -58,19 +58,14 @@ export default function WatchlistPage() {
     else { const d = await res.json(); alert(d.error); }
   }
 
-  const sorted = [...entries].sort((a, b) => {
-    const ra = a.rider, rb = b.rider;
-    if (sortBy === "uci_points") return (rb.uci_points || 0) - (ra.uci_points || 0);
-    return (rb[sortBy] || 0) - (ra[sortBy] || 0);
-  });
-
-  const filtered = sorted.filter(e => {
-    const r = e.rider;
-    const matchQ = !filter.q || `${r.firstname} ${r.lastname}`.toLowerCase().includes(filter.q.toLowerCase());
-    const matchU25 = !filter.u25 || r.is_u25;
-    const matchFree = !filter.free || !r.team_id;
-    return matchQ && matchU25 && matchFree;
-  });
+  const riderFilters = useClientRiderFilters(entries.map(e => e.rider));
+  const filteredRiders = new Set(riderFilters.filtered.map(r => r.id));
+  const filtered = entries.filter(e => filteredRiders.has(e.rider.id))
+    .sort((a, b) => {
+      const ai = riderFilters.filtered.findIndex(r => r.id === a.rider.id);
+      const bi = riderFilters.filtered.findIndex(r => r.id === b.rider.id);
+      return ai - bi;
+    });
 
   if (loading) return (
     <div className="flex justify-center py-16">
@@ -106,32 +101,7 @@ export default function WatchlistPage() {
         </div>
       ) : (
         <>
-          {/* Filters */}
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <input type="text" placeholder="Søg rytter..." value={filter.q}
-              onChange={e => setFilter(f => ({ ...f, q: e.target.value }))}
-              className="bg-[#0f0f18] border border-white/8 rounded-lg px-3 py-2 text-white text-sm
-                placeholder-white/20 w-40 focus:outline-none focus:border-[#e8c547]/50" />
-            <button onClick={() => setFilter(f => ({ ...f, u25: !f.u25 }))}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border
-                ${filter.u25 ? "bg-blue-500/10 text-blue-400 border-blue-500/30" : "bg-[#0f0f18] text-white/40 border-white/8"}`}>
-              U25
-            </button>
-            <button onClick={() => setFilter(f => ({ ...f, free: !f.free }))}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border
-                ${filter.free ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/30" : "bg-[#0f0f18] text-white/40 border-white/8"}`}>
-              Fri agents
-            </button>
-            <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-              className="bg-[#0f0f18] border border-white/8 rounded-lg px-3 py-2 text-white text-sm focus:outline-none ml-auto">
-              <option value="uci_points">UCI Point</option>
-              <option value="stat_bj">Bjerg</option>
-              <option value="stat_sp">Sprint</option>
-              <option value="stat_tt">TT</option>
-              <option value="stat_fl">Flad</option>
-              <option value="stat_udh">Udholdenhed</option>
-            </select>
-          </div>
+          <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange} onReset={riderFilters.onReset} showTeamFilter={false} />
 
           {/* Table */}
           <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">

@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import RiderFilters from "../components/RiderFilters";
+import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 
 const SQUAD_LIMITS = {
