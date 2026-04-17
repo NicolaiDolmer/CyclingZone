@@ -10,6 +10,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { processLoanInterest, createEmergencyLoan } from "./loanEngine.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -143,29 +144,38 @@ async function processTeamSeasonEnd(team, seasonId, standings) {
   const teamStanding = standings.find(s => s.team_id === team.id);
   const board = team.board_profiles?.[0];
 
-  // 1. Deduct salaries
+  // 1. Tilskriv lånerenter
+  await processLoanInterest(team.id, seasonId);
+
+  // 2. Deduct salaries — opret nødlån hvis holdet ikke kan betale
   const totalSalary = (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
+
   if (totalSalary > 0) {
+    const { data: freshTeam } = await supabase
+      .from("teams").select("balance").eq("id", team.id).single();
+    const shortfall = totalSalary - freshTeam.balance;
+    if (shortfall > 0) {
+      console.log(`  ⚠️  ${team.name}: mangler ${shortfall} pts til løn — opretter nødlån`);
+      await createEmergencyLoan(team.id, shortfall);
+    }
     await debitTeam(team.id, totalSalary, "salary",
       `Sæsonlønninger — ${team.riders.length} ryttere`, seasonId);
   }
 
-  // 2. Charge interest if in debt
-  const { data: freshTeam } = await supabase
+  // 3. Opkræv renter på resterende negativ balance (legacy-sikkerhedsnet)
+  const { data: postSalaryTeam } = await supabase
     .from("teams").select("balance").eq("id", team.id).single();
 
-  if (freshTeam.balance < 0) {
-    const interest = Math.round(Math.abs(freshTeam.balance) * INTEREST_RATE);
+  if (postSalaryTeam.balance < 0) {
+    const interest = Math.round(Math.abs(postSalaryTeam.balance) * INTEREST_RATE);
     await debitTeam(team.id, interest, "interest",
-      `Renter på gæld (10% af ${Math.abs(freshTeam.balance).toLocaleString()} pts)`, seasonId);
-    console.log(`  💸 ${team.name}: -${interest} pts interest`);
+      `Renter på gæld (10% af ${Math.abs(postSalaryTeam.balance).toLocaleString()} pts)`, seasonId);
+    console.log(`  💸 ${team.name}: -${interest} pts interest on negative balance`);
   }
 
-  // 3. Evaluate board satisfaction
+  // 4. Evaluate board satisfaction — sæt negotiation_status pending til næste sæson
   if (board && teamStanding) {
-    const newSatisfaction = calculateBoardSatisfaction(
-      board, teamStanding, team
-    );
+    const newSatisfaction = calculateBoardSatisfaction(board, teamStanding, team);
     const newModifier = satisfactionToModifier(newSatisfaction);
     const newGoals = generateBoardGoals(board.focus, board.plan_type);
 
@@ -173,12 +183,12 @@ async function processTeamSeasonEnd(team, seasonId, standings) {
       satisfaction: newSatisfaction,
       budget_modifier: newModifier,
       current_goals: JSON.stringify(newGoals),
+      negotiation_status: "pending",
     }).eq("id", board.id);
 
-    // Notify manager of board update
     await notifyManager(team.id, "board_update",
       "Bestyrelsens årsrapport",
-      `Tilfredshed: ${newSatisfaction}% — Sponsor modifier: ×${newModifier.toFixed(2)}`);
+      `Tilfredshed: ${newSatisfaction}% — Sponsor modifier: ×${newModifier.toFixed(2)}. Forhandl nye mål på Bestyrelses-siden.`);
 
     console.log(`  📊 ${team.name}: satisfaction ${board.satisfaction}% → ${newSatisfaction}%`);
   }
