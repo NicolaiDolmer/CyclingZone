@@ -294,20 +294,21 @@ export default function AuctionsPage() {
     return { ok: false, error: data.error };
   }
 
+  // Hooks must be called before they are used
+  const riderFilters = useClientRiderFilters(auctions.map(a => a.rider).filter(Boolean));
+  const filteredRiderIds = new Set(riderFilters.filtered.map(r => r.id));
+
   const winningCount = auctions.filter(a => a.current_bidder_id === myTeamId).length;
   const myListedCount = auctions.filter(a => a.seller_team_id === myTeamId).length;
+  const otherManagerCount = auctions.filter(a => a.rider?.team_id && a.rider.team_id !== myTeamId).length;
 
   const filtered = auctions.filter(a => {
-    if (!filteredRiderIds.has(a.rider?.id)) return false;
+    if (a.rider && !filteredRiderIds.has(a.rider?.id)) return false;
     if (filter === "mine") return a.seller_team_id === myTeamId;
     if (filter === "winning") return a.current_bidder_id === myTeamId;
     if (filter === "other") return a.rider?.team_id && a.rider.team_id !== myTeamId;
     return true;
   });
-
-  const otherManagerCount = auctions.filter(a => a.rider?.team_id && a.rider.team_id !== myTeamId).length;
-  const riderFilters = useClientRiderFilters(auctions.map(a => a.rider).filter(Boolean));
-  const filteredRiderIds = new Set(riderFilters.filtered.map(r => r.id));
 
   return (
     <div className="max-w-5xl mx-auto">
