@@ -19,7 +19,6 @@ import RiderComparePage from "./pages/RiderComparePage";
 import ProfilePage from "./pages/ProfilePage";
 import ActivityFeedPage from "./pages/ActivityFeedPage";
 import ActivityPage from "./pages/ActivityPage";
-import ActivityFeedPage from "./pages/ActivityFeedPage";
 import WatchlistPage from "./pages/WatchlistPage";
 import HelpPage from "./pages/HelpPage";
 import HallOfFamePage from "./pages/HallOfFamePage";
