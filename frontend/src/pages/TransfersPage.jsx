@@ -1,16 +1,18 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { ConfettiModal } from "../components/ConfettiModal";
 import { useNavigate } from "react-router-dom";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
+import { ConfettiModal } from "../components/ConfettiModal";
 
 const API = import.meta.env.VITE_API_URL;
 
 function timeAgo(d) {
   if (!d) return "—";
   const diff = new Date() - new Date(d);
-  const m = Math.floor(diff / 60000), h = Math.floor(diff / 3600000), day = Math.floor(diff / 86400000);
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(diff / 3600000);
+  const day = Math.floor(diff / 86400000);
   if (m < 1) return "Lige nu";
   if (m < 60) return `${m}m siden`;
   if (h < 24) return `${h}t siden`;
@@ -18,23 +20,22 @@ function timeAgo(d) {
 }
 
 const STATUS_CONFIG = {
-  pending:   { label: "Afventer svar",    color: "text-[#e8c547]",  bg: "bg-[#e8c547]/10  border-[#e8c547]/20" },
-  countered: { label: "Modbud sendt",     color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20" },
-  accepted:  { label: "Accepteret",       color: "text-green-400",  bg: "bg-green-500/10  border-green-500/20" },
-  rejected:  { label: "Afvist",           color: "text-red-400",    bg: "bg-red-500/10    border-red-500/20" },
-  withdrawn: { label: "Trukket tilbage",  color: "text-white/30",   bg: "bg-white/5       border-white/10" },
+  pending:   { label: "Afventer svar",   color: "text-[#e8c547]",  bg: "bg-[#e8c547]/10 border-[#e8c547]/20" },
+  countered: { label: "Modbud sendt",    color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20" },
+  accepted:  { label: "Accepteret",      color: "text-green-400",  bg: "bg-green-500/10 border-green-500/20" },
+  rejected:  { label: "Afvist",          color: "text-red-400",    bg: "bg-red-500/10 border-red-500/20" },
+  withdrawn: { label: "Trukket tilbage", color: "text-white/30",   bg: "bg-white/5 border-white/10" },
 };
 
-// ── Offer card shown in "Modtagne tilbud" ────────────────────────────────────
-function ReceivedOfferCard({ offer, onAction, myBalance }) {
+// ── Modtaget tilbud ──────────────────────────────────────────────────────────
+function ReceivedOfferCard({ offer, onAction }) {
   const [counterAmt, setCounterAmt] = useState(offer.offer_amount || 0);
   const [msg, setMsg] = useState("");
-  const [mode, setMode] = useState(null); // null | counter | message
+  const [mode, setMode] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const isActive = offer.status === "pending";
   const cfg = STATUS_CONFIG[offer.status] || STATUS_CONFIG.pending;
-  const currentOffer = offer.offer_amount;
 
   async function doAction(action, extra = {}) {
     setLoading(true);
@@ -55,7 +56,6 @@ function ReceivedOfferCard({ offer, onAction, myBalance }) {
         </span>
       </div>
 
-      {/* Offer amount */}
       <div className="bg-white/3 rounded-lg px-4 py-3 mb-3 flex items-center justify-between">
         <div>
           <p className="text-white/30 text-xs uppercase tracking-wider mb-0.5">
@@ -77,7 +77,6 @@ function ReceivedOfferCard({ offer, onAction, myBalance }) {
         </div>
       )}
 
-      {/* Actions */}
       {isActive && (
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
@@ -87,7 +86,9 @@ function ReceivedOfferCard({ offer, onAction, myBalance }) {
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all
-                ${mode === "counter" ? "bg-orange-500/20 text-orange-400 border-orange-500/30" : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"}`}>
+                ${mode === "counter"
+                  ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
+                  : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"}`}>
               ↔ Modbud
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
@@ -117,11 +118,10 @@ function ReceivedOfferCard({ offer, onAction, myBalance }) {
         </div>
       )}
     </div>
-    </>
   );
 }
 
-// ── Offer card shown in "Sendte tilbud" ──────────────────────────────────────
+// ── Sendt tilbud ─────────────────────────────────────────────────────────────
 function SentOfferCard({ offer, onAction }) {
   const [newAmt, setNewAmt] = useState(offer.counter_amount || offer.offer_amount || 0);
   const [msg, setMsg] = useState("");
@@ -141,7 +141,8 @@ function SentOfferCard({ offer, onAction }) {
   }
 
   return (
-    <div className={`bg-[#0f0f18] border rounded-xl p-5 transition-all ${isCountered ? "border-orange-500/20" : isActive ? "border-white/10" : "border-white/5 opacity-60"}`}>
+    <div className={`bg-[#0f0f18] border rounded-xl p-5 transition-all
+      ${isCountered ? "border-orange-500/20" : isActive ? "border-white/10" : "border-white/5 opacity-60"}`}>
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-white font-semibold">{offer.rider?.firstname} {offer.rider?.lastname}</p>
@@ -173,17 +174,18 @@ function SentOfferCard({ offer, onAction }) {
         </div>
       )}
 
-      {/* Actions for buyer */}
       {isCountered && (
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
               className="flex-1 py-2 bg-green-500/15 text-green-400 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
-              ✓ Accepter modbud ({offer.counter_amount?.toLocaleString("da-DK")} CZ$)
+              ✓ Accepter ({offer.counter_amount?.toLocaleString("da-DK")} CZ$)
             </button>
             <button onClick={() => setMode(mode === "new_offer" ? null : "new_offer")}
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all
-                ${mode === "new_offer" ? "bg-blue-500/20 text-blue-400 border-blue-500/30" : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"}`}>
+                ${mode === "new_offer"
+                  ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                  : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"}`}>
               Nyt bud
             </button>
             <button onClick={() => doAction("withdraw")} disabled={loading}
@@ -215,7 +217,8 @@ function SentOfferCard({ offer, onAction }) {
 
       {isPending && (
         <button onClick={() => doAction("withdraw")} disabled={loading}
-          className="w-full py-2 bg-white/5 text-white/30 border border-white/8 rounded-lg text-sm hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-50">
+          className="w-full py-2 bg-white/5 text-white/30 border border-white/8 rounded-lg text-sm
+            hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-50">
           Træk tilbud tilbage
         </button>
       )}
@@ -225,11 +228,11 @@ function SentOfferCard({ offer, onAction }) {
 
 // ── Transfer market listing card ─────────────────────────────────────────────
 function TransferCard({ listing, myTeamId, onOffer }) {
+  const navigate = useNavigate();
   const [offerAmt, setOfferAmt] = useState(listing.asking_price || 0);
   const [msg, setMsg] = useState("");
   const [showOffer, setShowOffer] = useState(false);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const isOwn = listing.seller?.id === myTeamId;
 
@@ -248,12 +251,11 @@ function TransferCard({ listing, myTeamId, onOffer }) {
         </div>
       </div>
 
-      {/* Quick stats */}
       <div className="flex gap-3 mb-3">
         {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"]].map(([label, key]) => (
           <div key={key} className="text-center">
             <p className="text-white/25 text-[9px] uppercase">{label}</p>
-            <p className={`font-mono text-xs font-bold ${listing.rider?.[key] >= 80 ? "text-[#e8c547]" : "text-white/50"}`}>
+            <p className={`font-mono text-xs font-bold ${(listing.rider?.[key] || 0) >= 80 ? "text-[#e8c547]" : "text-white/50"}`}>
               {listing.rider?.[key] || "—"}
             </p>
           </div>
@@ -264,7 +266,9 @@ function TransferCard({ listing, myTeamId, onOffer }) {
         <div>
           <button onClick={() => setShowOffer(!showOffer)}
             className={`w-full py-2 rounded-lg text-sm font-medium transition-all border
-              ${showOffer ? "bg-[#e8c547]/15 text-[#e8c547] border-[#e8c547]/25" : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"}`}>
+              ${showOffer
+                ? "bg-[#e8c547]/15 text-[#e8c547] border-[#e8c547]/25"
+                : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"}`}>
             {showOffer ? "Skjul" : "Send tilbud"}
           </button>
 
@@ -277,7 +281,7 @@ function TransferCard({ listing, myTeamId, onOffer }) {
                 <button
                   onClick={async () => {
                     setLoading(true);
-                    await onOffer(listing.rider?.id, listing.seller?.id, offerAmt, msg);
+                    await onOffer(listing.rider?.id, offerAmt, msg);
                     setShowOffer(false);
                     setLoading(false);
                   }}
@@ -302,7 +306,6 @@ function TransferCard({ listing, myTeamId, onOffer }) {
 
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function TransfersPage() {
-  const navigate = useNavigate();
   const [tab, setTab] = useState("received");
   const [listings, setListings] = useState([]);
   const [sentOffers, setSentOffers] = useState([]);
@@ -347,9 +350,10 @@ export default function TransfersPage() {
     setTimeout(() => setMsg({ text: "" }), 4000);
   }
 
-  async function handleOffer(riderId, sellerTeamId, amount, message) {
+  async function handleOffer(riderId, amount, message) {
     const res = await fetch(`${API}/api/transfers/offer`, {
-      method: "POST", headers: await getHeaders(),
+      method: "POST",
+      headers: await getHeaders(),
       body: JSON.stringify({ rider_id: riderId, offer_amount: amount, message }),
     });
     const data = await res.json();
@@ -359,16 +363,12 @@ export default function TransfersPage() {
 
   async function handleOfferAction(offerId, action, extra = {}) {
     const res = await fetch(`${API}/api/transfers/offers/${offerId}`, {
-      method: "PATCH", headers: await getHeaders(),
+      method: "PATCH",
+      headers: await getHeaders(),
       body: JSON.stringify({ action, ...extra }),
     });
     const data = await res.json();
     if (res.ok) {
-      const msgs = {
-        accept: "✅ Transfer accepteret!", reject: "Transfer afvist",
-        counter: "↔ Modbud sendt", accept_counter: "✅ Transfer gennemført!",
-        new_offer: "↔ Nyt bud sendt", withdraw: "Tilbud trukket tilbage",
-      };
       if (action === "accept" || action === "accept_counter") {
         setCelebration({
           title: "Transfer gennemført! 🎉",
@@ -377,10 +377,18 @@ export default function TransfersPage() {
           icon: "↔",
         });
       } else {
+        const msgs = {
+          reject: "Transfer afvist",
+          counter: "↔ Modbud sendt",
+          new_offer: "↔ Nyt bud sendt",
+          withdraw: "Tilbud trukket tilbage",
+        };
         showMsg(msgs[action] || "✅ Opdateret");
       }
       loadAll();
-    } else showMsg(`❌ ${data.error}`, "error");
+    } else {
+      showMsg(`❌ ${data.error}`, "error");
+    }
   }
 
   const pendingReceived = receivedOffers.filter(o => o.status === "pending").length;
@@ -391,7 +399,7 @@ export default function TransfersPage() {
   const filteredListings = listings.filter(l => !l.rider || filteredIds.has(l.rider.id));
 
   return (
-    <>
+    <div className="max-w-4xl mx-auto">
       <ConfettiModal
         show={!!celebration}
         onClose={() => setCelebration(null)}
@@ -400,7 +408,7 @@ export default function TransfersPage() {
         amount={celebration?.amount}
         icon={celebration?.icon || "🎉"}
       />
-      <div className="max-w-4xl mx-auto">
+
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-white">Transfers</h1>
@@ -414,12 +422,13 @@ export default function TransfersPage() {
 
       {msg.text && (
         <div className={`mb-4 px-4 py-3 rounded-xl text-sm border
-          ${msg.type === "error" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"}`}>
+          ${msg.type === "error"
+            ? "bg-red-500/10 text-red-400 border-red-500/20"
+            : "bg-green-500/10 text-green-400 border-green-500/20"}`}>
           {msg.text}
         </div>
       )}
 
-      {/* Tabs */}
       <div className="flex gap-2 mb-5 flex-wrap">
         {[
           { key: "received", label: "Modtagne tilbud", badge: pendingReceived },
@@ -428,7 +437,9 @@ export default function TransfersPage() {
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all border
-              ${tab === t.key ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20" : "text-white/40 hover:text-white bg-[#0f0f18] border-white/5"}`}>
+              ${tab === t.key
+                ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20"
+                : "text-white/40 hover:text-white bg-[#0f0f18] border-white/5"}`}>
             {t.label}
             {t.badge > 0 && (
               <span className="ml-2 bg-[#e8c547] text-[#0a0a0f] text-[9px] font-black px-1.5 py-0.5 rounded-full">
@@ -444,42 +455,47 @@ export default function TransfersPage() {
           <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <>
-          {/* Received offers */}
+        <div>
           {tab === "received" && (
             <div className="flex flex-col gap-3">
               {receivedOffers.length === 0 ? (
                 <div className="text-center py-16 text-white/20">
                   <p className="text-4xl mb-3">↔</p>
                   <p>Ingen modtagne tilbud</p>
-                  <p className="text-xs mt-2">Andre managers kan sende tilbud på dine ryttere fra rytternes side</p>
+                  <p className="text-xs mt-2">Andre managers kan sende tilbud på dine ryttere fra rytterens side</p>
                 </div>
-              ) : receivedOffers.map(o => (
-                <ReceivedOfferCard key={o.id} offer={o} onAction={handleOfferAction} myBalance={myBalance} />
-              ))}
+              ) : (
+                receivedOffers.map(o => (
+                  <ReceivedOfferCard key={o.id} offer={o} onAction={handleOfferAction} />
+                ))
+              )}
             </div>
           )}
 
-          {/* Sent offers */}
           {tab === "sent" && (
             <div className="flex flex-col gap-3">
               {sentOffers.length === 0 ? (
                 <div className="text-center py-16 text-white/20">
                   <p className="text-4xl mb-3">↔</p>
                   <p>Du har ikke sendt nogen tilbud endnu</p>
-                  <p className="text-xs mt-2">Find en rytter og klik "Send tilbud" på deres side</p>
+                  <p className="text-xs mt-2">Find en rytter og klik "Send transfertilbud" på deres side</p>
                 </div>
-              ) : sentOffers.map(o => (
-                <SentOfferCard key={o.id} offer={o} onAction={handleOfferAction} />
-              ))}
+              ) : (
+                sentOffers.map(o => (
+                  <SentOfferCard key={o.id} offer={o} onAction={handleOfferAction} />
+                ))
+              )}
             </div>
           )}
 
-          {/* Market */}
           {tab === "market" && (
             <div>
-              <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange}
-                onReset={riderFilters.onReset} showTeamFilter={false} />
+              <RiderFilters
+                filters={riderFilters.filters}
+                onChange={riderFilters.onChange}
+                onReset={riderFilters.onReset}
+                showTeamFilter={false}
+              />
               {filteredListings.length === 0 ? (
                 <div className="text-center py-16 text-white/20">
                   <p className="text-4xl mb-3">↔</p>
@@ -488,14 +504,18 @@ export default function TransfersPage() {
               ) : (
                 <div className="grid sm:grid-cols-2 gap-3">
                   {filteredListings.map(l => (
-                    <TransferCard key={l.id} listing={l} myTeamId={myTeamId}
-                      onOffer={(riderId, sellerId, amt, msg) => handleOffer(riderId, sellerId, amt, msg)} />
+                    <TransferCard
+                      key={l.id}
+                      listing={l}
+                      myTeamId={myTeamId}
+                      onOffer={(riderId, amt, msg) => handleOffer(riderId, amt, msg)}
+                    />
                   ))}
                 </div>
               )}
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
