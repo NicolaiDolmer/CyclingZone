@@ -18,6 +18,12 @@ import {
   checkBidExtension,
   isAuctionExpired,
 } from "../lib/auctionEngine.js";
+import {
+  createLoan,
+  repayLoan,
+  getLoanConfig,
+  getTotalDebt,
+} from "../lib/loanEngine.js";
 
 // Load .env from backend root
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -960,6 +966,146 @@ router.post("/admin/finalize-expired-auctions", requireAdmin, async (req, res) =
   res.json({ finalized: results.length, results });
 });
 
+
+// ── Loan Routes ───────────────────────────────────────────────────────────────
+
+// GET /api/loans/my — hent egne lån + konfiguration
+router.get("/loans/my", requireAuth, async (req, res) => {
+  try {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    const [loansRes, configs, debt] = await Promise.all([
+      supabase.from("loans").select("*").eq("team_id", req.team.id).order("created_at", { ascending: false }),
+      getLoanConfig(req.team.id),
+      getTotalDebt(req.team.id),
+    ]);
+    res.json({
+      loans: loansRes.data || [],
+      configs,
+      total_debt: debt,
+      debt_ceiling: configs[0]?.debt_ceiling,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/loans — optag nyt lån
+router.post("/loans", requireAuth, async (req, res) => {
+  try {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    const { loan_type, amount } = req.body;
+    if (!["short", "long"].includes(loan_type))
+      return res.status(400).json({ error: "Ugyldig låntype — brug short eller long" });
+    if (!amount || amount < 1)
+      return res.status(400).json({ error: "Ugyldigt beløb" });
+    const loan = await createLoan(req.team.id, loan_type, parseInt(amount));
+    res.json({ success: true, loan });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// POST /api/loans/:id/repay — betal rate på lån
+router.post("/loans/:id/repay", requireAuth, async (req, res) => {
+  try {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    const { amount } = req.body;
+    if (!amount || amount < 1) return res.status(400).json({ error: "Ugyldigt beløb" });
+    const result = await repayLoan(req.params.id, req.team.id, parseInt(amount));
+    res.json({ success: true, ...result });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// PATCH /api/admin/loan-config — opdater lånekonfiguration
+router.patch("/admin/loan-config", requireAdmin, async (req, res) => {
+  try {
+    const { division, loan_type, origination_fee_pct, interest_rate_pct, seasons, debt_ceiling } = req.body;
+    const { data, error } = await supabase.from("loan_config")
+      .update({ origination_fee_pct, interest_rate_pct, seasons, debt_ceiling, updated_at: new Date() })
+      .eq("division", division)
+      .eq("loan_type", loan_type)
+      .select().single();
+    if (error) throw error;
+    res.json({ success: true, config: data });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/adjust-balance — juster holdbalance manuelt
+router.post("/admin/adjust-balance", requireAdmin, async (req, res) => {
+  try {
+    const { team_id, amount, reason } = req.body;
+    if (!team_id || amount === undefined) return res.status(400).json({ error: "team_id og amount kræves" });
+    const { data: team } = await supabase.from("teams").select("balance").eq("id", team_id).single();
+    if (!team) return res.status(404).json({ error: "Hold ikke fundet" });
+    await supabase.from("teams").update({ balance: team.balance + parseInt(amount) }).eq("id", team_id);
+    await supabase.from("finance_transactions").insert({
+      team_id,
+      type: "admin_adjustment",
+      amount: parseInt(amount),
+      description: reason || "Admin justering",
+    });
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: "balance_adjustment",
+      description: `Balance justeret med ${amount} CZ$: ${reason || "—"}`,
+      target_team_id: team_id,
+      meta: { amount, reason },
+    });
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/season-end-preview/:seasonId — preview af sæsonafslutning
+router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res) => {
+  try {
+    const { seasonId } = req.params;
+
+    const [teamsRes, standingsRes, loansRes] = await Promise.all([
+      supabase.from("teams")
+        .select("id, name, balance, division, sponsor_income, board_profiles(satisfaction)")
+        .eq("is_ai", false),
+      supabase.from("season_standings").select("*").eq("season_id", seasonId),
+      supabase.from("loans").select("team_id, amount_remaining, interest_rate").eq("status", "active"),
+    ]);
+
+    const teams = teamsRes.data || [];
+    const standings = standingsRes.data || [];
+    const loanData = loansRes.data || [];
+
+    const preview = await Promise.all(teams.map(async team => {
+      const standing = standings.find(s => s.team_id === team.id);
+      const { data: riders } = await supabase.from("riders").select("salary").eq("team_id", team.id);
+      const totalSalary = (riders || []).reduce((s, r) => s + (r.salary || 0), 0);
+      const teamLoans = loanData.filter(l => l.team_id === team.id);
+      const totalInterest = teamLoans.reduce((s, l) => s + Math.round(l.amount_remaining * l.interest_rate), 0);
+      const board = team.board_profiles?.[0];
+      const satisfaction = board?.satisfaction ?? 50;
+      const sponsorModifier = satisfaction >= 80 ? 1.20 : satisfaction >= 50 ? 1.00 : 0.80;
+      const nextSponsor = Math.round((team.sponsor_income || 0) * sponsorModifier);
+      const balanceAfter = team.balance - totalSalary - totalInterest;
+      const needsEmergencyLoan = balanceAfter < 0;
+
+      const divStandings = standings
+        .filter(s => s.division === team.division)
+        .sort((a, b) => b.total_points - a.total_points);
+      const rank = divStandings.findIndex(s => s.team_id === team.id) + 1;
+
+      return {
+        team_id: team.id,
+        team_name: team.name,
+        division: team.division,
+        current_balance: team.balance,
+        salary_deduction: totalSalary,
+        loan_interest: totalInterest,
+        balance_after: balanceAfter,
+        needs_emergency_loan: needsEmergencyLoan,
+        emergency_loan_amount: needsEmergencyLoan ? Math.abs(balanceAfter) : 0,
+        board_satisfaction: satisfaction,
+        next_season_sponsor: nextSponsor,
+        total_points: standing?.total_points || 0,
+        current_rank: rank || null,
+      };
+    }));
+
+    res.json({ preview });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 export default router;
 
