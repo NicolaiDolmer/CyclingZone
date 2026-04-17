@@ -1,101 +1,117 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useNavigate } from "react-router-dom";
 
-function DivisionTable({ division, standings, myTeamId }) {
-  const divNames = { 1: "Division 1", 2: "Division 2", 3: "Division 3" };
-  const divColors = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
-  const color = divColors[division];
-  const sorted = [...standings].filter(s => s.division === division).sort((a, b) => b.total_points - a.total_points);
-  if (!sorted.length) return null;
+const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
 
+function MiniSparkline({ points, color }) {
+  if (!points || points.length < 2) return <span className="text-white/20 text-xs">—</span>;
+  const max = Math.max(...points, 1);
+  const w = 60, h = 24, p = 2;
+  const pts = points.map((v, i) => {
+    const x = p + (i / (points.length - 1)) * (w - p * 2);
+    const y = h - p - (v / max) * (h - p * 2);
+    return `${x},${y}`;
+  }).join(" ");
   return (
-    <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden mb-4">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/5" style={{ borderLeft: `3px solid ${color}` }}>
-        <span className="font-bold text-white text-sm">{divNames[division]}</span>
-        <span className="text-white/30 text-xs">{sorted.length} hold</span>
-        {division > 1 && <span className="ml-auto text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Top 2 rykker op</span>}
-        {division < 3 && <span className={`${division > 1 ? "" : "ml-auto"} text-[10px] text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider`}>Bund 2 rykker ned</span>}
-      </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-white/5">
-            <th className="px-4 py-2.5 text-left text-white/30 font-medium text-xs uppercase w-8">#</th>
-            <th className="px-4 py-2.5 text-left text-white/30 font-medium text-xs uppercase">Hold</th>
-            <th className="px-4 py-2.5 text-right text-white/30 font-medium text-xs uppercase">Point</th>
-            <th className="px-4 py-2.5 text-right text-white/30 font-medium text-xs uppercase hidden sm:table-cell">Etapesejre</th>
-            <th className="px-4 py-2.5 text-right text-white/30 font-medium text-xs uppercase hidden sm:table-cell">GC-sejre</th>
-            <th className="px-4 py-2.5 text-right text-white/30 font-medium text-xs uppercase hidden md:table-cell">Løb</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((s, i) => {
-            const isMe = s.team_id === myTeamId;
-            const isPromotion = division > 1 && i < 2;
-            const isRelegation = division < 3 && i >= sorted.length - 2;
-            return (
-              <tr key={s.id} className={`border-b border-white/4 transition-colors ${isMe ? "bg-[#e8c547]/5" : "hover:bg-white/3"}`}>
-                <td className="px-4 py-3">
-                  <span className={`font-mono text-sm font-bold ${isPromotion ? "text-green-400" : isRelegation ? "text-red-400" : "text-white/40"}`}>
-                    {i + 1}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    {isMe && <span className="w-1.5 h-1.5 rounded-full bg-[#e8c547]" />}
-                    <span className={`font-medium cursor-pointer hover:underline ${isMe ? "text-[#e8c547]" : "text-white"}`} onClick={() => navigate(`/teams/${s.team_id}`)}>{s.team?.name || "Ukendt"}</span>
-                    {s.team?.is_ai && <span className="text-[9px] uppercase text-white/20 bg-white/5 px-1.5 py-0.5 rounded">AI</span>}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right font-mono font-bold" style={{ color }}>{s.total_points?.toLocaleString("da-DK") || 0}</td>
-                <td className="px-4 py-3 text-right text-white/50 hidden sm:table-cell">{s.stage_wins || 0}</td>
-                <td className="px-4 py-3 text-right text-white/50 hidden sm:table-cell">{s.gc_wins || 0}</td>
-                <td className="px-4 py-3 text-right text-white/30 hidden md:table-cell">{s.races_completed || 0}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <svg width={w} height={h}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+    </svg>
+  );
+}
+
+function FormBadge({ form }) {
+  // form = array of recent results e.g. [1,5,2,null] — rank in last races
+  if (!form || !form.length) return null;
+  return (
+    <div className="flex gap-0.5">
+      {form.slice(-5).map((rank, i) => {
+        const color = rank === 1 ? "bg-[#e8c547]" : rank <= 3 ? "bg-green-400" : rank <= 10 ? "bg-blue-400/60" : "bg-white/15";
+        return <span key={i} className={`w-2 h-2 rounded-full ${color}`} title={rank ? `#${rank}` : "—"} />;
+      })}
     </div>
   );
 }
 
 export default function StandingsPage() {
+  const navigate = useNavigate();
   const [standings, setStandings] = useState([]);
-  const [seasons, setSeasons] = useState([]);
-  const [selectedSeason, setSelectedSeason] = useState(null);
-  const [myTeamId, setMyTeamId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [seasonInfo, setSeasonInfo] = useState(null);
+  const [divTab, setDivTab] = useState(1);
+  const [myTeamId, setMyTeamId] = useState(null);
+  const [season, setSeason] = useState(null);
+  const [racePoints, setRacePoints] = useState({});
+  const [races, setRaces] = useState([]);
 
-  useEffect(() => { loadMyTeam(); loadSeasons(); }, []);
-  useEffect(() => { if (selectedSeason) loadStandings(selectedSeason); }, [selectedSeason]);
+  useEffect(() => { loadAll(); }, []);
 
-  async function loadMyTeam() {
+  async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: t } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
-    if (t) setMyTeamId(t.id);
-  }
+    const { data: myTeam } = await supabase.from("teams").select("id, division").eq("user_id", user.id).single();
+    setMyTeamId(myTeam?.id);
+    if (myTeam?.division) setDivTab(myTeam.division);
 
-  async function loadSeasons() {
-    const { data } = await supabase.from("seasons").select("*").order("number", { ascending: false });
-    setSeasons(data || []);
-    if (data?.length) { setSelectedSeason(data[0].id); setSeasonInfo(data[0]); }
-  }
+    const { data: activeSeason } = await supabase.from("seasons").select("*").eq("status", "active").single();
+    setSeason(activeSeason);
 
-  async function loadStandings(seasonId) {
-    setLoading(true);
-    const { data } = await supabase
-      .from("season_standings")
-      .select("*, team:team_id(id, name, is_ai)")
-      .eq("season_id", seasonId)
-      .order("total_points", { ascending: false });
-    setStandings(data || []);
+    const [standingsRes, racesRes] = await Promise.all([
+      supabase.from("season_standings")
+        .select("*, team:team_id(id, name, division, is_ai)")
+        .order("total_points", { ascending: false }),
+      supabase.from("races")
+        .select("id, name, start_date")
+        .eq("season_id", activeSeason?.id || "")
+        .order("start_date"),
+    ]);
+
+    const validStandings = (standingsRes.data || []).filter(s => !s.team?.is_ai);
+    setStandings(validStandings);
+    setRaces(racesRes.data || []);
+
+    // Build race-by-race point progression
+    if (racesRes.data?.length && validStandings.length) {
+      const { data: results } = await supabase
+        .from("race_results")
+        .select("rider:rider_id(team_id), prize_money, race_id")
+        .in("race_id", racesRes.data.map(r => r.id));
+
+      const prog = {};
+      validStandings.forEach(s => { prog[s.team_id] = []; });
+      let cumul = {};
+      validStandings.forEach(s => { cumul[s.team_id] = 0; });
+
+      racesRes.data.forEach(race => {
+        const rr = (results || []).filter(r => r.race_id === race.id);
+        const pts = {};
+        rr.forEach(r => {
+          if (r.rider?.team_id) pts[r.rider.team_id] = (pts[r.rider.team_id] || 0) + (r.prize_money || 0);
+        });
+        validStandings.forEach(s => {
+          cumul[s.team_id] = (cumul[s.team_id] || 0) + (pts[s.team_id] || 0);
+          if (prog[s.team_id]) prog[s.team_id].push(cumul[s.team_id]);
+        });
+      });
+      setRacePoints(prog);
+    }
     setLoading(false);
   }
 
-  const totalPoints = standings.reduce((s, r) => s + (r.total_points || 0), 0);
-  const myStanding = standings.find(s => s.team_id === myTeamId);
+  const divStandings = standings
+    .filter(s => s.team?.division === divTab)
+    .sort((a, b) => (b.total_points || 0) - (a.total_points || 0));
+
+  const maxPts = divStandings[0]?.total_points || 1;
+  const color = DIV_COLORS[divTab] || "#e8c547";
+  const divCounts = [1, 2, 3].map(d => ({
+    div: d,
+    count: standings.filter(s => s.team?.division === d).length,
+  }));
+
+  if (loading) return (
+    <div className="flex justify-center py-16">
+      <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -103,45 +119,110 @@ export default function StandingsPage() {
         <div>
           <h1 className="text-xl font-bold text-white">Rangliste</h1>
           <p className="text-white/30 text-sm">
-            {seasonInfo ? `Sæson ${seasonInfo.number} — ${seasonInfo.status === "active" ? "Aktiv" : seasonInfo.status === "completed" ? "Afsluttet" : "Kommende"}` : ""}
+            {season ? `Sæson ${season.number}` : "Ingen aktiv sæson"}
           </p>
         </div>
-        {seasons.length > 0 && (
-          <select value={selectedSeason || ""} onChange={e => { setSelectedSeason(e.target.value); setSeasonInfo(seasons.find(s => s.id === e.target.value)); }}
-            className="bg-[#0f0f18] border border-white/8 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#e8c547]/50">
-            {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number}</option>)}
-          </select>
-        )}
       </div>
 
-      {/* My position highlight */}
-      {myStanding && (
-        <div className="bg-[#e8c547]/5 border border-[#e8c547]/15 rounded-xl p-4 mb-5 flex items-center justify-between">
-          <div>
-            <p className="text-white/40 text-xs uppercase tracking-wider mb-1">Din placering</p>
-            <p className="text-white font-bold">Division {myStanding.division} — #{standings.filter(s => s.division === myStanding.division).sort((a,b) => b.total_points - a.total_points).findIndex(s => s.team_id === myTeamId) + 1}</p>
-          </div>
-          <div className="flex gap-4 text-center">
-            <div><p className="text-white/30 text-xs">Point</p><p className="text-[#e8c547] font-mono font-bold">{myStanding.total_points?.toLocaleString("da-DK") || 0}</p></div>
-            <div><p className="text-white/30 text-xs">Etapesejre</p><p className="text-white font-mono font-bold">{myStanding.stage_wins || 0}</p></div>
-            <div><p className="text-white/30 text-xs">GC-sejre</p><p className="text-white font-mono font-bold">{myStanding.gc_wins || 0}</p></div>
-          </div>
-        </div>
-      )}
+      {/* Division tabs */}
+      <div className="flex gap-2 mb-5">
+        {divCounts.map(({ div, count }) => (
+          <button key={div} onClick={() => setDivTab(div)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border
+              ${divTab === div
+                ? "border-opacity-30 text-white"
+                : "bg-[#0f0f18] text-white/40 border-white/5 hover:text-white"}`}
+            style={divTab === div ? { backgroundColor: `${DIV_COLORS[div]}15`, borderColor: `${DIV_COLORS[div]}40`, color: DIV_COLORS[div] } : {}}>
+            Division {div}
+            <span className="ml-2 text-[10px] opacity-60">({count})</span>
+          </button>
+        ))}
+      </div>
 
-      {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : standings.length === 0 ? (
+      {divStandings.length === 0 ? (
         <div className="text-center py-16 text-white/20">
-          <p className="text-4xl mb-3">◈</p>
-          <p>Ingen rangliste data endnu</p>
-          <p className="text-sm mt-2">Importer løbsresultater for at se standings</p>
+          <p className="text-4xl mb-3">◉</p>
+          <p>Ingen data for Division {divTab} endnu</p>
         </div>
       ) : (
-        <div>
-          {[1, 2, 3].map(div => <DivisionTable key={div} division={div} standings={standings} myTeamId={myTeamId} />)}
+        <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="px-4 py-3 text-left text-white/25 font-medium text-xs w-8">#</th>
+                  <th className="px-4 py-3 text-left text-white/25 font-medium text-xs">Hold</th>
+                  <th className="px-4 py-3 text-right text-white/25 font-medium text-xs hidden sm:table-cell">Etapesejre</th>
+                  <th className="px-4 py-3 text-right text-white/25 font-medium text-xs hidden md:table-cell">Podier</th>
+                  <th className="px-4 py-3 text-right text-white/25 font-medium text-xs">Point</th>
+                  <th className="px-4 py-3 text-right text-white/25 font-medium text-xs hidden lg:table-cell w-20">Udvikling</th>
+                </tr>
+              </thead>
+              <tbody>
+                {divStandings.map((s, i) => {
+                  const isMe = s.team_id === myTeamId;
+                  const prog = racePoints[s.team_id] || [];
+                  const ptsWidth = Math.round(((s.total_points || 0) / maxPts) * 100);
+                  const isPromotion = i < 2 && divTab < 3;
+                  const isRelegation = i >= divStandings.length - 2 && divTab > 1;
+                  return (
+                    <tr key={s.id}
+                      onClick={() => navigate(`/teams/${s.team_id}`)}
+                      className={`border-b border-white/4 last:border-0 cursor-pointer hover:bg-white/3 transition-colors
+                        ${isMe ? "bg-[#e8c547]/4" : ""}
+                        ${isPromotion && !isMe ? "bg-green-500/3" : ""}
+                        ${isRelegation && !isMe ? "bg-red-500/3" : ""}`}>
+                      <td className="px-4 py-3.5">
+                        <span className={`font-mono font-bold text-sm
+                          ${i === 0 ? "text-[#e8c547]" : i === 1 ? "text-white/60" : i === 2 ? "text-white/40" : "text-white/25"}`}>
+                          {i + 1}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`font-medium ${isMe ? "text-[#e8c547]" : "text-white"}`}>{s.team?.name}</span>
+                          {isMe && <span className="text-[9px] uppercase bg-[#e8c547]/10 text-[#e8c547] border border-[#e8c547]/20 px-1.5 py-0.5 rounded-full">Dig</span>}
+                          {isPromotion && <span className="text-[9px] text-green-400 hidden sm:inline">↑ Op</span>}
+                          {isRelegation && <span className="text-[9px] text-red-400 hidden sm:inline">↓ Ned</span>}
+                        </div>
+                        {/* Mini progress bar */}
+                        <div className="mt-1.5 bg-white/5 rounded-full h-1 w-full max-w-32">
+                          <div className="h-1 rounded-full" style={{ width: `${ptsWidth}%`, backgroundColor: isMe ? "#e8c547" : `${color}60` }} />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-right text-white/50 hidden sm:table-cell font-mono">{s.stage_wins || 0}</td>
+                      <td className="px-4 py-3.5 text-right text-white/50 hidden md:table-cell font-mono">{s.podiums || 0}</td>
+                      <td className="px-4 py-3.5 text-right">
+                        <span className="font-mono font-bold" style={{ color: isMe ? "#e8c547" : color }}>
+                          {(s.total_points || 0).toLocaleString("da-DK")}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-right hidden lg:table-cell">
+                        <MiniSparkline points={prog} color={isMe ? "#e8c547" : color} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Legend */}
+          <div className="px-4 py-3 border-t border-white/5 flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs text-green-400/70">
+              <span className="w-2 h-2 rounded-sm bg-green-500/20 border border-green-500/20" />
+              Oprykningszone (top 2)
+            </div>
+            {divTab > 1 && (
+              <div className="flex items-center gap-1.5 text-xs text-red-400/70">
+                <span className="w-2 h-2 rounded-sm bg-red-500/20 border border-red-500/20" />
+                Nedrykningszone (bund 2)
+              </div>
+            )}
+            <div className="ml-auto text-xs text-white/20">
+              {races.length} løb spillet
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import RiderFilters from "../components/RiderFilters";
+import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
@@ -251,6 +253,12 @@ export default function TransfersPage() {
   const myOffers = offers.filter(o => o.buyer?.id === myTeamId);
   const receivedOffers = offers.filter(o => o.listing?.seller_team_id === myTeamId);
 
+  // Rider filters for market tab
+  const marketRiders = listings.map(l => l.rider).filter(Boolean);
+  const riderFilters = useClientRiderFilters(marketRiders);
+  const filteredRiderIds = new Set(riderFilters.filtered.map(r => r.id));
+  const filteredListings = listings.filter(l => !l.rider || filteredRiderIds.has(l.rider.id));
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-5">
@@ -279,18 +287,21 @@ export default function TransfersPage() {
           <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : tab === "market" ? (
-        listings.length === 0 ? (
-          <div className="text-center py-16 text-white/20">
-            <p className="text-4xl mb-3">↔</p>
-            <p>Ingen ryttere på transferlisten</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {listings.map(l => (
-              <TransferCard key={l.id} listing={l} myTeamId={myTeamId} onAction={loadAll} />
-            ))}
-          </div>
-        )
+        <div>
+          <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange} onReset={riderFilters.onReset} showTeamFilter={false} />
+          {filteredListings.length === 0 ? (
+            <div className="text-center py-16 text-white/20">
+              <p className="text-4xl mb-3">↔</p>
+              <p>{listings.length === 0 ? "Ingen ryttere på transferlisten" : "Ingen ryttere matcher filteret"}</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {filteredListings.map(l => (
+                <TransferCard key={l.id} listing={l} myTeamId={myTeamId} onAction={loadAll} />
+              ))}
+            </div>
+          )}
+        </div>
       ) : tab === "received" ? (
         receivedOffers.length === 0 ? (
           <div className="text-center py-16 text-white/20"><p>Ingen modtagne tilbud</p></div>

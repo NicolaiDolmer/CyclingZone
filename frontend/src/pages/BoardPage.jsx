@@ -38,6 +38,66 @@ function SatisfactionMeter({ value }) {
         {["0", "25", "50", "75", "100"].map(v => (
           <span key={v} className="text-white/20 text-[10px]">{v}</span>
         ))}
+      {/* Goal progress summary */}
+      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
+        <h2 className="text-white font-semibold text-sm mb-4">Sæsonmål status</h2>
+        {goals.length === 0 ? (
+          <p className="text-white/20 text-sm">Ingen mål sat endnu</p>
+        ) : (
+          <div>
+            {/* Progress bar */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 bg-white/5 rounded-full h-2">
+                <div className="h-2 rounded-full bg-[#e8c547] transition-all"
+                  style={{ width: `${Math.round((goals.filter(g => isGoalAchieved(g)).length / goals.length) * 100)}%` }} />
+              </div>
+              <span className="text-white/50 text-xs font-mono">
+                {goals.filter(g => isGoalAchieved(g)).length}/{goals.length} mål opfyldt
+              </span>
+            </div>
+
+            {/* Goal breakdown */}
+            <div className="grid sm:grid-cols-2 gap-2">
+              {goals.map((g, i) => {
+                const achieved = isGoalAchieved(g);
+                return (
+                  <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border
+                    ${achieved ? "bg-green-500/5 border-green-500/15" : "bg-white/3 border-white/8"}`}>
+                    <span className={`text-lg flex-shrink-0 ${achieved ? "text-green-400" : "text-white/20"}`}>
+                      {achieved ? "✓" : "○"}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${achieved ? "text-green-400" : "text-white/60"}`}>
+                        {g.label}
+                      </p>
+                      <p className="text-white/25 text-xs">
+                        {achieved ? `+${g.satisfaction_bonus} tilfredshed` : g.satisfaction_penalty > 0 ? `-${g.satisfaction_penalty} ved manglende opfyldelse` : ""}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Satisfaction info */}
+      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
+        <h2 className="text-white font-semibold text-sm mb-4">Hvad betyder tilfredshed?</h2>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {[
+            { range: "70–100%", label: "Høj tilfredshed", effect: "Sponsor multiplier > 1.0 — ekstra indtægt", color: "text-green-400" },
+            { range: "40–69%", label: "Moderat tilfredshed", effect: "Sponsor multiplier = 1.0 — normal indtægt", color: "text-[#e8c547]" },
+            { range: "0–39%", label: "Lav tilfredshed", effect: "Sponsor multiplier < 1.0 — reduceret indtægt", color: "text-red-400" },
+          ].map(item => (
+            <div key={item.range} className="bg-white/3 rounded-lg p-3 border border-white/5">
+              <p className={`font-mono font-bold text-sm ${item.color}`}>{item.range}</p>
+              <p className="text-white/60 text-xs font-medium mt-1">{item.label}</p>
+              <p className="text-white/30 text-xs mt-1">{item.effect}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -66,6 +126,66 @@ function GoalCard({ goal, achieved }) {
               -{goal.satisfaction_penalty} hvis ikke opfyldt
             </span>
           )}
+        </div>
+      {/* Goal progress summary */}
+      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
+        <h2 className="text-white font-semibold text-sm mb-4">Sæsonmål status</h2>
+        {goals.length === 0 ? (
+          <p className="text-white/20 text-sm">Ingen mål sat endnu</p>
+        ) : (
+          <div>
+            {/* Progress bar */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 bg-white/5 rounded-full h-2">
+                <div className="h-2 rounded-full bg-[#e8c547] transition-all"
+                  style={{ width: `${Math.round((goals.filter(g => isGoalAchieved(g)).length / goals.length) * 100)}%` }} />
+              </div>
+              <span className="text-white/50 text-xs font-mono">
+                {goals.filter(g => isGoalAchieved(g)).length}/{goals.length} mål opfyldt
+              </span>
+            </div>
+
+            {/* Goal breakdown */}
+            <div className="grid sm:grid-cols-2 gap-2">
+              {goals.map((g, i) => {
+                const achieved = isGoalAchieved(g);
+                return (
+                  <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border
+                    ${achieved ? "bg-green-500/5 border-green-500/15" : "bg-white/3 border-white/8"}`}>
+                    <span className={`text-lg flex-shrink-0 ${achieved ? "text-green-400" : "text-white/20"}`}>
+                      {achieved ? "✓" : "○"}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${achieved ? "text-green-400" : "text-white/60"}`}>
+                        {g.label}
+                      </p>
+                      <p className="text-white/25 text-xs">
+                        {achieved ? `+${g.satisfaction_bonus} tilfredshed` : g.satisfaction_penalty > 0 ? `-${g.satisfaction_penalty} ved manglende opfyldelse` : ""}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Satisfaction info */}
+      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
+        <h2 className="text-white font-semibold text-sm mb-4">Hvad betyder tilfredshed?</h2>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {[
+            { range: "70–100%", label: "Høj tilfredshed", effect: "Sponsor multiplier > 1.0 — ekstra indtægt", color: "text-green-400" },
+            { range: "40–69%", label: "Moderat tilfredshed", effect: "Sponsor multiplier = 1.0 — normal indtægt", color: "text-[#e8c547]" },
+            { range: "0–39%", label: "Lav tilfredshed", effect: "Sponsor multiplier < 1.0 — reduceret indtægt", color: "text-red-400" },
+          ].map(item => (
+            <div key={item.range} className="bg-white/3 rounded-lg p-3 border border-white/5">
+              <p className={`font-mono font-bold text-sm ${item.color}`}>{item.range}</p>
+              <p className="text-white/60 text-xs font-medium mt-1">{item.label}</p>
+              <p className="text-white/30 text-xs mt-1">{item.effect}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -291,6 +411,66 @@ export default function BoardPage() {
         <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4">
           <p className="text-white/30 text-xs uppercase tracking-widest">U25 ryttere</p>
           <p className="text-blue-400 font-bold text-2xl font-mono mt-1">{u25Count}</p>
+        </div>
+      {/* Goal progress summary */}
+      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
+        <h2 className="text-white font-semibold text-sm mb-4">Sæsonmål status</h2>
+        {goals.length === 0 ? (
+          <p className="text-white/20 text-sm">Ingen mål sat endnu</p>
+        ) : (
+          <div>
+            {/* Progress bar */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 bg-white/5 rounded-full h-2">
+                <div className="h-2 rounded-full bg-[#e8c547] transition-all"
+                  style={{ width: `${Math.round((goals.filter(g => isGoalAchieved(g)).length / goals.length) * 100)}%` }} />
+              </div>
+              <span className="text-white/50 text-xs font-mono">
+                {goals.filter(g => isGoalAchieved(g)).length}/{goals.length} mål opfyldt
+              </span>
+            </div>
+
+            {/* Goal breakdown */}
+            <div className="grid sm:grid-cols-2 gap-2">
+              {goals.map((g, i) => {
+                const achieved = isGoalAchieved(g);
+                return (
+                  <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border
+                    ${achieved ? "bg-green-500/5 border-green-500/15" : "bg-white/3 border-white/8"}`}>
+                    <span className={`text-lg flex-shrink-0 ${achieved ? "text-green-400" : "text-white/20"}`}>
+                      {achieved ? "✓" : "○"}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${achieved ? "text-green-400" : "text-white/60"}`}>
+                        {g.label}
+                      </p>
+                      <p className="text-white/25 text-xs">
+                        {achieved ? `+${g.satisfaction_bonus} tilfredshed` : g.satisfaction_penalty > 0 ? `-${g.satisfaction_penalty} ved manglende opfyldelse` : ""}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Satisfaction info */}
+      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
+        <h2 className="text-white font-semibold text-sm mb-4">Hvad betyder tilfredshed?</h2>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {[
+            { range: "70–100%", label: "Høj tilfredshed", effect: "Sponsor multiplier > 1.0 — ekstra indtægt", color: "text-green-400" },
+            { range: "40–69%", label: "Moderat tilfredshed", effect: "Sponsor multiplier = 1.0 — normal indtægt", color: "text-[#e8c547]" },
+            { range: "0–39%", label: "Lav tilfredshed", effect: "Sponsor multiplier < 1.0 — reduceret indtægt", color: "text-red-400" },
+          ].map(item => (
+            <div key={item.range} className="bg-white/3 rounded-lg p-3 border border-white/5">
+              <p className={`font-mono font-bold text-sm ${item.color}`}>{item.range}</p>
+              <p className="text-white/60 text-xs font-medium mt-1">{item.label}</p>
+              <p className="text-white/30 text-xs mt-1">{item.effect}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

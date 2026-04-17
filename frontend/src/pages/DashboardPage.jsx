@@ -1,295 +1,313 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
-function StatCard({ label, value, sub, accent, icon }) {
+const SQUAD_LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
+
+function StatCard({ label, value, sub, accent = "text-white", icon }) {
   return (
-    <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all">
-      <div className="flex items-start justify-between mb-3">
-        <span className="text-white/30 text-xs uppercase tracking-widest">{label}</span>
-        <span className="text-lg">{icon}</span>
+    <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4">
+      <div className="flex items-start justify-between mb-2">
+        <p className="text-white/30 text-xs uppercase tracking-wider">{label}</p>
+        <span className="text-base">{icon}</span>
       </div>
-      <div className={`text-2xl font-bold font-mono ${accent || "text-white"}`}>
-        {value ?? "—"}
-      </div>
-      {sub && <p className="text-white/30 text-xs mt-1">{sub}</p>}
+      <p className={`text-xl font-bold font-mono ${accent}`}>{value}</p>
+      {sub && <p className="text-white/30 text-xs mt-1 truncate">{sub}</p>}
     </div>
   );
 }
 
-function AuctionCountdown({ end, status }) {
-  const [text, setText] = useState("");
-  const [urgent, setUrgent] = useState(false);
-
-  useEffect(() => {
-    function update() {
-      const diff = new Date(end) - new Date();
-      if (diff <= 0) { setText("Afsluttet"); return; }
-      setUrgent(diff < 600000);
-      const h = Math.floor(diff / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      if (h > 0) setText(`${h}t ${m}m`);
-      else if (m > 0) setText(`${m}m ${s}s`);
-      else setText(`${s}s`);
-    }
-    update();
-    const iv = setInterval(update, 1000);
-    return () => clearInterval(iv);
-  }, [end]);
-
+function MiniBar({ value, max, color = "#e8c547" }) {
+  const pct = Math.min(100, Math.round((value / Math.max(max, 1)) * 100));
   return (
-    <span className={`font-mono text-xs font-bold
-      ${urgent ? "text-red-400" : "text-white/40"}
-      ${status === "extended" ? "text-orange-400" : ""}`}>
-      {text} {status === "extended" ? "⚡" : ""}
-    </span>
+    <div className="flex items-center gap-2">
+      <div className="flex-1 bg-white/5 rounded-full h-1.5">
+        <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+      </div>
+      <span className="text-xs font-mono text-white/40 w-8 text-right">{value}</span>
+    </div>
   );
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [team, setTeam] = useState(null);
-  const [board, setBoard] = useState(null);
-  const [myAuctions, setMyAuctions] = useState([]);
+  const [riders, setRiders] = useState([]);
   const [allAuctions, setAllAuctions] = useState([]);
   const [nextRaces, setNextRaces] = useState([]);
-  const [standing, setStanding] = useState(null);
-  const [recentResults, setRecentResults] = useState([]);
-  const [notifications, setNotifications] = useState([]);
+  const [standings, setStandings] = useState([]);
+  const [board, setBoard] = useState(null);
+  const [activeOffers, setActiveOffers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: t } = await supabase.from("teams").select("*").eq("user_id", user.id).single();
-    if (!t) { setLoading(false); return; }
-    setTeam(t);
+    const { data: teamData } = await supabase
+      .from("teams").select("*").eq("user_id", user.id).single();
+    if (!teamData) { setLoading(false); return; }
+    setTeam(teamData);
 
-    const [boardRes, auctionsRes, racesRes, standingRes, notifRes] = await Promise.all([
-      supabase.from("board_profiles").select("*").eq("team_id", t.id).single(),
+    const [ridersRes, auctionsRes, racesRes, standingsRes, boardRes, offersRes] = await Promise.all([
+      supabase.from("riders").select("id, uci_points, salary, is_u25, pending_team_id")
+        .eq("team_id", teamData.id),
       supabase.from("auctions")
-        .select(`id, current_price, calculated_end, status, seller_team_id, current_bidder_id,
-          rider:rider_id(firstname, lastname, uci_points),
-          seller:seller_team_id(name),
-          current_bidder:current_bidder_id(name)`)
-        .in("status", ["active", "extended"])
-        .order("calculated_end", { ascending: true })
-        .limit(20),
-      supabase.from("races")
-        .select("*")
-        .not("status", "eq", "completed")
-        .order("start_date", { ascending: true, nullsFirst: false })
-        .limit(3),
+        .select("id, current_price, calculated_end, status, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname)")
+        .in("status", ["active", "extended"]),
+      supabase.from("races").select("*").not("status", "eq", "completed")
+        .order("start_date", { ascending: true, nullsFirst: false }).limit(3),
       supabase.from("season_standings")
-        .select("*")
-        .eq("team_id", t.id)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .single(),
-      supabase.from("notifications")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("is_read", false)
-        .order("created_at", { ascending: false })
-        .limit(5),
+        .select("*, team:team_id(name, is_ai)")
+        .order("total_points", { ascending: false }).limit(20),
+      supabase.from("board_profiles").select("*").eq("team_id", teamData.id).single(),
+      supabase.from("transfer_offers")
+        .select("id, offer_amount, status, listing:listing_id(rider:rider_id(firstname, lastname), seller_team_id), buyer:buyer_team_id(name)")
+        .eq("status", "pending")
+        .or(`buyer_team_id.eq.${teamData.id},listing_id.in.(select id from transfer_listings where seller_team_id = '${teamData.id}')`),
     ]);
 
-    setBoard(boardRes.data);
+    setRiders(ridersRes.data || []);
     setAllAuctions(auctionsRes.data || []);
-    setMyAuctions((auctionsRes.data || []).filter(a =>
-      a.seller_team_id === t.id || a.current_bidder_id === t.id
-    ));
     setNextRaces(racesRes.data || []);
-    setStanding(standingRes.data);
-    setNotifications(notifRes.data || []);
+    setStandings(standingsRes.data || []);
+    setBoard(boardRes.data);
+    setActiveOffers(offersRes.data || []);
     setLoading(false);
   }
 
-  async function markNotifRead(id) {
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  }
-
   if (loading) return (
-    <div className="flex items-center justify-center h-48">
+    <div className="flex justify-center py-16">
       <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
-  const satisfactionColor = !board ? "text-white/40" :
-    board.satisfaction >= 70 ? "text-green-400" :
-    board.satisfaction >= 40 ? "text-[#e8c547]" : "text-red-400";
-
   const winningAuctions = allAuctions.filter(a => a.current_bidder_id === team?.id);
-  const myListedAuctions = allAuctions.filter(a => a.seller_team_id === team?.id);
+  const myAuctions = allAuctions.filter(a => a.seller_team_id === team?.id);
+  const satisfactionColor = board?.satisfaction >= 70 ? "text-green-400" : board?.satisfaction >= 40 ? "text-[#e8c547]" : "text-red-400";
+
+  // Squad warnings
+  const limits = SQUAD_LIMITS[team?.division] || SQUAD_LIMITS[3];
+  const riderCount = riders.length;
+  const squadWarning = riderCount > limits.max ? { type: "over", msg: `Hold er for stort — max ${limits.max} i Division ${team?.division}. Sælg ${riderCount - limits.max} ryttere.`, color: "red" }
+    : riderCount < limits.min ? { type: "under", msg: `Hold er for lille — min ${limits.min} i Division ${team?.division}. Køb ${limits.min - riderCount} ryttere mere.`, color: "orange" }
+    : null;
+
+  // My division standings
+  const myStanding = standings.find(s => s.team_id === team?.id);
+  const divStandings = standings.filter(s => !s.team?.is_ai && s.division === team?.division)
+    .sort((a, b) => b.total_points - a.total_points).slice(0, 5);
+
+  const totalSalary = riders.reduce((s, r) => s + (r.salary || 0), 0);
+  const pendingIncoming = riders.filter(r => r.pending_team_id === team?.id).length;
 
   return (
     <div className="max-w-6xl mx-auto">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-white">{team?.name || "Mit Hold"}</h1>
-        <p className="text-white/40 text-sm mt-0.5">Manager Dashboard</p>
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-xl font-bold text-white">{team?.name}</h1>
+          <p className="text-white/30 text-sm">Division {team?.division} · {riderCount} ryttere</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[#e8c547] font-mono font-bold text-xl">{team?.balance?.toLocaleString("da-DK")} CZ$</p>
+          <p className="text-white/25 text-xs">Balance</p>
+        </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <StatCard label="Balance" value={team?.balance != null ? team.balance.toLocaleString("da-DK") : "—"} sub="point" accent="text-[#e8c547]" icon="◈" />
-        <StatCard label="Næste løb" value={nextRaces[0] ? new Date(nextRaces[0].start_date).toLocaleDateString("da-DK", { day: "numeric", month: "short" }) : "Ingen"} sub={nextRaces[0]?.name || "Ingen planlagt"} icon="🏁" />
-        <StatCard label="Aktive auktioner" value={allAuctions.length} sub={`${winningAuctions.length} vinder jeg`} icon="⚡" />
-        <StatCard label="Bestyrelsestilfredshed" value={board ? `${board.satisfaction}%` : "—"} sub={board?.focus?.replace(/_/g, " ") || ""} accent={satisfactionColor} icon="◉" />
-      </div>
-
-      {/* Notifications */}
-      {notifications.length > 0 && (
-        <div className="mb-5 flex flex-col gap-2">
-          {notifications.map(n => (
-            <div key={n.id} className="bg-[#e8c547]/5 border border-[#e8c547]/15 rounded-xl px-4 py-3
-              flex items-start justify-between gap-3">
-              <div>
-                <p className="text-white text-sm font-medium">{n.title}</p>
-                <p className="text-white/40 text-xs mt-0.5">{n.message}</p>
-              </div>
-              <button onClick={() => markNotifRead(n.id)}
-                className="text-white/20 hover:text-white text-lg flex-shrink-0">×</button>
-            </div>
-          ))}
+      {/* Squad warning */}
+      {squadWarning && (
+        <div className={`mb-4 px-4 py-3 rounded-xl text-sm border flex items-center gap-2
+          ${squadWarning.color === "red"
+            ? "bg-red-500/10 text-red-400 border-red-500/20"
+            : "bg-orange-500/10 text-orange-400 border-orange-500/20"}`}>
+          <span>⚠️</span>
+          <span>{squadWarning.msg}</span>
+          <Link to="/team" className="ml-auto text-xs underline opacity-70 hover:opacity-100">Mit Hold →</Link>
         </div>
       )}
 
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <StatCard label="Balance" value={`${team?.balance?.toLocaleString("da-DK")}`} sub="CZ$" accent="text-[#e8c547]" icon="💰" />
+        <StatCard label="Ryttere" value={riderCount} sub={`Løn: ${totalSalary.toLocaleString("da-DK")} CZ$/sæson`} icon="🚴" />
+        <StatCard label="Aktive auktioner" value={allAuctions.length} sub={`${winningAuctions.length} vinder jeg`} icon="⚡" accent={winningAuctions.length > 0 ? "text-green-400" : "text-white"} />
+        <StatCard label="Bestyrelsestilfredshed" value={board ? `${board.satisfaction}%` : "—"} sub={board?.focus?.replace(/_/g, " ") || "Ingen data"} accent={satisfactionColor} icon="◉" />
+      </div>
+
+      {/* Main grid */}
       <div className="grid lg:grid-cols-2 gap-4">
-        {/* My auctions — ones I'm winning or selling */}
+
+        {/* My auctions + winning */}
         <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-white text-sm">Mine Auktioner</h2>
+            <h2 className="font-semibold text-white text-sm">Aktive Auktioner</h2>
             <Link to="/auctions" className="text-xs text-[#e8c547] hover:underline">Se alle →</Link>
           </div>
-          {myAuctions.length === 0 ? (
-            <p className="text-white/20 text-sm text-center py-6">Ingen aktive auktioner du er involveret i</p>
+          {allAuctions.length === 0 ? (
+            <p className="text-white/20 text-sm text-center py-4">Ingen aktive auktioner</p>
           ) : (
-            myAuctions.slice(0, 5).map(a => (
-              <div key={a.id} className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0">
-                <div>
-                  <p className="text-white text-sm font-medium">
-                    {a.rider?.firstname} {a.rider?.lastname}
-                  </p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {a.seller_team_id === team?.id && (
-                      <span className="text-[9px] uppercase bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded">Sælger</span>
-                    )}
-                    {a.current_bidder_id === team?.id && (
-                      <span className="text-[9px] uppercase bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded">Vinder</span>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-[#e8c547] font-mono text-sm font-bold">
-                    {a.current_price?.toLocaleString("da-DK")} CZ$
-                  </p>
-                  <AuctionCountdown end={a.calculated_end} status={a.status} />
-                </div>
-              </div>
-            ))
+            <div className="flex flex-col gap-2">
+              {[...winningAuctions, ...myAuctions.filter(a => a.current_bidder_id !== team?.id)]
+                .slice(0, 5).map(a => {
+                  const isWinning = a.current_bidder_id === team?.id;
+                  const isSelling = a.seller_team_id === team?.id;
+                  const diff = new Date(a.calculated_end) - new Date();
+                  const h = Math.floor(diff / 3600000);
+                  const m = Math.floor((diff % 3600000) / 60000);
+                  const timeLeft = diff < 0 ? "Udløbet" : h > 0 ? `${h}t ${m}m` : `${m}m`;
+                  const urgent = diff > 0 && diff < 600000;
+                  return (
+                    <div key={a.id} onClick={() => navigate("/auctions")}
+                      className="flex items-center justify-between py-2 border-b border-white/4 last:border-0 cursor-pointer hover:bg-white/3 rounded px-1 -mx-1 transition-all">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm truncate">{a.rider?.firstname} {a.rider?.lastname}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {isWinning && <span className="text-[9px] bg-green-500/15 text-green-400 px-1.5 py-0.5 rounded-full">Vinder</span>}
+                          {isSelling && !isWinning && <span className="text-[9px] bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded-full">Sælger</span>}
+                        </div>
+                      </div>
+                      <div className="text-right ml-3">
+                        <p className="text-[#e8c547] font-mono text-sm font-bold">{a.current_price?.toLocaleString("da-DK")} CZ$</p>
+                        <p className={`text-xs font-mono ${urgent ? "text-red-400 animate-pulse" : "text-white/30"}`}>{timeLeft}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
           )}
         </div>
 
-        {/* Race calendar */}
+        {/* Pending transfers + offers */}
+        <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-white text-sm">Transfers & Tilbud</h2>
+            <Link to="/transfers" className="text-xs text-[#e8c547] hover:underline">Se alle →</Link>
+          </div>
+          {activeOffers.length === 0 && pendingIncoming === 0 ? (
+            <p className="text-white/20 text-sm text-center py-4">Ingen ventende transfers</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {pendingIncoming > 0 && (
+                <div className="flex items-center gap-3 py-2 border-b border-white/4">
+                  <span className="text-green-400 text-lg">↓</span>
+                  <p className="text-white text-sm">{pendingIncoming} indgående transfer{pendingIncoming > 1 ? "s" : ""}</p>
+                  <span className="ml-auto text-[9px] bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full">Afventer vindue</span>
+                </div>
+              )}
+              {activeOffers.slice(0, 4).map(o => {
+                const isReceived = o.listing?.seller_team_id === team?.id;
+                return (
+                  <div key={o.id} onClick={() => navigate("/transfers")}
+                    className="flex items-center justify-between py-2 border-b border-white/4 last:border-0 cursor-pointer hover:bg-white/3 rounded px-1 -mx-1">
+                    <div>
+                      <p className="text-white text-sm">{o.listing?.rider?.firstname} {o.listing?.rider?.lastname}</p>
+                      <p className="text-white/30 text-xs">{isReceived ? `Fra: ${o.buyer?.name}` : "Sendt tilbud"}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[#e8c547] font-mono text-sm">{o.offer_amount?.toLocaleString("da-DK")} CZ$</p>
+                      {isReceived && <span className="text-[9px] text-orange-400">Afventer svar</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Upcoming races */}
         <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-white text-sm">Kommende Løb</h2>
+            <Link to="/races" className="text-xs text-[#e8c547] hover:underline">Kalender →</Link>
           </div>
           {nextRaces.length === 0 ? (
-            <p className="text-white/20 text-sm text-center py-6">Ingen kommende løb planlagt</p>
+            <p className="text-white/20 text-sm text-center py-4">Ingen planlagte løb</p>
           ) : (
-            nextRaces.map((race, i) => (
-              <div key={race.id} className={`flex items-start gap-3 py-3 ${i < nextRaces.length - 1 ? "border-b border-white/5" : ""}`}>
-                <div className="w-10 h-10 rounded-lg bg-[#e8c547]/10 border border-[#e8c547]/20
-                  flex items-center justify-center text-xl flex-shrink-0">
-                  {i === 0 ? "🏁" : "📅"}
-                </div>
-                <div>
-                  <p className="text-white font-medium text-sm">{race.name}</p>
-                  <p className="text-white/40 text-xs mt-0.5">
-                    {new Date(race.start_date).toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" })}
-                  </p>
-                  <div className="flex gap-2 mt-1.5">
-                    <span className="text-[10px] uppercase tracking-wider bg-white/5 px-2 py-0.5 rounded text-white/40">
-                      {race.race_type === "stage_race" ? `${race.stages} etaper` : "Enkeltdags"}
-                    </span>
-                    {race.prize_pool > 0 && (
-                      <span className="text-[10px] uppercase tracking-wider bg-[#e8c547]/10 px-2 py-0.5 rounded text-[#e8c547]">
-                        {race.prize_pool.toLocaleString()} CZ$
-                      </span>
-                    )}
+            <div className="flex flex-col gap-2">
+              {nextRaces.map((race, i) => (
+                <div key={race.id}
+                  className={`flex items-center justify-between py-2.5 ${i < nextRaces.length - 1 ? "border-b border-white/4" : ""}`}>
+                  <div>
+                    <p className="text-white text-sm font-medium">{race.name}</p>
+                    <p className="text-white/30 text-xs mt-0.5">
+                      {race.race_type === "stage_race" ? `${race.stages} etaper` : "Enkeltdagsløb"}
+                    </p>
                   </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Season standing */}
-        <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-white text-sm">Sæsonresultater</h2>
-            <Link to="/standings" className="text-xs text-[#e8c547] hover:underline">Rangliste →</Link>
-          </div>
-          {!standing ? (
-            <p className="text-white/20 text-sm text-center py-6">Ingen sæsonresultater endnu</p>
-          ) : (
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: "Point", value: standing.total_points?.toLocaleString("da-DK"), color: "text-[#e8c547]" },
-                { label: "Etapesejre", value: standing.stage_wins, color: "text-white" },
-                { label: "GC-sejre", value: standing.gc_wins, color: "text-white" },
-              ].map(s => (
-                <div key={s.label} className="bg-white/3 rounded-lg p-3 text-center">
-                  <p className="text-white/30 text-xs uppercase tracking-wider mb-1">{s.label}</p>
-                  <p className={`font-mono font-bold text-lg ${s.color}`}>{s.value ?? 0}</p>
+                  <div className="text-right">
+                    {race.start_date
+                      ? <p className="text-white/50 text-sm">{new Date(race.start_date).toLocaleDateString("da-DK", { day: "numeric", month: "short" })}</p>
+                      : <p className="text-white/20 text-sm">Dato TBD</p>}
+                    <p className="text-[#e8c547] text-xs font-mono">{race.prize_pool?.toLocaleString("da-DK")} CZ$</p>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
 
+        {/* My division standings */}
+        <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-white text-sm">Division {team?.division} — Stilling</h2>
+            <Link to="/standings" className="text-xs text-[#e8c547] hover:underline">Fuld rangliste →</Link>
+          </div>
+          {divStandings.length === 0 ? (
+            <p className="text-white/20 text-sm text-center py-4">Ingen sæsondata endnu</p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {divStandings.map((s, i) => {
+                const isMe = s.team_id === team?.id;
+                const maxPts = divStandings[0]?.total_points || 1;
+                return (
+                  <div key={s.id} className={`flex items-center gap-3 py-1.5 ${isMe ? "bg-[#e8c547]/5 -mx-2 px-2 rounded-lg" : ""}`}>
+                    <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isMe ? "text-[#e8c547]" : "text-white/25"}`}>#{i+1}</span>
+                    <p className={`text-sm w-28 truncate flex-shrink-0 ${isMe ? "text-[#e8c547] font-medium" : "text-white/70"}`}>{s.team?.name}</p>
+                    <div className="flex-1">
+                      <MiniBar value={s.total_points || 0} max={maxPts} color={isMe ? "#e8c547" : "#ffffff40"} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Board status */}
-        {board && (
-          <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-white text-sm">Bestyrelsens Status</h2>
-              <Link to="/board" className="text-xs text-[#e8c547] hover:underline">Detaljer →</Link>
-            </div>
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex-1 bg-white/5 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full transition-all duration-500
-                    ${board.satisfaction >= 70 ? "bg-green-400" :
-                      board.satisfaction >= 40 ? "bg-[#e8c547]" : "bg-red-400"}`}
-                  style={{ width: `${board.satisfaction}%` }}
-                />
+        <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-white text-sm">Bestyrelsens Status</h2>
+            <Link to="/board" className="text-xs text-[#e8c547] hover:underline">Detaljer →</Link>
+          </div>
+          {!board ? (
+            <p className="text-white/20 text-sm text-center py-4">Ingen bestyrelsesdata</p>
+          ) : (
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div>
+                <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Tilfredshed</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-white/5 rounded-full h-2">
+                    <div className={`h-2 rounded-full transition-all
+                      ${board.satisfaction >= 70 ? "bg-green-400" : board.satisfaction >= 40 ? "bg-[#e8c547]" : "bg-red-400"}`}
+                      style={{ width: `${board.satisfaction}%` }} />
+                  </div>
+                  <span className={`font-mono font-bold text-sm ${satisfactionColor}`}>{board.satisfaction}%</span>
+                </div>
               </div>
-              <span className={`font-mono text-sm font-bold ${satisfactionColor}`}>
-                {board.satisfaction}%
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white/3 rounded-lg p-3">
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Fokus</p>
-                <p className="text-white text-sm font-medium capitalize">{board.focus?.replace(/_/g, " ") || "—"}</p>
+              <div>
+                <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Fokus</p>
+                <p className="text-white text-sm capitalize">{board.focus?.replace(/_/g, " ") || "—"}</p>
               </div>
-              <div className="bg-white/3 rounded-lg p-3">
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Plan</p>
-                <p className="text-white text-sm font-medium">{board.plan_type || "—"}</p>
-              </div>
-              <div className="bg-white/3 rounded-lg p-3">
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Sponsor mod.</p>
-                <p className={`text-sm font-medium font-mono ${board.budget_modifier >= 1 ? "text-green-400" : "text-red-400"}`}>
-                  ×{board.budget_modifier?.toFixed(2) || "1.00"}
+              <div>
+                <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Budget multiplikator</p>
+                <p className={`font-mono font-bold text-sm ${board.budget_multiplier >= 1 ? "text-green-400" : "text-red-400"}`}>
+                  ×{board.budget_multiplier?.toFixed(2) || "1.00"}
                 </p>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
       </div>
     </div>
   );
