@@ -36,6 +36,72 @@ function StatRow({ label, icon, value }) {
   );
 }
 
+
+function DirectOfferButton({ rider, myTeam }) {
+  const [show, setShow] = useState(false);
+  const [amount, setAmount] = useState(rider.uci_points || 0);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+
+  async function sendOffer() {
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/transfers/offer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ rider_id: rider.id, offer_amount: amount, message }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setResult({ ok: true, msg: "✅ Tilbud sendt!" });
+      setShow(false);
+    } else {
+      setResult({ ok: false, msg: `❌ ${data.error}` });
+    }
+    setLoading(false);
+    setTimeout(() => setResult(null), 4000);
+  }
+
+  return (
+    <div>
+      {result && (
+        <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
+          ${result.ok ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+          {result.msg}
+        </div>
+      )}
+      <button onClick={() => setShow(!show)}
+        className={`w-full py-2.5 rounded-lg text-sm font-bold transition-all border
+          ${show ? "bg-blue-500/15 text-blue-400 border-blue-500/25" : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"}`}>
+        ↔ Send transfertilbud
+      </button>
+      {show && (
+        <div className="mt-2 bg-[#0f0f18] border border-white/10 rounded-xl p-4 flex flex-col gap-2">
+          <p className="text-white/30 text-xs uppercase tracking-wider">Tilbud til {rider.team?.name || "holdets manager"}</p>
+          <div className="flex gap-2">
+            <input type="number" value={amount} onChange={e => setAmount(parseInt(e.target.value) || 0)}
+              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-[#e8c547]/50" />
+            <span className="flex items-center text-white/30 text-sm">CZ$</span>
+          </div>
+          {myTeam?.balance < amount && (
+            <p className="text-red-400 text-xs">⚠️ Overstiger din balance ({myTeam?.balance?.toLocaleString("da-DK")} CZ$)</p>
+          )}
+          <input type="text" value={message} onChange={e => setMessage(e.target.value)}
+            placeholder="Besked til sælger (valgfri)..."
+            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+          <button onClick={sendOffer}
+            disabled={loading || amount <= 0 || myTeam?.balance < amount}
+            className="w-full py-2.5 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50">
+            {loading ? "Sender..." : "Send tilbud"}
+          </button>
+          <p className="text-white/20 text-[10px] text-center">Rytteren skifter hold ved næste transfervindue</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function RiderStatsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -167,12 +233,16 @@ export default function RiderStatsPage() {
           </div>
         </div>
 
-        {/* Auction button */}
-        {canAuction && (
-          <div className="mt-5 pt-5 border-t border-white/5">
+        {/* Auction / Offer buttons */}
+        <div className="mt-5 pt-5 border-t border-white/5 flex flex-col gap-3">
+          {canAuction && (
             <AuctionButton rider={rider} isMyRider={isMyRider} onStart={startAuction} />
-          </div>
-        )}
+          )}
+          {/* Direct transfer offer — only for other managers' riders */}
+          {rider.team_id && rider.team_id !== myTeam?.id && (
+            <DirectOfferButton rider={rider} myTeam={myTeam} />
+          )}
+        </div>
       </div>
 
       {/* Tabs */}

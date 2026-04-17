@@ -561,110 +561,142 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
 // TRANSFERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/transfers — list transfer listings
+// ── Transfer System V2 ────────────────────────────────────────────────────────
+// Supports: direct offers on any rider (no listing required), unlimited
+// negotiation rounds, private between buyer/seller only.
+
+// GET /api/transfers — market listings + my offers
 router.get("/transfers", requireAuth, async (req, res) => {
   const { status = "open" } = req.query;
-
   const { data, error } = await supabase
     .from("transfer_listings")
-    .select(`
-      id, asking_price, status, created_at,
+    .select(`id, asking_price, status, created_at,
       rider:rider_id(id, firstname, lastname, uci_points, is_u25,
         stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
-        stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,
-        stat_res, stat_ftr),
-      seller:seller_team_id(id, name)
-    `)
+        stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod, stat_res, stat_ftr),
+      seller:seller_team_id(id, name)`)
     .eq("status", status)
     .order("created_at", { ascending: false });
-
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-// POST /api/transfers — list a rider for transfer
+// POST /api/transfers — list own rider for sale
 router.post("/transfers", requireAuth, async (req, res) => {
   const { rider_id, asking_price } = req.body;
-
   const { data: rider } = await supabase
-    .from("riders")
-    .select("id, team_id, firstname, lastname")
-    .eq("id", rider_id)
-    .single();
-
-  if (!rider || rider.team_id !== req.team.id) {
-    return res.status(403).json({ error: "You don't own this rider" });
-  }
-
+    .from("riders").select("id, team_id, firstname, lastname").eq("id", rider_id).single();
+  if (!rider || rider.team_id !== req.team.id)
+    return res.status(403).json({ error: "Du ejer ikke denne rytter" });
   const { data, error } = await supabase
     .from("transfer_listings")
     .insert({ rider_id, seller_team_id: req.team.id, asking_price })
-    .select()
-    .single();
-
+    .select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.status(201).json(data);
 });
 
-// POST /api/transfers/:id/offer — make an offer
-router.post("/transfers/:id/offer", requireAuth, async (req, res) => {
-  const { offer_amount, message } = req.body;
-
+// DELETE /api/transfers/:id — remove own listing
+router.delete("/transfers/:id", requireAuth, async (req, res) => {
   const { data: listing } = await supabase
-    .from("transfer_listings")
-    .select("*, rider:rider_id(firstname, lastname)")
-    .eq("id", req.params.id)
-    .single();
+    .from("transfer_listings").select("seller_team_id").eq("id", req.params.id).single();
+  if (!listing || listing.seller_team_id !== req.team.id)
+    return res.status(403).json({ error: "Ikke din liste" });
+  await supabase.from("transfer_listings").update({ status: "closed" }).eq("id", req.params.id);
+  res.json({ success: true });
+});
 
-  if (!listing || listing.status !== "open") {
-    return res.status(404).json({ error: "Listing not found or closed" });
-  }
-  if (listing.seller_team_id === req.team.id) {
-    return res.status(400).json({ error: "Cannot offer on your own listing" });
-  }
+// POST /api/transfers/offer — direct offer on any rider (no listing needed)
+router.post("/transfers/offer", requireAuth, async (req, res) => {
+  const { rider_id, offer_amount, message } = req.body;
+  if (!rider_id || !offer_amount) return res.status(400).json({ error: "rider_id og offer_amount kræves" });
+
+  const { data: rider } = await supabase
+    .from("riders").select("id, team_id, firstname, lastname").eq("id", rider_id).single();
+  if (!rider || !rider.team_id) return res.status(404).json({ error: "Rytter ikke fundet eller har intet hold" });
+  if (rider.team_id === req.team.id) return res.status(400).json({ error: "Du kan ikke byde på din egen rytter" });
+
+  // Check buyer balance
+  if (offer_amount > req.team.balance)
+    return res.status(400).json({ error: "Du har ikke råd til dette tilbud" });
+
+  // Check squad size limits for buyer
+  const buyerDiv = req.team.division || 3;
+  const maxRiders = SQUAD_LIMITS[buyerDiv]?.max || 10;
+  const { count } = await supabase.from("riders")
+    .select("id", { count: "exact", head: true }).eq("team_id", req.team.id);
+  if ((count || 0) + 1 > maxRiders)
+    return res.status(400).json({ error: `Dit hold kan max have ${maxRiders} ryttere i Division ${buyerDiv}` });
 
   const { data, error } = await supabase
     .from("transfer_offers")
     .insert({
-      listing_id: listing.id,
+      rider_id,
+      seller_team_id: rider.team_id,
       buyer_team_id: req.team.id,
       offer_amount,
-      message,
+      message: message || null,
+      status: "pending",
+      round: 1,
     })
-    .select()
-    .single();
-
+    .select().single();
   if (error) return res.status(500).json({ error: error.message });
 
-  await notifyTeamOwner(
-    listing.seller_team_id,
-    "transfer_offer_received",
-    "Nyt transfertilbud",
-    `${req.team.name} tilbyder ${offer_amount} pts for ${listing.rider.firstname} ${listing.rider.lastname}`,
-    data.id
-  );
+  await notifyTeamOwner(rider.team_id, "transfer_offer_received",
+    "Nyt transfertilbud modtaget",
+    `${req.team.name} tilbyder ${offer_amount.toLocaleString()} CZ$ for ${rider.firstname} ${rider.lastname}`,
+    data.id);
 
   res.status(201).json(data);
 });
 
-// PATCH /api/transfers/offers/:id — accept, reject, or counter
+// GET /api/transfers/my-offers — my sent and received offers
+router.get("/transfers/my-offers", requireAuth, async (req, res) => {
+  // Only return offers where this team is buyer OR seller
+  // Other teams' offers on same rider are NOT visible
+  const [sentRes, receivedRes] = await Promise.all([
+    supabase.from("transfer_offers")
+      .select(`id, offer_amount, counter_amount, status, round, message, created_at, updated_at,
+        rider:rider_id(id, firstname, lastname, uci_points, stat_bj, stat_sp, stat_tt, stat_fl),
+        seller:seller_team_id(id, name)`)
+      .eq("buyer_team_id", req.team.id)
+      .not("status", "eq", "withdrawn")
+      .order("updated_at", { ascending: false }),
+    supabase.from("transfer_offers")
+      .select(`id, offer_amount, counter_amount, status, round, message, created_at, updated_at,
+        rider:rider_id(id, firstname, lastname, uci_points, stat_bj, stat_sp, stat_tt, stat_fl),
+        buyer:buyer_team_id(id, name)`)
+      .eq("seller_team_id", req.team.id)
+      .not("status", "eq", "withdrawn")
+      .order("updated_at", { ascending: false }),
+  ]);
+  res.json({ sent: sentRes.data || [], received: receivedRes.data || [] });
+});
+
+// PATCH /api/transfers/offers/:id — accept, reject, counter, or withdraw
 router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
-  const { action, counter_amount } = req.body;
+  const { action, counter_amount, message } = req.body;
 
   const { data: offer } = await supabase
     .from("transfer_offers")
-    .select(`*, listing:listing_id(*, rider:rider_id(*))`)
-    .eq("id", req.params.id)
-    .single();
+    .select(`*, rider:rider_id(id, firstname, lastname, team_id, uci_points)`)
+    .eq("id", req.params.id).single();
 
-  if (!offer) return res.status(404).json({ error: "Offer not found" });
-  if (offer.listing.seller_team_id !== req.team.id) {
-    return res.status(403).json({ error: "Not your listing" });
-  }
+  if (!offer) return res.status(404).json({ error: "Tilbud ikke fundet" });
 
-  if (action === "accept") {
-    const price = offer.offer_amount;
-    const rider = offer.listing.rider;
+  const isSeller = offer.seller_team_id === req.team.id;
+  const isBuyer = offer.buyer_team_id === req.team.id;
+  if (!isSeller && !isBuyer) return res.status(403).json({ error: "Ikke involveret i dette tilbud" });
+
+  // ACCEPT — seller accepts buyer's offer
+  if (action === "accept" && isSeller) {
+    const price = offer.counter_amount || offer.offer_amount;
+    const rider = offer.rider;
+
+    // Verify buyer still has funds
+    const { data: buyer } = await supabase.from("teams").select("balance").eq("id", offer.buyer_team_id).single();
+    if (!buyer || buyer.balance < price)
+      return res.status(400).json({ error: "Køber har ikke råd" });
 
     // Transfer rider
     await supabase.from("riders").update({
@@ -673,219 +705,134 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
     }).eq("id", rider.id);
 
     // Financial transactions
-    const { data: buyer } = await supabase.from("teams").select("balance").eq("id", offer.buyer_team_id).single();
     const { data: seller } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
-
     await supabase.from("teams").update({ balance: buyer.balance - price }).eq("id", offer.buyer_team_id);
     await supabase.from("teams").update({ balance: seller.balance + price }).eq("id", req.team.id);
-
     await supabase.from("finance_transactions").insert([
       { team_id: offer.buyer_team_id, type: "transfer_out", amount: -price,
-        description: `Købt ${rider.firstname} ${rider.lastname}` },
+        description: `Købt ${rider.firstname} ${rider.lastname} via transfer` },
       { team_id: req.team.id, type: "transfer_in", amount: price,
-        description: `Solgt ${rider.firstname} ${rider.lastname}` },
+        description: `Solgt ${rider.firstname} ${rider.lastname} via transfer` },
     ]);
 
-    await supabase.from("transfer_listings").update({ status: "sold" }).eq("id", offer.listing_id);
+    // Close other pending offers on same rider
+    await supabase.from("transfer_offers")
+      .update({ status: "withdrawn" })
+      .eq("rider_id", rider.id)
+      .neq("id", offer.id)
+      .eq("status", "pending");
+
     await supabase.from("transfer_offers").update({ status: "accepted" }).eq("id", offer.id);
 
     await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted",
       "Transfer accepteret! 🎉",
-      `${rider.firstname} ${rider.lastname} er nu på dit hold`, offer.id);
+      `${rider.firstname} ${rider.lastname} er nu på dit hold for ${price.toLocaleString()} CZ$`, offer.id);
 
-  } else if (action === "reject") {
+    return res.json({ success: true, action: "accepted", price });
+  }
+
+  // REJECT — seller rejects
+  if (action === "reject" && isSeller) {
     await supabase.from("transfer_offers").update({ status: "rejected" }).eq("id", offer.id);
     await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected",
-      "Transfer afvist",
-      `Dit tilbud på ${offer.listing.rider.firstname} ${offer.listing.rider.lastname} blev afvist`,
-      offer.id);
+      "Transfertilbud afvist",
+      `Dit tilbud på ${offer.rider.firstname} ${offer.rider.lastname} blev afvist`, offer.id);
+    return res.json({ success: true, action: "rejected" });
+  }
 
-  } else if (action === "counter" && counter_amount) {
+  // COUNTER — seller sends counteroffer
+  if (action === "counter" && isSeller && counter_amount) {
     await supabase.from("transfer_offers").update({
       status: "countered",
       counter_amount,
+      message: message || offer.message,
+      round: (offer.round || 1) + 1,
     }).eq("id", offer.id);
-
     await notifyTeamOwner(offer.buyer_team_id, "transfer_counter",
       "Modbud modtaget",
-      `${req.team.name} har sendt et modbud på ${counter_amount} pts`,
+      `${req.team.name} sender modbud på ${offer.rider.firstname} ${offer.rider.lastname}: ${counter_amount.toLocaleString()} CZ$`,
       offer.id);
+    return res.json({ success: true, action: "countered", counter_amount });
   }
 
-  res.json({ success: true });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TEAMS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// GET /api/teams/:id — team details with squad
-router.get("/teams/:id", requireAuth, async (req, res) => {
-  const { data: team, error } = await supabase
-    .from("teams")
-    .select("*")
-    .eq("id", req.params.id)
-    .single();
-
-  if (error || !team) return res.status(404).json({ error: "Team not found" });
-
-  const { data: riders } = await supabase
-    .from("riders")
-    .select(`id, firstname, lastname, uci_points, salary, is_u25,
-      stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
-      stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,
-      stat_res, stat_ftr`)
-    .eq("team_id", req.params.id)
-    .order("uci_points", { ascending: false });
-
-  const { data: board } = await supabase
-    .from("board_profiles")
-    .select("*")
-    .eq("team_id", req.params.id)
-    .single();
-
-  res.json({ ...team, riders: riders || [], board });
-});
-
-// GET /api/teams/:id/finances — transaction history
-router.get("/teams/:id/finances", requireAuth, async (req, res) => {
-  if (req.team?.id !== req.params.id) {
-    return res.status(403).json({ error: "Can only view your own finances" });
+  // ACCEPT COUNTER — buyer accepts seller's counteroffer
+  if (action === "accept_counter" && isBuyer && offer.status === "countered") {
+    const price = offer.counter_amount;
+    const rider = offer.rider;
+    const { data: buyer } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
+    if (!buyer || buyer.balance < price)
+      return res.status(400).json({ error: "Du har ikke råd" });
+    const { data: seller } = await supabase.from("teams").select("balance").eq("id", offer.seller_team_id).single();
+    await supabase.from("riders").update({
+      team_id: req.team.id, salary: Math.ceil(price * 0.1),
+    }).eq("id", rider.id);
+    await supabase.from("teams").update({ balance: buyer.balance - price }).eq("id", req.team.id);
+    await supabase.from("teams").update({ balance: seller.balance + price }).eq("id", offer.seller_team_id);
+    await supabase.from("finance_transactions").insert([
+      { team_id: req.team.id, type: "transfer_out", amount: -price,
+        description: `Købt ${rider.firstname} ${rider.lastname} via transfer` },
+      { team_id: offer.seller_team_id, type: "transfer_in", amount: price,
+        description: `Solgt ${rider.firstname} ${rider.lastname} via transfer` },
+    ]);
+    await supabase.from("transfer_offers").update({ status: "accepted" }).eq("id", offer.id);
+    await supabase.from("transfer_offers")
+      .update({ status: "withdrawn" }).eq("rider_id", rider.id).neq("id", offer.id).eq("status", "pending");
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted",
+      "Transfer gennemført",
+      `${req.team.name} accepterede dit modbud på ${rider.firstname} ${rider.lastname}`, offer.id);
+    return res.json({ success: true, action: "accepted", price });
   }
 
-  const { data, error } = await supabase
-    .from("finance_transactions")
-    .select("*")
-    .eq("team_id", req.params.id)
-    .order("created_at", { ascending: false })
-    .limit(100);
+  // NEW OFFER — buyer sends new amount (counter to counter)
+  if (action === "new_offer" && isBuyer && counter_amount) {
+    await supabase.from("transfer_offers").update({
+      offer_amount: counter_amount,
+      counter_amount: null,
+      status: "pending",
+      message: message || offer.message,
+      round: (offer.round || 1) + 1,
+    }).eq("id", offer.id);
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_received",
+      "Nyt bud modtaget",
+      `${req.team.name} byder nu ${counter_amount.toLocaleString()} CZ$ for ${offer.rider.firstname} ${offer.rider.lastname}`,
+      offer.id);
+    return res.json({ success: true, action: "new_offer", offer_amount: counter_amount });
+  }
 
+  // WITHDRAW — buyer withdraws offer
+  if (action === "withdraw" && isBuyer) {
+    await supabase.from("transfer_offers").update({ status: "withdrawn" }).eq("id", offer.id);
+    return res.json({ success: true, action: "withdrawn" });
+  }
+
+  return res.status(400).json({ error: "Ugyldig handling" });
+});
+
+// POST /api/transfers/:id/offer — legacy route (listing-based offer)
+router.post("/transfers/:id/offer", requireAuth, async (req, res) => {
+  const { offer_amount, message } = req.body;
+  const { data: listing } = await supabase
+    .from("transfer_listings")
+    .select("*, rider:rider_id(id, firstname, lastname, team_id)")
+    .eq("id", req.params.id).single();
+  if (!listing || listing.status !== "open")
+    return res.status(404).json({ error: "Listing ikke fundet" });
+  if (listing.seller_team_id === req.team.id)
+    return res.status(400).json({ error: "Kan ikke byde på eget udbud" });
+  const { data, error } = await supabase.from("transfer_offers")
+    .insert({
+      listing_id: listing.id,
+      rider_id: listing.rider_id,
+      seller_team_id: listing.seller_team_id,
+      buyer_team_id: req.team.id,
+      offer_amount, message: message || null, status: "pending", round: 1,
+    }).select().single();
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// NOTIFICATIONS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-router.get("/notifications", requireAuth, async (req, res) => {
-  const { data, error } = await supabase
-    .from("notifications")
-    .select("*")
-    .eq("user_id", req.user.id)
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-
-router.patch("/notifications/:id/read", requireAuth, async (req, res) => {
-  await supabase.from("notifications")
-    .update({ is_read: true })
-    .eq("id", req.params.id)
-    .eq("user_id", req.user.id);
-  res.json({ success: true });
-});
-
-router.patch("/notifications/read-all", requireAuth, async (req, res) => {
-  await supabase.from("notifications")
-    .update({ is_read: true })
-    .eq("user_id", req.user.id);
-  res.json({ success: true });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STANDINGS & SEASONS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-router.get("/standings", requireAuth, async (req, res) => {
-  const { season_id, division } = req.query;
-
-  let query = supabase
-    .from("season_standings")
-    .select(`*, team:team_id(id, name, is_ai)`)
-    .order("total_points", { ascending: false });
-
-  if (season_id) query = query.eq("season_id", season_id);
-  if (division) query = query.eq("division", parseInt(division));
-
-  const { data, error } = await query;
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-
-router.get("/seasons", requireAuth, async (req, res) => {
-  const { data, error } = await supabase
-    .from("seasons")
-    .select("*")
-    .order("number", { ascending: false });
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-
-router.get("/races", requireAuth, async (req, res) => {
-  const { season_id } = req.query;
-  let query = supabase.from("races").select("*").order("start_date");
-  if (season_id) query = query.eq("season_id", season_id);
-  const { data, error } = await query;
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// ADMIN
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// POST /api/admin/seasons — create new season
-router.post("/admin/seasons", requireAdmin, async (req, res) => {
-  const { number, race_days_total = 60 } = req.body;
-
-  const { data, error } = await supabase
-    .from("seasons")
-    .insert({ number, race_days_total, status: "upcoming" })
-    .select()
-    .single();
-
-  if (error) return res.status(500).json({ error: error.message });
+  await notifyTeamOwner(listing.seller_team_id, "transfer_offer_received",
+    "Nyt transfertilbud",
+    `${req.team.name} tilbyder ${offer_amount.toLocaleString()} CZ$ for ${listing.rider.firstname} ${listing.rider.lastname}`,
+    data.id);
   res.status(201).json(data);
 });
 
-// POST /api/admin/races — add race to calendar
-router.post("/admin/races", requireAdmin, async (req, res) => {
-  const { season_id, name, race_type, stages, start_date, prize_pool } = req.body;
 
-  const { data, error } = await supabase
-    .from("races")
-    .insert({ season_id, name, race_type, stages, start_date, prize_pool })
-    .select()
-    .single();
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.status(201).json(data);
-});
-
-// POST /api/admin/finalize-expired-auctions — called by cron every minute
-router.post("/admin/finalize-expired-auctions", requireAdmin, async (req, res) => {
-  const { data: expired } = await supabase
-    .from("auctions")
-    .select("id")
-    .in("status", ["active", "extended"])
-    .lte("calculated_end", new Date().toISOString());
-
-  const results = [];
-  for (const auction of expired || []) {
-    try {
-      // Reuse finalize logic
-      const mockReq = { params: { id: auction.id }, user: req.user, team: req.team };
-      // Simplified direct call
-      results.push({ id: auction.id, status: "queued" });
-    } catch (e) {
-      results.push({ id: auction.id, error: e.message });
-    }
-  }
-
-  res.json({ finalized: results.length, results });
-});
-
-export default router;
