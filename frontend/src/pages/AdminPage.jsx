@@ -111,16 +111,36 @@ export default function AdminPage() {
   const [editingPrize, setEditingPrize] = useState(null);
   const [newWebhook, setNewWebhook] = useState({ webhook_name: "", webhook_url: "" });
 
+  // Sæsonafslutnings-preview
+  const [previewSeason, setPreviewSeason] = useState("");
+  const [seasonPreview, setSeasonPreview] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+
+  // Manuel balancejustering
+  const [balTeam, setBalTeam] = useState("");
+  const [balAmount, setBalAmount] = useState("");
+  const [balReason, setBalReason] = useState("");
+
+  // Lånekonfiguration
+  const [loanConfigs, setLoanConfigs] = useState([]);
+  const [editingLoan, setEditingLoan] = useState(null);
+
+  // Admin log
+  const [adminLogs, setAdminLogs] = useState([]);
+
   useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
-    const [s, r, t, w, p, w2] = await Promise.all([
+    const [s, r, t, w, p, w2, lc, al] = await Promise.all([
       supabase.from("seasons").select("*").order("number", { ascending: false }),
       supabase.from("races").select("*").order("start_date"),
       supabase.from("teams").select("id,name,balance,division").eq("is_ai", false).order("name"),
       supabase.from("transfer_windows").select("*").order("created_at", { ascending: false }).limit(1).single(),
       supabase.from("prize_tables").select("*").order("race_type").order("result_type").order("rank"),
       supabase.from("discord_settings").select("*").order("created_at"),
+      supabase.from("loan_config").select("*").order("division").order("loan_type"),
+      supabase.from("admin_log").select("*, target_team:target_team_id(name)")
+        .order("created_at", { ascending: false }).limit(50),
     ]);
     setSeasons(s.data || []);
     setRaces(r.data || []);
@@ -128,6 +148,8 @@ export default function AdminPage() {
     setWindow_(w.data || null);
     setPrizes(p.data || []);
     setWebhooks(w2.data || []);
+    setLoanConfigs(lc.data || []);
+    setAdminLogs(al.data || []);
   }
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
@@ -245,6 +267,47 @@ export default function AdminPage() {
   async function deleteWebhook(id) {
     await supabase.from("discord_settings").delete().eq("id", id);
     loadAll();
+  }
+
+  async function loadSeasonPreview() {
+    if (!previewSeason) { showMsg("❌ Vælg en sæson", "error"); return; }
+    setLoadingPreview(true);
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/admin/season-end-preview/${previewSeason}`,
+      { headers: await getAuth() }
+    );
+    const data = await res.json();
+    if (res.ok) setSeasonPreview(data.preview);
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoadingPreview(false);
+  }
+
+  async function handleAdjustBalance() {
+    if (!balTeam || !balAmount) { showMsg("❌ Vælg hold og angiv beløb", "error"); return; }
+    setLoad("balance", true);
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/adjust-balance`, {
+      method: "POST", headers: await getAuth(),
+      body: JSON.stringify({ team_id: balTeam, amount: parseInt(balAmount), reason: balReason }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showMsg(`✅ Balance justeret med ${parseInt(balAmount).toLocaleString("da-DK")} CZ$`);
+      setBalAmount("");
+      setBalReason("");
+      loadAll();
+    } else {
+      showMsg(`❌ ${data.error}`, "error");
+    }
+    setLoad("balance", false);
+  }
+
+  async function saveLoanConfig(cfg) {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/loan-config`, {
+      method: "PATCH", headers: await getAuth(), body: JSON.stringify(cfg),
+    });
+    const data = await res.json();
+    if (res.ok) { showMsg("✅ Lånekonfiguration gemt"); setEditingLoan(null); loadAll(); }
+    else showMsg(`❌ ${data.error}`, "error");
   }
 
   const windowOpen = window_?.status === "open";
@@ -520,6 +583,243 @@ export default function AdminPage() {
           Handlingen logges ikke som en transaktion.
         </p>
         <ManualOverride supabase={supabase} onMsg={(text, type) => showMsg(text, type)} onRefresh={loadAll} teams={teams} />
+      </Section>
+
+      {/* ── A: Sæsonafslutnings-preview ────────────────────────────────── */}
+      <Section title="Sæsonafslutnings-preview">
+        <div className="flex gap-3 mb-4 flex-wrap">
+          <div className="flex-1">
+            <label className="block text-white/30 text-xs mb-1">Vælg sæson</label>
+            <select value={previewSeason} onChange={e => setPreviewSeason(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+              <option value="">Vælg sæson...</option>
+              {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button onClick={loadSeasonPreview} disabled={loadingPreview || !previewSeason}
+              className="px-4 py-2 bg-white/5 text-white/60 border border-white/10 rounded-lg text-sm
+                hover:bg-white/10 hover:text-white disabled:opacity-50">
+              {loadingPreview ? "Indlæser..." : "Vis preview"}
+            </button>
+          </div>
+        </div>
+
+        {seasonPreview && (
+          <>
+            <div className="overflow-x-auto rounded-lg border border-white/5 mb-3">
+              <table className="w-full text-xs min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="px-3 py-2 text-left text-white/30">Hold</th>
+                    <th className="px-3 py-2 text-right text-white/30">Balance</th>
+                    <th className="px-3 py-2 text-right text-white/30">Løntræk</th>
+                    <th className="px-3 py-2 text-right text-white/30">Lånerenter</th>
+                    <th className="px-3 py-2 text-right text-white/30">Balance efter</th>
+                    <th className="px-3 py-2 text-right text-white/30">Nødlån?</th>
+                    <th className="px-3 py-2 text-right text-white/30">Tilfredshed</th>
+                    <th className="px-3 py-2 text-right text-white/30">Sponsor næste</th>
+                    <th className="px-3 py-2 text-right text-white/30">Rang</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {seasonPreview.sort((a, b) => a.division - b.division || (a.current_rank || 99) - (b.current_rank || 99)).map(row => (
+                    <tr key={row.team_id}
+                      className={`border-b border-white/4 ${row.needs_emergency_loan ? "bg-red-500/5" : ""}`}>
+                      <td className="px-3 py-2">
+                        <p className="text-white font-medium">{row.team_name}</p>
+                        <p className="text-white/30">Div {row.division}</p>
+                      </td>
+                      <td className="px-3 py-2 text-right text-[#e8c547] font-mono">{row.current_balance?.toLocaleString("da-DK")}</td>
+                      <td className="px-3 py-2 text-right text-red-400 font-mono">-{row.salary_deduction?.toLocaleString("da-DK")}</td>
+                      <td className="px-3 py-2 text-right text-orange-400 font-mono">
+                        {row.loan_interest > 0 ? `-${row.loan_interest.toLocaleString("da-DK")}` : "—"}
+                      </td>
+                      <td className={`px-3 py-2 text-right font-mono font-bold ${row.balance_after < 0 ? "text-red-400" : "text-green-400"}`}>
+                        {row.balance_after?.toLocaleString("da-DK")}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {row.needs_emergency_loan
+                          ? <span className="text-red-400 font-bold">⚠ {row.emergency_loan_amount?.toLocaleString("da-DK")}</span>
+                          : <span className="text-white/20">—</span>}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <span className={`font-mono ${row.board_satisfaction >= 60 ? "text-green-400" : row.board_satisfaction >= 40 ? "text-[#e8c547]" : "text-red-400"}`}>
+                          {row.board_satisfaction}%
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right text-white/50 font-mono">{row.next_season_sponsor?.toLocaleString("da-DK")}</td>
+                      <td className="px-3 py-2 text-right text-white/50">
+                        {row.current_rank ? `#${row.current_rank}` : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-white/20 text-xs">
+              Røde rækker = hold der vil modtage nødlån ved sæsonafslutning.
+              Kør sæsonafslutning via "Afslut"-knappen under Sæsoner.
+            </p>
+          </>
+        )}
+      </Section>
+
+      {/* ── B: Manuel balancejustering ────────────────────────────────── */}
+      <Section title="Manuel balancejustering">
+        <p className="text-white/30 text-xs mb-4">
+          Juster et holds balance direkte. Positivt beløb tilføjer, negativt trækker fra.
+          Handlingen logges i admin-loggen.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-white/30 text-xs mb-1">Hold</label>
+            <select value={balTeam} onChange={e => setBalTeam(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+              <option value="">Vælg hold...</option>
+              {teams.map(t => <option key={t.id} value={t.id}>{t.name} (Div {t.division})</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-white/30 text-xs mb-1">Beløb (CZ$)</label>
+            <input type="number" value={balAmount} onChange={e => setBalAmount(e.target.value)}
+              placeholder="f.eks. 500 eller -200"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+          </div>
+          <div>
+            <label className="block text-white/30 text-xs mb-1">Årsag</label>
+            <input type="text" value={balReason} onChange={e => setBalReason(e.target.value)}
+              placeholder="Beskriv årsagen..."
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+          </div>
+        </div>
+        <div className="mt-3">
+          <button onClick={handleAdjustBalance} disabled={loading.balance || !balTeam || !balAmount}
+            className="px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm
+              hover:bg-[#f0d060] disabled:opacity-50">
+            {loading.balance ? "Justerer..." : "Juster balance"}
+          </button>
+        </div>
+      </Section>
+
+      {/* ── C: Lånekonfiguration ──────────────────────────────────────── */}
+      <Section title="Lånekonfiguration (per division)">
+        <p className="text-white/30 text-xs mb-4">
+          Klik på en celle for at redigere. Tryk Enter for at gemme.
+          9 konfigurationer: 3 divisioner × 3 låntyper.
+        </p>
+        {loanConfigs.length === 0 ? (
+          <p className="text-white/30 text-sm">Ingen lånekonfigurationer fundet i databasen</p>
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-white/5">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="px-3 py-2 text-left text-white/30">Division</th>
+                  <th className="px-3 py-2 text-left text-white/30">Type</th>
+                  <th className="px-3 py-2 text-right text-white/30">Gebyr %</th>
+                  <th className="px-3 py-2 text-right text-white/30">Rente %</th>
+                  <th className="px-3 py-2 text-right text-white/30">Sæsoner</th>
+                  <th className="px-3 py-2 text-right text-white/30">Gældsloft</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loanConfigs.map(cfg => {
+                  const isEditing = editingLoan?.id === cfg.id;
+                  return (
+                    <tr key={cfg.id}
+                      className={`border-b border-white/4 cursor-pointer hover:bg-white/3
+                        ${isEditing ? "bg-[#e8c547]/5" : ""}`}
+                      onClick={() => !isEditing && setEditingLoan({ ...cfg })}>
+                      <td className="px-3 py-2 text-white/50">Div {cfg.division}</td>
+                      <td className="px-3 py-2 text-white font-medium capitalize">{cfg.loan_type}</td>
+                      {isEditing ? (
+                        <>
+                          <td className="px-3 py-2 text-right">
+                            <input type="number" step="0.01" value={(editingLoan.origination_fee_pct * 100).toFixed(0)}
+                              onChange={e => setEditingLoan(l => ({ ...l, origination_fee_pct: parseFloat(e.target.value) / 100 }))}
+                              onKeyDown={e => e.key === "Enter" && saveLoanConfig(editingLoan)}
+                              className="w-16 bg-transparent text-[#e8c547] font-mono text-xs focus:outline-none text-right"
+                              autoFocus />
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <input type="number" step="0.01" value={(editingLoan.interest_rate_pct * 100).toFixed(0)}
+                              onChange={e => setEditingLoan(l => ({ ...l, interest_rate_pct: parseFloat(e.target.value) / 100 }))}
+                              onKeyDown={e => e.key === "Enter" && saveLoanConfig(editingLoan)}
+                              className="w-16 bg-transparent text-[#e8c547] font-mono text-xs focus:outline-none text-right" />
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <input type="number" value={editingLoan.seasons}
+                              onChange={e => setEditingLoan(l => ({ ...l, seasons: parseInt(e.target.value) }))}
+                              onKeyDown={e => e.key === "Enter" && saveLoanConfig(editingLoan)}
+                              className="w-12 bg-transparent text-[#e8c547] font-mono text-xs focus:outline-none text-right" />
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <input type="number" value={editingLoan.debt_ceiling}
+                              onChange={e => setEditingLoan(l => ({ ...l, debt_ceiling: parseInt(e.target.value) }))}
+                              onKeyDown={e => e.key === "Enter" && saveLoanConfig(editingLoan)}
+                              className="w-20 bg-transparent text-[#e8c547] font-mono text-xs focus:outline-none text-right" />
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-3 py-2 text-right text-white/50 font-mono">{(cfg.origination_fee_pct * 100).toFixed(0)}%</td>
+                          <td className="px-3 py-2 text-right text-white/50 font-mono">{(cfg.interest_rate_pct * 100).toFixed(0)}%</td>
+                          <td className="px-3 py-2 text-right text-white/50 font-mono">{cfg.seasons}</td>
+                          <td className="px-3 py-2 text-right text-[#e8c547] font-mono">{cfg.debt_ceiling?.toLocaleString("da-DK")}</td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {editingLoan && (
+          <div className="mt-2 flex gap-2">
+            <button onClick={() => saveLoanConfig(editingLoan)}
+              className="px-3 py-1.5 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-xs hover:bg-[#f0d060]">
+              Gem
+            </button>
+            <button onClick={() => setEditingLoan(null)}
+              className="px-3 py-1.5 bg-white/5 text-white/40 rounded-lg text-xs hover:bg-white/10">
+              Annuller
+            </button>
+          </div>
+        )}
+      </Section>
+
+      {/* ── D: Admin log ─────────────────────────────────────────────── */}
+      <Section title="Admin log">
+        {adminLogs.length === 0 ? (
+          <p className="text-white/30 text-sm">Ingen admin-handlinger endnu</p>
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-white/5">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="px-3 py-2 text-left text-white/30">Tidspunkt</th>
+                  <th className="px-3 py-2 text-left text-white/30">Handling</th>
+                  <th className="px-3 py-2 text-left text-white/30">Beskrivelse</th>
+                  <th className="px-3 py-2 text-left text-white/30">Berørt hold</th>
+                </tr>
+              </thead>
+              <tbody>
+                {adminLogs.map(log => (
+                  <tr key={log.id} className="border-b border-white/4">
+                    <td className="px-3 py-2 text-white/30 whitespace-nowrap">
+                      {new Date(log.created_at).toLocaleString("da-DK", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </td>
+                    <td className="px-3 py-2 text-white/60 font-mono">{log.action_type}</td>
+                    <td className="px-3 py-2 text-white/70 max-w-xs truncate">{log.description}</td>
+                    <td className="px-3 py-2 text-white/40">{log.target_team?.name || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Section>
 
       {/* Discord webhooks */}
