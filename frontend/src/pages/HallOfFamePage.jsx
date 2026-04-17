@@ -32,11 +32,17 @@ export default function HallOfFamePage() {
   const [managers, setManagers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("hof");
+  const [myUserId, setMyUserId] = useState(null);
+  const [myTeamId, setMyTeamId] = useState(null);
 
   useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
     setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    setMyUserId(user.id);
+    const { data: myTeamData } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
+    if (myTeamData) setMyTeamId(myTeamData.id);
     const [hofRes, standingsRes, managersRes] = await Promise.all([
       supabase.from("hall_of_fame").select("*, team:team_id(id, name)").order("value", { ascending: false }),
       supabase.from("season_standings")
