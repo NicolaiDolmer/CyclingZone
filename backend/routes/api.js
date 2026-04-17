@@ -1,77 +1,9 @@
-// POST /api/admin/override-rider — manually move a rider to a team
-router.post("/admin/override-rider", requireAdmin, async (req, res) => {
-  const { rider_id, team_id } = req.body;
-  if (!rider_id) return res.status(400).json({ error: "rider_id required" });
-  const { data: rider } = await supabase.from("riders").select("firstname, lastname").eq("id", rider_id).single();
-  if (!rider) return res.status(404).json({ error: "Rytter ikke fundet" });
-  const { error } = await supabase.from("riders")
-    .update({ team_id: team_id || null, pending_team_id: null }).eq("id", rider_id);
-  if (error) return res.status(500).json({ error: error.message });
-  const teamRes = team_id ? await supabase.from("teams").select("name").eq("id", team_id).single() : null;
-  const teamName = teamRes?.data?.name || "fri agent";
-  res.json({ success: true, message: `${rider.firstname} ${rider.lastname} flyttet til ${teamName}` });
-});
-
-// POST /api/admin/approve-results — approve pending race result submission
-router.post("/admin/approve-results", requireAdmin, async (req, res) => {
-  const { pending_id } = req.body;
-  if (!pending_id) return res.status(400).json({ error: "pending_id required" });
-  const { data: sub } = await supabase.from("pending_race_results").select("race_id").eq("id", pending_id).single();
-  if (!sub) return res.status(404).json({ error: "Submission not found" });
-  const { data: rows } = await supabase.from("pending_race_result_rows")
-    .select("*, rider:rider_id(team_id)").eq("pending_id", pending_id);
-  if (!rows?.length) return res.status(400).json({ error: "No rows found" });
-  const { data: prizes } = await supabase.from("prize_tables").select("*");
-  const prizeMap = {};
-  (prizes || []).forEach(p => { prizeMap[`${p.race_type}__${p.result_type}__${p.rank}`] = p.prize_amount; });
-  const { data: race } = await supabase.from("races").select("race_type").eq("id", sub.race_id).single();
-  const insertRows = [];
-  const teamPrizes = {};
-  for (const row of rows) {
-    const prize = prizeMap[`${race?.race_type}__${row.result_type}__${row.rank}`] || 0;
-    insertRows.push({ race_id: sub.race_id, rider_id: row.rider_id, result_type: row.result_type,
-      rank: row.rank, stage_number: row.stage_number || 1, prize_money: prize, points_earned: prize });
-    if (row.rider?.team_id && prize > 0)
-      teamPrizes[row.rider.team_id] = (teamPrizes[row.rider.team_id] || 0) + prize;
-  }
-  await supabase.from("race_results").insert(insertRows);
-  for (const [teamId, amount] of Object.entries(teamPrizes)) {
-    const { data: t } = await supabase.from("teams").select("balance").eq("id", teamId).single();
-    if (t) {
-      await supabase.from("teams").update({ balance: t.balance + amount }).eq("id", teamId);
-      await supabase.from("finance_transactions").insert({
-        team_id: teamId, type: "prize_money", amount, description: "Præmiepenge fra løb",
-      });
-    }
-  }
-  res.json({ success: true, rows_imported: insertRows.length, teams_paid: Object.keys(teamPrizes).length });
-});
-
-/**
- * Cycling Zone Manager — Backend API Routes
- * ==========================================
- * Express router covering:
- *   /api/auctions   — create, bid, list, finalize
- *   /api/transfers  — list, offer, counter, accept/reject
- *   /api/riders     — search, browse, detail
- *   /api/teams      — team info, squad, finances
- *   /api/admin      — import riders, import results, manage seasons
- */
-
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import {
-  calculateAuctionEnd,
-  checkBidExtension,
-  isAuctionExpired,
-} from "../lib/auctionEngine.js";
-
-// Load .env from backend root
-const __dirname = dirname(fileURLToPath(import.meta.url));
-config({ path: join(__dirname, "../.env") });
 
 const router = express.Router();
 
@@ -835,6 +767,77 @@ router.post("/transfers/:id/offer", requireAuth, async (req, res) => {
   res.status(201).json(data);
 });
 
+
+
+
+// POST /api/admin/override-rider — manually move a rider to a team
+router.post("/admin/override-rider", requireAdmin, async (req, res) => {
+  const { rider_id, team_id } = req.body;
+  if (!rider_id) return res.status(400).json({ error: "rider_id required" });
+  const { data: rider } = await supabase.from("riders").select("firstname, lastname").eq("id", rider_id).single();
+  if (!rider) return res.status(404).json({ error: "Rytter ikke fundet" });
+  const { error } = await supabase.from("riders")
+    .update({ team_id: team_id || null, pending_team_id: null }).eq("id", rider_id);
+  if (error) return res.status(500).json({ error: error.message });
+  const teamRes = team_id ? await supabase.from("teams").select("name").eq("id", team_id).single() : null;
+  const teamName = teamRes?.data?.name || "fri agent";
+  res.json({ success: true, message: `${rider.firstname} ${rider.lastname} flyttet til ${teamName}` });
+});
+
+// POST /api/admin/approve-results — approve pending race result submission
+router.post("/admin/approve-results", requireAdmin, async (req, res) => {
+  const { pending_id } = req.body;
+  if (!pending_id) return res.status(400).json({ error: "pending_id required" });
+  const { data: sub } = await supabase.from("pending_race_results").select("race_id").eq("id", pending_id).single();
+  if (!sub) return res.status(404).json({ error: "Submission not found" });
+  const { data: rows } = await supabase.from("pending_race_result_rows")
+    .select("*, rider:rider_id(team_id)").eq("pending_id", pending_id);
+  if (!rows?.length) return res.status(400).json({ error: "No rows found" });
+  const { data: prizes } = await supabase.from("prize_tables").select("*");
+  const prizeMap = {};
+  (prizes || []).forEach(p => { prizeMap[`${p.race_type}__${p.result_type}__${p.rank}`] = p.prize_amount; });
+  const { data: race } = await supabase.from("races").select("race_type").eq("id", sub.race_id).single();
+  const insertRows = [];
+  const teamPrizes = {};
+  for (const row of rows) {
+    const prize = prizeMap[`${race?.race_type}__${row.result_type}__${row.rank}`] || 0;
+    insertRows.push({ race_id: sub.race_id, rider_id: row.rider_id, result_type: row.result_type,
+      rank: row.rank, stage_number: row.stage_number || 1, prize_money: prize, points_earned: prize });
+    if (row.rider?.team_id && prize > 0)
+      teamPrizes[row.rider.team_id] = (teamPrizes[row.rider.team_id] || 0) + prize;
+  }
+  await supabase.from("race_results").insert(insertRows);
+  for (const [teamId, amount] of Object.entries(teamPrizes)) {
+    const { data: t } = await supabase.from("teams").select("balance").eq("id", teamId).single();
+    if (t) {
+      await supabase.from("teams").update({ balance: t.balance + amount }).eq("id", teamId);
+      await supabase.from("finance_transactions").insert({
+        team_id: teamId, type: "prize_money", amount, description: "Præmiepenge fra løb",
+      });
+    }
+  }
+  res.json({ success: true, rows_imported: insertRows.length, teams_paid: Object.keys(teamPrizes).length });
+});
+
+/**
+ * Cycling Zone Manager — Backend API Routes
+ * ==========================================
+ * Express router covering:
+ *   /api/auctions   — create, bid, list, finalize
+ *   /api/transfers  — list, offer, counter, accept/reject
+ *   /api/riders     — search, browse, detail
+ *   /api/teams      — team info, squad, finances
+ *   /api/admin      — import riders, import results, manage seasons
+ */
+
+  calculateAuctionEnd,
+  checkBidExtension,
+  isAuctionExpired,
+} from "../lib/auctionEngine.js";
+
+// Load .env from backend root
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: join(__dirname, "../.env") });
 
 
 export default router;
