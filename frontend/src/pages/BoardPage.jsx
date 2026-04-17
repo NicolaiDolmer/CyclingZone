@@ -412,6 +412,8 @@ export default function BoardPage() {
           <p className="text-white/30 text-xs uppercase tracking-widest">U25 ryttere</p>
           <p className="text-blue-400 font-bold text-2xl font-mono mt-1">{u25Count}</p>
         </div>
+      </div>
+
       {/* Goal progress summary */}
       <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
         <h2 className="text-white font-semibold text-sm mb-4">Sæsonmål status</h2>
