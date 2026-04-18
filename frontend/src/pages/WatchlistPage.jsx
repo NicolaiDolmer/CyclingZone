@@ -3,6 +3,7 @@ import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { statBg } from "../lib/statBg";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -146,7 +147,7 @@ export default function WatchlistPage() {
                         </td>
                         {STATS.map(key => (
                           <td key={key} className="px-1.5 py-2.5 text-center">
-                            <span className={`font-mono ${r[key] >= 80 ? "text-[#e8c547] font-bold" : "text-white/40"}`}>
+                            <span className={`font-mono ${statBg(r[key] || 0)}`}>
                               {r[key] || "—"}
                             </span>
                           </td>

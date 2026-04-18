@@ -7,6 +7,7 @@
  *   showTeamFilter: bool (default true)
  *   compact: bool — fewer rows, for sidepanels
  */
+import { useState } from "react";
 
 const SORT_OPTIONS = [
   { value: "uci_points",  label: "UCI Point" },
@@ -18,6 +19,16 @@ const SORT_OPTIONS = [
   { value: "stat_acc",    label: "Acceleration" },
   { value: "stat_mod",    label: "Modstandsdygtighed" },
   { value: "birthdate",   label: "Alder (yngst først)" },
+];
+
+const STAT_SLIDERS = [
+  { key: "stat_fl",  label: "Flad" },
+  { key: "stat_bj",  label: "Bjerg" },
+  { key: "stat_sp",  label: "Sprint" },
+  { key: "stat_tt",  label: "TT" },
+  { key: "stat_udh", label: "Udholdenhed" },
+  { key: "stat_acc", label: "Acceleration" },
+  { key: "stat_mod", label: "Modstandsdygtighed" },
 ];
 
 export const DEFAULT_FILTERS = {
@@ -32,12 +43,23 @@ export const DEFAULT_FILTERS = {
   u23: false,
   free_agent: false,
   team_id: "",
+  stat_fl_min: "",
+  stat_bj_min: "",
+  stat_sp_min: "",
+  stat_tt_min: "",
+  stat_udh_min: "",
+  stat_acc_min: "",
+  stat_mod_min: "",
 };
 
 export default function RiderFilters({ filters, onChange, onReset, showTeamFilter = true, compact = false, teams = [] }) {
+  const [statsOpen, setStatsOpen] = useState(false);
+
+  const hasActiveStats = STAT_SLIDERS.some(s => filters[`${s.key}_min`]);
   const hasActiveFilters = filters.q || filters.min_uci || filters.max_uci ||
     filters.min_age || filters.max_age || filters.u25 || filters.u23 ||
-    filters.free_agent || filters.team_id || filters.sort !== "uci_points";
+    filters.free_agent || filters.team_id || filters.sort !== "uci_points" ||
+    hasActiveStats;
 
   return (
     <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 mb-4">
@@ -173,6 +195,48 @@ export default function RiderFilters({ filters, onChange, onReset, showTeamFilte
         </div>
       </div>
 
+      {/* Collapsible stat sliders */}
+      <div className="mt-3 pt-3 border-t border-white/5">
+        <button
+          onClick={() => setStatsOpen(o => !o)}
+          className="flex items-center gap-2 text-white/30 hover:text-white/60 text-xs transition-colors">
+          <span className={`transition-transform ${statsOpen ? "rotate-90" : ""}`}>▶</span>
+          <span className="uppercase tracking-wider font-medium">Stat filtre</span>
+          {hasActiveStats && (
+            <span className="bg-[#e8c547]/15 text-[#e8c547] text-[10px] px-1.5 py-0.5 rounded-full">
+              {STAT_SLIDERS.filter(s => filters[`${s.key}_min`]).length} aktive
+            </span>
+          )}
+        </button>
+
+        {statsOpen && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-3 mt-3">
+            {STAT_SLIDERS.map(({ key, label }) => {
+              const minKey = `${key}_min`;
+              const val = parseInt(filters[minKey]) || 0;
+              return (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-white/25 text-[10px] uppercase tracking-wider">{label}</label>
+                    <span className={`text-[10px] font-mono font-bold ${val > 0 ? "text-[#e8c547]" : "text-white/20"}`}>
+                      {val > 0 ? `≥ ${val}` : "—"}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0} max={100} step={1}
+                    value={val}
+                    onChange={e => onChange(minKey, e.target.value === "0" ? "" : e.target.value)}
+                    className="w-full h-1.5 appearance-none rounded-full cursor-pointer
+                      bg-white/10 accent-[#e8c547]"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Active filter chips */}
       {hasActiveFilters && (
         <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-white/5">
@@ -189,6 +253,13 @@ export default function RiderFilters({ filters, onChange, onReset, showTeamFilte
             <Chip label={`Sortér: ${SORT_OPTIONS.find(o => o.value === filters.sort)?.label}`}
               onRemove={() => onChange("sort", "uci_points")} />
           )}
+          {STAT_SLIDERS.filter(s => filters[`${s.key}_min`]).map(s => (
+            <Chip
+              key={s.key}
+              label={`${s.label} ≥ ${filters[`${s.key}_min`]}`}
+              onRemove={() => onChange(`${s.key}_min`, "")}
+            />
+          ))}
         </div>
       )}
     </div>

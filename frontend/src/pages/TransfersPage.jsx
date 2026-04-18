@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
+import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
 
 const API = import.meta.env.VITE_API_URL;
@@ -767,7 +768,7 @@ function TransferCard({ listing, myTeamId, onOffer }) {
         {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"]].map(([label, key]) => (
           <div key={key} className="text-center">
             <p className="text-white/25 text-[9px] uppercase">{label}</p>
-            <p className={`font-mono text-xs font-bold ${(listing.rider?.[key] || 0) >= 80 ? "text-[#e8c547]" : "text-white/50"}`}>
+            <p className={`font-mono text-xs font-bold ${statBg(listing.rider?.[key] || 0)}`}>
               {listing.rider?.[key] || "—"}
             </p>
           </div>

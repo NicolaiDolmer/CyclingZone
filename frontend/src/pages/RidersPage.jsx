@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import RiderFilters, { DEFAULT_FILTERS } from "../components/RiderFilters";
 import { buildSupabaseQuery } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
+import { statBg } from "../lib/statBg";
 import { useNavigate, Link } from "react-router-dom";
 
 const STATS = [
@@ -28,7 +29,7 @@ function StatBar({ value }) {
       <div className="w-full bg-white/8 rounded-full h-1.5">
         <div className={`${color} h-1.5 rounded-full`} style={{ width: `${pct}%` }} />
       </div>
-      <span className={`text-[11px] font-mono w-5 text-right flex-shrink-0 ${value >= 80 ? "text-[#e8c547]" : "text-white/50"}`}>
+      <span className={`text-[11px] font-mono w-5 text-right flex-shrink-0 ${statBg(value ?? 0)}`}>
         {value ?? "—"}
       </span>
     </div>
@@ -74,7 +75,7 @@ function RiderCard({ rider, onClick, watchlist, onToggleWatchlist }) {
         {MOBILE_STATS.map(({ key, label }) => (
           <div key={key} className="text-center">
             <p className="text-white/20 text-[9px] uppercase mb-0.5">{label}</p>
-            <p className={`font-mono text-xs font-bold ${rider[key] >= 80 ? "text-[#e8c547]" : "text-white/50"}`}>
+            <p className={`font-mono text-xs font-bold ${statBg(rider[key] || 0)}`}>
               {rider[key] || "—"}
             </p>
           </div>

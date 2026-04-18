@@ -7,6 +7,8 @@ import { DEFAULT_FILTERS } from "../components/RiderFilters";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
+const STAT_FILTER_KEYS = ["stat_fl","stat_bj","stat_sp","stat_tt","stat_udh","stat_acc","stat_mod"];
+
 /**
  * Client-side filter + sort for an array of riders already in memory.
  * Use this on TeamPage, WatchlistPage, AuctionsPage, TransfersPage etc.
@@ -61,6 +63,14 @@ export function useClientRiderFilters(riders = []) {
     // Team filter
     if (filters.team_id) result = result.filter(r => r.team_id === filters.team_id);
 
+    // Stat min filters
+    for (const key of STAT_FILTER_KEYS) {
+      const minKey = `${key}_min`;
+      if (filters[minKey]) {
+        result = result.filter(r => (r[key] || 0) >= parseInt(filters[minKey]));
+      }
+    }
+
     // Sort
     result.sort((a, b) => {
       let aVal, bVal;
@@ -105,6 +115,12 @@ export function buildSupabaseQuery(query, filters) {
   if (filters.u23) {
     const minBirth = new Date(`${CURRENT_YEAR - 23}-01-01`).toISOString().split("T")[0];
     query = query.gte("birthdate", minBirth);
+  }
+
+  // Stat min filters
+  for (const key of STAT_FILTER_KEYS) {
+    const minKey = `${key}_min`;
+    if (filters[minKey]) query = query.gte(key, parseInt(filters[minKey]));
   }
 
   // Sort

@@ -3,7 +3,12 @@ import { supabase } from "../lib/supabase";
 import { useNavigate, Link } from "react-router-dom";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
+import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
+
+const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
+  "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
+const STAT_LABELS = ["FL","BJ","KB","BK","TT","PRL","Bro","SP","ACC","NED","UDH","MOD","RES","FTR"];
 
 // ── Countdown timer ───────────────────────────────────────────────────────────
 function Countdown({ end, status }) {
@@ -27,178 +32,154 @@ function Countdown({ end, status }) {
   }, [end, status]);
 
   return (
-    <span className={`font-mono text-sm ${urgent ? "text-red-400 animate-pulse" : "text-white/50"}`}>
+    <span className={`font-mono text-xs ${urgent ? "text-red-400 animate-pulse" : "text-white/50"}`}>
       {text}
     </span>
   );
 }
 
-// ── Bid feedback inline ───────────────────────────────────────────────────────
-function BidFeedback({ status, amount }) {
-  if (!status) return null;
-  return (
-    <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg mt-2
-      ${status === "loading" ? "bg-white/5 text-white/50" :
-        status === "success" ? "bg-green-500/10 text-green-400" :
-        "bg-red-500/10 text-red-400"}`}>
-      {status === "loading" && (
-        <div className="w-3 h-3 border border-white/40 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-      )}
-      {status === "success" && <span>✅</span>}
-      {status === "error" && <span>❌</span>}
-      <span>{amount}</span>
-    </div>
-  );
-}
-
-// ── Auction card ──────────────────────────────────────────────────────────────
-function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
-  const [bidAmount, setBidAmount] = useState(
-    (auction.current_price || 1) + (auction.min_increment || 1)
-  );
+// ── Auction table row ─────────────────────────────────────────────────────────
+function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
+  const minBid = (auction.current_price || 1) + (auction.min_increment || 1);
+  const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
-  const [bidMsg, setBidMsg] = useState("");
 
   const isMyRider = auction.rider?.team_id === myTeamId;
-  const isSeller = auction.seller_team_id === myTeamId;
+  const isSeller  = auction.seller_team_id === myTeamId;
   const imWinning = auction.current_bidder_id === myTeamId;
-  const imBidding = !imWinning && (auction.myHighestBid > 0);
-  const canBid = !isMyRider;
+  const canBid    = !isMyRider && auction.status !== "completed";
 
   useEffect(() => {
     setBidAmount((auction.current_price || 1) + (auction.min_increment || 1));
-  }, [auction.current_price]);
+  }, [auction.current_price, auction.min_increment]);
 
   async function handleBid() {
     if (bidAmount > myBalance) {
       setBidStatus("error");
-      setBidMsg(`Ikke nok balance — du har ${myBalance?.toLocaleString("da-DK")} CZ$`);
-      setTimeout(() => { setBidStatus(null); setBidMsg(""); }, 4000);
+      setTimeout(() => setBidStatus(null), 3000);
       return;
     }
     setBidStatus("loading");
-    setBidMsg("Afgiver bud...");
     await onBid(auction.id, bidAmount);
     setBidStatus("success");
-    setBidMsg(`Bud på ${bidAmount.toLocaleString("da-DK")} CZ$ afgivet`);
-    setTimeout(() => { setBidStatus(null); setBidMsg(""); }, 3000);
+    setTimeout(() => setBidStatus(null), 2500);
   }
 
-  const minBid = (auction.current_price || 1) + (auction.min_increment || 1);
+  const r = auction.rider;
+  const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
 
   return (
-    <div className={`bg-[#0f0f18] border rounded-xl p-4 transition-all
-      ${imWinning ? "border-[#e8c547]/30 shadow-[0_0_20px_rgba(232,197,71,0.06)]" :
-        imBidding ? "border-orange-500/25" :
-        isMyRider ? "border-blue-500/20" :
-        "border-white/5 hover:border-white/10"}`}>
+    <tr className={`border-b border-white/4 hover:bg-white/2 transition-colors
+      ${imWinning ? "bg-[#e8c547]/3" : ""}`}>
 
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="cursor-pointer flex-1 min-w-0" onClick={() => onNavigate(auction.rider?.id)}>
-          <p className="text-white font-semibold truncate hover:text-[#e8c547] transition-colors">
-            {auction.rider?.firstname} {auction.rider?.lastname}
-          </p>
-          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+      {/* Rytter */}
+      <td className="px-3 py-2.5 min-w-[140px]">
+        <div className="flex flex-col gap-0.5">
+          <button
+            onClick={() => onNavigate(r?.id)}
+            className="text-white text-sm font-medium hover:text-[#e8c547] transition-colors text-left truncate max-w-[160px]">
+            {r?.firstname} {r?.lastname}
+          </button>
+          <div className="flex items-center gap-1 flex-wrap">
             {imWinning && (
-              <span className="text-[9px] uppercase tracking-wider bg-[#e8c547]/15 text-[#e8c547] px-2 py-0.5 rounded-full">
-                🏆 Vinder
+              <span className="text-[9px] uppercase bg-[#e8c547]/15 text-[#e8c547] px-1.5 py-0.5 rounded">
+                Vinder
               </span>
             )}
-            {imBidding && (
-              <span className="text-[9px] uppercase tracking-wider bg-orange-500/15 text-orange-400 px-2 py-0.5 rounded-full">
-                ⚡ Du har budt
+            {isSeller && (
+              <span className="text-[9px] uppercase bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded">
+                Sælger
               </span>
             )}
-            {isMyRider && (
-              <span className="text-[9px] uppercase tracking-wider bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full">
-                Din rytter
-              </span>
-            )}
-            {!auction.rider?.team_id && (
-              <span className="text-[9px] uppercase tracking-wider bg-white/8 text-white/30 px-2 py-0.5 rounded-full">
-                Fri rytter
+            {isMyRider && !isSeller && (
+              <span className="text-[9px] uppercase bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded">
+                Din
               </span>
             )}
             {auction.status === "extended" && (
-              <span className="text-[9px] uppercase tracking-wider bg-orange-500/15 text-orange-400 px-2 py-0.5 rounded-full">
-                ⚡ Forlænget
+              <span className="text-[9px] uppercase bg-orange-500/15 text-orange-400 px-1.5 py-0.5 rounded">
+                ⚡ Ext
               </span>
+            )}
+            {r?.is_u25 && (
+              <span className="text-[9px] uppercase bg-white/8 text-white/30 px-1.5 py-0.5 rounded">U25</span>
             )}
           </div>
         </div>
-        <div className="text-right ml-3 flex-shrink-0">
-          <p className="text-[#e8c547] font-mono font-bold text-lg">
-            {auction.current_price?.toLocaleString("da-DK")} CZ$
-          </p>
-          <Countdown end={auction.calculated_end} status={auction.status} />
-        </div>
-      </div>
+      </td>
 
-      {/* Quick stats */}
-      <div className="flex gap-3 mb-3">
-        {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"]].map(([label, key]) => (
-          <div key={key} className="text-center">
-            <p className="text-white/25 text-[9px] uppercase">{label}</p>
-            <p className={`font-mono text-xs font-bold ${(auction.rider?.[key] || 0) >= 80 ? "text-[#e8c547]" : "text-white/50"}`}>
-              {auction.rider?.[key] || "—"}
-            </p>
-          </div>
-        ))}
-        <div className="text-center ml-auto">
-          <p className="text-white/25 text-[9px] uppercase">UCI</p>
-          <p className="font-mono text-xs font-bold text-white/50">
-            {auction.rider?.uci_points?.toLocaleString("da-DK") || "—"}
-          </p>
-        </div>
-      </div>
+      {/* Alder */}
+      <td className="px-2 py-2.5 text-center text-white/40 font-mono text-xs hidden lg:table-cell">
+        {age ?? "—"}
+      </td>
 
-      {/* Current bidder / my bid info */}
-      <div className="mb-3 min-h-[18px]">
+      {/* UCI */}
+      <td className="px-2 py-2.5 text-right text-[#e8c547] font-mono font-bold text-xs whitespace-nowrap">
+        {r?.uci_points?.toLocaleString("da-DK") || "—"}
+      </td>
+
+      {/* Stats */}
+      {STATS.map(key => (
+        <td key={key} className="px-1 py-2.5 text-center">
+          <span className={`font-mono text-xs ${statBg(r?.[key] || 0)}`}>
+            {r?.[key] || "—"}
+          </span>
+        </td>
+      ))}
+
+      {/* Højeste bud */}
+      <td className="px-3 py-2.5 text-right whitespace-nowrap">
+        <span className="text-white font-mono font-bold text-sm">
+          {auction.current_price?.toLocaleString("da-DK")}
+        </span>
+        <span className="text-white/30 text-xs ml-1">CZ$</span>
         {auction.current_bidder && !imWinning && (
-          <p className="text-white/30 text-xs">Højeste bud: {auction.current_bidder.name}</p>
-        )}
-        {imBidding && auction.myHighestBid && (
-          <p className="text-orange-400/70 text-xs">
-            Dit bud: {auction.myHighestBid.toLocaleString("da-DK")} CZ$
+          <p className="text-white/25 text-[10px] truncate max-w-[100px]">
+            {auction.current_bidder.name}
           </p>
         )}
-      </div>
+      </td>
 
-      {/* Bid input */}
-      {canBid && auction.status !== "completed" && (
-        <div>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <input
-                type="number"
-                value={bidAmount}
-                min={minBid}
-                onChange={e => setBidAmount(parseInt(e.target.value) || minBid)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2
-                  text-white font-mono text-sm focus:outline-none focus:border-[#e8c547]/50"
-              />
-              <p className="text-white/20 text-[10px] mt-1 ml-1">Min: {minBid.toLocaleString("da-DK")} CZ$</p>
-            </div>
+      {/* Tid tilbage */}
+      <td className="px-3 py-2.5 text-center whitespace-nowrap">
+        <Countdown end={auction.calculated_end} status={auction.status} />
+      </td>
+
+      {/* Byd */}
+      <td className="px-3 py-2.5">
+        {canBid ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number"
+              value={bidAmount}
+              min={minBid}
+              onChange={e => setBidAmount(parseInt(e.target.value) || minBid)}
+              className="w-24 bg-white/5 border border-white/10 rounded px-2 py-1.5
+                text-white font-mono text-xs focus:outline-none focus:border-[#e8c547]/50"
+            />
             <button
               onClick={handleBid}
               disabled={bidStatus === "loading" || bidAmount < minBid}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all self-start
-                ${imWinning
-                  ? "bg-[#e8c547]/20 text-[#e8c547] border border-[#e8c547]/30 hover:bg-[#e8c547]/30"
-                  : "bg-[#e8c547] text-[#0a0a0f] hover:bg-[#f0d060]"}
+              className={`px-3 py-1.5 rounded text-xs font-bold transition-all whitespace-nowrap
+                ${bidStatus === "error"   ? "bg-red-500/20 text-red-400 border border-red-500/30" :
+                  bidStatus === "success" ? "bg-green-500/20 text-green-400 border border-green-500/30" :
+                  imWinning
+                    ? "bg-[#e8c547]/15 text-[#e8c547] border border-[#e8c547]/30 hover:bg-[#e8c547]/25"
+                    : "bg-[#e8c547] text-[#0a0a0f] hover:bg-[#f0d060]"}
                 disabled:opacity-50`}>
-              {bidStatus === "loading" ? "..." : imWinning ? "Hæv" : "Byd"}
+              {bidStatus === "loading" ? "..." :
+               bidStatus === "error"   ? "Fejl" :
+               bidStatus === "success" ? "✓" :
+               imWinning ? "Hæv" : "Byd"}
             </button>
           </div>
-          <BidFeedback status={bidStatus} amount={bidMsg} />
-        </div>
-      )}
-
-      {isSeller && auction.status !== "completed" && (
-        <p className="text-white/20 text-xs text-center mt-2">Du sælger denne rytter</p>
-      )}
-    </div>
+        ) : isSeller ? (
+          <span className="text-white/20 text-xs">Du sælger</span>
+        ) : (
+          <span className="text-white/20 text-xs">—</span>
+        )}
+      </td>
+    </tr>
   );
 }
 
@@ -220,7 +201,6 @@ export default function AuctionsPage() {
           const updated = payload.new;
           setAuctions(prev => {
             const prevAuction = prev.find(a => a.id === updated.id);
-            // Check if auction just completed and I won
             if (updated.status === "completed" && prevAuction?.status !== "completed") {
               setMyTeamId(tid => {
                 if (updated.current_bidder_id === tid) {
@@ -232,7 +212,6 @@ export default function AuctionsPage() {
                 }
                 return tid;
               });
-              // Remove completed auctions from the list after a delay
               return prev.filter(a => a.id !== updated.id);
             }
             return prev.map(a => a.id === updated.id ? { ...a, ...updated } : a);
@@ -251,9 +230,8 @@ export default function AuctionsPage() {
       supabase.from("auctions")
         .select(`id, current_price, min_increment, calculated_end, status,
           seller_team_id, current_bidder_id,
-          rider:rider_id(id, firstname, lastname, uci_points, is_u25, team_id,
-            stat_fl, stat_bj, stat_tt, stat_sp, stat_kb, stat_bk,
-            stat_prl, stat_bro, stat_acc, stat_ned, stat_udh, stat_mod, stat_res, stat_ftr),
+          rider:rider_id(id, firstname, lastname, uci_points, is_u25, team_id, birthdate,
+            ${STATS.join(", ")}),
           seller:seller_team_id(id, name),
           current_bidder:current_bidder_id(id, name)`)
         .in("status", ["active", "extended"])
@@ -288,24 +266,22 @@ export default function AuctionsPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ context: "auction_bid", data: { amount } }),
       }).catch(() => {});
-      setMyBalance(b => b - 0); // balance updated via next loadAll
       loadAll();
     }
   }
 
-  // Rider filters
   const riderFilters = useClientRiderFilters(auctions.map(a => a.rider).filter(Boolean));
   const filteredRiderIds = new Set(riderFilters.filtered.map(r => r.id));
 
-  const winningCount = auctions.filter(a => a.current_bidder_id === myTeamId).length;
-  const myListedCount = auctions.filter(a => a.seller_team_id === myTeamId).length;
+  const winningCount   = auctions.filter(a => a.current_bidder_id === myTeamId).length;
+  const myListedCount  = auctions.filter(a => a.seller_team_id === myTeamId).length;
   const otherManagerCount = auctions.filter(a => a.rider?.team_id && a.rider.team_id !== myTeamId).length;
 
   const filtered = auctions.filter(a => {
     if (a.rider && !filteredRiderIds.has(a.rider.id)) return false;
-    if (filter === "mine") return a.seller_team_id === myTeamId;
+    if (filter === "mine")    return a.seller_team_id === myTeamId;
     if (filter === "winning") return a.current_bidder_id === myTeamId;
-    if (filter === "other") return a.rider?.team_id && a.rider.team_id !== myTeamId;
+    if (filter === "other")   return a.rider?.team_id && a.rider.team_id !== myTeamId;
     return true;
   });
 
@@ -317,7 +293,7 @@ export default function AuctionsPage() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-[1400px] mx-auto">
       <ConfettiModal
         show={!!celebration}
         onClose={() => setCelebration(null)}
@@ -350,7 +326,6 @@ export default function AuctionsPage() {
         ))}
       </div>
 
-      {/* Rider filters */}
       <RiderFilters
         filters={riderFilters.filters}
         onChange={riderFilters.onChange}
@@ -369,17 +344,42 @@ export default function AuctionsPage() {
           <p className="text-sm mt-2">Gå til Ryttere og start en auktion</p>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map(a => (
-            <AuctionCard
-              key={a.id}
-              auction={a}
-              myTeamId={myTeamId}
-              myBalance={myBalance}
-              onBid={handleBid}
-              onNavigate={(riderId) => navigate(`/riders/${riderId}`)}
-            />
-          ))}
+        <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="px-3 py-3 text-left text-white/30 font-medium uppercase tracking-wider">Rytter</th>
+                  <th className="px-2 py-3 text-center text-white/20 font-medium hidden lg:table-cell">Alder</th>
+                  <th className="px-2 py-3 text-right text-white/30 font-medium">UCI</th>
+                  {STAT_LABELS.map(l => (
+                    <th key={l} className="px-1 py-3 text-center text-white/20 font-medium w-9">{l}</th>
+                  ))}
+                  <th className="px-3 py-3 text-right text-white/30 font-medium uppercase tracking-wider whitespace-nowrap">
+                    Højeste bud
+                  </th>
+                  <th className="px-3 py-3 text-center text-white/30 font-medium uppercase tracking-wider whitespace-nowrap">
+                    Tid tilbage
+                  </th>
+                  <th className="px-3 py-3 text-left text-white/30 font-medium uppercase tracking-wider">
+                    Byd
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(a => (
+                  <AuctionRow
+                    key={a.id}
+                    auction={a}
+                    myTeamId={myTeamId}
+                    myBalance={myBalance}
+                    onBid={handleBid}
+                    onNavigate={riderId => navigate(`/riders/${riderId}`)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

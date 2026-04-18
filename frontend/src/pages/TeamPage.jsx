@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
+import { statBg } from "../lib/statBg";
 
 const SQUAD_LIMITS = {
   1: { min: 20, max: 30 },
@@ -64,7 +65,7 @@ function RiderActionModal({ rider, onClose, onAction }) {
             {STATS.map((key, i) => (
               <div key={key} className="flex items-center justify-between">
                 <span className="text-white/30 text-xs">{STAT_LABELS[i]}</span>
-                <span className={`font-mono text-xs font-bold ${rider[key] >= 80 ? "text-[#e8c547]" : "text-white/60"}`}>
+                <span className={`font-mono text-xs font-bold ${statBg(rider[key] || 0)}`}>
                   {rider[key] || "—"}
                 </span>
               </div>
@@ -240,7 +241,7 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                     <td className="px-3 py-2.5 text-right text-white/40 font-mono text-xs">{r.salary || 0}</td>
                     {STATS.map(key => (
                       <td key={key} className="px-1.5 py-2.5 text-center">
-                        <span className={`font-mono ${r[key] >= 80 ? "text-[#e8c547] font-bold" : "text-white/40"}`}>
+                        <span className={`font-mono ${statBg(r[key] || 0)}`}>
                           {r[key] || "—"}
                         </span>
                       </td>
