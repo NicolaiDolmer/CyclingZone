@@ -88,9 +88,10 @@ export default function Layout() {
       const { data: notifs } = await supabase.from("notifications").select("id").eq("user_id", session.user.id).eq("is_read", false).limit(9);
       setNotifications(notifs || []);
 
+      if (!API) { console.error("VITE_API_URL is not set — presence/streak calls skipped"); return; }
       const h = await authHeaders();
-      fetch(`${API}/api/presence`,      { method: "POST", headers: h }).catch(() => {});
-      fetch(`${API}/api/login-streak`,  { method: "POST", headers: h }).catch(() => {});
+      fetch(`${API}/api/presence`,     { method: "POST", headers: h }).catch(e => console.error("presence:", e));
+      fetch(`${API}/api/login-streak`, { method: "POST", headers: h }).catch(e => console.error("login-streak:", e));
       fetchOnlineCount(h);
     });
   }, []);
@@ -111,20 +112,22 @@ export default function Layout() {
   useEffect(() => {
     if (!session) return;
     heartbeatRef.current = setInterval(async () => {
+      if (!API) return;
       const h = await authHeaders();
-      fetch(`${API}/api/presence`, { method: "POST", headers: h }).catch(() => {});
+      fetch(`${API}/api/presence`, { method: "POST", headers: h }).catch(e => console.error("heartbeat:", e));
       fetchOnlineCount(h);
     }, 60000);
     return () => clearInterval(heartbeatRef.current);
   }, [session]);
 
   async function fetchOnlineCount(headers) {
+    if (!API) return;
     try {
       const h = headers || await authHeaders();
       const res = await fetch(`${API}/api/online-count`, { headers: h });
       const data = await res.json();
       setOnlineCount(data.count || 0);
-    } catch (e) {}
+    } catch (e) { console.error("online-count:", e); }
   }
 
   async function signOut() {
