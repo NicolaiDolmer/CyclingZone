@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
-const EDGE = "https://ghwvkxzhsbbltzfnuhhz.supabase.co/functions/v1";
+const API = import.meta.env.VITE_API_URL;
 
-async function edgeHeaders() {
+async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
@@ -72,8 +72,8 @@ export default function ManagerProfilePage() {
 
   async function loadProfile() {
     setLoading(true);
-    const h = await edgeHeaders();
-    const res = await fetch(`${EDGE}/manager-profile/${teamId}`, { headers: h });
+    const h = await authHeaders();
+    const res = await fetch(`${API}/api/managers/${teamId}`, { headers: h });
     const json = await res.json();
     if (res.ok) setData(json);
     setLoading(false);

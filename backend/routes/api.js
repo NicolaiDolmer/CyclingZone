@@ -1107,5 +1107,159 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PRESENCE & ONLINE STATUS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// POST /api/presence — heartbeat, opdater last_seen
+router.post("/presence", requireAuth, async (req, res) => {
+  await supabase.from("users")
+    .update({ last_seen: new Date().toISOString(), is_online: true })
+    .eq("id", req.user.id);
+  res.json({ ok: true });
+});
+
+// POST /api/login-streak — beregn og opdater daglig login-streak
+router.post("/login-streak", requireAuth, async (req, res) => {
+  const { data: user } = await supabase.from("users")
+    .select("last_login_date, login_streak").eq("id", req.user.id).single();
+  const today = new Date().toISOString().slice(0, 10);
+  const last = user?.last_login_date;
+  let streak = user?.login_streak || 0;
+  if (last !== today) {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    streak = last === yesterday ? streak + 1 : 1;
+    await supabase.from("users")
+      .update({ last_login_date: today, login_streak: streak })
+      .eq("id", req.user.id);
+  }
+  res.json({ streak });
+});
+
+// GET /api/online-count — brugere aktive inden for de seneste 5 minutter
+router.get("/online-count", requireAuth, async (req, res) => {
+  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { count } = await supabase.from("users")
+    .select("id", { count: "exact", head: true }).gte("last_seen", cutoff);
+  res.json({ count: count || 0 });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACHIEVEMENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// GET /api/achievements — alle achievements med unlocked-status for aktuel bruger
+router.get("/achievements", requireAuth, async (req, res) => {
+  const [{ data: all }, { data: unlocked }] = await Promise.all([
+    supabase.from("achievements").select("*").order("category"),
+    supabase.from("manager_achievements").select("achievement_id, unlocked_at").eq("user_id", req.user.id),
+  ]);
+  const unlockedMap = {};
+  (unlocked || []).forEach(u => { unlockedMap[u.achievement_id] = u.unlocked_at; });
+  res.json((all || []).map(a => ({
+    ...a,
+    unlocked: !!unlockedMap[a.id],
+    unlocked_at: unlockedMap[a.id] || null,
+  })));
+});
+
+// POST /api/achievements/check — lås achievements op baseret på context
+router.post("/achievements/check", requireAuth, async (req, res) => {
+  const { context } = req.body;
+  const [{ data: all }, { data: unlocked }] = await Promise.all([
+    supabase.from("achievements").select("*"),
+    supabase.from("manager_achievements").select("achievement_id").eq("user_id", req.user.id),
+  ]);
+  const unlockedIds = new Set((unlocked || []).map(u => u.achievement_id));
+  const toCheck = (all || []).filter(a => !unlockedIds.has(a.id));
+  const newlyUnlocked = [];
+
+  for (const ach of toCheck) {
+    let qualified = false;
+    if (context === "watchlist_add" && ach.condition_type === "watchlist_count") {
+      const { count } = await supabase.from("rider_watchlist")
+        .select("id", { count: "exact", head: true }).eq("user_id", req.user.id);
+      if ((count || 0) >= (ach.condition_value || 1)) qualified = true;
+    }
+    if (qualified) {
+      const { error: achErr } = await supabase.from("manager_achievements")
+        .insert({ user_id: req.user.id, achievement_id: ach.id, unlocked_at: new Date().toISOString() });
+      if (!achErr) newlyUnlocked.push(ach);
+    }
+  }
+  res.json({ unlocked: newlyUnlocked });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MANAGER PROFILES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// GET /api/managers/:teamId — fuld manager-profil
+router.get("/managers/:teamId", requireAuth, async (req, res) => {
+  const { teamId } = req.params;
+  const { data: team } = await supabase.from("teams")
+    .select("id, name, division, balance, user_id").eq("id", teamId).single();
+  if (!team) return res.status(404).json({ error: "Hold ikke fundet" });
+
+  const [userRes, ridersRes, historyRes, allAchsRes, unlockedAchsRes, transfersRes] = await Promise.all([
+    supabase.from("users")
+      .select("id, username, is_online, last_seen, login_streak")
+      .eq("id", team.user_id).single(),
+    supabase.from("riders")
+      .select("id, firstname, lastname, uci_points, is_u25, stat_bj, stat_sp, stat_tt")
+      .eq("team_id", teamId).order("uci_points", { ascending: false }),
+    supabase.from("season_standings")
+      .select("*, season:season_id(number)")
+      .eq("team_id", teamId).order("created_at", { ascending: false }),
+    supabase.from("achievements").select("*").order("category"),
+    supabase.from("manager_achievements")
+      .select("achievement_id, unlocked_at").eq("user_id", team.user_id),
+    supabase.from("transfer_offers")
+      .select(`id, offer_amount, created_at,
+        rider:rider_id(id, firstname, lastname),
+        buyer_team:buyer_team_id(id, name),
+        seller_team:seller_team_id(id, name)`)
+      .or(`buyer_team_id.eq.${teamId},seller_team_id.eq.${teamId}`)
+      .eq("status", "accepted")
+      .order("created_at", { ascending: false }).limit(10),
+  ]);
+
+  const unlockedMap = {};
+  (unlockedAchsRes.data || []).forEach(u => { unlockedMap[u.achievement_id] = u.unlocked_at; });
+  const achievements = (allAchsRes.data || []).map(a => ({
+    ...a, unlocked: !!unlockedMap[a.id], unlocked_at: unlockedMap[a.id] || null,
+  }));
+
+  res.json({
+    team: { id: team.id, name: team.name, division: team.division },
+    user: userRes.data,
+    riders: ridersRes.data || [],
+    season_history: historyRes.data || [],
+    achievements,
+    transfer_activity: transfersRes.data || [],
+  });
+});
+
+// GET /api/riders/:id/watchlist-count — antal managers der følger en rytter
+router.get("/riders/:id/watchlist-count", requireAuth, async (req, res) => {
+  const { count } = await supabase.from("rider_watchlist")
+    .select("id", { count: "exact", head: true }).eq("rider_id", req.params.id);
+  res.json({ count: count || 0 });
+});
+
+// POST /api/riders/:id/view — vis rytter-profil, trigger evt. transferrygte
+router.post("/riders/:id/view", requireAuth, async (req, res) => {
+  const { data: rider } = await supabase.from("riders")
+    .select("id, firstname, lastname, team_id").eq("id", req.params.id).single();
+  if (rider?.team_id && rider.team_id !== req.team?.id && Math.random() < 0.3) {
+    await notifyTeamOwner(rider.team_id, "transfer_interest",
+      "Transferrygte 👀",
+      `En manager kigger på ${rider.firstname} ${rider.lastname}`,
+      rider.id);
+  }
+  res.json({ ok: true });
+});
+
 export default router;
+
 

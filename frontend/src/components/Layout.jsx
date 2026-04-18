@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
-const EDGE = "https://ghwvkxzhsbbltzfnuhhz.supabase.co/functions/v1";
+const API = import.meta.env.VITE_API_URL;
 
 const NAV_GROUPS = [
   {
@@ -50,7 +50,7 @@ const BOTTOM_ITEMS = [
   { to: "/profile",       label: "Min Profil",     icon: "👤" },
 ];
 
-async function edgeHeaders() {
+async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
@@ -88,9 +88,9 @@ export default function Layout() {
       const { data: notifs } = await supabase.from("notifications").select("id").eq("user_id", session.user.id).eq("is_read", false).limit(9);
       setNotifications(notifs || []);
 
-      const h = await edgeHeaders();
-      fetch(`${EDGE}/presence`,              { method: "POST", headers: h }).catch(() => {});
-      fetch(`${EDGE}/presence/login-streak`, { method: "POST", headers: h }).catch(() => {});
+      const h = await authHeaders();
+      fetch(`${API}/api/presence`,      { method: "POST", headers: h }).catch(() => {});
+      fetch(`${API}/api/login-streak`,  { method: "POST", headers: h }).catch(() => {});
       fetchOnlineCount(h);
     });
   }, []);
@@ -111,8 +111,8 @@ export default function Layout() {
   useEffect(() => {
     if (!session) return;
     heartbeatRef.current = setInterval(async () => {
-      const h = await edgeHeaders();
-      fetch(`${EDGE}/presence`, { method: "POST", headers: h }).catch(() => {});
+      const h = await authHeaders();
+      fetch(`${API}/api/presence`, { method: "POST", headers: h }).catch(() => {});
       fetchOnlineCount(h);
     }, 60000);
     return () => clearInterval(heartbeatRef.current);
@@ -120,8 +120,8 @@ export default function Layout() {
 
   async function fetchOnlineCount(headers) {
     try {
-      const h = headers || await edgeHeaders();
-      const res = await fetch(`${EDGE}/presence/online-count`, { headers: h });
+      const h = headers || await authHeaders();
+      const res = await fetch(`${API}/api/online-count`, { headers: h });
       const data = await res.json();
       setOnlineCount(data.count || 0);
     } catch (e) {}

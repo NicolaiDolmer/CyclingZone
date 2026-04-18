@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
-const EDGE = "https://ghwvkxzhsbbltzfnuhhz.supabase.co/functions/v1";
+const API = import.meta.env.VITE_API_URL;
 
 const STATS = [
   { key: "stat_fl",  label: "Flad",              icon: "═" },
@@ -21,7 +21,7 @@ const STATS = [
   { key: "stat_ftr", label: "Fighter",            icon: "★" },
 ];
 
-async function edgeHeaders() {
+async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
@@ -118,7 +118,6 @@ function AuctionButton({ rider, isMyRider, onStart }) {
 export default function RiderStatsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const API = import.meta.env.VITE_API_URL;
 
   const [rider, setRider]                   = useState(null);
   const [onWatchlist, setOnWatchlist]       = useState(false);
@@ -142,8 +141,8 @@ export default function RiderStatsPage() {
 
   async function loadWatchlistCount() {
     try {
-      const h = await edgeHeaders();
-      const res = await fetch(`${EDGE}/manager-profile/rider/${id}/watchlist-count`, { headers: h });
+      const h = await authHeaders();
+      const res = await fetch(`${API}/api/riders/${id}/watchlist-count`, { headers: h });
       const data = await res.json();
       setWatchlistCount(data.count || 0);
     } catch (e) {}
@@ -159,8 +158,8 @@ export default function RiderStatsPage() {
         .insert({ user_id: user.id, rider_id: id }).select("id").single();
       setOnWatchlist(true); setWatchlistId(data?.id);
       // Achievement check
-      const h = await edgeHeaders();
-      fetch(`${EDGE}/achievements/check`, {
+      const h = await authHeaders();
+      fetch(`${API}/api/achievements/check`, {
         method: "POST", headers: h,
         body: JSON.stringify({ context: "watchlist_add" }),
       }).catch(() => {});
@@ -186,10 +185,9 @@ export default function RiderStatsPage() {
     setLoading(false);
     loadWatchlistCount();
 
-    // Transferrygte via Edge Function
     if (riderRes.data?.team_id) {
-      const h = await edgeHeaders();
-      fetch(`${EDGE}/manager-profile/rider/${id}/view`, { method: "POST", headers: h }).catch(() => {});
+      const h = await authHeaders();
+      fetch(`${API}/api/riders/${id}/view`, { method: "POST", headers: h }).catch(() => {});
     }
   }
 
