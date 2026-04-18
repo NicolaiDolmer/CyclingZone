@@ -1113,27 +1113,30 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
 
 // POST /api/presence — heartbeat, opdater last_seen
 router.post("/presence", requireAuth, async (req, res) => {
-  await supabase.from("users")
-    .update({ last_seen: new Date().toISOString(), is_online: true })
+  const { error } = await supabase.from("users")
+    .update({ last_seen: new Date().toISOString() })
     .eq("id", req.user.id);
-  res.json({ ok: true });
+  if (error) console.error("[presence] update failed:", error.message);
+  res.json({ ok: true, user_id: req.user.id, error: error?.message || null });
 });
 
 // POST /api/login-streak — beregn og opdater daglig login-streak
 router.post("/login-streak", requireAuth, async (req, res) => {
-  const { data: user } = await supabase.from("users")
+  const { data: user, error: selectErr } = await supabase.from("users")
     .select("last_login_date, login_streak").eq("id", req.user.id).single();
+  if (selectErr) console.error("[login-streak] select failed:", selectErr.message);
   const today = new Date().toISOString().slice(0, 10);
   const last = user?.last_login_date;
   let streak = user?.login_streak || 0;
   if (last !== today) {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     streak = last === yesterday ? streak + 1 : 1;
-    await supabase.from("users")
+    const { error: updateErr } = await supabase.from("users")
       .update({ last_login_date: today, login_streak: streak })
       .eq("id", req.user.id);
+    if (updateErr) console.error("[login-streak] update failed:", updateErr.message);
   }
-  res.json({ streak });
+  res.json({ streak, user_id: req.user.id });
 });
 
 // GET /api/online-count — brugere aktive inden for de seneste 5 minutter
@@ -1203,7 +1206,7 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
 
   const [userRes, ridersRes, historyRes, allAchsRes, unlockedAchsRes, transfersRes] = await Promise.all([
     supabase.from("users")
-      .select("id, username, is_online, last_seen, login_streak")
+      .select("id, username, last_seen, login_streak")
       .eq("id", team.user_id).single(),
     supabase.from("riders")
       .select("id, firstname, lastname, uci_points, is_u25, stat_bj, stat_sp, stat_tt")
