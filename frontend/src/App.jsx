@@ -27,6 +27,7 @@ import HeadToHeadPage from "./pages/HeadToHeadPage";
 import PatchNotesPage from "./pages/PatchNotesPage";
 import RacesPage from "./pages/RacesPage";
 import SeasonEndPage from "./pages/SeasonEndPage";
+import ManagerProfilePage from "./pages/ManagerProfilePage";
 import FinancePage from "./pages/FinancePage";
 import Layout from "./components/Layout";
 
@@ -88,6 +89,7 @@ export default function App() {
           <Route path="races" element={<RacesPage />} />
           <Route path="season-end" element={<SeasonEndPage />} />
           <Route path="finance" element={<FinancePage />} />
+          <Route path="managers/:teamId" element={<ManagerProfilePage />} />
           <Route path="admin" element={<AdminPage />} />
 
           {/* 404 fallback */}
