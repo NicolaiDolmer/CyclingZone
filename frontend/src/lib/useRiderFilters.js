@@ -7,7 +7,7 @@ import { DEFAULT_FILTERS } from "../components/RiderFilters";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-const STAT_FILTER_KEYS = ["stat_fl","stat_bj","stat_sp","stat_tt","stat_udh","stat_acc","stat_mod"];
+const STAT_FILTER_KEYS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl","stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
 
 /**
  * Client-side filter + sort for an array of riders already in memory.
@@ -63,11 +63,12 @@ export function useClientRiderFilters(riders = []) {
     // Team filter
     if (filters.team_id) result = result.filter(r => r.team_id === filters.team_id);
 
-    // Stat min filters
+    // Stat min filters (only apply when value differs from default 50)
     for (const key of STAT_FILTER_KEYS) {
       const minKey = `${key}_min`;
-      if (filters[minKey]) {
-        result = result.filter(r => (r[key] || 0) >= parseInt(filters[minKey]));
+      const val = parseInt(filters[minKey]);
+      if (!isNaN(val) && val !== 50 && val > 0) {
+        result = result.filter(r => (r[key] || 0) >= val);
       }
     }
 
@@ -117,10 +118,11 @@ export function buildSupabaseQuery(query, filters) {
     query = query.gte("birthdate", minBirth);
   }
 
-  // Stat min filters
+  // Stat min filters (only apply when value differs from default 50)
   for (const key of STAT_FILTER_KEYS) {
     const minKey = `${key}_min`;
-    if (filters[minKey]) query = query.gte(key, parseInt(filters[minKey]));
+    const val = parseInt(filters[minKey]);
+    if (!isNaN(val) && val !== 50 && val > 0) query = query.gte(key, val);
   }
 
   // Sort

@@ -147,7 +147,7 @@ export default function WatchlistPage() {
                         </td>
                         {STATS.map(key => (
                           <td key={key} className="px-1.5 py-2.5 text-center">
-                            <span className={`font-mono ${statBg(r[key] || 0)}`}>
+                            <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(r[key] || 0)}`}>
                               {r[key] || "—"}
                             </span>
                           </td>

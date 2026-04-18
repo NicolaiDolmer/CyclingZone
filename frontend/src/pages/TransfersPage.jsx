@@ -768,9 +768,9 @@ function TransferCard({ listing, myTeamId, onOffer }) {
         {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"]].map(([label, key]) => (
           <div key={key} className="text-center">
             <p className="text-white/25 text-[9px] uppercase">{label}</p>
-            <p className={`font-mono text-xs font-bold ${statBg(listing.rider?.[key] || 0)}`}>
+            <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(listing.rider?.[key] || 0)}`}>
               {listing.rider?.[key] || "—"}
-            </p>
+            </span>
           </div>
         ))}
       </div>

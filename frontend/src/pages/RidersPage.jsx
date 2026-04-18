@@ -29,7 +29,7 @@ function StatBar({ value }) {
       <div className="w-full bg-white/8 rounded-full h-1.5">
         <div className={`${color} h-1.5 rounded-full`} style={{ width: `${pct}%` }} />
       </div>
-      <span className={`text-[11px] font-mono w-5 text-right flex-shrink-0 ${statBg(value ?? 0)}`}>
+      <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded flex-shrink-0 ${statBg(value ?? 0)}`}>
         {value ?? "—"}
       </span>
     </div>
@@ -75,9 +75,9 @@ function RiderCard({ rider, onClick, watchlist, onToggleWatchlist }) {
         {MOBILE_STATS.map(({ key, label }) => (
           <div key={key} className="text-center">
             <p className="text-white/20 text-[9px] uppercase mb-0.5">{label}</p>
-            <p className={`font-mono text-xs font-bold ${statBg(rider[key] || 0)}`}>
+            <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(rider[key] || 0)}`}>
               {rider[key] || "—"}
-            </p>
+            </span>
           </div>
         ))}
       </div>

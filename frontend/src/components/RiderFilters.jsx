@@ -22,13 +22,20 @@ const SORT_OPTIONS = [
 ];
 
 const STAT_SLIDERS = [
-  { key: "stat_fl",  label: "Flad" },
-  { key: "stat_bj",  label: "Bjerg" },
-  { key: "stat_sp",  label: "Sprint" },
+  { key: "stat_fl",  label: "FL" },
+  { key: "stat_bj",  label: "BJ" },
+  { key: "stat_kb",  label: "KB" },
+  { key: "stat_bk",  label: "BAK" },
   { key: "stat_tt",  label: "TT" },
-  { key: "stat_udh", label: "Udholdenhed" },
-  { key: "stat_acc", label: "Acceleration" },
-  { key: "stat_mod", label: "Modstandsdygtighed" },
+  { key: "stat_prl", label: "PRL" },
+  { key: "stat_bro", label: "BRO" },
+  { key: "stat_sp",  label: "SP" },
+  { key: "stat_acc", label: "ACC" },
+  { key: "stat_ned", label: "NED" },
+  { key: "stat_udh", label: "UDH" },
+  { key: "stat_mod", label: "MOD" },
+  { key: "stat_res", label: "RES" },
+  { key: "stat_ftr", label: "FTR" },
 ];
 
 export const DEFAULT_FILTERS = {
@@ -43,19 +50,29 @@ export const DEFAULT_FILTERS = {
   u23: false,
   free_agent: false,
   team_id: "",
-  stat_fl_min: "",
-  stat_bj_min: "",
-  stat_sp_min: "",
-  stat_tt_min: "",
-  stat_udh_min: "",
-  stat_acc_min: "",
-  stat_mod_min: "",
+  stat_fl_min:  50,
+  stat_bj_min:  50,
+  stat_kb_min:  50,
+  stat_bk_min:  50,
+  stat_tt_min:  50,
+  stat_prl_min: 50,
+  stat_bro_min: 50,
+  stat_sp_min:  50,
+  stat_acc_min: 50,
+  stat_ned_min: 50,
+  stat_udh_min: 50,
+  stat_mod_min: 50,
+  stat_res_min: 50,
+  stat_ftr_min: 50,
 };
 
 export default function RiderFilters({ filters, onChange, onReset, showTeamFilter = true, compact = false, teams = [] }) {
   const [statsOpen, setStatsOpen] = useState(false);
 
-  const hasActiveStats = STAT_SLIDERS.some(s => filters[`${s.key}_min`]);
+  const hasActiveStats = STAT_SLIDERS.some(s => {
+    const v = filters[`${s.key}_min`];
+    return v !== "" && v !== 50 && parseInt(v) !== 50;
+  });
   const hasActiveFilters = filters.q || filters.min_uci || filters.max_uci ||
     filters.min_age || filters.max_age || filters.u25 || filters.u23 ||
     filters.free_agent || filters.team_id || filters.sort !== "uci_points" ||
@@ -201,10 +218,13 @@ export default function RiderFilters({ filters, onChange, onReset, showTeamFilte
           onClick={() => setStatsOpen(o => !o)}
           className="flex items-center gap-2 text-white/30 hover:text-white/60 text-xs transition-colors">
           <span className={`transition-transform ${statsOpen ? "rotate-90" : ""}`}>▶</span>
-          <span className="uppercase tracking-wider font-medium">Stat filtre</span>
+          <span className="uppercase tracking-wider font-medium">Evne-filtre</span>
           {hasActiveStats && (
             <span className="bg-[#e8c547]/15 text-[#e8c547] text-[10px] px-1.5 py-0.5 rounded-full">
-              {STAT_SLIDERS.filter(s => filters[`${s.key}_min`]).length} aktive
+              {STAT_SLIDERS.filter(s => {
+                const v = filters[`${s.key}_min`];
+                return v !== "" && v !== 50 && parseInt(v) !== 50;
+              }).length} aktive
             </span>
           )}
         </button>
@@ -214,19 +234,20 @@ export default function RiderFilters({ filters, onChange, onReset, showTeamFilte
             {STAT_SLIDERS.map(({ key, label }) => {
               const minKey = `${key}_min`;
               const val = parseInt(filters[minKey]) || 0;
+              const isChanged = val !== 50;
               return (
                 <div key={key}>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-white/25 text-[10px] uppercase tracking-wider">{label}</label>
-                    <span className={`text-[10px] font-mono font-bold ${val > 0 ? "text-[#e8c547]" : "text-white/20"}`}>
-                      {val > 0 ? `≥ ${val}` : "—"}
+                    <span className={`text-[10px] font-mono font-bold ${isChanged ? "text-[#e8c547]" : "text-white/20"}`}>
+                      ≥ {val}
                     </span>
                   </div>
                   <input
                     type="range"
                     min={0} max={100} step={1}
                     value={val}
-                    onChange={e => onChange(minKey, e.target.value === "0" ? "" : e.target.value)}
+                    onChange={e => onChange(minKey, parseInt(e.target.value))}
                     className="w-full h-1.5 appearance-none rounded-full cursor-pointer
                       bg-white/10 accent-[#e8c547]"
                   />
@@ -253,11 +274,14 @@ export default function RiderFilters({ filters, onChange, onReset, showTeamFilte
             <Chip label={`Sortér: ${SORT_OPTIONS.find(o => o.value === filters.sort)?.label}`}
               onRemove={() => onChange("sort", "uci_points")} />
           )}
-          {STAT_SLIDERS.filter(s => filters[`${s.key}_min`]).map(s => (
+          {STAT_SLIDERS.filter(s => {
+            const v = filters[`${s.key}_min`];
+            return v !== "" && v !== 50 && parseInt(v) !== 50;
+          }).map(s => (
             <Chip
               key={s.key}
               label={`${s.label} ≥ ${filters[`${s.key}_min`]}`}
-              onRemove={() => onChange(`${s.key}_min`, "")}
+              onRemove={() => onChange(`${s.key}_min`, 50)}
             />
           ))}
         </div>
