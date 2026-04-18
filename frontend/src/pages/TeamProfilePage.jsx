@@ -7,6 +7,16 @@ const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
 const STAT_LABELS = ["FL","BJ","KB","BK","TT","PRL","Bro","SP","ACC","NED","UDH","MOD","RES","FTR"];
 
+function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
+  const active = sort === sortKey;
+  return (
+    <th onClick={() => onSort(sortKey)}
+      className={`cursor-pointer select-none transition-colors ${active ? "text-[#e8c547]/80" : "text-white/30 hover:text-white/50"} ${className}`}>
+      {children}{active && <span className="ml-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
+    </th>
+  );
+}
+
 export default function TeamProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -18,6 +28,11 @@ export default function TeamProfilePage() {
   const [showOutgoing, setShowOutgoing] = useState(true);
   const [loading, setLoading] = useState(true);
   const [myTeamId, setMyTeamId] = useState(null);
+  const [tableSort, setTableSort] = useState({ key: "uci_points", dir: "desc" });
+
+  function handleSort(key) {
+    setTableSort(s => ({ key, dir: s.key === key ? (s.dir === "desc" ? "asc" : "desc") : "desc" }));
+  }
 
   useEffect(() => { loadAll(); }, [id]);
 
@@ -72,7 +87,16 @@ export default function TeamProfilePage() {
     ...riders.filter(r => !r._isIncoming && !r._isOutgoing),
     ...(showIncoming ? incomingRiders : []),
     ...(showOutgoing ? outgoingRiders : []),
-  ];
+  ].sort((a, b) => {
+    if (tableSort.key === "firstname") {
+      const an = `${a.lastname} ${a.firstname}`.toLowerCase();
+      const bn = `${b.lastname} ${b.firstname}`.toLowerCase();
+      return tableSort.dir === "desc" ? bn.localeCompare(an) : an.localeCompare(bn);
+    }
+    const av = a[tableSort.key] || 0;
+    const bv = b[tableSort.key] || 0;
+    return tableSort.dir === "desc" ? bv - av : av - bv;
+  });
 
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
   const totalValue = currentRiders.reduce((s, r) => s + (r.uci_points || 0), 0);
@@ -166,9 +190,14 @@ export default function TeamProfilePage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="px-4 py-3 text-left text-white/30 font-medium uppercase">Rytter</th>
-                  <th className="px-4 py-3 text-right text-white/30 font-medium">UCI</th>
-                  {STAT_LABELS.map(l => <th key={l} className="px-1.5 py-3 text-center text-white/20 font-medium w-10">{l}</th>)}
+                  <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                    className="px-4 py-3 text-left font-medium uppercase">Rytter</SortTh>
+                  <SortTh sortKey="uci_points" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                    className="px-4 py-3 text-right font-medium">UCI</SortTh>
+                  {STATS.map((key, i) => (
+                    <SortTh key={key} sortKey={key} sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                      className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
+                  ))}
                 </tr>
               </thead>
               <tbody>

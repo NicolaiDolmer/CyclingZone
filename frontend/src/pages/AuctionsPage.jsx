@@ -10,6 +10,16 @@ const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
 const STAT_LABELS = ["FL","BJ","KB","BK","TT","PRL","Bro","SP","ACC","NED","UDH","MOD","RES","FTR"];
 
+function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
+  const active = sort === sortKey;
+  return (
+    <th onClick={() => onSort(sortKey)}
+      className={`cursor-pointer select-none transition-colors ${active ? "text-[#e8c547]/80" : "text-white/30 hover:text-white/50"} ${className}`}>
+      {children}{active && <span className="ml-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
+    </th>
+  );
+}
+
 // ── Countdown timer ───────────────────────────────────────────────────────────
 function Countdown({ end, status }) {
   const [text, setText] = useState("");
@@ -192,6 +202,28 @@ export default function AuctionsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [celebration, setCelebration] = useState(null);
+  const [auctionSort, setAuctionSort] = useState({ key: null, dir: "desc" });
+
+  function handleSort(key) {
+    if (key === "current_price" || key === "calculated_end") {
+      setAuctionSort(s => ({ key, dir: s.key === key ? (s.dir === "desc" ? "asc" : "desc") : "desc" }));
+    } else {
+      const cur = riderFilters.filters.sort;
+      const dir = riderFilters.filters.sort_dir;
+      if (cur === key) riderFilters.onChange("sort_dir", dir === "desc" ? "asc" : "desc");
+      else { riderFilters.onChange("sort", key); riderFilters.onChange("sort_dir", "desc"); }
+      setAuctionSort({ key: null, dir: "desc" });
+    }
+  }
+
+  function activeSort(key) {
+    if (key === "current_price" || key === "calculated_end") return auctionSort.key === key;
+    return !auctionSort.key && riderFilters.filters.sort === key;
+  }
+  function activeSortDir(key) {
+    if (key === "current_price" || key === "calculated_end") return auctionSort.dir;
+    return riderFilters.filters.sort_dir;
+  }
 
   useEffect(() => {
     loadAll();
@@ -349,25 +381,43 @@ export default function AuctionsPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="px-3 py-3 text-left text-white/30 font-medium uppercase tracking-wider">Rytter</th>
+                  <SortTh sortKey="firstname" sort={activeSort("firstname") ? "firstname" : riderFilters.filters.sort}
+                    sortDir={activeSortDir("firstname")} onSort={handleSort}
+                    className="px-3 py-3 text-left font-medium uppercase tracking-wider">Rytter</SortTh>
                   <th className="px-2 py-3 text-center text-white/20 font-medium hidden lg:table-cell">Alder</th>
-                  <th className="px-2 py-3 text-right text-white/30 font-medium">UCI</th>
-                  {STAT_LABELS.map(l => (
-                    <th key={l} className="px-1 py-3 text-center text-white/20 font-medium w-9">{l}</th>
+                  <SortTh sortKey="uci_points" sort={activeSort("uci_points") ? "uci_points" : riderFilters.filters.sort}
+                    sortDir={activeSortDir("uci_points")} onSort={handleSort}
+                    className="px-2 py-3 text-right font-medium">UCI</SortTh>
+                  {STATS.map((key, i) => (
+                    <SortTh key={key} sortKey={key}
+                      sort={activeSort(key) ? key : riderFilters.filters.sort}
+                      sortDir={activeSortDir(key)} onSort={handleSort}
+                      className="px-1 py-3 text-center font-medium w-9">{STAT_LABELS[i]}</SortTh>
                   ))}
-                  <th className="px-3 py-3 text-right text-white/30 font-medium uppercase tracking-wider whitespace-nowrap">
+                  <SortTh sortKey="current_price"
+                    sort={auctionSort.key} sortDir={auctionSort.dir} onSort={handleSort}
+                    className="px-3 py-3 text-right font-medium uppercase tracking-wider whitespace-nowrap">
                     Højeste bud
-                  </th>
-                  <th className="px-3 py-3 text-center text-white/30 font-medium uppercase tracking-wider whitespace-nowrap">
+                  </SortTh>
+                  <SortTh sortKey="calculated_end"
+                    sort={auctionSort.key} sortDir={auctionSort.dir} onSort={handleSort}
+                    className="px-3 py-3 text-center font-medium uppercase tracking-wider whitespace-nowrap">
                     Tid tilbage
-                  </th>
-                  <th className="px-3 py-3 text-left text-white/30 font-medium uppercase tracking-wider">
-                    Byd
-                  </th>
+                  </SortTh>
+                  <th className="px-3 py-3 text-left text-white/30 font-medium uppercase tracking-wider">Byd</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(a => (
+                {[...filtered].sort((a, b) => {
+                  if (!auctionSort.key) return 0;
+                  const av = auctionSort.key === "calculated_end"
+                    ? new Date(a.calculated_end).getTime()
+                    : (a.current_price || 0);
+                  const bv = auctionSort.key === "calculated_end"
+                    ? new Date(b.calculated_end).getTime()
+                    : (b.current_price || 0);
+                  return auctionSort.dir === "desc" ? bv - av : av - bv;
+                }).map(a => (
                   <AuctionRow
                     key={a.id}
                     auction={a}

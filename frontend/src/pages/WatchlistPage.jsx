@@ -9,6 +9,16 @@ const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
 const STAT_LABELS = ["FL","BJ","KB","BK","TT","PRL","Bro","SP","ACC","NED","UDH","MOD","RES","FTR"];
 
+function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
+  const active = sort === sortKey;
+  return (
+    <th onClick={() => onSort(sortKey)}
+      className={`cursor-pointer select-none transition-colors ${active ? "text-[#e8c547]/80" : "text-white/30 hover:text-white/50"} ${className}`}>
+      {children}{active && <span className="ml-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
+    </th>
+  );
+}
+
 export default function WatchlistPage() {
   const navigate = useNavigate();
   const [entries, setEntries] = useState([]);
@@ -61,6 +71,12 @@ export default function WatchlistPage() {
 
   const riderFilters = useClientRiderFilters(entries.map(e => e.rider));
   const filteredRiders = new Set(riderFilters.filtered.map(r => r.id));
+  const sort = riderFilters.filters.sort;
+  const sortDir = riderFilters.filters.sort_dir;
+  function handleSort(key) {
+    if (sort === key) riderFilters.onChange("sort_dir", sortDir === "desc" ? "asc" : "desc");
+    else { riderFilters.onChange("sort", key); riderFilters.onChange("sort_dir", "desc"); }
+  }
   const filtered = entries.filter(e => filteredRiders.has(e.rider.id))
     .sort((a, b) => {
       const ai = riderFilters.filtered.findIndex(r => r.id === a.rider.id);
@@ -110,11 +126,14 @@ export default function WatchlistPage() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-white/5">
-                    <th className="px-3 py-3 text-left text-white/30 font-medium uppercase tracking-wider">Rytter</th>
+                    <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
+                      className="px-3 py-3 text-left font-medium uppercase tracking-wider">Rytter</SortTh>
                     <th className="px-3 py-3 text-left text-white/30 font-medium uppercase tracking-wider hidden sm:table-cell">Hold</th>
-                    <th className="px-3 py-3 text-right text-white/30 font-medium">UCI</th>
-                    {STAT_LABELS.map(l => (
-                      <th key={l} className="px-1.5 py-3 text-center text-white/20 font-medium w-10">{l}</th>
+                    <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
+                      className="px-3 py-3 text-right font-medium">UCI</SortTh>
+                    {STATS.map((key, i) => (
+                      <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
+                        className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
                     ))}
                     <th className="px-3 py-3 text-center text-white/20">Note</th>
                     <th className="px-3 py-3 text-center text-white/20">Handling</th>

@@ -6,11 +6,13 @@
  *   onReset: () => void
  *   showTeamFilter: bool (default true)
  *   compact: bool — fewer rows, for sidepanels
+ *   teams: array
  */
 import { useState } from "react";
 
 const SORT_OPTIONS = [
   { value: "uci_points",  label: "UCI Point" },
+  { value: "firstname",   label: "Navn (A–Z)" },
   { value: "stat_bj",     label: "Bjerg" },
   { value: "stat_sp",     label: "Sprint" },
   { value: "stat_tt",     label: "TT" },
@@ -21,22 +23,28 @@ const SORT_OPTIONS = [
   { value: "birthdate",   label: "Alder (yngst først)" },
 ];
 
-const STAT_SLIDERS = [
-  { key: "stat_fl",  label: "FL" },
-  { key: "stat_bj",  label: "BJ" },
-  { key: "stat_kb",  label: "KB" },
-  { key: "stat_bk",  label: "BAK" },
-  { key: "stat_tt",  label: "TT" },
-  { key: "stat_prl", label: "PRL" },
-  { key: "stat_bro", label: "BRO" },
-  { key: "stat_sp",  label: "SP" },
-  { key: "stat_acc", label: "ACC" },
-  { key: "stat_ned", label: "NED" },
-  { key: "stat_udh", label: "UDH" },
-  { key: "stat_mod", label: "MOD" },
-  { key: "stat_res", label: "RES" },
-  { key: "stat_ftr", label: "FTR" },
+export const STAT_KEYS = [
+  "stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
+  "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr",
 ];
+
+export const STAT_LABELS_MAP = {
+  stat_fl:"FL", stat_bj:"BJ", stat_kb:"KB", stat_bk:"BAK", stat_tt:"TT",
+  stat_prl:"PRL", stat_bro:"BRO", stat_sp:"SP", stat_acc:"ACC",
+  stat_ned:"NED", stat_udh:"UDH", stat_mod:"MOD", stat_res:"RES", stat_ftr:"FTR",
+};
+
+const STAT_DEFAULT_MIN = 50;
+const STAT_DEFAULT_MAX = 85;
+
+function makeStatDefaults() {
+  const d = {};
+  for (const k of STAT_KEYS) {
+    d[`${k}_min`] = STAT_DEFAULT_MIN;
+    d[`${k}_max`] = STAT_DEFAULT_MAX;
+  }
+  return d;
+}
 
 export const DEFAULT_FILTERS = {
   q: "",
@@ -50,217 +58,225 @@ export const DEFAULT_FILTERS = {
   u23: false,
   free_agent: false,
   team_id: "",
-  stat_fl_min:  50,
-  stat_bj_min:  50,
-  stat_kb_min:  50,
-  stat_bk_min:  50,
-  stat_tt_min:  50,
-  stat_prl_min: 50,
-  stat_bro_min: 50,
-  stat_sp_min:  50,
-  stat_acc_min: 50,
-  stat_ned_min: 50,
-  stat_udh_min: 50,
-  stat_mod_min: 50,
-  stat_res_min: 50,
-  stat_ftr_min: 50,
+  ...makeStatDefaults(),
 };
 
-export default function RiderFilters({ filters, onChange, onReset, showTeamFilter = true, compact = false, teams = [] }) {
-  const [statsOpen, setStatsOpen] = useState(false);
+function isStatActive(filters, key) {
+  return (
+    (parseInt(filters[`${key}_min`]) ?? STAT_DEFAULT_MIN) > STAT_DEFAULT_MIN ||
+    (parseInt(filters[`${key}_max`]) ?? STAT_DEFAULT_MAX) < STAT_DEFAULT_MAX
+  );
+}
 
-  const hasActiveStats = STAT_SLIDERS.some(s => {
-    const v = filters[`${s.key}_min`];
-    return v !== "" && v !== 50 && parseInt(v) !== 50;
-  });
-  const hasActiveFilters = filters.q || filters.min_uci || filters.max_uci ||
-    filters.min_age || filters.max_age || filters.u25 || filters.u23 ||
-    filters.free_agent || filters.team_id || filters.sort !== "uci_points" ||
-    hasActiveStats;
+// ── Dual handle range slider ──────────────────────────────────────────────────
+function DualStatSlider({ statKey, label, filters, onChange }) {
+  const minKey = `${statKey}_min`;
+  const maxKey = `${statKey}_max`;
+  const valMin = parseInt(filters[minKey]) ?? STAT_DEFAULT_MIN;
+  const valMax = parseInt(filters[maxKey]) ?? STAT_DEFAULT_MAX;
+  const active  = valMin > STAT_DEFAULT_MIN || valMax < STAT_DEFAULT_MAX;
+
+  const pct = (v) => ((v - 50) / 35) * 100;
 
   return (
-    <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 mb-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-white/40 text-xs uppercase tracking-wider font-semibold">Filtrér & Sortér</p>
-        {hasActiveFilters && (
-          <button onClick={onReset}
-            className="text-xs text-white/30 hover:text-white transition-colors">
-            Nulstil
-          </button>
-        )}
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-white/25 text-[10px] uppercase tracking-wider">{label}</label>
+        <span className={`text-[10px] font-mono font-bold ${active ? "text-[#e8c547]" : "text-white/20"}`}>
+          {valMin} – {valMax}
+        </span>
       </div>
-
-      <div className={`grid gap-2 ${compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"}`}>
-        {/* Name search */}
-        <div className="col-span-2 sm:col-span-1">
-          <label className="block text-white/25 text-[10px] uppercase tracking-wider mb-1">Navn</label>
-          <input
-            type="text"
-            value={filters.q}
-            onChange={e => onChange("q", e.target.value)}
-            placeholder="Søg rytter..."
-            className="w-full bg-white/5 border border-white/8 rounded-lg px-3 py-2
-              text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50"
-          />
-        </div>
-
-        {/* Sort */}
-        <div>
-          <label className="block text-white/25 text-[10px] uppercase tracking-wider mb-1">Sortér efter</label>
-          <div className="flex gap-1">
-            <select
-              value={filters.sort}
-              onChange={e => onChange("sort", e.target.value)}
-              className="flex-1 bg-white/5 border border-white/8 rounded-lg px-2 py-2
-                text-white text-sm focus:outline-none focus:border-[#e8c547]/50 min-w-0">
-              {SORT_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-            <button
-              onClick={() => onChange("sort_dir", filters.sort_dir === "desc" ? "asc" : "desc")}
-              title={filters.sort_dir === "desc" ? "Høj → Lav" : "Lav → Høj"}
-              className="px-2.5 bg-white/5 border border-white/8 rounded-lg text-white/50
-                hover:text-white hover:bg-white/10 transition-all text-sm flex-shrink-0">
-              {filters.sort_dir === "desc" ? "↓" : "↑"}
-            </button>
-          </div>
-        </div>
-
-        {/* UCI price range */}
-        <div>
-          <label className="block text-white/25 text-[10px] uppercase tracking-wider mb-1">UCI CZ$ (min–max)</label>
-          <div className="flex gap-1">
-            <input
-              type="number"
-              value={filters.min_uci}
-              onChange={e => onChange("min_uci", e.target.value)}
-              placeholder="Min"
-              className="w-full bg-white/5 border border-white/8 rounded-lg px-2 py-2
-                text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50"
-            />
-            <input
-              type="number"
-              value={filters.max_uci}
-              onChange={e => onChange("max_uci", e.target.value)}
-              placeholder="Max"
-              className="w-full bg-white/5 border border-white/8 rounded-lg px-2 py-2
-                text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50"
-            />
-          </div>
-        </div>
-
-        {/* Age range */}
-        <div>
-          <label className="block text-white/25 text-[10px] uppercase tracking-wider mb-1">Alder (min–max)</label>
-          <div className="flex gap-1">
-            <input
-              type="number"
-              value={filters.min_age}
-              onChange={e => onChange("min_age", e.target.value)}
-              placeholder="Min"
-              min={16} max={45}
-              className="w-full bg-white/5 border border-white/8 rounded-lg px-2 py-2
-                text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50"
-            />
-            <input
-              type="number"
-              value={filters.max_age}
-              onChange={e => onChange("max_age", e.target.value)}
-              placeholder="Max"
-              min={16} max={45}
-              className="w-full bg-white/5 border border-white/8 rounded-lg px-2 py-2
-                text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50"
-            />
-          </div>
-        </div>
-
-        {/* Team filter */}
-        {showTeamFilter && teams.length > 0 && (
-          <div>
-            <label className="block text-white/25 text-[10px] uppercase tracking-wider mb-1">Hold</label>
-            <select
-              value={filters.team_id}
-              onChange={e => onChange("team_id", e.target.value)}
-              className="w-full bg-white/5 border border-white/8 rounded-lg px-2 py-2
-                text-white text-sm focus:outline-none focus:border-[#e8c547]/50">
-              <option value="">Alle hold</option>
-              {teams.map(t => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Toggle buttons */}
-        <div className={`flex gap-2 items-end ${compact ? "col-span-2" : ""}`}>
-          {[
-            { key: "free_agent", label: "Fri agent" },
-            { key: "u25",  label: "U25" },
-            { key: "u23",  label: "U23" },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => onChange(key, !filters[key])}
-              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all border flex-shrink-0
-                ${filters[key]
-                  ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/30"
-                  : "bg-white/3 text-white/35 border-white/8 hover:text-white hover:border-white/20"}`}>
-              {label}
-            </button>
-          ))}
-        </div>
+      <div className="relative h-5 flex items-center">
+        {/* Track */}
+        <div className="absolute w-full h-1 bg-white/10 rounded-full pointer-events-none" />
+        {/* Active fill */}
+        <div className="absolute h-1 bg-[#e8c547]/40 rounded-full pointer-events-none"
+          style={{ left: `${pct(valMin)}%`, right: `${100 - pct(valMax)}%` }} />
+        {/* Min input */}
+        <input
+          type="range" min={50} max={85} step={1} value={valMin}
+          onChange={e => onChange(minKey, Math.min(parseInt(e.target.value), valMax))}
+          className="absolute w-full h-full appearance-none bg-transparent
+            pointer-events-none
+            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5
+            [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full
+            [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer
+            [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:border-0
+            [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5
+            [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white
+            [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
+        />
+        {/* Max input */}
+        <input
+          type="range" min={50} max={85} step={1} value={valMax}
+          onChange={e => onChange(maxKey, Math.max(parseInt(e.target.value), valMin))}
+          className="absolute w-full h-full appearance-none bg-transparent
+            pointer-events-none
+            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5
+            [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full
+            [&::-webkit-slider-thumb]:bg-[#e8c547] [&::-webkit-slider-thumb]:cursor-pointer
+            [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:border-0
+            [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5
+            [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#e8c547]
+            [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
+        />
       </div>
+    </div>
+  );
+}
 
-      {/* Collapsible stat sliders */}
-      <div className="mt-3 pt-3 border-t border-white/5">
-        <button
-          onClick={() => setStatsOpen(o => !o)}
-          className="flex items-center gap-2 text-white/30 hover:text-white/60 text-xs transition-colors">
-          <span className={`transition-transform ${statsOpen ? "rotate-90" : ""}`}>▶</span>
-          <span className="uppercase tracking-wider font-medium">Evne-filtre</span>
-          {hasActiveStats && (
-            <span className="bg-[#e8c547]/15 text-[#e8c547] text-[10px] px-1.5 py-0.5 rounded-full">
-              {STAT_SLIDERS.filter(s => {
-                const v = filters[`${s.key}_min`];
-                return v !== "" && v !== 50 && parseInt(v) !== 50;
-              }).length} aktive
-            </span>
+// ── Main component ────────────────────────────────────────────────────────────
+export default function RiderFilters({
+  filters, onChange, onReset,
+  showTeamFilter = true, compact = false, teams = [],
+}) {
+  const [statsOpen, setStatsOpen] = useState(false);
+
+  const activeStatKeys = STAT_KEYS.filter(k => isStatActive(filters, k));
+  const hasActiveStats = activeStatKeys.length > 0;
+
+  const hasBasicActive = filters.q || filters.min_uci || filters.max_uci ||
+    filters.min_age || filters.max_age || filters.u25 || filters.u23 ||
+    filters.free_agent || filters.team_id || filters.sort !== "uci_points";
+
+  const hasActiveFilters = hasBasicActive || hasActiveStats;
+
+  function resetStat(key) {
+    onChange(`${key}_min`, STAT_DEFAULT_MIN);
+    onChange(`${key}_max`, STAT_DEFAULT_MAX);
+  }
+
+  return (
+    <>
+      {/* ── Filter panel ── */}
+      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 mb-3">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-white/40 text-xs uppercase tracking-wider font-semibold">Filtrér & Sortér</p>
+          {hasActiveFilters && (
+            <button onClick={onReset} className="text-xs text-white/30 hover:text-white transition-colors">
+              Nulstil
+            </button>
           )}
-        </button>
+        </div>
 
-        {statsOpen && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-3 mt-3">
-            {STAT_SLIDERS.map(({ key, label }) => {
-              const minKey = `${key}_min`;
-              const val = parseInt(filters[minKey]) || 0;
-              const isChanged = val !== 50;
-              return (
-                <div key={key}>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-white/25 text-[10px] uppercase tracking-wider">{label}</label>
-                    <span className={`text-[10px] font-mono font-bold ${isChanged ? "text-[#e8c547]" : "text-white/20"}`}>
-                      ≥ {val}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0} max={100} step={1}
-                    value={val}
-                    onChange={e => onChange(minKey, parseInt(e.target.value))}
-                    className="w-full h-1.5 appearance-none rounded-full cursor-pointer
-                      bg-white/10 accent-[#e8c547]"
-                  />
-                </div>
-              );
-            })}
+        <div className={`grid gap-2 ${compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"}`}>
+          {/* Name */}
+          <div className="col-span-2 sm:col-span-1">
+            <label className="block text-white/25 text-[10px] uppercase tracking-wider mb-1">Navn</label>
+            <input type="text" value={filters.q} onChange={e => onChange("q", e.target.value)}
+              placeholder="Søg rytter..."
+              className="w-full bg-white/5 border border-white/8 rounded-lg px-3 py-2
+                text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50" />
           </div>
-        )}
+
+          {/* Sort */}
+          <div>
+            <label className="block text-white/25 text-[10px] uppercase tracking-wider mb-1">Sortér efter</label>
+            <div className="flex gap-1">
+              <select value={filters.sort} onChange={e => onChange("sort", e.target.value)}
+                className="flex-1 bg-white/5 border border-white/8 rounded-lg px-2 py-2
+                  text-white text-sm focus:outline-none focus:border-[#e8c547]/50 min-w-0">
+                {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <button
+                onClick={() => onChange("sort_dir", filters.sort_dir === "desc" ? "asc" : "desc")}
+                title={filters.sort_dir === "desc" ? "Høj → Lav" : "Lav → Høj"}
+                className="px-2.5 bg-white/5 border border-white/8 rounded-lg text-white/50
+                  hover:text-white hover:bg-white/10 transition-all text-sm flex-shrink-0">
+                {filters.sort_dir === "desc" ? "↓" : "↑"}
+              </button>
+            </div>
+          </div>
+
+          {/* UCI range */}
+          <div>
+            <label className="block text-white/25 text-[10px] uppercase tracking-wider mb-1">UCI CZ$ (min–max)</label>
+            <div className="flex gap-1">
+              <input type="number" value={filters.min_uci} onChange={e => onChange("min_uci", e.target.value)}
+                placeholder="Min"
+                className="w-full bg-white/5 border border-white/8 rounded-lg px-2 py-2
+                  text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50" />
+              <input type="number" value={filters.max_uci} onChange={e => onChange("max_uci", e.target.value)}
+                placeholder="Max"
+                className="w-full bg-white/5 border border-white/8 rounded-lg px-2 py-2
+                  text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50" />
+            </div>
+          </div>
+
+          {/* Age range */}
+          <div>
+            <label className="block text-white/25 text-[10px] uppercase tracking-wider mb-1">Alder (min–max)</label>
+            <div className="flex gap-1">
+              <input type="number" value={filters.min_age} onChange={e => onChange("min_age", e.target.value)}
+                placeholder="Min" min={16} max={45}
+                className="w-full bg-white/5 border border-white/8 rounded-lg px-2 py-2
+                  text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50" />
+              <input type="number" value={filters.max_age} onChange={e => onChange("max_age", e.target.value)}
+                placeholder="Max" min={16} max={45}
+                className="w-full bg-white/5 border border-white/8 rounded-lg px-2 py-2
+                  text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50" />
+            </div>
+          </div>
+
+          {/* Team */}
+          {showTeamFilter && teams.length > 0 && (
+            <div>
+              <label className="block text-white/25 text-[10px] uppercase tracking-wider mb-1">Hold</label>
+              <select value={filters.team_id} onChange={e => onChange("team_id", e.target.value)}
+                className="w-full bg-white/5 border border-white/8 rounded-lg px-2 py-2
+                  text-white text-sm focus:outline-none focus:border-[#e8c547]/50">
+                <option value="">Alle hold</option>
+                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Toggles */}
+          <div className={`flex gap-2 items-end ${compact ? "col-span-2" : ""}`}>
+            {[{ key: "free_agent", label: "Fri agent" }, { key: "u25", label: "U25" }, { key: "u23", label: "U23" }].map(({ key, label }) => (
+              <button key={key} onClick={() => onChange(key, !filters[key])}
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all border flex-shrink-0
+                  ${filters[key]
+                    ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/30"
+                    : "bg-white/3 text-white/35 border-white/8 hover:text-white hover:border-white/20"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Evne-filtre (dual sliders) */}
+        <div className="mt-3 pt-3 border-t border-white/5">
+          <button onClick={() => setStatsOpen(o => !o)}
+            className="flex items-center gap-2 text-white/30 hover:text-white/60 text-xs transition-colors">
+            <span className={`transition-transform duration-150 inline-block ${statsOpen ? "rotate-90" : ""}`}>▶</span>
+            <span className="uppercase tracking-wider font-medium">Evne-filtre</span>
+            {hasActiveStats && (
+              <span className="bg-[#e8c547]/15 text-[#e8c547] text-[10px] px-1.5 py-0.5 rounded-full">
+                {activeStatKeys.length} aktive
+              </span>
+            )}
+          </button>
+
+          {statsOpen && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-4 mt-4">
+              {STAT_KEYS.map(key => (
+                <DualStatSlider
+                  key={key}
+                  statKey={key}
+                  label={STAT_LABELS_MAP[key]}
+                  filters={filters}
+                  onChange={onChange}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Active filter chips */}
+      {/* ── Active filter chips (between panel and table) ── */}
       {hasActiveFilters && (
-        <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-white/5">
+        <div className="flex flex-wrap gap-1.5 mb-3">
           {filters.q && <Chip label={`"${filters.q}"`} onRemove={() => onChange("q", "")} />}
           {filters.min_uci && <Chip label={`UCI ≥ ${parseInt(filters.min_uci).toLocaleString("da-DK")}`} onRemove={() => onChange("min_uci", "")} />}
           {filters.max_uci && <Chip label={`UCI ≤ ${parseInt(filters.max_uci).toLocaleString("da-DK")}`} onRemove={() => onChange("max_uci", "")} />}
@@ -274,19 +290,20 @@ export default function RiderFilters({ filters, onChange, onReset, showTeamFilte
             <Chip label={`Sortér: ${SORT_OPTIONS.find(o => o.value === filters.sort)?.label}`}
               onRemove={() => onChange("sort", "uci_points")} />
           )}
-          {STAT_SLIDERS.filter(s => {
-            const v = filters[`${s.key}_min`];
-            return v !== "" && v !== 50 && parseInt(v) !== 50;
-          }).map(s => (
-            <Chip
-              key={s.key}
-              label={`${s.label} ≥ ${filters[`${s.key}_min`]}`}
-              onRemove={() => onChange(`${s.key}_min`, 50)}
-            />
-          ))}
+          {activeStatKeys.map(key => {
+            const min = parseInt(filters[`${key}_min`]) ?? STAT_DEFAULT_MIN;
+            const max = parseInt(filters[`${key}_max`]) ?? STAT_DEFAULT_MAX;
+            return (
+              <Chip
+                key={key}
+                label={`${STAT_LABELS_MAP[key]} ${min}–${max}`}
+                onRemove={() => resetStat(key)}
+              />
+            );
+          })}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

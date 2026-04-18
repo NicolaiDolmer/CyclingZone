@@ -15,6 +15,16 @@ const STATS = [
   { key: "stat_res", label: "RES" }, { key: "stat_ftr", label: "FTR" },
 ];
 
+function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
+  const active = sort === sortKey;
+  return (
+    <th onClick={() => onSort(sortKey)}
+      className={`cursor-pointer select-none transition-colors ${active ? "text-[#e8c547]/80" : "text-white/30 hover:text-white/50"} ${className}`}>
+      {children}{active && <span className="ml-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
+    </th>
+  );
+}
+
 const MOBILE_STATS = [
   { key: "stat_bj", label: "BJ" }, { key: "stat_sp", label: "SP" },
   { key: "stat_tt", label: "TT" }, { key: "stat_fl", label: "FL" },
@@ -179,6 +189,11 @@ export default function RidersPage() {
     setFilters({ ...DEFAULT_FILTERS, page: 1 });
   }
 
+  function handleSort(key) {
+    if (filters.sort === key) setFilter("sort_dir", filters.sort_dir === "desc" ? "asc" : "desc");
+    else { setFilter("sort", key); setFilter("sort_dir", "desc"); }
+  }
+
   return (
     <div className="max-w-full">
       <div className="flex items-center justify-between mb-5">
@@ -214,10 +229,13 @@ export default function RidersPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="px-3 py-3 text-left text-white/30 font-medium uppercase tracking-wider w-48">Rytter</th>
-                  <th className="px-3 py-3 text-right text-white/30 font-medium uppercase tracking-wider w-20">UCI CZ$</th>
-                  {STATS.map(({ label }) => (
-                    <th key={label} className="px-1.5 py-3 text-center text-white/20 font-medium w-14">{label}</th>
+                  <SortTh sortKey="firstname" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
+                    className="px-3 py-3 text-left font-medium uppercase tracking-wider w-48">Rytter</SortTh>
+                  <SortTh sortKey="uci_points" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
+                    className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">UCI CZ$</SortTh>
+                  {STATS.map(({ key, label }) => (
+                    <SortTh key={key} sortKey={key} sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
+                      className="px-1.5 py-3 text-center font-medium w-14">{label}</SortTh>
                   ))}
                   <th className="px-3 py-3 w-8" />
                 </tr>
