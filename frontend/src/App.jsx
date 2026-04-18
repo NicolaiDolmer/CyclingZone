@@ -29,7 +29,6 @@ import RacesPage from "./pages/RacesPage";
 import SeasonEndPage from "./pages/SeasonEndPage";
 import ManagerProfilePage from "./pages/ManagerProfilePage";
 import FinancePage from "./pages/FinancePage";
-import ManagerProfilePage from "./pages/ManagerProfilePage";
 import Layout from "./components/Layout";
 
 function ProtectedRoute({ children, session }) {
