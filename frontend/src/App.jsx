@@ -29,6 +29,7 @@ import RacesPage from "./pages/RacesPage";
 import SeasonEndPage from "./pages/SeasonEndPage";
 import ManagerProfilePage from "./pages/ManagerProfilePage";
 import FinancePage from "./pages/FinancePage";
+import ManagerProfilePage from "./pages/ManagerProfilePage";
 import Layout from "./components/Layout";
 
 function ProtectedRoute({ children, session }) {
@@ -60,10 +61,8 @@ export default function App() {
         <Route path="/" element={
           <ProtectedRoute session={session}><Layout /></ProtectedRoute>
         }>
-          {/* Redirect root to dashboard */}
           <Route index element={<Navigate to="/dashboard" replace />} />
 
-          {/* Main pages */}
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="riders" element={<RidersPage />} />
           <Route path="riders/:id" element={<RiderStatsPage />} />
@@ -92,11 +91,9 @@ export default function App() {
           <Route path="managers/:teamId" element={<ManagerProfilePage />} />
           <Route path="admin" element={<AdminPage />} />
 
-          {/* 404 fallback */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
 
-        {/* Global 404 fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

@@ -5,28 +5,39 @@ import { supabase } from "../lib/supabase";
 const EDGE = "https://ghwvkxzhsbbltzfnuhhz.supabase.co/functions/v1";
 
 const NAV_GROUPS = [
-  { key: "overblik", label: "Overblik", icon: "◎", items: [
+  {
+    key: "overblik", label: "Overblik", icon: "◎",
+    items: [
       { to: "/dashboard",      label: "Dashboard",       icon: "◎" },
       { to: "/standings",      label: "Rangliste",       icon: "◉" },
       { to: "/races",          label: "Løbskalender",    icon: "🏁" },
       { to: "/season-preview", label: "Sæson Preview",   icon: "📊" },
       { to: "/hall-of-fame",   label: "Hall of Fame",    icon: "🏆" },
       { to: "/season-end",     label: "Sæsonresultater", icon: "🏆" },
-  ]},
-  { key: "marked", label: "Marked", icon: "⚡", items: [
+    ],
+  },
+  {
+    key: "marked", label: "Marked", icon: "⚡",
+    items: [
       { to: "/riders",    label: "Ryttere",   icon: "🚴" },
       { to: "/auctions",  label: "Auktioner", icon: "⚡" },
       { to: "/transfers", label: "Transfers", icon: "↔" },
-  ]},
-  { key: "mithold", label: "Mit Hold", icon: "◈", items: [
+    ],
+  },
+  {
+    key: "mithold", label: "Mit Hold", icon: "◈",
+    items: [
       { to: "/team",          label: "Mit Hold",       icon: "◈" },
-      { to: "/board",         label: "Bestyrelse",     icon: "▧" },
+      { to: "/board",         label: "Bestyrelse",     icon: "◧" },
       { to: "/finance",       label: "Finanser",       icon: "💰" },
       { to: "/watchlist",     label: "Talentspejder",  icon: "⭐" },
       { to: "/activity",      label: "Min Aktivitet",  icon: "📋" },
       { to: "/activity-feed", label: "Aktivitetsfeed", icon: "◉" },
-  ]},
-  { key: "liga", label: "Liga", icon: "◫", items: [
+    ],
+  },
+  {
+    key: "liga", label: "Liga", icon: "◫",
+    items: [
       { to: "/teams",        label: "Hold",         icon: "◫" },
       { to: "/head-to-head", label: "Head-to-Head", icon: "⚔" },
   ]},
@@ -68,12 +79,15 @@ export default function Layout() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return;
       setSession(session);
-      const { data: userData } = await supabase.from("users").select("role, username").eq("id", session.user.id).single();
+
+      const { data: userData } = await supabase.from("users")
+        .select("role, username").eq("id", session.user.id).single();
       setIsAdmin(userData?.role === "admin");
       const { data: teamData } = await supabase.from("teams").select("id, name, balance, division").eq("user_id", session.user.id).single();
       if (teamData) { setTeam(teamData); setBalance(teamData.balance); }
       const { data: notifs } = await supabase.from("notifications").select("id").eq("user_id", session.user.id).eq("is_read", false).limit(9);
       setNotifications(notifs || []);
+
       const h = await edgeHeaders();
       fetch(`${EDGE}/presence`,              { method: "POST", headers: h }).catch(() => {});
       fetch(`${EDGE}/presence/login-streak`, { method: "POST", headers: h }).catch(() => {});
@@ -113,7 +127,11 @@ export default function Layout() {
     } catch (e) {}
   }
 
-  async function signOut() { await supabase.auth.signOut(); navigate("/login"); }
+  async function signOut() {
+    await supabase.auth.signOut();
+    navigate("/login");
+  }
+
   function toggleGroup(key) { setOpenGroups(prev => ({ ...prev, [key]: !prev[key] })); }
 
   const unread = notifications.length;
@@ -145,6 +163,7 @@ export default function Layout() {
             <p className="text-white/30 text-[10px] truncate">{team?.name || "..."}</p>
           </div>
         </div>
+
         {balance !== null && (
           <div className="px-4 py-2.5 border-b border-white/5">
             <p className="text-[9px] text-white/25 uppercase tracking-wider">Balance</p>
@@ -152,6 +171,7 @@ export default function Layout() {
             {team && <p className="text-white/25 text-[10px]">Division {team.division}</p>}
           </div>
         )}
+
         {onlineCount > 0 && (
           <div className="px-4 py-2 border-b border-white/5">
             <span className="inline-flex items-center gap-1.5">
@@ -160,26 +180,37 @@ export default function Layout() {
             </span>
           </div>
         )}
+
         <nav className="flex-1 overflow-y-auto py-2">
           {navGroups.map(group => {
             const isOpen = openGroups[group.key];
-            const hasActive = group.items.some(i => location.pathname === i.to || (i.to !== "/dashboard" && location.pathname.startsWith(i.to)));
+            const hasActive = group.items.some(i =>
+              location.pathname === i.to || (i.to !== "/dashboard" && location.pathname.startsWith(i.to))
+            );
             return (
               <div key={group.key}>
                 <button onClick={() => toggleGroup(group.key)}
-                  className={`w-full flex items-center justify-between px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all ${hasActive ? "text-white/70" : "text-white/25 hover:text-white/50"}`}>
+                  className={`w-full flex items-center justify-between px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all
+                    ${hasActive ? "text-white/70" : "text-white/25 hover:text-white/50"}`}>
                   <span className="flex items-center gap-2"><span>{group.icon}</span><span>{group.label}</span></span>
                   <span className={`text-[8px] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>▾</span>
                 </button>
-                {isOpen && <div className="mb-1">{group.items.map(item => <NavItem key={item.to} {...item} onClick={onNav} />)}</div>}
+                {isOpen && (
+                  <div className="mb-1">
+                    {group.items.map(item => <NavItem key={item.to} {...item} onClick={onNav} />)}
+                  </div>
+                )}
               </div>
             );
           })}
           <div className="h-px bg-white/5 my-2 mx-4" />
           {BOTTOM_ITEMS.map(item => <NavItem key={item.to} {...item} onClick={onNav} />)}
         </nav>
+
         <div className="border-t border-white/5 p-3">
-          <button onClick={signOut} className="w-full text-xs text-white/25 hover:text-white/50 py-2 transition-colors text-left px-1">← Log ud</button>
+          <button onClick={signOut} className="w-full text-xs text-white/25 hover:text-white/50 py-2 transition-colors text-left px-1">
+            ← Log ud
+          </button>
         </div>
       </div>
     );
@@ -190,6 +221,7 @@ export default function Layout() {
       <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-[#0a0a14] border-r border-white/5 fixed top-0 left-0 h-full z-30">
         <SidebarContent onNav={() => {}} />
       </aside>
+
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/70" onClick={() => setMobileOpen(false)} />
@@ -198,6 +230,7 @@ export default function Layout() {
           </aside>
         </div>
       )}
+
       <main className="flex-1 md:ml-52 min-h-screen">
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-[#0a0a14] border-b border-white/5 sticky top-0 z-20">
           <button onClick={() => setMobileOpen(true)} className="text-white/50 hover:text-white text-xl">☰</button>
@@ -207,10 +240,16 @@ export default function Layout() {
           </div>
           <NavLink to="/notifications" className="relative">
             <span className="text-white/50 hover:text-white text-lg">🔔</span>
-            {unread > 0 && <span className="absolute -top-1 -right-1 bg-[#e8c547] text-[#0a0a0f] text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">{unread > 9 ? "9" : unread}</span>}
+            {unread > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#e8c547] text-[#0a0a0f] text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
+                {unread > 9 ? "9" : unread}
+              </span>
+            )}
           </NavLink>
         </div>
-        <div className="p-4 md:p-6 max-w-6xl mx-auto"><Outlet /></div>
+        <div className="p-4 md:p-6 max-w-6xl mx-auto">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
