@@ -376,6 +376,11 @@ export default function TransfersPage() {
           amount: data.price || 0,
           icon: "↔",
         });
+        fetch(`${API}/api/achievements/check`, {
+          method: "POST",
+          headers: await getHeaders(),
+          body: JSON.stringify({ context: "transfer_done", data: {} }),
+        }).catch(() => {});
       } else {
         const msgs = {
           reject: "Transfer afvist",

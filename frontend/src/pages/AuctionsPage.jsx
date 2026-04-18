@@ -283,6 +283,11 @@ export default function AuctionsPage() {
       body: JSON.stringify({ amount }),
     });
     if (res.ok) {
+      fetch(`${API}/api/achievements/check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ context: "auction_bid", data: { amount } }),
+      }).catch(() => {});
       setMyBalance(b => b - 0); // balance updated via next loadAll
       loadAll();
     }

@@ -93,6 +93,7 @@ export default function Layout() {
       const h = await authHeaders();
       fetch(`${API}/api/presence`,     { method: "POST", headers: h }).catch(e => console.error("presence:", e));
       fetch(`${API}/api/login-streak`, { method: "POST", headers: h }).catch(e => console.error("login-streak:", e));
+      fetch(`${API}/api/achievements/check`, { method: "POST", headers: h, body: JSON.stringify({ context: "team_update", data: {} }) }).catch(() => {});
       fetchOnlineCount(h);
     });
   }, []);
@@ -208,6 +209,7 @@ export default function Layout() {
             );
           })}
           <div className="h-px bg-white/5 my-2 mx-4" />
+          {team?.id && <NavItem to={`/managers/${team.id}`} label="Min Managerprofil" icon="◈" onClick={onNav} />}
           {BOTTOM_ITEMS.map(item => <NavItem key={item.to} {...item} onClick={onNav} />)}
         </nav>
 
