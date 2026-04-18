@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
+console.log("[CZ] API URL:", API);
 
 const NAV_GROUPS = [
   {
