@@ -133,7 +133,9 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
   const riderFilters = useClientRiderFilters(displayRidersBase);
   const displayRiders = riderFilters.filtered;
 
-  const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
+  const loanedInRiders  = riders.filter(r => r._isLoanedIn);
+  const loanedOutRiders = riders.filter(r => r._isLoanedOut);
+  const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0 || loanedInRiders.length > 0 || loanedOutRiders.length > 0;
 
   return (
     <div>
@@ -159,6 +161,18 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
               <span className="w-2 h-2 rounded-full bg-red-400" />
               Udgående transfers ({outgoingRiders.length})
             </button>
+          )}
+          {loanedInRiders.length > 0 && (
+            <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg">
+              <span className="w-2 h-2 rounded-full bg-purple-400" />
+              Lejede ryttere ({loanedInRiders.length})
+            </span>
+          )}
+          {loanedOutRiders.length > 0 && (
+            <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-lg">
+              <span className="w-2 h-2 rounded-full bg-yellow-400" />
+              Udlejede ryttere ({loanedOutRiders.length})
+            </span>
           )}
           {!windowOpen && (
             <span className="px-3 py-1.5 text-xs text-white/30 bg-white/3 border border-white/5 rounded-lg">
@@ -192,15 +206,32 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                 {displayRiders.map(r => (
                   <tr key={r.id}
                     className={`border-b border-white/4 hover:bg-white/3
-                      ${r._isIncoming ? "bg-green-500/3" : r._isOutgoing ? "bg-red-500/3" : ""}`}>
+                      ${r._isIncoming  ? "bg-green-500/3"  :
+                        r._isOutgoing  ? "bg-red-500/3"    :
+                        r._isLoanedIn  ? "bg-purple-500/3" :
+                        r._isLoanedOut ? "bg-yellow-500/3" : ""}`}>
                     <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        {r._isIncoming && <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" title="Indgående transfer" />}
-                        {r._isOutgoing && <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" title="Udgående transfer" />}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {r._isIncoming  && <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />}
+                        {r._isOutgoing  && <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />}
+                        {r._isLoanedIn  && <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />}
+                        {r._isLoanedOut && <span className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0" />}
                         <span className="text-white text-sm font-medium">{r.firstname} {r.lastname}</span>
-                        {r.is_u25 && <span className="text-[9px] uppercase bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">U25</span>}
-                        {r._isIncoming && <span className="text-[9px] uppercase bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">Indgående</span>}
-                        {r._isOutgoing && <span className="text-[9px] uppercase bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">Udgående</span>}
+                        {r.is_u25       && <span className="text-[9px] uppercase bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">U25</span>}
+                        {r._isIncoming  && <span className="text-[9px] uppercase bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">Indgående</span>}
+                        {r._isOutgoing  && <span className="text-[9px] uppercase bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">Udgående</span>}
+                        {r._isLoanedIn  && (
+                          <span className="text-[9px] uppercase bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded"
+                            title={`Lejet fra ${r._loanInInfo?.from_team?.name} · sæson ${r._loanInInfo?.start_season}–${r._loanInInfo?.end_season}`}>
+                            På leje
+                          </span>
+                        )}
+                        {r._isLoanedOut && (
+                          <span className="text-[9px] uppercase bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded"
+                            title={`Udlejet til ${r._loanOutInfo?.to_team?.name} · sæson ${r._loanOutInfo?.start_season}–${r._loanOutInfo?.end_season}`}>
+                            Udlejet
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-right text-[#e8c547] font-mono text-sm font-bold">
@@ -367,7 +398,7 @@ export function TeamPage() {
     if (!t) { setLoading(false); return; }
     setTeam(t);
 
-    const [ridersRes, pendingRes, finRes, windowRes] = await Promise.all([
+    const [ridersRes, pendingRes, finRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
         .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, ${STATS.join(", ")}`)
         .eq("team_id", t.id)
@@ -381,15 +412,33 @@ export function TeamPage() {
         .order("created_at", { ascending: false }).limit(100),
       supabase.from("transfer_windows")
         .select("status").order("created_at", { ascending: false }).limit(1).single(),
+      // Riders we're lending out
+      supabase.from("loan_agreements")
+        .select("rider_id, to_team:to_team_id(name), start_season, end_season")
+        .eq("from_team_id", t.id).eq("status", "active"),
+      // Riders we're borrowing
+      supabase.from("loan_agreements")
+        .select(`rider:rider_id(id, firstname, lastname, uci_points, salary, is_u25, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
+        .eq("to_team_id", t.id).eq("status", "active"),
     ]);
+
+    const loanedOutIds = new Set((loansOutRes.data || []).map(l => l.rider_id));
+    const loanedOutMap = Object.fromEntries((loansOutRes.data || []).map(l => [l.rider_id, l]));
 
     const currentRiders = (ridersRes.data || []).map(r => ({
       ...r,
-      _isOutgoing: r.pending_team_id && r.pending_team_id !== t.id,
+      _isOutgoing:  r.pending_team_id && r.pending_team_id !== t.id,
+      _isLoanedOut: loanedOutIds.has(r.id),
+      _loanOutInfo: loanedOutMap[r.id] || null,
     }));
     const incomingRiders = (pendingRes.data || []).map(r => ({ ...r, _isIncoming: true }));
+    const loanedInRiders = (loansInRes.data || []).map(l => ({
+      ...l.rider,
+      _isLoanedIn:  true,
+      _loanInInfo:  { from_team: l.from_team, start_season: l.start_season, end_season: l.end_season, buy_option_price: l.buy_option_price },
+    }));
 
-    setRiders([...currentRiders, ...incomingRiders]);
+    setRiders([...currentRiders, ...incomingRiders, ...loanedInRiders]);
     setTransactions(finRes.data || []);
     setWindowOpen(windowRes.data?.status === "open");
     setLoading(false);

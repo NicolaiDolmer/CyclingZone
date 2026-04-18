@@ -12,3 +12,13 @@ body {
   color: white;
   font-family: 'DM Sans', sans-serif;
 }
+
+/* Force native select dropdowns to use dark-mode colours in all browsers */
+select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #1a1a2e;
+  color: #ffffff;
+}

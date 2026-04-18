@@ -168,11 +168,55 @@ CREATE TABLE transfer_offers (
   listing_id UUID REFERENCES transfer_listings(id) ON DELETE CASCADE,
   buyer_team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   offer_amount INTEGER NOT NULL,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'countered')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'countered', 'awaiting_confirmation')),
   counter_amount INTEGER,
   message TEXT,
+  buyer_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+  seller_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- SWAP OFFERS
+-- ============================================================
+
+CREATE TABLE swap_offers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  offered_rider_id   UUID NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
+  requested_rider_id UUID NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
+  proposing_team_id  UUID NOT NULL REFERENCES teams(id)  ON DELETE CASCADE,
+  receiving_team_id  UUID NOT NULL REFERENCES teams(id)  ON DELETE CASCADE,
+  -- positive = proposing pays receiving; negative = receiving pays proposing
+  cash_adjustment    INTEGER NOT NULL DEFAULT 0,
+  counter_cash       INTEGER,
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending','countered','awaiting_confirmation','accepted','rejected','withdrawn')),
+  message TEXT,
+  proposing_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+  receiving_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- LOAN AGREEMENTS
+-- ============================================================
+
+CREATE TABLE loan_agreements (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  rider_id      UUID NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
+  from_team_id  UUID NOT NULL REFERENCES teams(id)  ON DELETE CASCADE,
+  to_team_id    UUID NOT NULL REFERENCES teams(id)  ON DELETE CASCADE,
+  loan_fee      INTEGER NOT NULL DEFAULT 0,
+  start_season  INTEGER NOT NULL,
+  end_season    INTEGER NOT NULL,
+  buy_option_price INTEGER,
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending','active','completed','rejected','cancelled','buyout')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CHECK (end_season >= start_season)
 );
 
 -- ============================================================
