@@ -54,31 +54,44 @@ export default function StandingsPage() {
     const { data: activeSeason } = await supabase.from("seasons").select("*").eq("status", "active").single();
     setSeason(activeSeason);
 
-    const [standingsRes, racesRes] = await Promise.all([
-      supabase.from("season_standings")
-        .select("*, team:team_id(id, name, division, is_ai)")
-        .order("total_points", { ascending: false }),
+    const [teamsRes, standingsRes, racesRes] = await Promise.all([
+      supabase.from("teams").select("id, name, division").eq("is_ai", false).order("division").order("name"),
+      activeSeason
+        ? supabase.from("season_standings")
+            .select("*, team:team_id(id, name, division, is_ai)")
+            .eq("season_id", activeSeason.id)
+            .order("total_points", { ascending: false })
+        : Promise.resolve({ data: [] }),
       supabase.from("races")
         .select("id, name, start_date")
         .eq("season_id", activeSeason?.id || "")
         .order("start_date"),
     ]);
 
-    const validStandings = (standingsRes.data || []).filter(s => !s.team?.is_ai);
-    setStandings(validStandings);
+    // Index actual standings by team_id
+    const standingsMap = {};
+    (standingsRes.data || []).filter(s => !s.team?.is_ai).forEach(s => {
+      standingsMap[s.team_id] = s;
+    });
+
+    // All human teams, merged with standings (0 points as fallback)
+    const merged = (teamsRes.data || []).map(team => (
+      standingsMap[team.id] || { id: team.id, team_id: team.id, team, total_points: 0, stage_wins: 0, podiums: 0 }
+    ));
+
+    setStandings(merged);
     setRaces(racesRes.data || []);
 
     // Build race-by-race point progression
-    if (racesRes.data?.length && validStandings.length) {
+    if (racesRes.data?.length && merged.length) {
       const { data: results } = await supabase
         .from("race_results")
         .select("rider:rider_id(team_id), prize_money, race_id")
         .in("race_id", racesRes.data.map(r => r.id));
 
       const prog = {};
-      validStandings.forEach(s => { prog[s.team_id] = []; });
-      let cumul = {};
-      validStandings.forEach(s => { cumul[s.team_id] = 0; });
+      const cumul = {};
+      merged.forEach(s => { prog[s.team_id] = []; cumul[s.team_id] = 0; });
 
       racesRes.data.forEach(race => {
         const rr = (results || []).filter(r => r.race_id === race.id);
@@ -86,9 +99,9 @@ export default function StandingsPage() {
         rr.forEach(r => {
           if (r.rider?.team_id) pts[r.rider.team_id] = (pts[r.rider.team_id] || 0) + (r.prize_money || 0);
         });
-        validStandings.forEach(s => {
+        merged.forEach(s => {
           cumul[s.team_id] = (cumul[s.team_id] || 0) + (pts[s.team_id] || 0);
-          if (prog[s.team_id]) prog[s.team_id].push(cumul[s.team_id]);
+          prog[s.team_id].push(cumul[s.team_id]);
         });
       });
       setRacePoints(prog);
