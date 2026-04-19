@@ -859,9 +859,13 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
     return res.json({ success: true, action: "new_offer", offer_amount: counter_amount });
   }
 
-  // WITHDRAW — buyer withdraws a pending offer
-  if (action === "withdraw" && isBuyer && offer.status === "pending") {
-    await supabase.from("transfer_offers").update({ status: "withdrawn" }).eq("id", offer.id);
+  // WITHDRAW — buyer withdraws a pending or countered offer
+  if (action === "withdraw" && isBuyer && ["pending", "countered"].includes(offer.status)) {
+    await supabase.from("transfer_offers").update({ status: "withdrawn", updated_at: new Date().toISOString() }).eq("id", offer.id);
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_withdrawn",
+      "Tilbud trukket tilbage",
+      `${req.team.name} har trukket deres tilbud på ${offer.rider.firstname} ${offer.rider.lastname} tilbage`,
+      offer.id);
     return res.json({ success: true, action: "withdrawn" });
   }
 
