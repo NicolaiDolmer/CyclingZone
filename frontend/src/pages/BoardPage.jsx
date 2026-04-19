@@ -3,6 +3,8 @@ import { supabase } from "../lib/supabase";
 import { generateBoardGoals, satisfactionToModifier, getPlanDuration, isMidPlanReview } from "../lib/boardUtils";
 import { Link } from "react-router-dom";
 
+const API = import.meta.env.VITE_API_URL;
+
 // ── Forhandlings-hjælper ──────────────────────────────────────────────────────
 
 function getNegotiatedGoal(goal) {
@@ -458,7 +460,7 @@ export default function BoardPage() {
     const token = session?.access_token;
     if (!token) { setLoading(false); return; }
 
-    const res = await fetch("/api/board/status", {
+    const res = await fetch(`${API}/api/board/status`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) { setLoading(false); return; }
@@ -528,7 +530,7 @@ export default function BoardPage() {
     const token = session?.access_token;
     if (!token) { setSaving(false); return; }
 
-    const res = await fetch("/api/board/sign", {
+    const res = await fetch(`${API}/api/board/sign`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ focus, plan_type: planType, goals: finalGoals }),
