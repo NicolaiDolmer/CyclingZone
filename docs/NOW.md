@@ -27,3 +27,4 @@ _Opdatér denne fil ved starten og slutningen af hver arbejdssession._
 - Feature status → `docs/FEATURE_STATUS.md`
 - Domæneregler → `docs/DOMAIN_REFERENCE.md`
 - UI mønstre → `docs/UI_PATTERNS.md`
+- Konventioner + token-regler → `docs/CONVENTIONS.md`
