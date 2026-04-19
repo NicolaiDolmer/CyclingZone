@@ -30,6 +30,7 @@ function RiderActionModal({ rider, onClose, onAction }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [tab, setTab] = useState("auction");
+  const guaranteedPrice = Math.floor(Math.max(rider.uci_points || 1, 1) * 0.5);
 
   async function startAuction() {
     setLoading(true);
@@ -41,6 +42,20 @@ function RiderActionModal({ rider, onClose, onAction }) {
     });
     const data = await res.json();
     if (res.ok) { setMsg("✅ Auktion startet!"); setTimeout(() => { onAction(); onClose(); }, 1500); }
+    else setMsg(`❌ ${data.error}`);
+    setLoading(false);
+  }
+
+  async function sellToBank() {
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auctions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ rider_id: rider.id, is_guaranteed_sale: true }),
+    });
+    const data = await res.json();
+    if (res.ok) { setMsg(`✅ Auktion startet — du er garanteret ${guaranteedPrice} CZ$`); setTimeout(() => { onAction(); onClose(); }, 2000); }
     else setMsg(`❌ ${data.error}`);
     setLoading(false);
   }
@@ -84,12 +99,12 @@ function RiderActionModal({ rider, onClose, onAction }) {
           </div>
         </div>
         <div className="p-5">
-          <div className="flex gap-2 mb-4">
-            {["auction","transfer"].map(t => (
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {["auction","transfer","bank"].map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
                   ${tab === t ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20" : "text-white/40 border-white/5 hover:text-white"}`}>
-                {t === "auction" ? "⚡ Auktion" : "↔ Transferliste"}
+                {t === "auction" ? "⚡ Auktion" : t === "transfer" ? "↔ Transferliste" : "🏦 Sælg til bank"}
               </button>
             ))}
           </div>
@@ -117,6 +132,18 @@ function RiderActionModal({ rider, onClose, onAction }) {
                   {loading ? "..." : "Sæt til salg"}
                 </button>
               </div>
+            </div>
+          )}
+          {tab === "bank" && (
+            <div>
+              <p className="text-white/40 text-xs mb-3">
+                Starter en auktion til <span className="text-[#e8c547] font-mono">{guaranteedPrice.toLocaleString("da-DK")} CZ$</span> (50% af værdien).
+                Hvis ingen manager byder højere, køber banken rytteren til denne pris — du er altid garanteret beløbet.
+              </p>
+              <button onClick={sellToBank} disabled={loading}
+                className="w-full px-4 py-2 bg-blue-600/20 text-blue-300 border border-blue-500/30 font-bold rounded-lg text-sm hover:bg-blue-600/30 disabled:opacity-50">
+                {loading ? "..." : `Sælg til bank — ${guaranteedPrice.toLocaleString("da-DK")} CZ$ garanteret`}
+              </button>
             </div>
           )}
           {msg && <p className={`text-sm mt-3 ${msg.startsWith("✅") ? "text-green-400" : "text-red-400"}`}>{msg}</p>}

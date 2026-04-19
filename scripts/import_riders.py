@@ -125,7 +125,8 @@ def load_uci_points(path: str) -> dict[str, int]:
     return result
 
 
-def merge_data(worlddb: pd.DataFrame, uci_map: dict[str, int]) -> list[dict]:
+def merge_data(worlddb: pd.DataFrame, uci_map: dict[str, int],
+               team_map: dict[int, str] | None = None) -> list[dict]:
     """Merge WORLD_DB stats with UCI points."""
     records = []
     matched = 0
@@ -149,6 +150,8 @@ def merge_data(worlddb: pd.DataFrame, uci_map: dict[str, int]) -> list[dict]:
             uci_pts = 1
             unmatched += 1
 
+        fk_team = int(row["fkIDteam"]) if pd.notna(row.get("fkIDteam")) else None
+
         record = {
             "pcm_id": int(row["IDcyclist"]),
             "firstname": str(row.get("gene_sz_firstname", "")).strip(),
@@ -163,6 +166,12 @@ def merge_data(worlddb: pd.DataFrame, uci_map: dict[str, int]) -> list[dict]:
             "nationality_code": None,  # Added later
         }
 
+        # Only set ai_team_id for bank team riders (fkIDteam = 119)
+        if fk_team == 119 and team_map:
+            bank_id = team_map.get(119)
+            if bank_id:
+                record["ai_team_id"] = bank_id
+
         # Add stats
         for stat_key, pcm_col in STAT_MAP.items():
             val = row.get(pcm_col)
@@ -172,6 +181,26 @@ def merge_data(worlddb: pd.DataFrame, uci_map: dict[str, int]) -> list[dict]:
 
     print(f"  ✅ Matched {matched} riders to UCI points, {unmatched} set to price=1")
     return records
+
+
+def fetch_team_map(url: str, key: str) -> dict[int, str]:
+    """Fetch ai_source_id → team UUID mapping from Supabase."""
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+    }
+    resp = requests.get(
+        f"{url}/rest/v1/teams?select=id,ai_source_id&is_ai=eq.true&ai_source_id=not.is.null",
+        headers=headers,
+        timeout=15,
+    )
+    if resp.status_code != 200:
+        print(f"  ⚠️  Could not fetch teams: {resp.status_code}")
+        return {}
+    teams = resp.json()
+    mapping = {t["ai_source_id"]: t["id"] for t in teams if t.get("ai_source_id")}
+    print(f"  ✅ Loaded {len(mapping)} AI team mappings (incl. bank team)")
+    return mapping
 
 
 def upsert_to_supabase(records: list[dict], url: str, key: str,
@@ -226,7 +255,13 @@ def main():
 
     worlddb = load_worlddb(args.worlddb)
     uci_map = load_uci_points(args.sheets_csv)
-    records = merge_data(worlddb, uci_map)
+
+    team_map = {}
+    if args.supabase_url and args.supabase_key:
+        print(f"\n🔗 Fetching AI team mappings from Supabase...")
+        team_map = fetch_team_map(args.supabase_url, args.supabase_key)
+
+    records = merge_data(worlddb, uci_map, team_map)
 
     print(f"\n📊 Summary:")
     print(f"  Total riders: {len(records)}")

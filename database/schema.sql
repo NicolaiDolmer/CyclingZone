@@ -27,6 +27,7 @@ CREATE TABLE teams (
   balance BIGINT DEFAULT 500, -- in points/currency
   sponsor_income BIGINT DEFAULT 100, -- per season
   is_frozen BOOLEAN DEFAULT FALSE,
+  is_bank BOOLEAN DEFAULT FALSE,
   manager_name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -139,6 +140,8 @@ CREATE TABLE auctions (
   actual_end TIMESTAMPTZ,
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'extended', 'completed', 'cancelled')),
   extension_count INTEGER DEFAULT 0,
+  is_guaranteed_sale BOOLEAN DEFAULT FALSE,
+  guaranteed_price INTEGER,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

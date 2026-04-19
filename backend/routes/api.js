@@ -232,7 +232,7 @@ router.get("/auctions", requireAuth, async (req, res) => {
 router.post("/auctions", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
 
-  const { rider_id, starting_price, min_increment = 1 } = req.body;
+  const { rider_id, starting_price, min_increment = 1, is_guaranteed_sale = false } = req.body;
   if (!rider_id) return res.status(400).json({ error: "rider_id required" });
 
   // Verify rider belongs to this team
@@ -273,7 +273,11 @@ router.post("/auctions", requireAuth, async (req, res) => {
     return res.status(409).json({ error: "Rider already has an active auction" });
   }
 
-  const price = starting_price || Math.max(rider.uci_points, 1);
+  const riderValue = Math.max(rider.uci_points, 1);
+  const guaranteedPrice = is_guaranteed_sale ? Math.floor(riderValue * 0.5) : null;
+  const price = is_guaranteed_sale
+    ? guaranteedPrice
+    : (starting_price || riderValue);
   const calculatedEnd = calculateAuctionEnd(new Date());
 
   const { data: auction, error } = await supabase
@@ -285,6 +289,8 @@ router.post("/auctions", requireAuth, async (req, res) => {
       current_price: price,
       min_increment,
       calculated_end: calculatedEnd.toISOString(),
+      is_guaranteed_sale,
+      guaranteed_price: guaranteedPrice,
     })
     .select()
     .single();
@@ -421,6 +427,13 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "Already completed" });
   }
 
+  // Fetch bank team once (needed for guaranteed sales)
+  const { data: bankTeam } = await supabase
+    .from("teams")
+    .select("id, balance")
+    .eq("is_bank", true)
+    .single();
+
   if (auction.current_bidder_id) {
     // Check squad size limit for buyer
     const { data: buyerTeam } = await supabase
@@ -531,6 +544,35 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
     await notifyTeamOwner(auction.seller_team_id, "auction_won",
       "Auktion afsluttet",
       `${auction.rider.firstname} ${auction.rider.lastname} solgt for ${auction.current_price} pts`,
+      auction.id);
+  } else if (auction.is_guaranteed_sale && bankTeam) {
+    // No human bids — guaranteed sale: sell to bank at guaranteed_price
+    const salePrice = auction.guaranteed_price;
+
+    await supabase.from("riders").update({
+      team_id: bankTeam.id,
+      pending_team_id: null,
+      salary: 0,
+    }).eq("id", auction.rider.id);
+
+    // Credit seller
+    const { data: seller } = await supabase
+      .from("teams").select("balance").eq("id", auction.seller_team_id).single();
+    await supabase.from("teams")
+      .update({ balance: seller.balance + salePrice })
+      .eq("id", auction.seller_team_id);
+
+    // Finance log
+    await supabase.from("finance_transactions").insert({
+      team_id: auction.seller_team_id,
+      type: "transfer_in",
+      amount: salePrice,
+      description: `Garanteret banksalg: ${auction.rider.firstname} ${auction.rider.lastname}`,
+    });
+
+    await notifyTeamOwner(auction.seller_team_id, "auction_won",
+      "Rytter solgt til banken",
+      `${auction.rider.firstname} ${auction.rider.lastname} er solgt til Banken for ${salePrice} CZ$ (garanteret pris)`,
       auction.id);
   } else {
     // No bids — notify seller
