@@ -213,6 +213,21 @@ cycling-manager/
 
 ---
 
+## Docs-vedligeholdelse
+
+`docs/`-mappen indeholder fire reference-filer der bruges som kontekst i AI-arbejdssessioner.
+
+**Ved start af session:** Læs `docs/NOW.md`
+**Ved afslutning af session:** Opdatér `docs/NOW.md` med hvad der er lavet, broken og næste step
+
+Filer:
+- `docs/NOW.md` — aktuel status (opdateres hver session)
+- `docs/FEATURE_STATUS.md` — hvad er bygget og hvad mangler
+- `docs/ARCHITECTURE.md` — teknisk reference (routes, endpoints, DB)
+- `docs/DOMAIN_REFERENCE.md` — spilleregler og domæneviden
+
+---
+
 ## Nyttige Supabase Queries
 
 ```sql
