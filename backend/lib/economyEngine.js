@@ -7,6 +7,7 @@
  *                 evaluate board satisfaction, update divisions
  *   - Prize money distribution (called after race import)
  *   - Board satisfaction recalculation
+ *   - Multi-year plan lifecycle (1yr/3yr/5yr)
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -101,8 +102,17 @@ export async function processSeasonStart(seasonId) {
  * 4. Update divisions (promotion/relegation)
  * 5. Update sponsor income for next season
  */
+function getPlanDurationFromType(planType) {
+  return { "1yr": 1, "3yr": 3, "5yr": 5 }[planType] ?? 1;
+}
+
 export async function processSeasonEnd(seasonId) {
   console.log(`\n🏆 Processing season end: ${seasonId}`);
+
+  // Get current season number
+  const { data: currentSeason } = await supabase
+    .from("seasons").select("number").eq("id", seasonId).single();
+  const currentSeasonNumber = currentSeason?.number ?? 1;
 
   // Get final standings
   const { data: standings } = await supabase
@@ -129,7 +139,7 @@ export async function processSeasonEnd(seasonId) {
     .eq("is_ai", false);
 
   for (const team of teams || []) {
-    await processTeamSeasonEnd(team, seasonId, standings);
+    await processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumber);
   }
 
   // Mark season as completed
@@ -140,7 +150,7 @@ export async function processSeasonEnd(seasonId) {
   console.log("  ✅ Season end processing complete");
 }
 
-async function processTeamSeasonEnd(team, seasonId, standings) {
+async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumber) {
   const teamStanding = standings.find(s => s.team_id === team.id);
   const board = team.board_profiles?.[0];
 
@@ -173,27 +183,127 @@ async function processTeamSeasonEnd(team, seasonId, standings) {
     console.log(`  💸 ${team.name}: -${interest} pts interest on negative balance`);
   }
 
-  // 4. Evaluate board satisfaction — sæt negotiation_status pending til næste sæson
+  // 4. Plan-aware board evaluation
   if (board && teamStanding) {
-    const newSatisfaction = calculateBoardSatisfaction(board, teamStanding, team);
+    const planDuration = getPlanDurationFromType(board.plan_type);
+    const seasonsCompleted = (board.seasons_completed || 0) + 1;
+    const newCumulativeStageWins = (board.cumulative_stage_wins || 0) + (teamStanding.stage_wins || 0);
+    const newCumulativeGcWins = (board.cumulative_gc_wins || 0) + (teamStanding.gc_wins || 0);
+    const planIsComplete = seasonsCompleted >= planDuration;
+    const isMidReview = !planIsComplete && seasonsCompleted === Math.floor(planDuration / 2);
+
+    // Active loans count for no_outstanding_debt goal
+    const { count: activeLoanCount } = await supabase.from("loans")
+      .select("id", { count: "exact", head: true })
+      .eq("team_id", team.id).eq("status", "active");
+
+    // Fresh team data for sponsor_growth evaluation
+    const { data: freshTeamData } = await supabase.from("teams")
+      .select("sponsor_income").eq("id", team.id).single();
+
+    const context = {
+      isFinalSeason: planIsComplete,
+      activeLoanCount: activeLoanCount || 0,
+      planStartSponsorIncome: board.plan_start_sponsor_income,
+      currentSponsorIncome: freshTeamData?.sponsor_income ?? team.sponsor_income,
+    };
+
+    let newSatisfaction = calculateBoardSatisfaction(board, teamStanding, team, context);
+
+    // Apply cumulative goal bonuses/penalties only at plan end
+    if (planIsComplete) {
+      const goals = typeof board.current_goals === "string"
+        ? JSON.parse(board.current_goals) : (board.current_goals || []);
+      for (const goal of goals) {
+        if (!goal.cumulative) continue;
+        let achieved = false;
+        if (goal.type === "stage_wins") achieved = newCumulativeStageWins >= goal.target;
+        if (goal.type === "gc_wins") achieved = newCumulativeGcWins >= goal.target;
+        if (achieved) newSatisfaction += (goal.satisfaction_bonus || 10);
+        else newSatisfaction -= (goal.satisfaction_penalty || 5);
+      }
+      newSatisfaction = Math.max(0, Math.min(100, newSatisfaction));
+    }
+
     const newModifier = satisfactionToModifier(newSatisfaction);
-    const newGoals = generateBoardGoals(board.focus, board.plan_type);
 
-    await supabase.from("board_profiles").update({
-      satisfaction: newSatisfaction,
-      budget_modifier: newModifier,
-      current_goals: JSON.stringify(newGoals),
-      negotiation_status: "pending",
-    }).eq("id", board.id);
+    // Insert season snapshot
+    const goals = typeof board.current_goals === "string"
+      ? JSON.parse(board.current_goals) : (board.current_goals || []);
+    const goalsMet = countGoalsMet(goals, teamStanding, team, context);
 
-    await notifyManager(team.id, "board_update",
-      "Bestyrelsens årsrapport",
-      `Tilfredshed: ${newSatisfaction}% — Sponsor modifier: ×${newModifier.toFixed(2)}. Forhandl nye mål på Bestyrelses-siden.`);
+    await supabase.from("board_plan_snapshots").insert({
+      team_id: team.id,
+      board_id: board.id,
+      season_id: seasonId,
+      season_number: currentSeasonNumber,
+      season_within_plan: seasonsCompleted,
+      stage_wins: teamStanding.stage_wins || 0,
+      gc_wins: teamStanding.gc_wins || 0,
+      division_rank: teamStanding.rank_in_division || null,
+      satisfaction_delta: newSatisfaction - board.satisfaction,
+      goals_met: goalsMet,
+      goals_total: goals.length,
+    });
 
-    console.log(`  📊 ${team.name}: satisfaction ${board.satisfaction}% → ${newSatisfaction}%`);
+    if (planIsComplete) {
+      // Plan expired — reset for re-negotiation
+      await supabase.from("board_profiles").update({
+        satisfaction: newSatisfaction,
+        budget_modifier: newModifier,
+        negotiation_status: "pending",
+        seasons_completed: 0,
+        cumulative_stage_wins: 0,
+        cumulative_gc_wins: 0,
+        updated_at: new Date().toISOString(),
+      }).eq("id", board.id);
+
+      const planLabel = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" }[board.plan_type] || "plan";
+      await notifyManager(team.id, "board_update",
+        "Bestyrelsesplan udløbet",
+        `Din ${planLabel} er afsluttet. Tilfredshed: ${newSatisfaction}%. Forhandl en ny plan med bestyrelsen.`);
+    } else {
+      // Plan still running — update cumulative stats, keep goals
+      await supabase.from("board_profiles").update({
+        satisfaction: newSatisfaction,
+        budget_modifier: newModifier,
+        seasons_completed: seasonsCompleted,
+        cumulative_stage_wins: newCumulativeStageWins,
+        cumulative_gc_wins: newCumulativeGcWins,
+        updated_at: new Date().toISOString(),
+      }).eq("id", board.id);
+
+      if (isMidReview) {
+        const midMsg = newSatisfaction >= 60
+          ? "Bestyrelsen er tilfreds med din fremgang."
+          : newSatisfaction >= 40
+          ? "Bestyrelsen er moderat tilfreds med din fremgang."
+          : "Bestyrelsen er bekymret for fremgangen i din plan.";
+        await notifyManager(team.id, "board_update",
+          "Halvvejsevaluering",
+          `Halvvejsevaluering: ${midMsg} Tilfredshed: ${newSatisfaction}%.`);
+      } else {
+        const planLabel = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" }[board.plan_type] || "plan";
+        const delta = newSatisfaction - board.satisfaction;
+        await notifyManager(team.id, "board_update",
+          "Sæsonrapport",
+          `Sæson ${seasonsCompleted}/${planDuration} af din ${planLabel} afsluttet. Tilfredshed: ${newSatisfaction}% (${delta >= 0 ? "+" : ""}${delta}).`);
+      }
+    }
+
+    console.log(`  📊 ${team.name}: satisfaction ${board.satisfaction}% → ${newSatisfaction}% (season ${seasonsCompleted}/${planDuration})`);
   }
 
   console.log(`  💰 ${team.name}: -${totalSalary} pts salary`);
+}
+
+function countGoalsMet(goals, standing, team, context) {
+  if (!goals?.length) return 0;
+  return goals.filter(g => {
+    if (g.cumulative) return false; // Cumulative counted separately at plan end
+    const result = evaluateGoal(g, standing, team, context);
+    return result === true;
+  }).length;
 }
 
 async function processDivisionEnd(standings, division, seasonId) {
@@ -245,13 +355,15 @@ async function processDivisionEnd(standings, division, seasonId) {
  * Calculate new board satisfaction based on season performance.
  * Returns 0-100 integer.
  */
-export function calculateBoardSatisfaction(board, standing, team) {
-  let score = board.satisfaction; // Start from current
-  const goals = board.current_goals || [];
+export function calculateBoardSatisfaction(board, standing, team, context = {}) {
+  let score = board.satisfaction;
+  const goals = typeof board.current_goals === "string"
+    ? JSON.parse(board.current_goals) : (board.current_goals || []);
 
   for (const goal of goals) {
-    const achieved = evaluateGoal(goal, standing, team);
-    if (achieved) {
+    const result = evaluateGoal(goal, standing, team, context);
+    if (result === null) continue; // Deferred goal — skip this season
+    if (result) {
       score += goal.satisfaction_bonus || 10;
     } else {
       score -= goal.satisfaction_penalty || 5;
@@ -267,18 +379,29 @@ export function calculateBoardSatisfaction(board, standing, team) {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-function evaluateGoal(goal, standing, team) {
+function evaluateGoal(goal, standing, team, context = {}) {
+  const { isFinalSeason = true, activeLoanCount = 0, planStartSponsorIncome, currentSponsorIncome } = context;
+
   switch (goal.type) {
     case "top_n_finish":
       return (standing.rank_in_division || 99) <= goal.target;
     case "stage_wins":
+      if (goal.cumulative) return null; // Applied at plan end via cumulative counters
       return (standing.stage_wins || 0) >= goal.target;
+    case "gc_wins":
+      if (goal.cumulative) return null;
+      return (standing.gc_wins || 0) >= goal.target;
     case "min_u25_riders":
       return (team.riders || []).filter(r => r.is_u25).length >= goal.target;
     case "min_riders":
       return (team.riders || []).length >= goal.target;
-    case "gc_wins":
-      return (standing.gc_wins || 0) >= goal.target;
+    case "no_outstanding_debt":
+      if (!isFinalSeason) return null; // Only evaluated at plan end for multi-year
+      return activeLoanCount === 0;
+    case "sponsor_growth":
+      if (!isFinalSeason) return null;
+      if (!planStartSponsorIncome || planStartSponsorIncome === 0) return null;
+      return ((currentSponsorIncome - planStartSponsorIncome) / planStartSponsorIncome * 100) >= goal.target;
     default:
       return false;
   }
@@ -297,44 +420,63 @@ export function satisfactionToModifier(satisfaction) {
  * Returns array of goal objects.
  */
 export function generateBoardGoals(focus, planType) {
+  const planDuration = getPlanDurationFromType(planType);
+  const isMultiYear = planDuration > 1;
+  const planModifier = { "1yr": 1.0, "3yr": 0.8, "5yr": 0.6 };
+  const mod = planModifier[planType] || 1.0;
+
+  const stageWinsTarget = isMultiYear ? Math.round(1 * planDuration * 0.8) : 1;
+  const gcWinsTarget = isMultiYear ? Math.max(1, Math.round(planDuration * 0.6)) : 1;
+  const balancedStageTarget = isMultiYear ? Math.round(2 * planDuration * 0.7) : 2;
+
   const baseGoals = {
     youth_development: [
       { type: "min_u25_riders", target: 5, label: "Min. 5 U25-ryttere på holdet",
         satisfaction_bonus: 15, satisfaction_penalty: 10 },
-      { type: "top_n_finish", target: 5, label: "Top 5 i divisionen",
+      { type: "top_n_finish", target: 5,
+        label: isMultiYear ? "Top 5 i divisionen ved planens afslutning" : "Top 5 i divisionen",
         satisfaction_bonus: 10, satisfaction_penalty: 5 },
-      { type: "stage_wins", target: 1, label: "Mindst 1 etapesejr med U25 rytter",
-        satisfaction_bonus: 20, satisfaction_penalty: 0 },
+      { type: "stage_wins", target: stageWinsTarget,
+        label: isMultiYear ? `Mindst ${stageWinsTarget} etapesejre over planperioden` : "Mindst 1 etapesejr",
+        cumulative: isMultiYear, satisfaction_bonus: 20, satisfaction_penalty: 0 },
+      { type: "no_outstanding_debt", target: 0,
+        label: "Ingen udestående gæld ved sæsonslut",
+        satisfaction_bonus: 12, satisfaction_penalty: 8 },
     ],
     star_signing: [
-      { type: "top_n_finish", target: 3, label: "Top 3 i divisionen",
+      { type: "top_n_finish", target: 3,
+        label: isMultiYear ? "Top 3 i divisionen ved planens afslutning" : "Top 3 i divisionen",
         satisfaction_bonus: 20, satisfaction_penalty: 15 },
-      { type: "gc_wins", target: 1, label: "Mindst 1 samlet sejr",
-        satisfaction_bonus: 25, satisfaction_penalty: 10 },
+      { type: "gc_wins", target: gcWinsTarget,
+        label: isMultiYear ? `Mindst ${gcWinsTarget} samlede sejre over planperioden` : "Mindst 1 samlet sejr",
+        cumulative: isMultiYear, satisfaction_bonus: 25, satisfaction_penalty: 10 },
       { type: "min_riders", target: 20, label: "Hold på min. 20 ryttere",
         satisfaction_bonus: 5, satisfaction_penalty: 10 },
+      { type: "sponsor_growth", target: isMultiYear ? planDuration * 5 : 10,
+        label: isMultiYear
+          ? `Sponsor-indkomst vokset med ${planDuration * 5}% over planperioden`
+          : "Sponsor-indkomst vokset med 10%",
+        satisfaction_bonus: 15, satisfaction_penalty: 10 },
     ],
     balanced: [
-      { type: "top_n_finish", target: 4, label: "Top 4 i divisionen",
+      { type: "top_n_finish", target: 4,
+        label: isMultiYear ? "Top 4 i divisionen ved planens afslutning" : "Top 4 i divisionen",
         satisfaction_bonus: 15, satisfaction_penalty: 8 },
       { type: "min_riders", target: 15, label: "Hold på min. 15 ryttere",
         satisfaction_bonus: 5, satisfaction_penalty: 10 },
-      { type: "stage_wins", target: 2, label: "Mindst 2 etapesejre",
-        satisfaction_bonus: 10, satisfaction_penalty: 5 },
+      { type: "stage_wins", target: balancedStageTarget,
+        label: isMultiYear ? `Mindst ${balancedStageTarget} etapesejre over planperioden` : "Mindst 2 etapesejre",
+        cumulative: isMultiYear, satisfaction_bonus: 10, satisfaction_penalty: 5 },
+      { type: "no_outstanding_debt", target: 0,
+        label: "Ingen udestående gæld ved sæsonslut",
+        satisfaction_bonus: 12, satisfaction_penalty: 8 },
     ],
-  };
-
-  // Long-term plan modifier
-  const planModifier = {
-    "1yr": 1.0,
-    "3yr": 0.8,   // More forgiving short-term
-    "5yr": 0.6,   // Most forgiving short-term
   };
 
   const goals = baseGoals[focus] || baseGoals.balanced;
   return goals.map(g => ({
     ...g,
-    satisfaction_penalty: Math.round(g.satisfaction_penalty * (planModifier[planType] || 1)),
+    satisfaction_penalty: Math.round(g.satisfaction_penalty * mod),
   }));
 }
 

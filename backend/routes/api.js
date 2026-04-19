@@ -1734,6 +1734,119 @@ router.post("/riders/:id/view", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// BOARD
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// GET /api/board/status — full plan state for the authenticated manager
+router.get("/board/status", requireAuth, async (req, res) => {
+  const teamId = req.team?.id;
+  if (!teamId) return res.status(404).json({ error: "No team" });
+
+  const [boardRes, teamRes, ridersRes, standingRes, loansRes] = await Promise.all([
+    supabase.from("board_profiles").select("*").eq("team_id", teamId).single(),
+    supabase.from("teams").select("id, balance, sponsor_income, division").eq("id", teamId).single(),
+    supabase.from("riders").select("id, is_u25").eq("team_id", teamId),
+    supabase.from("season_standings").select("*").eq("team_id", teamId)
+      .order("updated_at", { ascending: false }).limit(1).single(),
+    supabase.from("loans").select("id", { count: "exact", head: true })
+      .eq("team_id", teamId).eq("status", "active"),
+  ]);
+
+  const board = boardRes.data;
+  const activeLoanCount = loansRes.count || 0;
+
+  if (!board) {
+    return res.json({
+      board: null,
+      plan_duration: 1, seasons_remaining: 0, seasons_completed: 0,
+      plan_progress_pct: 0, cumulative_stats: { stage_wins: 0, gc_wins: 0 },
+      snapshots: [], is_expired: true, active_loans_count: activeLoanCount,
+      team: teamRes.data, riders: ridersRes.data || [], standing: null,
+    });
+  }
+
+  const planDuration = { "1yr": 1, "3yr": 3, "5yr": 5 }[board.plan_type] ?? 1;
+  const seasonsCompleted = board.seasons_completed || 0;
+  const seasonsRemaining = Math.max(0, planDuration - seasonsCompleted);
+  const planProgressPct = planDuration > 0 ? Math.round((seasonsCompleted / planDuration) * 100) : 0;
+  const isExpired = board.negotiation_status === "pending";
+
+  // Snapshots for current plan only (season_number >= plan start)
+  const { data: snapshots } = await supabase.from("board_plan_snapshots")
+    .select("*").eq("board_id", board.id)
+    .gte("season_number", board.plan_start_season_number || 0)
+    .order("season_within_plan", { ascending: true });
+
+  res.json({
+    board,
+    plan_duration: planDuration,
+    seasons_remaining: seasonsRemaining,
+    seasons_completed: seasonsCompleted,
+    plan_progress_pct: planProgressPct,
+    cumulative_stats: {
+      stage_wins: board.cumulative_stage_wins || 0,
+      gc_wins: board.cumulative_gc_wins || 0,
+    },
+    snapshots: snapshots || [],
+    is_expired: isExpired,
+    active_loans_count: activeLoanCount,
+    team: teamRes.data,
+    riders: ridersRes.data || [],
+    standing: standingRes.data || null,
+  });
+});
+
+// POST /api/board/sign — sign a new board plan contract
+router.post("/board/sign", requireAuth, async (req, res) => {
+  const teamId = req.team?.id;
+  if (!teamId) return res.status(404).json({ error: "No team" });
+
+  const { focus, plan_type, goals } = req.body;
+  if (!focus || !plan_type || !goals) return res.status(400).json({ error: "Missing fields" });
+  if (!["1yr", "3yr", "5yr"].includes(plan_type)) return res.status(400).json({ error: "Invalid plan_type" });
+  if (!["youth_development", "star_signing", "balanced"].includes(focus)) return res.status(400).json({ error: "Invalid focus" });
+
+  const [seasonRes, teamRes, existingBoardRes] = await Promise.all([
+    supabase.from("seasons").select("id, number").eq("status", "active").single(),
+    supabase.from("teams").select("balance, sponsor_income").eq("id", teamId).single(),
+    supabase.from("board_profiles").select("id, satisfaction, budget_modifier").eq("team_id", teamId).single(),
+  ]);
+
+  const activeSeason = seasonRes.data;
+  const team = teamRes.data;
+  const existingBoard = existingBoardRes.data;
+  const planDuration = { "1yr": 1, "3yr": 3, "5yr": 5 }[plan_type] ?? 1;
+  const startSeasonNumber = activeSeason?.number ?? 1;
+  const endSeasonNumber = startSeasonNumber + planDuration - 1;
+
+  const upsertData = {
+    team_id: teamId,
+    focus,
+    plan_type,
+    current_goals: JSON.stringify(goals),
+    satisfaction: existingBoard?.satisfaction ?? 50,
+    budget_modifier: existingBoard?.budget_modifier ?? 1.0,
+    negotiation_status: "completed",
+    plan_start_season_number: startSeasonNumber,
+    plan_end_season_number: endSeasonNumber,
+    plan_start_balance: team?.balance ?? 0,
+    plan_start_sponsor_income: team?.sponsor_income ?? 100,
+    seasons_completed: 0,
+    cumulative_stage_wins: 0,
+    cumulative_gc_wins: 0,
+    season_id: activeSeason?.id ?? null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: board, error } = await supabase.from("board_profiles")
+    .upsert(upsertData, { onConflict: "team_id" }).select().single();
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({ ok: true, board });
+});
+
 export default router;
 
 

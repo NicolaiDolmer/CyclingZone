@@ -232,9 +232,36 @@ CREATE TABLE board_profiles (
   budget_modifier FLOAT DEFAULT 1.0,
   current_goals JSONB DEFAULT '[]',
   season_id UUID REFERENCES seasons(id),
+  negotiation_status TEXT NOT NULL DEFAULT 'pending' CHECK (negotiation_status IN ('pending', 'completed')),
+  -- Multi-year plan tracking
+  plan_start_season_number INTEGER,
+  plan_end_season_number INTEGER,
+  seasons_completed INTEGER NOT NULL DEFAULT 0,
+  cumulative_stage_wins INTEGER NOT NULL DEFAULT 0,
+  cumulative_gc_wins INTEGER NOT NULL DEFAULT 0,
+  plan_start_balance BIGINT,
+  plan_start_sponsor_income BIGINT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE board_plan_snapshots (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  board_id UUID NOT NULL REFERENCES board_profiles(id) ON DELETE CASCADE,
+  season_id UUID NOT NULL REFERENCES seasons(id),
+  season_number INTEGER NOT NULL,
+  season_within_plan INTEGER NOT NULL,
+  stage_wins INTEGER NOT NULL DEFAULT 0,
+  gc_wins INTEGER NOT NULL DEFAULT 0,
+  division_rank INTEGER,
+  satisfaction_delta INTEGER,
+  goals_met INTEGER NOT NULL DEFAULT 0,
+  goals_total INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_plan_snapshots_team ON board_plan_snapshots(team_id, board_id);
 
 -- ============================================================
 -- FINANCE

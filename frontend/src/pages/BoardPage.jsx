@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { generateBoardGoals, satisfactionToModifier } from "../lib/boardUtils";
+import { generateBoardGoals, satisfactionToModifier, getPlanDuration, isMidPlanReview } from "../lib/boardUtils";
 import { Link } from "react-router-dom";
 
 // ── Forhandlings-hjælper ──────────────────────────────────────────────────────
@@ -14,12 +14,14 @@ function getNegotiatedGoal(goal) {
     }
     case "stage_wins": {
       const t = Math.max(1, goal.target - 1);
-      return { ...goal, target: t, label: `Mindst ${t} etapesejr${t !== 1 ? "er" : ""}`,
+      return { ...goal, target: t,
+        label: goal.cumulative ? `Mindst ${t} etapesejre over planperioden` : `Mindst ${t} etapesejr${t !== 1 ? "er" : ""}`,
         satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
     }
     case "gc_wins": {
       const t = Math.max(1, goal.target - 1);
-      return { ...goal, target: t, label: `Mindst ${t} samlet sejr`,
+      return { ...goal, target: t,
+        label: goal.cumulative ? `Mindst ${t} samlede sejre over planperioden` : `Mindst ${t} samlet sejr`,
         satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
     }
     case "min_u25_riders": {
@@ -30,6 +32,13 @@ function getNegotiatedGoal(goal) {
     case "min_riders": {
       const t = Math.max(5, goal.target - 3);
       return { ...goal, target: t, label: `Hold på min. ${t} ryttere`,
+        satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
+    }
+    case "no_outstanding_debt":
+      return { ...goal, satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
+    case "sponsor_growth": {
+      const t = Math.max(5, goal.target - 5);
+      return { ...goal, target: t, label: `Sponsor-indkomst vokset med ${t}%`,
         satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
     }
     default:
@@ -61,7 +70,7 @@ function SatisfactionMeter({ value }) {
   );
 }
 
-function GoalCard({ goal, achieved }) {
+function GoalCard({ goal, achieved, cumulativeProgress }) {
   return (
     <div className={`flex items-start gap-3 p-3 rounded-lg border transition-all
       ${achieved ? "bg-green-500/8 border-green-500/20" : "bg-white/3 border-white/5"}`}>
@@ -71,6 +80,15 @@ function GoalCard({ goal, achieved }) {
       </div>
       <div className="flex-1">
         <p className={`text-sm font-medium ${achieved ? "text-green-300" : "text-white/70"}`}>{goal.label}</p>
+        {goal.cumulative && cumulativeProgress !== undefined && (
+          <div className="flex items-center gap-2 mt-1.5">
+            <div className="flex-1 bg-white/5 rounded-full h-1">
+              <div className={`h-1 rounded-full transition-all ${achieved ? "bg-green-500" : "bg-[#e8c547]"}`}
+                style={{ width: `${Math.min(100, Math.round((cumulativeProgress / goal.target) * 100))}%` }} />
+            </div>
+            <span className="text-white/30 text-xs font-mono">{cumulativeProgress}/{goal.target}</span>
+          </div>
+        )}
         <div className="flex gap-3 mt-1">
           {goal.negotiated && <span className="text-xs text-blue-400/70">Forhandlet</span>}
           {goal.satisfaction_bonus > 0 && (
@@ -85,22 +103,135 @@ function GoalCard({ goal, achieved }) {
   );
 }
 
+// ── Plan progress komponenter ─────────────────────────────────────────────────
+
+function PlanTimelineBar({ planDuration, seasonsCompleted, snapshots }) {
+  if (planDuration <= 1) return null;
+  return (
+    <div className="flex items-center justify-center gap-1 py-2">
+      {Array.from({ length: planDuration }, (_, i) => {
+        const seasonNum = i + 1;
+        const isCurrent = seasonNum === seasonsCompleted + 1;
+        const isCompleted = seasonNum <= seasonsCompleted;
+        const snapshot = snapshots.find(s => s.season_within_plan === seasonNum);
+        const metPct = snapshot ? Math.round((snapshot.goals_met / Math.max(1, snapshot.goals_total)) * 100) : 0;
+
+        return (
+          <div key={i} className="flex items-center gap-1">
+            <div className={`relative w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all
+              ${isCompleted
+                ? metPct >= 75 ? "bg-green-500/20 border-green-500/50 text-green-400"
+                  : metPct >= 50 ? "bg-[#e8c547]/20 border-[#e8c547]/50 text-[#e8c547]"
+                  : "bg-red-500/10 border-red-500/30 text-red-400"
+                : isCurrent
+                ? "bg-[#e8c547]/15 border-[#e8c547] text-[#e8c547]"
+                : "bg-white/3 border-white/10 text-white/20"}`}>
+              {isCompleted ? (metPct >= 50 ? "✓" : "✗") : seasonNum}
+            </div>
+            {i < planDuration - 1 && (
+              <div className={`w-6 h-0.5 ${isCompleted ? "bg-white/20" : "bg-white/5"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CumulativeStatsRow({ goals, cumStats }) {
+  const cumulativeGoals = (goals || []).filter(g => g.cumulative);
+  if (!cumulativeGoals.length) return null;
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {cumulativeGoals.map((goal, i) => {
+        const current = goal.type === "stage_wins"
+          ? (cumStats?.stage_wins || 0) : (cumStats?.gc_wins || 0);
+        const pct = Math.min(100, Math.round((current / goal.target) * 100));
+        const achieved = current >= goal.target;
+        return (
+          <div key={i} className="bg-[#0f0f18] border border-white/5 rounded-xl p-4">
+            <p className="text-white/30 text-xs uppercase tracking-wider mb-2">
+              {goal.type === "stage_wins" ? "Etapesejre" : "Samlede sejre"}
+            </p>
+            <div className="flex items-end gap-2 mb-2">
+              <span className={`font-mono font-bold text-2xl ${achieved ? "text-green-400" : "text-white"}`}>
+                {current}
+              </span>
+              <span className="text-white/30 text-sm mb-1">/ {goal.target}</span>
+            </div>
+            <div className="bg-white/5 rounded-full h-1.5">
+              <div className={`h-1.5 rounded-full transition-all ${achieved ? "bg-green-500" : "bg-[#e8c547]"}`}
+                style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function SeasonSnapshotGrid({ snapshots }) {
+  if (!snapshots?.length) return null;
+  return (
+    <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
+      <p className="text-white/30 text-xs uppercase tracking-wider mb-3">Sæsonhistorik</p>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-white/20 border-b border-white/5">
+            <th className="text-left pb-2">Sæson</th>
+            <th className="text-center pb-2">Rang</th>
+            <th className="text-center pb-2">Etaper</th>
+            <th className="text-center pb-2">Saml.</th>
+            <th className="text-center pb-2">Mål</th>
+            <th className="text-right pb-2">Tilfredshed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {snapshots.map(s => (
+            <tr key={s.id} className="border-t border-white/5">
+              <td className="py-2 text-white/50">Sæson {s.season_number}</td>
+              <td className="py-2 text-center text-white/70">{s.division_rank ? `#${s.division_rank}` : "—"}</td>
+              <td className="py-2 text-center text-white/70">{s.stage_wins}</td>
+              <td className="py-2 text-center text-white/70">{s.gc_wins}</td>
+              <td className="py-2 text-center">
+                <span className={s.goals_met >= s.goals_total * 0.7
+                  ? "text-green-400" : s.goals_met >= s.goals_total * 0.4
+                  ? "text-[#e8c547]" : "text-red-400"}>
+                  {s.goals_met}/{s.goals_total}
+                </span>
+              </td>
+              <td className="py-2 text-right">
+                <span className={s.satisfaction_delta > 0
+                  ? "text-green-400" : s.satisfaction_delta < 0
+                  ? "text-red-400" : "text-white/40"}>
+                  {s.satisfaction_delta > 0 ? "+" : ""}{s.satisfaction_delta}%
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── Wizard trin ───────────────────────────────────────────────────────────────
 
 const FOCUS_OPTIONS = [
-  { key: "balanced",         label: "Balanceret" },
+  { key: "balanced",          label: "Balanceret" },
   { key: "youth_development", label: "Ungdomsudvikling" },
-  { key: "star_signing",     label: "Stjernesignering" },
+  { key: "star_signing",      label: "Stjernesignering" },
 ];
 
 const PLAN_OPTIONS = [
-  { key: "1yr", label: "1-årsplan — strenge mål" },
-  { key: "3yr", label: "3-årsplan — moderate mål" },
-  { key: "5yr", label: "5-årsplan — langsigtede mål" },
+  { key: "1yr", label: "1-årsplan", desc: "Strenge mål, hurtige resultater" },
+  { key: "3yr", label: "3-årsplan", desc: "Moderate mål, plads til vækst" },
+  { key: "5yr", label: "5-årsplan", desc: "Langsigtede ambitioner" },
 ];
 
 function WizardStep1({ focus, setFocus, planType, setPlanType, onStart }) {
   const preview = generateBoardGoals(focus, planType);
+  const duration = getPlanDuration(planType);
   return (
     <div>
       <div className="text-center mb-8">
@@ -132,11 +263,19 @@ function WizardStep1({ focus, setFocus, planType, setPlanType, onStart }) {
                   ${planType === o.key
                     ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20"
                     : "bg-white/3 text-white/50 border-white/5 hover:bg-white/8 hover:text-white/80"}`}>
-                {o.label}
+                <span>{o.label}</span>
+                <span className={`block text-xs mt-0.5 ${planType === o.key ? "text-[#e8c547]/60" : "text-white/25"}`}>
+                  {o.desc}
+                </span>
               </button>
             ))}
           </div>
         </div>
+        {duration > 1 && (
+          <p className="text-white/25 text-xs mt-3 text-center">
+            Planen løber over {duration} sæsoner — mål evalueres løbende
+          </p>
+        )}
       </div>
 
       <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-6">
@@ -149,6 +288,7 @@ function WizardStep1({ focus, setFocus, planType, setPlanType, onStart }) {
               <div className="flex-1">
                 <p className="text-white/70 text-sm">{g.label}</p>
                 <div className="flex gap-3 mt-1">
+                  {g.cumulative && <span className="text-xs text-blue-400/50">Kumulativt</span>}
                   {g.satisfaction_bonus > 0 && <span className="text-xs text-green-400/60">+{g.satisfaction_bonus}</span>}
                   {g.satisfaction_penalty > 0 && <span className="text-xs text-red-400/60">-{g.satisfaction_penalty} straf</span>}
                 </div>
@@ -178,80 +318,88 @@ function WizardStep2({ goals, goalIdx, negotiated, pendingNegotiate, onAccept, o
         <span className="text-white/30 text-xs flex-shrink-0">Mål {goalIdx + 1}/{total}</span>
         <div className="flex-1 bg-white/5 rounded-full h-1.5">
           <div className="h-1.5 rounded-full bg-[#e8c547] transition-all"
-            style={{ width: `${(goalIdx / total) * 100}%` }} />
+            style={{ width: `${((goalIdx) / total) * 100}%` }} />
         </div>
-        <span className="text-white/25 text-xs flex-shrink-0">{negotiationsUsed} forhandlet</span>
       </div>
 
-      {/* Current goal card */}
-      <div className={`rounded-xl p-6 mb-4 border ${pendingNegotiate
-        ? "bg-blue-500/5 border-blue-500/20"
-        : "bg-[#0f0f18] border-[#e8c547]/20"}`}>
-        <p className={`text-xs uppercase tracking-wider mb-2 ${pendingNegotiate ? "text-blue-400/60" : "text-white/30"}`}>
-          {pendingNegotiate ? "Forhandlet alternativ" : "Bestyrelsens krav"}
-        </p>
-        <p className="text-white font-bold text-lg mb-4">{current.label}</p>
-        <div className="flex gap-6">
-          <div>
-            <p className="text-green-400 font-mono font-bold text-sm">+{current.satisfaction_bonus}</p>
-            <p className="text-white/30 text-xs mt-0.5">tilfredshed ved opfyldelse</p>
-          </div>
-          <div>
-            <p className="text-red-400 font-mono font-bold text-sm">
-              {current.satisfaction_penalty > 0 ? `-${current.satisfaction_penalty}` : "0"}
-            </p>
-            <p className="text-white/30 text-xs mt-0.5">straf hvis ikke opfyldt</p>
-          </div>
-        </div>
-        {pendingNegotiate && (
-          <div className="mt-4 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-            <p className="text-blue-400 text-xs">Krav sænket, straf halveret — acceptér for at fortsætte</p>
-          </div>
-        )}
+      <div className="text-center mb-8">
+        <h2 className="text-white font-bold text-xl">Forhandling</h2>
+        <p className="text-white/40 text-sm mt-1">Gennemgå bestyrelsens krav ét ad gangen</p>
       </div>
 
-      {/* Action buttons */}
-      {pendingNegotiate ? (
-        <button onClick={onAcceptNegotiated}
-          className="w-full py-3 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-xl hover:bg-[#f0d060] transition-all">
-          Acceptér forhandlet mål ✓
-        </button>
-      ) : (
+      {/* Current goal */}
+      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
+        <p className="text-white/30 text-xs uppercase tracking-wider mb-3">Bestyrelsens krav</p>
+        <div className={`flex items-start gap-3 p-4 rounded-lg border
+          ${current?.negotiated ? "bg-blue-500/5 border-blue-500/20" : "bg-white/3 border-white/8"}`}>
+          <div className="w-6 h-6 rounded-full bg-[#e8c547]/10 border border-[#e8c547]/20
+            flex items-center justify-center flex-shrink-0 text-xs text-[#e8c547]">◎</div>
+          <div className="flex-1">
+            <p className="text-white font-semibold">{current?.label}</p>
+            <div className="flex gap-3 mt-2">
+              {current?.cumulative && <span className="text-xs text-blue-400/70 bg-blue-500/10 px-2 py-0.5 rounded">Kumulativt</span>}
+              {current?.satisfaction_bonus > 0 && (
+                <span className="text-xs text-green-400/70">+{current?.satisfaction_bonus} tilfredshed</span>
+              )}
+              {current?.satisfaction_penalty > 0 && (
+                <span className="text-xs text-red-400/70">-{current?.satisfaction_penalty} straf</span>
+              )}
+              {current?.negotiated && <span className="text-xs text-blue-400/70">Forhandlet ✓</span>}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {!pendingNegotiate ? (
         <div className="flex gap-3">
-          <button onClick={onAccept}
-            className="flex-1 py-3 bg-green-500/10 text-green-400 border border-green-500/20
-              font-bold rounded-xl hover:bg-green-500/20 transition-all">
-            Acceptér ✓
-          </button>
           <button onClick={onNegotiate} disabled={negotiated[goalIdx]}
-            className="flex-1 py-3 bg-white/5 text-white/50 border border-white/10
-              font-bold rounded-xl hover:bg-white/10 hover:text-white transition-all
-              disabled:opacity-30 disabled:cursor-not-allowed">
-            {negotiated[goalIdx] ? "Allerede forhandlet" : "Forhandl ↔"}
+            className={`flex-1 py-3 rounded-xl text-sm font-medium border transition-all
+              ${negotiated[goalIdx]
+                ? "bg-white/3 text-white/20 border-white/5 cursor-not-allowed"
+                : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white/80"}`}>
+            {negotiated[goalIdx] ? "Allerede forhandlet" : "Forhandl ned ↓"}
+          </button>
+          <button onClick={onAccept}
+            className="flex-1 py-3 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-xl text-sm hover:bg-[#f0d060] transition-all">
+            Accepter →
           </button>
         </div>
+      ) : (
+        <div>
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-4">
+            <p className="text-blue-300 text-sm font-medium">Bestyrelsen har accepteret kompromis</p>
+            <p className="text-blue-300/60 text-xs mt-1">Straf halveret. Accepter det forhandlede mål?</p>
+          </div>
+          <button onClick={onAcceptNegotiated}
+            className="w-full py-3 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-xl text-sm hover:bg-[#f0d060] transition-all">
+            Accepter forhandlet mål →
+          </button>
+        </div>
+      )}
+
+      {negotiationsUsed > 0 && (
+        <p className="text-white/20 text-xs text-center mt-4">{negotiationsUsed} forhandling(er) brugt</p>
       )}
     </div>
   );
 }
 
-function WizardStep3({ finalGoals, onSign, saving }) {
-  const negotiatedCount = finalGoals.filter(g => g.negotiated).length;
+function WizardStep3({ finalGoals, planType, onSign, saving }) {
+  const duration = getPlanDuration(planType);
+  const PLAN_LABELS = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" };
   return (
     <div>
-      <div className="text-center mb-6">
+      <div className="text-center mb-8">
         <div className="w-14 h-14 rounded-full bg-green-500/10 border border-green-500/20
-          flex items-center justify-center text-2xl mx-auto mb-4">📋</div>
-        <h2 className="text-white font-bold text-xl">Kontraktbekræftelse</h2>
+          flex items-center justify-center text-2xl mx-auto mb-4">✍</div>
+        <h2 className="text-white font-bold text-xl">Underskrift</h2>
         <p className="text-white/40 text-sm mt-1">
-          {negotiatedCount > 0
-            ? `${negotiatedCount} mål forhandlet — klar til underskrift`
-            : "Alle mål accepteret — klar til underskrift"}
+          {PLAN_LABELS[planType]} — løber over {duration} sæson{duration > 1 ? "er" : ""}
         </p>
       </div>
 
       <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-6">
-        <p className="text-white/30 text-xs uppercase tracking-wider mb-3">Aftalte sæsonmål</p>
+        <p className="text-white/30 text-xs uppercase tracking-wider mb-3">Aftalte mål</p>
         <div className="flex flex-col gap-2">
           {finalGoals.map((g, i) => (
             <div key={i} className={`flex items-start gap-3 p-3 rounded-lg border
@@ -261,6 +409,7 @@ function WizardStep3({ finalGoals, onSign, saving }) {
               <div className="flex-1">
                 <p className="text-white/80 text-sm font-medium">{g.label}</p>
                 <div className="flex gap-3 mt-1">
+                  {g.cumulative && <span className="text-xs text-blue-400/50">Kumulativt</span>}
                   {g.negotiated && <span className="text-xs text-blue-400/70">Forhandlet</span>}
                   {g.satisfaction_bonus > 0 && <span className="text-xs text-green-400/60">+{g.satisfaction_bonus}</span>}
                   {g.satisfaction_penalty > 0 && <span className="text-xs text-red-400/60">-{g.satisfaction_penalty} straf</span>}
@@ -286,6 +435,8 @@ export default function BoardPage() {
   const [board, setBoard] = useState(null);
   const [riders, setRiders] = useState([]);
   const [standing, setStanding] = useState(null);
+  const [snapshots, setSnapshots] = useState([]);
+  const [planStatus, setPlanStatus] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Wizard state
@@ -303,23 +454,34 @@ export default function BoardPage() {
 
   async function loadAll() {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: team } = await supabase.from("teams").select("id, division").eq("user_id", user.id).single();
-    if (!team) { setLoading(false); return; }
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) { setLoading(false); return; }
 
-    const [boardRes, ridersRes, standingRes] = await Promise.all([
-      supabase.from("board_profiles").select("*").eq("team_id", team.id).single(),
-      supabase.from("riders").select("id, is_u25").eq("team_id", team.id),
-      supabase.from("season_standings").select("*").eq("team_id", team.id)
-        .order("created_at", { ascending: false }).limit(1).single(),
-    ]);
+    const res = await fetch("/api/board/status", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) { setLoading(false); return; }
+    const data = await res.json();
 
-    setBoard(boardRes.data);
-    setRiders(ridersRes.data || []);
-    setStanding(standingRes.data);
-    if (boardRes.data) {
-      setFocus(boardRes.data.focus || "balanced");
-      setPlanType(boardRes.data.plan_type || "3yr");
+    setBoard(data.board);
+    setRiders(data.riders || []);
+    setStanding(data.standing);
+    setSnapshots(data.snapshots || []);
+    setPlanStatus({
+      plan_duration: data.plan_duration,
+      seasons_remaining: data.seasons_remaining,
+      seasons_completed: data.seasons_completed,
+      plan_progress_pct: data.plan_progress_pct,
+      cumulative_stats: data.cumulative_stats,
+      is_expired: data.is_expired,
+      active_loans_count: data.active_loans_count,
+      team: data.team,
+    });
+
+    if (data.board) {
+      setFocus(data.board.focus || "balanced");
+      setPlanType(data.board.plan_type || "3yr");
     }
     setLoading(false);
   }
@@ -362,41 +524,57 @@ export default function BoardPage() {
 
   async function signContract() {
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: team } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
-    await supabase.from("board_profiles").upsert({
-      team_id: team.id,
-      focus,
-      plan_type: planType,
-      current_goals: JSON.stringify(finalGoals),
-      satisfaction: board?.satisfaction ?? 50,
-      budget_multiplier: board?.budget_multiplier ?? 1.0,
-      negotiation_status: "completed",
-    }, { onConflict: "team_id" });
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) { setSaving(false); return; }
+
+    const res = await fetch("/api/board/sign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ focus, plan_type: planType, goals: finalGoals }),
+    });
+
     setSaving(false);
-    setStep(1);
-    loadAll();
+    if (res.ok) {
+      setStep(1);
+      loadAll();
+    }
   }
 
   async function renewContract() {
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
     const { data: team } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
-    await supabase.from("board_profiles").update({ negotiation_status: "pending" }).eq("team_id", team.id);
-    loadAll();
+    if (team) {
+      await supabase.from("board_profiles").update({ negotiation_status: "pending" }).eq("team_id", team.id);
+      loadAll();
+    }
   }
 
   // ── Completed-view helpers ──────────────────────────────────────────────────
 
   function isGoalAchieved(goal) {
-    const u25Count = riders.filter(r => r.is_u25).length;
-    const riderCount = riders.length;
+    const cumStats = planStatus?.cumulative_stats || {};
+    if (goal.cumulative) {
+      if (goal.type === "stage_wins") return (cumStats.stage_wins || 0) >= goal.target;
+      if (goal.type === "gc_wins") return (cumStats.gc_wins || 0) >= goal.target;
+    }
+    const activeLoanCount = planStatus?.active_loans_count ?? 0;
+    const sponsorIncome = planStatus?.team?.sponsor_income ?? 0;
+    const planStartSponsorIncome = board?.plan_start_sponsor_income ?? sponsorIncome;
+
     switch (goal.type) {
-      case "min_u25_riders": return u25Count >= goal.target;
-      case "min_riders":     return riderCount >= goal.target;
+      case "min_u25_riders": return riders.filter(r => r.is_u25).length >= goal.target;
+      case "min_riders":     return riders.length >= goal.target;
       case "top_n_finish":   return standing ? (standing.rank_in_division || 99) <= goal.target : false;
       case "stage_wins":     return standing ? (standing.stage_wins || 0) >= goal.target : false;
       case "gc_wins":        return standing ? (standing.gc_wins || 0) >= goal.target : false;
-      default:               return false;
+      case "no_outstanding_debt": return activeLoanCount === 0;
+      case "sponsor_growth": {
+        if (!planStartSponsorIncome) return false;
+        return ((sponsorIncome - planStartSponsorIncome) / planStartSponsorIncome * 100) >= goal.target;
+      }
+      default: return false;
     }
   }
 
@@ -412,8 +590,20 @@ export default function BoardPage() {
 
   // ── Wizard view ─────────────────────────────────────────────────────────────
   if (showWizard) {
+    const isExpiredRenegotiation = board && board.negotiation_status === "pending";
+    const PLAN_LABELS = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" };
+
     return (
       <div className="max-w-2xl mx-auto py-2">
+        {isExpiredRenegotiation && (
+          <div className="bg-[#e8c547]/10 border border-[#e8c547]/20 rounded-xl p-4 mb-6">
+            <p className="text-[#e8c547] text-sm font-semibold">Bestyrelsesplan udløbet</p>
+            <p className="text-[#e8c547]/60 text-xs mt-1">
+              Din {PLAN_LABELS[board.plan_type] || "plan"} er afsluttet. Forhandl en ny plan for de kommende sæsoner.
+            </p>
+          </div>
+        )}
+
         {/* Step indicator */}
         <div className="flex items-center mb-8">
           {[
@@ -462,6 +652,7 @@ export default function BoardPage() {
         {step === 3 && (
           <WizardStep3
             finalGoals={finalGoals}
+            planType={planType}
             onSign={signContract}
             saving={saving}
           />
@@ -478,20 +669,30 @@ export default function BoardPage() {
   const u25Count = riders.filter(r => r.is_u25).length;
   const riderCount = riders.length;
   const modifier = satisfactionToModifier(board.satisfaction);
-  const goalsAchieved = goals.filter(g => isGoalAchieved(g)).length;
+  const nonCumulativeGoals = goals.filter(g => !g.cumulative);
+  const goalsAchieved = nonCumulativeGoals.filter(g => isGoalAchieved(g)).length;
 
   const FOCUS_LABELS = {
     balanced: "Balanceret", youth_development: "Ungdomsudvikling", star_signing: "Stjernesignering",
-    attacking: "Offensiv", defensive: "Defensiv", youth: "Ungdomsudvikling", budget: "Budgetstyring",
   };
   const PLAN_LABELS = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" };
+
+  const planDuration = planStatus?.plan_duration || 1;
+  const seasonsCompleted = planStatus?.seasons_completed || 0;
+
+  // Mid-plan review banner: show only if the last snapshot is at the midpoint
+  const midpoint = Math.floor(planDuration / 2);
+  const lastSnapshot = snapshots[snapshots.length - 1];
+  const showMidReviewBanner = planDuration > 1
+    && lastSnapshot?.season_within_plan === midpoint
+    && seasonsCompleted === midpoint;
 
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-white">Bestyrelse</h1>
-          <p className="text-white/30 text-sm">Mål, tilfredshed og sæsonplan</p>
+          <p className="text-white/30 text-sm">Mål, tilfredshed og bestyrelsesplan</p>
         </div>
         <div className="flex gap-2">
           <Link to="/finance"
@@ -501,7 +702,7 @@ export default function BoardPage() {
           </Link>
           <button onClick={renewContract}
             className="px-4 py-2 rounded-lg text-sm font-medium border
-              bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20 hover:bg-[#e8c547]/20 transition-all">
+              bg-white/5 text-white/50 border-white/10 hover:bg-white/10 hover:text-white transition-all">
             Forny kontrakt
           </button>
         </div>
@@ -509,7 +710,7 @@ export default function BoardPage() {
 
       <SatisfactionMeter value={board.satisfaction} />
 
-      {/* Stats row */}
+      {/* Plan stats row */}
       <div className="grid grid-cols-3 gap-3 mt-4">
         <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 text-center">
           <p className="text-white/30 text-xs uppercase tracking-widest mb-1">Fokus</p>
@@ -518,6 +719,9 @@ export default function BoardPage() {
         <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 text-center">
           <p className="text-white/30 text-xs uppercase tracking-widest mb-1">Plan</p>
           <p className="text-white font-semibold text-sm">{PLAN_LABELS[board.plan_type] || board.plan_type}</p>
+          {planDuration > 1 && (
+            <p className="text-white/30 text-xs mt-0.5">Sæson {seasonsCompleted}/{planDuration}</p>
+          )}
         </div>
         <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 text-center">
           <p className="text-white/30 text-xs uppercase tracking-widest mb-1">Sponsor ×</p>
@@ -527,29 +731,71 @@ export default function BoardPage() {
         </div>
       </div>
 
+      {/* Plan timeline (3yr/5yr only) */}
+      {planDuration > 1 && (
+        <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
+          <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Planforløb</p>
+          <PlanTimelineBar
+            planDuration={planDuration}
+            seasonsCompleted={seasonsCompleted}
+            snapshots={snapshots}
+          />
+          <div className="mt-2">
+            <div className="bg-white/5 rounded-full h-1.5">
+              <div className="h-1.5 rounded-full bg-[#e8c547] transition-all"
+                style={{ width: `${planStatus?.plan_progress_pct || 0}%` }} />
+            </div>
+            <p className="text-white/20 text-xs text-center mt-1">
+              {planStatus?.seasons_remaining} sæson{planStatus?.seasons_remaining !== 1 ? "er" : ""} tilbage af planen
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Mid-plan review banner */}
+      {showMidReviewBanner && (
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mt-4">
+          <p className="text-blue-300 text-sm font-semibold">Halvvejsevaluering afsluttet</p>
+          <p className="text-blue-300/60 text-xs mt-1">
+            Bestyrelsen har vurderet din fremgang efter sæson {midpoint} af {planDuration}. Fortsæt mod planens mål.
+          </p>
+        </div>
+      )}
+
+      {/* Cumulative stats (for multi-year plans with cumulative goals) */}
+      {planDuration > 1 && goals.some(g => g.cumulative) && (
+        <div className="mt-4">
+          <CumulativeStatsRow goals={goals} cumStats={planStatus?.cumulative_stats} />
+        </div>
+      )}
+
       {/* Current goals */}
       <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-semibold text-sm">Sæsonmål</h2>
-          <span className="text-white/40 text-xs font-mono">{goalsAchieved}/{goals.length} opfyldt</span>
+          <h2 className="text-white font-semibold text-sm">
+            {planDuration > 1 ? "Planmål" : "Sæsonmål"}
+          </h2>
+          <span className="text-white/40 text-xs font-mono">
+            {goalsAchieved}/{nonCumulativeGoals.length} opfyldt
+          </span>
         </div>
         {goals.length === 0 ? (
           <p className="text-white/30 text-sm">Ingen mål sat endnu</p>
         ) : (
-          <>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex-1 bg-white/5 rounded-full h-2">
-                <div className="h-2 rounded-full bg-[#e8c547] transition-all"
-                  style={{ width: `${Math.round((goalsAchieved / goals.length) * 100)}%` }} />
-              </div>
-              <span className="text-white/40 text-xs font-mono">
-                {Math.round((goalsAchieved / goals.length) * 100)}%
-              </span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {goals.map((g, i) => <GoalCard key={i} goal={g} achieved={isGoalAchieved(g)} />)}
-            </div>
-          </>
+          <div className="flex flex-col gap-2">
+            {goals.map((g, i) => (
+              <GoalCard
+                key={i}
+                goal={g}
+                achieved={isGoalAchieved(g)}
+                cumulativeProgress={
+                  g.cumulative && g.type === "stage_wins" ? (planStatus?.cumulative_stats?.stage_wins ?? 0)
+                  : g.cumulative && g.type === "gc_wins" ? (planStatus?.cumulative_stats?.gc_wins ?? 0)
+                  : undefined
+                }
+              />
+            ))}
+          </div>
         )}
       </div>
 
@@ -565,14 +811,21 @@ export default function BoardPage() {
         </div>
       </div>
 
+      {/* Season snapshot history (multi-year plans) */}
+      {planDuration > 1 && snapshots.length > 0 && (
+        <div className="mt-4">
+          <SeasonSnapshotGrid snapshots={snapshots} />
+        </div>
+      )}
+
       {/* Satisfaction explanation */}
       <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
         <h2 className="text-white font-semibold text-sm mb-4">Hvad betyder tilfredshed?</h2>
         <div className="grid sm:grid-cols-3 gap-3">
           {[
-            { range: "70–100%", label: "Høj tilfredshed",      effect: "Sponsor × > 1.0 — ekstra indtægt", color: "text-green-400" },
-            { range: "40–69%", label: "Moderat tilfredshed",   effect: "Sponsor × 1.0 — normal indtægt",   color: "text-[#e8c547]" },
-            { range: "0–39%",  label: "Lav tilfredshed",       effect: "Sponsor × < 1.0 — reduceret",      color: "text-red-400" },
+            { range: "70–100%", label: "Høj tilfredshed",    effect: "Sponsor × > 1.0 — ekstra indtægt", color: "text-green-400" },
+            { range: "40–69%", label: "Moderat tilfredshed", effect: "Sponsor × 1.0 — normal indtægt",   color: "text-[#e8c547]" },
+            { range: "0–39%",  label: "Lav tilfredshed",     effect: "Sponsor × < 1.0 — reduceret",      color: "text-red-400" },
           ].map(item => (
             <div key={item.range} className="bg-white/3 rounded-lg p-3 border border-white/5">
               <p className={`font-mono font-bold text-sm ${item.color}`}>{item.range}</p>
