@@ -119,6 +119,9 @@ export default function TeamProfilePage() {
                 {windowOpen ? "🟢 Vindue åbent" : "🔒 Vindue lukket"}
               </span>
             </div>
+            {team.manager_name && (
+              <p className="text-white/40 text-sm">Manager: {team.manager_name}</p>
+            )}
             <p className="text-white/40 text-sm">Division {team.division}</p>
           </div>
 

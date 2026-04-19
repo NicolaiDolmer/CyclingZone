@@ -3,40 +3,68 @@ import { supabase } from "../lib/supabase";
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
+  const [team, setTeam] = useState(null);
   const [discordId, setDiscordId] = useState("");
+  const [teamName, setTeamName] = useState("");
+  const [managerName, setManagerName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [savingDiscord, setSavingDiscord] = useState(false);
+  const [savingTeam, setSavingTeam] = useState(false);
   const [msg, setMsg] = useState({ text: "", type: "" });
 
   useEffect(() => { loadProfile(); }, []);
 
   async function loadProfile() {
     const { data: { user: authUser } } = await supabase.auth.getUser();
-    const { data } = await supabase
-      .from("users")
-      .select("discord_id, username, email, role")
-      .eq("id", authUser.id)
-      .single();
-    setUser(data);
-    setDiscordId(data?.discord_id || "");
+    const [{ data: userData }, { data: teamData }] = await Promise.all([
+      supabase.from("users").select("discord_id, username, email, role").eq("id", authUser.id).single(),
+      supabase.from("teams").select("id, name, manager_name").eq("user_id", authUser.id).single(),
+    ]);
+    setUser(userData);
+    setDiscordId(userData?.discord_id || "");
+    setTeam(teamData);
+    setTeamName(teamData?.name || "");
+    setManagerName(teamData?.manager_name || "");
     setLoading(false);
   }
 
+  function showMsg(text, type = "success") {
+    setMsg({ text, type });
+    setTimeout(() => setMsg({ text: "" }), 3000);
+  }
+
   async function saveDiscordId() {
-    setSaving(true);
+    setSavingDiscord(true);
     const { data: { user: authUser } } = await supabase.auth.getUser();
     const { error } = await supabase
       .from("users")
       .update({ discord_id: discordId.trim() || null })
       .eq("id", authUser.id);
+    if (error) showMsg(`❌ ${error.message}`, "error");
+    else showMsg("✅ Discord ID gemt!");
+    setSavingDiscord(false);
+  }
 
-    if (error) {
-      setMsg({ text: `❌ ${error.message}`, type: "error" });
-    } else {
-      setMsg({ text: "✅ Discord ID gemt!", type: "success" });
+  async function saveTeamInfo() {
+    if (!teamName.trim() || teamName.trim().length < 3) {
+      showMsg("❌ Holdnavn skal være mindst 3 tegn", "error");
+      return;
     }
-    setTimeout(() => setMsg({ text: "" }), 3000);
-    setSaving(false);
+    if (!managerName.trim() || managerName.trim().length < 2) {
+      showMsg("❌ Managernavn skal være mindst 2 tegn", "error");
+      return;
+    }
+    setSavingTeam(true);
+    const { error } = await supabase
+      .from("teams")
+      .update({ name: teamName.trim(), manager_name: managerName.trim() })
+      .eq("id", team.id);
+    if (error) showMsg(`❌ ${error.message}`, "error");
+    else {
+      setTeam(t => ({ ...t, name: teamName.trim(), manager_name: managerName.trim() }));
+      showMsg("✅ Holdinfo gemt!");
+    }
+    setSavingTeam(false);
   }
 
   if (loading) return (
@@ -49,10 +77,10 @@ export default function ProfilePage() {
     <div className="max-w-xl mx-auto">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-white">Min Profil</h1>
-        <p className="text-white/30 text-sm">Indstillinger og Discord integration</p>
+        <p className="text-white/30 text-sm">Indstillinger og hold</p>
       </div>
 
-      {/* Profile info */}
+      {/* Account info */}
       <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
         <h2 className="text-white font-semibold text-sm mb-4">Konto</h2>
         <div className="space-y-3">
@@ -61,7 +89,7 @@ export default function ProfilePage() {
             <p className="text-white text-sm">{user?.email}</p>
           </div>
           <div>
-            <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Holdnavn</p>
+            <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Brugernavn</p>
             <p className="text-white text-sm">{user?.username}</p>
           </div>
           {user?.role === "admin" && (
@@ -71,6 +99,59 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Team info */}
+      {team && (
+        <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
+          <h2 className="text-white font-semibold text-sm mb-4">Hold</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-white/30 text-xs uppercase tracking-wider mb-1.5">Holdnavn</label>
+              <input
+                type="text"
+                value={teamName}
+                onChange={e => setTeamName(e.target.value)}
+                minLength={3}
+                maxLength={30}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5
+                  text-white text-sm placeholder-white/20
+                  focus:outline-none focus:border-[#e8c547]/50 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-white/30 text-xs uppercase tracking-wider mb-1.5">Managernavn</label>
+              <input
+                type="text"
+                value={managerName}
+                onChange={e => setManagerName(e.target.value)}
+                placeholder="Dit navn som manager"
+                minLength={2}
+                maxLength={50}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5
+                  text-white text-sm placeholder-white/20
+                  focus:outline-none focus:border-[#e8c547]/50 transition-all"
+              />
+            </div>
+
+            {msg.text && (
+              <div className={`px-4 py-2.5 rounded-lg text-sm border
+                ${msg.type === "success"
+                  ? "bg-green-500/10 text-green-400 border-green-500/20"
+                  : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+                {msg.text}
+              </div>
+            )}
+
+            <button
+              onClick={saveTeamInfo}
+              disabled={savingTeam}
+              className="w-full py-2.5 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm
+                hover:bg-[#f0d060] transition-all disabled:opacity-50">
+              {savingTeam ? "Gemmer..." : "Gem holdinfo"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Discord integration */}
       <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
@@ -110,7 +191,7 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        {msg.text && (
+        {!team && msg.text && (
           <div className={`mb-3 px-4 py-2.5 rounded-lg text-sm border
             ${msg.type === "success"
               ? "bg-green-500/10 text-green-400 border-green-500/20"
@@ -121,10 +202,10 @@ export default function ProfilePage() {
 
         <button
           onClick={saveDiscordId}
-          disabled={saving}
+          disabled={savingDiscord}
           className="w-full py-2.5 bg-[#5865F2] text-white font-bold rounded-lg text-sm
             hover:bg-[#4752c4] transition-all disabled:opacity-50">
-          {saving ? "Gemmer..." : "Gem Discord ID"}
+          {savingDiscord ? "Gemmer..." : "Gem Discord ID"}
         </button>
 
         <div className="mt-4 bg-white/3 border border-white/5 rounded-lg p-3">

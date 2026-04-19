@@ -27,6 +27,7 @@ CREATE TABLE teams (
   balance BIGINT DEFAULT 500, -- in points/currency
   sponsor_income BIGINT DEFAULT 100, -- per season
   is_frozen BOOLEAN DEFAULT FALSE,
+  manager_name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

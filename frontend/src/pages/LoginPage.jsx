@@ -6,6 +6,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [teamName, setTeamName] = useState("");
+  const [managerName, setManagerName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -20,9 +21,14 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError("Forkert email eller adgangskode");
     } else {
-      // Validate team name
+      // Validate team name and manager name
       if (!teamName.trim() || teamName.trim().length < 3) {
         setError("Holdnavn skal være mindst 3 tegn");
+        setLoading(false);
+        return;
+      }
+      if (!managerName.trim() || managerName.trim().length < 2) {
+        setError("Managernavn skal være mindst 2 tegn");
         setLoading(false);
         return;
       }
@@ -65,6 +71,7 @@ export default function LoginPage() {
           .insert({
             user_id: data.user.id,
             name: teamName.trim(),
+            manager_name: managerName.trim(),
             division: 3,
             balance: 500,
             sponsor_income: 100,
@@ -153,24 +160,44 @@ export default function LoginPage() {
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {mode === "signup" && (
-                <div>
-                  <label className="block text-xs font-medium text-white/40 uppercase tracking-wider mb-1.5">
-                    Holdnavn
-                  </label>
-                  <input
-                    type="text"
-                    value={teamName}
-                    onChange={e => setTeamName(e.target.value)}
-                    placeholder="f.eks. Dolmer Racing"
-                    required
-                    minLength={3}
-                    maxLength={30}
-                    className="w-full bg-white/5 border border-white/8 rounded-lg
-                      px-4 py-2.5 text-white text-sm placeholder-white/20
-                      focus:outline-none focus:border-[#e8c547]/50 focus:bg-white/8 transition-all"
-                  />
-                  <p className="text-white/20 text-xs mt-1">3-30 tegn — dette bliver dit holdnavn i spillet</p>
-                </div>
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-white/40 uppercase tracking-wider mb-1.5">
+                      Holdnavn
+                    </label>
+                    <input
+                      type="text"
+                      value={teamName}
+                      onChange={e => setTeamName(e.target.value)}
+                      placeholder="f.eks. Dolmer Racing"
+                      required
+                      minLength={3}
+                      maxLength={30}
+                      className="w-full bg-white/5 border border-white/8 rounded-lg
+                        px-4 py-2.5 text-white text-sm placeholder-white/20
+                        focus:outline-none focus:border-[#e8c547]/50 focus:bg-white/8 transition-all"
+                    />
+                    <p className="text-white/20 text-xs mt-1">3-30 tegn — dette bliver dit holdnavn i spillet</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-white/40 uppercase tracking-wider mb-1.5">
+                      Managernavn
+                    </label>
+                    <input
+                      type="text"
+                      value={managerName}
+                      onChange={e => setManagerName(e.target.value)}
+                      placeholder="f.eks. Nicolai Hansen"
+                      required
+                      minLength={2}
+                      maxLength={50}
+                      className="w-full bg-white/5 border border-white/8 rounded-lg
+                        px-4 py-2.5 text-white text-sm placeholder-white/20
+                        focus:outline-none focus:border-[#e8c547]/50 focus:bg-white/8 transition-all"
+                    />
+                    <p className="text-white/20 text-xs mt-1">Dit navn som manager — vises på holdprofilen</p>
+                  </div>
+                </>
               )}
 
               <div>
@@ -232,7 +259,7 @@ export default function LoginPage() {
           {!success && (
             <div className="mt-4 text-center">
               <button
-                onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); }}
+                onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); setManagerName(""); setTeamName(""); }}
                 className="text-sm text-white/40 hover:text-white/60 transition-colors">
                 {mode === "login" ? "Ingen konto? Opret her" : "Har allerede konto? Log ind"}
               </button>

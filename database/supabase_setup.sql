@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS public.teams (
   balance BIGINT DEFAULT 500,
   sponsor_income BIGINT DEFAULT 100,
   is_frozen BOOLEAN DEFAULT FALSE,
+  manager_name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
