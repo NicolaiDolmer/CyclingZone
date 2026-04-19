@@ -740,7 +740,7 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
 }
 
 // ── Transfer market listing card ─────────────────────────────────────────────
-function TransferCard({ listing, myTeamId, onOffer }) {
+function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
   const navigate = useNavigate();
   const [offerAmt, setOfferAmt] = useState(listing.asking_price || 0);
   const [msg, setMsg] = useState("");
@@ -777,12 +777,14 @@ function TransferCard({ listing, myTeamId, onOffer }) {
 
       {!isOwn && (
         <div>
-          <button onClick={() => setShowOffer(!showOffer)}
+          <button onClick={() => windowOpen && setShowOffer(!showOffer)} disabled={!windowOpen}
             className={`w-full py-2 rounded-lg text-sm font-medium transition-all border
-              ${showOffer
-                ? "bg-[#e8c547]/15 text-[#e8c547] border-[#e8c547]/25"
-                : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"}`}>
-            {showOffer ? "Skjul" : "Send tilbud"}
+              ${!windowOpen
+                ? "bg-white/3 text-white/20 border-white/5 cursor-not-allowed"
+                : showOffer
+                  ? "bg-[#e8c547]/15 text-[#e8c547] border-[#e8c547]/25"
+                  : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"}`}>
+            {!windowOpen ? "Vindue lukket" : showOffer ? "Skjul" : "Send tilbud"}
           </button>
 
           {showOffer && (
@@ -835,6 +837,7 @@ export default function TransfersPage() {
   const [loading, setLoading] = useState(true);
   const [celebration, setCelebration] = useState(null);
   const [msg, setMsg] = useState({ text: "", type: "success" });
+  const [transferWindow, setTransferWindow] = useState({ open: true, status: "open" });
 
   useEffect(() => { loadAll(); }, []);
 
@@ -849,12 +852,13 @@ export default function TransfersPage() {
     const { data: { session } } = await supabase.auth.getSession();
     const headers = { Authorization: `Bearer ${session.access_token}` };
 
-    const [listingsRes, offersRes, swapsRes, loansRes, ridersRes] = await Promise.all([
+    const [listingsRes, offersRes, swapsRes, loansRes, ridersRes, windowRes] = await Promise.all([
       fetch(`${API}/api/transfers`, { headers }).then(r => r.json()),
       fetch(`${API}/api/transfers/my-offers`, { headers }).then(r => r.json()),
       fetch(`${API}/api/transfers/swaps`, { headers }).then(r => r.json()),
       fetch(`${API}/api/loans`, { headers }).then(r => r.json()),
       supabase.from("riders").select("id, firstname, lastname, uci_points").eq("team_id", team.id).order("lastname"),
+      fetch(`${API}/api/transfer-window`, { headers }).then(r => r.json()),
     ]);
 
     setListings(Array.isArray(listingsRes) ? listingsRes : []);
@@ -865,6 +869,7 @@ export default function TransfersPage() {
     setLendingLoans(loansRes.lending || []);
     setBorrowingLoans(loansRes.borrowing || []);
     setMyRiders(ridersRes.data || []);
+    setTransferWindow(windowRes?.open !== undefined ? windowRes : { open: true, status: "open" });
     setLoading(false);
   }
 
@@ -1046,6 +1051,16 @@ export default function TransfersPage() {
         </div>
       </div>
 
+      <div className={`mb-4 px-4 py-3 rounded-xl text-sm border flex items-center gap-2
+        ${transferWindow.open
+          ? "bg-green-500/8 text-green-400 border-green-500/20"
+          : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${transferWindow.open ? "bg-green-400" : "bg-red-400"}`} />
+        {transferWindow.open
+          ? "Transfervinduet er åbent — du kan sende og acceptere tilbud"
+          : "Transfervinduet er lukket — du kan ikke oprette eller acceptere handler. Forhandlinger kan fortsat afvises eller trækkes tilbage."}
+      </div>
+
       {msg.text && (
         <div className={`mb-4 px-4 py-3 rounded-xl text-sm border
           ${msg.type === "error"
@@ -1125,10 +1140,10 @@ export default function TransfersPage() {
                   onCancel={() => setShowNewSwap(false)}
                 />
               ) : (
-                <button onClick={() => setShowNewSwap(true)}
+                <button onClick={() => setShowNewSwap(true)} disabled={!transferWindow.open}
                   className="w-full py-2.5 bg-[#e8c547]/8 text-[#e8c547]/80 border border-[#e8c547]/15 rounded-xl text-sm font-medium
-                    hover:bg-[#e8c547]/15 hover:text-[#e8c547] transition-all">
-                  + Foreslå ny byttehandel
+                    hover:bg-[#e8c547]/15 hover:text-[#e8c547] transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                  {transferWindow.open ? "+ Foreslå ny byttehandel" : "Transfervindue lukket"}
                 </button>
               )}
 
@@ -1173,10 +1188,10 @@ export default function TransfersPage() {
                   onCancel={() => setShowNewLoan(false)}
                 />
               ) : (
-                <button onClick={() => setShowNewLoan(true)}
+                <button onClick={() => setShowNewLoan(true)} disabled={!transferWindow.open}
                   className="w-full py-2.5 bg-purple-500/8 text-purple-400/80 border border-purple-500/15 rounded-xl text-sm font-medium
-                    hover:bg-purple-500/15 hover:text-purple-400 transition-all">
-                  + Foreslå ny lejeaftale
+                    hover:bg-purple-500/15 hover:text-purple-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                  {transferWindow.open ? "+ Foreslå ny lejeaftale" : "Transfervindue lukket"}
                 </button>
               )}
 
@@ -1233,6 +1248,7 @@ export default function TransfersPage() {
                       listing={l}
                       myTeamId={myTeamId}
                       onOffer={(riderId, amt, msg) => handleOffer(riderId, amt, msg)}
+                      windowOpen={transferWindow.open}
                     />
                   ))}
                 </div>

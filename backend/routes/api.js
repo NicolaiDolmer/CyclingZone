@@ -142,6 +142,21 @@ async function notifyTeamOwner(teamId, type, title, message, relatedId = null) {
   }
 }
 
+// ── Transfer window helper ────────────────────────────────────────────────────
+
+async function getTransferWindowStatus() {
+  const { data: tw } = await supabase
+    .from("transfer_windows").select("status, season_id")
+    .order("created_at", { ascending: false }).limit(1).single();
+  return { open: tw?.status === "open", window: tw || null };
+}
+
+// GET /api/transfer-window — current window status (public, auth required)
+router.get("/transfer-window", requireAuth, async (req, res) => {
+  const { open, window: tw } = await getTransferWindowStatus();
+  res.json({ open, status: tw?.status || "closed", season_id: tw?.season_id || null });
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // RIDERS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -616,6 +631,9 @@ router.get("/transfers", requireAuth, async (req, res) => {
 
 // POST /api/transfers — list own rider for sale
 router.post("/transfers", requireAuth, async (req, res) => {
+  const { open } = await getTransferWindowStatus();
+  if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke oprette salgslistinger i denne periode." });
+
   const { rider_id, asking_price } = req.body;
   const { data: rider } = await supabase
     .from("riders").select("id, team_id, firstname, lastname").eq("id", rider_id).single();
@@ -641,6 +659,9 @@ router.delete("/transfers/:id", requireAuth, async (req, res) => {
 
 // POST /api/transfers/offer — direct offer on any rider (no listing needed)
 router.post("/transfers/offer", requireAuth, async (req, res) => {
+  const { open } = await getTransferWindowStatus();
+  if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke sende tilbud i denne periode." });
+
   const { rider_id, offer_amount, message } = req.body;
   if (!rider_id || !offer_amount) return res.status(400).json({ error: "rider_id og offer_amount kræves" });
 
@@ -709,6 +730,11 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
 // PATCH /api/transfers/offers/:id — accept, reject, counter, confirm, cancel, or withdraw
 router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
   const { action, counter_amount, message } = req.body;
+
+  if (["accept", "accept_counter", "confirm"].includes(action)) {
+    const { open } = await getTransferWindowStatus();
+    if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Handlen kan ikke accepteres eller bekræftes i denne periode." });
+  }
 
   const { data: offer } = await supabase
     .from("transfer_offers")
@@ -916,6 +942,9 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
 
 // POST /api/transfers/:id/offer — legacy route (listing-based offer)
 router.post("/transfers/:id/offer", requireAuth, async (req, res) => {
+  const { open } = await getTransferWindowStatus();
+  if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke sende tilbud i denne periode." });
+
   const { offer_amount, message } = req.body;
   const { data: listing } = await supabase
     .from("transfer_listings")
@@ -970,6 +999,9 @@ router.get("/transfers/swaps", requireAuth, async (req, res) => {
 
 // POST /api/transfers/swaps — propose a swap
 router.post("/transfers/swaps", requireAuth, async (req, res) => {
+  const { open } = await getTransferWindowStatus();
+  if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke foreslå byttehandler i denne periode." });
+
   const { offered_rider_id, requested_rider_id, cash_adjustment = 0, message } = req.body;
   if (!offered_rider_id || !requested_rider_id)
     return res.status(400).json({ error: "offered_rider_id og requested_rider_id kræves" });
@@ -1016,6 +1048,11 @@ router.post("/transfers/swaps", requireAuth, async (req, res) => {
 // PATCH /api/transfers/swaps/:id — accept, reject, counter, confirm, cancel, withdraw
 router.patch("/transfers/swaps/:id", requireAuth, async (req, res) => {
   const { action, counter_cash, message } = req.body;
+
+  if (["accept", "accept_counter", "confirm"].includes(action)) {
+    const { open } = await getTransferWindowStatus();
+    if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Byttehandlen kan ikke accepteres eller bekræftes i denne periode." });
+  }
 
   const { data: swap } = await supabase
     .from("swap_offers")
@@ -1230,6 +1267,9 @@ router.get("/loans", requireAuth, async (req, res) => {
 
 // POST /api/loans — propose a loan (borrowing team initiates)
 router.post("/loans", requireAuth, async (req, res) => {
+  const { open } = await getTransferWindowStatus();
+  if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke foreslå lejeaftaler i denne periode." });
+
   const { rider_id, loan_fee = 0, start_season, end_season, buy_option_price, message } = req.body;
   if (!rider_id || !start_season || !end_season)
     return res.status(400).json({ error: "rider_id, start_season og end_season kræves" });
@@ -1274,6 +1314,11 @@ router.post("/loans", requireAuth, async (req, res) => {
 // PATCH /api/loans/:id — accept, reject, cancel, or buyout
 router.patch("/loans/:id", requireAuth, async (req, res) => {
   const { action } = req.body;
+
+  if (["accept", "buyout"].includes(action)) {
+    const { open } = await getTransferWindowStatus();
+    if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Lejeaftalen kan ikke accepteres eller udnyttes i denne periode." });
+  }
 
   const { data: loan } = await supabase
     .from("loan_agreements")
@@ -1564,6 +1609,45 @@ router.post("/admin/adjust-balance", requireAdmin, async (req, res) => {
       target_team_id: team_id,
       meta: { amount, reason },
     });
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/transfer-window/open — åbn transfervinduet for aktiv sæson
+router.post("/admin/transfer-window/open", requireAdmin, async (req, res) => {
+  try {
+    const { season_id } = req.body;
+    if (!season_id) return res.status(400).json({ error: "season_id kræves" });
+
+    // Insert new window record with status "open"
+    const { error: insertErr } = await supabase.from("transfer_windows")
+      .insert({ season_id, status: "open" });
+    if (insertErr) return res.status(500).json({ error: insertErr.message });
+
+    // Process pending riders — move pending_team_id → team_id
+    const { data: pendingRiders } = await supabase.from("riders")
+      .select("id, pending_team_id")
+      .not("pending_team_id", "is", null);
+
+    let ridersProcessed = 0;
+    if (pendingRiders && pendingRiders.length > 0) {
+      await Promise.all(pendingRiders.map(r =>
+        supabase.from("riders").update({ team_id: r.pending_team_id, pending_team_id: null }).eq("id", r.id)
+      ));
+      ridersProcessed = pendingRiders.length;
+    }
+
+    res.json({ success: true, riders_processed: ridersProcessed });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/transfer-window/close — luk transfervinduet
+router.post("/admin/transfer-window/close", requireAdmin, async (req, res) => {
+  try {
+    const { data: tw } = await supabase.from("transfer_windows")
+      .select("id").order("created_at", { ascending: false }).limit(1).single();
+    if (!tw) return res.status(404).json({ error: "Intet aktivt transfervindue fundet" });
+    await supabase.from("transfer_windows").update({ status: "closed" }).eq("id", tw.id);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

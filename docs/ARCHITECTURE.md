@@ -118,6 +118,11 @@ POST /api/achievements/check
 GET  /health
 ```
 
+### Transfer Window
+```
+GET  /api/transfer-window                 → { open, status, season_id }
+```
+
 ### Admin
 ```
 POST /api/admin/import-results            multipart: file + race_id
@@ -130,6 +135,8 @@ POST /api/admin/finalize-expired-auctions
 PATCH /api/admin/loan-config
 POST /api/admin/adjust-balance
 GET  /api/admin/season-end-preview/:seasonId
+POST /api/admin/transfer-window/open      { season_id } → { riders_processed }
+POST /api/admin/transfer-window/close     → { success }
 ```
 
 ---

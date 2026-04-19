@@ -2,7 +2,6 @@
 _Opdatér denne fil ved starten og slutningen af hver arbejdssession._
 
 ## 🔴 Broken
-- Transfervindue-status checkes ikke i endpoints — handler altid som åbent
 - `POST /api/admin/seasons/:id/end` udfører ikke sæsonafslutning (kun preview)
 - Season standings oprettes ikke automatisk ved sæsonstart
 - Achievements tæller ikke korrekt
@@ -14,6 +13,7 @@ _Opdatér denne fil ved starten og slutningen af hver arbejdssession._
 - [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
 
 ## 🟢 Senest afsluttet
+- Transfervindue-validering: guard i alle transfer/swap/lån-endpoints + admin open/close + UI-banner
 - Guaranteed sale: sælg rytter til bank til 50% UCI-pris (a428083)
 - Withdraw på modtilbud + sælger-notifikation ved tilbud (af7257f)
 - manager_name på holds ved signup, profil og holdside (8dbb7f2)

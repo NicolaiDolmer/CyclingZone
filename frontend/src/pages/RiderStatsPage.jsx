@@ -47,7 +47,18 @@ function DirectOfferButton({ rider }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null);
+  const [windowOpen, setWindowOpen] = useState(true);
   const API = import.meta.env.VITE_API_URL;
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      fetch(`${API}/api/transfer-window`, { headers: { Authorization: `Bearer ${session.access_token}` } })
+        .then(r => r.json())
+        .then(d => setWindowOpen(d?.open !== false))
+        .catch(() => {});
+    });
+  }, []);
 
   async function sendOffer() {
     setLoading(true);
@@ -71,12 +82,16 @@ function DirectOfferButton({ rider }) {
           {result.msg}
         </div>
       )}
-      <button onClick={() => setShow(!show)}
+      <button onClick={() => windowOpen && setShow(!show)} disabled={!windowOpen}
         className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all border
-          ${show ? "bg-[#e8c547]/15 text-[#e8c547] border-[#e8c547]/25" : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"}`}>
-        ↔ Send transfertilbud
+          ${!windowOpen
+            ? "bg-white/3 text-white/20 border-white/5 cursor-not-allowed"
+            : show
+              ? "bg-[#e8c547]/15 text-[#e8c547] border-[#e8c547]/25"
+              : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"}`}>
+        {windowOpen ? "↔ Send transfertilbud" : "Transfervindue lukket"}
       </button>
-      {show && (
+      {show && windowOpen && (
         <div className="mt-3 flex flex-col gap-2">
           <input type="number" value={amount} min={1} onChange={e => setAmount(parseInt(e.target.value) || 0)}
             placeholder="Tilbudsbeløb i CZ$"
@@ -88,7 +103,6 @@ function DirectOfferButton({ rider }) {
             className="w-full py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50 transition-all">
             {loading ? "Sender..." : "Send tilbud"}
           </button>
-          <p className="text-white/20 text-[10px] text-center">Rytteren skifter hold ved næste transfervindue</p>
         </div>
       )}
     </div>

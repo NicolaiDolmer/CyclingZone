@@ -61,9 +61,11 @@
 
 ## Transfervindue
 
-- Status styres af sæson-events (åbn/luk)
-- **OBS:** Vinduets status checkes ikke i transfer/swap/loan-endpoints endnu — handler som altid åbent (known bug, se FEATURE_STATUS.md)
-- Design-intention: Når LUKKET → handler resulterer i `pending_team_id`, aktiveres ved åbning. Når ÅBENT → handler aktiveres øjeblikkeligt til `team_id`
+- Status styres af admin-endpoints: `POST /api/admin/transfer-window/open` og `POST /api/admin/transfer-window/close`
+- Når ÅBENT: handlers aktiveres øjeblikkeligt. Når LUKKET: 403 returneres på alle opret/acceptér-endpoints.
+- Auktioner: Når LUKKET → rider sættes som `pending_team_id`, aktiveres ved næste åbning af vinduet.
+- Transfers/swaps/lån: Helt blokeret (403) når vinduet er lukket.
+- Reject, withdraw og cancel-handlinger er tilladt uanset vinduesstatus.
 - Swaps og lån følger samme vindueslogik
 
 ---
