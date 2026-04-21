@@ -15,9 +15,69 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-async function adjustBalance(teamId, amount) {
-  const { data: team } = await supabase.from("teams").select("balance").eq("id", teamId).single();
-  await supabase.from("teams").update({ balance: team.balance + amount }).eq("id", teamId);
+async function adjustBalance(teamId, amount, supabaseClient = supabase) {
+  const { data: team } = await supabaseClient.from("teams").select("balance").eq("id", teamId).single();
+  await supabaseClient.from("teams").update({ balance: team.balance + amount }).eq("id", teamId);
+}
+
+export function shouldChargeLoanAgreementSeasonFee(loan, seasonNumber) {
+  if (!loan || loan.status !== "active") return false;
+  if ((loan.loan_fee || 0) <= 0) return false;
+  if (!Number.isInteger(seasonNumber)) return false;
+
+  // Activation already charges the first covered season, so season-start only
+  // collects fees for later seasons that are still inside the agreement window.
+  return seasonNumber > loan.start_season && seasonNumber <= loan.end_season;
+}
+
+export async function processLoanAgreementSeasonFees(
+  teamId,
+  seasonNumber,
+  seasonId,
+  supabaseClient = supabase
+) {
+  const { data: loans, error } = await supabaseClient
+    .from("loan_agreements")
+    .select("id, from_team_id, to_team_id, loan_fee, start_season, end_season, status, rider:rider_id(firstname, lastname)")
+    .eq("to_team_id", teamId)
+    .eq("status", "active");
+
+  if (error) throw error;
+
+  const chargeableLoans = (loans || []).filter((loan) =>
+    shouldChargeLoanAgreementSeasonFee(loan, seasonNumber)
+  );
+
+  for (const loan of chargeableLoans) {
+    const riderName = loan.rider
+      ? `${loan.rider.firstname} ${loan.rider.lastname}`
+      : "ukendt rytter";
+
+    await adjustBalance(loan.to_team_id, -loan.loan_fee, supabaseClient);
+    await adjustBalance(loan.from_team_id, loan.loan_fee, supabaseClient);
+
+    await supabaseClient.from("finance_transactions").insert([
+      {
+        team_id: loan.to_team_id,
+        type: "transfer_out",
+        amount: -loan.loan_fee,
+        description: `Lejegebyr: ${riderName} (sæson ${seasonNumber})`,
+        season_id: seasonId,
+      },
+      {
+        team_id: loan.from_team_id,
+        type: "transfer_in",
+        amount: loan.loan_fee,
+        description: `Lejegebyr modtaget: ${riderName} (sæson ${seasonNumber})`,
+        season_id: seasonId,
+      },
+    ]);
+  }
+
+  return chargeableLoans.map((loan) => ({
+    id: loan.id,
+    loan_fee: loan.loan_fee,
+  }));
 }
 
 // ── Konfiguration ─────────────────────────────────────────────────────────────

@@ -170,7 +170,10 @@ Season flow notes:
 ### Lån og markedsdomæner
 - Rider-lån bruger `loan_agreements` og `/api/loans`
 - Finance-lån bruger `loans` + `loan_config` og `/api/finance/loans`
+- Fortsatte rider-lån opkræver `loan_fee` ved sæsonstart for hver dækket sæson efter aktivering
+- `backend/lib/marketUtils.js` er shared market-state for squad-limit checks og tæller current riders, `pending_team_id` og aktive `loan_agreements` for lånerholdet
 - Transfer- og swap-bekræftelse går gennem `backend/lib/transferExecution.js`, som re-checker ejerskab, saldo og squad-limit ved commit-tid
+- Auktionsfinalisering bruger samme shared market-state ved squad-limit-vurdering, så cron/admin/API følger samme holdstørrelses-sandhed
 - Gennemførte markeds-handler rydder relaterede `transfer_listings`, `transfer_offers` og `swap_offers` op for de involverede ryttere
 - Domænerne må ikke dele route-path eller execution path
 

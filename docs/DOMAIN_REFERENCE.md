@@ -81,6 +81,7 @@
 - Auktioner: Når LUKKET → rider sættes som `pending_team_id`, aktiveres ved næste åbning af vinduet.
 - Transfers/swaps/lån: Helt blokeret (403) når vinduet er lukket.
 - Aktive lejeaftaler tæller mod lånerens holdgrænse, så squad-limit checks på markedet inkluderer både ventende handler og lånte ryttere
+- Rider-lån med `loan_fee` opkræver første dækkede sæson ved aktivering og senere dækkede sæsoner ved sæsonstart
 - Reject, withdraw og cancel-handlinger er tilladt uanset vinduesstatus.
 - Swaps og lån følger samme vindueslogik
 

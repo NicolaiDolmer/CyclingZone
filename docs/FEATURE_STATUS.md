@@ -44,6 +44,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Manager-oprettede lån (short/long)
 - Accept / afvis lånetilbud
 - Lejeforslag og låneaktivering stopper nu hvis lånerens squad-limit allerede er brugt op
+- Lejegebyr på aktive rider-lån trækkes ved aktivering og derefter ved hver dækket sæsonstart
 - Låneoversigt (aktive + egne)
 - Låneafdrag
 - Auto-nødlån ved manglende løn
@@ -100,7 +101,6 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 - Achievements tæller ikke korrekt
 - Dropdown tekst usynlig (Tailwind farvekonflikt i select-elementer)
-- Låneoprettelsesgebyr fratrækkes kun ved accept, **ikke** løbende
 
 --- 
 

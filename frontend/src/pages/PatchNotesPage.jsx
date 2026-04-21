@@ -2,6 +2,26 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.13",
+    date: "2026-04-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Lejegebyr på rider-loans trækkes nu igen for hver dækket sæson i aftalen i stedet for kun ved første aktivering",
+          "Sæsonstart bogfører nu fortsatte lejeaftaler i finance-loggen for både låner og udlejer, så saldo og historik følger samme runtime-path",
+        ],
+      },
+      {
+        category: "Forbedringer",
+        items: [
+          "Hjælp & Regler præciserer nu, at første sæson betales ved aktivering, mens senere dækkede sæsoner opkræves automatisk ved sæsonstart",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.12",
     date: "2026-04-21",
     label: "Beta",
@@ -300,7 +320,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.12");
+  const [expanded, setExpanded] = useState("1.13");
 
   return (
     <div className="max-w-2xl mx-auto">

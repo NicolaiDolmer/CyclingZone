@@ -25,6 +25,7 @@
 - Loan oprettes korrekt
 - Loan oprettes ikke hvis låneren allerede rammer squad limit via egne ryttere, pending handler eller aktive indlån
 - Loan kan ikke aktiveres hvis lånerens squad-limit er fyldt siden forslaget blev sendt
+- Loan fee for fortsatte rider-lån trækkes ved hver dækket sæsonstart efter første aktivering
 - Repayment virker
 
 ### Season Flow

@@ -11,7 +11,11 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { processLoanInterest, createEmergencyLoan } from "./loanEngine.js";
+import {
+  processLoanAgreementSeasonFees,
+  processLoanInterest,
+  createEmergencyLoan,
+} from "./loanEngine.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -48,11 +52,19 @@ const DIVISION_MIN_RIDERS = {
 /**
  * Process season start for all active teams:
  * - Pay out sponsor income (modified by board satisfaction)
+ * - Charge recurring rider-loan fees for continuing agreements
  * - Initialize board profiles if missing
  * - Log starting transactions
  */
 export async function processSeasonStart(seasonId) {
   console.log(`\n🏁 Processing season start: ${seasonId}`);
+
+  const { data: season } = await supabase
+    .from("seasons")
+    .select("number")
+    .eq("id", seasonId)
+    .single();
+  const seasonNumber = season?.number ?? null;
 
   const { data: teams } = await supabase
     .from("teams")
@@ -72,6 +84,12 @@ export async function processSeasonStart(seasonId) {
     await creditTeam(team.id, sponsorPayout, "sponsor",
       `Sponsorindtægt — Sæson start (×${modifier.toFixed(2)})`, seasonId);
 
+    const chargedLoanFees = await processLoanAgreementSeasonFees(
+      team.id,
+      seasonNumber,
+      seasonId
+    );
+
     // Ensure board profile exists
     if (!board) {
       await supabase.from("board_profiles").insert({
@@ -85,8 +103,13 @@ export async function processSeasonStart(seasonId) {
       });
     }
 
-    results.push({ team: team.name, sponsor: sponsorPayout });
-    console.log(`  ✅ ${team.name}: +${sponsorPayout} pts sponsor`);
+    const totalLoanFees = chargedLoanFees.reduce((sum, loan) => sum + (loan.loan_fee || 0), 0);
+    results.push({ team: team.name, sponsor: sponsorPayout, recurring_loan_fees: totalLoanFees });
+    console.log(
+      `  ✅ ${team.name}: +${sponsorPayout} pts sponsor${
+        totalLoanFees > 0 ? `, -${totalLoanFees} pts lejegebyrer` : ""
+      }`
+    );
   }
 
   return results;

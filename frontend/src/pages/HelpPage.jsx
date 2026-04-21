@@ -94,7 +94,7 @@ const SECTIONS = [
       },
       {
         title: "Lejeaftaler og holdgrænser",
-        text: "Lejede ryttere tæller med i din holdstørrelse på samme måde som egne ryttere og indgående handler. Systemet tjekker derfor både når du foreslår en lejeaftale, når udlejeren aktiverer den, og når andre handler afsluttes, at dit hold stadig holder sig inden for divisionens min/max-grænser.",
+        text: "Lejede ryttere tæller med i din holdstørrelse på samme måde som egne ryttere og indgående handler. Systemet tjekker derfor både når du foreslår en lejeaftale, når udlejeren aktiverer den, og når andre handler afsluttes, at dit hold stadig holder sig inden for divisionens min/max-grænser. Første sæsons lejegebyr betales når aftalen aktiveres, og hvis aftalen dækker flere sæsoner bliver næste sæsoners gebyrer opkrævet automatisk ved sæsonstart.",
       },
     ],
   },
@@ -298,6 +298,10 @@ const FAQ = [
   {
     q: "Tæller lejede ryttere med i holdgrænsen?",
     a: "Ja. Aktive lejeaftaler tæller med i din squad-størrelse, så du kan blive afvist på lån, auktioner eller andre indgående handler hvis holdet allerede er fyldt op.",
+  },
+  {
+    q: "Hvornår trækkes lejegebyret på en lejeaftale?",
+    a: "Første dækkede sæson betales når lejeaftalen aktiveres. Hvis aftalen løber over flere sæsoner, bliver de næste sæsoners lejegebyr trukket automatisk ved sæsonstart og bogført i finance-loggen for begge hold.",
   },
   {
     q: "Kan jeg se hvem der har budt på min rytter?",
