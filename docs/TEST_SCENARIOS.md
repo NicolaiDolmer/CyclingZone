@@ -52,6 +52,7 @@
 - AI-auktionssalg betaler korrekt ejer
 - Rider loans og finance loans kan ikke forveksles
 - Dashboard-rangering bygger på korrekt scope
+- Dashboard og Hold-siden viser aktive hold med 0 point, hvis `season_standings` endnu ikke er initialiseret for den aktive sæson
 - Board-felter matcher backend-navne
 
 ---

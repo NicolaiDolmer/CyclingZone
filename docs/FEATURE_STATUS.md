@@ -58,6 +58,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Sæsonoversigt med race-kalender
 - Løbsresultater-import (Excel-upload i admin)
 - Pointtavle (season_standings) recalculeres fra `race_results`
+- Dashboard og Hold-siden scope'er nu current-season standings korrekt og falder tilbage til 0-point-rækker før første result-godkendelse
 - Opryknings/nedrykningslogik (top/bund 2 per division)
 - Sæsonpreview-side
 - Races-side
@@ -98,7 +99,6 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Achievements tæller ikke korrekt
 - Dropdown tekst usynlig (Tailwind farvekonflikt i select-elementer)
 - Låneoprettelsesgebyr fratrækkes kun ved accept, **ikke** løbende
-- Ranglisten vises ikke korrekt på dashboard/forsiden
 - Squad limit håndhæves ikke korrekt i alle flows
 
 ---

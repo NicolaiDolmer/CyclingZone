@@ -22,15 +22,22 @@ export default function TeamsPage() {
     const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
     if (myTeam) setMyTeamId(myTeam.id);
 
+    const { data: activeSeason } = await supabase
+      .from("seasons").select("id")
+      .eq("status", "active")
+      .single();
+
     const [teamsRes, ridersRes, standingsRes] = await Promise.all([
       supabase.from("teams")
         .select("id, name, division, balance, sponsor_income")
         .eq("is_ai", false)
         .order("division").order("name"),
       supabase.from("riders").select("team_id").not("team_id", "is", null),
-      supabase.from("season_standings")
-        .select("team_id, total_points, stage_wins, gc_wins")
-        .order("updated_at", { ascending: false }),
+      activeSeason
+        ? supabase.from("season_standings")
+            .select("team_id, total_points, stage_wins, gc_wins")
+            .eq("season_id", activeSeason.id)
+        : Promise.resolve({ data: [] }),
     ]);
 
     const counts = {};
@@ -40,8 +47,11 @@ export default function TeamsPage() {
     setRiderCounts(counts);
 
     const smap = {};
+    (teamsRes.data || []).forEach(team => {
+      smap[team.id] = { total_points: 0, stage_wins: 0, gc_wins: 0 };
+    });
     (standingsRes.data || []).forEach(s => {
-      if (!smap[s.team_id]) smap[s.team_id] = s;
+      smap[s.team_id] = s;
     });
     setStandings(smap);
     setTeams(teamsRes.data || []);

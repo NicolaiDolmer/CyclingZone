@@ -53,7 +53,17 @@ export default function DashboardPage() {
     if (!teamData) { setLoading(false); return; }
     setTeam(teamData);
 
-    const [ridersRes, auctionsRes, racesRes, standingsRes, boardRes, offersRes] = await Promise.all([
+    const { data: activeSeason } = await supabase
+      .from("seasons").select("id")
+      .eq("status", "active")
+      .single();
+
+    const [teamsRes, ridersRes, auctionsRes, racesRes, standingsRes, boardRes, offersRes] = await Promise.all([
+      supabase.from("teams")
+        .select("id, name, division, is_ai")
+        .eq("is_ai", false)
+        .order("division")
+        .order("name"),
       supabase.from("riders").select("id, uci_points, salary, is_u25, pending_team_id")
         .eq("team_id", teamData.id),
       supabase.from("auctions")
@@ -61,9 +71,12 @@ export default function DashboardPage() {
         .in("status", ["active", "extended"]),
       supabase.from("races").select("*").not("status", "eq", "completed")
         .order("start_date", { ascending: true, nullsFirst: false }).limit(3),
-      supabase.from("season_standings")
-        .select("*, team:team_id(name, is_ai)")
-        .order("total_points", { ascending: false }).limit(20),
+      activeSeason
+        ? supabase.from("season_standings")
+            .select("*, team:team_id(id, name, division, is_ai)")
+            .eq("season_id", activeSeason.id)
+            .order("total_points", { ascending: false })
+        : Promise.resolve({ data: [] }),
       supabase.from("board_profiles").select("*").eq("team_id", teamData.id).single(),
       supabase.from("transfer_offers")
         .select("id, offer_amount, status, listing:listing_id(rider:rider_id(firstname, lastname), seller_team_id), buyer:buyer_team_id(name)")
@@ -74,9 +87,26 @@ export default function DashboardPage() {
     setRiders(ridersRes.data || []);
     setAllAuctions(auctionsRes.data || []);
     setNextRaces(racesRes.data || []);
-    setStandings(standingsRes.data || []);
     setBoard(boardRes.data);
     setActiveOffers(offersRes.data || []);
+
+    const standingsMap = {};
+    (standingsRes.data || []).filter(s => !s.team?.is_ai).forEach(s => {
+      standingsMap[s.team_id] = s;
+    });
+    const mergedStandings = (teamsRes.data || []).map(otherTeam => (
+      standingsMap[otherTeam.id] || {
+        id: otherTeam.id,
+        team_id: otherTeam.id,
+        division: otherTeam.division,
+        team: otherTeam,
+        total_points: 0,
+        stage_wins: 0,
+        gc_wins: 0,
+        races_completed: 0,
+      }
+    ));
+    setStandings(mergedStandings);
 
     // Transfer window status
     const { data: tw } = await supabase

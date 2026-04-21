@@ -2,6 +2,20 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.11",
+    date: "2026-04-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Dashboardets divisionsstilling og Hold-siden viser nu kun den aktive sæsons rangliste i stedet for at blande gamle sæsoner ind",
+          "Ranglistekort og holdoversigt falder nu tilbage til 0-point-rækker for alle aktive hold, så siden ikke ser tom eller forkert ud før første live result-godkendelse",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.10",
     date: "2026-04-21",
     label: "Beta",
