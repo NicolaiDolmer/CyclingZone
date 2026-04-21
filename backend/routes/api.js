@@ -34,6 +34,15 @@ import {
   processSeasonStart,
   updateStandings,
 } from "../lib/economyEngine.js";
+import {
+  confirmSwapOffer,
+  confirmTransferOffer,
+} from "../lib/transferExecution.js";
+import {
+  getIncomingSquadViolation,
+  getTeamMarketState,
+  MIN_RIDERS_FOR_RACE,
+} from "../lib/marketUtils.js";
 
 // Load .env from backend root
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -56,14 +65,6 @@ async function logActivity(type, data = {}) {
     });
   } catch (e) { /* silent — never block main flow */ }
 }
-
-// Squad size limits per division
-const SQUAD_LIMITS = {
-  1: { min: 20, max: 30 },
-  2: { min: 14, max: 20 },
-  3: { min: 8,  max: 10 },
-};
-const MIN_RIDERS_FOR_RACE = 8;
 
 // XP amounts for different actions
 const XP_REWARDS = {
@@ -587,16 +588,14 @@ router.post("/transfers/offer", requireAuth, async (req, res) => {
   if (rider.team_id === req.team.id) return res.status(400).json({ error: "Du kan ikke byde på din egen rytter" });
 
   // Check buyer balance
-  if (offer_amount > req.team.balance)
+  const buyerState = await getTeamMarketState(supabase, req.team.id);
+  if (offer_amount > buyerState.balance)
     return res.status(400).json({ error: "Du har ikke råd til dette tilbud" });
 
   // Check squad size limits for buyer
-  const buyerDiv = req.team.division || 3;
-  const maxRiders = SQUAD_LIMITS[buyerDiv]?.max || 10;
-  const { count } = await supabase.from("riders")
-    .select("id", { count: "exact", head: true }).eq("team_id", req.team.id);
-  if ((count || 0) + 1 > maxRiders)
-    return res.status(400).json({ error: `Dit hold kan max have ${maxRiders} ryttere i Division ${buyerDiv}` });
+  const squadViolation = getIncomingSquadViolation(buyerState);
+  if (squadViolation)
+    return res.status(400).json({ error: `Dit hold kan max have ${squadViolation.maxRiders} ryttere i Division ${buyerState.division || 3}` });
 
   const { data, error } = await supabase
     .from("transfer_offers")
@@ -734,86 +733,23 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
 
   // CONFIRM — the party that hasn't confirmed yet confirms the deal
   if (action === "confirm" && offer.status === "awaiting_confirmation") {
-    if (isSeller && offer.seller_confirmed)
-      return res.status(400).json({ error: "Du har allerede bekræftet" });
-    if (isBuyer && offer.buyer_confirmed)
-      return res.status(400).json({ error: "Du har allerede bekræftet" });
-    if (!isSeller && !isBuyer)
-      return res.status(403).json({ error: "Ikke involveret i dette tilbud" });
+    const result = await confirmTransferOffer({
+      supabase,
+      offerId: offer.id,
+      confirmingTeamId: req.team.id,
+      notifyTeamOwner,
+      logActivity,
+    });
 
-    const updatedFields = isSeller
-      ? { seller_confirmed: true }
-      : { buyer_confirmed: true };
-
-    await supabase.from("transfer_offers").update(updatedFields).eq("id", offer.id);
-
-    const nowSellerConfirmed = isSeller ? true : offer.seller_confirmed;
-    const nowBuyerConfirmed = isBuyer ? true : offer.buyer_confirmed;
-
-    if (nowSellerConfirmed && nowBuyerConfirmed) {
-      // Both confirmed — execute the transfer
-      const price = offer.counter_amount || offer.offer_amount;
-      const rider = offer.rider;
-
-      const { data: buyer } = await supabase.from("teams").select("balance").eq("id", offer.buyer_team_id).single();
-      if (!buyer || buyer.balance < price) {
-        // Buyer can no longer afford it — cancel and notify
-        await supabase.from("transfer_offers").update({ status: "withdrawn" }).eq("id", offer.id);
-        await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected",
-          "Transfer annulleret",
-          `Handlen på ${rider.firstname} ${rider.lastname} kunne ikke gennemføres — køber mangler midler.`,
-          offer.id);
-        return res.status(400).json({ error: "Køber har ikke længere råd — handlen er annulleret" });
-      }
-
-      const { data: seller } = await supabase.from("teams").select("balance, name").eq("id", offer.seller_team_id).single();
-
-      await supabase.from("riders").update({
-        team_id: offer.buyer_team_id,
-        salary: Math.ceil(price * 0.1),
-      }).eq("id", rider.id);
-
-      await supabase.from("teams").update({ balance: buyer.balance - price }).eq("id", offer.buyer_team_id);
-      await supabase.from("teams").update({ balance: seller.balance + price }).eq("id", offer.seller_team_id);
-      await supabase.from("finance_transactions").insert([
-        { team_id: offer.buyer_team_id, type: "transfer_out", amount: -price,
-          description: `Købt ${rider.firstname} ${rider.lastname} via transfer` },
-        { team_id: offer.seller_team_id, type: "transfer_in", amount: price,
-          description: `Solgt ${rider.firstname} ${rider.lastname} via transfer` },
-      ]);
-
-      await supabase.from("transfer_offers")
-        .update({ status: "withdrawn" })
-        .eq("rider_id", rider.id)
-        .neq("id", offer.id)
-        .in("status", ["pending", "awaiting_confirmation"]);
-
-      await supabase.from("transfer_offers").update({ status: "accepted" }).eq("id", offer.id);
-
-      await logActivity("transfer_accepted", {
-        team_id: offer.seller_team_id,
-        team_name: seller?.name,
-        rider_id: rider.id,
-        rider_name: `${rider.firstname} ${rider.lastname}`,
-        amount: price,
-      });
-
-      const otherTeamId = isSeller ? offer.buyer_team_id : offer.seller_team_id;
-      await notifyTeamOwner(otherTeamId, "transfer_offer_accepted",
-        "Transfer gennemført! 🎉",
-        `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id);
-
-      return res.json({ success: true, action: "accepted", price });
+    if (!result.ok) {
+      return res.status(result.status).json({ error: result.error });
     }
 
-    // Only one party has confirmed so far
-    const otherTeamId = isSeller ? offer.buyer_team_id : offer.seller_team_id;
-    await notifyTeamOwner(otherTeamId, "transfer_offer_accepted",
-      "Handlen afventer din bekræftelse",
-      `${req.team.name} har bekræftet handlen på ${offer.rider.firstname} ${offer.rider.lastname}. Bekræft for at gennemføre.`,
-      offer.id);
-
-    return res.json({ success: true, action: "confirmed_partial" });
+    return res.json({
+      success: true,
+      action: result.action,
+      ...(result.price ? { price: result.price } : {}),
+    });
   }
 
   // CANCEL — either party cancels an awaiting_confirmation deal
@@ -870,6 +806,12 @@ router.post("/transfers/:id/offer", requireAuth, async (req, res) => {
     return res.status(404).json({ error: "Listing ikke fundet" });
   if (listing.seller_team_id === req.team.id)
     return res.status(400).json({ error: "Kan ikke byde på eget udbud" });
+  const listingBuyerState = await getTeamMarketState(supabase, req.team.id);
+  if (offer_amount > listingBuyerState.balance)
+    return res.status(400).json({ error: "Du har ikke råd til dette tilbud" });
+  const listingSquadViolation = getIncomingSquadViolation(listingBuyerState);
+  if (listingSquadViolation)
+    return res.status(400).json({ error: `Dit hold kan max have ${listingSquadViolation.maxRiders} ryttere i Division ${listingBuyerState.division || 3}` });
   const { data, error } = await supabase.from("transfer_offers")
     .insert({
       listing_id: listing.id,
@@ -936,8 +878,11 @@ router.post("/transfers/swaps", requireAuth, async (req, res) => {
   if (requested.team_id === req.team.id)
     return res.status(400).json({ error: "Du kan ikke bytte med dig selv" });
 
-  if (cash_adjustment > 0 && req.team.balance < cash_adjustment)
-    return res.status(400).json({ error: "Du har ikke råd til den ønskede kontantbetaling" });
+  if (cash_adjustment > 0) {
+    const proposingState = await getTeamMarketState(supabase, req.team.id);
+    if (proposingState.balance < cash_adjustment)
+      return res.status(400).json({ error: "Du har ikke råd til den ønskede kontantbetaling" });
+  }
 
   const { data, error } = await supabase.from("swap_offers").insert({
     offered_rider_id,
@@ -1048,96 +993,18 @@ router.patch("/transfers/swaps/:id", requireAuth, async (req, res) => {
 
   // CONFIRM — the party that hasn't confirmed yet
   if (action === "confirm" && swap.status === "awaiting_confirmation") {
-    if (isProposing && swap.proposing_confirmed)
-      return res.status(400).json({ error: "Du har allerede bekræftet" });
-    if (isReceiving && swap.receiving_confirmed)
-      return res.status(400).json({ error: "Du har allerede bekræftet" });
+    const result = await confirmSwapOffer({
+      supabase,
+      swapId: swap.id,
+      confirmingTeamId: req.team.id,
+      notifyTeamOwner,
+    });
 
-    const updatedFields = isProposing
-      ? { proposing_confirmed: true }
-      : { receiving_confirmed: true };
-    await supabase.from("swap_offers").update(updatedFields).eq("id", swap.id);
-
-    const nowProposing = isProposing ? true : swap.proposing_confirmed;
-    const nowReceiving = isReceiving ? true : swap.receiving_confirmed;
-
-    if (nowProposing && nowReceiving) {
-      // Execute the swap
-      const cash = swap.counter_cash ?? swap.cash_adjustment;
-
-      if (cash > 0) {
-        // Proposing pays receiving
-        const [{ data: propTeam }, { data: recvTeam }] = await Promise.all([
-          supabase.from("teams").select("balance").eq("id", swap.proposing_team_id).single(),
-          supabase.from("teams").select("balance").eq("id", swap.receiving_team_id).single(),
-        ]);
-        if (!propTeam || propTeam.balance < cash) {
-          await supabase.from("swap_offers").update({ status: "withdrawn" }).eq("id", swap.id);
-          await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected",
-            "Byttehandel annulleret",
-            `Handlen på ${swap.offered.firstname} ${swap.offered.lastname} ↔ ${swap.requested.firstname} ${swap.requested.lastname} kunne ikke gennemføres — mangler midler.`,
-            swap.id);
-          return res.status(400).json({ error: "Proposing team har ikke råd — handlen er annulleret" });
-        }
-        await Promise.all([
-          supabase.from("teams").update({ balance: propTeam.balance - cash }).eq("id", swap.proposing_team_id),
-          supabase.from("teams").update({ balance: recvTeam.balance + cash }).eq("id", swap.receiving_team_id),
-          supabase.from("finance_transactions").insert([
-            { team_id: swap.proposing_team_id, type: "transfer_out", amount: -cash,
-              description: `Byttehandel kontantbetaling: ${swap.offered.firstname} ${swap.offered.lastname} ↔ ${swap.requested.firstname} ${swap.requested.lastname}` },
-            { team_id: swap.receiving_team_id, type: "transfer_in", amount: cash,
-              description: `Byttehandel kontantbetaling: ${swap.offered.firstname} ${swap.offered.lastname} ↔ ${swap.requested.firstname} ${swap.requested.lastname}` },
-          ]),
-        ]);
-      } else if (cash < 0) {
-        // Receiving pays proposing
-        const absCash = Math.abs(cash);
-        const [{ data: propTeam }, { data: recvTeam }] = await Promise.all([
-          supabase.from("teams").select("balance").eq("id", swap.proposing_team_id).single(),
-          supabase.from("teams").select("balance").eq("id", swap.receiving_team_id).single(),
-        ]);
-        if (!recvTeam || recvTeam.balance < absCash) {
-          await supabase.from("swap_offers").update({ status: "withdrawn" }).eq("id", swap.id);
-          await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected",
-            "Byttehandel annulleret",
-            `Handlen kunne ikke gennemføres — modtagende hold mangler midler.`,
-            swap.id);
-          return res.status(400).json({ error: "Receiving team har ikke råd — handlen er annulleret" });
-        }
-        await Promise.all([
-          supabase.from("teams").update({ balance: recvTeam.balance - absCash }).eq("id", swap.receiving_team_id),
-          supabase.from("teams").update({ balance: propTeam.balance + absCash }).eq("id", swap.proposing_team_id),
-          supabase.from("finance_transactions").insert([
-            { team_id: swap.receiving_team_id, type: "transfer_out", amount: -absCash,
-              description: `Byttehandel kontantbetaling: ${swap.offered.firstname} ${swap.offered.lastname} ↔ ${swap.requested.firstname} ${swap.requested.lastname}` },
-            { team_id: swap.proposing_team_id, type: "transfer_in", amount: absCash,
-              description: `Byttehandel kontantbetaling: ${swap.offered.firstname} ${swap.offered.lastname} ↔ ${swap.requested.firstname} ${swap.requested.lastname}` },
-          ]),
-        ]);
-      }
-
-      // Swap rider ownership
-      await Promise.all([
-        supabase.from("riders").update({ team_id: swap.receiving_team_id }).eq("id", swap.offered_rider_id),
-        supabase.from("riders").update({ team_id: swap.proposing_team_id }).eq("id", swap.requested_rider_id),
-      ]);
-
-      await supabase.from("swap_offers").update({ status: "accepted" }).eq("id", swap.id);
-
-      const otherTeamId = isProposing ? swap.receiving_team_id : swap.proposing_team_id;
-      await notifyTeamOwner(otherTeamId, "transfer_offer_accepted",
-        "Byttehandel gennemført! 🎉",
-        `${swap.offered.firstname} ${swap.offered.lastname} ↔ ${swap.requested.firstname} ${swap.requested.lastname} er nu skiftet`, swap.id);
-
-      return res.json({ success: true, action: "accepted" });
+    if (!result.ok) {
+      return res.status(result.status).json({ error: result.error });
     }
 
-    const otherTeamId = isProposing ? swap.receiving_team_id : swap.proposing_team_id;
-    await notifyTeamOwner(otherTeamId, "transfer_offer_accepted",
-      "Byttehandel afventer din bekræftelse",
-      `${req.team.name} har bekræftet byttehandlen. Bekræft for at gennemføre.`, swap.id);
-
-    return res.json({ success: true, action: "confirmed_partial" });
+    return res.json({ success: true, action: result.action });
   }
 
   // CANCEL — either party cancels awaiting_confirmation

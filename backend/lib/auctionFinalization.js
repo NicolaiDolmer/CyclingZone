@@ -1,57 +1,24 @@
-export const AUCTION_SQUAD_LIMITS = {
-  1: { min: 20, max: 30 },
-  2: { min: 14, max: 20 },
-  3: { min: 8, max: 10 },
-};
+import {
+  calculateMarketSalary,
+  expectCount,
+  expectMaybeSingle,
+  expectMutation,
+  expectSingle,
+  getTransferWindowOpen,
+  MARKET_SQUAD_LIMITS,
+} from "./marketUtils.js";
+
+export const AUCTION_SQUAD_LIMITS = MARKET_SQUAD_LIMITS;
 
 const FINALIZABLE_STATUSES = ["active", "extended"];
 const NOOP = async () => {};
-
-function ensureNoError(error) {
-  if (error) throw new Error(error.message);
-}
-
-async function expectSingle(query) {
-  const { data, error } = await query.single();
-  ensureNoError(error);
-  return data;
-}
-
-async function expectMaybeSingle(query) {
-  const { data, error } = await query.maybeSingle();
-  ensureNoError(error);
-  return data;
-}
-
-async function expectCount(query) {
-  const { count, error } = await query;
-  ensureNoError(error);
-  return count || 0;
-}
-
-async function expectMutation(query) {
-  const { error } = await query;
-  ensureNoError(error);
-}
 
 export function sellerOwnsAuctionRider(auction) {
   return Boolean(auction?.rider && auction.rider.team_id === auction.seller_team_id);
 }
 
 export function calculateAuctionSalary(price) {
-  return Math.max(1, Math.ceil((price || 0) * 0.1));
-}
-
-async function getTransferWindowOpen(supabase) {
-  const latestWindow = await expectMaybeSingle(
-    supabase
-      .from("transfer_windows")
-      .select("status")
-      .order("created_at", { ascending: false })
-      .limit(1)
-  );
-
-  return latestWindow?.status === "open";
+  return calculateMarketSalary(price);
 }
 
 async function finalizeAuctionRecord({

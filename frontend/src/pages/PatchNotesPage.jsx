@@ -2,6 +2,26 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.9",
+    date: "2026-04-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Transfers og byttehandler bruger nu samme backend-guardrails ved endelig bekræftelse, så ejerskab, saldo og holdgrænser bliver tjekket igen før handlen lukkes",
+          "Gennemførte handler rydder nu relaterede listings, transferbud og bytteforslag op for de involverede ryttere, så markedet ikke efterlader stale forhandlinger",
+        ],
+      },
+      {
+        category: "Forbedringer",
+        items: [
+          "Hjælp & Regler præciserer nu, at transfer- og byttehandler kun kan sendes og lukkes i åbent transfervindue, og at begge parter skal bekræfte den endelige handel",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.8",
     date: "2026-04-21",
     label: "Beta",

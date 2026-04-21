@@ -77,6 +77,10 @@ const SECTIONS = [
         text: "Gå til Transfers → Modtagne tilbud. Her ser du alle tilbud på dine ryttere. Du kan acceptere (✓), afvise (✕) eller sende et modbud (↔) med din egen pris.",
       },
       {
+        title: "Endelig bekræftelse",
+        text: "Når et tilbud eller modbud accepteres, går handlen i en kort bekræftelsesfase. Begge managers skal bekræfte den endelige aftale, og systemet tjekker igen ejerskab, saldo og holdgrænser lige før handlen gennemføres.",
+      },
+      {
         title: "Forhandling frem og tilbage",
         text: "Forhandlingen kan fortsætte ubegrænset. Sælger sender modbud → køber kan acceptere modbud, sende nyt bud eller trække sig. Runde-tælleren viser hvor langt I er i forhandlingen.",
       },
@@ -86,7 +90,7 @@ const SECTIONS = [
       },
       {
         title: "Transfervindue",
-        text: "Du kan forhandle hele sæsonen, men rytteren skifter kun hold fysisk når transfervinduet åbner. Admin åbner og lukker vinduet manuelt.",
+        text: "Transfers, byttehandler og endelige bekræftelser kan kun laves mens transfervinduet er åbent. Admin åbner og lukker vinduet manuelt, og markedshandler der ikke længere opfylder saldo- eller holdkrav bliver annulleret i stedet for at gå igennem.",
       },
     ],
   },

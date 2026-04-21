@@ -7,7 +7,7 @@
 | Frontend | React 18 + Vite + Tailwind CSS | Vercel |
 | Backend | Node.js + Express (ES modules) | Railway |
 | Database / Auth | Supabase (PostgreSQL + RLS) | Supabase cloud |
-| Realtime sync | Cron (backend/cron.js, 60s interval) | — |
+| Realtime sync | Cron (backend/cron.js, 60s interval) | Railway (via backend-processen) |
 | UCI sync | Google Sheets CSV export | — |
 
 ---
@@ -152,14 +152,44 @@ Season flow notes:
 
 ---
 
+## Canonical Runtime Paths
+
+### Auktioner
+- UI læser aktive auktioner direkte fra Supabase (`auctions`) og placerer bud via `POST /api/auctions/:id/bid`
+- Manuel afslutning (`POST /api/auctions/:id/finalize`), admin-bulkfinalisering (`POST /api/admin/finalize-expired-auctions`) og cron (`backend/cron.js`) delegérer alle til `backend/lib/auctionFinalization.js`
+- Finalisering skriver til `auctions`, `riders`, `teams`, `finance_transactions`, `notifications` og `activity_feed`
+- `seller_team_id` kan blive nulstillet ved afslutning af ikke-ejede auktionsflows for at undgå falsk historik
+- Transfer window og squad limit håndhæves ved finalisering, ikke kun ved oprettelse eller bud
+
+### Sæsonflow
+- Admin starter flowet via `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start`, `POST /api/admin/approve-results` og `POST /api/admin/seasons/:id/end`
+- Den kanoniske season engine ligger i `backend/lib/economyEngine.js`
+- `race_results` er persisted sandhed for standings; `season_standings` recalculeres derfra
+- Transfer-window-state er del af season-flowets runtime-kontrakt
+
+### Lån og markedsdomæner
+- Rider-lån bruger `loan_agreements` og `/api/loans`
+- Finance-lån bruger `loans` + `loan_config` og `/api/finance/loans`
+- Transfer- og swap-bekræftelse går gennem `backend/lib/transferExecution.js`, som re-checker ejerskab, saldo og squad-limit ved commit-tid
+- Gennemførte markeds-handler rydder relaterede `transfer_listings`, `transfer_offers` og `swap_offers` op for de involverede ryttere
+- Domænerne må ikke dele route-path eller execution path
+
+### Deploy og live-verifikation
+- Se `docs/DEPLOYMENT.md` for aktuelle live-URLs, release-path og standard smoke checks
+
+---
+
 ## Backend Lib-moduler
 
 | Fil | Eksporterede funktioner |
 |-----|------------------------|
 | `auctionEngine.js` | `calculateAuctionEnd`, `checkBidExtension`, `isAuctionExpired`, `formatAuctionEnd` |
+| `auctionFinalization.js` | `finalizeAuctionById`, `finalizeExpiredAuctions`, `sellerOwnsAuctionRider`, `calculateAuctionSalary` |
 | `economyEngine.js` | `processSeasonStart`, `processSeasonEnd`, `calculateBoardSatisfaction`, `satisfactionToModifier`, `generateBoardGoals`, `updateStandings` |
 | `loanEngine.js` | `getLoanConfig`, `getTotalDebt`, `createLoan`, `createEmergencyLoan`, `repayLoan`, `processLoanInterest` |
+| `marketUtils.js` | `getTeamMarketState`, `getIncomingSquadViolation`, `getOutgoingSquadViolation`, `getTransferWindowOpen`, `calculateMarketSalary` |
 | `sheetsSync.js` | `handleSyncRequest` |
+| `transferExecution.js` | `confirmTransferOffer`, `confirmSwapOffer`, `getTransferExecutionIssue`, `getSwapExecutionIssue` |
 | `discordNotifier.js` | `notifySeasonEvent` |
 
 ---
@@ -172,7 +202,7 @@ teams            id, user_id, name, is_ai, division(1-3), balance, sponsor_incom
                  is_frozen, is_bank, manager_name, created_at
 riders           id, pcm_id, firstname, lastname, full_name(gen), birthdate,
                  nationality_code, height, weight, popularity, uci_points,
-                 price(gen), salary, team_id, ai_team_id, is_u25,
+                 price(gen), salary, team_id, pending_team_id, ai_team_id, is_u25,
                  stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
                  stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,
                  stat_res, stat_ftr
@@ -189,10 +219,11 @@ auctions         id, rider_id, seller_team_id, starting_price, current_price,
                  extension_count, is_guaranteed_sale, guaranteed_price
 auction_bids     id, auction_id, team_id, amount, bid_time, triggered_extension
 transfer_listings  id, rider_id, seller_team_id, asking_price,
-                   status(open|negotiating|sold|withdrawn)
-transfer_offers    id, listing_id, buyer_team_id, offer_amount,
-                   status(pending|accepted|rejected|countered|awaiting_confirmation),
-                   counter_amount, buyer_confirmed, seller_confirmed
+                    status(open|negotiating|sold|withdrawn)
+ transfer_offers    id, listing_id, rider_id, seller_team_id, buyer_team_id,
+                    offer_amount, round, message,
+                    status(pending|accepted|rejected|countered|awaiting_confirmation),
+                    counter_amount, buyer_confirmed, seller_confirmed
 swap_offers        id, offered_rider_id, requested_rider_id, proposing_team_id,
                    receiving_team_id, cash_adjustment, counter_cash,
                    status(pending|countered|awaiting_confirmation|accepted|rejected|withdrawn),

@@ -34,6 +34,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Opret transfer-liste
 - Tilbud → accepter / afvis / modtilbud
 - Swap-forslag med kontantjustering + modtilbud
+- Endelig transfer-/swap-bekræftelse kører nu via delt backend-path med commit-time checks for ejerskab, saldo og squad-limit
+- Gennemførte handler rydder nu relaterede transfer-lister, transferbud og swapforslag op for involverede ryttere
 - Trækker tilbud tilbage (withdraw) inklusive på modtilbud
 - Notifikationer til sælger ved nyt tilbud
 
@@ -103,7 +105,6 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 🚧 I gang
 
-- [ ] Double-confirmation flow — begge parter godkender endeligt inden deal lukkes
 - [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
 - [ ] Første live beta-verifikation af `season start -> result approval -> season end`
 - [ ] Verificér dashboard/rangliste mod ny standings-recalculation efter første live sæsonflow
