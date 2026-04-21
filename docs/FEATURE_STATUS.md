@@ -91,18 +91,20 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 🔴 Broken / Kendte bugs
 
-- Transfervindue-status checkes **ikke** i transfer/swap/loan-endpoints — handler som altid åbent
 - `POST /api/admin/seasons/:id/end` udfører **ikke** faktisk sæsonafslutning (preview virker, execution mangler)
 - Season standings oprettes **ikke** automatisk ved sæsonstart — skal oprettes manuelt
 - Achievements tæller ikke korrekt
 - Dropdown tekst usynlig (Tailwind farvekonflikt i select-elementer)
 - Låneoprettelsesgebyr fratrækkes kun ved accept, **ikke** løbende
+- AI auktion bug: provenu ved salg af ikke-ejet rytter går til forkert manager
+- Ranglisten vises ikke korrekt på dashboard/forsiden
+- Squad limit håndhæves ikke korrekt
+- Lånefunktion virker ikke længere
 
 ---
 
 ## 🚧 I gang
 
-- [ ] Offer withdrawal — køber trækker eget tilbud tilbage
 - [ ] Double-confirmation flow — begge parter godkender endeligt inden deal lukkes
 - [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
 
@@ -110,8 +112,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 📋 Planlagt (backlog)
 
-- Transfervindue åbn/luk endpoints med notifikationer
-- Validering af transfervinduets status i alle handels-endpoints
+- Aktiv feature- og forbedringsbacklog vedligeholdes i `docs/PRODUCT_BACKLOG.md`
 - Automatisk oprettelse af season_standings ved sæsonstart
 - Egentlig sæsonslut-udførelse (ikke kun preview)
 - Landekode-mapping til flag-visning

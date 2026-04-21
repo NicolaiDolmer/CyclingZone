@@ -1,4 +1,4 @@
-# CLAUDE.md — Entry for Claude Code
+# AGENTS.md — Entry for AI Agents
 
 ## Start
 1. Læs `docs/RUNTIME_GUARDRAILS.md`

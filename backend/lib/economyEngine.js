@@ -483,65 +483,76 @@ export function generateBoardGoals(focus, planType) {
 // ─── Standing Updates ─────────────────────────────────────────────────────────
 
 /**
- * Update season standings after a race result import.
- * Called automatically after processRaceResults.
+ * Recalculate the full season standings from stored race results.
+ * This keeps standings idempotent even when results are approved in batches.
  */
-export async function updateStandings(seasonId, raceId) {
-  // Get all GC and stage results for this race
-  const { data: results } = await supabase
-    .from("race_results")
-    .select("team_id, result_type, rank, points_earned, prize_money")
-    .eq("race_id", raceId);
+export async function updateStandings(seasonId, raceId = null) {
+  const [{ data: teams, error: teamsError }, { data: races, error: racesError }] = await Promise.all([
+    supabase.from("teams").select("id, division"),
+    supabase.from("races").select("id").eq("season_id", seasonId),
+  ]);
 
-  if (!results?.length) return;
+  if (teamsError) throw new Error(teamsError.message);
+  if (racesError) throw new Error(racesError.message);
 
-  // Aggregate points by team
-  const teamPoints = {};
-  for (const r of results) {
-    if (!r.team_id) continue;
-    if (!teamPoints[r.team_id]) {
-      teamPoints[r.team_id] = { points: 0, stage_wins: 0, gc_wins: 0 };
-    }
-    teamPoints[r.team_id].points += r.points_earned || 0;
-    if (r.result_type === "stage" && r.rank === 1) teamPoints[r.team_id].stage_wins++;
-    if (r.result_type === "gc" && r.rank === 1) teamPoints[r.team_id].gc_wins++;
+  const teamStats = {};
+  for (const team of teams || []) {
+    teamStats[team.id] = {
+      division: team.division || 3,
+      points: 0,
+      stage_wins: 0,
+      gc_wins: 0,
+      races_completed: new Set(),
+    };
   }
 
-  // Upsert standings
-  for (const [teamId, stats] of Object.entries(teamPoints)) {
-    const { data: existing } = await supabase
-      .from("season_standings")
-      .select("*")
-      .eq("season_id", seasonId)
-      .eq("team_id", teamId)
-      .single();
+  const raceIds = (races || []).map(race => race.id);
+  if (raceIds.length > 0) {
+    const { data: results, error: resultsError } = await supabase
+      .from("race_results")
+      .select("race_id, team_id, result_type, rank, points_earned, rider:rider_id(team_id)")
+      .in("race_id", raceIds);
+    if (resultsError) throw new Error(resultsError.message);
 
-    if (existing) {
-      await supabase.from("season_standings").update({
-        total_points: existing.total_points + stats.points,
-        stage_wins: existing.stage_wins + stats.stage_wins,
-        gc_wins: existing.gc_wins + stats.gc_wins,
-        races_completed: existing.races_completed + 1,
-        updated_at: new Date().toISOString(),
-      }).eq("id", existing.id);
-    } else {
-      // Get team division
-      const { data: team } = await supabase
-        .from("teams").select("division").eq("id", teamId).single();
+    for (const result of results || []) {
+      const teamId = result.team_id || result.rider?.team_id;
+      if (!teamId) continue;
 
-      await supabase.from("season_standings").insert({
-        season_id: seasonId,
-        team_id: teamId,
-        division: team?.division || 3,
-        total_points: stats.points,
-        stage_wins: stats.stage_wins,
-        gc_wins: stats.gc_wins,
-        races_completed: 1,
-      });
+      if (!teamStats[teamId]) {
+        teamStats[teamId] = {
+          division: 3,
+          points: 0,
+          stage_wins: 0,
+          gc_wins: 0,
+          races_completed: new Set(),
+        };
+      }
+
+      teamStats[teamId].points += result.points_earned || 0;
+      if (result.race_id) teamStats[teamId].races_completed.add(result.race_id);
+      if (result.result_type === "stage" && result.rank === 1) teamStats[teamId].stage_wins++;
+      if (result.result_type === "gc" && result.rank === 1) teamStats[teamId].gc_wins++;
     }
   }
 
-  console.log(`  📊 Standings updated for ${Object.keys(teamPoints).length} teams`);
+  const timestamp = new Date().toISOString();
+  const rows = Object.entries(teamStats).map(([teamId, stats]) => ({
+    season_id: seasonId,
+    team_id: teamId,
+    division: stats.division,
+    total_points: stats.points,
+    stage_wins: stats.stage_wins,
+    gc_wins: stats.gc_wins,
+    races_completed: stats.races_completed.size,
+    updated_at: timestamp,
+  }));
+
+  const { error: upsertError } = await supabase
+    .from("season_standings")
+    .upsert(rows, { onConflict: "season_id,team_id" });
+  if (upsertError) throw new Error(upsertError.message);
+
+  console.log(`  📊 Standings recalculated for ${rows.length} teams${raceId ? ` after race ${raceId}` : ""}`);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

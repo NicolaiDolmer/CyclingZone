@@ -24,6 +24,11 @@ import {
   getLoanConfig,
   getTotalDebt,
 } from "../lib/loanEngine.js";
+import {
+  processSeasonEnd,
+  processSeasonStart,
+  updateStandings,
+} from "../lib/economyEngine.js";
 
 // Load .env from backend root
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -85,6 +90,49 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
+
+async function ensureSeasonStandings(seasonId) {
+  const [{ data: teams, error: teamsError }, { data: standings, error: standingsError }] = await Promise.all([
+    supabase.from("teams").select("id, division"),
+    supabase.from("season_standings").select("team_id").eq("season_id", seasonId),
+  ]);
+
+  if (teamsError) throw new Error(teamsError.message);
+  if (standingsError) throw new Error(standingsError.message);
+
+  const existingTeamIds = new Set((standings || []).map(row => row.team_id));
+  const missingRows = (teams || [])
+    .filter(team => !existingTeamIds.has(team.id))
+    .map(team => ({
+      season_id: seasonId,
+      team_id: team.id,
+      division: team.division,
+    }));
+
+  if (missingRows.length > 0) {
+    const { error: insertError } = await supabase.from("season_standings").insert(missingRows);
+    if (insertError) throw new Error(insertError.message);
+  }
+
+  return {
+    created: missingRows.length,
+    total_teams: (teams || []).length,
+  };
+}
+
+async function createRaceRecord(payload) {
+  const { data, error } = await supabase.from("races").insert(payload).select("*").single();
+
+  if (!error) return { data, error: null };
+
+  if (Object.prototype.hasOwnProperty.call(payload, "race_class") && error.message?.includes("race_class")) {
+    const fallbackPayload = { ...payload };
+    delete fallbackPayload.race_class;
+    return await supabase.from("races").insert(fallbackPayload).select("*").single();
+  }
+
+  return { data: null, error };
+}
 
 // ── Auth middleware ───────────────────────────────────────────────────────────
 
@@ -1417,37 +1465,112 @@ router.post("/admin/override-rider", requireAdmin, async (req, res) => {
 
 // POST /api/admin/approve-results — approve pending race result submission
 router.post("/admin/approve-results", requireAdmin, async (req, res) => {
-  const { pending_id } = req.body;
-  if (!pending_id) return res.status(400).json({ error: "pending_id required" });
-  const { data: sub } = await supabase.from("pending_race_results").select("race_id").eq("id", pending_id).single();
-  if (!sub) return res.status(404).json({ error: "Submission not found" });
-  const { data: rows } = await supabase.from("pending_race_result_rows")
-    .select("*, rider:rider_id(team_id)").eq("pending_id", pending_id);
-  if (!rows?.length) return res.status(400).json({ error: "No rows found" });
-  const { data: prizes } = await supabase.from("prize_tables").select("*");
-  const prizeMap = {};
-  (prizes || []).forEach(p => { prizeMap[`${p.race_type}__${p.result_type}__${p.rank}`] = p.prize_amount; });
-  const { data: race } = await supabase.from("races").select("race_type").eq("id", sub.race_id).single();
-  const insertRows = [];
-  const teamPrizes = {};
-  for (const row of rows) {
-    const prize = prizeMap[`${race?.race_type}__${row.result_type}__${row.rank}`] || 0;
-    insertRows.push({ race_id: sub.race_id, rider_id: row.rider_id, result_type: row.result_type,
-      rank: row.rank, stage_number: row.stage_number || 1, prize_money: prize, points_earned: prize });
-    if (row.rider?.team_id && prize > 0)
-      teamPrizes[row.rider.team_id] = (teamPrizes[row.rider.team_id] || 0) + prize;
-  }
-  await supabase.from("race_results").insert(insertRows);
-  for (const [teamId, amount] of Object.entries(teamPrizes)) {
-    const { data: t } = await supabase.from("teams").select("balance").eq("id", teamId).single();
-    if (t) {
-      await supabase.from("teams").update({ balance: t.balance + amount }).eq("id", teamId);
-      await supabase.from("finance_transactions").insert({
-        team_id: teamId, type: "prize_money", amount, description: "Præmiepenge fra løb",
+  try {
+    const { pending_id } = req.body;
+    if (!pending_id) return res.status(400).json({ error: "pending_id required" });
+
+    const { data: sub, error: subError } = await supabase
+      .from("pending_race_results")
+      .select("race_id")
+      .eq("id", pending_id)
+      .single();
+    if (subError) return res.status(500).json({ error: subError.message });
+    if (!sub) return res.status(404).json({ error: "Submission not found" });
+
+    const { data: rows, error: rowsError } = await supabase
+      .from("pending_race_result_rows")
+      .select("*, rider:rider_id(team_id, firstname, lastname)")
+      .eq("pending_id", pending_id);
+    if (rowsError) return res.status(500).json({ error: rowsError.message });
+    if (!rows?.length) return res.status(400).json({ error: "No rows found" });
+
+    const { data: prizes, error: prizesError } = await supabase.from("prize_tables").select("*");
+    if (prizesError) return res.status(500).json({ error: prizesError.message });
+
+    const prizeMap = {};
+    (prizes || []).forEach(p => { prizeMap[`${p.race_type}__${p.result_type}__${p.rank}`] = p.prize_amount; });
+
+    const { data: race, error: raceError } = await supabase
+      .from("races")
+      .select("id, name, season_id, race_type")
+      .eq("id", sub.race_id)
+      .single();
+    if (raceError) return res.status(500).json({ error: raceError.message });
+    if (!race) return res.status(404).json({ error: "Løb ikke fundet" });
+
+    const insertRows = [];
+    const teamPrizes = {};
+
+    for (const row of rows) {
+      const prize = prizeMap[`${race.race_type}__${row.result_type}__${row.rank}`] || 0;
+      const teamId = row.rider?.team_id || null;
+      const riderName = row.rider ? `${row.rider.firstname} ${row.rider.lastname}` : null;
+
+      insertRows.push({
+        race_id: sub.race_id,
+        rider_id: row.rider_id,
+        rider_name: riderName,
+        team_id: teamId,
+        result_type: row.result_type,
+        rank: row.rank,
+        stage_number: row.stage_number || 1,
+        prize_money: prize,
+        points_earned: prize,
       });
+
+      if (teamId && prize > 0) {
+        teamPrizes[teamId] = (teamPrizes[teamId] || 0) + prize;
+      }
     }
+
+    const { error: insertError } = await supabase.from("race_results").insert(insertRows);
+    if (insertError) return res.status(500).json({ error: insertError.message });
+
+    for (const [teamId, amount] of Object.entries(teamPrizes)) {
+      const { data: t, error: teamError } = await supabase
+        .from("teams")
+        .select("balance")
+        .eq("id", teamId)
+        .single();
+      if (teamError) return res.status(500).json({ error: teamError.message });
+
+      if (t) {
+        const { error: balanceError } = await supabase
+          .from("teams")
+          .update({ balance: t.balance + amount })
+          .eq("id", teamId);
+        if (balanceError) return res.status(500).json({ error: balanceError.message });
+
+        const { error: financeError } = await supabase.from("finance_transactions").insert({
+          team_id: teamId,
+          type: "prize_money",
+          amount,
+          description: "Præmiepenge fra løb",
+        });
+        if (financeError) return res.status(500).json({ error: financeError.message });
+      }
+    }
+
+    await ensureSeasonStandings(race.season_id);
+    await updateStandings(race.season_id, race.id);
+
+    await logActivity("race_results_approved", {
+      meta: {
+        race_id: race.id,
+        race_name: race.name,
+        season_id: race.season_id,
+        rows_imported: insertRows.length,
+      },
+    });
+
+    res.json({
+      success: true,
+      rows_imported: insertRows.length,
+      teams_paid: Object.keys(teamPrizes).length,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
-  res.json({ success: true, rows_imported: insertRows.length, teams_paid: Object.keys(teamPrizes).length });
 });
 
 
@@ -1526,6 +1649,224 @@ router.post("/admin/finalize-expired-auctions", requireAdmin, async (req, res) =
     } catch (e) { /* continue */ }
   }
   res.json({ finalized: results.length, results });
+});
+
+router.post("/admin/seasons", requireAdmin, async (req, res) => {
+  try {
+    const number = Number.parseInt(req.body.number, 10);
+    const raceDaysTotal = Number.parseInt(req.body.race_days_total ?? 60, 10);
+
+    if (!Number.isInteger(number) || number < 1) {
+      return res.status(400).json({ error: "Ugyldigt sæsonnummer" });
+    }
+
+    if (!Number.isInteger(raceDaysTotal) || raceDaysTotal < 1) {
+      return res.status(400).json({ error: "race_days_total skal være mindst 1" });
+    }
+
+    const { data: existingSeason, error: existingError } = await supabase
+      .from("seasons")
+      .select("id")
+      .eq("number", number)
+      .maybeSingle();
+    if (existingError) return res.status(500).json({ error: existingError.message });
+    if (existingSeason) return res.status(409).json({ error: "Sæsonnummer findes allerede" });
+
+    const { data: createdSeason, error: createError } = await supabase
+      .from("seasons")
+      .insert({
+        number,
+        race_days_total: raceDaysTotal,
+        status: "upcoming",
+      })
+      .select("*")
+      .single();
+    if (createError) return res.status(500).json({ error: createError.message });
+
+    res.status(201).json(createdSeason);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/admin/seasons/:id/start", requireAdmin, async (req, res) => {
+  try {
+    const seasonId = req.params.id;
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { data: season, error: seasonError } = await supabase
+      .from("seasons")
+      .select("*")
+      .eq("id", seasonId)
+      .single();
+    if (seasonError) return res.status(500).json({ error: seasonError.message });
+    if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+    if (season.status !== "upcoming") {
+      return res.status(400).json({ error: "Kun kommende sæsoner kan startes" });
+    }
+
+    const { count: activeCount, error: activeError } = await supabase
+      .from("seasons")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active");
+    if (activeError) return res.status(500).json({ error: activeError.message });
+    if ((activeCount || 0) > 0) {
+      return res.status(400).json({ error: "Der findes allerede en aktiv sæson" });
+    }
+
+    const standings = await ensureSeasonStandings(seasonId);
+
+    const { data: startedSeason, error: startError } = await supabase
+      .from("seasons")
+      .update({
+        status: "active",
+        start_date: season.start_date || today,
+      })
+      .eq("id", seasonId)
+      .eq("status", "upcoming")
+      .select("*")
+      .single();
+    if (startError) return res.status(500).json({ error: startError.message });
+
+    const sponsorResults = await processSeasonStart(seasonId);
+
+    await logActivity("season_started", {
+      meta: {
+        season_id: startedSeason.id,
+        season_number: startedSeason.number,
+        standings_initialized: standings.created,
+        sponsor_payouts: sponsorResults.length,
+      },
+    });
+
+    res.json({
+      success: true,
+      season_id: startedSeason.id,
+      number: startedSeason.number,
+      standings_initialized: standings.created,
+      sponsor_payouts: sponsorResults.length,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/admin/seasons/:id/end", requireAdmin, async (req, res) => {
+  try {
+    const seasonId = req.params.id;
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { data: season, error: seasonError } = await supabase
+      .from("seasons")
+      .select("*")
+      .eq("id", seasonId)
+      .single();
+    if (seasonError) return res.status(500).json({ error: seasonError.message });
+    if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+    if (season.status !== "active") {
+      return res.status(400).json({ error: "Kun aktive sæsoner kan afsluttes" });
+    }
+
+    const { data: seasonRaces, error: racesError } = await supabase
+      .from("races")
+      .select("id")
+      .eq("season_id", seasonId);
+    if (racesError) return res.status(500).json({ error: racesError.message });
+
+    const raceIds = (seasonRaces || []).map(race => race.id);
+    if (raceIds.length > 0) {
+      const { count: pendingCount, error: pendingError } = await supabase
+        .from("pending_race_results")
+        .select("id", { count: "exact", head: true })
+        .in("race_id", raceIds)
+        .eq("status", "pending");
+      if (pendingError) return res.status(500).json({ error: pendingError.message });
+      if ((pendingCount || 0) > 0) {
+        return res.status(400).json({ error: "Der er stadig afventende løbsresultater i sæsonen" });
+      }
+    }
+
+    await ensureSeasonStandings(seasonId);
+    await updateStandings(seasonId);
+    await processSeasonEnd(seasonId);
+
+    const { data: endedSeason, error: endError } = await supabase
+      .from("seasons")
+      .update({ end_date: season.end_date || today })
+      .eq("id", seasonId)
+      .select("*")
+      .single();
+    if (endError) return res.status(500).json({ error: endError.message });
+
+    await logActivity("season_ended", {
+      meta: {
+        season_id: season.id,
+        season_number: season.number,
+      },
+    });
+
+    res.json({
+      success: true,
+      season_id: endedSeason.id,
+      number: endedSeason.number,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/admin/races", requireAdmin, async (req, res) => {
+  try {
+    const {
+      season_id,
+      name,
+      race_type = "single",
+      stages = 1,
+      start_date = null,
+      prize_pool = 0,
+      race_class,
+    } = req.body;
+
+    if (!season_id) return res.status(400).json({ error: "season_id kræves" });
+    if (!name || !String(name).trim()) return res.status(400).json({ error: "Navn kræves" });
+    if (!["single", "stage_race"].includes(race_type)) {
+      return res.status(400).json({ error: "Ugyldig race_type" });
+    }
+
+    const normalizedStages = race_type === "single"
+      ? 1
+      : Math.max(1, Number.parseInt(stages, 10) || 1);
+    const normalizedPrizePool = Math.max(0, Number.parseInt(prize_pool, 10) || 0);
+
+    const { data: season, error: seasonError } = await supabase
+      .from("seasons")
+      .select("id, status")
+      .eq("id", season_id)
+      .single();
+    if (seasonError) return res.status(500).json({ error: seasonError.message });
+    if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+    if (season.status === "completed") {
+      return res.status(400).json({ error: "Kan ikke tilføje løb til en afsluttet sæson" });
+    }
+
+    const payload = {
+      season_id,
+      name: String(name).trim(),
+      race_type,
+      stages: normalizedStages,
+      start_date: start_date || null,
+      prize_pool: normalizedPrizePool,
+      status: "scheduled",
+      race_class: race_class || null,
+    };
+
+    const { data: createdRace, error: createError } = await createRaceRecord(payload);
+    if (createError) return res.status(500).json({ error: createError.message });
+
+    res.status(201).json(createdRace);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 
@@ -1978,5 +2319,3 @@ router.post("/board/sign", requireAuth, async (req, res) => {
 });
 
 export default router;
-
-
