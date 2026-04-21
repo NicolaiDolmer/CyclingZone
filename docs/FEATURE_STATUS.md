@@ -98,7 +98,6 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - AI auktion bug: provenu ved salg af ikke-ejet rytter går til forkert manager
 - Ranglisten vises ikke korrekt på dashboard/forsiden
 - Squad limit håndhæves ikke korrekt
-- Lånefunktion virker ikke længere
 
 ---
 

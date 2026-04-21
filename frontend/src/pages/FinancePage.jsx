@@ -60,7 +60,7 @@ export default function FinancePage() {
 
     const { data: { session } } = await supabase.auth.getSession();
     const [loanRes, txRes] = await Promise.all([
-      fetch(`${API}/api/loans/my`, { headers: { Authorization: `Bearer ${session.access_token}` } }),
+      fetch(`${API}/api/finance/loans`, { headers: { Authorization: `Bearer ${session.access_token}` } }),
       supabase.from("finance_transactions").select("*")
         .eq("team_id", teamData.id).order("created_at", { ascending: false }).limit(30),
     ]);
@@ -80,7 +80,7 @@ export default function FinancePage() {
     if (!loanAmount || parseInt(loanAmount) < 1) return;
     setTakingLoan(true);
     const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${API}/api/loans`, {
+    const res = await fetch(`${API}/api/finance/loans`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ loan_type: loanType, amount: parseInt(loanAmount) }),
@@ -100,7 +100,7 @@ export default function FinancePage() {
     if (!amount || parseInt(amount) < 1) return;
     setRepaying(true);
     const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${API}/api/loans/${loanId}/repay`, {
+    const res = await fetch(`${API}/api/finance/loans/${loanId}/repay`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ amount: parseInt(amount) }),

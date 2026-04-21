@@ -79,13 +79,18 @@ POST   /api/transfers/swaps        { offered_rider_id, requested_rider_id, cash_
 PATCH  /api/transfers/swaps/:id    { action: accept|reject|counter|withdraw, counter_cash }
 ```
 
-### Loans
+### Rider Loans
 ```
 GET   /api/loans
-GET   /api/loans/my
 POST  /api/loans                  { rider_id, from_team_id, loan_fee, end_season, buy_option_price }
 PATCH /api/loans/:id              { action: accept|reject }
-POST  /api/loans/:id/repay        { amount }
+```
+
+### Finance Loans
+```
+GET   /api/finance/loans
+POST  /api/finance/loans          { loan_type, amount }
+POST  /api/finance/loans/:id/repay { amount }
 ```
 
 ### Teams & Managers

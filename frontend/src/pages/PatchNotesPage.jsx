@@ -2,6 +2,20 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.7",
+    date: "2026-04-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Finance-siden kan igen oprette manager-lån uden at kollidere med rider-låneflowet",
+          "Finance-lån og rider-lån kører nu på adskilte API-routes, så lån og lejeaftaler ikke blander domæner",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.6",
     date: "2026-04-21",
     label: "Beta",
@@ -197,7 +211,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.6");
+  const [expanded, setExpanded] = useState("1.7");
 
   return (
     <div className="max-w-2xl mx-auto">

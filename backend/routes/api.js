@@ -3,6 +3,7 @@
  * ==========================================
  * Express router covering:
  *   /api/auctions   — create, bid, list, finalize
+ *   /api/finance    — manager loans and balance flows
  *   /api/transfers  — list, offer, negotiate
  *   /api/teams      — team info, squad, finances
  *   /api/admin      — season, races, overrides
@@ -1870,10 +1871,12 @@ router.post("/admin/races", requireAdmin, async (req, res) => {
 });
 
 
-// ── Loan Routes ───────────────────────────────────────────────────────────────
+// ── Finance Loan Routes ───────────────────────────────────────────────────────
 
-// GET /api/loans/my — hent egne lån + konfiguration
-router.get("/loans/my", requireAuth, async (req, res) => {
+// Separate finance loans from rider loan agreements to keep one canonical path per domain.
+
+// GET /api/finance/loans — hent egne finanslån + konfiguration
+router.get("/finance/loans", requireAuth, async (req, res) => {
   try {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     const [loansRes, configs, debt] = await Promise.all([
@@ -1890,8 +1893,8 @@ router.get("/loans/my", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/loans — optag nyt lån
-router.post("/loans", requireAuth, async (req, res) => {
+// POST /api/finance/loans — optag nyt finanslån
+router.post("/finance/loans", requireAuth, async (req, res) => {
   try {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     const { loan_type, amount } = req.body;
@@ -1904,8 +1907,8 @@ router.post("/loans", requireAuth, async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// POST /api/loans/:id/repay — betal rate på lån
-router.post("/loans/:id/repay", requireAuth, async (req, res) => {
+// POST /api/finance/loans/:id/repay — betal rate på finanslån
+router.post("/finance/loans/:id/repay", requireAuth, async (req, res) => {
   try {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     const { amount } = req.body;
