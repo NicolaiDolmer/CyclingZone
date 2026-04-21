@@ -20,6 +20,10 @@ import {
   isAuctionExpired,
 } from "../lib/auctionEngine.js";
 import {
+  finalizeAuctionById,
+  finalizeExpiredAuctions as finalizeExpiredAuctionsShared,
+} from "../lib/auctionFinalization.js";
+import {
   createLoan,
   repayLoan,
   getLoanConfig,
@@ -188,6 +192,18 @@ async function notifyTeamOwner(teamId, type, title, message, relatedId = null) {
     .single();
   if (team?.user_id) {
     await notify(team.user_id, type, title, message, relatedId);
+  }
+}
+
+async function awardTeamOwnerXP(teamId, action) {
+  if (!teamId) return;
+  const { data: team } = await supabase
+    .from("teams")
+    .select("user_id")
+    .eq("id", teamId)
+    .single();
+  if (team?.user_id) {
+    await awardXP(team.user_id, action);
   }
 }
 
@@ -478,180 +494,31 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
   });
 });
 
-// POST /api/auctions/:id/finalize — complete auction (called by cron)
+// POST /api/auctions/:id/finalize — complete one auction via shared finalizer
 router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
-  const { data: auction } = await supabase
-    .from("auctions")
-    .select("*, rider:rider_id(*)")
-    .eq("id", req.params.id)
-    .single();
+  const result = await finalizeAuctionById({
+    supabase,
+    auctionId: req.params.id,
+    notifyTeamOwner,
+    logActivity,
+    awardXP: awardTeamOwnerXP,
+  });
 
-  if (!auction) return res.status(404).json({ error: "Auction not found" });
-  if (auction.status === "completed") {
-    return res.status(400).json({ error: "Already completed" });
+  if (!result.ok) {
+    if (result.code === "not_found") {
+      return res.status(404).json({ error: "Auction not found" });
+    }
+    if (result.code === "already_completed") {
+      return res.status(400).json({ error: "Already completed" });
+    }
+    return res.status(400).json({ error: "Auction is not active" });
   }
 
-  // Fetch bank team once (needed for guaranteed sales)
-  const { data: bankTeam } = await supabase
-    .from("teams")
-    .select("id, balance")
-    .eq("is_bank", true)
-    .single();
-
-  if (auction.current_bidder_id) {
-    // Check squad size limit for buyer
-    const { data: buyerTeam } = await supabase
-      .from("teams").select("division").eq("id", auction.current_bidder_id).single();
-    const buyerDiv = buyerTeam?.division || 3;
-    const maxRiders = SQUAD_LIMITS[buyerDiv]?.max || 10;
-    const { count: currentCount } = await supabase
-      .from("riders").select("id", { count: "exact", head: true })
-      .eq("team_id", auction.current_bidder_id);
-    const { count: pendingCount } = await supabase
-      .from("riders").select("id", { count: "exact", head: true })
-      .eq("pending_team_id", auction.current_bidder_id);
-    const totalAfter = (currentCount || 0) + (pendingCount || 0) + 1;
-
-    if (totalAfter > maxRiders) {
-      await supabase.from("auctions")
-        .update({ status: "completed", actual_end: new Date().toISOString() })
-        .eq("id", auction.id);
-      await notifyTeamOwner(auction.current_bidder_id, "auction_lost",
-        "Auktion annulleret — hold fuldt",
-        `Dit hold (Div ${buyerDiv}) kan max have ${maxRiders} ryttere. ${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages.`,
-        auction.id);
-      return res.json({ success: false, reason: "squad_full" });
-    }
-
-    // Check transfer window
-    const { data: tw } = await supabase
-      .from("transfer_windows").select("status")
-      .order("created_at", { ascending: false }).limit(1).single();
-    const windowOpen = tw?.status === "open";
-
-    // Transfer rider — immediately if window open, else set pending
-    if (windowOpen) {
-      await supabase.from("riders").update({
-        team_id: auction.current_bidder_id,
-        pending_team_id: null,
-        salary: Math.ceil(auction.current_price * 0.1),
-      }).eq("id", auction.rider.id);
-    } else {
-      await supabase.from("riders").update({
-        pending_team_id: auction.current_bidder_id,
-        salary: Math.ceil(auction.current_price * 0.1),
-      }).eq("id", auction.rider.id);
-    }
-
-    // Deduct from buyer
-    const { data: buyer } = await supabase
-      .from("teams")
-      .select("balance")
-      .eq("id", auction.current_bidder_id)
-      .single();
-
-    await supabase.from("teams")
-      .update({ balance: buyer.balance - auction.current_price })
-      .eq("id", auction.current_bidder_id);
-
-    // Credit seller — only if seller actually owned the rider (not AI/free agent)
-    const sellerOwned = auction.rider?.team_id === auction.seller_team_id ||
-                        (auction.rider && !auction.rider.team_id && auction.seller_team_id);
-    const { data: seller } = await supabase
-      .from("teams")
-      .select("balance")
-      .eq("id", auction.seller_team_id)
-      .single();
-
-    await supabase.from("teams")
-      .update({ balance: seller.balance + auction.current_price })
-      .eq("id", auction.seller_team_id);
-
-    // Finance logs
-    await supabase.from("finance_transactions").insert([
-      {
-        team_id: auction.current_bidder_id,
-        type: "transfer_out",
-        amount: -auction.current_price,
-        description: `Købt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
-      },
-      {
-        team_id: auction.seller_team_id,
-        type: "transfer_in",
-        amount: auction.current_price,
-        description: `Solgt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
-      },
-    ]);
-
-    // Notify winner and seller
-    // Award XP
-    const { data: winnerUser } = await supabase.from("teams").select("user_id").eq("id", auction.current_bidder_id).single();
-    if (winnerUser) awardXP(winnerUser.user_id, "auction_won").catch(() => {});
-    const { data: sellerUser } = await supabase.from("teams").select("user_id").eq("id", auction.seller_team_id).single();
-    if (sellerUser) awardXP(sellerUser.user_id, "auction_sold").catch(() => {});
-
-    await notifyTeamOwner(auction.current_bidder_id, "auction_won",
-      "Du vandt auktionen! 🎉",
-      `${auction.rider.firstname} ${auction.rider.lastname} er nu på dit hold for ${auction.current_price} pts`,
-      auction.id);
-
-    // Log to activity feed
-    const { data: winnerTeam } = await supabase.from("teams").select("name").eq("id", auction.current_bidder_id).single();
-    await logActivity("auction_won", {
-      team_id: auction.current_bidder_id,
-      team_name: winnerTeam?.name,
-      rider_id: auction.rider.id,
-      rider_name: `${auction.rider.firstname} ${auction.rider.lastname}`,
-      amount: auction.current_price,
-    });
-
-    await notifyTeamOwner(auction.seller_team_id, "auction_won",
-      "Auktion afsluttet",
-      `${auction.rider.firstname} ${auction.rider.lastname} solgt for ${auction.current_price} pts`,
-      auction.id);
-  } else if (auction.is_guaranteed_sale && bankTeam) {
-    // No human bids — guaranteed sale: sell to bank at guaranteed_price
-    const salePrice = auction.guaranteed_price;
-
-    await supabase.from("riders").update({
-      team_id: bankTeam.id,
-      pending_team_id: null,
-      salary: 0,
-    }).eq("id", auction.rider.id);
-
-    // Credit seller
-    const { data: seller } = await supabase
-      .from("teams").select("balance").eq("id", auction.seller_team_id).single();
-    await supabase.from("teams")
-      .update({ balance: seller.balance + salePrice })
-      .eq("id", auction.seller_team_id);
-
-    // Finance log
-    await supabase.from("finance_transactions").insert({
-      team_id: auction.seller_team_id,
-      type: "transfer_in",
-      amount: salePrice,
-      description: `Garanteret banksalg: ${auction.rider.firstname} ${auction.rider.lastname}`,
-    });
-
-    await notifyTeamOwner(auction.seller_team_id, "auction_won",
-      "Rytter solgt til banken",
-      `${auction.rider.firstname} ${auction.rider.lastname} er solgt til Banken for ${salePrice} CZ$ (garanteret pris)`,
-      auction.id);
-  } else {
-    // No bids — notify seller
-    await notifyTeamOwner(auction.seller_team_id, "auction_lost",
-      "Auktion udløb uden bud",
-      `Ingen bød på ${auction.rider.firstname} ${auction.rider.lastname}`,
-      auction.id);
+  if (result.code === "squad_full") {
+    return res.json({ success: false, reason: "squad_full" });
   }
 
-  await supabase.from("auctions").update({
-    status: "completed",
-    actual_end: new Date().toISOString(),
-  }).eq("id", auction.id);
-
-  res.json({ success: true });
+  res.json({ success: true, result });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1633,23 +1500,20 @@ router.get("/teams/my", requireAuth, async (req, res) => {
 
 // ── Admin: Seasons & Races ────────────────────────────────────────────────────
 
-// GET /api/admin/finalize-expired-auctions — called by cron
+// POST /api/admin/finalize-expired-auctions — admin bulk finalizer via shared logic
 router.post("/admin/finalize-expired-auctions", requireAdmin, async (req, res) => {
-  const { data: expired } = await supabase
-    .from("auctions")
-    .select("id")
-    .in("status", ["active", "extended"])
-    .lt("calculated_end", new Date().toISOString());
+  const results = await finalizeExpiredAuctionsShared({
+    supabase,
+    notifyTeamOwner,
+    logActivity,
+    awardXP: awardTeamOwnerXP,
+    now: new Date(),
+  });
 
-  const results = [];
-  for (const auction of (expired || [])) {
-    try {
-      const fakeReq = { params: { id: auction.id }, team: req.team, user: req.user };
-      // Reuse finalize logic inline
-      results.push(auction.id);
-    } catch (e) { /* continue */ }
-  }
-  res.json({ finalized: results.length, results });
+  res.json({
+    finalized: results.filter(result => result.ok).length,
+    results,
+  });
 });
 
 router.post("/admin/seasons", requireAdmin, async (req, res) => {

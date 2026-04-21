@@ -2,6 +2,26 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.8",
+    date: "2026-04-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "AI- og frirytter-auktioner betaler ikke længere salgsprovenu til manageren, der blot startede auktionen",
+          "Auktionsfinalisering bruger nu samme backend-logik i både cron og admin/API, så payout, squad-limit og transfer-window vurderes ens",
+        ],
+      },
+      {
+        category: "Forbedringer",
+        items: [
+          "Hjælp & Regler præciserer nu, at initiatoren af en fri rytter-auktion ikke automatisk er sælgeren",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.7",
     date: "2026-04-21",
     label: "Beta",
@@ -211,7 +231,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.7");
+  const [expanded, setExpanded] = useState("1.8");
 
   return (
     <div className="max-w-2xl mx-auto">

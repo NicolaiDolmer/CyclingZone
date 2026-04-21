@@ -29,7 +29,7 @@ const SECTIONS = [
     content: [
       {
         title: "Hvad er auktioner?",
-        text: "Auktioner bruges primært til at købe frie ryttere (ryttere uden hold). Du sætter en rytter til auktion, alle managers kan byde, og højeste bud vinder. Du kan også sætte dine egne ryttere til auktion.",
+        text: "Auktioner bruges primært til at købe frie ryttere (ryttere uden hold). Du sætter en rytter til auktion, alle managers kan byde, og højeste bud vinder. Du kan også sætte dine egne ryttere til auktion. Starter du en auktion på en fri eller AI-ejet rytter, er du kun initiator af auktionen — du får ikke salgsprovenuet, medmindre rytteren faktisk var på dit hold.",
       },
       {
         title: "Sådan starter du en auktion",
@@ -50,7 +50,7 @@ const SECTIONS = [
       },
       {
         title: "Holdstørrelse og auktioner",
-        text: "Holdgrænser gælder stadig per division. Systemet forsøger at blokere ugyldige markedstræk, og i beta kan admin stadig være nødt til at rydde op manuelt hvis en handel eller auktion skaber en ugyldig holdstørrelse.",
+        text: "Holdgrænser gælder stadig per division. Systemet tjekker ved auktionsafslutning, at vinderen stadig har plads på holdet, og hvis transfervinduet er lukket, bliver rytteren markeret til næste vindueåbning i stedet for at skifte med det samme.",
       },
     ],
   },

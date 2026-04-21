@@ -15,6 +15,7 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { finalizeExpiredAuctions as finalizeExpiredAuctionsShared } from "./lib/auctionFinalization.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, '../.env') });
 
@@ -23,120 +24,28 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+const XP_REWARDS = {
+  auction_won: 15,
+  auction_sold: 10,
+};
+
 // ─── Auction Finalizer ────────────────────────────────────────────────────────
 
 async function finalizeExpiredAuctions() {
-  const now = new Date().toISOString();
+  const results = await finalizeExpiredAuctionsShared({
+    supabase,
+    notifyTeamOwner,
+    logActivity,
+    awardXP: awardTeamOwnerXP,
+    now: new Date(),
+    onError: ({ auctionId, error }) => {
+      console.error(`  ❌ Failed to finalize auction ${auctionId}:`, error.message);
+    },
+  });
 
-  const { data: expired } = await supabase
-    .from("auctions")
-    .select(`id, current_price, seller_team_id, current_bidder_id,
-      rider:rider_id(id, firstname, lastname)`)
-    .in("status", ["active", "extended"])
-    .lte("calculated_end", now);
+  if (!results.length) return;
 
-  if (!expired?.length) return;
-
-  console.log(`⚡ Finalizing ${expired.length} expired auctions...`);
-
-  for (const auction of expired) {
-    try {
-      await finalizeAuction(auction);
-    } catch (err) {
-      console.error(`  ❌ Failed to finalize auction ${auction.id}:`, err.message);
-    }
-  }
-}
-
-async function finalizeAuction(auction) {
-  const rider = auction.rider;
-
-  if (auction.current_bidder_id) {
-    // ── Winner found ──────────────────────────────────────────────────────────
-    const price = auction.current_price;
-
-    // Check buyer still has enough balance
-    const { data: buyer } = await supabase
-      .from("teams")
-      .select("id, name, balance, user_id")
-      .eq("id", auction.current_bidder_id)
-      .single();
-
-    if (!buyer || buyer.balance < price) {
-      // Buyer can't afford — cancel auction
-      await supabase.from("auctions")
-        .update({ status: "cancelled", actual_end: new Date().toISOString() })
-        .eq("id", auction.id);
-
-      await notifyUser(buyer?.user_id, "auction_lost",
-        "Auktion annulleret",
-        `Du havde ikke råd til ${rider.firstname} ${rider.lastname}. Saldo: ${buyer?.balance || 0} pts`);
-
-      await notifyTeamOwner(auction.seller_team_id, "auction_lost",
-        "Auktion annulleret",
-        `Køber manglede balance. ${rider.firstname} ${rider.lastname} returneret.`);
-      return;
-    }
-
-    // Transfer rider
-    await supabase.from("riders").update({
-      team_id: auction.current_bidder_id,
-      salary: Math.max(1, Math.ceil(price * 0.10)),
-    }).eq("id", rider.id);
-
-    // Deduct from buyer
-    await supabase.from("teams")
-      .update({ balance: buyer.balance - price })
-      .eq("id", auction.current_bidder_id);
-
-    // Credit seller
-    const { data: seller } = await supabase
-      .from("teams").select("balance").eq("id", auction.seller_team_id).single();
-    await supabase.from("teams")
-      .update({ balance: seller.balance + price })
-      .eq("id", auction.seller_team_id);
-
-    // Finance logs
-    await supabase.from("finance_transactions").insert([
-      {
-        team_id: auction.current_bidder_id,
-        type: "transfer_out",
-        amount: -price,
-        description: `Købt ${rider.firstname} ${rider.lastname} på auktion`,
-      },
-      {
-        team_id: auction.seller_team_id,
-        type: "transfer_in",
-        amount: price,
-        description: `Solgt ${rider.firstname} ${rider.lastname} på auktion`,
-      },
-    ]);
-
-    // Notifications
-    await notifyTeamOwner(auction.current_bidder_id, "auction_won",
-      `${rider.firstname} ${rider.lastname} er din! 🎉`,
-      `Du vandt auktionen for ${price.toLocaleString()} pts`);
-
-    await notifyTeamOwner(auction.seller_team_id, "auction_won",
-      "Auktion afsluttet",
-      `${rider.firstname} ${rider.lastname} solgt for ${price.toLocaleString()} pts`);
-
-    console.log(`  ✅ ${rider.firstname} ${rider.lastname} → team ${buyer.name} for ${price} pts`);
-
-  } else {
-    // ── No bids ───────────────────────────────────────────────────────────────
-    await notifyTeamOwner(auction.seller_team_id, "auction_lost",
-      "Auktion udløb",
-      `Ingen bød på ${rider.firstname} ${rider.lastname}`);
-
-    console.log(`  ➖ No bids for ${rider.firstname} ${rider.lastname}`);
-  }
-
-  // Mark completed
-  await supabase.from("auctions").update({
-    status: "completed",
-    actual_end: new Date().toISOString(),
-  }).eq("id", auction.id);
+  console.log(`⚡ Finalized ${results.filter(result => result.ok).length}/${results.length} expired auctions`);
 }
 
 // ─── Debt Warnings ────────────────────────────────────────────────────────────
@@ -162,15 +71,61 @@ async function checkDebtWarnings() {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function notifyTeamOwner(teamId, type, title, message) {
+async function notifyTeamOwner(teamId, type, title, message, relatedId = null) {
   const { data: team } = await supabase
     .from("teams").select("user_id").eq("id", teamId).single();
-  if (team?.user_id) await notifyUser(team.user_id, type, title, message);
+  if (team?.user_id) await notifyUser(team.user_id, type, title, message, relatedId);
 }
 
-async function notifyUser(userId, type, title, message) {
+async function notifyUser(userId, type, title, message, relatedId = null) {
   if (!userId) return;
-  await supabase.from("notifications").insert({ user_id: userId, type, title, message });
+  await supabase.from("notifications").insert({ user_id: userId, type, title, message, related_id: relatedId });
+}
+
+async function awardUserXP(userId, action) {
+  if (!userId || !XP_REWARDS[action]) return;
+  const amount = XP_REWARDS[action];
+  const { data: user, error } = await supabase
+    .from("users")
+    .select("xp, level")
+    .eq("id", userId)
+    .single();
+
+  if (error || !user) return;
+
+  const newXp = (user.xp || 0) + amount;
+  const newLevel = Math.min(50, Math.floor(newXp / 100) + 1);
+
+  await supabase.from("users").update({ xp: newXp, level: newLevel }).eq("id", userId);
+  await supabase.from("xp_log").insert({ user_id: userId, amount, reason: action });
+}
+
+async function awardTeamOwnerXP(teamId, action) {
+  if (!teamId) return;
+  const { data: team, error } = await supabase
+    .from("teams")
+    .select("user_id")
+    .eq("id", teamId)
+    .single();
+
+  if (error || !team?.user_id) return;
+  await awardUserXP(team.user_id, action);
+}
+
+async function logActivity(type, data = {}) {
+  try {
+    await supabase.from("activity_feed").insert({
+      type,
+      team_id: data.team_id || null,
+      team_name: data.team_name || null,
+      rider_id: data.rider_id || null,
+      rider_name: data.rider_name || null,
+      amount: data.amount || null,
+      meta: data.meta || {},
+    });
+  } catch (error) {
+    // Activity feed must never block auction finalization.
+  }
 }
 
 // ─── Scheduler ───────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Bud-placering med auto-forlængelse (10 min ved bud nær slut)
 - Garanteret salg (startpris = 50% af UCI-pris)
 - Auktionsfinalisering via cron (60s interval)
+- Delt auktionsfinalisering for cron + admin/API, så payout og transfer-window følger samme runtime-path
 - Auktionshistorik-side
 - Discord-notifikationer ved sæsonevents
 
@@ -95,9 +96,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Achievements tæller ikke korrekt
 - Dropdown tekst usynlig (Tailwind farvekonflikt i select-elementer)
 - Låneoprettelsesgebyr fratrækkes kun ved accept, **ikke** løbende
-- AI auktion bug: provenu ved salg af ikke-ejet rytter går til forkert manager
 - Ranglisten vises ikke korrekt på dashboard/forsiden
-- Squad limit håndhæves ikke korrekt
+- Squad limit håndhæves ikke korrekt i alle flows
 
 ---
 
