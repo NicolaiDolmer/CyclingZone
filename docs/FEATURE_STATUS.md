@@ -54,7 +54,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Sæson & Løb
 - Sæsonoversigt med race-kalender
 - Løbsresultater-import (Excel-upload i admin)
-- Pointtavle (season_standings) opdateres ved import
+- Pointtavle (season_standings) recalculeres fra `race_results`
 - Opryknings/nedrykningslogik (top/bund 2 per division)
 - Sæsonpreview-side
 - Races-side
@@ -74,7 +74,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Import af løbsresultater (xlsx upload)
 - UCI points sync (Google Sheets CSV)
 - Override rider (team/stats)
-- Sæsonoprettelse og sæsonstart
+- Sæsonoprettelse, sæsonstart og sæsonslut-routes i backend
+- Løbsoprettelse via admin-backend route
 - Season-end preview endpoint
 
 ### UI / Misc
@@ -91,8 +92,6 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 🔴 Broken / Kendte bugs
 
-- `POST /api/admin/seasons/:id/end` udfører **ikke** faktisk sæsonafslutning (preview virker, execution mangler)
-- Season standings oprettes **ikke** automatisk ved sæsonstart — skal oprettes manuelt
 - Achievements tæller ikke korrekt
 - Dropdown tekst usynlig (Tailwind farvekonflikt i select-elementer)
 - Låneoprettelsesgebyr fratrækkes kun ved accept, **ikke** løbende
@@ -107,14 +106,14 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 - [ ] Double-confirmation flow — begge parter godkender endeligt inden deal lukkes
 - [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
+- [ ] Første live beta-verifikation af `season start -> result approval -> season end`
+- [ ] Verificér dashboard/rangliste mod ny standings-recalculation efter første live sæsonflow
 
 ---
 
 ## 📋 Planlagt (backlog)
 
 - Aktiv feature- og forbedringsbacklog vedligeholdes i `docs/PRODUCT_BACKLOG.md`
-- Automatisk oprettelse af season_standings ved sæsonstart
-- Egentlig sæsonslut-udførelse (ikke kun preview)
 - Landekode-mapping til flag-visning
 - Team ID-mapping fra PCM
 - 3-sæsoners glidende gennemsnit for rangliste
@@ -126,6 +125,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 | Commit | Feature |
 |--------|---------|
+| 1571879 | Restore admin season flow, standings recalculation og docs sync |
 | a428083 | Guaranteed sale — sælg rytter til bank til 50% |
 | af7257f | Withdraw på modtilbud + sælger-notifikation |
 | 8dbb7f2 | manager_name på holds (signup, profil, holdside) |
