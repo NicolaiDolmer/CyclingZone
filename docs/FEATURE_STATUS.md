@@ -125,6 +125,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 | Commit | Feature |
 |--------|---------|
+| 667827e | Scope current-season standings på Dashboard og Hold-siden med 0-point fallback |
 | 1571879 | Restore admin season flow, standings recalculation og docs sync |
 | a428083 | Guaranteed sale — sælg rytter til bank til 50% |
 | af7257f | Withdraw på modtilbud + sælger-notifikation |
