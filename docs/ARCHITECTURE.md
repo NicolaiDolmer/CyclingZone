@@ -125,6 +125,8 @@ GET  /api/transfer-window                 → { open, status, season_id }
 
 ### Admin
 ```
+POST /api/admin/seasons                   { number, race_days_total }
+POST /api/admin/races                     { season_id, name, race_type, stages, start_date, prize_pool, race_class? }
 POST /api/admin/import-results            multipart: file + race_id
 POST /api/admin/seasons/:id/start
 POST /api/admin/seasons/:id/end
@@ -138,6 +140,10 @@ GET  /api/admin/season-end-preview/:seasonId
 POST /api/admin/transfer-window/open      { season_id } → { riders_processed }
 POST /api/admin/transfer-window/close     → { success }
 ```
+
+Season flow notes:
+- `POST /api/admin/approve-results` skriver til `race_results` og recalculerer derefter `season_standings` fra persisted data
+- `POST /api/admin/seasons/:id/end` stopper hvis der stadig findes `pending_race_results` for løb i sæsonen
 
 ---
 
@@ -170,7 +176,8 @@ seasons          id, number, status(upcoming|active|completed), start_date,
 races            id, season_id, name, race_type(single|stage_race), stages,
                  start_date, status(scheduled|active|completed), prize_pool
 race_results     id, race_id, stage_number, result_type(stage|gc|points|mountain|young|team),
-                 rank, rider_id, team_id, finish_time, points_earned, prize_money
+                 rank, rider_id, rider_name, team_id, team_name, finish_time,
+                 points_earned, prize_money
 auctions         id, rider_id, seller_team_id, starting_price, current_price,
                  current_bidder_id, min_increment, requested_start, calculated_end,
                  actual_end, status(active|extended|completed|cancelled),

@@ -59,4 +59,7 @@ Hvis kontrakten ikke kan verificeres:
 ## After
 
 - Opdater relevante current docs hvis runtime-sandheden eller arbejdssituationen er ændret
+- Ved enhver brugerrettet feature eller adfærdsændring: opdater `frontend/src/pages/PatchNotesPage.jsx`
+- Hvis ændringen påvirker regler, flows, FAQ, onboarding eller noget en manager/admin skal vide for at bruge systemet korrekt: opdater `frontend/src/pages/HelpPage.jsx`
+- Hvis `HelpPage.jsx` ikke opdateres ved en feature-ændring, skriv eksplicit hvorfor den ikke er relevant
 - Kør `npm run sync-docs`

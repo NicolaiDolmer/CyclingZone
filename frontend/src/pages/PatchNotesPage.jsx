@@ -2,6 +2,29 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.6",
+    date: "2026-04-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Admin-sæsonflowet er stabiliseret, så sæsoner og løb kan oprettes igen via backend-routes",
+          "Godkendte løbsresultater gemmes nu med korrekt holdtilknytning, så point og præmier følger det rigtige hold",
+          "Sæsonstillingen recalculeres nu fra gemte løbsresultater i stedet for kun inkrementelle writes",
+          "Sæsonafslutning stopper nu, hvis der stadig ligger afventende løbsresultater i sæsonen",
+        ],
+      },
+      {
+        category: "Forbedringer",
+        items: [
+          "Hjælp & Regler er præciseret omkring hvornår sæsonstillingen opdateres",
+          "FAQ er opdateret med svar om result-godkendelse og sæsonafslutning",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.5",
     date: "2026-04-18",
     label: "Beta",
@@ -174,7 +197,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.5");
+  const [expanded, setExpanded] = useState("1.6");
 
   return (
     <div className="max-w-2xl mx-auto">

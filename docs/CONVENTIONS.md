@@ -23,3 +23,9 @@
 
 - Hold docs kompakte og referencevenlige
 - Foretræk små, domæneafgrænsede ændringer frem for brede refactors
+
+## Produktindhold
+
+- `frontend/src/pages/PatchNotesPage.jsx` er den løbende changelog for brugerrettede releases og fixes
+- `frontend/src/pages/HelpPage.jsx` er den løbende forklaring af regler, flows og FAQ
+- Nye features og mærkbare adfærdsændringer skal reviewe begge sider før opgaven betragtes som færdig

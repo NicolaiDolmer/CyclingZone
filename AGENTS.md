@@ -20,4 +20,6 @@
 
 ## Ved afslutning
 - Opdater relevante current docs
+- Opdater `frontend/src/pages/PatchNotesPage.jsx` ved enhver brugerrettet feature eller mærkbar adfærdsændring
+- Opdater `frontend/src/pages/HelpPage.jsx` hvis ændringen påvirker regler, flow, FAQ, onboarding eller admin-brug
 - Kør `npm run sync-docs`

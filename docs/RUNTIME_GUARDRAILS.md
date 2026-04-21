@@ -49,6 +49,13 @@ Stop and switch to investigation if:
 - cron and API implement the same flow differently
 - a spec doc is being treated as implemented behavior
 
+## Release hygiene
+
+- Hvis en ændring er brugerrettet, skal `frontend/src/pages/PatchNotesPage.jsx` opdateres i samme arbejdsgang
+- Hvis en ændring ændrer regler, brugerflow, FAQ, onboarding eller noget spillere/admins skal forstå, skal `frontend/src/pages/HelpPage.jsx` opdateres i samme arbejdsgang
+- En feature-opgave er ikke helt færdig, før Patch Notes og Help er vurderet eksplicit
+- Hvis en af siderne ikke ændres, skal det være et bevidst valg og kunne forklares kort
+
 ## Required deliverables
 
 - root cause

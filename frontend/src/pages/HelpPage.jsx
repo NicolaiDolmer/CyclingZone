@@ -50,7 +50,7 @@ const SECTIONS = [
       },
       {
         title: "Holdstørrelse og auktioner",
-        text: "Hvis du vinder en auktion men dit hold allerede er fuldt (se holdgrænser under Divisioner), annulleres overdragelsen og du får besked.",
+        text: "Holdgrænser gælder stadig per division. Systemet forsøger at blokere ugyldige markedstræk, og i beta kan admin stadig være nødt til at rydde op manuelt hvis en handel eller auktion skaber en ugyldig holdstørrelse.",
       },
     ],
   },
@@ -191,11 +191,15 @@ const SECTIONS = [
       },
       {
         title: "Løb og resultater",
-        text: "Alle managers kan indberette løbsresultater fra PCM via Løbskalender → Indberét resultater. Upload en Excel-fil, match navne og indsend til admin-godkendelse. Præmiepenge beregnes automatisk når admin godkender.",
+        text: "Alle managers kan indberette løbsresultater fra PCM via Løbskalender → Indberét resultater. Upload en Excel-fil, match navne og indsend til admin-godkendelse. Præmiepenge beregnes automatisk når admin godkender, og sæsonstillingen opdateres først derefter.",
       },
       {
         title: "Op- og nedrykning",
         text: "Top 2 i Division 2 og 3 rykker op. Bund 2 i Division 1 og 2 rykker ned. Afgøres automatisk ved sæsonafslutning baseret på sæsonpoint.",
+      },
+      {
+        title: "Hvornår kan en sæson afsluttes?",
+        text: "Admin kan først afslutte en sæson når afventende løbsresultater for sæsonens løb er behandlet. Så længe der ligger indberetninger og venter på godkendelse eller afvisning, stopper sæsonafslutningen.",
       },
     ],
   },
@@ -310,6 +314,14 @@ const FAQ = [
   {
     q: "Hvornår udbetales sponsorpenge?",
     a: "Sponsorpenge udbetales ved sæsonstart. Beløbet afhænger af bestyrelsens tilfredshed: 80%+ giver 120%, under 50% giver 80% af basissponsorat.",
+  },
+  {
+    q: "Hvornår opdateres sæsonstillingen?",
+    a: "Sæsonstillingen opdateres når admin har godkendt løbsresultaterne. Indtil da tæller en indsendt Excel-fil ikke med i ranglisten.",
+  },
+  {
+    q: "Kan admin afslutte sæsonen mens der mangler løbsgodkendelser?",
+    a: "Nej. Afventende løbsresultater skal først godkendes eller afvises, før sæsonafslutningen kan køres.",
   },
   {
     q: "Hvad er bestyrelsestilfredshed?",
