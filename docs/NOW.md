@@ -15,7 +15,7 @@
 ## Drift / Ops
 - AI docs er ryddet op: `RUNTIME_GUARDRAILS.md` + `AI_EXECUTION_STANDARD.md` er nu de eneste regeldocs
 - `scripts/sync-docs.js` er opdateret til lean docs-strukturen og verificeret via bundled Node-runtime
-- Backend har nu `npm test`, som dækker shared market guardrails og skal køres før ændringer i transfer/swap execution paths
+- Backend har nu `npm test`, som dækker shared market guardrails og direkte `finalizeExpiredAuctions` smoke; shared runtime-refactors må ikke deployes uden entrypoint-test
 - Backend season/race admin-contract er genskabt og deployed til Railway
 - Live smoke test bestod for `POST /api/admin/seasons` og `POST /api/admin/races`; testdata blev ryddet op bagefter
 - Finance-lån er skilt fra rider-lån på egne API-routes (`/api/finance/loans`) for at fjerne route-kollisionen på `POST /api/loans`

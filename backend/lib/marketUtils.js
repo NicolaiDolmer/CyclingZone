@@ -8,7 +8,7 @@ export const MIN_RIDERS_FOR_RACE = 8;
 
 const DEFAULT_DIVISION = 3;
 
-function ensureNoError(error) {
+export function ensureNoError(error) {
   if (error) {
     throw new Error(error.message);
   }

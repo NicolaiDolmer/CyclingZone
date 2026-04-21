@@ -2,6 +2,20 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.10",
+    date: "2026-04-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Auktions-cron kan igen starte korrekt på Railway, så udløbne auktioner ikke længere crasher ved bootstrap",
+          "Expired auction-finalisering er nu dækket af en direkte backend-regressionstest, så helper-regressioner bliver fanget før deploy",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.9",
     date: "2026-04-21",
     label: "Beta",
@@ -251,7 +265,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.8");
+  const [expanded, setExpanded] = useState("1.10");
 
   return (
     <div className="max-w-2xl mx-auto">

@@ -48,6 +48,7 @@
 - Runtime writes bruger gyldige DB-typer og constraints
 - Result-godkendelse skriver `team_id` på `race_results`, så standings kan recalculeres fra persisted data
 - Cron-finalisering og manuel auktionsfinalisering giver samme resultat
+- `finalizeExpiredAuctions()` kan køre som no-op uden udløbne auktioner; manglende helper-imports eller andre bootstrap-referencefejl skal fanges før deploy
 - AI-auktionssalg betaler korrekt ejer
 - Rider loans og finance loans kan ikke forveksles
 - Dashboard-rangering bygger på korrekt scope

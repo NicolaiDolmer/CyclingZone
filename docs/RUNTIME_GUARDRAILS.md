@@ -63,4 +63,5 @@ Stop and switch to investigation if:
 - minimal safe fix
 - affected files
 - regression tests
+- ved shared runtime-refactors: mindst én direkte caller-smoke eller regressionstest (`cron`, API eller tilsvarende), ikke kun syntax-check eller helper-tests
 - docs to update

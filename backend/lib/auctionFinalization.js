@@ -1,5 +1,6 @@
 import {
   calculateMarketSalary,
+  ensureNoError,
   expectCount,
   expectMaybeSingle,
   expectMutation,
