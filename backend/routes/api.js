@@ -1072,6 +1072,11 @@ router.post("/loans", requireAuth, async (req, res) => {
   if (existing && existing.length > 0)
     return res.status(400).json({ error: "Rytteren er allerede udlejet eller har et afventende lejeforslag" });
 
+  const borrowerState = await getTeamMarketState(supabase, req.team.id);
+  const proposalSquadViolation = getIncomingSquadViolation(borrowerState);
+  if (proposalSquadViolation)
+    return res.status(400).json({ error: `Dit hold kan max have ${proposalSquadViolation.maxRiders} ryttere i Division ${borrowerState.division || 3}. Lejeaftalen kan ikke oprettes.` });
+
   const { data, error } = await supabase.from("loan_agreements").insert({
     rider_id,
     from_team_id: rider.team_id,
@@ -1116,6 +1121,11 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
 
   // ACCEPT — lending team accepts
   if (action === "accept" && isLender && loan.status === "pending") {
+    const borrowerState = await getTeamMarketState(supabase, loan.to_team_id);
+    const activationSquadViolation = getIncomingSquadViolation(borrowerState);
+    if (activationSquadViolation)
+      return res.status(400).json({ error: `Lejerens hold kan max have ${activationSquadViolation.maxRiders} ryttere i Division ${borrowerState.division || 3}. Lejeaftalen kan ikke aktiveres.` });
+
     // Deduct first season's loan fee from borrower if > 0
     if (loan.loan_fee > 0) {
       const { data: borrower } = await supabase.from("teams").select("balance").eq("id", loan.to_team_id).single();

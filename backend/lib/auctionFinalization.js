@@ -1,10 +1,11 @@
 import {
   calculateMarketSalary,
   ensureNoError,
-  expectCount,
   expectMaybeSingle,
   expectMutation,
   expectSingle,
+  getIncomingSquadViolation,
+  getTeamMarketState,
   getTransferWindowOpen,
   MARKET_SQUAD_LIMITS,
 } from "./marketUtils.js";
@@ -44,12 +45,12 @@ async function finalizeAuctionRecord({
 
   if (auction.current_bidder_id) {
     const price = auction.current_price;
-    const buyer = await expectSingle(
-      supabase
-        .from("teams")
-        .select("id, name, balance, user_id, division")
-        .eq("id", auction.current_bidder_id)
-    );
+    const baseBuyerState = await getTeamMarketState(supabase, auction.current_bidder_id);
+    const buyer = {
+      ...baseBuyerState,
+      squad_limits:
+        squadLimits[baseBuyerState.division || 3] || baseBuyerState.squad_limits,
+    };
 
     if (!buyer || buyer.balance < price) {
       await expectMutation(
@@ -88,22 +89,8 @@ async function finalizeAuctionRecord({
       };
     }
 
-    const maxRiders = squadLimits[buyer.division || 3]?.max || 10;
-    const currentCount = await expectCount(
-      supabase
-        .from("riders")
-        .select("id", { count: "exact", head: true })
-        .eq("team_id", auction.current_bidder_id)
-    );
-    const pendingCount = await expectCount(
-      supabase
-        .from("riders")
-        .select("id", { count: "exact", head: true })
-        .eq("pending_team_id", auction.current_bidder_id)
-    );
-    const totalAfter = currentCount + pendingCount + 1;
-
-    if (totalAfter > maxRiders) {
+    const squadViolation = getIncomingSquadViolation(buyer);
+    if (squadViolation) {
       await expectMutation(
         supabase
           .from("auctions")
@@ -119,7 +106,7 @@ async function finalizeAuctionRecord({
         auction.current_bidder_id,
         "auction_lost",
         "Auktion annulleret — hold fuldt",
-        `Dit hold (Div ${buyer.division || 3}) kan max have ${maxRiders} ryttere. ${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages.`,
+        `Dit hold (Div ${buyer.division || 3}) kan max have ${squadViolation.maxRiders} ryttere. ${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages.`,
         auction.id
       );
 

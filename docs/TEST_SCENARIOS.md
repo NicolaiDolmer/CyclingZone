@@ -23,6 +23,8 @@
 
 ### Loans
 - Loan oprettes korrekt
+- Loan oprettes ikke hvis låneren allerede rammer squad limit via egne ryttere, pending handler eller aktive indlån
+- Loan kan ikke aktiveres hvis lånerens squad-limit er fyldt siden forslaget blev sendt
 - Repayment virker
 
 ### Season Flow

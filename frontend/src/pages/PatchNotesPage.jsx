@@ -2,6 +2,27 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.12",
+    date: "2026-04-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Squad-limit tæller nu også aktive lejeaftaler med i den delte market-state, så lån, transfers og auktioner vurderer holdstørrelse ud fra samme runtime-sandhed",
+          "Lejeforslag, låneaktivering og auktionsfinalisering stopper nu korrekt, hvis holdet allerede er fyldt op af indgående handler eller lånte ryttere",
+        ],
+      },
+      {
+        category: "Forbedringer",
+        items: [
+          "Dashboardets holdstørrelse-advarsel tæller nu både indgående handler og aktive lejede ryttere med, så UI og backend viser samme squad-status",
+          "Hjælp & Regler præciserer nu, at lejede ryttere tæller mod din divisions holdgrænse",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.11",
     date: "2026-04-21",
     label: "Beta",
@@ -279,7 +300,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.10");
+  const [expanded, setExpanded] = useState("1.12");
 
   return (
     <div className="max-w-2xl mx-auto">

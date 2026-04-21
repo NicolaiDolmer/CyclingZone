@@ -27,6 +27,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Garanteret salg (startpris = 50% af UCI-pris)
 - Auktionsfinalisering via cron (60s interval)
 - Delt auktionsfinalisering for cron + admin/API, så payout og transfer-window følger samme runtime-path
+- Squad-limit ved auktionsfinalisering tæller også ventende handler og aktive indlån
 - Auktionshistorik-side
 - Discord-notifikationer ved sæsonevents
 
@@ -42,6 +43,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Lån
 - Manager-oprettede lån (short/long)
 - Accept / afvis lånetilbud
+- Lejeforslag og låneaktivering stopper nu hvis lånerens squad-limit allerede er brugt op
 - Låneoversigt (aktive + egne)
 - Låneafdrag
 - Auto-nødlån ved manglende løn
@@ -99,9 +101,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Achievements tæller ikke korrekt
 - Dropdown tekst usynlig (Tailwind farvekonflikt i select-elementer)
 - Låneoprettelsesgebyr fratrækkes kun ved accept, **ikke** løbende
-- Squad limit håndhæves ikke korrekt i alle flows
 
----
+--- 
 
 ## 🚧 I gang
 

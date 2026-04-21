@@ -33,6 +33,8 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
+  const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
+  const [activeLoanCount, setActiveLoanCount] = useState(0);
   const [allAuctions, setAllAuctions] = useState([]);
   const [nextRaces, setNextRaces] = useState([]);
   const [standings, setStandings] = useState([]);
@@ -58,7 +60,7 @@ export default function DashboardPage() {
       .eq("status", "active")
       .single();
 
-    const [teamsRes, ridersRes, auctionsRes, racesRes, standingsRes, boardRes, offersRes] = await Promise.all([
+    const [teamsRes, ridersRes, pendingIncomingRes, loansInRes, auctionsRes, racesRes, standingsRes, boardRes, offersRes] = await Promise.all([
       supabase.from("teams")
         .select("id, name, division, is_ai")
         .eq("is_ai", false)
@@ -66,6 +68,14 @@ export default function DashboardPage() {
         .order("name"),
       supabase.from("riders").select("id, uci_points, salary, is_u25, pending_team_id")
         .eq("team_id", teamData.id),
+      supabase.from("riders")
+        .select("id", { count: "exact", head: true })
+        .eq("pending_team_id", teamData.id)
+        .neq("team_id", teamData.id),
+      supabase.from("loan_agreements")
+        .select("id", { count: "exact", head: true })
+        .eq("to_team_id", teamData.id)
+        .eq("status", "active"),
       supabase.from("auctions")
         .select("id, current_price, calculated_end, status, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname)")
         .in("status", ["active", "extended"]),
@@ -85,6 +95,8 @@ export default function DashboardPage() {
     ]);
 
     setRiders(ridersRes.data || []);
+    setPendingIncomingCount(pendingIncomingRes.count || 0);
+    setActiveLoanCount(loansInRes.count || 0);
     setAllAuctions(auctionsRes.data || []);
     setNextRaces(racesRes.data || []);
     setBoard(boardRes.data);
@@ -136,7 +148,7 @@ export default function DashboardPage() {
 
   // Squad warnings
   const limits = SQUAD_LIMITS[team?.division] || SQUAD_LIMITS[3];
-  const riderCount = riders.length;
+  const riderCount = riders.length + pendingIncomingCount + activeLoanCount;
   const squadWarning = riderCount > limits.max ? { type: "over", msg: `Hold er for stort — max ${limits.max} i Division ${team?.division}. Sælg ${riderCount - limits.max} ryttere.`, color: "red" }
     : riderCount < limits.min ? { type: "under", msg: `Hold er for lille — min ${limits.min} i Division ${team?.division}. Køb ${limits.min - riderCount} ryttere mere.`, color: "orange" }
     : null;
@@ -147,7 +159,7 @@ export default function DashboardPage() {
     .sort((a, b) => b.total_points - a.total_points).slice(0, 5);
 
   const totalSalary = riders.reduce((s, r) => s + (r.salary || 0), 0);
-  const pendingIncoming = riders.filter(r => r.pending_team_id === team?.id).length;
+  const pendingIncoming = pendingIncomingCount;
 
   return (
     <div className="max-w-6xl mx-auto">

@@ -52,10 +52,25 @@
 - Auktionsvarighed: **4 timer** (eller vinduesluk — hvad der sker først)
 - Bud inden for de sidste **10 minutter** → forlænger med 10 min fra budtidspunkt
 - Forlænget slut kan **ikke** overskride vinduesluk samme dag
-- **Guaranteed sale**: Startpris = 50% af rytterens UCI-pris. Sikrer at nogen køber.
+- **Guaranteed sale**: Startpris = 50% af rytterens UCI-pris. Banksalg ved ingen bud gælder kun, hvis rytteren faktisk var på sælgerens hold.
 
 ### Minimumsforøgelse
 - `min_increment` felt på auktionen (hardcoded i API ved oprettelse)
+
+### Roller, ejerskab og provenu
+- `seller_team_id` er auktions-initiatoren ved oprettelse, ikke nødvendigvis den endelige økonomiske sælger
+- En **ægte sælger** er kun et hold, der faktisk ejer rytteren ved auktionsafslutning
+- Hvis en manager starter auktion på en fri eller AI-ejet rytter, får initiatoren **ikke** salgsprovenu og optjener ikke `auction_sold` XP
+- Ved afslutning ryddes `seller_team_id` på ikke-ejede auktionsflows, så historik og summer ikke viser et falskt salg
+
+### Afslutningsregler
+- Vinderens saldo trækkes altid ved gyldig afslutning
+- Sælger krediteres kun, hvis rytteren faktisk var på sælgerens hold
+- Guaranteed sale til banken sker kun for en ejet rytter med `is_guaranteed_sale = true` og ingen menneskelige bud
+- Hvis transfervinduet er lukket ved auktionsafslutning, sættes rytteren på `pending_team_id` i stedet for at skifte hold med det samme
+- Squad limit kontrolleres ved auktionsafslutning, ikke kun ved budgivning
+- Squad-limit vurderes ud fra current riders + `pending_team_id` + aktive indlån (`loan_agreements` hvor holdet er låner)
+- Hvis vinderen ikke længere har råd eller ikke har plads på holdet, gennemføres ingen overdragelse og ingen forkert payout må ske
 
 ---
 
@@ -65,6 +80,7 @@
 - Når ÅBENT: handlers aktiveres øjeblikkeligt. Når LUKKET: 403 returneres på alle opret/acceptér-endpoints.
 - Auktioner: Når LUKKET → rider sættes som `pending_team_id`, aktiveres ved næste åbning af vinduet.
 - Transfers/swaps/lån: Helt blokeret (403) når vinduet er lukket.
+- Aktive lejeaftaler tæller mod lånerens holdgrænse, så squad-limit checks på markedet inkluderer både ventende handler og lånte ryttere
 - Reject, withdraw og cancel-handlinger er tilladt uanset vinduesstatus.
 - Swaps og lån følger samme vindueslogik
 

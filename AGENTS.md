@@ -10,6 +10,8 @@
 - `docs/DOMAIN_REFERENCE.md`
 - `docs/FEATURE_STATUS.md`
 - `docs/CONVENTIONS.md`
+- `docs/TEST_SCENARIOS.md`
+- `docs/DEPLOYMENT.md`
 
 ## Regler
 - Runtime > docs

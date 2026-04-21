@@ -24,6 +24,8 @@ Source of Truth:
 - docs/ARCHITECTURE.md (kun hvis relevant)
 - docs/FEATURE_STATUS.md (kun hvis relevant)
 - docs/CONVENTIONS.md (kun hvis relevant)
+- docs/TEST_SCENARIOS.md (kun hvis relevant for verifikation)
+- docs/DEPLOYMENT.md (kun hvis deployment eller live-verifikation er relevant)
 
 ## Required pre-code check
 

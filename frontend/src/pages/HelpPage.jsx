@@ -92,6 +92,10 @@ const SECTIONS = [
         title: "Transfervindue",
         text: "Transfers, byttehandler og endelige bekræftelser kan kun laves mens transfervinduet er åbent. Admin åbner og lukker vinduet manuelt, og markedshandler der ikke længere opfylder saldo- eller holdkrav bliver annulleret i stedet for at gå igennem.",
       },
+      {
+        title: "Lejeaftaler og holdgrænser",
+        text: "Lejede ryttere tæller med i din holdstørrelse på samme måde som egne ryttere og indgående handler. Systemet tjekker derfor både når du foreslår en lejeaftale, når udlejeren aktiverer den, og når andre handler afsluttes, at dit hold stadig holder sig inden for divisionens min/max-grænser.",
+      },
     ],
   },
   {
@@ -290,6 +294,10 @@ const FAQ = [
   {
     q: "Hvornår skifter en rytter hold efter en transfer?",
     a: "Rytteren skifter hold ved næste transfervindue-åbning. Forhandlingen kan foregå hele sæsonen.",
+  },
+  {
+    q: "Tæller lejede ryttere med i holdgrænsen?",
+    a: "Ja. Aktive lejeaftaler tæller med i din squad-størrelse, så du kan blive afvist på lån, auktioner eller andre indgående handler hvis holdet allerede er fyldt op.",
   },
   {
     q: "Kan jeg se hvem der har budt på min rytter?",

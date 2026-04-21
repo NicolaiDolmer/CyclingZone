@@ -65,7 +65,7 @@ export async function getTeamMarketState(supabase, teamId) {
       .eq("id", teamId)
   );
 
-  const [riderCount, pendingCount] = await Promise.all([
+  const [riderCount, pendingCount, activeLoanCount] = await Promise.all([
     expectCount(
       supabase
         .from("riders")
@@ -78,6 +78,13 @@ export async function getTeamMarketState(supabase, teamId) {
         .select("id", { count: "exact", head: true })
         .eq("pending_team_id", teamId)
     ),
+    expectCount(
+      supabase
+        .from("loan_agreements")
+        .select("id", { count: "exact", head: true })
+        .eq("to_team_id", teamId)
+        .eq("status", "active")
+    ),
   ]);
 
   const squadLimits = getSquadLimits(team.division);
@@ -86,7 +93,8 @@ export async function getTeamMarketState(supabase, teamId) {
     ...team,
     rider_count: riderCount,
     pending_count: pendingCount,
-    total_count: riderCount + pendingCount,
+    active_loan_count: activeLoanCount,
+    total_count: riderCount + pendingCount + activeLoanCount,
     squad_limits: squadLimits,
   };
 }

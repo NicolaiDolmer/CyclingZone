@@ -2,10 +2,12 @@
 /**
  * sync-docs — Cycling Zone Manager
  * Kør: npm run sync-docs
- * Bruges til at holde current docs alignet med runtime og den lean AI-doc struktur.
+ * Bruges som checklist/prompt til at holde current docs alignet med runtime og den lean AI-doc struktur.
  */
 
 const SYNC_PROMPT = `
+Dette er en checklist/prompt — ikke en automatisk docs-sync.
+
 Du skal opdatere current docs konservativt, så de matcher runtime og den lean AI-doc struktur.
 
 Gør følgende i rækkefølge:
@@ -18,6 +20,8 @@ Gør følgende i rækkefølge:
 - Læs docs/ARCHITECTURE.md
 - Læs docs/DOMAIN_REFERENCE.md
 - Læs docs/CONVENTIONS.md
+- Læs docs/TEST_SCENARIOS.md hvis verifikation er relevant
+- Læs docs/DEPLOYMENT.md hvis deployment eller live-verifikation er relevant
 
 ## 2. Verificér current runtime før docs-opdatering
 - Brug runtime som sandhed ved uenighed
@@ -30,6 +34,8 @@ Gør følgende i rækkefølge:
 - Opdatér docs/ARCHITECTURE.md hvis endpoints, tabeller, flows eller execution paths har ændret sig
 - Opdatér docs/DOMAIN_REFERENCE.md kun ved ændrede domæneregler
 - Opdatér docs/CONVENTIONS.md kun ved ændrede sprog-, naming- eller UI-konventioner
+- Opdatér docs/TEST_SCENARIOS.md hvis nye smoke-checks eller regression-trin blev nødvendige
+- Opdatér docs/DEPLOYMENT.md hvis live-URLs, deploy-path eller verifikationstrin ændres
 
 ## 4. Bevar den lean struktur
 - docs/RUNTIME_GUARDRAILS.md og docs/AI_EXECUTION_STANDARD.md er de eneste kanoniske regeldocs
