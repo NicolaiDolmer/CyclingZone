@@ -65,3 +65,4 @@ Hvis kontrakten ikke kan verificeres:
 - Hvis ændringen påvirker regler, flows, FAQ, onboarding eller noget en manager/admin skal vide for at bruge systemet korrekt: opdater `frontend/src/pages/HelpPage.jsx`
 - Hvis `HelpPage.jsx` ikke opdateres ved en feature-ændring, skriv eksplicit hvorfor den ikke er relevant
 - Kør `npm run sync-docs`
+- Behandl `npm run sync-docs` som en manuel checklist/prompt; scriptet opdaterer ikke docs automatisk

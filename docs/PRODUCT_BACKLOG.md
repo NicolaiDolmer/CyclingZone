@@ -10,7 +10,6 @@ _Regel: Kun aktive/top-prioriterede ting spejles til NOW.md. Kun statusændringe
 - AI auktion bug: Hvis en manager opretter en auktion på en rytter de ikke ejer, modtager de pengene ved salg (forkert)
 - Transferfunktioner har fejl og skal gennemgås end-to-end
 - Ranglisten vises ikke korrekt på dashboard/forside
-- Squad limit håndhæves ikke korrekt — hold kan overstige divisionsgrænse
 - Lånefunktion virker ikke længere
 
 ---
