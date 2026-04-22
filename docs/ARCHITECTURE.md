@@ -111,7 +111,7 @@ PATCH /api/notifications/read-all
 
 ### Board
 ```
-GET  /api/board/status            → { board, outlook, personality, standing, riders, snapshots, request_status, request_options }
+GET  /api/board/status            → { board, outlook, personality, identity_profile, standing, riders, snapshots, request_status, request_options }
 POST /api/board/proposal          { plan_type, focus }
 POST /api/board/sign              { plan_type, focus, negotiations? }
 POST /api/board/request           { request_type }
@@ -181,8 +181,9 @@ Season flow notes:
 - Board wizard-preview, signering og kontraktfornyelse går gennem `/api/board/*` og den delte `backend/lib/boardEngine.js`
 - Frontend vælger mellem server-genererede board-forslag og forhandlingsvarianter i stedet for selv at konstruere de endelige mål
 - `GET /api/board/status` er den kanoniske read-path for board-state; både Dashboard og Board-siden læser herfra i stedet for egne board-queries
+- Proposal- og request-logik tuner nu mål efter divisionens squad-limits, nuværende standings og en afledt holdprofil baseret på rytternes stats/U25-mix
 - Mid-season board requests går gennem `POST /api/board/request`, som både afgør approved/partial/rejected/tradeoff og persisterer svaret i `board_request_log`
-- `buildBoardOutlook` leverer personality, feedback og category breakdown til UI, mens `evaluateBoardSeason` bruger samme vægtede runtime-path ved sæsonslut
+- `buildBoardOutlook` leverer personality, identity_profile, feedback og category breakdown til UI, mens `evaluateBoardSeason` bruger samme vægtede runtime-path ved sæsonslut
 - `processSeasonEnd` bruger samme board-engine til sæsonevaluering, så sign-flow, status-read og season-end deler board-sandhed
 
 ### Notifications
@@ -215,7 +216,7 @@ Season flow notes:
 | Fil | Eksporterede funktioner |
 |-----|------------------------|
 | `auctionEngine.js` | `calculateAuctionEnd`, `checkBidExtension`, `isAuctionExpired`, `formatAuctionEnd` |
-| `boardEngine.js` | `getPlanDuration`, `buildBoardProposal`, `buildBoardRequestOptions`, `resolveBoardRequest`, `finalizeBoardGoals`, `buildBoardOutlook`, `deriveBoardPersonality`, `evaluateBoardSeason`, `createInitialBoardProfile` |
+| `boardEngine.js` | `getPlanDuration`, `buildBoardProposal`, `buildBoardRequestOptions`, `resolveBoardRequest`, `finalizeBoardGoals`, `buildBoardOutlook`, `deriveBoardPersonality`, `deriveTeamIdentityProfile`, `evaluateBoardSeason`, `createInitialBoardProfile` |
 | `notificationService.js` | `notifyUser`, `notifyTeamOwner` |
 | `auctionFinalization.js` | `finalizeAuctionById`, `finalizeExpiredAuctions`, `sellerOwnsAuctionRider`, `calculateAuctionSalary` |
 | `adminImportResultsHandler.js` | `createAdminImportResultsHandler` |

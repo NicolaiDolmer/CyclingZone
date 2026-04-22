@@ -215,6 +215,50 @@ function BoardOutlookCard({ outlook }) {
   );
 }
 
+function BoardIdentityCard({ identityProfile, title = "Holdidentitet" }) {
+  if (!identityProfile) return null;
+
+  return (
+    <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-white/30 text-xs uppercase tracking-wider mb-1">{title}</p>
+          <p className="text-white font-semibold text-sm">{identityProfile.primary_specialization_label}</p>
+          <p className="text-white/45 text-sm mt-1">{identityProfile.summary}</p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-white/30 text-xs uppercase tracking-wider mb-1">U25</p>
+          <p className="font-mono font-bold text-sm text-[#7dd3fc]">
+            {identityProfile.u25_share_pct ?? 0}%
+          </p>
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-4 gap-3 mt-4">
+        <div className="bg-white/3 border border-white/5 rounded-lg p-3">
+          <p className="text-white/35 text-[10px] uppercase tracking-wider">Primær</p>
+          <p className="text-white text-sm font-medium mt-1">{identityProfile.primary_specialization_label}</p>
+        </div>
+        <div className="bg-white/3 border border-white/5 rounded-lg p-3">
+          <p className="text-white/35 text-[10px] uppercase tracking-wider">Sekundær</p>
+          <p className="text-white text-sm font-medium mt-1">{identityProfile.secondary_specialization_label}</p>
+        </div>
+        <div className="bg-white/3 border border-white/5 rounded-lg p-3">
+          <p className="text-white/35 text-[10px] uppercase tracking-wider">Sportsligt spor</p>
+          <p className="text-white text-sm font-medium mt-1">{identityProfile.competitive_tier_label}</p>
+        </div>
+        <div className="bg-white/3 border border-white/5 rounded-lg p-3">
+          <p className="text-white/35 text-[10px] uppercase tracking-wider">Trup</p>
+          <p className="text-white text-sm font-medium mt-1">
+            {identityProfile.rider_count}/{identityProfile?.squad_limits?.max}
+          </p>
+          <p className="text-white/30 text-xs mt-1">{identityProfile.squad_status_label}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BoardRequestPanel({ requestOptions, requestStatus, requestError, requestingType, onRequest }) {
   const latestRequest = requestStatus?.latest_request;
   const usedThisSeason = Boolean(requestStatus?.used_this_season);
@@ -326,6 +370,7 @@ const PLAN_OPTIONS = [
 ];
 
 function WizardStep1({
+  identityProfile,
   focus,
   setFocus,
   planType,
@@ -345,6 +390,11 @@ function WizardStep1({
         <h2 className="text-white font-bold text-xl">Bestyrelsens forslag</h2>
         <p className="text-white/40 text-sm mt-1">Vælg strategi og tidslinje — bestyrelsen genererer krav</p>
       </div>
+
+      <BoardIdentityCard
+        identityProfile={identityProfile}
+        title="Bestyrelsens læsning af holdet"
+      />
 
       <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
         <div className="grid grid-cols-2 gap-4">
@@ -551,6 +601,7 @@ function WizardStep3({ finalGoals, planType, onSign, saving }) {
 export default function BoardPage() {
   const [board, setBoard] = useState(null);
   const [boardOutlook, setBoardOutlook] = useState(null);
+  const [identityProfile, setIdentityProfile] = useState(null);
   const [boardRequestOptions, setBoardRequestOptions] = useState([]);
   const [boardRequestStatus, setBoardRequestStatus] = useState(null);
   const [riders, setRiders] = useState([]);
@@ -630,6 +681,7 @@ export default function BoardPage() {
 
     setBoard(data.board);
     setBoardOutlook(data.outlook || null);
+    setIdentityProfile(data.identity_profile || data.outlook?.identity_profile || null);
     setBoardRequestOptions(data.request_options || []);
     setBoardRequestStatus(data.request_status || null);
     setRiders(data.riders || []);
@@ -881,6 +933,7 @@ export default function BoardPage() {
 
         {step === 1 && (
           <WizardStep1
+            identityProfile={identityProfile}
             focus={focus} setFocus={setFocus}
             planType={planType} setPlanType={setPlanType}
             previewGoals={previewGoals}
@@ -961,6 +1014,7 @@ export default function BoardPage() {
 
         <SatisfactionMeter value={board.satisfaction} />
         <BoardOutlookCard outlook={boardOutlook} />
+        <BoardIdentityCard identityProfile={identityProfile} />
         <BoardRequestPanel
           requestOptions={boardRequestOptions}
           requestStatus={boardRequestStatus}

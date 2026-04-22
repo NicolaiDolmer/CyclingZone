@@ -85,6 +85,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Season-end board-evaluering er nu gradvis og vægtet med resultater, økonomi, identitet og rangering samt 2-3 sæsoners hukommelse
 - Dashboard og Board-siden viser nu board-outlook fra `/api/board/status` med feedback og kategori-scores fra den delte board-engine
 - Board-siden kan nu sende én board request pr. aktiv sæson; backend afgør approved/partial/rejected/tradeoff via delt `boardEngine` og logger svaret i `board_request_log`
+- Nye board-kontrakter skalerer nu topfinish, resultatkrav, sponsorvækst og trupkrav efter division, standings og afledt holdspecialisering, så målene holder sig inden for divisionsgrænserne
+- Board-siden viser nu en afledt holdprofil med primær/sekundær specialisering, U25-andel og trupstatus fra den samme board-runtime
 
 ### Admin
 - Import af ryttere (Python-script)

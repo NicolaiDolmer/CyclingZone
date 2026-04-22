@@ -43,6 +43,7 @@ import {
   buildBoardRequestOptions,
   buildBoardOutlook,
   buildBoardProposal,
+  deriveTeamIdentityProfile,
   finalizeBoardGoals,
   getBoardRequestDefinition,
   getPlanDuration,
@@ -83,6 +84,25 @@ const adminImportUpload = multer({
     cb(null, ok);
   },
 });
+
+const BOARD_RIDER_SELECT = [
+  "id",
+  "is_u25",
+  "uci_points",
+  "nationality_code",
+  "stat_fl",
+  "stat_bj",
+  "stat_kb",
+  "stat_bk",
+  "stat_tt",
+  "stat_bro",
+  "stat_sp",
+  "stat_acc",
+  "stat_udh",
+  "stat_mod",
+  "stat_res",
+  "stat_ftr",
+].join(", ");
 
 
 // Log to public activity feed
@@ -2006,7 +2026,7 @@ async function loadBoardPlanningContext(teamId) {
   const [seasonRes, teamRes, ridersRes, standingRes, boardRes] = await Promise.all([
     supabase.from("seasons").select("id, number").eq("status", "active").single(),
     supabase.from("teams").select("id, balance, sponsor_income, division").eq("id", teamId).single(),
-    supabase.from("riders").select("id, is_u25").eq("team_id", teamId),
+    supabase.from("riders").select(BOARD_RIDER_SELECT).eq("team_id", teamId),
     supabase.from("season_standings").select("*").eq("team_id", teamId)
       .order("updated_at", { ascending: false }).limit(1).single(),
     supabase.from("board_profiles").select("*").eq("team_id", teamId).single(),
@@ -2048,7 +2068,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
       supabase.from("seasons").select("id, number").eq("status", "active").single(),
       supabase.from("board_profiles").select("*").eq("team_id", teamId).single(),
       supabase.from("teams").select("id, balance, sponsor_income, division").eq("id", teamId).single(),
-      supabase.from("riders").select("id, is_u25").eq("team_id", teamId),
+      supabase.from("riders").select(BOARD_RIDER_SELECT).eq("team_id", teamId),
       supabase.from("season_standings").select("*").eq("team_id", teamId)
         .order("updated_at", { ascending: false }).limit(1).single(),
       supabase.from("loans").select("id", { count: "exact", head: true })
@@ -2084,6 +2104,11 @@ router.get("/board/status", requireAuth, async (req, res) => {
       used_this_season: requestUsedThisSeason,
       latest_request: latestRequest,
     };
+    const identityProfile = deriveTeamIdentityProfile({
+      team: teamRes.data || null,
+      riders: ridersRes.data || [],
+      standing: standingRes.data || null,
+    });
 
     if (!board) {
       return res.json({
@@ -2100,6 +2125,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
         riders: ridersRes.data || [],
         standing: null,
         personality: null,
+        identity_profile: identityProfile,
         outlook: null,
         request_status: requestStatus,
         request_options: [],
@@ -2149,6 +2175,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
         board,
         context: {
           isExpired,
+          identityProfile,
           overallScore: outlook?.overall_score ?? null,
           requestUsedThisSeason,
         },
@@ -2172,6 +2199,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
       riders: ridersRes.data || [],
       standing: currentStanding,
       personality: outlook?.personality || null,
+      identity_profile: outlook?.identity_profile || identityProfile,
       outlook,
       request_status: requestStatus,
       request_options: requestOptions,

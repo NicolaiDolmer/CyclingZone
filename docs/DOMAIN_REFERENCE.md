@@ -148,25 +148,25 @@ Mid-plan besked sendes ved 50% af planvarighed (kun multi-year).
 **`youth_development`**
 | Mål | Opfyldt | Ikke opfyldt |
 |-----|---------|--------------|
-| Min. 5 U25 ryttere | +15 | -10 |
-| Top 5 slutplacering | +10 | -5 |
-| Stage wins (kumulativ) | +20 | 0 |
+| Division-aware U25-mål (typisk 4-8 ryttere) | +15 | -10 |
+| Division-aware topfinish | +10 | -5 |
+| Stage wins (kumulativ, tunet efter holdprofil) | +20 | 0 |
 | Ingen udestående gæld | +12 | -8 |
 
 **`star_signing`**
 | Mål | Opfyldt | Ikke opfyldt |
 |-----|---------|--------------|
-| Top 3 slutplacering | +20 | -15 |
-| GC wins (kumulativ) | +25 | -10 |
-| Min. 20 ryttere | +5 | -10 |
-| Sponsorvækst (10% for 1yr, 5%×planår for multi) | +15 | -10 |
+| Division-aware topfinish | +20 | -15 |
+| GC wins (kumulativ, tunet efter holdprofil) | +25 | -10 |
+| Division-aware squad-mål inden for min/max | +5 | -10 |
+| Sponsorvækst (tunet efter division og udgangspunkt) | +15 | -10 |
 
 **`balanced`**
 | Mål | Opfyldt | Ikke opfyldt |
 |-----|---------|--------------|
-| Top 4 slutplacering | +15 | -8 |
-| Min. 15 ryttere | +5 | -10 |
-| Stage wins (2 for 1yr, 2×planår×0.7 for multi) | +10 | -5 |
+| Division-aware topfinish | +15 | -8 |
+| Division-aware squad-mål inden for min/max | +5 | -10 |
+| Stage wins (tunet efter division og holdprofil) | +10 | -5 |
 | Ingen udestående gæld | +12 | -8 |
 
 ### Division performance-bonus (tillæg til satisfaction)
@@ -202,11 +202,16 @@ Level 50 kræver 4.900 XP
 
 ## Board-mål per Division (objectives)
 
-Board-mål (stage wins, GC wins, sponsorvækst) er **faste per focus-type** — de skaleres ikke automatisk per division i den nuværende kode. Divisionsplacering påvirker kun satisfaction via performance-bonussen (+15/+5/-10).
+Board-mål genereres nu dynamisk i `backend/lib/boardEngine.js` ud fra:
 
-**Design-intention (ikke implementeret):**
-- WT (div 1): Top 5/10/20 monumenter/Grand Tours, etapesejre, trøjekonkurrencer
-- PRO (div 2): WT race-invitation, top 5 i .1/WT-løb, top 3 NC, visibility 9
-- CT (div 3): Top 10/20 i .Pro, visibility 1–2, etape top 3, U23-løb
+- divisionens squad min/max
+- nuværende divisionsrangering hvis sæsondata findes
+- afledt holdspecialisering fra rytterstats (GC/sprint/classics/etapejæger/balanceret)
+- U25-andel og trupbredde
+- valgt focus + plan type
 
-Divisionsspecifikke måltal er planlagt men kræver refaktorering af `generateBoardGoals()` i `economyEngine.js`.
+Konsekvenser i runtime:
+
+- `min_riders` kan ikke længere lande uden for divisionens min/max-grænser
+- `top_n_finish`, `stage_wins`, `gc_wins` og `sponsor_growth` justeres op eller ned efter holdets spor og udgangspunkt
+- Board requests bruger samme holdprofil, så skift mod mere ungdom eller mere resultatorientering bliver vurderet mere kontekstuelt

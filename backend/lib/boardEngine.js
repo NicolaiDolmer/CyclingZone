@@ -10,6 +10,12 @@ const PLAN_PENALTY_MODIFIERS = {
   "5yr": 0.6,
 };
 
+const DIVISION_SQUAD_LIMITS = {
+  1: { min: 20, max: 30 },
+  2: { min: 14, max: 20 },
+  3: { min: 8, max: 10 },
+};
+
 const CATEGORY_LABELS = {
   results: "Resultater",
   economy: "Okonomi",
@@ -50,6 +56,27 @@ const PERSONALITY_BY_FOCUS = {
     financial_risk: "balanced",
     identity_strength: "medium",
   },
+};
+
+const SPECIALIZATION_LABELS = {
+  gc: "GC-hold",
+  sprint: "Sprinthold",
+  classics: "Klassikerhold",
+  breakaway: "Etapejaegerhold",
+  youth: "Ungdomshold",
+  balanced: "Balanceret hold",
+};
+
+const COMPETITIVE_TIER_LABELS = {
+  contender: "Resultatklar",
+  competitive: "Konkurrencedygtig",
+  rebuilding: "Under opbygning",
+};
+
+const SQUAD_STATUS_LABELS = {
+  thin: "Tynd trup",
+  healthy: "Sund trup",
+  full: "Bred trup",
 };
 
 const LEVELS = ["low", "medium", "high"];
@@ -148,37 +175,138 @@ export function deriveBoardPersonality({ focus = "balanced", planType = "1yr" } 
   };
 }
 
-export function generateBoardGoals({ focus = "balanced", planType = "1yr" } = {}) {
+export function generateBoardGoals({
+  focus = "balanced",
+  planType = "1yr",
+  team = null,
+  riders = [],
+  standing = null,
+} = {}) {
   const planDuration = getPlanDuration(planType);
   const isMultiYear = planDuration > 1;
   const penaltyModifier = PLAN_PENALTY_MODIFIERS[planType] || 1.0;
+  const riderPool = Array.isArray(riders) && riders.length
+    ? riders
+    : Array.isArray(team?.riders)
+      ? team.riders
+      : [];
+  const division = normalizeDivision(team?.division ?? standing?.division);
+  const useDynamicTargets = division != null || riderPool.length > 0 || standing?.rank_in_division != null;
+  const identityProfile = useDynamicTargets
+    ? deriveTeamIdentityProfile({ team, riders: riderPool, standing })
+    : null;
+  const squadLimits = identityProfile?.squad_limits || (division != null ? getDivisionSquadLimits(division) : null);
 
-  const stageWinsTarget = isMultiYear ? Math.round(planDuration * 0.8) : 1;
-  const gcWinsTarget = isMultiYear ? Math.max(1, Math.round(planDuration * 0.6)) : 1;
-  const balancedStageTarget = isMultiYear ? Math.round(2 * planDuration * 0.7) : 2;
+  const youthRankingTarget = useDynamicTargets
+    ? getDynamicRankingTarget({
+      baseTarget: 5,
+      focus: "youth_development",
+      division,
+      standing,
+      identityProfile,
+    })
+    : 5;
+  const starRankingTarget = useDynamicTargets
+    ? getDynamicRankingTarget({
+      baseTarget: 3,
+      focus: "star_signing",
+      division,
+      standing,
+      identityProfile,
+    })
+    : 3;
+  const balancedRankingTarget = useDynamicTargets
+    ? getDynamicRankingTarget({
+      baseTarget: 4,
+      focus: "balanced",
+      division,
+      standing,
+      identityProfile,
+    })
+    : 4;
+  const youthStageWinsTarget = useDynamicTargets
+    ? getDynamicStageWinsTarget({
+      baseTarget: isMultiYear ? Math.round(planDuration * 0.8) : 1,
+      focus: "youth_development",
+      planDuration,
+      isMultiYear,
+      standing,
+      identityProfile,
+    })
+    : (isMultiYear ? Math.round(planDuration * 0.8) : 1);
+  const starGcWinsTarget = useDynamicTargets
+    ? getDynamicGcWinsTarget({
+      baseTarget: isMultiYear ? Math.max(1, Math.round(planDuration * 0.6)) : 1,
+      planDuration,
+      isMultiYear,
+      identityProfile,
+    })
+    : (isMultiYear ? Math.max(1, Math.round(planDuration * 0.6)) : 1);
+  const balancedStageTarget = useDynamicTargets
+    ? getDynamicStageWinsTarget({
+      baseTarget: isMultiYear ? Math.round(2 * planDuration * 0.7) : 2,
+      focus: "balanced",
+      planDuration,
+      isMultiYear,
+      standing,
+      identityProfile,
+    })
+    : (isMultiYear ? Math.round(2 * planDuration * 0.7) : 2);
+  const youthU25Target = useDynamicTargets
+    ? getDynamicU25Target({
+      planDuration,
+      division,
+      identityProfile,
+    })
+    : 5;
+  const starMinRidersTarget = useDynamicTargets
+    ? getDynamicMinRiderTarget({
+      focus: "star_signing",
+      identityProfile,
+    })
+    : 20;
+  const balancedMinRidersTarget = useDynamicTargets
+    ? getDynamicMinRiderTarget({
+      focus: "balanced",
+      identityProfile,
+    })
+    : 15;
+  const sponsorGrowthTarget = useDynamicTargets
+    ? getDynamicSponsorGrowthTarget({
+      baseTarget: isMultiYear ? planDuration * 5 : 10,
+      focus: "star_signing",
+      planDuration,
+      division,
+      standing,
+      team,
+      identityProfile,
+    })
+    : (isMultiYear ? planDuration * 5 : 10);
 
   const baseGoals = {
     youth_development: [
       {
         type: "min_u25_riders",
-        target: 5,
-        label: "Min. 5 U25-ryttere pa holdet",
+        target: youthU25Target,
+        label: `Min. ${youthU25Target} U25-ryttere pa holdet`,
         satisfaction_bonus: 15,
         satisfaction_penalty: 10,
       },
       {
         type: "top_n_finish",
-        target: 5,
-        label: isMultiYear ? "Top 5 i divisionen ved planens afslutning" : "Top 5 i divisionen",
+        target: youthRankingTarget,
+        label: isMultiYear
+          ? `Top ${youthRankingTarget} i divisionen ved planens afslutning`
+          : `Top ${youthRankingTarget} i divisionen`,
         satisfaction_bonus: 10,
         satisfaction_penalty: 5,
       },
       {
         type: "stage_wins",
-        target: stageWinsTarget,
+        target: youthStageWinsTarget,
         label: isMultiYear
-          ? `Mindst ${stageWinsTarget} etapesejre over planperioden`
-          : "Mindst 1 etapesejr",
+          ? `Mindst ${youthStageWinsTarget} etapesejre over planperioden`
+          : `Mindst ${youthStageWinsTarget} etapesejr${youthStageWinsTarget !== 1 ? "er" : ""}`,
         cumulative: isMultiYear,
         satisfaction_bonus: 20,
         satisfaction_penalty: 0,
@@ -194,34 +322,40 @@ export function generateBoardGoals({ focus = "balanced", planType = "1yr" } = {}
     star_signing: [
       {
         type: "top_n_finish",
-        target: 3,
-        label: isMultiYear ? "Top 3 i divisionen ved planens afslutning" : "Top 3 i divisionen",
+        target: starRankingTarget,
+        label: isMultiYear
+          ? `Top ${starRankingTarget} i divisionen ved planens afslutning`
+          : `Top ${starRankingTarget} i divisionen`,
         satisfaction_bonus: 20,
         satisfaction_penalty: 15,
       },
       {
         type: "gc_wins",
-        target: gcWinsTarget,
+        target: starGcWinsTarget,
         label: isMultiYear
-          ? `Mindst ${gcWinsTarget} samlede sejre over planperioden`
-          : "Mindst 1 samlet sejr",
+          ? `Mindst ${starGcWinsTarget} samlede sejre over planperioden`
+          : starGcWinsTarget === 1
+            ? "Mindst 1 samlet sejr"
+            : `Mindst ${starGcWinsTarget} samlede sejre`,
         cumulative: isMultiYear,
         satisfaction_bonus: 25,
         satisfaction_penalty: 10,
       },
       {
         type: "min_riders",
-        target: 20,
-        label: "Hold pa min. 20 ryttere",
+        target: starMinRidersTarget,
+        label: `Hold pa min. ${starMinRidersTarget} ryttere`,
+        min_target: squadLimits?.min ?? 5,
+        max_target: squadLimits?.max ?? null,
         satisfaction_bonus: 5,
         satisfaction_penalty: 10,
       },
       {
         type: "sponsor_growth",
-        target: isMultiYear ? planDuration * 5 : 10,
+        target: sponsorGrowthTarget,
         label: isMultiYear
-          ? `Sponsor-indkomst vokset med ${planDuration * 5}% over planperioden`
-          : "Sponsor-indkomst vokset med 10%",
+          ? `Sponsor-indkomst vokset med ${sponsorGrowthTarget}% over planperioden`
+          : `Sponsor-indkomst vokset med ${sponsorGrowthTarget}%`,
         satisfaction_bonus: 15,
         satisfaction_penalty: 10,
       },
@@ -229,15 +363,19 @@ export function generateBoardGoals({ focus = "balanced", planType = "1yr" } = {}
     balanced: [
       {
         type: "top_n_finish",
-        target: 4,
-        label: isMultiYear ? "Top 4 i divisionen ved planens afslutning" : "Top 4 i divisionen",
+        target: balancedRankingTarget,
+        label: isMultiYear
+          ? `Top ${balancedRankingTarget} i divisionen ved planens afslutning`
+          : `Top ${balancedRankingTarget} i divisionen`,
         satisfaction_bonus: 15,
         satisfaction_penalty: 8,
       },
       {
         type: "min_riders",
-        target: 15,
-        label: "Hold pa min. 15 ryttere",
+        target: balancedMinRidersTarget,
+        label: `Hold pa min. ${balancedMinRidersTarget} ryttere`,
+        min_target: squadLimits?.min ?? 5,
+        max_target: squadLimits?.max ?? null,
         satisfaction_bonus: 5,
         satisfaction_penalty: 10,
       },
@@ -246,7 +384,7 @@ export function generateBoardGoals({ focus = "balanced", planType = "1yr" } = {}
         target: balancedStageTarget,
         label: isMultiYear
           ? `Mindst ${balancedStageTarget} etapesejre over planperioden`
-          : "Mindst 2 etapesejre",
+          : `Mindst ${balancedStageTarget} etapesejr${balancedStageTarget !== 1 ? "er" : ""}`,
         cumulative: isMultiYear,
         satisfaction_bonus: 10,
         satisfaction_penalty: 5,
@@ -317,7 +455,7 @@ export function buildNegotiatedGoal(goal) {
       });
     }
     case "min_riders": {
-      const target = Math.max(5, enrichedGoal.target - 3);
+      const target = Math.max(enrichedGoal.min_target ?? 5, enrichedGoal.target - 3);
       return addGoalMetadata({
         ...enrichedGoal,
         target,
@@ -346,14 +484,22 @@ export function buildNegotiatedGoal(goal) {
   }
 }
 
-export function buildBoardProposal({ focus = "balanced", planType = "1yr" } = {}) {
-  const goals = generateBoardGoals({ focus, planType });
+export function buildBoardProposal({
+  focus = "balanced",
+  planType = "1yr",
+  team = null,
+  riders = [],
+  standing = null,
+} = {}) {
+  const goals = generateBoardGoals({ focus, planType, team, riders, standing });
   const personality = deriveBoardPersonality({ focus, planType });
+  const identityProfile = deriveTeamIdentityProfile({ team, riders, standing });
 
   return {
     focus,
     plan_type: planType,
     personality,
+    identity_profile: identityProfile,
     goals,
     negotiation_options: goals.map((goal) => buildNegotiatedGoal(goal)),
   };
@@ -408,8 +554,10 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
 
   const performance = calculateBoardPerformance({ board, standing, team, context });
   const overallScore = performance.adjustedOverallScore ?? 0.6;
+  const identityProfile = context.identityProfile || performance.identityProfile;
   const satisfaction = board.satisfaction ?? 50;
   const planType = board.plan_type || "1yr";
+  const riderPool = Array.isArray(team?.riders) ? team.riders : [];
   const currentGoals = goals.map((goal) => addGoalMetadata({ ...goal }));
   const goalChanges = [];
   let updatedGoals = currentGoals;
@@ -455,7 +603,13 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
   }
 
   if (requestType === "more_youth_focus") {
-    const youthTemplateGoals = generateBoardGoals({ focus: "youth_development", planType });
+    const youthTemplateGoals = generateBoardGoals({
+      focus: "youth_development",
+      planType,
+      team,
+      riders: riderPool,
+      standing,
+    });
     const youthIdentityGoal = youthTemplateGoals.find((goal) => goal.type === "min_u25_riders");
     const youthResultsGoal = youthTemplateGoals.find((goal) => goal.category === "results");
 
@@ -474,12 +628,20 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     nextFocus = "youth_development";
     outcome = "tradeoff";
     title = "Bestyrelsen accepterer et mere ungt spor";
-    summary = "Planen drejes mere mod udvikling og langsigtet trupbygning.";
+    summary = identityProfile?.youth_level === "high"
+      ? "Bestyrelsen ser allerede et ungdomsspor i truppen og drejer planen tydeligere mod udvikling."
+      : "Planen drejes mere mod udvikling og langsigtet trupbygning.";
     tradeoffSummary = "Til gaengald bliver U25-identiteten nu et tydeligere og mere varigt krav i den aktive plan.";
   }
 
   if (requestType === "more_results_focus") {
-    const resultsTemplateGoals = generateBoardGoals({ focus: "star_signing", planType });
+    const resultsTemplateGoals = generateBoardGoals({
+      focus: "star_signing",
+      planType,
+      team,
+      riders: riderPool,
+      standing,
+    });
     const resultsRankingGoal = resultsTemplateGoals.find((goal) => goal.type === "top_n_finish");
     const resultsGoal = resultsTemplateGoals.find((goal) => goal.category === "results");
 
@@ -498,7 +660,9 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     nextFocus = "star_signing";
     outcome = "approved";
     title = "Bestyrelsen skruer op for ambitionen";
-    summary = "Planen vaegter nu topresultater endnu tydeligere end for.";
+    summary = ["gc", "sprint", "classics"].includes(identityProfile?.primary_specialization)
+      ? "Bestyrelsen laeser holdet som klar til at jagte stoerre resultater og skruer op for ambitionen."
+      : "Planen vaegter nu topresultater endnu tydeligere end for.";
     tradeoffSummary = "Du faar lidt mere fleksibilitet i identitetskravet, men resultatmaalene er til gengaeld blevet skarpere med det samme.";
   }
 
@@ -736,6 +900,7 @@ export function buildBoardOutlook({ board, standing, team, context = {} } = {}) 
   const performance = calculateBoardPerformance({ board, standing, team, context });
   return {
     personality: performance.personality,
+    identity_profile: performance.identityProfile,
     feedback: performance.feedback,
     goal_evaluations: performance.goalEvaluations,
     score_breakdown: performance.scoreBreakdown,
@@ -772,6 +937,7 @@ export function evaluateBoardSeason({ board, standing, team, context = {} } = {}
       satisfaction_delta: satisfactionDelta,
     },
     goalEvaluations: performance.goalEvaluations,
+    identityProfile: performance.identityProfile,
     personality: performance.personality,
     scoreBreakdown: performance.scoreBreakdown,
     overallScore: performance.adjustedOverallScore,
@@ -804,6 +970,309 @@ export function createInitialBoardProfile({
   };
 }
 
+export function deriveTeamIdentityProfile({ team = null, riders = [], standing = null } = {}) {
+  const riderPool = Array.isArray(riders) && riders.length
+    ? riders
+    : Array.isArray(team?.riders)
+      ? team.riders
+      : [];
+  const division = normalizeDivision(team?.division ?? standing?.division) ?? 3;
+  const squadLimits = getDivisionSquadLimits(division);
+  const normalizedRiders = riderPool.map((rider) => normalizeBoardRider(rider));
+  const riderCount = normalizedRiders.length;
+  const u25Count = normalizedRiders.filter((rider) => rider.is_u25).length;
+  const u25Share = riderCount > 0 ? u25Count / riderCount : 0;
+  const youthLevel = u25Share >= 0.45 ? "high" : u25Share >= 0.25 ? "medium" : "low";
+  const squadStatus = riderCount <= squadLimits.min
+    ? "thin"
+    : riderCount >= Math.max(squadLimits.max - 1, squadLimits.min)
+      ? "full"
+      : "healthy";
+  const competitiveTier = deriveCompetitiveTier({ division, standing });
+  const specializationScores = calculateTeamSpecializationScores(normalizedRiders, u25Share);
+  const [primaryEntry, secondaryEntry] = Object.entries(specializationScores)
+    .sort((a, b) => b[1] - a[1]);
+  const primarySpecialization = riderCount === 0 ? "balanced" : (primaryEntry?.[0] || "balanced");
+  const secondarySpecialization = riderCount === 0 ? "youth" : (secondaryEntry?.[0] || "balanced");
+
+  return {
+    division,
+    squad_limits: squadLimits,
+    rider_count: riderCount,
+    u25_count: u25Count,
+    u25_share_pct: Math.round(u25Share * 100),
+    youth_level: youthLevel,
+    squad_status: squadStatus,
+    squad_status_label: SQUAD_STATUS_LABELS[squadStatus] || SQUAD_STATUS_LABELS.healthy,
+    competitive_tier: competitiveTier,
+    competitive_tier_label: COMPETITIVE_TIER_LABELS[competitiveTier] || COMPETITIVE_TIER_LABELS.competitive,
+    primary_specialization: primarySpecialization,
+    primary_specialization_label: SPECIALIZATION_LABELS[primarySpecialization] || SPECIALIZATION_LABELS.balanced,
+    secondary_specialization: secondarySpecialization,
+    secondary_specialization_label: SPECIALIZATION_LABELS[secondarySpecialization] || SPECIALIZATION_LABELS.balanced,
+    summary: buildIdentityProfileSummary({
+      primarySpecialization,
+      secondarySpecialization,
+      youthLevel,
+      squadStatus,
+    }),
+  };
+}
+
+function normalizeDivision(division) {
+  const normalizedDivision = Number(division);
+  return DIVISION_SQUAD_LIMITS[normalizedDivision] ? normalizedDivision : null;
+}
+
+function getDivisionSquadLimits(division) {
+  return DIVISION_SQUAD_LIMITS[normalizeDivision(division) ?? 3];
+}
+
+function deriveCompetitiveTier({ division, standing } = {}) {
+  const rank = standing?.rank_in_division;
+  if (rank != null) {
+    if (rank <= 2) return "contender";
+    if (rank <= 4) return "competitive";
+    return "rebuilding";
+  }
+
+  return (division ?? 3) === 1 ? "competitive" : "rebuilding";
+}
+
+function normalizeBoardRider(rider = {}) {
+  const numericKeys = [
+    "uci_points",
+    "stat_fl",
+    "stat_bj",
+    "stat_kb",
+    "stat_bk",
+    "stat_tt",
+    "stat_bro",
+    "stat_sp",
+    "stat_acc",
+    "stat_udh",
+    "stat_mod",
+    "stat_res",
+    "stat_ftr",
+  ];
+
+  const normalizedRider = {
+    is_u25: Boolean(rider.is_u25),
+  };
+
+  numericKeys.forEach((key) => {
+    normalizedRider[key] = Number(rider?.[key] || 0);
+  });
+
+  return normalizedRider;
+}
+
+function calculateTeamSpecializationScores(riders = [], u25Share = 0) {
+  if (!riders.length) {
+    return {
+      gc: 0,
+      sprint: 0,
+      classics: 0,
+      breakaway: 0,
+      youth: roundNumber(u25Share * 100),
+      balanced: 1,
+    };
+  }
+
+  const scoreByKeys = (keys) => averageTopScores(
+    riders,
+    (rider) => averageNumbers(keys.map((key) => rider[key] || 0))
+  );
+
+  return {
+    gc: scoreByKeys(["stat_bj", "stat_kb", "stat_tt", "stat_mod", "stat_res"]),
+    sprint: scoreByKeys(["stat_fl", "stat_sp", "stat_acc", "stat_res"]),
+    classics: scoreByKeys(["stat_fl", "stat_bk", "stat_bro", "stat_mod"]),
+    breakaway: scoreByKeys(["stat_bj", "stat_kb", "stat_ftr", "stat_udh"]),
+    youth: roundNumber((u25Share * 100) + (scoreByKeys(["stat_kb", "stat_udh", "stat_res"]) * 0.15)),
+    balanced: roundNumber(scoreByKeys(["stat_fl", "stat_bj", "stat_kb", "stat_bk", "stat_tt", "stat_sp"]) * 0.92),
+  };
+}
+
+function averageTopScores(items = [], scorer) {
+  const scores = (items || [])
+    .map((item) => scorer(item))
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => b - a)
+    .slice(0, Math.min(5, items.length));
+
+  if (!scores.length) return 0;
+
+  return roundNumber(scores.reduce((sum, value) => sum + value, 0) / scores.length);
+}
+
+function averageNumbers(values = []) {
+  const safeValues = (values || []).filter((value) => Number.isFinite(value));
+  if (!safeValues.length) return 0;
+  return safeValues.reduce((sum, value) => sum + value, 0) / safeValues.length;
+}
+
+function buildIdentityProfileSummary({
+  primarySpecialization = "balanced",
+  secondarySpecialization = "balanced",
+  youthLevel = "medium",
+  squadStatus = "healthy",
+} = {}) {
+  const youthLabel = {
+    high: "starkt ungdomsaftryk",
+    medium: "moderat ungdomsandel",
+    low: "lav ungdomsandel",
+  }[youthLevel] || "moderat ungdomsandel";
+  const squadLabel = {
+    thin: "en tynd trup",
+    healthy: "en sund trup",
+    full: "en bred trup",
+  }[squadStatus] || "en sund trup";
+  const primaryLabel = SPECIALIZATION_LABELS[primarySpecialization] || SPECIALIZATION_LABELS.balanced;
+  const secondaryLabel = (SPECIALIZATION_LABELS[secondarySpecialization] || SPECIALIZATION_LABELS.balanced).toLowerCase();
+
+  return `${primaryLabel} med sekundar ${secondaryLabel}-retning, ${youthLabel} og ${squadLabel}.`;
+}
+
+function getDynamicRankingTarget({ baseTarget, focus, division, standing, identityProfile } = {}) {
+  let target = baseTarget;
+
+  if (division === 2) target += 1;
+  if (division === 3) target += 1;
+
+  if (standing?.rank_in_division != null) {
+    if (standing.rank_in_division <= 2) target -= 1;
+    if (standing.rank_in_division >= 6) target += 1;
+  }
+
+  if (focus === "star_signing" && identityProfile?.competitive_tier === "contender") {
+    target -= 1;
+  }
+
+  if (focus === "youth_development" && identityProfile?.squad_status === "thin") {
+    target += 1;
+  }
+
+  return clamp(target, 2, 8);
+}
+
+function getDynamicStageWinsTarget({
+  baseTarget,
+  focus,
+  planDuration,
+  isMultiYear,
+  standing,
+  identityProfile,
+} = {}) {
+  let target = baseTarget;
+
+  if (["sprint", "classics", "breakaway"].includes(identityProfile?.primary_specialization)) {
+    target += 1;
+  }
+
+  if (identityProfile?.competitive_tier === "contender" && focus !== "youth_development") {
+    target += 1;
+  }
+
+  if (identityProfile?.squad_status === "thin") {
+    target -= 1;
+  }
+
+  if (focus === "youth_development" && identityProfile?.youth_level === "high" && isMultiYear) {
+    target += 1;
+  }
+
+  if (standing?.rank_in_division >= 6 && focus === "youth_development") {
+    target = Math.max(1, target - 1);
+  }
+
+  return clamp(target, 1, isMultiYear ? planDuration + 3 : 4);
+}
+
+function getDynamicGcWinsTarget({ baseTarget, planDuration, isMultiYear, identityProfile } = {}) {
+  let target = baseTarget;
+
+  if (identityProfile?.primary_specialization === "gc") {
+    target += 1;
+  } else if (identityProfile?.secondary_specialization === "gc" && isMultiYear) {
+    target += 1;
+  }
+
+  if (identityProfile?.squad_status === "thin") {
+    target -= 1;
+  }
+
+  return clamp(target, 1, isMultiYear ? planDuration + 2 : 3);
+}
+
+function getDynamicU25Target({ planDuration, division, identityProfile } = {}) {
+  let target = division === 1 ? 6 : division === 2 ? 5 : 4;
+
+  if (identityProfile?.youth_level === "high") {
+    target += 1;
+  }
+
+  if (identityProfile?.competitive_tier === "rebuilding" && planDuration > 1) {
+    target += 1;
+  }
+
+  const upperBound = Math.max(3, Math.min((identityProfile?.squad_limits?.max ?? 12) - 1, 8));
+  return clamp(target, 3, upperBound);
+}
+
+function getDynamicMinRiderTarget({ focus, identityProfile } = {}) {
+  const squadLimits = identityProfile?.squad_limits || getDivisionSquadLimits(identityProfile?.division);
+  const range = Math.max(squadLimits.max - squadLimits.min, 0);
+  let target = focus === "star_signing"
+    ? squadLimits.min + Math.max(1, Math.ceil(range * 0.5))
+    : squadLimits.min + Math.max(1, Math.ceil(range * 0.25));
+
+  if (identityProfile?.competitive_tier === "contender" && focus === "star_signing") {
+    target += 1;
+  }
+
+  if (identityProfile?.squad_status === "thin") {
+    target -= 1;
+  }
+
+  return clamp(target, squadLimits.min, squadLimits.max);
+}
+
+function getDynamicSponsorGrowthTarget({
+  baseTarget,
+  focus,
+  planDuration,
+  division,
+  standing,
+  team,
+  identityProfile,
+} = {}) {
+  let target = baseTarget;
+
+  if (division === 3) {
+    target -= 5;
+  }
+
+  if (standing?.rank_in_division != null && standing.rank_in_division <= 2) {
+    target += 5;
+  }
+
+  if ((team?.balance ?? 0) < 0) {
+    target -= 5;
+  }
+
+  if (focus === "star_signing" && identityProfile?.competitive_tier === "contender") {
+    target += 5;
+  }
+
+  return clampToStep(target, 5, 5, planDuration > 1 ? 30 : 20);
+}
+
+function clampToStep(value, min, step, max) {
+  const steppedValue = Math.round(value / step) * step;
+  return clamp(steppedValue, min, max);
+}
+
 function addGoalMetadata(goal = {}) {
   const metadata = GOAL_METADATA_BY_TYPE[goal.type] || {};
   return {
@@ -832,6 +1301,12 @@ function getBoardRequestAvailability({ requestType, board, goals = [], context =
   const rankingIndex = findGoalIndexByCategory(goals, "ranking");
   const resultsIndex = findGoalIndexByCategory(goals, "results");
   const identityIndex = findGoalIndexByCategory(goals, "identity");
+  const identityProfile = context.identityProfile
+    || deriveTeamIdentityProfile({
+      team: context.team,
+      riders: context.team?.riders || context.riders || [],
+      standing: context.standing,
+    });
 
   switch (requestType) {
     case "lower_results_pressure":
@@ -855,10 +1330,16 @@ function getBoardRequestAvailability({ requestType, board, goals = [], context =
       if (satisfaction < 30) {
         return { disabled: true, reason: "Bestyrelsen vil se mere stabilitet, for de skifter fokus nu." };
       }
+      if (identityProfile?.youth_level === "low" && satisfaction < 45) {
+        return { disabled: true, reason: "Bestyrelsen vil se en tydeligere ungdomsbase i truppen, for de skifter fokus." };
+      }
       return { disabled: false, reason: null };
     case "more_results_focus":
       if (board.focus === "star_signing") {
         return { disabled: true, reason: "Planen presser allerede efter topresultater." };
+      }
+      if (identityProfile?.squad_status === "thin" && satisfaction < 45) {
+        return { disabled: true, reason: "Bestyrelsen vil se en bredere trup, for de skruer yderligere op for ambitionsniveauet." };
       }
       return { disabled: false, reason: null };
     case "ease_identity_requirements":
@@ -870,6 +1351,9 @@ function getBoardRequestAvailability({ requestType, board, goals = [], context =
       }
       if (overallScore != null && overallScore < 0.55) {
         return { disabled: true, reason: "Bestyrelsen vil se mere sportslig stabilitet, for de letter identitetskravet." };
+      }
+      if (identityProfile?.primary_specialization === "youth" && identityProfile?.youth_level === "high" && satisfaction < 55) {
+        return { disabled: true, reason: "Bestyrelsen ser ungdomssporet som en kerne af holdets identitet og slipper det ikke endnu." };
       }
       return { disabled: false, reason: null };
     default:
@@ -955,7 +1439,7 @@ function buildTightenedGoal(goal) {
       });
     }
     case "min_riders": {
-      const nextTarget = enrichedGoal.target + 2;
+      const nextTarget = Math.min(enrichedGoal.max_target ?? (enrichedGoal.target + 2), enrichedGoal.target + 2);
       return addGoalMetadata({
         ...enrichedGoal,
         target: nextTarget,
@@ -1017,6 +1501,11 @@ function buildGoalLabel(goal = {}) {
 
 function calculateBoardPerformance({ board, standing, team, context = {} } = {}) {
   const goals = parseBoardGoals(board?.current_goals);
+  const identityProfile = deriveTeamIdentityProfile({
+    team,
+    riders: team?.riders || [],
+    standing,
+  });
   const personality = deriveBoardPersonality({
     focus: board?.focus,
     planType: board?.plan_type,
@@ -1033,6 +1522,7 @@ function calculateBoardPerformance({ board, standing, team, context = {} } = {})
       recent_history_score: historyAdjustment.recent_score,
       momentum_modifier: historyAdjustment.momentum_modifier,
     },
+    identityProfile,
     personality,
     context,
   });
@@ -1042,6 +1532,7 @@ function calculateBoardPerformance({ board, standing, team, context = {} } = {})
     feedback,
     goalEvaluations,
     goals,
+    identityProfile,
     personality,
     scoreBreakdown: {
       ...scoreBreakdown,
@@ -1151,7 +1642,7 @@ function getAdjustedCategoryWeights(personality) {
   );
 }
 
-function buildBoardFeedback({ scoreBreakdown, personality, context = {} } = {}) {
+function buildBoardFeedback({ scoreBreakdown, personality, identityProfile, context = {} } = {}) {
   const categoryEntries = Object.values(scoreBreakdown?.categories || {});
 
   if (!categoryEntries.length) {
@@ -1177,9 +1668,12 @@ function buildBoardFeedback({ scoreBreakdown, personality, context = {} } = {}) 
   }
 
   if (!context.hasSeasonData && !context.recentSnapshots?.length) {
+    const profileHint = identityProfile?.summary
+      ? ` Holdet laeser de som ${identityProfile.summary.toLowerCase()}.`
+      : "";
     return {
       headline: "Bestyrelsen afventer saesonens forste markorer",
-      summary: `${personality.summary} Indtil videre er forventningerne intakte, men de sportslige svar kommer forst nar saesonen tager form.`,
+      summary: `${personality.summary} Indtil videre er forventningerne intakte, men de sportslige svar kommer forst nar saesonen tager form.${profileHint}`,
       tone: "neutral",
       strongest_category: strongestCategory.key,
       weakest_category: weakestCategory.key,

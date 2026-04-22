@@ -38,4 +38,5 @@
 - Board System V1 fase 2 er delvist landet: season-end bruger nu vægtet, gradvis board-evaluering med derived personality, board feedback og 2-3 sæsoners hukommelse i `boardEngine`
 - Dashboard og Board-siden læser nu board-outlook via `/api/board/status`, så read-pathen er mere kanonisk
 - Board System V1 fase 3 er landet i beta: Board-siden kan nu sende én board request pr. aktiv sæson, og backend logger outcome/tradeoff i `board_request_log`
-- Næste board-fase er dybere identity/specialization-logik og rigere request-tuning oven på den nye execution path
+- Board System V1 fase 4 er delvist landet: nye board-forslag og request-vurderinger er nu division-aware og bruger afledt holdprofil/specialisering i den delte `boardEngine`
+- Næste board-fase er dybere national/stjerne-identitet oven på den nye holdprofil

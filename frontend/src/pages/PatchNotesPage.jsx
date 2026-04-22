@@ -2,6 +2,21 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.25",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Nye bestyrelsesplaner skalerer nu efter division, nuværende holdprofil og trupbredde, så mål ikke længere kan lande uden for divisionens holdgrænser",
+          "Board-siden viser nu bestyrelsens læsning af holdet med primær/sekundær specialisering, U25-andel og trupstatus direkte fra den delte board-engine",
+          "Board requests bruger nu også holdprofilen, så skift mod mere ungdom eller mere resultatfokus bliver vurderet mere kontekstuelt",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.24",
     date: "2026-04-22",
     label: "Beta",
@@ -498,7 +513,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.24");
+  const [expanded, setExpanded] = useState("1.25");
 
   return (
     <div className="max-w-2xl mx-auto">

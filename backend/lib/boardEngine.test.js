@@ -5,12 +5,89 @@ import {
   buildBoardOutlook,
   buildBoardProposal,
   buildBoardRequestOptions,
+  deriveTeamIdentityProfile,
   deriveBoardPersonality,
   evaluateBoardSeason,
   finalizeBoardGoals,
   inferNegotiationIndexesFromGoals,
   resolveBoardRequest,
 } from "./boardEngine.js";
+
+test("deriveTeamIdentityProfile reads a sprint-heavy squad and exposes board-facing labels", () => {
+  const riders = Array.from({ length: 8 }, (_, index) => ({
+    id: `sprinter-${index}`,
+    is_u25: index < 3,
+    uci_points: 120 + (index * 10),
+    stat_fl: 77,
+    stat_bj: 58,
+    stat_kb: 60,
+    stat_bk: 64,
+    stat_tt: 61,
+    stat_bro: 63,
+    stat_sp: 80,
+    stat_acc: 79,
+    stat_udh: 67,
+    stat_mod: 66,
+    stat_res: 70,
+    stat_ftr: 62,
+  }));
+
+  const profile = deriveTeamIdentityProfile({
+    team: { division: 3 },
+    riders,
+    standing: { rank_in_division: 3 },
+  });
+
+  assert.equal(profile.primary_specialization, "sprint");
+  assert.equal(profile.competitive_tier, "competitive");
+  assert.equal(profile.squad_limits.max, 10);
+  assert.equal(profile.u25_share_pct, 38);
+  assert.match(profile.summary, /sprinthold|trup/i);
+});
+
+test("buildBoardProposal keeps squad-size goals inside division limits", () => {
+  const riders = Array.from({ length: 8 }, (_, index) => ({
+    id: `rider-${index}`,
+    is_u25: index < 2,
+    uci_points: 180 + (index * 12),
+    stat_fl: 72,
+    stat_bj: 75,
+    stat_kb: 74,
+    stat_bk: 68,
+    stat_tt: 73,
+    stat_bro: 60,
+    stat_sp: 64,
+    stat_acc: 63,
+    stat_udh: 76,
+    stat_mod: 74,
+    stat_res: 75,
+    stat_ftr: 69,
+  }));
+
+  const proposal = buildBoardProposal({
+    focus: "star_signing",
+    planType: "1yr",
+    team: {
+      division: 3,
+      sponsor_income: 100,
+      balance: 500,
+    },
+    riders,
+    standing: {
+      rank_in_division: 4,
+      stage_wins: 1,
+      gc_wins: 0,
+    },
+  });
+
+  const minRidersGoal = proposal.goals.find((goal) => goal.type === "min_riders");
+
+  assert.ok(minRidersGoal);
+  assert.equal(minRidersGoal.target >= 8, true);
+  assert.equal(minRidersGoal.target <= 10, true);
+  assert.equal(minRidersGoal.max_target, 10);
+  assert.equal(proposal.identity_profile.squad_limits.min, 8);
+});
 
 test("buildBoardProposal exposes negotiated variants that can be finalized server-side", () => {
   const proposal = buildBoardProposal({
