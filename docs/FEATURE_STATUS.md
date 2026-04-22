@@ -8,6 +8,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ### Auth & Brugere
 - Login / logout via Supabase Auth
+- "Glemt password?" via Supabase recovery-mail og dedikeret `/reset-password`-flow
 - Admin- og managerroller
 - Login-streak tracking
 - Manager XP + niveauer (level = floor(xp/100)+1, max 50)
@@ -111,7 +112,6 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 🔴 Broken / Kendte bugs
 
 - Evne-filter/slider kræver frisk reproduktion; root cause er ikke bekræftet via statisk kodegennemgang endnu
-- Manglende "Glemt password"-entrypoint i auth-flowet
 
 --- 
 

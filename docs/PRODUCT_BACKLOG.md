@@ -21,7 +21,6 @@ _Regel: Kun aktive/top-prioriterede ting spejles til NOW.md. Kun statusændringe
 - Notifikation når ønskeliste-rytter sættes til salg
 - Klik på notifikation → deep-link til relevant side
 - Admin skal kunne slette en bruger
-- "Glemt password" skal være tilgængelig fra auth-flowet
 - Managernavn bør matche Discord-navn
 - Vis tidspunkt for hvornår rytter sættes til transfer
 - Vis ryttertype på rytterside

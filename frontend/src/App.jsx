@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import LoginPage from "./pages/LoginPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DashboardPage from "./pages/DashboardPage";
 import RidersPage from "./pages/RidersPage";
 import AuctionsPage from "./pages/AuctionsPage";
@@ -57,6 +58,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage session={session} />} />
         <Route path="/" element={
           <ProtectedRoute session={session}><Layout /></ProtectedRoute>
         }>

@@ -2,7 +2,6 @@
 
 ## Investigate
 - Prioriteret bug-triage pr. 22. april 2026:
-- P2: Manglende "Glemt password"-entrypoint i auth-flowet; Supabase auth findes, men `frontend/src/pages/LoginPage.jsx` eksponerer ingen reset-password-path
 - P3: Evne-filter/slider kræver frisk reproduktion mod rigtige data; statisk kodegennemgang fandt ingen entydig root cause endnu, så den bør ikke stå over auktions-/season-drift før reproduktion
 - Verificer deployed season flow end-to-end på beta: `season start -> result approval -> season end`
 - Verificer standings/rangliste efter første live result-godkendelse på deployed backend
@@ -31,6 +30,7 @@
 - Delvis live smoke bestod den 22. april 2026 for `GET /health` og auth-gaten på `GET /api/auctions`; fuld admin-verifikation af sæsonflow kræver stadig en rigtig admin-session
 - Signup og Min Profil bruger nu samme backend-route (`PUT /api/teams/my`) til holdnavn/managernavn, så writes ikke længere bliver stoppet af RLS på `teams`
 - Hold-bootstrap via `PUT /api/teams/my` kan nu også genskabe manglende `teams`- og `board_profiles`-rækker for halv-oprettede managerkonti
+- Auth-flowet har nu et rigtigt "Glemt password?"-entrypoint på login-siden og en dedikeret `/reset-password`-route til Supabase recovery-links
 - Dropdown-fix for native selects var allerede til stede i runtimeen og er derfor fjernet som stale bug fra context
 
 ## In Progress

@@ -29,6 +29,11 @@
 - Loan fee for fortsatte rider-lån trækkes ved hver dækket sæsonstart efter første aktivering
 - Repayment virker
 
+### Auth
+- Login-siden kan sende password-reset mail via Supabase recovery-flow
+- Recovery-link lander på `/reset-password` og viser formular til ny adgangskode
+- Ny adgangskode kan gemmes og bruges til efterfølgende login
+
 ### Season Flow
 - Live smoke: `POST /api/admin/seasons` virker på deployed backend
 - Live smoke: `POST /api/admin/races` virker på deployed backend
@@ -55,6 +60,7 @@
 ## 🧪 CONTRACT / DRIFT TESTS
 
 - Frontend endpoint findes og matcher backend route
+- Public frontend-route `/reset-password` findes og bliver ikke slugt af login-redirects
 - `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start` og `POST /api/admin/seasons/:id/end` findes live og auth-gater korrekt
 - `backend/server.js` må ikke konkurrere med `backend/routes/api.js` om `POST /api/admin/import-results`, `POST /api/admin/seasons/:id/start` eller `POST /api/admin/seasons/:id/end`; kun én execution path må eje hvert route-path
 - Signup og Min Profil bruger den kanoniske backend-route `PUT /api/teams/my` til holdnavn/managernavn i stedet for direkte browser-writes til `teams`
@@ -126,3 +132,9 @@ Alle bugfixes skal testes her eller have en begrundet test-note
 - Ret holdnavn og managernavn på Min Profil
 - Bekræft at ændringerne persisterer efter reload og ikke bliver stoppet af RLS på `teams`
 - For en halv-oprettet managerkonto: gem holdinfo fra Min Profil og bekræft at hold og board-profile bliver bootstrap'et igen
+
+### Auth: glemt password
+- Gå til login-siden og vælg `Glemt password?`
+- Indtast email og bekræft success-besked om sendt reset-link
+- Åbn recovery-linket og bekræft at `/reset-password` viser formularen til ny adgangskode
+- Gem ny adgangskode og bekræft at login virker med den nye kode

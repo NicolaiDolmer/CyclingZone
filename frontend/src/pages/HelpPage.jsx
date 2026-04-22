@@ -112,6 +112,10 @@ const SECTIONS = [
         text: "På Min Profil kan du gemme eller rette både holdnavn og managernavn. Hvis din konto tidligere blev oprettet uden et rigtigt hold, kan du også initialisere holdet herfra ved at gemme holdinfo.",
       },
       {
+        title: "Glemt password",
+        text: "Hvis du ikke kan logge ind, kan du fra login-siden vælge 'Glemt password?'. Systemet sender et reset-link til din email, og linket åbner en dedikeret side hvor du kan vælge en ny adgangskode.",
+      },
+      {
         title: "Online status",
         text: "En grøn prik ved en managers navn betyder de er aktive lige nu (sidst set inden for 5 minutter). En grå prik med tekst viser hvornår de sidst var online, f.eks. '3t siden'. Du kan se dette overalt hvor manager-navne vises.",
       },
@@ -294,6 +298,10 @@ const FAQ = [
   {
     q: "Hvad sker der med mine ryttere hvis jeg ikke logger ind?",
     a: "Dine ryttere forbliver på dit hold. Du mister dog din login-streak hvis du springer en dag over.",
+  },
+  {
+    q: "Hvordan nulstiller jeg min adgangskode?",
+    a: "Fra login-siden kan du klikke 'Glemt password?', indtaste din email og følge reset-linket i mailen. Linket åbner en dedikeret reset-side, hvor du vælger en ny adgangskode.",
   },
   {
     q: "Hvornår skifter en rytter hold efter en transfer?",

@@ -2,6 +2,26 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.24",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Login-flowet har nu fået et rigtigt 'Glemt password?'-entrypoint, så managers kan bede om et reset-link uden manuel hjælp",
+          "Recovery-mails lander nu på en dedikeret `/reset-password`-side, så ny adgangskode kan vælges uden at blive afbrudt af login-redirects",
+        ],
+      },
+      {
+        category: "Forbedringer",
+        items: [
+          "Hjælp & Regler og FAQ forklarer nu også, hvordan password reset fungerer i auth-flowet",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.23",
     date: "2026-04-22",
     label: "Beta",
@@ -478,7 +498,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.21");
+  const [expanded, setExpanded] = useState("1.24");
 
   return (
     <div className="max-w-2xl mx-auto">
