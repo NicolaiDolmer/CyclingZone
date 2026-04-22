@@ -111,9 +111,10 @@ PATCH /api/notifications/read-all
 
 ### Board
 ```
-GET  /api/board/status            → { board, outlook, personality, standing, riders, snapshots }
+GET  /api/board/status            → { board, outlook, personality, standing, riders, snapshots, request_status, request_options }
 POST /api/board/proposal          { plan_type, focus }
 POST /api/board/sign              { plan_type, focus, negotiations? }
+POST /api/board/request           { request_type }
 POST /api/board/renew
 ```
 
@@ -180,6 +181,7 @@ Season flow notes:
 - Board wizard-preview, signering og kontraktfornyelse går gennem `/api/board/*` og den delte `backend/lib/boardEngine.js`
 - Frontend vælger mellem server-genererede board-forslag og forhandlingsvarianter i stedet for selv at konstruere de endelige mål
 - `GET /api/board/status` er den kanoniske read-path for board-state; både Dashboard og Board-siden læser herfra i stedet for egne board-queries
+- Mid-season board requests går gennem `POST /api/board/request`, som både afgør approved/partial/rejected/tradeoff og persisterer svaret i `board_request_log`
 - `buildBoardOutlook` leverer personality, feedback og category breakdown til UI, mens `evaluateBoardSeason` bruger samme vægtede runtime-path ved sæsonslut
 - `processSeasonEnd` bruger samme board-engine til sæsonevaluering, så sign-flow, status-read og season-end deler board-sandhed
 
@@ -213,7 +215,7 @@ Season flow notes:
 | Fil | Eksporterede funktioner |
 |-----|------------------------|
 | `auctionEngine.js` | `calculateAuctionEnd`, `checkBidExtension`, `isAuctionExpired`, `formatAuctionEnd` |
-| `boardEngine.js` | `getPlanDuration`, `buildBoardProposal`, `finalizeBoardGoals`, `buildBoardOutlook`, `deriveBoardPersonality`, `evaluateBoardSeason`, `createInitialBoardProfile` |
+| `boardEngine.js` | `getPlanDuration`, `buildBoardProposal`, `buildBoardRequestOptions`, `resolveBoardRequest`, `finalizeBoardGoals`, `buildBoardOutlook`, `deriveBoardPersonality`, `evaluateBoardSeason`, `createInitialBoardProfile` |
 | `notificationService.js` | `notifyUser`, `notifyTeamOwner` |
 | `auctionFinalization.js` | `finalizeAuctionById`, `finalizeExpiredAuctions`, `sellerOwnsAuctionRider`, `calculateAuctionSalary` |
 | `adminImportResultsHandler.js` | `createAdminImportResultsHandler` |
@@ -275,6 +277,9 @@ board_profiles     id, team_id(unique), plan_type(1yr|3yr|5yr),
 board_plan_snapshots  id, team_id, board_id, season_id, season_number,
                       season_within_plan, stage_wins, gc_wins, division_rank,
                       satisfaction_delta, goals_met, goals_total
+board_request_log  id, team_id, board_id, season_id, season_number,
+                   request_type, outcome, title, summary, tradeoff_summary,
+                   request_payload(JSONB), board_changes(JSONB)
 finance_transactions  id, team_id, type(sponsor|prize|salary|transfer_in|transfer_out|
                       interest|bonus|starting_budget), amount, description,
                       season_id, race_id

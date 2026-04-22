@@ -4,10 +4,12 @@ import assert from "node:assert/strict";
 import {
   buildBoardOutlook,
   buildBoardProposal,
+  buildBoardRequestOptions,
   deriveBoardPersonality,
   evaluateBoardSeason,
   finalizeBoardGoals,
   inferNegotiationIndexesFromGoals,
+  resolveBoardRequest,
 } from "./boardEngine.js";
 
 test("buildBoardProposal exposes negotiated variants that can be finalized server-side", () => {
@@ -200,4 +202,125 @@ test("evaluateBoardSeason keeps near misses partially alive instead of fully fai
   assert.equal(result.scoreBreakdown.categories.results.score > 0.5, true);
   assert.equal(result.newSatisfaction > 55, true);
   assert.match(result.feedback.summary, /plan|fokus|pres|halter/i);
+});
+
+test("buildBoardRequestOptions disables requests already spent this season", () => {
+  const proposal = buildBoardProposal({
+    focus: "balanced",
+    planType: "3yr",
+  });
+
+  const options = buildBoardRequestOptions({
+    board: {
+      focus: proposal.focus,
+      plan_type: proposal.plan_type,
+      satisfaction: 62,
+      negotiation_status: "completed",
+      current_goals: proposal.goals,
+    },
+    context: {
+      requestUsedThisSeason: true,
+    },
+  });
+
+  assert.equal(options.length, 4);
+  assert.equal(options.every((option) => option.disabled), true);
+  assert.equal(options[0].disabled_reason, "Du har allerede brugt saesonens board request.");
+});
+
+test("resolveBoardRequest can lower results pressure in exchange for stricter economy", () => {
+  const proposal = buildBoardProposal({
+    focus: "balanced",
+    planType: "3yr",
+  });
+
+  const result = resolveBoardRequest({
+    board: {
+      focus: proposal.focus,
+      plan_type: proposal.plan_type,
+      satisfaction: 68,
+      negotiation_status: "completed",
+      current_goals: proposal.goals,
+    },
+    standing: {
+      rank_in_division: 4,
+      stage_wins: 2,
+      gc_wins: 0,
+    },
+    team: {
+      sponsor_income: 110,
+      riders: Array.from({ length: 16 }, (_, index) => ({
+        id: `rider-${index}`,
+        is_u25: index < 4,
+      })),
+    },
+    context: {
+      overallScore: 0.74,
+      activeLoanCount: 0,
+      planDuration: 3,
+      seasonsCompleted: 1,
+      hasSeasonData: true,
+      planStartSponsorIncome: 100,
+      currentSponsorIncome: 110,
+      cumulativeStats: {
+        stageWins: 2,
+        gcWins: 0,
+      },
+    },
+    requestType: "lower_results_pressure",
+  });
+
+  assert.equal(result.outcome, "tradeoff");
+  assert.equal(result.updated_board.focus, "balanced");
+  assert.equal(result.updated_board.current_goals[0].target, 6);
+  assert.equal(result.updated_board.current_goals[2].target, 3);
+  assert.equal(
+    result.updated_board.current_goals[3].satisfaction_penalty > proposal.goals[3].satisfaction_penalty,
+    true
+  );
+});
+
+test("resolveBoardRequest can pivot the active plan toward results focus", () => {
+  const proposal = buildBoardProposal({
+    focus: "balanced",
+    planType: "1yr",
+  });
+
+  const result = resolveBoardRequest({
+    board: {
+      focus: proposal.focus,
+      plan_type: proposal.plan_type,
+      satisfaction: 55,
+      negotiation_status: "completed",
+      current_goals: proposal.goals,
+    },
+    standing: {
+      rank_in_division: 4,
+      stage_wins: 1,
+      gc_wins: 0,
+    },
+    team: {
+      sponsor_income: 100,
+      riders: Array.from({ length: 15 }, (_, index) => ({
+        id: `rider-${index}`,
+        is_u25: index < 3,
+      })),
+    },
+    context: {
+      planDuration: 1,
+      seasonsCompleted: 1,
+      hasSeasonData: true,
+      cumulativeStats: {
+        stageWins: 1,
+        gcWins: 0,
+      },
+    },
+    requestType: "more_results_focus",
+  });
+
+  assert.equal(result.outcome, "approved");
+  assert.equal(result.updated_board.focus, "star_signing");
+  assert.equal(result.updated_board.current_goals[0].target, 3);
+  assert.equal(result.updated_board.current_goals[2].type, "gc_wins");
+  assert.equal(result.updated_board.current_goals[1].target, 12);
 });

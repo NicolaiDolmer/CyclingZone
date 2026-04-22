@@ -171,9 +171,62 @@ CREATE TABLE IF NOT EXISTS public.board_profiles (
   budget_modifier FLOAT DEFAULT 1.0,
   current_goals JSONB DEFAULT '[]',
   season_id UUID REFERENCES public.seasons(id),
+  negotiation_status TEXT NOT NULL DEFAULT 'pending' CHECK (negotiation_status IN ('pending', 'completed')),
+  plan_start_season_number INTEGER,
+  plan_end_season_number INTEGER,
+  seasons_completed INTEGER NOT NULL DEFAULT 0,
+  cumulative_stage_wins INTEGER NOT NULL DEFAULT 0,
+  cumulative_gc_wins INTEGER NOT NULL DEFAULT 0,
+  plan_start_balance BIGINT,
+  plan_start_sponsor_income BIGINT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS public.board_plan_snapshots (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+  board_id UUID NOT NULL REFERENCES public.board_profiles(id) ON DELETE CASCADE,
+  season_id UUID NOT NULL REFERENCES public.seasons(id),
+  season_number INTEGER NOT NULL,
+  season_within_plan INTEGER NOT NULL,
+  stage_wins INTEGER NOT NULL DEFAULT 0,
+  gc_wins INTEGER NOT NULL DEFAULT 0,
+  division_rank INTEGER,
+  satisfaction_delta INTEGER,
+  goals_met INTEGER NOT NULL DEFAULT 0,
+  goals_total INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_plan_snapshots_team
+  ON public.board_plan_snapshots(team_id, board_id);
+
+CREATE TABLE IF NOT EXISTS public.board_request_log (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+  board_id UUID NOT NULL REFERENCES public.board_profiles(id) ON DELETE CASCADE,
+  season_id UUID REFERENCES public.seasons(id) ON DELETE SET NULL,
+  season_number INTEGER,
+  request_type TEXT NOT NULL CHECK (
+    request_type IN (
+      'lower_results_pressure',
+      'more_youth_focus',
+      'more_results_focus',
+      'ease_identity_requirements'
+    )
+  ),
+  outcome TEXT NOT NULL CHECK (outcome IN ('approved', 'partial', 'rejected', 'tradeoff')),
+  title TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  tradeoff_summary TEXT,
+  request_payload JSONB NOT NULL DEFAULT '{}',
+  board_changes JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_board_request_log_team_season
+  ON public.board_request_log(team_id, season_number DESC, created_at DESC);
 
 -- ── FINANCE TRANSACTIONS ──────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.finance_transactions (

@@ -83,6 +83,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Season-end board-flow er dækket af en direkte backend-regressionstest via `processSeasonEnd`
 - Season-end board-evaluering er nu gradvis og vægtet med resultater, økonomi, identitet og rangering samt 2-3 sæsoners hukommelse
 - Dashboard og Board-siden viser nu board-outlook fra `/api/board/status` med feedback og kategori-scores fra den delte board-engine
+- Board-siden kan nu sende én board request pr. aktiv sæson; backend afgør approved/partial/rejected/tradeoff via delt `boardEngine` og logger svaret i `board_request_log`
 
 ### Admin
 - Import af ryttere (Python-script)

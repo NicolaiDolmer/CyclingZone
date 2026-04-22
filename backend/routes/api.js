@@ -40,13 +40,17 @@ import {
   updateStandings,
 } from "../lib/economyEngine.js";
 import {
+  buildBoardRequestOptions,
   buildBoardOutlook,
   buildBoardProposal,
   finalizeBoardGoals,
+  getBoardRequestDefinition,
   getPlanDuration,
   inferNegotiationIndexesFromGoals,
   isValidBoardFocus,
   isValidBoardPlanType,
+  isValidBoardRequestType,
+  resolveBoardRequest,
 } from "../lib/boardEngine.js";
 import {
   confirmSwapOffer,
@@ -1983,6 +1987,21 @@ function isMissingRow(error) {
   return error?.code === "PGRST116";
 }
 
+function isMissingTable(error, tableName) {
+  if (!error) return false;
+
+  const haystacks = [
+    error.code || "",
+    error.message || "",
+    error.details || "",
+    error.hint || "",
+  ].join(" ");
+
+  return haystacks.includes("PGRST205")
+    || haystacks.includes("42P01")
+    || (tableName ? haystacks.includes(tableName) : false);
+}
+
 async function loadBoardPlanningContext(teamId) {
   const [seasonRes, teamRes, ridersRes, standingRes, boardRes] = await Promise.all([
     supabase.from("seasons").select("id, number").eq("status", "active").single(),
@@ -2008,13 +2027,25 @@ async function loadBoardPlanningContext(teamId) {
   };
 }
 
+function serializeBoardRequest(requestRow) {
+  if (!requestRow) return null;
+
+  const definition = getBoardRequestDefinition(requestRow.request_type);
+
+  return {
+    ...requestRow,
+    request_label: requestRow.request_payload?.request_label || definition?.label || requestRow.request_type,
+  };
+}
+
 // GET /api/board/status — full plan state for the authenticated manager
 router.get("/board/status", requireAuth, async (req, res) => {
   try {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
 
-    const [boardRes, teamRes, ridersRes, standingRes, loansRes] = await Promise.all([
+    const [seasonRes, boardRes, teamRes, ridersRes, standingRes, loansRes, requestRes] = await Promise.all([
+      supabase.from("seasons").select("id, number").eq("status", "active").single(),
       supabase.from("board_profiles").select("*").eq("team_id", teamId).single(),
       supabase.from("teams").select("id, balance, sponsor_income, division").eq("id", teamId).single(),
       supabase.from("riders").select("id, is_u25").eq("team_id", teamId),
@@ -2022,16 +2053,37 @@ router.get("/board/status", requireAuth, async (req, res) => {
         .order("updated_at", { ascending: false }).limit(1).single(),
       supabase.from("loans").select("id", { count: "exact", head: true })
         .eq("team_id", teamId).eq("status", "active"),
+      supabase.from("board_request_log")
+        .select("id, request_type, outcome, title, summary, tradeoff_summary, request_payload, board_changes, season_number, created_at")
+        .eq("team_id", teamId)
+        .order("created_at", { ascending: false })
+        .limit(1),
     ]);
 
+    if (seasonRes.error && !isMissingRow(seasonRes.error)) return res.status(500).json({ error: seasonRes.error.message });
     if (teamRes.error) return res.status(500).json({ error: teamRes.error.message });
     if (ridersRes.error) return res.status(500).json({ error: ridersRes.error.message });
     if (boardRes.error && !isMissingRow(boardRes.error)) return res.status(500).json({ error: boardRes.error.message });
     if (standingRes.error && !isMissingRow(standingRes.error)) return res.status(500).json({ error: standingRes.error.message });
     if (loansRes.error) return res.status(500).json({ error: loansRes.error.message });
+    const boardRequestsSupported = !isMissingTable(requestRes.error, "board_request_log");
+    if (requestRes.error && boardRequestsSupported) return res.status(500).json({ error: requestRes.error.message });
 
     const board = boardRes.data;
     const activeLoanCount = loansRes.count || 0;
+    const activeSeason = seasonRes.data || null;
+    const latestRequest = boardRequestsSupported
+      ? serializeBoardRequest(requestRes.data?.[0] || null)
+      : null;
+    const requestUsedThisSeason = Boolean(
+      boardRequestsSupported && activeSeason?.number != null && latestRequest?.season_number === activeSeason.number
+    );
+    const requestStatus = {
+      supported: boardRequestsSupported,
+      active_season_number: activeSeason?.number ?? null,
+      used_this_season: requestUsedThisSeason,
+      latest_request: latestRequest,
+    };
 
     if (!board) {
       return res.json({
@@ -2049,6 +2101,8 @@ router.get("/board/status", requireAuth, async (req, res) => {
         standing: null,
         personality: null,
         outlook: null,
+        request_status: requestStatus,
+        request_options: [],
       });
     }
 
@@ -2090,6 +2144,16 @@ router.get("/board/status", requireAuth, async (req, res) => {
         },
       },
     });
+    const requestOptions = boardRequestsSupported
+      ? buildBoardRequestOptions({
+        board,
+        context: {
+          isExpired,
+          overallScore: outlook?.overall_score ?? null,
+          requestUsedThisSeason,
+        },
+      })
+      : [];
 
     res.json({
       board,
@@ -2109,6 +2173,8 @@ router.get("/board/status", requireAuth, async (req, res) => {
       standing: currentStanding,
       personality: outlook?.personality || null,
       outlook,
+      request_status: requestStatus,
+      request_options: requestOptions,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -2224,6 +2290,162 @@ router.post("/board/sign", requireAuth, async (req, res) => {
       board,
       goals: finalGoals,
       negotiation_indexes: negotiationIndexes,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/board/request", requireAuth, async (req, res) => {
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
+
+    const { request_type } = req.body || {};
+    if (!isValidBoardRequestType(request_type)) {
+      return res.status(400).json({ error: "Invalid request_type" });
+    }
+
+    const context = await loadBoardPlanningContext(teamId);
+    const { activeSeason, board, riders, standing, team } = context;
+
+    if (!board) return res.status(404).json({ error: "No active board plan" });
+    if (!activeSeason) return res.status(409).json({ error: "No active season" });
+    if (board.negotiation_status !== "completed") {
+      return res.status(409).json({ error: "Board plan must be active before requests" });
+    }
+
+    const [loansRes, snapshotsRes, requestLogRes] = await Promise.all([
+      supabase.from("loans").select("id", { count: "exact", head: true })
+        .eq("team_id", teamId).eq("status", "active"),
+      supabase.from("board_plan_snapshots")
+        .select("goals_met, goals_total, satisfaction_delta")
+        .eq("team_id", teamId)
+        .order("created_at", { ascending: false })
+        .limit(3),
+      supabase.from("board_request_log")
+        .select("id")
+        .eq("team_id", teamId)
+        .eq("season_number", activeSeason.number)
+        .order("created_at", { ascending: false })
+        .limit(1),
+    ]);
+
+    if (loansRes.error) return res.status(500).json({ error: loansRes.error.message });
+    if (snapshotsRes.error) return res.status(500).json({ error: snapshotsRes.error.message });
+    if (isMissingTable(requestLogRes.error, "board_request_log")) {
+      return res.status(503).json({
+        error: "Board requests er ikke aktiveret endnu. Kør SQL-migrationen for board_request_log først.",
+      });
+    }
+    if (requestLogRes.error) return res.status(500).json({ error: requestLogRes.error.message });
+
+    const planDuration = getPlanDuration(board.plan_type);
+    const workingSeasonIndex = Math.min(planDuration, (board.seasons_completed || 0) + 1);
+    const requestUsedThisSeason = Boolean(requestLogRes.data?.length);
+
+    if (requestUsedThisSeason) {
+      return res.status(409).json({ error: "Board request already used this season" });
+    }
+
+    const requestResult = resolveBoardRequest({
+      board,
+      requestType: request_type,
+      team: {
+        ...(team || {}),
+        riders,
+      },
+      standing,
+      context: {
+        activeLoanCount: loansRes.count || 0,
+        currentSponsorIncome: team?.sponsor_income ?? 0,
+        hasSeasonData: Boolean(standing),
+        isExpired: board.negotiation_status === "pending",
+        planDuration,
+        planStartSponsorIncome: board.plan_start_sponsor_income,
+        recentSnapshots: snapshotsRes.data || [],
+        requestUsedThisSeason,
+        seasonsCompleted: workingSeasonIndex,
+        cumulativeStats: {
+          stageWins: (board.cumulative_stage_wins || 0) + (standing?.stage_wins || 0),
+          gcWins: (board.cumulative_gc_wins || 0) + (standing?.gc_wins || 0),
+        },
+      },
+    });
+
+    let updatedBoard = board;
+
+    if (requestResult.updated_board) {
+      const { data: boardUpdate, error: boardUpdateError } = await supabase.from("board_profiles")
+        .update({
+          focus: requestResult.updated_board.focus ?? board.focus,
+          current_goals: requestResult.updated_board.current_goals ?? board.current_goals,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", board.id)
+        .select("*")
+        .single();
+
+      if (boardUpdateError) return res.status(500).json({ error: boardUpdateError.message });
+      updatedBoard = boardUpdate;
+    }
+
+    const notificationMessage = [requestResult.summary, requestResult.tradeoff_summary]
+      .filter(Boolean)
+      .join(" ");
+
+    const { data: requestLog, error: requestInsertError } = await supabase.from("board_request_log")
+      .insert({
+        team_id: teamId,
+        board_id: board.id,
+        season_id: activeSeason.id,
+        season_number: activeSeason.number,
+        request_type,
+        outcome: requestResult.outcome,
+        title: requestResult.title,
+        summary: requestResult.summary,
+        tradeoff_summary: requestResult.tradeoff_summary,
+        request_payload: {
+          request_label: requestResult.request_label,
+        },
+        board_changes: {
+          focus_before: board.focus,
+          focus_after: requestResult.updated_board?.focus ?? board.focus,
+          goal_changes: requestResult.goal_changes || [],
+        },
+      })
+      .select("*")
+      .single();
+
+    if (requestInsertError) return res.status(500).json({ error: requestInsertError.message });
+
+    await notifyTeamOwner(
+      teamId,
+      "board_update",
+      requestResult.title,
+      notificationMessage,
+      board.id
+    );
+
+    const latestRequest = serializeBoardRequest(requestLog);
+    const requestOptions = buildBoardRequestOptions({
+      board: updatedBoard,
+      context: {
+        isExpired: updatedBoard.negotiation_status === "pending",
+        requestUsedThisSeason: true,
+      },
+    });
+
+    res.json({
+      ok: true,
+      board: updatedBoard,
+      request_result: requestResult,
+      request_status: {
+        active_season_number: activeSeason.number,
+        used_this_season: true,
+        latest_request: latestRequest,
+      },
+      request_options: requestOptions,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

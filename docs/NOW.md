@@ -37,4 +37,5 @@
 - Board System V1 fase 1 er genåbnet: proposal/sign/renew kører nu via delt `backend/lib/boardEngine.js`, og frontend genererer ikke længere sine egne board-mål
 - Board System V1 fase 2 er delvist landet: season-end bruger nu vægtet, gradvis board-evaluering med derived personality, board feedback og 2-3 sæsoners hukommelse i `boardEngine`
 - Dashboard og Board-siden læser nu board-outlook via `/api/board/status`, så read-pathen er mere kanonisk
-- Næste board-fase er requests/tradeoffs samt dybere identity/specialization-logik oven på den nye execution path
+- Board System V1 fase 3 er landet i beta: Board-siden kan nu sende én board request pr. aktiv sæson, og backend logger outcome/tradeoff i `board_request_log`
+- Næste board-fase er dybere identity/specialization-logik og rigere request-tuning oven på den nye execution path

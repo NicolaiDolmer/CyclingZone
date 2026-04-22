@@ -38,6 +38,11 @@
 - Season end bruger den delte board-engine og opdaterer `satisfaction` + `budget_modifier` konsistent
 - `POST /api/admin/import-results` recalculerer standings og prize-transaktioner via samme shared runtime-path som `POST /api/admin/approve-results`
 
+### Board
+- `POST /api/board/request` kan justere den aktive plan via delt board-engine og skriver outcome til `board_request_log`
+- En anden `POST /api/board/request` i samme sæson afvises uden at skabe endnu en board-request-log
+- Board request kan opdatere `current_goals` og evt. `focus`, men må ikke bryde det eksisterende `/api/board/status`-read path
+
 ---
 
 ## 🎯 EDGE CASES
@@ -66,6 +71,7 @@
 - Board-felter matcher backend-navne
 - Dashboard og Board-siden læser board-state via `GET /api/board/status`
 - `GET /api/board/status` returnerer board-outlook/personality fra den delte board-engine
+- `GET /api/board/status` returnerer også `request_status` og `request_options`, så Board-siden ikke bygger request-state lokalt
 - `approve-results` og `import-results` bruger samme finance-type (`prize`) og samme standings-recalculation
 - Shared notification-writer deduplikerer nylige identiske payloads, så samme event ikke indsættes igen ved cron/retries
 

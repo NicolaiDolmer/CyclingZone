@@ -62,12 +62,51 @@ export const VALID_BOARD_FOCUSES = [
 
 export const VALID_BOARD_PLAN_TYPES = Object.keys(PLAN_DURATIONS);
 
+export const VALID_BOARD_REQUEST_TYPES = [
+  "lower_results_pressure",
+  "more_youth_focus",
+  "more_results_focus",
+  "ease_identity_requirements",
+];
+
+const BOARD_REQUEST_DEFINITIONS = {
+  lower_results_pressure: {
+    label: "Saenk resultatpresset",
+    description: "Bed bestyrelsen om lidt mere luft i de sportslige krav i den aktive plan.",
+    tradeoff_preview: "Hvis de siger ja, forventer de typisk strammere okonomisk disciplin.",
+  },
+  more_youth_focus: {
+    label: "Mere ungdomsfokus",
+    description: "Skub planen i en tydeligere ungdomsretning med mere plads til udvikling.",
+    tradeoff_preview: "Hvis de siger ja, bliver U25-identiteten mere central i den aktive plan.",
+  },
+  more_results_focus: {
+    label: "Mere resultatfokus nu",
+    description: "Bed bestyrelsen om at vaegte topresultater hoejere med det samme.",
+    tradeoff_preview: "Det giver ikke en lettere plan - de sportslige krav bliver skarpere.",
+  },
+  ease_identity_requirements: {
+    label: "Lemp identitetskrav",
+    description: "Bed om lidt mere fleksibilitet i trupsammensaetning og identitetsmaal.",
+    tradeoff_preview: "Hvis de siger ja, skruer de typisk op for det sportslige pres i stedet.",
+  },
+};
+
 export function isValidBoardFocus(focus) {
   return VALID_BOARD_FOCUSES.includes(focus);
 }
 
 export function isValidBoardPlanType(planType) {
   return VALID_BOARD_PLAN_TYPES.includes(planType);
+}
+
+export function isValidBoardRequestType(requestType) {
+  return VALID_BOARD_REQUEST_TYPES.includes(requestType);
+}
+
+export function getBoardRequestDefinition(requestType) {
+  const definition = BOARD_REQUEST_DEFINITIONS[requestType];
+  return definition ? { type: requestType, ...definition } : null;
 }
 
 export function getPlanDuration(planType) {
@@ -317,6 +356,188 @@ export function buildBoardProposal({ focus = "balanced", planType = "1yr" } = {}
     personality,
     goals,
     negotiation_options: goals.map((goal) => buildNegotiatedGoal(goal)),
+  };
+}
+
+export function buildBoardRequestOptions({ board, context = {} } = {}) {
+  if (!board) return [];
+
+  const goals = parseBoardGoals(board.current_goals);
+
+  return VALID_BOARD_REQUEST_TYPES.map((requestType) => {
+    const definition = getBoardRequestDefinition(requestType);
+    const availability = getBoardRequestAvailability({
+      requestType,
+      board,
+      goals,
+      context,
+    });
+
+    return {
+      ...definition,
+      disabled: availability.disabled,
+      disabled_reason: availability.reason,
+    };
+  });
+}
+
+export function resolveBoardRequest({ board, requestType, team, standing, context = {} } = {}) {
+  if (!board) {
+    throw new Error("Board profile required");
+  }
+
+  if (!isValidBoardRequestType(requestType)) {
+    throw new Error("Invalid request_type");
+  }
+
+  const goals = parseBoardGoals(board.current_goals);
+  const definition = getBoardRequestDefinition(requestType);
+  const availability = getBoardRequestAvailability({
+    requestType,
+    board,
+    goals,
+    context,
+  });
+
+  if (availability.disabled) {
+    return buildRejectedBoardRequest({
+      requestType,
+      reason: availability.reason || "Bestyrelsen afviser foresporgslen lige nu.",
+    });
+  }
+
+  const performance = calculateBoardPerformance({ board, standing, team, context });
+  const overallScore = performance.adjustedOverallScore ?? 0.6;
+  const satisfaction = board.satisfaction ?? 50;
+  const planType = board.plan_type || "1yr";
+  const currentGoals = goals.map((goal) => addGoalMetadata({ ...goal }));
+  const goalChanges = [];
+  let updatedGoals = currentGoals;
+  let nextFocus = board.focus;
+  let outcome = "approved";
+  let title = "Bestyrelsen accepterer foresporgslen";
+  let summary = definition?.description || "Bestyrelsen har justeret planen.";
+  let tradeoffSummary = null;
+
+  const rankingIndex = findGoalIndexByCategory(currentGoals, "ranking");
+  const resultsIndex = findGoalIndexByCategory(currentGoals, "results");
+  const identityIndex = findGoalIndexByCategory(currentGoals, "identity");
+  const economyIndex = findGoalIndexByCategory(currentGoals, "economy");
+
+  if (requestType === "lower_results_pressure") {
+    if (satisfaction < 35 || overallScore < 0.52) {
+      return buildRejectedBoardRequest({
+        requestType,
+        reason: "Bestyrelsen synes allerede planen er under nok pres og vil se mere fremgang, for de letter kravene.",
+      });
+    }
+
+    if (rankingIndex >= 0) {
+      updatedGoals = replaceGoal(updatedGoals, rankingIndex, buildNegotiatedGoal(updatedGoals[rankingIndex]), goalChanges, "relaxed");
+    }
+
+    if (resultsIndex >= 0) {
+      updatedGoals = replaceGoal(updatedGoals, resultsIndex, buildNegotiatedGoal(updatedGoals[resultsIndex]), goalChanges, "relaxed");
+    }
+
+    if (economyIndex >= 0) {
+      updatedGoals = replaceGoal(updatedGoals, economyIndex, buildTightenedGoal(updatedGoals[economyIndex]), goalChanges, "tightened");
+    }
+
+    outcome = goalChanges.filter((change) => change.kind === "relaxed").length >= 2 ? "tradeoff" : "partial";
+    title = outcome === "partial"
+      ? "Bestyrelsen giver lidt luft"
+      : "Bestyrelsen giver luft mod en pris";
+    summary = "Bestyrelsen saenker det sportslige pres en smule i den aktive plan.";
+    tradeoffSummary = economyIndex >= 0
+      ? "Til gaengald bliver okonomikravet skarpere, sa holdet skal drives mere disciplineret resten af planen."
+      : "Bestyrelsen giver kun en delvis lettelse, fordi planen stadig skal have tydelige resultater.";
+  }
+
+  if (requestType === "more_youth_focus") {
+    const youthTemplateGoals = generateBoardGoals({ focus: "youth_development", planType });
+    const youthIdentityGoal = youthTemplateGoals.find((goal) => goal.type === "min_u25_riders");
+    const youthResultsGoal = youthTemplateGoals.find((goal) => goal.category === "results");
+
+    if (identityIndex >= 0 && youthIdentityGoal) {
+      updatedGoals = replaceGoal(updatedGoals, identityIndex, youthIdentityGoal, goalChanges, "replaced");
+    }
+
+    if (resultsIndex >= 0 && youthResultsGoal) {
+      updatedGoals = replaceGoal(updatedGoals, resultsIndex, buildNegotiatedGoal(youthResultsGoal), goalChanges, "replaced");
+    }
+
+    if (rankingIndex >= 0) {
+      updatedGoals = replaceGoal(updatedGoals, rankingIndex, buildNegotiatedGoal(updatedGoals[rankingIndex]), goalChanges, "relaxed");
+    }
+
+    nextFocus = "youth_development";
+    outcome = "tradeoff";
+    title = "Bestyrelsen accepterer et mere ungt spor";
+    summary = "Planen drejes mere mod udvikling og langsigtet trupbygning.";
+    tradeoffSummary = "Til gaengald bliver U25-identiteten nu et tydeligere og mere varigt krav i den aktive plan.";
+  }
+
+  if (requestType === "more_results_focus") {
+    const resultsTemplateGoals = generateBoardGoals({ focus: "star_signing", planType });
+    const resultsRankingGoal = resultsTemplateGoals.find((goal) => goal.type === "top_n_finish");
+    const resultsGoal = resultsTemplateGoals.find((goal) => goal.category === "results");
+
+    if (rankingIndex >= 0 && resultsRankingGoal) {
+      updatedGoals = replaceGoal(updatedGoals, rankingIndex, resultsRankingGoal, goalChanges, "tightened");
+    }
+
+    if (resultsIndex >= 0 && resultsGoal) {
+      updatedGoals = replaceGoal(updatedGoals, resultsIndex, resultsGoal, goalChanges, "replaced");
+    }
+
+    if (identityIndex >= 0) {
+      updatedGoals = replaceGoal(updatedGoals, identityIndex, buildNegotiatedGoal(updatedGoals[identityIndex]), goalChanges, "relaxed");
+    }
+
+    nextFocus = "star_signing";
+    outcome = "approved";
+    title = "Bestyrelsen skruer op for ambitionen";
+    summary = "Planen vaegter nu topresultater endnu tydeligere end for.";
+    tradeoffSummary = "Du faar lidt mere fleksibilitet i identitetskravet, men resultatmaalene er til gengaeld blevet skarpere med det samme.";
+  }
+
+  if (requestType === "ease_identity_requirements") {
+    if (satisfaction < 40 || overallScore < 0.55) {
+      return buildRejectedBoardRequest({
+        requestType,
+        reason: "Bestyrelsen vil ikke lempe identitetskravene, foer holdet staar mere stabilt sportsligt.",
+      });
+    }
+
+    if (identityIndex >= 0) {
+      updatedGoals = replaceGoal(updatedGoals, identityIndex, buildNegotiatedGoal(updatedGoals[identityIndex]), goalChanges, "relaxed");
+    }
+
+    if (rankingIndex >= 0) {
+      updatedGoals = replaceGoal(updatedGoals, rankingIndex, buildTightenedGoal(updatedGoals[rankingIndex]), goalChanges, "tightened");
+    } else if (resultsIndex >= 0) {
+      updatedGoals = replaceGoal(updatedGoals, resultsIndex, buildTightenedGoal(updatedGoals[resultsIndex]), goalChanges, "tightened");
+    }
+
+    outcome = "tradeoff";
+    title = "Bestyrelsen letter identitetskravet";
+    summary = "Holdet faar lidt mere fleksibilitet i trupbygningen og de identitetsbaerende mal.";
+    tradeoffSummary = "Til gaengald forventer bestyrelsen et skarpere sportsligt output resten af planen.";
+  }
+
+  return {
+    request_type: requestType,
+    request_label: definition?.label || requestType,
+    outcome,
+    title,
+    summary,
+    tradeoff_summary: tradeoffSummary,
+    updated_board: {
+      focus: nextFocus,
+      current_goals: updatedGoals,
+    },
+    goal_changes: goalChanges,
   };
 }
 
@@ -591,6 +812,207 @@ function addGoalMetadata(goal = {}) {
     importance: goal.importance ?? metadata.importance ?? "required",
     weight: goal.weight ?? metadata.weight ?? 1.0,
   };
+}
+
+function getBoardRequestAvailability({ requestType, board, goals = [], context = {} } = {}) {
+  if (!board) {
+    return { disabled: true, reason: "Ingen aktiv bestyrelsesplan." };
+  }
+
+  if (board.negotiation_status !== "completed") {
+    return { disabled: true, reason: "Forhandl en ny plan, for du sender requests." };
+  }
+
+  if (context.requestUsedThisSeason) {
+    return { disabled: true, reason: "Du har allerede brugt saesonens board request." };
+  }
+
+  const satisfaction = board.satisfaction ?? 50;
+  const overallScore = context.overallScore ?? null;
+  const rankingIndex = findGoalIndexByCategory(goals, "ranking");
+  const resultsIndex = findGoalIndexByCategory(goals, "results");
+  const identityIndex = findGoalIndexByCategory(goals, "identity");
+
+  switch (requestType) {
+    case "lower_results_pressure":
+      if (rankingIndex < 0 && resultsIndex < 0) {
+        return { disabled: true, reason: "Planen har ingen sportslige mal at lempe." };
+      }
+      if (satisfaction < 35) {
+        return { disabled: true, reason: "Bestyrelsen er for utilfreds til at lette resultatkravene." };
+      }
+      if (overallScore != null && overallScore < 0.52) {
+        return { disabled: true, reason: "Bestyrelsen vil se mere fremgang, for de letter resultatkravene." };
+      }
+      return { disabled: false, reason: null };
+    case "more_youth_focus":
+      if (board.focus === "youth_development") {
+        return { disabled: true, reason: "Planen er allerede i ungdomsretning." };
+      }
+      if (identityIndex < 0) {
+        return { disabled: true, reason: "Planen mangler et identitetsmal at dreje." };
+      }
+      if (satisfaction < 30) {
+        return { disabled: true, reason: "Bestyrelsen vil se mere stabilitet, for de skifter fokus nu." };
+      }
+      return { disabled: false, reason: null };
+    case "more_results_focus":
+      if (board.focus === "star_signing") {
+        return { disabled: true, reason: "Planen presser allerede efter topresultater." };
+      }
+      return { disabled: false, reason: null };
+    case "ease_identity_requirements":
+      if (identityIndex < 0) {
+        return { disabled: true, reason: "Planen har intet identitetskrav at lempe." };
+      }
+      if (satisfaction < 40) {
+        return { disabled: true, reason: "Bestyrelsen vil have mere tillid, for de lemper identitetskravet." };
+      }
+      if (overallScore != null && overallScore < 0.55) {
+        return { disabled: true, reason: "Bestyrelsen vil se mere sportslig stabilitet, for de letter identitetskravet." };
+      }
+      return { disabled: false, reason: null };
+    default:
+      return { disabled: true, reason: "Ukendt board request." };
+  }
+}
+
+function buildRejectedBoardRequest({ requestType, reason }) {
+  const definition = getBoardRequestDefinition(requestType);
+
+  return {
+    request_type: requestType,
+    request_label: definition?.label || requestType,
+    outcome: "rejected",
+    title: "Bestyrelsen afviser foresporgslen",
+    summary: reason || "Bestyrelsen afviser foresporgslen lige nu.",
+    tradeoff_summary: null,
+    updated_board: null,
+    goal_changes: [],
+  };
+}
+
+function findGoalIndexByCategory(goals = [], category) {
+  return goals.findIndex((goal) => addGoalMetadata(goal).category === category);
+}
+
+function replaceGoal(goals, index, nextGoal, goalChanges = [], kind = "replaced") {
+  if (index < 0 || index >= goals.length || !nextGoal) {
+    return goals;
+  }
+
+  const updatedGoals = [...goals];
+  const previousGoal = addGoalMetadata(updatedGoals[index]);
+  const enrichedGoal = addGoalMetadata({
+    ...nextGoal,
+    label: nextGoal.label || buildGoalLabel(nextGoal),
+  });
+
+  if (JSON.stringify(normalizeComparableGoal(previousGoal)) !== JSON.stringify(normalizeComparableGoal(enrichedGoal))) {
+    goalChanges.push({
+      kind,
+      before_label: previousGoal.label,
+      after_label: enrichedGoal.label,
+      category: enrichedGoal.category,
+    });
+  }
+
+  updatedGoals[index] = enrichedGoal;
+  return updatedGoals;
+}
+
+function buildTightenedGoal(goal) {
+  const enrichedGoal = addGoalMetadata(goal);
+
+  switch (enrichedGoal.type) {
+    case "top_n_finish":
+      return addGoalMetadata({
+        ...enrichedGoal,
+        target: Math.max(1, enrichedGoal.target - 1),
+        label: buildGoalLabel({ ...enrichedGoal, target: Math.max(1, enrichedGoal.target - 1) }),
+        satisfaction_bonus: (enrichedGoal.satisfaction_bonus || 0) + 5,
+        satisfaction_penalty: (enrichedGoal.satisfaction_penalty || 0) + 5,
+      });
+    case "stage_wins":
+    case "gc_wins": {
+      const nextTarget = enrichedGoal.target + 1;
+      return addGoalMetadata({
+        ...enrichedGoal,
+        target: nextTarget,
+        label: buildGoalLabel({ ...enrichedGoal, target: nextTarget }),
+        satisfaction_bonus: (enrichedGoal.satisfaction_bonus || 0) + 5,
+        satisfaction_penalty: (enrichedGoal.satisfaction_penalty || 0) + 5,
+      });
+    }
+    case "min_u25_riders": {
+      const nextTarget = enrichedGoal.target + 1;
+      return addGoalMetadata({
+        ...enrichedGoal,
+        target: nextTarget,
+        label: buildGoalLabel({ ...enrichedGoal, target: nextTarget }),
+        satisfaction_bonus: (enrichedGoal.satisfaction_bonus || 0) + 3,
+        satisfaction_penalty: (enrichedGoal.satisfaction_penalty || 0) + 4,
+      });
+    }
+    case "min_riders": {
+      const nextTarget = enrichedGoal.target + 2;
+      return addGoalMetadata({
+        ...enrichedGoal,
+        target: nextTarget,
+        label: buildGoalLabel({ ...enrichedGoal, target: nextTarget }),
+        satisfaction_bonus: (enrichedGoal.satisfaction_bonus || 0) + 2,
+        satisfaction_penalty: (enrichedGoal.satisfaction_penalty || 0) + 4,
+      });
+    }
+    case "sponsor_growth": {
+      const nextTarget = enrichedGoal.target + 5;
+      return addGoalMetadata({
+        ...enrichedGoal,
+        target: nextTarget,
+        label: buildGoalLabel({ ...enrichedGoal, target: nextTarget }),
+        satisfaction_bonus: (enrichedGoal.satisfaction_bonus || 0) + 4,
+        satisfaction_penalty: (enrichedGoal.satisfaction_penalty || 0) + 5,
+      });
+    }
+    case "no_outstanding_debt":
+    default:
+      return addGoalMetadata({
+        ...enrichedGoal,
+        satisfaction_bonus: (enrichedGoal.satisfaction_bonus || 0) + 2,
+        satisfaction_penalty: (enrichedGoal.satisfaction_penalty || 0) + 4,
+      });
+  }
+}
+
+function buildGoalLabel(goal = {}) {
+  switch (goal.type) {
+    case "top_n_finish":
+      return goal.label?.includes("ved planens afslutning")
+        ? `Top ${goal.target} i divisionen ved planens afslutning`
+        : `Top ${goal.target} i divisionen`;
+    case "stage_wins":
+      return goal.cumulative
+        ? `Mindst ${goal.target} etapesejre over planperioden`
+        : `Mindst ${goal.target} etapesejr${goal.target !== 1 ? "er" : ""}`;
+    case "gc_wins":
+      return goal.cumulative
+        ? `Mindst ${goal.target} samlede sejre over planperioden`
+        : goal.target === 1
+          ? "Mindst 1 samlet sejr"
+          : `Mindst ${goal.target} samlede sejre`;
+    case "min_u25_riders":
+      return `Min. ${goal.target} U25-ryttere pa holdet`;
+    case "min_riders":
+      return `Hold pa min. ${goal.target} ryttere`;
+    case "sponsor_growth":
+      return goal.label?.includes("over planperioden")
+        ? `Sponsor-indkomst vokset med ${goal.target}% over planperioden`
+        : `Sponsor-indkomst vokset med ${goal.target}%`;
+    case "no_outstanding_debt":
+      return "Ingen udestaende gaeld ved saesonslut";
+    default:
+      return goal.label || "";
+  }
 }
 
 function calculateBoardPerformance({ board, standing, team, context = {} } = {}) {

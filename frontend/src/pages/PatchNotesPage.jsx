@@ -2,6 +2,21 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.23",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Board-siden har nu fået board requests, så du kan sende én strategisk forespørgsel pr. aktiv sæson direkte til bestyrelsen",
+          "Bestyrelsen kan nu svare med godkendelse, delvis godkendelse, afvisning eller et tradeoff, og resultatet bliver logget på den samme backend-path som resten af board-systemet",
+          "Board-status returnerer nu også request-status og request-muligheder, så BoardPage læser både outlook og requests fra samme kanoniske `/api/board/status`-path",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.22",
     date: "2026-04-22",
     label: "Beta",

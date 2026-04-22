@@ -349,7 +349,7 @@ const FAQ = [
   },
   {
     q: "Kan jeg forhandle bestyrelsens krav?",
-    a: "Ja. Når du åbner en ny bestyrelsesforhandling genererer systemet kravene på serveren, og du kan forhandle hvert mål én gang. Et godkendt kompromis sænker kravet lidt og halverer typisk straffen ved manglende opfyldelse.",
+    a: "Ja. Når du åbner en ny bestyrelsesforhandling genererer systemet kravene på serveren, og du kan forhandle hvert mål én gang. Et godkendt kompromis sænker kravet lidt og halverer typisk straffen ved manglende opfyldelse. Når planen først er aktiv, kan du derudover sende én board request pr. sæson fra Board-siden for at bede om en strategisk justering. Svaret kan være godkendt, delvist, afvist eller godkendt med et tradeoff.",
   },
   {
     q: "Hvor ser jeg bestyrelsens aktuelle vurdering?",

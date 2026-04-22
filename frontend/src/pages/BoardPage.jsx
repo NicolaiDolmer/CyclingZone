@@ -215,6 +215,102 @@ function BoardOutlookCard({ outlook }) {
   );
 }
 
+function BoardRequestPanel({ requestOptions, requestStatus, requestError, requestingType, onRequest }) {
+  const latestRequest = requestStatus?.latest_request;
+  const usedThisSeason = Boolean(requestStatus?.used_this_season);
+  const supported = requestStatus?.supported !== false;
+  const outcomeMeta = {
+    approved: { label: "Godkendt", accent: "text-green-300", box: "border-green-500/20 bg-green-500/8" },
+    partial: { label: "Delvist", accent: "text-[#e8c547]", box: "border-[#e8c547]/20 bg-[#e8c547]/8" },
+    tradeoff: { label: "Tradeoff", accent: "text-blue-300", box: "border-blue-500/20 bg-blue-500/8" },
+    rejected: { label: "Afvist", accent: "text-red-300", box: "border-red-500/20 bg-red-500/8" },
+  };
+  const latestMeta = outcomeMeta[latestRequest?.outcome] || outcomeMeta.partial;
+
+  return (
+    <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Board Requests</p>
+          <p className="text-white font-semibold text-sm">Én strategisk forespørgsel pr. sæson</p>
+          <p className="text-white/45 text-sm mt-1">
+            Bed bestyrelsen om en justering i den aktive plan. Svaret kan være godkendt, delvist,
+            afvist eller godkendt med et tradeoff.
+          </p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Status</p>
+          <p className={`text-sm font-semibold ${usedThisSeason ? "text-[#e8c547]" : "text-green-300"}`}>
+            {usedThisSeason ? "Brugt i denne sæson" : "Klar til brug"}
+          </p>
+        </div>
+      </div>
+
+      {!supported && (
+        <div className="rounded-xl border border-[#e8c547]/20 bg-[#e8c547]/8 p-4 mt-4">
+          <p className="text-[#e8c547] text-sm font-semibold">Board requests venter på database-migration</p>
+          <p className="text-[#e8c547]/70 text-sm mt-1">
+            Resten af board-systemet virker stadig, men request-delen bliver først aktiveret når den nye SQL-tabel er lagt på live-databasen.
+          </p>
+        </div>
+      )}
+
+      {latestRequest && (
+        <div className={`rounded-xl border p-4 mt-4 ${latestMeta.box}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-white text-sm font-semibold">{latestRequest.title}</p>
+              <p className="text-white/60 text-xs mt-1">{latestRequest.request_label}</p>
+            </div>
+            <span className={`text-xs font-semibold uppercase tracking-wider ${latestMeta.accent}`}>
+              {latestMeta.label}
+            </span>
+          </div>
+          <p className="text-white/60 text-sm mt-2">{latestRequest.summary}</p>
+          {latestRequest.tradeoff_summary && (
+            <p className="text-white/45 text-sm mt-2">{latestRequest.tradeoff_summary}</p>
+          )}
+        </div>
+      )}
+
+      {requestError && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/8 p-4 mt-4">
+          <p className="text-red-300 text-sm">{requestError}</p>
+        </div>
+      )}
+
+      {supported && (
+      <div className="grid sm:grid-cols-2 gap-3 mt-4">
+        {(requestOptions || []).map((option) => {
+          const disabled = Boolean(option.disabled);
+          const isBusy = requestingType === option.type;
+
+          return (
+            <div key={option.type} className="bg-white/3 border border-white/5 rounded-xl p-4">
+              <p className="text-white font-semibold text-sm">{option.label}</p>
+              <p className="text-white/45 text-sm mt-1">{option.description}</p>
+              <p className="text-white/30 text-xs mt-3">{option.tradeoff_preview}</p>
+              <button
+                onClick={() => onRequest(option.type)}
+                disabled={disabled || Boolean(requestingType)}
+                className="w-full mt-4 py-2.5 rounded-lg text-sm font-semibold border transition-all
+                  bg-[#e8c547] text-[#0a0a0f] border-[#e8c547]/40 hover:bg-[#f0d060]
+                  disabled:bg-white/5 disabled:text-white/25 disabled:border-white/10 disabled:cursor-not-allowed"
+              >
+                {isBusy ? "Sender..." : "Send request"}
+              </button>
+              {disabled && option.disabled_reason && (
+                <p className="text-white/25 text-xs mt-2">{option.disabled_reason}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      )}
+    </div>
+  );
+}
+
 // ── Wizard trin ───────────────────────────────────────────────────────────────
 
 const FOCUS_OPTIONS = [
@@ -455,6 +551,8 @@ function WizardStep3({ finalGoals, planType, onSign, saving }) {
 export default function BoardPage() {
   const [board, setBoard] = useState(null);
   const [boardOutlook, setBoardOutlook] = useState(null);
+  const [boardRequestOptions, setBoardRequestOptions] = useState([]);
+  const [boardRequestStatus, setBoardRequestStatus] = useState(null);
   const [riders, setRiders] = useState([]);
   const [standing, setStanding] = useState(null);
   const [snapshots, setSnapshots] = useState([]);
@@ -475,6 +573,8 @@ export default function BoardPage() {
   const [negotiated, setNegotiated] = useState({});
   const [pendingNegotiate, setPendingNegotiate] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [requestingType, setRequestingType] = useState("");
+  const [requestError, setRequestError] = useState("");
 
   useEffect(() => { loadAll(); }, []);
 
@@ -530,6 +630,8 @@ export default function BoardPage() {
 
     setBoard(data.board);
     setBoardOutlook(data.outlook || null);
+    setBoardRequestOptions(data.request_options || []);
+    setBoardRequestStatus(data.request_status || null);
     setRiders(data.riders || []);
     setStanding(data.standing);
     setSnapshots(data.snapshots || []);
@@ -646,6 +748,39 @@ export default function BoardPage() {
       setStep(1);
       loadAll();
     }
+  }
+
+  async function sendBoardRequest(requestType) {
+    setRequestingType(requestType);
+    setRequestError("");
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      setRequestError("Du skal være logget ind for at sende en bestyrelsesforespørgsel.");
+      setRequestingType("");
+      return;
+    }
+
+    const res = await fetch(`${API}/api/board/request`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ request_type: requestType }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      setRequestError(data.error || "Kunne ikke sende bestyrelsesforespørgslen.");
+      setRequestingType("");
+      return;
+    }
+
+    await loadAll();
+    setRequestingType("");
   }
 
   async function renewContract() {
@@ -826,6 +961,13 @@ export default function BoardPage() {
 
         <SatisfactionMeter value={board.satisfaction} />
         <BoardOutlookCard outlook={boardOutlook} />
+        <BoardRequestPanel
+          requestOptions={boardRequestOptions}
+          requestStatus={boardRequestStatus}
+          requestError={requestError}
+          requestingType={requestingType}
+          onRequest={sendBoardRequest}
+        />
 
         {/* Plan stats row */}
         <div className="grid grid-cols-3 gap-3 mt-4">
