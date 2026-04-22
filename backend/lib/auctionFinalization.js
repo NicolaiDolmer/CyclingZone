@@ -23,6 +23,87 @@ export function calculateAuctionSalary(price) {
   return calculateMarketSalary(price);
 }
 
+function isHumanManagedTeam(team) {
+  return Boolean(team?.user_id) && !team?.is_ai;
+}
+
+function getHistorySellerTeamId(auction, sellerOwned) {
+  return sellerOwned ? auction.seller_team_id : null;
+}
+
+async function closeAuction({
+  supabase,
+  auction,
+  status,
+  actualEnd,
+  sellerOwned,
+}) {
+  await expectMutation(
+    supabase
+      .from("auctions")
+      .update({
+        status,
+        actual_end: actualEnd,
+        seller_team_id: getHistorySellerTeamId(auction, sellerOwned),
+      })
+      .eq("id", auction.id)
+  );
+}
+
+async function resolveAuctionSellerContext({ supabase, auction }) {
+  const sellerOwned = sellerOwnsAuctionRider(auction);
+  if (sellerOwned) {
+    return {
+      sellerOwned,
+      actualSellerTeamId: auction.seller_team_id,
+      actualSeller: null,
+      staleHumanOwner: false,
+    };
+  }
+
+  const riderOwnerTeamId = auction?.rider?.team_id ?? null;
+  if (!riderOwnerTeamId) {
+    return {
+      sellerOwned: false,
+      actualSellerTeamId: null,
+      actualSeller: null,
+      staleHumanOwner: false,
+    };
+  }
+
+  const actualSeller = await expectMaybeSingle(
+    supabase
+      .from("teams")
+      .select("id, name, balance, user_id, is_ai")
+      .eq("id", riderOwnerTeamId)
+  );
+
+  if (!actualSeller) {
+    return {
+      sellerOwned: false,
+      actualSellerTeamId: null,
+      actualSeller: null,
+      staleHumanOwner: true,
+    };
+  }
+
+  if (isHumanManagedTeam(actualSeller)) {
+    return {
+      sellerOwned: false,
+      actualSellerTeamId: null,
+      actualSeller,
+      staleHumanOwner: true,
+    };
+  }
+
+  return {
+    sellerOwned: false,
+    actualSellerTeamId: actualSeller.id,
+    actualSeller,
+    staleHumanOwner: false,
+  };
+}
+
 async function finalizeAuctionRecord({
   supabase,
   auction,
@@ -41,7 +122,51 @@ async function finalizeAuctionRecord({
   }
 
   const actualEnd = now.toISOString();
-  const sellerOwned = sellerOwnsAuctionRider(auction);
+  const {
+    sellerOwned,
+    actualSellerTeamId,
+    actualSeller,
+    staleHumanOwner,
+  } = await resolveAuctionSellerContext({
+    supabase,
+    auction,
+  });
+
+  if (staleHumanOwner) {
+    await closeAuction({
+      supabase,
+      auction,
+      status: "cancelled",
+      actualEnd,
+      sellerOwned,
+    });
+
+    if (auction.current_bidder_id) {
+      await notifyTeamOwner(
+        auction.current_bidder_id,
+        "auction_lost",
+        "Auktion annulleret",
+        `${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages, fordi rytteren nu tilhører en anden manager.`,
+        auction.id
+      );
+    }
+
+    if (auction.seller_team_id) {
+      await notifyTeamOwner(
+        auction.seller_team_id,
+        "auction_lost",
+        "Auktion annulleret",
+        `${auction.rider.firstname} ${auction.rider.lastname} står ikke længere på dit hold. Auktionen blev derfor annulleret.`,
+        auction.id
+      );
+    }
+
+    return {
+      ok: true,
+      code: "cancelled_stale_owner",
+      auction_id: auction.id,
+    };
+  }
 
   if (auction.current_bidder_id) {
     const price = auction.current_price;
@@ -53,16 +178,13 @@ async function finalizeAuctionRecord({
     };
 
     if (!buyer || buyer.balance < price) {
-      await expectMutation(
-        supabase
-          .from("auctions")
-          .update({
-            status: "cancelled",
-            actual_end: actualEnd,
-            seller_team_id: sellerOwned ? auction.seller_team_id : null,
-          })
-          .eq("id", auction.id)
-      );
+      await closeAuction({
+        supabase,
+        auction,
+        status: "cancelled",
+        actualEnd,
+        sellerOwned,
+      });
 
       await notifyTeamOwner(
         auction.current_bidder_id,
@@ -91,16 +213,13 @@ async function finalizeAuctionRecord({
 
     const squadViolation = getIncomingSquadViolation(buyer);
     if (squadViolation) {
-      await expectMutation(
-        supabase
-          .from("auctions")
-          .update({
-            status: "completed",
-            actual_end: actualEnd,
-            seller_team_id: sellerOwned ? auction.seller_team_id : null,
-          })
-          .eq("id", auction.id)
-      );
+      await closeAuction({
+        supabase,
+        auction,
+        status: "completed",
+        actualEnd,
+        sellerOwned,
+      });
 
       await notifyTeamOwner(
         auction.current_bidder_id,
@@ -163,23 +282,25 @@ async function finalizeAuctionRecord({
       },
     ];
 
-    if (sellerOwned) {
-      const seller = await expectSingle(
-        supabase
-          .from("teams")
-          .select("balance")
-          .eq("id", auction.seller_team_id)
-      );
+    if (actualSellerTeamId) {
+      const seller = actualSellerTeamId === auction.seller_team_id && sellerOwned
+        ? await expectSingle(
+            supabase
+              .from("teams")
+              .select("balance")
+              .eq("id", auction.seller_team_id)
+          )
+        : actualSeller;
 
       await expectMutation(
         supabase
           .from("teams")
           .update({ balance: seller.balance + price })
-          .eq("id", auction.seller_team_id)
+          .eq("id", actualSellerTeamId)
       );
 
       financeRows.push({
-        team_id: auction.seller_team_id,
+        team_id: actualSellerTeamId,
         type: "transfer_in",
         amount: price,
         description: `Solgt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
@@ -223,16 +344,13 @@ async function finalizeAuctionRecord({
       amount: price,
     });
 
-    await expectMutation(
-      supabase
-        .from("auctions")
-        .update({
-          status: "completed",
-          actual_end: actualEnd,
-          seller_team_id: sellerOwned ? auction.seller_team_id : null,
-        })
-        .eq("id", auction.id)
-    );
+    await closeAuction({
+      supabase,
+      auction,
+      status: "completed",
+      actualEnd,
+      sellerOwned,
+    });
 
     return {
       ok: true,
@@ -305,16 +423,13 @@ async function finalizeAuctionRecord({
     );
   }
 
-  await expectMutation(
-    supabase
-      .from("auctions")
-      .update({
-        status: "completed",
-        actual_end: actualEnd,
-        seller_team_id: sellerOwned ? auction.seller_team_id : null,
-      })
-      .eq("id", auction.id)
-  );
+  await closeAuction({
+    supabase,
+    auction,
+    status: "completed",
+    actualEnd,
+    sellerOwned,
+  });
 
   return {
     ok: true,

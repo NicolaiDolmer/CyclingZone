@@ -60,12 +60,14 @@
 ### Roller, ejerskab og provenu
 - `seller_team_id` er auktions-initiatoren ved oprettelse, ikke nødvendigvis den endelige økonomiske sælger
 - En **ægte sælger** er kun et hold, der faktisk ejer rytteren ved auktionsafslutning
+- Hvis rytteren står på et AI- eller andet non-user-hold ved afslutning, er dette hold den økonomiske sælger ved et vindende bud
 - Hvis en manager starter auktion på en fri eller AI-ejet rytter, får initiatoren **ikke** salgsprovenu og optjener ikke `auction_sold` XP
 - Ved afslutning ryddes `seller_team_id` på ikke-ejede auktionsflows, så historik og summer ikke viser et falskt salg
 
 ### Afslutningsregler
 - Vinderens saldo trækkes altid ved gyldig afslutning
 - Sælger krediteres kun, hvis rytteren faktisk var på sælgerens hold
+- Hvis rytteren ved afslutning ejes af et andet menneskeligt hold end initiatoren, annulleres auktionen som stale i stedet for at gennemføre med forkert payout
 - Guaranteed sale til banken sker kun for en ejet rytter med `is_guaranteed_sale = true` og ingen menneskelige bud
 - Hvis transfervinduet er lukket ved auktionsafslutning, sættes rytteren på `pending_team_id` i stedet for at skifte hold med det samme
 - Squad limit kontrolleres ved auktionsafslutning, ikke kun ved budgivning

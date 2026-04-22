@@ -385,6 +385,8 @@ router.post("/auctions", requireAuth, async (req, res) => {
     .from("auctions")
     .insert({
       rider_id,
+      // Active auction UI/history still uses seller_team_id as the initiator.
+      // The shared finalizer resolves the actual economic seller from rider.team_id.
       seller_team_id: req.team.id,
       starting_price: price,
       current_price: price,

@@ -2,6 +2,20 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.19",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "AI- og andre non-user-ejede auktioner krediterer nu den faktiske ejer ved afslutning i stedet for at lade provenuet følge auktionsinitiatoren",
+          "Stale auktioner annulleres nu sikkert, hvis rytteren i mellemtiden ejes af en anden menneskelig manager, så der ikke bogføres forkert payout eller falsk salgs-historik",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.18",
     date: "2026-04-22",
     label: "Beta",
