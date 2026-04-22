@@ -1,8 +1,8 @@
 # AGENTS.md — Entry for AI Agents
 
 ## Hard rule
-- Brug kun dette repo: `C:\Users\emmas\Documents\Codex\2026-04-21-kan-du-hj-lpe-med-at\CyclingZone-git`
-- Brug aldrig: `C:\Users\emmas\Documents\Codex\2026-04-21-kan-du-hj-lpe-med-at\CyclingZone`
+- Brug kun dette repo: `C:\Users\ndmh3\OneDrive\Skrivebord\cycling-manager`
+- Brug aldrig andre lokale kopier, sync-kopier eller zip-udpakninger af samme projekt
 - Hvis workspace, session-kontekst eller `cwd` peger på den forkerte mappe: stop og bed om realignment før du læser, ændrer eller kører noget
 
 ## Start
