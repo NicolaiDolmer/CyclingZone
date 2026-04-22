@@ -109,8 +109,10 @@ PATCH /api/notifications/read-all
 
 ### Board
 ```
-GET  /api/board/status
-POST /api/board/sign              { plan_type, focus }
+GET  /api/board/status            → { board, outlook, personality, standing, riders, snapshots }
+POST /api/board/proposal          { plan_type, focus }
+POST /api/board/sign              { plan_type, focus, negotiations? }
+POST /api/board/renew
 ```
 
 ### Misc
@@ -147,7 +149,8 @@ POST /api/admin/transfer-window/close     → { success }
 ```
 
 Season flow notes:
-- `POST /api/admin/approve-results` skriver til `race_results` og recalculerer derefter `season_standings` fra persisted data
+- `POST /api/admin/import-results` og `POST /api/admin/approve-results` deler nu samme result-write path via `backend/lib/raceResultsEngine.js`
+- Result-finalisering skriver `race_results`, bogfører prize-transaktioner med gyldig finance-type og recalculerer derefter `season_standings` fra persisted data
 - `POST /api/admin/seasons/:id/end` stopper hvis der stadig findes `pending_race_results` for løb i sæsonen
 
 ---
@@ -162,10 +165,18 @@ Season flow notes:
 - Transfer window og squad limit håndhæves ved finalisering, ikke kun ved oprettelse eller bud
 
 ### Sæsonflow
-- Admin starter flowet via `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start`, `POST /api/admin/approve-results` og `POST /api/admin/seasons/:id/end`
+- Admin starter flowet via `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start`, derefter enten `POST /api/admin/import-results` eller `POST /api/admin/approve-results`, og til sidst `POST /api/admin/seasons/:id/end`
 - Den kanoniske season engine ligger i `backend/lib/economyEngine.js`
 - `race_results` er persisted sandhed for standings; `season_standings` recalculeres derfra
+- `backend/lib/raceResultsEngine.js` er shared execution path for result-finalisering, prize-write og standings-recalculation
 - Transfer-window-state er del af season-flowets runtime-kontrakt
+
+### Board
+- Board wizard-preview, signering og kontraktfornyelse går gennem `/api/board/*` og den delte `backend/lib/boardEngine.js`
+- Frontend vælger mellem server-genererede board-forslag og forhandlingsvarianter i stedet for selv at konstruere de endelige mål
+- `GET /api/board/status` er den kanoniske read-path for board-state; både Dashboard og Board-siden læser herfra i stedet for egne board-queries
+- `buildBoardOutlook` leverer personality, feedback og category breakdown til UI, mens `evaluateBoardSeason` bruger samme vægtede runtime-path ved sæsonslut
+- `processSeasonEnd` bruger samme board-engine til sæsonevaluering, så sign-flow, status-read og season-end deler board-sandhed
 
 ### Lån og markedsdomæner
 - Rider-lån bruger `loan_agreements` og `/api/loans`
@@ -187,10 +198,12 @@ Season flow notes:
 | Fil | Eksporterede funktioner |
 |-----|------------------------|
 | `auctionEngine.js` | `calculateAuctionEnd`, `checkBidExtension`, `isAuctionExpired`, `formatAuctionEnd` |
+| `boardEngine.js` | `getPlanDuration`, `buildBoardProposal`, `finalizeBoardGoals`, `buildBoardOutlook`, `deriveBoardPersonality`, `evaluateBoardSeason`, `createInitialBoardProfile` |
 | `auctionFinalization.js` | `finalizeAuctionById`, `finalizeExpiredAuctions`, `sellerOwnsAuctionRider`, `calculateAuctionSalary` |
-| `economyEngine.js` | `processSeasonStart`, `processSeasonEnd`, `calculateBoardSatisfaction`, `satisfactionToModifier`, `generateBoardGoals`, `updateStandings` |
+| `economyEngine.js` | `processSeasonStart`, `processSeasonEnd`, `updateStandings` |
 | `loanEngine.js` | `getLoanConfig`, `getTotalDebt`, `createLoan`, `createEmergencyLoan`, `repayLoan`, `processLoanInterest` |
 | `marketUtils.js` | `getTeamMarketState`, `getIncomingSquadViolation`, `getOutgoingSquadViolation`, `getTransferWindowOpen`, `calculateMarketSalary` |
+| `raceResultsEngine.js` | `buildRacePrizeLookup`, `buildRaceResultsFromPending`, `applyRaceResults` |
 | `sheetsSync.js` | `handleSyncRequest` |
 | `transferExecution.js` | `confirmTransferOffer`, `confirmSwapOffer`, `getTransferExecutionIssue`, `getSwapExecutionIssue` |
 | `discordNotifier.js` | `notifySeasonEvent` |

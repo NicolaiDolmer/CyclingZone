@@ -1,52 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { generateBoardGoals, satisfactionToModifier, getPlanDuration, isMidPlanReview } from "../lib/boardUtils";
+import { satisfactionToModifier, getPlanDuration } from "../lib/boardUtils";
 import { Link } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL;
-
-// ── Forhandlings-hjælper ──────────────────────────────────────────────────────
-
-function getNegotiatedGoal(goal) {
-  switch (goal.type) {
-    case "top_n_finish": {
-      const t = goal.target + 2;
-      return { ...goal, target: t, label: `Top ${t} i divisionen`,
-        satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
-    }
-    case "stage_wins": {
-      const t = Math.max(1, goal.target - 1);
-      return { ...goal, target: t,
-        label: goal.cumulative ? `Mindst ${t} etapesejre over planperioden` : `Mindst ${t} etapesejr${t !== 1 ? "er" : ""}`,
-        satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
-    }
-    case "gc_wins": {
-      const t = Math.max(1, goal.target - 1);
-      return { ...goal, target: t,
-        label: goal.cumulative ? `Mindst ${t} samlede sejre over planperioden` : `Mindst ${t} samlet sejr`,
-        satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
-    }
-    case "min_u25_riders": {
-      const t = Math.max(1, goal.target - 1);
-      return { ...goal, target: t, label: `Min. ${t} U25-ryttere på holdet`,
-        satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
-    }
-    case "min_riders": {
-      const t = Math.max(5, goal.target - 3);
-      return { ...goal, target: t, label: `Hold på min. ${t} ryttere`,
-        satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
-    }
-    case "no_outstanding_debt":
-      return { ...goal, satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
-    case "sponsor_growth": {
-      const t = Math.max(5, goal.target - 5);
-      return { ...goal, target: t, label: `Sponsor-indkomst vokset med ${t}%`,
-        satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
-    }
-    default:
-      return { ...goal, satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5), negotiated: true };
-  }
-}
 
 // ── Delte komponenter ─────────────────────────────────────────────────────────
 
@@ -217,6 +174,47 @@ function SeasonSnapshotGrid({ snapshots }) {
   );
 }
 
+function BoardOutlookCard({ outlook }) {
+  const categories = Object.values(outlook?.score_breakdown?.categories || {});
+  if (!outlook?.feedback) return null;
+
+  return (
+    <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Bestyrelsens Outlook</p>
+          <p className="text-white font-semibold text-sm">{outlook.feedback.headline}</p>
+          <p className="text-white/45 text-sm mt-1">{outlook.feedback.summary}</p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Status</p>
+          <p className="font-mono font-bold text-sm text-[#e8c547]">
+            {Math.round((outlook.overall_score || 0) * 100)}%
+          </p>
+        </div>
+      </div>
+      {categories.length > 0 && (
+        <div className="grid sm:grid-cols-4 gap-3 mt-4">
+          {categories.map((category) => (
+            <div key={category.key} className="bg-white/3 border border-white/5 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-white/35 text-[10px] uppercase tracking-wider">{category.label}</p>
+                <span className="text-white/45 text-[10px] font-mono">{category.score_pct}%</span>
+              </div>
+              <div className="bg-white/5 rounded-full h-1.5">
+                <div
+                  className={`h-1.5 rounded-full ${category.score_pct >= 75 ? "bg-green-400" : category.score_pct >= 55 ? "bg-[#e8c547]" : "bg-red-400"}`}
+                  style={{ width: `${Math.min(100, category.score_pct)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Wizard trin ───────────────────────────────────────────────────────────────
 
 const FOCUS_OPTIONS = [
@@ -231,8 +229,17 @@ const PLAN_OPTIONS = [
   { key: "5yr", label: "5-årsplan", desc: "Langsigtede ambitioner" },
 ];
 
-function WizardStep1({ focus, setFocus, planType, setPlanType, onStart }) {
-  const preview = generateBoardGoals(focus, planType);
+function WizardStep1({
+  focus,
+  setFocus,
+  planType,
+  setPlanType,
+  previewGoals,
+  previewLoading,
+  previewError,
+  onStart,
+}) {
+  const preview = previewGoals || [];
   const duration = getPlanDuration(planType);
   return (
     <div>
@@ -282,26 +289,38 @@ function WizardStep1({ focus, setFocus, planType, setPlanType, onStart }) {
 
       <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-6">
         <p className="text-white/30 text-xs uppercase tracking-wider mb-3">Bestyrelsens krav</p>
-        <div className="flex flex-col gap-2">
-          {preview.map((g, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-white/3 border border-white/5">
-              <div className="w-5 h-5 rounded-full bg-white/10 text-white/20 flex items-center justify-center
-                flex-shrink-0 mt-0.5 text-xs">○</div>
-              <div className="flex-1">
-                <p className="text-white/70 text-sm">{g.label}</p>
-                <div className="flex gap-3 mt-1">
-                  {g.cumulative && <span className="text-xs text-blue-400/50">Kumulativt</span>}
-                  {g.satisfaction_bonus > 0 && <span className="text-xs text-green-400/60">+{g.satisfaction_bonus}</span>}
-                  {g.satisfaction_penalty > 0 && <span className="text-xs text-red-400/60">-{g.satisfaction_penalty} straf</span>}
+        {previewLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="w-5 h-5 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : previewError ? (
+          <p className="text-red-300 text-sm">{previewError}</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {preview.map((g, i) => (
+              <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-white/3 border border-white/5">
+                <div className="w-5 h-5 rounded-full bg-white/10 text-white/20 flex items-center justify-center
+                  flex-shrink-0 mt-0.5 text-xs">○</div>
+                <div className="flex-1">
+                  <p className="text-white/70 text-sm">{g.label}</p>
+                  <div className="flex gap-3 mt-1">
+                    {g.cumulative && <span className="text-xs text-blue-400/50">Kumulativt</span>}
+                    {g.satisfaction_bonus > 0 && <span className="text-xs text-green-400/60">+{g.satisfaction_bonus}</span>}
+                    {g.satisfaction_penalty > 0 && <span className="text-xs text-red-400/60">-{g.satisfaction_penalty} straf</span>}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <button onClick={onStart}
-        className="w-full py-3 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-xl text-sm hover:bg-[#f0d060] transition-all">
+      <button
+        onClick={onStart}
+        disabled={previewLoading || preview.length === 0}
+        className="w-full py-3 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-xl text-sm hover:bg-[#f0d060]
+          disabled:opacity-50 transition-all"
+      >
         Start forhandling →
       </button>
     </div>
@@ -435,6 +454,7 @@ function WizardStep3({ finalGoals, planType, onSign, saving }) {
 
 export default function BoardPage() {
   const [board, setBoard] = useState(null);
+  const [boardOutlook, setBoardOutlook] = useState(null);
   const [riders, setRiders] = useState([]);
   const [standing, setStanding] = useState(null);
   const [snapshots, setSnapshots] = useState([]);
@@ -445,7 +465,11 @@ export default function BoardPage() {
   const [focus, setFocus] = useState("balanced");
   const [planType, setPlanType] = useState("3yr");
   const [step, setStep] = useState(1);
+  const [previewGoals, setPreviewGoals] = useState([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
   const [proposedGoals, setProposedGoals] = useState([]);
+  const [negotiationOptions, setNegotiationOptions] = useState([]);
   const [finalGoals, setFinalGoals] = useState([]);
   const [goalIdx, setGoalIdx] = useState(0);
   const [negotiated, setNegotiated] = useState({});
@@ -453,6 +477,44 @@ export default function BoardPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadProposalPreview() {
+      if (loading) return;
+      if (board && board.negotiation_status !== "pending") {
+        setPreviewGoals([]);
+        setPreviewError("");
+        setPreviewLoading(false);
+        return;
+      }
+
+      setPreviewLoading(true);
+      setPreviewError("");
+
+      const proposal = await fetchBoardProposal(focus, planType);
+      if (ignore) return;
+
+      if (!proposal) {
+        setPreviewGoals([]);
+        setNegotiationOptions([]);
+        setPreviewError("Kunne ikke hente bestyrelsens forslag.");
+        setPreviewLoading(false);
+        return;
+      }
+
+      setPreviewGoals(proposal.goals || []);
+      setNegotiationOptions(proposal.negotiation_options || []);
+      setPreviewLoading(false);
+    }
+
+    loadProposalPreview();
+
+    return () => {
+      ignore = true;
+    };
+  }, [board?.id, board?.negotiation_status, focus, planType, loading]);
 
   async function loadAll() {
     setLoading(true);
@@ -467,6 +529,7 @@ export default function BoardPage() {
     const data = await res.json();
 
     setBoard(data.board);
+    setBoardOutlook(data.outlook || null);
     setRiders(data.riders || []);
     setStanding(data.standing);
     setSnapshots(data.snapshots || []);
@@ -488,12 +551,44 @@ export default function BoardPage() {
     setLoading(false);
   }
 
+  async function fetchBoardProposal(nextFocus = focus, nextPlanType = planType) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return null;
+
+    const res = await fetch(`${API}/api/board/proposal`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ focus: nextFocus, plan_type: nextPlanType }),
+    });
+
+    if (!res.ok) return null;
+    return res.json();
+  }
+
   // ── Wizard handlers ─────────────────────────────────────────────────────────
 
-  function startNegotiation() {
-    const goals = generateBoardGoals(focus, planType);
+  async function startNegotiation() {
+    let goals = previewGoals;
+    let nextNegotiationOptions = negotiationOptions;
+
+    if (!goals.length) {
+      const proposal = await fetchBoardProposal(focus, planType);
+      if (!proposal) {
+        setPreviewError("Kunne ikke hente bestyrelsens forslag.");
+        return;
+      }
+      goals = proposal.goals || [];
+      nextNegotiationOptions = proposal.negotiation_options || [];
+      setPreviewGoals(goals);
+      setNegotiationOptions(nextNegotiationOptions);
+    }
+
     setProposedGoals(goals);
-    setFinalGoals([...goals]);
+    setFinalGoals(goals.map(goal => ({ ...goal })));
     setGoalIdx(0);
     setNegotiated({});
     setPendingNegotiate(false);
@@ -509,7 +604,8 @@ export default function BoardPage() {
 
   function negotiateCurrentGoal() {
     if (negotiated[goalIdx]) return;
-    const neg = getNegotiatedGoal(proposedGoals[goalIdx]);
+    const neg = negotiationOptions[goalIdx];
+    if (!neg) return;
     const updated = [...finalGoals];
     updated[goalIdx] = neg;
     setFinalGoals(updated);
@@ -530,10 +626,19 @@ export default function BoardPage() {
     const token = session?.access_token;
     if (!token) { setSaving(false); return; }
 
+    const negotiationIndexes = Object.entries(negotiated)
+      .filter(([, value]) => value)
+      .map(([index]) => Number(index));
+
     const res = await fetch(`${API}/api/board/sign`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ focus, plan_type: planType, goals: finalGoals }),
+      body: JSON.stringify({
+        focus,
+        plan_type: planType,
+        negotiations: negotiationIndexes,
+        goals: finalGoals,
+      }),
     });
 
     setSaving(false);
@@ -544,11 +649,17 @@ export default function BoardPage() {
   }
 
   async function renewContract() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: team } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
-    if (team) {
-      await supabase.from("board_profiles").update({ negotiation_status: "pending" }).eq("team_id", team.id);
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+
+    const res = await fetch(`${API}/api/board/renew`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.ok) {
+      setStep(1);
       loadAll();
     }
   }
@@ -637,6 +748,9 @@ export default function BoardPage() {
           <WizardStep1
             focus={focus} setFocus={setFocus}
             planType={planType} setPlanType={setPlanType}
+            previewGoals={previewGoals}
+            previewLoading={previewLoading}
+            previewError={previewError}
             onStart={startNegotiation}
           />
         )}
@@ -690,7 +804,7 @@ export default function BoardPage() {
     && seasonsCompleted === midpoint;
 
   return (
-    <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-white">Bestyrelse</h1>
@@ -710,10 +824,11 @@ export default function BoardPage() {
         </div>
       </div>
 
-      <SatisfactionMeter value={board.satisfaction} />
+        <SatisfactionMeter value={board.satisfaction} />
+        <BoardOutlookCard outlook={boardOutlook} />
 
-      {/* Plan stats row */}
-      <div className="grid grid-cols-3 gap-3 mt-4">
+        {/* Plan stats row */}
+        <div className="grid grid-cols-3 gap-3 mt-4">
         <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 text-center">
           <p className="text-white/30 text-xs uppercase tracking-widest mb-1">Fokus</p>
           <p className="text-white font-semibold text-sm">{FOCUS_LABELS[board.focus] || board.focus}</p>

@@ -62,6 +62,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Løbsresultater-import (Excel-upload i admin)
 - Pointtavle (season_standings) recalculeres fra `race_results`
 - Dashboard og Hold-siden scope'er nu current-season standings korrekt og falder tilbage til 0-point-rækker før første result-godkendelse
+- `import-results` og `approve-results` deler nu samme backend result-path, så prize-writes og standings-recalculation er konsistente
+- Admin-godkendelse markerer nu submissionen som approved på serveren i stedet for at være afhængig af en efterfølgende browser-write
 - Opryknings/nedrykningslogik (top/bund 2 per division)
 - Sæsonpreview-side
 - Races-side
@@ -75,6 +77,10 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Mid-plan review besked (ved 50% af planvarighed)
 - Board plan snapshots per sæson
 - Board wizard (sign new plan)
+- Board proposal-, sign- og renew-flow kører nu via backend-routes og delt `boardEngine`, så frontend ikke selv konstruerer de endelige board-mål
+- Season-end board-flow er dækket af en direkte backend-regressionstest via `processSeasonEnd`
+- Season-end board-evaluering er nu gradvis og vægtet med resultater, økonomi, identitet og rangering samt 2-3 sæsoners hukommelse
+- Dashboard og Board-siden viser nu board-outlook fra `/api/board/status` med feedback og kategori-scores fra den delte board-engine
 
 ### Admin
 - Import af ryttere (Python-script)
@@ -100,6 +106,14 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 🔴 Broken / Kendte bugs
 
 - Achievements tæller ikke korrekt
+- Notifikationer kan blive sendt hvert minut i stedet for én gang per event
+- Evne-filter/slider virker ikke for alle spillere
+- Auktioners sluttid/finaliseringslogik matcher ikke den aftalte adfærd
+- AI-handler via auktioner bliver ikke gennemført stabilt
+- Transferliste rydder ikke automatisk solgte ryttere ved ejerskifte
+- Signup registrerer ikke `manager_name` korrekt
+- Ændring af managernavn og holdnavn virker ikke
+- Manglende "Glemt password"-entrypoint i auth-flowet
 - Dropdown tekst usynlig (Tailwind farvekonflikt i select-elementer)
 
 --- 

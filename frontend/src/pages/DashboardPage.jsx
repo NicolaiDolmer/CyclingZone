@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
 
+const API = import.meta.env.VITE_API_URL;
 const SQUAD_LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
 
 function StatCard({ label, value, sub, accent = "text-white", icon }) {
@@ -39,6 +40,7 @@ export default function DashboardPage() {
   const [nextRaces, setNextRaces] = useState([]);
   const [standings, setStandings] = useState([]);
   const [board, setBoard] = useState(null);
+  const [boardOutlook, setBoardOutlook] = useState(null);
   const [activeOffers, setActiveOffers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -49,7 +51,10 @@ export default function DashboardPage() {
   useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const [{ data: { user } }, { data: { session } }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.auth.getSession(),
+    ]);
     const { data: teamData } = await supabase
       .from("teams").select("*").eq("user_id", user.id).single();
     if (!teamData) { setLoading(false); return; }
@@ -60,7 +65,14 @@ export default function DashboardPage() {
       .eq("status", "active")
       .single();
 
-    const [teamsRes, ridersRes, pendingIncomingRes, loansInRes, auctionsRes, racesRes, standingsRes, boardRes, offersRes] = await Promise.all([
+    const token = session?.access_token;
+    const boardStatusPromise = token
+      ? fetch(`${API}/api/board/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(async (response) => (response.ok ? response.json() : null))
+      : Promise.resolve(null);
+
+    const [teamsRes, ridersRes, pendingIncomingRes, loansInRes, auctionsRes, racesRes, standingsRes, boardStatus, offersRes] = await Promise.all([
       supabase.from("teams")
         .select("id, name, division, is_ai")
         .eq("is_ai", false)
@@ -87,7 +99,7 @@ export default function DashboardPage() {
             .eq("season_id", activeSeason.id)
             .order("total_points", { ascending: false })
         : Promise.resolve({ data: [] }),
-      supabase.from("board_profiles").select("*").eq("team_id", teamData.id).single(),
+      boardStatusPromise,
       supabase.from("transfer_offers")
         .select("id, offer_amount, status, listing:listing_id(rider:rider_id(firstname, lastname), seller_team_id), buyer:buyer_team_id(name)")
         .eq("status", "pending")
@@ -99,7 +111,8 @@ export default function DashboardPage() {
     setActiveLoanCount(loansInRes.count || 0);
     setAllAuctions(auctionsRes.data || []);
     setNextRaces(racesRes.data || []);
-    setBoard(boardRes.data);
+    setBoard(boardStatus?.board || null);
+    setBoardOutlook(boardStatus?.outlook || null);
     setActiveOffers(offersRes.data || []);
 
     const standingsMap = {};
@@ -400,28 +413,52 @@ export default function DashboardPage() {
           {!board ? (
             <p className="text-white/20 text-sm text-center py-4">Ingen bestyrelsesdata</p>
           ) : (
-            <div className="grid sm:grid-cols-3 gap-4">
-              <div>
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Tilfredshed</p>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 bg-white/5 rounded-full h-2">
-                    <div className={`h-2 rounded-full transition-all
-                      ${board.satisfaction >= 70 ? "bg-green-400" : board.satisfaction >= 40 ? "bg-[#e8c547]" : "bg-red-400"}`}
-                      style={{ width: `${board.satisfaction}%` }} />
+            <div>
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Tilfredshed</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 bg-white/5 rounded-full h-2">
+                      <div className={`h-2 rounded-full transition-all
+                        ${board.satisfaction >= 70 ? "bg-green-400" : board.satisfaction >= 40 ? "bg-[#e8c547]" : "bg-red-400"}`}
+                        style={{ width: `${board.satisfaction}%` }} />
+                    </div>
+                    <span className={`font-mono font-bold text-sm ${satisfactionColor}`}>{board.satisfaction}%</span>
                   </div>
-                  <span className={`font-mono font-bold text-sm ${satisfactionColor}`}>{board.satisfaction}%</span>
+                </div>
+                <div>
+                  <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Fokus</p>
+                  <p className="text-white text-sm capitalize">{board.focus?.replace(/_/g, " ") || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Budget multiplikator</p>
+                  <p className={`font-mono font-bold text-sm ${board.budget_modifier >= 1 ? "text-green-400" : "text-red-400"}`}>
+                    ×{board.budget_modifier?.toFixed(2) || "1.00"}
+                  </p>
                 </div>
               </div>
-              <div>
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Fokus</p>
-                <p className="text-white text-sm capitalize">{board.focus?.replace(/_/g, " ") || "—"}</p>
-              </div>
-              <div>
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Budget multiplikator</p>
-                <p className={`font-mono font-bold text-sm ${board.budget_multiplier >= 1 ? "text-green-400" : "text-red-400"}`}>
-                  ×{board.budget_multiplier?.toFixed(2) || "1.00"}
-                </p>
-              </div>
+              {boardOutlook?.feedback && (
+                <div className="mt-4 pt-4 border-t border-white/5">
+                  <p className="text-white text-sm font-medium">{boardOutlook.feedback.headline}</p>
+                  <p className="text-white/40 text-xs mt-1">{boardOutlook.feedback.summary}</p>
+                  <div className="grid sm:grid-cols-4 gap-3 mt-3">
+                    {Object.values(boardOutlook.score_breakdown?.categories || {}).map((category) => (
+                      <div key={category.key} className="bg-white/3 rounded-lg p-3 border border-white/5">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-white/35 text-[10px] uppercase tracking-wider">{category.label}</p>
+                          <span className="text-white/45 text-[10px] font-mono">{category.score_pct}%</span>
+                        </div>
+                        <div className="bg-white/5 rounded-full h-1.5">
+                          <div
+                            className={`h-1.5 rounded-full ${category.score_pct >= 75 ? "bg-green-400" : category.score_pct >= 55 ? "bg-[#e8c547]" : "bg-red-400"}`}
+                            style={{ width: `${Math.min(100, category.score_pct)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

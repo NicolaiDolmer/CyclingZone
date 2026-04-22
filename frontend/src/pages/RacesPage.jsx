@@ -156,19 +156,6 @@ export default function RacesPage() {
   }
 
   async function approveSubmission(pendingId) {
-    // Get rows
-    const { data: rows } = await supabase
-      .from("pending_race_result_rows")
-      .select("*").eq("pending_id", pendingId);
-    const { data: submission } = await supabase
-      .from("pending_race_results")
-      .select("race_id").eq("id", pendingId).single();
-
-    // Get prize tables
-    const { data: prizes } = await supabase
-      .from("prize_tables").select("*").eq("result_type", rows[0]?.result_type);
-
-    // Insert into race_results and award prizes
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/approve-results`, {
       method: "POST",
@@ -177,9 +164,6 @@ export default function RacesPage() {
     });
     const data = await res.json();
     if (res.ok) {
-      await supabase.from("pending_race_results")
-        .update({ status: "approved", reviewed_at: new Date().toISOString(), reviewed_by: userId })
-        .eq("id", pendingId);
       loadAll();
     } else {
       alert(data.error);

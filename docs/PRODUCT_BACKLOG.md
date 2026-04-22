@@ -7,10 +7,16 @@ _Regel: Kun aktive/top-prioriterede ting spejles til NOW.md. Kun statusændringe
 
 ## 🔴 Kritiske bugs
 
-- AI auktion bug: Hvis en manager opretter en auktion på en rytter de ikke ejer, modtager de pengene ved salg (forkert)
-- Transferfunktioner har fejl og skal gennemgås end-to-end
-- Ranglisten vises ikke korrekt på dashboard/forside
-- Lånefunktion virker ikke længere
+- Achievements tæller ikke korrekt
+- Notifikationer deduplikeres ikke og sendes hvert minut i stedet for én gang per event
+- Transfervindue blokerer salg under minimum squad-size, selv om minimum først skal håndhæves ved sæsonstart
+- Evne-filter/slider virker ikke for alle spillere
+- Auktioners sluttid/finaliseringslogik afviger fra den aftalte logik
+- AI-handler via auktioner bliver ikke gennemført stabilt (rapporteret af Dolmer 2026-04-21 kl. 23:32)
+- Transferliste rydder ikke automatisk solgte ryttere ved ejerskifte; ikke-ejede ryttere kan blive hængende
+- Signup registrerer ikke `manager_name` korrekt
+- Funktionen til at ændre managernavn og holdnavn virker ikke
+- Transferfunktioner skal verificeres end-to-end mod nuværende runtime
 
 ---
 
@@ -20,7 +26,8 @@ _Regel: Kun aktive/top-prioriterede ting spejles til NOW.md. Kun statusændringe
 - Direkte Discord-besked til manager ved events
 - Notifikation når ønskeliste-rytter sættes til salg
 - Klik på notifikation → deep-link til relevant side
-- Redigering af managernavn og holdnavn
+- Admin skal kunne slette en bruger
+- "Glemt password" skal være tilgængelig fra auth-flowet
 - Managernavn bør matche Discord-navn
 - Vis tidspunkt for hvornår rytter sættes til transfer
 - Vis ryttertype på rytterside

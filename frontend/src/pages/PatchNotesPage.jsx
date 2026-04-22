@@ -2,6 +2,64 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.16",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Admin-import af løbsresultater og admin-godkendelse af pending resultater bruger nu samme backend execution path, så præmiepenge og standings opdateres ens",
+          "Godkendelse af pending resultater markerer nu submissionen som approved på serveren i stedet for at afhænge af en efterfølgende browser-write",
+          "Race-præmier bogføres nu konsekvent som gyldige `prize`-transaktioner i det fælles result-flow",
+        ],
+      },
+    ],
+  },
+  {
+    version: "1.15",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Bestyrelsen bruger nu en mere gradvis og vægtet evaluering, hvor nær-miss, stærk identitet og økonomisk kontrol stadig tæller med i den samlede vurdering",
+          "Dashboardets bestyrelseskort læser nu via den samme `/api/board/status`-path som Board-siden og viser et kort outlook med kategori-scores",
+          "Board-siden viser nu bestyrelsens aktuelle outlook og category breakdown direkte oven på den eksisterende UI-skabelon",
+        ],
+      },
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Dashboardet bruger nu korrekt `budget_modifier` i stedet for det forkerte felt `budget_multiplier` i bestyrelsesstatus-kortet",
+          "Season-end board-evaluering tæller nu også U25-ryttere korrekt, fordi season-end runtime-pathen indlæser de nødvendige rytterfelter til board-checks",
+        ],
+      },
+    ],
+  },
+  {
+    version: "1.14",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Bestyrelsens mål og forhandlede kompromiser genereres nu via backend, så Board-siden og season-end bruger samme kanoniske board-logik",
+          "Forny kontrakt går nu gennem en rigtig API-route i stedet for direkte database-write fra browseren",
+          "Board-flowet er nu dækket af en direkte backend-regressionstest for season-end, så fælles board-ændringer bliver fanget før deploy",
+        ],
+      },
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Board-wizarden kan ikke længere sende vilkårlige mål til serveren; backend validerer nu kun de tilladte server-genererede mål og forhandlinger",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.13",
     date: "2026-04-21",
     label: "Beta",
@@ -320,7 +378,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.13");
+  const [expanded, setExpanded] = useState("1.16");
 
   return (
     <div className="max-w-2xl mx-auto">

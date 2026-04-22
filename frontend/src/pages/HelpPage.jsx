@@ -199,7 +199,7 @@ const SECTIONS = [
       },
       {
         title: "Løb og resultater",
-        text: "Alle managers kan indberette løbsresultater fra PCM via Løbskalender → Indberét resultater. Upload en Excel-fil, match navne og indsend til admin-godkendelse. Præmiepenge beregnes automatisk når admin godkender, og sæsonstillingen opdateres først derefter.",
+        text: "Alle managers kan indberette løbsresultater fra PCM via Løbskalender → Indberét resultater. Upload en Excel-fil, match navne og indsend til admin-godkendelse. Præmiepenge beregnes automatisk når admin finaliserer resultaterne, og sæsonstillingen opdateres gennem den samme backend-path uanset om admin godkender en pending submission eller importerer resultater direkte.",
       },
       {
         title: "Op- og nedrykning",
@@ -329,11 +329,11 @@ const FAQ = [
   },
   {
     q: "Hvornår udbetales sponsorpenge?",
-    a: "Sponsorpenge udbetales ved sæsonstart. Beløbet afhænger af bestyrelsens tilfredshed: 80%+ giver 120%, under 50% giver 80% af basissponsorat.",
+    a: "Sponsorpenge udbetales ved sæsonstart. Beløbet afhænger af bestyrelsens tilfredshed: 80%+ giver 120%, 60-79 giver 110%, 40-59 giver 100%, 20-39 giver 90%, og under 20 giver 80% af basissponsoratet.",
   },
   {
     q: "Hvornår opdateres sæsonstillingen?",
-    a: "Sæsonstillingen opdateres når admin har godkendt løbsresultaterne. Indtil da tæller en indsendt Excel-fil ikke med i ranglisten.",
+    a: "Sæsonstillingen opdateres når admin finaliserer løbsresultaterne. For manager-indsendte filer sker det ved godkendelse, mens admin-importerede resultater opdaterer standings med det samme gennem den samme backend-path.",
   },
   {
     q: "Kan admin afslutte sæsonen mens der mangler løbsgodkendelser?",
@@ -341,11 +341,15 @@ const FAQ = [
   },
   {
     q: "Hvad er bestyrelsestilfredshed?",
-    a: "Bestyrelsen vurderer dig på om du opfylder de aftalte sæsonmål. Høj tilfredshed giver bonussponsorat. Lav tilfredshed reducerer det. Tilfredshed under 0 kan koste dig jobbet.",
+    a: "Bestyrelsen vurderer dig på de aftalte mål med en gradvis model, hvor resultater vægter mest, men økonomi, identitet og rangering også tæller. En nær-miss eller stærk fremgang kan derfor stadig give en acceptabel samlet vurdering. Høj tilfredshed giver bonussponsorat, mens lav tilfredshed reducerer sponsorudbetalingen og kan føre til strammere krav i næste plan. Du kan ikke blive fyret af bestyrelsen i Cycling Zone.",
   },
   {
     q: "Kan jeg forhandle bestyrelsens krav?",
-    a: "Ja. Når bestyrelsen fremlægger mål ved sæsonstart kan du forhandle hvert mål én gang — kravet sænkes lidt og straffen halveres.",
+    a: "Ja. Når du åbner en ny bestyrelsesforhandling genererer systemet kravene på serveren, og du kan forhandle hvert mål én gang. Et godkendt kompromis sænker kravet lidt og halverer typisk straffen ved manglende opfyldelse.",
+  },
+  {
+    q: "Hvor ser jeg bestyrelsens aktuelle vurdering?",
+    a: "Dashboardet viser et kort bestyrelses-outlook med status og category-scores, mens Board-siden viser den mere detaljerede vurdering. De to steder læser nu samme board-data fra backend, så de bruger den samme sandhed.",
   },
 ];
 

@@ -18,6 +18,10 @@ import { startCron } from "./cron.js";
 import { handleSyncRequest } from "./lib/sheetsSync.js";
 import { processSeasonStart, processSeasonEnd } from "./lib/economyEngine.js";
 import { notifySeasonEvent } from "./lib/discordNotifier.js";
+import {
+  applyRaceResults,
+  buildRacePrizeLookup,
+} from "./lib/raceResultsEngine.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,7 +35,41 @@ const upload = multer({
   },
 });
 
+const SHEET_TO_TYPE = {
+  "stage results": "stage",
+  "general results": "gc",
+  points: "points",
+  mountain: "mountain",
+  "team results": "team",
+  "young results": "young",
+};
+
+const DEFAULT_PRIZES = {
+  stage: { 1: 50, 2: 30, 3: 20, 4: 15, 5: 12, 6: 10, 7: 8, 8: 6, 9: 4, 10: 2 },
+  gc: { 1: 200, 2: 150, 3: 100, 4: 75, 5: 50, 6: 40, 7: 30, 8: 20, 9: 15, 10: 10 },
+  points: { 1: 30, 2: 20, 3: 15 },
+  mountain: { 1: 30, 2: 20, 3: 15 },
+  team: { 1: 100, 2: 70, 3: 50, 4: 30, 5: 20 },
+  young: { 1: 50, 2: 30, 3: 20 },
+};
+
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+async function logActivity(type, data = {}) {
+  try {
+    await supabase.from("activity_feed").insert({
+      type,
+      team_id: data.team_id || null,
+      team_name: data.team_name || null,
+      rider_id: data.rider_id || null,
+      rider_name: data.rider_name || null,
+      amount: data.amount || null,
+      meta: data.meta || {},
+    });
+  } catch (e) {
+    // Activity logging must never block the import flow.
+  }
+}
 
 app.use(helmet());
 const ALLOWED_ORIGINS = [
@@ -62,10 +100,27 @@ app.post("/api/admin/import-results", requireAdmin, upload.single("file"), async
   const { race_id, stage_number = 1 } = req.body;
   if (!race_id) return res.status(400).json({ error: "race_id required" });
   try {
+    const { data: race, error: raceError } = await supabase
+      .from("races")
+      .select("id, name, season_id, race_type")
+      .eq("id", race_id)
+      .single();
+    if (raceError) return res.status(500).json({ error: raceError.message });
+    if (!race) return res.status(404).json({ error: "Race not found" });
+
+    const { data: prizes, error: prizesError } = await supabase
+      .from("prize_tables")
+      .select("result_type, rank, prize_amount")
+      .eq("race_type", race.race_type);
+    if (prizesError) return res.status(500).json({ error: prizesError.message });
+
+    const prizeLookup = buildRacePrizeLookup({
+      prizes,
+      defaultsByType: DEFAULT_PRIZES,
+    });
+
     const XLSX = await import("xlsx");
     const wb = XLSX.read(req.file.buffer, { type: "buffer" });
-    const SHEET_TO_TYPE = { "stage results":"stage","general results":"gc","points":"points","mountain":"mountain","team results":"team","young results":"young" };
-    const DEFAULT_PRIZES = { stage:{1:50,2:30,3:20,4:15,5:12,6:10,7:8,8:6,9:4,10:2}, gc:{1:200,2:150,3:100,4:75,5:50,6:40,7:30,8:20,9:15,10:10}, points:{1:30,2:20,3:15}, mountain:{1:30,2:20,3:15}, team:{1:100,2:70,3:50,4:30,5:20}, young:{1:50,2:30,3:20} };
     const allRecords = [];
     for (const sheetName of wb.SheetNames) {
       const resultType = SHEET_TO_TYPE[sheetName.trim().toLowerCase()];
@@ -77,11 +132,10 @@ app.post("/api/admin/import-results", requireAdmin, upload.single("file"), async
       const nameIdx = headers.findIndex(h => h==="name");
       const teamIdx = headers.findIndex(h => h==="team");
       const timeIdx = headers.findIndex(h => h==="time");
-      const ptsIdx = headers.findIndex(h => ["points","mountain"].includes(h));
-      const prizes = DEFAULT_PRIZES[resultType] || {};
       for (const row of rows.slice(2)) {
         const rank = parseInt(row[rankIdx]);
         if (isNaN(rank)) continue;
+        const prize = prizeLookup[`${resultType}__${rank}`] || 0;
         const riderName = resultType==="team" ? null : String(row[nameIdx]||"").trim()||null;
         const teamName = String(row[teamIdx]||"").trim()||null;
         let riderId=null, dbTeamId=null;
@@ -94,18 +148,45 @@ app.post("/api/admin/import-results", requireAdmin, upload.single("file"), async
           const { data: t } = await supabase.from("teams").select("id").ilike("name",`%${teamName.slice(0,20)}%`).limit(1);
           dbTeamId = t?.[0]?.id||null;
         }
-        allRecords.push({ race_id, stage_number:parseInt(stage_number), result_type:resultType, rank, rider_id:riderId, rider_name:riderName, team_id:dbTeamId, team_name:teamName, finish_time:String(row[timeIdx]||"").trim()||null, points_earned:ptsIdx>=0?(parseInt(row[ptsIdx])||0):0, prize_money:prizes[rank]||0 });
+        allRecords.push({
+          race_id,
+          stage_number: parseInt(stage_number, 10) || 1,
+          result_type: resultType,
+          rank,
+          rider_id: riderId,
+          rider_name: riderName,
+          team_id: dbTeamId,
+          team_name: teamName,
+          finish_time: String(row[timeIdx] || "").trim() || null,
+          points_earned: prize,
+          prize_money: prize,
+        });
       }
     }
-    const { error } = await supabase.from("race_results").insert(allRecords);
-    if (error) throw new Error(error.message);
-    const teamPrizes = {};
-    for (const r of allRecords) { if (r.team_id && r.prize_money>0) teamPrizes[r.team_id]=(teamPrizes[r.team_id]||0)+r.prize_money; }
-    for (const [teamId, prize] of Object.entries(teamPrizes)) {
-      const { data: t } = await supabase.from("teams").select("balance").eq("id",teamId).single();
-      if (t) { await supabase.from("teams").update({balance:t.balance+prize}).eq("id",teamId); await supabase.from("finance_transactions").insert({team_id:teamId,type:"prize",amount:prize,description:`Præmiepenge`}); }
+    if (!allRecords.length) {
+      return res.status(400).json({ error: "No rows found in workbook" });
     }
-    res.json({ success:true, records_imported:allRecords.length, teams_paid:Object.keys(teamPrizes).length });
+
+    const result = await applyRaceResults({
+      supabase,
+      race,
+      resultRows: allRecords,
+    });
+
+    await logActivity("race_results_approved", {
+      meta: {
+        race_id: race.id,
+        race_name: race.name,
+        season_id: race.season_id,
+        rows_imported: result.rowsImported,
+      },
+    });
+
+    res.json({
+      success: true,
+      records_imported: result.rowsImported,
+      teams_paid: result.teamsPaid,
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

@@ -35,6 +35,15 @@ import {
   updateStandings,
 } from "../lib/economyEngine.js";
 import {
+  buildBoardOutlook,
+  buildBoardProposal,
+  finalizeBoardGoals,
+  getPlanDuration,
+  inferNegotiationIndexesFromGoals,
+  isValidBoardFocus,
+  isValidBoardPlanType,
+} from "../lib/boardEngine.js";
+import {
   confirmSwapOffer,
   confirmTransferOffer,
 } from "../lib/transferExecution.js";
@@ -43,6 +52,11 @@ import {
   getTeamMarketState,
   MIN_RIDERS_FOR_RACE,
 } from "../lib/marketUtils.js";
+import {
+  applyRaceResults,
+  buildRacePrizeLookup,
+  buildRaceResultsFromPending,
+} from "../lib/raceResultsEngine.js";
 
 // Load .env from backend root
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -1216,24 +1230,14 @@ router.post("/admin/approve-results", requireAdmin, async (req, res) => {
 
     const { data: sub, error: subError } = await supabase
       .from("pending_race_results")
-      .select("race_id")
+      .select("race_id, status")
       .eq("id", pending_id)
       .single();
     if (subError) return res.status(500).json({ error: subError.message });
     if (!sub) return res.status(404).json({ error: "Submission not found" });
-
-    const { data: rows, error: rowsError } = await supabase
-      .from("pending_race_result_rows")
-      .select("*, rider:rider_id(team_id, firstname, lastname)")
-      .eq("pending_id", pending_id);
-    if (rowsError) return res.status(500).json({ error: rowsError.message });
-    if (!rows?.length) return res.status(400).json({ error: "No rows found" });
-
-    const { data: prizes, error: prizesError } = await supabase.from("prize_tables").select("*");
-    if (prizesError) return res.status(500).json({ error: prizesError.message });
-
-    const prizeMap = {};
-    (prizes || []).forEach(p => { prizeMap[`${p.race_type}__${p.result_type}__${p.rank}`] = p.prize_amount; });
+    if (sub.status && sub.status !== "pending") {
+      return res.status(400).json({ error: "Submission is already reviewed" });
+    }
 
     const { data: race, error: raceError } = await supabase
       .from("races")
@@ -1243,75 +1247,57 @@ router.post("/admin/approve-results", requireAdmin, async (req, res) => {
     if (raceError) return res.status(500).json({ error: raceError.message });
     if (!race) return res.status(404).json({ error: "Løb ikke fundet" });
 
-    const insertRows = [];
-    const teamPrizes = {};
+    const { data: rows, error: rowsError } = await supabase
+      .from("pending_race_result_rows")
+      .select("*, rider:rider_id(team_id, firstname, lastname)")
+      .eq("pending_id", pending_id);
+    if (rowsError) return res.status(500).json({ error: rowsError.message });
+    if (!rows?.length) return res.status(400).json({ error: "No rows found" });
 
-    for (const row of rows) {
-      const prize = prizeMap[`${race.race_type}__${row.result_type}__${row.rank}`] || 0;
-      const teamId = row.rider?.team_id || null;
-      const riderName = row.rider ? `${row.rider.firstname} ${row.rider.lastname}` : null;
+    const { data: prizes, error: prizesError } = await supabase
+      .from("prize_tables")
+      .select("result_type, rank, prize_amount")
+      .eq("race_type", race.race_type);
+    if (prizesError) return res.status(500).json({ error: prizesError.message });
 
-      insertRows.push({
-        race_id: sub.race_id,
-        rider_id: row.rider_id,
-        rider_name: riderName,
-        team_id: teamId,
-        result_type: row.result_type,
-        rank: row.rank,
-        stage_number: row.stage_number || 1,
-        prize_money: prize,
-        points_earned: prize,
-      });
+    const prizeLookup = buildRacePrizeLookup({ prizes });
+    const insertRows = buildRaceResultsFromPending({
+      pendingRows: rows,
+      prizeLookup,
+      raceId: race.id,
+    });
 
-      if (teamId && prize > 0) {
-        teamPrizes[teamId] = (teamPrizes[teamId] || 0) + prize;
-      }
-    }
+    const result = await applyRaceResults({
+      supabase,
+      race,
+      resultRows: insertRows,
+      ensureSeasonStandings,
+      updateStandings,
+    });
 
-    const { error: insertError } = await supabase.from("race_results").insert(insertRows);
-    if (insertError) return res.status(500).json({ error: insertError.message });
-
-    for (const [teamId, amount] of Object.entries(teamPrizes)) {
-      const { data: t, error: teamError } = await supabase
-        .from("teams")
-        .select("balance")
-        .eq("id", teamId)
-        .single();
-      if (teamError) return res.status(500).json({ error: teamError.message });
-
-      if (t) {
-        const { error: balanceError } = await supabase
-          .from("teams")
-          .update({ balance: t.balance + amount })
-          .eq("id", teamId);
-        if (balanceError) return res.status(500).json({ error: balanceError.message });
-
-        const { error: financeError } = await supabase.from("finance_transactions").insert({
-          team_id: teamId,
-          type: "prize_money",
-          amount,
-          description: "Præmiepenge fra løb",
-        });
-        if (financeError) return res.status(500).json({ error: financeError.message });
-      }
-    }
-
-    await ensureSeasonStandings(race.season_id);
-    await updateStandings(race.season_id, race.id);
+    const { error: pendingUpdateError } = await supabase
+      .from("pending_race_results")
+      .update({
+        status: "approved",
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: req.user.id,
+      })
+      .eq("id", pending_id);
+    if (pendingUpdateError) return res.status(500).json({ error: pendingUpdateError.message });
 
     await logActivity("race_results_approved", {
       meta: {
         race_id: race.id,
         race_name: race.name,
         season_id: race.season_id,
-        rows_imported: insertRows.length,
+        rows_imported: result.rowsImported,
       },
     });
 
     res.json({
       success: true,
-      rows_imported: insertRows.length,
-      teams_paid: Object.keys(teamPrizes).length,
+      rows_imported: result.rowsImported,
+      teams_paid: result.teamsPaid,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1953,113 +1939,277 @@ router.post("/riders/:id/view", requireAuth, async (req, res) => {
 // BOARD
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/board/status — full plan state for the authenticated manager
-router.get("/board/status", requireAuth, async (req, res) => {
-  const teamId = req.team?.id;
-  if (!teamId) return res.status(404).json({ error: "No team" });
+function isMissingRow(error) {
+  return error?.code === "PGRST116";
+}
 
-  const [boardRes, teamRes, ridersRes, standingRes, loansRes] = await Promise.all([
-    supabase.from("board_profiles").select("*").eq("team_id", teamId).single(),
+async function loadBoardPlanningContext(teamId) {
+  const [seasonRes, teamRes, ridersRes, standingRes, boardRes] = await Promise.all([
+    supabase.from("seasons").select("id, number").eq("status", "active").single(),
     supabase.from("teams").select("id, balance, sponsor_income, division").eq("id", teamId).single(),
     supabase.from("riders").select("id, is_u25").eq("team_id", teamId),
     supabase.from("season_standings").select("*").eq("team_id", teamId)
       .order("updated_at", { ascending: false }).limit(1).single(),
-    supabase.from("loans").select("id", { count: "exact", head: true })
-      .eq("team_id", teamId).eq("status", "active"),
+    supabase.from("board_profiles").select("*").eq("team_id", teamId).single(),
   ]);
 
-  const board = boardRes.data;
-  const activeLoanCount = loansRes.count || 0;
+  if (teamRes.error) throw new Error(teamRes.error.message);
+  if (ridersRes.error) throw new Error(ridersRes.error.message);
+  if (seasonRes.error && !isMissingRow(seasonRes.error)) throw new Error(seasonRes.error.message);
+  if (standingRes.error && !isMissingRow(standingRes.error)) throw new Error(standingRes.error.message);
+  if (boardRes.error && !isMissingRow(boardRes.error)) throw new Error(boardRes.error.message);
 
-  if (!board) {
-    return res.json({
-      board: null,
-      plan_duration: 1, seasons_remaining: 0, seasons_completed: 0,
-      plan_progress_pct: 0, cumulative_stats: { stage_wins: 0, gc_wins: 0 },
-      snapshots: [], is_expired: true, active_loans_count: activeLoanCount,
-      team: teamRes.data, riders: ridersRes.data || [], standing: null,
-    });
-  }
-
-  const planDuration = { "1yr": 1, "3yr": 3, "5yr": 5 }[board.plan_type] ?? 1;
-  const seasonsCompleted = board.seasons_completed || 0;
-  const seasonsRemaining = Math.max(0, planDuration - seasonsCompleted);
-  const planProgressPct = planDuration > 0 ? Math.round((seasonsCompleted / planDuration) * 100) : 0;
-  const isExpired = board.negotiation_status === "pending";
-
-  // Snapshots for current plan only (season_number >= plan start)
-  const { data: snapshots } = await supabase.from("board_plan_snapshots")
-    .select("*").eq("board_id", board.id)
-    .gte("season_number", board.plan_start_season_number || 0)
-    .order("season_within_plan", { ascending: true });
-
-  res.json({
-    board,
-    plan_duration: planDuration,
-    seasons_remaining: seasonsRemaining,
-    seasons_completed: seasonsCompleted,
-    plan_progress_pct: planProgressPct,
-    cumulative_stats: {
-      stage_wins: board.cumulative_stage_wins || 0,
-      gc_wins: board.cumulative_gc_wins || 0,
-    },
-    snapshots: snapshots || [],
-    is_expired: isExpired,
-    active_loans_count: activeLoanCount,
-    team: teamRes.data,
+  return {
+    activeSeason: seasonRes.data || null,
+    team: teamRes.data || null,
     riders: ridersRes.data || [],
     standing: standingRes.data || null,
-  });
+    board: boardRes.data || null,
+  };
+}
+
+// GET /api/board/status — full plan state for the authenticated manager
+router.get("/board/status", requireAuth, async (req, res) => {
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
+
+    const [boardRes, teamRes, ridersRes, standingRes, loansRes] = await Promise.all([
+      supabase.from("board_profiles").select("*").eq("team_id", teamId).single(),
+      supabase.from("teams").select("id, balance, sponsor_income, division").eq("id", teamId).single(),
+      supabase.from("riders").select("id, is_u25").eq("team_id", teamId),
+      supabase.from("season_standings").select("*").eq("team_id", teamId)
+        .order("updated_at", { ascending: false }).limit(1).single(),
+      supabase.from("loans").select("id", { count: "exact", head: true })
+        .eq("team_id", teamId).eq("status", "active"),
+    ]);
+
+    if (teamRes.error) return res.status(500).json({ error: teamRes.error.message });
+    if (ridersRes.error) return res.status(500).json({ error: ridersRes.error.message });
+    if (boardRes.error && !isMissingRow(boardRes.error)) return res.status(500).json({ error: boardRes.error.message });
+    if (standingRes.error && !isMissingRow(standingRes.error)) return res.status(500).json({ error: standingRes.error.message });
+    if (loansRes.error) return res.status(500).json({ error: loansRes.error.message });
+
+    const board = boardRes.data;
+    const activeLoanCount = loansRes.count || 0;
+
+    if (!board) {
+      return res.json({
+        board: null,
+        plan_duration: 1,
+        seasons_remaining: 0,
+        seasons_completed: 0,
+        plan_progress_pct: 0,
+        cumulative_stats: { stage_wins: 0, gc_wins: 0 },
+        snapshots: [],
+        is_expired: true,
+        active_loans_count: activeLoanCount,
+        team: teamRes.data,
+        riders: ridersRes.data || [],
+        standing: null,
+        personality: null,
+        outlook: null,
+      });
+    }
+
+    const planDuration = getPlanDuration(board.plan_type);
+    const seasonsCompleted = board.seasons_completed || 0;
+    const seasonsRemaining = Math.max(0, planDuration - seasonsCompleted);
+    const planProgressPct = planDuration > 0 ? Math.round((seasonsCompleted / planDuration) * 100) : 0;
+    const isExpired = board.negotiation_status === "pending";
+
+    const { data: snapshots, error: snapshotsError } = await supabase.from("board_plan_snapshots")
+      .select("*").eq("board_id", board.id)
+      .gte("season_number", board.plan_start_season_number || 0)
+      .order("season_within_plan", { ascending: true });
+
+    if (snapshotsError) return res.status(500).json({ error: snapshotsError.message });
+
+    const currentTeam = {
+      ...(teamRes.data || {}),
+      riders: ridersRes.data || [],
+    };
+    const currentStanding = standingRes.data || null;
+    const workingSeasonIndex = Math.min(planDuration, seasonsCompleted + 1);
+    const outlook = buildBoardOutlook({
+      board,
+      standing: currentStanding,
+      team: currentTeam,
+      context: {
+        activeLoanCount,
+        planStartSponsorIncome: board.plan_start_sponsor_income,
+        currentSponsorIncome: teamRes.data?.sponsor_income ?? 0,
+        planDuration,
+        seasonsCompleted: workingSeasonIndex,
+        hasSeasonData: Boolean(currentStanding),
+        isExpired,
+        recentSnapshots: (snapshots || []).slice(-3).reverse(),
+        cumulativeStats: {
+          stageWins: (board.cumulative_stage_wins || 0) + (currentStanding?.stage_wins || 0),
+          gcWins: (board.cumulative_gc_wins || 0) + (currentStanding?.gc_wins || 0),
+        },
+      },
+    });
+
+    res.json({
+      board,
+      plan_duration: planDuration,
+      seasons_remaining: seasonsRemaining,
+      seasons_completed: seasonsCompleted,
+      plan_progress_pct: planProgressPct,
+      cumulative_stats: {
+        stage_wins: board.cumulative_stage_wins || 0,
+        gc_wins: board.cumulative_gc_wins || 0,
+      },
+      snapshots: snapshots || [],
+      is_expired: isExpired,
+      active_loans_count: activeLoanCount,
+      team: teamRes.data,
+      riders: ridersRes.data || [],
+      standing: currentStanding,
+      personality: outlook?.personality || null,
+      outlook,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/board/proposal", requireAuth, async (req, res) => {
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
+
+    const { focus, plan_type } = req.body || {};
+    if (!isValidBoardPlanType(plan_type)) {
+      return res.status(400).json({ error: "Invalid plan_type" });
+    }
+    if (!isValidBoardFocus(focus)) {
+      return res.status(400).json({ error: "Invalid focus" });
+    }
+
+    const context = await loadBoardPlanningContext(teamId);
+    const proposal = buildBoardProposal({
+      focus,
+      planType: plan_type,
+      team: context.team,
+      riders: context.riders,
+      standing: context.standing,
+      board: context.board,
+    });
+
+    res.json({ ok: true, ...proposal });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/board/sign — sign a new board plan contract
 router.post("/board/sign", requireAuth, async (req, res) => {
-  const teamId = req.team?.id;
-  if (!teamId) return res.status(404).json({ error: "No team" });
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
 
-  const { focus, plan_type, goals } = req.body;
-  if (!focus || !plan_type || !goals) return res.status(400).json({ error: "Missing fields" });
-  if (!["1yr", "3yr", "5yr"].includes(plan_type)) return res.status(400).json({ error: "Invalid plan_type" });
-  if (!["youth_development", "star_signing", "balanced"].includes(focus)) return res.status(400).json({ error: "Invalid focus" });
+    const { focus, plan_type, goals, negotiations } = req.body || {};
+    if (!focus || !plan_type) return res.status(400).json({ error: "Missing fields" });
+    if (!isValidBoardPlanType(plan_type)) return res.status(400).json({ error: "Invalid plan_type" });
+    if (!isValidBoardFocus(focus)) return res.status(400).json({ error: "Invalid focus" });
 
-  const [seasonRes, teamRes, existingBoardRes] = await Promise.all([
-    supabase.from("seasons").select("id, number").eq("status", "active").single(),
-    supabase.from("teams").select("balance, sponsor_income").eq("id", teamId).single(),
-    supabase.from("board_profiles").select("id, satisfaction, budget_modifier").eq("team_id", teamId).single(),
-  ]);
+    const context = await loadBoardPlanningContext(teamId);
+    const { activeSeason, board: existingBoard, riders, standing, team } = context;
+    const planDuration = getPlanDuration(plan_type);
+    const startSeasonNumber = activeSeason?.number ?? 1;
+    const endSeasonNumber = startSeasonNumber + planDuration - 1;
 
-  const activeSeason = seasonRes.data;
-  const team = teamRes.data;
-  const existingBoard = existingBoardRes.data;
-  const planDuration = { "1yr": 1, "3yr": 3, "5yr": 5 }[plan_type] ?? 1;
-  const startSeasonNumber = activeSeason?.number ?? 1;
-  const endSeasonNumber = startSeasonNumber + planDuration - 1;
+    const proposal = buildBoardProposal({
+      focus,
+      planType: plan_type,
+      team,
+      riders,
+      standing,
+      board: existingBoard,
+    });
 
-  const upsertData = {
-    team_id: teamId,
-    focus,
-    plan_type,
-    current_goals: JSON.stringify(goals),
-    satisfaction: existingBoard?.satisfaction ?? 50,
-    budget_modifier: existingBoard?.budget_modifier ?? 1.0,
-    negotiation_status: "completed",
-    plan_start_season_number: startSeasonNumber,
-    plan_end_season_number: endSeasonNumber,
-    plan_start_balance: team?.balance ?? 0,
-    plan_start_sponsor_income: team?.sponsor_income ?? 100,
-    seasons_completed: 0,
-    cumulative_stage_wins: 0,
-    cumulative_gc_wins: 0,
-    season_id: activeSeason?.id ?? null,
-    updated_at: new Date().toISOString(),
-  };
+    let negotiationIndexes = [];
 
-  const { data: board, error } = await supabase.from("board_profiles")
-    .upsert(upsertData, { onConflict: "team_id" }).select().single();
+    if (Array.isArray(negotiations) && negotiations.length > 0) {
+      negotiationIndexes = [...new Set(
+        negotiations
+          .map((value) => Number(value))
+          .filter((value) => Number.isInteger(value) && value >= 0 && value < proposal.goals.length)
+      )];
+    } else if (Array.isArray(goals) && goals.length > 0) {
+      try {
+        negotiationIndexes = inferNegotiationIndexesFromGoals({
+          goals: proposal.goals,
+          negotiationOptions: proposal.negotiation_options,
+          submittedGoals: goals,
+        });
+      } catch (error) {
+        return res.status(400).json({ error: error.message });
+      }
+    }
 
-  if (error) return res.status(500).json({ error: error.message });
+    const finalGoals = finalizeBoardGoals({
+      goals: proposal.goals,
+      negotiationIndexes,
+    });
 
-  res.json({ ok: true, board });
+    const upsertData = {
+      team_id: teamId,
+      focus,
+      plan_type,
+      current_goals: finalGoals,
+      satisfaction: existingBoard?.satisfaction ?? 50,
+      budget_modifier: existingBoard?.budget_modifier ?? 1.0,
+      negotiation_status: "completed",
+      plan_start_season_number: startSeasonNumber,
+      plan_end_season_number: endSeasonNumber,
+      plan_start_balance: team?.balance ?? 0,
+      plan_start_sponsor_income: team?.sponsor_income ?? 100,
+      seasons_completed: 0,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      season_id: activeSeason?.id ?? null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: board, error } = await supabase.from("board_profiles")
+      .upsert(upsertData, { onConflict: "team_id" }).select().single();
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    res.json({
+      ok: true,
+      board,
+      goals: finalGoals,
+      negotiation_indexes: negotiationIndexes,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/board/renew", requireAuth, async (req, res) => {
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
+
+    const { data: board, error } = await supabase.from("board_profiles")
+      .update({
+        negotiation_status: "pending",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("team_id", teamId)
+      .select()
+      .single();
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    res.json({ ok: true, board });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 export default router;
