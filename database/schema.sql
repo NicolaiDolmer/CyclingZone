@@ -130,7 +130,7 @@ CREATE TABLE race_results (
 CREATE TABLE auctions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   rider_id UUID NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
-  seller_team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  seller_team_id UUID REFERENCES teams(id) ON DELETE CASCADE,
   starting_price INTEGER NOT NULL DEFAULT 1,
   current_price INTEGER NOT NULL DEFAULT 1,
   current_bidder_id UUID REFERENCES teams(id) ON DELETE SET NULL,

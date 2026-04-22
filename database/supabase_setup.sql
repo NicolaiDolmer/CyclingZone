@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS public.race_results (
 CREATE TABLE IF NOT EXISTS public.auctions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   rider_id UUID NOT NULL REFERENCES public.riders(id) ON DELETE CASCADE,
-  seller_team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+  seller_team_id UUID REFERENCES public.teams(id) ON DELETE CASCADE,
   starting_price INTEGER NOT NULL DEFAULT 1,
   current_price INTEGER NOT NULL DEFAULT 1,
   current_bidder_id UUID REFERENCES public.teams(id) ON DELETE SET NULL,

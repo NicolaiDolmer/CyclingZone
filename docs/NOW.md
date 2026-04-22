@@ -1,9 +1,11 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Investigate
-- Achievements tæller ikke korrekt
-- Verificer auktions-sluttid/finaliseringslogik og AI-auktionsflows end-to-end
-- Verificer transfer-window-regel for minimum squad-size samt cleanup af transferliste ved ejerskifte
+- Prioriteret bug-triage pr. 22. april 2026:
+- P1: Season/admin-flowet har parallelle runtime-paths i `backend/routes/api.js` og `backend/server.js` for `POST /api/admin/import-results`, `POST /api/admin/seasons/:id/start` og `POST /api/admin/seasons/:id/end`; konsolidér til én kanonisk execution path før næste større season-flow-ændring
+- P2: Achievements tæller systematisk for lavt. `POST /api/achievements/check` håndterer kun `watchlist_add`, mens frontend også sender `auction_bid` og `transfer_done`
+- P2: Manglende "Glemt password"-entrypoint i auth-flowet; Supabase auth findes, men `frontend/src/pages/LoginPage.jsx` eksponerer ingen reset-password-path
+- P3: Evne-filter/slider kræver frisk reproduktion mod rigtige data; statisk kodegennemgang fandt ingen entydig root cause endnu, så den bør ikke stå over auktions-/season-drift før reproduktion
 - Verificer deployed season flow end-to-end på beta: `season start -> result approval -> season end`
 - Verificer standings/rangliste efter første live result-godkendelse på deployed backend
 
@@ -15,10 +17,11 @@
 - GitHub Actions korer nu backend `npm test` og frontend `npm run build` pa push til `main` og pull requests
 - Backend har nu `npm test`, som dækker shared market guardrails og direkte `finalizeExpiredAuctions` smoke; shared runtime-refactors må ikke deployes uden entrypoint-test
 - Backend-notifikationer går nu gennem delt `backend/lib/notificationService.js`, som deduplikerer nylige identiske payloads og stopper cron/retry-spam af samme event
+- Repo-schemaet og setup-filerne tillader nu `auctions.seller_team_id = null`, så shared auktionsfinalisering ikke driver fra databasen på AI/free/non-owned flows; deploy af denne fix kræver også at SQL-patchen i `database/2026-04-22-auctions-seller-team-id-nullable.sql` køres mod live DB
 - Backend season/race admin-contract er genskabt og deployed til Railway
 - Live smoke test bestod for `POST /api/admin/seasons` og `POST /api/admin/races`; testdata blev ryddet op bagefter
 - Finance-lån er skilt fra rider-lån på egne API-routes (`/api/finance/loans`) for at fjerne route-kollisionen på `POST /api/loans`
-- Auktionsfinalisering er samlet i delt runtime-path for cron + admin/API; ikke-ejede ryttere betaler ikke længere provenu til initiatoren af auktionen
+- Auktionsfinalisering er samlet i delt runtime-path for cron + admin/API; AI-/non-user-ejede auktioner krediterer nu den faktiske ejer ved afslutning, mens stale auktioner annulleres hvis rytteren nu ejes af en anden menneskelig manager
 - Transfer- og swap-bekræftelse er samlet i delt runtime-path med commit-time checks for ejerskab, saldo og squad-limit samt cleanup af relaterede market rows
 - Squad-limit tæller nu også aktive lejeaftaler i shared market state; lejeaftaler, auktionsfinalisering og dashboard-warning bruger samme holdstørrelses-sandhed
 - Rider-loan gebyrer for fortsatte sæsoner opkræves nu automatisk ved sæsonstart og logges for både låner og udlejer

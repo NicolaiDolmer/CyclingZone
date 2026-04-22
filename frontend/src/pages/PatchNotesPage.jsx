@@ -2,6 +2,20 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.20",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Udløbne AI-, free- og andre non-user-auktionsflows kan nu blive afsluttet igen, fordi auktionsschemaet matcher backendens delte finalizer",
+          "Auktionshistorikken kan nu sikkert rydde `seller_team_id` på ikke-ejede auktioner uden at live-databasen stopper finaliseringen",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.19",
     date: "2026-04-22",
     label: "Beta",
@@ -421,7 +435,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.16");
+  const [expanded, setExpanded] = useState("1.20");
 
   return (
     <div className="max-w-2xl mx-auto">
