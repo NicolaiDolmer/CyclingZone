@@ -12,6 +12,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Login-streak tracking
 - Manager XP + niveauer (level = floor(xp/100)+1, max 50)
 - Manager-profil med historik
+- Holdnavn og managernavn oprettes/opdateres nu via den kanoniske backend-path `PUT /api/teams/my`, også når en managerkonto mangler sin team-række
 
 ### Hold & Ryttere
 - Holdoversigt og holdprofil-sider
@@ -111,10 +112,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Auktioners sluttid/finaliseringslogik matcher ikke den aftalte adfærd
 - AI-handler via auktioner bliver ikke gennemført stabilt
 - Transferliste rydder ikke automatisk solgte ryttere ved ejerskifte
-- Signup registrerer ikke `manager_name` korrekt
-- Ændring af managernavn og holdnavn virker ikke
 - Manglende "Glemt password"-entrypoint i auth-flowet
-- Dropdown tekst usynlig (Tailwind farvekonflikt i select-elementer)
 
 --- 
 

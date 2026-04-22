@@ -2,6 +2,21 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.17",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Signup og Min Profil gemmer nu holdnavn og managernavn via samme backend-route i stedet for direkte browser-writes til `teams`",
+          "Managers med en tidligere halv-oprettet konto kan nu initialisere deres hold fra Min Profil, hvis team-rækken mangler",
+          "Hold-bootstrap sikrer nu også, at et manglende board-profile bliver oprettet sammen med holdet",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.16",
     date: "2026-04-22",
     label: "Beta",

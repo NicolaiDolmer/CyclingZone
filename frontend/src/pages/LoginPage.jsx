@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 
+const API = import.meta.env.VITE_API_URL;
+
 export default function LoginPage() {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -10,6 +12,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  async function getAuthHeaders() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return null;
+
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    };
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -65,49 +77,30 @@ export default function LoginPage() {
         // Wait a moment for the trigger to create the user profile
         await new Promise(r => setTimeout(r, 1000));
 
-        // Create team automatically
-        const { error: teamError } = await supabase
-          .from("teams")
-          .insert({
-            user_id: data.user.id,
-            name: teamName.trim(),
-            manager_name: managerName.trim(),
-            division: 3,
-            balance: 500,
-            sponsor_income: 100,
-          });
-
-        if (teamError) {
-          // Team might already exist from trigger — not critical
-          console.warn("Team creation:", teamError.message);
+        const headers = await getAuthHeaders();
+        if (!headers) {
+          setSuccess("Konto oprettet. Log ind for at færdiggøre holdopsætning.");
+          setLoading(false);
+          return;
         }
 
-        // Create board profile
-        await supabase.from("board_profiles").insert({
-          team_id: null, // Will be updated after team creation
-          plan_type: "1yr",
-          focus: "balanced",
-          satisfaction: 50,
-          budget_modifier: 1.0,
-          current_goals: JSON.stringify([
-            { type: "top_n_finish", target: 4, label: "Top 4 i divisionen", satisfaction_bonus: 15, satisfaction_penalty: 8 },
-            { type: "min_riders", target: 8, label: "Hold på min. 8 ryttere", satisfaction_bonus: 5, satisfaction_penalty: 10 },
-            { type: "stage_wins", target: 1, label: "Mindst 1 etapesejr", satisfaction_bonus: 10, satisfaction_penalty: 5 },
-          ]),
-        }).select().single().then(async ({ data: board }) => {
-          if (board) {
-            // Link board to team
-            const { data: team } = await supabase
-              .from("teams").select("id").eq("user_id", data.user.id).single();
-            if (team) {
-              await supabase.from("board_profiles")
-                .update({ team_id: team.id })
-                .eq("id", board.id);
-            }
-          }
+        const bootstrapRes = await fetch(`${API}/api/teams/my`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({
+            name: teamName.trim(),
+            manager_name: managerName.trim(),
+          }),
         });
+        const bootstrapData = await bootstrapRes.json();
 
-        setSuccess(`Velkommen, ${teamName}! 🎉 Din konto er oprettet og dit hold er klar.`);
+        if (!bootstrapRes.ok) {
+          setError(`Konto oprettet, men holdet kunne ikke initialiseres: ${bootstrapData.error}`);
+          setLoading(false);
+          return;
+        }
+
+        setSuccess(`Velkommen, ${bootstrapData.team.name}! Dit hold er klar.`);
       }
     }
     setLoading(false);

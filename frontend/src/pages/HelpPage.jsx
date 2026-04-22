@@ -108,6 +108,10 @@ const SECTIONS = [
         text: "Hver manager har en offentlig profilside. Klik på et holdnavn i ranglisten, holdlisten eller transfers for at se deres profil. Profilen viser hold og ryttere, sæsonhistorik, achievements og transferaktivitet.",
       },
       {
+        title: "Holdnavn og managernavn",
+        text: "På Min Profil kan du gemme eller rette både holdnavn og managernavn. Hvis din konto tidligere blev oprettet uden et rigtigt hold, kan du også initialisere holdet herfra ved at gemme holdinfo.",
+      },
+      {
         title: "Online status",
         text: "En grøn prik ved en managers navn betyder de er aktive lige nu (sidst set inden for 5 minutter). En grå prik med tekst viser hvornår de sidst var online, f.eks. '3t siden'. Du kan se dette overalt hvor manager-navne vises.",
       },

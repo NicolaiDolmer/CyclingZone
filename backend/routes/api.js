@@ -57,6 +57,7 @@ import {
   buildRacePrizeLookup,
   buildRaceResultsFromPending,
 } from "../lib/raceResultsEngine.js";
+import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 
 // Load .env from backend root
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -1359,6 +1360,25 @@ router.get("/teams/:id", requireAuth, async (req, res) => {
 // GET /api/teams/my — current user's team
 router.get("/teams/my", requireAuth, async (req, res) => {
   res.json(req.team);
+});
+
+// PUT /api/teams/my — create or update the current user's team profile
+router.put("/teams/my", requireAuth, async (req, res) => {
+  try {
+    const result = await upsertOwnTeamProfile({
+      supabase,
+      userId: req.user.id,
+      existingTeam: req.team,
+      name: req.body?.name,
+      managerName: req.body?.manager_name,
+    });
+
+    req.team = result.team;
+
+    res.status(result.created ? 201 : 200).json(result);
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message || "Kunne ikke gemme holdprofil" });
+  }
 });
 
 // ── Admin: Seasons & Races ────────────────────────────────────────────────────

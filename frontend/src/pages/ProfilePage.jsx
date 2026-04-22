@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
+const API = import.meta.env.VITE_API_URL;
+
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [team, setTeam] = useState(null);
@@ -33,6 +35,16 @@ export default function ProfilePage() {
     setTimeout(() => setMsg({ text: "" }), 3000);
   }
 
+  async function getAuthHeaders() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return null;
+
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    };
+  }
+
   async function saveDiscordId() {
     setSavingDiscord(true);
     const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -55,15 +67,33 @@ export default function ProfilePage() {
       return;
     }
     setSavingTeam(true);
-    const { error } = await supabase
-      .from("teams")
-      .update({ name: teamName.trim(), manager_name: managerName.trim() })
-      .eq("id", team.id);
-    if (error) showMsg(`❌ ${error.message}`, "error");
-    else {
-      setTeam(t => ({ ...t, name: teamName.trim(), manager_name: managerName.trim() }));
-      showMsg("✅ Holdinfo gemt!");
+
+    const headers = await getAuthHeaders();
+    if (!headers) {
+      showMsg("❌ Kunne ikke finde en aktiv session", "error");
+      setSavingTeam(false);
+      return;
     }
+
+    const res = await fetch(`${API}/api/teams/my`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        name: teamName.trim(),
+        manager_name: managerName.trim(),
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showMsg(`❌ ${data.error}`, "error");
+    } else {
+      setTeam(data.team);
+      setTeamName(data.team.name || "");
+      setManagerName(data.team.manager_name || "");
+      showMsg(team ? "✅ Holdinfo gemt!" : "✅ Hold oprettet!");
+    }
+
     setSavingTeam(false);
   }
 
@@ -72,6 +102,8 @@ export default function ProfilePage() {
       <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
     </div>
   );
+
+  const canEditTeam = Boolean(team) || user?.role === "manager";
 
   return (
     <div className="max-w-xl mx-auto">
@@ -101,10 +133,17 @@ export default function ProfilePage() {
       </div>
 
       {/* Team info */}
-      {team && (
+      {canEditTeam && (
         <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
           <h2 className="text-white font-semibold text-sm mb-4">Hold</h2>
           <div className="space-y-4">
+            {!team && (
+              <div className="bg-white/3 border border-white/5 rounded-lg p-4">
+                <p className="text-white/60 text-sm">
+                  Dit hold mangler stadig at blive initialiseret. Gem holdinfo for at oprette det nu.
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-white/30 text-xs uppercase tracking-wider mb-1.5">Holdnavn</label>
               <input
@@ -147,7 +186,7 @@ export default function ProfilePage() {
               disabled={savingTeam}
               className="w-full py-2.5 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm
                 hover:bg-[#f0d060] transition-all disabled:opacity-50">
-              {savingTeam ? "Gemmer..." : "Gem holdinfo"}
+              {savingTeam ? "Gemmer..." : team ? "Gem holdinfo" : "Opret holdinfo"}
             </button>
           </div>
         </div>

@@ -50,6 +50,8 @@
 
 - Frontend endpoint findes og matcher backend route
 - `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start` og `POST /api/admin/seasons/:id/end` findes live og auth-gater korrekt
+- Signup og Min Profil bruger den kanoniske backend-route `PUT /api/teams/my` til holdnavn/managernavn i stedet for direkte browser-writes til `teams`
+- `PUT /api/teams/my` kan både opdatere eksisterende hold og bootstrappe manglende `teams`- og `board_profiles`-rækker for managerens egen konto
 - Runtime writes bruger gyldige DB-typer og constraints
 - Result-godkendelse skriver `team_id` på `race_results`, så standings kan recalculeres fra persisted data
 - Cron-finalisering og manuel auktionsfinalisering giver samme resultat
@@ -105,3 +107,10 @@ Alle bugfixes skal testes her eller have en begrundet test-note
 - Kald backend `GET /health`
 - Kald backend `GET /api/auctions` uden token og forvent `401`
 - Kør ét lille sanity-check på det berørte flow mod live miljø
+
+### Manager signup/profile smoke
+- Opret en managerkonto med holdnavn og managernavn
+- Bekræft at signup opretter holdet via backend og at Min Profil viser de gemte værdier efter reload
+- Ret holdnavn og managernavn på Min Profil
+- Bekræft at ændringerne persisterer efter reload og ikke bliver stoppet af RLS på `teams`
+- For en halv-oprettet managerkonto: gem holdinfo fra Min Profil og bekræft at hold og board-profile bliver bootstrap'et igen

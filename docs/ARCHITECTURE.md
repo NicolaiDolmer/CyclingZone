@@ -96,6 +96,7 @@ POST  /api/finance/loans/:id/repay { amount }
 ### Teams & Managers
 ```
 GET /api/teams/my
+PUT /api/teams/my                { name, manager_name }
 GET /api/teams/:id
 GET /api/managers/:teamId
 ```
@@ -178,6 +179,11 @@ Season flow notes:
 - `buildBoardOutlook` leverer personality, feedback og category breakdown til UI, mens `evaluateBoardSeason` bruger samme vægtede runtime-path ved sæsonslut
 - `processSeasonEnd` bruger samme board-engine til sæsonevaluering, så sign-flow, status-read og season-end deler board-sandhed
 
+### Managerprofil / hold-bootstrap
+- Signup og Min Profil skriver holdnavn/managernavn via `PUT /api/teams/my` i stedet for direkte browser-writes til `teams`
+- `backend/lib/teamProfileEngine.js` er den delte write-path for create/update af managerens eget hold og håndterer også bootstrap af manglende `board_profiles`
+- Denne path findes for at holde `teams`-writes bag backend/service-role, fordi runtimeen ikke må være afhængig af direkte klient-writes mod RLS-beskyttede tabeller
+
 ### Lån og markedsdomæner
 - Rider-lån bruger `loan_agreements` og `/api/loans`
 - Finance-lån bruger `loans` + `loan_config` og `/api/finance/loans`
@@ -205,6 +211,7 @@ Season flow notes:
 | `marketUtils.js` | `getTeamMarketState`, `getIncomingSquadViolation`, `getOutgoingSquadViolation`, `getTransferWindowOpen`, `calculateMarketSalary` |
 | `raceResultsEngine.js` | `buildRacePrizeLookup`, `buildRaceResultsFromPending`, `applyRaceResults` |
 | `sheetsSync.js` | `handleSyncRequest` |
+| `teamProfileEngine.js` | `upsertOwnTeamProfile` |
 | `transferExecution.js` | `confirmTransferOffer`, `confirmSwapOffer`, `getTransferExecutionIssue`, `getSwapExecutionIssue` |
 | `discordNotifier.js` | `notifySeasonEvent` |
 

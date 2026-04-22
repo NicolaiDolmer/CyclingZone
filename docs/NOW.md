@@ -5,7 +5,6 @@
 - Notifikationer deduplikeres ikke; samme event sendes hvert minut i stedet for én gang
 - Verificer auktions-sluttid/finaliseringslogik og AI-auktionsflows end-to-end
 - Verificer transfer-window-regel for minimum squad-size samt cleanup af transferliste ved ejerskifte
-- Verificer signup/profile-flow for `manager_name`, managernavn og holdnavn
 - Verificer deployed season flow end-to-end på beta: `season start -> result approval -> season end`
 - Verificer standings/rangliste efter første live result-godkendelse på deployed backend
 
@@ -23,6 +22,9 @@
 - Live smoke på production bestod for udløbet auktion via cron, transfer med endelig bekræftelse og swap med endelig bekræftelse; smoke-testdata blev ryddet op bagefter
 - Dashboard og Hold-siden scope'er nu rangliste-data til aktiv sæson og falder tilbage til 0-point-rækker, så current-season vises stabilt før første live result-godkendelse
 - Delvis live smoke bestod den 22. april 2026 for `GET /health` og auth-gaten på `GET /api/auctions`; fuld admin-verifikation af sæsonflow kræver stadig en rigtig admin-session
+- Signup og Min Profil bruger nu samme backend-route (`PUT /api/teams/my`) til holdnavn/managernavn, så writes ikke længere bliver stoppet af RLS på `teams`
+- Hold-bootstrap via `PUT /api/teams/my` kan nu også genskabe manglende `teams`- og `board_profiles`-rækker for halv-oprettede managerkonti
+- Dropdown-fix for native selects var allerede til stede i runtimeen og er derfor fjernet som stale bug fra context
 
 ## In Progress
 - Board System V1 fase 1 er genåbnet: proposal/sign/renew kører nu via delt `backend/lib/boardEngine.js`, og frontend genererer ikke længere sine egne board-mål
