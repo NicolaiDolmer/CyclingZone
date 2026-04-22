@@ -154,7 +154,7 @@ Season flow notes:
 - `POST /api/admin/import-results` og `POST /api/admin/approve-results` deler nu samme result-write path via `backend/lib/raceResultsEngine.js`
 - Result-finalisering skriver `race_results`, bogfører prize-transaktioner med gyldig finance-type og recalculerer derefter `season_standings` fra persisted data
 - `POST /api/admin/seasons/:id/end` stopper hvis der stadig findes `pending_race_results` for løb i sæsonen
-- Runtimeen indeholder stadig parallelle admin-handlers i `backend/server.js` for `POST /api/admin/import-results`, `POST /api/admin/seasons/:id/start` og `POST /api/admin/seasons/:id/end`; behandl dette som aktiv drift-risk, indtil execution pathen er konsolideret
+- `backend/routes/api.js` er nu den kanoniske ejer af admin season/import-routes; `backend/server.js` monterer routeren, `sync-uci` og health-checks, men ejer ikke længere parallelle season/import handlers
 
 ---
 
@@ -169,9 +169,11 @@ Season flow notes:
 
 ### Sæsonflow
 - Admin starter flowet via `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start`, derefter enten `POST /api/admin/import-results` eller `POST /api/admin/approve-results`, og til sidst `POST /api/admin/seasons/:id/end`
+- De admin-entrypoints ejes nu kun af `backend/routes/api.js`, så season-flowets guardrails ikke kan drive mellem router og bootstrap-server
 - Den kanoniske season engine ligger i `backend/lib/economyEngine.js`
 - `race_results` er persisted sandhed for standings; `season_standings` recalculeres derfra
 - `backend/lib/raceResultsEngine.js` er shared execution path for result-finalisering, prize-write og standings-recalculation
+- `backend/lib/adminImportResultsHandler.js` binder den direkte xlsx-import til samme shared result-engine som pending-approval flowet
 - Transfer-window-state er del af season-flowets runtime-kontrakt
 
 ### Board
@@ -214,6 +216,7 @@ Season flow notes:
 | `boardEngine.js` | `getPlanDuration`, `buildBoardProposal`, `finalizeBoardGoals`, `buildBoardOutlook`, `deriveBoardPersonality`, `evaluateBoardSeason`, `createInitialBoardProfile` |
 | `notificationService.js` | `notifyUser`, `notifyTeamOwner` |
 | `auctionFinalization.js` | `finalizeAuctionById`, `finalizeExpiredAuctions`, `sellerOwnsAuctionRider`, `calculateAuctionSalary` |
+| `adminImportResultsHandler.js` | `createAdminImportResultsHandler` |
 | `economyEngine.js` | `processSeasonStart`, `processSeasonEnd`, `updateStandings` |
 | `loanEngine.js` | `getLoanConfig`, `getTotalDebt`, `createLoan`, `createEmergencyLoan`, `repayLoan`, `processLoanInterest` |
 | `marketUtils.js` | `getTeamMarketState`, `getIncomingSquadViolation`, `getOutgoingSquadViolation`, `getTransferWindowOpen`, `calculateMarketSalary` |

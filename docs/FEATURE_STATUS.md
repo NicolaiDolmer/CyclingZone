@@ -89,7 +89,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Import af løbsresultater (xlsx upload)
 - UCI points sync (Google Sheets CSV)
 - Override rider (team/stats)
-- Sæsonoprettelse, sæsonstart og sæsonslut-routes i backend
+- Sæsonoprettelse, sæsonstart, sæsonslut og resultatimport kører nu via de kanoniske admin-routes i `backend/routes/api.js`
 - Løbsoprettelse via admin-backend route
 - Season-end preview endpoint
 
@@ -109,7 +109,6 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 🔴 Broken / Kendte bugs
 
 - Achievements tæller ikke korrekt; backend unlocker kun `watchlist_add`, selv om frontend også sender `auction_bid` og `transfer_done`
-- Parallelle admin-routes i `backend/server.js` og `backend/routes/api.js` giver drift-risk i season/import flowet
 - Evne-filter/slider kræver frisk reproduktion; root cause er ikke bekræftet via statisk kodegennemgang endnu
 - Manglende "Glemt password"-entrypoint i auth-flowet
 

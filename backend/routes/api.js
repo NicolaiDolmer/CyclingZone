@@ -10,6 +10,7 @@
  */
 
 import express from "express";
+import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
@@ -61,6 +62,7 @@ import {
   buildRacePrizeLookup,
   buildRaceResultsFromPending,
 } from "../lib/raceResultsEngine.js";
+import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 
 // Load .env from backend root
@@ -68,6 +70,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env") });
 
 const router = express.Router();
+const adminImportUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_, file, cb) => {
+    const ok = file.mimetype.includes("spreadsheet") || file.originalname.endsWith(".xlsx");
+    cb(null, ok);
+  },
+});
 
 
 // Log to public activity feed
@@ -1229,6 +1239,20 @@ router.post("/admin/override-rider", requireAdmin, async (req, res) => {
   const teamName = teamRes?.data?.name || "fri agent";
   res.json({ success: true, message: `${rider.firstname} ${rider.lastname} flyttet til ${teamName}` });
 });
+
+router.post(
+  "/admin/import-results",
+  requireAdmin,
+  adminImportUpload.single("file"),
+  createAdminImportResultsHandler({
+    supabase,
+    buildRacePrizeLookup,
+    applyRaceResults,
+    ensureSeasonStandings,
+    updateStandings,
+    logActivity,
+  }),
+);
 
 // POST /api/admin/approve-results — approve pending race result submission
 router.post("/admin/approve-results", requireAdmin, async (req, res) => {

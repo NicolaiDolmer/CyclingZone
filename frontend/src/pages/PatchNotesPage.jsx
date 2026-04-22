@@ -2,6 +2,20 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.21",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Admin-import af løbsresultater kører nu gennem samme backend execution path som godkendte pending resultater, så standings og præmiepenge opdateres ens med det samme",
+          "Admin-sæsonstart og -afslutning bruger nu kun ét kanonisk backend-entrypoint, så validering og guardrails ikke kan drive mellem `api.js` og `server.js`",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.20",
     date: "2026-04-22",
     label: "Beta",
@@ -435,7 +449,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.20");
+  const [expanded, setExpanded] = useState("1.21");
 
   return (
     <div className="max-w-2xl mx-auto">

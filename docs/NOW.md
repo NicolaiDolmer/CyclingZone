@@ -2,7 +2,6 @@
 
 ## Investigate
 - Prioriteret bug-triage pr. 22. april 2026:
-- P1: Season/admin-flowet har parallelle runtime-paths i `backend/routes/api.js` og `backend/server.js` for `POST /api/admin/import-results`, `POST /api/admin/seasons/:id/start` og `POST /api/admin/seasons/:id/end`; konsolidér til én kanonisk execution path før næste større season-flow-ændring
 - P2: Achievements tæller systematisk for lavt. `POST /api/achievements/check` håndterer kun `watchlist_add`, mens frontend også sender `auction_bid` og `transfer_done`
 - P2: Manglende "Glemt password"-entrypoint i auth-flowet; Supabase auth findes, men `frontend/src/pages/LoginPage.jsx` eksponerer ingen reset-password-path
 - P3: Evne-filter/slider kræver frisk reproduktion mod rigtige data; statisk kodegennemgang fandt ingen entydig root cause endnu, så den bør ikke stå over auktions-/season-drift før reproduktion
@@ -19,6 +18,8 @@
 - Backend-notifikationer går nu gennem delt `backend/lib/notificationService.js`, som deduplikerer nylige identiske payloads og stopper cron/retry-spam af samme event
 - Repo-schemaet og setup-filerne tillader nu `auctions.seller_team_id = null`, så shared auktionsfinalisering ikke driver fra databasen på AI/free/non-owned flows; deploy af denne fix kræver også at SQL-patchen i `database/2026-04-22-auctions-seller-team-id-nullable.sql` køres mod live DB
 - Backend season/race admin-contract er genskabt og deployed til Railway
+- Admin season/import-routes er nu konsolideret til `backend/routes/api.js`; `POST /api/admin/import-results`, `POST /api/admin/seasons/:id/start` og `POST /api/admin/seasons/:id/end` har ikke længere parallelle server-paths
+- Direkte admin-import af løbsresultater bruger nu samme shared `applyRaceResults`-path som `POST /api/admin/approve-results`, inklusive standings-initialisering, standings-recalculation og entrypoint-regressionstest
 - Live smoke test bestod for `POST /api/admin/seasons` og `POST /api/admin/races`; testdata blev ryddet op bagefter
 - Finance-lån er skilt fra rider-lån på egne API-routes (`/api/finance/loans`) for at fjerne route-kollisionen på `POST /api/loans`
 - Auktionsfinalisering er samlet i delt runtime-path for cron + admin/API; AI-/non-user-ejede auktioner krediterer nu den faktiske ejer ved afslutning, mens stale auktioner annulleres hvis rytteren nu ejes af en anden menneskelig manager
@@ -36,5 +37,4 @@
 - Board System V1 fase 1 er genåbnet: proposal/sign/renew kører nu via delt `backend/lib/boardEngine.js`, og frontend genererer ikke længere sine egne board-mål
 - Board System V1 fase 2 er delvist landet: season-end bruger nu vægtet, gradvis board-evaluering med derived personality, board feedback og 2-3 sæsoners hukommelse i `boardEngine`
 - Dashboard og Board-siden læser nu board-outlook via `/api/board/status`, så read-pathen er mere kanonisk
-- Race-result execution path er nu samlet mellem `POST /api/admin/import-results` og `POST /api/admin/approve-results`, så prize-writes og standings-recalculation ikke længere driver fra hinanden
 - Næste board-fase er requests/tradeoffs samt dybere identity/specialization-logik oven på den nye execution path
