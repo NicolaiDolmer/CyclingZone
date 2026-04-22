@@ -47,7 +47,7 @@
 
 ---
 
-## Backend API Endpoints (`backend/routes/api.js`)
+## Backend API Endpoints (primært `backend/routes/api.js`)
 
 ### Riders
 ```
@@ -154,6 +154,7 @@ Season flow notes:
 - `POST /api/admin/import-results` og `POST /api/admin/approve-results` deler nu samme result-write path via `backend/lib/raceResultsEngine.js`
 - Result-finalisering skriver `race_results`, bogfører prize-transaktioner med gyldig finance-type og recalculerer derefter `season_standings` fra persisted data
 - `POST /api/admin/seasons/:id/end` stopper hvis der stadig findes `pending_race_results` for løb i sæsonen
+- Runtimeen indeholder stadig parallelle admin-handlers i `backend/server.js` for `POST /api/admin/import-results`, `POST /api/admin/seasons/:id/start` og `POST /api/admin/seasons/:id/end`; behandl dette som aktiv drift-risk, indtil execution pathen er konsolideret
 
 ---
 

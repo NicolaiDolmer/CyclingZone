@@ -28,6 +28,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Garanteret salg (startpris = 50% af UCI-pris)
 - Auktionsfinalisering via cron (60s interval)
 - Delt auktionsfinalisering for cron + admin/API, så payout og transfer-window følger samme runtime-path
+- Auktionsfinalisering krediterer nu den faktiske AI-/non-user-ejer ved afslutning og annullerer stale auktioner, hvis rytteren i mellemtiden ejes af en anden menneskelig manager
 - Squad-limit ved auktionsfinalisering tæller også ventende handler og aktive indlån
 - Auktionshistorik-side
 - Discord-notifikationer ved sæsonevents
@@ -107,11 +108,9 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 🔴 Broken / Kendte bugs
 
-- Achievements tæller ikke korrekt
-- Evne-filter/slider virker ikke for alle spillere
-- Auktioners sluttid/finaliseringslogik matcher ikke den aftalte adfærd
-- AI-handler via auktioner bliver ikke gennemført stabilt
-- Transferliste rydder ikke automatisk solgte ryttere ved ejerskifte
+- Achievements tæller ikke korrekt; backend unlocker kun `watchlist_add`, selv om frontend også sender `auction_bid` og `transfer_done`
+- Parallelle admin-routes i `backend/server.js` og `backend/routes/api.js` giver drift-risk i season/import flowet
+- Evne-filter/slider kræver frisk reproduktion; root cause er ikke bekræftet via statisk kodegennemgang endnu
 - Manglende "Glemt password"-entrypoint i auth-flowet
 
 --- 

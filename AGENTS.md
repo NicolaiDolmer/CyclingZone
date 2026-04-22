@@ -1,5 +1,10 @@
 # AGENTS.md — Entry for AI Agents
 
+## Hard rule
+- Brug kun dette repo: `C:\Users\emmas\Documents\Codex\2026-04-21-kan-du-hj-lpe-med-at\CyclingZone-git`
+- Brug aldrig: `C:\Users\emmas\Documents\Codex\2026-04-21-kan-du-hj-lpe-med-at\CyclingZone`
+- Hvis workspace, session-kontekst eller `cwd` peger på den forkerte mappe: stop og bed om realignment før du læser, ændrer eller kører noget
+
 ## Start
 0. Verificér at du står i en rigtig git-worktree:
    - kør `git rev-parse --show-toplevel`

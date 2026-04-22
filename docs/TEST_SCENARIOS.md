@@ -8,6 +8,7 @@
 - Winner betaler korrekt
 - Sælger modtager korrekt beløb
 - Fri/AI-rytter giver ikke provenu til auktions-initiatoren
+- Auktion annulleres sikkert hvis rytteren ved afslutning ejes af en anden menneskelig manager end initiatoren
 - Guaranteed sale på ejet rytter sender rytteren til banken og krediterer korrekt pris ved ingen bud
 - Guaranteed sale på ikke-ejet rytter må ikke skabe payout eller falsk salgs-historik
 - Lukket transfervindue giver `pending_team_id` i stedet for direkte holdskifte
@@ -50,6 +51,7 @@
 
 - Frontend endpoint findes og matcher backend route
 - `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start` og `POST /api/admin/seasons/:id/end` findes live og auth-gater korrekt
+- `backend/server.js` må ikke konkurrere med `backend/routes/api.js` om `POST /api/admin/import-results`, `POST /api/admin/seasons/:id/start` eller `POST /api/admin/seasons/:id/end`; kun én execution path må eje hvert route-path
 - Signup og Min Profil bruger den kanoniske backend-route `PUT /api/teams/my` til holdnavn/managernavn i stedet for direkte browser-writes til `teams`
 - `PUT /api/teams/my` kan både opdatere eksisterende hold og bootstrappe manglende `teams`- og `board_profiles`-rækker for managerens egen konto
 - Runtime writes bruger gyldige DB-typer og constraints
@@ -57,6 +59,7 @@
 - Cron-finalisering og manuel auktionsfinalisering giver samme resultat
 - `finalizeExpiredAuctions()` kan køre som no-op uden udløbne auktioner; manglende helper-imports eller andre bootstrap-referencefejl skal fanges før deploy
 - AI-auktionssalg betaler korrekt ejer
+- `POST /api/achievements/check` kan låse op for de contexts frontend faktisk sender (`watchlist_add`, `auction_bid`, `transfer_done`)
 - Rider loans og finance loans kan ikke forveksles
 - Dashboard-rangering bygger på korrekt scope
 - Dashboard og Hold-siden viser aktive hold med 0 point, hvis `season_standings` endnu ikke er initialiseret for den aktive sæson
