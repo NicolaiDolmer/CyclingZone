@@ -63,6 +63,7 @@ import {
   buildRaceResultsFromPending,
 } from "../lib/raceResultsEngine.js";
 import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
+import { checkAchievements } from "../lib/achievementEngine.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 
 // Load .env from backend root
@@ -1889,31 +1890,19 @@ router.get("/achievements", requireAuth, async (req, res) => {
   })));
 });
 
-// POST /api/achievements/check — lås achievements op baseret på context
+// POST /api/achievements/check — synk achievements mod live runtime-data
 router.post("/achievements/check", requireAuth, async (req, res) => {
-  const { context } = req.body;
-  const [{ data: all }, { data: unlocked }] = await Promise.all([
-    supabase.from("achievements").select("*"),
-    supabase.from("manager_achievements").select("achievement_id").eq("user_id", req.user.id),
-  ]);
-  const unlockedIds = new Set((unlocked || []).map(u => u.achievement_id));
-  const toCheck = (all || []).filter(a => !unlockedIds.has(a.id));
-  const newlyUnlocked = [];
+  try {
+    const newlyUnlocked = await checkAchievements({
+      supabase,
+      userId: req.user.id,
+    });
 
-  for (const ach of toCheck) {
-    let qualified = false;
-    if (context === "watchlist_add" && ach.condition_type === "watchlist_count") {
-      const { count } = await supabase.from("rider_watchlist")
-        .select("id", { count: "exact", head: true }).eq("user_id", req.user.id);
-      if ((count || 0) >= (ach.condition_value || 1)) qualified = true;
-    }
-    if (qualified) {
-      const { error: achErr } = await supabase.from("manager_achievements")
-        .insert({ user_id: req.user.id, achievement_id: ach.id, unlocked_at: new Date().toISOString() });
-      if (!achErr) newlyUnlocked.push(ach);
-    }
+    res.json({ unlocked: newlyUnlocked });
+  } catch (error) {
+    console.error("[achievements/check] sync failed:", error.message);
+    res.status(500).json({ error: "Kunne ikke opdatere achievements" });
   }
-  res.json({ unlocked: newlyUnlocked });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

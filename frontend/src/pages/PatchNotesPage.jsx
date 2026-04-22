@@ -2,6 +2,20 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.22",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Achievements syncer nu mod live historik i stedet for stale backend-felter, så bud-, transfer-, watchlist-, hold- og board-relaterede unlocks kan dukke op igen",
+          "Achievement-checket kører nu efter login-streak-opdateringen ved app-load, så streak-baserede unlocks ikke bliver tabt på en race condition",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.21",
     date: "2026-04-22",
     label: "Beta",

@@ -92,8 +92,15 @@ export default function Layout() {
       if (!API) { console.error("VITE_API_URL is not set — presence/streak calls skipped"); return; }
       const h = await authHeaders();
       fetch(`${API}/api/presence`,     { method: "POST", headers: h }).catch(e => console.error("presence:", e));
-      fetch(`${API}/api/login-streak`, { method: "POST", headers: h }).catch(e => console.error("login-streak:", e));
-      fetch(`${API}/api/achievements/check`, { method: "POST", headers: h, body: JSON.stringify({ context: "team_update", data: {} }) }).catch(() => {});
+      fetch(`${API}/api/login-streak`, { method: "POST", headers: h })
+        .catch(e => console.error("login-streak:", e))
+        .finally(() => {
+          fetch(`${API}/api/achievements/check`, {
+            method: "POST",
+            headers: h,
+            body: JSON.stringify({ context: "team_update", data: {} }),
+          }).catch(() => {});
+        });
       fetchOnlineCount(h);
     });
   }, []);

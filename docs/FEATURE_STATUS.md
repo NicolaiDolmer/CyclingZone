@@ -96,6 +96,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### UI / Misc
 - Responsivt layout med navigation (Layout.jsx)
 - Notifikationssystem (in-app + badge)
+- Achievement-sync bruger nu live historikstabeller i backend, så bid-, transfer-, watchlist-, hold- og board-relaterede unlocks kan blive fanget op ved næste app-load
 - Backend-notifikationer deduplikerer nu nylige identiske events, så samme besked ikke spammes igen ved cron/retries
 - Aktivitets-feed
 - Head-to-head sammenligning
@@ -108,7 +109,6 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 🔴 Broken / Kendte bugs
 
-- Achievements tæller ikke korrekt; backend unlocker kun `watchlist_add`, selv om frontend også sender `auction_bid` og `transfer_done`
 - Evne-filter/slider kræver frisk reproduktion; root cause er ikke bekræftet via statisk kodegennemgang endnu
 - Manglende "Glemt password"-entrypoint i auth-flowet
 
