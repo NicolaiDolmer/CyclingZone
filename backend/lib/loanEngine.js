@@ -8,16 +8,24 @@
  *     UPDATE teams SET balance = balance + amount WHERE id = team_id;
  *   $$ LANGUAGE sql;
  */
-import { createClient } from "@supabase/supabase-js";
+import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+let defaultSupabaseClientPromise;
 
-async function adjustBalance(teamId, amount, supabaseClient = supabase) {
-  const { data: team } = await supabaseClient.from("teams").select("balance").eq("id", teamId).single();
-  await supabaseClient.from("teams").update({ balance: team.balance + amount }).eq("id", teamId);
+async function getDefaultSupabaseClient() {
+  if (!defaultSupabaseClientPromise) {
+    defaultSupabaseClientPromise = import("@supabase/supabase-js").then(({ createClient }) => (
+      createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+    ));
+  }
+
+  return defaultSupabaseClientPromise;
+}
+
+async function adjustBalance(teamId, amount, supabaseClient = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  const { data: team } = await client.from("teams").select("balance").eq("id", teamId).single();
+  await client.from("teams").update({ balance: team.balance + amount }).eq("id", teamId);
 }
 
 export function shouldChargeLoanAgreementSeasonFee(loan, seasonNumber) {
@@ -34,9 +42,10 @@ export async function processLoanAgreementSeasonFees(
   teamId,
   seasonNumber,
   seasonId,
-  supabaseClient = supabase
+  supabaseClient = null
 ) {
-  const { data: loans, error } = await supabaseClient
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  const { data: loans, error } = await client
     .from("loan_agreements")
     .select("id, from_team_id, to_team_id, loan_fee, start_season, end_season, status, rider:rider_id(firstname, lastname)")
     .eq("to_team_id", teamId)
@@ -53,10 +62,10 @@ export async function processLoanAgreementSeasonFees(
       ? `${loan.rider.firstname} ${loan.rider.lastname}`
       : "ukendt rytter";
 
-    await adjustBalance(loan.to_team_id, -loan.loan_fee, supabaseClient);
-    await adjustBalance(loan.from_team_id, loan.loan_fee, supabaseClient);
+    await adjustBalance(loan.to_team_id, -loan.loan_fee, client);
+    await adjustBalance(loan.from_team_id, loan.loan_fee, client);
 
-    await supabaseClient.from("finance_transactions").insert([
+    await client.from("finance_transactions").insert([
       {
         team_id: loan.to_team_id,
         type: "transfer_out",
@@ -82,14 +91,16 @@ export async function processLoanAgreementSeasonFees(
 
 // ── Konfiguration ─────────────────────────────────────────────────────────────
 
-export async function getLoanConfig(teamId) {
-  const { data: team } = await supabase.from("teams").select("division").eq("id", teamId).single();
-  const { data: configs } = await supabase.from("loan_config").select("*").eq("division", team.division);
+export async function getLoanConfig(teamId, supabaseClient = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  const { data: team } = await client.from("teams").select("division").eq("id", teamId).single();
+  const { data: configs } = await client.from("loan_config").select("*").eq("division", team.division);
   return configs || [];
 }
 
-export async function getTotalDebt(teamId) {
-  const { data: loans } = await supabase
+export async function getTotalDebt(teamId, supabaseClient = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  const { data: loans } = await client
     .from("loans")
     .select("amount_remaining")
     .eq("team_id", teamId)
@@ -99,12 +110,13 @@ export async function getTotalDebt(teamId) {
 
 // ── Opret lån (manager-initieret: short eller long) ───────────────────────────
 
-export async function createLoan(teamId, loanType, principalAmount) {
-  const configs = await getLoanConfig(teamId);
+export async function createLoan(teamId, loanType, principalAmount, supabaseClient = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  const configs = await getLoanConfig(teamId, client);
   const config = configs.find(c => c.loan_type === loanType);
   if (!config) throw new Error("Ugyldig låntype");
 
-  const currentDebt = await getTotalDebt(teamId);
+  const currentDebt = await getTotalDebt(teamId, client);
   if (currentDebt + principalAmount > config.debt_ceiling) {
     throw new Error(`Gældsloft på ${config.debt_ceiling} CZ$ nået for denne division`);
   }
@@ -112,7 +124,7 @@ export async function createLoan(teamId, loanType, principalAmount) {
   const fee = Math.round(principalAmount * config.origination_fee_pct);
   const totalOwed = principalAmount + fee;
 
-  const { data: loan, error } = await supabase.from("loans").insert({
+  const { data: loan, error } = await client.from("loans").insert({
     team_id: teamId,
     loan_type: loanType,
     principal: principalAmount,
@@ -126,9 +138,9 @@ export async function createLoan(teamId, loanType, principalAmount) {
 
   if (error) throw error;
 
-  await adjustBalance(teamId, principalAmount);
+  await adjustBalance(teamId, principalAmount, client);
 
-  await supabase.from("finance_transactions").insert({
+  await client.from("finance_transactions").insert({
     team_id: teamId,
     type: "loan_received",
     amount: principalAmount,
@@ -137,7 +149,8 @@ export async function createLoan(teamId, loanType, principalAmount) {
 
   await notifyManager(teamId, "loan_created",
     "Lån oprettet",
-    `Du har optaget et ${loanType === "short" ? "kort" : "langt"} lån på ${principalAmount} CZ$. Gebyr: ${fee} CZ$. Samlet tilbagebetaling: ${totalOwed} CZ$.`
+    `Du har optaget et ${loanType === "short" ? "kort" : "langt"} lån på ${principalAmount} CZ$. Gebyr: ${fee} CZ$. Samlet tilbagebetaling: ${totalOwed} CZ$.`,
+    client
   );
 
   return loan;
@@ -145,8 +158,9 @@ export async function createLoan(teamId, loanType, principalAmount) {
 
 // ── Nødlån — oprettes automatisk hvis holdet ikke kan betale løn ───────────────
 
-export async function createEmergencyLoan(teamId, amountNeeded) {
-  const configs = await getLoanConfig(teamId);
+export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  const configs = await getLoanConfig(teamId, client);
   const config = configs.find(c => c.loan_type === "emergency");
 
   const feeRate = config?.origination_fee_pct ?? 0.15;
@@ -155,7 +169,7 @@ export async function createEmergencyLoan(teamId, amountNeeded) {
   const fee = Math.round(amountNeeded * feeRate);
   const totalOwed = amountNeeded + fee;
 
-  const { data: loan, error } = await supabase.from("loans").insert({
+  const { data: loan, error } = await client.from("loans").insert({
     team_id: teamId,
     loan_type: "emergency",
     principal: amountNeeded,
@@ -169,9 +183,9 @@ export async function createEmergencyLoan(teamId, amountNeeded) {
 
   if (error) throw error;
 
-  await adjustBalance(teamId, amountNeeded);
+  await adjustBalance(teamId, amountNeeded, client);
 
-  await supabase.from("finance_transactions").insert({
+  await client.from("finance_transactions").insert({
     team_id: teamId,
     type: "emergency_loan",
     amount: amountNeeded,
@@ -180,7 +194,8 @@ export async function createEmergencyLoan(teamId, amountNeeded) {
 
   await notifyManager(teamId, "emergency_loan",
     "⚠️ Nødlån oprettet",
-    `Dit hold havde ikke midler til at betale løn. Der er automatisk oprettet et nødlån på ${amountNeeded} CZ$ med ${(feeRate * 100).toFixed(0)}% gebyr og ${(interestRate * 100).toFixed(0)}% rente. Samlet gæld: ${totalOwed} CZ$.`
+    `Dit hold havde ikke midler til at betale løn. Der er automatisk oprettet et nødlån på ${amountNeeded} CZ$ med ${(feeRate * 100).toFixed(0)}% gebyr og ${(interestRate * 100).toFixed(0)}% rente. Samlet gæld: ${totalOwed} CZ$.`,
+    client
   );
 
   return loan;
@@ -188,27 +203,28 @@ export async function createEmergencyLoan(teamId, amountNeeded) {
 
 // ── Betal rate på et lån ──────────────────────────────────────────────────────
 
-export async function repayLoan(loanId, teamId, amount) {
-  const { data: loan } = await supabase.from("loans").select("*").eq("id", loanId).single();
+export async function repayLoan(loanId, teamId, amount, supabaseClient = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  const { data: loan } = await client.from("loans").select("*").eq("id", loanId).single();
   if (!loan || loan.team_id !== teamId) throw new Error("Lån ikke fundet");
   if (loan.status === "paid_off") throw new Error("Lånet er allerede betalt");
 
-  const { data: team } = await supabase.from("teams").select("balance").eq("id", teamId).single();
+  const { data: team } = await client.from("teams").select("balance").eq("id", teamId).single();
   if (team.balance < amount) throw new Error("Ikke nok midler");
 
   const actualAmount = Math.min(amount, loan.amount_remaining);
   const newRemaining = loan.amount_remaining - actualAmount;
   const isPaidOff = newRemaining <= 0;
 
-  await supabase.from("loans").update({
+  await client.from("loans").update({
     amount_remaining: isPaidOff ? 0 : newRemaining,
     status: isPaidOff ? "paid_off" : "active",
     updated_at: new Date().toISOString(),
   }).eq("id", loanId);
 
-  await adjustBalance(teamId, -actualAmount);
+  await adjustBalance(teamId, -actualAmount, client);
 
-  await supabase.from("finance_transactions").insert({
+  await client.from("finance_transactions").insert({
     team_id: teamId,
     type: "loan_repayment",
     amount: -actualAmount,
@@ -218,7 +234,8 @@ export async function repayLoan(loanId, teamId, amount) {
   if (isPaidOff) {
     await notifyManager(teamId, "loan_paid_off",
       "✅ Lån tilbagebetalt",
-      "Tillykke! Du har fuldt tilbagebetalt dit lån."
+      "Tillykke! Du har fuldt tilbagebetalt dit lån.",
+      client
     );
   }
 
@@ -227,8 +244,9 @@ export async function repayLoan(loanId, teamId, amount) {
 
 // ── Tilskriv renter ved sæsonafslutning ───────────────────────────────────────
 
-export async function processLoanInterest(teamId, seasonId) {
-  const { data: loans } = await supabase
+export async function processLoanInterest(teamId, seasonId, supabaseClient = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  const { data: loans } = await client
     .from("loans")
     .select("*")
     .eq("team_id", teamId)
@@ -239,13 +257,13 @@ export async function processLoanInterest(teamId, seasonId) {
     const newRemaining = loan.amount_remaining + interest;
     const newSeasonsRemaining = loan.seasons_remaining - 1;
 
-    await supabase.from("loans").update({
+    await client.from("loans").update({
       amount_remaining: newRemaining,
       seasons_remaining: newSeasonsRemaining,
       updated_at: new Date().toISOString(),
     }).eq("id", loan.id);
 
-    await supabase.from("finance_transactions").insert({
+    await client.from("finance_transactions").insert({
       team_id: teamId,
       type: "loan_interest",
       amount: -interest,
@@ -257,8 +275,13 @@ export async function processLoanInterest(teamId, seasonId) {
 
 // ── Intern helper ─────────────────────────────────────────────────────────────
 
-async function notifyManager(teamId, type, title, message) {
-  const { data: team } = await supabase.from("teams").select("user_id").eq("id", teamId).single();
-  if (!team?.user_id) return;
-  await supabase.from("notifications").insert({ user_id: team.user_id, type, title, message });
+async function notifyManager(teamId, type, title, message, supabaseClient = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  await notifyTeamOwnerShared({
+    supabase: client,
+    teamId,
+    type,
+    title,
+    message,
+  });
 }

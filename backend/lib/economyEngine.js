@@ -10,7 +10,6 @@
  *   - Multi-year plan lifecycle (1yr/3yr/5yr)
  */
 
-import { createClient } from "@supabase/supabase-js";
 import {
   processLoanAgreementSeasonFees,
   processLoanInterest,
@@ -21,11 +20,19 @@ import {
   evaluateBoardSeason,
   getPlanDuration,
 } from "./boardEngine.js";
+import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+let defaultSupabaseClientPromise;
+
+async function getDefaultSupabaseClient() {
+  if (!defaultSupabaseClientPromise) {
+    defaultSupabaseClientPromise = import("@supabase/supabase-js").then(({ createClient }) => (
+      createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+    ));
+  }
+
+  return defaultSupabaseClientPromise;
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -63,7 +70,7 @@ const DIVISION_MIN_RIDERS = {
  */
 export async function processSeasonStart(seasonId, deps = {}) {
   console.log(`\n🏁 Processing season start: ${seasonId}`);
-  const supabaseClient = deps.supabase ?? supabase;
+  const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processLoanAgreementSeasonFeesFn =
     deps.processLoanAgreementSeasonFees ?? processLoanAgreementSeasonFees;
 
@@ -101,7 +108,8 @@ export async function processSeasonStart(seasonId, deps = {}) {
     const chargedLoanFees = await processLoanAgreementSeasonFeesFn(
       team.id,
       seasonNumber,
-      seasonId
+      seasonId,
+      supabaseClient
     );
 
     // Ensure board profile exists
@@ -143,7 +151,7 @@ export async function processSeasonStart(seasonId, deps = {}) {
  */
 export async function processSeasonEnd(seasonId, deps = {}) {
   console.log(`\n🏆 Processing season end: ${seasonId}`);
-  const supabaseClient = deps.supabase ?? supabase;
+  const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
 
   // Get current season number
   const { data: currentSeason } = await supabaseClient
@@ -190,14 +198,14 @@ export async function processSeasonEnd(seasonId, deps = {}) {
 }
 
 async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumber, deps = {}) {
-  const supabaseClient = deps.supabase ?? supabase;
+  const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
   const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
   const teamStanding = standings.find(s => s.team_id === team.id);
   const board = team.board_profiles?.[0];
 
   // 1. Tilskriv lånerenter
-  await processLoanInterestFn(team.id, seasonId);
+  await processLoanInterestFn(team.id, seasonId, supabaseClient);
 
   // 2. Deduct salaries — opret nødlån hvis holdet ikke kan betale
   const totalSalary = (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
@@ -208,7 +216,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
     const shortfall = totalSalary - freshTeam.balance;
     if (shortfall > 0) {
       console.log(`  ⚠️  ${team.name}: mangler ${shortfall} pts til løn — opretter nødlån`);
-      await createEmergencyLoanFn(team.id, shortfall);
+      await createEmergencyLoanFn(team.id, shortfall, supabaseClient);
     }
     await debitTeam(
       team.id,
@@ -371,7 +379,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   console.log(`  💰 ${team.name}: -${totalSalary} pts salary`);
 }
 
-async function processDivisionEnd(standings, division, seasonId, supabaseClient = supabase) {
+async function processDivisionEnd(standings, division, seasonId, supabaseClient = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
   if (standings.length < PROMOTION_SLOTS + RELEGATION_SLOTS) return;
 
   const promotions = [];
@@ -383,7 +392,7 @@ async function processDivisionEnd(standings, division, seasonId, supabaseClient 
     for (const s of promoted) {
       if (!s.team.is_ai) {
         promotions.push(s.team_id);
-        await supabaseClient.from("teams")
+        await client.from("teams")
           .update({ division: division - 1 })
           .eq("id", s.team_id);
         await notifyManager(
@@ -391,7 +400,7 @@ async function processDivisionEnd(standings, division, seasonId, supabaseClient 
           "board_update",
           "Oprykket! 🎉",
           `Tillykke! Dit hold rykker op til Division ${division - 1}`,
-          supabaseClient
+          client
         );
       }
     }
@@ -403,7 +412,7 @@ async function processDivisionEnd(standings, division, seasonId, supabaseClient 
     for (const s of relegated) {
       if (!s.team.is_ai) {
         relegations.push(s.team_id);
-        await supabaseClient.from("teams")
+        await client.from("teams")
           .update({ division: division + 1 })
           .eq("id", s.team_id);
         await notifyManager(
@@ -411,7 +420,7 @@ async function processDivisionEnd(standings, division, seasonId, supabaseClient 
           "board_update",
           "Nedrykning",
           `Dit hold rykker ned til Division ${division + 1}`,
-          supabaseClient
+          client
         );
       }
     }
@@ -428,10 +437,11 @@ async function processDivisionEnd(standings, division, seasonId, supabaseClient 
  * Recalculate the full season standings from stored race results.
  * This keeps standings idempotent even when results are approved in batches.
  */
-export async function updateStandings(seasonId, raceId = null) {
+export async function updateStandings(seasonId, raceId = null, deps = {}) {
+  const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const [{ data: teams, error: teamsError }, { data: races, error: racesError }] = await Promise.all([
-    supabase.from("teams").select("id, division"),
-    supabase.from("races").select("id").eq("season_id", seasonId),
+    supabaseClient.from("teams").select("id, division"),
+    supabaseClient.from("races").select("id").eq("season_id", seasonId),
   ]);
 
   if (teamsError) throw new Error(teamsError.message);
@@ -450,7 +460,7 @@ export async function updateStandings(seasonId, raceId = null) {
 
   const raceIds = (races || []).map(race => race.id);
   if (raceIds.length > 0) {
-    const { data: results, error: resultsError } = await supabase
+    const { data: results, error: resultsError } = await supabaseClient
       .from("race_results")
       .select("race_id, team_id, result_type, rank, points_earned, rider:rider_id(team_id)")
       .in("race_id", raceIds);
@@ -489,7 +499,7 @@ export async function updateStandings(seasonId, raceId = null) {
     updated_at: timestamp,
   }));
 
-  const { error: upsertError } = await supabase
+  const { error: upsertError } = await supabaseClient
     .from("season_standings")
     .upsert(rows, { onConflict: "season_id,team_id" });
   if (upsertError) throw new Error(upsertError.message);
@@ -499,34 +509,37 @@ export async function updateStandings(seasonId, raceId = null) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function creditTeam(teamId, amount, type, description, seasonId, supabaseClient = supabase) {
-  const { data: team } = await supabaseClient
+async function creditTeam(teamId, amount, type, description, seasonId, supabaseClient = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  const { data: team } = await client
     .from("teams").select("balance").eq("id", teamId).single();
-  await supabaseClient.from("teams")
+  await client.from("teams")
     .update({ balance: team.balance + amount })
     .eq("id", teamId);
-  await supabaseClient.from("finance_transactions").insert({
+  await client.from("finance_transactions").insert({
     team_id: teamId, type, amount, description, season_id: seasonId,
   });
 }
 
-async function debitTeam(teamId, amount, type, description, seasonId, supabaseClient = supabase) {
-  const { data: team } = await supabaseClient
+async function debitTeam(teamId, amount, type, description, seasonId, supabaseClient = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  const { data: team } = await client
     .from("teams").select("balance").eq("id", teamId).single();
-  await supabaseClient.from("teams")
+  await client.from("teams")
     .update({ balance: team.balance - amount })
     .eq("id", teamId);
-  await supabaseClient.from("finance_transactions").insert({
+  await client.from("finance_transactions").insert({
     team_id: teamId, type, amount: -amount, description, season_id: seasonId,
   });
 }
 
-async function notifyManager(teamId, type, title, message, supabaseClient = supabase) {
-  const { data: team } = await supabaseClient
-    .from("teams").select("user_id").eq("id", teamId).single();
-  if (team?.user_id) {
-    await supabaseClient.from("notifications").insert({
-      user_id: team.user_id, type, title, message,
-    });
-  }
+async function notifyManager(teamId, type, title, message, supabaseClient = null) {
+  const client = supabaseClient ?? await getDefaultSupabaseClient();
+  await notifyTeamOwnerShared({
+    supabase: client,
+    teamId,
+    type,
+    title,
+    message,
+  });
 }

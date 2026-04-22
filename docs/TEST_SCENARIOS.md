@@ -64,6 +64,7 @@
 - Dashboard og Board-siden læser board-state via `GET /api/board/status`
 - `GET /api/board/status` returnerer board-outlook/personality fra den delte board-engine
 - `approve-results` og `import-results` bruger samme finance-type (`prize`) og samme standings-recalculation
+- Shared notification-writer deduplikerer nylige identiske payloads, så samme event ikke indsættes igen ved cron/retries
 
 ---
 
@@ -75,12 +76,14 @@
 - Transfer window håndhæves både ved create og accept/confirm
 - Finance transactions logges med gyldig type
 - Notification writes bruger gyldig type
+- Notification dedupe må ikke skjule forskellige events med forskellig tekst eller `related_id`
 
 ---
 
 ## 🧪 RULE
 
 Alle bugfixes skal testes her eller have en begrundet test-note
+- Brug `pwsh -File scripts/verify-local.ps1` som standard lokal preflight, og forvent gron GitHub Actions for backend-tests + frontend-build før deploy
 
 ---
 

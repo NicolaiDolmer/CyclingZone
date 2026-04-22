@@ -107,6 +107,7 @@ GET   /api/notifications
 PATCH /api/notifications/:id/read
 PATCH /api/notifications/read-all
 ```
+- Frontend læser og markerer i praksis notifikationer direkte mod Supabase-tabellen under RLS; backend-routes findes stadig til samme domæne
 
 ### Board
 ```
@@ -179,6 +180,11 @@ Season flow notes:
 - `buildBoardOutlook` leverer personality, feedback og category breakdown til UI, mens `evaluateBoardSeason` bruger samme vægtede runtime-path ved sæsonslut
 - `processSeasonEnd` bruger samme board-engine til sæsonevaluering, så sign-flow, status-read og season-end deler board-sandhed
 
+### Notifications
+- Backend-genererede notifikationer går gennem `backend/lib/notificationService.js`
+- API-routes, cron, economy-engine og loan-engine deler samme notification-writer i stedet for rå `notifications`-inserts
+- Shared writer deduplikerer nylige identiske payloads (`user_id`, `type`, `title`, `message`, `related_id`) for at undgå spam ved cron/retries
+
 ### Managerprofil / hold-bootstrap
 - Signup og Min Profil skriver holdnavn/managernavn via `PUT /api/teams/my` i stedet for direkte browser-writes til `teams`
 - `backend/lib/teamProfileEngine.js` er den delte write-path for create/update af managerens eget hold og håndterer også bootstrap af manglende `board_profiles`
@@ -205,6 +211,7 @@ Season flow notes:
 |-----|------------------------|
 | `auctionEngine.js` | `calculateAuctionEnd`, `checkBidExtension`, `isAuctionExpired`, `formatAuctionEnd` |
 | `boardEngine.js` | `getPlanDuration`, `buildBoardProposal`, `finalizeBoardGoals`, `buildBoardOutlook`, `deriveBoardPersonality`, `evaluateBoardSeason`, `createInitialBoardProfile` |
+| `notificationService.js` | `notifyUser`, `notifyTeamOwner` |
 | `auctionFinalization.js` | `finalizeAuctionById`, `finalizeExpiredAuctions`, `sellerOwnsAuctionRider`, `calculateAuctionSalary` |
 | `economyEngine.js` | `processSeasonStart`, `processSeasonEnd`, `updateStandings` |
 | `loanEngine.js` | `getLoanConfig`, `getTotalDebt`, `createLoan`, `createEmergencyLoan`, `repayLoan`, `processLoanInterest` |

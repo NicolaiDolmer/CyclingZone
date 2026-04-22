@@ -16,12 +16,14 @@ function createSeasonEndSupabase({
   board,
   standings,
   activeLoanCount = 0,
+  existingNotifications = [],
 } = {}) {
   const state = {
     season: clone(season),
     team: clone(team),
     board: clone(board),
     standings: clone(standings),
+    notifications: clone(existingNotifications),
     inserts: {
       board_plan_snapshots: [],
       finance_transactions: [],
@@ -250,8 +252,52 @@ function createSeasonEndSupabase({
 
       if (table === "notifications") {
         return {
+          select(columns) {
+            assert.equal(columns, "id");
+            const filters = {};
+            return {
+              eq(column, value) {
+                filters[column] = value;
+                return this;
+              },
+              gte(column, value) {
+                filters[column] = value;
+                return this;
+              },
+              is(column, value) {
+                filters[column] = value;
+                return this;
+              },
+              order(column, options) {
+                assert.equal(column, "created_at");
+                assert.deepEqual(options, { ascending: false });
+                return this;
+              },
+              limit(value) {
+                assert.equal(value, 1);
+                const data = state.notifications
+                  .filter(notification => {
+                    if (filters.user_id && notification.user_id !== filters.user_id) return false;
+                    if (filters.type && notification.type !== filters.type) return false;
+                    if (filters.title && notification.title !== filters.title) return false;
+                    if (filters.message && notification.message !== filters.message) return false;
+                    if ("related_id" in filters && notification.related_id !== filters.related_id) return false;
+                    if (filters.created_at && notification.created_at < filters.created_at) return false;
+                    return true;
+                  })
+                  .slice(0, 1)
+                  .map(notification => ({ id: notification.id }));
+                return Promise.resolve({ data });
+              },
+            };
+          },
           insert(payload) {
             state.inserts.notifications.push(payload);
+            state.notifications.unshift({
+              id: `notification-${state.inserts.notifications.length}`,
+              created_at: "2026-04-22T10:00:00.000Z",
+              ...payload,
+            });
             return Promise.resolve({ error: null });
           },
         };
@@ -331,4 +377,87 @@ test("processSeasonEnd keeps the board flow on the shared runtime path", async (
   assert.equal(supabase.state.inserts.notifications.length, 1);
   assert.equal(supabase.state.inserts.board_plan_snapshots[0].goals_met, 1);
   assert.equal(supabase.state.inserts.board_plan_snapshots[0].goals_total, 1);
+});
+
+test("processSeasonEnd skips writing a duplicate board notification when the same recent update already exists", async () => {
+  const scenario = {
+    season: {
+      id: "season-1",
+      number: 5,
+      status: "active",
+    },
+    team: {
+      id: "team-1",
+      name: "Board Testers",
+      is_ai: false,
+      user_id: "user-1",
+      balance: 500,
+      sponsor_income: 200,
+      riders: [],
+    },
+    board: {
+      id: "board-1",
+      team_id: "team-1",
+      plan_type: "1yr",
+      focus: "balanced",
+      satisfaction: 50,
+      budget_modifier: 1.0,
+      current_goals: [
+        {
+          type: "top_n_finish",
+          target: 2,
+          label: "Top 2 i divisionen",
+          satisfaction_bonus: 10,
+          satisfaction_penalty: 5,
+        },
+      ],
+      seasons_completed: 0,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      plan_start_sponsor_income: 200,
+    },
+    standings: [
+      {
+        season_id: "season-1",
+        team_id: "team-1",
+        division: 3,
+        total_points: 150,
+        rank_in_division: 1,
+        stage_wins: 2,
+        gc_wins: 1,
+        team: {
+          id: "team-1",
+          is_ai: false,
+        },
+      },
+    ],
+  };
+
+  const firstSupabase = createSeasonEndSupabase(scenario);
+
+  await processSeasonEnd("season-1", {
+    supabase: firstSupabase,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+  });
+
+  const [existingNotification] = firstSupabase.state.inserts.notifications;
+  const supabase = createSeasonEndSupabase({
+    ...scenario,
+    existingNotifications: [
+      {
+        id: "notification-existing",
+        created_at: "2026-04-22T09:30:00.000Z",
+        ...existingNotification,
+      },
+    ],
+  });
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+  });
+
+  assert.equal(supabase.state.inserts.notifications.length, 0);
 });

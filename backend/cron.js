@@ -16,6 +16,10 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { finalizeExpiredAuctions as finalizeExpiredAuctionsShared } from "./lib/auctionFinalization.js";
+import {
+  notifyTeamOwner as notifyTeamOwnerShared,
+  notifyUser as notifyUserShared,
+} from "./lib/notificationService.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, '../.env') });
 
@@ -50,8 +54,11 @@ async function finalizeExpiredAuctions() {
 
 // ─── Debt Warnings ────────────────────────────────────────────────────────────
 
-async function checkDebtWarnings() {
-  const { data: teams } = await supabase
+export async function checkDebtWarnings({
+  supabaseClient = supabase,
+  now = new Date(),
+} = {}) {
+  const { data: teams } = await supabaseClient
     .from("teams")
     .select("id, name, balance, user_id")
     .eq("is_ai", false)
@@ -59,9 +66,14 @@ async function checkDebtWarnings() {
 
   for (const team of teams || []) {
     const interest = Math.round(Math.abs(team.balance) * 0.10);
-    await notifyUser(team.user_id, "board_update",
-      "⚠️ Negativ saldo",
-      `Dit hold skylder ${Math.abs(team.balance).toLocaleString()} pts. Renter ved sæsonafslutning: ${interest.toLocaleString()} pts`);
+    await notifyUserShared({
+      supabase: supabaseClient,
+      userId: team.user_id,
+      type: "board_update",
+      title: "⚠️ Negativ saldo",
+      message: `Dit hold skylder ${Math.abs(team.balance).toLocaleString()} pts. Renter ved sæsonafslutning: ${interest.toLocaleString()} pts`,
+      now,
+    });
   }
 
   if (teams?.length) {
@@ -72,14 +84,14 @@ async function checkDebtWarnings() {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function notifyTeamOwner(teamId, type, title, message, relatedId = null) {
-  const { data: team } = await supabase
-    .from("teams").select("user_id").eq("id", teamId).single();
-  if (team?.user_id) await notifyUser(team.user_id, type, title, message, relatedId);
-}
-
-async function notifyUser(userId, type, title, message, relatedId = null) {
-  if (!userId) return;
-  await supabase.from("notifications").insert({ user_id: userId, type, title, message, related_id: relatedId });
+  await notifyTeamOwnerShared({
+    supabase,
+    teamId,
+    type,
+    title,
+    message,
+    relatedId,
+  });
 }
 
 async function awardUserXP(userId, action) {

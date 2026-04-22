@@ -92,6 +92,23 @@ npm run dev   # Start frontend på port 5173
 
 ---
 
+## Lokal Verifikation
+
+Fra repo-root:
+
+```powershell
+pwsh -File scripts/verify-local.ps1
+```
+
+Scriptet:
+- verificerer at du star i den rigtige git-worktree
+- korer backend-tests via `node --test`
+- bygger frontend hvis `frontend/node_modules` findes lokalt
+
+Hvis frontend-dependencies ikke er installeret lokalt, bliver frontend-build sprunget over med en tydelig warning, og GitHub Actions er sa den kanoniske build-gate.
+
+---
+
 ## Trin 5 — Importer Ryttere
 
 ```bash
@@ -215,16 +232,24 @@ cycling-manager/
 
 ## Docs-vedligeholdelse
 
-`docs/`-mappen indeholder fire reference-filer der bruges som kontekst i AI-arbejdssessioner.
+Start altid i `AGENTS.md`. Den peger videre til de kanoniske runtime- og execution-docs.
 
-**Ved start af session:** Læs `docs/NOW.md`
-**Ved afslutning af session:** Opdatér `docs/NOW.md` med hvad der er lavet, broken og næste step
+Kernefiler:
+- `docs/RUNTIME_GUARDRAILS.md` — guardrails, invariants og stop conditions
+- `docs/AI_EXECUTION_STANDARD.md` — task format og execution discipline
+- `docs/NOW.md` — aktuel status og drift/ops-noter
 
-Filer:
-- `docs/NOW.md` — aktuel status (opdateres hver session)
-- `docs/FEATURE_STATUS.md` — hvad er bygget og hvad mangler
-- `docs/ARCHITECTURE.md` — teknisk reference (routes, endpoints, DB)
-- `docs/DOMAIN_REFERENCE.md` — spilleregler og domæneviden
+Reference ved behov:
+- `docs/FEATURE_STATUS.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DOMAIN_REFERENCE.md`
+- `docs/CONVENTIONS.md`
+- `docs/TEST_SCENARIOS.md`
+- `docs/DEPLOYMENT.md`
+
+Ved afslutning af en arbejdsgang:
+- opdater relevante current docs konservativt
+- kør `node scripts/sync-docs.js` eller `npm run sync-docs`
 
 ---
 

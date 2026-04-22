@@ -2,7 +2,6 @@
 
 ## Investigate
 - Achievements tæller ikke korrekt
-- Notifikationer deduplikeres ikke; samme event sendes hvert minut i stedet for én gang
 - Verificer auktions-sluttid/finaliseringslogik og AI-auktionsflows end-to-end
 - Verificer transfer-window-regel for minimum squad-size samt cleanup af transferliste ved ejerskifte
 - Verificer deployed season flow end-to-end på beta: `season start -> result approval -> season end`
@@ -10,8 +9,12 @@
 
 ## Drift / Ops
 - AI docs er ryddet op: `RUNTIME_GUARDRAILS.md` + `AI_EXECUTION_STANDARD.md` er nu de eneste regeldocs
+- Repo-entry kræver nu git-worktree preflight, sa kopi-mapper uden `.git` stoppes tidligt
 - `scripts/sync-docs.js` er opdateret til lean docs-strukturen og verificeret via bundled Node-runtime
+- `scripts/verify-local.ps1` er nu den kanoniske lokale sundhedskontrol: verifierer git-root, korer backend-tests via `node --test` og bygger frontend hvis lokale dependencies findes
+- GitHub Actions korer nu backend `npm test` og frontend `npm run build` pa push til `main` og pull requests
 - Backend har nu `npm test`, som dækker shared market guardrails og direkte `finalizeExpiredAuctions` smoke; shared runtime-refactors må ikke deployes uden entrypoint-test
+- Backend-notifikationer går nu gennem delt `backend/lib/notificationService.js`, som deduplikerer nylige identiske payloads og stopper cron/retry-spam af samme event
 - Backend season/race admin-contract er genskabt og deployed til Railway
 - Live smoke test bestod for `POST /api/admin/seasons` og `POST /api/admin/races`; testdata blev ryddet op bagefter
 - Finance-lån er skilt fra rider-lån på egne API-routes (`/api/finance/loans`) for at fjerne route-kollisionen på `POST /api/loans`

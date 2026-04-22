@@ -95,6 +95,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### UI / Misc
 - Responsivt layout med navigation (Layout.jsx)
 - Notifikationssystem (in-app + badge)
+- Backend-notifikationer deduplikerer nu nylige identiske events, så samme besked ikke spammes igen ved cron/retries
 - Aktivitets-feed
 - Head-to-head sammenligning
 - Hall of Fame
@@ -107,7 +108,6 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 🔴 Broken / Kendte bugs
 
 - Achievements tæller ikke korrekt
-- Notifikationer kan blive sendt hvert minut i stedet for én gang per event
 - Evne-filter/slider virker ikke for alle spillere
 - Auktioners sluttid/finaliseringslogik matcher ikke den aftalte adfærd
 - AI-handler via auktioner bliver ikke gennemført stabilt

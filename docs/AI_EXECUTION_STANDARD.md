@@ -33,6 +33,11 @@ Læs altid:
 1. `docs/RUNTIME_GUARDRAILS.md`
 2. `docs/NOW.md`
 
+Verificér først workspace:
+- git-root/worktree kan bekræftes
+- aktiv arbejdsmappe er den tilsigtede repo og ikke en kopi/zip-udpakning/sync-mappe uden `.git`
+- hvis dette ikke kan bekræftes, stop og afklar korrekt repo-root før videre analyse eller kode
+
 Verificér før coding:
 - frontend callsite
 - backend route

@@ -8,7 +8,6 @@ _Regel: Kun aktive/top-prioriterede ting spejles til NOW.md. Kun statusændringe
 ## 🔴 Kritiske bugs
 
 - Achievements tæller ikke korrekt
-- Notifikationer deduplikeres ikke og sendes hvert minut i stedet for én gang per event
 - Transfervindue blokerer salg under minimum squad-size, selv om minimum først skal håndhæves ved sæsonstart
 - Evne-filter/slider virker ikke for alle spillere
 - Auktioners sluttid/finaliseringslogik afviger fra den aftalte logik

@@ -30,6 +30,10 @@ import {
   getTotalDebt,
 } from "../lib/loanEngine.js";
 import {
+  notifyTeamOwner as notifyTeamOwnerShared,
+  notifyUser as notifyUserShared,
+} from "../lib/notificationService.js";
+import {
   processSeasonEnd,
   processSeasonStart,
   updateStandings,
@@ -191,24 +195,25 @@ async function requireAdmin(req, res, next) {
 // ── Notification helper ───────────────────────────────────────────────────────
 
 async function notify(userId, type, title, message, relatedId = null) {
-  await supabase.from("notifications").insert({
-    user_id: userId,
+  await notifyUserShared({
+    supabase,
+    userId,
     type,
     title,
     message,
-    related_id: relatedId,
+    relatedId,
   });
 }
 
 async function notifyTeamOwner(teamId, type, title, message, relatedId = null) {
-  const { data: team } = await supabase
-    .from("teams")
-    .select("user_id")
-    .eq("id", teamId)
-    .single();
-  if (team?.user_id) {
-    await notify(team.user_id, type, title, message, relatedId);
-  }
+  await notifyTeamOwnerShared({
+    supabase,
+    teamId,
+    type,
+    title,
+    message,
+    relatedId,
+  });
 }
 
 async function awardTeamOwnerXP(teamId, action) {

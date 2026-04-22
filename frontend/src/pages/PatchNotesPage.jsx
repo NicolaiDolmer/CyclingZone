@@ -2,6 +2,20 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.18",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Backend-notifikationer deduplikerer nu nylige identiske events, så samme besked ikke spammes igen ved cron-kørsler eller retries",
+          "Board-, låne-, API- og cron-paths bruger nu samme notification-writer i stedet for separate rå inserts til `notifications`",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.17",
     date: "2026-04-22",
     label: "Beta",
