@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
@@ -110,15 +110,15 @@ export default function HallOfFamePage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
     </div>
   );
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-white">Hall of Fame</h1>
-        <p className="text-white/30 text-sm">Historiske rekorder og manager statistik</p>
+        <h1 className="text-xl font-bold text-slate-900">Hall of Fame</h1>
+        <p className="text-slate-400 text-sm">Historiske rekorder og manager statistik</p>
       </div>
 
       {/* Tabs */}
@@ -130,7 +130,7 @@ export default function HallOfFamePage() {
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${tab === t.key ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20" : "text-white/40 hover:text-white bg-[#0f0f18] border-white/5"}`}>
+              ${tab === t.key ? "bg-amber-50 text-amber-700 border-amber-200" : "text-slate-500 hover:text-slate-900 bg-white border-slate-200"}`}>
             {t.label}
           </button>
         ))}
@@ -142,41 +142,41 @@ export default function HallOfFamePage() {
           {CATEGORIES.map(cat => {
             const entries = getBestFromStandings(cat.key);
             return (
-              <div key={cat.key} className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5"
+              <div key={cat.key} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-200"
                   style={{ borderLeft: `3px solid ${cat.color}` }}>
                   <span className="text-xl">{cat.icon}</span>
-                  <h2 className="text-white font-semibold text-sm">{cat.label}</h2>
+                  <h2 className="text-slate-900 font-semibold text-sm">{cat.label}</h2>
                 </div>
                 {entries.length === 0 ? (
-                  <div className="px-5 py-8 text-center text-white/20 text-sm">
+                  <div className="px-5 py-8 text-center text-slate-300 text-sm">
                     Ingen rekorder endnu — spil sæsoner for at sætte rekorder
                   </div>
                 ) : (
                   <table className="w-full text-sm">
                     <tbody>
                       {entries.map((e, i) => (
-                        <tr key={i} className="border-b border-white/4 last:border-0 hover:bg-white/3">
+                        <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-100">
                           <td className="px-5 py-3 w-8">
                             <span className={`font-mono font-bold text-sm
-                              ${i === 0 ? "text-[#e8c547]" : i === 1 ? "text-white/60" : i === 2 ? "text-orange-400/60" : "text-white/30"}`}>
+                              ${i === 0 ? "text-amber-700" : i === 1 ? "text-slate-500" : i === 2 ? "text-orange-700/60" : "text-slate-400"}`}>
                               #{i + 1}
                             </span>
                           </td>
                           <td className="px-3 py-3">
-                            <p className="text-white font-medium cursor-pointer hover:text-[#e8c547]"
+                            <p className="text-slate-900 font-medium cursor-pointer hover:text-amber-700"
                               onClick={() => e.team?.id && navigate(`/teams/${e.team.id}`)}>
                               {e.team_name || e.team?.name || "—"}
                             </p>
                             {e.season_number && (
-                              <p className="text-white/30 text-xs">Sæson {e.season_number}</p>
+                              <p className="text-slate-400 text-xs">Sæson {e.season_number}</p>
                             )}
                           </td>
                           <td className="px-5 py-3 text-right">
                             <span className="font-mono font-bold text-lg" style={{ color: cat.color }}>
                               {e.value?.toLocaleString("da-DK")}
                             </span>
-                            <span className="text-white/30 text-xs ml-1">{cat.unit}</span>
+                            <span className="text-slate-400 text-xs ml-1">{cat.unit}</span>
                           </td>
                         </tr>
                       ))}
@@ -191,15 +191,15 @@ export default function HallOfFamePage() {
 
       {/* Managers tab */}
       {tab === "managers" && (
-        <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/5">
-                <th className="px-4 py-3 text-left text-white/30 font-medium text-xs uppercase">#</th>
-                <th className="px-4 py-3 text-left text-white/30 font-medium text-xs uppercase">Manager</th>
-                <th className="px-4 py-3 text-left text-white/30 font-medium text-xs uppercase">Titel</th>
-                <th className="px-4 py-3 text-right text-white/30 font-medium text-xs uppercase">Niveau</th>
-                <th className="px-4 py-3 text-right text-white/30 font-medium text-xs uppercase">XP</th>
+              <tr className="border-b border-slate-200">
+                <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase">#</th>
+                <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase">Manager</th>
+                <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase">Titel</th>
+                <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase">Niveau</th>
+                <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase">XP</th>
               </tr>
             </thead>
             <tbody>
@@ -209,11 +209,11 @@ export default function HallOfFamePage() {
                 const xpForNext = (m.level || 1) * 100;
                 const xpProgress = ((m.xp || 0) % 100);
                 return (
-                  <tr key={m.id} className="border-b border-white/4 hover:bg-white/3">
-                    <td className="px-4 py-3 text-white/40 font-mono text-sm">#{i + 1}</td>
-                    <td className="px-4 py-3 text-white font-medium">{m.username || "—"}</td>
+                  <tr key={m.id} className="border-b border-slate-100 hover:bg-slate-100">
+                    <td className="px-4 py-3 text-slate-500 font-mono text-sm">#{i + 1}</td>
+                    <td className="px-4 py-3 text-slate-900 font-medium">{m.username || "—"}</td>
                     <td className="px-4 py-3">
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/5"
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100"
                         style={{ color: levelInfo.color }}>
                         {levelInfo.title}
                       </span>
@@ -225,11 +225,11 @@ export default function HallOfFamePage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <div className="w-16 bg-white/5 rounded-full h-1.5">
+                        <div className="w-16 bg-slate-100 rounded-full h-1.5">
                           <div className="h-1.5 rounded-full bg-[#e8c547]"
                             style={{ width: `${Math.min(xpProgress, 100)}%` }} />
                         </div>
-                        <span className="text-white/40 font-mono text-xs">{m.xp || 0}</span>
+                        <span className="text-slate-500 font-mono text-xs">{m.xp || 0}</span>
                       </div>
                     </td>
                   </tr>
@@ -244,7 +244,7 @@ export default function HallOfFamePage() {
       {tab === "divhistory" && (
         <div>
           {Object.keys(divHistory).length === 0 ? (
-            <div className="text-center py-16 text-white/20">
+            <div className="text-center py-16 text-slate-300">
               <p className="text-4xl mb-3">◉</p>
               <p>Ingen divisionshistorik endnu</p>
               <p className="text-sm mt-2">Afslut sæsoner for at se historik</p>
@@ -252,30 +252,30 @@ export default function HallOfFamePage() {
           ) : (
             <div className="flex flex-col gap-4">
               {Object.entries(divHistory).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([season, entries]) => (
-                <div key={season} className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
-                  <div className="px-5 py-3 border-b border-white/5 flex items-center gap-2">
-                    <span className="text-[#e8c547] font-bold text-sm">Sæson {season}</span>
-                    <span className="text-white/30 text-xs">Division 1</span>
+                <div key={season} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="px-5 py-3 border-b border-slate-200 flex items-center gap-2">
+                    <span className="text-amber-700 font-bold text-sm">Sæson {season}</span>
+                    <span className="text-slate-400 text-xs">Division 1</span>
                   </div>
                   <table className="w-full text-sm">
                     <tbody>
                       {entries.sort((a, b) => b.total_points - a.total_points).map((s, i) => (
-                        <tr key={s.id} className="border-b border-white/4 last:border-0 hover:bg-white/3">
+                        <tr key={s.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-100">
                           <td className="px-5 py-2.5 w-8">
-                            <span className={`font-mono font-bold ${i === 0 ? "text-[#e8c547]" : "text-white/40"}`}>
+                            <span className={`font-mono font-bold ${i === 0 ? "text-amber-700" : "text-slate-500"}`}>
                               #{i + 1}
                             </span>
                           </td>
                           <td className="px-3 py-2.5">
-                            <span className="text-white font-medium cursor-pointer hover:text-[#e8c547]"
+                            <span className="text-slate-900 font-medium cursor-pointer hover:text-amber-700"
                               onClick={() => s.team?.id && navigate(`/teams/${s.team.id}`)}>
                               {s.team?.name}
                             </span>
                           </td>
-                          <td className="px-5 py-2.5 text-right text-[#e8c547] font-mono font-bold">
+                          <td className="px-5 py-2.5 text-right text-amber-700 font-mono font-bold">
                             {s.total_points?.toLocaleString("da-DK")} pt
                           </td>
-                          <td className="px-5 py-2.5 text-right text-white/40 text-xs">
+                          <td className="px-5 py-2.5 text-right text-slate-500 text-xs">
                             {s.stage_wins || 0} etapesejre
                           </td>
                         </tr>

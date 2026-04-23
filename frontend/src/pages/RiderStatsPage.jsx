@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
@@ -28,12 +28,12 @@ async function authHeaders() {
 
 function StatRow({ label, icon, value }) {
   const pct = Math.round(((value || 0) / 99) * 100);
-  const color = value >= 80 ? "#e8c547" : value >= 70 ? "#60a5fa" : value >= 60 ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)";
+  const color = value >= 80 ? "#e8c547" : value >= 70 ? "#60a5fa" : value >= 60 ? "rgba(100,99,122,0.7)" : "rgba(148,150,176,0.6)";
   return (
     <div className="flex items-center gap-3 py-2">
-      <span className="text-white/20 w-4 text-center text-sm">{icon}</span>
-      <span className="text-white/50 text-sm w-36 flex-shrink-0">{label}</span>
-      <div className="flex-1 bg-white/5 rounded-full h-2">
+      <span className="text-slate-300 w-4 text-center text-sm">{icon}</span>
+      <span className="text-slate-500 text-sm w-36 flex-shrink-0">{label}</span>
+      <div className="flex-1 bg-slate-100 rounded-full h-2">
         <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
       <span className="font-mono text-sm font-bold w-8 text-right flex-shrink-0" style={{ color }}>{value ?? "—"}</span>
@@ -78,27 +78,27 @@ function DirectOfferButton({ rider }) {
     <div>
       {result && (
         <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
-          ${result.ok ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+          ${result.ok ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
           {result.msg}
         </div>
       )}
       <button onClick={() => windowOpen && setShow(!show)} disabled={!windowOpen}
         className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all border
           ${!windowOpen
-            ? "bg-white/3 text-white/20 border-white/5 cursor-not-allowed"
+            ? "bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed"
             : show
-              ? "bg-[#e8c547]/15 text-[#e8c547] border-[#e8c547]/25"
-              : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"}`}>
+              ? "bg-amber-50 text-amber-700 border-[#e8c547]/25"
+              : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-100 hover:text-slate-900"}`}>
         {windowOpen ? "↔ Send transfertilbud" : "Transfervindue lukket"}
       </button>
       {show && windowOpen && (
         <div className="mt-3 flex flex-col gap-2">
           <input type="number" value={amount} min={1} onChange={e => setAmount(parseInt(e.target.value) || 0)}
             placeholder="Tilbudsbeløb i CZ$"
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#e8c547]/50" />
+            className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none focus:border-amber-400" />
           <input type="text" value={message} onChange={e => setMessage(e.target.value)}
             placeholder="Besked (valgfri)"
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#e8c547]/50" />
+            className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400" />
           <button onClick={sendOffer} disabled={loading || amount <= 0}
             className="w-full py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50 transition-all">
             {loading ? "Sender..." : "Send tilbud"}
@@ -114,12 +114,12 @@ function AuctionButton({ rider, isMyRider, onStart }) {
   const [loading, setLoading] = useState(false);
   return (
     <div>
-      <p className="text-white/30 text-xs uppercase tracking-widest mb-2">
+      <p className="text-slate-400 text-xs uppercase tracking-widest mb-2">
         {isMyRider ? "Sæt til auktion" : "Start auktion (fri rytter)"}
       </p>
       <div className="flex gap-2">
         <input type="number" value={price} min={1} onChange={e => setPrice(parseInt(e.target.value))}
-          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-[#e8c547]/50" />
+          className="flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm font-mono focus:outline-none focus:border-amber-400" />
         <button onClick={async () => { setLoading(true); await onStart(price); setLoading(false); }} disabled={loading}
           className="px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] transition-all disabled:opacity-50">
           {loading ? "..." : "Start auktion"}
@@ -217,11 +217,11 @@ export default function RiderStatsPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
     </div>
   );
 
-  if (!rider) return <div className="text-white/30 text-center py-16">Rytter ikke fundet</div>;
+  if (!rider) return <div className="text-slate-400 text-center py-16">Rytter ikke fundet</div>;
 
   const bestStat = STATS.map(s => ({ ...s, val: rider[s.key] || 0 })).sort((a, b) => b.val - a.val)[0];
   const isMyRider  = rider.team_id === myTeamId;
@@ -247,37 +247,37 @@ export default function RiderStatsPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <button onClick={() => navigate(-1)} className="text-white/30 hover:text-white text-sm mb-4 flex items-center gap-1">← Tilbage</button>
+      <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-slate-900 text-sm mb-4 flex items-center gap-1">← Tilbage</button>
 
-      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4">
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-white">{rider.firstname} {rider.lastname}</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{rider.firstname} {rider.lastname}</h1>
               <button onClick={toggleWatchlist} title={onWatchlist ? "Fjern fra ønskeliste" : "Tilføj til ønskeliste"}
-                className={`text-2xl transition-all hover:scale-110 ${onWatchlist ? "text-[#e8c547]" : "text-white/20 hover:text-white/50"}`}>
+                className={`text-2xl transition-all hover:scale-110 ${onWatchlist ? "text-amber-700" : "text-slate-300 hover:text-slate-500"}`}>
                 {onWatchlist ? "★" : "☆"}
               </button>
             </div>
             {watchlistCount > 0 && (
-              <p className="text-white/25 text-xs mt-1">👁 {watchlistCount} manager{watchlistCount !== 1 ? "s" : ""} følger denne rytter</p>
+              <p className="text-slate-400 text-xs mt-1">👁 {watchlistCount} manager{watchlistCount !== 1 ? "s" : ""} følger denne rytter</p>
             )}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {rider.is_u25 && <span className="text-xs uppercase bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">U25</span>}
-              <span className="text-white/40 text-sm">{typeLabel}</span>
-              {age && <span className="text-white/30 text-sm">{age} år</span>}
-              {rider.height && <span className="text-white/30 text-sm">{rider.height} cm</span>}
-              {rider.weight && <span className="text-white/30 text-sm">{rider.weight} kg</span>}
+              {rider.is_u25 && <span className="text-xs uppercase bg-blue-500/20 text-blue-700 px-2 py-0.5 rounded">U25</span>}
+              <span className="text-slate-500 text-sm">{typeLabel}</span>
+              {age && <span className="text-slate-400 text-sm">{age} år</span>}
+              {rider.height && <span className="text-slate-400 text-sm">{rider.height} cm</span>}
+              {rider.weight && <span className="text-slate-400 text-sm">{rider.weight} kg</span>}
             </div>
-            <p className="text-white/40 text-sm mt-2">{rider.team ? `Hold: ${rider.team.name}` : "Fri agent"}</p>
+            <p className="text-slate-500 text-sm mt-2">{rider.team ? `Hold: ${rider.team.name}` : "Fri agent"}</p>
           </div>
           <div className="text-right">
-            <p className="text-[#e8c547] font-mono font-bold text-2xl">{rider.uci_points?.toLocaleString("da-DK")}</p>
-            <p className="text-white/30 text-xs mt-0.5">UCI Point / Pris</p>
-            {bestStat && <p className="text-white/40 text-xs mt-2">Bedste: <span className="text-[#e8c547]">{bestStat.label} ({rider[bestStat.key]})</span></p>}
+            <p className="text-amber-700 font-mono font-bold text-2xl">{rider.uci_points?.toLocaleString("da-DK")}</p>
+            <p className="text-slate-400 text-xs mt-0.5">UCI Point / Pris</p>
+            {bestStat && <p className="text-slate-500 text-xs mt-2">Bedste: <span className="text-amber-700">{bestStat.label} ({rider[bestStat.key]})</span></p>}
           </div>
         </div>
-        <div className="mt-5 pt-5 border-t border-white/5 flex flex-col gap-3">
+        <div className="mt-5 pt-5 border-t border-slate-200 flex flex-col gap-3">
           {canAuction && <AuctionButton rider={rider} isMyRider={isMyRider} onStart={startAuction} />}
           {rider.team_id && rider.team_id !== myTeamId && <DirectOfferButton rider={rider} />}
         </div>
@@ -287,37 +287,37 @@ export default function RiderStatsPage() {
         {[{ key: "stats", label: "Evner" }, { key: "season", label: "Sæsonhistorik" }, { key: "results", label: "Løbsresultater" }].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${tab === t.key ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20" : "text-white/40 border-white/5 hover:text-white hover:border-white/10"}`}>
+              ${tab === t.key ? "bg-amber-50 text-amber-700 border-amber-200" : "text-slate-500 border-slate-200 hover:text-slate-900 hover:border-slate-300"}`}>
             {t.label}
           </button>
         ))}
       </div>
 
       {tab === "stats" && (
-        <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
+        <div className="bg-white border border-slate-200 rounded-xl p-5">
           {STATS.map(s => <StatRow key={s.key} label={s.label} icon={s.icon} value={rider[s.key]} />)}
         </div>
       )}
 
       {tab === "season" && (
-        <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
+        <div className="bg-white border border-slate-200 rounded-xl p-5">
           {Object.keys(bySeason).length === 0 ? (
-            <p className="text-white/20 text-center py-8">Ingen historik endnu</p>
+            <p className="text-slate-300 text-center py-8">Ingen historik endnu</p>
           ) : (
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-white/5">
-                <th className="py-2 text-left text-white/30 text-xs uppercase">År</th>
-                <th className="py-2 text-right text-white/30 text-xs uppercase">Sejre</th>
-                <th className="py-2 text-right text-white/30 text-xs uppercase">Top 3</th>
-                <th className="py-2 text-right text-white/30 text-xs uppercase">Præmier</th>
+              <thead><tr className="border-b border-slate-200">
+                <th className="py-2 text-left text-slate-400 text-xs uppercase">År</th>
+                <th className="py-2 text-right text-slate-400 text-xs uppercase">Sejre</th>
+                <th className="py-2 text-right text-slate-400 text-xs uppercase">Top 3</th>
+                <th className="py-2 text-right text-slate-400 text-xs uppercase">Præmier</th>
               </tr></thead>
               <tbody>
                 {Object.entries(bySeason).map(([yr, d]) => (
-                  <tr key={yr} className="border-b border-white/4">
-                    <td className="py-2 text-white/50">{yr}</td>
-                    <td className="py-2 text-right text-[#e8c547] font-mono">{d.wins}</td>
-                    <td className="py-2 text-right text-white/50 font-mono">{d.top3}</td>
-                    <td className="py-2 text-right text-green-400 font-mono text-xs">+{d.totalPrize.toLocaleString("da-DK")}</td>
+                  <tr key={yr} className="border-b border-slate-100">
+                    <td className="py-2 text-slate-500">{yr}</td>
+                    <td className="py-2 text-right text-amber-700 font-mono">{d.wins}</td>
+                    <td className="py-2 text-right text-slate-500 font-mono">{d.top3}</td>
+                    <td className="py-2 text-right text-green-700 font-mono text-xs">+{d.totalPrize.toLocaleString("da-DK")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -327,31 +327,31 @@ export default function RiderStatsPage() {
       )}
 
       {tab === "results" && (
-        <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           {results.length === 0 ? (
-            <p className="text-white/20 text-center py-8">Ingen løbsresultater endnu</p>
+            <p className="text-slate-300 text-center py-8">Ingen løbsresultater endnu</p>
           ) : (
             <table className="w-full">
-              <thead><tr className="border-b border-white/5">
-                <th className="px-4 py-3 text-left text-white/25 text-[10px] uppercase">Løb</th>
-                <th className="px-4 py-3 text-center text-white/25 text-[10px] uppercase">Type</th>
-                <th className="px-4 py-3 text-right text-white/25 text-[10px] uppercase">Plac.</th>
-                <th className="px-4 py-3 text-right text-white/25 text-[10px] uppercase">Præmie</th>
+              <thead><tr className="border-b border-slate-200">
+                <th className="px-4 py-3 text-left text-slate-400 text-[10px] uppercase">Løb</th>
+                <th className="px-4 py-3 text-center text-slate-400 text-[10px] uppercase">Type</th>
+                <th className="px-4 py-3 text-right text-slate-400 text-[10px] uppercase">Plac.</th>
+                <th className="px-4 py-3 text-right text-slate-400 text-[10px] uppercase">Præmie</th>
               </tr></thead>
               <tbody>
                 {results.map(r => (
-                  <tr key={r.id} className="border-b border-white/3 last:border-0">
+                  <tr key={r.id} className="border-b border-slate-100 last:border-0">
                     <td className="px-4 py-3">
-                      <p className="text-white text-sm">{r.race?.name || "—"}</p>
-                      <p className="text-white/30 text-xs">{r.race?.start_date?.slice(0, 4) || "—"}</p>
+                      <p className="text-slate-900 text-sm">{r.race?.name || "—"}</p>
+                      <p className="text-slate-400 text-xs">{r.race?.start_date?.slice(0, 4) || "—"}</p>
                     </td>
-                    <td className="px-4 py-3 text-center text-white/40 text-xs">{r.result_type || "—"}</td>
+                    <td className="px-4 py-3 text-center text-slate-500 text-xs">{r.result_type || "—"}</td>
                     <td className="px-4 py-3 text-right">
-                      <span className={`font-mono font-bold text-sm ${r.position === 1 ? "text-[#e8c547]" : r.position <= 3 ? "text-white" : "text-white/50"}`}>
+                      <span className={`font-mono font-bold text-sm ${r.position === 1 ? "text-amber-700" : r.position <= 3 ? "text-slate-900" : "text-slate-500"}`}>
                         #{r.position}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-green-400 font-mono text-xs">
+                    <td className="px-4 py-3 text-right text-green-700 font-mono text-xs">
                       {r.prize_money ? `+${r.prize_money.toLocaleString("da-DK")}` : "—"}
                     </td>
                   </tr>

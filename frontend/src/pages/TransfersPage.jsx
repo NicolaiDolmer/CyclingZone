@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import RiderFilters from "../components/RiderFilters";
@@ -21,12 +21,12 @@ function timeAgo(d) {
 }
 
 const STATUS_CONFIG = {
-  pending:                { label: "Afventer svar",        color: "text-[#e8c547]",  bg: "bg-[#e8c547]/10 border-[#e8c547]/20" },
-  countered:              { label: "Modbud sendt",          color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20" },
-  awaiting_confirmation:  { label: "Afventer bekræftelse",  color: "text-blue-400",   bg: "bg-blue-500/10 border-blue-500/20" },
-  accepted:               { label: "Accepteret",            color: "text-green-400",  bg: "bg-green-500/10 border-green-500/20" },
-  rejected:               { label: "Afvist",                color: "text-red-400",    bg: "bg-red-500/10 border-red-500/20" },
-  withdrawn:              { label: "Trukket tilbage",       color: "text-white/30",   bg: "bg-white/5 border-white/10" },
+  pending:                { label: "Afventer svar",        color: "text-amber-700",  bg: "bg-amber-50 border-amber-200" },
+  countered:              { label: "Modbud sendt",          color: "text-orange-700", bg: "bg-orange-50 border-orange-200" },
+  awaiting_confirmation:  { label: "Afventer bekræftelse",  color: "text-blue-700",   bg: "bg-blue-500/10 border-blue-500/20" },
+  accepted:               { label: "Accepteret",            color: "text-green-700",  bg: "bg-green-50 border-green-200" },
+  rejected:               { label: "Afvist",                color: "text-red-700",    bg: "bg-red-50 border-red-200" },
+  withdrawn:              { label: "Trukket tilbage",       color: "text-slate-400",   bg: "bg-slate-100 border-slate-300" },
 };
 
 // ── Modtaget tilbud ──────────────────────────────────────────────────────────
@@ -50,35 +50,35 @@ function ReceivedOfferCard({ offer, onAction }) {
   }
 
   return (
-    <div className={`bg-[#0f0f18] border rounded-xl p-5 transition-all
-      ${isAwaiting ? "border-blue-500/30" : isPending ? "border-[#e8c547]/20" : "border-white/5 opacity-70"}`}>
+    <div className={`bg-white border rounded-xl p-5 transition-all
+      ${isAwaiting ? "border-blue-500/30" : isPending ? "border-amber-200" : "border-slate-200 opacity-70"}`}>
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-white font-semibold">{offer.rider?.firstname} {offer.rider?.lastname}</p>
-          <p className="text-white/30 text-xs">Fra: {offer.buyer?.name} · Runde {offer.round || 1} · {timeAgo(offer.created_at)}</p>
+          <p className="text-slate-900 font-semibold">{offer.rider?.firstname} {offer.rider?.lastname}</p>
+          <p className="text-slate-400 text-xs">Fra: {offer.buyer?.name} · Runde {offer.round || 1} · {timeAgo(offer.created_at)}</p>
         </div>
         <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
           {cfg.label}
         </span>
       </div>
 
-      <div className="bg-white/3 rounded-lg px-4 py-3 mb-3 flex items-center justify-between">
+      <div className="bg-slate-50 rounded-lg px-4 py-3 mb-3 flex items-center justify-between">
         <div>
-          <p className="text-white/30 text-xs uppercase tracking-wider mb-0.5">
+          <p className="text-slate-400 text-xs uppercase tracking-wider mb-0.5">
             {offer.status === "countered" ? "Dit modbud" : "Tilbud"}
           </p>
-          <p className="text-[#e8c547] font-mono font-bold text-xl">
+          <p className="text-amber-700 font-mono font-bold text-xl">
             {(offer.status === "countered" ? offer.counter_amount : offer.offer_amount)?.toLocaleString("da-DK")} CZ$
           </p>
         </div>
         <div className="text-right">
-          <p className="text-white/30 text-xs">UCI-pris</p>
-          <p className="text-white/50 font-mono text-sm">{offer.rider?.uci_points?.toLocaleString("da-DK")} CZ$</p>
+          <p className="text-slate-400 text-xs">UCI-pris</p>
+          <p className="text-slate-500 font-mono text-sm">{offer.rider?.uci_points?.toLocaleString("da-DK")} CZ$</p>
         </div>
       </div>
 
       {offer.message && (
-        <div className="bg-white/3 rounded-lg px-3 py-2 mb-3 text-white/50 text-xs italic">
+        <div className="bg-slate-50 rounded-lg px-3 py-2 mb-3 text-slate-500 text-xs italic">
           "{offer.message}"
         </div>
       )}
@@ -87,29 +87,29 @@ function ReceivedOfferCard({ offer, onAction }) {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
-              className="flex-1 py-2 bg-green-500/15 text-green-400 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 transition-all disabled:opacity-50">
+              className="flex-1 py-2 bg-green-50 text-green-700 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 transition-all disabled:opacity-50">
               ✓ Accepter
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all
                 ${mode === "counter"
-                  ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
-                  : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"}`}>
+                  ? "bg-orange-500/20 text-orange-700 border-orange-500/30"
+                  : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-100"}`}>
               ↔ Modbud
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
-              className="flex-1 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-all disabled:opacity-50">
+              className="flex-1 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-all disabled:opacity-50">
               ✕ Afvis
             </button>
           </div>
 
           {mode === "counter" && (
-            <div className="bg-white/3 rounded-lg p-3 flex flex-col gap-2">
-              <label className="text-white/30 text-xs uppercase tracking-wider">Dit modbud (CZ$)</label>
+            <div className="bg-slate-50 rounded-lg p-3 flex flex-col gap-2">
+              <label className="text-slate-400 text-xs uppercase tracking-wider">Dit modbud (CZ$)</label>
               <div className="flex gap-2">
                 <input type="number" value={counterAmt}
                   onChange={e => setCounterAmt(parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-[#e8c547]/50" />
+                  className="flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-amber-400" />
                 <button onClick={() => doAction("counter", { counter_amount: counterAmt, message: msg })}
                   disabled={loading || counterAmt <= 0}
                   className="px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50">
@@ -118,7 +118,7 @@ function ReceivedOfferCard({ offer, onAction }) {
               </div>
               <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
                 placeholder="Valgfri besked til køber..."
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+                className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
             </div>
           )}
         </div>
@@ -129,19 +129,19 @@ function ReceivedOfferCard({ offer, onAction }) {
           {offer.seller_confirmed ? (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-3 text-center">
               <p className="text-blue-300 text-sm font-medium">Du har accepteret — afventer købers bekræftelse</p>
-              <p className="text-white/30 text-xs mt-1">{price} CZ$ · {offer.buyer?.name}</p>
+              <p className="text-slate-400 text-xs mt-1">{price} CZ$ · {offer.buyer?.name}</p>
             </div>
           ) : (
             <div className="flex gap-2">
               <button onClick={() => doAction("confirm")} disabled={loading}
-                className="flex-1 py-2 bg-blue-500/15 text-blue-400 border border-blue-500/25 rounded-lg text-sm font-medium hover:bg-blue-500/25 transition-all disabled:opacity-50">
+                className="flex-1 py-2 bg-blue-50 text-blue-700 border border-blue-500/25 rounded-lg text-sm font-medium hover:bg-blue-500/25 transition-all disabled:opacity-50">
                 ✓ Bekræft handel ({price} CZ$)
               </button>
             </div>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="w-full py-2 bg-red-500/5 text-red-400/70 border border-red-500/15 rounded-lg text-sm
-              hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-50">
+            className="w-full py-2 bg-red-500/5 text-red-700/70 border border-red-500/15 rounded-lg text-sm
+              hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all disabled:opacity-50">
             Annuller handel
           </button>
         </div>
@@ -172,35 +172,35 @@ function SentOfferCard({ offer, onAction }) {
   }
 
   return (
-    <div className={`bg-[#0f0f18] border rounded-xl p-5 transition-all
-      ${isAwaiting ? "border-blue-500/30" : isCountered ? "border-orange-500/20" : isActive ? "border-white/10" : "border-white/5 opacity-60"}`}>
+    <div className={`bg-white border rounded-xl p-5 transition-all
+      ${isAwaiting ? "border-blue-500/30" : isCountered ? "border-orange-200" : isActive ? "border-slate-300" : "border-slate-200 opacity-60"}`}>
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-white font-semibold">{offer.rider?.firstname} {offer.rider?.lastname}</p>
-          <p className="text-white/30 text-xs">Til: {offer.seller?.name} · Runde {offer.round || 1} · {timeAgo(offer.updated_at)}</p>
+          <p className="text-slate-900 font-semibold">{offer.rider?.firstname} {offer.rider?.lastname}</p>
+          <p className="text-slate-400 text-xs">Til: {offer.seller?.name} · Runde {offer.round || 1} · {timeAgo(offer.updated_at)}</p>
         </div>
         <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
           {cfg.label}
         </span>
       </div>
 
-      <div className="bg-white/3 rounded-lg px-4 py-3 mb-3">
+      <div className="bg-slate-50 rounded-lg px-4 py-3 mb-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-white/30 text-xs uppercase tracking-wider mb-0.5">Dit bud</p>
-            <p className="text-white font-mono font-bold text-lg">{offer.offer_amount?.toLocaleString("da-DK")} CZ$</p>
+            <p className="text-slate-400 text-xs uppercase tracking-wider mb-0.5">Dit bud</p>
+            <p className="text-slate-900 font-mono font-bold text-lg">{offer.offer_amount?.toLocaleString("da-DK")} CZ$</p>
           </div>
           {isCountered && offer.counter_amount && (
             <div className="text-right">
-              <p className="text-white/30 text-xs uppercase tracking-wider mb-0.5">Modbud</p>
-              <p className="text-orange-400 font-mono font-bold text-lg">{offer.counter_amount?.toLocaleString("da-DK")} CZ$</p>
+              <p className="text-slate-400 text-xs uppercase tracking-wider mb-0.5">Modbud</p>
+              <p className="text-orange-700 font-mono font-bold text-lg">{offer.counter_amount?.toLocaleString("da-DK")} CZ$</p>
             </div>
           )}
         </div>
       </div>
 
       {offer.message && (
-        <div className="bg-white/3 rounded-lg px-3 py-2 mb-3 text-white/50 text-xs italic">
+        <div className="bg-slate-50 rounded-lg px-3 py-2 mb-3 text-slate-500 text-xs italic">
           "{offer.message}"
         </div>
       )}
@@ -209,29 +209,29 @@ function SentOfferCard({ offer, onAction }) {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
-              className="flex-1 py-2 bg-green-500/15 text-green-400 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
+              className="flex-1 py-2 bg-green-50 text-green-700 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
               ✓ Accepter ({offer.counter_amount?.toLocaleString("da-DK")} CZ$)
             </button>
             <button onClick={() => setMode(mode === "new_offer" ? null : "new_offer")}
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all
                 ${mode === "new_offer"
-                  ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                  : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"}`}>
+                  ? "bg-blue-500/20 text-blue-700 border-blue-500/30"
+                  : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-100"}`}>
               Nyt bud
             </button>
             <button onClick={() => doAction("withdraw")} disabled={loading}
-              className="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium hover:bg-red-500/20 disabled:opacity-50">
+              className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 disabled:opacity-50">
               Træk tilbage
             </button>
           </div>
 
           {mode === "new_offer" && (
-            <div className="bg-white/3 rounded-lg p-3 flex flex-col gap-2">
-              <label className="text-white/30 text-xs uppercase tracking-wider">Nyt tilbud (CZ$)</label>
+            <div className="bg-slate-50 rounded-lg p-3 flex flex-col gap-2">
+              <label className="text-slate-400 text-xs uppercase tracking-wider">Nyt tilbud (CZ$)</label>
               <div className="flex gap-2">
                 <input type="number" value={newAmt}
                   onChange={e => setNewAmt(parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-[#e8c547]/50" />
+                  className="flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-amber-400" />
                 <button onClick={() => doAction("new_offer", { counter_amount: newAmt, message: msg })}
                   disabled={loading || newAmt <= 0}
                   className="px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50">
@@ -240,7 +240,7 @@ function SentOfferCard({ offer, onAction }) {
               </div>
               <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
                 placeholder="Valgfri besked..."
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+                className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
             </div>
           )}
         </div>
@@ -248,8 +248,8 @@ function SentOfferCard({ offer, onAction }) {
 
       {isPending && (
         <button onClick={() => doAction("withdraw")} disabled={loading}
-          className="w-full py-2 bg-white/5 text-white/30 border border-white/8 rounded-lg text-sm
-            hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-50">
+          className="w-full py-2 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-sm
+            hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all disabled:opacity-50">
           Træk tilbud tilbage
         </button>
       )}
@@ -259,17 +259,17 @@ function SentOfferCard({ offer, onAction }) {
           {offer.buyer_confirmed ? (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-3 text-center">
               <p className="text-blue-300 text-sm font-medium">Du har bekræftet — afventer sælgers bekræftelse</p>
-              <p className="text-white/30 text-xs mt-1">{price} CZ$ · {offer.seller?.name}</p>
+              <p className="text-slate-400 text-xs mt-1">{price} CZ$ · {offer.seller?.name}</p>
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
-              className="w-full py-2 bg-blue-500/15 text-blue-400 border border-blue-500/25 rounded-lg text-sm font-medium hover:bg-blue-500/25 transition-all disabled:opacity-50">
+              className="w-full py-2 bg-blue-50 text-blue-700 border border-blue-500/25 rounded-lg text-sm font-medium hover:bg-blue-500/25 transition-all disabled:opacity-50">
               ✓ Bekræft handel ({price} CZ$)
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="w-full py-2 bg-red-500/5 text-red-400/70 border border-red-500/15 rounded-lg text-sm
-              hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-50">
+            className="w-full py-2 bg-red-500/5 text-red-700/70 border border-red-500/15 rounded-lg text-sm
+              hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all disabled:opacity-50">
             Annuller handel
           </button>
         </div>
@@ -304,12 +304,12 @@ function SwapCard({ swap, myTeamId, onAction }) {
   }
 
   return (
-    <div className={`bg-[#0f0f18] border rounded-xl p-5 transition-all
-      ${isAwaiting ? "border-blue-500/30" : isCountered ? "border-orange-500/20" : isPending ? "border-white/10" : "border-white/5 opacity-60"}`}>
+    <div className={`bg-white border rounded-xl p-5 transition-all
+      ${isAwaiting ? "border-blue-500/30" : isCountered ? "border-orange-200" : isPending ? "border-slate-300" : "border-slate-200 opacity-60"}`}>
 
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-white/30 text-xs">
+          <p className="text-slate-400 text-xs">
             {isProposing ? `Til: ${swap.receiving?.name}` : `Fra: ${swap.proposing?.name}`}
           </p>
         </div>
@@ -323,12 +323,12 @@ function SwapCard({ swap, myTeamId, onAction }) {
           { label: isProposing ? "Du tilbyder" : "De tilbyder", rider: swap.offered },
           { label: isProposing ? "Du ønsker"  : "De ønsker",   rider: swap.requested },
         ].map(({ label, rider }) => (
-          <div key={rider?.id} className="bg-white/3 rounded-lg px-3 py-2">
-            <p className="text-white/25 text-[10px] uppercase tracking-wider mb-1">{label}</p>
-            <p className="text-white text-sm font-semibold">{rider?.firstname} {rider?.lastname}</p>
+          <div key={rider?.id} className="bg-slate-50 rounded-lg px-3 py-2">
+            <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-1">{label}</p>
+            <p className="text-slate-900 text-sm font-semibold">{rider?.firstname} {rider?.lastname}</p>
             <div className="flex gap-2 mt-1">
               {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"]].map(([l, k]) => (
-                <span key={k} className="text-[10px] text-white/30">{l}<span className="text-white/60 ml-0.5">{rider?.[k] ?? "—"}</span></span>
+                <span key={k} className="text-[10px] text-slate-400">{l}<span className="text-slate-500 ml-0.5">{rider?.[k] ?? "—"}</span></span>
               ))}
             </div>
           </div>
@@ -336,13 +336,13 @@ function SwapCard({ swap, myTeamId, onAction }) {
       </div>
 
       <div className={`rounded-lg px-3 py-2 mb-3 text-xs text-center font-medium
-        ${effectiveCash === 0 ? "bg-white/3 text-white/40" : "bg-[#e8c547]/8 text-[#e8c547]/80"}`}>
+        ${effectiveCash === 0 ? "bg-slate-50 text-slate-500" : "bg-amber-50 text-amber-700/80"}`}>
         {cashLabel}
-        {isCountered && <span className="text-orange-400 ml-2">(modbud)</span>}
+        {isCountered && <span className="text-orange-700 ml-2">(modbud)</span>}
       </div>
 
       {swap.message && (
-        <div className="bg-white/3 rounded-lg px-3 py-2 mb-3 text-white/50 text-xs italic">
+        <div className="bg-slate-50 rounded-lg px-3 py-2 mb-3 text-slate-500 text-xs italic">
           "{swap.message}"
         </div>
       )}
@@ -351,26 +351,26 @@ function SwapCard({ swap, myTeamId, onAction }) {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
-              className="flex-1 py-2 bg-green-500/15 text-green-400 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
+              className="flex-1 py-2 bg-green-50 text-green-700 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
               ✓ Accepter
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all
-                ${mode === "counter" ? "bg-orange-500/20 text-orange-400 border-orange-500/30" : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10"}`}>
+                ${mode === "counter" ? "bg-orange-500/20 text-orange-700 border-orange-500/30" : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-100"}`}>
               ↔ Modbud
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
-              className="flex-1 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium hover:bg-red-500/20 disabled:opacity-50">
+              className="flex-1 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 disabled:opacity-50">
               ✕ Afvis
             </button>
           </div>
           {mode === "counter" && (
-            <div className="bg-white/3 rounded-lg p-3 flex flex-col gap-2">
-              <label className="text-white/30 text-xs uppercase tracking-wider">Kontantbetaling (CZ$) · positiv = du modtager, negativ = du betaler</label>
+            <div className="bg-slate-50 rounded-lg p-3 flex flex-col gap-2">
+              <label className="text-slate-400 text-xs uppercase tracking-wider">Kontantbetaling (CZ$) · positiv = du modtager, negativ = du betaler</label>
               <div className="flex gap-2">
                 <input type="number" value={counterCash}
                   onChange={e => setCounterCash(parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-[#e8c547]/50" />
+                  className="flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-amber-400" />
                 <button onClick={() => doAction("counter", { counter_cash: -counterCash })}
                   disabled={loading}
                   className="px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50">
@@ -384,8 +384,8 @@ function SwapCard({ swap, myTeamId, onAction }) {
 
       {isPending && isProposing && (
         <button onClick={() => doAction("withdraw")} disabled={loading}
-          className="w-full py-2 bg-white/5 text-white/30 border border-white/8 rounded-lg text-sm
-            hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-50">
+          className="w-full py-2 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-sm
+            hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all disabled:opacity-50">
           Træk forslag tilbage
         </button>
       )}
@@ -393,11 +393,11 @@ function SwapCard({ swap, myTeamId, onAction }) {
       {isCountered && isProposing && (
         <div className="flex gap-2">
           <button onClick={() => doAction("accept_counter")} disabled={loading}
-            className="flex-1 py-2 bg-green-500/15 text-green-400 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
+            className="flex-1 py-2 bg-green-50 text-green-700 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
             ✓ Accepter modbud
           </button>
           <button onClick={() => doAction("withdraw")} disabled={loading}
-            className="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-sm hover:bg-red-500/20 disabled:opacity-50">
+            className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm hover:bg-red-100 disabled:opacity-50">
             Afvis
           </button>
         </div>
@@ -411,13 +411,13 @@ function SwapCard({ swap, myTeamId, onAction }) {
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
-              className="w-full py-2 bg-blue-500/15 text-blue-400 border border-blue-500/25 rounded-lg text-sm font-medium hover:bg-blue-500/25 disabled:opacity-50">
+              className="w-full py-2 bg-blue-50 text-blue-700 border border-blue-500/25 rounded-lg text-sm font-medium hover:bg-blue-500/25 disabled:opacity-50">
               ✓ Bekræft byttehandel
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="w-full py-2 bg-red-500/5 text-red-400/70 border border-red-500/15 rounded-lg text-sm
-              hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-50">
+            className="w-full py-2 bg-red-500/5 text-red-700/70 border border-red-500/15 rounded-lg text-sm
+              hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all disabled:opacity-50">
             Annuller handel
           </button>
         </div>
@@ -466,13 +466,13 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
   }
 
   return (
-    <div className="bg-[#0f0f18] border border-white/10 rounded-xl p-5 flex flex-col gap-4">
-      <h3 className="text-white font-semibold">Foreslå byttehandel</h3>
+    <div className="bg-white border border-slate-300 rounded-xl p-5 flex flex-col gap-4">
+      <h3 className="text-slate-900 font-semibold">Foreslå byttehandel</h3>
 
       <div>
-        <label className="text-white/30 text-xs uppercase tracking-wider mb-1 block">Din rytter du tilbyder</label>
+        <label className="text-slate-400 text-xs uppercase tracking-wider mb-1 block">Din rytter du tilbyder</label>
         <select value={offeredId} onChange={e => setOfferedId(e.target.value)}
-          className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#e8c547]/50">
+          className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400">
           <option value="">— Vælg rytter —</option>
           {myRiders.map(r => (
             <option key={r.id} value={r.id}>{r.firstname} {r.lastname} (UCI {r.uci_points?.toLocaleString("da-DK")})</option>
@@ -481,43 +481,43 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
       </div>
 
       <div>
-        <label className="text-white/30 text-xs uppercase tracking-wider mb-1 block">Rytter du ønsker (søg på efternavn)</label>
+        <label className="text-slate-400 text-xs uppercase tracking-wider mb-1 block">Rytter du ønsker (søg på efternavn)</label>
         <div className="relative">
           <input type="text" value={search}
             onChange={e => { setSearch(e.target.value); runSearch(e.target.value); }}
             placeholder="Efternavn..."
-            className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#e8c547]/50" />
-          {searching && <span className="absolute right-3 top-2.5 text-white/30 text-xs">...</span>}
+            className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400" />
+          {searching && <span className="absolute right-3 top-2.5 text-slate-400 text-xs">...</span>}
           {searchResults.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-[#1a1a2e] border border-white/15 rounded-lg overflow-hidden shadow-lg">
+            <div className="absolute z-10 w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg overflow-hidden shadow-lg">
               {searchResults.map(r => (
                 <button key={r.id} onClick={() => pickRequested(r)}
-                  className="w-full text-left px-3 py-2 hover:bg-white/5 text-white text-sm border-b border-white/5 last:border-0">
+                  className="w-full text-left px-3 py-2 hover:bg-slate-100 text-slate-900 text-sm border-b border-slate-200 last:border-0">
                   {r.firstname} {r.lastname}
-                  <span className="text-white/30 text-xs ml-2">{r.team?.name} · UCI {r.uci_points?.toLocaleString("da-DK")}</span>
+                  <span className="text-slate-400 text-xs ml-2">{r.team?.name} · UCI {r.uci_points?.toLocaleString("da-DK")}</span>
                 </button>
               ))}
             </div>
           )}
         </div>
         {selectedRequested && (
-          <p className="text-[#e8c547]/70 text-xs mt-1">Valgt: {selectedRequested.firstname} {selectedRequested.lastname} ({selectedRequested.team?.name})</p>
+          <p className="text-amber-700/70 text-xs mt-1">Valgt: {selectedRequested.firstname} {selectedRequested.lastname} ({selectedRequested.team?.name})</p>
         )}
       </div>
 
       <div>
-        <label className="text-white/30 text-xs uppercase tracking-wider mb-1 block">
+        <label className="text-slate-400 text-xs uppercase tracking-wider mb-1 block">
           Kontantbetaling fra dig (CZ$) · 0 = ren bytte · negativt = du modtager
         </label>
         <input type="number" value={cash} onChange={e => setCash(parseInt(e.target.value) || 0)}
-          className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#e8c547]/50" />
+          className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none focus:border-amber-400" />
       </div>
 
       <div>
-        <label className="text-white/30 text-xs uppercase tracking-wider mb-1 block">Besked (valgfri)</label>
+        <label className="text-slate-400 text-xs uppercase tracking-wider mb-1 block">Besked (valgfri)</label>
         <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
           placeholder="Fx. begrundelse eller kommentar..."
-          className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+          className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
       </div>
 
       <div className="flex gap-2">
@@ -526,7 +526,7 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
           {loading ? "Sender..." : "Send forslag"}
         </button>
         <button onClick={onCancel}
-          className="px-4 py-2 bg-white/5 text-white/50 border border-white/10 rounded-lg text-sm hover:bg-white/10">
+          className="px-4 py-2 bg-slate-100 text-slate-500 border border-slate-300 rounded-lg text-sm hover:bg-slate-100">
           Annuller
         </button>
       </div>
@@ -536,11 +536,11 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
 
 // ── Loan agreement card ───────────────────────────────────────────────────────
 const LOAN_STATUS_CONFIG = {
-  pending:   { label: "Afventer svar",  color: "text-[#e8c547]",   bg: "bg-[#e8c547]/10 border-[#e8c547]/20" },
+  pending:   { label: "Afventer svar",  color: "text-amber-700",   bg: "bg-amber-50 border-amber-200" },
   active:    { label: "Aktiv",          color: "text-purple-400",  bg: "bg-purple-500/10 border-purple-500/20" },
-  buyout:    { label: "Købt",           color: "text-green-400",   bg: "bg-green-500/10 border-green-500/20" },
-  cancelled: { label: "Annulleret",     color: "text-white/30",    bg: "bg-white/5 border-white/10" },
-  rejected:  { label: "Afvist",         color: "text-red-400",     bg: "bg-red-500/10 border-red-500/20" },
+  buyout:    { label: "Købt",           color: "text-green-700",   bg: "bg-green-50 border-green-200" },
+  cancelled: { label: "Annulleret",     color: "text-slate-400",    bg: "bg-slate-100 border-slate-300" },
+  rejected:  { label: "Afvist",         color: "text-red-700",     bg: "bg-red-50 border-red-200" },
 };
 
 function LoanCard({ loan, myTeamId, onAction }) {
@@ -560,13 +560,13 @@ function LoanCard({ loan, myTeamId, onAction }) {
     : `Sæson ${loan.start_season}–${loan.end_season}`;
 
   return (
-    <div className={`bg-[#0f0f18] border rounded-xl p-5 transition-all
-      ${loan.status === "active" ? "border-purple-500/20" : loan.status === "pending" ? "border-[#e8c547]/20" : "border-white/5 opacity-70"}`}>
+    <div className={`bg-white border rounded-xl p-5 transition-all
+      ${loan.status === "active" ? "border-purple-500/20" : loan.status === "pending" ? "border-amber-200" : "border-slate-200 opacity-70"}`}>
 
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-white font-semibold">{loan.rider?.firstname} {loan.rider?.lastname}</p>
-          <p className="text-white/30 text-xs">
+          <p className="text-slate-900 font-semibold">{loan.rider?.firstname} {loan.rider?.lastname}</p>
+          <p className="text-slate-400 text-xs">
             {isLender ? `Til: ${loan.to_team?.name}` : `Fra: ${loan.from_team?.name}`} · {seasons}
           </p>
         </div>
@@ -576,17 +576,17 @@ function LoanCard({ loan, myTeamId, onAction }) {
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-3">
-        <div className="bg-white/3 rounded-lg px-3 py-2 text-center">
-          <p className="text-white/25 text-[10px] uppercase tracking-wider mb-0.5">Lejegebyr/sæson</p>
-          <p className="text-white font-mono text-sm font-bold">{loan.loan_fee?.toLocaleString("da-DK")} CZ$</p>
+        <div className="bg-slate-50 rounded-lg px-3 py-2 text-center">
+          <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-0.5">Lejegebyr/sæson</p>
+          <p className="text-slate-900 font-mono text-sm font-bold">{loan.loan_fee?.toLocaleString("da-DK")} CZ$</p>
         </div>
-        <div className="bg-white/3 rounded-lg px-3 py-2 text-center">
-          <p className="text-white/25 text-[10px] uppercase tracking-wider mb-0.5">UCI-værdi</p>
-          <p className="text-[#e8c547] font-mono text-sm font-bold">{loan.rider?.uci_points?.toLocaleString("da-DK")}</p>
+        <div className="bg-slate-50 rounded-lg px-3 py-2 text-center">
+          <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-0.5">UCI-værdi</p>
+          <p className="text-amber-700 font-mono text-sm font-bold">{loan.rider?.uci_points?.toLocaleString("da-DK")}</p>
         </div>
-        <div className="bg-white/3 rounded-lg px-3 py-2 text-center">
-          <p className="text-white/25 text-[10px] uppercase tracking-wider mb-0.5">Købsoption</p>
-          <p className="text-white/50 font-mono text-sm">
+        <div className="bg-slate-50 rounded-lg px-3 py-2 text-center">
+          <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-0.5">Købsoption</p>
+          <p className="text-slate-500 font-mono text-sm">
             {loan.buy_option_price ? `${loan.buy_option_price.toLocaleString("da-DK")} CZ$` : "—"}
           </p>
         </div>
@@ -595,19 +595,19 @@ function LoanCard({ loan, myTeamId, onAction }) {
       {loan.status === "pending" && isLender && (
         <div className="flex gap-2">
           <button onClick={() => doAction("accept")} disabled={loading}
-            className="flex-1 py-2 bg-green-500/15 text-green-400 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
+            className="flex-1 py-2 bg-green-50 text-green-700 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
             ✓ Accepter
           </button>
           <button onClick={() => doAction("reject")} disabled={loading}
-            className="flex-1 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-sm font-medium hover:bg-red-500/20 disabled:opacity-50">
+            className="flex-1 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 disabled:opacity-50">
             ✕ Afvis
           </button>
         </div>
       )}
       {loan.status === "pending" && isBorrower && (
         <button onClick={() => doAction("cancel")} disabled={loading}
-          className="w-full py-2 bg-white/5 text-white/30 border border-white/8 rounded-lg text-sm
-            hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-50">
+          className="w-full py-2 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-sm
+            hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all disabled:opacity-50">
           Træk forslag tilbage
         </button>
       )}
@@ -615,13 +615,13 @@ function LoanCard({ loan, myTeamId, onAction }) {
         <div className="flex flex-col gap-2">
           {isBorrower && loan.buy_option_price && (
             <button onClick={() => doAction("buyout")} disabled={loading}
-              className="w-full py-2 bg-green-500/15 text-green-400 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
+              className="w-full py-2 bg-green-50 text-green-700 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
               Udnyt købsoption ({loan.buy_option_price?.toLocaleString("da-DK")} CZ$)
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="w-full py-2 bg-red-500/5 text-red-400/70 border border-red-500/15 rounded-lg text-sm
-              hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-50">
+            className="w-full py-2 bg-red-500/5 text-red-700/70 border border-red-500/15 rounded-lg text-sm
+              hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all disabled:opacity-50">
             Annuller lejeaftale
           </button>
         </div>
@@ -669,24 +669,24 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
   }
 
   return (
-    <div className="bg-[#0f0f18] border border-white/10 rounded-xl p-5 flex flex-col gap-4">
-      <h3 className="text-white font-semibold">Foreslå lejeaftale</h3>
+    <div className="bg-white border border-slate-300 rounded-xl p-5 flex flex-col gap-4">
+      <h3 className="text-slate-900 font-semibold">Foreslå lejeaftale</h3>
 
       <div>
-        <label className="text-white/30 text-xs uppercase tracking-wider mb-1 block">Rytter du ønsker at leje (søg på efternavn)</label>
+        <label className="text-slate-400 text-xs uppercase tracking-wider mb-1 block">Rytter du ønsker at leje (søg på efternavn)</label>
         <div className="relative">
           <input type="text" value={search}
             onChange={e => { setSearch(e.target.value); runSearch(e.target.value); }}
             placeholder="Efternavn..."
-            className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#e8c547]/50" />
-          {searching && <span className="absolute right-3 top-2.5 text-white/30 text-xs">...</span>}
+            className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400" />
+          {searching && <span className="absolute right-3 top-2.5 text-slate-400 text-xs">...</span>}
           {searchResults.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-[#1a1a2e] border border-white/15 rounded-lg overflow-hidden shadow-lg">
+            <div className="absolute z-10 w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg overflow-hidden shadow-lg">
               {searchResults.map(r => (
                 <button key={r.id} onClick={() => { setSelectedRider(r); setSearch(`${r.firstname} ${r.lastname}`); setSearchResults([]); }}
-                  className="w-full text-left px-3 py-2 hover:bg-white/5 text-white text-sm border-b border-white/5 last:border-0">
+                  className="w-full text-left px-3 py-2 hover:bg-slate-100 text-slate-900 text-sm border-b border-slate-200 last:border-0">
                   {r.firstname} {r.lastname}
-                  <span className="text-white/30 text-xs ml-2">{r.team?.name} · UCI {r.uci_points?.toLocaleString("da-DK")}</span>
+                  <span className="text-slate-400 text-xs ml-2">{r.team?.name} · UCI {r.uci_points?.toLocaleString("da-DK")}</span>
                 </button>
               ))}
             </div>
@@ -699,30 +699,30 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-white/30 text-xs uppercase tracking-wider mb-1 block">Fra sæson</label>
+          <label className="text-slate-400 text-xs uppercase tracking-wider mb-1 block">Fra sæson</label>
           <input type="number" value={startSeason} onChange={e => setStartSeason(e.target.value)}
             placeholder="fx. 3"
-            className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#e8c547]/50" />
+            className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none focus:border-amber-400" />
         </div>
         <div>
-          <label className="text-white/30 text-xs uppercase tracking-wider mb-1 block">Til sæson</label>
+          <label className="text-slate-400 text-xs uppercase tracking-wider mb-1 block">Til sæson</label>
           <input type="number" value={endSeason} onChange={e => setEndSeason(e.target.value)}
             placeholder="fx. 4"
-            className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#e8c547]/50" />
+            className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none focus:border-amber-400" />
         </div>
       </div>
 
       <div>
-        <label className="text-white/30 text-xs uppercase tracking-wider mb-1 block">Lejegebyr per sæson (CZ$)</label>
+        <label className="text-slate-400 text-xs uppercase tracking-wider mb-1 block">Lejegebyr per sæson (CZ$)</label>
         <input type="number" value={loanFee} onChange={e => setLoanFee(parseInt(e.target.value) || 0)}
-          className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#e8c547]/50" />
+          className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none focus:border-amber-400" />
       </div>
 
       <div>
-        <label className="text-white/30 text-xs uppercase tracking-wider mb-1 block">Købsoption (CZ$) — valgfri</label>
+        <label className="text-slate-400 text-xs uppercase tracking-wider mb-1 block">Købsoption (CZ$) — valgfri</label>
         <input type="number" value={buyOption} onChange={e => setBuyOption(e.target.value)}
           placeholder="Efterlad tom for ingen option"
-          className="w-full bg-[#1a1a2e] border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#e8c547]/50" />
+          className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none focus:border-amber-400" />
       </div>
 
       <div className="flex gap-2">
@@ -731,7 +731,7 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
           {loading ? "Sender..." : "Send forslag"}
         </button>
         <button onClick={onCancel}
-          className="px-4 py-2 bg-white/5 text-white/50 border border-white/10 rounded-lg text-sm hover:bg-white/10">
+          className="px-4 py-2 bg-slate-100 text-slate-500 border border-slate-300 rounded-lg text-sm hover:bg-slate-100">
           Annuller
         </button>
       </div>
@@ -750,24 +750,24 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
   const isOwn = listing.seller?.id === myTeamId;
 
   return (
-    <div className="bg-[#0f0f18] border border-white/5 hover:border-white/10 rounded-xl p-4 transition-all">
+    <div className="bg-white border border-slate-200 hover:border-slate-300 rounded-xl p-4 transition-all">
       <div className="flex items-start justify-between mb-3">
         <div className="cursor-pointer" onClick={() => navigate(`/riders/${listing.rider?.id}`)}>
-          <p className="text-white font-semibold hover:text-[#e8c547] transition-colors">
+          <p className="text-slate-900 font-semibold hover:text-amber-700 transition-colors">
             {listing.rider?.firstname} {listing.rider?.lastname}
           </p>
-          <p className="text-white/30 text-xs mt-0.5">{listing.seller?.name}</p>
+          <p className="text-slate-400 text-xs mt-0.5">{listing.seller?.name}</p>
         </div>
         <div className="text-right">
-          <p className="text-[#e8c547] font-mono font-bold text-lg">{listing.asking_price?.toLocaleString("da-DK")} CZ$</p>
-          <p className="text-white/30 text-xs">UCI: {listing.rider?.uci_points?.toLocaleString("da-DK")}</p>
+          <p className="text-amber-700 font-mono font-bold text-lg">{listing.asking_price?.toLocaleString("da-DK")} CZ$</p>
+          <p className="text-slate-400 text-xs">UCI: {listing.rider?.uci_points?.toLocaleString("da-DK")}</p>
         </div>
       </div>
 
       <div className="flex gap-3 mb-3">
         {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"]].map(([label, key]) => (
           <div key={key} className="text-center">
-            <p className="text-white/25 text-[9px] uppercase">{label}</p>
+            <p className="text-slate-400 text-[9px] uppercase">{label}</p>
             <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(listing.rider?.[key] || 0)}`}>
               {listing.rider?.[key] || "—"}
             </span>
@@ -780,10 +780,10 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
           <button onClick={() => windowOpen && setShowOffer(!showOffer)} disabled={!windowOpen}
             className={`w-full py-2 rounded-lg text-sm font-medium transition-all border
               ${!windowOpen
-                ? "bg-white/3 text-white/20 border-white/5 cursor-not-allowed"
+                ? "bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed"
                 : showOffer
-                  ? "bg-[#e8c547]/15 text-[#e8c547] border-[#e8c547]/25"
-                  : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"}`}>
+                  ? "bg-amber-50 text-amber-700 border-[#e8c547]/25"
+                  : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-100 hover:text-slate-900"}`}>
             {!windowOpen ? "Vindue lukket" : showOffer ? "Skjul" : "Send tilbud"}
           </button>
 
@@ -792,7 +792,7 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
               <div className="flex gap-2">
                 <input type="number" value={offerAmt}
                   onChange={e => setOfferAmt(parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#e8c547]/50" />
+                  className="flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none focus:border-amber-400" />
                 <button
                   onClick={async () => {
                     setLoading(true);
@@ -807,13 +807,13 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
               </div>
               <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
                 placeholder="Besked (valgfri)..."
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs focus:outline-none" />
+                className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-xs focus:outline-none" />
             </div>
           )}
         </div>
       )}
       {isOwn && (
-        <p className="text-white/20 text-xs text-center py-1">Din listing</p>
+        <p className="text-slate-300 text-xs text-center py-1">Din listing</p>
       )}
     </div>
   );
@@ -1042,19 +1042,19 @@ export default function TransfersPage() {
 
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-white">Transfers</h1>
-          <p className="text-white/30 text-sm">Forhandle direkte med andre managers</p>
+          <h1 className="text-xl font-bold text-slate-900">Transfers</h1>
+          <p className="text-slate-400 text-sm">Forhandle direkte med andre managers</p>
         </div>
-        <div className="bg-[#0f0f18] border border-white/5 rounded-lg px-4 py-2">
-          <p className="text-white/25 text-[10px] uppercase tracking-wider">Balance</p>
-          <p className="text-[#e8c547] font-mono font-bold text-sm">{myBalance?.toLocaleString("da-DK")} CZ$</p>
+        <div className="bg-white border border-slate-200 rounded-lg px-4 py-2">
+          <p className="text-slate-400 text-[10px] uppercase tracking-wider">Balance</p>
+          <p className="text-amber-700 font-mono font-bold text-sm">{myBalance?.toLocaleString("da-DK")} CZ$</p>
         </div>
       </div>
 
       <div className={`mb-4 px-4 py-3 rounded-xl text-sm border flex items-center gap-2
         ${transferWindow.open
-          ? "bg-green-500/8 text-green-400 border-green-500/20"
-          : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+          ? "bg-green-500/8 text-green-700 border-green-200"
+          : "bg-red-50 text-red-700 border-red-200"}`}>
         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${transferWindow.open ? "bg-green-400" : "bg-red-400"}`} />
         {transferWindow.open
           ? "Transfervinduet er åbent — du kan sende og acceptere tilbud"
@@ -1064,8 +1064,8 @@ export default function TransfersPage() {
       {msg.text && (
         <div className={`mb-4 px-4 py-3 rounded-xl text-sm border
           ${msg.type === "error"
-            ? "bg-red-500/10 text-red-400 border-red-500/20"
-            : "bg-green-500/10 text-green-400 border-green-500/20"}`}>
+            ? "bg-red-50 text-red-700 border-red-200"
+            : "bg-green-50 text-green-700 border-green-200"}`}>
           {msg.text}
         </div>
       )}
@@ -1081,8 +1081,8 @@ export default function TransfersPage() {
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all border
               ${tab === t.key
-                ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20"
-                : "text-white/40 hover:text-white bg-[#0f0f18] border-white/5"}`}>
+                ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "text-slate-500 hover:text-slate-900 bg-white border-slate-200"}`}>
             {t.label}
             {t.badge > 0 && (
               <span className="ml-2 bg-[#e8c547] text-[#0a0a0f] text-[9px] font-black px-1.5 py-0.5 rounded-full">
@@ -1095,14 +1095,14 @@ export default function TransfersPage() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
         </div>
       ) : (
         <div>
           {tab === "received" && (
             <div className="flex flex-col gap-3">
               {receivedOffers.length === 0 ? (
-                <div className="text-center py-16 text-white/20">
+                <div className="text-center py-16 text-slate-300">
                   <p className="text-4xl mb-3">↔</p>
                   <p>Ingen modtagne tilbud</p>
                   <p className="text-xs mt-2">Andre managers kan sende tilbud på dine ryttere fra rytterens side</p>
@@ -1118,7 +1118,7 @@ export default function TransfersPage() {
           {tab === "sent" && (
             <div className="flex flex-col gap-3">
               {sentOffers.length === 0 ? (
-                <div className="text-center py-16 text-white/20">
+                <div className="text-center py-16 text-slate-300">
                   <p className="text-4xl mb-3">↔</p>
                   <p>Du har ikke sendt nogen tilbud endnu</p>
                   <p className="text-xs mt-2">Find en rytter og klik "Send transfertilbud" på deres side</p>
@@ -1141,15 +1141,15 @@ export default function TransfersPage() {
                 />
               ) : (
                 <button onClick={() => setShowNewSwap(true)} disabled={!transferWindow.open}
-                  className="w-full py-2.5 bg-[#e8c547]/8 text-[#e8c547]/80 border border-[#e8c547]/15 rounded-xl text-sm font-medium
-                    hover:bg-[#e8c547]/15 hover:text-[#e8c547] transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                  className="w-full py-2.5 bg-amber-50 text-amber-700/80 border border-[#e8c547]/15 rounded-xl text-sm font-medium
+                    hover:bg-amber-50 hover:text-amber-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                   {transferWindow.open ? "+ Foreslå ny byttehandel" : "Transfervindue lukket"}
                 </button>
               )}
 
               {receivedSwaps.length > 0 && (
                 <div>
-                  <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Modtagne forslag</p>
+                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Modtagne forslag</p>
                   <div className="flex flex-col gap-3">
                     {receivedSwaps.map(s => (
                       <SwapCard key={s.id} swap={s} myTeamId={myTeamId} onAction={handleSwapAction} />
@@ -1160,7 +1160,7 @@ export default function TransfersPage() {
 
               {sentSwaps.length > 0 && (
                 <div>
-                  <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Sendte forslag</p>
+                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Sendte forslag</p>
                   <div className="flex flex-col gap-3">
                     {sentSwaps.map(s => (
                       <SwapCard key={s.id} swap={s} myTeamId={myTeamId} onAction={handleSwapAction} />
@@ -1170,7 +1170,7 @@ export default function TransfersPage() {
               )}
 
               {receivedSwaps.length === 0 && sentSwaps.length === 0 && !showNewSwap && (
-                <div className="text-center py-16 text-white/20">
+                <div className="text-center py-16 text-slate-300">
                   <p className="text-4xl mb-3">↔</p>
                   <p>Ingen aktive byttehandler</p>
                   <p className="text-xs mt-2">Foreslå en byttehandel ved at klikke knappen ovenfor</p>
@@ -1197,7 +1197,7 @@ export default function TransfersPage() {
 
               {lendingLoans.length > 0 && (
                 <div>
-                  <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Dine udlejninger</p>
+                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Dine udlejninger</p>
                   <div className="flex flex-col gap-3">
                     {lendingLoans.map(l => (
                       <LoanCard key={l.id} loan={l} myTeamId={myTeamId} onAction={handleLoanAction} />
@@ -1208,7 +1208,7 @@ export default function TransfersPage() {
 
               {borrowingLoans.length > 0 && (
                 <div>
-                  <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Dine lejeaftaler</p>
+                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Dine lejeaftaler</p>
                   <div className="flex flex-col gap-3">
                     {borrowingLoans.map(l => (
                       <LoanCard key={l.id} loan={l} myTeamId={myTeamId} onAction={handleLoanAction} />
@@ -1218,7 +1218,7 @@ export default function TransfersPage() {
               )}
 
               {lendingLoans.length === 0 && borrowingLoans.length === 0 && !showNewLoan && (
-                <div className="text-center py-16 text-white/20">
+                <div className="text-center py-16 text-slate-300">
                   <p className="text-4xl mb-3">📋</p>
                   <p>Ingen aktive lejeaftaler</p>
                   <p className="text-xs mt-2">Foreslå en lejeaftale ved at klikke knappen ovenfor</p>
@@ -1236,7 +1236,7 @@ export default function TransfersPage() {
                 showTeamFilter={false}
               />
               {filteredListings.length === 0 ? (
-                <div className="text-center py-16 text-white/20">
+                <div className="text-center py-16 text-slate-300">
                   <p className="text-4xl mb-3">↔</p>
                   <p>{listings.length === 0 ? "Ingen ryttere til salg" : "Ingen ryttere matcher filteret"}</p>
                 </div>

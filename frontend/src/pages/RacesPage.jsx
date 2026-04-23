@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
@@ -184,7 +184,7 @@ export default function RacesPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
     </div>
   );
 
@@ -192,8 +192,8 @@ export default function RacesPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-white">Løbskalender</h1>
-          <p className="text-white/30 text-sm">
+          <h1 className="text-xl font-bold text-slate-900">Løbskalender</h1>
+          <p className="text-slate-400 text-sm">
             {season ? `Sæson ${season.number}` : "Ingen aktiv sæson"} — {races.length} løb
           </p>
         </div>
@@ -208,7 +208,7 @@ export default function RacesPage() {
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${tab === t.key ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20" : "text-white/40 hover:text-white bg-[#0f0f18] border-white/5"}`}>
+              ${tab === t.key ? "bg-amber-50 text-amber-700 border-amber-200" : "text-slate-500 hover:text-slate-900 bg-white border-slate-200"}`}>
             {t.label}
           </button>
         ))}
@@ -221,27 +221,27 @@ export default function RacesPage() {
             {/* Upcoming */}
             {racesByStatus.upcoming.length > 0 && (
               <div className="mb-5">
-                <h2 className="text-white/50 text-xs uppercase tracking-wider mb-3 font-semibold">Kommende</h2>
+                <h2 className="text-slate-500 text-xs uppercase tracking-wider mb-3 font-semibold">Kommende</h2>
                 <div className="flex flex-col gap-2">
                   {racesByStatus.upcoming.map(race => (
                     <div key={race.id}
-                      className={`bg-[#0f0f18] border rounded-xl p-4 cursor-pointer transition-all
-                        ${selectedRace?.id === race.id ? "border-[#e8c547]/30" : "border-white/5 hover:border-white/10"}`}
+                      className={`bg-white border rounded-xl p-4 cursor-pointer transition-all
+                        ${selectedRace?.id === race.id ? "border-amber-300" : "border-slate-200 hover:border-slate-300"}`}
                       onClick={() => handleRaceClick(race)}>
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="text-white font-semibold text-sm">{race.name}</p>
-                          <p className="text-white/30 text-xs mt-0.5">
+                          <p className="text-slate-900 font-semibold text-sm">{race.name}</p>
+                          <p className="text-slate-400 text-xs mt-0.5">
                             {race.race_type === "stage_race" ? `Etapeløb · ${race.stages} etaper` : "Enkeltdagsløb"}
                           </p>
                         </div>
                         <div className="text-right">
                           {race.start_date && (
-                            <p className="text-white/50 text-xs">
+                            <p className="text-slate-500 text-xs">
                               {new Date(race.start_date).toLocaleDateString("da-DK", { day: "numeric", month: "short" })}
                             </p>
                           )}
-                          <p className="text-[#e8c547] text-xs font-mono mt-0.5">{race.prize_pool?.toLocaleString("da-DK")} CZ$</p>
+                          <p className="text-amber-700 text-xs font-mono mt-0.5">{race.prize_pool?.toLocaleString("da-DK")} CZ$</p>
                         </div>
                       </div>
                     </div>
@@ -253,21 +253,21 @@ export default function RacesPage() {
             {/* Completed */}
             {racesByStatus.completed.length > 0 && (
               <div>
-                <h2 className="text-white/50 text-xs uppercase tracking-wider mb-3 font-semibold">Afsluttede</h2>
+                <h2 className="text-slate-500 text-xs uppercase tracking-wider mb-3 font-semibold">Afsluttede</h2>
                 <div className="flex flex-col gap-2">
                   {racesByStatus.completed.map(race => (
                     <div key={race.id}
-                      className={`bg-[#0f0f18] border rounded-xl p-4 cursor-pointer transition-all
-                        ${selectedRace?.id === race.id ? "border-[#e8c547]/30" : "border-white/5 hover:border-white/10"}`}
+                      className={`bg-white border rounded-xl p-4 cursor-pointer transition-all
+                        ${selectedRace?.id === race.id ? "border-amber-300" : "border-slate-200 hover:border-slate-300"}`}
                       onClick={() => handleRaceClick(race)}>
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="text-white font-medium text-sm">{race.name}</p>
-                          <p className="text-white/30 text-xs mt-0.5">
+                          <p className="text-slate-900 font-medium text-sm">{race.name}</p>
+                          <p className="text-slate-400 text-xs mt-0.5">
                             {race.results?.length || 0} resultater importeret
                           </p>
                         </div>
-                        <span className="text-[9px] uppercase bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full">
+                        <span className="text-[9px] uppercase bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">
                           Afsluttet
                         </span>
                       </div>
@@ -278,7 +278,7 @@ export default function RacesPage() {
             )}
 
             {races.length === 0 && (
-              <div className="text-center py-16 text-white/20">
+              <div className="text-center py-16 text-slate-300">
                 <p className="text-4xl mb-3">🏁</p>
                 <p>Ingen løb i denne sæson endnu</p>
                 {isAdmin && <p className="text-xs mt-2">Tilføj løb i Admin-panelet</p>}
@@ -289,9 +289,9 @@ export default function RacesPage() {
           {/* Race detail panel */}
           <div>
             {selectedRace ? (
-              <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 sticky top-4">
-                <h2 className="text-white font-bold text-base mb-1">{selectedRace.name}</h2>
-                <p className="text-white/30 text-xs mb-4">
+              <div className="bg-white border border-slate-200 rounded-xl p-5 sticky top-4">
+                <h2 className="text-slate-900 font-bold text-base mb-1">{selectedRace.name}</h2>
+                <p className="text-slate-400 text-xs mb-4">
                   {selectedRace.race_type === "stage_race" ? `${selectedRace.stages} etaper` : "Enkeltdagsløb"}
                   {selectedRace.start_date && ` · ${new Date(selectedRace.start_date).toLocaleDateString("da-DK")}`}
                   {` · ${selectedRace.prize_pool?.toLocaleString("da-DK")} CZ$ præmiepulje`}
@@ -299,15 +299,15 @@ export default function RacesPage() {
 
                 {selectedRace.loading && (
                   <div className="flex justify-center py-8">
-                    <div className="w-5 h-5 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
                   </div>
                 )}
 
                 {!selectedRace.loading && selectedRace.results?.length === 0 && (
-                  <div className="text-center py-8 text-white/20 text-sm">
+                  <div className="text-center py-8 text-slate-300 text-sm">
                     <p>Ingen resultater importeret endnu</p>
                     <button onClick={() => setTab("submit")}
-                      className="mt-3 text-[#e8c547] text-xs hover:underline">
+                      className="mt-3 text-amber-700 text-xs hover:underline">
                       Indberét resultater →
                     </button>
                   </div>
@@ -320,18 +320,18 @@ export default function RacesPage() {
                       if (!rows.length) return null;
                       return (
                         <div key={rt.key} className="mb-4">
-                          <p className="text-white/40 text-xs uppercase tracking-wider mb-2 font-semibold">{rt.label}</p>
+                          <p className="text-slate-500 text-xs uppercase tracking-wider mb-2 font-semibold">{rt.label}</p>
                           <table className="w-full text-xs">
                             <tbody>
                               {rows.map(r => (
-                                <tr key={r.id} className="border-b border-white/4 last:border-0">
-                                  <td className="py-1.5 w-6 text-white/30 font-mono">#{r.rank}</td>
-                                  <td className="py-1.5 cursor-pointer hover:text-[#e8c547] transition-colors"
+                                <tr key={r.id} className="border-b border-slate-100 last:border-0">
+                                  <td className="py-1.5 w-6 text-slate-400 font-mono">#{r.rank}</td>
+                                  <td className="py-1.5 cursor-pointer hover:text-amber-700 transition-colors"
                                     onClick={() => navigate(`/riders/${r.rider?.id}`)}>
-                                    <span className="text-white">{r.rider?.firstname} {r.rider?.lastname}</span>
-                                    <span className="text-white/30 ml-2">{r.rider?.team?.name || "Fri"}</span>
+                                    <span className="text-slate-900">{r.rider?.firstname} {r.rider?.lastname}</span>
+                                    <span className="text-slate-400 ml-2">{r.rider?.team?.name || "Fri"}</span>
                                   </td>
-                                  <td className="py-1.5 text-right text-green-400 font-mono">
+                                  <td className="py-1.5 text-right text-green-700 font-mono">
                                     {r.prize_money > 0 ? `+${r.prize_money}` : ""}
                                   </td>
                                 </tr>
@@ -345,7 +345,7 @@ export default function RacesPage() {
                 )}
               </div>
             ) : (
-              <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-8 text-center text-white/20 sticky top-4">
+              <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-300 sticky top-4">
                 <p className="text-3xl mb-2">🏁</p>
                 <p className="text-sm">Vælg et løb for at se detaljer</p>
               </div>
@@ -357,41 +357,41 @@ export default function RacesPage() {
       {/* Submit results tab */}
       {tab === "submit" && (
         <div className="max-w-2xl">
-          <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
-            <h2 className="text-white font-semibold text-sm mb-4">Indberét løbsresultater</h2>
-            <p className="text-white/30 text-xs mb-5 leading-relaxed">
-              Upload en Excel-fil med resultater fra PCM. Kolonner: <span className="text-white/50 font-mono">Placering | Rytternavn</span>.
+          <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4">
+            <h2 className="text-slate-900 font-semibold text-sm mb-4">Indberét løbsresultater</h2>
+            <p className="text-slate-400 text-xs mb-5 leading-relaxed">
+              Upload en Excel-fil med resultater fra PCM. Kolonner: <span className="text-slate-500 font-mono">Placering | Rytternavn</span>.
               Du kan efterfølgende rette navnematching inden du indsender. Admin godkender inden resultaterne er officielle.
             </p>
 
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div>
-                <label className="block text-white/30 text-xs mb-1">Løb</label>
+                <label className="block text-slate-400 text-xs mb-1">Løb</label>
                 <select value={uploadRaceId} onChange={e => setUploadRaceId(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+                  className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none">
                   {races.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-white/30 text-xs mb-1">Etape</label>
+                <label className="block text-slate-400 text-xs mb-1">Etape</label>
                 <input type="number" min={1} value={uploadStage}
                   onChange={e => setUploadStage(parseInt(e.target.value))}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+                  className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
               </div>
               <div>
-                <label className="block text-white/30 text-xs mb-1">Type</label>
+                <label className="block text-slate-400 text-xs mb-1">Type</label>
                 <select value={uploadResultType} onChange={e => setUploadResultType(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+                  className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none">
                   {RESULT_TYPES.map(rt => <option key={rt.key} value={rt.key}>{rt.label}</option>)}
                 </select>
               </div>
             </div>
 
             <label className="block cursor-pointer mb-4">
-              <div className="border-2 border-dashed border-white/10 hover:border-[#e8c547]/30
+              <div className="border-2 border-dashed border-slate-300 hover:border-amber-300
                 rounded-xl p-6 text-center transition-all">
-                <p className="text-white/30 text-sm">📁 Klik for at uploade PCM Excel-fil (.xlsx)</p>
-                <p className="text-white/20 text-xs mt-1">Forventet format: Placering i kolonne A, Rytternavn i kolonne B</p>
+                <p className="text-slate-400 text-sm">📁 Klik for at uploade PCM Excel-fil (.xlsx)</p>
+                <p className="text-slate-300 text-xs mt-1">Forventet format: Placering i kolonne A, Rytternavn i kolonne B</p>
               </div>
               <input type="file" accept=".xlsx" className="hidden" onChange={handleFileUpload} />
             </label>
@@ -399,32 +399,32 @@ export default function RacesPage() {
             {editingRows.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-white/50 text-xs">{editingRows.length} ryttere uploadet</p>
+                  <p className="text-slate-500 text-xs">{editingRows.length} ryttere uploadet</p>
                   <button onClick={matchRiders}
-                    className="px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-xs hover:bg-blue-500/20">
+                    className="px-3 py-1.5 bg-blue-500/10 text-blue-700 border border-blue-500/20 rounded-lg text-xs hover:bg-blue-500/20">
                     Auto-match navne
                   </button>
                 </div>
 
-                <div className="bg-white/3 rounded-xl overflow-hidden mb-4 max-h-80 overflow-y-auto">
+                <div className="bg-slate-50 rounded-xl overflow-hidden mb-4 max-h-80 overflow-y-auto">
                   <table className="w-full text-xs">
-                    <thead className="sticky top-0 bg-[#0f0f18]">
-                      <tr className="border-b border-white/5">
-                        <th className="px-3 py-2 text-left text-white/30 w-10">#</th>
-                        <th className="px-3 py-2 text-left text-white/30">Fra PCM</th>
-                        <th className="px-3 py-2 text-left text-white/30">Matchet til</th>
+                    <thead className="sticky top-0 bg-white">
+                      <tr className="border-b border-slate-200">
+                        <th className="px-3 py-2 text-left text-slate-400 w-10">#</th>
+                        <th className="px-3 py-2 text-left text-slate-400">Fra PCM</th>
+                        <th className="px-3 py-2 text-left text-slate-400">Matchet til</th>
                       </tr>
                     </thead>
                     <tbody>
                       {editingRows.map((row, i) => (
-                        <tr key={i} className="border-b border-white/4">
-                          <td className="px-3 py-2 text-white/40 font-mono">{row.rank}</td>
-                          <td className="px-3 py-2 text-white/60">{row.rider_name}</td>
+                        <tr key={i} className="border-b border-slate-100">
+                          <td className="px-3 py-2 text-slate-500 font-mono">{row.rank}</td>
+                          <td className="px-3 py-2 text-slate-500">{row.rider_name}</td>
                           <td className="px-3 py-2">
                             {row.matched ? (
-                              <span className="text-green-400 text-xs">✓ {row.matched_name}</span>
+                              <span className="text-green-700 text-xs">✓ {row.matched_name}</span>
                             ) : (
-                              <span className="text-red-400 text-xs">⚠ Ikke matchet</span>
+                              <span className="text-red-700 text-xs">⚠ Ikke matchet</span>
                             )}
                           </td>
                         </tr>
@@ -435,7 +435,7 @@ export default function RacesPage() {
 
                 {submitMsg && (
                   <div className={`mb-3 px-4 py-2.5 rounded-lg text-sm border
-                    ${submitMsg.startsWith("✅") ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+                    ${submitMsg.startsWith("✅") ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
                     {submitMsg}
                   </div>
                 )}
@@ -451,19 +451,19 @@ export default function RacesPage() {
 
           {/* My past submissions */}
           {pending.filter(p => p.submitted_by === userId).length > 0 && (
-            <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
-              <h3 className="text-white font-semibold text-sm mb-3">Mine indberetninger</h3>
+            <div className="bg-white border border-slate-200 rounded-xl p-5">
+              <h3 className="text-slate-900 font-semibold text-sm mb-3">Mine indberetninger</h3>
               <div className="flex flex-col gap-2">
                 {pending.filter(p => p.submitted_by === userId).map(p => (
-                  <div key={p.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                  <div key={p.id} className="flex items-center justify-between py-2 border-b border-slate-200 last:border-0">
                     <div>
-                      <p className="text-white text-sm">{p.race?.name}</p>
-                      <p className="text-white/30 text-xs">{timeAgo(p.submitted_at)}</p>
+                      <p className="text-slate-900 text-sm">{p.race?.name}</p>
+                      <p className="text-slate-400 text-xs">{timeAgo(p.submitted_at)}</p>
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full border
-                      ${p.status === "pending" ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20" :
-                        p.status === "approved" ? "bg-green-500/10 text-green-400 border-green-500/20" :
-                        "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+                      ${p.status === "pending" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                        p.status === "approved" ? "bg-green-50 text-green-700 border-green-200" :
+                        "bg-red-50 text-red-700 border-red-200"}`}>
                       {p.status === "pending" ? "Afventer" : p.status === "approved" ? "Godkendt" : "Afvist"}
                     </span>
                   </div>
@@ -478,7 +478,7 @@ export default function RacesPage() {
       {tab === "approve" && isAdmin && (
         <div className="max-w-3xl">
           {pending.filter(p => p.status === "pending").length === 0 ? (
-            <div className="text-center py-16 text-white/20">
+            <div className="text-center py-16 text-slate-300">
               <p className="text-4xl mb-3">✅</p>
               <p>Ingen afventende indberetninger</p>
             </div>
@@ -512,21 +512,21 @@ function PendingSubmission({ submission, onApprove, onReject }) {
   }, [submission.id]);
 
   return (
-    <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
+    <div className="bg-white border border-slate-200 rounded-xl p-5">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <p className="text-white font-semibold">{submission.race?.name}</p>
-          <p className="text-white/30 text-xs mt-0.5">
+          <p className="text-slate-900 font-semibold">{submission.race?.name}</p>
+          <p className="text-slate-400 text-xs mt-0.5">
             Indsendt af {submission.submitter?.username} · {new Date(submission.submitted_at).toLocaleString("da-DK")}
           </p>
         </div>
         <div className="flex gap-2">
           <button onClick={onApprove}
-            className="px-3 py-1.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg text-xs hover:bg-green-500/20">
+            className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs hover:bg-green-100">
             ✓ Godkend
           </button>
           <button onClick={() => setShowReject(!showReject)}
-            className="px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-xs hover:bg-red-500/20">
+            className="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs hover:bg-red-100">
             ✕ Afvis
           </button>
         </div>
@@ -536,30 +536,30 @@ function PendingSubmission({ submission, onApprove, onReject }) {
         <div className="flex gap-2 mb-4">
           <input type="text" value={rejectNote} onChange={e => setRejectNote(e.target.value)}
             placeholder="Årsag til afvisning..."
-            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+            className="flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
           <button onClick={() => onReject(rejectNote)}
-            className="px-3 py-2 bg-red-500/20 text-red-400 rounded-lg text-sm">
+            className="px-3 py-2 bg-red-100 text-red-700 rounded-lg text-sm">
             Send
           </button>
         </div>
       )}
 
-      {loading ? <div className="text-white/20 text-sm">Indlæser...</div> : (
+      {loading ? <div className="text-slate-300 text-sm">Indlæser...</div> : (
         <div className="max-h-60 overflow-y-auto">
           <table className="w-full text-xs">
-            <thead><tr className="border-b border-white/5">
-              <th className="py-1.5 text-left text-white/30 w-8">#</th>
-              <th className="py-1.5 text-left text-white/30">Rytter</th>
-              <th className="py-1.5 text-left text-white/30">Hold</th>
-              <th className="py-1.5 text-left text-white/30">Type</th>
+            <thead><tr className="border-b border-slate-200">
+              <th className="py-1.5 text-left text-slate-400 w-8">#</th>
+              <th className="py-1.5 text-left text-slate-400">Rytter</th>
+              <th className="py-1.5 text-left text-slate-400">Hold</th>
+              <th className="py-1.5 text-left text-slate-400">Type</th>
             </tr></thead>
             <tbody>
               {rows.map(r => (
-                <tr key={r.id} className="border-b border-white/4">
-                  <td className="py-1.5 text-white/40 font-mono">{r.rank}</td>
-                  <td className="py-1.5 text-white">{r.rider?.firstname} {r.rider?.lastname}</td>
-                  <td className="py-1.5 text-white/40">{r.rider?.team?.name || "Fri"}</td>
-                  <td className="py-1.5 text-white/40">{r.result_type}</td>
+                <tr key={r.id} className="border-b border-slate-100">
+                  <td className="py-1.5 text-slate-500 font-mono">{r.rank}</td>
+                  <td className="py-1.5 text-slate-900">{r.rider?.firstname} {r.rider?.lastname}</td>
+                  <td className="py-1.5 text-slate-500">{r.rider?.team?.name || "Fri"}</td>
+                  <td className="py-1.5 text-slate-500">{r.result_type}</td>
                 </tr>
               ))}
             </tbody>

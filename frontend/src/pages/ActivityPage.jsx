@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
@@ -101,8 +101,8 @@ export default function ActivityPage() {
   const myActiveSaleCount = activeAuctions.filter(a => a.seller_team_id === myTeamId).length;
 
   const offerStatusColor = {
-    pending: "text-[#e8c547]", accepted: "text-green-400",
-    rejected: "text-red-400", countered: "text-orange-400",
+    pending: "text-amber-700", accepted: "text-green-700",
+    rejected: "text-red-700", countered: "text-orange-700",
   };
   const offerStatusLabel = {
     pending: "Afventer", accepted: "Accepteret",
@@ -111,28 +111,28 @@ export default function ActivityPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
     </div>
   );
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-white">Min Aktivitet</h1>
-        <p className="text-white/30 text-sm">Overblik over bud, auktioner og transfers</p>
+        <h1 className="text-xl font-bold text-slate-900">Min Aktivitet</h1>
+        <p className="text-slate-400 text-sm">Overblik over bud, auktioner og transfers</p>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {[
-          { label: "Auktioner jeg vinder", value: winningCount, color: "text-[#e8c547]", filter: "active_bids" },
-          { label: "Mine aktive salg", value: myActiveSaleCount, color: "text-blue-400", filter: "active_bids" },
-          { label: "Afventende tilbud", value: pendingOffersCount, color: "text-orange-400", filter: "transfers" },
-          { label: "Mine transferlister", value: transferListings.filter(l => l.status === "open").length, color: "text-white", filter: "transfers" },
+          { label: "Auktioner jeg vinder", value: winningCount, color: "text-amber-700", filter: "active_bids" },
+          { label: "Mine aktive salg", value: myActiveSaleCount, color: "text-blue-700", filter: "active_bids" },
+          { label: "Afventende tilbud", value: pendingOffersCount, color: "text-orange-700", filter: "transfers" },
+          { label: "Mine transferlister", value: transferListings.filter(l => l.status === "open").length, color: "text-slate-900", filter: "transfers" },
         ].map(s => (
           <button key={s.label} onClick={() => setFilter(s.filter)}
-            className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 text-left hover:border-white/10 transition-all">
-            <p className="text-white/30 text-xs uppercase tracking-wider mb-1">{s.label}</p>
+            className="bg-white border border-slate-200 rounded-xl p-4 text-left hover:border-slate-300 transition-all">
+            <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">{s.label}</p>
             <p className={`font-mono font-bold text-xl ${s.color}`}>{s.value}</p>
           </button>
         ))}
@@ -144,8 +144,8 @@ export default function ActivityPage() {
           <button key={f.key} onClick={() => setFilter(f.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
               ${filter === f.key
-                ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20"
-                : "text-white/40 hover:text-white bg-[#0f0f18] border-white/5"}`}>
+                ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "text-slate-500 hover:text-slate-900 bg-white border-slate-200"}`}>
             {f.label}
           </button>
         ))}
@@ -154,16 +154,16 @@ export default function ActivityPage() {
       {/* Active auctions */}
       {(filter === "all" || filter === "active_bids") && activeAuctions.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
-            <span className="text-[#e8c547]">⚡</span> Aktive Auktioner
+          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
+            <span className="text-amber-700">⚡</span> Aktive Auktioner
           </h2>
-          <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-white/5">
-                <th className="px-4 py-3 text-left text-white/30 font-medium text-xs uppercase">Rytter</th>
-                <th className="px-4 py-3 text-left text-white/30 font-medium text-xs uppercase hidden sm:table-cell">Din rolle</th>
-                <th className="px-4 py-3 text-right text-white/30 font-medium text-xs uppercase">Bud</th>
-                <th className="px-4 py-3 text-right text-white/30 font-medium text-xs uppercase">Slutter</th>
+              <thead><tr className="border-b border-slate-200">
+                <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase">Rytter</th>
+                <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase hidden sm:table-cell">Din rolle</th>
+                <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase">Bud</th>
+                <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase">Slutter</th>
               </tr></thead>
               <tbody>
                 {activeAuctions.map(a => {
@@ -171,24 +171,24 @@ export default function ActivityPage() {
                   const isWinning = a.current_bidder_id === myTeamId;
                   return (
                     <tr key={a.id}
-                      className={`border-b border-white/4 hover:bg-white/3 cursor-pointer
+                      className={`border-b border-slate-100 hover:bg-slate-100 cursor-pointer
                         ${isWinning ? "bg-green-500/3" : ""}`}
                       onClick={() => navigate("/auctions")}>
                       <td className="px-4 py-3">
-                        <p className="text-white font-medium">{a.rider?.firstname} {a.rider?.lastname}</p>
-                        <p className="text-white/30 text-xs">UCI: {a.rider?.uci_points?.toLocaleString("da-DK")} CZ$</p>
+                        <p className="text-slate-900 font-medium">{a.rider?.firstname} {a.rider?.lastname}</p>
+                        <p className="text-slate-400 text-xs">UCI: {a.rider?.uci_points?.toLocaleString("da-DK")} CZ$</p>
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell">
-                        {isSelling && <span className="text-xs bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded">Sælger</span>}
-                        {isWinning && <span className="text-xs bg-green-500/10 text-green-400 px-2 py-0.5 rounded">🏆 Vinder</span>}
-                        {!isSelling && !isWinning && <span className="text-xs text-white/30">Byder</span>}
+                        {isSelling && <span className="text-xs bg-blue-500/10 text-blue-700 px-2 py-0.5 rounded">Sælger</span>}
+                        {isWinning && <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded">🏆 Vinder</span>}
+                        {!isSelling && !isWinning && <span className="text-xs text-slate-400">Byder</span>}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="text-[#e8c547] font-mono font-bold text-sm">
+                        <span className="text-amber-700 font-mono font-bold text-sm">
                           {a.current_price?.toLocaleString("da-DK")} CZ$
                         </span>
                         {a.current_bidder && !isWinning && (
-                          <p className="text-white/30 text-xs">{a.current_bidder.name}</p>
+                          <p className="text-slate-400 text-xs">{a.current_bidder.name}</p>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -206,16 +206,16 @@ export default function ActivityPage() {
       {/* Auction history */}
       {(filter === "all" || filter === "auction_history") && auctionHistory.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
-            <span className="text-white/40">◎</span> Auktionshistorik
+          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
+            <span className="text-slate-500">◎</span> Auktionshistorik
           </h2>
-          <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-white/5">
-                <th className="px-4 py-3 text-left text-white/30 font-medium text-xs uppercase">Rytter</th>
-                <th className="px-4 py-3 text-left text-white/30 font-medium text-xs uppercase hidden sm:table-cell">Resultat</th>
-                <th className="px-4 py-3 text-right text-white/30 font-medium text-xs uppercase">Pris</th>
-                <th className="px-4 py-3 text-right text-white/30 font-medium text-xs uppercase hidden md:table-cell">Tidspunkt</th>
+              <thead><tr className="border-b border-slate-200">
+                <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase">Rytter</th>
+                <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase hidden sm:table-cell">Resultat</th>
+                <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase">Pris</th>
+                <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase hidden md:table-cell">Tidspunkt</th>
               </tr></thead>
               <tbody>
                 {auctionHistory.map(a => {
@@ -224,29 +224,29 @@ export default function ActivityPage() {
                   const noSale = !a.current_bidder_id;
                   return (
                     <tr key={a.id}
-                      className={`border-b border-white/4 hover:bg-white/3 cursor-pointer`}
+                      className={`border-b border-slate-100 hover:bg-slate-100 cursor-pointer`}
                       onClick={() => a.rider?.id && navigate(`/riders/${a.rider.id}`)}>
                       <td className="px-4 py-3">
-                        <p className="text-white font-medium">{a.rider?.firstname} {a.rider?.lastname}</p>
-                        <p className="text-white/30 text-xs">UCI: {a.rider?.uci_points?.toLocaleString("da-DK")} CZ$</p>
+                        <p className="text-slate-900 font-medium">{a.rider?.firstname} {a.rider?.lastname}</p>
+                        <p className="text-slate-400 text-xs">UCI: {a.rider?.uci_points?.toLocaleString("da-DK")} CZ$</p>
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell">
-                        {iWon && <span className="text-xs bg-green-500/10 text-green-400 px-2 py-0.5 rounded">🏆 Købt</span>}
-                        {iSold && !noSale && <span className="text-xs bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded">Solgt</span>}
-                        {iSold && noSale && <span className="text-xs bg-white/5 text-white/30 px-2 py-0.5 rounded">Ingen bud</span>}
-                        {!iWon && !iSold && <span className="text-xs text-white/30">Tabt</span>}
+                        {iWon && <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded">🏆 Købt</span>}
+                        {iSold && !noSale && <span className="text-xs bg-blue-500/10 text-blue-700 px-2 py-0.5 rounded">Solgt</span>}
+                        {iSold && noSale && <span className="text-xs bg-slate-100 text-slate-400 px-2 py-0.5 rounded">Ingen bud</span>}
+                        {!iWon && !iSold && <span className="text-xs text-slate-400">Tabt</span>}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {noSale ? (
-                          <span className="text-white/20 text-xs">—</span>
+                          <span className="text-slate-300 text-xs">—</span>
                         ) : (
                           <span className={`font-mono font-bold text-sm
-                            ${iWon ? "text-red-400" : iSold ? "text-green-400" : "text-white/50"}`}>
+                            ${iWon ? "text-red-700" : iSold ? "text-green-700" : "text-slate-500"}`}>
                             {iWon ? "-" : iSold ? "+" : ""}{a.current_price?.toLocaleString("da-DK")} CZ$
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right text-white/30 text-xs hidden md:table-cell">
+                      <td className="px-4 py-3 text-right text-slate-400 text-xs hidden md:table-cell">
                         {timeAgo(a.actual_end)}
                       </td>
                     </tr>
@@ -261,51 +261,51 @@ export default function ActivityPage() {
       {/* Transfer offers */}
       {(filter === "all" || filter === "transfers") && transferOffers.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
-            <span className="text-blue-400">↔</span> Transfertilbud
+          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
+            <span className="text-blue-700">↔</span> Transfertilbud
           </h2>
-          <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-white/5">
-                <th className="px-4 py-3 text-left text-white/30 font-medium text-xs uppercase">Rytter</th>
-                <th className="px-4 py-3 text-left text-white/30 font-medium text-xs uppercase">Retning</th>
-                <th className="px-4 py-3 text-right text-white/30 font-medium text-xs uppercase">Tilbud</th>
-                <th className="px-4 py-3 text-right text-white/30 font-medium text-xs uppercase">Status</th>
-                <th className="px-4 py-3 text-right text-white/30 font-medium text-xs uppercase hidden md:table-cell">Tidspunkt</th>
+              <thead><tr className="border-b border-slate-200">
+                <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase">Rytter</th>
+                <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase">Retning</th>
+                <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase">Tilbud</th>
+                <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase">Status</th>
+                <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase hidden md:table-cell">Tidspunkt</th>
               </tr></thead>
               <tbody>
                 {transferOffers.map(o => {
                   const isBuyer = o.buyer?.id === myTeamId;
                   return (
                     <tr key={o.id}
-                      className="border-b border-white/4 hover:bg-white/3 cursor-pointer"
+                      className="border-b border-slate-100 hover:bg-slate-100 cursor-pointer"
                       onClick={() => navigate("/transfers")}>
                       <td className="px-4 py-3">
-                        <p className="text-white font-medium">
+                        <p className="text-slate-900 font-medium">
                           {o.listing?.rider?.firstname} {o.listing?.rider?.lastname}
                         </p>
-                        <p className="text-white/30 text-xs">
+                        <p className="text-slate-400 text-xs">
                           {isBuyer ? `Fra: ${o.listing?.seller?.name}` : `Fra: ${o.buyer?.name}`}
                         </p>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded
-                          ${isBuyer ? "bg-blue-500/10 text-blue-400" : "bg-[#e8c547]/10 text-[#e8c547]"}`}>
+                          ${isBuyer ? "bg-blue-500/10 text-blue-700" : "bg-amber-50 text-amber-700"}`}>
                           {isBuyer ? "Sendt" : "Modtaget"}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <p className="text-white font-mono text-sm">{o.offer_amount?.toLocaleString("da-DK")} CZ$</p>
+                        <p className="text-slate-900 font-mono text-sm">{o.offer_amount?.toLocaleString("da-DK")} CZ$</p>
                         {o.counter_amount && (
-                          <p className="text-orange-400 text-xs font-mono">Modbud: {o.counter_amount?.toLocaleString("da-DK")} CZ$</p>
+                          <p className="text-orange-700 text-xs font-mono">Modbud: {o.counter_amount?.toLocaleString("da-DK")} CZ$</p>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className={`text-xs font-medium ${offerStatusColor[o.status] || "text-white/40"}`}>
+                        <span className={`text-xs font-medium ${offerStatusColor[o.status] || "text-slate-500"}`}>
                           {offerStatusLabel[o.status] || o.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right text-white/30 text-xs hidden md:table-cell">
+                      <td className="px-4 py-3 text-right text-slate-400 text-xs hidden md:table-cell">
                         {timeAgo(o.created_at)}
                       </td>
                     </tr>
@@ -320,36 +320,36 @@ export default function ActivityPage() {
       {/* My transfer listings */}
       {(filter === "all" || filter === "transfers") && transferListings.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
-            <span className="text-white/40">📋</span> Mine Transferlister
+          <h2 className="text-slate-900 font-semibold text-sm mb-3 flex items-center gap-2">
+            <span className="text-slate-500">📋</span> Mine Transferlister
           </h2>
-          <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-white/5">
-                <th className="px-4 py-3 text-left text-white/30 font-medium text-xs uppercase">Rytter</th>
-                <th className="px-4 py-3 text-right text-white/30 font-medium text-xs uppercase">Udbudspris</th>
-                <th className="px-4 py-3 text-right text-white/30 font-medium text-xs uppercase">Status</th>
-                <th className="px-4 py-3 text-right text-white/30 font-medium text-xs uppercase hidden md:table-cell">Oprettet</th>
+              <thead><tr className="border-b border-slate-200">
+                <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase">Rytter</th>
+                <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase">Udbudspris</th>
+                <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase">Status</th>
+                <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase hidden md:table-cell">Oprettet</th>
               </tr></thead>
               <tbody>
                 {transferListings.map(l => (
                   <tr key={l.id}
-                    className="border-b border-white/4 hover:bg-white/3 cursor-pointer"
+                    className="border-b border-slate-100 hover:bg-slate-100 cursor-pointer"
                     onClick={() => navigate("/transfers")}>
                     <td className="px-4 py-3">
-                      <p className="text-white font-medium">{l.rider?.firstname} {l.rider?.lastname}</p>
-                      <p className="text-white/30 text-xs">UCI: {l.rider?.uci_points?.toLocaleString("da-DK")} CZ$</p>
+                      <p className="text-slate-900 font-medium">{l.rider?.firstname} {l.rider?.lastname}</p>
+                      <p className="text-slate-400 text-xs">UCI: {l.rider?.uci_points?.toLocaleString("da-DK")} CZ$</p>
                     </td>
-                    <td className="px-4 py-3 text-right text-[#e8c547] font-mono font-bold text-sm">
+                    <td className="px-4 py-3 text-right text-amber-700 font-mono font-bold text-sm">
                       {l.asking_price?.toLocaleString("da-DK")} CZ$
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className={`text-xs px-2 py-0.5 rounded
-                        ${l.status === "open" ? "bg-green-500/10 text-green-400" : "bg-white/5 text-white/30"}`}>
+                        ${l.status === "open" ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-400"}`}>
                         {l.status === "open" ? "Aktiv" : l.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-white/30 text-xs hidden md:table-cell">
+                    <td className="px-4 py-3 text-right text-slate-400 text-xs hidden md:table-cell">
                       {timeAgo(l.created_at)}
                     </td>
                   </tr>
@@ -366,7 +366,7 @@ export default function ActivityPage() {
         auctionHistory.length === 0 &&
         transferOffers.length === 0 &&
         transferListings.length === 0 && (
-        <div className="text-center py-16 text-white/20">
+        <div className="text-center py-16 text-slate-300">
           <p className="text-4xl mb-3">◎</p>
           <p>Ingen aktivitet endnu</p>
           <p className="text-sm mt-2">Start en auktion eller send et transfertilbud</p>
@@ -396,7 +396,7 @@ function Countdown({ end, status }) {
     return () => clearInterval(iv);
   }, [end]);
   return (
-    <span className={`font-mono text-sm font-bold ${urgent ? "text-red-400" : "text-white/50"} ${status === "extended" ? "text-orange-400" : ""}`}>
+    <span className={`font-mono text-sm font-bold ${urgent ? "text-red-700" : "text-slate-500"} ${status === "extended" ? "text-orange-700" : ""}`}>
       {text}
     </span>
   );

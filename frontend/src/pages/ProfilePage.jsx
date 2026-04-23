@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
@@ -99,7 +99,7 @@ export default function ProfilePage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
     </div>
   );
 
@@ -108,25 +108,25 @@ export default function ProfilePage() {
   return (
     <div className="max-w-xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-white">Min Profil</h1>
-        <p className="text-white/30 text-sm">Indstillinger og hold</p>
+        <h1 className="text-xl font-bold text-slate-900">Min Profil</h1>
+        <p className="text-slate-400 text-sm">Indstillinger og hold</p>
       </div>
 
       {/* Account info */}
-      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
-        <h2 className="text-white font-semibold text-sm mb-4">Konto</h2>
+      <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4">
+        <h2 className="text-slate-900 font-semibold text-sm mb-4">Konto</h2>
         <div className="space-y-3">
           <div>
-            <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Email</p>
-            <p className="text-white text-sm">{user?.email}</p>
+            <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Email</p>
+            <p className="text-slate-900 text-sm">{user?.email}</p>
           </div>
           <div>
-            <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Brugernavn</p>
-            <p className="text-white text-sm">{user?.username}</p>
+            <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Brugernavn</p>
+            <p className="text-slate-900 text-sm">{user?.username}</p>
           </div>
           {user?.role === "admin" && (
             <div>
-              <span className="text-xs bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full">Admin</span>
+              <span className="text-xs bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">Admin</span>
             </div>
           )}
         </div>
@@ -134,31 +134,31 @@ export default function ProfilePage() {
 
       {/* Team info */}
       {canEditTeam && (
-        <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
-          <h2 className="text-white font-semibold text-sm mb-4">Hold</h2>
+        <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4">
+          <h2 className="text-slate-900 font-semibold text-sm mb-4">Hold</h2>
           <div className="space-y-4">
             {!team && (
-              <div className="bg-white/3 border border-white/5 rounded-lg p-4">
-                <p className="text-white/60 text-sm">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                <p className="text-slate-500 text-sm">
                   Dit hold mangler stadig at blive initialiseret. Gem holdinfo for at oprette det nu.
                 </p>
               </div>
             )}
             <div>
-              <label className="block text-white/30 text-xs uppercase tracking-wider mb-1.5">Holdnavn</label>
+              <label className="block text-slate-400 text-xs uppercase tracking-wider mb-1.5">Holdnavn</label>
               <input
                 type="text"
                 value={teamName}
                 onChange={e => setTeamName(e.target.value)}
                 minLength={3}
                 maxLength={30}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5
-                  text-white text-sm placeholder-white/20
-                  focus:outline-none focus:border-[#e8c547]/50 transition-all"
+                className="w-full bg-slate-100 border border-slate-300 rounded-lg px-4 py-2.5
+                  text-slate-900 text-sm placeholder-slate-400
+                  focus:outline-none focus:border-amber-400 transition-all"
               />
             </div>
             <div>
-              <label className="block text-white/30 text-xs uppercase tracking-wider mb-1.5">Managernavn</label>
+              <label className="block text-slate-400 text-xs uppercase tracking-wider mb-1.5">Managernavn</label>
               <input
                 type="text"
                 value={managerName}
@@ -166,17 +166,17 @@ export default function ProfilePage() {
                 placeholder="Dit navn som manager"
                 minLength={2}
                 maxLength={50}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5
-                  text-white text-sm placeholder-white/20
-                  focus:outline-none focus:border-[#e8c547]/50 transition-all"
+                className="w-full bg-slate-100 border border-slate-300 rounded-lg px-4 py-2.5
+                  text-slate-900 text-sm placeholder-slate-400
+                  focus:outline-none focus:border-amber-400 transition-all"
               />
             </div>
 
             {msg.text && (
               <div className={`px-4 py-2.5 rounded-lg text-sm border
                 ${msg.type === "success"
-                  ? "bg-green-500/10 text-green-400 border-green-500/20"
-                  : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+                  ? "bg-green-50 text-green-700 border-green-200"
+                  : "bg-red-50 text-red-700 border-red-200"}`}>
                 {msg.text}
               </div>
             )}
@@ -193,26 +193,26 @@ export default function ProfilePage() {
       )}
 
       {/* Discord integration */}
-      <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5">
+      <div className="bg-white border border-slate-200 rounded-xl p-5">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-8 rounded-lg bg-[#5865F2]/20 flex items-center justify-center">
             <span className="text-[#5865F2] text-sm font-bold">D</span>
           </div>
           <div>
-            <h2 className="text-white font-semibold text-sm">Discord Integration</h2>
-            <p className="text-white/30 text-xs">Modtag notifikationer direkte i Discord</p>
+            <h2 className="text-slate-900 font-semibold text-sm">Discord Integration</h2>
+            <p className="text-slate-400 text-xs">Modtag notifikationer direkte i Discord</p>
           </div>
         </div>
 
-        <div className="bg-white/3 border border-white/5 rounded-lg p-4 mb-4">
-          <p className="text-white/50 text-xs leading-relaxed">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
+          <p className="text-slate-500 text-xs leading-relaxed">
             Hvis du tilknytter dit Discord bruger-ID, vil du blive tagget i Discord
             når du overbydes på auktioner, vinder auktioner, modtager transfer-tilbud m.m.
           </p>
         </div>
 
         <div className="mb-4">
-          <label className="block text-white/30 text-xs uppercase tracking-wider mb-2">
+          <label className="block text-slate-400 text-xs uppercase tracking-wider mb-2">
             Dit Discord Bruger-ID
           </label>
           <input
@@ -220,11 +220,11 @@ export default function ProfilePage() {
             value={discordId}
             onChange={e => setDiscordId(e.target.value)}
             placeholder="f.eks. 123456789012345678"
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5
-              text-white text-sm placeholder-white/20 font-mono
+            className="w-full bg-slate-100 border border-slate-300 rounded-lg px-4 py-2.5
+              text-slate-900 text-sm placeholder-slate-400 font-mono
               focus:outline-none focus:border-[#5865F2]/50"
           />
-          <p className="text-white/20 text-xs mt-2">
+          <p className="text-slate-300 text-xs mt-2">
             Find dit ID: Discord → Indstillinger → Avanceret → Aktivér udviklertilstand
             → Højreklik på dit navn → "Kopiér bruger-ID"
           </p>
@@ -233,8 +233,8 @@ export default function ProfilePage() {
         {!team && msg.text && (
           <div className={`mb-3 px-4 py-2.5 rounded-lg text-sm border
             ${msg.type === "success"
-              ? "bg-green-500/10 text-green-400 border-green-500/20"
-              : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+              ? "bg-green-50 text-green-700 border-green-200"
+              : "bg-red-50 text-red-700 border-red-200"}`}>
             {msg.text}
           </div>
         )}
@@ -242,13 +242,13 @@ export default function ProfilePage() {
         <button
           onClick={saveDiscordId}
           disabled={savingDiscord}
-          className="w-full py-2.5 bg-[#5865F2] text-white font-bold rounded-lg text-sm
+          className="w-full py-2.5 bg-[#5865F2] text-slate-900 font-bold rounded-lg text-sm
             hover:bg-[#4752c4] transition-all disabled:opacity-50">
           {savingDiscord ? "Gemmer..." : "Gem Discord ID"}
         </button>
 
-        <div className="mt-4 bg-white/3 border border-white/5 rounded-lg p-3">
-          <p className="text-white/30 text-xs font-medium mb-2">Du modtager Discord-notifikationer når:</p>
+        <div className="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <p className="text-slate-400 text-xs font-medium mb-2">Du modtager Discord-notifikationer når:</p>
           <ul className="space-y-1">
             {[
               "Du overbydes på en auktion",
@@ -258,8 +258,8 @@ export default function ProfilePage() {
               "En ny auktion oprettes",
               "En ny sæson starter eller afsluttes",
             ].map(item => (
-              <li key={item} className="flex items-center gap-2 text-white/30 text-xs">
-                <span className="text-green-400">✓</span> {item}
+              <li key={item} className="flex items-center gap-2 text-slate-400 text-xs">
+                <span className="text-green-700">✓</span> {item}
               </li>
             ))}
           </ul>

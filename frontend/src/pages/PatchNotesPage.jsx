@@ -1,6 +1,25 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 
 const PATCHES = [
+  {
+    version: "1.33",
+    date: "2026-04-23",
+    label: "Beta",
+    changes: [
+      {
+        category: "Design",
+        items: [
+          "UI er konverteret fra mørkt tema til lyst tema — varm creme-baggrund, hvide kort, mørk navy-sidebar",
+          "Navigationen har nu tydelig hierarki: sektionsoverskrifter (OVERBLIK, MARKED osv.) er klart adskilt fra klikbare menupunkter",
+          "Sidebar-ikoner er fjernet fra menupunkter for et renere og mere scanbart udtryk",
+          "Aktiv menupunkt vises med gyldent highlight og afrundede kanter",
+          "Status-farver (grøn/rød/orange/blå) er justeret for god kontrast på lys baggrund",
+          "Spinner og loading-states er opdateret til lyst tema",
+          "CSS custom properties introduceret som fundament for design-tokensystemet",
+        ],
+      },
+    ],
+  },
   {
     version: "1.32",
     date: "2026-04-23",
@@ -631,8 +650,8 @@ export default function PatchNotesPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-white">Patch Notes</h1>
-        <p className="text-white/30 text-sm">Opdateringshistorik for Cycling Zone Manager</p>
+        <h1 className="text-xl font-bold text-slate-900">Patch Notes</h1>
+        <p className="text-slate-400 text-sm">Opdateringshistorik for Cycling Zone Manager</p>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -640,23 +659,23 @@ export default function PatchNotesPage() {
           const isOpen = expanded === patch.version;
           return (
             <div key={patch.version}
-              className={`bg-[#0f0f18] border rounded-xl overflow-hidden transition-all
-                ${isOpen ? "border-[#e8c547]/20" : "border-white/5"}`}>
+              className={`bg-white border rounded-xl overflow-hidden transition-all
+                ${isOpen ? "border-amber-200" : "border-slate-200"}`}>
               <button
                 onClick={() => setExpanded(isOpen ? null : patch.version)}
                 className="w-full flex items-center justify-between px-5 py-4 text-left">
                 <div className="flex items-center gap-3">
-                  <span className="text-white font-bold text-sm">v{patch.version}</span>
-                  <span className="text-[9px] uppercase bg-[#e8c547]/10 text-[#e8c547] border border-[#e8c547]/20 px-2 py-0.5 rounded-full">
+                  <span className="text-slate-900 font-bold text-sm">v{patch.version}</span>
+                  <span className="text-[9px] uppercase bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
                     {patch.label}
                   </span>
-                  <span className="text-white/25 text-xs">{patch.date}</span>
+                  <span className="text-slate-400 text-xs">{patch.date}</span>
                 </div>
-                <span className={`text-white/30 text-xs transition-transform ${isOpen ? "rotate-180" : ""}`}>▾</span>
+                <span className={`text-slate-400 text-xs transition-transform ${isOpen ? "rotate-180" : ""}`}>▾</span>
               </button>
 
               {isOpen && (
-                <div className="px-5 pb-5 border-t border-white/5 pt-4 space-y-4">
+                <div className="px-5 pb-5 border-t border-slate-200 pt-4 space-y-4">
                   {patch.changes.map((section, i) => (
                     <div key={i}>
                       <div className="flex items-center gap-2 mb-2">
@@ -665,7 +684,7 @@ export default function PatchNotesPage() {
                             section.category === "Forbedringer" ? "bg-blue-400" :
                             section.category === "Fejlrettelser" ? "bg-red-400" :
                             "bg-[#e8c547]"}`} />
-                        <span className="text-white/50 text-xs font-semibold uppercase tracking-wider">
+                        <span className="text-slate-500 text-xs font-semibold uppercase tracking-wider">
                           {section.category}
                         </span>
                       </div>
@@ -677,7 +696,7 @@ export default function PatchNotesPage() {
                                 section.category === "Forbedringer" ? "bg-blue-400" :
                                 section.category === "Fejlrettelser" ? "bg-red-400" :
                                 "bg-[#e8c547]"}`} />
-                            <span className="text-white/60 text-sm leading-relaxed">{item}</span>
+                            <span className="text-slate-500 text-sm leading-relaxed">{item}</span>
                           </li>
                         ))}
                       </ul>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
@@ -152,7 +152,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-cz-body flex items-center justify-center p-4 relative overflow-hidden">
       <div
         className="absolute inset-0 opacity-[0.03]"
         style={{
@@ -174,10 +174,10 @@ export default function LoginPage() {
           >
             <span className="text-[#0a0a0f] font-black text-3xl">C</span>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Cycling Zone
           </h1>
-          <p className="text-white/40 text-sm mt-1">
+          <p className="text-slate-500 text-sm mt-1">
             {isLoginMode
               ? "Log ind for at fortsætte"
               : isSignupMode
@@ -186,12 +186,12 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="bg-[#0f0f18] border border-white/8 rounded-2xl p-6">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6">
           {success ? (
             <div className="text-center py-4">
               <div className="text-4xl mb-4">{success.kind === "signup" ? "🎉" : "✉️"}</div>
-              <p className="text-green-400 text-sm font-medium">{success.message}</p>
-              <p className="text-white/40 text-xs mt-3">
+              <p className="text-green-700 text-sm font-medium">{success.message}</p>
+              <p className="text-slate-500 text-xs mt-3">
                 {success.kind === "signup"
                   ? "Tjek din email for at bekræfte din konto, og log derefter ind."
                   : "Åbn mailen og følg reset-linket for at vælge en ny adgangskode."}
@@ -216,7 +216,7 @@ export default function LoginPage() {
               {isSignupMode && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-white/40 uppercase tracking-wider mb-1.5">
+                    <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">
                       Holdnavn
                     </label>
                     <input
@@ -227,14 +227,14 @@ export default function LoginPage() {
                       required
                       minLength={3}
                       maxLength={30}
-                      className="w-full bg-white/5 border border-white/8 rounded-lg
-                        px-4 py-2.5 text-white text-sm placeholder-white/20
-                        focus:outline-none focus:border-[#e8c547]/50 focus:bg-white/8 transition-all"
+                      className="w-full bg-slate-100 border border-slate-200 rounded-lg
+                        px-4 py-2.5 text-slate-900 text-sm placeholder-slate-400
+                        focus:outline-none focus:border-amber-400 focus:bg-slate-100 transition-all"
                     />
-                    <p className="text-white/20 text-xs mt-1">3-30 tegn — dette bliver dit holdnavn i spillet</p>
+                    <p className="text-slate-300 text-xs mt-1">3-30 tegn — dette bliver dit holdnavn i spillet</p>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-white/40 uppercase tracking-wider mb-1.5">
+                    <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">
                       Managernavn
                     </label>
                     <input
@@ -245,17 +245,17 @@ export default function LoginPage() {
                       required
                       minLength={2}
                       maxLength={50}
-                      className="w-full bg-white/5 border border-white/8 rounded-lg
-                        px-4 py-2.5 text-white text-sm placeholder-white/20
-                        focus:outline-none focus:border-[#e8c547]/50 focus:bg-white/8 transition-all"
+                      className="w-full bg-slate-100 border border-slate-200 rounded-lg
+                        px-4 py-2.5 text-slate-900 text-sm placeholder-slate-400
+                        focus:outline-none focus:border-amber-400 focus:bg-slate-100 transition-all"
                     />
-                    <p className="text-white/20 text-xs mt-1">Dit navn som manager — vises på holdprofilen</p>
+                    <p className="text-slate-300 text-xs mt-1">Dit navn som manager — vises på holdprofilen</p>
                   </div>
                 </>
               )}
 
               <div>
-                <label className="block text-xs font-medium text-white/40 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">
                   Email
                 </label>
                 <input
@@ -264,12 +264,12 @@ export default function LoginPage() {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="din@email.dk"
                   required
-                  className="w-full bg-white/5 border border-white/8 rounded-lg
-                    px-4 py-2.5 text-white text-sm placeholder-white/20
-                    focus:outline-none focus:border-[#e8c547]/50 focus:bg-white/8 transition-all"
+                  className="w-full bg-slate-100 border border-slate-200 rounded-lg
+                    px-4 py-2.5 text-slate-900 text-sm placeholder-slate-400
+                    focus:outline-none focus:border-amber-400 focus:bg-slate-100 transition-all"
                 />
                 {isForgotMode && (
-                  <p className="text-white/20 text-xs mt-1">
+                  <p className="text-slate-300 text-xs mt-1">
                     Vi sender et sikkert reset-link til denne email.
                   </p>
                 )}
@@ -277,7 +277,7 @@ export default function LoginPage() {
 
               {!isForgotMode && (
                 <div>
-                  <label className="block text-xs font-medium text-white/40 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">
                     Adgangskode
                   </label>
                   <input
@@ -287,18 +287,18 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     required
                     minLength={6}
-                    className="w-full bg-white/5 border border-white/8 rounded-lg
-                      px-4 py-2.5 text-white text-sm placeholder-white/20
-                      focus:outline-none focus:border-[#e8c547]/50 focus:bg-white/8 transition-all"
+                    className="w-full bg-slate-100 border border-slate-200 rounded-lg
+                      px-4 py-2.5 text-slate-900 text-sm placeholder-slate-400
+                      focus:outline-none focus:border-amber-400 focus:bg-slate-100 transition-all"
                   />
                   {isSignupMode && (
-                    <p className="text-white/20 text-xs mt-1">Minimum 6 tegn</p>
+                    <p className="text-slate-300 text-xs mt-1">Minimum 6 tegn</p>
                   )}
                 </div>
               )}
 
               {error && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5 text-red-400 text-sm">
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-red-700 text-sm">
                   {error}
                 </div>
               )}
@@ -333,14 +333,14 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => switchMode("forgot")}
-                    className="text-sm text-white/40 hover:text-white/60 transition-colors"
+                    className="text-sm text-slate-500 hover:text-slate-500 transition-colors"
                   >
                     Glemt password?
                   </button>
                   <button
                     type="button"
                     onClick={() => switchMode("signup")}
-                    className="text-sm text-white/40 hover:text-white/60 transition-colors"
+                    className="text-sm text-slate-500 hover:text-slate-500 transition-colors"
                   >
                     Ingen konto? Opret her
                   </button>
@@ -351,7 +351,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => switchMode("login")}
-                  className="text-sm text-white/40 hover:text-white/60 transition-colors"
+                  className="text-sm text-slate-500 hover:text-slate-500 transition-colors"
                 >
                   Har allerede konto? Log ind
                 </button>
@@ -361,7 +361,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => switchMode("login")}
-                  className="text-sm text-white/40 hover:text-white/60 transition-colors"
+                  className="text-sm text-slate-500 hover:text-slate-500 transition-colors"
                 >
                   Tilbage til login
                 </button>
@@ -370,7 +370,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        <p className="text-center text-white/20 text-xs mt-6">
+        <p className="text-center text-slate-300 text-xs mt-6">
           Cycling Zone — Multiplayer Edition
         </p>
       </div>

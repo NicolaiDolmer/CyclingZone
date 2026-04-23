@@ -3,52 +3,51 @@ import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
-console.log("[CZ] API URL:", API);
 
 const BOTTOM_ITEMS = [
-  { to: "/help",        label: "Hjælp & Regler", icon: "?" },
-  { to: "/patch-notes", label: "Patch Notes",    icon: "📋" },
+  { to: "/help",        label: "Hjælp & Regler" },
+  { to: "/patch-notes", label: "Patch Notes" },
 ];
 
 function buildNavGroups(team) {
   return [
     {
-      key: "overblik", label: "Overblik", icon: "◎",
+      key: "overblik", label: "Overblik",
       items: [
-        { to: "/dashboard",      label: "Dashboard",        icon: "◎" },
-        { to: "/team",           label: "Mit Hold",         icon: "◈" },
-        { to: "/board",          label: "Bestyrelse",       icon: "◧" },
-        { to: "/finance",        label: "Finanser",         icon: "💰" },
-        { to: "/notifications",  label: "Indbakke",         icon: "🔔" },
-        ...(team?.id ? [{ to: `/managers/${team.id}`, label: "Min Managerprofil", icon: "👤" }] : []),
-        { to: "/activity-feed",  label: "Aktivitetsfeed",   icon: "◉" },
+        { to: "/dashboard",      label: "Dashboard" },
+        { to: "/team",           label: "Mit Hold" },
+        { to: "/board",          label: "Bestyrelse" },
+        { to: "/finance",        label: "Finanser" },
+        { to: "/notifications",  label: "Indbakke", badge: true },
+        ...(team?.id ? [{ to: `/managers/${team.id}`, label: "Min Managerprofil" }] : []),
+        { to: "/activity-feed",  label: "Aktivitetsfeed" },
       ],
     },
     {
-      key: "marked", label: "Marked", icon: "⚡",
+      key: "marked", label: "Marked",
       items: [
-        { to: "/riders",    label: "Ryttere",       icon: "🚴" },
-        { to: "/auctions",  label: "Auktioner",     icon: "⚡" },
-        { to: "/transfers", label: "Transfers",     icon: "↔" },
-        { to: "/activity",  label: "Min Aktivitet", icon: "📋" },
-        { to: "/watchlist", label: "Ønskeliste",    icon: "⭐" },
+        { to: "/riders",    label: "Ryttere" },
+        { to: "/auctions",  label: "Auktioner" },
+        { to: "/transfers", label: "Transfers" },
+        { to: "/activity",  label: "Min Aktivitet" },
+        { to: "/watchlist", label: "Ønskeliste" },
       ],
     },
     {
-      key: "resultater", label: "Resultater", icon: "◉",
+      key: "resultater", label: "Resultater",
       items: [
-        { to: "/standings",  label: "Ranglisten",      icon: "◉" },
-        { to: "/season-end", label: "Sæsonresultater", icon: "🏆" },
-        { to: "/hall-of-fame", label: "Hall of Fame",  icon: "🏆" },
+        { to: "/standings",    label: "Ranglisten" },
+        { to: "/season-end",   label: "Sæsonresultater" },
+        { to: "/hall-of-fame", label: "Hall of Fame" },
       ],
     },
     {
-      key: "liga", label: "Liga", icon: "◫",
+      key: "liga", label: "Liga",
       items: [
-        { to: "/teams",          label: "Hold",          icon: "◫" },
-        { to: "/head-to-head",   label: "Head-to-Head",  icon: "⚔" },
-        { to: "/season-preview", label: "Sæson Preview", icon: "📊" },
-        { to: "/races",          label: "Løbskalender",  icon: "🏁" },
+        { to: "/teams",          label: "Hold" },
+        { to: "/head-to-head",   label: "Head-to-Head" },
+        { to: "/season-preview", label: "Sæson Preview" },
+        { to: "/races",          label: "Løbskalender" },
       ],
     },
   ];
@@ -152,19 +151,24 @@ export default function Layout() {
   const unread = notifications.length;
   const baseGroups = buildNavGroups(team);
   const navGroups = isAdmin
-    ? [...baseGroups, { key: "admin", label: "Admin", icon: "⚙", items: [{ to: "/admin", label: "Admin", icon: "⚙" }] }]
+    ? [...baseGroups, { key: "admin", label: "Admin", items: [{ to: "/admin", label: "Admin" }] }]
     : baseGroups;
 
-  function NavItem({ to, label, icon, onClick }) {
+  function NavItem({ to, label, badge, onClick }) {
     const isActive = location.pathname === to || (to !== "/dashboard" && location.pathname.startsWith(to));
-    const showBadge = to === "/notifications" && unread > 0;
+    const showBadge = badge && unread > 0;
     return (
       <NavLink to={to} onClick={onClick}
-        className={`flex items-center gap-2.5 px-4 py-2 text-sm transition-all
-          ${isActive ? "text-[#e8c547] bg-[#e8c547]/8" : "text-white/40 hover:text-white hover:bg-white/4"}`}>
-        <span className="w-4 text-center text-xs flex-shrink-0">{icon}</span>
-        <span className="flex-1">{label}</span>
-        {showBadge && <span className="bg-[#e8c547] text-[#0a0a0f] text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">{unread > 9 ? "9+" : unread}</span>}
+        className={`flex items-center justify-between mx-2 px-3 py-2 rounded-lg text-[13px] transition-all duration-150
+          ${isActive
+            ? "bg-[#e8c547]/12 text-[#e8c547] font-medium"
+            : "text-white/55 hover:text-white hover:bg-white/6"}`}>
+        <span>{label}</span>
+        {showBadge && (
+          <span className="bg-[#e8c547] text-[#1a1f38] text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
       </NavLink>
     );
   }
@@ -172,59 +176,81 @@ export default function Layout() {
   function SidebarContent({ onNav }) {
     return (
       <div className="flex flex-col h-full">
-        <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2.5 px-4 py-4 border-b border-white/5 w-full text-left hover:bg-white/3 transition-colors">
-          <div className="w-7 h-7 bg-[#e8c547] rounded-md flex items-center justify-center text-[10px] font-black text-[#0a0a0f] flex-shrink-0">CZ</div>
+        {/* Logo + team */}
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="flex items-center gap-2.5 px-4 py-4 border-b border-white/7 w-full text-left hover:bg-white/4 transition-colors">
+          <div className="w-7 h-7 bg-[#e8c547] rounded-md flex items-center justify-center text-[10px] font-black text-[#1a1f38] flex-shrink-0">
+            CZ
+          </div>
           <div className="min-w-0">
             <p className="text-white text-xs font-bold leading-tight">Cycling Zone</p>
-            <p className="text-white/30 text-[10px] truncate">{team?.name || "..."}</p>
+            <p className="text-white/30 text-[10px] truncate">{team?.name || "…"}</p>
           </div>
         </button>
 
+        {/* Balance */}
         {balance !== null && (
-          <div className="px-4 py-2.5 border-b border-white/5">
-            <p className="text-[9px] text-white/25 uppercase tracking-wider">Balance</p>
-            <p className="text-[#e8c547] font-mono font-bold text-sm">{balance.toLocaleString("da-DK")} CZ$</p>
-            {team && <p className="text-white/25 text-[10px]">Division {team.division}</p>}
+          <div className="px-4 py-3 border-b border-white/7">
+            <p className="text-[9px] text-white/25 uppercase tracking-widest mb-0.5">Balance</p>
+            <p className="text-[#e8c547] font-mono font-bold text-sm leading-tight">
+              {balance.toLocaleString("da-DK")} CZ$
+            </p>
+            {team && <p className="text-white/25 text-[10px] mt-0.5">Division {team.division}</p>}
           </div>
         )}
 
+        {/* Online indicator */}
         {onlineCount > 0 && (
-          <div className="px-4 py-2 border-b border-white/5">
+          <div className="px-4 py-2 border-b border-white/7">
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_4px_rgba(74,222,128,0.8)]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
               <span className="text-white/25 text-[10px]">{onlineCount} online nu</span>
             </span>
           </div>
         )}
 
+        {/* Nav groups */}
         <nav className="flex-1 overflow-y-auto py-2">
           {navGroups.map(group => {
             const isOpen = openGroups[group.key];
-            const hasActive = group.items.some(i =>
-              location.pathname === i.to || (i.to !== "/dashboard" && location.pathname.startsWith(i.to))
-            );
             return (
-              <div key={group.key}>
-                <button onClick={() => toggleGroup(group.key)}
-                  className={`w-full flex items-center justify-between px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all
-                    ${hasActive ? "text-white/70" : "text-white/25 hover:text-white/50"}`}>
-                  <span className="flex items-center gap-2"><span>{group.icon}</span><span>{group.label}</span></span>
-                  <span className={`text-[8px] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>▾</span>
+              <div key={group.key} className="mb-1">
+                {/* Section label — clearly a label, not a link */}
+                <button
+                  onClick={() => toggleGroup(group.key)}
+                  className="w-full flex items-center justify-between px-4 pt-4 pb-1 group">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/25 group-hover:text-white/40 transition-colors">
+                    {group.label}
+                  </span>
+                  <span className={`text-[8px] text-white/20 group-hover:text-white/35 transition-all duration-200 ${isOpen ? "rotate-180" : ""}`}>
+                    ▾
+                  </span>
                 </button>
+
                 {isOpen && (
-                  <div className="mb-1">
-                    {group.items.map(item => <NavItem key={item.to} {...item} onClick={onNav} />)}
+                  <div className="py-0.5">
+                    {group.items.map(item => (
+                      <NavItem key={item.to} {...item} onClick={onNav} />
+                    ))}
                   </div>
                 )}
               </div>
             );
           })}
-          <div className="h-px bg-white/5 my-2 mx-4" />
-          {BOTTOM_ITEMS.map(item => <NavItem key={item.to} {...item} onClick={onNav} />)}
+
+          {/* Bottom nav items */}
+          <div className="h-px bg-white/7 my-3 mx-4" />
+          {BOTTOM_ITEMS.map(item => (
+            <NavItem key={item.to} {...item} onClick={onNav} />
+          ))}
         </nav>
 
-        <div className="border-t border-white/5 p-3">
-          <button onClick={signOut} className="w-full text-xs text-white/25 hover:text-white/50 py-2 transition-colors text-left px-1">
+        {/* Footer */}
+        <div className="border-t border-white/7 px-4 py-3">
+          <button
+            onClick={signOut}
+            className="text-[11px] text-white/25 hover:text-white/60 transition-colors">
             ← Log ud
           </button>
         </div>
@@ -233,36 +259,41 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex">
-      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-[#0a0a14] border-r border-white/5 fixed top-0 left-0 h-full z-30">
+    <div className="min-h-screen bg-cz-body flex">
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-[#1a1f38] border-r border-white/7 fixed top-0 left-0 h-full z-30">
         <SidebarContent onNav={() => {}} />
       </aside>
 
+      {/* Mobile sidebar overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute left-0 top-0 h-full w-52 bg-[#0a0a14] border-r border-white/5 z-50">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute left-0 top-0 h-full w-52 bg-[#1a1f38] border-r border-white/7 z-50">
             <SidebarContent onNav={() => setMobileOpen(false)} />
           </aside>
         </div>
       )}
 
+      {/* Main content */}
       <main className="flex-1 md:ml-52 min-h-screen">
-        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-[#0a0a14] border-b border-white/5 sticky top-0 z-20">
+        {/* Mobile topbar */}
+        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-[#1a1f38] border-b border-white/7 sticky top-0 z-20">
           <button onClick={() => setMobileOpen(true)} className="text-white/50 hover:text-white text-xl">☰</button>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-[#e8c547] rounded flex items-center justify-center text-[9px] font-black text-[#0a0a0f]">CZ</div>
+            <div className="w-6 h-6 bg-[#e8c547] rounded flex items-center justify-center text-[9px] font-black text-[#1a1f38]">CZ</div>
             <span className="text-white text-sm font-bold">Cycling Zone</span>
           </div>
           <NavLink to="/notifications" className="relative">
             <span className="text-white/50 hover:text-white text-lg">🔔</span>
             {unread > 0 && (
-              <span className="absolute -top-1 -right-1 bg-[#e8c547] text-[#0a0a0f] text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
+              <span className="absolute -top-1 -right-1 bg-[#e8c547] text-[#1a1f38] text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
                 {unread > 9 ? "9" : unread}
               </span>
             )}
           </NavLink>
         </div>
+
         <div className="p-4 md:p-6 max-w-6xl mx-auto">
           <Outlet />
         </div>

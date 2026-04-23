@@ -6,19 +6,36 @@
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  background: #0a0a0f;
-  color: white;
-  font-family: 'DM Sans', sans-serif;
+:root {
+  --bg-body:    #f0ede6;
+  --bg-card:    #ffffff;
+  --bg-subtle:  #f7f4ef;
+  --border:     #e5e0d5;
+  --text-1:     #1c1b26;
+  --text-2:     #66637a;
+  --text-3:     #9896b0;
+  --accent:     #e8c547;
+  --accent-t:   #a07800;
 }
 
-/* Force native select dropdowns to use dark-mode colours in all browsers */
+body {
+  margin: 0;
+  background: var(--bg-body);
+  color: var(--text-1);
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+}
+
 select {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 select option {
-  background-color: #1a1a2e;
-  color: #ffffff;
+  background-color: #ffffff;
+  color: #1c1b26;
+}
+
+/* Spinner uses brand amber on light background */
+.spinner {
+  border-color: #e5e0d5;
+  border-top-color: #a07800;
 }

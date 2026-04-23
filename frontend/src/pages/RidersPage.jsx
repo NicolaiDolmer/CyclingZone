@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import RiderFilters, { DEFAULT_FILTERS } from "../components/RiderFilters";
 import { buildSupabaseQuery } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
@@ -19,7 +19,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   const active = sort === sortKey;
   return (
     <th onClick={() => onSort(sortKey)}
-      className={`cursor-pointer select-none transition-colors ${active ? "text-[#e8c547]/80" : "text-white/30 hover:text-white/50"} ${className}`}>
+      className={`cursor-pointer select-none transition-colors ${active ? "text-amber-700/80" : "text-slate-400 hover:text-slate-500"} ${className}`}>
       {children}{active && <span className="ml-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
     </th>
   );
@@ -33,10 +33,10 @@ const MOBILE_STATS = [
 
 function StatBar({ value }) {
   const pct = Math.round((value / 99) * 100);
-  const color = value >= 80 ? "bg-[#e8c547]" : value >= 65 ? "bg-blue-400" : "bg-white/20";
+  const color = value >= 80 ? "bg-[#e8c547]" : value >= 65 ? "bg-blue-400" : "bg-slate-500";
   return (
     <div className="flex items-center gap-1.5">
-      <div className="w-full bg-white/8 rounded-full h-1.5">
+      <div className="w-full bg-slate-100 rounded-full h-1.5">
         <div className={`${color} h-1.5 rounded-full`} style={{ width: `${pct}%` }} />
       </div>
       <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded flex-shrink-0 ${statBg(value ?? 0)}`}>
@@ -52,7 +52,7 @@ function StarButton({ riderId, watchlist, onToggle }) {
     <button
       onClick={e => { e.stopPropagation(); onToggle(riderId); }}
       title={isWatched ? "Fjern fra ønskeliste" : "Tilføj til ønskeliste"}
-      className={`text-lg transition-all hover:scale-110 flex-shrink-0 ${isWatched ? "text-[#e8c547]" : "text-white/20 hover:text-white/50"}`}>
+      className={`text-lg transition-all hover:scale-110 flex-shrink-0 ${isWatched ? "text-amber-700" : "text-slate-300 hover:text-slate-500"}`}>
       {isWatched ? "★" : "☆"}
     </button>
   );
@@ -60,22 +60,22 @@ function StarButton({ riderId, watchlist, onToggle }) {
 
 function RiderCard({ rider, onClick, watchlist, onToggleWatchlist }) {
   return (
-    <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-4 hover:border-white/10
+    <div className="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300
       cursor-pointer transition-all active:scale-98">
       <div className="flex items-start justify-between mb-3">
         <div onClick={() => onClick(rider)} className="flex-1 min-w-0">
-          <p className="text-white font-medium text-sm truncate">
+          <p className="text-slate-900 font-medium text-sm truncate">
             {rider.firstname} {rider.lastname}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             {rider.is_u25 && (
-              <span className="text-[9px] uppercase bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">U25</span>
+              <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700 px-1.5 py-0.5 rounded">U25</span>
             )}
-            <span className="text-white/30 text-xs">{rider.team?.name || "Fri"}</span>
+            <span className="text-slate-400 text-xs">{rider.team?.name || "Fri"}</span>
           </div>
         </div>
         <div className="flex items-center gap-2 ml-2">
-          <span className="text-[#e8c547] font-mono font-bold text-sm whitespace-nowrap">
+          <span className="text-amber-700 font-mono font-bold text-sm whitespace-nowrap">
             {rider.uci_points?.toLocaleString("da-DK")} CZ$
           </span>
           <StarButton riderId={rider.id} watchlist={watchlist} onToggle={onToggleWatchlist} />
@@ -84,7 +84,7 @@ function RiderCard({ rider, onClick, watchlist, onToggleWatchlist }) {
       <div className="grid grid-cols-5 gap-2" onClick={() => onClick(rider)}>
         {MOBILE_STATS.map(({ key, label }) => (
           <div key={key} className="text-center">
-            <p className="text-white/20 text-[9px] uppercase mb-0.5">{label}</p>
+            <p className="text-slate-300 text-[9px] uppercase mb-0.5">{label}</p>
             <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(rider[key] || 0)}`}>
               {rider[key] || "—"}
             </span>
@@ -97,20 +97,20 @@ function RiderCard({ rider, onClick, watchlist, onToggleWatchlist }) {
 
 function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist }) {
   return (
-    <tr className="border-b border-white/4 hover:bg-white/3 cursor-pointer transition-colors">
+    <tr className="border-b border-slate-100 hover:bg-slate-100 cursor-pointer transition-colors">
       <td className="px-3 py-2.5" onClick={() => onSelect(rider)}>
         <div>
-          <p className="text-white text-sm font-medium">{rider.firstname} {rider.lastname}</p>
+          <p className="text-slate-900 text-sm font-medium">{rider.firstname} {rider.lastname}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             {rider.is_u25 && (
-              <span className="text-[9px] uppercase bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">U25</span>
+              <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700 px-1.5 py-0.5 rounded">U25</span>
             )}
-            <span className="text-white/30 text-xs">{rider.team?.name || "Fri"}</span>
+            <span className="text-slate-400 text-xs">{rider.team?.name || "Fri"}</span>
           </div>
         </div>
       </td>
       <td className="px-3 py-2.5 text-right" onClick={() => onSelect(rider)}>
-        <span className="text-[#e8c547] font-mono text-sm font-bold">
+        <span className="text-amber-700 font-mono text-sm font-bold">
           {rider.uci_points?.toLocaleString("da-DK")}
         </span>
       </td>
@@ -198,12 +198,12 @@ export default function RidersPage() {
     <div className="max-w-full">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-white">Rytterdatabase</h1>
-          <p className="text-white/30 text-sm">{total.toLocaleString("da-DK")} ryttere</p>
+          <h1 className="text-xl font-bold text-slate-900">Rytterdatabase</h1>
+          <p className="text-slate-400 text-sm">{total.toLocaleString("da-DK")} ryttere</p>
         </div>
         <Link to="/watchlist"
-          className="px-3 py-1.5 bg-[#e8c547]/10 text-[#e8c547] border border-[#e8c547]/20
-            rounded-lg text-xs font-medium hover:bg-[#e8c547]/20 transition-all">
+          className="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200
+            rounded-lg text-xs font-medium hover:bg-amber-50 transition-all">
           ⭐ Min ønskeliste ({watchlist.size})
         </Link>
       </div>
@@ -212,7 +212,7 @@ export default function RidersPage() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
         </div>
       ) : isMobile ? (
         <div className="flex flex-col gap-3">
@@ -224,11 +224,11 @@ export default function RidersPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-white/5">
+                <tr className="border-b border-slate-200">
                   <SortTh sortKey="firstname" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider w-48">Rytter</SortTh>
                   <SortTh sortKey="uci_points" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
@@ -255,20 +255,20 @@ export default function RidersPage() {
 
       {/* Pagination */}
       <div className="flex items-center justify-between mt-4">
-        <span className="text-white/30 text-xs">
+        <span className="text-slate-400 text-xs">
           Viser {Math.min((filters.page - 1) * 50 + 1, total)}–{Math.min(filters.page * 50, total)} af {total.toLocaleString("da-DK")}
         </span>
         <div className="flex gap-2">
           <button disabled={filters.page <= 1}
             onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}
-            className="px-3 py-1.5 bg-white/5 rounded text-white/50 text-xs
-              hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed">
+            className="px-3 py-1.5 bg-slate-100 rounded text-slate-500 text-xs
+              hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed">
             ← Forrige
           </button>
           <button disabled={filters.page * 50 >= total}
             onClick={() => setFilters(f => ({ ...f, page: f.page + 1 }))}
-            className="px-3 py-1.5 bg-white/5 rounded text-white/50 text-xs
-              hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed">
+            className="px-3 py-1.5 bg-slate-100 rounded text-slate-500 text-xs
+              hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed">
             Næste →
           </button>
         </div>

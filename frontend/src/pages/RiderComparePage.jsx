@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
@@ -47,25 +47,25 @@ function RiderSearch({ onSelect, excluded }) {
         value={q}
         onChange={e => setQ(e.target.value)}
         placeholder="Søg rytter at tilføje..."
-        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5
-          text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#e8c547]/50"
+        className="w-full bg-slate-100 border border-slate-300 rounded-lg px-4 py-2.5
+          text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400"
       />
       {(results.length > 0 || loading) && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f0f18] border border-white/10
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300
           rounded-xl shadow-2xl z-20 overflow-hidden">
           {loading ? (
-            <div className="p-3 text-center text-white/30 text-sm">Søger...</div>
+            <div className="p-3 text-center text-slate-400 text-sm">Søger...</div>
           ) : (
             results.map(r => (
               <div key={r.id}
-                className="flex items-center justify-between px-4 py-2.5 hover:bg-white/5
-                  cursor-pointer border-b border-white/5 last:border-0"
+                className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-100
+                  cursor-pointer border-b border-slate-200 last:border-0"
                 onClick={() => { onSelect(r); setQ(""); setResults([]); }}>
                 <div>
-                  <p className="text-white text-sm font-medium">{r.firstname} {r.lastname}</p>
-                  <p className="text-white/30 text-xs">{r.team?.name || "Fri agent"}</p>
+                  <p className="text-slate-900 text-sm font-medium">{r.firstname} {r.lastname}</p>
+                  <p className="text-slate-400 text-xs">{r.team?.name || "Fri agent"}</p>
                 </div>
-                <span className="text-[#e8c547] font-mono text-xs">
+                <span className="text-amber-700 font-mono text-xs">
                   {r.uci_points?.toLocaleString("da-DK")} CZ$
                 </span>
               </div>
@@ -110,8 +110,8 @@ export default function RiderComparePage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-white">Sammenlign Ryttere</h1>
-        <p className="text-white/30 text-sm">Tilføj op til 3 ryttere for at sammenligne stats</p>
+        <h1 className="text-xl font-bold text-slate-900">Sammenlign Ryttere</h1>
+        <p className="text-slate-400 text-sm">Tilføj op til 3 ryttere for at sammenligne stats</p>
       </div>
 
       {/* Search */}
@@ -122,7 +122,7 @@ export default function RiderComparePage() {
       )}
 
       {fullRiders.length === 0 ? (
-        <div className="text-center py-16 text-white/20">
+        <div className="text-center py-16 text-slate-300">
           <p className="text-4xl mb-3">◈</p>
           <p>Søg efter en rytter ovenfor for at starte sammenligning</p>
         </div>
@@ -132,21 +132,21 @@ export default function RiderComparePage() {
           <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
             <div /> {/* Empty cell for label column */}
             {fullRiders.map((r, i) => (
-              <div key={r.id} className="bg-[#0f0f18] border rounded-xl p-4 text-center"
+              <div key={r.id} className="bg-white border rounded-xl p-4 text-center"
                 style={{ borderColor: `${COLORS[i]}30` }}>
                 <button
                   onClick={() => removeRider(r.id)}
-                  className="float-right text-white/20 hover:text-white/50 text-sm -mt-1 -mr-1">×</button>
-                <p className="font-bold text-white text-sm cursor-pointer hover:text-[#e8c547]"
+                  className="float-right text-slate-300 hover:text-slate-500 text-sm -mt-1 -mr-1">×</button>
+                <p className="font-bold text-slate-900 text-sm cursor-pointer hover:text-amber-700"
                   onClick={() => navigate(`/riders/${r.id}`)}>
                   {r.firstname} {r.lastname}
                 </p>
-                <p className="text-white/30 text-xs mt-1">{r.team?.name || "Fri agent"}</p>
+                <p className="text-slate-400 text-xs mt-1">{r.team?.name || "Fri agent"}</p>
                 <p className="font-mono font-bold mt-2 text-sm" style={{ color: COLORS[i] }}>
                   {r.uci_points?.toLocaleString("da-DK")} CZ$
                 </p>
                 {r.is_u25 && (
-                  <span className="text-[9px] uppercase bg-blue-500/20 text-blue-400
+                  <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700
                     px-1.5 py-0.5 rounded mt-1 inline-block">U25</span>
                 )}
               </div>
@@ -154,17 +154,17 @@ export default function RiderComparePage() {
           </div>
 
           {/* Stats comparison */}
-          <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
             {STATS.map((stat, idx) => {
               const bestId = getBestForStat(stat.key);
               return (
                 <div key={stat.key}
-                  className={`grid items-center py-3 px-4 border-b border-white/5 last:border-0
-                    ${idx % 2 === 0 ? "bg-white/[0.01]" : ""}`}
+                  className={`grid items-center py-3 px-4 border-b border-slate-200 last:border-0
+                    ${idx % 2 === 0 ? "bg-transparent" : ""}`}
                   style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-white/20 w-4 text-center">{stat.icon}</span>
-                    <span className="text-white/50 text-sm">{stat.label}</span>
+                    <span className="text-slate-300 w-4 text-center">{stat.icon}</span>
+                    <span className="text-slate-500 text-sm">{stat.label}</span>
                   </div>
                   {fullRiders.map((r, i) => {
                     const val = r[stat.key];
@@ -172,7 +172,7 @@ export default function RiderComparePage() {
                     return (
                       <div key={r.id} className="px-2">
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-white/5 rounded-full h-2">
+                          <div className="flex-1 bg-slate-100 rounded-full h-2">
                             <div className="h-2 rounded-full transition-all duration-500"
                               style={{
                                 width: `${Math.round(((val || 0) / 99) * 100)}%`,
@@ -180,7 +180,7 @@ export default function RiderComparePage() {
                               }} />
                           </div>
                           <span className={`font-mono text-xs font-bold w-6 text-right flex-shrink-0
-                            ${isBest ? "text-white" : "text-white/40"}`}
+                            ${isBest ? "text-slate-900" : "text-slate-500"}`}
                             style={{ color: isBest ? COLORS[i] : undefined }}>
                             {val ?? "—"}
                           </span>

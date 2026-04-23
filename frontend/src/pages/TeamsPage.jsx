@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
@@ -66,30 +66,30 @@ export default function TeamsPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
     </div>
   );
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-white">Hold</h1>
-        <p className="text-white/30 text-sm">{teams.length} managere</p>
+        <h1 className="text-xl font-bold text-slate-900">Hold</h1>
+        <p className="text-slate-400 text-sm">{teams.length} managere</p>
       </div>
 
       {/* Filters */}
       <div className="flex gap-2 mb-5 flex-wrap">
         <input type="text" placeholder="Søg hold..." value={search}
           onChange={e => setSearch(e.target.value)}
-          className="bg-[#0f0f18] border border-white/8 rounded-lg px-3 py-2
-            text-white text-sm placeholder-white/20 w-48
-            focus:outline-none focus:border-[#e8c547]/50" />
+          className="bg-white border border-slate-200 rounded-lg px-3 py-2
+            text-slate-900 text-sm placeholder-slate-400 w-48
+            focus:outline-none focus:border-amber-400" />
         {["all","1","2","3"].map(d => (
           <button key={d} onClick={() => setDivFilter(d)}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border
               ${divFilter === d
-                ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/30"
-                : "bg-[#0f0f18] text-white/40 border-white/8 hover:text-white"}`}>
+                ? "bg-amber-50 text-amber-700 border-amber-300"
+                : "bg-white text-slate-500 border-slate-200 hover:text-slate-900"}`}>
             {d === "all" ? "Alle" : `Div ${d}`}
           </button>
         ))}
@@ -107,7 +107,7 @@ export default function TeamsPage() {
                 style={{ color: DIV_COLORS[div] }}>
                 {DIV_NAMES[div]}
               </span>
-              <span className="text-white/20 text-xs">— {divTeams.length} hold</span>
+              <span className="text-slate-300 text-xs">— {divTeams.length} hold</span>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               {divTeams.map(team => {
@@ -119,26 +119,26 @@ export default function TeamsPage() {
                 return (
                   <div key={team.id}
                     onClick={() => navigate(`/teams/${team.id}`)}
-                    className={`bg-[#0f0f18] border rounded-xl p-4 cursor-pointer
-                      hover:border-white/15 transition-all group
-                      ${isMe ? "border-[#e8c547]/25 shadow-[0_0_15px_rgba(232,197,71,0.05)]" : "border-white/5"}`}>
+                    className={`bg-white border rounded-xl p-4 cursor-pointer
+                      hover:border-slate-200 transition-all group
+                      ${isMe ? "border-[#e8c547]/25 shadow-[0_0_15px_rgba(232,197,71,0.05)]" : "border-slate-200"}`}>
 
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className={`font-semibold text-sm group-hover:text-[#e8c547] transition-colors
-                            ${isMe ? "text-[#e8c547]" : "text-white"}`}>
+                          <p className={`font-semibold text-sm group-hover:text-amber-700 transition-colors
+                            ${isMe ? "text-amber-700" : "text-slate-900"}`}>
                             {team.name}
                           </p>
                           {isMe && (
-                            <span className="text-[9px] uppercase bg-[#e8c547]/10 text-[#e8c547]
-                              px-1.5 py-0.5 rounded-full border border-[#e8c547]/20">Dig</span>
+                            <span className="text-[9px] uppercase bg-amber-50 text-amber-700
+                              px-1.5 py-0.5 rounded-full border border-amber-200">Dig</span>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOnline ? "bg-green-400 shadow-[0_0_4px_rgba(74,222,128,0.8)]" : "bg-white/15"}`} />
-                          <p className="text-white/30 text-xs">{riderCount} ryttere</p>
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOnline ? "bg-green-400 shadow-[0_0_4px_rgba(74,222,128,0.8)]" : "bg-slate-100"}`} />
+                          <p className="text-slate-400 text-xs">{riderCount} ryttere</p>
                         </div>
                       </div>
             
@@ -146,21 +146,21 @@ export default function TeamsPage() {
 
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-white/3 rounded-lg p-2 text-center">
-                        <p className="text-white/25 text-[9px] uppercase tracking-wider">Point</p>
-                        <p className="text-white font-mono font-bold text-xs mt-0.5">
+                      <div className="bg-slate-50 rounded-lg p-2 text-center">
+                        <p className="text-slate-400 text-[9px] uppercase tracking-wider">Point</p>
+                        <p className="text-slate-900 font-mono font-bold text-xs mt-0.5">
                           {standing?.total_points?.toLocaleString("da-DK") || 0}
                         </p>
                       </div>
-                      <div className="bg-white/3 rounded-lg p-2 text-center">
-                        <p className="text-white/25 text-[9px] uppercase tracking-wider">Etapesejre</p>
-                        <p className="text-white font-mono font-bold text-xs mt-0.5">
+                      <div className="bg-slate-50 rounded-lg p-2 text-center">
+                        <p className="text-slate-400 text-[9px] uppercase tracking-wider">Etapesejre</p>
+                        <p className="text-slate-900 font-mono font-bold text-xs mt-0.5">
                           {standing?.stage_wins || 0}
                         </p>
                       </div>
-                      <div className="bg-white/3 rounded-lg p-2 text-center">
-                        <p className="text-white/25 text-[9px] uppercase tracking-wider">GC-sejre</p>
-                        <p className="text-white font-mono font-bold text-xs mt-0.5">
+                      <div className="bg-slate-50 rounded-lg p-2 text-center">
+                        <p className="text-slate-400 text-[9px] uppercase tracking-wider">GC-sejre</p>
+                        <p className="text-slate-900 font-mono font-bold text-xs mt-0.5">
                           {standing?.gc_wins || 0}
                         </p>
                       </div>
@@ -174,7 +174,7 @@ export default function TeamsPage() {
       })}
 
       {filtered.length === 0 && (
-        <div className="text-center py-16 text-white/20">
+        <div className="text-center py-16 text-slate-300">
           <p className="text-4xl mb-3">◈</p>
           <p>Ingen hold matcher din søgning</p>
         </div>

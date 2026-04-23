@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
@@ -90,29 +90,29 @@ function ManualOverride({ onMsg, onRefresh, teams }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div className="relative">
-        <label className="block text-white/30 text-xs mb-1">Søg rytter</label>
+        <label className="block text-slate-400 text-xs mb-1">Søg rytter</label>
         <input type="text" value={query} onChange={e => searchRiders(e.target.value)}
           placeholder="Navn..."
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#e8c547]/50" />
+          className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400" />
         {riderResults.length > 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-[#1a1a2e] border border-white/10 rounded-lg overflow-hidden shadow-xl">
+          <div className="absolute z-10 w-full mt-1 bg-slate-50 border border-slate-300 rounded-lg overflow-hidden shadow-xl">
             {riderResults.map(r => (
-              <div key={r.id} className="px-3 py-2 cursor-pointer hover:bg-white/5 border-b border-white/5 last:border-0"
+              <div key={r.id} className="px-3 py-2 cursor-pointer hover:bg-slate-100 border-b border-slate-200 last:border-0"
                 onClick={() => { setSelectedRider(r); setQuery(`${r.firstname} ${r.lastname}`); setRiderResults([]); }}>
-                <p className="text-white text-sm">{r.firstname} {r.lastname}</p>
-                <p className="text-white/30 text-xs">{r.team?.name || "Fri agent"} — {r.uci_points?.toLocaleString()} CZ$</p>
+                <p className="text-slate-900 text-sm">{r.firstname} {r.lastname}</p>
+                <p className="text-slate-400 text-xs">{r.team?.name || "Fri agent"} — {r.uci_points?.toLocaleString()} CZ$</p>
               </div>
             ))}
           </div>
         )}
         {selectedRider && (
-          <p className="text-[#e8c547] text-xs mt-1">✓ {selectedRider.firstname} {selectedRider.lastname}</p>
+          <p className="text-amber-700 text-xs mt-1">✓ {selectedRider.firstname} {selectedRider.lastname}</p>
         )}
       </div>
       <div>
-        <label className="block text-white/30 text-xs mb-1">Flyt til hold</label>
+        <label className="block text-slate-400 text-xs mb-1">Flyt til hold</label>
         <select value={selectedTeam} onChange={e => setSelectedTeam(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+          className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none">
           <option value="">Fri agent (intet hold)</option>
           {teams.map(t => <option key={t.id} value={t.id}>{t.name} (Div {t.division})</option>)}
         </select>
@@ -131,8 +131,8 @@ function ManualOverride({ onMsg, onRefresh, teams }) {
 // ── Section wrapper ───────────────────────────────────────────────────────────
 function Section({ title, children }) {
   return (
-    <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mb-4">
-      <h2 className="text-white font-semibold text-sm mb-4 flex items-center gap-2">
+    <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4">
+      <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
         <span className="w-1 h-4 bg-red-400 rounded-full" />{title}
       </h2>
       {children}
@@ -427,7 +427,7 @@ export default function AdminPage() {
 
   // ── Konstanter til visning ─────────────────────────────────────────────────
   const windowOpen = window_?.status === "open";
-  const statusColor = { upcoming: "text-white/40", active: "text-green-400", completed: "text-white/20" };
+  const statusColor = { upcoming: "text-slate-500", active: "text-green-700", completed: "text-slate-300" };
   const statusLabel = { upcoming: "Kommende", active: "Aktiv", completed: "Afsluttet" };
   const loanTypeLabels = { short: "Kort lån", long: "Langt lån", emergency: "Nødlån" };
 
@@ -442,41 +442,41 @@ export default function AdminPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-white">Admin Panel</h1>
-        <p className="text-white/30 text-sm">Sæsonstyring, transfervindue og løbskalender</p>
+        <h1 className="text-xl font-bold text-slate-900">Admin Panel</h1>
+        <p className="text-slate-400 text-sm">Sæsonstyring, transfervindue og løbskalender</p>
       </div>
 
       {msg.text && (
         <div className={`mb-4 px-4 py-3 rounded-xl text-sm border
-          ${msg.type === "error" ? "bg-red-500/10 text-red-400 border-red-500/20" :
-            msg.type === "info"  ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-            "bg-green-500/10 text-green-400 border-green-500/20"}`}>
+          ${msg.type === "error" ? "bg-red-50 text-red-700 border-red-200" :
+            msg.type === "info"  ? "bg-blue-500/10 text-blue-700 border-blue-500/20" :
+            "bg-green-50 text-green-700 border-green-200"}`}>
           {msg.text}
         </div>
       )}
 
       {/* ── Transfervindue ──────────────────────────────────────────────────── */}
       <Section title="Transfervindue">
-        <div className="flex items-center justify-between bg-white/3 rounded-xl p-4 mb-3">
+        <div className="flex items-center justify-between bg-slate-50 rounded-xl p-4 mb-3">
           <div>
-            <p className="text-white font-medium text-sm">
-              Status: <span className={windowOpen ? "text-green-400" : "text-white/40"}>
+            <p className="text-slate-900 font-medium text-sm">
+              Status: <span className={windowOpen ? "text-green-700" : "text-slate-500"}>
                 {windowOpen ? "🟢 Åbent" : "🔒 Lukket"}
               </span>
             </p>
             {window_?.opened_at && (
-              <p className="text-white/30 text-xs mt-0.5">Åbnede: {new Date(window_.opened_at).toLocaleString("da-DK")}</p>
+              <p className="text-slate-400 text-xs mt-0.5">Åbnede: {new Date(window_.opened_at).toLocaleString("da-DK")}</p>
             )}
           </div>
           <button onClick={toggleTransferWindow} disabled={loading.window}
             className={`px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
               ${windowOpen
-                ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
-                : "bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20"}`}>
+                ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
+                : "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"}`}>
             {loading.window ? "..." : windowOpen ? "Luk vindue" : "Åbn vindue"}
           </button>
         </div>
-        <p className="text-white/20 text-xs">Når vinduet åbnes behandles alle ventende transfers automatisk.</p>
+        <p className="text-slate-300 text-xs">Når vinduet åbnes behandles alle ventende transfers automatisk.</p>
       </Section>
 
       {/* ── Sæsoner ─────────────────────────────────────────────────────────── */}
@@ -484,28 +484,28 @@ export default function AdminPage() {
         {seasons.length > 0 && (
           <div className="mb-4 flex flex-col gap-2">
             {seasons.map(s => (
-              <div key={s.id} className="flex items-center justify-between bg-white/3 rounded-lg px-4 py-3">
+              <div key={s.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-3">
                 <div>
-                  <span className="text-white font-medium text-sm">Sæson {s.number}</span>
+                  <span className="text-slate-900 font-medium text-sm">Sæson {s.number}</span>
                   <span className={`ml-3 text-xs ${statusColor[s.status]}`}>{statusLabel[s.status]}</span>
-                  <p className="text-white/20 text-xs mt-0.5 font-mono truncate">{s.id}</p>
+                  <p className="text-slate-300 text-xs mt-0.5 font-mono truncate">{s.id}</p>
                 </div>
                 <div className="flex gap-2">
                   {s.status !== "upcoming" && (
                     <button onClick={() => handleRebuildStandings(s.id)} disabled={loading[`rebuild_${s.id}`]}
-                      className="px-3 py-1.5 bg-white/5 text-white/70 border border-white/10 rounded-lg text-xs disabled:opacity-50 hover:bg-white/10 hover:text-white">
+                      className="px-3 py-1.5 bg-slate-100 text-slate-600 border border-slate-300 rounded-lg text-xs disabled:opacity-50 hover:bg-slate-100 hover:text-slate-900">
                       {loading[`rebuild_${s.id}`] ? "..." : "↻ Standings"}
                     </button>
                   )}
                   {s.status === "upcoming" && (
                     <button onClick={() => handleSeasonAction(s.id, "start")} disabled={loading[`start_${s.id}`]}
-                      className="px-3 py-1.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg text-xs disabled:opacity-50">
+                      className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs disabled:opacity-50">
                       {loading[`start_${s.id}`] ? "..." : "▶ Start"}
                     </button>
                   )}
                   {s.status === "active" && (
                     <button onClick={() => handleSeasonAction(s.id, "end")} disabled={loading[`end_${s.id}`]}
-                      className="px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-xs disabled:opacity-50">
+                      className="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs disabled:opacity-50">
                       {loading[`end_${s.id}`] ? "..." : "⏹ Afslut"}
                     </button>
                   )}
@@ -516,16 +516,16 @@ export default function AdminPage() {
         )}
         <form onSubmit={handleCreateSeason} className="flex gap-3 flex-wrap">
           <div>
-            <label className="block text-white/30 text-xs mb-1">Sæsonnummer</label>
+            <label className="block text-slate-400 text-xs mb-1">Sæsonnummer</label>
             <input type="number" required placeholder="1" value={seasonForm.number}
               onChange={e => setSeasonForm(f => ({ ...f, number: e.target.value }))}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm w-28 focus:outline-none focus:border-[#e8c547]/50" />
+              className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm w-28 focus:outline-none focus:border-amber-400" />
           </div>
           <div>
-            <label className="block text-white/30 text-xs mb-1">Løbsdage</label>
+            <label className="block text-slate-400 text-xs mb-1">Løbsdage</label>
             <input type="number" value={seasonForm.race_days_total}
               onChange={e => setSeasonForm(f => ({ ...f, race_days_total: e.target.value }))}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm w-28 focus:outline-none focus:border-[#e8c547]/50" />
+              className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm w-28 focus:outline-none focus:border-amber-400" />
           </div>
           <div className="flex items-end">
             <button type="submit" disabled={loading.season}
@@ -540,32 +540,32 @@ export default function AdminPage() {
       <Section title="Løbskalender">
         {/* Eksisterende løb med redigering */}
         {races.length > 0 && (
-          <div className="mb-5 overflow-hidden rounded-lg border border-white/5">
+          <div className="mb-5 overflow-hidden rounded-lg border border-slate-200">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-white/5">
-                  <th className="px-3 py-2 text-left text-white/30">Løb</th>
-                  <th className="px-3 py-2 text-left text-white/30 hidden sm:table-cell">Klasse</th>
-                  <th className="px-3 py-2 text-left text-white/30 hidden md:table-cell">Dato</th>
-                  <th className="px-3 py-2 text-right text-white/30">Handlinger</th>
+                <tr className="border-b border-slate-200">
+                  <th className="px-3 py-2 text-left text-slate-400">Løb</th>
+                  <th className="px-3 py-2 text-left text-slate-400 hidden sm:table-cell">Klasse</th>
+                  <th className="px-3 py-2 text-left text-slate-400 hidden md:table-cell">Dato</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Handlinger</th>
                 </tr>
               </thead>
               <tbody>
                 {races.map(r => (
                   <>
-                    <tr key={r.id} className="border-b border-white/4 hover:bg-white/2">
+                    <tr key={r.id} className="border-b border-slate-100 hover:bg-slate-100">
                       <td className="px-3 py-2.5">
-                        <p className="text-white font-medium">{r.name}</p>
-                        <p className="text-white/30">{r.race_type === "stage_race" ? `${r.stages} etaper` : "Enkeltdagsløb"}</p>
+                        <p className="text-slate-900 font-medium">{r.name}</p>
+                        <p className="text-slate-400">{r.race_type === "stage_race" ? `${r.stages} etaper` : "Enkeltdagsløb"}</p>
                       </td>
                       <td className="px-3 py-2.5 hidden sm:table-cell">
                         {r.race_class ? (
-                          <span className="text-[#e8c547] text-xs font-mono">{r.race_class}</span>
+                          <span className="text-amber-700 text-xs font-mono">{r.race_class}</span>
                         ) : (
-                          <span className="text-white/20 text-xs italic">Ikke sat</span>
+                          <span className="text-slate-300 text-xs italic">Ikke sat</span>
                         )}
                       </td>
-                      <td className="px-3 py-2.5 text-white/40 hidden md:table-cell">
+                      <td className="px-3 py-2.5 text-slate-500 hidden md:table-cell">
                         {r.start_date ? new Date(r.start_date).toLocaleDateString("da-DK") : "—"}
                       </td>
                       <td className="px-3 py-2.5 text-right">
@@ -574,13 +574,13 @@ export default function AdminPage() {
                             onClick={() => { setImportRaceId(r.id); showMsg(`✅ Valgt til import: ${r.name}`, "info"); }}
                             className={`px-2 py-1 rounded text-xs border transition-all
                               ${importRaceId === r.id
-                                ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20"
-                                : "bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white"}`}>
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-100 hover:text-slate-900"}`}>
                             {importRaceId === r.id ? "✓ Valgt" : "Vælg"}
                           </button>
                           <button
                             onClick={() => setEditingRace(editingRace?.id === r.id ? null : { ...r })}
-                            className="px-2 py-1 bg-white/5 text-white/40 border border-white/10 rounded text-xs hover:bg-white/10 hover:text-white transition-all">
+                            className="px-2 py-1 bg-slate-100 text-slate-500 border border-slate-300 rounded text-xs hover:bg-slate-100 hover:text-slate-900 transition-all">
                             ✏ Rediger
                           </button>
                         </div>
@@ -592,16 +592,16 @@ export default function AdminPage() {
                         <td colSpan={4} className="px-3 py-4">
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
                             <div className="col-span-2 sm:col-span-1">
-                              <label className="block text-white/30 text-xs mb-1">Løbsnavn</label>
+                              <label className="block text-slate-400 text-xs mb-1">Løbsnavn</label>
                               <input type="text" value={editingRace.name}
                                 onChange={e => setEditingRace(er => ({ ...er, name: e.target.value }))}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#e8c547]/50" />
+                                className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400" />
                             </div>
                             <div>
-                              <label className="block text-white/30 text-xs mb-1">Løbsklasse</label>
+                              <label className="block text-slate-400 text-xs mb-1">Løbsklasse</label>
                               <select value={editingRace.race_class || ""}
                                 onChange={e => setEditingRace(er => ({ ...er, race_class: e.target.value }))}
-                                className="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#e8c547]/50">
+                                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400">
                                 <option value="">— Ingen klasse —</option>
                                 {["Grand Tour", "Etapeløb", "Endagsløb"].map(type => (
                                   <optgroup key={type} label={type}>
@@ -613,31 +613,31 @@ export default function AdminPage() {
                               </select>
                             </div>
                             <div>
-                              <label className="block text-white/30 text-xs mb-1">Type</label>
+                              <label className="block text-slate-400 text-xs mb-1">Type</label>
                               <select value={editingRace.race_type}
                                 onChange={e => setEditingRace(er => ({ ...er, race_type: e.target.value }))}
-                                className="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+                                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none">
                                 <option value="stage_race">Etapeløb</option>
                                 <option value="single">Enkeltdagsløb</option>
                               </select>
                             </div>
                             <div>
-                              <label className="block text-white/30 text-xs mb-1">Etaper</label>
+                              <label className="block text-slate-400 text-xs mb-1">Etaper</label>
                               <input type="number" min={1} value={editingRace.stages}
                                 onChange={e => setEditingRace(er => ({ ...er, stages: e.target.value }))}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+                                className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
                             </div>
                             <div>
-                              <label className="block text-white/30 text-xs mb-1">Startdato</label>
+                              <label className="block text-slate-400 text-xs mb-1">Startdato</label>
                               <input type="date" value={editingRace.start_date || ""}
                                 onChange={e => setEditingRace(er => ({ ...er, start_date: e.target.value }))}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+                                className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
                             </div>
                             <div>
-                              <label className="block text-white/30 text-xs mb-1">Præmiepulje</label>
+                              <label className="block text-slate-400 text-xs mb-1">Præmiepulje</label>
                               <input type="number" value={editingRace.prize_pool || 0}
                                 onChange={e => setEditingRace(er => ({ ...er, prize_pool: e.target.value }))}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+                                className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
                             </div>
                           </div>
                           <div className="flex gap-2">
@@ -646,7 +646,7 @@ export default function AdminPage() {
                               {loading.raceEdit ? "Gemmer..." : "Gem ændringer"}
                             </button>
                             <button onClick={() => setEditingRace(null)}
-                              className="px-4 py-2 bg-white/5 text-white/40 rounded-lg text-sm hover:bg-white/10">
+                              className="px-4 py-2 bg-slate-100 text-slate-500 rounded-lg text-sm hover:bg-slate-100">
                               Annuller
                             </button>
                           </div>
@@ -661,26 +661,26 @@ export default function AdminPage() {
         )}
 
         {/* Nyt løb */}
-        <p className="text-white/30 text-xs uppercase tracking-wider mb-2 font-semibold">Tilføj nyt løb</p>
+        <p className="text-slate-400 text-xs uppercase tracking-wider mb-2 font-semibold">Tilføj nyt løb</p>
         <form onSubmit={handleCreateRace} className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-white/30 text-xs mb-1">Sæson</label>
+            <label className="block text-slate-400 text-xs mb-1">Sæson</label>
             <select value={raceForm.season_id} onChange={e => setRaceForm(f => ({ ...f, season_id: e.target.value }))} required
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+              className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none">
               <option value="">Vælg sæson...</option>
               {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-white/30 text-xs mb-1">Løbsnavn</label>
+            <label className="block text-slate-400 text-xs mb-1">Løbsnavn</label>
             <input type="text" required placeholder="Tour de France" value={raceForm.name}
               onChange={e => setRaceForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+              className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
           </div>
           <div>
-            <label className="block text-white/30 text-xs mb-1">Løbsklasse</label>
+            <label className="block text-slate-400 text-xs mb-1">Løbsklasse</label>
             <select value={raceForm.race_class} onChange={e => setRaceForm(f => ({ ...f, race_class: e.target.value }))}
-              className="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none">
               <option value="">— Ingen klasse —</option>
               {["Grand Tour", "Etapeløb", "Endagsløb"].map(type => (
                 <optgroup key={type} label={type}>
@@ -692,30 +692,30 @@ export default function AdminPage() {
             </select>
           </div>
           <div>
-            <label className="block text-white/30 text-xs mb-1">Type</label>
+            <label className="block text-slate-400 text-xs mb-1">Type</label>
             <select value={raceForm.race_type} onChange={e => setRaceForm(f => ({ ...f, race_type: e.target.value }))}
-              className="w-full bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+              className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none">
               <option value="stage_race">Etapeløb</option>
               <option value="single">Enkeltdagsløb</option>
             </select>
           </div>
           <div>
-            <label className="block text-white/30 text-xs mb-1">Etaper</label>
+            <label className="block text-slate-400 text-xs mb-1">Etaper</label>
             <input type="number" min={1} value={raceForm.stages}
               onChange={e => setRaceForm(f => ({ ...f, stages: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+              className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
           </div>
           <div>
-            <label className="block text-white/30 text-xs mb-1">Startdato</label>
+            <label className="block text-slate-400 text-xs mb-1">Startdato</label>
             <input type="date" value={raceForm.start_date}
               onChange={e => setRaceForm(f => ({ ...f, start_date: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+              className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
           </div>
           <div>
-            <label className="block text-white/30 text-xs mb-1">Præmiepulje</label>
+            <label className="block text-slate-400 text-xs mb-1">Præmiepulje</label>
             <input type="number" value={raceForm.prize_pool}
               onChange={e => setRaceForm(f => ({ ...f, prize_pool: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+              className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
           </div>
           <div className="flex items-end">
             <button type="submit" disabled={loading.race}
@@ -728,16 +728,16 @@ export default function AdminPage() {
 
       {/* ── Pointtabel per løbsklasse (NY) ──────────────────────────────────── */}
       <Section title="Pointtabel per løbsklasse">
-        <p className="text-white/30 text-xs mb-4 leading-relaxed">
+        <p className="text-slate-400 text-xs mb-4 leading-relaxed">
           Vælg en løbsklasse og sæt point for hver benævnelse og placering.
           Klik på et felt for at redigere. Tomme felter giver 0 point.
         </p>
 
         {/* Klasse-vælger */}
         <div className="mb-4">
-          <label className="block text-white/30 text-xs mb-1">Løbsklasse</label>
+          <label className="block text-slate-400 text-xs mb-1">Løbsklasse</label>
           <select value={selectedPointsClass} onChange={e => { setSelectedPointsClass(e.target.value); setEditingPoint(null); }}
-            className="bg-[#0a0a0f] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#e8c547]/50 min-w-[260px]">
+            className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400 min-w-[260px]">
             {["Grand Tour", "Etapeløb", "Endagsløb"].map(type => (
               <optgroup key={type} label={type}>
                 {RACE_CLASSES.filter(c => c.type === type).map(c => (
@@ -749,13 +749,13 @@ export default function AdminPage() {
         </div>
 
         {/* Pointgrid */}
-        <div className="overflow-x-auto rounded-lg border border-white/5">
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-white/5">
-                <th className="px-3 py-2 text-left text-white/30 font-medium">Benævnelse</th>
+              <tr className="border-b border-slate-200">
+                <th className="px-3 py-2 text-left text-slate-400 font-medium">Benævnelse</th>
                 {Array.from({ length: Math.max(...Object.values(MAX_RANKS)) }, (_, i) => i + 1).map(r => (
-                  <th key={r} className="px-2 py-2 text-center text-white/30 font-medium w-12">#{r}</th>
+                  <th key={r} className="px-2 py-2 text-center text-slate-400 font-medium w-12">#{r}</th>
                 ))}
               </tr>
             </thead>
@@ -763,10 +763,10 @@ export default function AdminPage() {
               {RESULT_TYPES.map(rt => {
                 const maxRank = MAX_RANKS[rt.key] || 10;
                 return (
-                  <tr key={rt.key} className="border-b border-white/4 last:border-0">
-                    <td className="px-3 py-2 text-white/60 font-medium whitespace-nowrap">{rt.label}</td>
+                  <tr key={rt.key} className="border-b border-slate-100 last:border-0">
+                    <td className="px-3 py-2 text-slate-500 font-medium whitespace-nowrap">{rt.label}</td>
                     {Array.from({ length: Math.max(...Object.values(MAX_RANKS)) }, (_, i) => i + 1).map(rank => {
-                      if (rank > maxRank) return <td key={rank} className="px-2 py-2 text-center text-white/10">—</td>;
+                      if (rank > maxRank) return <td key={rank} className="px-2 py-2 text-center text-slate-300">—</td>;
                       const currentPts = getPoints(selectedPointsClass, rt.key, rank);
                       const isEditing = editingPoint?.race_class === selectedPointsClass && editingPoint?.result_type === rt.key && editingPoint?.rank === rank;
                       return (
@@ -783,14 +783,14 @@ export default function AdminPage() {
                                   if (e.key === "Escape") setEditingPoint(null);
                                 }}
                                 onBlur={e => savePoint(selectedPointsClass, rt.key, rank, e.target.value)}
-                                className="w-14 bg-[#0a0a0f] border border-[#e8c547]/50 rounded px-1 py-0.5 text-white text-xs font-mono text-center focus:outline-none"
+                                className="w-14 bg-white border border-[#e8c547]/50 rounded px-1 py-0.5 text-slate-900 text-xs font-mono text-center focus:outline-none"
                               />
                             </div>
                           ) : (
                             <button
                               onClick={() => setEditingPoint({ race_class: selectedPointsClass, result_type: rt.key, rank })}
-                              className={`w-full px-1 py-1 rounded text-xs font-mono transition-all hover:bg-white/5
-                                ${currentPts !== "" && currentPts > 0 ? "text-[#e8c547]" : "text-white/20 hover:text-white/40"}`}>
+                              className={`w-full px-1 py-1 rounded text-xs font-mono transition-all hover:bg-slate-100
+                                ${currentPts !== "" && currentPts > 0 ? "text-amber-700" : "text-slate-300 hover:text-slate-500"}`}>
                               {currentPts !== "" ? currentPts : "—"}
                             </button>
                           )}
@@ -803,31 +803,31 @@ export default function AdminPage() {
             </tbody>
           </table>
         </div>
-        <p className="text-white/20 text-xs mt-2">Klik på et felt for at redigere. Enter eller klik uden for feltet for at gemme. Escape for at annullere.</p>
+        <p className="text-slate-300 text-xs mt-2">Klik på et felt for at redigere. Enter eller klik uden for feltet for at gemme. Escape for at annullere.</p>
       </Section>
 
       {/* ── Import resultater ────────────────────────────────────────────────── */}
       <Section title="Importer løbsresultater (Excel)">
-        <p className="text-white/30 text-xs mb-4">Vælg løb i tabellen ovenfor, angiv etape og upload fil.</p>
+        <p className="text-slate-400 text-xs mb-4">Vælg løb i tabellen ovenfor, angiv etape og upload fil.</p>
         <div className="flex gap-3 flex-wrap items-end">
           <div>
-            <label className="block text-white/30 text-xs mb-1">Valgt løb</label>
-            <p className="text-white text-sm px-3 py-2 bg-white/3 rounded-lg border border-white/5">
-              {races.find(r => r.id === importRaceId)?.name || <span className="text-white/20 italic">Intet valgt</span>}
+            <label className="block text-slate-400 text-xs mb-1">Valgt løb</label>
+            <p className="text-slate-900 text-sm px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+              {races.find(r => r.id === importRaceId)?.name || <span className="text-slate-300 italic">Intet valgt</span>}
             </p>
           </div>
           <div>
-            <label className="block text-white/30 text-xs mb-1">Etape #</label>
+            <label className="block text-slate-400 text-xs mb-1">Etape #</label>
             <input type="number" min={1} value={importStage}
               onChange={e => setImportStage(parseInt(e.target.value))}
-              className="w-24 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+              className="w-24 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
           </div>
           <div>
-            <label className="block text-white/30 text-xs mb-1">Excel-fil</label>
+            <label className="block text-slate-400 text-xs mb-1">Excel-fil</label>
             <label className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-bold border transition-all flex items-center gap-2
               ${importRaceId
-                ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20 hover:bg-[#e8c547]/20"
-                : "bg-white/5 text-white/20 border-white/10 cursor-not-allowed"}`}>
+                ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50"
+                : "bg-slate-100 text-slate-300 border-slate-300 cursor-not-allowed"}`}>
               {loading.import ? "⏳ Importerer..." : "📁 Upload fil"}
               <input type="file" accept=".xlsx,.xls,.csv" className="hidden"
                 onChange={handleImportResults} disabled={!importRaceId || loading.import} />
@@ -838,7 +838,7 @@ export default function AdminPage() {
 
       {/* ── Manuel override ──────────────────────────────────────────────────── */}
       <Section title="Manuel override — flyt rytter">
-        <p className="text-white/30 text-xs mb-4">
+        <p className="text-slate-400 text-xs mb-4">
           Bruges til korrektioner og special-situationer. Handlingen logges ikke som en transaktion.
         </p>
         <ManualOverride onMsg={(text, type) => showMsg(text, type)} onRefresh={loadAll} teams={teams} />
@@ -848,63 +848,63 @@ export default function AdminPage() {
       <Section title="Sæsonafslutnings-preview">
         <div className="flex gap-3 mb-4 flex-wrap">
           <div className="flex-1">
-            <label className="block text-white/30 text-xs mb-1">Vælg sæson</label>
+            <label className="block text-slate-400 text-xs mb-1">Vælg sæson</label>
             <select value={previewSeason} onChange={e => setPreviewSeason(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+              className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none">
               <option value="">Vælg sæson...</option>
               {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
             </select>
           </div>
           <div className="flex items-end">
             <button onClick={loadSeasonPreview} disabled={loadingPreview || !previewSeason}
-              className="px-4 py-2 bg-white/5 text-white/60 border border-white/10 rounded-lg text-sm hover:bg-white/10 hover:text-white disabled:opacity-50">
+              className="px-4 py-2 bg-slate-100 text-slate-500 border border-slate-300 rounded-lg text-sm hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50">
               {loadingPreview ? "Indlæser..." : "Vis preview"}
             </button>
           </div>
         </div>
         {seasonPreview && (
-          <div className="overflow-x-auto rounded-lg border border-white/5">
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="w-full text-xs min-w-[700px]">
               <thead>
-                <tr className="border-b border-white/5">
-                  <th className="px-3 py-2 text-left text-white/30">Hold</th>
-                  <th className="px-3 py-2 text-right text-white/30">Balance</th>
-                  <th className="px-3 py-2 text-right text-white/30">Løntræk</th>
-                  <th className="px-3 py-2 text-right text-white/30">Renter</th>
-                  <th className="px-3 py-2 text-right text-white/30">Balance efter</th>
-                  <th className="px-3 py-2 text-right text-white/30">Nødlån?</th>
-                  <th className="px-3 py-2 text-right text-white/30">Tilfredshed</th>
-                  <th className="px-3 py-2 text-right text-white/30">Sponsor næste</th>
-                  <th className="px-3 py-2 text-right text-white/30">Rang</th>
+                <tr className="border-b border-slate-200">
+                  <th className="px-3 py-2 text-left text-slate-400">Hold</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Balance</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Løntræk</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Renter</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Balance efter</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Nødlån?</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Tilfredshed</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Sponsor næste</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Rang</th>
                 </tr>
               </thead>
               <tbody>
                 {seasonPreview.sort((a, b) => a.division - b.division || (a.current_rank || 99) - (b.current_rank || 99)).map(row => (
-                  <tr key={row.team_id} className={`border-b border-white/4 ${row.needs_emergency_loan ? "bg-red-500/5" : ""}`}>
+                  <tr key={row.team_id} className={`border-b border-slate-100 ${row.needs_emergency_loan ? "bg-red-500/5" : ""}`}>
                     <td className="px-3 py-2">
-                      <p className="text-white font-medium">{row.team_name}</p>
-                      <p className="text-white/30">Div {row.division}</p>
+                      <p className="text-slate-900 font-medium">{row.team_name}</p>
+                      <p className="text-slate-400">Div {row.division}</p>
                     </td>
-                    <td className="px-3 py-2 text-right text-white/60 font-mono">{row.current_balance?.toLocaleString("da-DK")}</td>
-                    <td className="px-3 py-2 text-right text-red-400 font-mono">-{row.salary_deduction?.toLocaleString("da-DK")}</td>
-                    <td className="px-3 py-2 text-right text-orange-400 font-mono">
+                    <td className="px-3 py-2 text-right text-slate-500 font-mono">{row.current_balance?.toLocaleString("da-DK")}</td>
+                    <td className="px-3 py-2 text-right text-red-700 font-mono">-{row.salary_deduction?.toLocaleString("da-DK")}</td>
+                    <td className="px-3 py-2 text-right text-orange-700 font-mono">
                       {row.loan_interest > 0 ? `-${row.loan_interest?.toLocaleString("da-DK")}` : "—"}
                     </td>
-                    <td className={`px-3 py-2 text-right font-mono font-bold ${row.balance_after < 0 ? "text-red-400" : "text-green-400"}`}>
+                    <td className={`px-3 py-2 text-right font-mono font-bold ${row.balance_after < 0 ? "text-red-700" : "text-green-700"}`}>
                       {row.balance_after?.toLocaleString("da-DK")}
                     </td>
                     <td className="px-3 py-2 text-right">
                       {row.needs_emergency_loan
-                        ? <span className="text-red-400 font-mono">+{row.emergency_loan_amount?.toLocaleString("da-DK")}</span>
-                        : <span className="text-white/20">—</span>}
+                        ? <span className="text-red-700 font-mono">+{row.emergency_loan_amount?.toLocaleString("da-DK")}</span>
+                        : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="px-3 py-2 text-right font-mono">
-                      <span className={row.board_satisfaction >= 70 ? "text-green-400" : row.board_satisfaction >= 40 ? "text-[#e8c547]" : "text-red-400"}>
+                      <span className={row.board_satisfaction >= 70 ? "text-green-700" : row.board_satisfaction >= 40 ? "text-amber-700" : "text-red-700"}>
                         {row.board_satisfaction}%
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right text-[#e8c547] font-mono">{row.next_season_sponsor?.toLocaleString("da-DK")}</td>
-                    <td className="px-3 py-2 text-right text-white/60 font-mono">#{row.current_rank || "—"}</td>
+                    <td className="px-3 py-2 text-right text-amber-700 font-mono">{row.next_season_sponsor?.toLocaleString("da-DK")}</td>
+                    <td className="px-3 py-2 text-right text-slate-500 font-mono">#{row.current_rank || "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -912,7 +912,7 @@ export default function AdminPage() {
           </div>
         )}
         {seasonPreview && (
-          <p className="text-white/20 text-xs mt-2">
+          <p className="text-slate-300 text-xs mt-2">
             Preview er ikke bindende. Bekræft og afslut sæson via "⏹ Afslut"-knappen ovenfor.
           </p>
         )}
@@ -922,28 +922,28 @@ export default function AdminPage() {
       <Section title="Manuel balancejustering">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label className="block text-white/30 text-xs mb-1">Hold</label>
+            <label className="block text-slate-400 text-xs mb-1">Hold</label>
             <select value={balTeam} onChange={e => setBalTeam(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+              className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none">
               <option value="">Vælg hold...</option>
               {teams.map(t => <option key={t.id} value={t.id}>{t.name} (Div {t.division})</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-white/30 text-xs mb-1">Beløb (positiv = indsæt, negativ = træk)</label>
+            <label className="block text-slate-400 text-xs mb-1">Beløb (positiv = indsæt, negativ = træk)</label>
             <input type="number" value={balAmount} onChange={e => setBalAmount(e.target.value)}
               placeholder="fx 500 eller -200"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none font-mono" />
+              className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none font-mono" />
           </div>
           <div>
-            <label className="block text-white/30 text-xs mb-1">Årsag</label>
+            <label className="block text-slate-400 text-xs mb-1">Årsag</label>
             <input type="text" value={balReason} onChange={e => setBalReason(e.target.value)}
               placeholder="Beskriv årsag..."
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
+              className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none" />
           </div>
         </div>
         <button onClick={handleAdjustBalance} disabled={loading.balance || !balTeam || !balAmount}
-          className="mt-3 px-4 py-2 bg-white/5 text-white/60 border border-white/10 rounded-lg text-sm hover:bg-white/10 hover:text-white disabled:opacity-50 transition-all">
+          className="mt-3 px-4 py-2 bg-slate-100 text-slate-500 border border-slate-300 rounded-lg text-sm hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 transition-all">
           {loading.balance ? "Justerer..." : "Juster balance"}
         </button>
       </Section>
@@ -951,51 +951,51 @@ export default function AdminPage() {
       {/* ── Lånekonfiguration ────────────────────────────────────────────────── */}
       <Section title="Lånekonfiguration">
         {loanConfigs.length > 0 && (
-          <div className="overflow-hidden rounded-lg border border-white/5 mb-3">
+          <div className="overflow-hidden rounded-lg border border-slate-200 mb-3">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-white/5">
-                  <th className="px-3 py-2 text-left text-white/30">Division</th>
-                  <th className="px-3 py-2 text-left text-white/30">Type</th>
-                  <th className="px-3 py-2 text-right text-white/30">Gebyr</th>
-                  <th className="px-3 py-2 text-right text-white/30">Rente/sæson</th>
-                  <th className="px-3 py-2 text-right text-white/30">Sæsoner</th>
-                  <th className="px-3 py-2 text-right text-white/30">Gældsloft</th>
+                <tr className="border-b border-slate-200">
+                  <th className="px-3 py-2 text-left text-slate-400">Division</th>
+                  <th className="px-3 py-2 text-left text-slate-400">Type</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Gebyr</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Rente/sæson</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Sæsoner</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Gældsloft</th>
                 </tr>
               </thead>
               <tbody>
                 {loanConfigs.map(cfg => {
                   const isEditing = editingLoan?.id === cfg.id;
                   return (
-                    <tr key={cfg.id} className={`border-b border-white/4 cursor-pointer hover:bg-white/2 ${isEditing ? "bg-[#e8c547]/3" : ""}`}
+                    <tr key={cfg.id} className={`border-b border-slate-100 cursor-pointer hover:bg-slate-100 ${isEditing ? "bg-[#e8c547]/3" : ""}`}
                       onClick={() => setEditingLoan(isEditing ? null : { ...cfg })}>
-                      <td className="px-3 py-2 text-white/60">Div {cfg.division}</td>
-                      <td className="px-3 py-2 text-white font-medium">{loanTypeLabels[cfg.loan_type] || cfg.loan_type}</td>
+                      <td className="px-3 py-2 text-slate-500">Div {cfg.division}</td>
+                      <td className="px-3 py-2 text-slate-900 font-medium">{loanTypeLabels[cfg.loan_type] || cfg.loan_type}</td>
                       {isEditing ? (
                         <>
                           <td className="px-2 py-1"><input type="number" step="0.01" value={(editingLoan.origination_fee_pct * 100).toFixed(0)}
                             onChange={e => setEditingLoan(l => ({ ...l, origination_fee_pct: parseFloat(e.target.value) / 100 }))}
                             onClick={e => e.stopPropagation()}
-                            className="w-16 bg-white/5 border border-white/10 rounded px-2 py-1 text-white font-mono text-xs" /></td>
+                            className="w-16 bg-slate-100 border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs" /></td>
                           <td className="px-2 py-1"><input type="number" step="0.01" value={(editingLoan.interest_rate_pct * 100).toFixed(0)}
                             onChange={e => setEditingLoan(l => ({ ...l, interest_rate_pct: parseFloat(e.target.value) / 100 }))}
                             onClick={e => e.stopPropagation()}
-                            className="w-16 bg-white/5 border border-white/10 rounded px-2 py-1 text-white font-mono text-xs" /></td>
+                            className="w-16 bg-slate-100 border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs" /></td>
                           <td className="px-2 py-1"><input type="number" value={editingLoan.seasons}
                             onChange={e => setEditingLoan(l => ({ ...l, seasons: parseInt(e.target.value) }))}
                             onClick={e => e.stopPropagation()}
-                            className="w-16 bg-white/5 border border-white/10 rounded px-2 py-1 text-white font-mono text-xs" /></td>
+                            className="w-16 bg-slate-100 border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs" /></td>
                           <td className="px-2 py-1"><input type="number" value={editingLoan.debt_ceiling}
                             onChange={e => setEditingLoan(l => ({ ...l, debt_ceiling: parseInt(e.target.value) }))}
                             onClick={e => e.stopPropagation()}
-                            className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-white font-mono text-xs" /></td>
+                            className="w-20 bg-slate-100 border border-slate-300 rounded px-2 py-1 text-slate-900 font-mono text-xs" /></td>
                         </>
                       ) : (
                         <>
-                          <td className="px-3 py-2 text-right text-white/50 font-mono">{(cfg.origination_fee_pct * 100).toFixed(0)}%</td>
-                          <td className="px-3 py-2 text-right text-white/50 font-mono">{(cfg.interest_rate_pct * 100).toFixed(0)}%</td>
-                          <td className="px-3 py-2 text-right text-white/50 font-mono">{cfg.seasons}</td>
-                          <td className="px-3 py-2 text-right text-[#e8c547] font-mono">{cfg.debt_ceiling?.toLocaleString("da-DK")}</td>
+                          <td className="px-3 py-2 text-right text-slate-500 font-mono">{(cfg.origination_fee_pct * 100).toFixed(0)}%</td>
+                          <td className="px-3 py-2 text-right text-slate-500 font-mono">{(cfg.interest_rate_pct * 100).toFixed(0)}%</td>
+                          <td className="px-3 py-2 text-right text-slate-500 font-mono">{cfg.seasons}</td>
+                          <td className="px-3 py-2 text-right text-amber-700 font-mono">{cfg.debt_ceiling?.toLocaleString("da-DK")}</td>
                         </>
                       )}
                     </tr>
@@ -1010,7 +1010,7 @@ export default function AdminPage() {
             <button onClick={() => saveLoanConfig(editingLoan)}
               className="px-3 py-1.5 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-xs hover:bg-[#f0d060]">Gem</button>
             <button onClick={() => setEditingLoan(null)}
-              className="px-3 py-1.5 bg-white/5 text-white/40 rounded-lg text-xs hover:bg-white/10">Annuller</button>
+              className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-xs hover:bg-slate-100">Annuller</button>
           </div>
         )}
       </Section>
@@ -1020,16 +1020,16 @@ export default function AdminPage() {
         {webhooks.length > 0 && (
           <div className="flex flex-col gap-2 mb-4">
             {webhooks.map(w => (
-              <div key={w.id} className="flex items-center justify-between bg-white/3 rounded-lg px-3 py-2">
+              <div key={w.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
                 <div>
-                  <p className="text-white text-sm font-medium">{w.webhook_name}</p>
-                  <p className="text-white/30 text-xs font-mono truncate max-w-xs">{w.webhook_url.slice(0, 40)}...</p>
+                  <p className="text-slate-900 text-sm font-medium">{w.webhook_name}</p>
+                  <p className="text-slate-400 text-xs font-mono truncate max-w-xs">{w.webhook_url.slice(0, 40)}...</p>
                 </div>
                 <div className="flex gap-2">
                   {w.is_default
-                    ? <span className="text-[#e8c547] text-xs border border-[#e8c547]/20 px-2 py-0.5 rounded-full">Standard</span>
-                    : <button onClick={() => setDefaultWebhook(w.id)} className="text-white/30 text-xs hover:text-white">Sæt standard</button>}
-                  <button onClick={() => deleteWebhook(w.id)} className="text-red-400/50 text-xs hover:text-red-400">Slet</button>
+                    ? <span className="text-amber-700 text-xs border border-amber-200 px-2 py-0.5 rounded-full">Standard</span>
+                    : <button onClick={() => setDefaultWebhook(w.id)} className="text-slate-400 text-xs hover:text-slate-900">Sæt standard</button>}
+                  <button onClick={() => deleteWebhook(w.id)} className="text-red-700/50 text-xs hover:text-red-700">Slet</button>
                 </div>
               </div>
             ))}
@@ -1038,12 +1038,12 @@ export default function AdminPage() {
         <div className="flex gap-2 flex-wrap">
           <input type="text" placeholder="Navn" value={newWebhook.webhook_name}
             onChange={e => setNewWebhook(w => ({ ...w, webhook_name: e.target.value }))}
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm w-40 focus:outline-none" />
+            className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm w-40 focus:outline-none" />
           <input type="text" placeholder="Webhook URL" value={newWebhook.webhook_url}
             onChange={e => setNewWebhook(w => ({ ...w, webhook_url: e.target.value }))}
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm flex-1 min-w-[200px] focus:outline-none" />
+            className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm flex-1 min-w-[200px] focus:outline-none" />
           <button onClick={addWebhook}
-            className="px-4 py-2 bg-white/5 text-white/60 border border-white/10 rounded-lg text-sm hover:bg-white/10 hover:text-white transition-all">
+            className="px-4 py-2 bg-slate-100 text-slate-500 border border-slate-300 rounded-lg text-sm hover:bg-slate-100 hover:text-slate-900 transition-all">
             Tilføj
           </button>
         </div>
@@ -1052,16 +1052,16 @@ export default function AdminPage() {
       {/* ── Admin log ────────────────────────────────────────────────────────── */}
       <Section title="Admin log">
         {adminLogs.length === 0 ? (
-          <p className="text-white/20 text-sm">Ingen handlinger logget endnu.</p>
+          <p className="text-slate-300 text-sm">Ingen handlinger logget endnu.</p>
         ) : (
-          <div className="flex flex-col divide-y divide-white/4">
+          <div className="flex flex-col divide-y divide-slate-100">
             {adminLogs.map(log => (
               <div key={log.id} className="py-2.5 flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-white/70 text-xs">{log.description}</p>
-                  {log.target_team?.name && <p className="text-white/30 text-xs mt-0.5">Hold: {log.target_team.name}</p>}
+                  <p className="text-slate-600 text-xs">{log.description}</p>
+                  {log.target_team?.name && <p className="text-slate-400 text-xs mt-0.5">Hold: {log.target_team.name}</p>}
                 </div>
-                <p className="text-white/20 text-xs flex-shrink-0">{timeAgo(log.created_at)}</p>
+                <p className="text-slate-300 text-xs flex-shrink-0">{timeAgo(log.created_at)}</p>
               </div>
             ))}
           </div>

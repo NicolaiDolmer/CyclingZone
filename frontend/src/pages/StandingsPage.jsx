@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
 
 function MiniSparkline({ points, color }) {
-  if (!points || points.length < 2) return <span className="text-white/20 text-xs">—</span>;
+  if (!points || points.length < 2) return <span className="text-slate-300 text-xs">—</span>;
   const max = Math.max(...points, 1);
   const w = 60, h = 24, p = 2;
   const pts = points.map((v, i) => {
@@ -26,7 +26,7 @@ function FormBadge({ form }) {
   return (
     <div className="flex gap-0.5">
       {form.slice(-5).map((rank, i) => {
-        const color = rank === 1 ? "bg-[#e8c547]" : rank <= 3 ? "bg-green-400" : rank <= 10 ? "bg-blue-400/60" : "bg-white/15";
+        const color = rank === 1 ? "bg-[#e8c547]" : rank <= 3 ? "bg-green-400" : rank <= 10 ? "bg-blue-300" : "bg-slate-100";
         return <span key={i} className={`w-2 h-2 rounded-full ${color}`} title={rank ? `#${rank}` : "—"} />;
       })}
     </div>
@@ -122,7 +122,7 @@ export default function StandingsPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
     </div>
   );
 
@@ -130,8 +130,8 @@ export default function StandingsPage() {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-white">Rangliste</h1>
-          <p className="text-white/30 text-sm">
+          <h1 className="text-xl font-bold text-slate-900">Rangliste</h1>
+          <p className="text-slate-400 text-sm">
             {season ? `Sæson ${season.number}` : "Ingen aktiv sæson"}
           </p>
         </div>
@@ -143,8 +143,8 @@ export default function StandingsPage() {
           <button key={div} onClick={() => setDivTab(div)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border
               ${divTab === div
-                ? "border-opacity-30 text-white"
-                : "bg-[#0f0f18] text-white/40 border-white/5 hover:text-white"}`}
+                ? "border-opacity-30 text-slate-900"
+                : "bg-white text-slate-500 border-slate-200 hover:text-slate-900"}`}
             style={divTab === div ? { backgroundColor: `${DIV_COLORS[div]}15`, borderColor: `${DIV_COLORS[div]}40`, color: DIV_COLORS[div] } : {}}>
             Division {div}
             <span className="ml-2 text-[10px] opacity-60">({count})</span>
@@ -153,22 +153,22 @@ export default function StandingsPage() {
       </div>
 
       {divStandings.length === 0 ? (
-        <div className="text-center py-16 text-white/20">
+        <div className="text-center py-16 text-slate-300">
           <p className="text-4xl mb-3">◉</p>
           <p>Ingen data for Division {divTab} endnu</p>
         </div>
       ) : (
-        <div className="bg-[#0f0f18] border border-white/5 rounded-xl overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5">
-                  <th className="px-4 py-3 text-left text-white/25 font-medium text-xs w-8">#</th>
-                  <th className="px-4 py-3 text-left text-white/25 font-medium text-xs">Hold</th>
-                  <th className="px-4 py-3 text-right text-white/25 font-medium text-xs hidden sm:table-cell">Etapesejre</th>
-                  <th className="px-4 py-3 text-right text-white/25 font-medium text-xs hidden md:table-cell">Podier</th>
-                  <th className="px-4 py-3 text-right text-white/25 font-medium text-xs">Point</th>
-                  <th className="px-4 py-3 text-right text-white/25 font-medium text-xs hidden lg:table-cell w-20">Udvikling</th>
+                <tr className="border-b border-slate-200">
+                  <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs w-8">#</th>
+                  <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs">Hold</th>
+                  <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs hidden sm:table-cell">Etapesejre</th>
+                  <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs hidden md:table-cell">Podier</th>
+                  <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs">Point</th>
+                  <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs hidden lg:table-cell w-20">Udvikling</th>
                 </tr>
               </thead>
               <tbody>
@@ -181,30 +181,30 @@ export default function StandingsPage() {
                   return (
                     <tr key={s.id}
                       onClick={() => navigate(`/teams/${s.team_id}`)}
-                      className={`border-b border-white/4 last:border-0 cursor-pointer hover:bg-white/3 transition-colors
+                      className={`border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-100 transition-colors
                         ${isMe ? "bg-[#e8c547]/4" : ""}
                         ${isPromotion && !isMe ? "bg-green-500/3" : ""}
                         ${isRelegation && !isMe ? "bg-red-500/3" : ""}`}>
                       <td className="px-4 py-3.5">
                         <span className={`font-mono font-bold text-sm
-                          ${i === 0 ? "text-[#e8c547]" : i === 1 ? "text-white/60" : i === 2 ? "text-white/40" : "text-white/25"}`}>
+                          ${i === 0 ? "text-amber-700" : i === 1 ? "text-slate-500" : i === 2 ? "text-slate-500" : "text-slate-400"}`}>
                           {i + 1}
                         </span>
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`font-medium ${isMe ? "text-[#e8c547]" : "text-white"}`}>{s.team?.name}</span>
-                          {isMe && <span className="text-[9px] uppercase bg-[#e8c547]/10 text-[#e8c547] border border-[#e8c547]/20 px-1.5 py-0.5 rounded-full">Dig</span>}
-                          {isPromotion && <span className="text-[9px] text-green-400 hidden sm:inline">↑ Op</span>}
-                          {isRelegation && <span className="text-[9px] text-red-400 hidden sm:inline">↓ Ned</span>}
+                          <span className={`font-medium ${isMe ? "text-amber-700" : "text-slate-900"}`}>{s.team?.name}</span>
+                          {isMe && <span className="text-[9px] uppercase bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">Dig</span>}
+                          {isPromotion && <span className="text-[9px] text-green-700 hidden sm:inline">↑ Op</span>}
+                          {isRelegation && <span className="text-[9px] text-red-700 hidden sm:inline">↓ Ned</span>}
                         </div>
                         {/* Mini progress bar */}
-                        <div className="mt-1.5 bg-white/5 rounded-full h-1 w-full max-w-32">
+                        <div className="mt-1.5 bg-slate-100 rounded-full h-1 w-full max-w-32">
                           <div className="h-1 rounded-full" style={{ width: `${ptsWidth}%`, backgroundColor: isMe ? "#e8c547" : `${color}60` }} />
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 text-right text-white/50 hidden sm:table-cell font-mono">{s.stage_wins || 0}</td>
-                      <td className="px-4 py-3.5 text-right text-white/50 hidden md:table-cell font-mono">{s.podiums || 0}</td>
+                      <td className="px-4 py-3.5 text-right text-slate-500 hidden sm:table-cell font-mono">{s.stage_wins || 0}</td>
+                      <td className="px-4 py-3.5 text-right text-slate-500 hidden md:table-cell font-mono">{s.podiums || 0}</td>
                       <td className="px-4 py-3.5 text-right">
                         <span className="font-mono font-bold" style={{ color: isMe ? "#e8c547" : color }}>
                           {(s.total_points || 0).toLocaleString("da-DK")}
@@ -221,18 +221,18 @@ export default function StandingsPage() {
           </div>
 
           {/* Legend */}
-          <div className="px-4 py-3 border-t border-white/5 flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-1.5 text-xs text-green-400/70">
-              <span className="w-2 h-2 rounded-sm bg-green-500/20 border border-green-500/20" />
+          <div className="px-4 py-3 border-t border-slate-200 flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs text-green-700/70">
+              <span className="w-2 h-2 rounded-sm bg-green-100 border border-green-200" />
               Oprykningszone (top 2)
             </div>
             {divTab > 1 && (
-              <div className="flex items-center gap-1.5 text-xs text-red-400/70">
-                <span className="w-2 h-2 rounded-sm bg-red-500/20 border border-red-500/20" />
+              <div className="flex items-center gap-1.5 text-xs text-red-700/70">
+                <span className="w-2 h-2 rounded-sm bg-red-100 border border-red-200" />
                 Nedrykningszone (bund 2)
               </div>
             )}
-            <div className="ml-auto text-xs text-white/20">
+            <div className="ml-auto text-xs text-slate-300">
               {races.length} løb spillet
             </div>
           </div>

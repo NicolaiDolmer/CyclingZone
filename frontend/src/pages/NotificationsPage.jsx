@@ -1,23 +1,23 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
 const TYPE_CONFIG = {
-  bid_received:              { icon: "⚡", color: "text-[#e8c547]", bg: "bg-[#e8c547]/8 border-[#e8c547]/15", link: "/auctions" },
-  bid_placed:                { icon: "⚡", color: "text-[#e8c547]", bg: "bg-[#e8c547]/8 border-[#e8c547]/15", link: "/auctions" },
-  auction_won:               { icon: "🏆", color: "text-green-400",  bg: "bg-green-500/8 border-green-500/15", link: "/auctions" },
-  auction_lost:              { icon: "↩",  color: "text-white/40",   bg: "bg-white/3 border-white/8",          link: "/auctions" },
-  auction_outbid:            { icon: "⚠️", color: "text-red-400",    bg: "bg-red-500/8 border-red-500/15",     link: "/auctions" },
-  transfer_offer_received:   { icon: "↔",  color: "text-blue-400",   bg: "bg-blue-500/8 border-blue-500/15",   link: "/transfers" },
-  transfer_offer_accepted:   { icon: "✅", color: "text-green-400",  bg: "bg-green-500/8 border-green-500/15", link: "/transfers" },
-  transfer_offer_rejected:   { icon: "❌", color: "text-red-400",    bg: "bg-red-500/8 border-red-500/15",     link: "/transfers" },
-  transfer_offer_withdrawn:  { icon: "↩",  color: "text-white/40",   bg: "bg-white/3 border-white/8",          link: "/transfers" },
-  transfer_counter:          { icon: "↔",  color: "text-[#e8c547]", bg: "bg-[#e8c547]/8 border-[#e8c547]/15", link: "/transfers" },
-  new_race:                  { icon: "🏁", color: "text-white",      bg: "bg-white/3 border-white/8",          link: "/races" },
-  season_started:            { icon: "🚀", color: "text-green-400",  bg: "bg-green-500/8 border-green-500/15", link: "/dashboard" },
-  season_ended:              { icon: "🏁", color: "text-white",      bg: "bg-white/3 border-white/8",          link: "/season-end" },
-  salary_paid:               { icon: "💰", color: "text-orange-400", bg: "bg-orange-500/8 border-orange-500/15", link: "/finance" },
-  sponsor_paid:              { icon: "💰", color: "text-green-400",  bg: "bg-green-500/8 border-green-500/15", link: "/finance" },
+  bid_received:              { icon: "⚡", color: "text-amber-700", bg: "bg-amber-50 border-[#e8c547]/15", link: "/auctions" },
+  bid_placed:                { icon: "⚡", color: "text-amber-700", bg: "bg-amber-50 border-[#e8c547]/15", link: "/auctions" },
+  auction_won:               { icon: "🏆", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/auctions" },
+  auction_lost:              { icon: "↩",  color: "text-slate-500",   bg: "bg-slate-50 border-slate-200",          link: "/auctions" },
+  auction_outbid:            { icon: "⚠️", color: "text-red-700",    bg: "bg-red-500/8 border-red-500/15",     link: "/auctions" },
+  transfer_offer_received:   { icon: "↔",  color: "text-blue-700",   bg: "bg-blue-500/8 border-blue-500/15",   link: "/transfers" },
+  transfer_offer_accepted:   { icon: "✅", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/transfers" },
+  transfer_offer_rejected:   { icon: "❌", color: "text-red-700",    bg: "bg-red-500/8 border-red-500/15",     link: "/transfers" },
+  transfer_offer_withdrawn:  { icon: "↩",  color: "text-slate-500",   bg: "bg-slate-50 border-slate-200",          link: "/transfers" },
+  transfer_counter:          { icon: "↔",  color: "text-amber-700", bg: "bg-amber-50 border-[#e8c547]/15", link: "/transfers" },
+  new_race:                  { icon: "🏁", color: "text-slate-900",      bg: "bg-slate-50 border-slate-200",          link: "/races" },
+  season_started:            { icon: "🚀", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/dashboard" },
+  season_ended:              { icon: "🏁", color: "text-slate-900",      bg: "bg-slate-50 border-slate-200",          link: "/season-end" },
+  salary_paid:               { icon: "💰", color: "text-orange-700", bg: "bg-orange-500/8 border-orange-500/15", link: "/finance" },
+  sponsor_paid:              { icon: "💰", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/finance" },
 };
 
 function timeAgo(dateStr) {
@@ -130,25 +130,25 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-white">Indbakke</h1>
-          <p className="text-white/30 text-sm">
+          <h1 className="text-xl font-bold text-slate-900">Indbakke</h1>
+          <p className="text-slate-400 text-sm">
             {unreadCount > 0 ? `${unreadCount} ulæste` : "Alle er læst"}
           </p>
         </div>
         <div className="flex gap-2">
           {unreadCount > 0 && (
             <button onClick={markAllRead} disabled={markingAll}
-              className="px-3 py-1.5 text-xs text-white/50 hover:text-white
-                bg-white/5 hover:bg-white/10 rounded-lg border border-white/5
+              className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-900
+                bg-slate-100 hover:bg-slate-100 rounded-lg border border-slate-200
                 transition-all disabled:opacity-50">
               {markingAll ? "Markerer..." : "Marker alle læst"}
             </button>
           )}
           {notifications.some(n => n.is_read) && (
             <button onClick={deleteAllRead}
-              className="px-3 py-1.5 text-xs text-white/30 hover:text-red-400
-                bg-white/5 hover:bg-red-500/10 rounded-lg border border-white/5
-                hover:border-red-500/20 transition-all">
+              className="px-3 py-1.5 text-xs text-slate-400 hover:text-red-700
+                bg-slate-100 hover:bg-red-50 rounded-lg border border-slate-200
+                hover:border-red-200 transition-all">
               Slet læste
             </button>
           )}
@@ -164,8 +164,8 @@ export default function NotificationsPage() {
           <button key={t.key} onClick={() => setFilter(t.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
               ${filter === t.key
-                ? "bg-[#e8c547]/10 text-[#e8c547] border-[#e8c547]/20"
-                : "text-white/40 hover:text-white bg-[#0f0f18] border-white/5"}`}>
+                ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "text-slate-500 hover:text-slate-900 bg-white border-slate-200"}`}>
             {t.label}
           </button>
         ))}
@@ -173,22 +173,22 @@ export default function NotificationsPage() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-white/20">
+        <div className="text-center py-16 text-slate-300">
           <p className="text-4xl mb-3">🔔</p>
           <p>{filter === "unread" ? "Ingen ulæste notifikationer" : "Ingen notifikationer endnu"}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           {filtered.map(n => {
-            const config = TYPE_CONFIG[n.type] || { icon: "●", color: "text-white/40", bg: "bg-white/3 border-white/8" };
+            const config = TYPE_CONFIG[n.type] || { icon: "●", color: "text-slate-500", bg: "bg-slate-50 border-slate-200" };
             return (
               <div key={n.id}
                 className={`flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
                   ${n.is_read
-                    ? "bg-[#0f0f18] border-white/5 opacity-60 hover:opacity-80"
+                    ? "bg-white border-slate-200 opacity-60 hover:opacity-80"
                     : config.bg}`}
                 onClick={() => {
                   if (!n.is_read) markRead(n.id);
@@ -196,18 +196,18 @@ export default function NotificationsPage() {
                 }}>
 
                 {/* Icon */}
-                <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center
+                <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center
                   text-base flex-shrink-0 mt-0.5">
                   {config.icon}
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${n.is_read ? "text-white/50" : "text-white"}`}>
+                  <p className={`text-sm font-medium ${n.is_read ? "text-slate-500" : "text-slate-900"}`}>
                     {n.title}
                   </p>
-                  <p className="text-white/40 text-xs mt-0.5 leading-relaxed">{n.message}</p>
-                  <p className="text-white/20 text-xs mt-1.5">{timeAgo(n.created_at)}</p>
+                  <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">{n.message}</p>
+                  <p className="text-slate-300 text-xs mt-1.5">{timeAgo(n.created_at)}</p>
                 </div>
 
                 {/* Actions */}
@@ -217,7 +217,7 @@ export default function NotificationsPage() {
                   )}
                   <button
                     onClick={e => { e.stopPropagation(); deleteNotif(n.id); }}
-                    className="text-white/20 hover:text-white/60 text-lg transition-colors p-1 rounded">
+                    className="text-slate-300 hover:text-slate-500 text-lg transition-colors p-1 rounded">
                     ×
                   </button>
                 </div>
