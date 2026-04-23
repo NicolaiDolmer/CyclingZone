@@ -123,6 +123,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 🔴 Broken / Kendte bugs
 
 - Evne-filter/slider kræver frisk reproduktion; root cause er ikke bekræftet via statisk kodegennemgang endnu
+- Discord/webhook-flowet kræver frisk live-verifikation; seneste produktnote siger at webhooken ikke længere virker som forventet
+- Hemmelige achievements afslører sig selv før unlock på mindst én UI-flade og bryder derfor den tilsigtede `???`/låste præsentation
 
 --- 
 
