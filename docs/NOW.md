@@ -1,14 +1,13 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv næste slice
-- `Slice 1 — Navigation & app-shell` — nav-IA implementeret og deployed
-- Nav-struktur: Overblik, Marked, Resultater, Liga låst og live.
-- `/profile` redirecter til `/managers/:teamId`. Min Profil fjernet fra nav. Logo → Dashboard.
-- Fuld execution-roadmap og låste defaults ligger i `docs/PRODUCT_BACKLOG.md`.
+- `Slice 2 — Indbakke, notifikationer og topbar` — implementeret og deployed
+- Notifikationer omdøbt til Indbakke. Deep-links fra alle beskedtyper. Online-indikator i holdliste.
+- HeadToHead defaultede allerede til eget hold. Online status var allerede på managerprofil.
 
 ## Næste slice derefter
-- `Slice 2 — Indbakke, notifikationer og topbar`
-- Fokus: Personlig systemindbakke, ulæste badges, deep-links, head-to-head default eget hold.
+- `Slice 3 — Min aktivitet`
+- Fokus: Ny fane-struktur (`Kræver handling`, `Auktioner`, `Transfers`, `Lån`, `Ønskeliste`, `Historik`), kompakte handlingsrækker med statusbadge og deep-links.
 
 ## Blockers / investigations
 - Løst: Discord/webhook-notifier er live-verificeret i prod (2026-04-23). `discord_settings`-tabel og `users.discord_id` eksisterer i DB.

@@ -144,16 +144,3 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - 3-sæsoners glidende gennemsnit for rangliste
 - Tre parallelle bestyrelsesplaner (1yr+3yr+5yr vist samtidigt) — udskudt
 
----
-
-## Versionshistorik (nyeste øverst)
-
-| Commit | Feature |
-|--------|---------|
-| 667827e | Scope current-season standings på Dashboard og Hold-siden med 0-point fallback |
-| 1571879 | Restore admin season flow, standings recalculation og docs sync |
-| a428083 | Guaranteed sale — sælg rytter til bank til 50% |
-| af7257f | Withdraw på modtilbud + sælger-notifikation |
-| 8dbb7f2 | manager_name på holds (signup, profil, holdside) |
-| 8893790 | Fix: VITE_API_URL til board/status og board/sign |
-| 1d66668 | Multi-år bestyrelsesplaner (1yr/3yr/5yr) |
