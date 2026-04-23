@@ -2,6 +2,21 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.28",
+    date: "2026-04-23",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Board-siden forklarer nu tydeligere hvorfor bestyrelsen reagerer, med synlige drivere pr. kategori samt ekstra forklaring på signaler fra historik, national kerne og stjerneprofil",
+          "Seneste board request viser nu konkrete fokus- og målændringer direkte i UI, så tradeoffs ikke kun står som en kort tekstbesked",
+          "National kerne vises nu med landenavn og flag på Board-siden i stedet for kun en rå landekode",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.27",
     date: "2026-04-23",
     label: "Beta",

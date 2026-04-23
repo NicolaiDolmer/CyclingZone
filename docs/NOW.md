@@ -43,4 +43,4 @@
 - Board System V1 fase 5 er landet: national kerne og stjerneprofil justerer nu board-feedback, vægtet scoring og request-outcomes direkte i den delte runtime, så identitet/prestige ikke kun er read-side
 - Direkte board-skift mellem ungdoms- og stjernespor lander nu normalt som forudsigelige balanced-tradeoffs i stedet for et hårdt fuldt focus-flip
 - `board_request_log` er nu hærdet med en unik team+sæson-guard i schema/API, så dobbelte board-requests ikke kan persisteres i samme sæson via race conditions
-- Board-UI mangler stadig landenavn/flag i stedet for rå landekoder på de nye nationalitetsmarkører, så national kerne føles færdig for managers
+- Board System V1 fase 6 er landet på Board-siden: UI forklarer nu tydeligere hvorfor bestyrelsen reagerer via kategori-drivere, identitets-/historiksignaler og konkrete request-tradeoffs, og national kerne vises nu med landenavn/flag

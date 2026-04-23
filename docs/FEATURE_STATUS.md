@@ -92,6 +92,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Stjerneprofil giver nu en lille sponsor/prestige-bonus i board-scoringen, men skærper samtidig star-signing mål og boardets modstand mod at sænke resultatpresset
 - Direkte board-requests mellem `youth_development` og `star_signing` lander nu ofte som gradvise, forudsigelige `balanced`-tradeoffs i stedet for et øjeblikkeligt hard switch
 - DB-schemaet håndhæver nu maks. én board request pr. hold pr. sæson
+- Board-siden forklarer nu tydeligere hvorfor bestyrelsen reagerer via kategori-drivere, signalnoter fra historik/identitet/profiler og konkrete fokus-/målændringer fra seneste board request
+- National kerne vises nu med landenavn og flag på Board-siden i stedet for kun rå landekode
 
 ### Admin
 - Import af ryttere (Python-script)
@@ -133,7 +135,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 📋 Planlagt (backlog)
 
 - Aktiv feature- og forbedringsbacklog vedligeholdes i `docs/PRODUCT_BACKLOG.md`
-- Landekode-mapping til flag-visning
+- Landekode-mapping til flag-visning på øvrige rytterflader
 - Team ID-mapping fra PCM
 - 3-sæsoners glidende gennemsnit for rangliste
 - Tre parallelle bestyrelsesplaner (1yr+3yr+5yr vist samtidigt) — udskudt

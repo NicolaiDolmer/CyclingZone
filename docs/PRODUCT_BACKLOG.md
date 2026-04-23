@@ -24,9 +24,9 @@ _Regel: Kun aktive/top-prioriterede ting spejles til NOW.md. Kun statusændringe
 - Managernavn bør matche Discord-navn
 - Vis tidspunkt for hvornår rytter sættes til transfer
 - Vis ryttertype på rytterside
-- Vis landenavn/flag i stedet for rå landekoder på ryttere og board-national kerne
+- Vis landenavn/flag i stedet for rå landekoder på øvrige rytterflader
 - Klik på logo → dashboard (pc + mobil)
-- Board fase 6: forklar boardets tradeoffs tydeligere i UI og split senere `backend/lib/boardEngine.js` i mindre moduler uden at miste den fælles runtime-path
+- Split senere `backend/lib/boardEngine.js` i mindre moduler uden at miste den fælles runtime-path mellem proposal, status, requests og season-end
 
 ---
 

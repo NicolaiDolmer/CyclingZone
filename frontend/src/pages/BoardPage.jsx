@@ -1,9 +1,45 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { satisfactionToModifier, getPlanDuration } from "../lib/boardUtils";
+import { getCountryDisplay } from "../lib/countryUtils";
 import { Link } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL;
+const FOCUS_LABELS = {
+  balanced: "Balanceret",
+  youth_development: "Ungdomsudvikling",
+  star_signing: "Stjernesignering",
+};
+const GOAL_CHANGE_META = {
+  relaxed: { label: "Lempet", accent: "text-green-300", box: "border-green-500/20 bg-green-500/8" },
+  tightened: { label: "Skærpet", accent: "text-red-300", box: "border-red-500/20 bg-red-500/8" },
+  replaced: { label: "Omlagt", accent: "text-blue-300", box: "border-blue-500/20 bg-blue-500/8" },
+};
+
+function getBoardGoalLabel(goal) {
+  if (!goal) return "";
+
+  if (goal.type === "min_national_riders" && goal.nationality_code) {
+    const country = getCountryDisplay(goal.nationality_code);
+    return `Min. ${goal.target} ryttere fra ${country.label}`;
+  }
+
+  return goal.label || "";
+}
+
+function formatSignalDelta(delta) {
+  const points = Math.round(Number(delta || 0) * 100);
+  return `${points > 0 ? "+" : ""}${points}`;
+}
+
+function formatBoardCopy(text) {
+  if (!text) return "";
+
+  return text
+    .replace(/\bfra ([A-Z]{2})\b/g, (_match, code) => `fra ${getCountryDisplay(code).label}`)
+    .replace(/\b([A-Z]{2})-kerne\b/g, (_match, code) => `${getCountryDisplay(code).name}-kerne`)
+    .replace(/\b([A-Z]{2})-praegede\b/g, (_match, code) => `${getCountryDisplay(code).name}-praegede`);
+}
 
 // ── Delte komponenter ─────────────────────────────────────────────────────────
 
@@ -38,7 +74,7 @@ function GoalCard({ goal, achieved, cumulativeProgress }) {
         {achieved ? "✓" : "○"}
       </div>
       <div className="flex-1">
-        <p className={`text-sm font-medium ${achieved ? "text-green-300" : "text-white/70"}`}>{goal.label}</p>
+        <p className={`text-sm font-medium ${achieved ? "text-green-300" : "text-white/70"}`}>{getBoardGoalLabel(goal)}</p>
         {goal.cumulative && cumulativeProgress !== undefined && (
           <div className="flex items-center gap-2 mt-1.5">
             <div className="flex-1 bg-white/5 rounded-full h-1">
@@ -177,6 +213,62 @@ function SeasonSnapshotGrid({ snapshots }) {
 function BoardOutlookCard({ outlook }) {
   const categories = Object.values(outlook?.score_breakdown?.categories || {});
   if (!outlook?.feedback) return null;
+  const strongestCategory = outlook?.feedback?.strongest_category
+    ? outlook?.score_breakdown?.categories?.[outlook.feedback.strongest_category]
+    : null;
+  const weakestCategory = outlook?.feedback?.weakest_category
+    ? outlook?.score_breakdown?.categories?.[outlook.feedback.weakest_category]
+    : null;
+  const signalAdjustments = outlook?.score_breakdown?.signal_adjustments || {};
+  const nationalCore = outlook?.identity_profile?.national_core;
+  const starProfile = outlook?.identity_profile?.star_profile;
+  const nationalCoreCountry = getCountryDisplay(nationalCore?.code);
+  const reactionNotes = [];
+
+  if (strongestCategory) {
+    reactionNotes.push({
+      key: "strongest",
+      label: "Driver vurderingen",
+      text: `${strongestCategory.label} er boardets stærkeste spor lige nu med ${strongestCategory.score_pct}%.`,
+    });
+  }
+
+  if (weakestCategory && weakestCategory.key !== strongestCategory?.key) {
+    reactionNotes.push({
+      key: "weakest",
+      label: "Skaber pres",
+      text: `${weakestCategory.label} holder boardet tilbage med ${weakestCategory.score_pct}% og forklarer en stor del af presset.`,
+    });
+  }
+
+  if (signalAdjustments.identity > 0 && nationalCore?.established) {
+    reactionNotes.push({
+      key: "identity_signal",
+      label: "National kerne",
+      text: `${nationalCoreCountry.label} giver ${formatSignalDelta(signalAdjustments.identity)} point i identitetsscoren som en del af holdets DNA.`,
+    });
+  }
+
+  if (signalAdjustments.economy > 0 && starProfile?.label) {
+    reactionNotes.push({
+      key: "star_signal",
+      label: "Stjerneprofil",
+      text: `${starProfile.label} giver ${formatSignalDelta(signalAdjustments.economy)} point i sponsor/prestige, men holder samtidig forventningerne oppe.`,
+    });
+  }
+
+  if (outlook?.score_breakdown?.recent_history_score != null) {
+    const momentum = outlook?.score_breakdown?.momentum_modifier ?? 0;
+    reactionNotes.push({
+      key: "history",
+      label: "Historik tæller med",
+      text: momentum > 0.005
+        ? "De seneste sæsoner trækker vurderingen lidt op, fordi boardet læser en positiv retning i udviklingen."
+        : momentum < -0.005
+          ? "De seneste sæsoner trækker vurderingen lidt ned, fordi boardet stadig husker en ustabil periode."
+          : "Boardet læser også de seneste sæsoner ind, men historikken er lige nu ret neutral.",
+    });
+  }
 
   return (
     <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
@@ -184,7 +276,7 @@ function BoardOutlookCard({ outlook }) {
         <div>
           <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Bestyrelsens Outlook</p>
           <p className="text-white font-semibold text-sm">{outlook.feedback.headline}</p>
-          <p className="text-white/45 text-sm mt-1">{outlook.feedback.summary}</p>
+          <p className="text-white/45 text-sm mt-1">{formatBoardCopy(outlook.feedback.summary)}</p>
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Status</p>
@@ -207,8 +299,30 @@ function BoardOutlookCard({ outlook }) {
                   style={{ width: `${Math.min(100, category.score_pct)}%` }}
                 />
               </div>
+              <p className="text-white/30 text-[11px] mt-2">
+                {category.key === strongestCategory?.key
+                  ? "Driver boardets reaktion lige nu"
+                  : category.key === weakestCategory?.key
+                    ? "Holder boardet tilbage lige nu"
+                    : category.signal_bonus > 0
+                      ? `Signalbonus ${formatSignalDelta(category.signal_bonus)}`
+                      : "Stabil del af vurderingen"}
+              </p>
             </div>
           ))}
+        </div>
+      )}
+      {reactionNotes.length > 0 && (
+        <div className="mt-4">
+          <p className="text-white/30 text-xs uppercase tracking-wider mb-3">Hvorfor reagerer boardet sådan?</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {reactionNotes.map((note) => (
+              <div key={note.key} className="bg-white/3 border border-white/5 rounded-lg p-3">
+                <p className="text-white/35 text-[10px] uppercase tracking-wider">{note.label}</p>
+                <p className="text-white/70 text-sm mt-1">{note.text}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -220,11 +334,12 @@ function BoardIdentityCard({ identityProfile, title = "Holdidentitet" }) {
 
   const nationalCore = identityProfile.national_core;
   const starProfile = identityProfile.star_profile;
+  const nationalCoreCountry = getCountryDisplay(nationalCore?.code);
   const nationalCoreValue = nationalCore?.established && nationalCore?.code
-    ? nationalCore.code
+    ? nationalCoreCountry.label
     : "Blandet";
   const nationalCoreSub = nationalCore?.established
-    ? `${nationalCore.count} ryttere · ${nationalCore.share_pct}%`
+    ? `${nationalCore.count} ryttere · ${nationalCore.share_pct}% af truppen`
     : "Ingen tydelig kerne endnu";
   const starProfileValue = starProfile?.label || "Ukendt";
   const starProfileSub = starProfile?.star_rider_count
@@ -237,7 +352,7 @@ function BoardIdentityCard({ identityProfile, title = "Holdidentitet" }) {
         <div>
           <p className="text-white/30 text-xs uppercase tracking-wider mb-1">{title}</p>
           <p className="text-white font-semibold text-sm">{identityProfile.primary_specialization_label}</p>
-          <p className="text-white/45 text-sm mt-1">{identityProfile.summary}</p>
+          <p className="text-white/45 text-sm mt-1">{formatBoardCopy(identityProfile.summary)}</p>
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-white/30 text-xs uppercase tracking-wider mb-1">U25</p>
@@ -286,6 +401,10 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
   const latestRequest = requestStatus?.latest_request;
   const usedThisSeason = Boolean(requestStatus?.used_this_season);
   const supported = requestStatus?.supported !== false;
+  const goalChanges = latestRequest?.board_changes?.goal_changes || [];
+  const focusBefore = latestRequest?.board_changes?.focus_before;
+  const focusAfter = latestRequest?.board_changes?.focus_after;
+  const focusChanged = Boolean(focusBefore && focusAfter && focusBefore !== focusAfter);
   const outcomeMeta = {
     approved: { label: "Godkendt", accent: "text-green-300", box: "border-green-500/20 bg-green-500/8" },
     partial: { label: "Delvist", accent: "text-[#e8c547]", box: "border-[#e8c547]/20 bg-[#e8c547]/8" },
@@ -333,9 +452,40 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
               {latestMeta.label}
             </span>
           </div>
-          <p className="text-white/60 text-sm mt-2">{latestRequest.summary}</p>
+          <p className="text-white/60 text-sm mt-2">{formatBoardCopy(latestRequest.summary)}</p>
           {latestRequest.tradeoff_summary && (
-            <p className="text-white/45 text-sm mt-2">{latestRequest.tradeoff_summary}</p>
+            <p className="text-white/45 text-sm mt-2">{formatBoardCopy(latestRequest.tradeoff_summary)}</p>
+          )}
+          {(focusChanged || goalChanges.length > 0) && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <p className="text-white/35 text-[10px] uppercase tracking-wider mb-3">Det reagerede boardet på</p>
+              <div className="flex flex-col gap-2">
+                {focusChanged && (
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                    <p className="text-white/35 text-[10px] uppercase tracking-wider">Fokus</p>
+                    <p className="text-white/75 text-sm mt-1">
+                      {FOCUS_LABELS[focusBefore] || focusBefore} → {FOCUS_LABELS[focusAfter] || focusAfter}
+                    </p>
+                  </div>
+                )}
+                {goalChanges.map((change, index) => {
+                  const meta = GOAL_CHANGE_META[change.kind] || GOAL_CHANGE_META.replaced;
+                  return (
+                    <div key={`${change.kind}-${index}`} className={`border rounded-lg p-3 ${meta.box}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-white/80 text-sm">{formatBoardCopy(change.before_label)}</p>
+                          <p className="text-white/35 text-xs mt-1">→ {formatBoardCopy(change.after_label)}</p>
+                        </div>
+                        <span className={`text-[10px] font-semibold uppercase tracking-wider ${meta.accent}`}>
+                          {meta.label}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -471,7 +621,7 @@ function WizardStep1({
                 <div className="w-5 h-5 rounded-full bg-white/10 text-white/20 flex items-center justify-center
                   flex-shrink-0 mt-0.5 text-xs">○</div>
                 <div className="flex-1">
-                  <p className="text-white/70 text-sm">{g.label}</p>
+                  <p className="text-white/70 text-sm">{getBoardGoalLabel(g)}</p>
                   <div className="flex gap-3 mt-1">
                     {g.cumulative && <span className="text-xs text-blue-400/50">Kumulativt</span>}
                     {g.satisfaction_bonus > 0 && <span className="text-xs text-green-400/60">+{g.satisfaction_bonus}</span>}
@@ -525,7 +675,7 @@ function WizardStep2({ goals, goalIdx, negotiated, pendingNegotiate, onAccept, o
           <div className="w-6 h-6 rounded-full bg-[#e8c547]/10 border border-[#e8c547]/20
             flex items-center justify-center flex-shrink-0 text-xs text-[#e8c547]">◎</div>
           <div className="flex-1">
-            <p className="text-white font-semibold">{current?.label}</p>
+            <p className="text-white font-semibold">{getBoardGoalLabel(current)}</p>
             <div className="flex gap-3 mt-2">
               {current?.cumulative && <span className="text-xs text-blue-400/70 bg-blue-500/10 px-2 py-0.5 rounded">Kumulativt</span>}
               {current?.satisfaction_bonus > 0 && (
@@ -597,7 +747,7 @@ function WizardStep3({ finalGoals, planType, onSign, saving }) {
               <div className="w-5 h-5 rounded-full bg-white/10 text-white/20 flex items-center
                 justify-center flex-shrink-0 mt-0.5 text-xs">○</div>
               <div className="flex-1">
-                <p className="text-white/80 text-sm font-medium">{g.label}</p>
+                <p className="text-white/80 text-sm font-medium">{getBoardGoalLabel(g)}</p>
                 <div className="flex gap-3 mt-1">
                   {g.cumulative && <span className="text-xs text-blue-400/50">Kumulativt</span>}
                   {g.negotiated && <span className="text-xs text-blue-400/70">Forhandlet</span>}
@@ -1001,9 +1151,6 @@ export default function BoardPage() {
   const nonCumulativeGoals = goals.filter(g => !g.cumulative);
   const goalsAchieved = nonCumulativeGoals.filter(g => isGoalAchieved(g)).length;
 
-  const FOCUS_LABELS = {
-    balanced: "Balanceret", youth_development: "Ungdomsudvikling", star_signing: "Stjernesignering",
-  };
   const PLAN_LABELS = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" };
 
   const planDuration = planStatus?.plan_duration || 1;
