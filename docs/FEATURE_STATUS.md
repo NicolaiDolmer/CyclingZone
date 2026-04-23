@@ -64,6 +64,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Sæsonoversigt med race-kalender
 - Løbsresultater-import (Excel-upload i admin)
 - Pointtavle (season_standings) recalculeres fra `race_results`
+- `season_standings` persisterer nu også `rank_in_division`, så season-end og board-runtime kan læse divisionsplacering kanonisk
 - Dashboard og Hold-siden scope'er nu current-season standings korrekt og falder tilbage til 0-point-rækker før første result-godkendelse
 - `import-results` og `approve-results` deler nu samme backend result-path, så prize-writes og standings-recalculation er konsistente
 - Admin-godkendelse markerer nu submissionen som approved på serveren i stedet for at være afhængig af en efterfølgende browser-write
@@ -101,6 +102,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - UCI points sync (Google Sheets CSV)
 - Override rider (team/stats)
 - Sæsonoprettelse, sæsonstart, sæsonslut og resultatimport kører nu via de kanoniske admin-routes i `backend/routes/api.js`
+- Admin kan nu genberegne standings for en aktiv eller afsluttet sæson direkte fra gemte `race_results`
 - Løbsoprettelse via admin-backend route
 - Season-end preview endpoint
 
@@ -127,8 +129,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 🚧 I gang
 
 - [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
+- [ ] Kør live SQL-patch + admin rebuild for den nuværende deployede aktive sæson
 - [ ] Første live beta-verifikation af `season start -> result approval -> season end`
-- [ ] Verificér dashboard/rangliste mod ny standings-recalculation efter første live sæsonflow
 
 ---
 

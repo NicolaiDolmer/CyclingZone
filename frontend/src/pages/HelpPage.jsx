@@ -217,6 +217,10 @@ const SECTIONS = [
         title: "Hvornår kan en sæson afsluttes?",
         text: "Admin kan først afslutte en sæson når afventende løbsresultater for sæsonens løb er behandlet. Så længe der ligger indberetninger og venter på godkendelse eller afvisning, stopper sæsonafslutningen.",
       },
+      {
+        title: "Admin: genberegn standings ved drift",
+        text: "Hvis en aktiv eller afsluttet sæson mangler stilling pga. ældre data-drift, kan admin bruge knappen '↻ Standings' på Admin-siden. Den genberegner tabellen ud fra de gemte `race_results`, opretter de manglende standings-rækker og opdaterer divisionens interne rang, som bestyrelsen bruger ved sæsonafslutning.",
+      },
     ],
   },
   {

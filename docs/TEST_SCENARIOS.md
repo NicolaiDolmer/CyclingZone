@@ -39,6 +39,7 @@
 - Live smoke: `POST /api/admin/races` virker på deployed backend
 - Smoke-testdata ryddes op bagefter
 - Season start opretter standings
+- `POST /api/admin/seasons/:id/rebuild-standings` kan genopbygge standings for en aktiv eller afsluttet sæson ud fra persistede løbsresultater
 - Season end opdaterer alt
 - Season end bruger den delte board-engine og opdaterer `satisfaction` + `budget_modifier` konsistent
 - `POST /api/admin/import-results` recalculerer standings og prize-transaktioner via samme shared runtime-path som `POST /api/admin/approve-results`
@@ -80,6 +81,7 @@
 - Rider loans og finance loans kan ikke forveksles
 - Dashboard-rangering bygger på korrekt scope
 - Dashboard og Hold-siden viser aktive hold med 0 point, hvis `season_standings` endnu ikke er initialiseret for den aktive sæson
+- `season_standings` persisterer `rank_in_division`, så board season-end og admin-preview ikke mangler divisionsrang
 - Board-felter matcher backend-navne
 - Dashboard og Board-siden læser board-state via `GET /api/board/status`
 - `GET /api/board/status` returnerer board-outlook/personality fra den delte board-engine

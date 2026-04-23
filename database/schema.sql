@@ -318,6 +318,7 @@ CREATE TABLE season_standings (
   season_id UUID NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   division INTEGER NOT NULL,
+  rank_in_division INTEGER,
   total_points INTEGER DEFAULT 0,
   races_completed INTEGER DEFAULT 0,
   stage_wins INTEGER DEFAULT 0,

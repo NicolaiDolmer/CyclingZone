@@ -488,11 +488,30 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
     }
   }
 
+  const rankByTeamId = new Map();
+  const divisions = [...new Set(Object.values(teamStats).map(stats => stats.division || 3))];
+  for (const division of divisions) {
+    const rankedTeams = Object.entries(teamStats)
+      .filter(([, stats]) => (stats.division || 3) === division)
+      .sort(([, left], [, right]) => {
+        if ((right.points || 0) !== (left.points || 0)) {
+          return (right.points || 0) - (left.points || 0);
+        }
+
+        return 0;
+      });
+
+    rankedTeams.forEach(([teamId], index) => {
+      rankByTeamId.set(teamId, index + 1);
+    });
+  }
+
   const timestamp = new Date().toISOString();
   const rows = Object.entries(teamStats).map(([teamId, stats]) => ({
     season_id: seasonId,
     team_id: teamId,
     division: stats.division,
+    rank_in_division: rankByTeamId.get(teamId) || null,
     total_points: stats.points,
     stage_wins: stats.stage_wins,
     gc_wins: stats.gc_wins,
@@ -506,6 +525,11 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
   if (upsertError) throw new Error(upsertError.message);
 
   console.log(`  📊 Standings recalculated for ${rows.length} teams${raceId ? ` after race ${raceId}` : ""}`);
+
+  return {
+    rowsUpdated: rows.length,
+    teamsWithPoints: rows.filter(row => row.total_points > 0).length,
+  };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

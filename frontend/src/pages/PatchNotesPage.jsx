@@ -2,6 +2,20 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.29",
+    date: "2026-04-23",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Standings gemmer nu også divisionens interne placering (`rank_in_division`), så board-evaluering og sæsonruntime ikke længere mangler rangeringsdata ved season-end",
+          "Admin har nu en direkte '↻ Standings'-rebuild på sæsoner, så en aktiv eller afsluttet sæson kan genberegnes sikkert ud fra gemte løbsresultater, hvis live-data tidligere er drevet",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.28",
     date: "2026-04-23",
     label: "Beta",

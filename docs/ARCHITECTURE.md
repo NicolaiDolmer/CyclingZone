@@ -140,6 +140,7 @@ POST /api/admin/races                     { season_id, name, race_type, stages, 
 POST /api/admin/import-results            multipart: file + race_id
 POST /api/admin/seasons/:id/start
 POST /api/admin/seasons/:id/end
+POST /api/admin/seasons/:id/rebuild-standings
 POST /api/admin/sync-uci
 POST /api/admin/override-rider
 POST /api/admin/approve-results
@@ -155,6 +156,7 @@ Season flow notes:
 - `POST /api/admin/import-results` og `POST /api/admin/approve-results` deler nu samme result-write path via `backend/lib/raceResultsEngine.js`
 - Result-finalisering skriver `race_results`, bogfører prize-transaktioner med gyldig finance-type og recalculerer derefter `season_standings` fra persisted data
 - `POST /api/admin/seasons/:id/end` stopper hvis der stadig findes `pending_race_results` for løb i sæsonen
+- `POST /api/admin/seasons/:id/rebuild-standings` er repair-pathen for aktive/afsluttede sæsoner, hvis standings skal genopbygges fra persisted `race_results`
 - `backend/routes/api.js` er nu den kanoniske ejer af admin season/import-routes; `backend/server.js` monterer routeren, `sync-uci` og health-checks, men ejer ikke længere parallelle season/import handlers
 
 ---
@@ -172,7 +174,7 @@ Season flow notes:
 - Admin starter flowet via `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start`, derefter enten `POST /api/admin/import-results` eller `POST /api/admin/approve-results`, og til sidst `POST /api/admin/seasons/:id/end`
 - De admin-entrypoints ejes nu kun af `backend/routes/api.js`, så season-flowets guardrails ikke kan drive mellem router og bootstrap-server
 - Den kanoniske season engine ligger i `backend/lib/economyEngine.js`
-- `race_results` er persisted sandhed for standings; `season_standings` recalculeres derfra
+- `race_results` er persisted sandhed for standings; `season_standings` recalculeres derfra og persisterer også `rank_in_division`
 - `backend/lib/raceResultsEngine.js` er shared execution path for result-finalisering, prize-write og standings-recalculation
 - `backend/lib/adminImportResultsHandler.js` binder den direkte xlsx-import til samme shared result-engine som pending-approval flowet
 - Transfer-window-state er del af season-flowets runtime-kontrakt
@@ -284,8 +286,8 @@ board_request_log  id, team_id, board_id, season_id, season_number,
 finance_transactions  id, team_id, type(sponsor|prize|salary|transfer_in|transfer_out|
                       interest|bonus|starting_budget), amount, description,
                       season_id, race_id
-season_standings   id, season_id, team_id, division, total_points, races_completed,
-                   stage_wins, gc_wins  (unique: season_id + team_id)
+season_standings   id, season_id, team_id, division, rank_in_division, total_points,
+                   races_completed, stage_wins, gc_wins  (unique: season_id + team_id)
 notifications      id, user_id, type(...), title, message, is_read, related_id
 import_log         id, import_type, filename, rows_processed, rows_updated,
                    rows_inserted, errors(JSONB), imported_by

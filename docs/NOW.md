@@ -3,8 +3,8 @@
 ## Investigate
 - Prioriteret bug-triage pr. 22. april 2026:
 - P3: Evne-filter/slider kræver frisk reproduktion mod rigtige data; statisk kodegennemgang fandt ingen entydig root cause endnu, så den bør ikke stå over auktions-/season-drift før reproduktion
-- Verificer deployed season flow end-to-end på beta: `season start -> result approval -> season end`
-- Verificer standings/rangliste efter første live result-godkendelse på deployed backend
+- Kør live repair på beta/prod for aktiv sæson via `POST /api/admin/seasons/:id/rebuild-standings` efter SQL-patchen `database/2026-04-23-season-standings-rank-and-rebuild.sql`
+- Verificer derefter deployed season flow end-to-end på beta: `season start -> result approval -> season end`
 
 ## Drift / Ops
 - AI docs er ryddet op: `RUNTIME_GUARDRAILS.md` + `AI_EXECUTION_STANDARD.md` er nu de eneste regeldocs
@@ -26,6 +26,7 @@
 - Rider-loan gebyrer for fortsatte sæsoner opkræves nu automatisk ved sæsonstart og logges for både låner og udlejer
 - Live smoke på production bestod for udløbet auktion via cron, transfer med endelig bekræftelse og swap med endelig bekræftelse; smoke-testdata blev ryddet op bagefter
 - Dashboard og Hold-siden scope'er nu rangliste-data til aktiv sæson og falder tilbage til 0-point-rækker, så current-season vises stabilt før første live result-godkendelse
+- Live investigation den 23. april 2026 viste data-drift på deployed aktiv sæson: `status=active`, `start_date=null`, løbsresultater til stede, men `season_standings` tom. Runtime har nu en admin-rebuild-path og persisterer `rank_in_division`, men live kræver stadig SQL-patch + rebuild-kald for at blive rettet op
 - Achievement-sync bruger nu live historikstabeller (`auction_bids`, `transfer_offers`, `rider_watchlist`, `riders`, `auctions`, `board_profiles`) i stedet for stale `condition_type`-felter, så almindelige unlocks kan blive fanget op ved næste app-load
 - Delvis live smoke bestod den 22. april 2026 for `GET /health` og auth-gaten på `GET /api/auctions`; fuld admin-verifikation af sæsonflow kræver stadig en rigtig admin-session
 - Signup og Min Profil bruger nu samme backend-route (`PUT /api/teams/my`) til holdnavn/managernavn, så writes ikke længere bliver stoppet af RLS på `teams`

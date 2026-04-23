@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost";
 process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-service-key";
 
-const { processSeasonEnd } = await import("./economyEngine.js");
+const { processSeasonEnd, updateStandings } = await import("./economyEngine.js");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -308,6 +308,82 @@ function createSeasonEndSupabase({
   };
 }
 
+function createStandingsSupabase({ teams, races, results }) {
+  const state = {
+    teams: clone(teams),
+    races: clone(races),
+    results: clone(results),
+    upserts: [],
+  };
+
+  return {
+    state,
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(columns) {
+            assert.equal(columns, "id, division");
+            return Promise.resolve({
+              data: clone(state.teams),
+              error: null,
+            });
+          },
+        };
+      }
+
+      if (table === "races") {
+        return {
+          select(columns) {
+            assert.equal(columns, "id");
+            return {
+              eq(column, value) {
+                assert.equal(column, "season_id");
+                assert.equal(value, "season-1");
+                return Promise.resolve({
+                  data: clone(state.races),
+                  error: null,
+                });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "race_results") {
+        return {
+          select(columns) {
+            assert.equal(columns, "race_id, team_id, result_type, rank, points_earned, rider:rider_id(team_id)");
+            return {
+              in(column, value) {
+                assert.equal(column, "race_id");
+                assert.deepEqual(value, state.races.map(race => race.id));
+                return Promise.resolve({
+                  data: clone(state.results),
+                  error: null,
+                });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "season_standings") {
+        return {
+          upsert(rows, options) {
+            state.upserts.push({
+              rows: clone(rows),
+              options: clone(options),
+            });
+            return Promise.resolve({ error: null });
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+}
+
 test("processSeasonEnd keeps the board flow on the shared runtime path", async () => {
   const supabase = createSeasonEndSupabase({
     season: {
@@ -460,4 +536,68 @@ test("processSeasonEnd skips writing a duplicate board notification when the sam
   });
 
   assert.equal(supabase.state.inserts.notifications.length, 0);
+});
+
+test("updateStandings stores division ranks and keeps zero-point teams in the canonical table", async () => {
+  const supabase = createStandingsSupabase({
+    teams: [
+      { id: "team-a", division: 1 },
+      { id: "team-b", division: 1 },
+      { id: "team-c", division: 2 },
+    ],
+    races: [
+      { id: "race-1" },
+      { id: "race-2" },
+    ],
+    results: [
+      { race_id: "race-1", team_id: "team-b", result_type: "gc", rank: 1, points_earned: 40, rider: null },
+      { race_id: "race-1", team_id: "team-a", result_type: "stage", rank: 1, points_earned: 20, rider: null },
+      { race_id: "race-2", team_id: null, result_type: "stage", rank: 1, points_earned: 30, rider: { team_id: "team-a" } },
+    ],
+  });
+
+  const summary = await updateStandings("season-1", "race-2", { supabase });
+
+  assert.deepEqual(summary, {
+    rowsUpdated: 3,
+    teamsWithPoints: 2,
+  });
+
+  assert.equal(supabase.state.upserts.length, 1);
+  assert.deepEqual(supabase.state.upserts[0].options, { onConflict: "season_id,team_id" });
+  assert.deepEqual(supabase.state.upserts[0].rows, [
+    {
+      season_id: "season-1",
+      team_id: "team-a",
+      division: 1,
+      rank_in_division: 1,
+      total_points: 50,
+      stage_wins: 2,
+      gc_wins: 0,
+      races_completed: 2,
+      updated_at: supabase.state.upserts[0].rows[0].updated_at,
+    },
+    {
+      season_id: "season-1",
+      team_id: "team-b",
+      division: 1,
+      rank_in_division: 2,
+      total_points: 40,
+      stage_wins: 0,
+      gc_wins: 1,
+      races_completed: 1,
+      updated_at: supabase.state.upserts[0].rows[1].updated_at,
+    },
+    {
+      season_id: "season-1",
+      team_id: "team-c",
+      division: 2,
+      rank_in_division: 1,
+      total_points: 0,
+      stage_wins: 0,
+      gc_wins: 0,
+      races_completed: 0,
+      updated_at: supabase.state.upserts[0].rows[2].updated_at,
+    },
+  ]);
 });

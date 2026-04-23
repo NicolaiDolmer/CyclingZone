@@ -12,8 +12,10 @@ test("admin season routes live only in the api router", () => {
   assert.doesNotMatch(serverSource, /app\.post\("\/api\/admin\/import-results"/);
   assert.doesNotMatch(serverSource, /app\.post\("\/api\/admin\/seasons\/:id\/start"/);
   assert.doesNotMatch(serverSource, /app\.post\("\/api\/admin\/seasons\/:id\/end"/);
+  assert.doesNotMatch(serverSource, /app\.post\("\/api\/admin\/seasons\/:id\/rebuild-standings"/);
 
   assert.match(apiSource, /router\.post\(\s*"\/admin\/import-results"/);
   assert.match(apiSource, /router\.post\(\s*"\/admin\/seasons\/:id\/start"/);
   assert.match(apiSource, /router\.post\(\s*"\/admin\/seasons\/:id\/end"/);
+  assert.match(apiSource, /router\.post\(\s*"\/admin\/seasons\/:id\/rebuild-standings"/);
 });

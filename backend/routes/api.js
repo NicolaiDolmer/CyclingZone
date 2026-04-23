@@ -1601,6 +1601,45 @@ router.post("/admin/seasons/:id/end", requireAdmin, async (req, res) => {
   }
 });
 
+router.post("/admin/seasons/:id/rebuild-standings", requireAdmin, async (req, res) => {
+  try {
+    const seasonId = req.params.id;
+
+    const { data: season, error: seasonError } = await supabase
+      .from("seasons")
+      .select("id, number, status, start_date")
+      .eq("id", seasonId)
+      .single();
+    if (seasonError) return res.status(500).json({ error: seasonError.message });
+    if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+    if (season.status === "upcoming") {
+      return res.status(400).json({ error: "Kun aktive eller afsluttede sæsoner kan genberegnes" });
+    }
+
+    const result = await updateStandings(seasonId);
+
+    await logActivity("season_standings_rebuilt", {
+      meta: {
+        season_id: season.id,
+        season_number: season.number,
+        rows_updated: result.rowsUpdated,
+        teams_with_points: result.teamsWithPoints,
+      },
+    });
+
+    res.json({
+      success: true,
+      season_id: season.id,
+      number: season.number,
+      rows_updated: result.rowsUpdated,
+      teams_with_points: result.teamsWithPoints,
+      start_date_missing: !season.start_date,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.post("/admin/races", requireAdmin, async (req, res) => {
   try {
     const {

@@ -248,6 +248,25 @@ export default function AdminPage() {
     loadAll();
   }
 
+  async function handleRebuildStandings(seasonId) {
+    if (!confirm("Genberegn standings for denne sæson ud fra gemte løbsresultater?")) return;
+    setLoad(`rebuild_${seasonId}`, true);
+    const res = await fetch(`${API}/api/admin/seasons/${seasonId}/rebuild-standings`, {
+      method: "POST", headers: await getAuth(),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      const warning = data.start_date_missing
+        ? " Advarsel: sæsonen mangler stadig startdato i databasen."
+        : "";
+      showMsg(`✅ Standings genberegnet for ${data.rows_updated} hold.${warning}`);
+    } else {
+      showMsg(`❌ ${data.error}`, "error");
+    }
+    setLoad(`rebuild_${seasonId}`, false);
+    loadAll();
+  }
+
   // ── Løb ────────────────────────────────────────────────────────────────────
   async function handleCreateRace(e) {
     e.preventDefault(); setLoad("race", true);
@@ -472,6 +491,12 @@ export default function AdminPage() {
                   <p className="text-white/20 text-xs mt-0.5 font-mono truncate">{s.id}</p>
                 </div>
                 <div className="flex gap-2">
+                  {s.status !== "upcoming" && (
+                    <button onClick={() => handleRebuildStandings(s.id)} disabled={loading[`rebuild_${s.id}`]}
+                      className="px-3 py-1.5 bg-white/5 text-white/70 border border-white/10 rounded-lg text-xs disabled:opacity-50 hover:bg-white/10 hover:text-white">
+                      {loading[`rebuild_${s.id}`] ? "..." : "↻ Standings"}
+                    </button>
+                  )}
                   {s.status === "upcoming" && (
                     <button onClick={() => handleSeasonAction(s.id, "start")} disabled={loading[`start_${s.id}`]}
                       className="px-3 py-1.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg text-xs disabled:opacity-50">
