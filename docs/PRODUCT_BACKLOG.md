@@ -66,6 +66,24 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - `Garanteret salg` er eneste undtagelse og må fortsat bruge 50%.
 - `NOW.md` skal holdes kort og ikke kopiere roadmapen.
 
+## 🤝 Samarbejdsmodel
+
+- `docs/PRODUCT_BACKLOG.md` forbliver kanonisk roadmap; `docs/NOW.md` holder kun aktiv slice, næste slice og blockers
+- Hver ny opgave starter med en kort feature-brief i chatten: mål, manager-værdi, berørt runtime-path, åbne beslutninger, anbefaling og evt. inputbehov
+- Hver opgave klassificeres før execution som `direkte implementerbar`, `investigation` eller `kræver askuserquestion`
+- `askuserquestion` bruges især ved IA/naming, flere plausible produktmodeller, nye datakontrakter/integrationer/offentlige visninger og balancing-spor
+- Afgrænsede bugfixes og tydelige runtime-reproduktioner håndteres normalt uden afklaringssession, medmindre der opdages drift mellem frontend, API, engine/service og DB
+- Ved slutningen af hver slice laves en kort review i chatten: hvad lukkede vi, hvad blokerer stadig, hvilke nærliggende quick wins dukkede op, og hvilken næste session skal låses
+- Nye featureforslag må gerne komme løbende, men skal være tydeligt forankret i aktiv slice, runtimeen eller et konkret produktgap
+
+### Planlagte sparringssessioner
+- Session 1: `Slice 1 — Navigation & app-shell`
+- Session 2: `Slice 2 — Indbakke, notifikationer og topbar`
+- Session 3: `Slice 3 — Min aktivitet`
+- Session 4: `Slice 5-6 — Resultater, rytterrangliste og løbsarkiv`
+- Session 5: `Slice 7 — dyn_cyclist + Discord`
+- Session 6: økonomiretuning hvis den løftes i prioritet
+
 ---
 
 ## 🔴 Kritiske bugs / investigations
@@ -73,7 +91,6 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - P1: Discord/webhook-regression skal reproduceres og spores gennem nuværende notifier-paths og live webhook-konfiguration; samme spor bør også afklare hvordan transferhistorik kan spejles til en dedikeret Discord-tråd via webhook
 - P1: Hemmelige achievements er ikke længere hemmelige i UI; mindst én flade viser navn eller beskrivelse før unlock, hvilket bryder produktreglen
 - P2: Evne-filter/slider kræver frisk reproduktion på rigtige data; nuværende kodegennemgang fandt ingen entydig root cause
-- P2: `scripts/verify-local.ps1` er pt. rød lokalt pga. én failing test i `backend/lib/economyEngine.test.js` omkring duplicate board notifications; repo-helsen bør genbekræftes før større runtime-arbejde
 
 ---
 

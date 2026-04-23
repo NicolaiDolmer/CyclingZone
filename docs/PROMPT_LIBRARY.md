@@ -11,6 +11,7 @@ Task Type:
 Goal:
 In Scope:
 Out of Scope:
+Task Lane: direkte implementerbar | investigation | kræver askuserquestion
 
 Relevant Docs (only if needed):
 - docs/DOMAIN_REFERENCE.md
@@ -29,3 +30,20 @@ Deliver:
 Before finishing:
 - Update docs
 - Run `npm run sync-docs`
+
+## Feature Brief
+
+Mål:
+Manager-værdi:
+Berørt runtime-path:
+Åbne beslutninger:
+Anbefaling:
+Behov fra bruger:
+Task Lane: direkte implementerbar | investigation | kræver askuserquestion
+
+## Slice Review
+
+Lukket:
+Blokerer stadig:
+Nærliggende quick wins / forslag:
+Næste sparringssession der bør låses:

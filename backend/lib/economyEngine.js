@@ -153,6 +153,7 @@ export async function processSeasonStart(seasonId, deps = {}) {
 export async function processSeasonEnd(seasonId, deps = {}) {
   console.log(`\n🏆 Processing season end: ${seasonId}`);
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
+  const notificationNow = deps.now ?? new Date();
 
   // Get current season number
   const { data: currentSeason } = await supabaseClient
@@ -174,7 +175,10 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   // Process each division
   for (const division of [1, 2, 3]) {
     const divStandings = standings.filter(s => s.division === division);
-    await processDivisionEnd(divStandings, division, seasonId, supabaseClient);
+    await processDivisionEnd(divStandings, division, seasonId, {
+      supabase: supabaseClient,
+      now: notificationNow,
+    });
   }
 
   // Process finances for all human teams
@@ -187,6 +191,7 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     await processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumber, {
       ...deps,
       supabase: supabaseClient,
+      now: notificationNow,
     });
   }
 
@@ -202,6 +207,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
   const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
+  const notificationDeps = { supabase: supabaseClient, now: deps.now };
   const teamStanding = standings.find(s => s.team_id === team.id);
   const board = team.board_profiles?.[0];
 
@@ -332,7 +338,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         "board_update",
         "Bestyrelsesplan udløbet",
         `${feedback.headline}. ${feedback.summary} Tilfredshed: ${newSatisfaction}%. Forhandl en ny plan med bestyrelsen.`,
-        supabaseClient
+        notificationDeps
       );
     } else {
       // Plan still running — update cumulative stats, keep goals
@@ -356,7 +362,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
           "board_update",
           "Halvvejsevaluering",
           `Halvvejsevaluering: ${midMsg} ${feedback.summary} Tilfredshed: ${newSatisfaction}%.`,
-          supabaseClient
+          notificationDeps
         );
       } else {
         const planLabel = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" }[board.plan_type] || "plan";
@@ -366,7 +372,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
           "board_update",
           "Sæsonrapport",
           `Sæson ${seasonsCompleted}/${planDuration} af din ${planLabel} afsluttet. ${feedback.summary} Tilfredshed: ${newSatisfaction}% (${delta >= 0 ? "+" : ""}${delta}).`,
-          supabaseClient
+          notificationDeps
         );
       }
     }
@@ -380,8 +386,9 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   console.log(`  💰 ${team.name}: -${totalSalary} pts salary`);
 }
 
-async function processDivisionEnd(standings, division, seasonId, supabaseClient = null) {
-  const client = supabaseClient ?? await getDefaultSupabaseClient();
+async function processDivisionEnd(standings, division, seasonId, deps = {}) {
+  const client = deps.supabase ?? await getDefaultSupabaseClient();
+  const notificationDeps = { supabase: client, now: deps.now };
   if (standings.length < PROMOTION_SLOTS + RELEGATION_SLOTS) return;
 
   const promotions = [];
@@ -401,7 +408,7 @@ async function processDivisionEnd(standings, division, seasonId, supabaseClient 
           "board_update",
           "Oprykket! 🎉",
           `Tillykke! Dit hold rykker op til Division ${division - 1}`,
-          client
+          notificationDeps
         );
       }
     }
@@ -421,7 +428,7 @@ async function processDivisionEnd(standings, division, seasonId, supabaseClient 
           "board_update",
           "Nedrykning",
           `Dit hold rykker ned til Division ${division + 1}`,
-          client
+          notificationDeps
         );
       }
     }
@@ -558,13 +565,14 @@ async function debitTeam(teamId, amount, type, description, seasonId, supabaseCl
   });
 }
 
-async function notifyManager(teamId, type, title, message, supabaseClient = null) {
-  const client = supabaseClient ?? await getDefaultSupabaseClient();
+async function notifyManager(teamId, type, title, message, deps = {}) {
+  const client = deps.supabase ?? await getDefaultSupabaseClient();
   await notifyTeamOwnerShared({
     supabase: client,
     teamId,
     type,
     title,
     message,
+    now: deps.now,
   });
 }

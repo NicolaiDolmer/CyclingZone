@@ -384,6 +384,8 @@ function createStandingsSupabase({ teams, races, results }) {
   };
 }
 
+const FIXED_SEASON_END_NOW = new Date("2026-04-23T08:00:00.000Z");
+
 test("processSeasonEnd keeps the board flow on the shared runtime path", async () => {
   const supabase = createSeasonEndSupabase({
     season: {
@@ -440,6 +442,7 @@ test("processSeasonEnd keeps the board flow on the shared runtime path", async (
 
   await processSeasonEnd("season-1", {
     supabase,
+    now: FIXED_SEASON_END_NOW,
     processLoanInterest: async () => {},
     createEmergencyLoan: async () => {},
   });
@@ -513,6 +516,7 @@ test("processSeasonEnd skips writing a duplicate board notification when the sam
 
   await processSeasonEnd("season-1", {
     supabase: firstSupabase,
+    now: FIXED_SEASON_END_NOW,
     processLoanInterest: async () => {},
     createEmergencyLoan: async () => {},
   });
@@ -531,6 +535,7 @@ test("processSeasonEnd skips writing a duplicate board notification when the sam
 
   await processSeasonEnd("season-1", {
     supabase,
+    now: FIXED_SEASON_END_NOW,
     processLoanInterest: async () => {},
     createEmergencyLoan: async () => {},
   });
