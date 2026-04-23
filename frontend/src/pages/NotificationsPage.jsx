@@ -1,21 +1,23 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
+import { useNavigate } from "react-router-dom";
 
 const TYPE_CONFIG = {
-  bid_received:              { icon: "⚡", color: "text-[#e8c547]", bg: "bg-[#e8c547]/8 border-[#e8c547]/15" },
-  bid_placed:                { icon: "⚡", color: "text-[#e8c547]", bg: "bg-[#e8c547]/8 border-[#e8c547]/15" },
-  auction_won:               { icon: "🏆", color: "text-green-400",  bg: "bg-green-500/8 border-green-500/15" },
-  auction_lost:              { icon: "↩",  color: "text-white/40",   bg: "bg-white/3 border-white/8" },
-  auction_outbid:            { icon: "⚠️", color: "text-red-400",    bg: "bg-red-500/8 border-red-500/15" },
-  transfer_offer_received:   { icon: "↔",  color: "text-blue-400",   bg: "bg-blue-500/8 border-blue-500/15" },
-  transfer_offer_accepted:   { icon: "✅", color: "text-green-400",  bg: "bg-green-500/8 border-green-500/15" },
-  transfer_offer_rejected:   { icon: "❌", color: "text-red-400",    bg: "bg-red-500/8 border-red-500/15" },
-  transfer_counter:          { icon: "↔",  color: "text-[#e8c547]", bg: "bg-[#e8c547]/8 border-[#e8c547]/15" },
-  new_race:                  { icon: "🏁", color: "text-white",      bg: "bg-white/3 border-white/8" },
-  season_started:            { icon: "🚀", color: "text-green-400",  bg: "bg-green-500/8 border-green-500/15" },
-  season_ended:              { icon: "🏁", color: "text-white",      bg: "bg-white/3 border-white/8" },
-  salary_paid:               { icon: "💰", color: "text-orange-400", bg: "bg-orange-500/8 border-orange-500/15" },
-  sponsor_paid:              { icon: "💰", color: "text-green-400",  bg: "bg-green-500/8 border-green-500/15" },
+  bid_received:              { icon: "⚡", color: "text-[#e8c547]", bg: "bg-[#e8c547]/8 border-[#e8c547]/15", link: "/auctions" },
+  bid_placed:                { icon: "⚡", color: "text-[#e8c547]", bg: "bg-[#e8c547]/8 border-[#e8c547]/15", link: "/auctions" },
+  auction_won:               { icon: "🏆", color: "text-green-400",  bg: "bg-green-500/8 border-green-500/15", link: "/auctions" },
+  auction_lost:              { icon: "↩",  color: "text-white/40",   bg: "bg-white/3 border-white/8",          link: "/auctions" },
+  auction_outbid:            { icon: "⚠️", color: "text-red-400",    bg: "bg-red-500/8 border-red-500/15",     link: "/auctions" },
+  transfer_offer_received:   { icon: "↔",  color: "text-blue-400",   bg: "bg-blue-500/8 border-blue-500/15",   link: "/transfers" },
+  transfer_offer_accepted:   { icon: "✅", color: "text-green-400",  bg: "bg-green-500/8 border-green-500/15", link: "/transfers" },
+  transfer_offer_rejected:   { icon: "❌", color: "text-red-400",    bg: "bg-red-500/8 border-red-500/15",     link: "/transfers" },
+  transfer_offer_withdrawn:  { icon: "↩",  color: "text-white/40",   bg: "bg-white/3 border-white/8",          link: "/transfers" },
+  transfer_counter:          { icon: "↔",  color: "text-[#e8c547]", bg: "bg-[#e8c547]/8 border-[#e8c547]/15", link: "/transfers" },
+  new_race:                  { icon: "🏁", color: "text-white",      bg: "bg-white/3 border-white/8",          link: "/races" },
+  season_started:            { icon: "🚀", color: "text-green-400",  bg: "bg-green-500/8 border-green-500/15", link: "/dashboard" },
+  season_ended:              { icon: "🏁", color: "text-white",      bg: "bg-white/3 border-white/8",          link: "/season-end" },
+  salary_paid:               { icon: "💰", color: "text-orange-400", bg: "bg-orange-500/8 border-orange-500/15", link: "/finance" },
+  sponsor_paid:              { icon: "💰", color: "text-green-400",  bg: "bg-green-500/8 border-green-500/15", link: "/finance" },
 };
 
 function timeAgo(dateStr) {
@@ -31,11 +33,12 @@ function timeAgo(dateStr) {
 }
 
 export default function NotificationsPage() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [markingAll, setMarkingAll] = useState(false);
-  const userIdRef = useRef(null); // Use ref so it's always current in async functions
+  const userIdRef = useRef(null);
 
   useEffect(() => {
     loadNotifications();
@@ -127,7 +130,7 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-white">Notifikationer</h1>
+          <h1 className="text-xl font-bold text-white">Indbakke</h1>
           <p className="text-white/30 text-sm">
             {unreadCount > 0 ? `${unreadCount} ulæste` : "Alle er læst"}
           </p>
@@ -187,7 +190,10 @@ export default function NotificationsPage() {
                   ${n.is_read
                     ? "bg-[#0f0f18] border-white/5 opacity-60 hover:opacity-80"
                     : config.bg}`}
-                onClick={() => !n.is_read && markRead(n.id)}>
+                onClick={() => {
+                  if (!n.is_read) markRead(n.id);
+                  if (config.link) navigate(config.link);
+                }}>
 
                 {/* Icon */}
                 <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center

@@ -19,7 +19,7 @@ function buildNavGroups(team) {
         { to: "/team",           label: "Mit Hold",         icon: "◈" },
         { to: "/board",          label: "Bestyrelse",       icon: "◧" },
         { to: "/finance",        label: "Finanser",         icon: "💰" },
-        { to: "/notifications",  label: "Notifikationer",   icon: "🔔" },
+        { to: "/notifications",  label: "Indbakke",         icon: "🔔" },
         ...(team?.id ? [{ to: `/managers/${team.id}`, label: "Min Managerprofil", icon: "👤" }] : []),
         { to: "/activity-feed",  label: "Aktivitetsfeed",   icon: "◉" },
       ],

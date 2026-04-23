@@ -116,8 +116,12 @@ const SECTIONS = [
         text: "Hvis du ikke kan logge ind, kan du fra login-siden vælge 'Glemt password?'. Systemet sender et reset-link til din email, og linket åbner en dedikeret side hvor du kan vælge en ny adgangskode.",
       },
       {
+        title: "Indbakke",
+        text: "Indbakken (under Overblik) samler alle systemhændelser: bud, auktioner, transfertilbud, sæsonstart, økonomi og achievements. Klik på en besked for at gå direkte til den relevante side. Ulæste beskeder vises med et gult tal ved 🔔-ikonet.",
+      },
+      {
         title: "Online status",
-        text: "En grøn prik ved en managers navn betyder de er aktive lige nu (sidst set inden for 5 minutter). En grå prik med tekst viser hvornår de sidst var online, f.eks. '3t siden'. Du kan se dette overalt hvor manager-navne vises.",
+        text: "En grøn prik ved en managers navn betyder de er aktive lige nu (sidst set inden for 5 minutter). En grå prik med tekst viser hvornår de sidst var online, f.eks. '3t siden'. Du kan se dette på managerprofiler og i holdlisten.",
       },
       {
         title: "Antal managers online",
@@ -158,8 +162,8 @@ const SECTIONS = [
         text: "Hemmelige achievements vises som 🔒 med titlen '???' indtil du låser dem op. Beskrivelsen afsløres først bagefter. De låses op ved at gøre uventede eller sjove ting i spillet.",
       },
       {
-        title: "Notifikationer",
-        text: "Når du låser et achievement op, modtager du en notifikation med achievement-ikonet og titlen. Dine låste achievements vises på din manager-profil.",
+        title: "Achievement-notifikationer",
+        text: "Når du låser et achievement op, modtager du en besked i Indbakken med achievement-ikonet og titlen. Dine låste achievements vises på din manager-profil.",
       },
     ],
   },

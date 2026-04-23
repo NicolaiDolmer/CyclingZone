@@ -2,6 +2,21 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.32",
+    date: "2026-04-23",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Notifikationer er omdøbt til Indbakke — siden samler alle systemhændelser ét sted",
+          "Klik på en besked i Indbakken fører nu direkte til den relevante side (auktioner, transfers, løb osv.) i stedet for blot at markere som læst",
+          "Holdoversigten viser nu en grøn online-indikator ved managere der er aktive lige nu",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.31",
     date: "2026-04-23",
     label: "Beta",

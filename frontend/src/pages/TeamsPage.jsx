@@ -29,7 +29,7 @@ export default function TeamsPage() {
 
     const [teamsRes, ridersRes, standingsRes] = await Promise.all([
       supabase.from("teams")
-        .select("id, name, division, balance, sponsor_income")
+        .select("id, name, division, balance, sponsor_income, user:user_id(last_seen)")
         .eq("is_ai", false)
         .order("division").order("name"),
       supabase.from("riders").select("team_id").not("team_id", "is", null),
@@ -114,6 +114,8 @@ export default function TeamsPage() {
                 const isMe = team.id === myTeamId;
                 const riderCount = riderCounts[team.id] || 0;
                 const standing = standings[team.id];
+                const lastSeen = team.user?.last_seen;
+                const isOnline = lastSeen && (Date.now() - new Date(lastSeen).getTime()) < 5 * 60 * 1000;
                 return (
                   <div key={team.id}
                     onClick={() => navigate(`/teams/${team.id}`)}
@@ -134,7 +136,10 @@ export default function TeamsPage() {
                               px-1.5 py-0.5 rounded-full border border-[#e8c547]/20">Dig</span>
                           )}
                         </div>
-                        <p className="text-white/30 text-xs mt-0.5">{riderCount} ryttere</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOnline ? "bg-green-400 shadow-[0_0_4px_rgba(74,222,128,0.8)]" : "bg-white/15"}`} />
+                          <p className="text-white/30 text-xs">{riderCount} ryttere</p>
+                        </div>
                       </div>
             
                     </div>
