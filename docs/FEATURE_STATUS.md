@@ -32,7 +32,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Auktionsfinalisering krediterer nu den faktiske AI-/non-user-ejer ved afslutning og annullerer stale auktioner, hvis rytteren i mellemtiden ejes af en anden menneskelig manager
 - Squad-limit ved auktionsfinalisering tæller også ventende handler og aktive indlån
 - Auktionshistorik-side
-- Discord-notifikationer ved sæsonevents
+- Discord-notifikationer ved sæsonevents, nye auktioner, overbud, transfer-tilbud og transfer-svar (notifier koblet op i api.js og cron.js)
 
 ### Transfers
 - Opret transfer-liste
@@ -122,17 +122,17 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 🔴 Broken / Kendte bugs
 
-- Evne-filter/slider kræver frisk reproduktion; root cause er ikke bekræftet via statisk kodegennemgang endnu
-- Discord/webhook-flowet kræver frisk live-verifikation; seneste produktnote siger at webhooken ikke længere virker som forventet
-- Hemmelige achievements afslører sig selv før unlock på mindst én UI-flade og bryder derfor den tilsigtede `???`/låste præsentation
+- Evne-filter/slider kræver frisk live-reproduktion; ingen statisk root cause fundet
+- Discord-webhooks er nu koblet op (notifier var unwired), men live-verifikation mod rigtig webhook-URL er ikke gennemført endnu
 
 --- 
 
 ## 🚧 I gang
 
 - [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
-- [ ] Kør live SQL-patch + admin rebuild for den nuværende deployede aktive sæson
+- [ ] Kør live SQL-patch (`2026-04-23-discord-settings.sql`) + admin rebuild for den nuværende deployede aktive sæson
 - [ ] Første live beta-verifikation af `season start -> result approval -> season end`
+- [ ] Live-verifikation af Discord webhook (mangler en reel webhook-URL i `.env` og i `discord_settings`-tabellen)
 
 ---
 

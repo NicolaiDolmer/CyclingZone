@@ -35,6 +35,14 @@ import {
   notifyUser as notifyUserShared,
 } from "../lib/notificationService.js";
 import {
+  notifyNewAuction,
+  notifyOutbid,
+  notifyAuctionWon,
+  notifyTransferOffer,
+  notifyTransferResponse,
+  notifySeasonEvent,
+} from "../lib/discordNotifier.js";
+import {
   processSeasonEnd,
   processSeasonStart,
   updateStandings,
@@ -426,6 +434,14 @@ router.post("/auctions", requireAuth, async (req, res) => {
     amount: price,
   });
 
+  notifyNewAuction({
+    riderName: `${rider.firstname} ${rider.lastname}`,
+    riderUci: rider.uci_points,
+    sellerName: req.team.name,
+    startPrice: price,
+    endsAt: calculatedEnd.toISOString(),
+  }).catch(() => {});
+
   res.status(201).json({
     auction,
     message: `Auktion startet — slutter ${calculatedEnd.toLocaleString("da-DK")}`,
@@ -507,6 +523,12 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
       `${req.team.name} bød ${amount} på ${auction.rider.firstname} ${auction.rider.lastname}`,
       auction.id
     );
+    notifyOutbid({
+      riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
+      newBid: amount,
+      bidderName: req.team.name,
+      teamId: auction.current_bidder_id,
+    }).catch(() => {});
   }
 
   // Only notify seller if they're a real human manager selling their own rider
@@ -540,6 +562,7 @@ router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
     supabase,
     auctionId: req.params.id,
     notifyTeamOwner,
+    discordNotify: (args) => notifyAuctionWon(args).catch(() => {}),
     logActivity,
     awardXP: awardTeamOwnerXP,
   });
@@ -655,6 +678,13 @@ router.post("/transfers/offer", requireAuth, async (req, res) => {
     `${req.team.name} tilbyder ${offer_amount.toLocaleString()} CZ$ for ${rider.firstname} ${rider.lastname}`,
     data.id);
 
+  notifyTransferOffer({
+    riderName: `${rider.firstname} ${rider.lastname}`,
+    offerAmount: offer_amount,
+    buyerName: req.team.name,
+    teamId: rider.team_id,
+  }).catch(() => {});
+
   res.status(201).json(data);
 });
 
@@ -721,6 +751,12 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
       `${req.team.name} har accepteret dit tilbud på ${offer.rider.firstname} ${offer.rider.lastname} for ${price.toLocaleString()} CZ$. Bekræft for at gennemføre handlen.`,
       offer.id);
 
+    notifyTransferResponse({
+      riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
+      accepted: true,
+      teamId: offer.buyer_team_id,
+    }).catch(() => {});
+
     return res.json({ success: true, action: "awaiting_confirmation", price });
   }
 
@@ -730,6 +766,11 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
     await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected",
       "Transfertilbud afvist",
       `Dit tilbud på ${offer.rider.firstname} ${offer.rider.lastname} blev afvist`, offer.id);
+    notifyTransferResponse({
+      riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
+      accepted: false,
+      teamId: offer.buyer_team_id,
+    }).catch(() => {});
     return res.json({ success: true, action: "rejected" });
   }
 
@@ -745,6 +786,12 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
       "Modbud modtaget",
       `${req.team.name} sender modbud på ${offer.rider.firstname} ${offer.rider.lastname}: ${counter_amount.toLocaleString()} CZ$`,
       offer.id);
+    notifyTransferResponse({
+      riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
+      accepted: false,
+      teamId: offer.buyer_team_id,
+      counterAmount: counter_amount,
+    }).catch(() => {});
     return res.json({ success: true, action: "countered", counter_amount });
   }
 
@@ -1525,6 +1572,8 @@ router.post("/admin/seasons/:id/start", requireAdmin, async (req, res) => {
       },
     });
 
+    notifySeasonEvent({ type: "season_started", seasonNumber: startedSeason.number }).catch(() => {});
+
     res.json({
       success: true,
       season_id: startedSeason.id,
@@ -1590,6 +1639,8 @@ router.post("/admin/seasons/:id/end", requireAdmin, async (req, res) => {
         season_number: season.number,
       },
     });
+
+    notifySeasonEvent({ type: "season_ended", seasonNumber: season.number }).catch(() => {});
 
     res.json({
       success: true,

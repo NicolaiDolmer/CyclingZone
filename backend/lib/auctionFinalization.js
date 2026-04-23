@@ -108,6 +108,7 @@ async function finalizeAuctionRecord({
   supabase,
   auction,
   notifyTeamOwner,
+  discordNotify = NOOP,
   logActivity = NOOP,
   awardXP = NOOP,
   squadLimits = AUCTION_SQUAD_LIMITS,
@@ -324,6 +325,12 @@ async function finalizeAuctionRecord({
       auction.id
     );
 
+    discordNotify({
+      riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
+      finalPrice: price,
+      teamId: auction.current_bidder_id,
+    }).catch(() => {});
+
     if (auction.seller_team_id) {
       await notifyTeamOwner(
         auction.seller_team_id,
@@ -443,6 +450,7 @@ export async function finalizeAuctionById({
   supabase,
   auctionId,
   notifyTeamOwner,
+  discordNotify = NOOP,
   logActivity = NOOP,
   awardXP = NOOP,
   squadLimits = AUCTION_SQUAD_LIMITS,
@@ -467,6 +475,7 @@ export async function finalizeAuctionById({
     supabase,
     auction,
     notifyTeamOwner,
+    discordNotify,
     logActivity,
     awardXP,
     squadLimits,
@@ -477,6 +486,7 @@ export async function finalizeAuctionById({
 export async function finalizeExpiredAuctions({
   supabase,
   notifyTeamOwner,
+  discordNotify = NOOP,
   logActivity = NOOP,
   awardXP = NOOP,
   squadLimits = AUCTION_SQUAD_LIMITS,
@@ -499,6 +509,7 @@ export async function finalizeExpiredAuctions({
         supabase,
         auctionId: auction.id,
         notifyTeamOwner,
+        discordNotify,
         logActivity,
         awardXP,
         squadLimits,

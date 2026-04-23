@@ -2,6 +2,20 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.30",
+    date: "2026-04-23",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Hemmelige achievements afslører ikke længere navn eller beskrivelse i tooltip-hover, før de er låst op — låste hemmelige achievements viser nu '???' i stedet",
+          "Discord-webhooks sendes nu korrekt ved nye auktioner, overbud, transfer-tilbud, transfer-svar og sæsonstart/-slut — notifier-modulet var tidligere koblet fra alle event-sites",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.29",
     date: "2026-04-23",
     label: "Beta",

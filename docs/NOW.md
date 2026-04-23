@@ -13,6 +13,7 @@
 - Næste låste sparringssession efter Slice 0 er navigation/app-shell-kontrakten.
 
 ## Blockers / investigations
-- Blocker: Discord/webhook-regression skal reproduceres og afklares før Discord-transferhistorik og andre webhook-udvidelser bygges ovenpå.
+- Delvist løst: Discord/webhook-notifier er nu koblet op. Gjenstår: live-verifikation mod rigtig webhook-URL + køre `2026-04-23-discord-settings.sql`-migrationen i prod.
 - Blocker: `dyn_cyclist`-integrationen mangler stadig et eksempelark til endelig datakontrakt og kolonnemapping.
-- Follow-up: Kendte ikke-blokerende investigations som hidden achievements, evne-filter/slider og live season-rebuild spores fortsat i `docs/FEATURE_STATUS.md` og backloggen, men er ikke første execution-slice.
+- Løst: Hidden achievements afslørte navn/beskrivelse i tooltip — nu rettet.
+- Follow-up: Evne-filter/slider kræver frisk live-reproduktion; ingen statisk root cause fundet.

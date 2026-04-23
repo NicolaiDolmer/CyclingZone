@@ -20,6 +20,7 @@ import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
 } from "./lib/notificationService.js";
+import { notifyAuctionWon } from "./lib/discordNotifier.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, '../.env') });
 
@@ -39,6 +40,7 @@ async function finalizeExpiredAuctions() {
   const results = await finalizeExpiredAuctionsShared({
     supabase,
     notifyTeamOwner,
+    discordNotify: (args) => notifyAuctionWon(args).catch(() => {}),
     logActivity,
     awardXP: awardTeamOwnerXP,
     now: new Date(),
