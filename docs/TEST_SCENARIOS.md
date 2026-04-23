@@ -49,6 +49,10 @@
 - `POST /api/board/request` kan justere den aktive plan via delt board-engine og skriver outcome til `board_request_log`
 - En anden `POST /api/board/request` i samme sæson afvises uden at skabe endnu en board-request-log
 - Board request kan opdatere `current_goals` og evt. `focus`, men må ikke bryde det eksisterende `/api/board/status`-read path
+- Star-led holds skal få skarpere resultat-/sponsorforventninger, men samtidig lidt positiv prestige i boardets økonomi-signal
+- En tydelig national kerne skal tælle positivt i boardets identitetssignal og gøre `ease_identity_requirements` sværere
+- Direkte requests mellem ungdoms- og stjernespor skal ofte lande som et `balanced` tradeoff i stedet for et fuldt focus-hop
+- DB-kontrakten må ikke tillade mere end én `board_request_log`-række pr. hold pr. sæson
 
 ---
 

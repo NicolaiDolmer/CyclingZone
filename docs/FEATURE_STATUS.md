@@ -88,6 +88,10 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Nye board-kontrakter skalerer nu topfinish, resultatkrav, sponsorvækst og trupkrav efter division, standings og afledt holdspecialisering, så målene holder sig inden for divisionsgrænserne
 - Board-siden viser nu en afledt holdprofil med primær/sekundær specialisering, U25-andel, national kerne, stjerneprofil og trupstatus fra den samme board-runtime
 - Balancerede board-planer kan nu erstatte et generisk trupmål med et nationalt identitetsmål, hvis holdet allerede har en tydelig landekerne
+- National kerne giver nu også en lille reel identitetsværdi i den vægtede board-evaluering og gør identitetslempelser sværere, når holdets DNA allerede er tydeligt
+- Stjerneprofil giver nu en lille sponsor/prestige-bonus i board-scoringen, men skærper samtidig star-signing mål og boardets modstand mod at sænke resultatpresset
+- Direkte board-requests mellem `youth_development` og `star_signing` lander nu ofte som gradvise, forudsigelige `balanced`-tradeoffs i stedet for et øjeblikkeligt hard switch
+- DB-schemaet håndhæver nu maks. én board request pr. hold pr. sæson
 
 ### Admin
 - Import af ryttere (Python-script)

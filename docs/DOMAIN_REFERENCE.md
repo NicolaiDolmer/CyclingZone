@@ -215,3 +215,6 @@ Konsekvenser i runtime:
 - `min_riders` kan ikke længere lande uden for divisionens min/max-grænser
 - `top_n_finish`, `stage_wins`, `gc_wins` og `sponsor_growth` justeres op eller ned efter holdets spor og udgangspunkt
 - Board requests bruger samme holdprofil, så skift mod mere ungdom eller mere resultatorientering bliver vurderet mere kontekstuelt
+- En tydelig national kerne giver nu også en lille identitetsbonus i board-scoringen og gør det sværere at lempe identitetskrav, hvis holdets DNA allerede er tydeligt
+- En stærk stjerneprofil giver nu lidt sponsor/prestige-værdi i board-scoringen, men hæver samtidig forventningerne til topfinish, GC-resultater og sponsorvækst
+- Direkte requests mellem `youth_development` og `star_signing` bliver som udgangspunkt gradvise via `balanced`, medmindre satisfaction og holdprofil tydeligt støtter et fuldt skift

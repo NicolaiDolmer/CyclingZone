@@ -2004,6 +2004,20 @@ function isMissingTable(error, tableName) {
     || (tableName ? haystacks.includes(tableName) : false);
 }
 
+function isUniqueViolation(error, constraintName) {
+  if (!error) return false;
+
+  const haystacks = [
+    error.code || "",
+    error.message || "",
+    error.details || "",
+    error.hint || "",
+  ].join(" ");
+
+  return haystacks.includes("23505")
+    || (constraintName ? haystacks.includes(constraintName) : false);
+}
+
 async function loadBoardPlanningContext(teamId) {
   const [seasonRes, teamRes, ridersRes, standingRes, boardRes] = await Promise.all([
     supabase.from("seasons").select("id, number").eq("status", "active").single(),
@@ -2427,7 +2441,12 @@ router.post("/board/request", requireAuth, async (req, res) => {
       .select("*")
       .single();
 
-    if (requestInsertError) return res.status(500).json({ error: requestInsertError.message });
+    if (requestInsertError) {
+      if (isUniqueViolation(requestInsertError, "idx_board_request_log_team_season_unique")) {
+        return res.status(409).json({ error: "Board request already used this season" });
+      }
+      return res.status(500).json({ error: requestInsertError.message });
+    }
 
     await notifyTeamOwner(
       teamId,

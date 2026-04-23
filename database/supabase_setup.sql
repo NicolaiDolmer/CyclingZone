@@ -225,8 +225,9 @@ CREATE TABLE IF NOT EXISTS public.board_request_log (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_board_request_log_team_season
-  ON public.board_request_log(team_id, season_number DESC, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_board_request_log_team_season_unique
+ON public.board_request_log(team_id, season_number)
+WHERE season_number IS NOT NULL;
 
 -- ── FINANCE TRANSACTIONS ──────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.finance_transactions (

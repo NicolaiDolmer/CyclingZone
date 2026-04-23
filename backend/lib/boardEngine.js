@@ -82,6 +82,34 @@ const SQUAD_STATUS_LABELS = {
 
 const LEVELS = ["low", "medium", "high"];
 
+const NATIONAL_CORE_IDENTITY_BONUS_BY_STRENGTH = {
+  none: 0,
+  low: 0.01,
+  medium: 0.03,
+  high: 0.05,
+};
+
+const STAR_PROFILE_PRESTIGE_BONUS_BY_LEVEL = {
+  low: 0,
+  medium: 0.02,
+  high: 0.04,
+  elite: 0.06,
+};
+
+const STAR_PROFILE_GOAL_PRESSURE_BY_LEVEL = {
+  low: 0,
+  medium: 0,
+  high: 1,
+  elite: 1,
+};
+
+const STAR_PROFILE_SPONSOR_PRESSURE_BY_LEVEL = {
+  low: 0,
+  medium: 0,
+  high: 5,
+  elite: 10,
+};
+
 export const BOARD_IDENTITY_RIDER_SELECT = [
   "id",
   "is_u25",
@@ -606,12 +634,21 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
   const resultsIndex = findGoalIndexByCategory(currentGoals, "results");
   const identityIndex = findGoalIndexByCategory(currentGoals, "identity");
   const economyIndex = findGoalIndexByCategory(currentGoals, "economy");
+  const strongNationalCore = hasStrongNationalCore(identityProfile);
+  const strongStarProfile = hasStrongStarProfile(identityProfile);
 
   if (requestType === "lower_results_pressure") {
     if (satisfaction < 35 || overallScore < 0.52) {
       return buildRejectedBoardRequest({
         requestType,
         reason: "Bestyrelsen synes allerede planen er under nok pres og vil se mere fremgang, for de letter kravene.",
+      });
+    }
+
+    if (strongStarProfile && (satisfaction < 60 || overallScore < 0.66)) {
+      return buildRejectedBoardRequest({
+        requestType,
+        reason: "Bestyrelsen afviser at saenke ambitionsniveauet for et hold med tydelige profiler, fordi sponsorernes forventninger allerede er skruet op.",
       });
     }
 
@@ -631,9 +668,13 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     title = outcome === "partial"
       ? "Bestyrelsen giver lidt luft"
       : "Bestyrelsen giver luft mod en pris";
-    summary = "Bestyrelsen saenker det sportslige pres en smule i den aktive plan.";
+    summary = strongStarProfile
+      ? "Bestyrelsen giver kun lidt luft, fordi et hold med store profiler stadig bliver holdt op pa hoje forventninger."
+      : "Bestyrelsen saenker det sportslige pres en smule i den aktive plan.";
     tradeoffSummary = economyIndex >= 0
-      ? "Til gaengald bliver okonomikravet skarpere, sa holdet skal drives mere disciplineret resten af planen."
+      ? strongStarProfile
+        ? "Profilerne giver sponsorprojektet tyngde, men de betyder ogsa at boardet strammer okonomikravet i stedet for at slippe ambitionerne helt."
+        : "Til gaengald bliver okonomikravet skarpere, sa holdet skal drives mere disciplineret resten af planen."
       : "Bestyrelsen giver kun en delvis lettelse, fordi planen stadig skal have tydelige resultater.";
   }
 
@@ -647,6 +688,12 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     });
     const youthIdentityGoal = youthTemplateGoals.find((goal) => goal.type === "min_u25_riders");
     const youthResultsGoal = youthTemplateGoals.find((goal) => goal.category === "results");
+    const usesBalancedBridge = shouldUseBalancedBridge({
+      currentFocus: board.focus,
+      requestType,
+      identityProfile,
+      satisfaction,
+    });
 
     if (identityIndex >= 0 && youthIdentityGoal) {
       updatedGoals = replaceGoal(updatedGoals, identityIndex, youthIdentityGoal, goalChanges, "replaced");
@@ -660,13 +707,21 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
       updatedGoals = replaceGoal(updatedGoals, rankingIndex, buildNegotiatedGoal(updatedGoals[rankingIndex]), goalChanges, "relaxed");
     }
 
-    nextFocus = "youth_development";
+    nextFocus = usesBalancedBridge ? "balanced" : "youth_development";
     outcome = "tradeoff";
-    title = "Bestyrelsen accepterer et mere ungt spor";
-    summary = identityProfile?.youth_level === "high"
-      ? "Bestyrelsen ser allerede et ungdomsspor i truppen og drejer planen tydeligere mod udvikling."
-      : "Planen drejes mere mod udvikling og langsigtet trupbygning.";
-    tradeoffSummary = "Til gaengald bliver U25-identiteten nu et tydeligere og mere varigt krav i den aktive plan.";
+    title = usesBalancedBridge
+      ? "Bestyrelsen accepterer kun en gradvis drejning"
+      : "Bestyrelsen accepterer et mere ungt spor";
+    summary = usesBalancedBridge
+      ? "Bestyrelsen vil gerne se mere udvikling, men et hold med tydelige profiler kan ikke skifte helt spor pa en gang."
+      : identityProfile?.youth_level === "high"
+        ? "Bestyrelsen ser allerede et ungdomsspor i truppen og drejer planen tydeligere mod udvikling."
+        : strongNationalCore
+          ? "Bestyrelsen ser en tydelig kerne i truppen og accepterer at dreje planen mod en mere langsigtet udviklingsretning."
+          : "Planen drejes mere mod udvikling og langsigtet trupbygning.";
+    tradeoffSummary = usesBalancedBridge
+      ? "Planen bliver mere ungdomsorienteret, men boardet holder fokus i en balanceret mellemstation og slipper ikke resultatpresset helt endnu."
+      : "Til gaengald bliver U25-identiteten nu et tydeligere og mere varigt krav i den aktive plan.";
   }
 
   if (requestType === "more_results_focus") {
@@ -679,26 +734,52 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     });
     const resultsRankingGoal = resultsTemplateGoals.find((goal) => goal.type === "top_n_finish");
     const resultsGoal = resultsTemplateGoals.find((goal) => goal.category === "results");
+    const usesBalancedBridge = shouldUseBalancedBridge({
+      currentFocus: board.focus,
+      requestType,
+      identityProfile,
+      satisfaction,
+    });
 
     if (rankingIndex >= 0 && resultsRankingGoal) {
-      updatedGoals = replaceGoal(updatedGoals, rankingIndex, resultsRankingGoal, goalChanges, "tightened");
+      updatedGoals = replaceGoal(
+        updatedGoals,
+        rankingIndex,
+        usesBalancedBridge ? buildNegotiatedGoal(resultsRankingGoal) : resultsRankingGoal,
+        goalChanges,
+        "tightened"
+      );
     }
 
     if (resultsIndex >= 0 && resultsGoal) {
-      updatedGoals = replaceGoal(updatedGoals, resultsIndex, resultsGoal, goalChanges, "replaced");
+      updatedGoals = replaceGoal(
+        updatedGoals,
+        resultsIndex,
+        usesBalancedBridge ? buildNegotiatedGoal(resultsGoal) : resultsGoal,
+        goalChanges,
+        "replaced"
+      );
     }
 
     if (identityIndex >= 0) {
       updatedGoals = replaceGoal(updatedGoals, identityIndex, buildNegotiatedGoal(updatedGoals[identityIndex]), goalChanges, "relaxed");
     }
 
-    nextFocus = "star_signing";
-    outcome = "approved";
-    title = "Bestyrelsen skruer op for ambitionen";
-    summary = ["gc", "sprint", "classics"].includes(identityProfile?.primary_specialization)
-      ? "Bestyrelsen laeser holdet som klar til at jagte stoerre resultater og skruer op for ambitionen."
-      : "Planen vaegter nu topresultater endnu tydeligere end for.";
-    tradeoffSummary = "Du faar lidt mere fleksibilitet i identitetskravet, men resultatmaalene er til gengaeld blevet skarpere med det samme.";
+    nextFocus = usesBalancedBridge ? "balanced" : "star_signing";
+    outcome = usesBalancedBridge ? "tradeoff" : "approved";
+    title = usesBalancedBridge
+      ? "Bestyrelsen accepterer kun en gradvis optrapning"
+      : "Bestyrelsen skruer op for ambitionen";
+    summary = usesBalancedBridge
+      ? "Bestyrelsen vil gerne se mere resultattryk, men et udtalt ungdomsspor bliver kun flyttet gradvist over mod en mere ambitiost mellemposition."
+      : strongStarProfile
+        ? "Store profiler og sponsorernes forventninger faar bestyrelsen til at skrue op for ambitionen med det samme."
+        : ["gc", "sprint", "classics"].includes(identityProfile?.primary_specialization)
+          ? "Bestyrelsen laeser holdet som klar til at jagte stoerre resultater og skruer op for ambitionen."
+          : "Planen vaegter nu topresultater endnu tydeligere end for.";
+    tradeoffSummary = usesBalancedBridge
+      ? "Boardet holder fast i en del af udviklingssporet, sa holdet ma bevise det nye ambitionsniveau over tid."
+      : "Du faar lidt mere fleksibilitet i identitetskravet, men resultatmaalene er til gengaeld blevet skarpere med det samme.";
   }
 
   if (requestType === "ease_identity_requirements") {
@@ -706,6 +787,13 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
       return buildRejectedBoardRequest({
         requestType,
         reason: "Bestyrelsen vil ikke lempe identitetskravene, foer holdet staar mere stabilt sportsligt.",
+      });
+    }
+
+    if (strongNationalCore && satisfaction < 65) {
+      return buildRejectedBoardRequest({
+        requestType,
+        reason: "Bestyrelsen ser den nationale kerne som en vigtig del af holdets DNA og vil ikke slippe den endnu.",
       });
     }
 
@@ -720,9 +808,15 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     }
 
     outcome = "tradeoff";
-    title = "Bestyrelsen letter identitetskravet";
-    summary = "Holdet faar lidt mere fleksibilitet i trupbygningen og de identitetsbaerende mal.";
-    tradeoffSummary = "Til gaengald forventer bestyrelsen et skarpere sportsligt output resten af planen.";
+    title = strongNationalCore
+      ? "Bestyrelsen letter kun identitetskravet lidt"
+      : "Bestyrelsen letter identitetskravet";
+    summary = strongNationalCore
+      ? "Bestyrelsen ser stadig den nationale kerne som en vigtig del af holdets DNA og giver kun lidt mere fleksibilitet i identitetskravet."
+      : "Holdet faar lidt mere fleksibilitet i trupbygningen og de identitetsbaerende mal.";
+    tradeoffSummary = strongNationalCore
+      ? "Den nationale identitet bliver ikke sluppet helt, og bestyrelsen forventer til gaengald et skarpere sportsligt output resten af planen."
+      : "Til gaengald forventer bestyrelsen et skarpere sportsligt output resten af planen.";
   }
 
   return {
@@ -1224,6 +1318,48 @@ function calculateRiderStarScore(rider = {}) {
   return roundNumber((popularityScore * 0.70) + (uciScore * 0.30));
 }
 
+function getNationalCoreIdentityBonus(nationalCore = null, hasExplicitNationalGoal = false) {
+  if (!nationalCore?.established) return 0;
+
+  const baseBonus = NATIONAL_CORE_IDENTITY_BONUS_BY_STRENGTH[nationalCore.strength || "none"] || 0;
+  return roundNumber(hasExplicitNationalGoal ? (baseBonus * 0.5) : baseBonus);
+}
+
+function getStarProfilePrestigeBonus(starProfile = null) {
+  return STAR_PROFILE_PRESTIGE_BONUS_BY_LEVEL[starProfile?.level || "low"] || 0;
+}
+
+function getStarProfileGoalPressure(starProfile = null) {
+  return STAR_PROFILE_GOAL_PRESSURE_BY_LEVEL[starProfile?.level || "low"] || 0;
+}
+
+function getStarProfileSponsorPressure(starProfile = null) {
+  return STAR_PROFILE_SPONSOR_PRESSURE_BY_LEVEL[starProfile?.level || "low"] || 0;
+}
+
+function hasStrongNationalCore(identityProfile = null) {
+  return Boolean(
+    identityProfile?.national_core?.established
+    && ["medium", "high"].includes(identityProfile?.national_core?.strength)
+  );
+}
+
+function hasStrongStarProfile(identityProfile = null) {
+  return ["high", "elite"].includes(identityProfile?.star_profile?.level);
+}
+
+function shouldUseBalancedBridge({ currentFocus, requestType, identityProfile, satisfaction = 50 } = {}) {
+  if (requestType === "more_results_focus" && currentFocus === "youth_development") {
+    return satisfaction < 68 && !hasStrongStarProfile(identityProfile);
+  }
+
+  if (requestType === "more_youth_focus" && currentFocus === "star_signing") {
+    return satisfaction < 65 || (hasStrongStarProfile(identityProfile) && satisfaction < 75);
+  }
+
+  return false;
+}
+
 function calculateTeamSpecializationScores(riders = [], u25Share = 0) {
   if (!riders.length) {
     return {
@@ -1301,6 +1437,7 @@ function buildIdentityProfileSummary({
 
 function getDynamicRankingTarget({ baseTarget, focus, division, standing, identityProfile } = {}) {
   let target = baseTarget;
+  const starPressure = getStarProfileGoalPressure(identityProfile?.star_profile);
 
   if (division === 2) target += 1;
   if (division === 3) target += 1;
@@ -1311,6 +1448,16 @@ function getDynamicRankingTarget({ baseTarget, focus, division, standing, identi
   }
 
   if (focus === "star_signing" && identityProfile?.competitive_tier === "contender") {
+    target -= 1;
+  }
+
+  if (focus === "star_signing" && starPressure > 0) {
+    target -= starPressure;
+  } else if (
+    focus === "balanced"
+    && starPressure > 0
+    && identityProfile?.competitive_tier !== "rebuilding"
+  ) {
     target -= 1;
   }
 
@@ -1330,6 +1477,7 @@ function getDynamicStageWinsTarget({
   identityProfile,
 } = {}) {
   let target = baseTarget;
+  const starPressure = getStarProfileGoalPressure(identityProfile?.star_profile);
 
   if (["sprint", "classics", "breakaway"].includes(identityProfile?.primary_specialization)) {
     target += 1;
@@ -1351,17 +1499,24 @@ function getDynamicStageWinsTarget({
     target = Math.max(1, target - 1);
   }
 
+  if (focus === "balanced" && starPressure > 0 && identityProfile?.competitive_tier !== "rebuilding") {
+    target += 1;
+  }
+
   return clamp(target, 1, isMultiYear ? planDuration + 3 : 4);
 }
 
 function getDynamicGcWinsTarget({ baseTarget, planDuration, isMultiYear, identityProfile } = {}) {
   let target = baseTarget;
+  const starPressure = getStarProfileGoalPressure(identityProfile?.star_profile);
 
   if (identityProfile?.primary_specialization === "gc") {
     target += 1;
   } else if (identityProfile?.secondary_specialization === "gc" && isMultiYear) {
     target += 1;
   }
+
+  target += starPressure;
 
   if (identityProfile?.squad_status === "thin") {
     target -= 1;
@@ -1447,6 +1602,7 @@ function getDynamicSponsorGrowthTarget({
   identityProfile,
 } = {}) {
   let target = baseTarget;
+  const sponsorPressure = getStarProfileSponsorPressure(identityProfile?.star_profile);
 
   if (division === 3) {
     target -= 5;
@@ -1463,6 +1619,8 @@ function getDynamicSponsorGrowthTarget({
   if (focus === "star_signing" && identityProfile?.competitive_tier === "contender") {
     target += 5;
   }
+
+  target += sponsorPressure;
 
   return clampToStep(target, 5, 5, planDuration > 1 ? 30 : 20);
 }
@@ -1506,6 +1664,8 @@ function getBoardRequestAvailability({ requestType, board, goals = [], context =
       riders: context.team?.riders || context.riders || [],
       standing: context.standing,
     });
+  const strongNationalCore = hasStrongNationalCore(identityProfile);
+  const strongStarProfile = hasStrongStarProfile(identityProfile);
 
   switch (requestType) {
     case "lower_results_pressure":
@@ -1517,6 +1677,9 @@ function getBoardRequestAvailability({ requestType, board, goals = [], context =
       }
       if (overallScore != null && overallScore < 0.52) {
         return { disabled: true, reason: "Bestyrelsen vil se mere fremgang, for de letter resultatkravene." };
+      }
+      if (strongStarProfile && satisfaction < 60) {
+        return { disabled: true, reason: "Store profiler holder sponsorernes forventninger hoje, sa boardet letter ikke resultatkravene endnu." };
       }
       return { disabled: false, reason: null };
     case "more_youth_focus":
@@ -1550,6 +1713,9 @@ function getBoardRequestAvailability({ requestType, board, goals = [], context =
       }
       if (overallScore != null && overallScore < 0.55) {
         return { disabled: true, reason: "Bestyrelsen vil se mere sportslig stabilitet, for de letter identitetskravet." };
+      }
+      if (strongNationalCore && satisfaction < 65) {
+        return { disabled: true, reason: "Bestyrelsen ser den nationale kerne som en vigtig del af holdets DNA og slipper den ikke endnu." };
       }
       if (identityProfile?.primary_specialization === "youth" && identityProfile?.youth_level === "high" && satisfaction < 55) {
         return { disabled: true, reason: "Bestyrelsen ser ungdomssporet som en kerne af holdets identitet og slipper det ikke endnu." };
@@ -1723,7 +1889,7 @@ function calculateBoardPerformance({ board, standing, team, context = {} } = {})
   });
 
   const goalEvaluations = goals.map((goal) => evaluateGoalProgress(goal, standing, team, context));
-  const scoreBreakdown = calculatePerformanceBreakdown(goalEvaluations, personality);
+  const scoreBreakdown = calculatePerformanceBreakdown(goalEvaluations, personality, identityProfile);
   const historyAdjustment = applyBoardMemory(scoreBreakdown.overall_score, context.recentSnapshots || []);
   const adjustedOverallScore = clamp(historyAdjustment.adjusted_score, 0, 1.15);
   const feedback = buildBoardFeedback({
@@ -1754,7 +1920,7 @@ function calculateBoardPerformance({ board, standing, team, context = {} } = {})
   };
 }
 
-function calculatePerformanceBreakdown(goalEvaluations, personality) {
+function calculatePerformanceBreakdown(goalEvaluations, personality, identityProfile = null) {
   const weights = getAdjustedCategoryWeights(personality);
   const categoryEntries = Object.entries(CATEGORY_LABELS).map(([key, label]) => {
     const categoryGoals = goalEvaluations.filter((goal) => goal.category === key);
@@ -1775,7 +1941,12 @@ function calculatePerformanceBreakdown(goalEvaluations, personality) {
     }];
   });
 
-  const categories = Object.fromEntries(categoryEntries.filter(([, value]) => value));
+  const baseCategories = Object.fromEntries(categoryEntries.filter(([, value]) => value));
+  const { categories, signalAdjustments } = applyIdentitySignalsToBreakdown({
+    categories: baseCategories,
+    goalEvaluations,
+    identityProfile,
+  });
   const availableWeight = Object.values(categories).reduce((sum, category) => sum + category.weight, 0);
   const weightedScore = availableWeight > 0
     ? Object.values(categories).reduce((sum, category) => sum + (category.score * category.weight), 0) / availableWeight
@@ -1783,8 +1954,39 @@ function calculatePerformanceBreakdown(goalEvaluations, personality) {
 
   return {
     categories,
+    signal_adjustments: signalAdjustments,
     overall_score: roundNumber(weightedScore),
     overall_pct: Math.round(weightedScore * 100),
+  };
+}
+
+function applyIdentitySignalsToBreakdown({ categories = {}, goalEvaluations = [], identityProfile = null } = {}) {
+  const hasExplicitNationalGoal = goalEvaluations.some((goal) => goal.type === "min_national_riders");
+  const signalAdjustments = {
+    identity: getNationalCoreIdentityBonus(identityProfile?.national_core, hasExplicitNationalGoal),
+    economy: getStarProfilePrestigeBonus(identityProfile?.star_profile),
+  };
+
+  const nextCategories = Object.fromEntries(
+    Object.entries(categories).map(([key, category]) => {
+      const signalBonus = signalAdjustments[key] || 0;
+      if (!category || signalBonus <= 0) {
+        return [key, category];
+      }
+
+      const adjustedScore = clamp(category.score + signalBonus, 0, 1.15);
+      return [key, {
+        ...category,
+        score: roundNumber(adjustedScore),
+        score_pct: Math.round(adjustedScore * 100),
+        signal_bonus: roundNumber(signalBonus),
+      }];
+    })
+  );
+
+  return {
+    categories: nextCategories,
+    signalAdjustments,
   };
 }
 
@@ -1853,6 +2055,37 @@ function getAdjustedCategoryWeights(personality) {
   );
 }
 
+function buildBoardSignalHint(identityProfile, overallScore) {
+  const hints = [];
+  const nationalCore = identityProfile?.national_core;
+  const starProfile = identityProfile?.star_profile;
+
+  if (nationalCore?.established && nationalCore?.code) {
+    hints.push(
+      overallScore >= 0.72
+        ? `Den ${nationalCore.code}-praegede kerne giver holdet en tydelig identitet i boardets oejne.`
+        : `Den ${nationalCore.code}-praegede kerne giver stadig holdet en tydelig identitet, som bestyrelsen ikke slipper let.`
+    );
+  }
+
+  if (["high", "elite"].includes(starProfile?.level)) {
+    hints.push(
+      overallScore >= 0.72
+        ? "Store profiler styrker sponsorprojektet, men de holder ogsa forventningerne hoje."
+        : "Store profiler holder sponsorernes interesse oppe, men de faar ogsa boardet til at forlange mere output."
+    );
+  } else if (starProfile?.level === "medium" && overallScore >= 0.90) {
+    hints.push("Holdets profiler giver sponsorprojektet lidt ekstra tyngde.");
+  }
+
+  return hints.join(" ");
+}
+
+function appendBoardSignalHint(summary, identityProfile, overallScore) {
+  const signalHint = buildBoardSignalHint(identityProfile, overallScore);
+  return signalHint ? `${summary} ${signalHint}` : summary;
+}
+
 function buildBoardFeedback({ scoreBreakdown, personality, identityProfile, context = {} } = {}) {
   const categoryEntries = Object.values(scoreBreakdown?.categories || {});
 
@@ -1884,7 +2117,11 @@ function buildBoardFeedback({ scoreBreakdown, personality, identityProfile, cont
       : "";
     return {
       headline: "Bestyrelsen afventer saesonens forste markorer",
-      summary: `${personality.summary} Indtil videre er forventningerne intakte, men de sportslige svar kommer forst nar saesonen tager form.${profileHint}`,
+      summary: appendBoardSignalHint(
+        `${personality.summary} Indtil videre er forventningerne intakte, men de sportslige svar kommer forst nar saesonen tager form.${profileHint}`,
+        identityProfile,
+        overallScore
+      ),
       tone: "neutral",
       strongest_category: strongestCategory.key,
       weakest_category: weakestCategory.key,
@@ -1894,7 +2131,11 @@ function buildBoardFeedback({ scoreBreakdown, personality, identityProfile, cont
   if (overallScore >= 0.90) {
     return {
       headline: "Bestyrelsen er meget tilfreds",
-      summary: `${strongestCategory.label} driver planen frem, og ${weakestCategory.label.toLowerCase()} er stadig under kontrol.`,
+      summary: appendBoardSignalHint(
+        `${strongestCategory.label} driver planen frem, og ${weakestCategory.label.toLowerCase()} er stadig under kontrol.`,
+        identityProfile,
+        overallScore
+      ),
       tone: "positive",
       strongest_category: strongestCategory.key,
       weakest_category: weakestCategory.key,
@@ -1904,7 +2145,11 @@ function buildBoardFeedback({ scoreBreakdown, personality, identityProfile, cont
   if (overallScore >= 0.72) {
     return {
       headline: "Bestyrelsen ser stabil fremgang",
-      summary: `${strongestCategory.label} er pa sporet, men ${weakestCategory.label.toLowerCase()} kraever mere fokus for at holde planen sund.`,
+      summary: appendBoardSignalHint(
+        `${strongestCategory.label} er pa sporet, men ${weakestCategory.label.toLowerCase()} kraever mere fokus for at holde planen sund.`,
+        identityProfile,
+        overallScore
+      ),
       tone: "steady",
       strongest_category: strongestCategory.key,
       weakest_category: weakestCategory.key,
@@ -1914,7 +2159,11 @@ function buildBoardFeedback({ scoreBreakdown, personality, identityProfile, cont
   if (overallScore >= 0.55) {
     return {
       headline: "Bestyrelsen afventer naeste skridt",
-      summary: `${weakestCategory.label} halter efter planen, og presset stiger hvis udviklingen ikke vender snart.`,
+      summary: appendBoardSignalHint(
+        `${weakestCategory.label} halter efter planen, og presset stiger hvis udviklingen ikke vender snart.`,
+        identityProfile,
+        overallScore
+      ),
       tone: "warning",
       strongest_category: strongestCategory.key,
       weakest_category: weakestCategory.key,
@@ -1923,7 +2172,11 @@ function buildBoardFeedback({ scoreBreakdown, personality, identityProfile, cont
 
   return {
     headline: "Bestyrelsen er bekymret",
-    summary: `${weakestCategory.label} ligger klart under forventning, og holdet mangler tydelig fremgang i den nuvaerende plan.`,
+    summary: appendBoardSignalHint(
+      `${weakestCategory.label} ligger klart under forventning, og holdet mangler tydelig fremgang i den nuvaerende plan.`,
+      identityProfile,
+      overallScore
+    ),
     tone: "negative",
     strongest_category: strongestCategory.key,
     weakest_category: weakestCategory.key,

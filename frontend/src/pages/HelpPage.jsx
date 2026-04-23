@@ -353,15 +353,19 @@ const FAQ = [
   },
   {
     q: "Hvad er bestyrelsestilfredshed?",
-    a: "Bestyrelsen vurderer dig på de aftalte mål med en gradvis model, hvor resultater vægter mest, men økonomi, identitet og rangering også tæller. Nye planer bliver nu også skaleret efter din division, din trupbredde og holdets afledte sportslige profil, så kravene passer bedre til virkeligheden. En nær-miss eller stærk fremgang kan derfor stadig give en acceptabel samlet vurdering. Høj tilfredshed giver bonussponsorat, mens lav tilfredshed reducerer sponsorudbetalingen og kan føre til strammere krav i næste plan. Du kan ikke blive fyret af bestyrelsen i Cycling Zone.",
+    a: "Bestyrelsen vurderer dig på de aftalte mål med en gradvis model, hvor resultater vægter mest, men økonomi, identitet og rangering også tæller. Nye planer bliver skaleret efter din division, din trupbredde og holdets afledte sportslige profil, så kravene passer bedre til virkeligheden. En nær-miss eller stærk fremgang kan derfor stadig give en acceptabel samlet vurdering. En tydelig national kerne giver også lidt identitetsværdi i boardets læsning af holdet, mens store profiler giver lidt sponsor/prestige men samtidig hæver forventningerne. Høj tilfredshed giver bonussponsorat, mens lav tilfredshed reducerer sponsorudbetalingen og kan føre til strammere krav i næste plan. Du kan ikke blive fyret af bestyrelsen i Cycling Zone.",
   },
     {
       q: "Kan jeg forhandle bestyrelsens krav?",
-      a: "Ja. Når du åbner en ny bestyrelsesforhandling genererer systemet kravene på serveren ud fra division, trupstørrelse, U25-andel og holdets nuværende sportslige profil, og du kan forhandle hvert mål én gang. Et godkendt kompromis sænker kravet lidt og halverer typisk straffen ved manglende opfyldelse. Balancerede hold med en tydelig national kerne kan nu også få et nationalt identitetskrav som en del af planen. Når planen først er aktiv, kan du derudover sende én board request pr. sæson fra Board-siden for at bede om en strategisk justering. Svaret kan være godkendt, delvist, afvist eller godkendt med et tradeoff, og den samme holdprofil bruges også i request-vurderingen.",
+      a: "Ja. Når du åbner en ny bestyrelsesforhandling genererer systemet kravene på serveren ud fra division, trupstørrelse, U25-andel, national kerne, stjerneprofil og holdets nuværende sportslige profil, og du kan forhandle hvert mål én gang. Et godkendt kompromis sænker kravet lidt og halverer typisk straffen ved manglende opfyldelse. Balancerede hold med en tydelig national kerne kan også få et nationalt identitetskrav som en del af planen. Når planen først er aktiv, kan du derudover sende én board request pr. sæson fra Board-siden for at bede om en strategisk justering. Svaret kan være godkendt, delvist, afvist eller godkendt med et tradeoff, og direkte skift mellem ungdoms- og stjernespor bliver ofte gjort gradvist via en balanceret mellemstation i stedet for et øjeblikkeligt hard switch.",
+    },
+    {
+      q: "Kan jeg skifte direkte mellem ungdomsspor og stjernespor?",
+      a: "Som regel kun delvist. Bestyrelsen kan godt acceptere en ny retning, men hvis holdets nuværende identitet peger tydeligt mod ungdom eller store profiler, bliver skiftet ofte lavet som et tradeoff via en mere balanceret plan først. Det gør requests mere forudsigelige og giver friktion i identitetsskift, så holdets DNA ikke skifter helt fra den ene dag til den anden.",
     },
     {
       q: "Hvor ser jeg bestyrelsens aktuelle vurdering?",
-      a: "Dashboardet viser et kort bestyrelses-outlook med status og category-scores, mens Board-siden viser den mere detaljerede vurdering. Board-siden viser nu også bestyrelsens læsning af holdet med specialisering, U25-andel, national kerne, stjerneprofil og trupstatus. De to steder læser samme board-data fra backend, så de bruger den samme sandhed.",
+      a: "Dashboardet viser et kort bestyrelses-outlook med status og category-scores, mens Board-siden viser den mere detaljerede vurdering. Board-siden viser også bestyrelsens læsning af holdet med specialisering, U25-andel, national kerne, stjerneprofil og trupstatus, og feedbacken kan nu i højere grad nævne hvorfor netop identitet eller profiler trækker vurderingen op eller ned. De to steder læser samme board-data fra backend, så de bruger den samme sandhed.",
     },
 ];
 

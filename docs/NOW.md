@@ -40,5 +40,7 @@
 - Board System V1 fase 3 er landet i beta: Board-siden kan nu sende én board request pr. aktiv sæson, og backend logger outcome/tradeoff i `board_request_log`
 - Board System V1 fase 4 er delvist landet: nye board-forslag og request-vurderinger er nu division-aware og bruger afledt holdprofil/specialisering i den delte `boardEngine`
 - Board-holdprofilen viser nu også national kerne og stjerneprofil, og balancerede planer kan få et nationalt identitetsmål når truppen allerede har en tydelig landekerne
-- Næste board-fase bør bruge national kerne og stjerneprofil mere direkte i request-outcomes, feedback og dynamisk målgenerering, så de nye identitetssignaler ikke kun er read-side og enkelte balanced-goals
+- Board System V1 fase 5 er landet: national kerne og stjerneprofil justerer nu board-feedback, vægtet scoring og request-outcomes direkte i den delte runtime, så identitet/prestige ikke kun er read-side
+- Direkte board-skift mellem ungdoms- og stjernespor lander nu normalt som forudsigelige balanced-tradeoffs i stedet for et hårdt fuldt focus-flip
+- `board_request_log` er nu hærdet med en unik team+sæson-guard i schema/API, så dobbelte board-requests ikke kan persisteres i samme sæson via race conditions
 - Board-UI mangler stadig landenavn/flag i stedet for rå landekoder på de nye nationalitetsmarkører, så national kerne føles færdig for managers

@@ -2,6 +2,27 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.27",
+    date: "2026-04-23",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Bestyrelsen bruger nu national kerne og stjerneprofil direkte i sin løbende vurdering, så tydelig identitet og store profiler faktisk tæller i board-outlook og season-end",
+          "Store profiler giver nu lidt ekstra sponsor/prestige i boardets læsning af holdet, men de hæver også forventningerne til resultater og sponsorvækst i mere ambitiøse planer",
+          "Direkte board-skift mellem ungdomsspor og stjernespor bliver nu oftere håndteret som et gradvist tradeoff via en balanceret mellemposition i stedet for et hårdt instant switch",
+        ],
+      },
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Backend og database stopper nu dobbelt board-requests i samme sæson, så race conditions ikke kan oprette to svar fra bestyrelsen på én gang",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.26",
     date: "2026-04-22",
     label: "Beta",
@@ -528,7 +549,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.26");
+  const [expanded, setExpanded] = useState("1.27");
 
   return (
     <div className="max-w-2xl mx-auto">

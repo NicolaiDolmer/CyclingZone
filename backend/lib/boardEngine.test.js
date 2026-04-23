@@ -528,3 +528,320 @@ test("resolveBoardRequest can pivot the active plan toward results focus", () =>
   assert.equal(result.updated_board.current_goals[2].type, "gc_wins");
   assert.equal(result.updated_board.current_goals[1].target, 12);
 });
+
+test("buildBoardProposal raises the bar for star-led teams with clear profile riders", () => {
+  const riders = Array.from({ length: 9 }, (_, index) => ({
+    id: `star-${index}`,
+    is_u25: index < 2,
+    nationality_code: index < 5 ? "DK" : "SE",
+    popularity: index < 3 ? 95 : 48,
+    uci_points: index < 3 ? 420 : 165,
+    stat_fl: 72,
+    stat_bj: 72,
+    stat_kb: 71,
+    stat_bk: 71,
+    stat_tt: 70,
+    stat_bro: 70,
+    stat_sp: 72,
+    stat_acc: 71,
+    stat_udh: 70,
+    stat_mod: 70,
+    stat_res: 71,
+    stat_ftr: 69,
+  }));
+
+  const proposal = buildBoardProposal({
+    focus: "star_signing",
+    planType: "1yr",
+    team: {
+      division: 3,
+      sponsor_income: 100,
+      balance: 500,
+    },
+    riders,
+    standing: {
+      rank_in_division: 3,
+      stage_wins: 1,
+      gc_wins: 0,
+    },
+  });
+
+  assert.equal(proposal.identity_profile.star_profile.level, "elite");
+  assert.equal(proposal.goals.find((goal) => goal.type === "top_n_finish")?.target, 3);
+  assert.equal(proposal.goals.find((goal) => goal.type === "gc_wins")?.target, 2);
+  assert.equal(proposal.goals.find((goal) => goal.type === "sponsor_growth")?.target, 15);
+});
+
+test("board outlook turns national core and star profile into visible runtime signals", () => {
+  const riders = Array.from({ length: 8 }, (_, index) => ({
+    id: `signal-${index}`,
+    is_u25: index < 3,
+    nationality_code: index < 5 ? "DK" : index === 5 ? "NO" : "SE",
+    popularity: index < 3 ? 92 : 44,
+    uci_points: index < 3 ? 360 : 150,
+    stat_fl: 72,
+    stat_bj: 72,
+    stat_kb: 71,
+    stat_bk: 71,
+    stat_tt: 70,
+    stat_bro: 69,
+    stat_sp: 72,
+    stat_acc: 71,
+    stat_udh: 70,
+    stat_mod: 69,
+    stat_res: 71,
+    stat_ftr: 68,
+  }));
+
+  const proposal = buildBoardProposal({
+    focus: "balanced",
+    planType: "3yr",
+    team: {
+      division: 3,
+      sponsor_income: 100,
+      balance: 500,
+    },
+    riders,
+    standing: {
+      rank_in_division: 4,
+      stage_wins: 1,
+      gc_wins: 0,
+    },
+  });
+
+  const outlook = buildBoardOutlook({
+    board: {
+      focus: proposal.focus,
+      plan_type: proposal.plan_type,
+      satisfaction: 58,
+      current_goals: proposal.goals,
+    },
+    standing: {
+      rank_in_division: 4,
+      stage_wins: 2,
+      gc_wins: 0,
+    },
+    team: {
+      sponsor_income: 110,
+      riders,
+    },
+    context: {
+      activeLoanCount: 0,
+      planStartSponsorIncome: 100,
+      currentSponsorIncome: 110,
+      planDuration: 3,
+      seasonsCompleted: 2,
+      hasSeasonData: true,
+      cumulativeStats: {
+        stageWins: 3,
+        gcWins: 0,
+      },
+    },
+  });
+
+  assert.equal(outlook.score_breakdown.signal_adjustments.identity > 0, true);
+  assert.equal(outlook.score_breakdown.signal_adjustments.economy > 0, true);
+  assert.match(outlook.feedback.summary, /kerne|identitet/i);
+  assert.match(outlook.feedback.summary, /sponsor|profiler/i);
+});
+
+test("buildBoardRequestOptions blocks easing identity when a national core is central", () => {
+  const riders = Array.from({ length: 8 }, (_, index) => ({
+    id: `core-block-${index}`,
+    is_u25: index < 2,
+    nationality_code: index < 5 ? "DK" : index === 5 ? "NO" : "SE",
+    popularity: 45,
+    uci_points: 180 - (index * 5),
+    stat_fl: 70,
+    stat_bj: 69,
+    stat_kb: 69,
+    stat_bk: 70,
+    stat_tt: 68,
+    stat_bro: 68,
+    stat_sp: 69,
+    stat_acc: 68,
+    stat_udh: 70,
+    stat_mod: 69,
+    stat_res: 69,
+    stat_ftr: 67,
+  }));
+
+  const proposal = buildBoardProposal({
+    focus: "balanced",
+    planType: "1yr",
+    team: {
+      division: 3,
+      sponsor_income: 100,
+      balance: 500,
+    },
+    riders,
+    standing: {
+      rank_in_division: 4,
+      stage_wins: 1,
+      gc_wins: 0,
+    },
+  });
+
+  const options = buildBoardRequestOptions({
+    board: {
+      focus: proposal.focus,
+      plan_type: proposal.plan_type,
+      satisfaction: 60,
+      negotiation_status: "completed",
+      current_goals: proposal.goals,
+    },
+    context: {
+      overallScore: 0.8,
+      identityProfile: proposal.identity_profile,
+    },
+  });
+
+  const easeIdentityOption = options.find((option) => option.type === "ease_identity_requirements");
+  assert.equal(easeIdentityOption?.disabled, true);
+  assert.match(easeIdentityOption?.disabled_reason || "", /nationale kerne|DNA/i);
+});
+
+test("resolveBoardRequest bridges direct youth-to-results pivots through balanced focus", () => {
+  const riders = Array.from({ length: 8 }, (_, index) => ({
+    id: `pivot-${index}`,
+    is_u25: index < 5,
+    nationality_code: index < 4 ? "DK" : "SE",
+    popularity: 32,
+    uci_points: 150 - (index * 4),
+    stat_fl: 68,
+    stat_bj: 69,
+    stat_kb: 70,
+    stat_bk: 68,
+    stat_tt: 67,
+    stat_bro: 66,
+    stat_sp: 67,
+    stat_acc: 67,
+    stat_udh: 71,
+    stat_mod: 70,
+    stat_res: 71,
+    stat_ftr: 68,
+  }));
+
+  const proposal = buildBoardProposal({
+    focus: "youth_development",
+    planType: "1yr",
+    team: {
+      division: 3,
+      sponsor_income: 100,
+      balance: 500,
+    },
+    riders,
+    standing: {
+      rank_in_division: 4,
+      stage_wins: 1,
+      gc_wins: 0,
+    },
+  });
+
+  const result = resolveBoardRequest({
+    board: {
+      focus: proposal.focus,
+      plan_type: proposal.plan_type,
+      satisfaction: 60,
+      negotiation_status: "completed",
+      current_goals: proposal.goals,
+    },
+    standing: {
+      rank_in_division: 4,
+      stage_wins: 1,
+      gc_wins: 0,
+    },
+    team: {
+      sponsor_income: 100,
+      riders,
+    },
+    context: {
+      planDuration: 1,
+      seasonsCompleted: 1,
+      hasSeasonData: true,
+      cumulativeStats: {
+        stageWins: 1,
+        gcWins: 0,
+      },
+    },
+    requestType: "more_results_focus",
+  });
+
+  assert.equal(result.outcome, "tradeoff");
+  assert.equal(result.updated_board.focus, "balanced");
+  assert.equal(result.updated_board.current_goals.some((goal) => goal.type === "min_u25_riders"), true);
+  assert.match(result.summary, /gradvis|mellemposition/i);
+});
+
+test("resolveBoardRequest rejects lowering results pressure for a star-led team", () => {
+  const riders = Array.from({ length: 9 }, (_, index) => ({
+    id: `reject-star-${index}`,
+    is_u25: index < 2,
+    popularity: index < 3 ? 96 : 45,
+    uci_points: index < 3 ? 430 : 175,
+    stat_fl: 72,
+    stat_bj: 72,
+    stat_kb: 71,
+    stat_bk: 71,
+    stat_tt: 70,
+    stat_bro: 70,
+    stat_sp: 72,
+    stat_acc: 71,
+    stat_udh: 70,
+    stat_mod: 70,
+    stat_res: 71,
+    stat_ftr: 69,
+  }));
+
+  const proposal = buildBoardProposal({
+    focus: "star_signing",
+    planType: "1yr",
+    team: {
+      division: 3,
+      sponsor_income: 100,
+      balance: 500,
+    },
+    riders,
+    standing: {
+      rank_in_division: 1,
+      stage_wins: 3,
+      gc_wins: 2,
+    },
+  });
+
+  const result = resolveBoardRequest({
+    board: {
+      focus: proposal.focus,
+      plan_type: proposal.plan_type,
+      satisfaction: 55,
+      negotiation_status: "completed",
+      current_goals: proposal.goals,
+    },
+    standing: {
+      rank_in_division: 1,
+      stage_wins: 3,
+      gc_wins: 2,
+    },
+    team: {
+      sponsor_income: 120,
+      riders,
+    },
+    context: {
+      overallScore: 0.7,
+      activeLoanCount: 0,
+      planDuration: 1,
+      seasonsCompleted: 1,
+      hasSeasonData: true,
+      planStartSponsorIncome: 100,
+      currentSponsorIncome: 120,
+      cumulativeStats: {
+        stageWins: 3,
+        gcWins: 2,
+      },
+    },
+    requestType: "lower_results_pressure",
+  });
+
+  assert.equal(result.outcome, "rejected");
+  assert.match(result.summary, /profiler|sponsor/i);
+});

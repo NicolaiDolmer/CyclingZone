@@ -290,8 +290,9 @@ CREATE TABLE board_request_log (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_board_request_log_team_season
-  ON board_request_log(team_id, season_number DESC, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_board_request_log_team_season_unique
+  ON board_request_log(team_id, season_number)
+  WHERE season_number IS NOT NULL;
 
 -- ============================================================
 -- FINANCE
