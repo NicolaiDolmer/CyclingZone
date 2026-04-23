@@ -24,8 +24,9 @@ _Regel: Kun aktive/top-prioriterede ting spejles til NOW.md. Kun statusændringe
 - Managernavn bør matche Discord-navn
 - Vis tidspunkt for hvornår rytter sættes til transfer
 - Vis ryttertype på rytterside
-- Vis land på ryttere
+- Vis landenavn/flag i stedet for rå landekoder på ryttere og board-national kerne
 - Klik på logo → dashboard (pc + mobil)
+- Board fase 5: brug national kerne og stjerneprofil mere direkte i goal generation, request-outcomes og board-feedback
 
 ---
 
@@ -64,3 +65,5 @@ _Regel: Kun aktive/top-prioriterede ting spejles til NOW.md. Kun statusændringe
 
 - FAQ auto-opdatering
 - Patch notes auto-opdatering
+- Split `backend/lib/boardEngine.js` i mindre moduler uden at miste den delte runtime-path mellem proposal, status, requests og season-end
+- Frontend-build advarer stadig om stor Vite-chunk; senere code-splitting/manualChunks bør planlægges
