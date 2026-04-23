@@ -5,51 +5,54 @@ import { supabase } from "../lib/supabase";
 const API = import.meta.env.VITE_API_URL;
 console.log("[CZ] API URL:", API);
 
-const NAV_GROUPS = [
-  {
-    key: "overblik", label: "Overblik", icon: "◎",
-    items: [
-      { to: "/dashboard",      label: "Dashboard",       icon: "◎" },
-      { to: "/standings",      label: "Rangliste",       icon: "◉" },
-      { to: "/races",          label: "Løbskalender",    icon: "🏁" },
-      { to: "/season-preview", label: "Sæson Preview",   icon: "📊" },
-      { to: "/hall-of-fame",   label: "Hall of Fame",    icon: "🏆" },
-      { to: "/season-end",     label: "Sæsonresultater", icon: "🏆" },
-    ],
-  },
-  {
-    key: "marked", label: "Marked", icon: "⚡",
-    items: [
-      { to: "/riders",    label: "Ryttere",   icon: "🚴" },
-      { to: "/auctions",  label: "Auktioner", icon: "⚡" },
-      { to: "/transfers", label: "Transfers", icon: "↔" },
-    ],
-  },
-  {
-    key: "mithold", label: "Mit Hold", icon: "◈",
-    items: [
-      { to: "/team",          label: "Mit Hold",       icon: "◈" },
-      { to: "/board",         label: "Bestyrelse",     icon: "◧" },
-      { to: "/finance",       label: "Finanser",       icon: "💰" },
-      { to: "/watchlist",     label: "Talentspejder",  icon: "⭐" },
-      { to: "/activity",      label: "Min Aktivitet",  icon: "📋" },
-      { to: "/activity-feed", label: "Aktivitetsfeed", icon: "◉" },
-    ],
-  },
-  {
-    key: "liga", label: "Liga", icon: "◫",
-    items: [
-      { to: "/teams",        label: "Hold",         icon: "◫" },
-      { to: "/head-to-head", label: "Head-to-Head", icon: "⚔" },
-  ]},
+const BOTTOM_ITEMS = [
+  { to: "/help",        label: "Hjælp & Regler", icon: "?" },
+  { to: "/patch-notes", label: "Patch Notes",    icon: "📋" },
 ];
 
-const BOTTOM_ITEMS = [
-  { to: "/notifications", label: "Notifikationer", icon: "🔔" },
-  { to: "/help",          label: "Hjælp & Regler", icon: "?"  },
-  { to: "/patch-notes",   label: "Patch Notes",    icon: "📋" },
-  { to: "/profile",       label: "Min Profil",     icon: "👤" },
-];
+function buildNavGroups(team) {
+  return [
+    {
+      key: "overblik", label: "Overblik", icon: "◎",
+      items: [
+        { to: "/dashboard",      label: "Dashboard",        icon: "◎" },
+        { to: "/team",           label: "Mit Hold",         icon: "◈" },
+        { to: "/board",          label: "Bestyrelse",       icon: "◧" },
+        { to: "/finance",        label: "Finanser",         icon: "💰" },
+        { to: "/notifications",  label: "Notifikationer",   icon: "🔔" },
+        ...(team?.id ? [{ to: `/managers/${team.id}`, label: "Min Managerprofil", icon: "👤" }] : []),
+        { to: "/activity-feed",  label: "Aktivitetsfeed",   icon: "◉" },
+      ],
+    },
+    {
+      key: "marked", label: "Marked", icon: "⚡",
+      items: [
+        { to: "/riders",    label: "Ryttere",       icon: "🚴" },
+        { to: "/auctions",  label: "Auktioner",     icon: "⚡" },
+        { to: "/transfers", label: "Transfers",     icon: "↔" },
+        { to: "/activity",  label: "Min Aktivitet", icon: "📋" },
+        { to: "/watchlist", label: "Ønskeliste",    icon: "⭐" },
+      ],
+    },
+    {
+      key: "resultater", label: "Resultater", icon: "◉",
+      items: [
+        { to: "/standings",  label: "Ranglisten",      icon: "◉" },
+        { to: "/season-end", label: "Sæsonresultater", icon: "🏆" },
+        { to: "/hall-of-fame", label: "Hall of Fame",  icon: "🏆" },
+      ],
+    },
+    {
+      key: "liga", label: "Liga", icon: "◫",
+      items: [
+        { to: "/teams",          label: "Hold",          icon: "◫" },
+        { to: "/head-to-head",   label: "Head-to-Head",  icon: "⚔" },
+        { to: "/season-preview", label: "Sæson Preview", icon: "📊" },
+        { to: "/races",          label: "Løbskalender",  icon: "🏁" },
+      ],
+    },
+  ];
+}
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -147,9 +150,10 @@ export default function Layout() {
   function toggleGroup(key) { setOpenGroups(prev => ({ ...prev, [key]: !prev[key] })); }
 
   const unread = notifications.length;
+  const baseGroups = buildNavGroups(team);
   const navGroups = isAdmin
-    ? [...NAV_GROUPS, { key: "admin", label: "Admin", icon: "⚙", items: [{ to: "/admin", label: "Admin", icon: "⚙" }] }]
-    : NAV_GROUPS;
+    ? [...baseGroups, { key: "admin", label: "Admin", icon: "⚙", items: [{ to: "/admin", label: "Admin", icon: "⚙" }] }]
+    : baseGroups;
 
   function NavItem({ to, label, icon, onClick }) {
     const isActive = location.pathname === to || (to !== "/dashboard" && location.pathname.startsWith(to));
@@ -168,13 +172,13 @@ export default function Layout() {
   function SidebarContent({ onNav }) {
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center gap-2.5 px-4 py-4 border-b border-white/5">
+        <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2.5 px-4 py-4 border-b border-white/5 w-full text-left hover:bg-white/3 transition-colors">
           <div className="w-7 h-7 bg-[#e8c547] rounded-md flex items-center justify-center text-[10px] font-black text-[#0a0a0f] flex-shrink-0">CZ</div>
           <div className="min-w-0">
             <p className="text-white text-xs font-bold leading-tight">Cycling Zone</p>
             <p className="text-white/30 text-[10px] truncate">{team?.name || "..."}</p>
           </div>
-        </div>
+        </button>
 
         {balance !== null && (
           <div className="px-4 py-2.5 border-b border-white/5">
@@ -216,7 +220,6 @@ export default function Layout() {
             );
           })}
           <div className="h-px bg-white/5 my-2 mx-4" />
-          {team?.id && <NavItem to={`/managers/${team.id}`} label="Min Managerprofil" icon="◈" onClick={onNav} />}
           {BOTTOM_ITEMS.map(item => <NavItem key={item.to} {...item} onClick={onNav} />)}
         </nav>
 

@@ -1,6 +1,17 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
+
+function ProfileRedirect() {
+  const [to, setTo] = useState(null);
+  useEffect(() => {
+    supabase.from("teams").select("id").then(({ data }) => {
+      setTo(data?.[0]?.id ? `/managers/${data[0].id}` : "/dashboard");
+    });
+  }, []);
+  if (!to) return null;
+  return <Navigate to={to} replace />;
+}
 import LoginPage from "./pages/LoginPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -77,7 +88,7 @@ export default function App() {
           <Route path="board" element={<BoardPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="compare" element={<RiderComparePage />} />
-          <Route path="profile" element={<ProfilePage />} />
+          <Route path="profile" element={<ProfileRedirect />} />
           <Route path="activity" element={<ActivityPage />} />
           <Route path="activity-feed" element={<ActivityFeedPage />} />
           <Route path="watchlist" element={<WatchlistPage />} />
