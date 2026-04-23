@@ -16,6 +16,7 @@ import {
   createEmergencyLoan,
 } from "./loanEngine.js";
 import {
+  BOARD_IDENTITY_RIDER_SELECT,
   createInitialBoardProfile,
   evaluateBoardSeason,
   getPlanDuration,
@@ -179,7 +180,7 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   // Process finances for all human teams
   const { data: teams } = await supabaseClient
     .from("teams")
-    .select(`*, riders(id, salary, is_u25), board_profiles(*)`)
+    .select(`*, riders(${BOARD_IDENTITY_RIDER_SELECT}), board_profiles(*)`)
     .eq("is_ai", false);
 
   for (const team of teams || []) {

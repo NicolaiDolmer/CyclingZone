@@ -355,14 +355,14 @@ const FAQ = [
     q: "Hvad er bestyrelsestilfredshed?",
     a: "Bestyrelsen vurderer dig på de aftalte mål med en gradvis model, hvor resultater vægter mest, men økonomi, identitet og rangering også tæller. Nye planer bliver nu også skaleret efter din division, din trupbredde og holdets afledte sportslige profil, så kravene passer bedre til virkeligheden. En nær-miss eller stærk fremgang kan derfor stadig give en acceptabel samlet vurdering. Høj tilfredshed giver bonussponsorat, mens lav tilfredshed reducerer sponsorudbetalingen og kan føre til strammere krav i næste plan. Du kan ikke blive fyret af bestyrelsen i Cycling Zone.",
   },
-  {
-    q: "Kan jeg forhandle bestyrelsens krav?",
-    a: "Ja. Når du åbner en ny bestyrelsesforhandling genererer systemet kravene på serveren ud fra division, trupstørrelse, U25-andel og holdets nuværende sportslige profil, og du kan forhandle hvert mål én gang. Et godkendt kompromis sænker kravet lidt og halverer typisk straffen ved manglende opfyldelse. Når planen først er aktiv, kan du derudover sende én board request pr. sæson fra Board-siden for at bede om en strategisk justering. Svaret kan være godkendt, delvist, afvist eller godkendt med et tradeoff, og den samme holdprofil bruges også i request-vurderingen.",
-  },
-  {
-    q: "Hvor ser jeg bestyrelsens aktuelle vurdering?",
-    a: "Dashboardet viser et kort bestyrelses-outlook med status og category-scores, mens Board-siden viser den mere detaljerede vurdering. Board-siden viser nu også bestyrelsens læsning af holdet med specialisering, U25-andel og trupstatus. De to steder læser samme board-data fra backend, så de bruger den samme sandhed.",
-  },
+    {
+      q: "Kan jeg forhandle bestyrelsens krav?",
+      a: "Ja. Når du åbner en ny bestyrelsesforhandling genererer systemet kravene på serveren ud fra division, trupstørrelse, U25-andel og holdets nuværende sportslige profil, og du kan forhandle hvert mål én gang. Et godkendt kompromis sænker kravet lidt og halverer typisk straffen ved manglende opfyldelse. Balancerede hold med en tydelig national kerne kan nu også få et nationalt identitetskrav som en del af planen. Når planen først er aktiv, kan du derudover sende én board request pr. sæson fra Board-siden for at bede om en strategisk justering. Svaret kan være godkendt, delvist, afvist eller godkendt med et tradeoff, og den samme holdprofil bruges også i request-vurderingen.",
+    },
+    {
+      q: "Hvor ser jeg bestyrelsens aktuelle vurdering?",
+      a: "Dashboardet viser et kort bestyrelses-outlook med status og category-scores, mens Board-siden viser den mere detaljerede vurdering. Board-siden viser nu også bestyrelsens læsning af holdet med specialisering, U25-andel, national kerne, stjerneprofil og trupstatus. De to steder læser samme board-data fra backend, så de bruger den samme sandhed.",
+    },
 ];
 
 export default function HelpPage() {

@@ -2,6 +2,21 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.26",
+    date: "2026-04-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Board-siden viser nu også national kerne og stjerneprofil, så bestyrelsens læsning af holdets identitet går dybere end kun specialisering, U25-andel og trupstatus",
+          "Balancerede hold med en tydelig national kerne kan nu få et nationalt identitetsmål direkte i bestyrelsesplanen, så board-krav bedre matcher holdets faktiske DNA",
+          "Board-status og season-end-evaluering bruger nu samme board-riderfelter til identitetslæsningen, så national/stjerneprofil ikke driver mellem UI og runtime",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.25",
     date: "2026-04-22",
     label: "Beta",
@@ -513,7 +528,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.25");
+  const [expanded, setExpanded] = useState("1.26");
 
   return (
     <div className="max-w-2xl mx-auto">

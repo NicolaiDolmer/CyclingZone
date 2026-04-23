@@ -45,6 +45,39 @@ test("deriveTeamIdentityProfile reads a sprint-heavy squad and exposes board-fac
   assert.match(profile.summary, /sprinthold|trup/i);
 });
 
+test("deriveTeamIdentityProfile exposes national core and star profile markers", () => {
+  const riders = Array.from({ length: 8 }, (_, index) => ({
+    id: `core-${index}`,
+    is_u25: index < 2,
+    nationality_code: index < 5 ? "DK" : index === 5 ? "NO" : "SE",
+    popularity: index < 2 ? 85 - (index * 5) : 30,
+    uci_points: 230 - (index * 10),
+    stat_fl: 72,
+    stat_bj: 69,
+    stat_kb: 68,
+    stat_bk: 70,
+    stat_tt: 67,
+    stat_bro: 69,
+    stat_sp: 71,
+    stat_acc: 70,
+    stat_udh: 68,
+    stat_mod: 67,
+    stat_res: 69,
+    stat_ftr: 66,
+  }));
+
+  const profile = deriveTeamIdentityProfile({
+    team: { division: 3 },
+    riders,
+    standing: { rank_in_division: 4 },
+  });
+
+  assert.equal(profile.national_core.code, "DK");
+  assert.equal(profile.national_core.share_pct, 63);
+  assert.equal(profile.national_core.established, true);
+  assert.equal(profile.star_profile.label, "Nationalt kendt");
+});
+
 test("buildBoardProposal keeps squad-size goals inside division limits", () => {
   const riders = Array.from({ length: 8 }, (_, index) => ({
     id: `rider-${index}`,
@@ -87,6 +120,50 @@ test("buildBoardProposal keeps squad-size goals inside division limits", () => {
   assert.equal(minRidersGoal.target <= 10, true);
   assert.equal(minRidersGoal.max_target, 10);
   assert.equal(proposal.identity_profile.squad_limits.min, 8);
+});
+
+test("buildBoardProposal can turn balanced identity into a national core requirement", () => {
+  const riders = Array.from({ length: 8 }, (_, index) => ({
+    id: `nation-${index}`,
+    is_u25: index < 2,
+    nationality_code: index < 5 ? "DK" : index === 5 ? "NO" : "SE",
+    popularity: index < 2 ? 85 - (index * 5) : 35,
+    uci_points: 220 - (index * 8),
+    stat_fl: 70,
+    stat_bj: 70,
+    stat_kb: 69,
+    stat_bk: 71,
+    stat_tt: 68,
+    stat_bro: 68,
+    stat_sp: 69,
+    stat_acc: 68,
+    stat_udh: 70,
+    stat_mod: 69,
+    stat_res: 70,
+    stat_ftr: 67,
+  }));
+
+  const proposal = buildBoardProposal({
+    focus: "balanced",
+    planType: "1yr",
+    team: {
+      division: 3,
+      sponsor_income: 100,
+      balance: 500,
+    },
+    riders,
+    standing: {
+      rank_in_division: 5,
+      stage_wins: 1,
+      gc_wins: 0,
+    },
+  });
+
+  const nationalGoal = proposal.goals.find((goal) => goal.type === "min_national_riders");
+
+  assert.ok(nationalGoal);
+  assert.equal(nationalGoal.nationality_code, "DK");
+  assert.equal(nationalGoal.target, 4);
 });
 
 test("buildBoardProposal exposes negotiated variants that can be finalized server-side", () => {
@@ -279,6 +356,56 @@ test("evaluateBoardSeason keeps near misses partially alive instead of fully fai
   assert.equal(result.scoreBreakdown.categories.results.score > 0.5, true);
   assert.equal(result.newSatisfaction > 55, true);
   assert.match(result.feedback.summary, /plan|fokus|pres|halter/i);
+});
+
+test("evaluateBoardSeason scores national core identity goals against the live squad", () => {
+  const result = evaluateBoardSeason({
+    board: {
+      focus: "balanced",
+      plan_type: "1yr",
+      satisfaction: 50,
+      current_goals: [
+        {
+          type: "min_national_riders",
+          target: 4,
+          nationality_code: "DK",
+          label: "Min. 4 ryttere fra DK",
+          satisfaction_bonus: 8,
+          satisfaction_penalty: 8,
+        },
+      ],
+    },
+    standing: {
+      rank_in_division: 4,
+      stage_wins: 0,
+      gc_wins: 0,
+    },
+    team: {
+      sponsor_income: 100,
+      riders: [
+        { id: "dk-1", nationality_code: "DK", is_u25: false },
+        { id: "dk-2", nationality_code: "DK", is_u25: true },
+        { id: "dk-3", nationality_code: "DK", is_u25: false },
+        { id: "dk-4", nationality_code: "DK", is_u25: false },
+        { id: "no-1", nationality_code: "NO", is_u25: false },
+      ],
+    },
+    context: {
+      isFinalSeason: true,
+      planDuration: 1,
+      seasonsCompleted: 1,
+      hasSeasonData: true,
+      planStartSponsorIncome: 100,
+      currentSponsorIncome: 100,
+      cumulativeStats: {
+        stageWins: 0,
+        gcWins: 0,
+      },
+    },
+  });
+
+  assert.equal(result.goalEvaluations[0].actual, 4);
+  assert.equal(result.goalsMet, 1);
 });
 
 test("buildBoardRequestOptions disables requests already spent this season", () => {

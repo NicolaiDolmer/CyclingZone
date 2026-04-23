@@ -218,6 +218,19 @@ function BoardOutlookCard({ outlook }) {
 function BoardIdentityCard({ identityProfile, title = "Holdidentitet" }) {
   if (!identityProfile) return null;
 
+  const nationalCore = identityProfile.national_core;
+  const starProfile = identityProfile.star_profile;
+  const nationalCoreValue = nationalCore?.established && nationalCore?.code
+    ? nationalCore.code
+    : "Blandet";
+  const nationalCoreSub = nationalCore?.established
+    ? `${nationalCore.count} ryttere · ${nationalCore.share_pct}%`
+    : "Ingen tydelig kerne endnu";
+  const starProfileValue = starProfile?.label || "Ukendt";
+  const starProfileSub = starProfile?.star_rider_count
+    ? `${starProfile.star_rider_count} profilryttere`
+    : "Ingen klare profiler endnu";
+
   return (
     <div className="bg-[#0f0f18] border border-white/5 rounded-xl p-5 mt-4">
       <div className="flex items-start justify-between gap-4">
@@ -234,7 +247,7 @@ function BoardIdentityCard({ identityProfile, title = "Holdidentitet" }) {
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-4 gap-3 mt-4">
+      <div className="grid sm:grid-cols-3 xl:grid-cols-6 gap-3 mt-4">
         <div className="bg-white/3 border border-white/5 rounded-lg p-3">
           <p className="text-white/35 text-[10px] uppercase tracking-wider">Primær</p>
           <p className="text-white text-sm font-medium mt-1">{identityProfile.primary_specialization_label}</p>
@@ -253,6 +266,16 @@ function BoardIdentityCard({ identityProfile, title = "Holdidentitet" }) {
             {identityProfile.rider_count}/{identityProfile?.squad_limits?.max}
           </p>
           <p className="text-white/30 text-xs mt-1">{identityProfile.squad_status_label}</p>
+        </div>
+        <div className="bg-white/3 border border-white/5 rounded-lg p-3">
+          <p className="text-white/35 text-[10px] uppercase tracking-wider">National kerne</p>
+          <p className="text-white text-sm font-medium mt-1">{nationalCoreValue}</p>
+          <p className="text-white/30 text-xs mt-1">{nationalCoreSub}</p>
+        </div>
+        <div className="bg-white/3 border border-white/5 rounded-lg p-3">
+          <p className="text-white/35 text-[10px] uppercase tracking-wider">Stjerneprofil</p>
+          <p className="text-white text-sm font-medium mt-1">{starProfileValue}</p>
+          <p className="text-white/30 text-xs mt-1">{starProfileSub}</p>
         </div>
       </div>
     </div>
@@ -865,6 +888,8 @@ export default function BoardPage() {
 
     switch (goal.type) {
       case "min_u25_riders": return riders.filter(r => r.is_u25).length >= goal.target;
+      case "min_national_riders":
+        return riders.filter(r => (r.nationality_code || "").toUpperCase() === goal.nationality_code).length >= goal.target;
       case "min_riders":     return riders.length >= goal.target;
       case "top_n_finish":   return standing ? (standing.rank_in_division || 99) <= goal.target : false;
       case "stage_wins":     return standing ? (standing.stage_wins || 0) >= goal.target : false;

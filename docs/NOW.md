@@ -39,4 +39,5 @@
 - Dashboard og Board-siden læser nu board-outlook via `/api/board/status`, så read-pathen er mere kanonisk
 - Board System V1 fase 3 er landet i beta: Board-siden kan nu sende én board request pr. aktiv sæson, og backend logger outcome/tradeoff i `board_request_log`
 - Board System V1 fase 4 er delvist landet: nye board-forslag og request-vurderinger er nu division-aware og bruger afledt holdprofil/specialisering i den delte `boardEngine`
-- Næste board-fase er dybere national/stjerne-identitet oven på den nye holdprofil
+- Board-holdprofilen viser nu også national kerne og stjerneprofil, og balancerede planer kan få et nationalt identitetsmål når truppen allerede har en tydelig landekerne
+- Næste board-fase bygger videre på den nye national/stjerne-identitet med endnu dybere mållogik og personality-kobling

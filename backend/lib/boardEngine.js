@@ -35,6 +35,7 @@ const GOAL_METADATA_BY_TYPE = {
   stage_wins: { category: "results", importance: "required", weight: 1.0 },
   gc_wins: { category: "results", importance: "required", weight: 1.1 },
   min_u25_riders: { category: "identity", importance: "required", weight: 1.0 },
+  min_national_riders: { category: "identity", importance: "required", weight: 1.0 },
   min_riders: { category: "identity", importance: "preferred", weight: 0.9 },
   no_outstanding_debt: { category: "economy", importance: "required", weight: 1.0 },
   sponsor_growth: { category: "economy", importance: "required", weight: 1.0 },
@@ -80,6 +81,27 @@ const SQUAD_STATUS_LABELS = {
 };
 
 const LEVELS = ["low", "medium", "high"];
+
+export const BOARD_IDENTITY_RIDER_SELECT = [
+  "id",
+  "is_u25",
+  "salary",
+  "uci_points",
+  "nationality_code",
+  "popularity",
+  "stat_fl",
+  "stat_bj",
+  "stat_kb",
+  "stat_bk",
+  "stat_tt",
+  "stat_bro",
+  "stat_sp",
+  "stat_acc",
+  "stat_udh",
+  "stat_mod",
+  "stat_res",
+  "stat_ftr",
+].join(", ");
 
 export const VALID_BOARD_FOCUSES = [
   "youth_development",
@@ -271,6 +293,9 @@ export function generateBoardGoals({
       identityProfile,
     })
     : 15;
+  const balancedNationalIdentityGoal = useDynamicTargets
+    ? buildNationalIdentityGoal({ identityProfile })
+    : null;
   const sponsorGrowthTarget = useDynamicTargets
     ? getDynamicSponsorGrowthTarget({
       baseTarget: isMultiYear ? planDuration * 5 : 10,
@@ -370,7 +395,7 @@ export function generateBoardGoals({
         satisfaction_bonus: 15,
         satisfaction_penalty: 8,
       },
-      {
+      balancedNationalIdentityGoal || {
         type: "min_riders",
         target: balancedMinRidersTarget,
         label: `Hold pa min. ${balancedMinRidersTarget} ryttere`,
@@ -450,6 +475,16 @@ export function buildNegotiatedGoal(goal) {
         ...enrichedGoal,
         target,
         label: `Min. ${target} U25-ryttere pa holdet`,
+        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
+        negotiated: true,
+      });
+    }
+    case "min_national_riders": {
+      const target = Math.max(2, enrichedGoal.target - 1);
+      return addGoalMetadata({
+        ...enrichedGoal,
+        target,
+        label: buildGoalLabel({ ...enrichedGoal, target }),
         satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
         negotiated: true,
       });
@@ -761,6 +796,10 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       return (standing?.gc_wins || 0) >= enrichedGoal.target;
     case "min_u25_riders":
       return (team?.riders || []).filter((rider) => rider.is_u25).length >= enrichedGoal.target;
+    case "min_national_riders":
+      return (team?.riders || [])
+        .filter((rider) => normalizeBoardRider(rider).nationality_code === enrichedGoal.nationality_code)
+        .length >= enrichedGoal.target;
     case "min_riders":
       return (team?.riders || []).length >= enrichedGoal.target;
     case "no_outstanding_debt":
@@ -845,6 +884,13 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
       break;
     case "min_u25_riders":
       actual = riders.filter((rider) => rider.is_u25).length;
+      score = scoreHigherBetter(actual, target);
+      status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
+      break;
+    case "min_national_riders":
+      actual = riders
+        .filter((rider) => normalizeBoardRider(rider).nationality_code === enrichedGoal.nationality_code)
+        .length;
       score = scoreHigherBetter(actual, target);
       status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
       break;
@@ -990,6 +1036,8 @@ export function deriveTeamIdentityProfile({ team = null, riders = [], standing =
       : "healthy";
   const competitiveTier = deriveCompetitiveTier({ division, standing });
   const specializationScores = calculateTeamSpecializationScores(normalizedRiders, u25Share);
+  const nationalCore = calculateNationalCore(normalizedRiders);
+  const starProfile = calculateStarProfile(normalizedRiders);
   const [primaryEntry, secondaryEntry] = Object.entries(specializationScores)
     .sort((a, b) => b[1] - a[1]);
   const primarySpecialization = riderCount === 0 ? "balanced" : (primaryEntry?.[0] || "balanced");
@@ -1010,11 +1058,15 @@ export function deriveTeamIdentityProfile({ team = null, riders = [], standing =
     primary_specialization_label: SPECIALIZATION_LABELS[primarySpecialization] || SPECIALIZATION_LABELS.balanced,
     secondary_specialization: secondarySpecialization,
     secondary_specialization_label: SPECIALIZATION_LABELS[secondarySpecialization] || SPECIALIZATION_LABELS.balanced,
+    national_core: nationalCore,
+    star_profile: starProfile,
     summary: buildIdentityProfileSummary({
       primarySpecialization,
       secondarySpecialization,
       youthLevel,
       squadStatus,
+      nationalCore,
+      starProfile,
     }),
   };
 }
@@ -1042,6 +1094,7 @@ function deriveCompetitiveTier({ division, standing } = {}) {
 function normalizeBoardRider(rider = {}) {
   const numericKeys = [
     "uci_points",
+    "popularity",
     "stat_fl",
     "stat_bj",
     "stat_kb",
@@ -1058,6 +1111,9 @@ function normalizeBoardRider(rider = {}) {
 
   const normalizedRider = {
     is_u25: Boolean(rider.is_u25),
+    nationality_code: typeof rider.nationality_code === "string"
+      ? rider.nationality_code.trim().toUpperCase()
+      : null,
   };
 
   numericKeys.forEach((key) => {
@@ -1065,6 +1121,107 @@ function normalizeBoardRider(rider = {}) {
   });
 
   return normalizedRider;
+}
+
+function calculateNationalCore(riders = []) {
+  if (!riders.length) {
+    return {
+      code: null,
+      count: 0,
+      share_pct: 0,
+      strength: "none",
+      established: false,
+      label: "Blandet trup",
+    };
+  }
+
+  const nationalityCounts = new Map();
+  riders.forEach((rider) => {
+    if (!rider.nationality_code) return;
+    nationalityCounts.set(
+      rider.nationality_code,
+      (nationalityCounts.get(rider.nationality_code) || 0) + 1
+    );
+  });
+
+  const [code, count] = [...nationalityCounts.entries()]
+    .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))[0] || [];
+
+  if (!code || !count) {
+    return {
+      code: null,
+      count: 0,
+      share_pct: 0,
+      strength: "none",
+      established: false,
+      label: "Blandet trup",
+    };
+  }
+
+  const share = count / Math.max(riders.length, 1);
+  const strength = share >= 0.55 ? "high" : share >= 0.40 ? "medium" : share >= 0.30 ? "low" : "none";
+  const established = count >= 4 && share >= 0.35;
+
+  return {
+    code,
+    count,
+    share_pct: Math.round(share * 100),
+    strength,
+    established,
+    label: established
+      ? strength === "high"
+        ? `Tydelig ${code}-kerne`
+        : `${code}-kerne`
+      : "Blandet trup",
+  };
+}
+
+function calculateStarProfile(riders = []) {
+  if (!riders.length) {
+    return {
+      level: "low",
+      label: "Ukendt",
+      headline_score: 0,
+      star_rider_count: 0,
+      share_pct: 0,
+    };
+  }
+
+  const starScores = riders.map((rider) => calculateRiderStarScore(rider));
+  const headlineScores = [...starScores]
+    .sort((a, b) => b - a)
+    .slice(0, Math.min(3, starScores.length));
+  const headlineScore = averageNumbers(headlineScores);
+  const starRiderCount = starScores.filter((score) => score >= 68).length;
+  const sharePct = Math.round((starRiderCount / riders.length) * 100);
+
+  let level = "low";
+  if (headlineScore >= 82 || starRiderCount >= 3) {
+    level = "elite";
+  } else if (headlineScore >= 68 || starRiderCount >= 2) {
+    level = "high";
+  } else if (headlineScore >= 52 || starRiderCount >= 1) {
+    level = "medium";
+  }
+
+  return {
+    level,
+    label: {
+      low: "Ukendt",
+      medium: "Lokalkendt",
+      high: "Nationalt kendt",
+      elite: "Verdenskendt",
+    }[level] || "Ukendt",
+    headline_score: Math.round(headlineScore),
+    star_rider_count: starRiderCount,
+    share_pct: sharePct,
+  };
+}
+
+function calculateRiderStarScore(rider = {}) {
+  const popularityScore = clamp(Number(rider.popularity || 0), 0, 100);
+  const uciScore = clamp(Math.round(Number(rider.uci_points || 0) / 4.5), 0, 100);
+  return roundNumber((popularityScore * 0.70) + (uciScore * 0.30));
 }
 
 function calculateTeamSpecializationScores(riders = [], u25Share = 0) {
@@ -1117,6 +1274,8 @@ function buildIdentityProfileSummary({
   secondarySpecialization = "balanced",
   youthLevel = "medium",
   squadStatus = "healthy",
+  nationalCore = null,
+  starProfile = null,
 } = {}) {
   const youthLabel = {
     high: "starkt ungdomsaftryk",
@@ -1130,8 +1289,14 @@ function buildIdentityProfileSummary({
   }[squadStatus] || "en sund trup";
   const primaryLabel = SPECIALIZATION_LABELS[primarySpecialization] || SPECIALIZATION_LABELS.balanced;
   const secondaryLabel = (SPECIALIZATION_LABELS[secondarySpecialization] || SPECIALIZATION_LABELS.balanced).toLowerCase();
+  const nationalLabel = nationalCore?.established && nationalCore?.code
+    ? `${nationalCore.code}-kerne pa ${nationalCore.share_pct}%`
+    : "blandet national profil";
+  const starLabel = starProfile?.label
+    ? `stjerneprofil: ${starProfile.label.toLowerCase()}`
+    : "ingen tydelig stjerneprofil";
 
-  return `${primaryLabel} med sekundar ${secondaryLabel}-retning, ${youthLabel} og ${squadLabel}.`;
+  return `${primaryLabel} med sekundar ${secondaryLabel}-retning, ${youthLabel}, ${squadLabel}, ${nationalLabel} og ${starLabel}.`;
 }
 
 function getDynamicRankingTarget({ baseTarget, focus, division, standing, identityProfile } = {}) {
@@ -1218,6 +1383,40 @@ function getDynamicU25Target({ planDuration, division, identityProfile } = {}) {
 
   const upperBound = Math.max(3, Math.min((identityProfile?.squad_limits?.max ?? 12) - 1, 8));
   return clamp(target, 3, upperBound);
+}
+
+function getDynamicNationalRiderTarget({ identityProfile } = {}) {
+  const nationalCore = identityProfile?.national_core;
+  if (!nationalCore?.established) return null;
+
+  const upperBound = Math.min(
+    identityProfile?.squad_limits?.max ?? nationalCore.count,
+    nationalCore.count
+  );
+  const target = Math.max(3, Math.round(nationalCore.count * 0.75));
+  return clamp(target, 3, upperBound);
+}
+
+function buildNationalIdentityGoal({ identityProfile } = {}) {
+  const nationalCore = identityProfile?.national_core;
+  const target = getDynamicNationalRiderTarget({ identityProfile });
+
+  if (!nationalCore?.established || !nationalCore?.code || !target) {
+    return null;
+  }
+
+  return addGoalMetadata({
+    type: "min_national_riders",
+    target,
+    nationality_code: nationalCore.code,
+    label: buildGoalLabel({
+      type: "min_national_riders",
+      target,
+      nationality_code: nationalCore.code,
+    }),
+    satisfaction_bonus: 8,
+    satisfaction_penalty: 8,
+  });
 }
 
 function getDynamicMinRiderTarget({ focus, identityProfile } = {}) {
@@ -1438,6 +1637,16 @@ function buildTightenedGoal(goal) {
         satisfaction_penalty: (enrichedGoal.satisfaction_penalty || 0) + 4,
       });
     }
+    case "min_national_riders": {
+      const nextTarget = enrichedGoal.target + 1;
+      return addGoalMetadata({
+        ...enrichedGoal,
+        target: nextTarget,
+        label: buildGoalLabel({ ...enrichedGoal, target: nextTarget }),
+        satisfaction_bonus: (enrichedGoal.satisfaction_bonus || 0) + 3,
+        satisfaction_penalty: (enrichedGoal.satisfaction_penalty || 0) + 4,
+      });
+    }
     case "min_riders": {
       const nextTarget = Math.min(enrichedGoal.max_target ?? (enrichedGoal.target + 2), enrichedGoal.target + 2);
       return addGoalMetadata({
@@ -1486,6 +1695,8 @@ function buildGoalLabel(goal = {}) {
           : `Mindst ${goal.target} samlede sejre`;
     case "min_u25_riders":
       return `Min. ${goal.target} U25-ryttere pa holdet`;
+    case "min_national_riders":
+      return `Min. ${goal.target} ryttere fra ${goal.nationality_code || "holdets kerne"}`;
     case "min_riders":
       return `Hold pa min. ${goal.target} ryttere`;
     case "sponsor_growth":
@@ -1731,6 +1942,7 @@ function normalizeComparableGoal(goal) {
     cumulative: Boolean(enrichedGoal?.cumulative),
     satisfaction_bonus: enrichedGoal?.satisfaction_bonus ?? 0,
     satisfaction_penalty: enrichedGoal?.satisfaction_penalty ?? 0,
+    nationality_code: enrichedGoal?.nationality_code ?? null,
     negotiated: Boolean(enrichedGoal?.negotiated),
   };
 }
