@@ -74,7 +74,7 @@ export default function Layout() {
 
   useEffect(() => {
     const path = location.pathname;
-    const activeGroup = NAV_GROUPS.find(g => g.items.some(i => path.startsWith(i.to)));
+    const activeGroup = buildNavGroups(null).find(g => g.items.some(i => path.startsWith(i.to)));
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
   }, [location.pathname]);
