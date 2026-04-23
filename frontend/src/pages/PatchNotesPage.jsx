@@ -2,6 +2,25 @@ import { useState } from "react";
 
 const PATCHES = [
   {
+    version: "1.31",
+    date: "2026-04-23",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Navigationen er omstruktureret med fire tydelige grupper: Overblik, Marked, Resultater og Liga — tidligere var sider spredt på kryds og tværs",
+          "Ranglisten, Sæsonresultater og Hall of Fame er samlet i en ny 'Resultater'-gruppe",
+          "Min Aktivitet og Ønskeliste (tidligere Talentspejder) er nu under Marked",
+          "Løbskalender og Sæson Preview er flyttet under Liga",
+          "Notifikationer og Min Managerprofil er rykket op under Overblik",
+          "Klik på Cycling Zone-logoet fører nu direkte til Dashboard",
+          "Min Profil er foldet ind i managerprofilen — /profil-siden redirecter automatisk",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.30",
     date: "2026-04-23",
     label: "Beta",
