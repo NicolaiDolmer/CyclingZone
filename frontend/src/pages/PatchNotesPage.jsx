@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "1.36",
+    date: "2026-04-24",
+    label: "Beta",
+    changes: [
+      {
+        category: "Nyt",
+        items: [
+          "Resultater-hub tilføjet som samlet indgang til resultatområdet — viser tophold, topscorere og links til alle resultat-sider",
+          "Rytterrangliste er nu tilgængelig under Resultater — vis alle rytteres sæsonresultater med etapesejre, GC-sejre, pointklassement, bjergklassement og ungdomsklassement",
+          "Rytterranglisten inkluderer både manager-ejede og AI-ejede ryttere og kan filtreres og sorteres på alle kolonner",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.35",
     date: "2026-04-24",
     label: "Beta",
