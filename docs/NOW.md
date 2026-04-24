@@ -1,16 +1,15 @@
 # NOW — Aktuel arbejdsstatus
 
-## Aktiv næste slice
-- `Slice 6 — Løbshistorik og løbsarkiv` — implementeret og klar til deploy
-- `Løbsarkiv` på `/race-archive`: alle løb på tværs af sæsoner, grupperet og browseable.
-- `Løbshistorik` på `/race-archive/:raceSlug`: tidligere udgaver, vindere pr. sæson, bedste ryttere akkumuleret, bar-chart over point-total.
-- Navigation: "Resultater"-gruppen har nu Overblik, Ranglisten, Rytterrangliste, Løbsarkiv, Sæsonresultater og Hall of Fame.
-- Resultater-hub opdateret med nyt Løbsarkiv-kort.
+## Aktiv slice
+- `Slice 7 — Integrationer og Discord` — implementeret, klar til deploy.
+- Discord-webhooks: Admin kan nu tilføje webhooks med type `general` / `transferhistorik`, sætte standard og sende testbesked.
+- Transferhistorik til Discord: gennemførte transfers og byttehandler sendes automatisk til webhook med type `transfer_history`.
+- dyn_cyclist sync: Admin kan synkronisere PCM-rytterstats fra Google Sheets via URL-input (match på pcm_id).
 
-## Næste slice derefter
-- `Slice 7 — Integrationer og Discord`
-- Fokus: webhook-fix, transferhistorik til Discord-tråd, `dyn_cyclist` Google Sheet integration.
+## Kræver deploy-handling
+- Kør `2026-04-23-discord-settings.sql` i Supabase (opretter `discord_settings`-tabel med `webhook_name` og `webhook_type`).
+- Kør `2026-04-24-dyn-cyclist-import-type.sql` i Supabase (udvider import_log check constraint).
+- Tilføj webhook-URL i Admin → Discord webhooks (type: general = standard, transfer_history = transferhistorik-kanal).
 
 ## Blockers / investigations
-- Blocker: `dyn_cyclist`-integrationen mangler stadig et eksempelark til endelig datakontrakt og kolonnemapping.
 - Follow-up: Evne-filter/slider kræver frisk live-reproduktion; ingen statisk root cause fundet.

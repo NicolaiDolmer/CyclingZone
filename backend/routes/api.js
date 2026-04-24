@@ -40,8 +40,12 @@ import {
   notifyAuctionWon,
   notifyTransferOffer,
   notifyTransferResponse,
+  notifyTransferCompleted,
+  notifySwapCompleted,
   notifySeasonEvent,
+  sendTestEmbed,
 } from "../lib/discordNotifier.js";
+import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import {
   processSeasonEnd,
   processSeasonStart,
@@ -862,6 +866,7 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
       confirmingTeamId: req.team.id,
       notifyTeamOwner,
       logActivity,
+      notifyDiscordHistory: notifyTransferCompleted,
     });
 
     if (!result.ok) {
@@ -1121,6 +1126,7 @@ router.patch("/transfers/swaps/:id", requireAuth, async (req, res) => {
       swapId: swap.id,
       confirmingTeamId: req.team.id,
       notifyTeamOwner,
+      notifyDiscordHistory: notifySwapCompleted,
     });
 
     if (!result.ok) {
@@ -1963,6 +1969,19 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
     res.json({ preview });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// POST /api/admin/discord/test — send testbesked til en webhook-URL
+router.post("/admin/discord/test", requireAdmin, async (req, res) => {
+  const { webhook_url } = req.body;
+  if (!webhook_url) return res.status(400).json({ error: "webhook_url påkrævet" });
+  try {
+    await sendTestEmbed(webhook_url);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/sync-dyn-cyclist — sync PCM stats fra Google Sheets
+router.post("/admin/sync-dyn-cyclist", requireAdmin, handleDynCyclistSyncRequest);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PRESENCE & ONLINE STATUS

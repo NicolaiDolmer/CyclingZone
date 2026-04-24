@@ -200,6 +200,7 @@ export async function confirmTransferOffer({
   confirmingTeamId,
   notifyTeamOwner,
   logActivity = NOOP,
+  notifyDiscordHistory = NOOP,
 }) {
   const windowOpen = await getTransferWindowOpen(supabase);
   if (!windowOpen) {
@@ -375,6 +376,13 @@ export async function confirmTransferOffer({
     confirmedOffer.id
   );
 
+  await notifyDiscordHistory({
+    riderName: `${rider.firstname} ${rider.lastname}`,
+    sellerName: sellerState.name,
+    buyerName: buyerState.name,
+    price,
+  });
+
   return success({ action: "accepted", price });
 }
 
@@ -383,6 +391,7 @@ export async function confirmSwapOffer({
   swapId,
   confirmingTeamId,
   notifyTeamOwner,
+  notifyDiscordHistory = NOOP,
 }) {
   const windowOpen = await getTransferWindowOpen(supabase);
   if (!windowOpen) {
@@ -634,6 +643,14 @@ export async function confirmSwapOffer({
     `${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} er nu skiftet`,
     confirmedSwap.id
   );
+
+  await notifyDiscordHistory({
+    offeredName: `${offered.firstname} ${offered.lastname}`,
+    requestedName: `${requested.firstname} ${requested.lastname}`,
+    proposingName: proposingState.name,
+    receivingName: receivingState.name,
+    cash: cash !== 0 ? cash : null,
+  });
 
   return success({ action: "accepted" });
 }

@@ -162,7 +162,9 @@ export default function AdminPage() {
   const [importStage, setImportStage] = useState(1);
   const [loading, setLoading] = useState({});
   const [editingPrize, setEditingPrize] = useState(null);
-  const [newWebhook, setNewWebhook] = useState({ webhook_name: "", webhook_url: "" });
+  const [newWebhook, setNewWebhook] = useState({ webhook_name: "", webhook_url: "", webhook_type: "general" });
+  const [dynCyclistUrl, setDynCyclistUrl] = useState("");
+  const [dynSyncResult, setDynSyncResult] = useState(null);
 
   // Sæsonafslutnings-preview
   const [previewSeason, setPreviewSeason] = useState("");
@@ -371,11 +373,38 @@ export default function AdminPage() {
     await supabase.from("discord_settings").insert({
       webhook_name: newWebhook.webhook_name,
       webhook_url: newWebhook.webhook_url,
+      webhook_type: newWebhook.webhook_type,
       is_default: isFirst,
     });
-    setNewWebhook({ webhook_name: "", webhook_url: "" });
+    setNewWebhook({ webhook_name: "", webhook_url: "", webhook_type: "general" });
     loadAll();
     showMsg("✅ Webhook tilføjet" + (isFirst ? " og sat som standard" : ""));
+  }
+
+  async function testWebhook(webhookUrl) {
+    setLoad(`test_${webhookUrl}`, true);
+    const res = await fetch(`${API}/api/admin/discord/test`, {
+      method: "POST", headers: await getAuth(),
+      body: JSON.stringify({ webhook_url: webhookUrl }),
+    });
+    const data = await res.json();
+    if (res.ok) showMsg("✅ Testbesked sendt til Discord");
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoad(`test_${webhookUrl}`, false);
+  }
+
+  async function handleDynCyclistSync() {
+    if (!dynCyclistUrl) { showMsg("❌ Indsæt Google Sheets URL", "error"); return; }
+    setLoad("dyn_cyclist", true);
+    showMsg("⏳ Synkroniserer rytterstats...", "info");
+    const res = await fetch(`${API}/api/admin/sync-dyn-cyclist`, {
+      method: "POST", headers: await getAuth(),
+      body: JSON.stringify({ spreadsheet_url: dynCyclistUrl }),
+    });
+    const data = await res.json();
+    if (res.ok) { setDynSyncResult(data); showMsg(`✅ Sync fuldført — ${data.rows_matched} ryttere opdateret`); }
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoad("dyn_cyclist", false);
   }
 
   async function setDefaultWebhook(id) {
@@ -1021,11 +1050,20 @@ export default function AdminPage() {
           <div className="flex flex-col gap-2 mb-4">
             {webhooks.map(w => (
               <div key={w.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
-                <div>
-                  <p className="text-slate-900 text-sm font-medium">{w.webhook_name}</p>
-                  <p className="text-slate-400 text-xs font-mono truncate max-w-xs">{w.webhook_url.slice(0, 40)}...</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-slate-900 text-sm font-medium">{w.webhook_name}</p>
+                    {w.webhook_type && w.webhook_type !== "general" && (
+                      <span className="text-blue-700 text-xs border border-blue-200 px-1.5 py-0.5 rounded-full">{w.webhook_type}</span>
+                    )}
+                  </div>
+                  <p className="text-slate-400 text-xs font-mono truncate max-w-xs">{w.webhook_url?.slice(0, 40)}...</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center flex-shrink-0">
+                  <button onClick={() => testWebhook(w.webhook_url)} disabled={loading[`test_${w.webhook_url}`]}
+                    className="text-slate-400 text-xs hover:text-slate-900 disabled:opacity-50 transition-colors">
+                    {loading[`test_${w.webhook_url}`] ? "..." : "Test"}
+                  </button>
                   {w.is_default
                     ? <span className="text-amber-700 text-xs border border-amber-200 px-2 py-0.5 rounded-full">Standard</span>
                     : <button onClick={() => setDefaultWebhook(w.id)} className="text-slate-400 text-xs hover:text-slate-900">Sæt standard</button>}
@@ -1038,15 +1076,51 @@ export default function AdminPage() {
         <div className="flex gap-2 flex-wrap">
           <input type="text" placeholder="Navn" value={newWebhook.webhook_name}
             onChange={e => setNewWebhook(w => ({ ...w, webhook_name: e.target.value }))}
-            className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm w-40 focus:outline-none" />
+            className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm w-36 focus:outline-none" />
           <input type="text" placeholder="Webhook URL" value={newWebhook.webhook_url}
             onChange={e => setNewWebhook(w => ({ ...w, webhook_url: e.target.value }))}
             className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm flex-1 min-w-[200px] focus:outline-none" />
+          <select value={newWebhook.webhook_type}
+            onChange={e => setNewWebhook(w => ({ ...w, webhook_type: e.target.value }))}
+            className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none">
+            <option value="general">General</option>
+            <option value="transfer_history">Transferhistorik</option>
+          </select>
           <button onClick={addWebhook}
             className="px-4 py-2 bg-slate-100 text-slate-500 border border-slate-300 rounded-lg text-sm hover:bg-slate-100 hover:text-slate-900 transition-all">
             Tilføj
           </button>
         </div>
+      </Section>
+
+      {/* ── dyn_cyclist stats sync ──────────────────────────────────────────── */}
+      <Section title="dyn_cyclist stats sync">
+        <p className="text-slate-400 text-xs mb-4">
+          Opdaterer rytterstats fra PCM dyn_cyclist Google Sheet. Match sker på pcm_id (IDcyclist-kolonne).
+          Synkroniserer: FL, BJ, KB, BK, TT, PRL, BRO, SP, ACC, NED, UDH, MOD, RES, FTR, højde, vægt, popularitet.
+        </p>
+        <div className="flex gap-2 flex-wrap items-end mb-3">
+          <div className="flex-1">
+            <label className="block text-slate-400 text-xs mb-1">Google Sheets URL</label>
+            <input type="text" value={dynCyclistUrl} onChange={e => setDynCyclistUrl(e.target.value)}
+              placeholder="https://docs.google.com/spreadsheets/d/..."
+              className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400" />
+          </div>
+          <button onClick={handleDynCyclistSync} disabled={loading.dyn_cyclist || !dynCyclistUrl}
+            className="px-4 py-2 bg-slate-100 text-slate-500 border border-slate-300 rounded-lg text-sm hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 transition-all">
+            {loading.dyn_cyclist ? "Synkroniserer..." : "Synkroniser"}
+          </button>
+        </div>
+        {dynSyncResult && (
+          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-xs">
+            <p className="text-green-700 font-semibold mb-1">Sync fuldført</p>
+            <div className="flex gap-4 text-green-600">
+              <span>Rækker i ark: <strong>{dynSyncResult.rows_in_sheet}</strong></span>
+              <span>Opdateret: <strong>{dynSyncResult.rows_matched}</strong></span>
+              <span>Ikke fundet: <strong>{dynSyncResult.not_found}</strong></span>
+            </div>
+          </div>
+        )}
       </Section>
 
       {/* ── Admin log ────────────────────────────────────────────────────────── */}

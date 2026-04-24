@@ -22,19 +22,23 @@ const COLORS = {
   transfer_offer:       0x3498db, // blue
   transfer_accepted:    0x2ecc71, // green
   transfer_rejected:    0xe74c3c, // red
+  transfer_completed:   0x2ecc71, // green
+  swap_completed:       0x1abc9c, // teal
   season_started:       0x9b59b6, // purple
   season_ended:         0x95a5a6, // grey
 };
 
 const TYPE_LABELS = {
-  auction_new:       "🔨 Ny Auktion",
-  auction_outbid:    "⚠️ Overbudt!",
-  auction_won:       "🏆 Auktion Vundet",
-  transfer_offer:    "↔️ Transfertilbud",
-  transfer_accepted: "✅ Transfer Accepteret",
-  transfer_rejected: "❌ Transfer Afvist",
-  season_started:    "🚀 Sæson Startet",
-  season_ended:      "🏁 Sæson Afsluttet",
+  auction_new:        "🔨 Ny Auktion",
+  auction_outbid:     "⚠️ Overbudt!",
+  auction_won:        "🏆 Auktion Vundet",
+  transfer_offer:     "↔️ Transfertilbud",
+  transfer_accepted:  "✅ Transfer Accepteret",
+  transfer_rejected:  "❌ Transfer Afvist",
+  transfer_completed: "✅ Transfer Gennemført",
+  swap_completed:     "🔄 Byttehandel Gennemført",
+  season_started:     "🚀 Sæson Startet",
+  season_ended:       "🏁 Sæson Afsluttet",
 };
 
 /**
@@ -47,6 +51,19 @@ async function getDefaultWebhook() {
     .eq("is_default", true)
     .single();
   return data?.webhook_url || process.env.DISCORD_WEBHOOK_URL || null;
+}
+
+/**
+ * Get webhook URL by type (e.g. 'transfer_history'), falls back to default
+ */
+async function getWebhookByType(type) {
+  const { data } = await supabase
+    .from("discord_settings")
+    .select("webhook_url")
+    .eq("webhook_type", type)
+    .limit(1)
+    .single();
+  return data?.webhook_url || await getDefaultWebhook();
 }
 
 /**
@@ -191,6 +208,47 @@ export async function notifyTransferResponse({ riderName, accepted, teamId, coun
     discordId
   );
   await sendWebhook(url, payload);
+}
+
+export async function notifyTransferCompleted({ riderName, sellerName, buyerName, price }) {
+  const url = await getWebhookByType("transfer_history");
+  if (!url) return;
+  const payload = buildEmbed(
+    "transfer_completed",
+    riderName,
+    `**${riderName}** er skiftet fra **${sellerName}** til **${buyerName}**`,
+    [{ name: "Pris", value: `${price?.toLocaleString("da-DK")} CZ$` }]
+  );
+  await sendWebhook(url, payload);
+}
+
+export async function notifySwapCompleted({ offeredName, requestedName, proposingName, receivingName, cash }) {
+  const url = await getWebhookByType("transfer_history");
+  if (!url) return;
+  const fields = [];
+  if (cash) fields.push({ name: "Kontantjustering", value: `${cash?.toLocaleString("da-DK")} CZ$` });
+  const payload = buildEmbed(
+    "swap_completed",
+    `${offeredName} ↔ ${requestedName}`,
+    `**${proposingName}** og **${receivingName}** har gennemført en byttehandel`,
+    fields
+  );
+  await sendWebhook(url, payload);
+}
+
+export async function sendTestEmbed(webhookUrl) {
+  const payload = buildEmbed(
+    "season_started",
+    "Test webhook",
+    "Cycling Zone webhook virker korrekt!",
+    [{ name: "Tidspunkt", value: new Date().toLocaleString("da-DK") }]
+  );
+  const res = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Discord svarer ${res.status}: ${await res.text()}`);
 }
 
 export async function notifySeasonEvent({ type, seasonNumber, webhookUrl }) {

@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "1.38",
+    date: "2026-04-24",
+    label: "Beta",
+    changes: [
+      {
+        category: "Nyt",
+        items: [
+          "Gennemførte transfers og byttehandler sendes nu automatisk til en dedikeret Discord-kanal — konfigureres via Admin under Discord webhooks med typen 'Transferhistorik'",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.37",
     date: "2026-04-24",
     label: "Beta",
