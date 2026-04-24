@@ -91,8 +91,11 @@ export async function processSeasonStart(seasonId, deps = {}) {
   const results = [];
 
   for (const team of teams || []) {
-    const board = team.board_profiles?.[0];
-    const modifier = board?.budget_modifier ?? 1.0;
+    const boards = team.board_profiles || [];
+    const activeBoards = boards.filter(b => b.negotiation_status === "completed");
+    const modifier = activeBoards.length > 0
+      ? activeBoards.reduce((sum, b) => sum + (b.budget_modifier ?? 1.0), 0) / activeBoards.length
+      : 1.0;
     const sponsorBase = team.sponsor_income || 100;
     const sponsorPayout = Math.round(sponsorBase * modifier);
 
@@ -113,19 +116,22 @@ export async function processSeasonStart(seasonId, deps = {}) {
       supabaseClient
     );
 
-    // Ensure board profile exists
-    if (!board) {
-      await supabaseClient.from("board_profiles").insert(
-        createInitialBoardProfile({
-          teamId: team.id,
-          seasonId,
-          balance: team.balance ?? 0,
-          sponsorIncome: team.sponsor_income ?? 100,
-          focus: "balanced",
-          planType: "1yr",
-          negotiationStatus: "pending",
-        })
-      );
+    // Ensure all three plan types exist
+    const existingPlanTypes = new Set(boards.map(b => b.plan_type));
+    for (const planType of ["5yr", "3yr", "1yr"]) {
+      if (!existingPlanTypes.has(planType)) {
+        await supabaseClient.from("board_profiles").insert(
+          createInitialBoardProfile({
+            teamId: team.id,
+            seasonId,
+            balance: team.balance ?? 0,
+            sponsorIncome: team.sponsor_income ?? 100,
+            focus: "balanced",
+            planType,
+            negotiationStatus: "pending",
+          })
+        );
+      }
     }
 
     const totalLoanFees = chargedLoanFees.reduce((sum, loan) => sum + (loan.loan_fee || 0), 0);
@@ -209,7 +215,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
   const notificationDeps = { supabase: supabaseClient, now: deps.now };
   const teamStanding = standings.find(s => s.team_id === team.id);
-  const board = team.board_profiles?.[0];
+  const boards = team.board_profiles || [];
 
   // 1. Tilskriv lånerenter
   await processLoanInterestFn(team.id, seasonId, supabaseClient);
@@ -252,8 +258,9 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
     console.log(`  💸 ${team.name}: -${interest} pts interest on negative balance`);
   }
 
-  // 4. Plan-aware board evaluation
-  if (board && teamStanding) {
+  // 4. Plan-aware board evaluation — evaluate all active plans
+  for (const board of boards) {
+    if (!board || !teamStanding) continue;
     const planDuration = getPlanDuration(board.plan_type);
     const seasonsCompleted = (board.seasons_completed || 0) + 1;
     const newCumulativeStageWins = (board.cumulative_stage_wins || 0) + (teamStanding.stage_wins || 0);

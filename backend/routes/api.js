@@ -2165,27 +2165,29 @@ function isUniqueViolation(error, constraintName) {
 }
 
 async function loadBoardPlanningContext(teamId) {
-  const [seasonRes, teamRes, ridersRes, standingRes, boardRes] = await Promise.all([
+  const [seasonRes, teamRes, ridersRes, standingRes, boardsRes] = await Promise.all([
     supabase.from("seasons").select("id, number").eq("status", "active").single(),
     supabase.from("teams").select("id, balance, sponsor_income, division").eq("id", teamId).single(),
     supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
     supabase.from("season_standings").select("*").eq("team_id", teamId)
       .order("updated_at", { ascending: false }).limit(1).single(),
-    supabase.from("board_profiles").select("*").eq("team_id", teamId).single(),
+    supabase.from("board_profiles").select("*").eq("team_id", teamId),
   ]);
 
   if (teamRes.error) throw new Error(teamRes.error.message);
   if (ridersRes.error) throw new Error(ridersRes.error.message);
   if (seasonRes.error && !isMissingRow(seasonRes.error)) throw new Error(seasonRes.error.message);
   if (standingRes.error && !isMissingRow(standingRes.error)) throw new Error(standingRes.error.message);
-  if (boardRes.error && !isMissingRow(boardRes.error)) throw new Error(boardRes.error.message);
+  if (boardsRes.error) throw new Error(boardsRes.error.message);
+
+  const boards = boardsRes.data || [];
 
   return {
     activeSeason: seasonRes.data || null,
     team: teamRes.data || null,
     riders: ridersRes.data || [],
     standing: standingRes.data || null,
-    board: boardRes.data || null,
+    boards,
   };
 }
 
@@ -2200,151 +2202,163 @@ function serializeBoardRequest(requestRow) {
   };
 }
 
-// GET /api/board/status — full plan state for the authenticated manager
+// GET /api/board/status — alle tre parallelle planer for det autentificerede hold
 router.get("/board/status", requireAuth, async (req, res) => {
   try {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
 
-    const [seasonRes, boardRes, teamRes, ridersRes, standingRes, loansRes, requestRes] = await Promise.all([
+    const [seasonRes, boardsRes, teamRes, ridersRes, standingRes, loansRes] = await Promise.all([
       supabase.from("seasons").select("id, number").eq("status", "active").single(),
-      supabase.from("board_profiles").select("*").eq("team_id", teamId).single(),
+      supabase.from("board_profiles").select("*").eq("team_id", teamId),
       supabase.from("teams").select("id, balance, sponsor_income, division").eq("id", teamId).single(),
       supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
       supabase.from("season_standings").select("*").eq("team_id", teamId)
         .order("updated_at", { ascending: false }).limit(1).single(),
       supabase.from("loans").select("id", { count: "exact", head: true })
         .eq("team_id", teamId).eq("status", "active"),
-      supabase.from("board_request_log")
-        .select("id, request_type, outcome, title, summary, tradeoff_summary, request_payload, board_changes, season_number, created_at")
-        .eq("team_id", teamId)
-        .order("created_at", { ascending: false })
-        .limit(1),
     ]);
 
     if (seasonRes.error && !isMissingRow(seasonRes.error)) return res.status(500).json({ error: seasonRes.error.message });
     if (teamRes.error) return res.status(500).json({ error: teamRes.error.message });
     if (ridersRes.error) return res.status(500).json({ error: ridersRes.error.message });
-    if (boardRes.error && !isMissingRow(boardRes.error)) return res.status(500).json({ error: boardRes.error.message });
+    if (boardsRes.error) return res.status(500).json({ error: boardsRes.error.message });
     if (standingRes.error && !isMissingRow(standingRes.error)) return res.status(500).json({ error: standingRes.error.message });
     if (loansRes.error) return res.status(500).json({ error: loansRes.error.message });
-    const boardRequestsSupported = !isMissingTable(requestRes.error, "board_request_log");
-    if (requestRes.error && boardRequestsSupported) return res.status(500).json({ error: requestRes.error.message });
 
-    const board = boardRes.data;
-    const activeLoanCount = loansRes.count || 0;
+    const allBoards = boardsRes.data || [];
     const activeSeason = seasonRes.data || null;
-    const latestRequest = boardRequestsSupported
-      ? serializeBoardRequest(requestRes.data?.[0] || null)
-      : null;
-    const requestUsedThisSeason = Boolean(
-      boardRequestsSupported && activeSeason?.number != null && latestRequest?.season_number === activeSeason.number
-    );
-    const requestStatus = {
-      supported: boardRequestsSupported,
-      active_season_number: activeSeason?.number ?? null,
-      used_this_season: requestUsedThisSeason,
-      latest_request: latestRequest,
-    };
+    const activeLoanCount = loansRes.count || 0;
+    const currentStanding = standingRes.data || null;
+    const currentTeam = { ...(teamRes.data || {}), riders: ridersRes.data || [] };
+
     const identityProfile = deriveTeamIdentityProfile({
       team: teamRes.data || null,
       riders: ridersRes.data || [],
-      standing: standingRes.data || null,
+      standing: currentStanding,
     });
 
-    if (!board) {
-      return res.json({
-        board: null,
-        plan_duration: 1,
-        seasons_remaining: 0,
-        seasons_completed: 0,
-        plan_progress_pct: 0,
-        cumulative_stats: { stage_wins: 0, gc_wins: 0 },
-        snapshots: [],
-        is_expired: true,
-        active_loans_count: activeLoanCount,
-        team: teamRes.data,
-        riders: ridersRes.data || [],
-        standing: null,
-        personality: null,
-        identity_profile: identityProfile,
-        outlook: null,
-        request_status: requestStatus,
-        request_options: [],
-      });
+    // Fetch snapshots and request logs for all board IDs in one query each
+    const boardIds = allBoards.map(b => b.id);
+    let allSnapshots = [];
+    let allRequestLogs = [];
+    let boardRequestsSupported = true;
+
+    if (boardIds.length > 0) {
+      const [snapshotsRes, requestsRes] = await Promise.all([
+        supabase.from("board_plan_snapshots").select("*")
+          .in("board_id", boardIds)
+          .order("season_within_plan", { ascending: true }),
+        supabase.from("board_request_log")
+          .select("id, board_id, request_type, outcome, title, summary, tradeoff_summary, request_payload, board_changes, season_number, created_at")
+          .in("board_id", boardIds)
+          .order("created_at", { ascending: false }),
+      ]);
+
+      if (snapshotsRes.error) return res.status(500).json({ error: snapshotsRes.error.message });
+      boardRequestsSupported = !isMissingTable(requestsRes.error, "board_request_log");
+      if (requestsRes.error && boardRequestsSupported) return res.status(500).json({ error: requestsRes.error.message });
+
+      allSnapshots = snapshotsRes.data || [];
+      allRequestLogs = boardRequestsSupported ? (requestsRes.data || []) : [];
     }
 
-    const planDuration = getPlanDuration(board.plan_type);
-    const seasonsCompleted = board.seasons_completed || 0;
-    const seasonsRemaining = Math.max(0, planDuration - seasonsCompleted);
-    const planProgressPct = planDuration > 0 ? Math.round((seasonsCompleted / planDuration) * 100) : 0;
-    const isExpired = board.negotiation_status === "pending";
+    // Determine setup sequence: which plan type needs negotiation next (5yr → 3yr → 1yr)
+    const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
+    const setupNextPlanType = PLAN_SEQUENCE.find(pt => !allBoards.find(b => b.plan_type === pt)) || null;
 
-    const { data: snapshots, error: snapshotsError } = await supabase.from("board_plan_snapshots")
-      .select("*").eq("board_id", board.id)
-      .gte("season_number", board.plan_start_season_number || 0)
-      .order("season_within_plan", { ascending: true });
+    // Build per-plan data
+    const plans = {};
+    for (const planType of PLAN_SEQUENCE) {
+      const board = allBoards.find(b => b.plan_type === planType) || null;
 
-    if (snapshotsError) return res.status(500).json({ error: snapshotsError.message });
+      if (!board) {
+        plans[planType] = null;
+        continue;
+      }
 
-    const currentTeam = {
-      ...(teamRes.data || {}),
-      riders: ridersRes.data || [],
-    };
-    const currentStanding = standingRes.data || null;
-    const workingSeasonIndex = Math.min(planDuration, seasonsCompleted + 1);
-    const outlook = buildBoardOutlook({
-      board,
-      standing: currentStanding,
-      team: currentTeam,
-      context: {
-        activeLoanCount,
-        planStartSponsorIncome: board.plan_start_sponsor_income,
-        currentSponsorIncome: teamRes.data?.sponsor_income ?? 0,
-        planDuration,
-        seasonsCompleted: workingSeasonIndex,
-        hasSeasonData: Boolean(currentStanding),
-        isExpired,
-        recentSnapshots: (snapshots || []).slice(-3).reverse(),
-        cumulativeStats: {
-          stageWins: (board.cumulative_stage_wins || 0) + (currentStanding?.stage_wins || 0),
-          gcWins: (board.cumulative_gc_wins || 0) + (currentStanding?.gc_wins || 0),
-        },
-      },
-    });
-    const requestOptions = boardRequestsSupported
-      ? buildBoardRequestOptions({
+      const planDuration = getPlanDuration(board.plan_type);
+      const seasonsCompleted = board.seasons_completed || 0;
+      const seasonsRemaining = Math.max(0, planDuration - seasonsCompleted);
+      const planProgressPct = planDuration > 0 ? Math.round((seasonsCompleted / planDuration) * 100) : 0;
+      const isExpired = board.negotiation_status === "pending";
+
+      const boardSnapshots = allSnapshots
+        .filter(s => s.board_id === board.id && s.season_number >= (board.plan_start_season_number || 0));
+
+      const boardRequests = allRequestLogs.filter(r => r.board_id === board.id);
+      const latestRequest = boardRequests[0] || null;
+      const requestUsedThisSeason = Boolean(
+        boardRequestsSupported && activeSeason?.number != null && latestRequest?.season_number === activeSeason.number
+      );
+
+      const workingSeasonIndex = Math.min(planDuration, seasonsCompleted + 1);
+      const outlook = buildBoardOutlook({
         board,
+        standing: currentStanding,
+        team: currentTeam,
         context: {
+          activeLoanCount,
+          planStartSponsorIncome: board.plan_start_sponsor_income,
+          currentSponsorIncome: teamRes.data?.sponsor_income ?? 0,
+          planDuration,
+          seasonsCompleted: workingSeasonIndex,
+          hasSeasonData: Boolean(currentStanding),
           isExpired,
-          identityProfile,
-          overallScore: outlook?.overall_score ?? null,
-          requestUsedThisSeason,
+          recentSnapshots: boardSnapshots.slice(-3).reverse(),
+          cumulativeStats: {
+            stageWins: (board.cumulative_stage_wins || 0) + (currentStanding?.stage_wins || 0),
+            gcWins: (board.cumulative_gc_wins || 0) + (currentStanding?.gc_wins || 0),
+          },
         },
-      })
-      : [];
+      });
+
+      const requestOptions = boardRequestsSupported
+        ? buildBoardRequestOptions({
+          board,
+          context: {
+            isExpired,
+            identityProfile,
+            overallScore: outlook?.overall_score ?? null,
+            requestUsedThisSeason,
+          },
+        })
+        : [];
+
+      plans[planType] = {
+        board,
+        plan_duration: planDuration,
+        seasons_remaining: seasonsRemaining,
+        seasons_completed: seasonsCompleted,
+        plan_progress_pct: planProgressPct,
+        cumulative_stats: {
+          stage_wins: board.cumulative_stage_wins || 0,
+          gc_wins: board.cumulative_gc_wins || 0,
+        },
+        snapshots: boardSnapshots,
+        is_expired: isExpired,
+        outlook,
+        request_status: {
+          supported: boardRequestsSupported,
+          used_this_season: requestUsedThisSeason,
+          latest_request: boardRequestsSupported ? serializeBoardRequest(latestRequest) : null,
+        },
+        request_options: requestOptions,
+      };
+    }
 
     res.json({
-      board,
-      plan_duration: planDuration,
-      seasons_remaining: seasonsRemaining,
-      seasons_completed: seasonsCompleted,
-      plan_progress_pct: planProgressPct,
-      cumulative_stats: {
-        stage_wins: board.cumulative_stage_wins || 0,
-        gc_wins: board.cumulative_gc_wins || 0,
-      },
-      snapshots: snapshots || [],
-      is_expired: isExpired,
-      active_loans_count: activeLoanCount,
+      plans,
+      setup_next_plan_type: setupNextPlanType,
       team: teamRes.data,
       riders: ridersRes.data || [],
       standing: currentStanding,
-      personality: outlook?.personality || null,
-      identity_profile: outlook?.identity_profile || identityProfile,
-      outlook,
-      request_status: requestStatus,
-      request_options: requestOptions,
+      identity_profile: identityProfile,
+      active_loans_count: activeLoanCount,
+      request_support: {
+        supported: boardRequestsSupported,
+        active_season_number: activeSeason?.number ?? null,
+      },
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -2365,13 +2379,14 @@ router.post("/board/proposal", requireAuth, async (req, res) => {
     }
 
     const context = await loadBoardPlanningContext(teamId);
+    const board = context.boards.find(b => b.plan_type === plan_type) || null;
     const proposal = buildBoardProposal({
       focus,
       planType: plan_type,
       team: context.team,
       riders: context.riders,
       standing: context.standing,
-      board: context.board,
+      board,
     });
 
     res.json({ ok: true, ...proposal });
@@ -2392,7 +2407,8 @@ router.post("/board/sign", requireAuth, async (req, res) => {
     if (!isValidBoardFocus(focus)) return res.status(400).json({ error: "Invalid focus" });
 
     const context = await loadBoardPlanningContext(teamId);
-    const { activeSeason, board: existingBoard, riders, standing, team } = context;
+    const { activeSeason, boards, riders, standing, team } = context;
+    const existingBoard = boards.find(b => b.plan_type === plan_type) || null;
     const planDuration = getPlanDuration(plan_type);
     const startSeasonNumber = activeSeason?.number ?? 1;
     const endSeasonNumber = startSeasonNumber + planDuration - 1;
@@ -2451,7 +2467,7 @@ router.post("/board/sign", requireAuth, async (req, res) => {
     };
 
     const { data: board, error } = await supabase.from("board_profiles")
-      .upsert(upsertData, { onConflict: "team_id" }).select().single();
+      .upsert(upsertData, { onConflict: "team_id,plan_type" }).select().single();
 
     if (error) return res.status(500).json({ error: error.message });
 
@@ -2471,15 +2487,19 @@ router.post("/board/request", requireAuth, async (req, res) => {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
 
-    const { request_type } = req.body || {};
+    const { plan_type, request_type } = req.body || {};
+    if (!isValidBoardPlanType(plan_type)) {
+      return res.status(400).json({ error: "Invalid plan_type" });
+    }
     if (!isValidBoardRequestType(request_type)) {
       return res.status(400).json({ error: "Invalid request_type" });
     }
 
     const context = await loadBoardPlanningContext(teamId);
-    const { activeSeason, board, riders, standing, team } = context;
+    const { activeSeason, boards, riders, standing, team } = context;
+    const board = boards.find(b => b.plan_type === plan_type) || null;
 
-    if (!board) return res.status(404).json({ error: "No active board plan" });
+    if (!board) return res.status(404).json({ error: "No active board plan for this plan type" });
     if (!activeSeason) return res.status(409).json({ error: "No active season" });
     if (board.negotiation_status !== "completed") {
       return res.status(409).json({ error: "Board plan must be active before requests" });
@@ -2490,12 +2510,12 @@ router.post("/board/request", requireAuth, async (req, res) => {
         .eq("team_id", teamId).eq("status", "active"),
       supabase.from("board_plan_snapshots")
         .select("goals_met, goals_total, satisfaction_delta")
-        .eq("team_id", teamId)
+        .eq("board_id", board.id)
         .order("created_at", { ascending: false })
         .limit(3),
       supabase.from("board_request_log")
         .select("id")
-        .eq("team_id", teamId)
+        .eq("board_id", board.id)
         .eq("season_number", activeSeason.number)
         .order("created_at", { ascending: false })
         .limit(1),
@@ -2588,7 +2608,7 @@ router.post("/board/request", requireAuth, async (req, res) => {
       .single();
 
     if (requestInsertError) {
-      if (isUniqueViolation(requestInsertError, "idx_board_request_log_team_season_unique")) {
+      if (isUniqueViolation(requestInsertError, "idx_board_request_log_board_season_unique")) {
         return res.status(409).json({ error: "Board request already used this season" });
       }
       return res.status(500).json({ error: requestInsertError.message });
@@ -2632,12 +2652,18 @@ router.post("/board/renew", requireAuth, async (req, res) => {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
 
+    const { plan_type } = req.body || {};
+    if (!isValidBoardPlanType(plan_type)) {
+      return res.status(400).json({ error: "Invalid plan_type" });
+    }
+
     const { data: board, error } = await supabase.from("board_profiles")
       .update({
         negotiation_status: "pending",
         updated_at: new Date().toISOString(),
       })
       .eq("team_id", teamId)
+      .eq("plan_type", plan_type)
       .select()
       .single();
 
