@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { getFlagEmoji } from "../lib/countryUtils";
 
 function timeAgo(dateStr) {
   if (!dateStr) return "—";
@@ -39,7 +40,7 @@ export default function AuctionHistoryPage() {
     let query = supabase
       .from("auctions")
       .select(`id, current_price, actual_end, status, seller_team_id, current_bidder_id,
-        rider:rider_id(id, firstname, lastname, uci_points, is_u25),
+        rider:rider_id(id, firstname, lastname, uci_points, is_u25, nationality_code),
         seller:seller_team_id(id, name),
         winner:current_bidder_id(id, name)`,
         { count: "exact" })
@@ -143,6 +144,7 @@ export default function AuctionHistoryPage() {
                     onClick={() => a.rider?.id && navigate(`/riders/${a.rider.id}`)}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
+                        {a.rider?.nationality_code && <span className="flex-shrink-0">{getFlagEmoji(a.rider.nationality_code)}</span>}
                         <span className="text-slate-900 font-medium">
                           {a.rider?.firstname} {a.rider?.lastname}
                         </span>

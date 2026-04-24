@@ -3,6 +3,7 @@ import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
+import { getFlagEmoji } from "../lib/countryUtils";
 
 const SQUAD_LIMITS = {
   1: { min: 20, max: 30 },
@@ -264,6 +265,7 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                         {r._isOutgoing  && <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />}
                         {r._isLoanedIn  && <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />}
                         {r._isLoanedOut && <span className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0" />}
+                        {r.nationality_code && <span className="flex-shrink-0">{getFlagEmoji(r.nationality_code)}</span>}
                         <span className="text-slate-900 text-sm font-medium">{r.firstname} {r.lastname}</span>
                         {r.is_u25       && <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700 px-1.5 py-0.5 rounded">U25</span>}
                         {r._isIncoming  && <span className="text-[9px] uppercase bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Indgående</span>}
@@ -448,11 +450,11 @@ export function TeamPage() {
 
     const [ridersRes, pendingRes, finRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("team_id", t.id)
         .order("uci_points", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("pending_team_id", t.id)
         .order("uci_points", { ascending: false }),
       supabase.from("finance_transactions")
@@ -466,7 +468,7 @@ export function TeamPage() {
         .eq("from_team_id", t.id).eq("status", "active"),
       // Riders we're borrowing
       supabase.from("loan_agreements")
-        .select(`rider:rider_id(id, firstname, lastname, uci_points, salary, is_u25, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
+        .select(`rider:rider_id(id, firstname, lastname, uci_points, salary, is_u25, nationality_code, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
         .eq("to_team_id", t.id).eq("status", "active"),
     ]);
 

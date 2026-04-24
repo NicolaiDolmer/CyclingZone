@@ -5,6 +5,7 @@ import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
+import { getFlagEmoji } from "../lib/countryUtils";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -85,6 +86,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
       {/* Rytter */}
       <td className="px-3 py-2.5 min-w-[140px]">
         <div className="flex flex-col gap-0.5">
+          {r?.nationality_code && <span className="text-xs flex-shrink-0">{getFlagEmoji(r.nationality_code)}</span>}
           <button
             onClick={() => onNavigate(r?.id)}
             className="text-slate-900 text-sm font-medium hover:text-amber-700 transition-colors text-left truncate max-w-[160px]">
@@ -262,7 +264,7 @@ export default function AuctionsPage() {
       supabase.from("auctions")
         .select(`id, current_price, min_increment, calculated_end, status,
           seller_team_id, current_bidder_id,
-          rider:rider_id(id, firstname, lastname, uci_points, is_u25, team_id, birthdate,
+          rider:rider_id(id, firstname, lastname, uci_points, is_u25, team_id, birthdate, nationality_code,
             ${STATS.join(", ")}),
           seller:seller_team_id(id, name),
           current_bidder:current_bidder_id(id, name)`)

@@ -4,6 +4,7 @@ import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { statBg } from "../lib/statBg";
+import { getFlagEmoji } from "../lib/countryUtils";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -37,7 +38,7 @@ export default function WatchlistPage() {
       .from("rider_watchlist")
       .select(`id, note, created_at,
         rider:rider_id(id, firstname, lastname, uci_points, is_u25,
-          team_id, ${STATS.join(", ")},
+          team_id, nationality_code, ${STATS.join(", ")},
           team:team_id(name))`)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
@@ -147,6 +148,7 @@ export default function WatchlistPage() {
                       <tr key={entry.id} className="border-b border-slate-100 hover:bg-slate-100">
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
+                            {r.nationality_code && <span className="flex-shrink-0">{getFlagEmoji(r.nationality_code)}</span>}
                             <button onClick={() => navigate(`/riders/${r.id}`)}
                               className="text-slate-900 text-sm font-medium hover:text-amber-700 transition-colors text-left">
                               {r.firstname} {r.lastname}

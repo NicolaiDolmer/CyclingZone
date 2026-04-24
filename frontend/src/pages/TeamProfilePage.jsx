@@ -2,6 +2,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
+import { getFlagEmoji } from "../lib/countryUtils";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -45,7 +46,7 @@ export default function TeamProfilePage() {
     const [teamRes, ridersRes, pendingRes, standingRes, windowRes] = await Promise.all([
       supabase.from("teams").select("*").eq("id", id).single(),
       supabase.from("riders")
-        .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("team_id", id)
         .order("uci_points", { ascending: false }),
       supabase.from("riders")
@@ -213,6 +214,7 @@ export default function TeamProfilePage() {
                       <div className="flex items-center gap-2">
                         {r._isIncoming && <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />}
                         {r._isOutgoing && <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />}
+                        {r.nationality_code && <span className="flex-shrink-0">{getFlagEmoji(r.nationality_code)}</span>}
                         <span className="text-slate-900 font-medium">{r.firstname} {r.lastname}</span>
                         {r.is_u25 && <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700 px-1.5 py-0.5 rounded">U25</span>}
                         {r._isIncoming && <span className="text-[9px] uppercase bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Indgående</span>}

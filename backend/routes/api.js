@@ -622,7 +622,7 @@ router.get("/transfers", requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from("transfer_listings")
     .select(`id, asking_price, status, created_at,
-      rider:rider_id(id, firstname, lastname, uci_points, is_u25,
+      rider:rider_id(id, firstname, lastname, uci_points, is_u25, nationality_code,
         stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
         stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod, stat_res, stat_ftr),
       seller:seller_team_id(id, name)`)
@@ -736,14 +736,14 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const [sentRes, receivedRes] = await Promise.all([
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, uci_points, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, uci_points, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
         seller:seller_team_id(id, name)`)
       .eq("buyer_team_id", req.team.id)
       .not("status", "eq", "withdrawn")
       .order("updated_at", { ascending: false }),
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, uci_points, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, uci_points, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
         buyer:buyer_team_id(id, name)`)
       .eq("seller_team_id", req.team.id)
       .not("status", "eq", "withdrawn")

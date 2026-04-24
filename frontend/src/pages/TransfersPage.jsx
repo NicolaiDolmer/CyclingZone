@@ -5,6 +5,7 @@ import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
+import { getFlagEmoji } from "../lib/countryUtils";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -54,7 +55,9 @@ function ReceivedOfferCard({ offer, onAction }) {
       ${isAwaiting ? "border-blue-500/30" : isPending ? "border-amber-200" : "border-slate-200 opacity-70"}`}>
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-slate-900 font-semibold">{offer.rider?.firstname} {offer.rider?.lastname}</p>
+          <p className="text-slate-900 font-semibold">
+            {offer.rider?.nationality_code && <span className="mr-1">{getFlagEmoji(offer.rider.nationality_code)}</span>}{offer.rider?.firstname} {offer.rider?.lastname}
+          </p>
           <p className="text-slate-400 text-xs">Fra: {offer.buyer?.name} · Runde {offer.round || 1} · {timeAgo(offer.created_at)}</p>
         </div>
         <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
@@ -176,7 +179,9 @@ function SentOfferCard({ offer, onAction }) {
       ${isAwaiting ? "border-blue-500/30" : isCountered ? "border-orange-200" : isActive ? "border-slate-300" : "border-slate-200 opacity-60"}`}>
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-slate-900 font-semibold">{offer.rider?.firstname} {offer.rider?.lastname}</p>
+          <p className="text-slate-900 font-semibold">
+            {offer.rider?.nationality_code && <span className="mr-1">{getFlagEmoji(offer.rider.nationality_code)}</span>}{offer.rider?.firstname} {offer.rider?.lastname}
+          </p>
           <p className="text-slate-400 text-xs">Til: {offer.seller?.name} · Runde {offer.round || 1} · {timeAgo(offer.updated_at)}</p>
         </div>
         <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
@@ -754,7 +759,7 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
       <div className="flex items-start justify-between mb-3">
         <div className="cursor-pointer" onClick={() => navigate(`/riders/${listing.rider?.id}`)}>
           <p className="text-slate-900 font-semibold hover:text-amber-700 transition-colors">
-            {listing.rider?.firstname} {listing.rider?.lastname}
+            {listing.rider?.nationality_code && <span className="mr-1">{getFlagEmoji(listing.rider.nationality_code)}</span>}{listing.rider?.firstname} {listing.rider?.lastname}
           </p>
           <p className="text-slate-400 text-xs mt-0.5">{listing.seller?.name}</p>
           {listing.created_at && (

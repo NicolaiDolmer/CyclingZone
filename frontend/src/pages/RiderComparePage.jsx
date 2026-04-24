@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { getFlagEmoji } from "../lib/countryUtils";
 
 const STATS = [
   { key: "stat_fl",  label: "Flad",             icon: "═" },
@@ -139,7 +140,7 @@ export default function RiderComparePage() {
                   className="float-right text-slate-300 hover:text-slate-500 text-sm -mt-1 -mr-1">×</button>
                 <p className="font-bold text-slate-900 text-sm cursor-pointer hover:text-amber-700"
                   onClick={() => navigate(`/riders/${r.id}`)}>
-                  {r.firstname} {r.lastname}
+                  {r.nationality_code && <span className="mr-1">{getFlagEmoji(r.nationality_code)}</span>}{r.firstname} {r.lastname}
                 </p>
                 <p className="text-slate-400 text-xs mt-1">{r.team?.name || "Fri agent"}</p>
                 <p className="font-mono font-bold mt-2 text-sm" style={{ color: COLORS[i] }}>

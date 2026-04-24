@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { getFlagEmoji } from "../lib/countryUtils";
 
 function TeamSearch({ label, onSelect, excluded }) {
   const [q, setQ] = useState("");
@@ -74,8 +75,8 @@ export default function HeadToHeadPage() {
         .eq("status", "completed")
         .or(`and(seller_team_id.eq.${teamA.id},current_bidder_id.eq.${teamB.id}),and(seller_team_id.eq.${teamB.id},current_bidder_id.eq.${teamA.id})`),
 
-      supabase.from("riders").select("id, firstname, lastname, uci_points").eq("team_id", teamA.id).order("uci_points", { ascending: false }).limit(5),
-      supabase.from("riders").select("id, firstname, lastname, uci_points").eq("team_id", teamB.id).order("uci_points", { ascending: false }).limit(5),
+      supabase.from("riders").select("id, firstname, lastname, uci_points, nationality_code").eq("team_id", teamA.id).order("uci_points", { ascending: false }).limit(5),
+      supabase.from("riders").select("id, firstname, lastname, uci_points, nationality_code").eq("team_id", teamB.id).order("uci_points", { ascending: false }).limit(5),
     ]);
 
     const standingsA = standingsRes.data?.filter(s => s.team_id === teamA.id) || [];
@@ -218,9 +219,9 @@ export default function HeadToHeadPage() {
                 ) : (
                   riders.map((r, i) => (
                     <div key={r.id} className="flex justify-between py-1.5 border-b border-slate-200 last:border-0">
-                      <span className="text-slate-600 text-xs cursor-pointer hover:text-slate-900"
+                      <span className="text-slate-600 text-xs cursor-pointer hover:text-slate-900 flex items-center gap-1"
                         onClick={() => navigate(`/riders/${r.id}`)}>
-                        {i + 1}. {r.firstname} {r.lastname}
+                        {i + 1}. {r.nationality_code && getFlagEmoji(r.nationality_code)} {r.firstname} {r.lastname}
                       </span>
                       <span className="font-mono text-xs" style={{ color }}>
                         {r.uci_points?.toLocaleString("da-DK")}
