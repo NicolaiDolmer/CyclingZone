@@ -2,6 +2,25 @@
 
 const PATCHES = [
   {
+    version: "1.34",
+    date: "2026-04-24",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Min Aktivitet er ombygget til seks faner: Kræver handling, Auktioner, Transfers, Lån, Ønskeliste og Historik",
+          "Siden åbner nu på 'Kræver handling' som default — tilbud du skal svare på, modbud og afventende lejeforslag samles øverst",
+          "Auktioner der slutter inden for 1 time vises i 'Kræver handling' med live-nedtæller",
+          "Lån (lejeaftaler) har fået sin egen fane med adskillelse af 'Jeg udlåner' og 'Jeg låner'",
+          "Ønskeliste-fanen viser dine gemte ryttere kompakt med markedsstatus-badge hvis en rytter er i aktiv auktion",
+          "Historik-fanen samler afsluttede auktioner, lukkede transfers og færdige lejeaftaler",
+          "Klik på rytternavn i alle rækker åbner rytterens statistikside direkte",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.33",
     date: "2026-04-23",
     label: "Beta",

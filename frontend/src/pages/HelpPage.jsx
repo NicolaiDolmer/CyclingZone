@@ -196,6 +196,32 @@ const SECTIONS = [
     ],
   },
   {
+    key: "activity",
+    label: "Min Aktivitet",
+    icon: "◎",
+    content: [
+      {
+        title: "Hvad er Min Aktivitet?",
+        text: "Min Aktivitet er din personlige markedsarbejdsflade under Marked. Den samler alle dine markedshandlinger — auktioner, transfers, lån og ønskeliste — ét sted, adskilt fra den globale Indbakke.",
+      },
+      {
+        title: "Fanerne",
+        steps: [
+          "Kræver handling: Tilbud du skal svare på, modbud du har modtaget, aftaler der afventer din bekræftelse, lejeforslag og auktioner der slutter inden for 1 time. Åbnes som standard.",
+          "Auktioner: Alle aktive auktioner hvor du er sælger eller byder.",
+          "Transfers: Tilbud du har modtaget og tilbud du har sendt, der stadig er aktive.",
+          "Lån: Aktive og afventende lejeaftaler — ryttere du udlåner og ryttere du låner.",
+          "Ønskeliste: Kompakt visning af dine gemte ryttere med markedsstatus. Klik → for fuld ønskeliste.",
+          "Historik: Afsluttede auktioner, lukkede transfers og færdige lejeaftaler.",
+        ],
+      },
+      {
+        title: "Deep-links",
+        text: "Klik på en række i Min Aktivitet fører dig direkte til den relevante side — auktioner, transfers eller rytterens statistikside. Klik på rytternavnet inden for en række åbner rytterens statistikside.",
+      },
+    ],
+  },
+  {
     key: "season",
     label: "Sæson",
     icon: "🏁",
