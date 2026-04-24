@@ -7,13 +7,13 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## ✅ Implementeret & live
 
 ### Auth & Brugere
-- Login / logout via Supabase Auth
-- "Glemt password?" via Supabase recovery-mail og dedikeret `/reset-password`-flow
+- Login / logout (Supabase Auth)
+- Glemt password + reset-flow (`/reset-password`)
 - Admin- og managerroller
 - Login-streak tracking
 - Manager XP + niveauer (level = floor(xp/100)+1, max 50)
 - Manager-profil med historik
-- Holdnavn og managernavn oprettes/opdateres nu via den kanoniske backend-path `PUT /api/teams/my`, også når en managerkonto mangler sin team-række
+- Hold- og managernavn via kanonisk backend-path `PUT /api/teams/my`
 
 ### Hold & Ryttere
 - Holdoversigt og holdprofil-sider
@@ -27,27 +27,23 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Opret auktion med starttid + vindueslogik
 - Bud-placering med auto-forlængelse (10 min ved bud nær slut)
 - Garanteret salg (startpris = 50% af UCI-pris)
-- Auktionsfinalisering via cron (60s interval)
-- Delt auktionsfinalisering for cron + admin/API, så payout og transfer-window følger samme runtime-path
-- Auktionsfinalisering krediterer nu den faktiske AI-/non-user-ejer ved afslutning og annullerer stale auktioner, hvis rytteren i mellemtiden ejes af en anden menneskelig manager
-- Squad-limit ved auktionsfinalisering tæller også ventende handler og aktive indlån
+- Auktionsfinalisering via cron (60s) — delt path for cron/admin/API, korrekt ejer-check og squad-limit
 - Auktionshistorik-side
-- Discord-notifikationer ved sæsonevents, nye auktioner, overbud, transfer-tilbud og transfer-svar (notifier koblet op i api.js og cron.js)
+- Discord-notifikationer (auktioner, overbud, transfers, sæsonevents)
 
 ### Transfers
 - Opret transfer-liste
 - Tilbud → accepter / afvis / modtilbud
 - Swap-forslag med kontantjustering + modtilbud
-- Endelig transfer-/swap-bekræftelse kører nu via delt backend-path med commit-time checks for ejerskab, saldo og squad-limit
-- Gennemførte handler rydder nu relaterede transfer-lister, transferbud og swapforslag op for involverede ryttere
-- Trækker tilbud tilbage (withdraw) inklusive på modtilbud
+- Delt backend confirm-path (ejerskab, saldo, squad-limit + oprydning ved gennemførelse)
+- Tilbagetræk tilbud (withdraw, inkl. modtilbud)
 - Notifikationer til sælger ved nyt tilbud
 
 ### Lån
 - Manager-oprettede lån (short/long)
 - Accept / afvis lånetilbud
-- Lejeforslag og låneaktivering stopper nu hvis lånerens squad-limit allerede er brugt op
-- Lejegebyr på aktive rider-lån trækkes ved aktivering og derefter ved hver dækket sæsonstart
+- Squad-limit check ved lejeforslag og låneaktivering
+- Lejegebyr ved aktivering + ved dækket sæsonstart
 - Låneoversigt (aktive + egne)
 - Låneafdrag
 - Auto-nødlån ved manglende løn
@@ -62,70 +58,42 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ### Sæson & Løb
 - Sæsonoversigt med race-kalender
-- Løbsresultater-import (Excel-upload i admin)
-- Pointtavle (season_standings) recalculeres fra `race_results`
-- `season_standings` persisterer nu også `rank_in_division`, så season-end og board-runtime kan læse divisionsplacering kanonisk
-- Dashboard og Hold-siden scope'er nu current-season standings korrekt og falder tilbage til 0-point-rækker før første result-godkendelse
-- `import-results` og `approve-results` deler nu samme backend result-path, så prize-writes og standings-recalculation er konsistente
-- Admin-godkendelse markerer nu submissionen som approved på serveren i stedet for at være afhængig af en efterfølgende browser-write
+- Løbsresultater-import (xlsx) og approve via delt backend result-path
+- Pointtavle (season_standings) inkl. rank_in_division, recalkuleres fra race_results
 - Opryknings/nedrykningslogik (top/bund 2 per division)
-- Sæsonpreview-side
-- Races-side
-- Løbsarkiv (`/race-archive`): alle løb grupperet på tværs af sæsoner
-- Løbshistorik (`/race-archive/:raceSlug`): udgaver, vindere, bedste ryttere akkumuleret, point-bar-chart
+- Sæsonpreview-side + Races-side
+- Løbsarkiv (`/race-archive`) og løbshistorik (`/race-archive/:raceSlug`)
 
 ### Bestyrelse (Board)
-- Bestyrelsesprofil med plan + focus + tilfredshed
-- Plantyper: 1yr / 3yr / 5yr
-- Focustyper: youth_development / star_signing / balanced
-- Kumulativ mål-tracking (stage wins, GC wins, sponsorvækst)
-- Satisfaction → budget_modifier (sponsor-multiplikator)
-- Mid-plan review besked (ved 50% af planvarighed)
-- Board plan snapshots per sæson
-- Board wizard (sign new plan)
-- Board proposal-, sign- og renew-flow kører nu via backend-routes og delt `boardEngine`, så frontend ikke selv konstruerer de endelige board-mål
-- Season-end board-flow er dækket af en direkte backend-regressionstest via `processSeasonEnd`
-- Season-end board-evaluering er nu gradvis og vægtet med resultater, økonomi, identitet og rangering samt 2-3 sæsoners hukommelse
-- Dashboard og Board-siden viser nu board-outlook fra `/api/board/status` med feedback og kategori-scores fra den delte board-engine
-- Board-siden kan nu sende én board request pr. aktiv sæson; backend afgør approved/partial/rejected/tradeoff via delt `boardEngine` og logger svaret i `board_request_log`
-- Nye board-kontrakter skalerer nu topfinish, resultatkrav, sponsorvækst og trupkrav efter division, standings og afledt holdspecialisering, så målene holder sig inden for divisionsgrænserne
-- Board-siden viser nu en afledt holdprofil med primær/sekundær specialisering, U25-andel, national kerne, stjerneprofil og trupstatus fra den samme board-runtime
-- Balancerede board-planer kan nu erstatte et generisk trupmål med et nationalt identitetsmål, hvis holdet allerede har en tydelig landekerne
-- National kerne giver nu også en lille reel identitetsværdi i den vægtede board-evaluering og gør identitetslempelser sværere, når holdets DNA allerede er tydeligt
-- Stjerneprofil giver nu en lille sponsor/prestige-bonus i board-scoringen, men skærper samtidig star-signing mål og boardets modstand mod at sænke resultatpresset
-- Direkte board-requests mellem `youth_development` og `star_signing` lander nu ofte som gradvise, forudsigelige `balanced`-tradeoffs i stedet for et øjeblikkeligt hard switch
-- DB-schemaet håndhæver nu maks. én board request pr. hold pr. sæson
-- Board-siden forklarer nu tydeligere hvorfor bestyrelsen reagerer via kategori-drivere, signalnoter fra historik/identitet/profiler og konkrete fokus-/målændringer fra seneste board request
-- National kerne vises nu med landenavn og flag på Board-siden i stedet for kun rå landekode
+- Plan (1yr/3yr/5yr) + focus (youth_development/star_signing/balanced) + tilfredshed → budget_modifier
+- Kumulativ mål-tracking, mid-plan review, plan snapshots, board wizard
+- Delt boardEngine for proposal/sign/renew/season-end
+- Gradvis, vægtet evaluering med 2-3 sæsoners hukommelse (resultater, økonomi, identitet, rangering)
+- Board-outlook på dashboard og Board-siden (kategori-scores, drivere, signalnoter)
+- Én board request pr. sæson (DB-enforced); approved/partial/rejected/tradeoff
+- Mål skaleret efter division, standings og holdspecialisering
+- Afledt holdprofil (specialisering, U25, national kerne + landenavn/flag, stjerneprofil)
+- Nationale identitetsmål i balancerede planer; focus-switch lander som gradvis tradeoff
 
 ### Admin
 - Import af ryttere (Python-script)
 - Import af løbsresultater (xlsx upload)
 - UCI points sync (Google Sheets CSV)
 - Override rider (team/stats)
-- Sæsonoprettelse, sæsonstart, sæsonslut og resultatimport kører nu via de kanoniske admin-routes i `backend/routes/api.js`
-- Admin kan nu genberegne standings for en aktiv eller afsluttet sæson direkte fra gemte `race_results`
-- Løbsoprettelse via admin-backend route
-- Season-end preview endpoint
+- Sæsonopcioner (create/start/end/result import) via kanoniske admin-routes
+- Genberegning af standings fra gemte race_results
+- Løbsoprettelse og season-end preview endpoint
 
 ### UI / Misc
 - Responsivt layout med navigation (Layout.jsx)
-- Notifikationssystem (in-app + badge)
-- Achievement-sync bruger nu live historikstabeller i backend, så bid-, transfer-, watchlist-, hold- og board-relaterede unlocks kan blive fanget op ved næste app-load
-- Backend-notifikationer deduplikerer nu nylige identiske events, så samme besked ikke spammes igen ved cron/retries
-- Aktivitets-feed
-- Head-to-head sammenligning
-- Hall of Fame
-- Patch notes
-- Hjælpeside
-- Confetti modal
-
----
+- Notifikationssystem (in-app + badge, deduplicering ved cron/retries)
+- Achievement-sync fra live historiktabeller (bid, transfer, watchlist, hold, board)
+- Aktivitets-feed · Head-to-head sammenligning · Hall of Fame · Patch notes · Hjælpeside · Confetti modal
 
 ### Discord & Integrationer
-- Discord webhooks: admin kan tilføje webhooks med navn, URL og type (general / transfer_history), sætte standard og sende testbesked
-- Gennemførte transfers og byttehandler sendes automatisk til webhook med type `transfer_history`
-- dyn_cyclist sync: admin kan synkronisere PCM-rytterstats (14 stat-felter + højde, vægt, popularitet) fra Google Sheets via URL — match på pcm_id
+- Discord webhooks: admin kan tilføje webhooks med navn, URL og type (general / transfer_history)
+- Gennemførte transfers og byttehandler sendes til `transfer_history` webhook
+- dyn_cyclist sync: PCM-stats (14 stat-felter + højde, vægt, popularitet) fra Google Sheets (match på pcm_id)
 
 ---
 
@@ -134,7 +102,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Evne-filter/slider kræver frisk live-reproduktion; ingen statisk root cause fundet
 - Discord/webhook-regression kræver frisk live-reproduktion; inkl. transferhistorik til Discord-tråd
 
---- 
+---
 
 ## 🚧 I gang
 
@@ -150,4 +118,3 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Team ID-mapping fra PCM
 - 3-sæsoners glidende gennemsnit for rangliste
 - Tre parallelle bestyrelsesplaner (1yr+3yr+5yr vist samtidigt) — udskudt
-
