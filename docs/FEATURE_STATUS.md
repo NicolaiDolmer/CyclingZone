@@ -65,7 +65,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Løbsarkiv (`/race-archive`) og løbshistorik (`/race-archive/:raceSlug`)
 
 ### Bestyrelse (Board)
-- Plan (1yr/3yr/5yr) + focus (youth_development/star_signing/balanced) + tilfredshed → budget_modifier
+- Tre parallelle planer (1yr/3yr/5yr) kører simultant per hold med egne mål og tilfredshed → budget_modifier
 - Kumulativ mål-tracking, mid-plan review, plan snapshots, board wizard
 - Delt boardEngine for proposal/sign/renew/season-end
 - Gradvis, vægtet evaluering med 2-3 sæsoners hukommelse (resultater, økonomi, identitet, rangering)
@@ -114,7 +114,5 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 📋 Planlagt (backlog)
 
 - Aktiv feature- og forbedringsbacklog vedligeholdes i `docs/PRODUCT_BACKLOG.md`
-- Landekode-mapping til flag-visning på øvrige rytterflader
 - Team ID-mapping fra PCM
 - 3-sæsoners glidende gennemsnit for rangliste
-- Tre parallelle bestyrelsesplaner (1yr+3yr+5yr vist samtidigt) — udskudt

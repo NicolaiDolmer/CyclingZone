@@ -9,54 +9,15 @@ _Regel: Kun aktive/top-prioriterede ting spejles til NOW.md. Kun statusændringe
 
 _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-slices. `NOW.md` skal kun pege på aktiv slice, næste slice og aktuelle blockers._
 
-### Slice 0 — Baseline & blockers
-- Mål: Gøre repo-helsen og de vigtigste eksterne blockers tydelige før featurearbejde.
-- Afhænger af: Ingen; dette er aktiv næste slice.
-- Centrale leverancer: failing board-notification test kategoriseret/løst, webhook-regression reproduceret/afgrænset, status på manglende `dyn_cyclist`-eksempelark tydeligt markeret.
-- Done when: Baseline og blockers er tydeligt registreret som enten løst, afgrænset eller stadig blokerende.
-
-### Slice 1 — Navigation & app-shell
-- Mål: Låse ny informationsarkitektur uden at bygge de tunge feature-flows endnu.
-- Afhænger af: Slice 0 bør være afgrænset, især test-helsen og webhook-sporet.
-- Centrale leverancer: `Overblik`, `Marked`, `Resultater` og `Liga` som kanoniske grupper, `Ønskeliste` som label, Dashboard som default på `Overblik`, `Min Profil` foldet ind i managerprofil.
-- Done when: Nav-struktur, labels, redirects og sideplaceringer er konsistente i app-shell og routing.
-
-### Slice 2 — Indbakke, notifikationer og topbar
-- Mål: Skabe én personlig systemindbakke og tydelige counts i toppen.
-- Afhænger af: Slice 1, så navigationen er stabil før ny personlig hændelsesflade introduceres.
-- Centrale leverancer: `Indbakke`, `Notifikationer`, ulæste badges, deep-links, ingen manager-DMs, online status/sidst set, head-to-head default til eget hold.
-- Done when: Personlig systemhændelsesmodel og topbar/UI-flader er kanoniske og tydeligt adskilt fra offentligt aktivitetsfeed.
-
-### Slice 3 — Min aktivitet
-- Mål: Gøre `Min aktivitet` til markedets personlige arbejdsflade.
-- Afhænger af: Slice 2, så global indbakke og personlig markedsoverblik ikke blandes sammen.
-- Centrale leverancer: `Kræver handling`, `Auktioner`, `Transfers`, `Lån`, `Ønskeliste`, `Historik`, kompakte handlingsrækker med status, tid og deep-link.
-- Done when: Siden skiller sig tydeligt fra indbakken og samler alle markedshandlinger, som involverer brugeren direkte.
-
-### Slice 4 — Markedsregler og rytterflader
-- Mål: Gøre markedets UI og regler konsekvente på tværs af auktioner, transfers og ryttervisninger.
-- Afhænger af: Slice 3 for arbejdsfladen, men kan delvist køres parallelt hvis baseline er stabil.
-- Centrale leverancer: `Point` → `Værdi`, minimum `Værdi` ved normal auktionsstart, `Garanteret salg` som 50%-undtagelse, aktiv auktionsstatus på rytterliste og rytterside, transfer-tidspunkt, ryttertype, ønskeliste-alerts.
-- Done when: UI-labels, backend-regler og markedsfeedback matcher samme domæneforståelse.
-
-### Slice 5 — Resultater og rytterrangliste
-- Mål: Oprette et samlet resultatområde med klar indgang og individuel rytterrangliste.
-- Afhænger af: Slice 1 for navigationen; kan ellers køre uafhængigt af inbox/marked hvis datakontrakten er klar.
-- Centrale leverancer: `Resultater`-hub, `Ranglisten`, `Sæsonresultater`, `Hall of Fame`, individuel rytterrangliste med både AI- og manager-ryttere.
-- Done when: Resultatsiderne har en samlet indgang, og rytterranglisten virker med de aftalte aggregater.
-
-### Slice 6 — Løbshistorik og løbsarkiv
-- Mål: Gøre løb browsebare på tværs af sæsoner med historik pr. løb.
-- Afhænger af: Slice 5, så resultatområdet eksisterer som naturlig indgang.
-- Centrale leverancer: historik pr. løb, tidligere udgaver, tidligere vindere, bedste ryttere i løbet, akkumuleret graf pr. løb.
-- Done when: Samme løb kan spores på tværs af sæsoner via en stabil historikmodel og en brugbar UI-indgang.
-
-### Slice 7 — Integrationer og Discord
-- Mål: Lægge eksterne integrationer ovenpå en stabil runtime.
-- Afhænger af: Slice 0 for webhook-afklaring og eksempelark til `dyn_cyclist`; øvrige slices kan gennemføres først.
-- Centrale leverancer: webhook-fix, transferhistorik til Discord-tråd via webhook, `dyn_cyclist` Google Sheet integration.
-- Done when: Webhook-path er stabil, og integrationsarbejde kører på afklaret datakontrakt uden at blande sig med kerne-UX refactors.
-- ✅ Lukket og live.
+### ✅ Afsluttede slices
+- Slice 0 — Baseline & blockers ✅
+- Slice 1 — Navigation & app-shell ✅
+- Slice 2 — Indbakke, notifikationer og topbar ✅
+- Slice 3 — Min aktivitet ✅
+- Slice 4 — Markedsregler og rytterflader ✅
+- Slice 5 — Resultater og rytterrangliste ✅
+- Slice 6 — Løbshistorik og løbsarkiv ✅
+- Slice 7 — Integrationer og Discord ✅
 
 ### Slice 8 — Bug-rydning og quick wins
 - Mål: Ryd P1-bugs og hurtige wins inden en ny tung feature-slice påbegyndes.
@@ -65,10 +26,10 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
   1. ~~Hemmelige achievements synlige i UI → fix~~ ✅ løst
   2. Event-sekvens dokumentation (`docs/EVENT_SEQUENCE.md`)
   3. Live beta-verifikation af season flow (start → result approval → end)
-  4. Landekode/flag på øvrige rytterflader
+  4. ~~Landekode/flag på øvrige rytterflader~~ ✅ løst
   5. Discord/webhook-regression → reproducér og afgræns
 - Holdt ude: boardEngine split, økonomi retuning, PCM mappings
-- Done when: P1-bugs løst, docs færdige, season flow verificeret, flag-visning konsekvent.
+- Done when: P1-bugs løst, docs færdige, season flow verificeret. (flag-visning: ✅)
 
 ### Låste defaults for roadmapen
 - `Liga` beholdes som navn indtil videre.
@@ -90,11 +51,6 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Nye featureforslag må gerne komme løbende, men skal være tydeligt forankret i aktiv slice, runtimeen eller et konkret produktgap
 
 ### Planlagte sparringssessioner
-- Session 1: `Slice 1 — Navigation & app-shell`
-- Session 2: `Slice 2 — Indbakke, notifikationer og topbar`
-- Session 3: `Slice 3 — Min aktivitet`
-- Session 4: `Slice 5-6 — Resultater, rytterrangliste og løbsarkiv`
-- Session 5: `Slice 7 — dyn_cyclist + Discord`
 - Session 6: økonomiretuning hvis den løftes i prioritet
 
 ---
@@ -102,7 +58,6 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 ## 🔴 Kritiske bugs / investigations
 
 - P1: Discord/webhook-regression skal reproduceres og spores gennem nuværende notifier-paths og live webhook-konfiguration; samme spor bør også afklare hvordan transferhistorik kan spejles til en dedikeret Discord-tråd via webhook
-- ~~P1: Hemmelige achievements er ikke længere hemmelige i UI~~ ✅ løst
 - P2: Evne-filter/slider kræver frisk reproduktion på rigtige data; nuværende kodegennemgang fandt ingen entydig root cause
 
 ---
