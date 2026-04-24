@@ -2,6 +2,34 @@
 
 const PATCHES = [
   {
+    version: "1.40",
+    date: "2026-04-24",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Board-siden viser nu tre parallelle bestyrelsesplaner (5-årsplan, 3-årsplan og 1-årsplan) simultant på samme side — hver plan har egne mål og tilfredshedsmåling",
+          "Wizard-flowet åbner nu for én specifik plantype, så du forhandler med bestyrelsen om præcis den plan du vælger",
+          "Første gang du åbner Board-siden oprettes alle tre planer automatisk i rækkefølge 5yr → 3yr → 1yr",
+        ],
+      },
+    ],
+  },
+  {
+    version: "1.39",
+    date: "2026-04-24",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Nationalitetsflag vises nu på Hold, Team-profil, Auktioner, Ønskeliste, Transfermarked, Auktionshistorik, Head-to-Head og Ryttersammenligning — flag er nu konsekvent på alle rytterflader",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.38",
     date: "2026-04-24",
     label: "Beta",
@@ -729,7 +757,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.27");
+  const [expanded, setExpanded] = useState("1.40");
 
   return (
     <div className="max-w-2xl mx-auto">
