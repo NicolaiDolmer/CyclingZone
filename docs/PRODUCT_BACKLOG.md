@@ -56,6 +56,19 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Afhænger af: Slice 0 for webhook-afklaring og eksempelark til `dyn_cyclist`; øvrige slices kan gennemføres først.
 - Centrale leverancer: webhook-fix, transferhistorik til Discord-tråd via webhook, `dyn_cyclist` Google Sheet integration.
 - Done when: Webhook-path er stabil, og integrationsarbejde kører på afklaret datakontrakt uden at blande sig med kerne-UX refactors.
+- ✅ Lukket og live.
+
+### Slice 8 — Bug-rydning og quick wins
+- Mål: Ryd P1-bugs og hurtige wins inden en ny tung feature-slice påbegyndes.
+- Afhænger af: Slice 7 afsluttet.
+- Centrale leverancer (prioriteret):
+  1. ~~Hemmelige achievements synlige i UI → fix~~ ✅ løst
+  2. Event-sekvens dokumentation (`docs/EVENT_SEQUENCE.md`)
+  3. Live beta-verifikation af season flow (start → result approval → end)
+  4. Landekode/flag på øvrige rytterflader
+  5. Discord/webhook-regression → reproducér og afgræns
+- Holdt ude: boardEngine split, økonomi retuning, PCM mappings
+- Done when: P1-bugs løst, docs færdige, season flow verificeret, flag-visning konsekvent.
 
 ### Låste defaults for roadmapen
 - `Liga` beholdes som navn indtil videre.
@@ -89,7 +102,7 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 ## 🔴 Kritiske bugs / investigations
 
 - P1: Discord/webhook-regression skal reproduceres og spores gennem nuværende notifier-paths og live webhook-konfiguration; samme spor bør også afklare hvordan transferhistorik kan spejles til en dedikeret Discord-tråd via webhook
-- P1: Hemmelige achievements er ikke længere hemmelige i UI; mindst én flade viser navn eller beskrivelse før unlock, hvilket bryder produktreglen
+- ~~P1: Hemmelige achievements er ikke længere hemmelige i UI~~ ✅ løst
 - P2: Evne-filter/slider kræver frisk reproduktion på rigtige data; nuværende kodegennemgang fandt ingen entydig root cause
 
 ---

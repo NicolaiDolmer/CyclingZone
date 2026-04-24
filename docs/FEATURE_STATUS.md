@@ -132,6 +132,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 🔴 Broken / Kendte bugs
 
 - Evne-filter/slider kræver frisk live-reproduktion; ingen statisk root cause fundet
+- Discord/webhook-regression kræver frisk live-reproduktion; inkl. transferhistorik til Discord-tråd
 
 --- 
 

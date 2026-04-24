@@ -73,7 +73,7 @@ Stop og skift til `investigation` hvis:
 - `frontend/src/pages/PatchNotesPage.jsx` → opdater ved enhver brugerrettet feature eller adfærdsændring
 - `frontend/src/pages/HelpPage.jsx` → opdater hvis ændringen påvirker regler, flow, FAQ, onboarding eller admin-brug
 - Opdater ikke → skriv eksplicit hvorfor det ikke er relevant
-- Kør `npm run sync-docs`
+- `npm run sync-docs` eksisterer ikke — skip det
 
 ## Required deliverables
 - root cause · invariant at risk · minimal safe fix · affected files · regression tests
