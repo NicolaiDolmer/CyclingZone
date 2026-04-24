@@ -18,6 +18,21 @@ const GOAL_CHANGE_META = {
   replaced: { label: "Omlagt", accent: "text-blue-300", box: "border-blue-500/20 bg-blue-500/8" },
 };
 
+const GOAL_STATUS_META = {
+  behind:        { label: "I fare",     color: "text-red-400",   icon: "!" },
+  near_miss:     { label: "Tæt på",    color: "text-amber-600", icon: "~" },
+  on_track:      { label: "På sporet", color: "text-slate-400", icon: null },
+  watch:         { label: "Hold øje",  color: "text-amber-600", icon: "~" },
+  awaiting_data: { label: null, color: null, icon: null },
+  neutral:       { label: null, color: null, icon: null },
+};
+
+const PERSONALITY_LABELS = {
+  sports_ambition:   { low: "Lav ambition", medium: "Moderat ambition", high: "Høj ambition" },
+  financial_risk:    { cautious: "Forsigtig økonomi", balanced: "Balanceret økonomi", aggressive: "Aggressiv økonomi" },
+  identity_strength: { low: "Svag identitet", medium: "Moderat identitet", high: "Stærk identitet" },
+};
+
 function getBoardGoalLabel(goal) {
   if (!goal) return "";
   if (goal.type === "min_national_riders" && goal.nationality_code) {
@@ -64,16 +79,40 @@ function SatisfactionMeter({ value }) {
   );
 }
 
-function GoalCard({ goal, achieved, cumulativeProgress }) {
+function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
+  const status = evaluation?.status;
+  const statusMeta = !achieved && status ? GOAL_STATUS_META[status] : null;
+  const isRequired = goal.importance === "required";
+  const isBehind = status === "behind";
+  const isNearMiss = status === "near_miss" || status === "watch";
+
+  const containerClass = achieved
+    ? "bg-green-500/8 border-green-200"
+    : isBehind && isRequired ? "bg-red-500/5 border-red-200"
+    : isBehind ? "bg-slate-50 border-red-200/50"
+    : "bg-slate-50 border-slate-200";
+
+  const iconContent = achieved ? "✓" : isBehind ? "!" : isNearMiss ? "~" : "○";
+  const iconClass = achieved ? "bg-green-100 text-green-700"
+    : isBehind && isRequired ? "bg-red-100 text-red-600"
+    : isBehind ? "bg-red-50 text-red-400"
+    : isNearMiss ? "bg-amber-50 text-amber-600"
+    : "bg-slate-100 text-slate-300";
+
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-lg border transition-all
-      ${achieved ? "bg-green-500/8 border-green-200" : "bg-slate-50 border-slate-200"}`}>
-      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs
-        ${achieved ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-300"}`}>
-        {achieved ? "✓" : "○"}
+    <div className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${containerClass}`}>
+      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold ${iconClass}`}>
+        {iconContent}
       </div>
       <div className="flex-1">
-        <p className={`text-sm font-medium ${achieved ? "text-green-300" : "text-slate-600"}`}>{getBoardGoalLabel(goal)}</p>
+        <div className="flex items-start justify-between gap-2">
+          <p className={`text-sm font-medium ${achieved ? "text-green-300" : "text-slate-600"}`}>{getBoardGoalLabel(goal)}</p>
+          {!achieved && evaluation?.actual != null && (
+            <span className="text-xs font-mono text-slate-400 flex-shrink-0">
+              {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}/{goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
+            </span>
+          )}
+        </div>
         {goal.cumulative && cumulativeProgress !== undefined && (
           <div className="flex items-center gap-2 mt-1.5">
             <div className="flex-1 bg-slate-100 rounded-full h-1">
@@ -83,7 +122,13 @@ function GoalCard({ goal, achieved, cumulativeProgress }) {
             <span className="text-slate-400 text-xs font-mono">{cumulativeProgress}/{goal.target}</span>
           </div>
         )}
-        <div className="flex gap-3 mt-1">
+        <div className="flex flex-wrap gap-3 mt-1">
+          {!achieved && isRequired && (
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Krav</span>
+          )}
+          {statusMeta?.label && (
+            <span className={`text-xs font-medium ${statusMeta.color}`}>{statusMeta.label}</span>
+          )}
           {goal.negotiated && <span className="text-xs text-blue-700/70">Forhandlet</span>}
           {goal.satisfaction_bonus > 0 && (
             <span className="text-xs text-green-700/70">+{goal.satisfaction_bonus} tilfredshed</span>
@@ -512,6 +557,12 @@ function PlanCard({ planType, planData, riders, standing, activeLoanCount, team,
             <p className="text-amber-700 text-xs font-semibold">Plan udløbet — forhandl en ny plan med bestyrelsen</p>
           </div>
         )}
+        {!is_expired && board.satisfaction < 25 && (
+          <div className="bg-red-500/8 border border-red-200 rounded-lg p-3 mt-4">
+            <p className="text-red-300 text-xs font-semibold">Bestyrelsen er dybt utilfreds</p>
+            <p className="text-red-300/70 text-xs mt-0.5">Fortsat underpræstation skærper kravene ved næste planforhandling.</p>
+          </div>
+        )}
       </div>
 
       {/* Udvidet indhold */}
@@ -557,6 +608,7 @@ function PlanCard({ planType, planData, riders, standing, activeLoanCount, team,
                   key={i}
                   goal={g}
                   achieved={goalAchieved(g)}
+                  evaluation={outlook?.goal_evaluations?.[i]}
                   cumulativeProgress={
                     g.cumulative && g.type === "stage_wins" ? (cumulative_stats?.stage_wins ?? 0)
                     : g.cumulative && g.type === "gc_wins" ? (cumulative_stats?.gc_wins ?? 0)
@@ -578,6 +630,19 @@ function PlanCard({ planType, planData, riders, standing, activeLoanCount, team,
               <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Bestyrelsens vurdering</p>
               <p className="text-slate-900 text-sm font-semibold">{outlook.feedback.headline}</p>
               <p className="text-slate-500 text-sm mt-1">{formatBoardCopy(outlook.feedback.summary)}</p>
+              {outlook.personality && (
+                <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-200">
+                  {[
+                    PERSONALITY_LABELS.sports_ambition[outlook.personality.sports_ambition],
+                    PERSONALITY_LABELS.financial_risk[outlook.personality.financial_risk],
+                    PERSONALITY_LABELS.identity_strength[outlook.personality.identity_strength],
+                  ].filter(Boolean).map(label => (
+                    <span key={label} className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full border border-slate-200">
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -720,7 +785,10 @@ function WizardStep2({ goals, goalIdx, negotiated, pendingNegotiate, onAccept, o
             flex items-center justify-center flex-shrink-0 text-xs text-amber-700">◎</div>
           <div className="flex-1">
             <p className="text-slate-900 font-semibold">{getBoardGoalLabel(current)}</p>
-            <div className="flex gap-3 mt-2">
+            <div className="flex flex-wrap gap-3 mt-2">
+              {current?.importance === "required" && (
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider">Obligatorisk krav</span>
+              )}
               {current?.cumulative && <span className="text-xs text-blue-700/70 bg-blue-500/10 px-2 py-0.5 rounded">Kumulativt</span>}
               {current?.satisfaction_bonus > 0 && (
                 <span className="text-xs text-green-700/70">+{current?.satisfaction_bonus} tilfredshed</span>

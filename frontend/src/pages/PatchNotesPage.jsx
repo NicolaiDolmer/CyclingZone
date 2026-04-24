@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "1.41",
+    date: "2026-04-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Hvert bestyrelsesmål viser nu om det er et obligatorisk krav eller ej — tydeligt markeret i måloversigten",
+          "Mål der er bagud vises med advarselsstatus (I fare / Tæt på / På sporet) baseret på aktuelle holddata",
+          "Aktuelle fremskridt vises direkte på hvert mål — f.eks. nuværende placering vs. mål for top N-finish",
+          "Bestyrelsens karakter (sportsambition, økonomirisiko, identitetsstyrke) vises nu i plankortet under bestyrelsens vurdering",
+          "Ny advarselsbanner hvis tilfredshed falder under 25% — ingen fyring, men skærpede krav ved næste planforhandling",
+          "Forhandlingswizarden viser nu tydeligt hvilke mål der er obligatoriske krav",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.40",
     date: "2026-04-24",
     label: "Beta",
