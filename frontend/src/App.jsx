@@ -41,6 +41,8 @@ import RacesPage from "./pages/RacesPage";
 import SeasonEndPage from "./pages/SeasonEndPage";
 import ResultaterPage from "./pages/ResultaterPage";
 import RiderRankingsPage from "./pages/RiderRankingsPage";
+import RaceArchivePage from "./pages/RaceArchivePage";
+import RaceHistoryPage from "./pages/RaceHistoryPage";
 import ManagerProfilePage from "./pages/ManagerProfilePage";
 import FinancePage from "./pages/FinancePage";
 import Layout from "./components/Layout";
@@ -103,6 +105,8 @@ export default function App() {
           <Route path="season-end" element={<SeasonEndPage />} />
           <Route path="resultater" element={<ResultaterPage />} />
           <Route path="rider-rankings" element={<RiderRankingsPage />} />
+          <Route path="race-archive" element={<RaceArchivePage />} />
+          <Route path="race-archive/:raceSlug" element={<RaceHistoryPage />} />
           <Route path="finance" element={<FinancePage />} />
           <Route path="managers/:teamId" element={<ManagerProfilePage />} />
           <Route path="admin" element={<AdminPage />} />

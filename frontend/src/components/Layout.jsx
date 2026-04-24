@@ -41,6 +41,7 @@ function buildNavGroups(team) {
         { to: "/rider-rankings", label: "Rytterrangliste" },
         { to: "/season-end",     label: "Sæsonresultater" },
         { to: "/hall-of-fame",   label: "Hall of Fame" },
+        { to: "/race-archive",   label: "Løbsarkiv" },
       ],
     },
     {

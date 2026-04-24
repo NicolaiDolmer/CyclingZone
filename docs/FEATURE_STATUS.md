@@ -71,6 +71,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Opryknings/nedrykningslogik (top/bund 2 per division)
 - Sæsonpreview-side
 - Races-side
+- Løbsarkiv (`/race-archive`): alle løb grupperet på tværs af sæsoner
+- Løbshistorik (`/race-archive/:raceSlug`): udgaver, vindere, bedste ryttere akkumuleret, point-bar-chart
 
 ### Bestyrelse (Board)
 - Bestyrelsesprofil med plan + focus + tilfredshed

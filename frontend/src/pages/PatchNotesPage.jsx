@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "1.37",
+    date: "2026-04-24",
+    label: "Beta",
+    changes: [
+      {
+        category: "Nyt",
+        items: [
+          "Løbsarkiv er nu tilgængeligt under Resultater — alle løb fra alle sæsoner kan nu browses på ét sted",
+          "Hvert løb har sin egen historikside med alle tidligere udgaver og vinderen af hver sæson",
+          "Bedste ryttere vises akkumuleret på tværs af alle udgaver af et løb — sorteret efter sejre og point",
+          "Akkumuleret point-graf viser de bedste rytteres samlede præstationer i et givet løb",
+          "Løbsarkiv er tilføjet som hub-link på Resultater-overblikssiden",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.36",
     date: "2026-04-24",
     label: "Beta",

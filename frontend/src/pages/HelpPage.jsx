@@ -240,6 +240,10 @@ const SECTIONS = [
         text: "Alle managers kan indberette løbsresultater fra PCM via Løbskalender → Indberét resultater. Upload en Excel-fil, match navne og indsend til admin-godkendelse. Præmiepenge beregnes automatisk når admin finaliserer resultaterne, og sæsonstillingen opdateres gennem den samme backend-path uanset om admin godkender en pending submission eller importerer resultater direkte.",
       },
       {
+        title: "Løbsarkiv",
+        text: "Under Resultater → Løbsarkiv kan du se alle løb på tværs af sæsoner. Hvert løb har sin egen historikside med tidligere udgaver, vinderen af hver sæson og en akkumuleret oversigt over de ryttere der historisk har klaret sig bedst i netop det løb.",
+      },
+      {
         title: "Op- og nedrykning",
         text: "Top 2 i Division 2 og 3 rykker op. Bund 2 i Division 1 og 2 rykker ned. Afgøres automatisk ved sæsonafslutning baseret på sæsonpoint.",
       },

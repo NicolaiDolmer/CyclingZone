@@ -1,14 +1,15 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv næste slice
-- `Slice 5 — Resultater og rytterrangliste` — implementeret og klar til deploy
-- `Resultater`-hub på `/resultater`: navigations-kort + tophold + topscorere.
-- `Rytterrangliste` på `/rider-rankings`: sorterbar tabel med etapesejre, GC, pointklassement, bjerg, ungdom — inkl. AI-ryttere.
-- Navigation opdateret: "Resultater"-gruppen har nu Overblik, Ranglisten, Rytterrangliste, Sæsonresultater og Hall of Fame.
+- `Slice 6 — Løbshistorik og løbsarkiv` — implementeret og klar til deploy
+- `Løbsarkiv` på `/race-archive`: alle løb på tværs af sæsoner, grupperet og browseable.
+- `Løbshistorik` på `/race-archive/:raceSlug`: tidligere udgaver, vindere pr. sæson, bedste ryttere akkumuleret, bar-chart over point-total.
+- Navigation: "Resultater"-gruppen har nu Overblik, Ranglisten, Rytterrangliste, Løbsarkiv, Sæsonresultater og Hall of Fame.
+- Resultater-hub opdateret med nyt Løbsarkiv-kort.
 
 ## Næste slice derefter
-- `Slice 6 — Løbshistorik og løbsarkiv`
-- Fokus: historik pr. løb, tidligere udgaver, tidligere vindere, akkumuleret graf pr. løb.
+- `Slice 7 — Integrationer og Discord`
+- Fokus: webhook-fix, transferhistorik til Discord-tråd, `dyn_cyclist` Google Sheet integration.
 
 ## Blockers / investigations
 - Blocker: `dyn_cyclist`-integrationen mangler stadig et eksempelark til endelig datakontrakt og kolonnemapping.

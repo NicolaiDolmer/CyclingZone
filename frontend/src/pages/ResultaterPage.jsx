@@ -6,6 +6,7 @@ import { getFlagEmoji } from "../lib/countryUtils";
 const HUB_LINKS = [
   { to: "/standings",      label: "Ranglisten",      desc: "Holdranglisten for aktiv sæson",              icon: "🏆" },
   { to: "/rider-rankings", label: "Rytterrangliste",  desc: "Individuelle resultater for alle ryttere",    icon: "🚴" },
+  { to: "/race-archive",   label: "Løbsarkiv",        desc: "Historik pr. løb på tværs af sæsoner",       icon: "📖" },
   { to: "/season-end",     label: "Sæsonresultater",  desc: "Historiske sæsonafslutninger",                icon: "📅" },
   { to: "/hall-of-fame",   label: "Hall of Fame",     desc: "Rekorder og manager-rangliste",               icon: "👑" },
 ];
