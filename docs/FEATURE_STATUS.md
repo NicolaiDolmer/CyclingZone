@@ -122,19 +122,23 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ---
 
+### Discord & Integrationer
+- Discord webhooks: admin kan tilføje webhooks med navn, URL og type (general / transfer_history), sætte standard og sende testbesked
+- Gennemførte transfers og byttehandler sendes automatisk til webhook med type `transfer_history`
+- dyn_cyclist sync: admin kan synkronisere PCM-rytterstats (14 stat-felter + højde, vægt, popularitet) fra Google Sheets via URL — match på pcm_id
+
+---
+
 ## 🔴 Broken / Kendte bugs
 
 - Evne-filter/slider kræver frisk live-reproduktion; ingen statisk root cause fundet
-- Discord-webhooks er nu koblet op (notifier var unwired), men live-verifikation mod rigtig webhook-URL er ikke gennemført endnu
 
 --- 
 
 ## 🚧 I gang
 
 - [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
-- [ ] Kør live SQL-patch (`2026-04-23-discord-settings.sql`) + admin rebuild for den nuværende deployede aktive sæson
 - [ ] Første live beta-verifikation af `season start -> result approval -> season end`
-- [ ] Live-verifikation af Discord webhook (mangler en reel webhook-URL i `.env` og i `discord_settings`-tabellen)
 
 ---
 
