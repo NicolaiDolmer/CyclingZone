@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "1.35",
+    date: "2026-04-24",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "'UCI Point' er omdøbt til 'Værdi' i hele UI — rytterliste, auktioner, transfers og ønskeliste bruger nu det samme begreb",
+          "Auktionsformularen håndhæver nu minimum Værdi som startpris — du kan ikke sætte en lavere pris end rytterens Værdi",
+          "'Garanteret salg' er nu tydeligt markeret som undtagelse i auktionsformularen — afkrydses for at sætte startpris til 50% af Værdi",
+          "Rytterliste og rytterside viser nu en '⚡ Auktion'-badge hvis rytteren er i en aktiv auktion",
+          "Transferlisten viser nu hvornår en rytter blev sat til salg",
+          "Ryttertype vises nu som et tydeliggjort badge på ryttersiden",
+          "Nationalitetsflag vises nu på rytterlisten og ryttersiden",
+          "Du får nu notifikation i indbakken når en rytter på din ønskeliste sættes til auktion eller salg",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.34",
     date: "2026-04-24",
     label: "Beta",

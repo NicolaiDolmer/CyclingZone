@@ -757,10 +757,15 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
             {listing.rider?.firstname} {listing.rider?.lastname}
           </p>
           <p className="text-slate-400 text-xs mt-0.5">{listing.seller?.name}</p>
+          {listing.created_at && (
+            <p className="text-slate-300 text-xs mt-0.5">
+              Til salg siden {new Date(listing.created_at).toLocaleDateString("da-DK", { day: "numeric", month: "short" })}
+            </p>
+          )}
         </div>
         <div className="text-right">
           <p className="text-amber-700 font-mono font-bold text-lg">{listing.asking_price?.toLocaleString("da-DK")} CZ$</p>
-          <p className="text-slate-400 text-xs">UCI: {listing.rider?.uci_points?.toLocaleString("da-DK")}</p>
+          <p className="text-slate-400 text-xs">Værdi: {listing.rider?.uci_points?.toLocaleString("da-DK")} CZ$</p>
         </div>
       </div>
 

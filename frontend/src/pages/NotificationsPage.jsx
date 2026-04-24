@@ -13,6 +13,7 @@ const TYPE_CONFIG = {
   transfer_offer_rejected:   { icon: "❌", color: "text-red-700",    bg: "bg-red-500/8 border-red-500/15",     link: "/transfers" },
   transfer_offer_withdrawn:  { icon: "↩",  color: "text-slate-500",   bg: "bg-slate-50 border-slate-200",          link: "/transfers" },
   transfer_counter:          { icon: "↔",  color: "text-amber-700", bg: "bg-amber-50 border-[#e8c547]/15", link: "/transfers" },
+  watchlist_rider_listed:    { icon: "⭐", color: "text-amber-700", bg: "bg-amber-50 border-[#e8c547]/15", link: "/transfers" },
   new_race:                  { icon: "🏁", color: "text-slate-900",      bg: "bg-slate-50 border-slate-200",          link: "/races" },
   season_started:            { icon: "🚀", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/dashboard" },
   season_ended:              { icon: "🏁", color: "text-slate-900",      bg: "bg-slate-50 border-slate-200",          link: "/season-end" },

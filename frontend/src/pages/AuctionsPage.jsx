@@ -387,7 +387,7 @@ export default function AuctionsPage() {
                   <th className="px-2 py-3 text-center text-slate-300 font-medium hidden lg:table-cell">Alder</th>
                   <SortTh sortKey="uci_points" sort={activeSort("uci_points") ? "uci_points" : riderFilters.filters.sort}
                     sortDir={activeSortDir("uci_points")} onSort={handleSort}
-                    className="px-2 py-3 text-right font-medium">UCI</SortTh>
+                    className="px-2 py-3 text-right font-medium">Værdi</SortTh>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key}
                       sort={activeSort(key) ? key : riderFilters.filters.sort}

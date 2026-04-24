@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { getFlagEmoji, getCountryName } from "../lib/countryUtils";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -110,21 +111,54 @@ function DirectOfferButton({ rider }) {
 }
 
 function AuctionButton({ rider, isMyRider, onStart }) {
-  const [price, setPrice]     = useState(Math.max(rider.uci_points || 1, 1));
-  const [loading, setLoading] = useState(false);
+  const riderValue      = Math.max(rider.uci_points || 1, 1);
+  const [guaranteed, setGuaranteed] = useState(false);
+  const [price, setPrice]           = useState(riderValue);
+  const [loading, setLoading]       = useState(false);
+
+  const guaranteedPrice = Math.floor(riderValue * 0.5);
+  const effectivePrice  = guaranteed ? guaranteedPrice : price;
+  const priceError      = !guaranteed && price < riderValue;
+
   return (
     <div>
       <p className="text-slate-400 text-xs uppercase tracking-widest mb-2">
         {isMyRider ? "Sæt til auktion" : "Start auktion (fri rytter)"}
       </p>
+      <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+        <input type="checkbox" checked={guaranteed} onChange={e => setGuaranteed(e.target.checked)}
+          className="rounded accent-amber-600" />
+        <span className="text-sm text-slate-700 font-medium">Garanteret salg</span>
+        <span className="text-xs text-slate-400">
+          (startpris {guaranteedPrice.toLocaleString("da-DK")} CZ$ — 50% af Værdi)
+        </span>
+      </label>
       <div className="flex gap-2">
-        <input type="number" value={price} min={1} onChange={e => setPrice(parseInt(e.target.value))}
-          className="flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm font-mono focus:outline-none focus:border-amber-400" />
-        <button onClick={async () => { setLoading(true); await onStart(price); setLoading(false); }} disabled={loading}
+        <input
+          type="number"
+          value={guaranteed ? guaranteedPrice : price}
+          min={guaranteed ? guaranteedPrice : riderValue}
+          disabled={guaranteed}
+          onChange={e => !guaranteed && setPrice(parseInt(e.target.value) || riderValue)}
+          className={`flex-1 bg-slate-100 border rounded-lg px-3 py-2 text-slate-900 text-sm font-mono focus:outline-none
+            ${guaranteed
+              ? "opacity-50 cursor-not-allowed border-slate-200"
+              : priceError
+                ? "border-red-300 focus:border-red-400"
+                : "border-slate-300 focus:border-amber-400"}`}
+        />
+        <button
+          onClick={async () => { setLoading(true); await onStart(effectivePrice, guaranteed); setLoading(false); }}
+          disabled={loading || (!guaranteed && priceError)}
           className="px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] transition-all disabled:opacity-50">
           {loading ? "..." : "Start auktion"}
         </button>
       </div>
+      {priceError && (
+        <p className="text-red-500 text-xs mt-1.5">
+          Startpris skal mindst matche Værdi ({riderValue.toLocaleString("da-DK")} CZ$)
+        </p>
+      )}
     </div>
   );
 }
@@ -142,6 +176,8 @@ export default function RiderStatsPage() {
   const [tab, setTab]                       = useState("stats");
   const [myTeamId, setMyTeamId]             = useState(null);
   const [myTeam, setMyTeam]                 = useState(null);
+  const [activeAuction, setActiveAuction]   = useState(null);
+  const [auctionError, setAuctionError]     = useState(null);
 
   useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); }, [id]);
 
@@ -188,14 +224,18 @@ export default function RiderStatsPage() {
   }
 
   async function loadRider() {
-    const [riderRes, resultsRes] = await Promise.all([
+    const [riderRes, resultsRes, auctionRes] = await Promise.all([
       supabase.from("riders").select(`*, team:team_id(id, name)`).eq("id", id).single(),
       supabase.from("race_results")
         .select(`*, race:race_id(name, race_type, start_date)`)
         .eq("rider_id", id).order("imported_at", { ascending: false }).limit(20),
+      supabase.from("auctions")
+        .select("id, status, calculated_end, current_price, is_guaranteed_sale")
+        .eq("rider_id", id).in("status", ["active", "extended"]).maybeSingle(),
     ]);
     setRider(riderRes.data);
     setResults(resultsRes.data || []);
+    setActiveAuction(auctionRes.data || null);
     setLoading(false);
     loadWatchlistCount();
 
@@ -205,14 +245,20 @@ export default function RiderStatsPage() {
     }
   }
 
-  async function startAuction(startPrice) {
+  async function startAuction(startPrice, isGuaranteedSale = false) {
+    setAuctionError(null);
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch(`${API}/api/auctions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ rider_id: id, starting_price: startPrice }),
+      body: JSON.stringify({ rider_id: id, starting_price: startPrice, is_guaranteed_sale: isGuaranteedSale }),
     });
     if (res.ok) navigate("/auctions");
+    else {
+      const data = await res.json();
+      setAuctionError(data.error || "Noget gik galt");
+      setTimeout(() => setAuctionError(null), 5000);
+    }
   }
 
   if (loading) return (
@@ -264,21 +310,44 @@ export default function RiderStatsPage() {
             )}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {rider.is_u25 && <span className="text-xs uppercase bg-blue-500/20 text-blue-700 px-2 py-0.5 rounded">U25</span>}
-              <span className="text-slate-500 text-sm">{typeLabel}</span>
+              <span className="text-xs uppercase bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium">{typeLabel}</span>
+              {rider.nationality_code && (
+                <span className="text-slate-500 text-sm">
+                  {getFlagEmoji(rider.nationality_code)} {getCountryName(rider.nationality_code)}
+                </span>
+              )}
               {age && <span className="text-slate-400 text-sm">{age} år</span>}
               {rider.height && <span className="text-slate-400 text-sm">{rider.height} cm</span>}
               {rider.weight && <span className="text-slate-400 text-sm">{rider.weight} kg</span>}
             </div>
             <p className="text-slate-500 text-sm mt-2">{rider.team ? `Hold: ${rider.team.name}` : "Fri agent"}</p>
+            {activeAuction && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs bg-amber-500/15 text-amber-700 px-2 py-0.5 rounded font-medium">
+                  ⚡ Aktiv auktion
+                </span>
+                <span className="text-xs text-slate-400">
+                  Højeste bud: {activeAuction.current_price?.toLocaleString("da-DK")} CZ$
+                </span>
+              </div>
+            )}
           </div>
           <div className="text-right">
             <p className="text-amber-700 font-mono font-bold text-2xl">{rider.uci_points?.toLocaleString("da-DK")}</p>
-            <p className="text-slate-400 text-xs mt-0.5">UCI Point / Pris</p>
+            <p className="text-slate-400 text-xs mt-0.5">Værdi</p>
             {bestStat && <p className="text-slate-500 text-xs mt-2">Bedste: <span className="text-amber-700">{bestStat.label} ({rider[bestStat.key]})</span></p>}
           </div>
         </div>
+        {auctionError && (
+          <div className="mt-3 px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">
+            {auctionError}
+          </div>
+        )}
         <div className="mt-5 pt-5 border-t border-slate-200 flex flex-col gap-3">
-          {canAuction && <AuctionButton rider={rider} isMyRider={isMyRider} onStart={startAuction} />}
+          {canAuction && !activeAuction && <AuctionButton rider={rider} isMyRider={isMyRider} onStart={startAuction} />}
+          {activeAuction && canAuction && (
+            <p className="text-slate-400 text-xs text-center py-1">Rytteren er allerede i en aktiv auktion</p>
+          )}
           {rider.team_id && rider.team_id !== myTeamId && <DirectOfferButton rider={rider} />}
         </div>
       </div>

@@ -400,6 +400,11 @@ router.post("/auctions", requireAuth, async (req, res) => {
   }
 
   const riderValue = Math.max(rider.uci_points, 1);
+
+  if (!is_guaranteed_sale && starting_price && starting_price < riderValue) {
+    return res.status(400).json({ error: `Startpris skal mindst matche rytterens Værdi (${riderValue.toLocaleString("da-DK")} CZ$)` });
+  }
+
   const guaranteedPrice = is_guaranteed_sale ? Math.floor(riderValue * 0.5) : null;
   const price = is_guaranteed_sale
     ? guaranteedPrice
@@ -441,6 +446,21 @@ router.post("/auctions", requireAuth, async (req, res) => {
     startPrice: price,
     endsAt: calculatedEnd.toISOString(),
   }).catch(() => {});
+
+  // Notify watchlist users that this rider is up for auction
+  const riderFullName = `${rider.firstname} ${rider.lastname}`;
+  ;(async () => {
+    const { data: watchers } = await supabase
+      .from("rider_watchlist").select("user_id")
+      .eq("rider_id", rider_id).neq("user_id", req.user.id);
+    if (watchers?.length) {
+      await Promise.all(watchers.map(w =>
+        notify(w.user_id, "watchlist_rider_listed", "Ønskeliste-rytter til auktion",
+          `${riderFullName} er sat til auktion (startpris ${price.toLocaleString("da-DK")} CZ$)`,
+          auction.id).catch(() => {})
+      ));
+    }
+  })().catch(() => {});
 
   res.status(201).json({
     auction,
@@ -623,6 +643,23 @@ router.post("/transfers", requireAuth, async (req, res) => {
     .insert({ rider_id, seller_team_id: req.team.id, asking_price })
     .select().single();
   if (error) return res.status(500).json({ error: error.message });
+
+  // Notify watchlist users that this rider is listed for transfer
+  const riderFullName = `${rider.firstname} ${rider.lastname}`;
+  const listingId = data.id;
+  ;(async () => {
+    const { data: watchers } = await supabase
+      .from("rider_watchlist").select("user_id")
+      .eq("rider_id", rider_id).neq("user_id", req.user.id);
+    if (watchers?.length) {
+      await Promise.all(watchers.map(w =>
+        notify(w.user_id, "watchlist_rider_listed", "Ønskeliste-rytter til salg",
+          `${riderFullName} er sat til salg (${asking_price?.toLocaleString("da-DK")} CZ$)`,
+          listingId).catch(() => {})
+      ));
+    }
+  })().catch(() => {});
+
   res.status(201).json(data);
 });
 

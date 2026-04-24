@@ -130,7 +130,7 @@ export default function WatchlistPage() {
                       className="px-3 py-3 text-left font-medium uppercase tracking-wider">Rytter</SortTh>
                     <th className="px-3 py-3 text-left text-slate-400 font-medium uppercase tracking-wider hidden sm:table-cell">Hold</th>
                     <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-right font-medium">UCI</SortTh>
+                      className="px-3 py-3 text-right font-medium">Værdi</SortTh>
                     {STATS.map((key, i) => (
                       <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
                         className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>

@@ -4,6 +4,7 @@ import { buildSupabaseQuery } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
 import { useNavigate, Link } from "react-router-dom";
+import { getFlagEmoji } from "../lib/countryUtils";
 
 const STATS = [
   { key: "stat_fl", label: "FL" }, { key: "stat_bj", label: "BJ" },
@@ -58,18 +59,22 @@ function StarButton({ riderId, watchlist, onToggle }) {
   );
 }
 
-function RiderCard({ rider, onClick, watchlist, onToggleWatchlist }) {
+function RiderCard({ rider, onClick, watchlist, onToggleWatchlist, isInAuction }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300
       cursor-pointer transition-all active:scale-98">
       <div className="flex items-start justify-between mb-3">
         <div onClick={() => onClick(rider)} className="flex-1 min-w-0">
           <p className="text-slate-900 font-medium text-sm truncate">
+            {rider.nationality_code && <span className="mr-1">{getFlagEmoji(rider.nationality_code)}</span>}
             {rider.firstname} {rider.lastname}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             {rider.is_u25 && (
               <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700 px-1.5 py-0.5 rounded">U25</span>
+            )}
+            {isInAuction && (
+              <span className="text-[9px] uppercase bg-amber-500/15 text-amber-700 px-1.5 py-0.5 rounded">⚡ Auktion</span>
             )}
             <span className="text-slate-400 text-xs">{rider.team?.name || "Fri"}</span>
           </div>
@@ -95,15 +100,21 @@ function RiderCard({ rider, onClick, watchlist, onToggleWatchlist }) {
   );
 }
 
-function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist }) {
+function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }) {
   return (
     <tr className="border-b border-slate-100 hover:bg-slate-100 cursor-pointer transition-colors">
       <td className="px-3 py-2.5" onClick={() => onSelect(rider)}>
         <div>
-          <p className="text-slate-900 text-sm font-medium">{rider.firstname} {rider.lastname}</p>
+          <p className="text-slate-900 text-sm font-medium">
+            {rider.nationality_code && <span className="mr-1">{getFlagEmoji(rider.nationality_code)}</span>}
+            {rider.firstname} {rider.lastname}
+          </p>
           <div className="flex items-center gap-1.5 mt-0.5">
             {rider.is_u25 && (
               <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700 px-1.5 py-0.5 rounded">U25</span>
+            )}
+            {isInAuction && (
+              <span className="text-[9px] uppercase bg-amber-500/15 text-amber-700 px-1.5 py-0.5 rounded">⚡ Auktion</span>
             )}
             <span className="text-slate-400 text-xs">{rider.team?.name || "Fri"}</span>
           </div>
@@ -133,6 +144,7 @@ export default function RidersPage() {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [watchlist, setWatchlist] = useState(new Set());
+  const [activeAuctionRiders, setActiveAuctionRiders] = useState(new Set());
   const [userId, setUserId] = useState(null);
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS, page: 1 });
 
@@ -169,15 +181,19 @@ export default function RidersPage() {
     const statKeys = STATS.map(s => s.key).join(", ");
     let query = supabase
       .from("riders")
-      .select(`id, firstname, lastname, birthdate, uci_points, is_u25,
+      .select(`id, firstname, lastname, birthdate, uci_points, is_u25, nationality_code,
         ${statKeys}, team:team_id(id, name)`, { count: "exact" })
       .range((filters.page - 1) * 50, filters.page * 50 - 1);
 
     query = buildSupabaseQuery(query, filters);
 
-    const { data, count } = await query;
+    const [{ data, count }, { data: auctionData }] = await Promise.all([
+      query,
+      supabase.from("auctions").select("rider_id").in("status", ["active", "extended"]),
+    ]);
     setRiders(data || []);
     setTotal(count || 0);
+    setActiveAuctionRiders(new Set((auctionData || []).map(a => a.rider_id)));
     setLoading(false);
   }
 
@@ -220,7 +236,8 @@ export default function RidersPage() {
             <RiderCard key={r.id} rider={r}
               onClick={r => navigate(`/riders/${r.id}`)}
               watchlist={watchlist}
-              onToggleWatchlist={toggleWatchlist} />
+              onToggleWatchlist={toggleWatchlist}
+              isInAuction={activeAuctionRiders.has(r.id)} />
           ))}
         </div>
       ) : (
@@ -232,7 +249,7 @@ export default function RidersPage() {
                   <SortTh sortKey="firstname" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider w-48">Rytter</SortTh>
                   <SortTh sortKey="uci_points" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">UCI CZ$</SortTh>
+                    className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">Værdi</SortTh>
                   {STATS.map(({ key, label }) => (
                     <SortTh key={key} sortKey={key} sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                       className="px-1.5 py-3 text-center font-medium w-14">{label}</SortTh>
@@ -245,7 +262,8 @@ export default function RidersPage() {
                   <RiderRow key={r.id} rider={r}
                     onSelect={r => navigate(`/riders/${r.id}`)}
                     watchlist={watchlist}
-                    onToggleWatchlist={toggleWatchlist} />
+                    onToggleWatchlist={toggleWatchlist}
+                    isInAuction={activeAuctionRiders.has(r.id)} />
                 ))}
               </tbody>
             </table>
