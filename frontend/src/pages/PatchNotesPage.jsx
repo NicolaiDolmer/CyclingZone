@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "1.42",
+    date: "2026-04-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin",
+        items: [
+          "Ny Brugere-sektion i Admin: se alle brugere med hold og rolle, skift rolle mellem admin og manager, og slet brugere permanent",
+          "Sletning af bruger fjerner Supabase-login og notifikationer — holdet bevares men mister sin ejer",
+          "Løbskalender har nu Slet-knap — sletter løbet og alle tilknyttede resultater",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.41",
     date: "2026-04-25",
     label: "Beta",

@@ -1983,6 +1983,97 @@ router.post("/admin/discord/test", requireAdmin, async (req, res) => {
 // POST /api/admin/sync-dyn-cyclist — sync PCM stats fra Google Sheets
 router.post("/admin/sync-dyn-cyclist", requireAdmin, handleDynCyclistSyncRequest);
 
+// GET /api/admin/users — list alle brugere med hold
+router.get("/admin/users", requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, email, username, role, created_at, teams(id, name, division)")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json({ users: data || [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/admin/users/:userId — slet bruger permanent
+router.delete("/admin/users/:userId", requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (userId === req.user.id) return res.status(400).json({ error: "Kan ikke slette dig selv" });
+
+    const { data: target } = await supabase
+      .from("users").select("email, username").eq("id", userId).single();
+    if (!target) return res.status(404).json({ error: "Bruger ikke fundet" });
+
+    // Nullify non-cascade FK references to prevent RESTRICT violations
+    await Promise.allSettled([
+      supabase.from("import_log").update({ imported_by: null }).eq("imported_by", userId),
+    ]);
+
+    // Delete profile row (cascades to notifications, sets NULL on teams.user_id)
+    const { error: deleteErr } = await supabase.from("users").delete().eq("id", userId);
+    if (deleteErr) throw deleteErr;
+
+    // Remove Supabase Auth account
+    const { error: authErr } = await supabase.auth.admin.deleteUser(userId);
+    if (authErr) throw authErr;
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: "user_deleted",
+      description: `Bruger slettet: ${target.username} (${target.email})`,
+      meta: { deleted_user_id: userId },
+    });
+
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/admin/users/:userId/role — skift brugerrolle
+router.patch("/admin/users/:userId/role", requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+    if (!["admin", "manager"].includes(role)) return res.status(400).json({ error: "Ugyldig rolle" });
+    if (userId === req.user.id) return res.status(400).json({ error: "Kan ikke ændre din egen rolle" });
+
+    const { data, error } = await supabase
+      .from("users").update({ role }).eq("id", userId).select("username").single();
+    if (error) throw error;
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: "role_changed",
+      description: `Rolle ændret for ${data.username} → ${role}`,
+      meta: { user_id: userId, role },
+    });
+
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/admin/races/:raceId — slet løb (cascader til race_results)
+router.delete("/admin/races/:raceId", requireAdmin, async (req, res) => {
+  try {
+    const { raceId } = req.params;
+    const { data: race } = await supabase
+      .from("races").select("name").eq("id", raceId).single();
+    if (!race) return res.status(404).json({ error: "Løb ikke fundet" });
+
+    const { error } = await supabase.from("races").delete().eq("id", raceId);
+    if (error) throw error;
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: "race_deleted",
+      description: `Løb slettet: ${race.name}`,
+      meta: { race_id: raceId, name: race.name },
+    });
+
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // PRESENCE & ONLINE STATUS
 // ═══════════════════════════════════════════════════════════════════════════════

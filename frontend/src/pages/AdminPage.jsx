@@ -151,7 +151,8 @@ export default function AdminPage() {
   const [webhooks, setWebhooks] = useState([]);
   const [loanConfigs, setLoanConfigs] = useState([]);
   const [adminLogs, setAdminLogs] = useState([]);
-  const [racePoints, setRacePoints] = useState([]); // NEW: race_points tabel
+  const [racePoints, setRacePoints] = useState([]);
+  const [users, setUsers] = useState([]);
 
   const [seasonForm, setSeasonForm] = useState({ number: "", race_days_total: 60 });
   const [raceForm, setRaceForm] = useState({
@@ -190,7 +191,7 @@ export default function AdminPage() {
   useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
-    const [s, r, t, w, p, w2, lc, al, rp] = await Promise.all([
+    const [s, r, t, w, p, w2, lc, al, rp, u] = await Promise.all([
       supabase.from("seasons").select("*").order("number", { ascending: false }),
       supabase.from("races").select("*").order("start_date"),
       supabase.from("teams").select("id,name,balance,division").eq("is_ai", false).order("name"),
@@ -201,6 +202,7 @@ export default function AdminPage() {
       supabase.from("admin_log").select("*, target_team:target_team_id(name)")
         .order("created_at", { ascending: false }).limit(50),
       supabase.from("race_points").select("*").order("race_class").order("result_type").order("rank"),
+      supabase.from("users").select("id, email, username, role, created_at, teams(id, name, division)").order("created_at", { ascending: false }),
     ]);
     setSeasons(s.data || []);
     setRaces(r.data || []);
@@ -211,6 +213,7 @@ export default function AdminPage() {
     setLoanConfigs(lc.data || []);
     setAdminLogs(al.data || []);
     setRacePoints(rp.data || []);
+    setUsers(u.data || []);
   }
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
@@ -454,6 +457,45 @@ export default function AdminPage() {
     else showMsg(`❌ ${data.error}`, "error");
   }
 
+  // ── Brugere ────────────────────────────────────────────────────────────────
+  async function handleDeleteUser(userId, username) {
+    if (!confirm(`Slet bruger "${username}" permanent?\n\nHoldet bevares, men mister sin ejer. Notifikationer slettes.`)) return;
+    setLoad(`del_user_${userId}`, true);
+    const res = await fetch(`${API}/api/admin/users/${userId}`, {
+      method: "DELETE", headers: await getAuth(),
+    });
+    const data = await res.json();
+    if (res.ok) { showMsg(`✅ Bruger ${username} slettet`); loadAll(); }
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoad(`del_user_${userId}`, false);
+  }
+
+  async function handleChangeRole(userId, newRole, username) {
+    if (!confirm(`Skift ${username} til ${newRole}?`)) return;
+    setLoad(`role_${userId}`, true);
+    const res = await fetch(`${API}/api/admin/users/${userId}/role`, {
+      method: "PATCH", headers: await getAuth(),
+      body: JSON.stringify({ role: newRole }),
+    });
+    const data = await res.json();
+    if (res.ok) { showMsg(`✅ ${username} er nu ${newRole}`); loadAll(); }
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoad(`role_${userId}`, false);
+  }
+
+  // ── Slet løb ───────────────────────────────────────────────────────────────
+  async function handleDeleteRace(raceId, raceName) {
+    if (!confirm(`Slet "${raceName}"?\n\nAlle løbsresultater for dette løb slettes også.`)) return;
+    setLoad(`del_race_${raceId}`, true);
+    const res = await fetch(`${API}/api/admin/races/${raceId}`, {
+      method: "DELETE", headers: await getAuth(),
+    });
+    const data = await res.json();
+    if (res.ok) { showMsg(`✅ ${raceName} slettet`); loadAll(); }
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoad(`del_race_${raceId}`, false);
+  }
+
   // ── Konstanter til visning ─────────────────────────────────────────────────
   const windowOpen = window_?.status === "open";
   const statusColor = { upcoming: "text-slate-500", active: "text-green-700", completed: "text-slate-300" };
@@ -611,6 +653,12 @@ export default function AdminPage() {
                             onClick={() => setEditingRace(editingRace?.id === r.id ? null : { ...r })}
                             className="px-2 py-1 bg-slate-100 text-slate-500 border border-slate-300 rounded text-xs hover:bg-slate-100 hover:text-slate-900 transition-all">
                             ✏ Rediger
+                          </button>
+                          <button
+                            onClick={() => handleDeleteRace(r.id, r.name)}
+                            disabled={loading[`del_race_${r.id}`]}
+                            className="px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-xs hover:bg-red-100 disabled:opacity-50 transition-all">
+                            {loading[`del_race_${r.id}`] ? "..." : "Slet"}
                           </button>
                         </div>
                       </td>
@@ -1119,6 +1167,66 @@ export default function AdminPage() {
               <span>Opdateret: <strong>{dynSyncResult.rows_matched}</strong></span>
               <span>Ikke fundet: <strong>{dynSyncResult.not_found}</strong></span>
             </div>
+          </div>
+        )}
+      </Section>
+
+      {/* ── Brugere ─────────────────────────────────────────────────────────── */}
+      <Section title="Brugere">
+        {users.length === 0 ? (
+          <p className="text-slate-300 text-sm">Ingen brugere endnu.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <table className="w-full text-xs min-w-[580px]">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="px-3 py-2 text-left text-slate-400">Bruger</th>
+                  <th className="px-3 py-2 text-left text-slate-400 hidden sm:table-cell">Email</th>
+                  <th className="px-3 py-2 text-left text-slate-400">Rolle</th>
+                  <th className="px-3 py-2 text-left text-slate-400 hidden md:table-cell">Hold</th>
+                  <th className="px-3 py-2 text-right text-slate-400">Handlinger</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(u => (
+                  <tr key={u.id} className="border-b border-slate-100 last:border-0">
+                    <td className="px-3 py-2.5">
+                      <p className="text-slate-900 font-medium">{u.username}</p>
+                      <p className="text-slate-300 text-xs font-mono truncate max-w-[120px]">{u.id.slice(0, 8)}…</p>
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-500 hidden sm:table-cell">{u.email}</td>
+                    <td className="px-3 py-2.5">
+                      <span className={`text-xs border px-2 py-0.5 rounded-full ${
+                        u.role === "admin"
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-slate-100 text-slate-500 border-slate-200"
+                      }`}>{u.role}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-500 hidden md:table-cell">
+                      {u.teams?.[0]
+                        ? `${u.teams[0].name} (Div ${u.teams[0].division})`
+                        : <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => handleChangeRole(u.id, u.role === "admin" ? "manager" : "admin", u.username)}
+                          disabled={loading[`role_${u.id}`]}
+                          className="text-xs px-2 py-1 bg-slate-100 text-slate-500 border border-slate-200 rounded hover:text-slate-900 disabled:opacity-50 transition-all">
+                          {loading[`role_${u.id}`] ? "..." : u.role === "admin" ? "→ Manager" : "→ Admin"}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(u.id, u.username)}
+                          disabled={loading[`del_user_${u.id}`]}
+                          className="text-xs px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50 transition-all">
+                          {loading[`del_user_${u.id}`] ? "..." : "Slet"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </Section>
