@@ -8,10 +8,10 @@ import {
   getTeamMarketState,
 } from "./marketUtils.js";
 
-test("calculateMarketSalary keeps the 10 percent rule with a minimum of 1", () => {
+test("calculateMarketSalary uses the 15 percent rule with a minimum of 1", () => {
   assert.equal(calculateMarketSalary(1), 1);
   assert.equal(calculateMarketSalary(9), 1);
-  assert.equal(calculateMarketSalary(10), 1);
+  assert.equal(calculateMarketSalary(10), 2);
   assert.equal(calculateMarketSalary(11), 2);
 });
 

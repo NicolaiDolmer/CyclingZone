@@ -34,10 +34,10 @@ test("sellerOwnsAuctionRider is only true when the seller actually owned the rid
   );
 });
 
-test("calculateAuctionSalary keeps the 10 percent rule with a minimum salary of 1", () => {
+test("calculateAuctionSalary uses the 15 percent rule with a minimum salary of 1", () => {
   assert.equal(calculateAuctionSalary(1), 1);
   assert.equal(calculateAuctionSalary(9), 1);
-  assert.equal(calculateAuctionSalary(10), 1);
+  assert.equal(calculateAuctionSalary(10), 2);
   assert.equal(calculateAuctionSalary(11), 2);
 });
 
@@ -427,7 +427,7 @@ test("finalizeAuctionById pays the actual AI owner instead of the initiator", as
   assert.deepEqual(riderUpdates, [{
     team_id: "buyer-team",
     pending_team_id: null,
-    salary: 12,
+    salary: 18,
   }]);
   assert.equal(financeInserts.length, 1);
   assert.deepEqual(financeInserts[0], [
@@ -601,7 +601,7 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
   assert.deepEqual(riderUpdates, [{
     team_id: "buyer-team",
     pending_team_id: null,
-    salary: 15,
+    salary: 23,
   }]);
   assert.equal(financeInserts.length, 1);
   assert.deepEqual(financeInserts[0], [

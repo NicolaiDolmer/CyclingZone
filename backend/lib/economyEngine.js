@@ -207,7 +207,8 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     .eq("id", seasonId);
 
   // Recalculate rider values and salaries based on last 3 completed seasons
-  await updateRiderValues(supabaseClient);
+  const updateRiderValuesFn = deps.updateRiderValues ?? updateRiderValues;
+  await updateRiderValuesFn(supabaseClient);
 
   console.log("  ✅ Season end processing complete");
 }

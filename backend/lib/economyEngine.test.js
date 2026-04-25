@@ -445,6 +445,7 @@ test("processSeasonEnd keeps the board flow on the shared runtime path", async (
     now: FIXED_SEASON_END_NOW,
     processLoanInterest: async () => {},
     createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
   });
 
   assert.equal(supabase.state.season.status, "completed");
@@ -519,6 +520,7 @@ test("processSeasonEnd skips writing a duplicate board notification when the sam
     now: FIXED_SEASON_END_NOW,
     processLoanInterest: async () => {},
     createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
   });
 
   const [existingNotification] = firstSupabase.state.inserts.notifications;
@@ -538,6 +540,7 @@ test("processSeasonEnd skips writing a duplicate board notification when the sam
     now: FIXED_SEASON_END_NOW,
     processLoanInterest: async () => {},
     createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
   });
 
   assert.equal(supabase.state.inserts.notifications.length, 0);
