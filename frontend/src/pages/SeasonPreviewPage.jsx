@@ -34,7 +34,7 @@ export default function SeasonPreviewPage() {
 
     const enriched = (teamsRes.data || []).map(t => {
       const riders = ridersByTeam[t.id] || [];
-      const totalValue = riders.reduce((s, r) => s + (r.uci_points || 0), 0);
+      const totalValue = riders.reduce((s, r) => s + (r.uci_points || 0) * 4000, 0);
       const avgBj = riders.length ? Math.round(riders.reduce((s, r) => s + (r.stat_bj || 0), 0) / riders.length) : 0;
       const avgSp = riders.length ? Math.round(riders.reduce((s, r) => s + (r.stat_sp || 0), 0) / riders.length) : 0;
       const avgTt = riders.length ? Math.round(riders.reduce((s, r) => s + (r.stat_tt || 0), 0) / riders.length) : 0;
