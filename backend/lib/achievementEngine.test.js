@@ -83,7 +83,7 @@ test("checkAchievements derives auction and transfer unlocks from live-history t
     users: [{ id: "user-1", login_streak: 2 }],
     rider_watchlist: Array.from({ length: 50 }, (_, index) => ({ id: `watch-${index}`, user_id: "user-1" })),
     riders: [{ id: "rider-bargain", uci_points: 100, team_id: "other-team" }],
-    auction_bids: [{ id: "bid-1", team_id: "team-1", amount: 600001 }],
+    auction_bids: [{ id: "bid-1", team_id: "team-1", amount: 2000000001 }],
     auctions: [],
     transfer_offers: [
       ...Array.from({ length: 10 }, (_, index) => ({
