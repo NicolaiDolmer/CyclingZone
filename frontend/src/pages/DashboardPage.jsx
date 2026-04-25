@@ -111,8 +111,9 @@ export default function DashboardPage() {
     setActiveLoanCount(loansInRes.count || 0);
     setAllAuctions(auctionsRes.data || []);
     setNextRaces(racesRes.data || []);
-    setBoard(boardStatus?.board || null);
-    setBoardOutlook(boardStatus?.outlook || null);
+    const activePlan = boardStatus?.plans?.["1yr"] || boardStatus?.plans?.["3yr"] || boardStatus?.plans?.["5yr"] || null;
+    setBoard(activePlan?.board || null);
+    setBoardOutlook(activePlan?.outlook || null);
     setActiveOffers(offersRes.data || []);
 
     const standingsMap = {};
