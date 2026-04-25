@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "1.45",
+    date: "2026-04-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix",
+        items: [
+          "Rettet: man kan nu købe en AI/fri rytter på auktion, selvom man er den eneste byder — fejlen skyldtes at en mislykket budplacering blev vist som succes uden feedback",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.44",
     date: "2026-04-25",
     label: "Beta",

@@ -71,9 +71,14 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
       return;
     }
     setBidStatus("loading");
-    await onBid(auction.id, bidAmount);
-    setBidStatus("success");
-    setTimeout(() => setBidStatus(null), 2500);
+    const ok = await onBid(auction.id, bidAmount);
+    if (ok) {
+      setBidStatus("success");
+      setTimeout(() => setBidStatus(null), 2500);
+    } else {
+      setBidStatus("error");
+      setTimeout(() => setBidStatus(null), 3000);
+    }
   }
 
   const r = auction.rider;
@@ -301,7 +306,9 @@ export default function AuctionsPage() {
         body: JSON.stringify({ context: "auction_bid", data: { amount } }),
       }).catch(() => {});
       loadAll();
+      return true;
     }
+    return false;
   }
 
   const riderFilters = useClientRiderFilters(auctions.map(a => a.rider).filter(Boolean));

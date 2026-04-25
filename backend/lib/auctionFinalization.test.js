@@ -700,3 +700,196 @@ test("finalizeAuctionById keeps guaranteed sale on non-owned riders payout-free 
   assert.equal(notifications.length, 1);
   assert.equal(notifications[0].teamId, "initiator-team");
 });
+
+test("finalizeAuctionById completes when the initiator is the sole bidder on an AI-rider auction", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+  const notifications = [];
+  const xpAwards = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-self-bid",
+        status: "active",
+        current_bidder_id: "initiator-team",
+        current_price: 120,
+        seller_team_id: "initiator-team",
+        rider: {
+          id: "rider-ai-self",
+          firstname: "AI",
+          lastname: "SelfBid",
+          team_id: "ai-team",
+        },
+      },
+      teams: {
+        "initiator-team": {
+          id: "initiator-team",
+          name: "Initiator",
+          balance: 500,
+          division: 3,
+          user_id: "user-init",
+          is_ai: false,
+        },
+        "ai-team": {
+          id: "ai-team",
+          name: "AI Team",
+          balance: 1000,
+          division: 1,
+          user_id: null,
+          is_ai: true,
+        },
+      },
+      teamMarketCounts: {
+        "initiator-team": {
+          riderCount: 5,
+          pendingCount: 0,
+          activeLoanCount: 0,
+        },
+      },
+      auctionUpdates,
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-self-bid",
+    notifyTeamOwner: async (teamId, type, title, message, entityId) => {
+      notifications.push({ teamId, type, title, message, entityId });
+    },
+    awardXP: async (teamId, action) => {
+      xpAwards.push({ teamId, action });
+    },
+    now: new Date("2026-04-25T10:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.equal(result.seller_owned, false);
+  assert.deepEqual(auctionUpdates, [{
+    status: "completed",
+    actual_end: "2026-04-25T10:00:00.000Z",
+    seller_team_id: null,
+  }]);
+  assert.deepEqual(teamUpdates, [
+    { teamId: "initiator-team", payload: { balance: 380 } },
+    { teamId: "ai-team", payload: { balance: 1120 } },
+  ]);
+  assert.deepEqual(riderUpdates, [{
+    team_id: "initiator-team",
+    pending_team_id: null,
+    salary: 18,
+  }]);
+  assert.equal(financeInserts.length, 1);
+  assert.deepEqual(financeInserts[0], [
+    {
+      team_id: "initiator-team",
+      type: "transfer_out",
+      amount: -120,
+      description: "Købt AI SelfBid på auktion",
+    },
+    {
+      team_id: "ai-team",
+      type: "transfer_in",
+      amount: 120,
+      description: "Solgt AI SelfBid på auktion",
+    },
+  ]);
+  assert.deepEqual(xpAwards, [
+    { teamId: "initiator-team", action: "auction_won" },
+  ]);
+  assert.equal(notifications.length, 2);
+  assert.equal(notifications[0].teamId, "initiator-team");
+  assert.match(notifications[0].title, /vandt/i);
+  assert.equal(notifications[1].teamId, "initiator-team");
+});
+
+test("finalizeAuctionById completes when the initiator is the sole bidder on a free-agent auction", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+  const notifications = [];
+  const xpAwards = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-free-self-bid",
+        status: "active",
+        current_bidder_id: "initiator-team",
+        current_price: 80,
+        seller_team_id: "initiator-team",
+        rider: {
+          id: "rider-free",
+          firstname: "Free",
+          lastname: "Agent",
+          team_id: null,
+        },
+      },
+      teams: {
+        "initiator-team": {
+          id: "initiator-team",
+          name: "Initiator",
+          balance: 300,
+          division: 3,
+          user_id: "user-init",
+          is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "initiator-team": {
+          riderCount: 4,
+          pendingCount: 0,
+          activeLoanCount: 0,
+        },
+      },
+      auctionUpdates,
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-free-self-bid",
+    notifyTeamOwner: async (teamId, type, title, message, entityId) => {
+      notifications.push({ teamId, type, title, message, entityId });
+    },
+    awardXP: async (teamId, action) => {
+      xpAwards.push({ teamId, action });
+    },
+    now: new Date("2026-04-25T10:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.equal(result.seller_owned, false);
+  assert.deepEqual(auctionUpdates, [{
+    status: "completed",
+    actual_end: "2026-04-25T10:00:00.000Z",
+    seller_team_id: null,
+  }]);
+  assert.deepEqual(teamUpdates, [
+    { teamId: "initiator-team", payload: { balance: 220 } },
+  ]);
+  assert.deepEqual(riderUpdates, [{
+    team_id: "initiator-team",
+    pending_team_id: null,
+    salary: 12,
+  }]);
+  assert.equal(financeInserts.length, 1);
+  assert.deepEqual(financeInserts[0], [
+    {
+      team_id: "initiator-team",
+      type: "transfer_out",
+      amount: -80,
+      description: "Købt Free Agent på auktion",
+    },
+  ]);
+  assert.deepEqual(xpAwards, [
+    { teamId: "initiator-team", action: "auction_won" },
+  ]);
+  assert.equal(notifications.length, 2);
+  assert.equal(notifications[0].teamId, "initiator-team");
+  assert.match(notifications[0].title, /vandt/i);
+  assert.equal(notifications[1].teamId, "initiator-team");
+});
