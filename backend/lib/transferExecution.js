@@ -268,7 +268,7 @@ export async function confirmTransferOffer({
   const rider = await expectSingle(
     supabase
       .from("riders")
-      .select("id, firstname, lastname, team_id, salary")
+      .select("id, firstname, lastname, team_id, salary, prize_earnings_bonus")
       .eq("id", confirmedOffer.rider_id)
   );
   const [buyerState, sellerState] = await Promise.all([
@@ -301,7 +301,7 @@ export async function confirmTransferOffer({
       .from("riders")
       .update({
         team_id: confirmedOffer.buyer_team_id,
-        salary: calculateMarketSalary(price),
+        salary: calculateMarketSalary(price, rider.prize_earnings_bonus || 0),
       })
       .eq("id", rider.id)
       .eq("team_id", confirmedOffer.seller_team_id)

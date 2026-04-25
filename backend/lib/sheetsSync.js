@@ -117,17 +117,20 @@ export async function syncUCIPoints(csvUrl, adminUserId) {
     for (const rider of riders || []) {
       const newPoints = findUCIPoints(rider, uciMap);
 
+      const MIN_UCI = 5;
+
       if (newPoints === null) {
         notFound++;
-        // Only reset to 1 if they had more than 1 before (i.e., they dropped off top-1000)
-        if (rider.uci_points > 1) {
-          updates.push({ id: rider.id, uci_points: 1 });
+        // Rider dropped off UCI list — sæt til minimum
+        if (rider.uci_points !== MIN_UCI) {
+          updates.push({ id: rider.id, uci_points: MIN_UCI });
         }
         continue;
       }
 
-      if (newPoints !== rider.uci_points) {
-        updates.push({ id: rider.id, uci_points: newPoints });
+      const clampedPoints = Math.max(MIN_UCI, newPoints);
+      if (clampedPoints !== rider.uci_points) {
+        updates.push({ id: rider.id, uci_points: clampedPoints });
         updated++;
       } else {
         unchanged++;

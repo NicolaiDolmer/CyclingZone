@@ -37,7 +37,7 @@ async function getDefaultSupabaseClient() {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SALARY_RATE = 0.10;          // 10% of rider price = yearly salary
+const SALARY_RATE = 0.15;          // 15% of effective rider value = yearly salary
 const INTEREST_RATE = 0.10;        // 10% interest on negative balance per season
 const PROMOTION_SLOTS = 2;         // Top 2 promote
 const RELEGATION_SLOTS = 2;        // Bottom 2 relegate
@@ -205,6 +205,9 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   await supabaseClient.from("seasons")
     .update({ status: "completed" })
     .eq("id", seasonId);
+
+  // Recalculate rider values and salaries based on last 3 completed seasons
+  await updateRiderValues(supabaseClient);
 
   console.log("  ✅ Season end processing complete");
 }
@@ -391,6 +394,80 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   }
 
   console.log(`  💰 ${team.name}: -${totalSalary} pts salary`);
+}
+
+// ─── Rider Value & Salary Recalculation ──────────────────────────────────────
+
+/**
+ * Recalculates prize_earnings_bonus and salary for every rider at season end.
+ *
+ * prize_earnings_bonus = average of the rider's total prize earnings across
+ * the last 1-3 completed seasons (only seasons with actual earnings counted).
+ *
+ * salary = max(1, round((uci_points * 4000 + prize_earnings_bonus) * 0.15))
+ */
+async function updateRiderValues(supabaseClient) {
+  const { data: recentSeasons } = await supabaseClient
+    .from("seasons")
+    .select("id")
+    .eq("status", "completed")
+    .order("number", { ascending: false })
+    .limit(3);
+
+  const seasonIds = (recentSeasons || []).map(s => s.id);
+
+  // Build per-rider per-season prize totals from race_results
+  const riderSeasonEarnings = {};
+
+  if (seasonIds.length > 0) {
+    const { data: races } = await supabaseClient
+      .from("races")
+      .select("id, season_id")
+      .in("season_id", seasonIds);
+
+    const raceIds = (races || []).map(r => r.id);
+
+    if (raceIds.length > 0) {
+      const raceSeasonMap = Object.fromEntries((races || []).map(r => [r.id, r.season_id]));
+
+      const { data: results } = await supabaseClient
+        .from("race_results")
+        .select("rider_id, race_id, prize_money")
+        .in("race_id", raceIds)
+        .gt("prize_money", 0);
+
+      for (const row of results || []) {
+        const sid = raceSeasonMap[row.race_id];
+        if (!sid || !row.rider_id) continue;
+        if (!riderSeasonEarnings[row.rider_id]) riderSeasonEarnings[row.rider_id] = {};
+        riderSeasonEarnings[row.rider_id][sid] =
+          (riderSeasonEarnings[row.rider_id][sid] || 0) + (row.prize_money || 0);
+      }
+    }
+  }
+
+  const { data: allRiders } = await supabaseClient
+    .from("riders")
+    .select("id, uci_points");
+
+  const MIN_UCI = 5;
+
+  for (const rider of allRiders || []) {
+    const seasonTotals = Object.values(riderSeasonEarnings[rider.id] || {});
+    const newBonus = seasonTotals.length > 0
+      ? Math.round(seasonTotals.reduce((s, v) => s + v, 0) / seasonTotals.length)
+      : 0;
+
+    const basePrice = Math.max(MIN_UCI, rider.uci_points || 0) * 4000;
+    const newSalary = Math.max(1, Math.round((basePrice + newBonus) * SALARY_RATE));
+
+    await supabaseClient.from("riders").update({
+      prize_earnings_bonus: newBonus,
+      salary: newSalary,
+    }).eq("id", rider.id);
+  }
+
+  console.log(`  🏅 Rider values recalculated: ${allRiders?.length || 0} ryttere opdateret`);
 }
 
 async function processDivisionEnd(standings, division, seasonId, deps = {}) {

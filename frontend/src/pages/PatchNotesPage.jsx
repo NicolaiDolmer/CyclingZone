@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "1.44",
+    date: "2026-04-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Økonomi",
+        items: [
+          "Rytterværdi er nu dynamisk: UCI-point × 4000 CZ$ + gennemsnit af seneste op til 3 sæsoners præmiepenge fra spillet",
+          "Lønnen er ændret fra 10% til 15% af rytterens effektive markedsværdi",
+          "Alle eksisterende rytterlønninger er genberegnet med den nye 15%-model",
+          "Minimum-regel: ryttere med færre end 5 UCI point tildeles automatisk 5 UCI point (20.000 CZ$ minimumsværdi)",
+          "Præmiebonus opdateres ved sæsonslut for alle ryttere — værdien vokser med holdsuccesen",
+          "Køb via auktion eller transfer sætter straks ny løn baseret på køberens præmiebonus + handelspris",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.43",
     date: "2026-04-25",
     label: "Beta",

@@ -19,8 +19,8 @@ export function sellerOwnsAuctionRider(auction) {
   return Boolean(auction?.rider && auction.rider.team_id === auction.seller_team_id);
 }
 
-export function calculateAuctionSalary(price) {
-  return calculateMarketSalary(price);
+export function calculateAuctionSalary(price, prizeBonus = 0) {
+  return calculateMarketSalary(price, prizeBonus);
 }
 
 function isHumanManagedTeam(team) {
@@ -257,11 +257,11 @@ async function finalizeAuctionRecord({
             ? {
                 team_id: auction.current_bidder_id,
                 pending_team_id: null,
-                salary: calculateAuctionSalary(price),
+                salary: calculateAuctionSalary(price, auction.rider.prize_earnings_bonus || 0),
               }
             : {
                 pending_team_id: auction.current_bidder_id,
-                salary: calculateAuctionSalary(price),
+                salary: calculateAuctionSalary(price, auction.rider.prize_earnings_bonus || 0),
               }
         )
         .eq("id", auction.rider.id)

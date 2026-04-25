@@ -41,8 +41,8 @@ export function getSquadLimits(division = DEFAULT_DIVISION) {
   return MARKET_SQUAD_LIMITS[division] || MARKET_SQUAD_LIMITS[DEFAULT_DIVISION];
 }
 
-export function calculateMarketSalary(price) {
-  return Math.max(1, Math.ceil((price || 0) * 0.1));
+export function calculateMarketSalary(price, prizeBonus = 0) {
+  return Math.max(1, Math.round(((price || 0) + (prizeBonus || 0)) * 0.15));
 }
 
 export async function getTransferWindowOpen(supabase) {
