@@ -54,12 +54,31 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
   1. Rytterrangliste-forbedringer baseret på Google Sheets-datakontrakt
   2. Løbsarkiv-forbedringer: historik pr. løb på tværs af sæsoner, akkumuleret graf fra rigtige data
 
+### Slice B — Beta-testværktøjer (NÆSTE — ikke blokeret)
+- Mål: Giv admin mulighed for at nulstille game-state til test, så auktionsmarkedet og sæsonflowet kan genafprøves fra bunden.
+- Afhænger af: Intet.
+- Centrale leverancer:
+  1. `POST /api/admin/beta/cancel-market` — annuller alle åbne auktioner/transfers/swaps/loan_agreements
+  2. `POST /api/admin/beta/reset-rosters` — returner alle manager-ejede ryttere til `ai_team_id`; riders uden ai_team_id → `team_id = NULL`
+  3. `POST /api/admin/beta/reset-balances` — sæt balance = 800.000 på alle ikke-AI manager-holds; optional flag til at rydde finance_transactions
+  4. `POST /api/admin/beta/full-reset` — kæder ovenstående tre i rækkefølge; returnerer samlet kvittering
+  5. AdminPage.jsx — ny sektion "Beta-testværktøjer" med ⚠-advarsel, confirm-dialogs og kvittering
+- Invarianter: board_profiles røres ikke; AI-holds balance røres ikke; kun manager-holds (`is_ai=false`, `is_bank=false`, `is_frozen=false`)
+- Nøglefiler: `backend/routes/api.js`, `frontend/src/pages/AdminPage.jsx`
+
 ### Slice 12 — Bugs (Discord + evne-filter)
 - Mål: Luk udskudte live-bugs fra Slice 8.
 - Afhænger af: Live debug-session.
 - Centrale leverancer:
   1. Discord/webhook-regression: reproducér og afgræns; transferhistorik til Discord-tråd
   2. Evne-filter/slider: reproducér og afgræns
+
+### Slice 12b — Online status + Notifikations-badge
+- Mål: Gør manager-tilstedeværelse synlig; vis ulæste notifikationer i topbar.
+- Afhænger af: Slice B afsluttet.
+- Centrale leverancer:
+  1. Online status + sidst-set på ManagerProfilePage og managerlister
+  2. Ulæste-tæller badge i topbar (øverste højre hjørne)
 
 ### Slice 13 — FM-style indbakke
 - Mål: Football Manager-inspireret indbakke med stærke filtre.
