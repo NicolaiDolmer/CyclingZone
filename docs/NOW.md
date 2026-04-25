@@ -5,9 +5,9 @@
 
 ## Leverancer (prioriteret rækkefølge)
 1. ~~Hemmelige achievements synlige → fix~~ ✅ løst
-2. Event-sekvens dokumentation → færdiggør (`docs/EVENT_SEQUENCE.md`)
+2. ~~Event-sekvens dokumentation → færdiggør (`docs/EVENT_SEQUENCE.md`)~~ ✅ løst
 3. Live beta-verifikation af season flow (season start → result approval → season end)
-4. Landekode/flag på øvrige rytterflader (`small_feature`)
+4. ~~Landekode/flag på øvrige rytterflader~~ ✅ løst
 5. Discord/webhook-regression → reproducér og afgræns (`investigation`)
 
 ## Holdt ude af denne slice
