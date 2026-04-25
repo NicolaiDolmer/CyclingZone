@@ -403,7 +403,7 @@ router.post("/auctions", requireAuth, async (req, res) => {
     return res.status(409).json({ error: "Rider already has an active auction" });
   }
 
-  const riderValue = Math.max(rider.uci_points, 1);
+  const riderValue = Math.max(rider.uci_points * 4000, 1);
 
   if (!is_guaranteed_sale && starting_price && starting_price < riderValue) {
     return res.status(400).json({ error: `Startpris skal mindst matche rytterens Værdi (${riderValue.toLocaleString("da-DK")} CZ$)` });

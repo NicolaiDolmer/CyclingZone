@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS public.teams (
   is_ai BOOLEAN DEFAULT FALSE,
   ai_source_id INTEGER,
   division INTEGER DEFAULT 3 CHECK (division IN (1, 2, 3)),
-  balance BIGINT DEFAULT 500,
-  sponsor_income BIGINT DEFAULT 100,
+  balance BIGINT DEFAULT 2000000,
+  sponsor_income BIGINT DEFAULT 400000,
   is_frozen BOOLEAN DEFAULT FALSE,
   manager_name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()

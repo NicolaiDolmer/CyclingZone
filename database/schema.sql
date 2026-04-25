@@ -24,8 +24,8 @@ CREATE TABLE teams (
   is_ai BOOLEAN DEFAULT FALSE,
   ai_source_id INTEGER, -- fkIDteam from PCM world db
   division INTEGER DEFAULT 3 CHECK (division IN (1, 2, 3)),
-  balance BIGINT DEFAULT 500, -- in points/currency
-  sponsor_income BIGINT DEFAULT 100, -- per season
+  balance BIGINT DEFAULT 2000000, -- in points/currency
+  sponsor_income BIGINT DEFAULT 400000, -- per season
   is_frozen BOOLEAN DEFAULT FALSE,
   is_bank BOOLEAN DEFAULT FALSE,
   manager_name TEXT,
@@ -49,7 +49,7 @@ CREATE TABLE riders (
   popularity INTEGER DEFAULT 0,
   -- UCI Points (from Google Sheets top-1000, else 1)
   uci_points INTEGER DEFAULT 1,
-  price INTEGER GENERATED ALWAYS AS (GREATEST(uci_points, 1)) STORED,
+  price INTEGER GENERATED ALWAYS AS (uci_points * 4000) STORED,
   -- salary: calculated as % of price, set at purchase
   salary INTEGER DEFAULT 0,
   -- Current owner

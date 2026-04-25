@@ -181,7 +181,7 @@ async function loadAuctionStats({ supabase, teamId }) {
 
   return {
     auctionBidCount: bids.length,
-    hasHighRollerBid: bids.some(bid => toNumber(bid.amount) > 500000),
+    hasHighRollerBid: bids.some(bid => toNumber(bid.amount) > 2000000000),
     auctionWinCount: wins.length,
     hasAuctionSniper: wins.some(auction => toNumber(auction.current_price) === toNumber(auction.starting_price)),
     hasAuctionLastSecond: wins.some(auction => toNumber(auction.extension_count) > 0),

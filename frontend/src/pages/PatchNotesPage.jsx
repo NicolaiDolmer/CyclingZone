@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "1.43",
+    date: "2026-04-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Økonomi",
+        items: [
+          "Alle beløb og værdier er skaleret ×4000 — rytterpriser, holdbudgetter, præmiepuljer, lønninger og gæld",
+          "Rytterens markedsværdi er nu UCI-point × 4000 CZ$ (f.eks. en rytter med 500 UCI-point er nu 2.000.000 CZ$ værd)",
+          "Holdenes startkapital er 2.000.000 CZ$ og standard sponsor-indkomst er 400.000 CZ$ pr. sæson",
+          "Alle eksisterende hold, ryttere, lån, auktioner og transaktioner er opdateret tilsvarende via database-migration",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.42",
     date: "2026-04-25",
     label: "Beta",
