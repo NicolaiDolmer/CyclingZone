@@ -31,6 +31,39 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Holdt ude: boardEngine split, økonomi retuning, PCM mappings
 - Done when: P1-bugs løst, docs færdige, season flow verificeret. (flag-visning: ✅)
 
+### Slice 10 — Navigation-omstrukturering + bundlede UX-fixes
+- Mål: Omstrukturer sidebar efter aftalte domænegrupper; bundle billige UX-fixes i samme session.
+- Afhænger af: Slice 9 afsluttet.
+- Centrale leverancer (prioriteret):
+  1. Sidebar: Overblik (Dashboard default + klik), Bestyrelsen, Mit hold, Økonomi (Finanser undernav), Aktivitetsfeed, Notifikationer
+  2. Sidebar: Marked (Min aktivitet, Ønskeliste — omdøb Talentspejder)
+  3. Sidebar: Ny gruppe `Resultater` (Ranglisten, Sæsonresultater, Hall of Fame)
+  4. Sidebar: Sæson Preview → under Liga; Logo-klik → Dashboard; Min Profil → fold ind i managerprofil
+  5. UX-fix: Head-to-head auto-suggest eget hold
+  6. UX-fix: Vis igangværende auktion på rytterliste + rytterside
+  7. UX-fix: "Point" → "Værdi" omdøbning i UI
+  8. UX-fix: Fjern ubrugte evne-farver i rytteroversigten
+  9. UX-fix: Løn synlig i rytterlisten med filter og sortering; løn tydeligt vist på ryttersiden
+
+### Slice 11 — Resultater-hub + Rytterrangliste
+- Mål: Byg Resultater som nav-destination med individuel rytterrangliste og løbshistorik.
+- Afhænger af: Slice 10 afsluttet.
+- Centrale leverancer:
+  1. Individuel rytterrangliste: point, etapesejre, klassementssejre, samlede sejre, pointklassement, ungdomsklassement, bjergklassement — inkl. AI-ejede ryttere
+  2. Løbsarkiv-forbedringer: alle løb browsable, historik pr. løb på tværs af sæsoner, akkumuleret graf
+
+### Slice 12 — Bugs (Discord + evne-filter)
+- Mål: Luk udskudte live-bugs fra Slice 8.
+- Afhænger af: Live debug-session.
+- Centrale leverancer:
+  1. Discord/webhook-regression: reproducér og afgræns; transferhistorik til Discord-tråd
+  2. Evne-filter/slider: reproducér og afgræns
+
+### Slice 13 — FM-style indbakke
+- Mål: Football Manager-inspireret indbakke med stærke filtre.
+- Afhænger af: Slice 10 + Slice 11 afsluttet.
+- Centrale leverancer: samle aktiviteter, notifikationer og systemhændelser ét sted; filtre for typer og status
+
 ### Låste defaults for roadmapen
 - `Liga` beholdes som navn indtil videre.
 - Managers kan ikke sende beskeder til hinanden.
@@ -57,6 +90,8 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 
 ## 🔴 Kritiske bugs / investigations
 
+- ~~P0: Garanteret salg kunne misbruges til at købe AI-ejede ryttere til 50% af værdien~~ ✅ løst
+- P1: Bestyrelse vises ikke korrekt på dashboard efter boardEngine-refactor — regression
 - P1: Discord/webhook-regression skal reproduceres og spores gennem nuværende notifier-paths og live webhook-konfiguration; samme spor bør også afklare hvordan transferhistorik kan spejles til en dedikeret Discord-tråd via webhook
 - P2: Evne-filter/slider kræver frisk reproduktion på rigtige data; nuværende kodegennemgang fandt ingen entydig root cause
 

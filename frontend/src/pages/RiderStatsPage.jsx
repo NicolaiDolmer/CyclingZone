@@ -125,14 +125,16 @@ function AuctionButton({ rider, isMyRider, onStart }) {
       <p className="text-slate-400 text-xs uppercase tracking-widest mb-2">
         {isMyRider ? "Sæt til auktion" : "Start auktion (fri rytter)"}
       </p>
-      <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
-        <input type="checkbox" checked={guaranteed} onChange={e => setGuaranteed(e.target.checked)}
-          className="rounded accent-amber-600" />
-        <span className="text-sm text-slate-700 font-medium">Garanteret salg</span>
-        <span className="text-xs text-slate-400">
-          (startpris {guaranteedPrice.toLocaleString("da-DK")} CZ$ — 50% af Værdi)
-        </span>
-      </label>
+      {isMyRider && (
+        <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+          <input type="checkbox" checked={guaranteed} onChange={e => setGuaranteed(e.target.checked)}
+            className="rounded accent-amber-600" />
+          <span className="text-sm text-slate-700 font-medium">Garanteret salg</span>
+          <span className="text-xs text-slate-400">
+            (startpris {guaranteedPrice.toLocaleString("da-DK")} CZ$ — 50% af Værdi)
+          </span>
+        </label>
+      )}
       <div className="flex gap-2">
         <input
           type="number"

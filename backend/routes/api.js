@@ -405,6 +405,10 @@ router.post("/auctions", requireAuth, async (req, res) => {
 
   const riderValue = Math.max(rider.uci_points * 4000, 1);
 
+  if (is_guaranteed_sale && rider.team_id !== req.team.id) {
+    return res.status(403).json({ error: "Garanteret salg kan kun bruges på dine egne ryttere" });
+  }
+
   if (!is_guaranteed_sale && starting_price && starting_price < riderValue) {
     return res.status(400).json({ error: `Startpris skal mindst matche rytterens Værdi (${riderValue.toLocaleString("da-DK")} CZ$)` });
   }
