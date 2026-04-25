@@ -26,12 +26,12 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
 }
 
 function RiderActionModal({ rider, onClose, onAction }) {
-  const [auctionPrice, setAuctionPrice] = useState(Math.max(rider.uci_points || 1, 1));
-  const [transferPrice, setTransferPrice] = useState(Math.max(rider.uci_points || 1, 1));
+  const [auctionPrice, setAuctionPrice] = useState(Math.max((rider.uci_points || 1) * 4000, 1));
+  const [transferPrice, setTransferPrice] = useState(Math.max((rider.uci_points || 1) * 4000, 1));
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [tab, setTab] = useState("auction");
-  const guaranteedPrice = Math.floor(Math.max(rider.uci_points || 1, 1) * 0.5);
+  const guaranteedPrice = Math.floor(Math.max((rider.uci_points || 1) * 4000, 1) * 0.5);
 
   async function startAuction() {
     setLoading(true);
@@ -242,7 +242,7 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                   <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider">Rytter</SortTh>
                   <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
-                    className="px-3 py-3 text-right font-medium">UCI</SortTh>
+                    className="px-3 py-3 text-right font-medium">Værdi</SortTh>
                   <th className="px-3 py-3 text-right text-slate-400 font-medium">Løn</th>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
@@ -285,7 +285,7 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-right text-amber-700 font-mono text-sm font-bold">
-                      {r.uci_points?.toLocaleString("da-DK")}
+                      {(r.uci_points * 4000)?.toLocaleString("da-DK")}
                     </td>
                     <td className="px-3 py-2.5 text-right text-slate-500 font-mono text-xs">{r.salary || 0}</td>
                     {STATS.map(key => (
@@ -316,7 +316,7 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
 
 function EconomyTab({ team, riders, transactions }) {
   const totalSalary = riders.filter(r => !r._isIncoming).reduce((s, r) => s + (r.salary || 0), 0);
-  const totalValue  = riders.filter(r => !r._isIncoming).reduce((s, r) => s + (r.uci_points || 0), 0);
+  const totalValue  = riders.filter(r => !r._isIncoming).reduce((s, r) => s + (r.uci_points || 0) * 4000, 0);
   const sponsorIncome = team?.sponsor_income || 100;
   const netPerSeason  = sponsorIncome - totalSalary;
   const typeLabel = {
@@ -496,7 +496,7 @@ export function TeamPage() {
 
   const currentRiders = riders.filter(r => !r._isIncoming);
   const totalSalary = currentRiders.reduce((s, r) => s + (r.salary || 0), 0);
-  const totalValue  = currentRiders.reduce((s, r) => s + (r.uci_points || 0), 0);
+  const totalValue  = currentRiders.reduce((s, r) => s + (r.uci_points || 0) * 4000, 0);
   const incomingCount = riders.filter(r => r._isIncoming).length;
   const outgoingCount = riders.filter(r => r._isOutgoing).length;
 
