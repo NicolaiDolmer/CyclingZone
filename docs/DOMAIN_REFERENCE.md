@@ -52,7 +52,7 @@
 - Auktionsvarighed: **4 timer** (eller vinduesluk — hvad der sker først)
 - Bud inden for de sidste **10 minutter** → forlænger med 10 min fra budtidspunkt
 - Forlænget slut kan **ikke** overskride vinduesluk samme dag
-- **Guaranteed sale**: Startpris = 50% af rytterens UCI-pris. Banksalg ved ingen bud gælder kun, hvis rytteren faktisk var på sælgerens hold.
+- **Guaranteed sale**: Startpris = 50% af rytterens markedsværdi (uci_points × 4000). Banksalg ved ingen bud gælder kun, hvis rytteren faktisk var på sælgerens hold.
 
 ### Minimumsforøgelse
 - `min_increment` felt på auktionen (hardcoded i API ved oprettelse)
@@ -91,8 +91,17 @@
 
 ## Økonomimodel
 
-### Sponsorindtægt
+### Rytterværdi (pris)
 ```
+Rytterens markedsværdi (CZ$) = uci_points × 4000
+Implementeret som generated column i DB: price = uci_points * 4000
+Brug ALDRIG uci_points direkte som pris — brug altid price eller uci_points * 4000
+```
+
+### Startkapital & Sponsorindtægt
+```
+Startkapital (nye hold): 2.000.000 CZ$
+Sponsor-indkomst (default): 400.000 CZ$/sæson
 Udbetales: Sæsonstart
 Beregning: round(sponsor_income × budget_modifier)
 budget_modifier: se Bestyrelse nedenfor
@@ -100,8 +109,8 @@ budget_modifier: se Bestyrelse nedenfor
 
 ### Løn
 ```
-Beregning: 10% af rytterens UCI-pris (sættes ved køb)
-Genberegnes: Til 10% af aktuelle UCI-points ved hver sæsonstart
+Beregning: 10% af rytterens pris (uci_points × 4000) — sættes ved køb
+Genberegnes: Til 10% af aktuelle pris ved hver sæsonstart
 Minimum: 1 CZ$
 Trækkes: Sæsonslut (alle ryttere på holdet)
 Shortfall: Auto-nødlån oprettes
@@ -121,11 +130,11 @@ Shortfall: Auto-nødlån oprettes
 
 | Placering | Stage | GC | Points/Bjerg | Team | Young |
 |-----------|-------|----|--------------|------|-------|
-| 1 | 50 | 200 | 30 | 100 | 50 |
-| 2 | 30 | 150 | 20 | 70 | 30 |
-| 3 | 20 | 100 | 15 | 50 | 20 |
-| 4 | 15 | 75 | — | 30 | — |
-| 5 | 12 | 50 | — | 20 | — |
+| 1 | 200.000 | 800.000 | 120.000 | 400.000 | 200.000 |
+| 2 | 120.000 | 600.000 | 80.000 | 280.000 | 120.000 |
+| 3 | 80.000 | 400.000 | 60.000 | 200.000 | 80.000 |
+| 4 | 60.000 | 300.000 | — | 120.000 | — |
+| 5 | 48.000 | 200.000 | — | 80.000 | — |
 
 ### Renter på negativ saldo
 - 10% af negativ saldo pr. sæson (legacy-mekanisme udover lån)

@@ -49,6 +49,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Auto-nødlån ved manglende løn
 
 ### Økonomi & Finans
+- **Alle beløb skaleret ×4000 (v1.43)** — rytterværdi = uci_points × 4000 CZ$, startkapital 2M, sponsor 400K/sæson
 - Sponsorindtægt ved sæsonstart (med board-modifier)
 - Lønudbetaling ved sæsonslut
 - Renteberegning på negativ saldo (10%/sæson)
