@@ -2,8 +2,8 @@ import { createInitialBoardProfile } from "./boardEngine.js";
 
 const DEFAULT_TEAM_VALUES = {
   division: 3,
-  balance: 2000000,
-  sponsor_income: 400000,
+  balance: 800000,
+  sponsor_income: 240000,
 };
 
 function createHttpError(statusCode, message) {

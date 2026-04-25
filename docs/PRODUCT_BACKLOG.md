@@ -187,8 +187,9 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 
 ## 🟤 Økonomi & tuning
 
-- Økonomien i spillet skal retunes
-- Overvej prisfaktor x4000 som særskilt tuning-spor
+- ~~Startkapital og sponsorindtægt retunede~~ ✅ — startkapital 800K, sponsor 240K/sæson (v1.44)
+- Præmiepenge skal kalibreres — afventer Google Sheets-integration til løbsresultater (Session 6b); præmier og Google Sheets skal designes samlet så de hænger sammen med ranglisten
+- Overvej prisfaktor x4000 som særskilt tuning-spor (ikke prioriteret)
 - Finans-overblikket skal ses i sammenhæng med navigationsoverblikket (`Økonomi` → `Finanser`)
 
 ---

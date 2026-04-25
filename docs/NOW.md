@@ -5,9 +5,9 @@
 
 ## Leverancer (prioriteret rækkefølge)
 1. ~~Garanteret salg-bug (P0)~~ ✅ løst — only egne ryttere, backend + frontend
-2. Bestyrelse på dashboard (regression fra boardEngine-refactor)
-3. Admin-forbedringer — slet bruger
-4. Økonomi-retuning — sparringssession (klar til at starte)
+2. ~~Bestyrelse på dashboard~~ ✅ løst — regression fra boardEngine-refactor
+3. ~~Admin-forbedringer — slet bruger~~ ✅ løst — fuldt implementeret (frontend + backend + audit log)
+4. ~~Økonomi-retuning (del 1)~~ ✅ løst — startkapital 800K, sponsor 240K; præmiepenge afventer Google Sheets-integration
 5. ~~boardEngine split~~ ✅ løst
 
 ## Holdt ude af denne slice

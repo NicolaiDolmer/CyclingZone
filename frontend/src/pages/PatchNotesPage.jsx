@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "1.46",
+    date: "2026-04-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Økonomi",
+        items: [
+          "Startkapital for nye hold er sænket fra 2.000.000 til 800.000 CZ$",
+          "Standard sponsor-indkomst er sænket fra 400.000 til 240.000 CZ$ pr. sæson",
+          "Alle eksisterende hold er opdateret til de nye værdier",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.45",
     date: "2026-04-25",
     label: "Beta",
