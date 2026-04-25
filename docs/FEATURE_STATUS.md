@@ -17,16 +17,17 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ### Hold & Ryttere
 - Holdoversigt og holdprofil-sider
-- Rytterbibliotek med søgning + filtre (nation, UCI, U25, ledig, osv.)
-- Rytterdetalje-side (stats, historik, watchlist-tæller)
+- Rytterbibliotek med søgning + filtre (nation, UCI, U25, ledig, osv.) + løn-kolonne og lønfilter (v1.47)
+- Rytterdetalje-side (stats, historik, watchlist-tæller, ryttertype-badge, ⚡-badge ved aktiv auktion)
 - Rytter-sammenligning (side-by-side)
-- Watchlist
+- Watchlist + notifikation når ønskeliste-rytter sættes til salg eller auktion (v1.35)
 - Stat-grid med farvekodning (statBg.js)
 
 ### Auktioner
 - Opret auktion med starttid + vindueslogik
 - Bud-placering med auto-forlængelse (10 min ved bud nær slut)
-- Garanteret salg (startpris = 50% af UCI-pris)
+- Garanteret salg (startpris = 50% af UCI-pris) — kun egne ryttere; exploit lukket (v1.46)
+- Minimum startpris håndhævet (backend + frontend): startbud ≥ rytterens Værdi; garanteret salg er eneste undtagelse
 - Auktionsfinalisering via cron (60s) — delt path for cron/admin/API, korrekt ejer-check og squad-limit
 - Auktionshistorik-side
 - Discord-notifikationer (auktioner, overbud, transfers, sæsonevents)

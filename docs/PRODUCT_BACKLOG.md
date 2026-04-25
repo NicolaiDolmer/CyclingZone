@@ -18,6 +18,8 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Slice 5 — Resultater og rytterrangliste ✅
 - Slice 6 — Løbshistorik og løbsarkiv ✅
 - Slice 7 — Integrationer og Discord ✅
+- Slice 10 — Navigation-omstrukturering + UX-fixes ✅
+- Slice 11b — Quick wins (docs-audit, patch notes, HelpPage) ✅
 
 ### Slice 8 — Bug-rydning og quick wins
 - Mål: Ryd P1-bugs og hurtige wins inden en ny tung feature-slice påbegyndes.
@@ -45,12 +47,12 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
   8. UX-fix: Fjern ubrugte evne-farver i rytteroversigten
   9. UX-fix: Løn synlig i rytterlisten med filter og sortering; løn tydeligt vist på ryttersiden
 
-### Slice 11 — Resultater-hub + Rytterrangliste
-- Mål: Byg Resultater som nav-destination med individuel rytterrangliste og løbshistorik.
-- Afhænger af: Slice 10 afsluttet.
+### Slice 11 — Resultater-hub + Rytterrangliste ⛔ BLOKERET
+- Mål: Forbedre rytterrangliste og løbsarkiv med rigtige data fra Google Sheets.
+- Blokeret af: bruger skal sende Google Sheet med løbsresultater (format, kolonner) + liste over alle løb.
 - Centrale leverancer:
-  1. Individuel rytterrangliste: point, etapesejre, klassementssejre, samlede sejre, pointklassement, ungdomsklassement, bjergklassement — inkl. AI-ejede ryttere
-  2. Løbsarkiv-forbedringer: alle løb browsable, historik pr. løb på tværs af sæsoner, akkumuleret graf
+  1. Rytterrangliste-forbedringer baseret på Google Sheets-datakontrakt
+  2. Løbsarkiv-forbedringer: historik pr. løb på tværs af sæsoner, akkumuleret graf fra rigtige data
 
 ### Slice 12 — Bugs (Discord + evne-filter)
 - Mål: Luk udskudte live-bugs fra Slice 8.
@@ -91,32 +93,15 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 ## 🔴 Kritiske bugs / investigations
 
 - ~~P0: Garanteret salg kunne misbruges til at købe AI-ejede ryttere til 50% af værdien~~ ✅ løst
-- P1: Bestyrelse vises ikke korrekt på dashboard efter boardEngine-refactor — regression
+- ~~P1: Bestyrelse vises ikke korrekt på dashboard efter boardEngine-refactor — regression~~ ✅ løst (v1.46)
 - P1: Discord/webhook-regression skal reproduceres og spores gennem nuværende notifier-paths og live webhook-konfiguration; samme spor bør også afklare hvordan transferhistorik kan spejles til en dedikeret Discord-tråd via webhook
 - P2: Evne-filter/slider kræver frisk reproduktion på rigtige data; nuværende kodegennemgang fandt ingen entydig root cause
 
 ---
 
-## 🟠 Navigation & informationsarkitektur
+## 🟠 Navigation & informationsarkitektur ✅ FÆRDIG (Slice 10)
 
-- Sidebar/navigation skal omstruktureres med tydeligere domænegrupper i stedet for den nuværende spredning
-- `Overblik` skal åbne Dashboard som default click target
-- `Bestyrelsen` skal ligge under `Overblik`
-- `Mit hold` skal ligge under `Overblik`
-- `Økonomi` skal ligge under `Overblik`
-- `Finanser` skal ligge som underside/fane under `Økonomi`
-- `Aktivitetsfeed` skal ligge under `Overblik`
-- `Notifikationer` skal ligge under `Overblik`
-- `Min aktivitet` skal ligge under `Marked`
-- `Talentspejder` skal flyttes under `Marked` og omdøbes til `Ønskeliste`
-- `Resultater` skal oprettes som egen nav-gruppe
-- `Ranglisten` skal ligge under `Resultater`
-- `Sæsonresultater` skal ligge under `Resultater`
-- `Hall of Fame` skal ligge under `Resultater`
-- `Sæson Preview` skal flyttes under den nuværende liga-gruppe
-- `Liga` beholdes som navn indtil videre
-- `Min Profil` skal foldes ind i managerprofilen som en indstillingssektion i stedet for at leve som separat produktflade
-- Klik på logo bør føre til Dashboard på både desktop og mobil
+_Alle punkter implementeret. Se commit-historik for detaljer._
 
 ---
 
@@ -130,40 +115,33 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Online status skal være tydelig på managerprofilen
 - Online status og sidst-set skal være tydelig i lister over managers
 - Managernavn bør helst kunne matches med Discord-navn
-- Head-to-head skal som default forudvælge brugerens eget hold som det ene hold, men stadig kunne ændres
-- Klik på notifikation bør deep-linke til relevant side
+- ~~Head-to-head skal som default forudvælge brugerens eget hold som det ene hold, men stadig kunne ændres~~ ✅ (v1.47)
+- ~~Klik på notifikation bør deep-linke til relevant side~~ ✅ (v1.32)
 - Direkte Discord-besked til manager ved events undersøges som særskilt forbedringsspor
 
 ---
 
 ## 🟢 Marked, ryttere & handler
 
-- Langsigtet UX-anbefaling: `Min aktivitet` bør bevares som separat markedsside under `Marked`, ikke opsluges af den globale indbakke
-- `Min aktivitet` bør være brugerens personlige markedsarbejdsflade med egne auktioner, egne bud, egne transferforhandlinger, lån og watchlist-signaler samlet i ét handlingsorienteret view
-- `Min aktivitet` bør skille sig fra den globale indbakke ved at fokusere på "ting der involverer mig direkte" i markedet, mens indbakken samler alle systemhændelser på tværs af produktet
-- Foreslået UI for `Min aktivitet`: faner eller stærke filtre for `Kræver handling`, `Auktioner`, `Transfers`, `Lån`, `Ønskeliste` og `Historik`
-- `Min aktivitet` bør som default åbne på `Kræver handling`, så pending bekræftelser, modbud, afsluttende steps og udløbende handler ligger øverst
-- `Min aktivitet` bør bruge kompakte kort/rækker med statusbadge, tid, modpart/rytter, næste handling og deep-link til den relevante handel
-- Rytterfeltet `Point` skal omdøbes til `Værdi` i UI
-- Ved oprettelse af auktion må startbud ikke være lavere end rytterens værdi
-- Ved manager-til-manager-køb skal tilbud stadig kunne være præcis det beløb man ønsker, også under rytterens værdi
-- Rytterlisten skal tydeligt vise hvis rytteren er i en aktiv auktion
-- Ryttersiden skal tydeligt vise hvis rytteren er i en aktiv auktion
-- Notifikation når en ønskeliste-rytter sættes til salg
-- Vis tidspunkt for hvornår en rytter blev sat til transfer
-- Vis ryttertype på ryttersiden
-- Vis landenavn/flag i stedet for rå landekoder på øvrige rytterflader
+- ~~`Min aktivitet` ombygget med 6 faner: Kræver handling, Auktioner, Transfers, Lån, Ønskeliste, Historik~~ ✅ (v1.34)
+- ~~Rytterfeltet `Point` omdøbt til `Værdi` i UI~~ ✅ (v1.35)
+- ~~Ved oprettelse af auktion må startbud ikke være lavere end rytterens Værdi~~ ✅ (v1.35, backend+frontend)
+- Ved manager-til-manager-køb skal tilbud stadig kunne være præcis det beløb man ønsker, også under rytterens Værdi _(allerede muligt)_
+- ~~Rytterlisten viser ⚡-badge ved aktiv auktion~~ ✅ (v1.35)
+- ~~Ryttersiden viser ⚡-badge ved aktiv auktion~~ ✅ (v1.35)
+- ~~Notifikation når en ønskeliste-rytter sættes til salg eller auktion~~ ✅ (v1.35)
+- ~~Vis tidspunkt for hvornår en rytter blev sat til transfer~~ ✅ (v1.35)
+- ~~Vis ryttertype på ryttersiden~~ ✅ (v1.35)
+- ~~Vis landenavn/flag i stedet for rå landekoder på øvrige rytterflader~~ ✅ (v1.39)
 
 ---
 
 ## 🔵 Resultater, historik & ranglister
 
-- Opret en egentlig `Resultater`-hub i produktet
-- Byg individuel rytterrangliste med mindst: point, etapesejre, klassementssejre, samlede sejre, pointklassementer, ungdomsklassementer og bjergklassementer
-- Rytterranglisten skal inkludere både manager-ejede og AI-ejede ryttere
-- Gør alle tilgængelige løb browsebare fra en samlet løbsoversigt med historik pr. løb
-- Hvert løb skal kunne vise alle tidligere udgaver på tværs af sæsoner, tidligere vindere og de ryttere der historisk har klaret sig bedst i netop det løb
-- Hvert løb skal have en akkumuleret historikvisning eller graf, fx hvem der samlet har tjent flest point i Liège-Bastogne-Liège
+- ~~Opret en egentlig `Resultater`-hub i produktet~~ ✅ (v1.36)
+- ~~Individuel rytterrangliste (etapesejre, GC, point, bjerg, ungdom, inkl. AI-ryttere)~~ ✅ (v1.36) — _Slice 11 forbedrer med Google Sheets-data_
+- ~~Gør alle løb browsebare med historik pr. løb~~ ✅ (v1.37)
+- ~~Akkumuleret historikvisning/graf pr. løb~~ ✅ (v1.37) — _Slice 11 forbedrer med Google Sheets-data_
 - UCI-point udvikling over tid
 - Stats-udvikling over tid
 - Oprykningsindikator under ranglisten
@@ -196,11 +174,11 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 
 ## ⚙️ System, docs & admin
 
-- Gennemgå runtime mod `PatchNotesPage.jsx` og `HelpPage.jsx`/FAQ for funktioner der mangler dokumentation; opdater docs før næste release
+- ~~Gennemgå runtime mod `PatchNotesPage.jsx` og `HelpPage.jsx`/FAQ for manglende dokumentation~~ ✅ (2026-04-26)
 - FAQ auto-opdatering
 - Patch notes auto-opdatering
-- Admin skal kunne slette en bruger
-- Split `backend/lib/boardEngine.js` i mindre moduler uden at miste den delte runtime-path mellem proposal, status, requests og season-end
+- ~~Admin skal kunne slette en bruger~~ ✅ (v1.42)
+- ~~Split `backend/lib/boardEngine.js` i mindre moduler~~ ✅ (refactor, 2026-04-25)
 - Frontend-build advarer stadig om stor Vite-chunk; senere code-splitting/manualChunks bør planlægges
 
 ---
