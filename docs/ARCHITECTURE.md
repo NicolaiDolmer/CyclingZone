@@ -218,7 +218,13 @@ Season flow notes:
 | Fil | Eksporterede funktioner |
 |-----|------------------------|
 | `auctionEngine.js` | `calculateAuctionEnd`, `checkBidExtension`, `isAuctionExpired`, `formatAuctionEnd` |
-| `boardEngine.js` | `getPlanDuration`, `buildBoardProposal`, `buildBoardRequestOptions`, `resolveBoardRequest`, `finalizeBoardGoals`, `buildBoardOutlook`, `deriveBoardPersonality`, `deriveTeamIdentityProfile`, `evaluateBoardSeason`, `createInitialBoardProfile` |
+| `boardEngine.js` | Facade — re-eksporterer alt fra boardConstants, boardIdentity, boardGoals, boardRequests, boardEvaluation. Ingen egne funktioner. |
+| `boardConstants.js` | Alle board-konstanter og exported configs (`BOARD_IDENTITY_RIDER_SELECT`, `VALID_BOARD_*`, `BOARD_REQUEST_DEFINITIONS`, m.fl.) |
+| `boardIdentity.js` | `deriveTeamIdentityProfile`, `deriveBoardPersonality`, `getDivisionSquadLimits`, `normalizeBoardRider`, `hasStrongNationalCore`, `hasStrongStarProfile`, `getNationalCoreIdentityBonus`, `getStarProfilePrestigeBonus`, `getStarProfileGoalPressure`, `getStarProfileSponsorPressure` |
+| `boardGoals.js` | `getPlanDuration`, `parseBoardGoals`, `generateBoardGoals`, `buildNegotiatedGoal`, `buildBoardProposal`, `createInitialBoardProfile`, `finalizeBoardGoals`, `inferNegotiationIndexesFromGoals`, `evaluateGoal`, `countGoalsMet`, `evaluateGoalProgress`, `addGoalMetadata`, `normalizeComparableGoal`, `buildGoalLabel` |
+| `boardRequests.js` | `isValidBoardFocus`, `isValidBoardPlanType`, `isValidBoardRequestType`, `getBoardRequestDefinition`, `buildBoardRequestOptions`, `resolveBoardRequest` |
+| `boardEvaluation.js` | `buildBoardOutlook`, `calculateBoardSatisfaction`, `satisfactionToModifier`, `evaluateBoardSeason`, `calculateBoardPerformance` |
+| `boardUtils.js` | `clamp`, `clampSatisfaction`, `roundNumber`, `safeJsonParse`, `averageNumbers`, `averageTopScores`, `clampToStep`, `scoreHigherBetter`, `scoreLowerBetter`, `scoreDebtGoal` |
 | `notificationService.js` | `notifyUser`, `notifyTeamOwner` |
 | `auctionFinalization.js` | `finalizeAuctionById`, `finalizeExpiredAuctions`, `sellerOwnsAuctionRider`, `calculateAuctionSalary` |
 | `adminImportResultsHandler.js` | `createAdminImportResultsHandler` |
