@@ -35,6 +35,13 @@ const PATCHES = [
           "Alle eksisterende hold er opdateret til de nye værdier",
         ],
       },
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Garanteret salg er nu låst til egne ryttere — exploit der tillod køb af AI-ejede ryttere til 50% af Værdi via Garanteret salg er lukket",
+          "Bestyrelses-outlook og category-scores på Dashboard vises nu korrekt igen efter boardEngine-refactor",
+        ],
+      },
     ],
   },
   {

@@ -36,9 +36,13 @@ const SECTIONS = [
         steps: [
           "Gå til Ryttere og find en fri rytter.",
           "Klik på rytterens navn for at åbne statistiksiden.",
-          "Klik 'Start auktion' og sæt en startpris.",
+          "Klik 'Start auktion' og sæt en startpris — minimum svarer til rytterens Værdi.",
           "Auktionen er nu synlig for alle under Auktioner.",
         ],
+      },
+      {
+        title: "Garanteret salg",
+        text: "Garanteret salg er en særlig auktionstype du kun kan bruge på dine egne ryttere. Startprisen sættes automatisk til 50% af Værdi, og auktionen fungerer derefter som en normal auktion. Garanteret salg er den eneste undtagelse fra minimumsprisen.",
       },
       {
         title: "Byde på auktioner",
@@ -190,6 +194,10 @@ const SECTIONS = [
         ],
       },
       {
+        title: "Notifikation ved salg",
+        text: "Hvis en rytter på din ønskeliste sættes til salg via transferlisten eller sættes til auktion, modtager du automatisk en notifikation i Indbakken. Du holder dig dermed opdateret på dine favoritter uden aktivt at tjekke markedet.",
+      },
+      {
         title: "Watchlist-tæller",
         text: "På en rytters statistikside kan du se '👁 X managers følger denne rytter'. Dette viser det samlede antal managers der har rytteren på deres ønskeliste — uden at afsløre hvem. Brug dette som et signal om efterspørgsel.",
       },
@@ -292,7 +300,7 @@ const SECTIONS = [
     content: [
       {
         title: "Værdi og pris",
-        text: "En rytters markedsværdi er UCI-point × 4.000 CZ$ — en rytter med 500 UCI-point er 2.000.000 CZ$ værd. Startprisen på en auktion sættes frit, men minimumsbudet ligger typisk tæt på markedsværdien. Kolonnen 'Værdi' i Rytterdatabasen viser den beregnede markedsværdi.",
+        text: "En rytters markedsværdi er UCI-point × 4.000 CZ$ — en rytter med 500 UCI-point er 2.000.000 CZ$ værd. Startprisen på en auktion skal minimum svare til rytterens Værdi. Eneste undtagelse er Garanteret salg, som låser startprisen til 50% af Værdi. Kolonnen 'Værdi' i Rytterdatabasen viser den beregnede markedsværdi.",
       },
       {
         title: "Løn",
@@ -380,6 +388,14 @@ const FAQ = [
   {
     q: "Hvad betyder watchlist-tælleren på en rytterside?",
     a: "Det viser hvor mange managers der har den pågældende rytter på deres ønskeliste. Du kan ikke se hvem — kun det samlede antal.",
+  },
+  {
+    q: "Får jeg besked når en rytter på min ønskeliste sættes til salg?",
+    a: "Ja. Hvis en rytter du følger sættes på transferlisten eller sættes til auktion, modtager du automatisk en notifikation i Indbakken med pris og type. Du behøver altså ikke aktivt tjekke markedet for dine favoritter.",
+  },
+  {
+    q: "Hvad er Garanteret salg, og hvornår kan jeg bruge det?",
+    a: "Garanteret salg er en særlig auktionsform der kun kan bruges på dine egne ryttere. Startprisen låses til 50% af rytterens Værdi, og auktionen kører derefter normalt. Det er den eneste undtagelse fra reglen om, at startprisen mindst skal svare til rytterens fulde Værdi.",
   },
   {
     q: "Hvordan ser jeg en rytters løn?",
