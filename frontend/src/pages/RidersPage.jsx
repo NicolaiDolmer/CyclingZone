@@ -34,11 +34,10 @@ const MOBILE_STATS = [
 
 function StatBar({ value }) {
   const pct = Math.round((value / 99) * 100);
-  const color = value >= 80 ? "bg-[#e8c547]" : value >= 65 ? "bg-blue-400" : "bg-slate-500";
   return (
     <div className="flex items-center gap-1.5">
       <div className="w-full bg-slate-100 rounded-full h-1.5">
-        <div className={`${color} h-1.5 rounded-full`} style={{ width: `${pct}%` }} />
+        <div className="bg-slate-400 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
       </div>
       <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded flex-shrink-0 ${statBg(value ?? 0)}`}>
         {value ?? "—"}
@@ -125,6 +124,11 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }
           {(rider.uci_points * 4000)?.toLocaleString("da-DK")}
         </span>
       </td>
+      <td className="px-3 py-2.5 text-right" onClick={() => onSelect(rider)}>
+        <span className="text-slate-500 font-mono text-sm">
+          {rider.salary ? rider.salary.toLocaleString("da-DK") : "—"}
+        </span>
+      </td>
       {STATS.map(({ key }) => (
         <td key={key} className="px-1.5 py-2.5 w-14" onClick={() => onSelect(rider)}>
           <StatBar value={rider[key]} />
@@ -181,7 +185,7 @@ export default function RidersPage() {
     const statKeys = STATS.map(s => s.key).join(", ");
     let query = supabase
       .from("riders")
-      .select(`id, firstname, lastname, birthdate, uci_points, is_u25, nationality_code,
+      .select(`id, firstname, lastname, birthdate, uci_points, salary, is_u25, nationality_code,
         ${statKeys}, team:team_id(id, name)`, { count: "exact" })
       .range((filters.page - 1) * 50, filters.page * 50 - 1);
 
@@ -250,6 +254,8 @@ export default function RidersPage() {
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider w-48">Rytter</SortTh>
                   <SortTh sortKey="uci_points" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">Værdi</SortTh>
+                  <SortTh sortKey="salary" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
+                    className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">Løn</SortTh>
                   {STATS.map(({ key, label }) => (
                     <SortTh key={key} sortKey={key} sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                       className="px-1.5 py-3 text-center font-medium w-14">{label}</SortTh>

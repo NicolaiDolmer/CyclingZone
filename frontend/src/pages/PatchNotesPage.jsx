@@ -2,6 +2,27 @@
 
 const PATCHES = [
   {
+    version: "1.47",
+    date: "2026-04-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Rytterdatabase",
+        items: [
+          "Sort-dropdown viser nu 'Værdi' i stedet for 'UCI Point' — mere præcist navn",
+          "Ny 'Løn'-kolonne i rytterlisten — viser årsløn i CZ$, sorterbar ligesom Værdi",
+          "Nyt lønfilter — filtrer ryttere på løn-interval (min/max CZ$) med filter-chip",
+        ],
+      },
+      {
+        category: "Head-to-Head",
+        items: [
+          "Hold B viser nu automatisk holdforslag ved fokus i søgefeltet — ingen typing nødvendig",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.46",
     date: "2026-04-25",
     label: "Beta",

@@ -30,6 +30,8 @@ export function useClientRiderFilters(riders = []) {
 
     if (filters.min_uci) result = result.filter(r => (r.uci_points || 0) * 4000 >= parseInt(filters.min_uci));
     if (filters.max_uci) result = result.filter(r => (r.uci_points || 0) * 4000 <= parseInt(filters.max_uci));
+    if (filters.min_salary) result = result.filter(r => (r.salary || 0) >= parseInt(filters.min_salary));
+    if (filters.max_salary) result = result.filter(r => (r.salary || 0) <= parseInt(filters.max_salary));
 
     if (filters.min_age || filters.max_age) {
       result = result.filter(r => {
@@ -90,6 +92,8 @@ export function buildSupabaseQuery(query, filters) {
   if (filters.q) query = query.or(`firstname.ilike.%${filters.q}%,lastname.ilike.%${filters.q}%`);
   if (filters.min_uci) query = query.gte("uci_points", Math.ceil(parseInt(filters.min_uci) / 4000));
   if (filters.max_uci) query = query.lte("uci_points", Math.floor(parseInt(filters.max_uci) / 4000));
+  if (filters.min_salary) query = query.gte("salary", parseInt(filters.min_salary));
+  if (filters.max_salary) query = query.lte("salary", parseInt(filters.max_salary));
   if (filters.u25) query = query.eq("is_u25", true);
   if (filters.free_agent) query = query.is("team_id", null);
   if (filters.team_id) query = query.eq("team_id", filters.team_id);

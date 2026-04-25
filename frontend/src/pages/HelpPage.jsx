@@ -14,7 +14,7 @@ const SECTIONS = [
         title: "Første skridt",
         steps: [
           "Opret en konto og log ind.",
-          "Du starter i Division 3 med et budget på 500 CZ$.",
+          "Du starter i Division 3 med et startbudget på 800.000 CZ$.",
           "Gå til Ryttere og find frie ryttere du vil byde på.",
           "Start en auktion på en rytter — vind auktionen og rytteren er din.",
           "Byg et hold på mindst 8 ryttere for at deltage i løb.",
@@ -135,6 +135,10 @@ const SECTIONS = [
         title: "XP og niveau",
         text: "Du optjener XP for aktivitet i spillet: byde på auktioner, vinde auktioner, gennemføre transfers osv. Når du samler nok XP stiger du i niveau fra Rookie til Legende. Dit niveau vises i Hall of Fame.",
       },
+      {
+        title: "Head-to-Head",
+        text: "Under Resultater → Head-to-Head kan du sammenligne to holds historik direkte: sæsonpoint, etape- og GC-sejre, transferhistorik imellem holdene og begges nuværende top-5 ryttere. Hold A er automatisk dit eget hold. Klik i Hold B-feltet for at se forslag med det samme — ingen typing nødvendig.",
+      },
     ],
   },
   {
@@ -230,7 +234,7 @@ const SECTIONS = [
         title: "Sæsonforløb",
         steps: [
           "Admin lukker transfervinduet og starter ny sæson.",
-          "Ved sæsonstart: ventende transfers behandles, lønninger genberegnes til 10% af UCI-pris, sponsorpenge udbetales.",
+          "Ved sæsonstart: ventende transfers behandles, lønninger genberegnes til 15% af markedsværdien, sponsorpenge udbetales.",
           "Løb køres i Pro Cycling Manager og resultaterne indberettes af en manager og godkendes af admin.",
           "Ved sæsonafslutning: point tælles op, op/nedrykning afgøres, lønninger trækkes, gældsrenter tilskrives.",
         ],
@@ -287,8 +291,12 @@ const SECTIONS = [
     icon: "🚴",
     content: [
       {
-        title: "UCI-point og pris",
-        text: "Alle rytteres startpris er lig med deres UCI-point. En rytter med 5.000 UCI-point starter til minimum 5.000 CZ$ på auktion.",
+        title: "Værdi og pris",
+        text: "En rytters markedsværdi er UCI-point × 4.000 CZ$ — en rytter med 500 UCI-point er 2.000.000 CZ$ værd. Startprisen på en auktion sættes frit, men minimumsbudet ligger typisk tæt på markedsværdien. Kolonnen 'Værdi' i Rytterdatabasen viser den beregnede markedsværdi.",
+      },
+      {
+        title: "Løn",
+        text: "Hver rytters årsløn er ca. 15% af markedsværdien og sættes ved købet. Lønnen er synlig som en separat kolonne i Rytterdatabasen og kan sorteres og filtreres på. Lønninger betales automatisk ved sæsonafslutning. Kan din balance ikke dække lønningerne, optager systemet automatisk et nødlån.",
       },
       {
         title: "Rytterstatistik",
@@ -372,6 +380,10 @@ const FAQ = [
   {
     q: "Hvad betyder watchlist-tælleren på en rytterside?",
     a: "Det viser hvor mange managers der har den pågældende rytter på deres ønskeliste. Du kan ikke se hvem — kun det samlede antal.",
+  },
+  {
+    q: "Hvordan ser jeg en rytters løn?",
+    a: "Løn er en synlig kolonne i Rytterdatabasen og kan sorteres og filtreres på. Du kan filtrere på løn-interval under 'Løn CZ$ (min–max)' i filterpanelet. Lønnens størrelse afhænger af rytterens markedsværdi og din sæsonpræmiehistorik på tidspunktet for købet.",
   },
   {
     q: "Hvad sker der hvis jeg ikke kan betale lønninger?",

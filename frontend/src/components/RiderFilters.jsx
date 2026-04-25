@@ -11,7 +11,8 @@
 import { useState } from "react";
 
 const SORT_OPTIONS = [
-  { value: "uci_points",  label: "UCI Point" },
+  { value: "uci_points",  label: "Værdi" },
+  { value: "salary",      label: "Løn" },
   { value: "firstname",   label: "Navn (A–Z)" },
   { value: "stat_bj",     label: "Bjerg" },
   { value: "stat_sp",     label: "Sprint" },
@@ -52,6 +53,8 @@ export const DEFAULT_FILTERS = {
   sort_dir: "desc",
   min_uci: "",
   max_uci: "",
+  min_salary: "",
+  max_salary: "",
   min_age: "",
   max_age: "",
   u25: false,
@@ -136,6 +139,7 @@ export default function RiderFilters({
   const hasActiveStats = activeStatKeys.length > 0;
 
   const hasBasicActive = filters.q || filters.min_uci || filters.max_uci ||
+    filters.min_salary || filters.max_salary ||
     filters.min_age || filters.max_age || filters.u25 || filters.u23 ||
     filters.free_agent || filters.team_id || filters.sort !== "uci_points";
 
@@ -197,6 +201,21 @@ export default function RiderFilters({
                 className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
                   text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
               <input type="number" value={filters.max_uci} onChange={e => onChange("max_uci", e.target.value)}
+                placeholder="Max"
+                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
+                  text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+            </div>
+          </div>
+
+          {/* Salary range */}
+          <div>
+            <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Løn CZ$ (min–max)</label>
+            <div className="flex gap-1">
+              <input type="number" value={filters.min_salary} onChange={e => onChange("min_salary", e.target.value)}
+                placeholder="Min"
+                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
+                  text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+              <input type="number" value={filters.max_salary} onChange={e => onChange("max_salary", e.target.value)}
                 placeholder="Max"
                 className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
                   text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
@@ -280,6 +299,8 @@ export default function RiderFilters({
           {filters.q && <Chip label={`"${filters.q}"`} onRemove={() => onChange("q", "")} />}
           {filters.min_uci && <Chip label={`Værdi ≥ ${parseInt(filters.min_uci).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("min_uci", "")} />}
           {filters.max_uci && <Chip label={`Værdi ≤ ${parseInt(filters.max_uci).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("max_uci", "")} />}
+          {filters.min_salary && <Chip label={`Løn ≥ ${parseInt(filters.min_salary).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("min_salary", "")} />}
+          {filters.max_salary && <Chip label={`Løn ≤ ${parseInt(filters.max_salary).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("max_salary", "")} />}
           {filters.min_age && <Chip label={`Alder ≥ ${filters.min_age}`} onRemove={() => onChange("min_age", "")} />}
           {filters.max_age && <Chip label={`Alder ≤ ${filters.max_age}`} onRemove={() => onChange("max_age", "")} />}
           {filters.u25 && <Chip label="U25" onRemove={() => onChange("u25", false)} />}

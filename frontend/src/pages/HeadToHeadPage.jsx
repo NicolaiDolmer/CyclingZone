@@ -3,25 +3,36 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { getFlagEmoji } from "../lib/countryUtils";
 
-function TeamSearch({ label, onSelect, excluded }) {
+function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState([]);
 
+  async function fetchTeams(pattern) {
+    const { data } = await supabase.from("teams")
+      .select("id, name, division").eq("is_ai", false)
+      .ilike("name", `%${pattern}%`).order("name").limit(6);
+    setResults((data || []).filter(t => t.id !== excluded));
+  }
+
   useEffect(() => {
     if (q.length < 1) { setResults([]); return; }
-    const t = setTimeout(async () => {
-      const { data } = await supabase.from("teams")
-        .select("id, name, division").eq("is_ai", false)
-        .ilike("name", `%${q}%`).limit(6);
-      setResults((data || []).filter(t => t.id !== excluded));
-    }, 200);
+    const t = setTimeout(() => fetchTeams(q), 200);
     return () => clearTimeout(t);
   }, [q, excluded]);
+
+  function handleFocus() {
+    if (autoSuggest && q.length === 0) fetchTeams("");
+  }
+
+  function handleBlur() {
+    setTimeout(() => setResults([]), 150);
+  }
 
   return (
     <div className="relative">
       <label className="block text-slate-400 text-xs uppercase tracking-wider mb-2">{label}</label>
       <input type="text" value={q} onChange={e => setQ(e.target.value)}
+        onFocus={handleFocus} onBlur={handleBlur}
         placeholder="Søg hold..."
         className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3
           text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400" />
@@ -140,7 +151,7 @@ export default function HeadToHeadPage() {
       {/* Team selection */}
       <div className="grid sm:grid-cols-2 gap-4 mb-6">
         <TeamSearch label="Hold A" onSelect={setTeamA} excluded={teamB?.id} />
-        <TeamSearch label="Hold B" onSelect={setTeamB} excluded={teamA?.id} />
+        <TeamSearch label="Hold B" onSelect={setTeamB} excluded={teamA?.id} autoSuggest />
       </div>
 
       {teamA && teamB && (

@@ -1,23 +1,21 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-- `Slice 9 — Økonomi, boardEngine og admin`
+- `Slice 10 — Navigation-omstrukturering` ✅ FÆRDIG (2026-04-25)
+- Næste: `Slice 11` — ikke planlagt endnu
 
-## Leverancer (prioriteret rækkefølge)
-1. ~~Garanteret salg-bug (P0)~~ ✅ løst — only egne ryttere, backend + frontend
-2. ~~Bestyrelse på dashboard~~ ✅ løst — regression fra boardEngine-refactor
-3. ~~Admin-forbedringer — slet bruger~~ ✅ løst — fuldt implementeret (frontend + backend + audit log)
-4. ~~Økonomi-retuning (del 1)~~ ✅ løst — startkapital 800K, sponsor 240K; præmiepenge afventer Google Sheets-integration
-5. ~~boardEngine split~~ ✅ løst
+## Slice 10 leverancer (alle done)
+1. ~~Sidebar restructure: Overblik, Marked, Resultater (ny gruppe), Liga~~ ✅
+2. ~~Auktion-synlighed på rytterliste/side~~ ✅ — ⚡-badge i RidersPage + RiderStatsPage
+3. ~~Fjern ubrugte evne-farver~~ ✅ — guld/blå/grå bar-logik fjernet fra StatBar
+4. ~~"UCI Point"→"Værdi" i sort-dropdown~~ ✅ — `RiderFilters.jsx` SORT_OPTIONS
+5. ~~Head-to-head auto-suggest~~ ✅ — `autoSuggest` prop på Hold B i `HeadToHeadPage.jsx`
+6. ~~Løn synlig i rytterlisten + filtrerbar~~ ✅ — salary i fetch, kolonne, filter + chips
 
-## Holdt ude af denne slice
+## Holdt ude
 - PCM mappings — afventer ekstern data
 
-## Udskudt fra Slice 8
+## Udskudt
 - Live beta-verifikation af season flow (season start → result approval → season end)
 - Discord/webhook-regression → skal reproduceres live; transferhistorik til Discord-tråd indgår i sporet
 - Evne-filter/slider → ingen statisk root cause fundet; kræver frisk live-reproduktion
-
-## Næste slice (Slice 10 — Navigation-omstrukturering)
-- Sidebar restructure: Overblik, Marked, Resultater (ny gruppe), Liga
-- Bundlede UX-fixes: head-to-head auto-suggest, auktion-synlighed på rytterliste/side, "Point"→"Værdi", fjern ubrugte evne-farver, løn synlig i rytterlisten + filtrerbar
