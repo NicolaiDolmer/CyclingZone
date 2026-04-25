@@ -190,7 +190,7 @@ export default function RiderFilters({
 
           {/* UCI range */}
           <div>
-            <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">UCI CZ$ (min–max)</label>
+            <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Værdi CZ$ (min–max)</label>
             <div className="flex gap-1">
               <input type="number" value={filters.min_uci} onChange={e => onChange("min_uci", e.target.value)}
                 placeholder="Min"
@@ -278,8 +278,8 @@ export default function RiderFilters({
       {hasActiveFilters && (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {filters.q && <Chip label={`"${filters.q}"`} onRemove={() => onChange("q", "")} />}
-          {filters.min_uci && <Chip label={`UCI ≥ ${parseInt(filters.min_uci).toLocaleString("da-DK")}`} onRemove={() => onChange("min_uci", "")} />}
-          {filters.max_uci && <Chip label={`UCI ≤ ${parseInt(filters.max_uci).toLocaleString("da-DK")}`} onRemove={() => onChange("max_uci", "")} />}
+          {filters.min_uci && <Chip label={`Værdi ≥ ${parseInt(filters.min_uci).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("min_uci", "")} />}
+          {filters.max_uci && <Chip label={`Værdi ≤ ${parseInt(filters.max_uci).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("max_uci", "")} />}
           {filters.min_age && <Chip label={`Alder ≥ ${filters.min_age}`} onRemove={() => onChange("min_age", "")} />}
           {filters.max_age && <Chip label={`Alder ≤ ${filters.max_age}`} onRemove={() => onChange("max_age", "")} />}
           {filters.u25 && <Chip label="U25" onRemove={() => onChange("u25", false)} />}
