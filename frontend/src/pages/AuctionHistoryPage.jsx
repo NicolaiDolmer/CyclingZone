@@ -154,7 +154,7 @@ export default function AuctionHistoryPage() {
                         {iWon && <span className="text-[9px] uppercase bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Købt</span>}
                         {iSold && !noSale && <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700 px-1.5 py-0.5 rounded">Solgt</span>}
                       </div>
-                      <p className="text-slate-400 text-xs mt-0.5">UCI: {a.rider?.uci_points?.toLocaleString("da-DK")} CZ$</p>
+                      <p className="text-slate-400 text-xs mt-0.5">UCI: {a.rider?.uci_points?.toLocaleString("da-DK")} pt — Værdi: {(a.rider?.uci_points * 4000)?.toLocaleString("da-DK")} CZ$</p>
                     </td>
                     <td className="px-4 py-3 text-slate-500 hidden sm:table-cell">
                       {a.seller?.name || "—"}

@@ -157,7 +157,7 @@ export default function SeasonPreviewPage() {
                     {t.topRider.firstname} {t.topRider.lastname}
                   </span>
                   <span className="text-amber-700 font-mono text-xs ml-auto">
-                    {t.topRider.uci_points?.toLocaleString("da-DK")} CZ$
+                    {(t.topRider.uci_points * 4000)?.toLocaleString("da-DK")} CZ$
                   </span>
                 </div>
               )}

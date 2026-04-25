@@ -81,7 +81,7 @@ function RiderCard({ rider, onClick, watchlist, onToggleWatchlist, isInAuction }
         </div>
         <div className="flex items-center gap-2 ml-2">
           <span className="text-amber-700 font-mono font-bold text-sm whitespace-nowrap">
-            {rider.uci_points?.toLocaleString("da-DK")} CZ$
+            {(rider.uci_points * 4000)?.toLocaleString("da-DK")} CZ$
           </span>
           <StarButton riderId={rider.id} watchlist={watchlist} onToggle={onToggleWatchlist} />
         </div>
@@ -122,7 +122,7 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }
       </td>
       <td className="px-3 py-2.5 text-right" onClick={() => onSelect(rider)}>
         <span className="text-amber-700 font-mono text-sm font-bold">
-          {rider.uci_points?.toLocaleString("da-DK")}
+          {(rider.uci_points * 4000)?.toLocaleString("da-DK")}
         </span>
       </td>
       {STATS.map(({ key }) => (

@@ -67,7 +67,7 @@ function RiderSearch({ onSelect, excluded }) {
                   <p className="text-slate-400 text-xs">{r.team?.name || "Fri agent"}</p>
                 </div>
                 <span className="text-amber-700 font-mono text-xs">
-                  {r.uci_points?.toLocaleString("da-DK")} CZ$
+                  {(r.uci_points * 4000)?.toLocaleString("da-DK")} CZ$
                 </span>
               </div>
             ))
@@ -144,7 +144,7 @@ export default function RiderComparePage() {
                 </p>
                 <p className="text-slate-400 text-xs mt-1">{r.team?.name || "Fri agent"}</p>
                 <p className="font-mono font-bold mt-2 text-sm" style={{ color: COLORS[i] }}>
-                  {r.uci_points?.toLocaleString("da-DK")} CZ$
+                  {(r.uci_points * 4000)?.toLocaleString("da-DK")} CZ$
                 </p>
                 {r.is_u25 && (
                   <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700

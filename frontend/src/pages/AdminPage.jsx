@@ -100,7 +100,7 @@ function ManualOverride({ onMsg, onRefresh, teams }) {
               <div key={r.id} className="px-3 py-2 cursor-pointer hover:bg-slate-100 border-b border-slate-200 last:border-0"
                 onClick={() => { setSelectedRider(r); setQuery(`${r.firstname} ${r.lastname}`); setRiderResults([]); }}>
                 <p className="text-slate-900 text-sm">{r.firstname} {r.lastname}</p>
-                <p className="text-slate-400 text-xs">{r.team?.name || "Fri agent"} — {r.uci_points?.toLocaleString()} CZ$</p>
+                <p className="text-slate-400 text-xs">{r.team?.name || "Fri agent"} — {(r.uci_points * 4000)?.toLocaleString()} CZ$</p>
               </div>
             ))}
           </div>

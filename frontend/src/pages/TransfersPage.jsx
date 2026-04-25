@@ -76,7 +76,7 @@ function ReceivedOfferCard({ offer, onAction }) {
         </div>
         <div className="text-right">
           <p className="text-slate-400 text-xs">UCI-pris</p>
-          <p className="text-slate-500 font-mono text-sm">{offer.rider?.uci_points?.toLocaleString("da-DK")} CZ$</p>
+          <p className="text-slate-500 font-mono text-sm">{(offer.rider?.uci_points * 4000)?.toLocaleString("da-DK")} CZ$</p>
         </div>
       </div>
 
@@ -770,7 +770,7 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
         </div>
         <div className="text-right">
           <p className="text-amber-700 font-mono font-bold text-lg">{listing.asking_price?.toLocaleString("da-DK")} CZ$</p>
-          <p className="text-slate-400 text-xs">Værdi: {listing.rider?.uci_points?.toLocaleString("da-DK")} CZ$</p>
+          <p className="text-slate-400 text-xs">Værdi: {(listing.rider?.uci_points * 4000)?.toLocaleString("da-DK")} CZ$</p>
         </div>
       </div>
 

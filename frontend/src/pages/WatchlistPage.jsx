@@ -64,7 +64,7 @@ export default function WatchlistPage() {
     const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auctions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ rider_id: rider.id, starting_price: Math.max(rider.uci_points || 1, 1) }),
+      body: JSON.stringify({ rider_id: rider.id, starting_price: Math.max((rider.uci_points || 1) * 4000, 1) }),
     });
     if (res.ok) navigate("/auctions");
     else { const d = await res.json(); alert(d.error); }

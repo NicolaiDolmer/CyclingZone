@@ -82,7 +82,7 @@ function RiderActionModal({ rider, onClose, onAction }) {
         <div className="flex items-start justify-between p-5 border-b border-slate-200">
           <div>
             <h2 className="text-slate-900 font-bold text-lg">{rider.firstname} {rider.lastname}</h2>
-            <p className="text-amber-700 font-mono text-sm mt-0.5">{rider.uci_points?.toLocaleString("da-DK")} CZ$</p>
+            <p className="text-amber-700 font-mono text-sm mt-0.5">{(rider.uci_points * 4000)?.toLocaleString("da-DK")} CZ$</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-xl">×</button>
         </div>

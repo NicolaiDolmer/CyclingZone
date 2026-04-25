@@ -44,7 +44,7 @@ function StatRow({ label, icon, value }) {
 
 function DirectOfferButton({ rider }) {
   const [show, setShow]       = useState(false);
-  const [amount, setAmount]   = useState(rider.uci_points || 0);
+  const [amount, setAmount]   = useState((rider.uci_points || 0) * 4000);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null);
@@ -111,7 +111,7 @@ function DirectOfferButton({ rider }) {
 }
 
 function AuctionButton({ rider, isMyRider, onStart }) {
-  const riderValue      = Math.max(rider.uci_points || 1, 1);
+  const riderValue      = Math.max((rider.uci_points || 1) * 4000, 1);
   const [guaranteed, setGuaranteed] = useState(false);
   const [price, setPrice]           = useState(riderValue);
   const [loading, setLoading]       = useState(false);
@@ -333,7 +333,7 @@ export default function RiderStatsPage() {
             )}
           </div>
           <div className="text-right">
-            <p className="text-amber-700 font-mono font-bold text-2xl">{rider.uci_points?.toLocaleString("da-DK")}</p>
+            <p className="text-amber-700 font-mono font-bold text-2xl">{(rider.uci_points * 4000)?.toLocaleString("da-DK")}</p>
             <p className="text-slate-400 text-xs mt-0.5">Værdi</p>
             {bestStat && <p className="text-slate-500 text-xs mt-2">Bedste: <span className="text-amber-700">{bestStat.label} ({rider[bestStat.key]})</span></p>}
           </div>

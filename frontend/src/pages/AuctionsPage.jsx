@@ -127,7 +127,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
 
       {/* UCI */}
       <td className="px-2 py-2.5 text-right text-amber-700 font-mono font-bold text-xs whitespace-nowrap">
-        {r?.uci_points?.toLocaleString("da-DK") || "—"}
+        {r?.uci_points ? (r.uci_points * 4000).toLocaleString("da-DK") : "—"}
       </td>
 
       {/* Stats */}
