@@ -5,6 +5,7 @@
 2. Læs `docs/NOW.md`
 
 ## Reference ved behov
+- `docs/MEMORY.md` — feedback, arbejdsstil og vigtig projekt-kontekst (læs ved ny session)
 - `docs/GUARDRAILS.md` — fuld version (nye kontrakter, shared refactors, IA-valg)
 - `docs/ARCHITECTURE.md`
 - `docs/DOMAIN_REFERENCE.md`

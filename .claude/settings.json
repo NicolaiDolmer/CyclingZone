@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "WebSearch",
+      "Bash(node --test lib/auctionFinalization.test.js)",
+      "Bash(node --test lib/boardEngine.test.js)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "mcp__claude_ai_Supabase__list_tables",
+      "mcp__claude_ai_Supabase__list_migrations",
+      "mcp__claude_ai_Supabase__generate_typescript_types",
+      "mcp__claude_ai_GitHub__search_repositories"
+    ]
+  }
+}
