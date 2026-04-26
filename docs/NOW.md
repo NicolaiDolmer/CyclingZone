@@ -5,10 +5,12 @@
 - `Slice 11b — Quick wins (docs-audit)` ✅ FÆRDIG (2026-04-26)
 - `Slice 11 — Resultater-hub + Rytterrangliste` ⛔ BLOKERET — afventer Google Sheet fra bruger (løbsresultater: format, kolonner, datakontrakt + liste over alle løb). Åbn igen når sheet modtages.
 - `Slice B — Beta-testværktøjer` ✅ FÆRDIG (2026-04-26)
-- **Næste: Online status + notifikations-badge** — managerprofil, managerlister, topbar-tæller. Se PRODUCT_BACKLOG.md → "Slice 12b". Ikke blokeret.
+- `Slice 12b — Online status + Notifikations-badge` ✅ FÆRDIG (2026-04-26)
+- `Slice 13 — FM-style indbakke` ✅ FÆRDIG (2026-04-26)
+- `Slice 12 — Discord + evne-filter bugs` ✅ FÆRDIG (2026-04-26)
+- **Næste: Slice 11 (Resultater-hub + Rytterrangliste) — afventer Google Sheet fra bruger.**
 
 ## Udskudt / holdt ude
 - PCM mappings — afventer ekstern data
-- Live beta-verifikation af season flow — afventer live-session (prioritér efter beta-tools er på plads)
-- Discord/webhook-regression — kræver frisk live-reproduktion; transferhistorik til Discord-tråd indgår
-- Evne-filter/slider — ingen statisk root cause; kræver frisk live-reproduktion
+- Live beta-verifikation af season flow — afventer live-session
+- Transfer-notifikation Discord live-test — webhook-URL verificeret OK; bekræft ved næste rigtige transfer at notifikation lander i #Transferhistorik
