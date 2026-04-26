@@ -2,6 +2,40 @@
 
 const PATCHES = [
   {
+    version: "1.55",
+    date: "2026-04-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "Ranglister",
+        items: [
+          "Tydelig oprykningsindikator på alle ranglister: grøn venstrekant og lysegrøn baggrund for oprykningspladser, rød for nedrykningspladser",
+          "Zone-separator linje (grøn gradient) adskiller tydeligt oprykningszone fra den øvrige tabel",
+          "Zone-separator linje (rød gradient) adskiller nedrykningszone fra den sikre zone",
+          "Badges '↑ Op' og '↓ Ned' har nu tydeligere styling med baggrundsfarve",
+          "Gælder både aktiv sæsonrangliste og afsluttede sæsonresultater",
+        ],
+      },
+    ],
+  },
+  {
+    version: "1.54",
+    date: "2026-04-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "Rytterprofil",
+        items: [
+          "Ny 'Historik'-tab på rytterprofilen — viser alle ejerskiftehændelser i kronologisk rækkefølge",
+          "AI-salg vises med type-badge og vinderpris",
+          "Direkte transferhandler vises med køber, sælger og pris",
+          "Byttehandler vises med begge hold og eventuel kontantjustering",
+          "Låneaftaler vises med lejer, udlejer, sæsoninterval og gebyr",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.53",
     date: "2026-04-26",
     label: "Beta",

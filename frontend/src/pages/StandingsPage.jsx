@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, Fragment } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
@@ -178,42 +178,66 @@ export default function StandingsPage() {
                   const ptsWidth = Math.round(((s.total_points || 0) / maxPts) * 100);
                   const isPromotion = i < 2 && divTab < 3;
                   const isRelegation = i >= divStandings.length - 2 && divTab > 1;
+                  const rowStyle = isPromotion
+                    ? { boxShadow: "inset 3px 0 0 #4ade80" }
+                    : isRelegation
+                    ? { boxShadow: "inset 3px 0 0 #f87171" }
+                    : {};
                   return (
-                    <tr key={s.id}
-                      onClick={() => navigate(`/teams/${s.team_id}`)}
-                      className={`border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-100 transition-colors
-                        ${isMe ? "bg-[#e8c547]/4" : ""}
-                        ${isPromotion && !isMe ? "bg-green-500/3" : ""}
-                        ${isRelegation && !isMe ? "bg-red-500/3" : ""}`}>
-                      <td className="px-4 py-3.5">
-                        <span className={`font-mono font-bold text-sm
-                          ${i === 0 ? "text-amber-700" : i === 1 ? "text-slate-500" : i === 2 ? "text-slate-500" : "text-slate-400"}`}>
-                          {i + 1}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`font-medium ${isMe ? "text-amber-700" : "text-slate-900"}`}>{s.team?.name}</span>
-                          {isMe && <span className="text-[9px] uppercase bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">Dig</span>}
-                          {isPromotion && <span className="text-[9px] text-green-700 hidden sm:inline">↑ Op</span>}
-                          {isRelegation && <span className="text-[9px] text-red-700 hidden sm:inline">↓ Ned</span>}
-                        </div>
-                        {/* Mini progress bar */}
-                        <div className="mt-1.5 bg-slate-100 rounded-full h-1 w-full max-w-32">
-                          <div className="h-1 rounded-full" style={{ width: `${ptsWidth}%`, backgroundColor: isMe ? "#e8c547" : `${color}60` }} />
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 text-right text-slate-500 hidden sm:table-cell font-mono">{s.stage_wins || 0}</td>
-                      <td className="px-4 py-3.5 text-right text-slate-500 hidden md:table-cell font-mono">{s.podiums || 0}</td>
-                      <td className="px-4 py-3.5 text-right">
-                        <span className="font-mono font-bold" style={{ color: isMe ? "#e8c547" : color }}>
-                          {(s.total_points || 0).toLocaleString("da-DK")}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-right hidden lg:table-cell">
-                        <MiniSparkline points={prog} color={isMe ? "#e8c547" : color} />
-                      </td>
-                    </tr>
+                    <Fragment key={s.id}>
+                      {/* Separator before relegation zone */}
+                      {i === divStandings.length - 2 && divTab > 1 && divStandings.length > 4 && (
+                        <tr aria-hidden="true">
+                          <td colSpan={6} style={{ padding: 0, lineHeight: 0, border: 0 }}>
+                            <div style={{ height: 2, background: "linear-gradient(to right, #fca5a5 40%, transparent)" }} />
+                          </td>
+                        </tr>
+                      )}
+                      <tr
+                        onClick={() => navigate(`/teams/${s.team_id}`)}
+                        style={rowStyle}
+                        className={`border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors
+                          ${isMe ? "bg-amber-50/60" : ""}
+                          ${isPromotion && !isMe ? "bg-emerald-50" : ""}
+                          ${isRelegation && !isMe ? "bg-red-50" : ""}`}>
+                        <td className="px-4 py-3.5">
+                          <span className={`font-mono font-bold text-sm
+                            ${i === 0 ? "text-amber-700" : i === 1 ? "text-slate-500" : i === 2 ? "text-slate-500" : "text-slate-400"}`}>
+                            {i + 1}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`font-medium ${isMe ? "text-amber-700" : "text-slate-900"}`}>{s.team?.name}</span>
+                            {isMe && <span className="text-[9px] uppercase bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">Dig</span>}
+                            {isPromotion && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">↑ Op</span>}
+                            {isRelegation && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-medium">↓ Ned</span>}
+                          </div>
+                          {/* Mini progress bar */}
+                          <div className="mt-1.5 bg-slate-100 rounded-full h-1 w-full max-w-32">
+                            <div className="h-1 rounded-full" style={{ width: `${ptsWidth}%`, backgroundColor: isMe ? "#e8c547" : `${color}60` }} />
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-right text-slate-500 hidden sm:table-cell font-mono">{s.stage_wins || 0}</td>
+                        <td className="px-4 py-3.5 text-right text-slate-500 hidden md:table-cell font-mono">{s.podiums || 0}</td>
+                        <td className="px-4 py-3.5 text-right">
+                          <span className="font-mono font-bold" style={{ color: isMe ? "#e8c547" : color }}>
+                            {(s.total_points || 0).toLocaleString("da-DK")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 text-right hidden lg:table-cell">
+                          <MiniSparkline points={prog} color={isMe ? "#e8c547" : color} />
+                        </td>
+                      </tr>
+                      {/* Separator after promotion zone */}
+                      {i === 1 && divTab < 3 && divStandings.length > 2 && (
+                        <tr aria-hidden="true">
+                          <td colSpan={6} style={{ padding: 0, lineHeight: 0, border: 0 }}>
+                            <div style={{ height: 2, background: "linear-gradient(to right, #86efac 40%, transparent)" }} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>

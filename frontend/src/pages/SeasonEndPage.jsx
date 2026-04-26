@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, Fragment } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
@@ -176,41 +176,65 @@ export default function SeasonEndPage() {
                       const isPromotion = isCompleted && i < 2 && div < 3;
                       const isRelegation = isCompleted && i >= divStandings.length - 2 && div > 1;
                       const prog = pointsByTeam[s.team_id] || [];
+                      const rowStyle = isPromotion
+                        ? { boxShadow: "inset 3px 0 0 #4ade80" }
+                        : isRelegation
+                        ? { boxShadow: "inset 3px 0 0 #f87171" }
+                        : {};
                       return (
-                        <tr key={s.id}
-                          className={`border-b border-slate-100 last:border-0 hover:bg-slate-100 cursor-pointer
-                            ${isPromotion ? "bg-green-500/3" : ""}
-                            ${isRelegation ? "bg-red-500/3" : ""}
-                            ${isMe ? "bg-[#e8c547]/3" : ""}`}
-                          onClick={() => navigate(`/teams/${s.team_id}`)}>
-                          <td className="px-4 py-3">
-                            <span className={`font-mono font-bold text-sm
-                              ${i === 0 ? "text-amber-700" : i === 1 ? "text-slate-500" : "text-slate-400"}`}>
-                              #{i + 1}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <span className={`font-medium ${isMe ? "text-amber-700" : "text-slate-900"}`}>
-                                {s.team?.name}
+                        <Fragment key={s.id}>
+                          {/* Separator before relegation zone */}
+                          {isCompleted && i === divStandings.length - 2 && div > 1 && divStandings.length > 4 && (
+                            <tr aria-hidden="true">
+                              <td colSpan={5} style={{ padding: 0, lineHeight: 0, border: 0 }}>
+                                <div style={{ height: 2, background: "linear-gradient(to right, #fca5a5 40%, transparent)" }} />
+                              </td>
+                            </tr>
+                          )}
+                          <tr
+                            style={rowStyle}
+                            className={`border-b border-slate-100 last:border-0 hover:bg-slate-50 cursor-pointer transition-colors
+                              ${isPromotion && !isMe ? "bg-emerald-50" : ""}
+                              ${isRelegation && !isMe ? "bg-red-50" : ""}
+                              ${isMe ? "bg-amber-50/60" : ""}`}
+                            onClick={() => navigate(`/teams/${s.team_id}`)}>
+                            <td className="px-4 py-3">
+                              <span className={`font-mono font-bold text-sm
+                                ${i === 0 ? "text-amber-700" : i === 1 ? "text-slate-500" : "text-slate-400"}`}>
+                                #{i + 1}
                               </span>
-                              {isMe && <span className="text-[9px] uppercase bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">Dig</span>}
-                              {isPromotion && <span className="text-[9px] text-green-700">↑ Op</span>}
-                              {isRelegation && <span className="text-[9px] text-red-700">↓ Ned</span>}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right text-slate-500 hidden sm:table-cell">
-                            {s.stage_wins || 0}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <span className="font-mono font-bold" style={{ color }}>
-                              {s.total_points?.toLocaleString("da-DK") || 0}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right hidden md:table-cell">
-                            <MiniLineChart data={prog} color={color} />
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <span className={`font-medium ${isMe ? "text-amber-700" : "text-slate-900"}`}>
+                                  {s.team?.name}
+                                </span>
+                                {isMe && <span className="text-[9px] uppercase bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">Dig</span>}
+                                {isPromotion && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">↑ Op</span>}
+                                {isRelegation && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-medium">↓ Ned</span>}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-500 hidden sm:table-cell">
+                              {s.stage_wins || 0}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className="font-mono font-bold" style={{ color }}>
+                                {s.total_points?.toLocaleString("da-DK") || 0}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right hidden md:table-cell">
+                              <MiniLineChart data={prog} color={color} />
+                            </td>
+                          </tr>
+                          {/* Separator after promotion zone */}
+                          {isCompleted && i === 1 && div < 3 && divStandings.length > 2 && (
+                            <tr aria-hidden="true">
+                              <td colSpan={5} style={{ padding: 0, lineHeight: 0, border: 0 }}>
+                                <div style={{ height: 2, background: "linear-gradient(to right, #86efac 40%, transparent)" }} />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       );
                     })}
                   </tbody>
