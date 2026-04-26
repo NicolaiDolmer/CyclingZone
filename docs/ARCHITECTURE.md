@@ -8,7 +8,11 @@
 | Backend | Node.js + Express (ES modules) | Railway |
 | Database / Auth | Supabase (PostgreSQL + RLS) | Supabase cloud |
 | Realtime sync | Cron (backend/cron.js, 60s interval) | Railway (via backend-processen) |
-| UCI sync | Google Sheets CSV export | — |
+| UCI sync (automatisk) | GitHub Actions cron (mandag 06:00 UTC) → scripts/uci_scraper.py → ProCyclingStats → Google Sheets + Supabase | GitHub Actions |
+| UCI sync (manuel) | Admin: POST /api/admin/sync-uci → sheetsSync.js → Google Sheets CSV | — |
+| Stats sync (dyn_cyclist) | Admin: POST /api/admin/sync-dyn-cyclist → dynCyclistSync.js → Google Sheets | — |
+
+**Ingen chart-bibliotek installeret endnu.** Recharts anbefales til Del C (rider-udviklingsvisning).
 
 ---
 
@@ -232,7 +236,8 @@ Season flow notes:
 | `loanEngine.js` | `getLoanConfig`, `getTotalDebt`, `createLoan`, `createEmergencyLoan`, `repayLoan`, `processLoanInterest` |
 | `marketUtils.js` | `getTeamMarketState`, `getIncomingSquadViolation`, `getOutgoingSquadViolation`, `getTransferWindowOpen`, `calculateMarketSalary` |
 | `raceResultsEngine.js` | `buildRacePrizeLookup`, `buildRaceResultsFromPending`, `applyRaceResults` |
-| `sheetsSync.js` | `handleSyncRequest` |
+| `sheetsSync.js` | `handleSyncRequest`, `syncUCIPoints` — logger også i `rider_uci_history` |
+| `dynCyclistSync.js` | `handleDynCyclistSyncRequest`, `syncDynCyclist` — logger også i `rider_stat_history` |
 | `teamProfileEngine.js` | `upsertOwnTeamProfile` |
 | `transferExecution.js` | `confirmTransferOffer`, `confirmSwapOffer`, `getTransferExecutionIssue`, `getSwapExecutionIssue` |
 | `discordNotifier.js` | `notifySeasonEvent` |
@@ -242,6 +247,17 @@ Season flow notes:
 ## Database-tabeller
 
 ```
+rider_uci_history   id(uuid), rider_id(→riders), uci_points(int), synced_at(timestamptz)
+                    INDEX: (rider_id, synced_at DESC)
+                    Populeres af: sheetsSync.js (manuel sync) + scripts/uci_scraper.py (automatisk ugentlig)
+
+rider_stat_history  id(uuid), rider_id(→riders), synced_at(timestamptz),
+                    stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
+                    stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,
+                    stat_res, stat_ftr, height, weight, popularity
+                    INDEX: (rider_id, synced_at DESC)
+                    Populeres af: dynCyclistSync.js (manuel sync fra WorldDB/dyn_cyclist ark)
+
 users            id(uuid), email, username, role(admin|manager), created_at
 teams            id, user_id, name, is_ai, division(1-3), balance, sponsor_income,
                  is_frozen, is_bank, manager_name, created_at

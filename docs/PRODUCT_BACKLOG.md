@@ -93,9 +93,49 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Centrale leverancer:
   - Del A ✅ UCI scraper (scripts/uci_scraper.py + GitHub Actions cron, ugentlig) — afventer bekræftet testkørsel
   - Del B ✅ DB-tabeller rider_uci_history + rider_stat_history; sheetsSync + dynCyclistSync logger historik
-  - Del C — Frontend: tabel + linjegraf på rytterprofil (fanen "Udvikling") — bygges efter Del A er stabil
+  - Del C — Frontend: ny tab "Udvikling" på rytterprofil — tabel + linjegraf over UCI-points og stats over tid (spec nedenfor)
 - Arkitektur: procyclingstats → Google Sheets (ID: 1dE6v2zdmflzToGUHf3pA5mEk5Kn7YI2Wq8WsXbUX0Ic) → Supabase direkte via REST
 - Kører: hver mandag 06:00 UTC, manuelt via GitHub Actions → "Run workflow"
+- GitHub Actions secrets: UCI_GOOGLE_SERVICE_ACCOUNT_JSON, UCI_GOOGLE_SHEET_ID, SUPABASE_URL, SUPABASE_SERVICE_KEY
+
+#### Slice 14 Del C — Præcis implementeringsspec
+
+**Fil der ændres:** `frontend/src/pages/RiderStatsPage.jsx`
+
+**Nyt npm-pakke der skal installeres:** `recharts` (ingen chart-bibliotek i projektet endnu)
+```
+cd frontend && npm install recharts
+```
+
+**Ny tab tilføjes til tab-rækken:**
+```jsx
+{ key: "udvikling", label: "Udvikling" }
+```
+Placeres efter `{ key: "history", label: "Historik" }`.
+
+**Data der hentes (tilføj til loadRider eller separat useEffect):**
+```js
+// UCI-point historik
+supabase.from("rider_uci_history")
+  .select("uci_points, synced_at")
+  .eq("rider_id", id)
+  .order("synced_at", { ascending: true })
+  .limit(104)  // maks 2 år
+
+// Stats-historik
+supabase.from("rider_stat_history")
+  .select("synced_at, stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl, stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod, stat_res, stat_ftr")
+  .eq("rider_id", id)
+  .order("synced_at", { ascending: true })
+  .limit(52)
+```
+
+**Tab-indhold "Udvikling":**
+1. Sektion "UCI-point over tid": Recharts `LineChart` med `synced_at` på X-aksen (formateret som dato), `uci_points` på Y. Farve: amber (#e8c547). Tooltip viser præcis dato + points.
+2. Sektion "Stats-udvikling": Dropdown/select til at vælge stat (de 14 fra STATS-arrayet øverst i filen). LineChart viser valgt stat over tid. Farve: blue-400.
+3. Hvis ingen data: vis "Ingen historik endnu — data akkumuleres fra næste ugentlige sync".
+
+**Styling:** Matcher eksisterende `bg-white border border-slate-200 rounded-xl p-5`-pattern fra de andre tabs.
 
 ### Næste planlagte slices
 - Slice 15 — Løbsoprettelse i admin + resultater-import via Google Sheets (udskudt til 2026-04-28)
