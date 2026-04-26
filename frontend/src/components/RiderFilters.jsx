@@ -71,57 +71,32 @@ function isStatActive(filters, key) {
   );
 }
 
-// ── Dual handle range slider ──────────────────────────────────────────────────
+// ── Stat range slider (stacked min + max) ────────────────────────────────────
 function DualStatSlider({ statKey, label, filters, onChange }) {
   const minKey = `${statKey}_min`;
   const maxKey = `${statKey}_max`;
   const valMin = parseInt(filters[minKey]) ?? STAT_DEFAULT_MIN;
   const valMax = parseInt(filters[maxKey]) ?? STAT_DEFAULT_MAX;
-  const active  = valMin > STAT_DEFAULT_MIN || valMax < STAT_DEFAULT_MAX;
-
-  const pct = (v) => ((v - 50) / 35) * 100;
+  const active = valMin > STAT_DEFAULT_MIN || valMax < STAT_DEFAULT_MAX;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
         <label className="text-slate-400 text-[10px] uppercase tracking-wider">{label}</label>
         <span className={`text-[10px] font-mono font-bold ${active ? "text-amber-700" : "text-slate-300"}`}>
-          {valMin} – {valMax}
+          {valMin}–{valMax}
         </span>
       </div>
-      <div className="relative h-5 flex items-center">
-        {/* Track */}
-        <div className="absolute w-full h-1 bg-slate-100 rounded-full pointer-events-none" />
-        {/* Active fill */}
-        <div className="absolute h-1 bg-[#e8c547]/40 rounded-full pointer-events-none"
-          style={{ left: `${pct(valMin)}%`, right: `${100 - pct(valMax)}%` }} />
-        {/* Min input */}
+      <div className="flex flex-col gap-1">
         <input
           type="range" min={50} max={85} step={1} value={valMin}
           onChange={e => onChange(minKey, Math.min(parseInt(e.target.value), valMax))}
-          className="absolute w-full h-full appearance-none bg-transparent
-            pointer-events-none
-            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5
-            [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full
-            [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:cursor-pointer
-            [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:border-0
-            [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5
-            [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white
-            [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
+          className="w-full cursor-pointer accent-slate-400"
         />
-        {/* Max input */}
         <input
           type="range" min={50} max={85} step={1} value={valMax}
           onChange={e => onChange(maxKey, Math.max(parseInt(e.target.value), valMin))}
-          className="absolute w-full h-full appearance-none bg-transparent
-            pointer-events-none
-            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5
-            [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full
-            [&::-webkit-slider-thumb]:bg-[#e8c547] [&::-webkit-slider-thumb]:cursor-pointer
-            [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:border-0
-            [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5
-            [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#e8c547]
-            [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
+          className="w-full cursor-pointer accent-amber-500"
         />
       </div>
     </div>

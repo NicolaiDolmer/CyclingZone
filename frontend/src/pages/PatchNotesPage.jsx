@@ -2,6 +2,25 @@
 
 const PATCHES = [
   {
+    version: "1.51",
+    date: "2026-04-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "Rytterdatabase",
+        items: [
+          "Evne-filtre (slidere) virker nu korrekt — min og max er to separate, synlige slidere i stedet for overlappende (grå = minimum, amber = maximum)",
+        ],
+      },
+      {
+        category: "Discord",
+        items: [
+          "Webhook-routing rettet — gennemførte transfers og swaps sendes nu korrekt til 'Transferhistorik'-webhook, øvrige notifikationer til '#auktioner'",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.50",
     date: "2026-04-26",
     label: "Beta",
