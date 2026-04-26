@@ -2192,9 +2192,16 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
     ...a, unlocked: !!unlockedMap[a.id], unlocked_at: unlockedMap[a.id] || null,
   }));
 
+  const userData = userRes.data;
+  if (userData?.last_seen) {
+    userData.is_online = (Date.now() - new Date(userData.last_seen).getTime()) < 5 * 60 * 1000;
+  } else {
+    userData.is_online = false;
+  }
+
   res.json({
     team: { id: team.id, name: team.name, division: team.division },
-    user: userRes.data,
+    user: userData,
     riders: ridersRes.data || [],
     season_history: historyRes.data || [],
     achievements,

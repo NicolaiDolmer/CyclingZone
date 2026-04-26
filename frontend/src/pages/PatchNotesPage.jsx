@@ -2,6 +2,29 @@
 
 const PATCHES = [
   {
+    version: "1.49",
+    date: "2026-04-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "Managerprofiler",
+        items: [
+          "Online-status er nu live — grøn indikator vises på managerprofiler og holdlisten når en manager har været aktiv inden for de seneste 5 minutter",
+          "Sidst set vises på managerprofiler (fx '12 min siden') når manageren er offline",
+          "Login-streak tæller daglig aktivitet og vises på managerprofilen (🔥)",
+          "Online-tæller i sidebaren viser antal aktive managere lige nu",
+        ],
+      },
+      {
+        category: "Notifikationer",
+        items: [
+          "Ulæste-badge på 'Indbakke' i navigationssidebaren — viser antal ulæste notifikationer (maks 9+)",
+          "Mobilvisning: klokkebadge øverst til højre viser ulæste i realtid",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.48",
     date: "2026-04-26",
     label: "Beta",

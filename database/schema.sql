@@ -14,6 +14,9 @@ CREATE TABLE users (
   email TEXT UNIQUE NOT NULL,
   username TEXT UNIQUE NOT NULL,
   role TEXT NOT NULL DEFAULT 'manager' CHECK (role IN ('admin', 'manager')),
+  last_seen TIMESTAMPTZ,
+  login_streak INTEGER DEFAULT 0,
+  last_login_date TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
