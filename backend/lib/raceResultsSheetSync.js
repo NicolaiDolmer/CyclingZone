@@ -66,7 +66,6 @@ async function fetchCsv(sheetId, gid) {
 
 export async function syncRaceResultsFromSheets({
   spreadsheetUrl,
-  seasonNumber,
   supabase,
   updateStandings,
   adminUserId,
@@ -89,13 +88,14 @@ export async function syncRaceResultsFromSheets({
   if (rankIdx < 0) throw new Error(`Kolonnen 'Rank' ikke fundet. Headers: ${headers.join(", ")}`);
   if (benIdx < 0) throw new Error(`Kolonnen 'Benævnelse' ikke fundet. Headers: ${headers.join(", ")}`);
   if (løbIdx < 0) throw new Error(`Kolonnen 'Løb' ikke fundet. Headers: ${headers.join(", ")}`);
+  if (sæsonIdx < 0) throw new Error(`Kolonnen 'Sæson' ikke fundet. Headers: ${headers.join(", ")}`);
 
-  // Parse rows, filter by season number
+  // Parse all rows — keep sæson value per row
   const rows = [];
   for (const line of lines.slice(1)) {
     const cols = parseCsvLine(line);
-    const sæsonVal = sæsonIdx >= 0 ? parseInt(cols[sæsonIdx]) : null;
-    if (seasonNumber && sæsonVal && sæsonVal !== seasonNumber) continue;
+    const sæsonVal = parseInt(cols[sæsonIdx]);
+    if (isNaN(sæsonVal)) continue;
 
     const rank = parseInt(cols[rankIdx]);
     if (isNaN(rank)) continue;
@@ -110,65 +110,13 @@ export async function syncRaceResultsFromSheets({
       team: teamIdx >= 0 ? (cols[teamIdx] || "").replace(/"/g, "").trim() || null : null,
       benævnelse,
       løb,
+      sæson: sæsonVal,
     });
   }
 
-  if (!rows.length) throw new Error("Ingen gyldige rækker fundet — tjek sæsonnummer og kolonnenavne");
+  if (!rows.length) throw new Error("Ingen gyldige rækker fundet — tjek at Sæson-kolonnen er udfyldt og kolonnenavne er korrekte");
 
-  // Find season in DB
-  const { data: season, error: seasonError } = await supabase
-    .from("seasons")
-    .select("id, number")
-    .eq("number", seasonNumber)
-    .single();
-  if (seasonError || !season) throw new Error(`Sæson ${seasonNumber} ikke fundet i databasen`);
-
-  // Get all races for this season
-  const { data: dbRaces, error: racesError } = await supabase
-    .from("races")
-    .select("id, name, race_class, race_type")
-    .eq("season_id", season.id);
-  if (racesError) throw new Error(racesError.message);
-
-  // Match sheet race names to DB races
-  const raceMatches = new Map();
-  const unmatched = [];
-  const uniqueRaceNames = [...new Set(rows.map(r => r.løb).filter(Boolean))];
-
-  for (const sheetName of uniqueRaceNames) {
-    const sheetNorm = sheetName.toLowerCase().trim();
-    let match = (dbRaces || []).find(r => r.name.toLowerCase().trim() === sheetNorm);
-    if (!match) {
-      match = (dbRaces || []).find(r => {
-        const dbNorm = r.name.toLowerCase().trim();
-        return dbNorm.includes(sheetNorm.slice(0, 12)) || sheetNorm.includes(dbNorm.slice(0, 12));
-      });
-    }
-    if (match) {
-      raceMatches.set(sheetName, match);
-    } else {
-      unmatched.push(sheetName);
-    }
-  }
-
-  if (!raceMatches.size) {
-    throw new Error(`Ingen løb matcher databasen. Opret løb i admin-panelet: ${unmatched.slice(0, 5).join(", ")}`);
-  }
-
-  // Load points from race_points table
-  const raceClasses = [...new Set([...raceMatches.values()].map(r => r.race_class).filter(Boolean))];
-  const pointsLookup = new Map();
-  if (raceClasses.length) {
-    const { data: pRows } = await supabase
-      .from("race_points")
-      .select("race_class, result_type, rank, points")
-      .in("race_class", raceClasses);
-    for (const p of pRows || []) {
-      pointsLookup.set(`${p.race_class}__${p.result_type}__${p.rank}`, p.points || 0);
-    }
-  }
-
-  // Batch-resolve rider names → IDs (by last name)
+  // Batch-resolve rider names → IDs once across all rows
   const allRiderNames = [...new Set(rows.map(r => r.name).filter(Boolean))];
   const riderIdByName = new Map();
   for (const fullName of allRiderNames) {
@@ -189,7 +137,7 @@ export async function syncRaceResultsFromSheets({
     }
   }
 
-  // Batch-resolve team names → IDs
+  // Batch-resolve team names → IDs once across all rows
   const allTeamNames = [...new Set(rows.map(r => r.team).filter(Boolean))];
   const teamIdByName = new Map();
   if (allTeamNames.length) {
@@ -206,92 +154,162 @@ export async function syncRaceResultsFromSheets({
     }
   }
 
-  // Group rows by race name
-  const rowsByRace = new Map();
+  // Group rows by sæson number
+  const rowsBySæson = new Map();
   for (const row of rows) {
-    if (!raceMatches.has(row.løb)) continue;
-    if (!rowsByRace.has(row.løb)) rowsByRace.set(row.løb, []);
-    rowsByRace.get(row.løb).push(row);
+    if (!rowsBySæson.has(row.sæson)) rowsBySæson.set(row.sæson, []);
+    rowsBySæson.get(row.sæson).push(row);
   }
 
+  const allRacesImported = [];
+  const allRacesSkipped = [];
   let totalImported = 0;
-  const racesImported = [];
+  const seasonsSummary = [];
 
-  for (const [løbName, raceRows] of rowsByRace) {
-    const race = raceMatches.get(løbName);
-
-    // Delete existing results (idempotent re-import)
-    await supabase.from("race_results").delete().eq("race_id", race.id);
-
-    // Build result rows with stage number detection
-    const stageTracker = {};
-    const resultRows = [];
-
-    for (const row of raceRows) {
-      const resultType = BENÆVNELSE_TO_TYPE[row.benævnelse];
-      if (!resultType) continue;
-
-      if (!stageTracker[row.benævnelse]) {
-        stageTracker[row.benævnelse] = { stage: 1, prevRank: null };
-      }
-      const tracker = stageTracker[row.benævnelse];
-
-      // Rank reset to 1 after a previous rank 1 = new stage
-      if (row.rank === 1 && tracker.prevRank !== null) tracker.stage++;
-      tracker.prevRank = row.rank;
-
-      const isTeamResult = row.benævnelse === "Etapeløb Hold" || row.benævnelse === "Klassiker Hold";
-      const riderId = !isTeamResult && row.name ? (riderIdByName.get(row.name) || null) : null;
-      const teamId = row.team ? (teamIdByName.get(row.team) || null) : null;
-
-      const pointsKey = BENÆVNELSE_TO_POINTS_KEY[row.benævnelse];
-      const points = race.race_class && pointsKey
-        ? (pointsLookup.get(`${race.race_class}__${pointsKey}__${row.rank}`) ?? 0)
-        : 0;
-
-      resultRows.push({
-        race_id: race.id,
-        stage_number: tracker.stage,
-        result_type: resultType,
-        rank: row.rank,
-        rider_id: riderId,
-        rider_name: isTeamResult ? null : (row.name || null),
-        team_id: teamId,
-        team_name: row.team || null,
-        finish_time: null,
-        points_earned: points,
-        prize_money: 0,
-      });
+  for (const [sæsonNum, sæsonRows] of rowsBySæson) {
+    // Find DB season
+    const { data: season } = await supabase
+      .from("seasons")
+      .select("id, number")
+      .eq("number", sæsonNum)
+      .single();
+    if (!season) {
+      allRacesSkipped.push(`(sæson ${sæsonNum} ikke fundet i DB)`);
+      continue;
     }
 
-    if (!resultRows.length) continue;
+    // Get all races for this season
+    const { data: dbRaces } = await supabase
+      .from("races")
+      .select("id, name, race_class, race_type")
+      .eq("season_id", season.id);
 
-    const { error: insertError } = await supabase.from("race_results").insert(resultRows);
-    if (insertError) throw new Error(`Fejl ved import af ${løbName}: ${insertError.message}`);
+    // Match sheet race names to DB races
+    const raceMatches = new Map();
+    const unmatched = [];
+    const uniqueRaceNames = [...new Set(sæsonRows.map(r => r.løb).filter(Boolean))];
 
-    await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
+    for (const sheetName of uniqueRaceNames) {
+      const sheetNorm = sheetName.toLowerCase().trim();
+      let match = (dbRaces || []).find(r => r.name.toLowerCase().trim() === sheetNorm);
+      if (!match) {
+        match = (dbRaces || []).find(r => {
+          const dbNorm = r.name.toLowerCase().trim();
+          return dbNorm.includes(sheetNorm.slice(0, 12)) || sheetNorm.includes(dbNorm.slice(0, 12));
+        });
+      }
+      if (match) raceMatches.set(sheetName, match);
+      else unmatched.push(sheetName);
+    }
 
-    totalImported += resultRows.length;
-    racesImported.push(løbName);
+    allRacesSkipped.push(...unmatched);
+
+    if (!raceMatches.size) continue;
+
+    // Load points for this season's race classes
+    const raceClasses = [...new Set([...raceMatches.values()].map(r => r.race_class).filter(Boolean))];
+    const pointsLookup = new Map();
+    if (raceClasses.length) {
+      const { data: pRows } = await supabase
+        .from("race_points")
+        .select("race_class, result_type, rank, points")
+        .in("race_class", raceClasses);
+      for (const p of pRows || []) {
+        pointsLookup.set(`${p.race_class}__${p.result_type}__${p.rank}`, p.points || 0);
+      }
+    }
+
+    // Group season rows by race name
+    const rowsByRace = new Map();
+    for (const row of sæsonRows) {
+      if (!raceMatches.has(row.løb)) continue;
+      if (!rowsByRace.has(row.løb)) rowsByRace.set(row.løb, []);
+      rowsByRace.get(row.løb).push(row);
+    }
+
+    let seasonImported = 0;
+    const seasonRaces = [];
+
+    for (const [løbName, raceRows] of rowsByRace) {
+      const race = raceMatches.get(løbName);
+
+      // Delete existing results (idempotent re-import)
+      await supabase.from("race_results").delete().eq("race_id", race.id);
+
+      // Build result rows with stage number detection
+      const stageTracker = {};
+      const resultRows = [];
+
+      for (const row of raceRows) {
+        const resultType = BENÆVNELSE_TO_TYPE[row.benævnelse];
+        if (!resultType) continue;
+
+        if (!stageTracker[row.benævnelse]) {
+          stageTracker[row.benævnelse] = { stage: 1, prevRank: null };
+        }
+        const tracker = stageTracker[row.benævnelse];
+
+        if (row.rank === 1 && tracker.prevRank !== null) tracker.stage++;
+        tracker.prevRank = row.rank;
+
+        const isTeamResult = row.benævnelse === "Etapeløb Hold" || row.benævnelse === "Klassiker Hold";
+        const riderId = !isTeamResult && row.name ? (riderIdByName.get(row.name) || null) : null;
+        const teamId = row.team ? (teamIdByName.get(row.team) || null) : null;
+
+        const pointsKey = BENÆVNELSE_TO_POINTS_KEY[row.benævnelse];
+        const points = race.race_class && pointsKey
+          ? (pointsLookup.get(`${race.race_class}__${pointsKey}__${row.rank}`) ?? 0)
+          : 0;
+
+        resultRows.push({
+          race_id: race.id,
+          stage_number: tracker.stage,
+          result_type: resultType,
+          rank: row.rank,
+          rider_id: riderId,
+          rider_name: isTeamResult ? null : (row.name || null),
+          team_id: teamId,
+          team_name: row.team || null,
+          finish_time: null,
+          points_earned: points,
+          prize_money: 0,
+        });
+      }
+
+      if (!resultRows.length) continue;
+
+      const { error: insertError } = await supabase.from("race_results").insert(resultRows);
+      if (insertError) throw new Error(`Fejl ved import af ${løbName}: ${insertError.message}`);
+
+      await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
+
+      seasonImported += resultRows.length;
+      seasonRaces.push(løbName);
+    }
+
+    if (seasonImported > 0) {
+      await updateStandings(season.id, null, { supabase });
+    }
+
+    totalImported += seasonImported;
+    allRacesImported.push(...seasonRaces);
+    seasonsSummary.push({ season: sæsonNum, races: seasonRaces.length, rows: seasonImported });
   }
-
-  // Rebuild standings for the season
-  await updateStandings(season.id, null, { supabase });
 
   await supabase.from("import_log").insert({
     import_type: "race_results_sheets",
     rows_processed: rows.length,
     rows_updated: totalImported,
     rows_inserted: totalImported,
-    errors: unmatched.length ? unmatched : [],
+    errors: allRacesSkipped.length ? allRacesSkipped : [],
     imported_by: adminUserId,
   });
 
   return {
     success: true,
     rows_imported: totalImported,
-    races_imported: racesImported,
-    races_skipped: unmatched,
-    season: seasonNumber,
+    races_imported: allRacesImported,
+    races_skipped: allRacesSkipped,
+    seasons: seasonsSummary,
   };
 }

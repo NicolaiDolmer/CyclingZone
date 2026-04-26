@@ -1990,14 +1990,13 @@ router.post("/admin/sync-dyn-cyclist", requireAdmin, handleDynCyclistSyncRequest
 
 // POST /api/admin/import-results-sheets — importer løbsresultater fra Google Sheets
 router.post("/admin/import-results-sheets", requireAdmin, async (req, res) => {
-  const { spreadsheet_url, season_number } = req.body;
-  if (!spreadsheet_url || !season_number) {
-    return res.status(400).json({ error: "spreadsheet_url og season_number påkrævet" });
+  const { spreadsheet_url } = req.body;
+  if (!spreadsheet_url) {
+    return res.status(400).json({ error: "spreadsheet_url påkrævet" });
   }
   try {
     const result = await syncRaceResultsFromSheets({
       spreadsheetUrl: spreadsheet_url,
-      seasonNumber: parseInt(season_number),
       supabase,
       updateStandings,
       adminUserId: req.user.id,
