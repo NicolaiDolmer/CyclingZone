@@ -19,10 +19,10 @@ import time
 import unicodedata
 from datetime import datetime, timezone
 
+import requests
 import gspread
 from google.oauth2.service_account import Credentials
 from procyclingstats import Ranking
-from supabase import create_client
 
 RANKING_PATH = "rankings/me/uci-individual"
 PAGE_SIZE = 100
@@ -101,17 +101,26 @@ def write_to_sheet(sheet, riders: list[dict], updated_at: str) -> None:
         ])
 
     sheet.clear()
-    sheet.update("A1", rows, value_input_option="RAW")
+    sheet.update(values=rows, range_name="A1", value_input_option="RAW")
     print(f"  Skrev {len(riders)} rækker til Google Sheets")
 
 
-# ── Supabase-sync ────────────────────────────────────────────────────────────
+# ── Supabase-sync (direkte REST via requests — undgår httpx/HTTP2-problemer) ─
+
+def _sb_headers() -> dict:
+    key = os.environ["SUPABASE_SERVICE_KEY"]
+    return {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+
+def _sb_url(path: str) -> str:
+    return f"{os.environ['SUPABASE_URL']}/rest/v1/{path}"
 
 def sync_supabase(riders: list[dict], synced_at: str, dry_run: bool) -> None:
-    supabase = create_client(
-        os.environ["SUPABASE_URL"],
-        os.environ["SUPABASE_SERVICE_KEY"],
-    )
+    headers = _sb_headers()
 
     # Byg UCI-map: normaliseret navn → points
     uci_map: dict[str, int] = {}
@@ -122,8 +131,13 @@ def sync_supabase(riders: list[dict], synced_at: str, dry_run: bool) -> None:
             uci_map[normalize_name(name)] = pts
 
     # Hent alle ryttere fra DB
-    result = supabase.table("riders").select("id, firstname, lastname, uci_points").execute()
-    db_riders = result.data or []
+    resp = requests.get(
+        _sb_url("riders?select=id,firstname,lastname,uci_points"),
+        headers=headers,
+        timeout=30,
+    )
+    resp.raise_for_status()
+    db_riders = resp.json()
     print(f"  Matcher {len(uci_map)} UCI-ryttere mod {len(db_riders)} DB-ryttere")
 
     rider_updates: list[dict] = []
@@ -134,7 +148,6 @@ def sync_supabase(riders: list[dict], synced_at: str, dry_run: bool) -> None:
         fn = rider.get("firstname") or ""
         ln = rider.get("lastname") or ""
 
-        # Primære match-kandidater: "LASTNAME Firstname" og "Firstname LASTNAME"
         candidates = [
             normalize_name(f"{ln} {fn}"),
             normalize_name(f"{fn} {ln}"),
@@ -175,17 +188,24 @@ def sync_supabase(riders: list[dict], synced_at: str, dry_run: bool) -> None:
         print("  [DRY RUN] springer Supabase-skrivning over")
         return
 
-    # Opdatér riders
+    # Opdatér riders én ad gangen
     for u in rider_updates:
-        supabase.table("riders").update({
-            "uci_points": u["uci_points"],
-            "updated_at": synced_at,
-        }).eq("id", u["id"]).execute()
+        requests.patch(
+            _sb_url(f"riders?id=eq.{u['id']}"),
+            json={"uci_points": u["uci_points"], "updated_at": synced_at},
+            headers=headers,
+            timeout=10,
+        ).raise_for_status()
 
     # Insert historikrækker i batches
     BATCH = 500
     for i in range(0, len(history_rows), BATCH):
-        supabase.table("rider_uci_history").insert(history_rows[i:i + BATCH]).execute()
+        requests.post(
+            _sb_url("rider_uci_history"),
+            json=history_rows[i:i + BATCH],
+            headers={**headers, "Prefer": "return=minimal"},
+            timeout=30,
+        ).raise_for_status()
 
     print(f"  Loggede {len(history_rows)} historikrækker")
 
@@ -218,8 +238,11 @@ def main() -> None:
         print("Springer Sheets over (GOOGLE_SERVICE_ACCOUNT_JSON / GOOGLE_SHEET_ID mangler)")
 
     if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_KEY"):
-        print("Synkroniserer til Supabase...")
-        sync_supabase(riders, now, args.dry_run)
+        if riders:
+            print("Synkroniserer til Supabase...")
+            sync_supabase(riders, now, args.dry_run)
+        else:
+            print("Springer Supabase over — ingen ryttere hentet")
     else:
         print("Springer Supabase over (env-variable mangler)")
 
