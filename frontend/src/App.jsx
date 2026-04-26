@@ -29,7 +29,6 @@ import TeamsPage from "./pages/TeamsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import RiderComparePage from "./pages/RiderComparePage";
 import ProfilePage from "./pages/ProfilePage";
-import ActivityFeedPage from "./pages/ActivityFeedPage";
 import ActivityPage from "./pages/ActivityPage";
 import WatchlistPage from "./pages/WatchlistPage";
 import HelpPage from "./pages/HelpPage";
@@ -94,7 +93,7 @@ export default function App() {
           <Route path="compare" element={<RiderComparePage />} />
           <Route path="profile" element={<ProfileRedirect />} />
           <Route path="activity" element={<ActivityPage />} />
-          <Route path="activity-feed" element={<ActivityFeedPage />} />
+          <Route path="activity-feed" element={<Navigate to="/notifications" replace />} />
           <Route path="watchlist" element={<WatchlistPage />} />
           <Route path="help" element={<HelpPage />} />
           <Route path="hall-of-fame" element={<HallOfFamePage />} />

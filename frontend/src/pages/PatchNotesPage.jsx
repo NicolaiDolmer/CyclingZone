@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "1.50",
+    date: "2026-04-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "Indbakke",
+        items: [
+          "FM-style indbakke — notifikationer og aktivitetsfeed samlet på én side med to faner: 'Mine' og 'Ligaen'",
+          "'Mine'-fanen har kategorifiltre: Alle, Ulæste, Auktioner, Transfers, Bestyrelse, Finans",
+          "'Ligaen'-fanen viser globale spilhændelser med filtre: Alle, Auktioner, Transfers, Sæson",
+          "Aktivitetsfeed-siden er nu en del af Indbakke — /activity-feed redirecter automatisk",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.49",
     date: "2026-04-26",
     label: "Beta",
