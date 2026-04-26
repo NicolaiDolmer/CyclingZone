@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "1.48",
+    date: "2026-04-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin",
+        items: [
+          "Beta-testværktøjer — ny admin-sektion med 4 handlinger: annuller marked, nulstil trupper, nulstil balancer og fuld nulstilling",
+          "Hvert værktøj kræver bekræftelse og viser kvittering med præcist antal påvirkede ryttere, holds og markedsaktiviteter",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.47",
     date: "2026-04-25",
     label: "Beta",

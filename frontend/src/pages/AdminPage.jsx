@@ -183,6 +183,9 @@ export default function AdminPage() {
   // Race editor — NY
   const [editingRace, setEditingRace] = useState(null);
 
+  // Beta-testværktøjer
+  const [betaResult, setBetaResult] = useState(null);
+
   // Points editor — NY
   const [selectedPointsClass, setSelectedPointsClass] = useState(RACE_CLASSES[0].key);
   const [editingPoint, setEditingPoint] = useState(null); // { race_class, result_type, rank, points }
@@ -455,6 +458,24 @@ export default function AdminPage() {
     const data = await res.json();
     if (res.ok) { showMsg("✅ Lånekonfiguration gemt"); setEditingLoan(null); loadAll(); }
     else showMsg(`❌ ${data.error}`, "error");
+  }
+
+  // ── Beta-testværktøjer ─────────────────────────────────────────────────────
+  async function handleBeta(endpoint, confirmMsg, body = {}) {
+    if (!confirm(confirmMsg)) return;
+    setLoad(`beta_${endpoint}`, true);
+    setBetaResult(null);
+    try {
+      const res = await fetch(`${API}/api/admin/beta/${endpoint}`, {
+        method: "POST", headers: await getAuth(), body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (res.ok) { setBetaResult({ endpoint, ...data }); showMsg(`✅ beta/${endpoint} udført`); }
+      else { showMsg(`❌ ${data.error}`, "error"); }
+    } catch (e) {
+      showMsg(`❌ Netværksfejl: ${e.message}`, "error");
+    }
+    setLoad(`beta_${endpoint}`, false);
   }
 
   // ── Brugere ────────────────────────────────────────────────────────────────
@@ -1227,6 +1248,66 @@ export default function AdminPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </Section>
+
+      {/* ── Beta-testværktøjer ───────────────────────────────────────────────── */}
+      <Section title="Beta-testværktøjer">
+        <div className="mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+          <span className="text-base leading-none mt-0.5">⚠️</span>
+          <span>Disse handlinger er destruktive og irreversible. Brug kun under testperioden. Board-profiler og AI-holds røres ikke. Kun aktive manager-holds påvirkes.</span>
+        </div>
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => handleBeta("cancel-market", "Annuller ALLE åbne auktioner, transfers, swaps og låneaftaler?\n\nHandlingen kan ikke fortrydes.")}
+            disabled={loading["beta_cancel-market"]}
+            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            {loading["beta_cancel-market"] ? "..." : "Annuller marked"}
+          </button>
+          <button
+            onClick={() => handleBeta("reset-rosters", "Returner ALLE manager-ejede ryttere til deres AI-hold?\n\nHandlingen kan ikke fortrydes.")}
+            disabled={loading["beta_reset-rosters"]}
+            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            {loading["beta_reset-rosters"] ? "..." : "Nulstil trupper"}
+          </button>
+          <button
+            onClick={() => handleBeta("reset-balances", "Sæt balance = 800.000 CZ$ på alle manager-holds?\n\nHandlingen kan ikke fortrydes.", { clear_transactions: false })}
+            disabled={loading["beta_reset-balances"]}
+            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            {loading["beta_reset-balances"] ? "..." : "Nulstil balancer"}
+          </button>
+          <button
+            onClick={() => handleBeta("full-reset", "FULD NULSTILLING:\n• Alle åbne markedsaktiviteter annulleres\n• Alle manager-ryttere returneres til AI-hold\n• Alle balancer sættes til 800.000 CZ$\n\nHandlingen kan ikke fortrydes. Fortsæt?", { clear_transactions: false })}
+            disabled={loading["beta_full-reset"]}
+            className="px-3 py-2 text-xs bg-red-50 text-red-700 border border-red-300 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-all font-semibold">
+            {loading["beta_full-reset"] ? "..." : "Fuld nulstilling"}
+          </button>
+        </div>
+        {betaResult && (
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-600 font-mono">
+            <p className="font-semibold text-slate-700 mb-1">Kvittering — {betaResult.endpoint}</p>
+            {betaResult.cancelled && (
+              <div className="mb-1">
+                <p>Auktioner annulleret: {betaResult.cancelled.auctions}</p>
+                <p>Transfer-opslag trukket: {betaResult.cancelled.transfer_listings}</p>
+                <p>Transfer-tilbud afvist: {betaResult.cancelled.transfer_offers}</p>
+                <p>Swap-tilbud afvist: {betaResult.cancelled.swap_offers}</p>
+                <p>Låneaftaler annulleret: {betaResult.cancelled.loan_agreements}</p>
+              </div>
+            )}
+            {betaResult.rosters != null && (
+              <p className="mb-1">Ryttere flyttet: {betaResult.rosters?.moved ?? betaResult.moved} (til AI: {betaResult.rosters?.to_ai ?? betaResult.to_ai}, til NULL: {betaResult.rosters?.to_null ?? betaResult.to_null})</p>
+            )}
+            {betaResult.balances != null && (
+              <p>Balancer nulstillet: {betaResult.balances?.reset ?? betaResult.reset} holds</p>
+            )}
+            {betaResult.moved != null && betaResult.rosters == null && (
+              <p>Ryttere flyttet: {betaResult.moved} (til AI: {betaResult.to_ai}, til NULL: {betaResult.to_null})</p>
+            )}
+            {betaResult.reset != null && betaResult.balances == null && (
+              <p>Balancer nulstillet: {betaResult.reset} holds</p>
+            )}
           </div>
         )}
       </Section>
