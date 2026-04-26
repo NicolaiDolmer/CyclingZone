@@ -107,8 +107,11 @@ def write_to_sheet(sheet, riders: list[dict], updated_at: str) -> None:
 
 # ── Supabase-sync (direkte REST via requests — undgår httpx/HTTP2-problemer) ─
 
+def _clean_env(var: str) -> str:
+    return "".join(os.environ[var].split())  # fjerner AL whitespace inkl. embedded newlines
+
 def _sb_headers() -> dict:
-    key = os.environ["SUPABASE_SERVICE_KEY"].strip()
+    key = _clean_env("SUPABASE_SERVICE_KEY")
     return {
         "apikey": key,
         "Authorization": f"Bearer {key}",
@@ -117,7 +120,7 @@ def _sb_headers() -> dict:
     }
 
 def _sb_url(path: str) -> str:
-    return f"{os.environ['SUPABASE_URL'].strip()}/rest/v1/{path}"
+    return f"{_clean_env('SUPABASE_URL')}/rest/v1/{path}"
 
 def sync_supabase(riders: list[dict], synced_at: str, dry_run: bool) -> None:
     headers = _sb_headers()
