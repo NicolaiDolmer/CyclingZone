@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "1.52",
+    date: "2026-04-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "Resultater",
+        items: [
+          "Google Sheets-import af løbsresultater — admin kan nu importere sæsonresultater direkte fra et Google Sheet med kolonnerne Rank, Name, Team, Benævnelse, Løb, Sæson",
+          "Understøtter alle 8 benævnelse-typer: Etapeplacering, Klassement, Klassiker, Pointtrøje, Bjergtrøje, Ungdomstrøje, Etapeløb Hold, Klassiker Hold",
+          "Automatisk etape-detektion (rank-nulstilling = ny etape) og standings-genberegning efter import",
+          "Re-import er idempotent — eksisterende resultater for matchede løb erstattes",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.51",
     date: "2026-04-26",
     label: "Beta",

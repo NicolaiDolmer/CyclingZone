@@ -46,6 +46,7 @@ import {
   sendTestEmbed,
 } from "../lib/discordNotifier.js";
 import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
+import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
 import {
   processSeasonEnd,
   processSeasonStart,
@@ -1986,6 +1987,26 @@ router.post("/admin/discord/test", requireAdmin, async (req, res) => {
 
 // POST /api/admin/sync-dyn-cyclist — sync PCM stats fra Google Sheets
 router.post("/admin/sync-dyn-cyclist", requireAdmin, handleDynCyclistSyncRequest);
+
+// POST /api/admin/import-results-sheets — importer løbsresultater fra Google Sheets
+router.post("/admin/import-results-sheets", requireAdmin, async (req, res) => {
+  const { spreadsheet_url, season_number } = req.body;
+  if (!spreadsheet_url || !season_number) {
+    return res.status(400).json({ error: "spreadsheet_url og season_number påkrævet" });
+  }
+  try {
+    const result = await syncRaceResultsFromSheets({
+      spreadsheetUrl: spreadsheet_url,
+      seasonNumber: parseInt(season_number),
+      supabase,
+      updateStandings,
+      adminUserId: req.user.id,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/admin/users — list alle brugere med hold
 router.get("/admin/users", requireAdmin, async (req, res) => {
