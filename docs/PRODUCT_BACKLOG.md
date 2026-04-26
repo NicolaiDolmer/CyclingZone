@@ -164,9 +164,9 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 - UCI-point udvikling over tid
 - Stats-udvikling over tid
 - Oprykningsindikator under ranglisten
-- Rytterhistorik skal vise AI-salg med pris
-- Rytterhistorik skal vise alle transfers
-- Rytterhistorik skal vise manager-handler uden pris
+- ~~Rytterhistorik skal vise AI-salg med pris~~ ✅ (v1.54)
+- ~~Rytterhistorik skal vise alle transfers~~ ✅ (v1.54)
+- ~~Rytterhistorik skal vise manager-handler uden pris~~ ✅ (v1.54, bytter og lån)
 
 ---
 

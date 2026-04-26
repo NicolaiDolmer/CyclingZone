@@ -9,6 +9,7 @@
 - `Slice 13 — FM-style indbakke` ✅ FÆRDIG (2026-04-26)
 - `Slice 12 — Discord + evne-filter bugs` ✅ FÆRDIG (2026-04-26)
 - `Slice 8 — window_pending parking for direkte transfers og swaps` ✅ FÆRDIG (2026-04-26)
+- `Rytterhistorik — ejerskab og handelshistorik` ✅ FÆRDIG (2026-04-26)
 - **Næste: Afvent liste over alle løb fra bruger — opret dem i admin-panelet og importer resultater via Google Sheets-funktionen.**
 
 ## Udskudt / holdt ude

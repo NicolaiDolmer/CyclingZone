@@ -333,6 +333,89 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
   res.json(data);
 });
 
+// GET /api/riders/:id/history — ejerskab og handelshistorik
+router.get("/riders/:id/history", requireAuth, async (req, res) => {
+  const { id } = req.params;
+
+  const [auctionsRes, offersRes, swapsRes, loansRes] = await Promise.all([
+    supabase.from("auctions")
+      .select("id, current_price, actual_end, created_at, is_guaranteed_sale, seller:seller_team_id(id, name, is_ai), winner:current_bidder_id(id, name)")
+      .eq("rider_id", id)
+      .eq("status", "completed")
+      .order("actual_end", { ascending: false }),
+
+    supabase.from("transfer_offers")
+      .select("id, offer_amount, counter_amount, status, updated_at, buyer:buyer_team_id(id, name), seller:seller_team_id(id, name)")
+      .eq("rider_id", id)
+      .in("status", ["accepted", "window_pending"])
+      .order("updated_at", { ascending: false }),
+
+    supabase.from("swap_offers")
+      .select("id, cash_adjustment, counter_cash, status, updated_at, offered_rider_id, requested_rider_id, proposing:proposing_team_id(id, name), receiving:receiving_team_id(id, name)")
+      .or(`offered_rider_id.eq.${id},requested_rider_id.eq.${id}`)
+      .in("status", ["accepted", "window_pending"])
+      .order("updated_at", { ascending: false }),
+
+    supabase.from("loan_agreements")
+      .select("id, loan_fee, start_season, end_season, status, created_at, updated_at, from_team:from_team_id(id, name), to_team:to_team_id(id, name)")
+      .eq("rider_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const events = [];
+
+  for (const a of auctionsRes.data || []) {
+    events.push({
+      type: "auction",
+      date: a.actual_end || a.created_at,
+      price: a.current_price,
+      seller: a.seller,
+      buyer: a.winner,
+      is_ai_sale: a.seller?.is_ai ?? false,
+      is_guaranteed_sale: a.is_guaranteed_sale,
+    });
+  }
+
+  for (const o of offersRes.data || []) {
+    events.push({
+      type: "transfer",
+      date: o.updated_at,
+      price: o.counter_amount ?? o.offer_amount,
+      seller: o.seller,
+      buyer: o.buyer,
+    });
+  }
+
+  for (const s of swapsRes.data || []) {
+    const cashAdj = s.counter_cash ?? s.cash_adjustment;
+    events.push({
+      type: "swap",
+      date: s.updated_at,
+      cash_adjustment: cashAdj,
+      proposing_team: s.proposing,
+      receiving_team: s.receiving,
+      rider_role: s.offered_rider_id === id ? "offered" : "requested",
+    });
+  }
+
+  for (const l of loansRes.data || []) {
+    events.push({
+      type: "loan",
+      date: l.created_at,
+      loan_fee: l.loan_fee,
+      start_season: l.start_season,
+      end_season: l.end_season,
+      status: l.status,
+      from_team: l.from_team,
+      to_team: l.to_team,
+    });
+  }
+
+  events.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  res.json(events);
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // AUCTIONS
 // ═══════════════════════════════════════════════════════════════════════════════

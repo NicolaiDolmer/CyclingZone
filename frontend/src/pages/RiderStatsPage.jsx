@@ -180,8 +180,9 @@ export default function RiderStatsPage() {
   const [myTeam, setMyTeam]                 = useState(null);
   const [activeAuction, setActiveAuction]   = useState(null);
   const [auctionError, setAuctionError]     = useState(null);
+  const [history, setHistory]               = useState([]);
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); }, [id]);
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); }, [id]);
 
   async function loadWatchlistStatus() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -217,6 +218,14 @@ export default function RiderStatsPage() {
       }).catch(() => {});
     }
     loadWatchlistCount();
+  }
+
+  async function loadHistory() {
+    try {
+      const h = await authHeaders();
+      const res = await fetch(`${API}/api/riders/${id}/history`, { headers: h });
+      if (res.ok) setHistory(await res.json());
+    } catch (e) {}
   }
 
   async function loadMyTeam() {
@@ -355,7 +364,7 @@ export default function RiderStatsPage() {
       </div>
 
       <div className="flex gap-2 mb-4">
-        {[{ key: "stats", label: "Evner" }, { key: "season", label: "Sæsonhistorik" }, { key: "results", label: "Løbsresultater" }].map(t => (
+        {[{ key: "stats", label: "Evner" }, { key: "season", label: "Sæsonhistorik" }, { key: "results", label: "Løbsresultater" }, { key: "history", label: "Historik" }].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
               ${tab === t.key ? "bg-amber-50 text-amber-700 border-amber-200" : "text-slate-500 border-slate-200 hover:text-slate-900 hover:border-slate-300"}`}>
@@ -432,6 +441,125 @@ export default function RiderStatsPage() {
           )}
         </div>
       )}
+
+      {tab === "history" && (
+        <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100">
+          {history.length === 0 ? (
+            <p className="text-slate-300 text-center py-8">Ingen handelshistorik endnu</p>
+          ) : history.map((e, i) => (
+            <HistoryEvent key={i} event={e} />
+          ))}
+        </div>
+      )}
     </div>
   );
+}
+
+function HistoryEvent({ event }) {
+  const date = event.date
+    ? new Date(event.date).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" })
+    : "—";
+
+  if (event.type === "auction") {
+    const typeLabel = event.is_ai_sale ? "AI-salg" : event.is_guaranteed_sale ? "Garanteret salg" : "Auktion";
+    return (
+      <div className="px-4 py-3 flex items-start gap-3">
+        <span className="text-amber-600 text-lg mt-0.5">🏆</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs uppercase tracking-wider text-amber-700 font-medium">{typeLabel}</span>
+            <span className="text-slate-400 text-xs">{date}</span>
+          </div>
+          <p className="text-slate-700 text-sm mt-0.5">
+            <span className="font-medium">{event.buyer?.name || "Ukendt"}</span>
+            <span className="text-slate-400"> vandt af </span>
+            <span className="font-medium">{event.seller?.name || (event.is_ai_sale ? "AI-hold" : "Ukendt")}</span>
+          </p>
+          {event.price != null && (
+            <p className="text-amber-700 font-mono text-xs mt-0.5">{event.price.toLocaleString("da-DK")} CZ$</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (event.type === "transfer") {
+    return (
+      <div className="px-4 py-3 flex items-start gap-3">
+        <span className="text-blue-500 text-lg mt-0.5">↔</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs uppercase tracking-wider text-blue-700 font-medium">Transfer</span>
+            <span className="text-slate-400 text-xs">{date}</span>
+          </div>
+          <p className="text-slate-700 text-sm mt-0.5">
+            <span className="font-medium">{event.buyer?.name || "Ukendt"}</span>
+            <span className="text-slate-400"> køber af </span>
+            <span className="font-medium">{event.seller?.name || "Ukendt"}</span>
+          </p>
+          {event.price != null && (
+            <p className="text-amber-700 font-mono text-xs mt-0.5">{event.price.toLocaleString("da-DK")} CZ$</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (event.type === "swap") {
+    return (
+      <div className="px-4 py-3 flex items-start gap-3">
+        <span className="text-purple-500 text-lg mt-0.5">⇄</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs uppercase tracking-wider text-purple-700 font-medium">Bytte</span>
+            <span className="text-slate-400 text-xs">{date}</span>
+          </div>
+          <p className="text-slate-700 text-sm mt-0.5">
+            <span className="font-medium">{event.proposing_team?.name || "Ukendt"}</span>
+            <span className="text-slate-400"> ↔ </span>
+            <span className="font-medium">{event.receiving_team?.name || "Ukendt"}</span>
+          </p>
+          {event.cash_adjustment !== 0 && event.cash_adjustment != null && (
+            <p className="text-slate-500 font-mono text-xs mt-0.5">
+              Kontantjustering: {event.cash_adjustment > 0 ? "+" : ""}{event.cash_adjustment.toLocaleString("da-DK")} CZ$
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (event.type === "loan") {
+    const statusColors = {
+      active: "text-green-700",
+      completed: "text-slate-400",
+      buyout: "text-amber-700",
+      pending: "text-blue-600",
+      cancelled: "text-red-500",
+      rejected: "text-red-400",
+    };
+    return (
+      <div className="px-4 py-3 flex items-start gap-3">
+        <span className="text-slate-400 text-lg mt-0.5">📋</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs uppercase tracking-wider text-slate-500 font-medium">Lån</span>
+            <span className={`text-xs font-medium ${statusColors[event.status] || "text-slate-400"}`}>{event.status}</span>
+            <span className="text-slate-400 text-xs">{date}</span>
+          </div>
+          <p className="text-slate-700 text-sm mt-0.5">
+            <span className="font-medium">{event.to_team?.name || "Ukendt"}</span>
+            <span className="text-slate-400"> lejer af </span>
+            <span className="font-medium">{event.from_team?.name || "Ukendt"}</span>
+          </p>
+          <p className="text-slate-400 text-xs mt-0.5">
+            Sæson {event.start_season}–{event.end_season}
+            {event.loan_fee ? ` · ${event.loan_fee.toLocaleString("da-DK")} CZ$ gebyr` : ""}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
