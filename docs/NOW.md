@@ -3,12 +3,13 @@
 ## Status
 - `Slice 10 — Navigation-omstrukturering` ✅ FÆRDIG (2026-04-25)
 - `Slice 11b — Quick wins (docs-audit)` ✅ FÆRDIG (2026-04-26)
-- `Slice 11 — Resultater-hub + Rytterrangliste` ⛔ BLOKERET — afventer Google Sheet fra bruger (løbsresultater: format, kolonner, datakontrakt + liste over alle løb). Åbn igen når sheet modtages.
+- `Slice 11 — Google Sheets-import af løbsresultater` ✅ FÆRDIG (2026-04-26)
 - `Slice B — Beta-testværktøjer` ✅ FÆRDIG (2026-04-26)
 - `Slice 12b — Online status + Notifikations-badge` ✅ FÆRDIG (2026-04-26)
 - `Slice 13 — FM-style indbakke` ✅ FÆRDIG (2026-04-26)
 - `Slice 12 — Discord + evne-filter bugs` ✅ FÆRDIG (2026-04-26)
-- **Næste: Slice 11 (Resultater-hub + Rytterrangliste) — afventer Google Sheet fra bruger.**
+- `Slice 8 — window_pending parking for direkte transfers og swaps` ✅ FÆRDIG (2026-04-26)
+- **Næste: Afvent liste over alle løb fra bruger — opret dem i admin-panelet og importer resultater via Google Sheets-funktionen.**
 
 ## Udskudt / holdt ude
 - PCM mappings — afventer ekstern data

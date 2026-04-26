@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "1.53",
+    date: "2026-04-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "Transfers & Marked",
+        items: [
+          "Parkering af direkte transferaftaler og byttehandler: begge parter kan nu bekræfte en handel mens sæsonen er aktiv og transfervinduet er lukket",
+          "Handlen parkeres med status 'Aftalt — afventer vindue' (violet badge) og gennemføres automatisk simultant ved transfervinduets åbning",
+          "Samme model som auktioner: alle parkerede handler eksekveres på én gang når admin åbner vinduet",
+          "Når en handel parkeres, trækkes alle andre aktive tilbud på de involverede ryttere øjeblikkeligt tilbage",
+          "Begge parter kan stadig annullere en parkeret handel inden vinduet åbner",
+          "Forhandling (tilbud, modbud, bytteforslag) er nu altid tilladt uanset vinduets tilstand",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.52",
     date: "2026-04-26",
     label: "Beta",
