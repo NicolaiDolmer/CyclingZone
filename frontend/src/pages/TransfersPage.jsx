@@ -22,12 +22,13 @@ function timeAgo(d) {
 }
 
 const STATUS_CONFIG = {
-  pending:                { label: "Afventer svar",        color: "text-amber-700",  bg: "bg-amber-50 border-amber-200" },
-  countered:              { label: "Modbud sendt",          color: "text-orange-700", bg: "bg-orange-50 border-orange-200" },
-  awaiting_confirmation:  { label: "Afventer bekræftelse",  color: "text-blue-700",   bg: "bg-blue-500/10 border-blue-500/20" },
-  accepted:               { label: "Accepteret",            color: "text-green-700",  bg: "bg-green-50 border-green-200" },
-  rejected:               { label: "Afvist",                color: "text-red-700",    bg: "bg-red-50 border-red-200" },
-  withdrawn:              { label: "Trukket tilbage",       color: "text-slate-400",   bg: "bg-slate-100 border-slate-300" },
+  pending:                { label: "Afventer svar",              color: "text-amber-700",   bg: "bg-amber-50 border-amber-200" },
+  countered:              { label: "Modbud sendt",               color: "text-orange-700",  bg: "bg-orange-50 border-orange-200" },
+  awaiting_confirmation:  { label: "Afventer bekræftelse",       color: "text-blue-700",    bg: "bg-blue-500/10 border-blue-500/20" },
+  window_pending:         { label: "Aftalt — afventer vindue",   color: "text-violet-700",  bg: "bg-violet-50 border-violet-200" },
+  accepted:               { label: "Accepteret",                 color: "text-green-700",   bg: "bg-green-50 border-green-200" },
+  rejected:               { label: "Afvist",                     color: "text-red-700",     bg: "bg-red-50 border-red-200" },
+  withdrawn:              { label: "Trukket tilbage",            color: "text-slate-400",   bg: "bg-slate-100 border-slate-300" },
 };
 
 // ── Modtaget tilbud ──────────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ function ReceivedOfferCard({ offer, onAction }) {
 
   const isPending = offer.status === "pending";
   const isAwaiting = offer.status === "awaiting_confirmation";
+  const isWindowPending = offer.status === "window_pending";
   const isActive = isPending || isAwaiting;
   const cfg = STATUS_CONFIG[offer.status] || STATUS_CONFIG.pending;
   const price = (offer.counter_amount || offer.offer_amount)?.toLocaleString("da-DK");
@@ -52,7 +54,7 @@ function ReceivedOfferCard({ offer, onAction }) {
 
   return (
     <div className={`bg-white border rounded-xl p-5 transition-all
-      ${isAwaiting ? "border-blue-500/30" : isPending ? "border-amber-200" : "border-slate-200 opacity-70"}`}>
+      ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isPending ? "border-amber-200" : "border-slate-200 opacity-70"}`}>
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-slate-900 font-semibold">
@@ -149,6 +151,20 @@ function ReceivedOfferCard({ offer, onAction }) {
           </button>
         </div>
       )}
+
+      {isWindowPending && (
+        <div className="flex flex-col gap-2">
+          <div className="bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 text-center">
+            <p className="text-violet-700 text-sm font-medium">Handel aftalt — gennemføres ved transfervinduets åbning</p>
+            <p className="text-slate-400 text-xs mt-1">{price} CZ$</p>
+          </div>
+          <button onClick={() => doAction("cancel")} disabled={loading}
+            className="w-full py-2 bg-red-500/5 text-red-700/70 border border-red-500/15 rounded-lg text-sm
+              hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all disabled:opacity-50">
+            Annuller handel
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -163,6 +179,7 @@ function SentOfferCard({ offer, onAction }) {
   const isCountered = offer.status === "countered";
   const isPending = offer.status === "pending";
   const isAwaiting = offer.status === "awaiting_confirmation";
+  const isWindowPending = offer.status === "window_pending";
   const isActive = isCountered || isPending || isAwaiting;
   const cfg = STATUS_CONFIG[offer.status] || STATUS_CONFIG.pending;
   const price = (offer.counter_amount || offer.offer_amount)?.toLocaleString("da-DK");
@@ -176,7 +193,7 @@ function SentOfferCard({ offer, onAction }) {
 
   return (
     <div className={`bg-white border rounded-xl p-5 transition-all
-      ${isAwaiting ? "border-blue-500/30" : isCountered ? "border-orange-200" : isActive ? "border-slate-300" : "border-slate-200 opacity-60"}`}>
+      ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isCountered ? "border-orange-200" : isActive ? "border-slate-300" : "border-slate-200 opacity-60"}`}>
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-slate-900 font-semibold">
@@ -279,6 +296,20 @@ function SentOfferCard({ offer, onAction }) {
           </button>
         </div>
       )}
+
+      {isWindowPending && (
+        <div className="flex flex-col gap-2">
+          <div className="bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 text-center">
+            <p className="text-violet-700 text-sm font-medium">Handel aftalt — gennemføres ved transfervinduets åbning</p>
+            <p className="text-slate-400 text-xs mt-1">{price} CZ$</p>
+          </div>
+          <button onClick={() => doAction("cancel")} disabled={loading}
+            className="w-full py-2 bg-red-500/5 text-red-700/70 border border-red-500/15 rounded-lg text-sm
+              hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all disabled:opacity-50">
+            Annuller handel
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -289,11 +320,12 @@ function SwapCard({ swap, myTeamId, onAction }) {
   const [mode, setMode] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const isProposing  = swap.proposing?.id === myTeamId;
-  const isReceiving  = swap.receiving?.id === myTeamId;
-  const isPending    = swap.status === "pending";
-  const isCountered  = swap.status === "countered";
-  const isAwaiting   = swap.status === "awaiting_confirmation";
+  const isProposing     = swap.proposing?.id === myTeamId;
+  const isReceiving     = swap.receiving?.id === myTeamId;
+  const isPending       = swap.status === "pending";
+  const isCountered     = swap.status === "countered";
+  const isAwaiting      = swap.status === "awaiting_confirmation";
+  const isWindowPending = swap.status === "window_pending";
   const cfg = STATUS_CONFIG[swap.status] || STATUS_CONFIG.pending;
 
   const effectiveCash = isCountered ? swap.counter_cash : swap.cash_adjustment;
@@ -310,7 +342,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
 
   return (
     <div className={`bg-white border rounded-xl p-5 transition-all
-      ${isAwaiting ? "border-blue-500/30" : isCountered ? "border-orange-200" : isPending ? "border-slate-300" : "border-slate-200 opacity-60"}`}>
+      ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isCountered ? "border-orange-200" : isPending ? "border-slate-300" : "border-slate-200 opacity-60"}`}>
 
       <div className="flex items-start justify-between mb-3">
         <div>
@@ -420,6 +452,19 @@ function SwapCard({ swap, myTeamId, onAction }) {
               ✓ Bekræft byttehandel
             </button>
           )}
+          <button onClick={() => doAction("cancel")} disabled={loading}
+            className="w-full py-2 bg-red-500/5 text-red-700/70 border border-red-500/15 rounded-lg text-sm
+              hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all disabled:opacity-50">
+            Annuller handel
+          </button>
+        </div>
+      )}
+
+      {isWindowPending && (
+        <div className="flex flex-col gap-2">
+          <div className="bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 text-center">
+            <p className="text-violet-700 text-sm font-medium">Byttehandel aftalt — gennemføres ved transfervinduets åbning</p>
+          </div>
           <button onClick={() => doAction("cancel")} disabled={loading}
             className="w-full py-2 bg-red-500/5 text-red-700/70 border border-red-500/15 rounded-lg text-sm
               hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all disabled:opacity-50">

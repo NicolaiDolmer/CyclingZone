@@ -47,8 +47,9 @@ function Countdown({ end, status }) {
 const OFFER_STATUS = {
   pending:               { label: "Afventer svar",    cls: "bg-amber-50 text-amber-700 border-amber-200" },
   countered:             { label: "Modbud modtaget",  cls: "bg-orange-50 text-orange-700 border-orange-200" },
-  awaiting_confirmation: { label: "Bekræft handel",   cls: "bg-blue-50 text-blue-700 border-blue-200" },
-  accepted:              { label: "Accepteret",        cls: "bg-green-50 text-green-700 border-green-200" },
+  awaiting_confirmation: { label: "Bekræft handel",          cls: "bg-blue-50 text-blue-700 border-blue-200" },
+  window_pending:        { label: "Aftalt — afventer vindue", cls: "bg-violet-50 text-violet-700 border-violet-200" },
+  accepted:              { label: "Accepteret",               cls: "bg-green-50 text-green-700 border-green-200" },
   rejected:              { label: "Afvist",            cls: "bg-red-50 text-red-700 border-red-200" },
   withdrawn:             { label: "Trukket tilbage",   cls: "bg-slate-100 text-slate-400 border-slate-200" },
 };

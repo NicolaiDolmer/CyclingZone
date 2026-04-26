@@ -162,7 +162,7 @@ function describeTransferIssue(issue, { rider, buyerState, sellerState }) {
   };
 }
 
-function describeSwapIssue(issue, { swap, offered, requested }) {
+function describeSwapIssue(issue, { offered, requested }) {
   if (issue.code === "offered_rider_moved") {
     return {
       error: "Din tilbudte rytter tilhører ikke længere dit hold — byttehandlen er annulleret",
@@ -183,15 +183,254 @@ function describeSwapIssue(issue, { swap, offered, requested }) {
     return {
       error: "Det foreslående hold har ikke længere råd — byttehandlen er annulleret",
       notificationTitle: "Byttehandel annulleret",
-      notificationMessage: `Handlen på ${swap.offered.firstname} ${swap.offered.lastname} ↔ ${swap.requested.firstname} ${swap.requested.lastname} kunne ikke gennemføres, fordi det foreslående hold mangler midler.`,
+      notificationMessage: `Handlen på ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} kunne ikke gennemføres, fordi det foreslående hold mangler midler.`,
     };
   }
 
   return {
     error: "Det modtagende hold har ikke længere råd — byttehandlen er annulleret",
     notificationTitle: "Byttehandel annulleret",
-    notificationMessage: `Handlen på ${swap.offered.firstname} ${swap.offered.lastname} ↔ ${swap.requested.firstname} ${swap.requested.lastname} kunne ikke gennemføres, fordi det modtagende hold mangler midler.`,
+    notificationMessage: `Handlen på ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} kunne ikke gennemføres, fordi det modtagende hold mangler midler.`,
   };
+}
+
+// Private: execute a fully-agreed transfer offer. Window must be open at call site.
+async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notifyTeamOwner = NOOP, notifyDiscordHistory = NOOP }) {
+  const price = getTransferPrice(offer);
+  const rider = await expectSingle(
+    supabase
+      .from("riders")
+      .select("id, firstname, lastname, team_id, salary, prize_earnings_bonus")
+      .eq("id", offer.rider_id)
+  );
+  const [buyerState, sellerState] = await Promise.all([
+    getTeamMarketState(supabase, offer.buyer_team_id),
+    getTeamMarketState(supabase, offer.seller_team_id),
+  ]);
+
+  const issue = getTransferExecutionIssue({ rider, sellerState, buyerState, price });
+
+  if (issue) {
+    const message = describeTransferIssue(issue, { rider, buyerState, sellerState });
+    await withdrawTransferOffer(supabase, offer.id);
+    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id);
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id);
+    return failure(400, message.error, issue.code);
+  }
+
+  const movedRider = await expectMaybeSingle(
+    supabase
+      .from("riders")
+      .update({
+        team_id: offer.buyer_team_id,
+        salary: calculateMarketSalary(price, rider.prize_earnings_bonus || 0),
+      })
+      .eq("id", rider.id)
+      .eq("team_id", offer.seller_team_id)
+      .select("id")
+  );
+
+  if (!movedRider) {
+    await withdrawTransferOffer(supabase, offer.id);
+    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", "Transfer annulleret",
+      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`, offer.id);
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", "Transfer annulleret",
+      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`, offer.id);
+    return failure(409, "Rytteren skiftede status under bekræftelsen — handlen er annulleret", "stale_rider_state");
+  }
+
+  await expectMutation(
+    supabase.from("teams").update({ balance: buyerState.balance - price }).eq("id", offer.buyer_team_id)
+  );
+  await expectMutation(
+    supabase.from("teams").update({ balance: sellerState.balance + price }).eq("id", offer.seller_team_id)
+  );
+  await expectMutation(
+    supabase.from("finance_transactions").insert([
+      {
+        team_id: offer.buyer_team_id,
+        type: "transfer_out",
+        amount: -price,
+        description: `Købt ${rider.firstname} ${rider.lastname} via transfer`,
+      },
+      {
+        team_id: offer.seller_team_id,
+        type: "transfer_in",
+        amount: price,
+        description: `Solgt ${rider.firstname} ${rider.lastname} via transfer`,
+      },
+    ])
+  );
+
+  await closeTransferListingsForRiders(supabase, [rider.id], "sold");
+  await withdrawTransferOffersForRiders(supabase, [rider.id], offer.id);
+  await withdrawSwapOffersForRiders(supabase, [rider.id]);
+  await expectMutation(
+    supabase.from("transfer_offers").update({ status: "accepted" }).eq("id", offer.id)
+  );
+
+  await logActivity("transfer_accepted", {
+    team_id: offer.seller_team_id,
+    team_name: sellerState.name,
+    rider_id: rider.id,
+    rider_name: `${rider.firstname} ${rider.lastname}`,
+    amount: price,
+  });
+
+  await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted", "Transfer gennemført!",
+    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id);
+  await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Transfer gennemført!",
+    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id);
+
+  await notifyDiscordHistory({
+    riderName: `${rider.firstname} ${rider.lastname}`,
+    sellerName: sellerState.name,
+    buyerName: buyerState.name,
+    price,
+  });
+
+  return success({ action: "accepted", price });
+}
+
+// Private: execute a fully-agreed swap offer. Window must be open at call site.
+async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notifyDiscordHistory = NOOP }) {
+  const cash = getSwapCash(swap);
+  const [offered, requested] = await Promise.all([
+    expectSingle(
+      supabase.from("riders").select("id, firstname, lastname, team_id").eq("id", swap.offered_rider_id)
+    ),
+    expectSingle(
+      supabase.from("riders").select("id, firstname, lastname, team_id").eq("id", swap.requested_rider_id)
+    ),
+  ]);
+  const [proposingState, receivingState] = await Promise.all([
+    getTeamMarketState(supabase, swap.proposing_team_id),
+    getTeamMarketState(supabase, swap.receiving_team_id),
+  ]);
+
+  const issue = getSwapExecutionIssue({ swap, offered, requested, proposingState, receivingState, cash });
+
+  if (issue) {
+    const message = describeSwapIssue(issue, { offered, requested });
+    await withdrawSwapOffer(supabase, swap.id);
+    await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id);
+    await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id);
+    return failure(400, message.error, issue.code);
+  }
+
+  const movedOffered = await expectMaybeSingle(
+    supabase
+      .from("riders")
+      .update({ team_id: swap.receiving_team_id })
+      .eq("id", offered.id)
+      .eq("team_id", swap.proposing_team_id)
+      .select("id")
+  );
+
+  if (!movedOffered) {
+    await withdrawSwapOffer(supabase, swap.id);
+    await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", "Byttehandel annulleret",
+      `${offered.firstname} ${offered.lastname} ændrede status under bekræftelsen.`, swap.id);
+    await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", "Byttehandel annulleret",
+      `${offered.firstname} ${offered.lastname} ændrede status under bekræftelsen.`, swap.id);
+    return failure(409, "Den tilbudte rytter ændrede status under bekræftelsen — byttehandlen er annulleret", "stale_offered_rider_state");
+  }
+
+  const movedRequested = await expectMaybeSingle(
+    supabase
+      .from("riders")
+      .update({ team_id: swap.proposing_team_id })
+      .eq("id", requested.id)
+      .eq("team_id", swap.receiving_team_id)
+      .select("id")
+  );
+
+  if (!movedRequested) {
+    await expectMutation(
+      supabase.from("riders").update({ team_id: swap.proposing_team_id }).eq("id", offered.id)
+    );
+    await withdrawSwapOffer(supabase, swap.id);
+    await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", "Byttehandel annulleret",
+      `${requested.firstname} ${requested.lastname} ændrede status under bekræftelsen.`, swap.id);
+    await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", "Byttehandel annulleret",
+      `${requested.firstname} ${requested.lastname} ændrede status under bekræftelsen.`, swap.id);
+    return failure(409, "Den ønskede rytter ændrede status under bekræftelsen — byttehandlen er annulleret", "stale_requested_rider_state");
+  }
+
+  if (cash > 0) {
+    await expectMutation(
+      supabase.from("teams").update({ balance: proposingState.balance - cash }).eq("id", swap.proposing_team_id)
+    );
+    await expectMutation(
+      supabase.from("teams").update({ balance: receivingState.balance + cash }).eq("id", swap.receiving_team_id)
+    );
+    await expectMutation(
+      supabase.from("finance_transactions").insert([
+        {
+          team_id: swap.proposing_team_id,
+          type: "transfer_out",
+          amount: -cash,
+          description: `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`,
+        },
+        {
+          team_id: swap.receiving_team_id,
+          type: "transfer_in",
+          amount: cash,
+          description: `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`,
+        },
+      ])
+    );
+  } else if (cash < 0) {
+    const absCash = Math.abs(cash);
+    await expectMutation(
+      supabase.from("teams").update({ balance: receivingState.balance - absCash }).eq("id", swap.receiving_team_id)
+    );
+    await expectMutation(
+      supabase.from("teams").update({ balance: proposingState.balance + absCash }).eq("id", swap.proposing_team_id)
+    );
+    await expectMutation(
+      supabase.from("finance_transactions").insert([
+        {
+          team_id: swap.receiving_team_id,
+          type: "transfer_out",
+          amount: -absCash,
+          description: `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`,
+        },
+        {
+          team_id: swap.proposing_team_id,
+          type: "transfer_in",
+          amount: absCash,
+          description: `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`,
+        },
+      ])
+    );
+  }
+
+  await closeTransferListingsForRiders(
+    supabase,
+    [swap.offered_rider_id, swap.requested_rider_id],
+    "withdrawn"
+  );
+  await withdrawTransferOffersForRiders(supabase, [swap.offered_rider_id, swap.requested_rider_id]);
+  await withdrawSwapOffersForRiders(supabase, [swap.offered_rider_id, swap.requested_rider_id], swap.id);
+  await expectMutation(
+    supabase.from("swap_offers").update({ status: "accepted" }).eq("id", swap.id)
+  );
+
+  await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_accepted", "Byttehandel gennemført!",
+    `${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} er nu skiftet`, swap.id);
+  await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_accepted", "Byttehandel gennemført!",
+    `${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} er nu skiftet`, swap.id);
+
+  await notifyDiscordHistory({
+    offeredName: `${offered.firstname} ${offered.lastname}`,
+    requestedName: `${requested.firstname} ${requested.lastname}`,
+    proposingName: proposingState.name,
+    receivingName: receivingState.name,
+    cash: cash !== 0 ? cash : null,
+  });
+
+  return success({ action: "accepted" });
 }
 
 export async function confirmTransferOffer({
@@ -202,15 +441,6 @@ export async function confirmTransferOffer({
   logActivity = NOOP,
   notifyDiscordHistory = NOOP,
 }) {
-  const windowOpen = await getTransferWindowOpen(supabase);
-  if (!windowOpen) {
-    return failure(
-      403,
-      "Transfervinduet er lukket. Handlen kan ikke accepteres eller bekræftes i denne periode.",
-      "window_closed"
-    );
-  }
-
   const offer = await expectMaybeSingle(
     supabase
       .from("transfer_offers")
@@ -264,126 +494,22 @@ export async function confirmTransferOffer({
     return success({ action: "confirmed_partial" });
   }
 
-  const price = getTransferPrice(confirmedOffer);
-  const rider = await expectSingle(
-    supabase
-      .from("riders")
-      .select("id, firstname, lastname, team_id, salary, prize_earnings_bonus")
-      .eq("id", confirmedOffer.rider_id)
-  );
-  const [buyerState, sellerState] = await Promise.all([
-    getTeamMarketState(supabase, confirmedOffer.buyer_team_id),
-    getTeamMarketState(supabase, confirmedOffer.seller_team_id),
-  ]);
+  const windowOpen = await getTransferWindowOpen(supabase);
 
-  const issue = getTransferExecutionIssue({
-    rider,
-    sellerState,
-    buyerState,
-    price,
-  });
-
-  if (issue) {
-    const message = describeTransferIssue(issue, { rider, buyerState, sellerState });
-    await withdrawTransferOffer(supabase, offer.id);
-    await notifyTeamOwner(
-      otherTeamId,
-      "transfer_offer_rejected",
-      message.notificationTitle,
-      message.notificationMessage,
-      offer.id
+  if (!windowOpen) {
+    await expectMutation(
+      supabase.from("transfer_offers").update({ status: "window_pending" }).eq("id", offer.id)
     );
-    return failure(400, message.error, issue.code);
+    await closeTransferListingsForRiders(supabase, [offer.rider_id], "sold");
+    await withdrawTransferOffersForRiders(supabase, [offer.rider_id], offer.id);
+    await withdrawSwapOffersForRiders(supabase, [offer.rider_id]);
+    const parkMsg = `Handlen på ${offer.rider.firstname} ${offer.rider.lastname} er aftalt og gennemføres automatisk, når transfervinduet åbner.`;
+    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted", "Handel parkeret", parkMsg, offer.id);
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Handel parkeret", parkMsg, offer.id);
+    return success({ action: "window_pending" });
   }
 
-  const movedRider = await expectMaybeSingle(
-    supabase
-      .from("riders")
-      .update({
-        team_id: confirmedOffer.buyer_team_id,
-        salary: calculateMarketSalary(price, rider.prize_earnings_bonus || 0),
-      })
-      .eq("id", rider.id)
-      .eq("team_id", confirmedOffer.seller_team_id)
-      .select("id")
-  );
-
-  if (!movedRider) {
-    await withdrawTransferOffer(supabase, offer.id);
-    await notifyTeamOwner(
-      otherTeamId,
-      "transfer_offer_rejected",
-      "Transfer annulleret",
-      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`,
-      offer.id
-    );
-    return failure(
-      409,
-      "Rytteren skiftede status under bekræftelsen — handlen er annulleret",
-      "stale_rider_state"
-    );
-  }
-
-  await expectMutation(
-    supabase
-      .from("teams")
-      .update({ balance: buyerState.balance - price })
-      .eq("id", confirmedOffer.buyer_team_id)
-  );
-  await expectMutation(
-    supabase
-      .from("teams")
-      .update({ balance: sellerState.balance + price })
-      .eq("id", confirmedOffer.seller_team_id)
-  );
-  await expectMutation(
-    supabase.from("finance_transactions").insert([
-      {
-        team_id: confirmedOffer.buyer_team_id,
-        type: "transfer_out",
-        amount: -price,
-        description: `Købt ${rider.firstname} ${rider.lastname} via transfer`,
-      },
-      {
-        team_id: confirmedOffer.seller_team_id,
-        type: "transfer_in",
-        amount: price,
-        description: `Solgt ${rider.firstname} ${rider.lastname} via transfer`,
-      },
-    ])
-  );
-
-  await closeTransferListingsForRiders(supabase, [rider.id], "sold");
-  await withdrawTransferOffersForRiders(supabase, [rider.id], confirmedOffer.id);
-  await withdrawSwapOffersForRiders(supabase, [rider.id]);
-  await expectMutation(
-    supabase.from("transfer_offers").update({ status: "accepted" }).eq("id", confirmedOffer.id)
-  );
-
-  await logActivity("transfer_accepted", {
-    team_id: confirmedOffer.seller_team_id,
-    team_name: sellerState.name,
-    rider_id: rider.id,
-    rider_name: `${rider.firstname} ${rider.lastname}`,
-    amount: price,
-  });
-
-  await notifyTeamOwner(
-    otherTeamId,
-    "transfer_offer_accepted",
-    "Transfer gennemført!",
-    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`,
-    confirmedOffer.id
-  );
-
-  await notifyDiscordHistory({
-    riderName: `${rider.firstname} ${rider.lastname}`,
-    sellerName: sellerState.name,
-    buyerName: buyerState.name,
-    price,
-  });
-
-  return success({ action: "accepted", price });
+  return executeTransferOffer(supabase, confirmedOffer, { logActivity, notifyTeamOwner, notifyDiscordHistory });
 }
 
 export async function confirmSwapOffer({
@@ -393,15 +519,6 @@ export async function confirmSwapOffer({
   notifyTeamOwner,
   notifyDiscordHistory = NOOP,
 }) {
-  const windowOpen = await getTransferWindowOpen(supabase);
-  if (!windowOpen) {
-    return failure(
-      403,
-      "Transfervinduet er lukket. Byttehandlen kan ikke accepteres eller bekræftes i denne periode.",
-      "window_closed"
-    );
-  }
-
   const swap = await expectMaybeSingle(
     supabase
       .from("swap_offers")
@@ -455,202 +572,59 @@ export async function confirmSwapOffer({
     return success({ action: "confirmed_partial" });
   }
 
-  const cash = getSwapCash(confirmedSwap);
-  const [offered, requested] = await Promise.all([
-    expectSingle(
-      supabase
-        .from("riders")
-        .select("id, firstname, lastname, team_id")
-        .eq("id", confirmedSwap.offered_rider_id)
-    ),
-    expectSingle(
-      supabase
-        .from("riders")
-        .select("id, firstname, lastname, team_id")
-        .eq("id", confirmedSwap.requested_rider_id)
-    ),
-  ]);
-  const [proposingState, receivingState] = await Promise.all([
-    getTeamMarketState(supabase, confirmedSwap.proposing_team_id),
-    getTeamMarketState(supabase, confirmedSwap.receiving_team_id),
+  const windowOpen = await getTransferWindowOpen(supabase);
+
+  if (!windowOpen) {
+    await expectMutation(
+      supabase.from("swap_offers").update({ status: "window_pending" }).eq("id", swap.id)
+    );
+    await withdrawTransferOffersForRiders(supabase, [swap.offered_rider_id, swap.requested_rider_id]);
+    await withdrawSwapOffersForRiders(supabase, [swap.offered_rider_id, swap.requested_rider_id], swap.id);
+    const parkMsg = `Byttehandlen ${swap.offered.firstname} ${swap.offered.lastname} ↔ ${swap.requested.firstname} ${swap.requested.lastname} er aftalt og gennemføres automatisk, når transfervinduet åbner.`;
+    await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_accepted", "Byttehandel parkeret", parkMsg, swap.id);
+    await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_accepted", "Byttehandel parkeret", parkMsg, swap.id);
+    return success({ action: "window_pending" });
+  }
+
+  return executeSwapOffer(supabase, confirmedSwap, { notifyTeamOwner, notifyDiscordHistory });
+}
+
+// Executes all window_pending offers and swaps — called when the transfer window opens.
+export async function flushWindowPendingOffers(supabase, {
+  logActivity = NOOP,
+  notifyTeamOwner = NOOP,
+  notifyTransferCompleted = NOOP,
+  notifySwapCompleted = NOOP,
+}) {
+  const [pendingTransfers, pendingSwaps] = await Promise.all([
+    supabase
+      .from("transfer_offers")
+      .select("id, rider_id, seller_team_id, buyer_team_id, offer_amount, counter_amount")
+      .eq("status", "window_pending"),
+    supabase
+      .from("swap_offers")
+      .select("id, offered_rider_id, requested_rider_id, proposing_team_id, receiving_team_id, cash_adjustment, counter_cash")
+      .eq("status", "window_pending"),
   ]);
 
-  const issue = getSwapExecutionIssue({
-    swap: confirmedSwap,
-    offered,
-    requested,
-    proposingState,
-    receivingState,
-    cash,
-  });
-
-  if (issue) {
-    const message = describeSwapIssue(issue, {
-      swap: confirmedSwap,
-      offered,
-      requested,
+  let transfersProcessed = 0;
+  for (const offer of (pendingTransfers.data || [])) {
+    const result = await executeTransferOffer(supabase, offer, {
+      logActivity,
+      notifyTeamOwner,
+      notifyDiscordHistory: notifyTransferCompleted,
     });
-    await withdrawSwapOffer(supabase, swap.id);
-    await notifyTeamOwner(
-      otherTeamId,
-      "transfer_offer_rejected",
-      message.notificationTitle,
-      message.notificationMessage,
-      swap.id
-    );
-    return failure(400, message.error, issue.code);
+    if (result.ok) transfersProcessed++;
   }
 
-  const movedOffered = await expectMaybeSingle(
-    supabase
-      .from("riders")
-      .update({ team_id: confirmedSwap.receiving_team_id })
-      .eq("id", offered.id)
-      .eq("team_id", confirmedSwap.proposing_team_id)
-      .select("id")
-  );
-
-  if (!movedOffered) {
-    await withdrawSwapOffer(supabase, swap.id);
-    await notifyTeamOwner(
-      otherTeamId,
-      "transfer_offer_rejected",
-      "Byttehandel annulleret",
-      `${offered.firstname} ${offered.lastname} ændrede status under bekræftelsen.`,
-      swap.id
-    );
-    return failure(
-      409,
-      "Den tilbudte rytter ændrede status under bekræftelsen — byttehandlen er annulleret",
-      "stale_offered_rider_state"
-    );
+  let swapsProcessed = 0;
+  for (const swap of (pendingSwaps.data || [])) {
+    const result = await executeSwapOffer(supabase, swap, {
+      notifyTeamOwner,
+      notifyDiscordHistory: notifySwapCompleted,
+    });
+    if (result.ok) swapsProcessed++;
   }
 
-  const movedRequested = await expectMaybeSingle(
-    supabase
-      .from("riders")
-      .update({ team_id: confirmedSwap.proposing_team_id })
-      .eq("id", requested.id)
-      .eq("team_id", confirmedSwap.receiving_team_id)
-      .select("id")
-  );
-
-  if (!movedRequested) {
-    await expectMutation(
-      supabase
-        .from("riders")
-        .update({ team_id: confirmedSwap.proposing_team_id })
-        .eq("id", offered.id)
-    );
-    await withdrawSwapOffer(supabase, swap.id);
-    await notifyTeamOwner(
-      otherTeamId,
-      "transfer_offer_rejected",
-      "Byttehandel annulleret",
-      `${requested.firstname} ${requested.lastname} ændrede status under bekræftelsen.`,
-      swap.id
-    );
-    return failure(
-      409,
-      "Den ønskede rytter ændrede status under bekræftelsen — byttehandlen er annulleret",
-      "stale_requested_rider_state"
-    );
-  }
-
-  if (cash > 0) {
-    await expectMutation(
-      supabase
-        .from("teams")
-        .update({ balance: proposingState.balance - cash })
-        .eq("id", confirmedSwap.proposing_team_id)
-    );
-    await expectMutation(
-      supabase
-        .from("teams")
-        .update({ balance: receivingState.balance + cash })
-        .eq("id", confirmedSwap.receiving_team_id)
-    );
-    await expectMutation(
-      supabase.from("finance_transactions").insert([
-        {
-          team_id: confirmedSwap.proposing_team_id,
-          type: "transfer_out",
-          amount: -cash,
-          description: `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`,
-        },
-        {
-          team_id: confirmedSwap.receiving_team_id,
-          type: "transfer_in",
-          amount: cash,
-          description: `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`,
-        },
-      ])
-    );
-  } else if (cash < 0) {
-    const absCash = Math.abs(cash);
-    await expectMutation(
-      supabase
-        .from("teams")
-        .update({ balance: receivingState.balance - absCash })
-        .eq("id", confirmedSwap.receiving_team_id)
-    );
-    await expectMutation(
-      supabase
-        .from("teams")
-        .update({ balance: proposingState.balance + absCash })
-        .eq("id", confirmedSwap.proposing_team_id)
-    );
-    await expectMutation(
-      supabase.from("finance_transactions").insert([
-        {
-          team_id: confirmedSwap.receiving_team_id,
-          type: "transfer_out",
-          amount: -absCash,
-          description: `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`,
-        },
-        {
-          team_id: confirmedSwap.proposing_team_id,
-          type: "transfer_in",
-          amount: absCash,
-          description: `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`,
-        },
-      ])
-    );
-  }
-
-  await closeTransferListingsForRiders(
-    supabase,
-    [confirmedSwap.offered_rider_id, confirmedSwap.requested_rider_id],
-    "withdrawn"
-  );
-  await withdrawTransferOffersForRiders(supabase, [
-    confirmedSwap.offered_rider_id,
-    confirmedSwap.requested_rider_id,
-  ]);
-  await withdrawSwapOffersForRiders(
-    supabase,
-    [confirmedSwap.offered_rider_id, confirmedSwap.requested_rider_id],
-    confirmedSwap.id
-  );
-  await expectMutation(
-    supabase.from("swap_offers").update({ status: "accepted" }).eq("id", confirmedSwap.id)
-  );
-
-  await notifyTeamOwner(
-    otherTeamId,
-    "transfer_offer_accepted",
-    "Byttehandel gennemført!",
-    `${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} er nu skiftet`,
-    confirmedSwap.id
-  );
-
-  await notifyDiscordHistory({
-    offeredName: `${offered.firstname} ${offered.lastname}`,
-    requestedName: `${requested.firstname} ${requested.lastname}`,
-    proposingName: proposingState.name,
-    receivingName: receivingState.name,
-    cash: cash !== 0 ? cash : null,
-  });
-
-  return success({ action: "accepted" });
+  return { transfersProcessed, swapsProcessed };
 }

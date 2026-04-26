@@ -159,10 +159,25 @@ For each auction WHERE status IN ('active','extended') AND calculated_end < now:
 
 ## 5. Transfervindue
 
+### Grundregler
+
+**Altid muligt** (uanset vinduets tilstand):
+- Oprette og byde på auktioner
+- Oprette transferlister (sætte ryttere til salg)
+- Sende, modtage og forhandle transfertilbud og swaptilbud
+- Oprette og aftale låneaftaler
+
+**Kræver åbent vindue:**
+- Bekræfte/acceptere et transfertilbud (ejerskiftet sker her)
+- Bekræfte/acceptere en byttehandel
+- Flytte en rytter der var "parkeret" fra auktion der sluttede under lukket vindue
+
+### Vinduets livscyklus
+
 ```
-Åbn:  POST /api/admin/transfer-window/open
-  └─ INSERT transfer_windows (status='open')
-  └─ Batch-processer pending_team_id → team_id for alle ventende ryttere
+Åbn:  POST /api/admin/transfer-window/open  (med season_id)
+  ├─ INSERT transfer_windows (status='open')
+  └─ Batch-processer alle pending_team_id → team_id  ← simultant ved åbning
 
 Tjek: GET /api/transfer-window
   └─ { open: boolean, status: 'open'|'closed' }
@@ -171,7 +186,32 @@ Luk:  POST /api/admin/transfer-window/close
   └─ UPDATE transfer_windows SET status='closed'
 ```
 
-**Direkte tilbud kræver åbent vindue.** Auktioner kører uafhængigt men sætter `pending_team_id` ved lukket vindue.
+### Parkerings-mekanik (pending_team_id)
+
+Auktioner der slutter mens vinduet er lukket, "parkerer" vinderen:
+rytter → `pending_team_id = vinder` (ejer ændres IKKE endnu)
+
+Ved næste vinduets åbning → alle parkerede ryttere flyttes simultant til `team_id`.
+
+| Hændelse | Vindue lukket | Vindue åbent |
+|---|---|---|
+| Auktion slutter med vinder | `pending_team_id = vinder` | `team_id = vinder` direkte |
+| Transfer begge sider bekræfter | `status = window_pending` (parkeret) | `team_id` skifter øjeblikkeligt |
+| Swap begge sider bekræfter | `status = window_pending` (parkeret) | Begge `team_id` skifter øjeblikkeligt |
+
+**Parkeret = låst:** Når en transfer eller swap parkeres, trækkes alle andre aktive tilbud på de involverede ryttere øjeblikkeligt tilbage. Handlen venter til vinduet åbner og kan stadig annulleres af begge parter.
+
+### Anbefalet admin-sekvens
+
+```
+1. POST /api/admin/seasons/:id/end        ← sæson afsluttes
+2. POST /api/admin/transfer-window/open   ← vindue åbnes + parkerede ryttere skifter hold
+   [fri handel — managers handler og bekræfter direkte]
+3. POST /api/admin/transfer-window/close  ← vindue lukkes
+4. POST /api/admin/seasons/:id/start      ← ny sæson starter
+```
+
+NB: Koblingen er manuel — systemet åbner/lukker ikke vinduet automatisk ved sæsonhændelser.
 
 ---
 

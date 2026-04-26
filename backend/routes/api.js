@@ -70,6 +70,7 @@ import {
 import {
   confirmSwapOffer,
   confirmTransferOffer,
+  flushWindowPendingOffers,
 } from "../lib/transferExecution.js";
 import {
   getIncomingSquadViolation,
@@ -761,11 +762,6 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
 router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
   const { action, counter_amount, message } = req.body;
 
-  if (["accept", "accept_counter", "confirm"].includes(action)) {
-    const { open } = await getTransferWindowStatus();
-    if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Handlen kan ikke accepteres eller bekræftes i denne periode." });
-  }
-
   const { data: offer } = await supabase
     .from("transfer_offers")
     .select(`*, rider:rider_id(id, firstname, lastname, team_id, uci_points)`)
@@ -885,8 +881,8 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
     });
   }
 
-  // CANCEL — either party cancels an awaiting_confirmation deal
-  if (action === "cancel" && offer.status === "awaiting_confirmation") {
+  // CANCEL — either party cancels an awaiting_confirmation or window_pending deal
+  if (action === "cancel" && (offer.status === "awaiting_confirmation" || offer.status === "window_pending")) {
     await supabase.from("transfer_offers").update({ status: "withdrawn" }).eq("id", offer.id);
     const otherTeamId = isSeller ? offer.buyer_team_id : offer.seller_team_id;
     await notifyTeamOwner(otherTeamId, "transfer_offer_rejected",
@@ -1043,11 +1039,6 @@ router.post("/transfers/swaps", requireAuth, async (req, res) => {
 router.patch("/transfers/swaps/:id", requireAuth, async (req, res) => {
   const { action, counter_cash, message } = req.body;
 
-  if (["accept", "accept_counter", "confirm"].includes(action)) {
-    const { open } = await getTransferWindowStatus();
-    if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Byttehandlen kan ikke accepteres eller bekræftes i denne periode." });
-  }
-
   const { data: swap } = await supabase
     .from("swap_offers")
     .select(`*, offered:offered_rider_id(id, firstname, lastname, team_id),
@@ -1141,8 +1132,8 @@ router.patch("/transfers/swaps/:id", requireAuth, async (req, res) => {
     return res.json({ success: true, action: result.action });
   }
 
-  // CANCEL — either party cancels awaiting_confirmation
-  if (action === "cancel" && swap.status === "awaiting_confirmation") {
+  // CANCEL — either party cancels awaiting_confirmation or window_pending
+  if (action === "cancel" && (swap.status === "awaiting_confirmation" || swap.status === "window_pending")) {
     await supabase.from("swap_offers").update({ status: "withdrawn" }).eq("id", swap.id);
     const otherTeamId = isProposing ? swap.receiving_team_id : swap.proposing_team_id;
     await notifyTeamOwner(otherTeamId, "transfer_offer_rejected",
@@ -1891,7 +1882,7 @@ router.post("/admin/transfer-window/open", requireAdmin, async (req, res) => {
       .insert({ season_id, status: "open" });
     if (insertErr) return res.status(500).json({ error: insertErr.message });
 
-    // Process pending riders — move pending_team_id → team_id
+    // Flush auction winners (pending_team_id → team_id)
     const { data: pendingRiders } = await supabase.from("riders")
       .select("id, pending_team_id")
       .not("pending_team_id", "is", null);
@@ -1904,7 +1895,15 @@ router.post("/admin/transfer-window/open", requireAdmin, async (req, res) => {
       ridersProcessed = pendingRiders.length;
     }
 
-    res.json({ success: true, riders_processed: ridersProcessed });
+    // Flush window_pending direct transfers and swaps
+    const { transfersProcessed, swapsProcessed } = await flushWindowPendingOffers(supabase, {
+      logActivity,
+      notifyTeamOwner,
+      notifyTransferCompleted,
+      notifySwapCompleted,
+    });
+
+    res.json({ success: true, riders_processed: ridersProcessed, transfers_processed: transfersProcessed, swaps_processed: swapsProcessed });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -2813,11 +2812,11 @@ router.post("/admin/beta/cancel-market", requireAdmin, async (req, res) => {
         .select("id"),
       supabase.from("transfer_offers")
         .update({ status: "rejected" })
-        .in("status", ["pending", "accepted", "countered", "awaiting_confirmation"])
+        .in("status", ["pending", "accepted", "countered", "awaiting_confirmation", "window_pending"])
         .select("id"),
       supabase.from("swap_offers")
         .update({ status: "rejected" })
-        .in("status", ["pending", "countered", "awaiting_confirmation"])
+        .in("status", ["pending", "countered", "awaiting_confirmation", "window_pending"])
         .select("id"),
       supabase.from("loan_agreements")
         .update({ status: "cancelled" })
@@ -2935,8 +2934,8 @@ router.post("/admin/beta/full-reset", requireAdmin, async (req, res) => {
     const [auctions, listings, offers, swaps, loans] = await Promise.all([
       supabase.from("auctions").update({ status: "cancelled" }).in("status", ["active", "extended"]).select("id"),
       supabase.from("transfer_listings").update({ status: "withdrawn" }).in("status", ["open", "negotiating"]).select("id"),
-      supabase.from("transfer_offers").update({ status: "rejected" }).in("status", ["pending", "accepted", "countered", "awaiting_confirmation"]).select("id"),
-      supabase.from("swap_offers").update({ status: "rejected" }).in("status", ["pending", "countered", "awaiting_confirmation"]).select("id"),
+      supabase.from("transfer_offers").update({ status: "rejected" }).in("status", ["pending", "accepted", "countered", "awaiting_confirmation", "window_pending"]).select("id"),
+      supabase.from("swap_offers").update({ status: "rejected" }).in("status", ["pending", "countered", "awaiting_confirmation", "window_pending"]).select("id"),
       supabase.from("loan_agreements").update({ status: "cancelled" }).in("status", ["pending", "active"]).select("id"),
     ]);
     for (const q of [auctions, listings, offers, swaps, loans]) {
