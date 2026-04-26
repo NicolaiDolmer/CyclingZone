@@ -18,8 +18,15 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Slice 5 — Resultater og rytterrangliste ✅
 - Slice 6 — Løbshistorik og løbsarkiv ✅
 - Slice 7 — Integrationer og Discord ✅
+- Slice 8 — window_pending parking (direkte transfers og swaps) ✅
 - Slice 10 — Navigation-omstrukturering + UX-fixes ✅
+- Slice 11 — Google Sheets-import af løbsresultater ✅
 - Slice 11b — Quick wins (docs-audit, patch notes, HelpPage) ✅
+- Slice 12 — Discord + evne-filter bugs ✅
+- Slice 12b — Online status + Notifikations-badge ✅
+- Slice 13 — FM-style indbakke ✅
+- Slice B — Beta-testværktøjer ✅
+- Slice 14 Del B — Historisk tracking (rider_uci_history + rider_stat_history) ✅ (2026-04-26)
 
 ### Slice 8 — Bug-rydning og quick wins
 - Mål: Ryd P1-bugs og hurtige wins inden en ny tung feature-slice påbegyndes.
@@ -80,10 +87,19 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
   1. Online status + sidst-set på ManagerProfilePage og managerlister
   2. Ulæste-tæller badge i topbar (øverste højre hjørne)
 
-### Slice 13 — FM-style indbakke
-- Mål: Football Manager-inspireret indbakke med stærke filtre.
-- Afhænger af: Slice 10 + Slice 11 afsluttet.
-- Centrale leverancer: samle aktiviteter, notifikationer og systemhændelser ét sted; filtre for typer og status
+### Slice 14 — UCI-punkt + stats-udvikling over tid
+- Mål: Historisk tracking og visualisering af UCI-points og rytterstats pr. rytter.
+- Afhænger af: Del B ✅ færdig.
+- Centrale leverancer:
+  - Del A ✅ UCI scraper (scripts/uci_scraper.py + GitHub Actions cron, ugentlig) — afventer bekræftet testkørsel
+  - Del B ✅ DB-tabeller rider_uci_history + rider_stat_history; sheetsSync + dynCyclistSync logger historik
+  - Del C — Frontend: tabel + linjegraf på rytterprofil (fanen "Udvikling") — bygges efter Del A er stabil
+- Arkitektur: procyclingstats → Google Sheets (ID: 1dE6v2zdmflzToGUHf3pA5mEk5Kn7YI2Wq8WsXbUX0Ic) → Supabase direkte via REST
+- Kører: hver mandag 06:00 UTC, manuelt via GitHub Actions → "Run workflow"
+
+### Næste planlagte slices
+- Slice 15 — Løbsoprettelse i admin + resultater-import via Google Sheets (udskudt til 2026-04-28)
+- Slice 16 — Discord/webhook P1-bug + transferhistorik til Discord-tråd (udskudt til 2026-04-28)
 
 ### Låste defaults for roadmapen
 - `Liga` beholdes som navn indtil videre.

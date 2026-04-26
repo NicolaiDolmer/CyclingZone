@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "1.58",
+    date: "2026-04-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "Integrationer",
+        items: [
+          "UCI-point synkroniseres nu automatisk hver mandag fra den officielle UCI-rangliste (top 3000 ryttere)",
+          "Historisk log af UCI-points og rytterstats gemmes ved hver synkronisering — danner grundlag for 'udvikling over tid'-visning på rytterprofilen (kommer i næste version)",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.55",
     date: "2026-04-26",
     label: "Beta",

@@ -96,7 +96,9 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Discord & Integrationer
 - Discord webhooks: admin kan tilføje webhooks med navn, URL og type (general / transfer_history)
 - Gennemførte transfers og byttehandler sendes til `transfer_history` webhook
-- dyn_cyclist sync: PCM-stats (14 stat-felter + højde, vægt, popularitet) fra Google Sheets (match på pcm_id)
+- dyn_cyclist sync: PCM-stats (14 stat-felter + højde, vægt, popularitet) fra Google Sheets (match på pcm_id) — logger nu stats-historik i `rider_stat_history` ved hver sync
+- UCI-points sync fra Google Sheets — logger nu historik i `rider_uci_history` ved hver sync
+- UCI scraper: GitHub Actions cron (hver mandag 06:00 UTC) henter top 3000 ryttere fra ProCyclingStats, skriver til Google Sheets og synkroniserer direkte til Supabase
 
 ---
 
@@ -111,6 +113,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 - [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
 - [ ] Første live beta-verifikation af `season start -> result approval -> season end`
+- [ ] Slice 14 Del A — UCI scraper testkørsel bekræftes (GitHub Actions workflow i gang)
 
 ---
 

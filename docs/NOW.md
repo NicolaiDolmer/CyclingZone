@@ -10,9 +10,9 @@
 - `Slice 12 — Discord + evne-filter bugs` ✅ FÆRDIG (2026-04-26)
 - `Slice 8 — window_pending parking for direkte transfers og swaps` ✅ FÆRDIG (2026-04-26)
 - `Rytterhistorik — ejerskab og handelshistorik` ✅ FÆRDIG (2026-04-26)
-- `Slice 14 — Historisk tracking (Del B)` ✅ FÆRDIG (2026-04-26) — rider_uci_history + rider_stat_history tabeller; sheetsSync + dynCyclistSync logger nu historik ved hver sync
-- **Næste: Slice 14 Del A — UCI scraper (GitHub Actions + procyclingstats → Google Sheets)**
-- **Blocker Del A:** Google Service Account til Sheets API (bruger opretter — gratis, ~10 min)
+- `Slice 14 Del B — Historisk tracking` ✅ FÆRDIG (2026-04-26) — rider_uci_history + rider_stat_history tabeller; sheetsSync + dynCyclistSync logger historik ved hver sync
+- `Slice 14 Del A — UCI scraper` 🔄 I GANG — script + GitHub Actions workflow bygget; afventer bekræftelse af vellykket testkørsel
+- **Næste: Slice 14 Del C — Frontend-visualisering (tabel + graf på rytterprofil)**
 
 ## Udskudt / holdt ude
 - PCM mappings — afventer ekstern data
