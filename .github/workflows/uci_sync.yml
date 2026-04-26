@@ -29,7 +29,11 @@ jobs:
           GOOGLE_SHEET_ID: ${{ secrets.UCI_GOOGLE_SHEET_ID }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python scripts/uci_scraper.py
+        run: |
+          export SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
+          export SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
+          export GOOGLE_SHEET_ID=$(printf '%s' "$GOOGLE_SHEET_ID" | tr -d '[:space:]')
+          python scripts/uci_scraper.py
 
       - name: Upload log on failure
         if: failure()
