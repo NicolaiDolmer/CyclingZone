@@ -137,14 +137,23 @@ export async function syncUCIPoints(csvUrl, adminUserId) {
       }
     }
 
-    // Batch update
+    // Batch update + historiklog
+    const syncedAt = new Date().toISOString();
+    const historyRows = [];
     const BATCH = 100;
     for (let i = 0; i < updates.length; i += BATCH) {
       const batch = updates.slice(i, i + BATCH);
       for (const u of batch) {
         await supabase.from("riders")
-          .update({ uci_points: u.uci_points, updated_at: new Date().toISOString() })
+          .update({ uci_points: u.uci_points, updated_at: syncedAt })
           .eq("id", u.id);
+        historyRows.push({ rider_id: u.id, uci_points: u.uci_points, synced_at: syncedAt });
+      }
+    }
+
+    if (historyRows.length > 0) {
+      for (let i = 0; i < historyRows.length; i += BATCH) {
+        await supabase.from("rider_uci_history").insert(historyRows.slice(i, i + BATCH));
       }
     }
 
@@ -167,6 +176,7 @@ export async function syncUCIPoints(csvUrl, adminUserId) {
       updated: updates.length,
       unchanged,
       not_found: notFound,
+      history_logged: historyRows.length,
       duration_seconds: parseFloat(duration),
     };
 

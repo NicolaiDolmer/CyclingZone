@@ -109,11 +109,29 @@ export async function syncDynCyclist(spreadsheetUrl, adminUserId) {
     }
   }
 
-  // Batch update: 100 riders per round
+  // Batch update + historiklog
+  const syncedAt = new Date().toISOString();
+  const STAT_FIELDS = [
+    "stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
+    "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod",
+    "stat_res","stat_ftr","height","weight","popularity",
+  ];
+  const historyRows = [];
   const BATCH = 100;
   for (let i = 0; i < updates.length; i += BATCH) {
     for (const { id, ...fields } of updates.slice(i, i + BATCH)) {
       await supabase.from("riders").update(fields).eq("id", id);
+      const historyRow = { rider_id: id, synced_at: syncedAt };
+      for (const f of STAT_FIELDS) {
+        if (fields[f] !== undefined) historyRow[f] = fields[f];
+      }
+      historyRows.push(historyRow);
+    }
+  }
+
+  if (historyRows.length > 0) {
+    for (let i = 0; i < historyRows.length; i += BATCH) {
+      await supabase.from("rider_stat_history").insert(historyRows.slice(i, i + BATCH));
     }
   }
 
