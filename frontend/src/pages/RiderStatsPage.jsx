@@ -111,7 +111,7 @@ function DirectOfferButton({ rider }) {
   );
 }
 
-function AuctionButton({ rider, isMyRider, onStart }) {
+function AuctionButton({ rider, isMyRider, auctionLabel, onStart }) {
   const riderValue      = Math.max((rider.uci_points || 1) * 4000, 1);
   const [guaranteed, setGuaranteed] = useState(false);
   const [price, setPrice]           = useState(riderValue);
@@ -124,7 +124,7 @@ function AuctionButton({ rider, isMyRider, onStart }) {
   return (
     <div>
       <p className="text-slate-400 text-xs uppercase tracking-widest mb-2">
-        {isMyRider ? "Sæt til auktion" : "Start auktion (fri rytter)"}
+        {auctionLabel}
       </p>
       {isMyRider && (
         <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
@@ -258,7 +258,7 @@ export default function RiderStatsPage() {
 
   async function loadRider() {
     const [riderRes, resultsRes, auctionRes] = await Promise.all([
-      supabase.from("riders").select(`*, team:team_id(id, name)`).eq("id", id).single(),
+      supabase.from("riders").select(`*, team:team_id(id, name, is_ai, is_bank)`).eq("id", id).single(),
       supabase.from("race_results")
         .select(`*, race:race_id(name, race_type, start_date)`)
         .eq("rider_id", id).order("imported_at", { ascending: false }).limit(20),
@@ -305,7 +305,17 @@ export default function RiderStatsPage() {
   const bestStat = STATS.map(s => ({ ...s, val: rider[s.key] || 0 })).sort((a, b) => b.val - a.val)[0];
   const isMyRider  = rider.team_id === myTeamId;
   const isFreeAgent = !rider.team_id;
-  const canAuction  = isFreeAgent || isMyRider;
+  const isBankRider = Boolean(rider.team?.is_bank);
+  const isAiRider = Boolean(rider.team?.is_ai);
+  const canAuction  = isFreeAgent || isMyRider || isBankRider || isAiRider;
+  const canDirectOffer = rider.team_id && rider.team_id !== myTeamId && !isBankRider && !isAiRider;
+  const auctionLabel = isMyRider
+    ? "Sæt til auktion"
+    : isBankRider
+      ? "Start auktion (bankrytter)"
+      : isAiRider
+        ? "Start auktion (AI-rytter)"
+        : "Start auktion (fri rytter)";
   const age = rider.birthdate
     ? Math.floor((Date.now() - new Date(rider.birthdate)) / (365.25 * 24 * 3600 * 1000))
     : null;
@@ -376,11 +386,11 @@ export default function RiderStatsPage() {
           </div>
         )}
         <div className="mt-5 pt-5 border-t border-slate-200 flex flex-col gap-3">
-          {canAuction && !activeAuction && <AuctionButton rider={rider} isMyRider={isMyRider} onStart={startAuction} />}
+          {canAuction && !activeAuction && <AuctionButton rider={rider} isMyRider={isMyRider} auctionLabel={auctionLabel} onStart={startAuction} />}
           {activeAuction && canAuction && (
             <p className="text-slate-400 text-xs text-center py-1">Rytteren er allerede i en aktiv auktion</p>
           )}
-          {rider.team_id && rider.team_id !== myTeamId && <DirectOfferButton rider={rider} />}
+          {canDirectOffer && <DirectOfferButton rider={rider} />}
         </div>
       </div>
 

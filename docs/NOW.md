@@ -16,6 +16,12 @@
 - Fund: live DB har sæson 6 som aktiv, men `races`, `race_results` og `season_standings` er tomme for alle sæsoner; seneste `import_log` for `race_results_sheets` behandlede 709 rækker, men skrev 0 fordi alle løb blev skipped/unmatched.
 - Fund lukket: season-end preview trak aktive lånerenter fra kontant `balance_after`, mens runtime `processLoanInterest` lægger renter på lånets restgæld. Preview viser stadig renter, men nød-lånsbehov følger nu runtime-kontantbalancen efter løn.
 - `Slice UI-M1 — Mobile beta-critical flows` ✅ FÆRDIG (2026-04-28). Rytterliste, rytterside-market actions, auktioner, transfers, indbakke og admin beta quick actions er mobiltilpasset, så primære handlinger ikke kræver horisontal scroll. Frontend build passerer.
+- Frontend code-splitting ✅ FÆRDIG (2026-04-28). `frontend/src/App.jsx` lazy-loader sider på route-niveau med `React.lazy`/`Suspense`; `npm run build` i frontend passerer uden Vite large chunk warning.
+- Status cleanup: `Evne-filter/slider investigation` er lukket som forældet backlogpunkt. Done proof: `frontend/src/components/RiderFilters.jsx` har to separate min/max-slidere pr. evne; `frontend/src/lib/useRiderFilters.js` anvender stat-min/max i både client-filter og Supabase-query; Patch Notes v1.51 dokumenterer rettelsen.
+- Discord/webhook transferhistorik ✅ LUKKET (2026-04-28). Live DB har både `general` standard-webhook og `transfer_history` webhook konfigureret; Admin-testknapperne virker på begge; bruger har runtime-bekræftet at Transferhistorik-funktionen virker for en rigtig transfer completion.
+- `Slice R1 — Review hardening efter Claude-session` ✅ LUKKET (2026-04-28) efter runtime-audit og sidste UI-fix for bank/AI-auktioner på rytterprofilen.
+- Done proof: profilrouting blev auditeret mod `teams.user_id`; `transferExecution` låser accepterede/window_pending handler mod manager-cancel og holder listings i `negotiating` indtil flush; `auctionRules` håndhæver 10%/1.000 CZ$ minimumsbud, balance-reservation og squad-reservation; `auctionFinalization` håndterer AI/bank/fri rytter uden falsk seller-flow; `Layout.pathMatchesNavItem` er segment-aware; `RiderStatsPage` viser nu auktion for bank/AI/fri ryttere; rytterens `Udvikling`-tab er implementeret med `rider_uci_history`/`rider_stat_history`; 24 målrettede backend-tests og frontend build passerer.
+- UI quick fix lukket: Min Profil er igen tilgængelig som indstillingsside på `/profile`, sidebar linker til Profil & Indstillinger, og egen managerprofil linker til redigering af manager- og holdnavn.
 
 ## Næste konkrete handling
 1. Fyld/opret live `races` for aktiv sæson eller kør en kontrolleret smoke-sæson med test-races, før admin xlsx/sheets-resultatimport kan verificeres end-to-end.
@@ -43,4 +49,4 @@ python scripts\uci_scraper.py
 - En afsluttet slice må ikke blive stående som aktiv/næste handling; tjek runtime/test/patch notes før samme opgave startes igen.
 
 ## Næste slice efter live season verification
-- Review hardening: race-result path, `/profile` redirect, window_pending, auction invariants og sidebar active-state.
+- Øvrig beta-readiness og post-beta feature candidates.

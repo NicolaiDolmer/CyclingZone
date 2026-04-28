@@ -13,11 +13,12 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Login-streak tracking
 - Manager XP + niveauer (level = floor(xp/100)+1, max 50)
 - Manager-profil med historik
-- Hold- og managernavn via kanonisk backend-path `PUT /api/teams/my`
+- `/profile` viser Min Profil med konto-, Discord- og holdindstillinger
+- Hold- og managernavn kan ændres fra Min Profil via kanonisk backend-path `PUT /api/teams/my`
 
 ### Hold & Ryttere
 - Holdoversigt og holdprofil-sider
-- Rytterbibliotek med søgning + filtre (nation, UCI, U25, ledig, osv.) + løn-kolonne og lønfilter (v1.47)
+- Rytterbibliotek med søgning + filtre (nation, UCI, U25, ledig, evne-min/max, osv.) + løn-kolonne og lønfilter (v1.47)
 - Rytterdetalje-side (stats, historik, watchlist-tæller, ryttertype-badge, ⚡-badge ved aktiv auktion)
 - Rytter-sammenligning (side-by-side)
 - Watchlist + notifikation når ønskeliste-rytter sættes til salg eller auktion (v1.35)
@@ -28,7 +29,10 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Bud-placering med auto-forlængelse (10 min ved bud nær slut)
 - Garanteret salg (startpris = 50% af UCI-pris) — kun egne ryttere; exploit lukket (v1.46)
 - Minimum startpris håndhævet (backend + frontend): startbud ≥ rytterens Værdi; garanteret salg er eneste undtagelse
+- Minimum overbud håndhæves som 10% over nuværende pris, afrundet op til nærmeste 1.000 CZ$
+- Aktive auktionsføringer reserverer både disponibel balance og squad-plads ved nye bud
 - Auktionsfinalisering via cron (60s) — delt path for cron/admin/API, korrekt ejer-check og squad-limit
+- Bank/AI/fri rytter-auktioner kan startes fra rytterprofilen og finaliseres uden falsk seller-flow
 - Auktionshistorik-side
 - Discord-notifikationer (auktioner, overbud, transfers, sæsonevents)
 
@@ -37,6 +41,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Tilbud → accepter / afvis / modtilbud
 - Swap-forslag med kontantjustering + modtilbud
 - Delt backend confirm-path (ejerskab, saldo, squad-limit + oprydning ved gennemførelse)
+- Parkerede `window_pending` transfers/swaps kan ikke manager-annulleres efter begge parter har accepteret
+- Bank/AI-ryttere skjules fra direkte tilbud på rytterprofilen; bankryttere blokeres også server-side fra direkte transfer/bytte
 - Tilbagetræk tilbud (withdraw, inkl. modtilbud)
 - Notifikationer til sælger ved nyt tilbud
 
@@ -92,14 +98,18 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ### UI / Misc
 - Responsivt layout med navigation (Layout.jsx)
+- Segment-aware sidebar active-state: `/team` matcher ikke `/teams`
+- Sidebar linker til Profil & Indstillinger, og egen managerprofil linker til redigering af manager- og holdnavn
 - Mobile beta-critical flows: rytterliste, rytterside-market actions, auktioner/bud, transfers, indbakke og admin beta quick actions er optimeret til smalle skærme uden primær horisontal scroll
+- Frontend route-level code-splitting: sider lazy-loades via `React.lazy`/`Suspense`, så initial bundle er reduceret og Vite-build kører uden large chunk warning
+- Rytterprofilens `Udvikling`-tab viser UCI-point og stats over tid fra `rider_uci_history`/`rider_stat_history`
 - Notifikationssystem (in-app + badge, deduplicering ved cron/retries)
 - Achievement-sync fra live historiktabeller (bid, transfer, watchlist, hold, board)
 - Aktivitets-feed · Head-to-head sammenligning · Hall of Fame · Patch notes · Hjælpeside · Confetti modal
 
 ### Discord & Integrationer
 - Discord webhooks: admin kan tilføje webhooks med navn, URL og type (general / transfer_history)
-- Gennemførte transfers og byttehandler sendes til `transfer_history` webhook
+- Gennemførte transfers og byttehandler sendes til `transfer_history` webhook; runtime-bekræftet med rigtig transfer completion 2026-04-28
 - dyn_cyclist sync: PCM-stats (14 stat-felter + højde, vægt, popularitet) fra Google Sheets (match på pcm_id) — logger nu stats-historik i `rider_stat_history` ved hver sync
 - UCI-points sync fra Google Sheets — logger nu historik i `rider_uci_history` ved hver sync
 - UCI scraper: GitHub Actions cron henter top 3000 fra ProCyclingStats, skriver Google Sheets, synkroniserer Supabase, genberegner rytterlønninger og har safety-gates for coverage og mass minimum downgrade; live data-repair godkendt 2026-04-28
@@ -108,8 +118,6 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 🔴 Broken / Kendte bugs
 
-- Evne-filter/slider kræver frisk live-reproduktion; ingen statisk root cause fundet
-- Discord/webhook-regression kræver frisk live-reproduktion; inkl. transferhistorik til Discord-tråd
 - Live result-import er blokeret af manglende `races` i Supabase; read-only verifikation 2026-04-28 viste 0 races/resultater/standings og seneste sheets-import skrev 0 rækker pga. unmatched løb
 
 ---

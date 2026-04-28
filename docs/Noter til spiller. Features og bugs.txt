@@ -1,0 +1,55 @@
+"Min aktivitet" skal ind under "marked"
+"Talentspejder" skal ind under "Marked" - Omdøbes til "ønskeliste"
+
+Økonomi skal flyttes under overblik
+Finanser skal ind under økonomi
+
+Sæson preview skal ind under liga
+Liga skal omdøbes til noget andet, bed ai om forslag. 
+
+Bestyrelsen skal ind under overblik
+Mit hold skal ind under overblik
+
+Resultater skal oprettes
+Ranglisten skal under resultater
+Sæsonresultater skal under resultater
+Hall of fame skal under resultater
+
+Dashboard skal komme frem, også når man trykker på overblik. 
+
+Aktivitetsfeed skal under overblik
+
+Indbakke funktion skal laves som footbaal manager
+Alle aktiviteter og notifikationer skal samles et sted, med gode filtre, så man nemt kan finde hvad man leder efter. 
+
+Notifikation skal under overblik. 
+
+Min profil skal ligges ind under min manager profil, bare som indstillinger. 
+
+Point skal omdøbes skal værdi under ryttere. 
+Det skal ikke være muligt at byde under en rytters værdi, når man vil starte en auktion. Hvis man vil købe af en anden manager skal det være muligt at byde præcist hvad man vil. 
+
+Skal være muligt at se antal beskeder i indbakken / notifikationer i toppen af højre øverste hjørne af siden. 
+
+Der skal også laves en rytter rangliste, hvor man kan se ryttere individuelt. Der skal laves en liste på point, etapesejr, samlede sejre (klassementer). Antal sejre i alt. Point klassement, ungdomsklassement, bjergklassement. 
+Både ryttere ejet af managers og ai skal være på denne liste. 
+
+Der skal tjekkes hvorfor webhooken ikke virker længere. 
+
+Head to head sammenligningen skal automatisk forslå dit eget hold, som det ene hold. Må gerne kunne ændres. 
+
+Jeg skal huske at sende google sheet eksempel på resultater. 
+
+Vi skal bygge google sheet integration til dyn_cyclist arket. 
+
+Hver gang en transfer gennemføres og kommer ind i transferhistorik funktionen skal den også komme ind i en transferhistoriktråd inde i vores discord via webhook. 
+
+Det skal være muligt at finde en liste over alle tilgængelige løb inde på siden. Hvor man også kan se resultater fra alle tidligere udgaver af løbet. f.eks tour de france, skal det være muligt at trykke på tour de france. Og se alle resultaterne fra f.eks sæson 1 og hvis det blev kørt igen i sæson 4, skal man kunne finde alle sæsonerne i sæson 4 også. Hvor man så kan se tidligere vindere og hvilke ryttere der har haft bedst resultater i de respektive løb. Hvor man et sted også kan se det akkumuleret for det pågældende løb i en graf. Eksempelvis, så man kan se hvilken rytter der historisk har tjent flest point op i liege bastone liege. 
+
+Gennemsøg om der er nogle funktioner som ikke er dokumenteret i patch notes eller hjælpe/faq funktionerne. Hvis de mangler skal de indføres. 
+
+De hemmelige achievements er slet ikke hemmelige. Man kan se hvad de er før man har oplåst dem. 
+
+Det skal være nemmere at se en managers online status. Og hvornår var han sidst online på siden? Skal være nemt at se på managerens profil og de steder, hvor der er en liste over alle managers, må der gerne stå hvem af dem der er online. 
+
+Gøre det muligt at se på rytterlisten + på en rytters side ,hvis der er en igangværende auktion. 

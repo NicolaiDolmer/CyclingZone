@@ -11,9 +11,7 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 
 ### Aktuel rækkefølge
 1. Live season flow verification med admin xlsx som primær resultater-kilde.
-2. Review hardening: race-result path, `/profile` redirect, window_pending, auction invariants og sidebar active-state.
-3. Discord/webhook og evne-filter investigations med frisk reproduktion.
-4. Øvrig beta-readiness og post-beta feature candidates.
+2. Øvrig beta-readiness og post-beta feature candidates.
 
 ### Slice UCI-R2 — Løn følger værdi efter UCI-sync ✅ FÆRDIG (2026-04-28)
 - Mål: Når UCI-værdier opdateres, skal rytterlønninger genberegnes i samme kontrollerede flow, så værdi og løn ikke driver fra hinanden.
@@ -50,83 +48,52 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Live season-flow quick fix — season-end preview board/sponsor drift ✅ (2026-04-28). Done proof: `backend/lib/economyEngine.js::buildSeasonEndPreviewRows`, `/api/admin/season-end-preview/:seasonId` bruger helperen, og `backend/lib/economyEngine.test.js` dækker projected satisfaction/modifier/sponsor samt løn/renter.
 - Live season-flow quick fix — preview lånerente vs kontantbalance ✅ (2026-04-28). Done proof: `buildSeasonEndPreviewRows` viser lånerente separat, men `balance_after`/nødlånsbehov følger runtime hvor aktive lånerenter lægges på gæld via `processLoanInterest`.
 - Slice UI-M1 — Mobile beta-critical flows ✅ (2026-04-28). Done proof: `frontend/src/pages/AuctionsPage.jsx` har mobilkort for auktioner; `RiderStatsPage.jsx`, `RidersPage.jsx`, `TransfersPage.jsx`, `NotificationsPage.jsx`, `AdminPage.jsx` og `RiderFilters.jsx` har responsive action-/filterlayouts; `npm run build` i frontend passerer.
+- UI quick fix — Min Profil tilbage i UI ✅ (2026-04-28). Done proof: `/profile` viser igen `ProfilePage`, sidebar linker til Profil & Indstillinger, og egen managerprofil linker til redigering af manager- og holdnavn via `PUT /api/teams/my`.
+- Evne-filter/slider investigation status cleanup ✅ (2026-04-28). Done proof: Patch Notes v1.51 dokumenterer rettelsen; `RiderFilters.jsx` viser separate min/max-slidere pr. evne, og `useRiderFilters.js` anvender evne-min/max i Supabase-query og client-filter. Punktet var en forældet backlogrest.
+- Slice R1 — Review hardening efter Claude-session ✅ (2026-04-28). Done proof: `raceResultsSheetSync` delegerer til `applyRaceResults`; profilrouting blev auditeret mod `teams.user_id`; `transferExecution` låser accepterede/window_pending handler og undgår tidlig `sold`; `auctionRules` dækker minimumsbud, balance og squad-reservation; `auctionFinalization` håndterer bank/AI/fri auktioner; `RiderStatsPage` eksponerer bank/AI-auktioner i UI; `Layout.pathMatchesNavItem` er segment-aware; relevante backend-tests passerer.
+- Discord/webhook transferhistorik ✅ (2026-04-28). Done proof: live DB har `general` og `transfer_history` webhooks; Admin-testknapper virker på begge; bruger har runtime-bekræftet at en rigtig transfer completion lander i Transferhistorik.
 
-### Slice 14 — UCI-punkt + stats-udvikling over tid
+### Slice 14 — UCI-punkt + stats-udvikling over tid ✅ FÆRDIG
 - Mål: Historisk tracking og visualisering af UCI-points og rytterstats pr. rytter.
 - Afhænger af: Del B ✅ færdig.
 - Centrale leverancer:
   - Del A ✅ UCI scraper (scripts/uci_scraper.py + GitHub Actions cron, ugentlig) — top-3000 hardening merged, live write/data-repair godkendt 2026-04-28
   - Del B ✅ DB-tabeller rider_uci_history + rider_stat_history; sheetsSync + dynCyclistSync logger historik
-  - Del C — Frontend: ny tab "Udvikling" på rytterprofil — tabel + linjegraf over UCI-points og stats over tid (spec nedenfor)
+  - Del C ✅ Frontend: ny tab "Udvikling" på rytterprofil — tabel + linjegraf over UCI-points og stats over tid
+- Done proof Del C: `frontend/src/pages/RiderStatsPage.jsx` henter `rider_uci_history` og `rider_stat_history`, lazy-loader `frontend/src/components/RiderDevelopmentTab.jsx`, og `frontend/package.json` har `recharts`.
 - Arkitektur: procyclingstats → Google Sheets (ID: 1dE6v2zdmflzToGUHf3pA5mEk5Kn7YI2Wq8WsXbUX0Ic) → Supabase direkte via REST
 - Kører: hver mandag 06:00 UTC, manuelt via GitHub Actions → "Run workflow"
 - GitHub Actions secrets: UCI_GOOGLE_SERVICE_ACCOUNT_JSON, UCI_GOOGLE_SHEET_ID, SUPABASE_URL, SUPABASE_SERVICE_KEY
 
-### Slice R1 — Review hardening efter Claude-session (AKUT)
+### Slice R1 — Review hardening efter Claude-session ✅ FÆRDIG (2026-04-28)
 - Mål: Luk review-fund og markedsregressioner før næste større feature-slice, så runtime-kontrakterne ikke driver.
 - Klassifikation: `direkte implementerbar` for P1/P2-fund; enkelte markedsregler kræver testreproduktion, men ikke produktvalg.
 - Manager-værdi: færre strandede handler, korrekt økonomi efter resultater, og navigation/profil der ikke sender manageren forkert.
-- Berørte runtime-paths: `raceResultsSheetSync`/`raceResultsEngine`, `/profile` redirect, `transferExecution`, auktionsoprettelse/bud/finalisering, Layout route matching.
-- Centrale leverancer (prioriteret):
-  1. P1: Google Sheets-resultatimport skal bruge den kanoniske race-result path (`applyRaceResults`) eller en delt helper, så `race_results`, standings, finance transactions og balances opdateres ens på tværs af importflows.
-  2. P2: `/profile` redirect skal filtrere på aktuel bruger/team og ikke vælge første synlige team-række.
-  3. P2: `window_pending` handler må ikke kunne efterlade listings som `sold`, hvis flush senere fejler; indgåede handler må heller ikke kunne annulleres af manager efter begge parter har accepteret.
-  4. P3: Sidebar active-state skal være segment-aware, så `/team` ikke matcher `/teams`.
-  5. Bank-holdet skal ikke modtage direkte tilbud; bankryttere skal i stedet kunne auktioneres automatisk/efter samme model som ryttere uden noteret hold.
-  6. Auktioner skal reservere/validere truppens ledige pladser, så en manager ikke kan føre flere auktioner end der er plads til på holdet.
-  7. En auktion uden modbud skal stadig kunne gennemføres korrekt for initiator/køber; spillet må ikke behandle initiator som sælger af en bank/AI/fri rytter.
-  8. Bud må ikke kunne placeres, hvis maksimal betalingsforpligtelse overstiger holdets aktuelle disponible balance.
-  9. Auktionsbud skal minimum være 10% over nuværende bud/startpris, afrundet til nærmeste 1.000 CZ$; højere frie bud er stadig tilladt.
-- Regression tests:
-  - Sheets-import smoke: finance rows + standings + race status efter import.
-  - Transfer parking: success, failed flush og manager-withdraw efter accepteret handel.
-  - Auction capacity: aktive føringer/pending wins tæller mod squad max.
-  - Auction initiator-as-winner: bank/AI/fri rytter skifter korrekt uden falsk seller-flow.
-- Done when: backend tests + frontend build passerer, og mindst én regressionstest dækker hver kritisk runtime-invariant.
+- Berørte runtime-paths: `raceResultsSheetSync`/`raceResultsEngine`, profilrouting, `transferExecution`, auktionsoprettelse/bud/finalisering, Layout route matching.
+- Lukkede leverancer:
+  1. P1 Google Sheets-resultatimport bruger kanonisk `applyRaceResults` path.
+  2. P2 profilrouting blev auditeret mod aktuel bruger/team.
+  3. P2 `window_pending` handler låses mod manager-cancel efter begge parter har accepteret og listings markeres ikke som `sold` før faktisk execution.
+  4. P3 Sidebar active-state er segment-aware.
+  5. Bank/AI/fri ryttere kan auktioneres; bank/AI skjules fra direkte tilbud på rytterprofilen.
+  6. Auktioner reserverer/validerer squad capacity via aktive føringer.
+  7. Initiator-as-winner på bank/AI/fri rytter gennemføres uden falsk seller-flow.
+  8. Bud blokeres hvis maksimal betalingsforpligtelse overstiger disponibel balance.
+  9. Auktionsbud kræver 10% over nuværende pris/startpris, rundet op til nærmeste 1.000 CZ$.
+- Regression: `node --test backend/lib/auctionRules.test.js backend/lib/auctionFinalization.test.js backend/lib/transferExecution.test.js` passerer 24/24.
+- Frontend verification: `npm run build` i `frontend` passerer; `RiderStatsPage` runtime-audit bekræfter bank/AI-auktions-UI.
 
-#### Slice 14 Del C — Præcis implementeringsspec
+#### Slice 14 Del C — Done proof
 
-**Fil der ændres:** `frontend/src/pages/RiderStatsPage.jsx`
-
-**Nyt npm-pakke der skal installeres:** `recharts` (ingen chart-bibliotek i projektet endnu)
-```
-cd frontend && npm install recharts
-```
-
-**Ny tab tilføjes til tab-rækken:**
-```jsx
-{ key: "udvikling", label: "Udvikling" }
-```
-Placeres efter `{ key: "history", label: "Historik" }`.
-
-**Data der hentes (tilføj til loadRider eller separat useEffect):**
-```js
-// UCI-point historik
-supabase.from("rider_uci_history")
-  .select("uci_points, synced_at")
-  .eq("rider_id", id)
-  .order("synced_at", { ascending: true })
-  .limit(104)  // maks 2 år
-
-// Stats-historik
-supabase.from("rider_stat_history")
-  .select("synced_at, stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl, stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod, stat_res, stat_ftr")
-  .eq("rider_id", id)
-  .order("synced_at", { ascending: true })
-  .limit(52)
-```
-
-**Tab-indhold "Udvikling":**
-1. Sektion "UCI-point over tid": Recharts `LineChart` med `synced_at` på X-aksen (formateret som dato), `uci_points` på Y. Farve: amber (#e8c547). Tooltip viser præcis dato + points.
-2. Sektion "Stats-udvikling": Dropdown/select til at vælge stat (de 14 fra STATS-arrayet øverst i filen). LineChart viser valgt stat over tid. Farve: blue-400.
-3. Hvis ingen data: vis "Ingen historik endnu — data akkumuleres fra næste ugentlige sync".
-
-**Styling:** Matcher eksisterende `bg-white border border-slate-200 rounded-xl p-5`-pattern fra de andre tabs.
+- `frontend/src/pages/RiderStatsPage.jsx` har tabben `{ key: "development", label: "Udvikling" }` efter Historik.
+- `loadDevelopmentHistory()` henter `rider_uci_history` med `uci_points, synced_at` og `rider_stat_history` med de 14 stat-felter.
+- `frontend/src/components/RiderDevelopmentTab.jsx` viser Recharts-linjegrafer for UCI-point og valgt stat samt en tabel med seneste datapunkter.
+- `frontend/package.json` har `recharts` som dependency.
 
 ### Senere produktspor
 - Slice U1 — UI/mobil/dark-mode forbedringsspor
 - Slice 15 — Løbsoprettelse i admin + resultater-import via Google Sheets
-- Slice 16 — Discord/webhook P1-bug + transferhistorik til Discord-tråd
+- Slice 16 — Discord/webhook P1-bug + transferhistorik til Discord-tråd ✅ lukket 2026-04-28
 
 ### Låste defaults for roadmapen
 - `Liga` beholdes som navn indtil videre.
@@ -163,12 +130,12 @@ supabase.from("rider_stat_history")
 - ~~P2: Season-end preview kunne trække aktive lånerenter fra kontantbalance, selvom runtime lægger lånerenten på lånets restgæld~~ ✅ løst 2026-04-28
 - ~~P1: Google Sheets-resultatimport bypasser den kanoniske `applyRaceResults` path og kan skabe drift mellem `race_results`, standings, finance transactions og balances~~ ✅ løst; `raceResultsSheetSync` delegerer til `applyRaceResults` og backend-test dækker flowet
 - P1: Live result-import kan ikke verificeres end-to-end før `races` er fyldt i live DB; read-only verifikation 2026-04-28 viste 0 races/resultater/standings og `import_log` med 709 rows processed men 0 inserted/updated på grund af unmatched løb.
-- P1: Discord/webhook-regression skal reproduceres og spores gennem nuværende notifier-paths og live webhook-konfiguration; samme spor bør også afklare hvordan transferhistorik kan spejles til en dedikeret Discord-tråd via webhook
-- P2: `/profile` redirect kan vælge forkert team, fordi query ikke filtrerer på aktuel bruger
-- P2: `window_pending` handler kan efterlade transfer listings som `sold`, hvis flush fejler senere
-- P2: Indgåede handler må ikke kunne annulleres efter begge parter har accepteret, heller ikke hvis transfervinduet er lukket
-- P2: Evne-filter/slider kræver frisk reproduktion på rigtige data; nuværende kodegennemgang fandt ingen entydig root cause
-- P3: Sidebar active-state matcher `/team` på `/teams`
+- ~~P1: Discord/webhook-regression skulle reproduceres via en ægte gennemført transfer/byttehandel og spores gennem completion-pathen til Discord~~ ✅ lukket; Admin-testknapper virker på begge webhooks, og bruger har runtime-bekræftet at en rigtig transfer completion sendes til Transferhistorik
+- ~~P2: `/profile` redirect kan vælge forkert team, fordi query ikke filtrerer på aktuel bruger~~ ✅ løst; `/profile` er igen Min Profil, og offentlig managerprofil tilgås via `/managers/:teamId`
+- ~~P2: `window_pending` handler kan efterlade transfer listings som `sold`, hvis flush fejler senere~~ ✅ løst; parkerede handler holder listing i `negotiating`, og `sold` sættes først i execution
+- ~~P2: Indgåede handler må ikke kunne annulleres efter begge parter har accepteret, heller ikke hvis transfervinduet er lukket~~ ✅ løst; transfer/swap cancel-guards dækket af test
+- ~~P2: Evne-filter/slider krævede frisk reproduktion på rigtige data~~ ✅ lukket som forældet statusrest; runtime-koden har separate min/max-slidere og anvender stat-min/max på rigtige query-felter
+- ~~P3: Sidebar active-state matcher `/team` på `/teams`~~ ✅ løst; `pathMatchesNavItem` kræver eksakt match eller slash-segment
 
 ---
 
@@ -206,12 +173,12 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 - ~~Vis tidspunkt for hvornår en rytter blev sat til transfer~~ ✅ (v1.35)
 - ~~Vis ryttertype på ryttersiden~~ ✅ (v1.35)
 - ~~Vis landenavn/flag i stedet for rå landekoder på øvrige rytterflader~~ ✅ (v1.39)
-- Bank-holdet skal ikke modtage direkte transfer-tilbud; bankryttere skal i stedet kunne sendes på auktion som bank/AI/fri ryttere
-- Auktioner skal tælle aktive føringer/potentielle wins mod squad max, så man ikke kan føre flere auktioner end der er plads til
-- Auktioner uden modbud skal gennemføres korrekt for initiator, også når rytteren kommer fra bank/AI/fri pulje
-- Bud skal blokeres, hvis holdet ikke har råd til buddet
-- Minimum overbud i auktioner skal være 10% over nuværende pris/startpris, afrundet til nærmeste 1.000 CZ$
-- Indgåede direkte transfers og swaps skal låses mod manager-annullering efter gensidig accept, inkl. mens de er parkeret til næste transfervindue
+- ~~Bank-holdet skal ikke modtage direkte transfer-tilbud; bankryttere skal i stedet kunne sendes på auktion som bank/AI/fri ryttere~~ ✅ (2026-04-28)
+- ~~Auktioner skal tælle aktive føringer/potentielle wins mod squad max, så man ikke kan føre flere auktioner end der er plads til~~ ✅ (2026-04-28)
+- ~~Auktioner uden modbud skal gennemføres korrekt for initiator, også når rytteren kommer fra bank/AI/fri pulje~~ ✅ (2026-04-28)
+- ~~Bud skal blokeres, hvis holdet ikke har råd til buddet~~ ✅ (2026-04-28)
+- ~~Minimum overbud i auktioner skal være 10% over nuværende pris/startpris, afrundet til nærmeste 1.000 CZ$~~ ✅ (2026-04-28)
+- ~~Indgåede direkte transfers og swaps skal låses mod manager-annullering efter gensidig accept, inkl. mens de er parkeret til næste transfervindue~~ ✅ (2026-04-28)
 - ~~Ryttersiden må ikke kræve horisontal scroll for at kunne byde/købe; primære markedsactions skal være tilgængelige på mobil og smalle skærme~~ ✅ (2026-04-28)
 
 ---
@@ -222,8 +189,8 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 - ~~Individuel rytterrangliste (etapesejre, GC, point, bjerg, ungdom, inkl. AI-ryttere)~~ ✅ (v1.36) — _Slice 11 forbedrer med Google Sheets-data_
 - ~~Gør alle løb browsebare med historik pr. løb~~ ✅ (v1.37)
 - ~~Akkumuleret historikvisning/graf pr. løb~~ ✅ (v1.37) — _Slice 11 forbedrer med Google Sheets-data_
-- UCI-point udvikling over tid
-- Stats-udvikling over tid
+- ~~UCI-point udvikling over tid~~ ✅ (v1.61)
+- ~~Stats-udvikling over tid~~ ✅ (v1.61)
 - Oprykningsindikator under ranglisten
 - ~~Rytterhistorik skal vise AI-salg med pris~~ ✅ (v1.54)
 - ~~Rytterhistorik skal vise alle transfers~~ ✅ (v1.54)
@@ -266,10 +233,10 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 
 - Beslut om dark mode skal være permanent ny standard eller bruger-toggle; kræver lille IA/design-afklaring før implementering
 - ~~Mobiloptimering af centrale flows: rytterliste, rytterside, bud/auktion, indbakke, admin quick actions~~ ✅ (2026-04-28)
-- Siden til ændring af managernavn og holdnavn skal findes og bringes tilbage i UI, sandsynligvis som link fra managerprofil eller Overblik
+- ~~Siden til ændring af managernavn og holdnavn skal findes og bringes tilbage i UI, sandsynligvis som link fra managerprofil eller Overblik~~ ✅ (2026-04-28)
 - Rytteroversigt: ret UI-fejl med streger mellem evnerne
 - ~~Rytterside: fjern behov for horisontal scroll og gør bud/markedshandlinger tydeligt placeret på mobil~~ ✅ (2026-04-28)
-- Frontend-build advarer om stor Vite chunk; planlæg code-splitting med `React.lazy`/route-level dynamic imports før appen vokser yderligere
+- ~~Frontend-build advarer om stor Vite chunk; planlæg code-splitting med `React.lazy`/route-level dynamic imports før appen vokser yderligere~~ ✅ (2026-04-28)
 
 ---
 

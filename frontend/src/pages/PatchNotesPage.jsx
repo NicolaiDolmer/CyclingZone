@@ -2,6 +2,47 @@
 
 const PATCHES = [
   {
+    version: "1.66",
+    date: "2026-04-28",
+    label: "Beta",
+    changes: [
+      {
+        category: "Teknik",
+        items: [
+          "Frontend-routes lazy-loades nu per side, så appens første JavaScript-bundle er mindre og Vite-build ikke længere advarer om en stor initial chunk",
+          "Sideindlæsning bruger en fælles loading-state, så navigationen stadig føles stabil mens en tung side hentes første gang",
+        ],
+      },
+    ],
+  },
+  {
+    version: "1.65",
+    date: "2026-04-28",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auktioner",
+        items: [
+          "Rytterprofilen viser nu Start auktion for bank- og AI-ryttere, så den eksisterende bank/AI-auktionsmodel kan bruges direkte fra UI",
+          "Direkte transfertilbud skjules nu for bank- og AI-ryttere på rytterprofilen, så manageren bliver ledt til auktion i stedet for en blokeret tilbudsvej",
+        ],
+      },
+      {
+        category: "Status",
+        items: [
+          "Roadmap og feature-status er ryddet op, så lukkede review-hardening punkter ikke længere står som næste implementeringsarbejde",
+        ],
+      },
+      {
+        category: "Profil",
+        items: [
+          "Min Profil er tilbage som indstillingsside, så managere igen kan ændre holdnavn og managernavn via den kanoniske backend-route",
+          "Egen managerprofil har nu en direkte genvej til redigering af manager- og holdnavn",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.64",
     date: "2026-04-28",
     label: "Beta",

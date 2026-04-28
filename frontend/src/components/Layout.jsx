@@ -20,6 +20,7 @@ function buildNavGroups(team) {
         { to: "/finance",        label: "Finanser" },
         { to: "/notifications",  label: "Indbakke", badge: true },
         ...(team?.id ? [{ to: `/managers/${team.id}`, label: "Min Managerprofil" }] : []),
+        { to: "/profile",        label: "Profil & Indstillinger" },
       ],
     },
     {

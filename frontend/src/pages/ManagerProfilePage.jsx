@@ -124,6 +124,13 @@ export default function ManagerProfilePage() {
               {" · "}Division {team.division}
             </p>
             <OnlineBadge isOnline={user.is_online} lastSeen={user.last_seen} />
+            {isOwnProfile && (
+              <Link
+                to="/profile"
+                className="inline-flex mt-3 text-xs font-medium text-amber-700 hover:text-amber-800">
+                Rediger manager- og holdnavn
+              </Link>
+            )}
           </div>
           <div className="flex gap-3 ml-4">
             <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-center">
