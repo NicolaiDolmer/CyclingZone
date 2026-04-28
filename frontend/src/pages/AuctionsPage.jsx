@@ -200,6 +200,116 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
   );
 }
 
+function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
+  const minBid = (auction.current_price || 1) + (auction.min_increment || 1);
+  const [bidAmount, setBidAmount] = useState(minBid);
+  const [bidStatus, setBidStatus] = useState(null);
+
+  const r = auction.rider;
+  const isMyRider = r?.team_id === myTeamId;
+  const isSeller = auction.seller_team_id === myTeamId;
+  const imWinning = auction.current_bidder_id === myTeamId;
+  const canBid = !isMyRider && auction.status !== "completed";
+  const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
+
+  useEffect(() => {
+    setBidAmount(minBid);
+  }, [minBid]);
+
+  async function handleBid() {
+    if (bidAmount > myBalance) {
+      setBidStatus("error");
+      setTimeout(() => setBidStatus(null), 3000);
+      return;
+    }
+    setBidStatus("loading");
+    const ok = await onBid(auction.id, bidAmount);
+    setBidStatus(ok ? "success" : "error");
+    setTimeout(() => setBidStatus(null), ok ? 2500 : 3000);
+  }
+
+  return (
+    <div className={`bg-white border rounded-xl p-4 transition-all ${imWinning ? "border-amber-300 bg-amber-50/40" : "border-slate-200"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <button
+            onClick={() => onNavigate(r?.id)}
+            className="text-left text-slate-900 font-semibold text-sm hover:text-amber-700 transition-colors">
+            {r?.nationality_code && <span className="mr-1">{getFlagEmoji(r.nationality_code)}</span>}
+            {r?.firstname} {r?.lastname}
+          </button>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            {imWinning && <span className="text-[9px] uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Vinder</span>}
+            {isSeller && <span className="text-[9px] uppercase bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">Sælger</span>}
+            {auction.status === "extended" && <span className="text-[9px] uppercase bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded">Ext</span>}
+            {r?.is_u25 && <span className="text-[9px] uppercase bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">U25</span>}
+            {age && <span className="text-slate-400 text-xs">{age} år</span>}
+          </div>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-slate-400 text-[10px] uppercase tracking-wider">Tid</p>
+          <Countdown end={auction.calculated_end} status={auction.status} />
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="bg-slate-50 rounded-lg px-3 py-2">
+          <p className="text-slate-400 text-[10px] uppercase tracking-wider">Værdi</p>
+          <p className="text-amber-700 font-mono font-bold text-sm">
+            {r?.uci_points ? (r.uci_points * 4000).toLocaleString("da-DK") : "—"} CZ$
+          </p>
+        </div>
+        <div className="bg-slate-50 rounded-lg px-3 py-2">
+          <p className="text-slate-400 text-[10px] uppercase tracking-wider">Højeste bud</p>
+          <p className="text-slate-900 font-mono font-bold text-sm">
+            {auction.current_price?.toLocaleString("da-DK")} CZ$
+          </p>
+          {auction.current_bidder && !imWinning && (
+            <p className="text-slate-400 text-[10px] truncate">{auction.current_bidder.name}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-5 gap-1.5">
+        {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"], ["UDH", "stat_udh"]].map(([label, key]) => (
+          <div key={key} className="text-center">
+            <p className="text-slate-300 text-[9px] uppercase mb-0.5">{label}</p>
+            <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(r?.[key] || 0)}`}>
+              {r?.[key] || "—"}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4">
+        {canBid ? (
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <input
+              type="number"
+              value={bidAmount}
+              min={minBid}
+              onChange={e => setBidAmount(parseInt(e.target.value) || minBid)}
+              className="min-w-0 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none focus:border-amber-400"
+            />
+            <button
+              onClick={handleBid}
+              disabled={bidStatus === "loading" || bidAmount < minBid}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
+                ${bidStatus === "error" ? "bg-red-100 text-red-700 border border-red-500/30" :
+                  bidStatus === "success" ? "bg-green-100 text-green-700 border border-green-500/30" :
+                  imWinning ? "bg-amber-50 text-amber-700 border border-amber-300" : "bg-[#e8c547] text-[#0a0a0f]"}
+                disabled:opacity-50`}>
+              {bidStatus === "loading" ? "..." : bidStatus === "error" ? "Fejl" : bidStatus === "success" ? "✓" : imWinning ? "Hæv" : "Byd"}
+            </button>
+          </div>
+        ) : (
+          <p className="text-slate-300 text-xs text-center py-1">{isSeller ? "Du sælger" : "—"}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AuctionsPage() {
   const navigate = useNavigate();
@@ -385,7 +495,29 @@ export default function AuctionsPage() {
           <p className="text-sm mt-2">Gå til Ryttere og start en auktion</p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <>
+        <div className="md:hidden flex flex-col gap-3">
+          {[...filtered].sort((a, b) => {
+            if (!auctionSort.key) return 0;
+            const av = auctionSort.key === "calculated_end"
+              ? new Date(a.calculated_end).getTime()
+              : (a.current_price || 0);
+            const bv = auctionSort.key === "calculated_end"
+              ? new Date(b.calculated_end).getTime()
+              : (b.current_price || 0);
+            return auctionSort.dir === "desc" ? bv - av : av - bv;
+          }).map(a => (
+            <AuctionCard
+              key={a.id}
+              auction={a}
+              myTeamId={myTeamId}
+              myBalance={myBalance}
+              onBid={handleBid}
+              onNavigate={riderId => navigate(`/riders/${riderId}`)}
+            />
+          ))}
+        </div>
+        <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -440,6 +572,7 @@ export default function AuctionsPage() {
             </table>
           </div>
         </div>
+        </>
       )}
     </div>
   );

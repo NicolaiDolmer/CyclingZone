@@ -131,7 +131,7 @@ function ManualOverride({ onMsg, onRefresh, teams }) {
 // ── Section wrapper ───────────────────────────────────────────────────────────
 function Section({ title, children }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4">
+    <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 mb-4">
       <h2 className="text-slate-900 font-semibold text-sm mb-4 flex items-center gap-2">
         <span className="w-1 h-4 bg-red-400 rounded-full" />{title}
       </h2>
@@ -1323,65 +1323,65 @@ export default function AdminPage() {
           />
           Ryd finance-transaktioner for manager-hold ved balance/full reset
         </label>
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap gap-2 mb-4">
           <button
             onClick={() => handleBeta("cancel-market", "Annuller ALLE åbne auktioner, transfers, swaps og låneaftaler?\n\nHandlingen kan ikke fortrydes.")}
             disabled={loading["beta_cancel-market"]}
-            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
             {loading["beta_cancel-market"] ? "..." : "Annuller marked"}
           </button>
           <button
             onClick={() => handleBeta("reset-rosters", "Returner ALLE manager-ejede ryttere til deres AI-hold?\n\nHandlingen kan ikke fortrydes.")}
             disabled={loading["beta_reset-rosters"]}
-            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
             {loading["beta_reset-rosters"] ? "..." : "Nulstil trupper"}
           </button>
           <button
             onClick={() => handleBeta("reset-balances", `Sæt balance = 800.000 CZ$ på alle manager-holds?${betaClearTransactions ? "\n\nFinance-transaktioner for manager-hold ryddes også." : ""}\n\nHandlingen kan ikke fortrydes.`, { clear_transactions: betaClearTransactions })}
             disabled={loading["beta_reset-balances"]}
-            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
             {loading["beta_reset-balances"] ? "..." : "Nulstil balancer"}
           </button>
           <button
             onClick={() => handleBeta("reset-divisions", "Sæt ALLE aktive managerhold tilbage til 3. division?\n\nHandlingen kan ikke fortrydes.")}
             disabled={loading["beta_reset-divisions"]}
-            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
             {loading["beta_reset-divisions"] ? "..." : "Nulstil divisioner"}
           </button>
           <button
             onClick={() => handleBeta("reset-board", "Nulstil bestyrelsesprofiler, snapshots og board requests til baseline?\n\nHandlingen kan ikke fortrydes.")}
             disabled={loading["beta_reset-board"]}
-            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
             {loading["beta_reset-board"] ? "..." : "Nulstil bestyrelse"}
           </button>
           <button
             onClick={() => handleBeta("reset-calendar", "Ryd løbskalender, pending resultater, race results og standings?\n\nHandlingen kan ikke fortrydes.")}
             disabled={loading["beta_reset-calendar"]}
-            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
             {loading["beta_reset-calendar"] ? "..." : "Nulstil løbskalender"}
           </button>
           <button
             onClick={() => handleBeta("reset-seasons", "Ryd ALLE sæsoner?\n\nKør typisk løbskalender-reset først. Handlingen kan ikke fortrydes.")}
             disabled={loading["beta_reset-seasons"]}
-            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
             {loading["beta_reset-seasons"] ? "..." : "Nulstil sæsoner"}
           </button>
           <button
             onClick={() => handleBeta("reset-manager-progress", "Nulstil manager XP og level til baseline?\n\nHandlingen kan ikke fortrydes.")}
             disabled={loading["beta_reset-manager-progress"]}
-            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
             {loading["beta_reset-manager-progress"] ? "..." : "Nulstil XP/level"}
           </button>
           <button
             onClick={() => handleBeta("reset-achievements", "Ryd alle manager achievement unlocks?\n\nAchievement-definitioner bevares. Handlingen kan ikke fortrydes.")}
             disabled={loading["beta_reset-achievements"]}
-            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
             {loading["beta_reset-achievements"] ? "..." : "Nulstil achievements"}
           </button>
           <button
             onClick={() => handleBeta("full-reset", `FULD TEST-NULSTILLING:\n• Alle åbne markedsaktiviteter annulleres\n• Alle manager-ryttere returneres til AI-hold\n• Alle balancer sættes til 800.000 CZ$\n• Managerhold sættes i 3. division\n• Board-profiler resettes til baseline\n• Løbskalender, resultater, standings og sæsoner ryddes\n• XP/level og achievement unlocks nulstilles${betaClearTransactions ? "\n• Finance-transaktioner for manager-hold ryddes" : ""}\n\nDette er en test-reset, ikke et live-reset. Handlingen kan ikke fortrydes. Fortsæt?`, { clear_transactions: betaClearTransactions, reset_mode: "test" })}
             disabled={loading["beta_full-reset"]}
-            className="px-3 py-2 text-xs bg-red-50 text-red-700 border border-red-300 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-all font-semibold">
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-red-50 text-red-700 border border-red-300 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-all font-semibold">
             {loading["beta_full-reset"] ? "..." : "Fuld nulstilling"}
           </button>
         </div>

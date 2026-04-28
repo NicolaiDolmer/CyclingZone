@@ -55,8 +55,8 @@ function ReceivedOfferCard({ offer, onAction }) {
   return (
     <div className={`bg-white border rounded-xl p-5 transition-all
       ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isPending ? "border-amber-200" : "border-slate-200 opacity-70"}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+        <div className="min-w-0">
           <p className="text-slate-900 font-semibold">
             {offer.rider?.nationality_code && <span className="mr-1">{getFlagEmoji(offer.rider.nationality_code)}</span>}{offer.rider?.firstname} {offer.rider?.lastname}
           </p>
@@ -67,7 +67,7 @@ function ReceivedOfferCard({ offer, onAction }) {
         </span>
       </div>
 
-      <div className="bg-slate-50 rounded-lg px-4 py-3 mb-3 flex items-center justify-between">
+      <div className="bg-slate-50 rounded-lg px-4 py-3 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <p className="text-slate-400 text-xs uppercase tracking-wider mb-0.5">
             {offer.status === "countered" ? "Dit modbud" : "Tilbud"}
@@ -76,7 +76,7 @@ function ReceivedOfferCard({ offer, onAction }) {
             {(offer.status === "countered" ? offer.counter_amount : offer.offer_amount)?.toLocaleString("da-DK")} CZ$
           </p>
         </div>
-        <div className="text-right">
+        <div className="sm:text-right">
           <p className="text-slate-400 text-xs">UCI-pris</p>
           <p className="text-slate-500 font-mono text-sm">{(offer.rider?.uci_points * 4000)?.toLocaleString("da-DK")} CZ$</p>
         </div>
@@ -90,7 +90,7 @@ function ReceivedOfferCard({ offer, onAction }) {
 
       {isPending && (
         <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
               className="flex-1 py-2 bg-green-50 text-green-700 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 transition-all disabled:opacity-50">
               ✓ Accepter
@@ -111,13 +111,13 @@ function ReceivedOfferCard({ offer, onAction }) {
           {mode === "counter" && (
             <div className="bg-slate-50 rounded-lg p-3 flex flex-col gap-2">
               <label className="text-slate-400 text-xs uppercase tracking-wider">Dit modbud (CZ$)</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input type="number" value={counterAmt}
                   onChange={e => setCounterAmt(parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-amber-400" />
+                  className="min-w-0 flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-amber-400" />
                 <button onClick={() => doAction("counter", { counter_amount: counterAmt, message: msg })}
                   disabled={loading || counterAmt <= 0}
-                  className="px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50">
+                  className="w-full sm:w-auto px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50">
                   Send
                 </button>
               </div>
@@ -194,8 +194,8 @@ function SentOfferCard({ offer, onAction }) {
   return (
     <div className={`bg-white border rounded-xl p-5 transition-all
       ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isCountered ? "border-orange-200" : isActive ? "border-slate-300" : "border-slate-200 opacity-60"}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+        <div className="min-w-0">
           <p className="text-slate-900 font-semibold">
             {offer.rider?.nationality_code && <span className="mr-1">{getFlagEmoji(offer.rider.nationality_code)}</span>}{offer.rider?.firstname} {offer.rider?.lastname}
           </p>
@@ -207,13 +207,13 @@ function SentOfferCard({ offer, onAction }) {
       </div>
 
       <div className="bg-slate-50 rounded-lg px-4 py-3 mb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <p className="text-slate-400 text-xs uppercase tracking-wider mb-0.5">Dit bud</p>
             <p className="text-slate-900 font-mono font-bold text-lg">{offer.offer_amount?.toLocaleString("da-DK")} CZ$</p>
           </div>
           {isCountered && offer.counter_amount && (
-            <div className="text-right">
+            <div className="sm:text-right">
               <p className="text-slate-400 text-xs uppercase tracking-wider mb-0.5">Modbud</p>
               <p className="text-orange-700 font-mono font-bold text-lg">{offer.counter_amount?.toLocaleString("da-DK")} CZ$</p>
             </div>
@@ -229,7 +229,7 @@ function SentOfferCard({ offer, onAction }) {
 
       {isCountered && (
         <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
               className="flex-1 py-2 bg-green-50 text-green-700 border border-green-500/25 rounded-lg text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
               ✓ Accepter ({offer.counter_amount?.toLocaleString("da-DK")} CZ$)
@@ -250,13 +250,13 @@ function SentOfferCard({ offer, onAction }) {
           {mode === "new_offer" && (
             <div className="bg-slate-50 rounded-lg p-3 flex flex-col gap-2">
               <label className="text-slate-400 text-xs uppercase tracking-wider">Nyt tilbud (CZ$)</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input type="number" value={newAmt}
                   onChange={e => setNewAmt(parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-amber-400" />
+                  className="min-w-0 flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-amber-400" />
                 <button onClick={() => doAction("new_offer", { counter_amount: newAmt, message: msg })}
                   disabled={loading || newAmt <= 0}
-                  className="px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50">
+                  className="w-full sm:w-auto px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50">
                   Send
                 </button>
               </div>
@@ -1095,12 +1095,12 @@ export default function TransfersPage() {
         icon={celebration?.icon || "🎉"}
       />
 
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Transfers</h1>
           <p className="text-slate-400 text-sm">Forhandle direkte med andre managers</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-lg px-4 py-2">
+        <div className="bg-white border border-slate-200 rounded-lg px-4 py-2 sm:text-right">
           <p className="text-slate-400 text-[10px] uppercase tracking-wider">Balance</p>
           <p className="text-amber-700 font-mono font-bold text-sm">{myBalance?.toLocaleString("da-DK")} CZ$</p>
         </div>

@@ -62,7 +62,7 @@ function RiderCard({ rider, onClick, watchlist, onToggleWatchlist, isInAuction }
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300
       cursor-pointer transition-all active:scale-98">
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between gap-3 mb-3">
         <div onClick={() => onClick(rider)} className="flex-1 min-w-0">
           <p className="text-slate-900 font-medium text-sm truncate">
             {rider.nationality_code && <span className="mr-1">{getFlagEmoji(rider.nationality_code)}</span>}
@@ -78,8 +78,8 @@ function RiderCard({ rider, onClick, watchlist, onToggleWatchlist, isInAuction }
             <span className="text-slate-400 text-xs">{rider.team?.name || "Fri"}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 ml-2">
-          <span className="text-amber-700 font-mono font-bold text-sm whitespace-nowrap">
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <span className="text-amber-700 font-mono font-bold text-xs whitespace-nowrap">
             {(rider.uci_points * 4000)?.toLocaleString("da-DK")} CZ$
           </span>
           <StarButton riderId={rider.id} watchlist={watchlist} onToggle={onToggleWatchlist} />
@@ -216,13 +216,13 @@ export default function RidersPage() {
 
   return (
     <div className="max-w-full">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Rytterdatabase</h1>
           <p className="text-slate-400 text-sm">{total.toLocaleString("da-DK")} ryttere</p>
         </div>
         <Link to="/watchlist"
-          className="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200
+          className="w-full sm:w-auto text-center px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200
             rounded-lg text-xs font-medium hover:bg-amber-50 transition-all">
           ⭐ Min ønskeliste ({watchlist.size})
         </Link>
@@ -278,11 +278,11 @@ export default function RidersPage() {
       )}
 
       {/* Pagination */}
-      <div className="flex items-center justify-between mt-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
         <span className="text-slate-400 text-xs">
           Viser {Math.min((filters.page - 1) * 50 + 1, total)}–{Math.min(filters.page * 50, total)} af {total.toLocaleString("da-DK")}
         </span>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
           <button disabled={filters.page <= 1}
             onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}
             className="px-3 py-1.5 bg-slate-100 rounded text-slate-500 text-xs

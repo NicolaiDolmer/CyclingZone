@@ -15,6 +15,7 @@
 - Live read-only Supabase-verifikation er kørt med credentials fra `backend/.env` uden at ekko secrets.
 - Fund: live DB har sæson 6 som aktiv, men `races`, `race_results` og `season_standings` er tomme for alle sæsoner; seneste `import_log` for `race_results_sheets` behandlede 709 rækker, men skrev 0 fordi alle løb blev skipped/unmatched.
 - Fund lukket: season-end preview trak aktive lånerenter fra kontant `balance_after`, mens runtime `processLoanInterest` lægger renter på lånets restgæld. Preview viser stadig renter, men nød-lånsbehov følger nu runtime-kontantbalancen efter løn.
+- `Slice UI-M1 — Mobile beta-critical flows` ✅ FÆRDIG (2026-04-28). Rytterliste, rytterside-market actions, auktioner, transfers, indbakke og admin beta quick actions er mobiltilpasset, så primære handlinger ikke kræver horisontal scroll. Frontend build passerer.
 
 ## Næste konkrete handling
 1. Fyld/opret live `races` for aktiv sæson eller kør en kontrolleret smoke-sæson med test-races, før admin xlsx/sheets-resultatimport kan verificeres end-to-end.

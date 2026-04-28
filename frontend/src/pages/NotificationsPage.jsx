@@ -173,7 +173,7 @@ export default function NotificationsPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Indbakke</h1>
           <p className="text-slate-400 text-sm">
@@ -183,7 +183,7 @@ export default function NotificationsPage() {
           </p>
         </div>
         {tab === "mine" && (
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 sm:flex gap-2 w-full sm:w-auto">
             {unreadCount > 0 && (
               <button onClick={markAllRead} disabled={markingAll}
                 className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-900
@@ -205,7 +205,7 @@ export default function NotificationsPage() {
       </div>
 
       {/* Primary tabs */}
-      <div className="flex border-b border-slate-200 mb-4">
+      <div className="flex border-b border-slate-200 mb-4 overflow-x-auto">
         {[
           { key: "mine",   label: "Mine",   badge: unreadCount },
           { key: "ligaen", label: "Ligaen" },
@@ -262,7 +262,7 @@ export default function NotificationsPage() {
                 const config = TYPE_CONFIG[n.type] || { icon: "●", color: "text-slate-500", bg: "bg-slate-50 border-slate-200" };
                 return (
                   <div key={n.id}
-                    className={`flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
+                    className={`flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition-all cursor-pointer
                       ${n.is_read
                         ? "bg-white border-slate-200 opacity-60 hover:opacity-80"
                         : config.bg}`}
@@ -281,7 +281,7 @@ export default function NotificationsPage() {
                       <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">{n.message}</p>
                       <p className="text-slate-300 text-xs mt-1.5">{timeAgo(n.created_at)}</p>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
                       {!n.is_read && (
                         <span className="w-2 h-2 rounded-full bg-[#e8c547] flex-shrink-0" />
                       )}
@@ -333,7 +333,7 @@ export default function NotificationsPage() {
                 const cfg = EVENT_CONFIG[event.type] || { icon: "●", color: "text-slate-500", label: () => event.type };
                 return (
                   <div key={event.id}
-                    className={`flex items-start gap-3 px-4 py-3.5 rounded-xl border transition-all
+                    className={`flex items-start gap-3 px-3 sm:px-4 py-3.5 rounded-xl border transition-all
                       ${i === 0 ? "bg-white border-slate-300" : "bg-white border-slate-200 hover:border-slate-300"}`}>
                     <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 text-sm">
                       {cfg.icon}
@@ -360,7 +360,7 @@ export default function NotificationsPage() {
                         <p className="text-slate-400 text-xs mt-0.5">{event.team_name}</p>
                       )}
                     </div>
-                    <span className="text-slate-300 text-xs flex-shrink-0 mt-0.5">{timeAgo(event.created_at)}</span>
+                    <span className="text-slate-300 text-xs flex-shrink-0 mt-0.5 whitespace-nowrap">{timeAgo(event.created_at)}</span>
                   </div>
                 );
               })}

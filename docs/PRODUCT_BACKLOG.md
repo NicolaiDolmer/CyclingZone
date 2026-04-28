@@ -13,8 +13,7 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 1. Live season flow verification med admin xlsx som primær resultater-kilde.
 2. Review hardening: race-result path, `/profile` redirect, window_pending, auction invariants og sidebar active-state.
 3. Discord/webhook og evne-filter investigations med frisk reproduktion.
-4. Mobile beta-critical flows: rytterliste, rytterside, bud/auktion, indbakke og admin quick actions.
-5. Øvrig beta-readiness og post-beta feature candidates.
+4. Øvrig beta-readiness og post-beta feature candidates.
 
 ### Slice UCI-R2 — Løn følger værdi efter UCI-sync ✅ FÆRDIG (2026-04-28)
 - Mål: Når UCI-værdier opdateres, skal rytterlønninger genberegnes i samme kontrollerede flow, så værdi og løn ikke driver fra hinanden.
@@ -50,6 +49,7 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Slice UCI-R2 — Løn følger værdi efter UCI-sync ✅ (2026-04-28). Done proof: `.github/workflows/uci_sync.yml` + `backend/scripts/recalculateRiderSalaries.js` + `backend/lib/economyEngine.test.js`
 - Live season-flow quick fix — season-end preview board/sponsor drift ✅ (2026-04-28). Done proof: `backend/lib/economyEngine.js::buildSeasonEndPreviewRows`, `/api/admin/season-end-preview/:seasonId` bruger helperen, og `backend/lib/economyEngine.test.js` dækker projected satisfaction/modifier/sponsor samt løn/renter.
 - Live season-flow quick fix — preview lånerente vs kontantbalance ✅ (2026-04-28). Done proof: `buildSeasonEndPreviewRows` viser lånerente separat, men `balance_after`/nødlånsbehov følger runtime hvor aktive lånerenter lægges på gæld via `processLoanInterest`.
+- Slice UI-M1 — Mobile beta-critical flows ✅ (2026-04-28). Done proof: `frontend/src/pages/AuctionsPage.jsx` har mobilkort for auktioner; `RiderStatsPage.jsx`, `RidersPage.jsx`, `TransfersPage.jsx`, `NotificationsPage.jsx`, `AdminPage.jsx` og `RiderFilters.jsx` har responsive action-/filterlayouts; `npm run build` i frontend passerer.
 
 ### Slice 14 — UCI-punkt + stats-udvikling over tid
 - Mål: Historisk tracking og visualisering af UCI-points og rytterstats pr. rytter.
@@ -212,7 +212,7 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 - Bud skal blokeres, hvis holdet ikke har råd til buddet
 - Minimum overbud i auktioner skal være 10% over nuværende pris/startpris, afrundet til nærmeste 1.000 CZ$
 - Indgåede direkte transfers og swaps skal låses mod manager-annullering efter gensidig accept, inkl. mens de er parkeret til næste transfervindue
-- Ryttersiden må ikke kræve horisontal scroll for at kunne byde/købe; primære markedsactions skal være tilgængelige på mobil og smalle skærme
+- ~~Ryttersiden må ikke kræve horisontal scroll for at kunne byde/købe; primære markedsactions skal være tilgængelige på mobil og smalle skærme~~ ✅ (2026-04-28)
 
 ---
 
@@ -265,10 +265,10 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 ## 🎨 UI, mobil & tilgængelighed
 
 - Beslut om dark mode skal være permanent ny standard eller bruger-toggle; kræver lille IA/design-afklaring før implementering
-- Mobiloptimering af centrale flows: rytterliste, rytterside, bud/auktion, indbakke, admin quick actions
+- ~~Mobiloptimering af centrale flows: rytterliste, rytterside, bud/auktion, indbakke, admin quick actions~~ ✅ (2026-04-28)
 - Siden til ændring af managernavn og holdnavn skal findes og bringes tilbage i UI, sandsynligvis som link fra managerprofil eller Overblik
 - Rytteroversigt: ret UI-fejl med streger mellem evnerne
-- Rytterside: fjern behov for horisontal scroll og gør bud/markedshandlinger sticky eller tydeligt placeret på mobil
+- ~~Rytterside: fjern behov for horisontal scroll og gør bud/markedshandlinger tydeligt placeret på mobil~~ ✅ (2026-04-28)
 - Frontend-build advarer om stor Vite chunk; planlæg code-splitting med `React.lazy`/route-level dynamic imports før appen vokser yderligere
 
 ---

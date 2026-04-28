@@ -92,6 +92,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ### UI / Misc
 - Responsivt layout med navigation (Layout.jsx)
+- Mobile beta-critical flows: rytterliste, rytterside-market actions, auktioner/bud, transfers, indbakke og admin beta quick actions er optimeret til smalle skærme uden primær horisontal scroll
 - Notifikationssystem (in-app + badge, deduplicering ved cron/retries)
 - Achievement-sync fra live historiktabeller (bid, transfer, watchlist, hold, board)
 - Aktivitets-feed · Head-to-head sammenligning · Hall of Fame · Patch notes · Hjælpeside · Confetti modal

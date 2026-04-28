@@ -129,18 +129,18 @@ export default function RiderFilters({
     <>
       {/* ── Filter panel ── */}
       <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between gap-3 mb-3">
           <p className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Filtrér & Sortér</p>
           {hasActiveFilters && (
-            <button onClick={onReset} className="text-xs text-slate-400 hover:text-slate-900 transition-colors">
+            <button onClick={onReset} className="text-xs text-slate-400 hover:text-slate-900 transition-colors flex-shrink-0">
               Nulstil
             </button>
           )}
         </div>
 
-        <div className={`grid gap-2 ${compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"}`}>
+        <div className={`grid gap-2 ${compact ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"}`}>
           {/* Name */}
-          <div className="col-span-2 sm:col-span-1">
+          <div>
             <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Navn</label>
             <input type="text" value={filters.q} onChange={e => onChange("q", e.target.value)}
               placeholder="Søg rytter..."
@@ -226,10 +226,10 @@ export default function RiderFilters({
           )}
 
           {/* Toggles */}
-          <div className={`flex gap-2 items-end ${compact ? "col-span-2" : ""}`}>
+          <div className={`grid grid-cols-3 gap-2 items-end ${compact ? "sm:col-span-2" : ""}`}>
             {[{ key: "free_agent", label: "Fri agent" }, { key: "u25", label: "U25" }, { key: "u23", label: "U23" }].map(({ key, label }) => (
               <button key={key} onClick={() => onChange(key, !filters[key])}
-                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all border flex-shrink-0
+                className={`px-2 py-2 rounded-lg text-xs font-medium transition-all border
                   ${filters[key]
                     ? "bg-amber-50 text-amber-700 border-amber-300"
                     : "bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-900 hover:border-slate-400"}`}>
@@ -253,7 +253,7 @@ export default function RiderFilters({
           </button>
 
           {statsOpen && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-4 mt-4">
               {STAT_KEYS.map(key => (
                 <DualStatSlider
                   key={key}

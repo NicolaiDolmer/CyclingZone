@@ -136,14 +136,14 @@ function AuctionButton({ rider, isMyRider, onStart }) {
           </span>
         </label>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="number"
           value={guaranteed ? guaranteedPrice : price}
           min={guaranteed ? guaranteedPrice : riderValue}
           disabled={guaranteed}
           onChange={e => !guaranteed && setPrice(parseInt(e.target.value) || riderValue)}
-          className={`flex-1 bg-slate-100 border rounded-lg px-3 py-2 text-slate-900 text-sm font-mono focus:outline-none
+          className={`min-w-0 flex-1 bg-slate-100 border rounded-lg px-3 py-2 text-slate-900 text-sm font-mono focus:outline-none
             ${guaranteed
               ? "opacity-50 cursor-not-allowed border-slate-200"
               : priceError
@@ -153,7 +153,7 @@ function AuctionButton({ rider, isMyRider, onStart }) {
         <button
           onClick={async () => { setLoading(true); await onStart(effectivePrice, guaranteed); setLoading(false); }}
           disabled={loading || (!guaranteed && priceError)}
-          className="px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] transition-all disabled:opacity-50">
+          className="w-full sm:w-auto px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] transition-all disabled:opacity-50">
           {loading ? "..." : "Start auktion"}
         </button>
       </div>
@@ -324,16 +324,16 @@ export default function RiderStatsPage() {
   }, {});
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto min-w-0">
       <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-slate-900 text-sm mb-4 flex items-center gap-1">← Tilbage</button>
 
       <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex-1">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">{rider.firstname} {rider.lastname}</h1>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start gap-3">
+              <h1 className="text-2xl font-bold text-slate-900 break-words">{rider.firstname} {rider.lastname}</h1>
               <button onClick={toggleWatchlist} title={onWatchlist ? "Fjern fra ønskeliste" : "Tilføj til ønskeliste"}
-                className={`text-2xl transition-all hover:scale-110 ${onWatchlist ? "text-amber-700" : "text-slate-300 hover:text-slate-500"}`}>
+                className={`text-2xl flex-shrink-0 transition-all hover:scale-110 ${onWatchlist ? "text-amber-700" : "text-slate-300 hover:text-slate-500"}`}>
                 {onWatchlist ? "★" : "☆"}
               </button>
             </div>
@@ -364,9 +364,9 @@ export default function RiderStatsPage() {
               </div>
             )}
           </div>
-          <div className="text-right">
-            <p className="text-amber-700 font-mono font-bold text-2xl">{(rider.uci_points * 4000)?.toLocaleString("da-DK")}</p>
-            <p className="text-slate-400 text-xs mt-0.5">Værdi</p>
+          <div className="sm:text-right bg-slate-50 sm:bg-transparent rounded-lg sm:rounded-none px-3 py-2 sm:p-0">
+            <p className="text-amber-700 font-mono font-bold text-xl sm:text-2xl break-all">{(rider.uci_points * 4000)?.toLocaleString("da-DK")}</p>
+            <p className="text-slate-400 text-xs mt-0.5">Værdi CZ$</p>
             {bestStat && <p className="text-slate-500 text-xs mt-2">Bedste: <span className="text-amber-700">{bestStat.label} ({rider[bestStat.key]})</span></p>}
           </div>
         </div>
