@@ -9,6 +9,43 @@ _Regel: Kun aktive/top-prioriterede ting spejles til NOW.md. Kun statusændringe
 
 _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-slices. `NOW.md` skal kun pege på aktiv slice, næste slice og aktuelle blockers._
 
+### Slice UCI-R1 — Scraper top 3000 hardening ✅ FÆRDIG (2026-04-28)
+- Mål: Gør UCI scraperen sikker og dækkende for alle PCS-tilgængelige ryttere op til 3000, så workflow-success ikke kan skjule manglende top 101-3000 data.
+- Manager-værdi: Korrekte UCI-point, rytterpriser og historik uden masse-nedskrivning til minimum 5 point.
+- Berørt runtime-path: `scripts/uci_scraper.py` → Google Sheets → Supabase `riders` + `rider_uci_history`.
+- Root cause: PCS pretty URL `rankings/me/uci-individual?offset=100` ignorerede offset og returnerede top 1-100 igen; fungerende route er `rankings.php?p=me&s=uci-individual&offset=...`.
+- Aktuel status: Scraper-hardening er implementeret og merged til `main`. Live workflow_dispatch `25053357290` skrev 3000 rækker til Google Sheets, synkroniserede Supabase og loggede 1000 `rider_uci_history` rækker.
+- Centrale leverancer:
+  1. ✅ Pagination rank-guards: side 1 starter ved 1, side 2 ved 101, side 3 ved 201 osv.
+  2. ✅ Coverage-gate før writes: default top 3000 kræver realistisk dækning og tydelig page/rank/match-rapport.
+  3. ✅ Fail fast ved tom side, rank-gap, dublet-ranks eller gentaget top-100.
+  4. ✅ `--dry-run` skriver hverken Sheets eller Supabase.
+  5. ✅ Ufuldstændige scrapes må aldrig masse-nedskrive ikke-matchede DB-ryttere til 5 UCI-point.
+  6. ✅ Safety-gate stopper production-write, hvis for mange ryttere ville blive nedskrevet til minimum 5 point.
+  7. ✅ Live write med GitHub Actions secrets og godkendt Supabase safety report.
+- Data policy: Fixet er kørt fremad via valideret sync.
+- Done proof: production logs viste `Skriver til Google Sheets...`, `Synkroniserer til Supabase...`, coverage `pages=30`, `total=3000`, `rank_min=1`, `rank_max=3000`, `duplicate_ranks=0`, og safety report `matched=888`, `not_found=112`, `updates=787`, `restored_from_minimum=787`, `minimum_downgrades=0/100`, `complete_ranking=True`.
+
+### Næste rækkefølge efter UCI-R1
+1. Docs truth cleanup: ryd færdige/stale backlog-items ud, flyt historik til arkiv/statusfiler, og fjern `blokeret/udskudt` som aktiv roadmap-status.
+2. Slice UCI-R2 — Løn følger værdi efter UCI-sync.
+3. Live season flow verification med admin xlsx som primær resultater-kilde.
+4. Discord/webhook og evne-filter investigations med frisk reproduktion.
+5. Mobile beta-critical flows: rytterliste, rytterside, bud/auktion, indbakke og admin quick actions.
+6. Øvrig beta-readiness og post-beta feature candidates.
+
+### Slice UCI-R2 — Løn følger værdi efter UCI-sync
+- Mål: Når UCI-værdier opdateres, skal rytterlønninger genberegnes i samme kontrollerede flow, så værdi og løn ikke driver fra hinanden.
+- Manager-værdi: Managerne ser og betaler lønninger, der matcher de nyeste rider values, og økonomi/budget bliver ikke baseret på stale løndata.
+- Berørt runtime-path: `scripts/uci_scraper.py` / UCI sync → Supabase `riders.uci_points` + `riders.salary`; eksisterende lønregel i `backend/lib/economyEngine.js`.
+- Anbefalet retning: Udtræk en delt salary/value helper eller repliker ikke-regel-logik kun ét sted, så UCI-sync kan beregne `salary = max(1, round((uci_points * 4000 + prize_earnings_bonus) * 0.15))` efter samme kontrakt som season-end.
+- Invarianter:
+  1. UCI dry-run må ikke skrive lønninger.
+  2. Salary update skal kun køre efter godkendt coverage og Supabase safety report.
+  3. Safety report skal vise antal salary updates og største lønændringer før write.
+  4. Eksisterende `prize_earnings_bonus` må indgå uændret; UCI-sync må ikke nulstille bonus.
+- Done when: En valideret UCI-sync opdaterer både `uci_points` og `salary`, regressionstest dækker lønformlen, og logs viser salary safety report.
+
 ### ✅ Afsluttede slices
 - Slice 0 — Baseline & blockers ✅
 - Slice 1 — Navigation & app-shell ✅
@@ -28,6 +65,7 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Slice B — Beta-testværktøjer ✅
 - Slice 14 Del B — Historisk tracking (rider_uci_history + rider_stat_history) ✅ (2026-04-26)
 - Slice R2 — Beta-reset komplet reset-suite ✅ (2026-04-28)
+- Slice UCI-R1 — Scraper top 3000 hardening ✅ (2026-04-28)
 
 ### Slice 8 — Bug-rydning og quick wins
 - Mål: Ryd P1-bugs og hurtige wins inden en ny tung feature-slice påbegyndes.
@@ -92,7 +130,7 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Mål: Historisk tracking og visualisering af UCI-points og rytterstats pr. rytter.
 - Afhænger af: Del B ✅ færdig.
 - Centrale leverancer:
-  - Del A ✅ UCI scraper (scripts/uci_scraper.py + GitHub Actions cron, ugentlig) — afventer bekræftet testkørsel
+  - Del A ✅ UCI scraper (scripts/uci_scraper.py + GitHub Actions cron, ugentlig) — top-3000 hardening merged, live write/data-repair godkendt 2026-04-28
   - Del B ✅ DB-tabeller rider_uci_history + rider_stat_history; sheetsSync + dynCyclistSync logger historik
   - Del C — Frontend: ny tab "Udvikling" på rytterprofil — tabel + linjegraf over UCI-points og stats over tid (spec nedenfor)
 - Arkitektur: procyclingstats → Google Sheets (ID: 1dE6v2zdmflzToGUHf3pA5mEk5Kn7YI2Wq8WsXbUX0Ic) → Supabase direkte via REST
@@ -194,6 +232,8 @@ supabase.from("rider_stat_history")
 
 - ~~P0: Garanteret salg kunne misbruges til at købe AI-ejede ryttere til 50% af værdien~~ ✅ løst
 - ~~P1: Bestyrelse vises ikke korrekt på dashboard efter boardEngine-refactor — regression~~ ✅ løst (v1.46)
+- ~~P0: UCI scraper workflow kunne køre grønt uden korrekt top 101-3000 coverage og kunne masse-nedskrive ikke-matchede ryttere til 5 UCI-point~~ ✅ løst via Slice UCI-R1
+- P1: Lønninger genberegnes ikke automatisk efter UCI value-sync; se Slice UCI-R2.
 - P1: Google Sheets-resultatimport bypasser den kanoniske `applyRaceResults` path og kan skabe drift mellem `race_results`, standings, finance transactions og balances
 - P1: Discord/webhook-regression skal reproduceres og spores gennem nuværende notifier-paths og live webhook-konfiguration; samme spor bør også afklare hvordan transferhistorik kan spejles til en dedikeret Discord-tråd via webhook
 - P2: `/profile` redirect kan vælge forkert team, fordi query ikke filtrerer på aktuel bruger

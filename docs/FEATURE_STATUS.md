@@ -99,12 +99,13 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Gennemførte transfers og byttehandler sendes til `transfer_history` webhook
 - dyn_cyclist sync: PCM-stats (14 stat-felter + højde, vægt, popularitet) fra Google Sheets (match på pcm_id) — logger nu stats-historik i `rider_stat_history` ved hver sync
 - UCI-points sync fra Google Sheets — logger nu historik i `rider_uci_history` ved hver sync
-- UCI scraper: GitHub Actions cron (hver mandag 06:00 UTC) henter top 3000 ryttere fra ProCyclingStats, skriver til Google Sheets og synkroniserer direkte til Supabase
+- UCI scraper: GitHub Actions cron henter top 3000 fra ProCyclingStats, skriver Google Sheets, synkroniserer Supabase og har safety-gates for coverage og mass minimum downgrade; live data-repair godkendt 2026-04-28
 
 ---
 
 ## 🔴 Broken / Kendte bugs
 
+- Lønninger genberegnes ikke automatisk efter UCI value-sync; se Slice UCI-R2 i `docs/PRODUCT_BACKLOG.md`
 - Evne-filter/slider kræver frisk live-reproduktion; ingen statisk root cause fundet
 - Discord/webhook-regression kræver frisk live-reproduktion; inkl. transferhistorik til Discord-tråd
 
@@ -114,7 +115,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 - [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
 - [ ] Første live beta-verifikation af `season start -> result approval -> season end`
-- [ ] Slice 14 Del A — UCI scraper testkørsel bekræftes (GitHub Actions workflow i gang)
+- [ ] Slice UCI-R2 — lønninger skal følge UCI value-sync
 
 ---
 
