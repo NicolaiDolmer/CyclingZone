@@ -1,9 +1,10 @@
-﻿import { useState, useEffect } from "react";
+﻿import { lazy, Suspense, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { getFlagEmoji, getCountryName } from "../lib/countryUtils";
 
 const API = import.meta.env.VITE_API_URL;
+const RiderDevelopmentTab = lazy(() => import("../components/RiderDevelopmentTab"));
 
 const STATS = [
   { key: "stat_fl",  label: "Flad",              icon: "═" },
@@ -181,8 +182,10 @@ export default function RiderStatsPage() {
   const [activeAuction, setActiveAuction]   = useState(null);
   const [auctionError, setAuctionError]     = useState(null);
   const [history, setHistory]               = useState([]);
+  const [uciHistory, setUciHistory]         = useState([]);
+  const [statHistory, setStatHistory]       = useState([]);
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); }, [id]);
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); }, [id]);
 
   async function loadWatchlistStatus() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -226,6 +229,25 @@ export default function RiderStatsPage() {
       const res = await fetch(`${API}/api/riders/${id}/history`, { headers: h });
       if (res.ok) setHistory(await res.json());
     } catch (e) {}
+  }
+
+  async function loadDevelopmentHistory() {
+    const statColumns = STATS.map(s => s.key).join(", ");
+    const [uciRes, statRes] = await Promise.all([
+      supabase.from("rider_uci_history")
+        .select("uci_points, synced_at")
+        .eq("rider_id", id)
+        .order("synced_at", { ascending: true })
+        .limit(104),
+      supabase.from("rider_stat_history")
+        .select(`synced_at, ${statColumns}`)
+        .eq("rider_id", id)
+        .order("synced_at", { ascending: true })
+        .limit(52),
+    ]);
+
+    setUciHistory(uciRes.data || []);
+    setStatHistory(statRes.data || []);
   }
 
   async function loadMyTeam() {
@@ -292,7 +314,6 @@ export default function RiderStatsPage() {
     const max = Math.max(...vals);
     return STATS[vals.indexOf(max)]?.label || "Allround";
   })();
-
   const bySeason = results.reduce((acc, r) => {
     const yr = r.race?.start_date?.slice(0, 4) || "—";
     if (!acc[yr]) acc[yr] = { wins: 0, top3: 0, totalPrize: 0 };
@@ -363,8 +384,8 @@ export default function RiderStatsPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        {[{ key: "stats", label: "Evner" }, { key: "season", label: "Sæsonhistorik" }, { key: "results", label: "Løbsresultater" }, { key: "history", label: "Historik" }].map(t => (
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {[{ key: "stats", label: "Evner" }, { key: "season", label: "Sæsonhistorik" }, { key: "results", label: "Løbsresultater" }, { key: "history", label: "Historik" }, { key: "development", label: "Udvikling" }].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
               ${tab === t.key ? "bg-amber-50 text-amber-700 border-amber-200" : "text-slate-500 border-slate-200 hover:text-slate-900 hover:border-slate-300"}`}>
@@ -450,6 +471,12 @@ export default function RiderStatsPage() {
             <HistoryEvent key={i} event={e} />
           ))}
         </div>
+      )}
+
+      {tab === "development" && (
+        <Suspense fallback={<div className="bg-white border border-slate-200 rounded-xl p-5 text-slate-300 text-center py-8">Indlæser udvikling...</div>}>
+          <RiderDevelopmentTab uciHistory={uciHistory} statHistory={statHistory} stats={STATS} />
+        </Suspense>
       )}
     </div>
   );

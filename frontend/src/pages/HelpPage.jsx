@@ -316,6 +316,10 @@ const SECTIONS = [
         text: "Hver rytter har 14 stats: FL (Flad), BJ (Bjerg), KB (Mellembjerg), BK (Bakke), TT (Enkeltstart), PRL (Prolog), BRO (Brosten), SP (Sprint), ACC (Acceleration), NED (Nedkørsel), UDH (Udholdenhed), MOD (Modstandsdygtighed), RES (Restituering), FTR (Fighter).",
       },
       {
+        title: "Udvikling over tid",
+        text: "På en rytters statistikside ligger fanen 'Udvikling'. Her kan du se UCI-point over tid, vælge en af de 14 stats og følge stat-udviklingen som graf, samt se de seneste historiske datapunkter. Hvis fanen er tom, er der endnu ikke opsamlet historik fra de ugentlige syncs.",
+      },
+      {
         title: "U25 og U23 ryttere",
         text: "Ryttere under 25 og 23 år er markeret. Du kan filtrere på U25/U23 i rytterdatabasen og ønskelisten.",
       },
@@ -417,6 +421,10 @@ const FAQ = [
   {
     q: "Hvordan ser jeg en rytters løn?",
     a: "Løn er en synlig kolonne i Rytterdatabasen og kan sorteres og filtreres på. Du kan filtrere på løn-interval under 'Løn CZ$ (min–max)' i filterpanelet. Lønnens størrelse afhænger af rytterens markedsværdi og din sæsonpræmiehistorik på tidspunktet for købet.",
+  },
+  {
+    q: "Hvor kan jeg se om en rytter udvikler sig?",
+    a: "Åbn rytterens statistikside og vælg fanen 'Udvikling'. Den viser historiske UCI-point, en valgbar graf for hver stat og de seneste datapunkter fra sync-historikken.",
   },
   {
     q: "Hvad sker der hvis jeg ikke kan betale lønninger?",

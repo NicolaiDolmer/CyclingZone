@@ -2,6 +2,27 @@
 
 const PATCHES = [
   {
+    version: "1.61",
+    date: "2026-04-28",
+    label: "Beta",
+    changes: [
+      {
+        category: "Rytterprofil",
+        items: [
+          "Ny 'Udvikling'-tab på rytterprofilen med graf for UCI-point over tid",
+          "Stats-udvikling kan nu vises som graf for hver af rytterens 14 evner",
+          "Fanen viser også de seneste historiske datapunkter fra sync-historikken",
+        ],
+      },
+      {
+        category: "Hjælp",
+        items: [
+          "Hjælp og FAQ er opdateret med forklaring af udviklingsfanen på rytterprofilen",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.60",
     date: "2026-04-28",
     label: "Beta",
