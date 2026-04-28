@@ -102,6 +102,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - dyn_cyclist sync: PCM-stats (14 stat-felter + højde, vægt, popularitet) fra Google Sheets (match på pcm_id) — logger nu stats-historik i `rider_stat_history` ved hver sync
 - UCI-points sync fra Google Sheets — logger nu historik i `rider_uci_history` ved hver sync
 - UCI scraper: GitHub Actions cron henter top 3000 fra ProCyclingStats, skriver Google Sheets, synkroniserer Supabase, genberegner rytterlønninger og har safety-gates for coverage og mass minimum downgrade; live data-repair godkendt 2026-04-28
+- Supabase AI workflow: read-only `.codex.local` setup, `npm run db:ai:*` probes og optional `ai_*` views til kompakt live-inspektion uden brede table dumps
 
 ---
 

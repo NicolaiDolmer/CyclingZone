@@ -50,6 +50,7 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Slice UCI-R2 — Løn følger værdi efter UCI-sync ✅ (2026-04-28). Done proof: `.github/workflows/uci_sync.yml` + `backend/scripts/recalculateRiderSalaries.js` + `backend/lib/economyEngine.test.js`
 - Live season-flow quick fix — season-end preview board/sponsor drift ✅ (2026-04-28). Done proof: `backend/lib/economyEngine.js::buildSeasonEndPreviewRows`, `/api/admin/season-end-preview/:seasonId` bruger helperen, og `backend/lib/economyEngine.test.js` dækker projected satisfaction/modifier/sponsor samt løn/renter.
 - Live season-flow quick fix — preview lånerente vs kontantbalance ✅ (2026-04-28). Done proof: `buildSeasonEndPreviewRows` viser lånerente separat, men `balance_after`/nødlånsbehov følger runtime hvor aktive lånerenter lægges på gæld via `processLoanInterest`.
+- Supabase AI workflow tooling ✅ (2026-04-28). Done proof: `backend/scripts/aiSupabaseProbe.js`, `npm run db:ai:*` inkl. view-verifikation, `docs/SUPABASE_AI_WORKFLOW.md`, `docs/templates/*`, `.codex.local/SESSION_CONTEXT.md` og `database/ai_readonly_views.sql`; live `ai_*` views er installeret og læsbare.
 
 ### Slice 14 — UCI-punkt + stats-udvikling over tid
 - Mål: Historisk tracking og visualisering af UCI-points og rytterstats pr. rytter.

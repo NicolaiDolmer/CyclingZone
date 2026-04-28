@@ -1,6 +1,12 @@
 {
   "name": "cycling-zone-manager",
   "scripts": {
+    "db:ai:status": "node backend/scripts/aiSupabaseProbe.js status",
+    "db:ai:schema": "node backend/scripts/aiSupabaseProbe.js schema",
+    "db:ai:season-flow": "node backend/scripts/aiSupabaseProbe.js season-flow",
+    "db:ai:import-health": "node backend/scripts/aiSupabaseProbe.js import-health",
+    "db:ai:views": "node backend/scripts/aiSupabaseProbe.js views",
+    "db:ai:all": "node backend/scripts/aiSupabaseProbe.js all",
     "sync-docs": "node scripts/sync-docs.js"
   }
 }

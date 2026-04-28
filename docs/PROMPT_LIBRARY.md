@@ -15,6 +15,7 @@ Principper:
 - Én session = én tydelig slice eller delopgave.
 - Brug `docs/PRODUCT_BACKLOG.md` som samlet sandhed for ideer og plan, ikke chat-historik.
 - Hold `docs/NOW.md` kort: aktiv slice, næste slice, blockers og vigtigste invariant.
+- Ved Supabase-spørgsmål: start med `.codex.local/SESSION_CONTEXT.md` og kør helst `npm run db:ai:all` før bredere live-inspektion.
 - Start bred review kun ved risikable runtime-paths; simple bugs kan gå direkte til målrettet fix.
 - Gruppér kun tæt relaterede fixes, fx transfer/window_pending samlet eller auction-regler samlet.
 - Docs-only ændringer kræver normalt ikke testkørsel; backend runtime-fix kræver målrettet backend-test; frontend route/UI-fix kræver mindst build.

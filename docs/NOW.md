@@ -15,6 +15,8 @@
 - Live read-only Supabase-verifikation er kørt med credentials fra `backend/.env` uden at ekko secrets.
 - Fund: live DB har sæson 6 som aktiv, men `races`, `race_results` og `season_standings` er tomme for alle sæsoner; seneste `import_log` for `race_results_sheets` behandlede 709 rækker, men skrev 0 fordi alle løb blev skipped/unmatched.
 - Fund lukket: season-end preview trak aktive lånerenter fra kontant `balance_after`, mens runtime `processLoanInterest` lægger renter på lånets restgæld. Preview viser stadig renter, men nød-lånsbehov følger nu runtime-kontantbalancen efter løn.
+- Supabase AI workflow tooling er tilføjet: read-only `.codex.local` template, `npm run db:ai:*` probes, kompakt workflow-doc og optional `ai_*` views til billig live-inspektion.
+- `ai_*` Supabase views er installeret og læsbare; `ai_recent_import_health` bekræfter seneste `race_results_sheets` import med 709 processed, 0 inserted/updated og 18 unmatched race-navne.
 
 ## Næste konkrete handling
 1. Fyld/opret live `races` for aktiv sæson eller kør en kontrolleret smoke-sæson med test-races, før admin xlsx/sheets-resultatimport kan verificeres end-to-end.
@@ -30,6 +32,10 @@ $env:PYTHONIOENCODING='utf-8'
 # Sæt også credentials i samme session. Ekko dem aldrig i chat eller docs.
 python scripts\uci_scraper.py --dry-run
 python scripts\uci_scraper.py
+npm run db:ai:status
+npm run db:ai:season-flow
+npm run db:ai:import-health
+npm run db:ai:views
 ```
 
 ## Vigtige invarianter
