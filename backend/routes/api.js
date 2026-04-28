@@ -49,6 +49,7 @@ import {
 import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
 import {
+  buildSeasonEndPreviewRows,
   processSeasonEnd,
   processSeasonStart,
   updateStandings,
@@ -2083,7 +2084,7 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
 
     const [teamsRes, standingsRes, loansRes] = await Promise.all([
       supabase.from("teams")
-        .select("id, name, balance, division, sponsor_income, board_profiles(satisfaction)")
+        .select(`id, name, balance, division, sponsor_income, riders(salary, ${BOARD_IDENTITY_RIDER_SELECT}), board_profiles(*)`)
         .eq("is_ai", false),
       supabase.from("season_standings").select("*").eq("season_id", seasonId),
       supabase.from("loans").select("team_id, amount_remaining, interest_rate").eq("status", "active"),
@@ -2092,41 +2093,7 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
     const teams = teamsRes.data || [];
     const standings = standingsRes.data || [];
     const loanData = loansRes.data || [];
-
-    const preview = await Promise.all(teams.map(async team => {
-      const standing = standings.find(s => s.team_id === team.id);
-      const { data: riders } = await supabase.from("riders").select("salary").eq("team_id", team.id);
-      const totalSalary = (riders || []).reduce((s, r) => s + (r.salary || 0), 0);
-      const teamLoans = loanData.filter(l => l.team_id === team.id);
-      const totalInterest = teamLoans.reduce((s, l) => s + Math.round(l.amount_remaining * l.interest_rate), 0);
-      const board = team.board_profiles?.[0];
-      const satisfaction = board?.satisfaction ?? 50;
-      const sponsorModifier = satisfaction >= 80 ? 1.20 : satisfaction >= 50 ? 1.00 : 0.80;
-      const nextSponsor = Math.round((team.sponsor_income || 0) * sponsorModifier);
-      const balanceAfter = team.balance - totalSalary - totalInterest;
-      const needsEmergencyLoan = balanceAfter < 0;
-
-      const divStandings = standings
-        .filter(s => s.division === team.division)
-        .sort((a, b) => b.total_points - a.total_points);
-      const rank = divStandings.findIndex(s => s.team_id === team.id) + 1;
-
-      return {
-        team_id: team.id,
-        team_name: team.name,
-        division: team.division,
-        current_balance: team.balance,
-        salary_deduction: totalSalary,
-        loan_interest: totalInterest,
-        balance_after: balanceAfter,
-        needs_emergency_loan: needsEmergencyLoan,
-        emergency_loan_amount: needsEmergencyLoan ? Math.abs(balanceAfter) : 0,
-        board_satisfaction: satisfaction,
-        next_season_sponsor: nextSponsor,
-        total_points: standing?.total_points || 0,
-        current_rank: rank || null,
-      };
-    }));
+    const preview = buildSeasonEndPreviewRows({ teams, standings, loanData });
 
     res.json({ preview });
   } catch (e) { res.status(500).json({ error: e.message }); }

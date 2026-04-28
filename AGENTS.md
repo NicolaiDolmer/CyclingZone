@@ -25,3 +25,4 @@
 - `.codex.local/` indhold bruges men committes aldrig
 - Ved alle brugerrettede feature-, fix- eller runtime-ændringer skal patch notes opdateres på hjemmesiden i `frontend/src/pages/PatchNotesPage.jsx`
 - Opret ikke separate docs-only patch notes; hjemmesidens Patch Notes er den brugerrettede sandhed
+- Efter hver afsluttet feature/fix skal `docs/NOW.md`, `docs/PRODUCT_BACKLOG.md` og `docs/FEATURE_STATUS.md` afstemmes mod runtime, så næste session ikke starter en allerede lukket opgave igen

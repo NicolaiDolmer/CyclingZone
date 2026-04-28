@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "1.63",
+    date: "2026-04-28",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin",
+        items: [
+          "Season-end preview bruger nu samme board-evaluering og sponsor-modifier som den rigtige sæsonafslutning",
+          "Preview viser både nuværende og forventet board-tilfredshed, målstatus og forventet sponsorudbetaling for næste sæsonstart",
+        ],
+      },
+      {
+        category: "Økonomi",
+        items: [
+          "Løn, renter, nødlånsbehov og sponsor-preview beregnes samlet i backendens economy engine, så admin-preview ikke driver fra runtime",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.62",
     date: "2026-04-28",
     label: "Beta",

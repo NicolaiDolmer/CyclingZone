@@ -215,6 +215,81 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   console.log("  ✅ Season end processing complete");
 }
 
+export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData = [] } = {}) {
+  return teams.map((team) => {
+    const standing = standings.find(s => s.team_id === team.id);
+    const riders = team.riders || [];
+    const totalSalary = riders.reduce((sum, rider) => sum + (rider.salary || 0), 0);
+    const teamLoans = loanData.filter(loan => loan.team_id === team.id);
+    const totalInterest = teamLoans.reduce(
+      (sum, loan) => sum + Math.round((loan.amount_remaining || 0) * (loan.interest_rate || 0)),
+      0
+    );
+    const board = team.board_profiles?.[0] || null;
+    const currentSatisfaction = board?.satisfaction ?? 50;
+
+    let projectedSatisfaction = currentSatisfaction;
+    let sponsorModifier = board?.budget_modifier ?? 1.0;
+    let goalsMet = null;
+    let goalsTotal = null;
+
+    if (board && standing) {
+      const planDuration = getPlanDuration(board.plan_type);
+      const seasonsCompleted = (board.seasons_completed || 0) + 1;
+      const projected = evaluateBoardSeason({
+        board,
+        standing,
+        team: { ...team, riders },
+        context: {
+          isFinalSeason: seasonsCompleted >= planDuration,
+          activeLoanCount: teamLoans.length,
+          planStartSponsorIncome: board.plan_start_sponsor_income,
+          currentSponsorIncome: team.sponsor_income,
+          planDuration,
+          seasonsCompleted,
+          recentSnapshots: [],
+          hasSeasonData: true,
+          cumulativeStats: {
+            stageWins: (board.cumulative_stage_wins || 0) + (standing.stage_wins || 0),
+            gcWins: (board.cumulative_gc_wins || 0) + (standing.gc_wins || 0),
+          },
+        },
+      });
+
+      projectedSatisfaction = projected.newSatisfaction;
+      sponsorModifier = projected.newModifier;
+      goalsMet = projected.goalsMet;
+      goalsTotal = projected.goals.length;
+    }
+
+    const divStandings = standings
+      .filter(s => s.division === team.division)
+      .sort((a, b) => (b.total_points || 0) - (a.total_points || 0));
+    const rank = divStandings.findIndex(s => s.team_id === team.id) + 1;
+    const balanceAfter = (team.balance || 0) - totalSalary - totalInterest;
+
+    return {
+      team_id: team.id,
+      team_name: team.name,
+      division: team.division,
+      current_balance: team.balance || 0,
+      salary_deduction: totalSalary,
+      loan_interest: totalInterest,
+      balance_after: balanceAfter,
+      needs_emergency_loan: balanceAfter < 0,
+      emergency_loan_amount: balanceAfter < 0 ? Math.abs(balanceAfter) : 0,
+      current_board_satisfaction: currentSatisfaction,
+      board_satisfaction: projectedSatisfaction,
+      sponsor_modifier: sponsorModifier,
+      next_season_sponsor: Math.round((team.sponsor_income || 0) * sponsorModifier),
+      board_goals_met: goalsMet,
+      board_goals_total: goalsTotal,
+      total_points: standing?.total_points || 0,
+      current_rank: rank || null,
+    };
+  });
+}
+
 async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumber, deps = {}) {
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;

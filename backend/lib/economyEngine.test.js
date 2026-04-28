@@ -4,7 +4,12 @@ import assert from "node:assert/strict";
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost";
 process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-service-key";
 
-const { processSeasonEnd, updateRiderValues, updateStandings } = await import("./economyEngine.js");
+const {
+  buildSeasonEndPreviewRows,
+  processSeasonEnd,
+  updateRiderValues,
+  updateStandings,
+} = await import("./economyEngine.js");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -672,6 +677,71 @@ test("processSeasonEnd skips writing a duplicate board notification when the sam
   });
 
   assert.equal(supabase.state.inserts.notifications.length, 0);
+});
+
+test("buildSeasonEndPreviewRows projects board modifier on the same path as season end", () => {
+  const [preview] = buildSeasonEndPreviewRows({
+    teams: [
+      {
+        id: "team-1",
+        name: "Preview Testers",
+        division: 3,
+        balance: 500,
+        sponsor_income: 200,
+        riders: [
+          { id: "rider-1", salary: 80, stat_bj: 80, stat_sp: 60, stat_tt: 65, stat_fl: 70, is_u25: false },
+          { id: "rider-2", salary: 20, stat_bj: 72, stat_sp: 68, stat_tt: 62, stat_fl: 71, is_u25: true },
+        ],
+        board_profiles: [
+          {
+            id: "board-1",
+            team_id: "team-1",
+            plan_type: "1yr",
+            focus: "balanced",
+            satisfaction: 50,
+            budget_modifier: 1.0,
+            current_goals: [
+              {
+                type: "top_n_finish",
+                target: 2,
+                label: "Top 2 i divisionen",
+                satisfaction_bonus: 10,
+                satisfaction_penalty: 5,
+              },
+            ],
+            seasons_completed: 0,
+            cumulative_stage_wins: 0,
+            cumulative_gc_wins: 0,
+            plan_start_sponsor_income: 200,
+          },
+        ],
+      },
+    ],
+    standings: [
+      {
+        season_id: "season-1",
+        team_id: "team-1",
+        division: 3,
+        total_points: 150,
+        rank_in_division: 1,
+        stage_wins: 2,
+        gc_wins: 1,
+      },
+    ],
+    loanData: [
+      { team_id: "team-1", amount_remaining: 100, interest_rate: 0.1 },
+    ],
+  });
+
+  assert.equal(preview.salary_deduction, 100);
+  assert.equal(preview.loan_interest, 10);
+  assert.equal(preview.balance_after, 390);
+  assert.equal(preview.current_board_satisfaction, 50);
+  assert.equal(preview.board_satisfaction, 74);
+  assert.equal(preview.sponsor_modifier, 1.1);
+  assert.equal(preview.next_season_sponsor, 220);
+  assert.equal(preview.board_goals_met, 1);
+  assert.equal(preview.board_goals_total, 1);
 });
 
 test("updateStandings stores division ranks and keeps zero-point teams in the canonical table", async () => {

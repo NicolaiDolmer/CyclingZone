@@ -1,21 +1,23 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-- Docs truth cleanup
-- Mål: Ryd færdige/stale backlog-items ud, fjern `blokeret/udskudt` som roadmap-status, og flyt historik til arkiv/statusfiler.
+- Live season flow verification med admin xlsx som primær resultater-kilde
+- Mål: Verificér at admin-import af resultater, standings, finance og season-end hænger sammen i runtime.
 
 ## Status 2026-04-28
 - `Slice UCI-R1 — Scraper top 3000 hardening` ✅ FÆRDIG.
-- Root cause fundet: PCS pretty URL ignorerede `?offset=100`, så side 2+ returnerede top 1-100 igen.
-- Lokal fix er lavet i `scripts/uci_scraper.py`: bruger `rankings.php?p=me&s=uci-individual&offset=...`.
-- Lokal dry-run er godkendt: `pages=30`, `total=3000`, `rank_min=1`, `rank_max=3000`, `duplicate_ranks=0`, `complete_ranking=True`.
-- Live workflow_dispatch via GitHub Actions run `25053357290` er godkendt: Google Sheets skrev 3000 rækker, Supabase sync kørte, og `rider_uci_history` loggede 1000 historikrækker.
-- Supabase safety report: `matched=888`, `not_found=112`, `updates=787`, `restored_from_minimum=787`, `minimum_downgrades=0/100`, `complete_ranking=True`.
+- Done proof er flyttet til `docs/archive/UCI_R1_SCRAPER_TOP_3000_DONE_PROOF.md`.
+- Docs truth cleanup er gennemført i `docs/PRODUCT_BACKLOG.md`: roadmap er kortet ned, gamle pause-/ventestatusser er fjernet, og UCI-R2 er nu lukket efter runtime-verifikation.
+- `Slice UCI-R2 — Løn følger værdi efter UCI-sync` ✅ FÆRDIG i runtime.
+- Done proof: `.github/workflows/uci_sync.yml` kører `node backend/scripts/recalculateRiderSalaries.js` efter `python scripts/uci_scraper.py`; `backend/scripts/recalculateRiderSalaries.js` kalder `updateRiderValues`; `backend/lib/economyEngine.test.js` dækker genberegning med `prize_earnings_bonus`.
+- Live season-flow verification er startet statisk/lokalt: xlsx-import og approve deler `applyRaceResults`; backend-tests bekræfter `race_results` → prize finance rows → `season_standings`.
+- Fund lukket: season-end preview brugte en lokal board/sponsor-regel, som kunne afvige fra `processSeasonEnd`/season-start. Preview bruger nu `buildSeasonEndPreviewRows` i `backend/lib/economyEngine.js` og er dækket af regressionstest.
+- Live read-only Supabase-verifikation er ikke kørt i denne session, fordi `.codex.local/supabase-readonly.env` ikke findes i repo-root.
 
 ## Næste konkrete handling
-1. Fortsæt med docs truth cleanup.
-2. Lås Slice UCI-R2 i backloggen: lønninger skal genberegnes, når UCI-værdier opdateres.
-3. Behold UCI-invarianterne som regressionskrav for fremtidige scraper-ændringer.
+1. Verificér live season-flow med credentials: admin xlsx import → `race_results` → standings → finance/prizes.
+2. Verificér deployed season-end preview/end mod løn, renter, sponsor og board-side effects.
+3. Notér evt. resterende drift som konkrete P1/P2-fund før ny implementering.
 
 ## Kommandoer
 PowerShell skal stå i repo-root:
@@ -33,6 +35,9 @@ python scripts\uci_scraper.py
 - `--dry-run` må aldrig skrive Sheets eller Supabase.
 - Pagination skal dække rank 1-3000 eller fejle før writes.
 - Mass-nedskrivning til 5 UCI-point skal stoppes af safety-gate.
+- UCI-sync må ikke nulstille eller ignorere eksisterende `prize_earnings_bonus`.
+- Salary update kører efter godkendt UCI-sync i GitHub Actions workflowet og bruger eksisterende `updateRiderValues`-regel.
+- En afsluttet slice må ikke blive stående som aktiv/næste handling; tjek runtime/test/patch notes før samme opgave startes igen.
 
-## Næste slice efter docs truth cleanup
-- Afklares efter cleanup mod `docs/PRODUCT_BACKLOG.md`.
+## Næste slice efter live season verification
+- Review hardening: race-result path, `/profile` redirect, window_pending, auction invariants og sidebar active-state.

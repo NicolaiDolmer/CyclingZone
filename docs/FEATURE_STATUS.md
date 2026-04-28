@@ -58,6 +58,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Præmiefordeling ved løbsimport (stage/GC/points/mountain/team/young)
 - Finance-transaktionslog + Finance-side
 - Balance-justering (admin)
+- UCI salary recalculation: GitHub Actions kører `backend/scripts/recalculateRiderSalaries.js` efter UCI scraperen, så `riders.salary` følger opdaterede `uci_points` med eksisterende `prize_earnings_bonus`
 
 ### Sæson & Løb
 - Sæsonoversigt med race-kalender
@@ -66,6 +67,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Opryknings/nedrykningslogik (top/bund 2 per division)
 - Sæsonpreview-side + Races-side
 - Løbsarkiv (`/race-archive`) og løbshistorik (`/race-archive/:raceSlug`)
+- Season-end preview bruger economy engine til løn, renter, projected board satisfaction og næste sponsorudbetaling, så preview matcher season-end/season-start runtime
 
 ### Bestyrelse (Board)
 - Tre parallelle planer (1yr/3yr/5yr) kører simultant per hold med egne mål og tilfredshed → budget_modifier
@@ -99,13 +101,12 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Gennemførte transfers og byttehandler sendes til `transfer_history` webhook
 - dyn_cyclist sync: PCM-stats (14 stat-felter + højde, vægt, popularitet) fra Google Sheets (match på pcm_id) — logger nu stats-historik i `rider_stat_history` ved hver sync
 - UCI-points sync fra Google Sheets — logger nu historik i `rider_uci_history` ved hver sync
-- UCI scraper: GitHub Actions cron henter top 3000 fra ProCyclingStats, skriver Google Sheets, synkroniserer Supabase og har safety-gates for coverage og mass minimum downgrade; live data-repair godkendt 2026-04-28
+- UCI scraper: GitHub Actions cron henter top 3000 fra ProCyclingStats, skriver Google Sheets, synkroniserer Supabase, genberegner rytterlønninger og har safety-gates for coverage og mass minimum downgrade; live data-repair godkendt 2026-04-28
 
 ---
 
 ## 🔴 Broken / Kendte bugs
 
-- Lønninger genberegnes ikke automatisk efter UCI value-sync; se Slice UCI-R2 i `docs/PRODUCT_BACKLOG.md`
 - Evne-filter/slider kræver frisk live-reproduktion; ingen statisk root cause fundet
 - Discord/webhook-regression kræver frisk live-reproduktion; inkl. transferhistorik til Discord-tråd
 
@@ -114,8 +115,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 🚧 I gang
 
 - [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
-- [ ] Første live beta-verifikation af `season start -> result approval -> season end`
-- [ ] Slice UCI-R2 — lønninger skal følge UCI value-sync
+- [ ] Første live beta-verifikation af `season start -> result approval -> season end` (lokal/statisk kontraktverifikation kørt 2026-04-28; live credentials mangler i workspace)
 
 ---
 

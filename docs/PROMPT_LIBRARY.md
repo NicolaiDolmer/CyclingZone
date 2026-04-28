@@ -29,6 +29,17 @@ Out of scope: [hvad der ikke må røres].
 Forventet test: [målrettet test/build].
 ```
 
+## Aktuel live season verification
+
+```text
+Fortsæt fra docs/NOW.md. Arbejd kun på live season flow verification med admin xlsx som primær resultater-kilde.
+Mål: Verificér at admin xlsx import, race_results, standings, finance/prizes og season-end hænger sammen i runtime.
+In scope: admin import/result runtime-path, season-end preview/end, målrettede tests og korte relevante docs.
+Out of scope: UCI-R2, Discord/webhook, evne-filter, mobil-UI og økonomiretuning.
+Forventet test: målrettede backend-tests/smoke for import -> standings/finance og season-end preview/end.
+Vigtigt: Start ikke UCI-R2 igen; den er lukket via workflow salary recalculation + backend regressionstest.
+```
+
 ## Standard Task
 
 Docs:

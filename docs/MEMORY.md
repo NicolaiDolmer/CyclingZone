@@ -17,13 +17,15 @@ Push efter commit uden at spørge. Commit → push er én operation.
 
 ## Projekt-kontekst
 
-### Slice 14 — UCI-historik og stats-udvikling (status 2026-04-26)
+### Slice 14 — UCI-historik og stats-udvikling (status 2026-04-28)
 
 **Del B ✅ FÆRDIG:** Supabase-tabeller `rider_uci_history` og `rider_stat_history` oprettet. `sheetsSync.js` og `dynCyclistSync.js` logger historikrækker ved hver sync.
 
-**Del A 🔄 I GANG:** UCI scraper bygget og pushet. GitHub Actions workflow kører hver mandag 06:00 UTC. Afventer bekræftet vellykket testkørsel (whitespace-issue i secrets debugges).
+**Del A ✅ FÆRDIG:** UCI scraper er hardenet til top 3000. Root cause var PCS pretty URL, der ignorerede `?offset=100`; scraperen bruger nu `rankings.php?p=me&s=uci-individual&offset=...`. Live workflow_dispatch `25053357290` skrev 3000 rækker til Google Sheets, synkroniserede Supabase og loggede 1000 `rider_uci_history` rækker. Done proof ligger i `docs/archive/UCI_R1_SCRAPER_TOP_3000_DONE_PROOF.md`.
 
 **Del C ⏳ IKKE STARTET:** Frontend-visualisering på `RiderStatsPage.jsx`.
+
+**UCI-R2 ✅ FÆRDIG:** GitHub Actions workflowet kører `backend/scripts/recalculateRiderSalaries.js` efter UCI scraperen. Scriptet bruger `updateRiderValues`, så `riders.salary` følger nye `uci_points` uden at UCI-sync nulstiller `prize_earnings_bonus`. Regressionen ligger i `backend/lib/economyEngine.test.js`.
 
 #### Del A — Scraper-arkitektur
 - Script: `scripts/uci_scraper.py`

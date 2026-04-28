@@ -226,6 +226,13 @@ Season flow notes:
 ### Deploy og live-verifikation
 - Se `docs/DEPLOYMENT.md` for aktuelle live-URLs, release-path og standard smoke checks
 
+### UCI scraper safety
+- `scripts/uci_scraper.py` skal bruge PCS form-route `rankings.php?p=me&s=uci-individual&offset=...`; pretty URL med `?offset=...` returnerer top 1-100 igen.
+- Default dry-run skal vise `pages=30`, `total=3000`, `rank_min=1`, `rank_max=3000`, `duplicate_ranks=0` før writes godkendes.
+- `--dry-run` må aldrig skrive Google Sheets eller Supabase.
+- Supabase-write skal logge safety report med `matched`, `not_found`, `updates`, `restored_from_minimum` og `minimum_downgrades`.
+- Mass-nedskrivning til `MIN_UCI_POINTS` kræver manuel audit og må ikke accepteres som normal sync.
+
 ---
 
 ## Backend Lib-moduler
