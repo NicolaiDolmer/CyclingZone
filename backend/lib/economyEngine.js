@@ -43,6 +43,8 @@ const PROMOTION_SLOTS = 2;         // Top 2 promote
 const RELEGATION_SLOTS = 2;        // Bottom 2 relegate
 const MAX_DIVISION = 3;
 const MIN_DIVISION = 1;
+const SUPABASE_PAGE_SIZE = 1000;
+const RIDER_VALUE_PATCH_CONCURRENCY = 25;
 
 // Board satisfaction thresholds
 const SATISFACTION_RANGES = {
@@ -399,6 +401,21 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
 
 // ─── Rider Value & Salary Recalculation ──────────────────────────────────────
 
+async function fetchAllRows(buildQuery, pageSize = SUPABASE_PAGE_SIZE) {
+  const rows = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const to = from + pageSize - 1;
+    const { data, error } = await buildQuery().range(from, to);
+    if (error) throw new Error(error.message);
+
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+
+  return rows;
+}
+
 /**
  * Recalculates prize_earnings_bonus and salary for every rider at season end.
  *
@@ -407,7 +424,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
  *
  * salary = max(1, round((uci_points * 4000 + prize_earnings_bonus) * 0.15))
  */
-async function updateRiderValues(supabaseClient) {
+export async function updateRiderValues(supabaseClient) {
   const { data: recentSeasons } = await supabaseClient
     .from("seasons")
     .select("id")
@@ -421,21 +438,25 @@ async function updateRiderValues(supabaseClient) {
   const riderSeasonEarnings = {};
 
   if (seasonIds.length > 0) {
-    const { data: races } = await supabaseClient
-      .from("races")
-      .select("id, season_id")
-      .in("season_id", seasonIds);
+    const races = await fetchAllRows(() => (
+      supabaseClient
+        .from("races")
+        .select("id, season_id")
+        .in("season_id", seasonIds)
+    ));
 
     const raceIds = (races || []).map(r => r.id);
 
     if (raceIds.length > 0) {
       const raceSeasonMap = Object.fromEntries((races || []).map(r => [r.id, r.season_id]));
 
-      const { data: results } = await supabaseClient
-        .from("race_results")
-        .select("rider_id, race_id, prize_money")
-        .in("race_id", raceIds)
-        .gt("prize_money", 0);
+      const results = await fetchAllRows(() => (
+        supabaseClient
+          .from("race_results")
+          .select("rider_id, race_id, prize_money")
+          .in("race_id", raceIds)
+          .gt("prize_money", 0)
+      ));
 
       for (const row of results || []) {
         const sid = raceSeasonMap[row.race_id];
@@ -447,11 +468,15 @@ async function updateRiderValues(supabaseClient) {
     }
   }
 
-  const { data: allRiders } = await supabaseClient
-    .from("riders")
-    .select("id, uci_points");
+  const allRiders = await fetchAllRows(() => (
+    supabaseClient
+      .from("riders")
+      .select("id, uci_points")
+  ));
 
   const MIN_UCI = 5;
+
+  const updates = [];
 
   for (const rider of allRiders || []) {
     const seasonTotals = Object.values(riderSeasonEarnings[rider.id] || {});
@@ -462,13 +487,27 @@ async function updateRiderValues(supabaseClient) {
     const basePrice = Math.max(MIN_UCI, rider.uci_points || 0) * 4000;
     const newSalary = Math.max(1, Math.round((basePrice + newBonus) * SALARY_RATE));
 
-    await supabaseClient.from("riders").update({
+    updates.push({
+      id: rider.id,
       prize_earnings_bonus: newBonus,
       salary: newSalary,
-    }).eq("id", rider.id);
+    });
   }
 
-  console.log(`  🏅 Rider values recalculated: ${allRiders?.length || 0} ryttere opdateret`);
+  for (let i = 0; i < updates.length; i += RIDER_VALUE_PATCH_CONCURRENCY) {
+    const batch = updates.slice(i, i + RIDER_VALUE_PATCH_CONCURRENCY);
+    await Promise.all(batch.map(async ({ id, ...payload }) => {
+      const { error } = await supabaseClient
+        .from("riders")
+        .update(payload)
+        .eq("id", id);
+      if (error) throw new Error(error.message);
+    }));
+  }
+
+  const ridersUpdated = allRiders?.length || 0;
+  console.log(`  🏅 Rider values recalculated: ${ridersUpdated} ryttere opdateret`);
+  return { ridersUpdated };
 }
 
 async function processDivisionEnd(standings, division, seasonId, deps = {}) {

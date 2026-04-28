@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost";
 process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-service-key";
 
-const { processSeasonEnd, updateStandings } = await import("./economyEngine.js");
+const { processSeasonEnd, updateRiderValues, updateStandings } = await import("./economyEngine.js");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -384,6 +384,134 @@ function createStandingsSupabase({ teams, races, results }) {
   };
 }
 
+function createRiderValuesSupabase({ seasons, races, results, riders }) {
+  const state = {
+    seasons: clone(seasons),
+    races: clone(races),
+    results: clone(results),
+    riders: clone(riders),
+    riderUpdates: [],
+  };
+
+  return {
+    state,
+    from(table) {
+      if (table === "seasons") {
+        return {
+          select(columns) {
+            assert.equal(columns, "id");
+            return {
+              eq(column, value) {
+                assert.equal(column, "status");
+                assert.equal(value, "completed");
+                return {
+                  order(orderColumn, orderOptions) {
+                    assert.equal(orderColumn, "number");
+                    assert.deepEqual(orderOptions, { ascending: false });
+                    return {
+                      limit(limitValue) {
+                        assert.equal(limitValue, 3);
+                        return Promise.resolve({
+                          data: clone(state.seasons).slice(0, limitValue),
+                          error: null,
+                        });
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "races") {
+        return {
+          select(columns) {
+            assert.equal(columns, "id, season_id");
+            return {
+              in(column, value) {
+                assert.equal(column, "season_id");
+                return {
+                  range(from, to) {
+                    const rows = clone(state.races)
+                      .filter(race => value.includes(race.season_id))
+                      .slice(from, to + 1);
+                    return Promise.resolve({
+                      data: rows,
+                      error: null,
+                    });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "race_results") {
+        return {
+          select(columns) {
+            assert.equal(columns, "rider_id, race_id, prize_money");
+            return {
+              in(column, value) {
+                assert.equal(column, "race_id");
+                return {
+                  gt(gtColumn, gtValue) {
+                    assert.equal(gtColumn, "prize_money");
+                    assert.equal(gtValue, 0);
+                    return {
+                      range(from, to) {
+                        const rows = clone(state.results)
+                          .filter(result => value.includes(result.race_id))
+                          .filter(result => result.prize_money > gtValue)
+                          .slice(from, to + 1);
+                        return Promise.resolve({
+                          data: rows,
+                          error: null,
+                        });
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(columns) {
+            assert.equal(columns, "id, uci_points");
+            return {
+              range(from, to) {
+                return Promise.resolve({
+                  data: clone(state.riders).slice(from, to + 1),
+                  error: null,
+                });
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(column, value) {
+                assert.equal(column, "id");
+                state.riderUpdates.push({ id: value, payload });
+                const rider = state.riders.find(row => row.id === value);
+                Object.assign(rider, payload);
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+}
+
 const FIXED_SEASON_END_NOW = new Date("2026-04-23T08:00:00.000Z");
 
 test("processSeasonEnd keeps the board flow on the shared runtime path", async () => {
@@ -606,6 +734,49 @@ test("updateStandings stores division ranks and keeps zero-point teams in the ca
       gc_wins: 0,
       races_completed: 0,
       updated_at: supabase.state.upserts[0].rows[2].updated_at,
+    },
+  ]);
+});
+
+test("updateRiderValues recalculates salaries after UCI values change", async () => {
+  const supabase = createRiderValuesSupabase({
+    seasons: [
+      { id: "season-3" },
+      { id: "season-2" },
+      { id: "season-1" },
+    ],
+    races: [
+      { id: "race-1", season_id: "season-3" },
+      { id: "race-2", season_id: "season-2" },
+    ],
+    results: [
+      { rider_id: "rider-1", race_id: "race-1", prize_money: 1200 },
+      { rider_id: "rider-1", race_id: "race-2", prize_money: 800 },
+      { rider_id: "rider-2", race_id: "race-2", prize_money: 500 },
+    ],
+    riders: [
+      { id: "rider-1", uci_points: 100 },
+      { id: "rider-2", uci_points: 0 },
+    ],
+  });
+
+  const summary = await updateRiderValues(supabase);
+
+  assert.deepEqual(summary, { ridersUpdated: 2 });
+  assert.deepEqual(supabase.state.riderUpdates, [
+    {
+      id: "rider-1",
+      payload: {
+        prize_earnings_bonus: 1000,
+        salary: 60150,
+      },
+    },
+    {
+      id: "rider-2",
+      payload: {
+        prize_earnings_bonus: 500,
+        salary: 3075,
+      },
     },
   ]);
 });
