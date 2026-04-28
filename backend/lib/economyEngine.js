@@ -266,7 +266,7 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
       .filter(s => s.division === team.division)
       .sort((a, b) => (b.total_points || 0) - (a.total_points || 0));
     const rank = divStandings.findIndex(s => s.team_id === team.id) + 1;
-    const balanceAfter = (team.balance || 0) - totalSalary - totalInterest;
+    const balanceAfter = (team.balance || 0) - totalSalary;
 
     return {
       team_id: team.id,

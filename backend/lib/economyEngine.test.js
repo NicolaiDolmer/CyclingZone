@@ -735,7 +735,7 @@ test("buildSeasonEndPreviewRows projects board modifier on the same path as seas
 
   assert.equal(preview.salary_deduction, 100);
   assert.equal(preview.loan_interest, 10);
-  assert.equal(preview.balance_after, 390);
+  assert.equal(preview.balance_after, 400);
   assert.equal(preview.current_board_satisfaction, 50);
   assert.equal(preview.board_satisfaction, 74);
   assert.equal(preview.sponsor_modifier, 1.1);

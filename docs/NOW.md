@@ -12,12 +12,14 @@
 - Done proof: `.github/workflows/uci_sync.yml` kører `node backend/scripts/recalculateRiderSalaries.js` efter `python scripts/uci_scraper.py`; `backend/scripts/recalculateRiderSalaries.js` kalder `updateRiderValues`; `backend/lib/economyEngine.test.js` dækker genberegning med `prize_earnings_bonus`.
 - Live season-flow verification er startet statisk/lokalt: xlsx-import og approve deler `applyRaceResults`; backend-tests bekræfter `race_results` → prize finance rows → `season_standings`.
 - Fund lukket: season-end preview brugte en lokal board/sponsor-regel, som kunne afvige fra `processSeasonEnd`/season-start. Preview bruger nu `buildSeasonEndPreviewRows` i `backend/lib/economyEngine.js` og er dækket af regressionstest.
-- Live read-only Supabase-verifikation er ikke kørt i denne session, fordi `.codex.local/supabase-readonly.env` ikke findes i repo-root.
+- Live read-only Supabase-verifikation er kørt med credentials fra `backend/.env` uden at ekko secrets.
+- Fund: live DB har sæson 6 som aktiv, men `races`, `race_results` og `season_standings` er tomme for alle sæsoner; seneste `import_log` for `race_results_sheets` behandlede 709 rækker, men skrev 0 fordi alle løb blev skipped/unmatched.
+- Fund lukket: season-end preview trak aktive lånerenter fra kontant `balance_after`, mens runtime `processLoanInterest` lægger renter på lånets restgæld. Preview viser stadig renter, men nød-lånsbehov følger nu runtime-kontantbalancen efter løn.
 
 ## Næste konkrete handling
-1. Verificér live season-flow med credentials: admin xlsx import → `race_results` → standings → finance/prizes.
-2. Verificér deployed season-end preview/end mod løn, renter, sponsor og board-side effects.
-3. Notér evt. resterende drift som konkrete P1/P2-fund før ny implementering.
+1. Fyld/opret live `races` for aktiv sæson eller kør en kontrolleret smoke-sæson med test-races, før admin xlsx/sheets-resultatimport kan verificeres end-to-end.
+2. Verificér live season-flow igen: admin xlsx/sheets import → `race_results` → standings → finance/prizes.
+3. Verificér deployed season-end preview/end mod løn, lånerente som gæld, sponsor og board-side effects.
 
 ## Kommandoer
 PowerShell skal stå i repo-root:

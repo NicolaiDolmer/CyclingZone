@@ -67,7 +67,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Opryknings/nedrykningslogik (top/bund 2 per division)
 - Sæsonpreview-side + Races-side
 - Løbsarkiv (`/race-archive`) og løbshistorik (`/race-archive/:raceSlug`)
-- Season-end preview bruger economy engine til løn, renter, projected board satisfaction og næste sponsorudbetaling, så preview matcher season-end/season-start runtime
+- Season-end preview bruger economy engine til løn, lånerente som gæld, projected board satisfaction og næste sponsorudbetaling, så preview matcher season-end/season-start runtime
 
 ### Bestyrelse (Board)
 - Tre parallelle planer (1yr/3yr/5yr) kører simultant per hold med egne mål og tilfredshed → budget_modifier
@@ -109,13 +109,14 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 - Evne-filter/slider kræver frisk live-reproduktion; ingen statisk root cause fundet
 - Discord/webhook-regression kræver frisk live-reproduktion; inkl. transferhistorik til Discord-tråd
+- Live result-import er blokeret af manglende `races` i Supabase; read-only verifikation 2026-04-28 viste 0 races/resultater/standings og seneste sheets-import skrev 0 rækker pga. unmatched løb
 
 ---
 
 ## 🚧 I gang
 
 - [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
-- [ ] Første live beta-verifikation af `season start -> result approval -> season end` (lokal/statisk kontraktverifikation kørt 2026-04-28; live credentials mangler i workspace)
+- [ ] Første live beta-verifikation af `season start -> result approval -> season end` (lokal/statisk kontraktverifikation og read-only credential-verifikation kørt 2026-04-28; live `races` mangler før end-to-end import kan bevises)
 
 ---
 

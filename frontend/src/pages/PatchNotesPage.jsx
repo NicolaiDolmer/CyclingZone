@@ -2,6 +2,25 @@
 
 const PATCHES = [
   {
+    version: "1.64",
+    date: "2026-04-28",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin",
+        items: [
+          "Season-end preview skelner nu mellem lånerente som øget gæld og kontantbalance efter løn, så nød-lånsbehov matcher den faktiske sæsonafslutning",
+        ],
+      },
+      {
+        category: "Verifikation",
+        items: [
+          "Live season-flow er verificeret read-only mod Supabase: aktiv sæson mangler stadig løbskalender/resultater, så rigtig import-til-standings-flow er blokeret af datagrundlaget",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.63",
     date: "2026-04-28",
     label: "Beta",

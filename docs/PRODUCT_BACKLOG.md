@@ -49,6 +49,7 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Slice UCI-R1 — Scraper top 3000 hardening ✅ (2026-04-28). Done proof: `docs/archive/UCI_R1_SCRAPER_TOP_3000_DONE_PROOF.md`
 - Slice UCI-R2 — Løn følger værdi efter UCI-sync ✅ (2026-04-28). Done proof: `.github/workflows/uci_sync.yml` + `backend/scripts/recalculateRiderSalaries.js` + `backend/lib/economyEngine.test.js`
 - Live season-flow quick fix — season-end preview board/sponsor drift ✅ (2026-04-28). Done proof: `backend/lib/economyEngine.js::buildSeasonEndPreviewRows`, `/api/admin/season-end-preview/:seasonId` bruger helperen, og `backend/lib/economyEngine.test.js` dækker projected satisfaction/modifier/sponsor samt løn/renter.
+- Live season-flow quick fix — preview lånerente vs kontantbalance ✅ (2026-04-28). Done proof: `buildSeasonEndPreviewRows` viser lånerente separat, men `balance_after`/nødlånsbehov følger runtime hvor aktive lånerenter lægges på gæld via `processLoanInterest`.
 
 ### Slice 14 — UCI-punkt + stats-udvikling over tid
 - Mål: Historisk tracking og visualisering af UCI-points og rytterstats pr. rytter.
@@ -159,7 +160,9 @@ supabase.from("rider_stat_history")
 - ~~P0: UCI scraper workflow kunne køre grønt uden korrekt top 101-3000 coverage og kunne masse-nedskrive ikke-matchede ryttere til 5 UCI-point~~ ✅ løst via Slice UCI-R1
 - ~~P1: Lønninger genberegnes ikke automatisk efter UCI value-sync~~ ✅ løst via Slice UCI-R2
 - ~~P2: Season-end preview kunne vise sponsor/board-tal fra en lokal forenklet regel i stedet for den delte board/economy-runtime~~ ✅ løst 2026-04-28
+- ~~P2: Season-end preview kunne trække aktive lånerenter fra kontantbalance, selvom runtime lægger lånerenten på lånets restgæld~~ ✅ løst 2026-04-28
 - ~~P1: Google Sheets-resultatimport bypasser den kanoniske `applyRaceResults` path og kan skabe drift mellem `race_results`, standings, finance transactions og balances~~ ✅ løst; `raceResultsSheetSync` delegerer til `applyRaceResults` og backend-test dækker flowet
+- P1: Live result-import kan ikke verificeres end-to-end før `races` er fyldt i live DB; read-only verifikation 2026-04-28 viste 0 races/resultater/standings og `import_log` med 709 rows processed men 0 inserted/updated på grund af unmatched løb.
 - P1: Discord/webhook-regression skal reproduceres og spores gennem nuværende notifier-paths og live webhook-konfiguration; samme spor bør også afklare hvordan transferhistorik kan spejles til en dedikeret Discord-tråd via webhook
 - P2: `/profile` redirect kan vælge forkert team, fordi query ikke filtrerer på aktuel bruger
 - P2: `window_pending` handler kan efterlade transfer listings som `sold`, hvis flush fejler senere
