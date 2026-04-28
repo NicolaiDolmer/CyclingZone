@@ -11,10 +11,9 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 
 ### Aktuel rækkefølge
 1. Live season flow verification med admin xlsx som primær resultater-kilde.
-2. Review hardening: race-result path, `/profile` redirect, window_pending, auction invariants og sidebar active-state.
-3. Discord/webhook og evne-filter investigations med frisk reproduktion.
-4. Mobile beta-critical flows: rytterliste, rytterside, bud/auktion, indbakke og admin quick actions.
-5. Øvrig beta-readiness og post-beta feature candidates.
+2. Discord/webhook og evne-filter investigations med frisk reproduktion.
+3. Mobile beta-critical flows: rytterliste, rytterside, bud/auktion, indbakke og admin quick actions.
+4. Øvrig beta-readiness og post-beta feature candidates.
 
 ### Slice UCI-R2 — Løn følger værdi efter UCI-sync ✅ FÆRDIG (2026-04-28)
 - Mål: Når UCI-værdier opdateres, skal rytterlønninger genberegnes i samme kontrollerede flow, så værdi og løn ikke driver fra hinanden.
@@ -50,6 +49,8 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Slice UCI-R2 — Løn følger værdi efter UCI-sync ✅ (2026-04-28). Done proof: `.github/workflows/uci_sync.yml` + `backend/scripts/recalculateRiderSalaries.js` + `backend/lib/economyEngine.test.js`
 - Live season-flow quick fix — season-end preview board/sponsor drift ✅ (2026-04-28). Done proof: `backend/lib/economyEngine.js::buildSeasonEndPreviewRows`, `/api/admin/season-end-preview/:seasonId` bruger helperen, og `backend/lib/economyEngine.test.js` dækker projected satisfaction/modifier/sponsor samt løn/renter.
 - Live season-flow quick fix — preview lånerente vs kontantbalance ✅ (2026-04-28). Done proof: `buildSeasonEndPreviewRows` viser lånerente separat, men `balance_after`/nødlånsbehov følger runtime hvor aktive lånerenter lægges på gæld via `processLoanInterest`.
+- Supabase AI workflow tooling ✅ (2026-04-28). Done proof: `backend/scripts/aiSupabaseProbe.js`, `npm run db:ai:*` inkl. view-verifikation, `docs/SUPABASE_AI_WORKFLOW.md`, `docs/templates/*`, `.codex.local/SESSION_CONTEXT.md` og `database/ai_readonly_views.sql`; live `ai_*` views er installeret og læsbare.
+- Slice R1 — Review hardening efter Claude-session ✅ (2026-04-28). Done proof: `raceResultsSheetSync` delegerer til `applyRaceResults`; `/profile` redirect filtrerer på `teams.user_id`; `transferExecution` blokerer cancel af `window_pending`/begge-confirmed handler; bankryttere blokeres for direkte transfer/swap; `auctionRules` og `auctionFinalization` dækker minimum overbud, balance-reservation, trupplads-reservation og AI/fri-rider finalisering; `Layout.jsx` matcher ruter segment-aware. Regression: målrettede backend-tests passerer, og frontend build passerer med kendt chunk warning.
 
 ### Slice 14 — UCI-punkt + stats-udvikling over tid
 - Mål: Historisk tracking og visualisering af UCI-points og rytterstats pr. rytter.
@@ -62,27 +63,24 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Kører: hver mandag 06:00 UTC, manuelt via GitHub Actions → "Run workflow"
 - GitHub Actions secrets: UCI_GOOGLE_SERVICE_ACCOUNT_JSON, UCI_GOOGLE_SHEET_ID, SUPABASE_URL, SUPABASE_SERVICE_KEY
 
-### Slice R1 — Review hardening efter Claude-session (AKUT)
+### Slice R1 — Review hardening efter Claude-session ✅ FÆRDIG (2026-04-28)
 - Mål: Luk review-fund og markedsregressioner før næste større feature-slice, så runtime-kontrakterne ikke driver.
 - Klassifikation: `direkte implementerbar` for P1/P2-fund; enkelte markedsregler kræver testreproduktion, men ikke produktvalg.
 - Manager-værdi: færre strandede handler, korrekt økonomi efter resultater, og navigation/profil der ikke sender manageren forkert.
 - Berørte runtime-paths: `raceResultsSheetSync`/`raceResultsEngine`, `/profile` redirect, `transferExecution`, auktionsoprettelse/bud/finalisering, Layout route matching.
-- Centrale leverancer (prioriteret):
-  1. P1: Google Sheets-resultatimport skal bruge den kanoniske race-result path (`applyRaceResults`) eller en delt helper, så `race_results`, standings, finance transactions og balances opdateres ens på tværs af importflows.
-  2. P2: `/profile` redirect skal filtrere på aktuel bruger/team og ikke vælge første synlige team-række.
-  3. P2: `window_pending` handler må ikke kunne efterlade listings som `sold`, hvis flush senere fejler; indgåede handler må heller ikke kunne annulleres af manager efter begge parter har accepteret.
-  4. P3: Sidebar active-state skal være segment-aware, så `/team` ikke matcher `/teams`.
-  5. Bank-holdet skal ikke modtage direkte tilbud; bankryttere skal i stedet kunne auktioneres automatisk/efter samme model som ryttere uden noteret hold.
-  6. Auktioner skal reservere/validere truppens ledige pladser, så en manager ikke kan føre flere auktioner end der er plads til på holdet.
-  7. En auktion uden modbud skal stadig kunne gennemføres korrekt for initiator/køber; spillet må ikke behandle initiator som sælger af en bank/AI/fri rytter.
-  8. Bud må ikke kunne placeres, hvis maksimal betalingsforpligtelse overstiger holdets aktuelle disponible balance.
-  9. Auktionsbud skal minimum være 10% over nuværende bud/startpris, afrundet til nærmeste 1.000 CZ$; højere frie bud er stadig tilladt.
-- Regression tests:
-  - Sheets-import smoke: finance rows + standings + race status efter import.
-  - Transfer parking: success, failed flush og manager-withdraw efter accepteret handel.
-  - Auction capacity: aktive føringer/pending wins tæller mod squad max.
-  - Auction initiator-as-winner: bank/AI/fri rytter skifter korrekt uden falsk seller-flow.
-- Done when: backend tests + frontend build passerer, og mindst én regressionstest dækker hver kritisk runtime-invariant.
+- Done proof:
+  1. Google Sheets-resultatimport bruger den kanoniske `applyRaceResults` path.
+  2. `/profile` redirect filtrerer på `teams.user_id`.
+  3. `window_pending` handler holder listing i `negotiating`, og `getTransferCancelIssue`/`getSwapCancelIssue` blokerer manager-cancel efter fuld accept.
+  4. Sidebar active-state bruger segment-aware `pathMatchesNavItem`, så `/team` ikke matcher `/teams`.
+  5. Bank-holdet modtager ikke direkte transfer- eller byttetilbud; bank/AI/fri ryttere kan i stedet gå via auktionsmodellen.
+  6. Auktioner reserverer både disponibel balance og trupplads for aktive føringer.
+  7. AI/fri-rider auktioner kan vindes af initiator uden falsk seller-flow.
+  8. Bud blokeres hvis samlet betalingsforpligtelse overstiger balance.
+  9. Auktionsbud kræver minimum 10% over nuværende pris, rundet op til nærmeste 1.000 CZ$.
+- Regression 2026-04-28:
+  - `npm test -- --test-reporter=spec lib/auctionRules.test.js lib/auctionFinalization.test.js lib/transferExecution.test.js lib/marketUtils.test.js` ✅
+  - `npm run build` i `frontend` ✅ med kendt Vite chunk-size warning.
 
 #### Slice 14 Del C — Præcis implementeringsspec
 
@@ -164,11 +162,11 @@ supabase.from("rider_stat_history")
 - ~~P1: Google Sheets-resultatimport bypasser den kanoniske `applyRaceResults` path og kan skabe drift mellem `race_results`, standings, finance transactions og balances~~ ✅ løst; `raceResultsSheetSync` delegerer til `applyRaceResults` og backend-test dækker flowet
 - P1: Live result-import kan ikke verificeres end-to-end før `races` er fyldt i live DB; read-only verifikation 2026-04-28 viste 0 races/resultater/standings og `import_log` med 709 rows processed men 0 inserted/updated på grund af unmatched løb.
 - P1: Discord/webhook-regression skal reproduceres og spores gennem nuværende notifier-paths og live webhook-konfiguration; samme spor bør også afklare hvordan transferhistorik kan spejles til en dedikeret Discord-tråd via webhook
-- P2: `/profile` redirect kan vælge forkert team, fordi query ikke filtrerer på aktuel bruger
-- P2: `window_pending` handler kan efterlade transfer listings som `sold`, hvis flush fejler senere
-- P2: Indgåede handler må ikke kunne annulleres efter begge parter har accepteret, heller ikke hvis transfervinduet er lukket
+- ~~P2: `/profile` redirect kan vælge forkert team, fordi query ikke filtrerer på aktuel bruger~~ ✅ løst; redirect filtrerer på aktuel auth user via `teams.user_id`
+- ~~P2: `window_pending` handler kan efterlade transfer listings som `sold`, hvis flush fejler senere~~ ✅ løst; parkering bruger `negotiating`, og `sold` sættes først ved gennemført eksekvering
+- ~~P2: Indgåede handler må ikke kunne annulleres efter begge parter har accepteret, heller ikke hvis transfervinduet er lukket~~ ✅ løst; cancel guard dækker `window_pending` og begge-confirmed transfers/swaps
 - P2: Evne-filter/slider kræver frisk reproduktion på rigtige data; nuværende kodegennemgang fandt ingen entydig root cause
-- P3: Sidebar active-state matcher `/team` på `/teams`
+- ~~P3: Sidebar active-state matcher `/team` på `/teams`~~ ✅ løst; route match er segment-aware
 
 ---
 
@@ -206,12 +204,12 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 - ~~Vis tidspunkt for hvornår en rytter blev sat til transfer~~ ✅ (v1.35)
 - ~~Vis ryttertype på ryttersiden~~ ✅ (v1.35)
 - ~~Vis landenavn/flag i stedet for rå landekoder på øvrige rytterflader~~ ✅ (v1.39)
-- Bank-holdet skal ikke modtage direkte transfer-tilbud; bankryttere skal i stedet kunne sendes på auktion som bank/AI/fri ryttere
-- Auktioner skal tælle aktive føringer/potentielle wins mod squad max, så man ikke kan føre flere auktioner end der er plads til
-- Auktioner uden modbud skal gennemføres korrekt for initiator, også når rytteren kommer fra bank/AI/fri pulje
-- Bud skal blokeres, hvis holdet ikke har råd til buddet
-- Minimum overbud i auktioner skal være 10% over nuværende pris/startpris, afrundet til nærmeste 1.000 CZ$
-- Indgåede direkte transfers og swaps skal låses mod manager-annullering efter gensidig accept, inkl. mens de er parkeret til næste transfervindue
+- ~~Bank-holdet skal ikke modtage direkte transfer-tilbud; bankryttere skal i stedet kunne sendes på auktion som bank/AI/fri ryttere~~ ✅
+- ~~Auktioner skal tælle aktive føringer/potentielle wins mod squad max, så man ikke kan føre flere auktioner end der er plads til~~ ✅
+- ~~Auktioner uden modbud skal gennemføres korrekt for initiator, også når rytteren kommer fra bank/AI/fri pulje~~ ✅
+- ~~Bud skal blokeres, hvis holdet ikke har råd til buddet~~ ✅
+- ~~Minimum overbud i auktioner skal være 10% over nuværende pris/startpris, afrundet til nærmeste 1.000 CZ$~~ ✅
+- ~~Indgåede direkte transfers og swaps skal låses mod manager-annullering efter gensidig accept, inkl. mens de er parkeret til næste transfervindue~~ ✅
 - Ryttersiden må ikke kræve horisontal scroll for at kunne byde/købe; primære markedsactions skal være tilgængelige på mobil og smalle skærme
 
 ---
