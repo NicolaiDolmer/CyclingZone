@@ -29,6 +29,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Garanteret salg (startpris = 50% af UCI-pris) — kun egne ryttere; exploit lukket (v1.46)
 - Minimum startpris håndhævet (backend + frontend): startbud ≥ rytterens Værdi; garanteret salg er eneste undtagelse
 - Auktionsfinalisering via cron (60s) — delt path for cron/admin/API, korrekt ejer-check og squad-limit
+- Auktionsbud kræver minimum 10% over nuværende pris rundet op til nærmeste 1.000 CZ$, og aktive føringer reserverer både balance og trupplads
+- AI-/bank-/fri-rider auktioner finaliseres uden at initiator behandles som falsk økonomisk sælger
 - Auktionshistorik-side
 - Discord-notifikationer (auktioner, overbud, transfers, sæsonevents)
 
@@ -38,6 +40,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Swap-forslag med kontantjustering + modtilbud
 - Delt backend confirm-path (ejerskab, saldo, squad-limit + oprydning ved gennemførelse)
 - Tilbagetræk tilbud (withdraw, inkl. modtilbud)
+- Parkerede `window_pending` transfers/swaps er låst mod manager-annullering efter gensidig accept og sætter først listings til `sold`, når eksekvering faktisk lykkes
+- Bankryttere kan ikke modtage direkte transfer- eller byttetilbud; de skal gå via auktioner
 - Notifikationer til sælger ved nyt tilbud
 
 ### Lån
@@ -92,6 +96,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ### UI / Misc
 - Responsivt layout med navigation (Layout.jsx)
+- Sidebar active-state matcher hele rutesegmenter, så `/team` og `/teams` ikke kolliderer
 - Notifikationssystem (in-app + badge, deduplicering ved cron/retries)
 - Achievement-sync fra live historiktabeller (bid, transfer, watchlist, hold, board)
 - Aktivitets-feed · Head-to-head sammenligning · Hall of Fame · Patch notes · Hjælpeside · Confetti modal

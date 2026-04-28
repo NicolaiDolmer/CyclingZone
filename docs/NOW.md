@@ -17,6 +17,9 @@
 - Fund lukket: season-end preview trak aktive lånerenter fra kontant `balance_after`, mens runtime `processLoanInterest` lægger renter på lånets restgæld. Preview viser stadig renter, men nød-lånsbehov følger nu runtime-kontantbalancen efter løn.
 - Supabase AI workflow tooling er tilføjet: read-only `.codex.local` template, `npm run db:ai:*` probes, kompakt workflow-doc og optional `ai_*` views til billig live-inspektion.
 - `ai_*` Supabase views er installeret og læsbare; `ai_recent_import_health` bekræfter seneste `race_results_sheets` import med 709 processed, 0 inserted/updated og 18 unmatched race-navne.
+- `Slice R1 — Review hardening efter Claude-session` ✅ FÆRDIG i runtime/docs-verifikation.
+- Done proof: `/profile` redirect filtrerer på `teams.user_id`; `Layout.jsx` bruger segment-aware route match; `transferExecution` låser `window_pending`/begge-confirmed handler mod manager-cancel; bankryttere blokeres for direkte transfer/swap; auktioner validerer 10%/1.000 CZ$ overbud, disponibel balance inkl. aktive føringer, trupplads inkl. aktive føringer/pending/loans, og AI/fri-rider finalisering uden falsk seller-flow.
+- Regression: `backend/lib/auctionRules.test.js`, `backend/lib/auctionFinalization.test.js`, `backend/lib/transferExecution.test.js` og `backend/lib/marketUtils.test.js` passerer 2026-04-28. Frontend build passerer med kendt Vite chunk-size warning.
 
 ## Næste konkrete handling
 1. Fyld/opret live `races` for aktiv sæson eller kør en kontrolleret smoke-sæson med test-races, før admin xlsx/sheets-resultatimport kan verificeres end-to-end.
@@ -48,4 +51,4 @@ npm run db:ai:views
 - En afsluttet slice må ikke blive stående som aktiv/næste handling; tjek runtime/test/patch notes før samme opgave startes igen.
 
 ## Næste slice efter live season verification
-- Review hardening: race-result path, `/profile` redirect, window_pending, auction invariants og sidebar active-state.
+- Discord/webhook og evne-filter investigations med frisk reproduktion.
