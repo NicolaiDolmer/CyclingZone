@@ -31,9 +31,12 @@ Hvis Vercel-projekt, Railway-service eller domæner ændres, skal denne fil opda
 1. Kør `pwsh -File scripts/verify-local.ps1` fra repo-root
 2. Commit ændringerne
 3. Push til `origin/main`
-4. Bekræft at GitHub Actions er grøn for backend-tests og frontend-build
-5. Bekræft at Vercel har bygget seneste commit til `READY`
-6. Bekræft at Railway-backenden svarer på `GET /health` og mindst én auth-gatet route
+4. Kør `pwsh -File scripts/verify-deploy.ps1`
+   - Scriptet bekræfter at `HEAD` er `origin/main`
+   - Poller GitHub Actions for den aktuelle commit
+   - Poller GitHub deployments for Vercel + Railway success
+   - Smoke-tester backend `/health` og `/api/auctions`
+   - Tjekker at frontend-aliaset svarer (Vercel kan være auth-protected)
 
 Denne fil beskriver den nuværende praksis. Hvis release-flowet flyttes væk fra GitHub-connected auto-deploys, er denne fil stale og skal opdateres.
 
@@ -50,6 +53,14 @@ Denne fil beskriver den nuværende praksis. Hvis release-flowet flyttes væk fra
 ---
 
 ## Hurtig live-verifikation
+
+Standardkommando:
+
+```powershell
+pwsh -File scripts\verify-deploy.ps1
+```
+
+Brug `-Sha <commit>` hvis en ældre production-commit skal verificeres eksplicit.
 
 ### Frontend
 - Find seneste production deployment for Vercel-projektet `cycling-zone`
