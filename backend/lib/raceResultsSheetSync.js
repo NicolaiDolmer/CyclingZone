@@ -1,3 +1,5 @@
+import { applyRaceResults as applyRaceResultsShared } from "./raceResultsEngine.js";
+
 // Maps Google Sheet "Benævnelse" → race_results.result_type
 const BENÆVNELSE_TO_TYPE = {
   "Etapeplacering": "stage",
@@ -67,13 +69,16 @@ async function fetchCsv(sheetId, gid) {
 export async function syncRaceResultsFromSheets({
   spreadsheetUrl,
   supabase,
+  applyRaceResults = applyRaceResultsShared,
+  ensureSeasonStandings = async () => {},
   updateStandings,
   adminUserId,
+  fetchCsvFn = fetchCsv,
 }) {
   const sheetId = extractSheetId(spreadsheetUrl);
   const gid = extractGid(spreadsheetUrl);
 
-  const csv = await fetchCsv(sheetId, gid);
+  const csv = await fetchCsvFn(sheetId, gid);
   const lines = csv.split("\n").filter(l => l.trim());
   if (lines.length < 2) throw new Error("CSV er tom eller mangler datarækker");
 
@@ -272,23 +277,24 @@ export async function syncRaceResultsFromSheets({
           team_name: row.team || null,
           finish_time: null,
           points_earned: points,
-          prize_money: 0,
+          prize_money: points,
         });
       }
 
       if (!resultRows.length) continue;
 
-      const { error: insertError } = await supabase.from("race_results").insert(resultRows);
-      if (insertError) throw new Error(`Fejl ved import af ${løbName}: ${insertError.message}`);
+      const importResult = await applyRaceResults({
+        supabase,
+        race: { ...race, season_id: season.id },
+        resultRows,
+        ensureSeasonStandings,
+        updateStandings,
+      });
 
       await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
 
-      seasonImported += resultRows.length;
+      seasonImported += importResult.rowsImported;
       seasonRaces.push(løbName);
-    }
-
-    if (seasonImported > 0) {
-      await updateStandings(season.id, null, { supabase });
     }
 
     totalImported += seasonImported;

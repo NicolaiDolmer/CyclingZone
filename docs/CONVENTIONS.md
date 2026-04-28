@@ -23,6 +23,18 @@
 
 - Hold docs kompakte og referencevenlige
 - Foretræk små, domæneafgrænsede ændringer frem for brede refactors
+- Arbejd i små slices med ét primært runtime-mål pr. session
+- Brug målrettede tests først; kør bredere test/build når ændringen rører shared runtime, routing eller brugerflows
+- Afslut større opgaver med root cause, invariant, filer ændret, tests kørt og næste anbefalede slice
+
+## Kontekst- og tokenhygiejne
+
+- `docs/NOW.md` må kun indeholde aktiv slice, næste slice, blockers og aktuelle release-noter; flyt detaljer til backloggen
+- `docs/PRODUCT_BACKLOG.md` er kanonisk sted for nye ideer, bugs og planlagte forbedringer
+- Undgå at gentage roadmap i chatten; referér til slice-navn og runtime-path
+- Nye sessioner bør starte med prompten i `docs/PROMPT_LIBRARY.md#effektiv-session`
+- Læs ekstra reference-docs efter behov, ikke som standard, medmindre guardrails kræver det
+- Gruppér relaterede ændringer efter domæne: transfer/window_pending, auctions, beta-reset, UI/mobil, økonomi eller integrationer
 
 ## UI — lyst tema (gældende palette)
 

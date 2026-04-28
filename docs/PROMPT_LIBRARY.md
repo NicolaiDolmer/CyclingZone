@@ -1,5 +1,34 @@
 # PROMPT LIBRARY — Cycling Zone
 
+## Effektiv session
+
+Brug denne ved ny Codex/Claude-session for at holde kontekst og tokenforbrug nede:
+
+```text
+Fortsæt fra docs/NOW.md. Arbejd kun på [SLICE/DELOPGAVE].
+Følg AGENTS.md og docs/GUARDRAILS.md.
+Læs kun ekstra docs/filer når de er nødvendige for den konkrete runtime-path.
+Implementér, kør målrettede tests, opdater kun relevante docs, og afslut med root cause, invariant, filer og tests.
+```
+
+Principper:
+- Én session = én tydelig slice eller delopgave.
+- Brug `docs/PRODUCT_BACKLOG.md` som samlet sandhed for ideer og plan, ikke chat-historik.
+- Hold `docs/NOW.md` kort: aktiv slice, næste slice, blockers og vigtigste invariant.
+- Start bred review kun ved risikable runtime-paths; simple bugs kan gå direkte til målrettet fix.
+- Gruppér kun tæt relaterede fixes, fx transfer/window_pending samlet eller auction-regler samlet.
+- Docs-only ændringer kræver normalt ikke testkørsel; backend runtime-fix kræver målrettet backend-test; frontend route/UI-fix kræver mindst build.
+
+## Slice Prompt
+
+```text
+Fortsæt fra docs/NOW.md. Arbejd kun på [SLICE].
+Mål: [kort mål].
+In scope: [konkrete filer/runtime-paths].
+Out of scope: [hvad der ikke må røres].
+Forventet test: [målrettet test/build].
+```
+
 ## Standard Task
 
 Docs:

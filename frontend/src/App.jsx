@@ -5,8 +5,19 @@ import { supabase } from "./lib/supabase";
 function ProfileRedirect() {
   const [to, setTo] = useState(null);
   useEffect(() => {
-    supabase.from("teams").select("id").then(({ data }) => {
-      setTo(data?.[0]?.id ? `/managers/${data[0].id}` : "/dashboard");
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        setTo("/dashboard");
+        return;
+      }
+      supabase
+        .from("teams")
+        .select("id")
+        .eq("user_id", user.id)
+        .single()
+        .then(({ data }) => {
+          setTo(data?.id ? `/managers/${data.id}` : "/dashboard");
+        });
     });
   }, []);
   if (!to) return null;

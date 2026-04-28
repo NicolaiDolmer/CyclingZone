@@ -12,7 +12,9 @@
 - `Rytterhistorik — ejerskab og handelshistorik` ✅ FÆRDIG (2026-04-26)
 - `Slice 14 Del B — Historisk tracking` ✅ FÆRDIG (2026-04-26) — rider_uci_history + rider_stat_history tabeller; sheetsSync + dynCyclistSync logger historik ved hver sync
 - `Slice 14 Del A — UCI scraper` 🔄 I GANG — script + GitHub Actions workflow bygget; afventer bekræftelse af vellykket testkørsel
-- **Næste: Slice 14 Del C — Frontend-visualisering (tabel + graf på rytterprofil)**
+- `Slice R1 — Review hardening efter Claude-session` ✅ FÆRDIG (2026-04-28) — sheets-import canonical path, profile/sidebar routing, transfer parking/cancel locks, auction bid guards
+- **Aktiv prioritet: Slice R2 — Beta-reset komplet reset-suite**
+- **Derefter: Slice 14 Del C — Frontend-visualisering (tabel + graf på rytterprofil)**
 
 ## Udskudt / holdt ude
 - PCM mappings — afventer ekstern data
@@ -20,3 +22,5 @@
 - Transfer-notifikation Discord live-test — webhook-URL verificeret OK; bekræft ved næste rigtige transfer at notifikation lander i #Transferhistorik
 - Løbsoprettelse + resultater-import — udskudt til 2026-04-28
 - Discord/webhook P1-bug — udskudt til 2026-04-28
+- Dark mode / bred UI-retning — kræver lille designafklaring før implementering
+- Vite bundle-splitting — planlagt teknisk forbedring, ikke release-blocker mens build passerer

@@ -60,6 +60,10 @@ async function authHeaders() {
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
 
+function pathMatchesNavItem(pathname, to) {
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -75,7 +79,7 @@ export default function Layout() {
 
   useEffect(() => {
     const path = location.pathname;
-    const activeGroup = buildNavGroups(null).find(g => g.items.some(i => path.startsWith(i.to)));
+    const activeGroup = buildNavGroups(null).find(g => g.items.some(i => pathMatchesNavItem(path, i.to)));
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
   }, [location.pathname]);
@@ -157,7 +161,7 @@ export default function Layout() {
     : baseGroups;
 
   function NavItem({ to, label, badge, onClick }) {
-    const isActive = location.pathname === to || (to !== "/dashboard" && location.pathname.startsWith(to));
+    const isActive = pathMatchesNavItem(location.pathname, to);
     const showBadge = badge && unread > 0;
     return (
       <NavLink to={to} onClick={onClick}

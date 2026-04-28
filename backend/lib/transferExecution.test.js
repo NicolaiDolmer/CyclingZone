@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  getSwapCancelIssue,
   getSwapExecutionIssue,
+  getTransferCancelIssue,
   getTransferExecutionIssue,
 } from "./transferExecution.js";
 
@@ -148,4 +150,44 @@ test("getSwapExecutionIssue rejects when the payer no longer has the cash adjust
   });
 
   assert.equal(issue?.code, "proposing_insufficient_balance");
+});
+
+test("getTransferCancelIssue blocks manager cancel after both parties accepted", () => {
+  assert.equal(
+    getTransferCancelIssue({
+      status: "window_pending",
+      buyer_confirmed: true,
+      seller_confirmed: true,
+    })?.code,
+    "deal_already_accepted"
+  );
+
+  assert.equal(
+    getTransferCancelIssue({
+      status: "awaiting_confirmation",
+      buyer_confirmed: true,
+      seller_confirmed: false,
+    }),
+    null
+  );
+});
+
+test("getSwapCancelIssue blocks manager cancel after both parties accepted", () => {
+  assert.equal(
+    getSwapCancelIssue({
+      status: "window_pending",
+      proposing_confirmed: true,
+      receiving_confirmed: true,
+    })?.code,
+    "deal_already_accepted"
+  );
+
+  assert.equal(
+    getSwapCancelIssue({
+      status: "awaiting_confirmation",
+      proposing_confirmed: true,
+      receiving_confirmed: false,
+    }),
+    null
+  );
 });

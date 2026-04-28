@@ -98,6 +98,28 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Kører: hver mandag 06:00 UTC, manuelt via GitHub Actions → "Run workflow"
 - GitHub Actions secrets: UCI_GOOGLE_SERVICE_ACCOUNT_JSON, UCI_GOOGLE_SHEET_ID, SUPABASE_URL, SUPABASE_SERVICE_KEY
 
+### Slice R1 — Review hardening efter Claude-session (AKUT)
+- Mål: Luk review-fund og markedsregressioner før næste større feature-slice, så runtime-kontrakterne ikke driver.
+- Klassifikation: `direkte implementerbar` for P1/P2-fund; enkelte markedsregler kræver testreproduktion, men ikke produktvalg.
+- Manager-værdi: færre strandede handler, korrekt økonomi efter resultater, og navigation/profil der ikke sender manageren forkert.
+- Berørte runtime-paths: `raceResultsSheetSync`/`raceResultsEngine`, `/profile` redirect, `transferExecution`, auktionsoprettelse/bud/finalisering, Layout route matching.
+- Centrale leverancer (prioriteret):
+  1. P1: Google Sheets-resultatimport skal bruge den kanoniske race-result path (`applyRaceResults`) eller en delt helper, så `race_results`, standings, finance transactions og balances opdateres ens på tværs af importflows.
+  2. P2: `/profile` redirect skal filtrere på aktuel bruger/team og ikke vælge første synlige team-række.
+  3. P2: `window_pending` handler må ikke kunne efterlade listings som `sold`, hvis flush senere fejler; indgåede handler må heller ikke kunne annulleres af manager efter begge parter har accepteret.
+  4. P3: Sidebar active-state skal være segment-aware, så `/team` ikke matcher `/teams`.
+  5. Bank-holdet skal ikke modtage direkte tilbud; bankryttere skal i stedet kunne auktioneres automatisk/efter samme model som ryttere uden noteret hold.
+  6. Auktioner skal reservere/validere truppens ledige pladser, så en manager ikke kan føre flere auktioner end der er plads til på holdet.
+  7. En auktion uden modbud skal stadig kunne gennemføres korrekt for initiator/køber; spillet må ikke behandle initiator som sælger af en bank/AI/fri rytter.
+  8. Bud må ikke kunne placeres, hvis maksimal betalingsforpligtelse overstiger holdets aktuelle disponible balance.
+  9. Auktionsbud skal minimum være 10% over nuværende bud/startpris, afrundet til nærmeste 1.000 CZ$; højere frie bud er stadig tilladt.
+- Regression tests:
+  - Sheets-import smoke: finance rows + standings + race status efter import.
+  - Transfer parking: success, failed flush og manager-withdraw efter accepteret handel.
+  - Auction capacity: aktive føringer/pending wins tæller mod squad max.
+  - Auction initiator-as-winner: bank/AI/fri rytter skifter korrekt uden falsk seller-flow.
+- Done when: backend tests + frontend build passerer, og mindst én regressionstest dækker hver kritisk runtime-invariant.
+
 #### Slice 14 Del C — Præcis implementeringsspec
 
 **Fil der ændres:** `frontend/src/pages/RiderStatsPage.jsx`
@@ -138,6 +160,8 @@ supabase.from("rider_stat_history")
 **Styling:** Matcher eksisterende `bg-white border border-slate-200 rounded-xl p-5`-pattern fra de andre tabs.
 
 ### Næste planlagte slices
+- Slice R2 — Beta-reset komplet reset-suite
+- Slice U1 — UI/mobil/dark-mode forbedringsspor
 - Slice 15 — Løbsoprettelse i admin + resultater-import via Google Sheets (udskudt til 2026-04-28)
 - Slice 16 — Discord/webhook P1-bug + transferhistorik til Discord-tråd (udskudt til 2026-04-28)
 
@@ -153,6 +177,7 @@ supabase.from("rider_stat_history")
 ## 🤝 Samarbejdsmodel
 
 - `docs/PRODUCT_BACKLOG.md` forbliver kanonisk roadmap; `docs/NOW.md` holder kun aktiv slice, næste slice og blockers
+- Nye sessions bør bruge `docs/PROMPT_LIBRARY.md#effektiv-session` for at holde scope, kontekst og tokenforbrug nede
 - Hver ny opgave starter med en kort feature-brief i chatten: mål, manager-værdi, berørt runtime-path, åbne beslutninger, anbefaling og evt. inputbehov
 - Hver opgave klassificeres før execution som `direkte implementerbar`, `investigation` eller `kræver askuserquestion`
 - `askuserquestion` bruges især ved IA/naming, flere plausible produktmodeller, nye datakontrakter/integrationer/offentlige visninger og balancing-spor
@@ -169,8 +194,13 @@ supabase.from("rider_stat_history")
 
 - ~~P0: Garanteret salg kunne misbruges til at købe AI-ejede ryttere til 50% af værdien~~ ✅ løst
 - ~~P1: Bestyrelse vises ikke korrekt på dashboard efter boardEngine-refactor — regression~~ ✅ løst (v1.46)
+- P1: Google Sheets-resultatimport bypasser den kanoniske `applyRaceResults` path og kan skabe drift mellem `race_results`, standings, finance transactions og balances
 - P1: Discord/webhook-regression skal reproduceres og spores gennem nuværende notifier-paths og live webhook-konfiguration; samme spor bør også afklare hvordan transferhistorik kan spejles til en dedikeret Discord-tråd via webhook
+- P2: `/profile` redirect kan vælge forkert team, fordi query ikke filtrerer på aktuel bruger
+- P2: `window_pending` handler kan efterlade transfer listings som `sold`, hvis flush fejler senere
+- P2: Indgåede handler må ikke kunne annulleres efter begge parter har accepteret, heller ikke hvis transfervinduet er lukket
 - P2: Evne-filter/slider kræver frisk reproduktion på rigtige data; nuværende kodegennemgang fandt ingen entydig root cause
+- P3: Sidebar active-state matcher `/team` på `/teams`
 
 ---
 
@@ -208,6 +238,13 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 - ~~Vis tidspunkt for hvornår en rytter blev sat til transfer~~ ✅ (v1.35)
 - ~~Vis ryttertype på ryttersiden~~ ✅ (v1.35)
 - ~~Vis landenavn/flag i stedet for rå landekoder på øvrige rytterflader~~ ✅ (v1.39)
+- Bank-holdet skal ikke modtage direkte transfer-tilbud; bankryttere skal i stedet kunne sendes på auktion som bank/AI/fri ryttere
+- Auktioner skal tælle aktive føringer/potentielle wins mod squad max, så man ikke kan føre flere auktioner end der er plads til
+- Auktioner uden modbud skal gennemføres korrekt for initiator, også når rytteren kommer fra bank/AI/fri pulje
+- Bud skal blokeres, hvis holdet ikke har råd til buddet
+- Minimum overbud i auktioner skal være 10% over nuværende pris/startpris, afrundet til nærmeste 1.000 CZ$
+- Indgåede direkte transfers og swaps skal låses mod manager-annullering efter gensidig accept, inkl. mens de er parkeret til næste transfervindue
+- Ryttersiden må ikke kræve horisontal scroll for at kunne byde/købe; primære markedsactions skal være tilgængelige på mobil og smalle skærme
 
 ---
 
@@ -244,6 +281,27 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 - Præmiepenge skal kalibreres — afventer Google Sheets-integration til løbsresultater (Session 6b); præmier og Google Sheets skal designes samlet så de hænger sammen med ranglisten
 - Overvej prisfaktor x4000 som særskilt tuning-spor (ikke prioriteret)
 - Finans-overblikket skal ses i sammenhæng med navigationsoverblikket (`Økonomi` → `Finanser`)
+- Gældsloft skal sættes ned og justeres efter ny økonomisk balance; kræver tuning-session med konkrete divisionstal
+
+## 🧪 Beta reset & admin tooling
+
+- Udvid beta-reset, så alle managerhold kan sættes tilbage til 3. division
+- Board-profiler/bestyrelser skal kunne resettes til baseline
+- Løbskalenderen skal kunne nulstilles
+- Sæsoner skal kunne nulstilles
+- Modtagne tilbud, transfer offers, swap offers og lånetilbud skal resettes konsekvent
+- Manager XP og level skal resettes
+- Achievements og achievement unlocks skal resettes
+- Reset-flowet skal give tydelig admin-kvittering og skelne mellem test-reset og destruktiv live-reset
+
+## 🎨 UI, mobil & tilgængelighed
+
+- Beslut om dark mode skal være permanent ny standard eller bruger-toggle; kræver lille IA/design-afklaring før implementering
+- Mobiloptimering af centrale flows: rytterliste, rytterside, bud/auktion, indbakke, admin quick actions
+- Siden til ændring af managernavn og holdnavn skal findes og bringes tilbage i UI, sandsynligvis som link fra managerprofil eller Overblik
+- Rytteroversigt: ret UI-fejl med streger mellem evnerne
+- Rytterside: fjern behov for horisontal scroll og gør bud/markedshandlinger sticky eller tydeligt placeret på mobil
+- Frontend-build advarer om stor Vite chunk; planlæg code-splitting med `React.lazy`/route-level dynamic imports før appen vokser yderligere
 
 ---
 
@@ -254,7 +312,9 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 - Patch notes auto-opdatering
 - ~~Admin skal kunne slette en bruger~~ ✅ (v1.42)
 - ~~Split `backend/lib/boardEngine.js` i mindre moduler~~ ✅ (refactor, 2026-04-25)
-- Frontend-build advarer stadig om stor Vite-chunk; senere code-splitting/manualChunks bør planlægges
+- `.claude/settings.local.json` bør ignoreres i `.gitignore`, hvis den kun er lokal Claude-konfiguration
+- `docs/Noter til spiller. Features og bugs.txt` bør enten flyttes ind i denne backlog eller committes bevidst som rå produktnote
+- `xlsx` dependency har kendte high-severity advisories i npm audit; planlæg isolering/erstatning eller strammere upload-validering
 
 ---
 

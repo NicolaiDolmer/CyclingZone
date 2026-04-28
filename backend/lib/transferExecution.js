@@ -77,6 +77,22 @@ export function getSwapExecutionIssue({
   return null;
 }
 
+export function getTransferCancelIssue(offer) {
+  if (offer?.status === "window_pending" || (offer?.buyer_confirmed && offer?.seller_confirmed)) {
+    return { code: "deal_already_accepted" };
+  }
+
+  return null;
+}
+
+export function getSwapCancelIssue(swap) {
+  if (swap?.status === "window_pending" || (swap?.proposing_confirmed && swap?.receiving_confirmed)) {
+    return { code: "deal_already_accepted" };
+  }
+
+  return null;
+}
+
 async function withdrawTransferOffer(supabase, offerId) {
   await expectMutation(
     supabase.from("transfer_offers").update({ status: "withdrawn" }).eq("id", offerId)
@@ -500,7 +516,7 @@ export async function confirmTransferOffer({
     await expectMutation(
       supabase.from("transfer_offers").update({ status: "window_pending" }).eq("id", offer.id)
     );
-    await closeTransferListingsForRiders(supabase, [offer.rider_id], "sold");
+    await closeTransferListingsForRiders(supabase, [offer.rider_id], "negotiating");
     await withdrawTransferOffersForRiders(supabase, [offer.rider_id], offer.id);
     await withdrawSwapOffersForRiders(supabase, [offer.rider_id]);
     const parkMsg = `Handlen på ${offer.rider.firstname} ${offer.rider.lastname} er aftalt og gennemføres automatisk, når transfervinduet åbner.`;

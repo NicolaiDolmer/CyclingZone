@@ -20,6 +20,7 @@ import {
   checkBidExtension,
   isAuctionExpired,
 } from "../lib/auctionEngine.js";
+import { getAuctionBidIssue } from "../lib/auctionRules.js";
 import {
   finalizeAuctionById,
   finalizeExpiredAuctions as finalizeExpiredAuctionsShared,
@@ -71,6 +72,8 @@ import {
   confirmSwapOffer,
   confirmTransferOffer,
   flushWindowPendingOffers,
+  getSwapCancelIssue,
+  getTransferCancelIssue,
 } from "../lib/transferExecution.js";
 import {
   getIncomingSquadViolation,
@@ -571,7 +574,7 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
   // Fetch auction
   const { data: auction } = await supabase
     .from("auctions")
-    .select("*, rider:rider_id(firstname, lastname)")
+    .select("*, rider:rider_id(firstname, lastname, team_id)")
     .eq("id", req.params.id)
     .single();
 
@@ -591,15 +594,40 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Du kan ikke byde på din egen rytter" });
     }
   }
-  if (amount < auction.current_price + auction.min_increment) {
+  const [leadingAuctions, teamState] = await Promise.all([
+    supabase
+      .from("auctions")
+      .select("id, current_price")
+      .in("status", ["active", "extended"])
+      .eq("current_bidder_id", req.team.id),
+    getTeamMarketState(supabase, req.team.id),
+  ]);
+  const activeLeading = leadingAuctions.data || [];
+  const activeLeadingExceptCurrent = activeLeading.filter(row => row.id !== auction.id);
+  const bidIssue = getAuctionBidIssue({
+    amount,
+    currentPrice: auction.current_price,
+    teamBalance: req.team.balance,
+    reservedBalance: activeLeadingExceptCurrent.reduce((sum, row) => sum + (Number(row.current_price) || 0), 0),
+    teamState,
+    activeLeadingCount: activeLeadingExceptCurrent.length,
+    alreadyLeadingThisAuction: auction.current_bidder_id === req.team.id,
+  });
+
+  if (bidIssue?.code === "bid_below_minimum") {
     return res.status(400).json({
-      error: `Minimum bid: ${auction.current_price + auction.min_increment}`,
+      error: `Minimum bid: ${bidIssue.minimumBid.toLocaleString("da-DK")} CZ$`,
     });
   }
 
-  // Check team has enough balance
-  if (req.team.balance < amount) {
-    return res.status(400).json({ error: "Insufficient balance" });
+  if (bidIssue?.code === "insufficient_available_balance") {
+    return res.status(400).json({ error: "Buddet overstiger din disponible balance inkl. aktive auktionsføringer" });
+  }
+
+  if (bidIssue?.code === "squad_capacity_reserved") {
+    return res.status(400).json({
+      error: `Dit hold kan max have ${bidIssue.maxRiders} ryttere inkl. aktive auktionsføringer`,
+    });
   }
 
   const bidTime = new Date();
@@ -778,6 +806,15 @@ router.post("/transfers/offer", requireAuth, async (req, res) => {
     .from("riders").select("id, team_id, firstname, lastname").eq("id", rider_id).single();
   if (!rider || !rider.team_id) return res.status(404).json({ error: "Rytter ikke fundet eller har intet hold" });
   if (rider.team_id === req.team.id) return res.status(400).json({ error: "Du kan ikke byde på din egen rytter" });
+
+  const { data: sellerTeam } = await supabase
+    .from("teams")
+    .select("is_bank")
+    .eq("id", rider.team_id)
+    .single();
+  if (sellerTeam?.is_bank) {
+    return res.status(400).json({ error: "Bankryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet." });
+  }
 
   // Check buyer balance
   const buyerState = await getTeamMarketState(supabase, req.team.id);
@@ -964,8 +1001,11 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
     });
   }
 
-  // CANCEL — either party cancels an awaiting_confirmation or window_pending deal
-  if (action === "cancel" && (offer.status === "awaiting_confirmation" || offer.status === "window_pending")) {
+  // CANCEL — either party can cancel only before both parties have accepted.
+  if (action === "cancel" && offer.status === "awaiting_confirmation") {
+    if (getTransferCancelIssue(offer)) {
+      return res.status(400).json({ error: "Handlen er accepteret af begge parter og kan ikke annulleres af manager" });
+    }
     await supabase.from("transfer_offers").update({ status: "withdrawn" }).eq("id", offer.id);
     const otherTeamId = isSeller ? offer.buyer_team_id : offer.seller_team_id;
     await notifyTeamOwner(otherTeamId, "transfer_offer_rejected",
@@ -973,6 +1013,9 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
       `${req.team.name} har trukket sig fra handlen på ${offer.rider.firstname} ${offer.rider.lastname}.`,
       offer.id);
     return res.json({ success: true, action: "cancelled" });
+  }
+  if (action === "cancel" && getTransferCancelIssue(offer)) {
+    return res.status(400).json({ error: "Handlen er accepteret af begge parter og kan ikke annulleres af manager" });
   }
 
   // NEW OFFER — buyer sends new amount (counter to counter)
@@ -1018,6 +1061,13 @@ router.post("/transfers/:id/offer", requireAuth, async (req, res) => {
     return res.status(404).json({ error: "Listing ikke fundet" });
   if (listing.seller_team_id === req.team.id)
     return res.status(400).json({ error: "Kan ikke byde på eget udbud" });
+  const { data: listingSeller } = await supabase
+    .from("teams")
+    .select("is_bank")
+    .eq("id", listing.seller_team_id)
+    .single();
+  if (listingSeller?.is_bank)
+    return res.status(400).json({ error: "Bankryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet." });
   const listingBuyerState = await getTeamMarketState(supabase, req.team.id);
   if (offer_amount > listingBuyerState.balance)
     return res.status(400).json({ error: "Du har ikke råd til dette tilbud" });
@@ -1089,6 +1139,13 @@ router.post("/transfers/swaps", requireAuth, async (req, res) => {
     return res.status(404).json({ error: "Målrytter ikke fundet eller har intet hold" });
   if (requested.team_id === req.team.id)
     return res.status(400).json({ error: "Du kan ikke bytte med dig selv" });
+  const { data: requestedTeam } = await supabase
+    .from("teams")
+    .select("is_bank")
+    .eq("id", requested.team_id)
+    .single();
+  if (requestedTeam?.is_bank)
+    return res.status(400).json({ error: "Bankryttere kan ikke indgå i direkte byttehandler. Brug auktioner i stedet." });
 
   if (cash_adjustment > 0) {
     const proposingState = await getTeamMarketState(supabase, req.team.id);
@@ -1215,14 +1272,20 @@ router.patch("/transfers/swaps/:id", requireAuth, async (req, res) => {
     return res.json({ success: true, action: result.action });
   }
 
-  // CANCEL — either party cancels awaiting_confirmation or window_pending
-  if (action === "cancel" && (swap.status === "awaiting_confirmation" || swap.status === "window_pending")) {
+  // CANCEL — either party can cancel only before both parties have accepted.
+  if (action === "cancel" && swap.status === "awaiting_confirmation") {
+    if (getSwapCancelIssue(swap)) {
+      return res.status(400).json({ error: "Byttehandlen er accepteret af begge parter og kan ikke annulleres af manager" });
+    }
     await supabase.from("swap_offers").update({ status: "withdrawn" }).eq("id", swap.id);
     const otherTeamId = isProposing ? swap.receiving_team_id : swap.proposing_team_id;
     await notifyTeamOwner(otherTeamId, "transfer_offer_rejected",
       "Byttehandel annulleret",
       `${req.team.name} har trukket sig fra byttehandlen.`, swap.id);
     return res.json({ success: true, action: "cancelled" });
+  }
+  if (action === "cancel" && getSwapCancelIssue(swap)) {
+    return res.status(400).json({ error: "Byttehandlen er accepteret af begge parter og kan ikke annulleres af manager" });
   }
 
   // WITHDRAW — proposing team withdraws pending offer
@@ -2080,6 +2143,7 @@ router.post("/admin/import-results-sheets", requireAdmin, async (req, res) => {
     const result = await syncRaceResultsFromSheets({
       spreadsheetUrl: spreadsheet_url,
       supabase,
+      ensureSeasonStandings,
       updateStandings,
       adminUserId: req.user.id,
     });

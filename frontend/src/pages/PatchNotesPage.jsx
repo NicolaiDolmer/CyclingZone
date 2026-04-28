@@ -2,6 +2,42 @@
 
 const PATCHES = [
   {
+    version: "1.59",
+    date: "2026-04-28",
+    label: "Beta",
+    changes: [
+      {
+        category: "Resultater",
+        items: [
+          "Google Sheets-import af løbsresultater bruger nu samme kanoniske backend-path som øvrige resultatflows",
+          "Præmiepenge, finance-transaktioner og sæsonstilling opdateres nu konsistent efter Sheets-import",
+        ],
+      },
+      {
+        category: "Transfers & Marked",
+        items: [
+          "Parkerede transferaftaler og byttehandler kan ikke længere annulleres af manager, når begge parter har accepteret",
+          "Parkerede direkte transfers holder transferlisten i forhandlingsstatus indtil transfervinduet åbner og handlen faktisk gennemføres",
+          "Bankryttere kan ikke længere modtage direkte transfer- eller byttetilbud — de skal gå via auktioner",
+        ],
+      },
+      {
+        category: "Auktioner",
+        items: [
+          "Auktionsbud skal nu være mindst 10% over nuværende pris, afrundet op til nærmeste 1.000 CZ$",
+          "Aktive auktionsføringer reserverer nu både disponibel balance og trupplads, så man ikke kan føre flere auktioner end holdet kan rumme",
+        ],
+      },
+      {
+        category: "Navigation",
+        items: [
+          "Min Profil redirecter nu altid til den indloggede managers egen profil",
+          "Sidebarens aktive markering matcher nu hele rutesegmenter, så /team ikke længere rammer /teams",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.58",
     date: "2026-04-26",
     label: "Beta",

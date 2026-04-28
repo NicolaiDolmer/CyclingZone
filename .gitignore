@@ -4,3 +4,4 @@ frontend/dist/
 backend/node_modules/
 scripts/*.csv
 .codex.local/
+.claude/settings.local.json

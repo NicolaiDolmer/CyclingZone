@@ -46,7 +46,7 @@ const SECTIONS = [
       },
       {
         title: "Byde på auktioner",
-        text: "Gå til Auktioner og find en auktion du vil byde på. Indtast dit bud og klik 'Byd'. Du kan se om du vinder (🏆 Vinder) eller om du har budt men er overbudt (⚡ Du har budt). Minimumsbuddet vises under inputfeltet.",
+        text: "Gå til Auktioner og find en auktion du vil byde på. Indtast dit bud og klik 'Byd'. Du kan se om du vinder (🏆 Vinder) eller om du har budt men er overbudt (⚡ Du har budt). Minimumsbuddet er mindst 10% over nuværende pris og afrundes op til nærmeste 1.000 CZ$.",
       },
       {
         title: "10-minutters forlængelse",
@@ -54,7 +54,7 @@ const SECTIONS = [
       },
       {
         title: "Holdstørrelse og auktioner",
-        text: "Holdgrænser gælder stadig per division. Systemet tjekker ved auktionsafslutning, at vinderen stadig har plads på holdet, og hvis transfervinduet er lukket, bliver rytteren markeret til næste vindueåbning i stedet for at skifte med det samme.",
+        text: "Holdgrænser gælder stadig per division. Aktive auktioner hvor du fører, reserverer både balance og en mulig trupplads, så du ikke kan føre flere auktioner end dit hold kan rumme. Hvis transfervinduet er lukket ved afslutning, bliver rytteren markeret til næste vindueåbning i stedet for at skifte med det samme.",
       },
     ],
   },
@@ -74,6 +74,7 @@ const SECTIONS = [
           "Klik '↔ Send transfertilbud' nederst på siden.",
           "Indtast dit tilbud i CZ$ og en valgfri besked.",
           "Klik 'Send tilbud' — sælger modtager en notifikation.",
+          "Bankryttere kan ikke modtage direkte tilbud; de skal købes via auktion.",
         ],
       },
       {
@@ -94,7 +95,7 @@ const SECTIONS = [
       },
       {
         title: "Transfervindue",
-        text: "Transfers, byttehandler og endelige bekræftelser kan kun laves mens transfervinduet er åbent. Admin åbner og lukker vinduet manuelt, og markedshandler der ikke længere opfylder saldo- eller holdkrav bliver annulleret i stedet for at gå igennem.",
+        text: "Du kan forhandle og bekræfte direkte transfers og byttehandler, selv når transfervinduet er lukket. Når begge parter har accepteret, parkeres handlen som 'Aftalt — afventer vindue' og gennemføres automatisk når admin åbner transfervinduet. En parkeret handel kan ikke annulleres af manager, men systemet tjekker stadig ejerskab, saldo og holdgrænser før den gennemføres.",
       },
       {
         title: "Lejeaftaler og holdgrænser",
@@ -359,7 +360,19 @@ const FAQ = [
   },
   {
     q: "Hvornår skifter en rytter hold efter en transfer?",
-    a: "Rytteren skifter hold ved næste transfervindue-åbning. Forhandlingen kan foregå hele sæsonen.",
+    a: "Hvis transfervinduet er åbent, gennemføres handlen straks efter begge parter har bekræftet. Hvis vinduet er lukket, parkeres handlen og gennemføres automatisk ved næste vindueåbning.",
+  },
+  {
+    q: "Kan jeg annullere en parkeret transfer?",
+    a: "Nej. Når begge parter har accepteret, er handlen låst. Systemet kan stadig annullere den ved vindueåbning, hvis ejerskab, saldo eller holdgrænser ikke længere holder.",
+  },
+  {
+    q: "Kan jeg købe bankryttere med direkte tilbud?",
+    a: "Nej. Bankryttere kan ikke modtage direkte transfer- eller byttetilbud. De skal købes via auktion.",
+  },
+  {
+    q: "Hvor meget skal jeg byde over i en auktion?",
+    a: "Dit bud skal være mindst 10% over den nuværende pris og afrundes op til nærmeste 1.000 CZ$. Aktive auktioner hvor du fører, tæller samtidig som reserveret balance og potentiel trupplads.",
   },
   {
     q: "Tæller lejede ryttere med i holdgrænsen?",

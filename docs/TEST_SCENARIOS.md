@@ -13,11 +13,16 @@
 - Guaranteed sale på ikke-ejet rytter må ikke skabe payout eller falsk salgs-historik
 - Lukket transfervindue giver `pending_team_id` i stedet for direkte holdskifte
 - Fuldt vinderhold annullerer overdragelsen uden forkert payout
+- Bud skal være mindst 10% over nuværende pris/startpris, afrundet op til nærmeste 1.000 CZ$
+- Aktive auktionsføringer reserverer både disponibel balance og trupplads
 
 ### Transfers
 - Blocked når window lukket
 - Accept korrekt
 - Begge parter skal bekræfte før transfer eller byttehandel lukkes
+- Begge parter accepteret + lukket vindue parkerer handlen som `window_pending` uden at markere listing som `sold`
+- `window_pending` direkte handler og swaps kan ikke annulleres af manager
+- Bankryttere kan ikke modtage direkte transfer- eller swaptilbud; de skal gå via auktion
 - Endelig bekræftelse annullerer handlen hvis sælger ikke længere ejer rytteren
 - Endelig bekræftelse annullerer handlen hvis køber mangler saldo eller rammer squad limit
 - Gennemført transfer rydder relaterede listings, transferbud og bytteforslag op for rytteren
@@ -43,6 +48,7 @@
 - Season end opdaterer alt
 - Season end bruger den delte board-engine og opdaterer `satisfaction` + `budget_modifier` konsistent
 - `POST /api/admin/import-results` recalculerer standings og prize-transaktioner via samme shared runtime-path som `POST /api/admin/approve-results`
+- `POST /api/admin/import-results-sheets` recalculerer standings og prize-transaktioner via `applyRaceResults`
 
 ### Board
 - `POST /api/board/proposal` må ikke generere `min_riders` uden for divisionens min/max-grænser
