@@ -27,6 +27,7 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Slice 13 — FM-style indbakke ✅
 - Slice B — Beta-testværktøjer ✅
 - Slice 14 Del B — Historisk tracking (rider_uci_history + rider_stat_history) ✅ (2026-04-26)
+- Slice R2 — Beta-reset komplet reset-suite ✅ (2026-04-28)
 
 ### Slice 8 — Bug-rydning og quick wins
 - Mål: Ryd P1-bugs og hurtige wins inden en ny tung feature-slice påbegyndes.
@@ -160,7 +161,6 @@ supabase.from("rider_stat_history")
 **Styling:** Matcher eksisterende `bg-white border border-slate-200 rounded-xl p-5`-pattern fra de andre tabs.
 
 ### Næste planlagte slices
-- Slice R2 — Beta-reset komplet reset-suite
 - Slice U1 — UI/mobil/dark-mode forbedringsspor
 - Slice 15 — Løbsoprettelse i admin + resultater-import via Google Sheets (udskudt til 2026-04-28)
 - Slice 16 — Discord/webhook P1-bug + transferhistorik til Discord-tråd (udskudt til 2026-04-28)
@@ -285,14 +285,14 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 
 ## 🧪 Beta reset & admin tooling
 
-- Udvid beta-reset, så alle managerhold kan sættes tilbage til 3. division
-- Board-profiler/bestyrelser skal kunne resettes til baseline
-- Løbskalenderen skal kunne nulstilles
-- Sæsoner skal kunne nulstilles
-- Modtagne tilbud, transfer offers, swap offers og lånetilbud skal resettes konsekvent
-- Manager XP og level skal resettes
-- Achievements og achievement unlocks skal resettes
-- Reset-flowet skal give tydelig admin-kvittering og skelne mellem test-reset og destruktiv live-reset
+- ~~Udvid beta-reset, så alle managerhold kan sættes tilbage til 3. division~~ ✅
+- ~~Board-profiler/bestyrelser skal kunne resettes til baseline~~ ✅
+- ~~Løbskalenderen skal kunne nulstilles~~ ✅
+- ~~Sæsoner skal kunne nulstilles~~ ✅
+- ~~Modtagne tilbud, transfer offers, swap offers og lånetilbud skal resettes konsekvent~~ ✅
+- ~~Manager XP og level skal resettes~~ ✅
+- ~~Achievements og achievement unlocks skal resettes~~ ✅
+- ~~Reset-flowet skal give tydelig admin-kvittering og skelne mellem test-reset og destruktiv live-reset~~ ✅
 
 ## 🎨 UI, mobil & tilgængelighed
 

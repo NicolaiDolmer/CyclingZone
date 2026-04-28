@@ -84,6 +84,7 @@
 - `finalizeExpiredAuctions()` kan køre som no-op uden udløbne auktioner; manglende helper-imports eller andre bootstrap-referencefejl skal fanges før deploy
 - AI-auktionssalg betaler korrekt ejer
 - `POST /api/achievements/check` kan låse op for de contexts frontend faktisk sender (`watchlist_add`, `auction_bid`, `transfer_done`)
+- Beta-reset endpoints bruger samme shared service som `full-reset`; reset må kun ramme aktive manager-hold og skal lade AI-, bank- og frosne hold være urørte
 - Rider loans og finance loans kan ikke forveksles
 - Dashboard-rangering bygger på korrekt scope
 - Dashboard og Hold-siden viser aktive hold med 0 point, hvis `season_standings` endnu ikke er initialiseret for den aktive sæson

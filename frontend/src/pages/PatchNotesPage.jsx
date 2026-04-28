@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "1.60",
+    date: "2026-04-28",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin",
+        items: [
+          "Beta-reset er udvidet til en komplet reset-suite med nulstilling af marked, trupper, balancer, divisioner, bestyrelser, løbskalender, sæsoner, XP/level og achievements",
+          "Fuld nulstilling markerer nu tydeligt at flowet er en test-reset og viser kvittering for hver del af resetten",
+          "Balance-reset kan valgfrit rydde finance-transaktioner for aktive manager-hold uden at røre AI-, bank- eller frosne hold",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.59",
     date: "2026-04-28",
     label: "Beta",

@@ -268,6 +268,10 @@ const SECTIONS = [
         title: "Admin: genberegn standings ved drift",
         text: "Hvis en aktiv eller afsluttet sæson mangler stilling pga. ældre data-drift, kan admin bruge knappen '↻ Standings' på Admin-siden. Den genberegner tabellen ud fra de gemte `race_results`, opretter de manglende standings-rækker og opdaterer divisionens interne rang, som bestyrelsen bruger ved sæsonafslutning.",
       },
+      {
+        title: "Admin: beta-reset",
+        text: "Under Admin → Beta-testværktøjer kan admin køre del-reset eller fuld test-reset. Suiten kan annullere åbne markedsaktiviteter, returnere manager-ryttere til AI/fri pulje, nulstille balancer, divisioner, bestyrelser, løbskalender, sæsoner, XP/level og achievement unlocks. AI-hold, bank-hold og frosne hold påvirkes ikke af manager-resettene.",
+      },
     ],
   },
   {

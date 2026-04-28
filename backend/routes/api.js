@@ -88,6 +88,18 @@ import {
 import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
 import { checkAchievements } from "../lib/achievementEngine.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
+import {
+  cancelBetaMarket,
+  resetBetaAchievements,
+  resetBetaBalances,
+  resetBetaBoardProfiles,
+  resetBetaDivisions,
+  resetBetaManagerProgress,
+  resetBetaRaceCalendar,
+  resetBetaRosters,
+  resetBetaSeasons,
+  runFullBetaReset,
+} from "../lib/betaResetService.js";
 
 // Load .env from backend root
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -2948,41 +2960,7 @@ router.post("/board/renew", requireAuth, async (req, res) => {
 // POST /api/admin/beta/cancel-market — annuller alle åbne markedsaktiviteter
 router.post("/admin/beta/cancel-market", requireAdmin, async (req, res) => {
   try {
-    const [auctions, listings, offers, swaps, loans] = await Promise.all([
-      supabase.from("auctions")
-        .update({ status: "cancelled" })
-        .in("status", ["active", "extended"])
-        .select("id"),
-      supabase.from("transfer_listings")
-        .update({ status: "withdrawn" })
-        .in("status", ["open", "negotiating"])
-        .select("id"),
-      supabase.from("transfer_offers")
-        .update({ status: "rejected" })
-        .in("status", ["pending", "accepted", "countered", "awaiting_confirmation", "window_pending"])
-        .select("id"),
-      supabase.from("swap_offers")
-        .update({ status: "rejected" })
-        .in("status", ["pending", "countered", "awaiting_confirmation", "window_pending"])
-        .select("id"),
-      supabase.from("loan_agreements")
-        .update({ status: "cancelled" })
-        .in("status", ["pending", "active"])
-        .select("id"),
-    ]);
-    for (const q of [auctions, listings, offers, swaps, loans]) {
-      if (q.error) throw new Error(q.error.message);
-    }
-    res.json({
-      ok: true,
-      cancelled: {
-        auctions: auctions.data?.length ?? 0,
-        transfer_listings: listings.data?.length ?? 0,
-        transfer_offers: offers.data?.length ?? 0,
-        swap_offers: swaps.data?.length ?? 0,
-        loan_agreements: loans.data?.length ?? 0,
-      },
-    });
+    res.json({ ok: true, cancelled: await cancelBetaMarket(supabase) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -2991,46 +2969,7 @@ router.post("/admin/beta/cancel-market", requireAdmin, async (req, res) => {
 // POST /api/admin/beta/reset-rosters — returner manager-ryttere til AI-hold
 router.post("/admin/beta/reset-rosters", requireAdmin, async (req, res) => {
   try {
-    const { data: managerTeams, error: teamErr } = await supabase
-      .from("teams")
-      .select("id")
-      .eq("is_ai", false)
-      .eq("is_bank", false)
-      .eq("is_frozen", false);
-    if (teamErr) throw new Error(teamErr.message);
-
-    const teamIds = managerTeams.map(t => t.id);
-    if (teamIds.length === 0) return res.json({ ok: true, moved: 0 });
-
-    const { data: riders, error: riderErr } = await supabase
-      .from("riders")
-      .select("id, ai_team_id")
-      .in("team_id", teamIds);
-    if (riderErr) throw new Error(riderErr.message);
-
-    if (riders.length === 0) return res.json({ ok: true, moved: 0 });
-
-    const withAi = riders.filter(r => r.ai_team_id).map(r => r.id);
-    const withoutAi = riders.filter(r => !r.ai_team_id).map(r => r.id);
-
-    const updates = [];
-    for (const rider of riders.filter(r => r.ai_team_id)) {
-      updates.push(
-        supabase.from("riders").update({ team_id: rider.ai_team_id }).eq("id", rider.id)
-      );
-    }
-    if (withoutAi.length > 0) {
-      updates.push(
-        supabase.from("riders").update({ team_id: null }).in("id", withoutAi)
-      );
-    }
-
-    const results = await Promise.all(updates);
-    for (const r of results) {
-      if (r.error) throw new Error(r.error.message);
-    }
-
-    res.json({ ok: true, moved: riders.length, to_ai: withAi.length, to_null: withoutAi.length });
+    res.json({ ok: true, ...(await resetBetaRosters(supabase)) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -3040,99 +2979,76 @@ router.post("/admin/beta/reset-rosters", requireAdmin, async (req, res) => {
 router.post("/admin/beta/reset-balances", requireAdmin, async (req, res) => {
   try {
     const { clear_transactions = false } = req.body || {};
-
-    const { data: managerTeams, error: teamErr } = await supabase
-      .from("teams")
-      .select("id")
-      .eq("is_ai", false)
-      .eq("is_bank", false)
-      .eq("is_frozen", false);
-    if (teamErr) throw new Error(teamErr.message);
-
-    const teamIds = managerTeams.map(t => t.id);
-    if (teamIds.length === 0) return res.json({ ok: true, reset: 0 });
-
-    const { error: balErr } = await supabase
-      .from("teams")
-      .update({ balance: 800000 })
-      .in("id", teamIds);
-    if (balErr) throw new Error(balErr.message);
-
-    if (clear_transactions) {
-      const { error: txErr } = await supabase
-        .from("finance_transactions")
-        .delete()
-        .in("team_id", teamIds);
-      if (txErr) throw new Error(txErr.message);
-    }
-
-    res.json({ ok: true, reset: teamIds.length, clear_transactions });
+    res.json({ ok: true, ...(await resetBetaBalances(supabase, { clearTransactions: clear_transactions })) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// POST /api/admin/beta/full-reset — kæder cancel-market + reset-rosters + reset-balances
+// POST /api/admin/beta/reset-divisions — sæt alle aktive managerhold tilbage til 3. division
+router.post("/admin/beta/reset-divisions", requireAdmin, async (req, res) => {
+  try {
+    res.json({ ok: true, ...(await resetBetaDivisions(supabase)) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/beta/reset-board — nulstil bestyrelsesprofiler til baseline
+router.post("/admin/beta/reset-board", requireAdmin, async (req, res) => {
+  try {
+    res.json({ ok: true, board_profiles: await resetBetaBoardProfiles(supabase) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/beta/reset-calendar — ryd løbskalender, resultater og standings
+router.post("/admin/beta/reset-calendar", requireAdmin, async (req, res) => {
+  try {
+    res.json({ ok: true, race_calendar: await resetBetaRaceCalendar(supabase) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/beta/reset-seasons — ryd sæsoner
+router.post("/admin/beta/reset-seasons", requireAdmin, async (req, res) => {
+  try {
+    res.json({ ok: true, seasons: await resetBetaSeasons(supabase) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/beta/reset-manager-progress — nulstil XP og level
+router.post("/admin/beta/reset-manager-progress", requireAdmin, async (req, res) => {
+  try {
+    res.json({ ok: true, manager_progress: await resetBetaManagerProgress(supabase) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/beta/reset-achievements — ryd manager-achievement unlocks
+router.post("/admin/beta/reset-achievements", requireAdmin, async (req, res) => {
+  try {
+    res.json({ ok: true, achievements: await resetBetaAchievements(supabase) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/beta/full-reset — komplet beta-reset-suite
 router.post("/admin/beta/full-reset", requireAdmin, async (req, res) => {
   try {
-    const { clear_transactions = false } = req.body || {};
-
-    // 1. Cancel market
-    const [auctions, listings, offers, swaps, loans] = await Promise.all([
-      supabase.from("auctions").update({ status: "cancelled" }).in("status", ["active", "extended"]).select("id"),
-      supabase.from("transfer_listings").update({ status: "withdrawn" }).in("status", ["open", "negotiating"]).select("id"),
-      supabase.from("transfer_offers").update({ status: "rejected" }).in("status", ["pending", "accepted", "countered", "awaiting_confirmation", "window_pending"]).select("id"),
-      supabase.from("swap_offers").update({ status: "rejected" }).in("status", ["pending", "countered", "awaiting_confirmation", "window_pending"]).select("id"),
-      supabase.from("loan_agreements").update({ status: "cancelled" }).in("status", ["pending", "active"]).select("id"),
-    ]);
-    for (const q of [auctions, listings, offers, swaps, loans]) {
-      if (q.error) throw new Error(q.error.message);
-    }
-
-    // 2. Reset rosters
-    const { data: managerTeams, error: teamErr } = await supabase
-      .from("teams").select("id").eq("is_ai", false).eq("is_bank", false).eq("is_frozen", false);
-    if (teamErr) throw new Error(teamErr.message);
-
-    const teamIds = managerTeams.map(t => t.id);
-    let moved = 0, to_ai = 0, to_null = 0;
-
-    if (teamIds.length > 0) {
-      const { data: riders, error: riderErr } = await supabase
-        .from("riders").select("id, ai_team_id").in("team_id", teamIds);
-      if (riderErr) throw new Error(riderErr.message);
-
-      if (riders.length > 0) {
-        const withAi = riders.filter(r => r.ai_team_id);
-        const withoutAi = riders.filter(r => !r.ai_team_id).map(r => r.id);
-        const rosterUpdates = withAi.map(r => supabase.from("riders").update({ team_id: r.ai_team_id }).eq("id", r.id));
-        if (withoutAi.length > 0) rosterUpdates.push(supabase.from("riders").update({ team_id: null }).in("id", withoutAi));
-        const rosterResults = await Promise.all(rosterUpdates);
-        for (const r of rosterResults) { if (r.error) throw new Error(r.error.message); }
-        moved = riders.length; to_ai = withAi.length; to_null = withoutAi.length;
-      }
-
-      // 3. Reset balances
-      const { error: balErr } = await supabase.from("teams").update({ balance: 800000 }).in("id", teamIds);
-      if (balErr) throw new Error(balErr.message);
-
-      if (clear_transactions) {
-        const { error: txErr } = await supabase.from("finance_transactions").delete().in("team_id", teamIds);
-        if (txErr) throw new Error(txErr.message);
-      }
-    }
-
+    const { clear_transactions = false, reset_mode = "test" } = req.body || {};
     res.json({
       ok: true,
-      cancelled: {
-        auctions: auctions.data?.length ?? 0,
-        transfer_listings: listings.data?.length ?? 0,
-        transfer_offers: offers.data?.length ?? 0,
-        swap_offers: swaps.data?.length ?? 0,
-        loan_agreements: loans.data?.length ?? 0,
-      },
-      rosters: { moved, to_ai, to_null },
-      balances: { reset: teamIds.length, clear_transactions },
+      ...(await runFullBetaReset(supabase, {
+        clearTransactions: clear_transactions,
+        resetMode: reset_mode,
+      })),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

@@ -13,8 +13,8 @@
 - `Slice 14 Del B — Historisk tracking` ✅ FÆRDIG (2026-04-26) — rider_uci_history + rider_stat_history tabeller; sheetsSync + dynCyclistSync logger historik ved hver sync
 - `Slice 14 Del A — UCI scraper` 🔄 I GANG — script + GitHub Actions workflow bygget; afventer bekræftelse af vellykket testkørsel
 - `Slice R1 — Review hardening efter Claude-session` ✅ FÆRDIG (2026-04-28) — sheets-import canonical path, profile/sidebar routing, transfer parking/cancel locks, auction bid guards
-- **Aktiv prioritet: Slice R2 — Beta-reset komplet reset-suite**
-- **Derefter: Slice 14 Del C — Frontend-visualisering (tabel + graf på rytterprofil)**
+- `Slice R2 — Beta-reset komplet reset-suite` ✅ FÆRDIG (2026-04-28) — delt reset-service, nye admin endpoints, komplet admin-UI og regressionstests
+- **Aktiv prioritet: Slice 14 Del C — Frontend-visualisering (tabel + graf på rytterprofil)**
 
 ## Udskudt / holdt ude
 - PCM mappings — afventer ekstern data

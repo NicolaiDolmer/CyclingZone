@@ -189,6 +189,7 @@ export default function AdminPage() {
 
   // Beta-testværktøjer
   const [betaResult, setBetaResult] = useState(null);
+  const [betaClearTransactions, setBetaClearTransactions] = useState(false);
 
   // Points editor — NY
   const [selectedPointsClass, setSelectedPointsClass] = useState(RACE_CLASSES[0].key);
@@ -1311,8 +1312,17 @@ export default function AdminPage() {
       <Section title="Beta-testværktøjer">
         <div className="mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
           <span className="text-base leading-none mt-0.5">⚠️</span>
-          <span>Disse handlinger er destruktive og irreversible. Brug kun under testperioden. Board-profiler og AI-holds røres ikke. Kun aktive manager-holds påvirkes.</span>
+          <span>Disse handlinger er destruktive og irreversible. Brug kun under testperioden. AI-holds, bank-hold og frosne hold påvirkes ikke af manager-resettene.</span>
         </div>
+        <label className="mb-4 inline-flex items-center gap-2 text-xs text-slate-600 select-none">
+          <input
+            type="checkbox"
+            checked={betaClearTransactions}
+            onChange={e => setBetaClearTransactions(e.target.checked)}
+            className="rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+          />
+          Ryd finance-transaktioner for manager-hold ved balance/full reset
+        </label>
         <div className="flex flex-wrap gap-2 mb-4">
           <button
             onClick={() => handleBeta("cancel-market", "Annuller ALLE åbne auktioner, transfers, swaps og låneaftaler?\n\nHandlingen kan ikke fortrydes.")}
@@ -1327,13 +1337,49 @@ export default function AdminPage() {
             {loading["beta_reset-rosters"] ? "..." : "Nulstil trupper"}
           </button>
           <button
-            onClick={() => handleBeta("reset-balances", "Sæt balance = 800.000 CZ$ på alle manager-holds?\n\nHandlingen kan ikke fortrydes.", { clear_transactions: false })}
+            onClick={() => handleBeta("reset-balances", `Sæt balance = 800.000 CZ$ på alle manager-holds?${betaClearTransactions ? "\n\nFinance-transaktioner for manager-hold ryddes også." : ""}\n\nHandlingen kan ikke fortrydes.`, { clear_transactions: betaClearTransactions })}
             disabled={loading["beta_reset-balances"]}
             className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
             {loading["beta_reset-balances"] ? "..." : "Nulstil balancer"}
           </button>
           <button
-            onClick={() => handleBeta("full-reset", "FULD NULSTILLING:\n• Alle åbne markedsaktiviteter annulleres\n• Alle manager-ryttere returneres til AI-hold\n• Alle balancer sættes til 800.000 CZ$\n\nHandlingen kan ikke fortrydes. Fortsæt?", { clear_transactions: false })}
+            onClick={() => handleBeta("reset-divisions", "Sæt ALLE aktive managerhold tilbage til 3. division?\n\nHandlingen kan ikke fortrydes.")}
+            disabled={loading["beta_reset-divisions"]}
+            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            {loading["beta_reset-divisions"] ? "..." : "Nulstil divisioner"}
+          </button>
+          <button
+            onClick={() => handleBeta("reset-board", "Nulstil bestyrelsesprofiler, snapshots og board requests til baseline?\n\nHandlingen kan ikke fortrydes.")}
+            disabled={loading["beta_reset-board"]}
+            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            {loading["beta_reset-board"] ? "..." : "Nulstil bestyrelse"}
+          </button>
+          <button
+            onClick={() => handleBeta("reset-calendar", "Ryd løbskalender, pending resultater, race results og standings?\n\nHandlingen kan ikke fortrydes.")}
+            disabled={loading["beta_reset-calendar"]}
+            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            {loading["beta_reset-calendar"] ? "..." : "Nulstil løbskalender"}
+          </button>
+          <button
+            onClick={() => handleBeta("reset-seasons", "Ryd ALLE sæsoner?\n\nKør typisk løbskalender-reset først. Handlingen kan ikke fortrydes.")}
+            disabled={loading["beta_reset-seasons"]}
+            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            {loading["beta_reset-seasons"] ? "..." : "Nulstil sæsoner"}
+          </button>
+          <button
+            onClick={() => handleBeta("reset-manager-progress", "Nulstil manager XP og level til baseline?\n\nHandlingen kan ikke fortrydes.")}
+            disabled={loading["beta_reset-manager-progress"]}
+            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            {loading["beta_reset-manager-progress"] ? "..." : "Nulstil XP/level"}
+          </button>
+          <button
+            onClick={() => handleBeta("reset-achievements", "Ryd alle manager achievement unlocks?\n\nAchievement-definitioner bevares. Handlingen kan ikke fortrydes.")}
+            disabled={loading["beta_reset-achievements"]}
+            className="px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            {loading["beta_reset-achievements"] ? "..." : "Nulstil achievements"}
+          </button>
+          <button
+            onClick={() => handleBeta("full-reset", `FULD TEST-NULSTILLING:\n• Alle åbne markedsaktiviteter annulleres\n• Alle manager-ryttere returneres til AI-hold\n• Alle balancer sættes til 800.000 CZ$\n• Managerhold sættes i 3. division\n• Board-profiler resettes til baseline\n• Løbskalender, resultater, standings og sæsoner ryddes\n• XP/level og achievement unlocks nulstilles${betaClearTransactions ? "\n• Finance-transaktioner for manager-hold ryddes" : ""}\n\nDette er en test-reset, ikke et live-reset. Handlingen kan ikke fortrydes. Fortsæt?`, { clear_transactions: betaClearTransactions, reset_mode: "test" })}
             disabled={loading["beta_full-reset"]}
             className="px-3 py-2 text-xs bg-red-50 text-red-700 border border-red-300 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-all font-semibold">
             {loading["beta_full-reset"] ? "..." : "Fuld nulstilling"}
@@ -1342,6 +1388,7 @@ export default function AdminPage() {
         {betaResult && (
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-600 font-mono">
             <p className="font-semibold text-slate-700 mb-1">Kvittering — {betaResult.endpoint}</p>
+            {betaResult.reset_mode && <p className="mb-1">Reset-type: {betaResult.reset_mode}</p>}
             {betaResult.cancelled && (
               <div className="mb-1">
                 <p>Auktioner annulleret: {betaResult.cancelled.auctions}</p>
@@ -1355,7 +1402,25 @@ export default function AdminPage() {
               <p className="mb-1">Ryttere flyttet: {betaResult.rosters?.moved ?? betaResult.moved} (til AI: {betaResult.rosters?.to_ai ?? betaResult.to_ai}, til NULL: {betaResult.rosters?.to_null ?? betaResult.to_null})</p>
             )}
             {betaResult.balances != null && (
-              <p>Balancer nulstillet: {betaResult.balances?.reset ?? betaResult.reset} holds</p>
+              <p>Balancer nulstillet: {betaResult.balances?.reset ?? betaResult.reset} hold · finance ryddet: {String(betaResult.balances?.clear_transactions ?? betaResult.clear_transactions ?? false)}</p>
+            )}
+            {betaResult.divisions && (
+              <p className="mb-1">Divisioner nulstillet: {betaResult.divisions.reset} hold til division {betaResult.divisions.division}</p>
+            )}
+            {betaResult.board_profiles && (
+              <p className="mb-1">Bestyrelser reset: {betaResult.board_profiles.reset} · oprettet: {betaResult.board_profiles.created} · snapshots slettet: {betaResult.board_profiles.snapshots_deleted} · requests slettet: {betaResult.board_profiles.requests_deleted}</p>
+            )}
+            {betaResult.race_calendar && (
+              <p className="mb-1">Løbskalender ryddet: {betaResult.race_calendar.races} løb · {betaResult.race_calendar.race_results} resultater · {betaResult.race_calendar.pending_race_results} pending · {betaResult.race_calendar.season_standings} standings</p>
+            )}
+            {betaResult.seasons && (
+              <p className="mb-1">Sæsoner slettet: {betaResult.seasons.seasons}</p>
+            )}
+            {betaResult.manager_progress && (
+              <p className="mb-1">Manager-progress reset: {betaResult.manager_progress.users} brugere · xp_log slettet: {betaResult.manager_progress.xp_log}</p>
+            )}
+            {betaResult.achievements && (
+              <p className="mb-1">Achievement unlocks slettet: {betaResult.achievements.manager_achievements}</p>
             )}
             {betaResult.moved != null && betaResult.rosters == null && (
               <p>Ryttere flyttet: {betaResult.moved} (til AI: {betaResult.to_ai}, til NULL: {betaResult.to_null})</p>

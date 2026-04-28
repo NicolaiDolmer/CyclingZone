@@ -1,9 +1,9 @@
 # AGENTS.md
 
 ## Hard rule
-- Brug kun dette repo: `C:\Users\ndmh3\OneDrive\Skrivebord\cycling-manager`
+- Brug kun den aktuelle bekræftede repo-root fra `git rev-parse --show-toplevel`
 - Aldrig andre lokale kopier, sync-kopier eller zip-udpakninger
-- Forkert mappe → stop og bed om realignment før du læser, ændrer eller kører noget
+- Hvis repo-root ikke matcher den workspace-mappe brugeren aktuelt har angivet → stop og bed om realignment før du læser, ændrer eller kører noget
 
 ## Start
 0. Kør `git rev-parse --show-toplevel` — bekræft repo-root

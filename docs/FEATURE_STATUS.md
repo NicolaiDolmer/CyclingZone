@@ -86,6 +86,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Sæsonopcioner (create/start/end/result import) via kanoniske admin-routes
 - Genberegning af standings fra gemte race_results
 - Løbsoprettelse og season-end preview endpoint
+- Beta-reset komplet suite: marked, trupper, balancer, divisioner, bestyrelse, løbskalender, sæsoner, XP/level og achievement unlocks via delt reset-service
 
 ### UI / Misc
 - Responsivt layout med navigation (Layout.jsx)

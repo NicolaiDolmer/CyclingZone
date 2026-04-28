@@ -154,6 +154,16 @@ POST /api/admin/adjust-balance
 GET  /api/admin/season-end-preview/:seasonId
 POST /api/admin/transfer-window/open      { season_id } → { riders_processed }
 POST /api/admin/transfer-window/close     → { success }
+POST /api/admin/beta/cancel-market
+POST /api/admin/beta/reset-rosters
+POST /api/admin/beta/reset-balances       { clear_transactions? }
+POST /api/admin/beta/reset-divisions
+POST /api/admin/beta/reset-board
+POST /api/admin/beta/reset-calendar
+POST /api/admin/beta/reset-seasons
+POST /api/admin/beta/reset-manager-progress
+POST /api/admin/beta/reset-achievements
+POST /api/admin/beta/full-reset           { clear_transactions?, reset_mode? }
 ```
 
 Season flow notes:
@@ -162,6 +172,7 @@ Season flow notes:
 - `POST /api/admin/seasons/:id/end` stopper hvis der stadig findes `pending_race_results` for løb i sæsonen
 - `POST /api/admin/seasons/:id/rebuild-standings` er repair-pathen for aktive/afsluttede sæsoner, hvis standings skal genopbygges fra persisted `race_results`
 - `backend/routes/api.js` er nu den kanoniske ejer af admin season/import-routes; `backend/server.js` monterer routeren, `sync-uci` og health-checks, men ejer ikke længere parallelle season/import handlers
+- Beta-reset endpoints delegerer til `backend/lib/betaResetService.js`, så del-reset og fuld reset bruger samme scope: aktive manager-hold (`is_ai=false`, `is_bank=false`, `is_frozen=false`) og aldrig AI-/bank-/frosne hold
 
 ---
 
