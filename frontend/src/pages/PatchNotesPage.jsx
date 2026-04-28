@@ -2,6 +2,37 @@
 
 const PATCHES = [
   {
+    version: "1.62",
+    date: "2026-04-28",
+    label: "Beta",
+    changes: [
+      {
+        category: "Integrationer",
+        items: [
+          "UCI-sync er hardenet til top 3000 med pagination-safety, så syncen fejler før write hvis datadækningen ikke er komplet",
+          "UCI-værdier og rytterlønninger opdateres nu i samme kontrollerede flow, så løn følger den nyeste værdi efter en godkendt UCI-sync",
+          "Den ugentlige UCI-workflow kører nu salary recalculation automatisk efter pointopdateringen",
+        ],
+      },
+      {
+        category: "Økonomi",
+        items: [
+          "Rytterlønninger genberegnes med den eksisterende økonomiformel: 15% af max(5 UCI-point × 4.000 CZ$ + præmiebonus)",
+          "Salary update læser hele ryttertabellen pagineret og skriver i kontrollerede batches, så store opdateringer ikke stopper efter de første 1000 ryttere",
+          "Der er tilføjet et manuelt backend-script til kontrolleret løngenberegning ved behov",
+        ],
+      },
+      {
+        category: "Sikkerhed",
+        items: [
+          "UCI-sync stopper nu ved mistænkelig massenedskrivning til 5 UCI-point i stedet for at skrive dårlige værdier live",
+          "Dry-run for UCI-sync må ikke skrive til Sheets eller Supabase og bruges som safety-check før live write",
+          "Regressionstests dækker både scraper coverage, salary recalculation og økonomiformlen bag lønningerne",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.61",
     date: "2026-04-28",
     label: "Beta",
@@ -1106,7 +1137,7 @@ const PATCHES = [
 ];
 
 export default function PatchNotesPage() {
-  const [expanded, setExpanded] = useState("1.40");
+  const [expanded, setExpanded] = useState(PATCHES[0]?.version ?? null);
 
   return (
     <div className="max-w-2xl mx-auto">
