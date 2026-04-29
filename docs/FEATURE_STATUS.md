@@ -32,7 +32,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Minimum overbud håndhæves som 10% over nuværende pris, afrundet op til nærmeste 1.000 CZ$
 - Aktive auktionsføringer reserverer både disponibel balance og squad-plads ved nye bud
 - Auktionsfinalisering via cron (60s) — delt path for cron/admin/API, korrekt ejer-check og squad-limit
-- Bank/AI/fri rytter-auktioner kan startes fra rytterprofilen og finaliseres uden falsk seller-flow
+- Bank/AI/fri rytter-auktioner kan startes fra rytterprofilen; startprisen tæller som initiatorens første førende bud og finaliseres uden falsk seller-flow
 - Auktionshistorik-side
 - Discord-notifikationer (auktioner, overbud, transfers, sæsonevents)
 
@@ -58,10 +58,12 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Økonomi & Finans
 - **Alle beløb skaleret ×4000 (v1.43)** — rytterværdi = uci_points × 4000 CZ$
 - **Økonomi retuneret (v1.46)** — startkapital 800K, sponsor 240K/sæson
+- **Economy baseline simulation (2026-04-29)** — read-only live baseline + lokale scenarier er dokumenteret i `docs/archive/ECONOMY_BASELINE_SIMULATION_2026-04-29.md`, med gentagelig kommando `backend/scripts/economyBaselineSimulation.js`
 - Sponsorindtægt ved sæsonstart (med board-modifier)
 - Lønudbetaling ved sæsonslut
 - Renteberegning på negativ saldo (10%/sæson)
-- Præmiefordeling ved løbsimport (stage/GC/points/mountain/team/young)
+- Resultatpoint ved løbsimport (stage/GC/points/mountain/team/young)
+- CZ$-præmiepenge er ikke færdigdesignet endnu og skal laves før større økonomituning
 - Finance-transaktionslog + Finance-side
 - Balance-justering (admin)
 - Finance transaction type-kontrakt er afstemt i schema/migration/test med runtime for lån, lånerenter, nødlån og admin-justeringer
@@ -137,6 +139,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 🚧 I gang
 
 - [ ] Admin/service-visible verification af sæson 6 repair: salary rows, loan-interest-as-debt, emergency loans, balances, notifications og no extra division movement.
+- [ ] Prize-money economy: design/implementér rigtige CZ$-præmiepenge adskilt fra resultatpoint, før større økonomituning.
+- [ ] Economy tuning implementation efter prize-money baseline: centraliser/ændr salary rate, division-aware sponsor og debt ceilings med regressionstests.
 - [ ] Admin-authenticated deployed season-end preview smoke + UI sanity i browser-session efter repair.
 
 ---
@@ -144,7 +148,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 📋 Planlagt (backlog)
 
 - Aktiv feature- og forbedringsbacklog vedligeholdes i `docs/PRODUCT_BACKLOG.md`
-- Økonomi baseline & simulation er næste launch-kritiske spor efter season-flow sanity.
+- Economy baseline & simulation er gennemført; næste økonomispor er tuning implementation efter admin/service-visible repair-verifikation.
 - Team ID-mapping fra PCM
 - Cyclist ID-mapping fra PCM
 - 3-sæsoners glidende gennemsnit for rangliste

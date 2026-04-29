@@ -6,6 +6,7 @@
     "dev": "node --watch server.js",
     "start": "node server.js",
     "seed:uci-race-points": "node scripts/seedUciMenRacePoints.js",
+    "economy:baseline": "node scripts/economyBaselineSimulation.js",
     "test": "node --test"
   },
   "dependencies": {

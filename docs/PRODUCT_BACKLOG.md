@@ -23,16 +23,24 @@ _Regel: Færdige detaljer bor i `docs/FEATURE_STATUS.md` eller `docs/archive/`; 
    - ⏳ Mangler admin/service-visible post-repair verification af finance rows, balances og finance-loans, fordi read-only RLS stadig viser `finance_transactions=0`.
 
 3. **Economy baseline & simulation**
-   - Brug live read-only data og lokale scenarier til cashflow-forecast pr. division.
-   - Dæk sponsor, løn, præmier, lån, renter, nødlån og gældsloft.
-   - Target: **stram men fair** økonomi, hvor aktive kompetente managers kan overleve uden automatisk gældsspiral.
+   - ✅ Read-only baseline er gennemført med sæson 7 teams/lån og sæson 6 resultater.
+   - ✅ Gentagelig script: `backend/scripts/economyBaselineSimulation.js` (`npm run economy:baseline -- --markdown` fra `backend`).
+   - ✅ Rapport: `docs/archive/ECONOMY_BASELINE_SIMULATION_2026-04-29.md`.
+   - Korrektur: vi har et pointsystem for resultater, men ikke et færdigt præmiepenge-design. “Prize” tal i baseline må ikke behandles som færdig økonomi.
+   - Resultat: current rules ser for hårde ud for aktive kompetente hold over lean Division 3, men større økonomituning skal vente til rigtige præmiepenge indgår i modellen.
+   - Kandidatretning er kun scenarie-input, ikke beslutning: salary rate ca. `15% -> 10%`, division-aware sponsor D1 `600k` / D2 `400k` / D3 `260k`, og manuelle gældslofter D1 `1.2M` / D2 `900k` / D3 `600k`.
 
-4. **Economy tuning implementation**
-   - Vælg konkrete tal efter baseline, ikke før.
+4. **Prize-money economy**
+   - Design/implementér CZ$-præmiepenge før større økonomituning.
+   - Adskil tydeligt resultatpoint fra kontante præmieudbetalinger.
+   - Definér payout-skala pr. race class/result type og genkør baseline.
+
+5. **Economy tuning implementation**
+   - Vælg konkrete tal efter baseline med rigtige præmiepenge, ikke før.
    - Mulige knobs: startbalance, sponsor, salary rate, prize scale, debt ceilings, loan fees/renter og emergency loan behavior.
    - Centralisér økonomikonstanter/config hvis runtime stadig spreder dem.
 
-5. **Post-economy launch readiness**
+6. **Post-economy launch readiness**
    - Re-run beta-reset/live sanity efter tuning.
    - Løft derefter prioriterede Data Depth-kandidater.
 
@@ -74,18 +82,22 @@ _Regel: Færdige detaljer bor i `docs/FEATURE_STATUS.md` eller `docs/archive/`; 
 
 ### Economy baseline & simulation
 
-**Task lane:** `investigation` før kodeændringer.
+**Status:** ✅ Gennemført som `investigation` 2026-04-29.
 
-**Blocked by:** Season 6 admin/service-visible post-repair finance verification.
+**Remaining caveat:** Season 6 admin/service-visible post-repair finance verification er stadig launch-gate før live tuning/deploy, fordi read-only RLS ikke kan bevise finance rows.
 
 **Output før implementation:**
-- Scenario table for Division 1/2/3 med typiske, svage og stærke hold.
-- Forecast for cash-in/cash-out over mindst én sæsoncyklus.
-- Anbefalet tuningpakke med konkrete tal og forventet effekt.
+- ✅ Scenario table for Division 1/2/3 med live current rules og lokal strict-fair candidate.
+- ✅ Forecast for cash-in/cash-out over én sæsoncyklus.
+- ✅ Anbefalet tuningpakke med konkrete tal og forventet effekt.
+
+**Proof:** `docs/archive/ECONOMY_BASELINE_SIMULATION_2026-04-29.md` og `backend/scripts/economyBaselineSimulation.js`.
 
 ### Economy tuning implementation
 
 **Task lane:** `small_feature` eller `refactor_safe`, afhængigt af om tal kun ændres eller config centraliseres.
+
+**Blocked by:** Prize-money economy skal laves først, så større tuning ikke kalibreres mod et resultatpointsystem i stedet for faktiske CZ$-præmiepenge.
 
 **Minimum tests:**
 - Season start/end
@@ -102,6 +114,7 @@ _Regel: Færdige detaljer bor i `docs/FEATURE_STATUS.md` eller `docs/archive/`; 
 ### Launch-Critical Candidates
 
 - **Season 6 finance verification** — trigger: før økonomituning; admin/service-visible check af salary, loan-interest-as-debt, emergency loans, balances og notifications.
+- **Prize-money economy** — trigger: før større økonomituning; pointsystemet findes, men CZ$-præmiepenge skal designes/implementeres og baseline skal køres igen.
 - **Profile & Indstillinger route audit** — trigger: før launch sanity; `ProfilePage.jsx` findes, men `App.jsx` router aktuelt `/profile` via `ProfileRedirect`.
 - **XLSX dependency/upload hardening** — trigger: før offentlig beta med admin upload i drift; `xlsx` har kendte high-severity advisories.
 - **Docs/Help/Patch drift audit** — trigger: efter economy tuning og før release notes/lancering.
@@ -134,6 +147,7 @@ _Regel: Færdige detaljer bor i `docs/FEATURE_STATUS.md` eller `docs/archive/`; 
 - `Min aktivitet` forbliver separat side under `Marked`.
 - `Indbakke` er kun til systemhændelser, notifikationer og aktivitetsopsamling.
 - Almindelige auktioner kræver minimum `Værdi`.
+- Når en manager starter auktion på en AI-, bank- eller fri rytter, er startprisen også managerens første førende bud.
 - `Garanteret salg` er eneste undtagelse og må fortsat bruge 50%.
 - Økonomien skal tunes som **stram men fair**, ikke som let beta-start eller hardcore sim.
 - Concrete economy numbers vælges først efter live data + simulation.

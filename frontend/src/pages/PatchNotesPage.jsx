@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "1.71",
+    date: "2026-04-29",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auktioner",
+        items: [
+          "Når du starter en auktion på en AI-, bank- eller fri rytter, tæller startprisen nu som dit første bud, så du kan vinde rytteren selv hvis ingen andre byder",
+          "Auktionslisten viser nu den rigtige førende manager fra start og markerer ikke længere initiatoren som sælger, når rytteren faktisk ikke er deres egen",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.70",
     date: "2026-04-29",
     label: "Beta",

@@ -16,6 +16,10 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString("da-DK");
 }
 
+function isAuctionSeller(auction, teamId) {
+  return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
+}
+
 export default function AuctionHistoryPage() {
   const navigate = useNavigate();
   const [auctions, setAuctions] = useState([]);
@@ -40,7 +44,7 @@ export default function AuctionHistoryPage() {
     let query = supabase
       .from("auctions")
       .select(`id, current_price, actual_end, status, seller_team_id, current_bidder_id,
-        rider:rider_id(id, firstname, lastname, uci_points, is_u25, nationality_code),
+        rider:rider_id(id, firstname, lastname, uci_points, is_u25, nationality_code, team_id),
         seller:seller_team_id(id, name),
         winner:current_bidder_id(id, name)`,
         { count: "exact" })
@@ -56,18 +60,18 @@ export default function AuctionHistoryPage() {
 
   const filtered = auctions.filter(a => {
     if (filter === "won") return a.current_bidder_id === myTeamId;
-    if (filter === "sold") return a.seller_team_id === myTeamId;
-    if (filter === "lost") return a.current_bidder_id !== myTeamId && a.seller_team_id !== myTeamId;
+    if (filter === "sold") return isAuctionSeller(a, myTeamId);
+    if (filter === "lost") return a.current_bidder_id !== myTeamId && !isAuctionSeller(a, myTeamId);
     return true;
   });
 
   const myWins = auctions.filter(a => a.current_bidder_id === myTeamId).length;
-  const mySales = auctions.filter(a => a.seller_team_id === myTeamId).length;
+  const mySales = auctions.filter(a => isAuctionSeller(a, myTeamId)).length;
   const totalSpent = auctions
     .filter(a => a.current_bidder_id === myTeamId)
     .reduce((s, a) => s + (a.current_price || 0), 0);
   const totalEarned = auctions
-    .filter(a => a.seller_team_id === myTeamId && a.current_bidder_id)
+    .filter(a => isAuctionSeller(a, myTeamId) && a.current_bidder_id)
     .reduce((s, a) => s + (a.current_price || 0), 0);
 
   return (
@@ -135,7 +139,7 @@ export default function AuctionHistoryPage() {
             <tbody>
               {filtered.map(a => {
                 const iWon = a.current_bidder_id === myTeamId;
-                const iSold = a.seller_team_id === myTeamId;
+                const iSold = isAuctionSeller(a, myTeamId);
                 const noSale = !a.current_bidder_id;
                 return (
                   <tr key={a.id}

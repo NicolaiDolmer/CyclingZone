@@ -17,6 +17,10 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString("da-DK");
 }
 
+function isAuctionSeller(auction, teamId) {
+  return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
+}
+
 function Countdown({ end, status }) {
   const [text, setText] = useState("");
   const [urgent, setUrgent] = useState(false);
@@ -146,7 +150,7 @@ export default function ActivityPage() {
     const [activeRes, completedRes, offersData, loansData, watchlistRes, histLoansRes] = await Promise.all([
       supabase.from("auctions")
         .select(`id, current_price, calculated_end, status, seller_team_id, current_bidder_id,
-          rider:rider_id(id, firstname, lastname, uci_points),
+          rider:rider_id(id, firstname, lastname, uci_points, team_id),
           seller:seller_team_id(name), current_bidder:current_bidder_id(name)`)
         .in("status", ["active", "extended"])
         .or(`seller_team_id.eq.${team.id},current_bidder_id.eq.${team.id}`)
@@ -154,7 +158,7 @@ export default function ActivityPage() {
 
       supabase.from("auctions")
         .select(`id, current_price, actual_end, status, seller_team_id, current_bidder_id,
-          rider:rider_id(id, firstname, lastname, uci_points),
+          rider:rider_id(id, firstname, lastname, uci_points, team_id),
           seller:seller_team_id(name), winner:current_bidder_id(name)`)
         .eq("status", "completed")
         .or(`seller_team_id.eq.${team.id},current_bidder_id.eq.${team.id}`)
@@ -216,7 +220,7 @@ export default function ActivityPage() {
   // Watchlist — mark riders currently in an auction (not mine)
   const auctionRiderIds = new Set(
     activeAuctions
-      .filter(a => a.seller_team_id !== myTeamId)
+      .filter(a => !isAuctionSeller(a, myTeamId))
       .map(a => a.rider?.id).filter(Boolean)
   );
 
@@ -311,7 +315,7 @@ export default function ActivityPage() {
                 <>
                   <SectionHeader title="Auktioner der slutter inden for 1 time" count={urgentAuctions.length} />
                   {urgentAuctions.map(a => {
-                    const isSelling = a.seller_team_id === myTeamId;
+                    const isSelling = isAuctionSeller(a, myTeamId);
                     const isWinning = a.current_bidder_id === myTeamId;
                     return (
                       <Row key={a.id}
@@ -323,7 +327,9 @@ export default function ActivityPage() {
                         riderId={a.rider?.id}
                         detail={isSelling
                           ? (a.current_bidder ? `Højeste byder: ${a.current_bidder.name}` : "Ingen bud endnu")
-                          : `Sælger: ${a.seller?.name}`}
+                          : a.current_bidder
+                            ? `Fører: ${a.current_bidder.name}`
+                            : "Ingen fører endnu"}
                         amount={a.current_price}
                         time={null}
                         onClick={() => navigate("/auctions")}>
@@ -347,7 +353,7 @@ export default function ActivityPage() {
             <>
               <SectionHeader title="Aktive auktioner" count={activeAuctions.length} />
               {activeAuctions.map(a => {
-                const isSelling = a.seller_team_id === myTeamId;
+                const isSelling = isAuctionSeller(a, myTeamId);
                 const isWinning = a.current_bidder_id === myTeamId;
                 return (
                   <Row key={a.id}
@@ -359,7 +365,9 @@ export default function ActivityPage() {
                     riderId={a.rider?.id}
                     detail={isSelling
                       ? (a.current_bidder ? `Højeste byder: ${a.current_bidder.name}` : "Ingen bud endnu")
-                      : `Sælger: ${a.seller?.name}`}
+                      : a.current_bidder
+                        ? `Fører: ${a.current_bidder.name}`
+                        : "Ingen fører endnu"}
                     amount={a.current_price}
                     time={null}
                     onClick={() => navigate("/auctions")}>
@@ -533,7 +541,7 @@ export default function ActivityPage() {
                   <SectionHeader title="Auktioner" count={completedAuctions.length} />
                   {completedAuctions.map(a => {
                     const iWon  = a.current_bidder_id === myTeamId;
-                    const iSold = a.seller_team_id === myTeamId;
+                    const iSold = isAuctionSeller(a, myTeamId);
                     const noSale = !a.current_bidder_id;
                     const badge = iWon ? "Købt" : iSold && !noSale ? "Solgt" : iSold && noSale ? "Ingen bud" : "Tabt";
                     const badgeCls = iWon

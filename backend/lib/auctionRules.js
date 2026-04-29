@@ -7,6 +7,18 @@ export function getMinimumAuctionBid(currentPrice) {
   return roundUpToNearest(price + Math.ceil(price / 10), 1000);
 }
 
+export function getAuctionInitialBidderId({
+  riderTeamId,
+  managerTeamId,
+  isGuaranteedSale = false,
+} = {}) {
+  if (!managerTeamId || isGuaranteedSale || riderTeamId === managerTeamId) {
+    return null;
+  }
+
+  return managerTeamId;
+}
+
 export function getAuctionBidIssue({
   amount,
   currentPrice,

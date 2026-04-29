@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  getAuctionInitialBidderId,
   getAuctionBidIssue,
   getMinimumAuctionBid,
 } from "./auctionRules.js";
@@ -9,6 +10,29 @@ import {
 test("getMinimumAuctionBid requires 10 percent over current price rounded up to 1,000 CZ$", () => {
   assert.equal(getMinimumAuctionBid(100000), 110000);
   assert.equal(getMinimumAuctionBid(100001), 111000);
+});
+
+test("getAuctionInitialBidderId treats non-owned auction creation as the first bid", () => {
+  assert.equal(getAuctionInitialBidderId({
+    riderTeamId: "ai-team",
+    managerTeamId: "manager-team",
+  }), "manager-team");
+
+  assert.equal(getAuctionInitialBidderId({
+    riderTeamId: null,
+    managerTeamId: "manager-team",
+  }), "manager-team");
+
+  assert.equal(getAuctionInitialBidderId({
+    riderTeamId: "manager-team",
+    managerTeamId: "manager-team",
+  }), null);
+
+  assert.equal(getAuctionInitialBidderId({
+    riderTeamId: "manager-team",
+    managerTeamId: "manager-team",
+    isGuaranteedSale: true,
+  }), null);
 });
 
 test("getAuctionBidIssue blocks bids below the rounded 10 percent minimum", () => {

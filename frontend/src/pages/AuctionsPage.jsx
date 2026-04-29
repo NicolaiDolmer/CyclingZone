@@ -11,6 +11,10 @@ const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
 const STAT_LABELS = ["FL","BJ","KB","BK","TT","PRL","Bro","SP","ACC","NED","UDH","MOD","RES","FTR"];
 
+function isManagerSeller(auction, teamId) {
+  return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
+}
+
 function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   const active = sort === sortKey;
   return (
@@ -56,7 +60,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
   const [bidStatus, setBidStatus] = useState(null);
 
   const isMyRider = auction.rider?.team_id === myTeamId;
-  const isSeller  = auction.seller_team_id === myTeamId;
+  const isSeller  = isManagerSeller(auction, myTeamId);
   const imWinning = auction.current_bidder_id === myTeamId;
   const canBid    = !isMyRider && auction.status !== "completed";
 
@@ -207,7 +211,7 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
 
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
-  const isSeller = auction.seller_team_id === myTeamId;
+  const isSeller = isManagerSeller(auction, myTeamId);
   const imWinning = auction.current_bidder_id === myTeamId;
   const canBid = !isMyRider && auction.status !== "completed";
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
@@ -425,12 +429,12 @@ export default function AuctionsPage() {
   const filteredRiderIds = new Set(riderFilters.filtered.map(r => r.id));
 
   const winningCount   = auctions.filter(a => a.current_bidder_id === myTeamId).length;
-  const myListedCount  = auctions.filter(a => a.seller_team_id === myTeamId).length;
+  const myListedCount  = auctions.filter(a => isManagerSeller(a, myTeamId)).length;
   const otherManagerCount = auctions.filter(a => a.rider?.team_id && a.rider.team_id !== myTeamId).length;
 
   const filtered = auctions.filter(a => {
     if (a.rider && !filteredRiderIds.has(a.rider.id)) return false;
-    if (filter === "mine")    return a.seller_team_id === myTeamId;
+    if (filter === "mine")    return isManagerSeller(a, myTeamId);
     if (filter === "winning") return a.current_bidder_id === myTeamId;
     if (filter === "other")   return a.rider?.team_id && a.rider.team_id !== myTeamId;
     return true;

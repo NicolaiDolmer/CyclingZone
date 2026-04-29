@@ -5,6 +5,10 @@ import { Link, useNavigate } from "react-router-dom";
 const API = import.meta.env.VITE_API_URL;
 const SQUAD_LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
 
+function isAuctionSeller(auction, teamId) {
+  return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
+}
+
 function StatCard({ label, value, sub, accent = "text-slate-900", icon }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4">
@@ -89,7 +93,7 @@ export default function DashboardPage() {
         .eq("to_team_id", teamData.id)
         .eq("status", "active"),
       supabase.from("auctions")
-        .select("id, current_price, calculated_end, status, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname)")
+        .select("id, current_price, calculated_end, status, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname, team_id)")
         .in("status", ["active", "extended"]),
       supabase.from("races").select("*").not("status", "eq", "completed")
         .order("start_date", { ascending: true, nullsFirst: false }).limit(3),
@@ -157,7 +161,7 @@ export default function DashboardPage() {
   );
 
   const winningAuctions = allAuctions.filter(a => a.current_bidder_id === team?.id);
-  const myAuctions = allAuctions.filter(a => a.seller_team_id === team?.id);
+  const myAuctions = allAuctions.filter(a => isAuctionSeller(a, team?.id));
   const satisfactionColor = board?.satisfaction >= 70 ? "text-green-700" : board?.satisfaction >= 40 ? "text-amber-700" : "text-red-700";
 
   // Squad warnings
@@ -283,7 +287,7 @@ export default function DashboardPage() {
               {[...winningAuctions, ...myAuctions.filter(a => a.current_bidder_id !== team?.id)]
                 .slice(0, 5).map(a => {
                   const isWinning = a.current_bidder_id === team?.id;
-                  const isSelling = a.seller_team_id === team?.id;
+                  const isSelling = isAuctionSeller(a, team?.id);
                   const diff = new Date(a.calculated_end) - new Date();
                   const h = Math.floor(diff / 3600000);
                   const m = Math.floor((diff % 3600000) / 60000);

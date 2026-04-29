@@ -34,9 +34,10 @@ const SECTIONS = [
       {
         title: "Sådan starter du en auktion",
         steps: [
-          "Gå til Ryttere og find en fri rytter.",
+          "Gå til Ryttere og find en fri, AI- eller bankrytter.",
           "Klik på rytterens navn for at åbne statistiksiden.",
           "Klik 'Start auktion' og sæt en startpris — minimum svarer til rytterens Værdi.",
+          "På fri, AI- og bankryttere er startprisen dit første bud, så du fører auktionen med det samme.",
           "Auktionen er nu synlig for alle under Auktioner.",
         ],
       },

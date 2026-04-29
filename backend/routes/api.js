@@ -20,7 +20,10 @@ import {
   checkBidExtension,
   isAuctionExpired,
 } from "../lib/auctionEngine.js";
-import { getAuctionBidIssue } from "../lib/auctionRules.js";
+import {
+  getAuctionBidIssue,
+  getAuctionInitialBidderId,
+} from "../lib/auctionRules.js";
 import {
   finalizeAuctionById,
   finalizeExpiredAuctions as finalizeExpiredAuctionsShared,
@@ -521,6 +524,34 @@ router.post("/auctions", requireAuth, async (req, res) => {
     ? guaranteedPrice
     : (starting_price || riderValue);
   const calculatedEnd = calculateAuctionEnd(new Date());
+  const initialBidderId = getAuctionInitialBidderId({
+    riderTeamId: rider.team_id,
+    managerTeamId: req.team.id,
+    isGuaranteedSale: is_guaranteed_sale,
+  });
+
+  if (initialBidderId) {
+    const [leadingAuctions, teamState] = await Promise.all([
+      supabase
+        .from("auctions")
+        .select("id, current_price")
+        .in("status", ["active", "extended"])
+        .eq("current_bidder_id", initialBidderId),
+      getTeamMarketState(supabase, initialBidderId),
+    ]);
+    const activeLeading = leadingAuctions.data || [];
+    const totalCommitment = activeLeading.reduce((sum, row) => sum + (Number(row.current_price) || 0), 0) + price;
+    if ((Number(teamState.balance) || 0) < totalCommitment) {
+      return res.status(400).json({ error: "Startbuddet overstiger din disponible balance inkl. aktive auktionsføringer" });
+    }
+
+    const maxRiders = teamState.squad_limits?.max;
+    if (maxRiders && (teamState.total_count || 0) + activeLeading.length + 1 > maxRiders) {
+      return res.status(400).json({
+        error: `Dit hold kan max have ${maxRiders} ryttere inkl. aktive auktionsføringer`,
+      });
+    }
+  }
 
   const { data: auction, error } = await supabase
     .from("auctions")
@@ -531,6 +562,7 @@ router.post("/auctions", requireAuth, async (req, res) => {
       seller_team_id: req.team.id,
       starting_price: price,
       current_price: price,
+      current_bidder_id: initialBidderId,
       min_increment,
       calculated_end: calculatedEnd.toISOString(),
       is_guaranteed_sale,
@@ -540,6 +572,16 @@ router.post("/auctions", requireAuth, async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
+
+  if (initialBidderId) {
+    await supabase.from("auction_bids").insert({
+      auction_id: auction.id,
+      team_id: initialBidderId,
+      amount: price,
+      bid_time: new Date().toISOString(),
+      triggered_extension: false,
+    });
+  }
 
   // Log to activity feed
   await logActivity("auction_started", {
