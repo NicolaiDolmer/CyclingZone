@@ -923,12 +923,13 @@ test("processSeasonEnd writes finance and board side effects before completing t
         season_id: seasonId,
       });
     },
-    createEmergencyLoan: async (teamId, amountNeeded, client) => {
+    createEmergencyLoan: async (teamId, amountNeeded, client, seasonId) => {
       await client.from("finance_transactions").insert({
         team_id: teamId,
         type: "emergency_loan",
         amount: amountNeeded,
         description: "Nødlån oprettet automatisk (test)",
+        season_id: seasonId,
       });
       const teamRow = supabase.state.team;
       teamRow.balance += amountNeeded;
@@ -938,6 +939,10 @@ test("processSeasonEnd writes finance and board side effects before completing t
 
   const transactionTypes = supabase.state.inserts.finance_transactions.map(row => row.type);
   assert.deepEqual(transactionTypes, ["loan_interest", "emergency_loan", "salary"]);
+  assert.equal(
+    supabase.state.inserts.finance_transactions.find(row => row.type === "emergency_loan").season_id,
+    "season-1"
+  );
   assert.equal(supabase.state.inserts.finance_transactions.find(row => row.type === "salary").amount, -100);
   assert.equal(supabase.state.inserts.board_plan_snapshots.length, 1);
   assert.equal(supabase.state.season.status, "completed");

@@ -68,6 +68,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Balance-justering (admin)
 - Finance transaction type-kontrakt er afstemt i schema/migration/test med runtime for lån, lånerenter, nødlån og admin-justeringer
 - Live DB migration for finance-/notification type-kontrakt er applied 2026-04-29.
+- Season-end nødlån sender nu `season_id` med til finance-loggen, så `emergency_loan` rows kan verificeres per sæson fremover.
+- Service-visible season 6 repair verifier findes som `backend/scripts/verifySeasonEndRepair.js` / `npm run season:end:verify-repair -- --markdown`.
 - UCI salary recalculation: GitHub Actions kører `backend/scripts/recalculateRiderSalaries.js` efter UCI scraperen, så `riders.salary` følger opdaterede `uci_points` med eksisterende `prize_earnings_bonus`
 
 ### Sæson & Løb
@@ -131,14 +133,13 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 - Ingen kendt live result-import blocker efter 2026-04-29-verifikation. Sæson 6 har 98 races, 709 race_results, 25 standings rows og 10 prize finance rows efter idempotent re-import.
 - Finance-/notification runtime/schema-drift fundet 2026-04-29 er rettet i repo og live DB migrationen er applied.
-- Live season-end for sæson 6 blev kørt 2026-04-29. Status/divisioner blev applied først; root cause var embedded `teams.riders(...)` load uden error-check. Runtime-fix er deployed, og live repair er kørt med `success=true`. Mangler: admin/service-visible verification af season 6 finance rows, balances, loan interest og emergency loans, fordi read-only RLS stadig viser `finance_transactions=0`.
+- Live season-end for sæson 6 blev kørt 2026-04-29. Status/divisioner blev applied først; root cause var embedded `teams.riders(...)` load uden error-check. Runtime-fix er deployed, og live repair er kørt med `success=true`. Service-visible verification bekræfter salary, loan-interest, emergency-loan rows og board snapshots efter målrettet backfill af 3 emergency-loan finance rows til season 6.
 - Route-audit 2026-04-29: `/profile` peger i `frontend/src/App.jsx` på `ProfileRedirect` i stedet for `ProfilePage`, selvom `ProfilePage.jsx` findes. Det bør rettes/verificeres før launch, fordi Profil & Indstillinger ellers kan være utilgængelig.
 
 ---
 
 ## 🚧 I gang
 
-- [ ] Admin/service-visible verification af sæson 6 repair: salary rows, loan-interest-as-debt, emergency loans, balances, notifications og no extra division movement.
 - [ ] Prize-money economy: design/implementér rigtige CZ$-præmiepenge adskilt fra resultatpoint, før større økonomituning.
 - [ ] Economy tuning implementation efter prize-money baseline: centraliser/ændr salary rate, division-aware sponsor og debt ceilings med regressionstests.
 - [ ] Admin-authenticated deployed season-end preview smoke + UI sanity i browser-session efter repair.

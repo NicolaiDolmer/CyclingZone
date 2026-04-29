@@ -7,6 +7,7 @@
     "start": "node server.js",
     "seed:uci-race-points": "node scripts/seedUciMenRacePoints.js",
     "economy:baseline": "node scripts/economyBaselineSimulation.js",
+    "season:end:verify-repair": "node scripts/verifySeasonEndRepair.js",
     "test": "node --test"
   },
   "dependencies": {

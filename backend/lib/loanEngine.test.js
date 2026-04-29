@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 process.env.SUPABASE_URL ??= "https://example.supabase.co";
 process.env.SUPABASE_SERVICE_KEY ??= "test-service-key";
 
-const { processLoanAgreementSeasonFees, shouldChargeLoanAgreementSeasonFee } = await import(
+const { createEmergencyLoan, processLoanAgreementSeasonFees, shouldChargeLoanAgreementSeasonFee } = await import(
   "./loanEngine.js"
 );
 
@@ -174,6 +174,156 @@ test("processLoanAgreementSeasonFees charges only continuing active rider loans"
       amount: 50,
       description: "Lejegebyr modtaget: Anna Bjerg (sæson 4)",
       season_id: "season-4",
+    },
+  ]);
+});
+
+function createEmergencyLoanSupabase({
+  teamId = "team-1",
+  balance = 10,
+  config = {
+    loan_type: "emergency",
+    origination_fee_pct: 0.15,
+    interest_rate_pct: 0.15,
+  },
+} = {}) {
+  const state = {
+    balance,
+    loans: [],
+    financeRows: [],
+    notifications: [],
+  };
+
+  return {
+    state,
+    client: {
+      from(table) {
+        if (table === "teams") {
+          return {
+            select(columns) {
+              assert.equal(["division", "balance", "user_id"].includes(columns), true);
+              return {
+                eq(column, value) {
+                  assert.equal(column, "id");
+                  assert.equal(value, teamId);
+                  return {
+                    single() {
+                      if (columns === "division") {
+                        return Promise.resolve({ data: { division: 3 }, error: null });
+                      }
+                      if (columns === "user_id") {
+                        return Promise.resolve({ data: { user_id: "user-1" }, error: null });
+                      }
+                      return Promise.resolve({ data: { balance: state.balance }, error: null });
+                    },
+                  };
+                },
+              };
+            },
+            update(payload) {
+              return {
+                eq(column, value) {
+                  assert.equal(column, "id");
+                  assert.equal(value, teamId);
+                  state.balance = payload.balance;
+                  return Promise.resolve({ error: null });
+                },
+              };
+            },
+          };
+        }
+
+        if (table === "loan_config") {
+          return {
+            select(columns) {
+              assert.equal(columns, "*");
+              return {
+                eq(column, value) {
+                  assert.equal(column, "division");
+                  assert.equal(value, 3);
+                  return Promise.resolve({ data: [config], error: null });
+                },
+              };
+            },
+          };
+        }
+
+        if (table === "loans") {
+          return {
+            insert(row) {
+              state.loans.push(row);
+              return {
+                select() {
+                  return {
+                    single() {
+                      return Promise.resolve({ data: { id: "loan-1", ...row }, error: null });
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (table === "finance_transactions") {
+          return {
+            insert(row) {
+              state.financeRows.push(row);
+              return Promise.resolve({ error: null });
+            },
+          };
+        }
+
+        if (table === "notifications") {
+          return {
+            select(columns) {
+              assert.equal(columns, "id");
+              const query = {
+                eq() {
+                  return query;
+                },
+                gte() {
+                  return query;
+                },
+                order() {
+                  return query;
+                },
+                is() {
+                  return query;
+                },
+                limit() {
+                  return Promise.resolve({ data: [], error: null });
+                },
+              };
+              return query;
+            },
+            insert(row) {
+              state.notifications.push(row);
+              return Promise.resolve({ data: row, error: null });
+            },
+          };
+        }
+
+        throw new Error(`Unexpected table: ${table}`);
+      },
+    },
+  };
+}
+
+test("createEmergencyLoan tags the finance transaction with the season id", async () => {
+  const supabase = createEmergencyLoanSupabase();
+
+  await createEmergencyLoan("team-1", 100, supabase.client, "season-6");
+
+  assert.equal(supabase.state.balance, 110);
+  assert.equal(supabase.state.loans[0].amount_remaining, 115);
+  assert.deepEqual(supabase.state.financeRows, [
+    {
+      team_id: "team-1",
+      type: "emergency_loan",
+      amount: 100,
+      description: "Nødlån oprettet automatisk (gebyr: 15 CZ$, rente: 15%/sæson)",
+      season_id: "season-6",
     },
   ]);
 });

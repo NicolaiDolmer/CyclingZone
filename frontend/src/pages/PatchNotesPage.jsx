@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "1.73",
+    date: "2026-04-29",
+    label: "Beta",
+    changes: [
+      {
+        category: "Økonomi",
+        items: [
+          "Nødlån oprettet ved sæsonafslutning bliver nu knyttet til den rigtige sæson i finance-loggen, så admin-verifikation og fremtidig økonomituning kan se dem korrekt",
+          "Der er tilføjet en service-visible sæsonafslutnings-verifier, som tjekker løn, lånerenter, nødlån, board snapshots og kendte oprykninger før økonomiændringer rulles videre",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.72",
     date: "2026-04-29",
     label: "Beta",

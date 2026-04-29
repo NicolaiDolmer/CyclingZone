@@ -20,7 +20,8 @@ _Regel: Færdige detaljer bor i `docs/FEATURE_STATUS.md` eller `docs/archive/`; 
    - ✅ Admin repair endpoint er deployed og kan resume missing finance/board side effects uden division/status writes eller duplicate snapshots.
    - ✅ Live DB migration for finance-/notification types er applied.
    - ✅ Live repair er kørt med admin auth for sæson 6: `success=true`, `teamsProcessed=24`, `existingSalaryTransactions=5`, `existingBoardSnapshots=72`, `existingBoardSnapshotBoards=72`.
-   - ⏳ Mangler admin/service-visible post-repair verification af finance rows, balances og finance-loans, fordi read-only RLS stadig viser `finance_transactions=0`.
+   - ✅ Service-visible verifier er tilføjet og kørt; salary, loan-interest, board snapshots og kendte oprykninger er verificeret.
+   - ✅ Live backfill af 3 `emergency_loan` finance rows uden `season_id` er kørt; post-backfill verifieren er grøn.
 
 3. **Economy baseline & simulation**
    - ✅ Read-only baseline er gennemført med sæson 7 teams/lån og sæson 6 resultater.
@@ -65,7 +66,8 @@ _Regel: Færdige detaljer bor i `docs/FEATURE_STATUS.md` eller `docs/archive/`; 
 - Den oprindelige root cause var `processSeasonEnd` med embedded `teams.riders(...)` uden error-check; dette er fixed og deployed.
 - Live repair endpoint er kørt succesfuldt med admin auth.
 - Read-only postcheck efter repair viser `board_plan_snapshots=72` og 24 teams med snapshots.
-- Read-only postcheck kan stadig ikke se season 6 `finance_transactions`; dette vurderes som RLS/visibility-gap, men skal verificeres via admin/service-visible path før economy baseline.
+- Service-visible postcheck kan se season 6 finance rows for salary, loan interest, sponsor og prize; read-only `finance_transactions=0` var RLS/visibility-gap.
+- Service-visible postcheck fandt 3 `emergency_loan` finance rows uden `season_id`, oprettet 2026-04-29 for `Liams geder`, `Suconia STNS Cycling Team` og `Guinness Cycling`; disse er backfilled til season 6, og rerun af verifieren er grøn.
 - `Ankuva CT` og `Liams geder` står fortsat i Division 2 efter repair; ingen ekstra division movement set i read-only postcheck.
 
 **Acceptance før economy baseline:**
@@ -73,7 +75,8 @@ _Regel: Færdige detaljer bor i `docs/FEATURE_STATUS.md` eller `docs/archive/`; 
 - ✅ `processSeasonEnd` fejler hårdt på load errors og loader teams/riders/board_profiles deterministisk.
 - ✅ Regressionstest dækker live-like multiple-relationship error og finance/board execution.
 - ✅ Sæson 6 repair har kørt finance/board only via deployed admin endpoint.
-- ⏳ Admin/service-visible verification skal bekræfte salary rows, loan interest as debt, emergency loans, balances og notifications.
+- ✅ Admin/service-visible verification bekræfter salary rows, loan interest as debt, board snapshots og no extra known division movement.
+- ✅ Målrettet DB backfill knyttede de 3 unseasoned `emergency_loan` finance rows til sæson 6.
 - ✅ Read-only postcheck bekræfter board snapshots og ingen ekstra division movement for de to kendte oprykkere.
 
 ---
@@ -84,7 +87,7 @@ _Regel: Færdige detaljer bor i `docs/FEATURE_STATUS.md` eller `docs/archive/`; 
 
 **Status:** ✅ Gennemført som `investigation` 2026-04-29.
 
-**Remaining caveat:** Season 6 admin/service-visible post-repair finance verification er stadig launch-gate før live tuning/deploy, fordi read-only RLS ikke kan bevise finance rows.
+**Remaining caveat:** Større tuning må stadig vente på rigtige CZ$-præmiepenge; season 6 repair verification er lukket.
 
 **Output før implementation:**
 - ✅ Scenario table for Division 1/2/3 med live current rules og lokal strict-fair candidate.
@@ -113,7 +116,6 @@ _Regel: Færdige detaljer bor i `docs/FEATURE_STATUS.md` eller `docs/archive/`; 
 
 ### Launch-Critical Candidates
 
-- **Season 6 finance verification** — trigger: før økonomituning; admin/service-visible check af salary, loan-interest-as-debt, emergency loans, balances og notifications.
 - **Prize-money economy** — trigger: før større økonomituning; pointsystemet findes, men CZ$-præmiepenge skal designes/implementeres og baseline skal køres igen.
 - **Profile & Indstillinger route audit** — trigger: før launch sanity; `ProfilePage.jsx` findes, men `App.jsx` router aktuelt `/profile` via `ProfileRedirect`.
 - **XLSX dependency/upload hardening** — trigger: før offentlig beta med admin upload i drift; `xlsx` har kendte high-severity advisories.

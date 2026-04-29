@@ -334,10 +334,10 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
         const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
         return processLoanInterestFn(teamId, repairSeasonId, client);
       },
-      createEmergencyLoan: async (teamId, amountNeeded, client) => {
+      createEmergencyLoan: async (teamId, amountNeeded, client, emergencySeasonId) => {
         if (existingEmergencyLoanTeams.has(teamId)) return null;
         const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
-        return createEmergencyLoanFn(teamId, amountNeeded, client);
+        return createEmergencyLoanFn(teamId, amountNeeded, client, emergencySeasonId);
       },
       skipNegativeBalanceInterest: salaryAlreadyProcessed || existingLegacyInterestTeams.has(team.id),
     });
@@ -449,7 +449,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
     const shortfall = totalSalary - freshTeam.balance;
     if (shortfall > 0) {
       console.log(`  ⚠️  ${team.name}: mangler ${shortfall} pts til løn — opretter nødlån`);
-      await createEmergencyLoanFn(team.id, shortfall, supabaseClient);
+      await createEmergencyLoanFn(team.id, shortfall, supabaseClient, seasonId);
     }
     await debitTeam(
       team.id,

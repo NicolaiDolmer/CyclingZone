@@ -161,7 +161,7 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
 
 // ── Nødlån — oprettes automatisk hvis holdet ikke kan betale løn ───────────────
 
-export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient = null) {
+export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient = null, seasonId = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
   const configs = await getLoanConfig(teamId, client);
   const config = configs.find(c => c.loan_type === "emergency");
@@ -193,6 +193,7 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
     type: "emergency_loan",
     amount: amountNeeded,
     description: `Nødlån oprettet automatisk (gebyr: ${fee} CZ$, rente: ${(interestRate * 100).toFixed(0)}%/sæson)`,
+    season_id: seasonId,
   });
   if (transactionError) throw transactionError;
 

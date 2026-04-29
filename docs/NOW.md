@@ -1,8 +1,8 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-- **Economy tuning implementation prep**
-- Mål: Brug baseline-simulationen til at vælge en minimal, testet tuningpakke. Admin/service-visible sæson 6 finance-verifikation er stadig en launch-gate før live tuning/deploy.
+- **Prize-money economy prep**
+- Mål: Design/implementér rigtige CZ$-præmiepenge adskilt fra resultatpoint, og genkør baseline før større economy tuning.
 
 ## Status 2026-04-29
 - Auction first-bid bugfix er lukket lokalt:
@@ -65,22 +65,24 @@
   - Current rules: aktive squads med 9-10 ryttere og tung lønprofil ender i automatisk nødlånsrisiko; tomme/næsten tomme hold skjuler problemet i divisionsgennemsnittet.
   - Rigtige præmiepenge er ikke færdigdesignet/implementeret som økonomimodel endnu og skal laves før større økonomituning.
   - Kandidatretning før implementering er kun et lokalt scenarie, ikke en beslutning: effektiv salary rate ca. `15% -> 10%`, division-aware sponsor ca. D1 `600k`, D2 `400k`, D3 `260k`, og højere manuelle gældslofter ca. D1 `1.2M`, D2 `900k`, D3 `600k`.
+- Season 6 service-visible repair verification er kørt 2026-04-29:
+  - Ny kommando: `cd backend; npm run season:end:verify-repair -- --markdown`.
+  - Rapport: `docs/archive/SEASON_6_REPAIR_VERIFICATION_2026-04-29.md`.
+  - Service-key check bekræfter sæson 6 `completed`, 24 human teams, standings coverage, 5 salary teams for 5 rostered human teams, `loan_interest` rows for active non-emergency loan teams, `board_plan_snapshots=72` uden dubletter, og `Ankuva CT`/`Liams geder` fortsat i Division 2.
+  - Verifieren fandt en reel restfejl: 3 `emergency_loan` finance rows var synlige uden `season_id`, så de talte ikke som season 6 finance rows.
+  - Repo-fix er implementeret lokalt: `createEmergencyLoan` kan nu modtage `seasonId`, og season-end sender sæson-id med, så fremtidige nødlån bliver sæson-tagget. Backendtests passer.
+  - Målrettet live backfill er kørt: 3 rows opdateret for `Liams geder`, `Suconia STNS Cycling Team` og `Guinness Cycling`.
+  - Post-backfill verifier er grøn: 3 season-tagged `emergency_loan` rows, 0 unseasoned emergency-loan rows, 72 board snapshots uden dubletter.
 
 ## Næste konkrete handling
-1. Add/run admin/service-visible verification for season 6 repair:
-   - count season 6 salary rows and teams covered;
-   - count/amount season 6 `loan_interest`, `interest`, `emergency_loan`;
-   - verify active finance-loans had season-end interest applied where relevant;
-   - verify human team balances changed consistently with salary/emergency-loan logic;
-   - verify `board_plan_snapshots=72` for season 6 and no duplicate snapshots per board;
-   - verify `Ankuva CT` and `Liams geder` remain Division 2 with no extra division movement.
-2. Do **not** rerun full season-end and do **not** rerun repair blindly. If verification finds missing finance side effects, repair must be targeted/idempotent.
+1. Deploy repo-fix for future season-end emergency-loan tagging and verifier script.
+2. Do **not** rerun full season-end and do **not** rerun repair blindly.
 3. Design/implement real prize-money economy before larger economy tuning:
    - distinguish result points from CZ$ prize payouts;
    - decide payout scale by race class/result type;
    - verify finance transaction type/contracts and UI copy;
    - then rerun baseline with real prize income.
-4. Economy tuning implementation can be prepared locally from baseline, but concrete live/deploy change should wait for both the verification gate and prize-money feature above.
+4. Economy tuning implementation can be prepared locally from baseline, but concrete live/deploy change should wait for prize-money feature above.
 5. Re-audit `/profile` remains a separate launch-critical item.
 
 ## Næste launch-spor
