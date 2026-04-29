@@ -62,6 +62,56 @@ const DIVISION_MIN_RIDERS = {
   3: 8,
 };
 
+function throwIfSupabaseError(error, message) {
+  if (error) {
+    throw new Error(`${message}: ${error.message}`);
+  }
+}
+
+export async function loadHumanSeasonEndTeams(supabaseClient) {
+  const { data: teams, error: teamsError } = await supabaseClient
+    .from("teams")
+    .select("*")
+    .eq("is_ai", false);
+  throwIfSupabaseError(teamsError, "Could not load human teams for season end");
+
+  const teamIds = (teams || []).map(team => team.id).filter(Boolean);
+  if (teamIds.length === 0) return [];
+
+  const [ridersRes, boardsRes] = await Promise.all([
+    supabaseClient
+      .from("riders")
+      .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}`)
+      .in("team_id", teamIds),
+    supabaseClient
+      .from("board_profiles")
+      .select("*")
+      .in("team_id", teamIds),
+  ]);
+  throwIfSupabaseError(ridersRes.error, "Could not load riders for season end");
+  throwIfSupabaseError(boardsRes.error, "Could not load board profiles for season end");
+
+  const ridersByTeam = new Map();
+  for (const rider of ridersRes.data || []) {
+    if (!rider.team_id) continue;
+    if (!ridersByTeam.has(rider.team_id)) ridersByTeam.set(rider.team_id, []);
+    ridersByTeam.get(rider.team_id).push(rider);
+  }
+
+  const boardsByTeam = new Map();
+  for (const board of boardsRes.data || []) {
+    if (!board.team_id) continue;
+    if (!boardsByTeam.has(board.team_id)) boardsByTeam.set(board.team_id, []);
+    boardsByTeam.get(board.team_id).push(board);
+  }
+
+  return (teams || []).map(team => ({
+    ...team,
+    riders: ridersByTeam.get(team.id) || [],
+    board_profiles: boardsByTeam.get(team.id) || [],
+  }));
+}
+
 // ─── Season Start Processing ──────────────────────────────────────────────────
 
 /**
@@ -164,36 +214,27 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   const notificationNow = deps.now ?? new Date();
 
   // Get current season number
-  const { data: currentSeason } = await supabaseClient
+  const { data: currentSeason, error: seasonError } = await supabaseClient
     .from("seasons").select("number").eq("id", seasonId).single();
+  throwIfSupabaseError(seasonError, "Could not load season for season end");
   const currentSeasonNumber = currentSeason?.number ?? 1;
 
   // Get final standings
-  const { data: standings } = await supabaseClient
+  const { data: standings, error: standingsError } = await supabaseClient
     .from("season_standings")
     .select("*, team:team_id(*)")
     .eq("season_id", seasonId)
     .order("total_points", { ascending: false });
+  throwIfSupabaseError(standingsError, "Could not load season standings for season end");
 
   if (!standings?.length) {
     console.warn("  ⚠️  No standings found for season");
     return;
   }
 
-  // Process each division
-  for (const division of [1, 2, 3]) {
-    const divStandings = standings.filter(s => s.division === division);
-    await processDivisionEnd(divStandings, division, seasonId, {
-      supabase: supabaseClient,
-      now: notificationNow,
-    });
-  }
-
-  // Process finances for all human teams
-  const { data: teams } = await supabaseClient
-    .from("teams")
-    .select(`*, riders(${BOARD_IDENTITY_RIDER_SELECT}), board_profiles(*)`)
-    .eq("is_ai", false);
+  // Load finance/board inputs before any writes, so relationship drift cannot
+  // trigger division movement and then skip the finance loop.
+  const teams = await loadHumanSeasonEndTeams(supabaseClient);
 
   for (const team of teams || []) {
     await processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumber, {
@@ -203,16 +244,85 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     });
   }
 
+  // Process each division after finance/board side effects have succeeded.
+  for (const division of [1, 2, 3]) {
+    const divStandings = standings.filter(s => s.division === division);
+    await processDivisionEnd(divStandings, division, seasonId, {
+      supabase: supabaseClient,
+      now: notificationNow,
+    });
+  }
+
   // Mark season as completed
-  await supabaseClient.from("seasons")
+  const { error: completeError } = await supabaseClient.from("seasons")
     .update({ status: "completed" })
     .eq("id", seasonId);
+  throwIfSupabaseError(completeError, "Could not mark season completed");
 
   // Recalculate rider values and salaries based on last 3 completed seasons
   const updateRiderValuesFn = deps.updateRiderValues ?? updateRiderValues;
   await updateRiderValuesFn(supabaseClient);
 
   console.log("  ✅ Season end processing complete");
+}
+
+export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
+  console.log(`\n🛠️  Repairing season-end finance/board side effects: ${seasonId}`);
+  const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
+  const notificationNow = deps.now ?? new Date();
+  const force = deps.force === true;
+
+  const { data: currentSeason, error: seasonError } = await supabaseClient
+    .from("seasons")
+    .select("id, number, status")
+    .eq("id", seasonId)
+    .single();
+  throwIfSupabaseError(seasonError, "Could not load season for season-end repair");
+  if (!currentSeason) throw new Error("Season not found");
+
+  const { count: salaryCount, error: salaryCountError } = await supabaseClient
+    .from("finance_transactions")
+    .select("id", { count: "exact", head: true })
+    .eq("season_id", seasonId)
+    .eq("type", "salary");
+  throwIfSupabaseError(salaryCountError, "Could not check existing salary transactions");
+
+  const { count: snapshotCount, error: snapshotCountError } = await supabaseClient
+    .from("board_plan_snapshots")
+    .select("id", { count: "exact", head: true })
+    .eq("season_id", seasonId);
+  throwIfSupabaseError(snapshotCountError, "Could not check existing board snapshots");
+
+  if (!force && ((salaryCount || 0) > 0 || (snapshotCount || 0) > 0)) {
+    throw new Error(
+      `Season-end finance/board repair refused: found ${salaryCount || 0} salary rows and ${snapshotCount || 0} board snapshots for season`
+    );
+  }
+
+  const { data: standings, error: standingsError } = await supabaseClient
+    .from("season_standings")
+    .select("*, team:team_id(*)")
+    .eq("season_id", seasonId)
+    .order("total_points", { ascending: false });
+  throwIfSupabaseError(standingsError, "Could not load season standings for season-end repair");
+  if (!standings?.length) throw new Error("No standings found for season-end repair");
+
+  const teams = await loadHumanSeasonEndTeams(supabaseClient);
+
+  for (const team of teams) {
+    await processTeamSeasonEnd(team, seasonId, standings, currentSeason.number ?? 1, {
+      ...deps,
+      supabase: supabaseClient,
+      now: notificationNow,
+    });
+  }
+
+  console.log("  ✅ Season-end finance/board repair complete");
+  return {
+    teamsProcessed: teams.length,
+    existingSalaryTransactions: salaryCount || 0,
+    existingBoardSnapshots: snapshotCount || 0,
+  };
 }
 
 export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData = [] } = {}) {
@@ -305,8 +415,10 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   const totalSalary = (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
 
   if (totalSalary > 0) {
-    const { data: freshTeam } = await supabaseClient
+    const { data: freshTeam, error: freshTeamError } = await supabaseClient
       .from("teams").select("balance").eq("id", team.id).single();
+    throwIfSupabaseError(freshTeamError, `Could not load balance for ${team.name}`);
+    if (!freshTeam) throw new Error(`Could not load balance for ${team.name}`);
     const shortfall = totalSalary - freshTeam.balance;
     if (shortfall > 0) {
       console.log(`  ⚠️  ${team.name}: mangler ${shortfall} pts til løn — opretter nødlån`);
@@ -323,8 +435,10 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   }
 
   // 3. Opkræv renter på resterende negativ balance (legacy-sikkerhedsnet)
-  const { data: postSalaryTeam } = await supabaseClient
+  const { data: postSalaryTeam, error: postSalaryTeamError } = await supabaseClient
     .from("teams").select("balance").eq("id", team.id).single();
+  throwIfSupabaseError(postSalaryTeamError, `Could not load post-salary balance for ${team.name}`);
+  if (!postSalaryTeam) throw new Error(`Could not load post-salary balance for ${team.name}`);
 
   if (postSalaryTeam.balance < 0) {
     const interest = Math.round(Math.abs(postSalaryTeam.balance) * INTEREST_RATE);
@@ -350,20 +464,23 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
     const isMidReview = !planIsComplete && seasonsCompleted === Math.floor(planDuration / 2);
 
     // Active loans count for no_outstanding_debt goal
-    const { count: activeLoanCount } = await supabaseClient.from("loans")
+    const { count: activeLoanCount, error: activeLoanCountError } = await supabaseClient.from("loans")
       .select("id", { count: "exact", head: true })
       .eq("team_id", team.id).eq("status", "active");
+    throwIfSupabaseError(activeLoanCountError, `Could not count active loans for ${team.name}`);
 
     // Fresh team data for sponsor_growth evaluation
-    const { data: freshTeamData } = await supabaseClient.from("teams")
+    const { data: freshTeamData, error: freshTeamDataError } = await supabaseClient.from("teams")
       .select("sponsor_income").eq("id", team.id).single();
+    throwIfSupabaseError(freshTeamDataError, `Could not load sponsor income for ${team.name}`);
 
-    const { data: recentSnapshots } = await supabaseClient
+    const { data: recentSnapshots, error: recentSnapshotsError } = await supabaseClient
       .from("board_plan_snapshots")
       .select("goals_met, goals_total, satisfaction_delta")
       .eq("team_id", team.id)
       .order("created_at", { ascending: false })
       .limit(3);
+    throwIfSupabaseError(recentSnapshotsError, `Could not load recent board snapshots for ${team.name}`);
 
     const context = {
       isFinalSeason: planIsComplete,
@@ -394,7 +511,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       context,
     });
 
-    await supabaseClient.from("board_plan_snapshots").insert({
+    const { error: snapshotError } = await supabaseClient.from("board_plan_snapshots").insert({
       team_id: team.id,
       board_id: board.id,
       season_id: seasonId,
@@ -407,10 +524,11 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       goals_met: goalsMet,
       goals_total: goals.length,
     });
+    throwIfSupabaseError(snapshotError, `Could not insert board snapshot for ${team.name}`);
 
     if (planIsComplete) {
       // Plan expired — reset for re-negotiation
-      await supabaseClient.from("board_profiles").update({
+      const { error: boardUpdateError } = await supabaseClient.from("board_profiles").update({
         satisfaction: newSatisfaction,
         budget_modifier: newModifier,
         negotiation_status: "pending",
@@ -419,6 +537,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         cumulative_gc_wins: 0,
         updated_at: new Date().toISOString(),
       }).eq("id", board.id);
+      throwIfSupabaseError(boardUpdateError, `Could not update completed board plan for ${team.name}`);
 
       const planLabel = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" }[board.plan_type] || "plan";
       await notifyManager(
@@ -430,7 +549,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       );
     } else {
       // Plan still running — update cumulative stats, keep goals
-      await supabaseClient.from("board_profiles").update({
+      const { error: boardUpdateError } = await supabaseClient.from("board_profiles").update({
         satisfaction: newSatisfaction,
         budget_modifier: newModifier,
         seasons_completed: seasonsCompleted,
@@ -438,6 +557,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         cumulative_gc_wins: newCumulativeGcWins,
         updated_at: new Date().toISOString(),
       }).eq("id", board.id);
+      throwIfSupabaseError(boardUpdateError, `Could not update active board plan for ${team.name}`);
 
       if (isMidReview) {
         const midMsg = newSatisfaction >= 60
@@ -597,11 +717,12 @@ async function processDivisionEnd(standings, division, seasonId, deps = {}) {
   if (division > MIN_DIVISION) {
     const promoted = standings.slice(0, PROMOTION_SLOTS);
     for (const s of promoted) {
-      if (!s.team.is_ai) {
+      if (!s.team?.is_ai) {
         promotions.push(s.team_id);
-        await client.from("teams")
+        const { error } = await client.from("teams")
           .update({ division: division - 1 })
           .eq("id", s.team_id);
+        throwIfSupabaseError(error, `Could not promote team ${s.team_id}`);
         await notifyManager(
           s.team_id,
           "board_update",
@@ -617,11 +738,12 @@ async function processDivisionEnd(standings, division, seasonId, deps = {}) {
   if (division < MAX_DIVISION) {
     const relegated = standings.slice(-RELEGATION_SLOTS);
     for (const s of relegated) {
-      if (!s.team.is_ai) {
+      if (!s.team?.is_ai) {
         relegations.push(s.team_id);
-        await client.from("teams")
+        const { error } = await client.from("teams")
           .update({ division: division + 1 })
           .eq("id", s.team_id);
+        throwIfSupabaseError(error, `Could not relegate team ${s.team_id}`);
         await notifyManager(
           s.team_id,
           "board_update",
@@ -742,26 +864,34 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
 
 async function creditTeam(teamId, amount, type, description, seasonId, supabaseClient = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
-  const { data: team } = await client
+  const { data: team, error: teamError } = await client
     .from("teams").select("balance").eq("id", teamId).single();
-  await client.from("teams")
+  throwIfSupabaseError(teamError, `Could not load team balance for credit ${teamId}`);
+  if (!team) throw new Error(`Could not load team balance for credit ${teamId}`);
+  const { error: updateError } = await client.from("teams")
     .update({ balance: team.balance + amount })
     .eq("id", teamId);
-  await client.from("finance_transactions").insert({
+  throwIfSupabaseError(updateError, `Could not credit team ${teamId}`);
+  const { error: insertError } = await client.from("finance_transactions").insert({
     team_id: teamId, type, amount, description, season_id: seasonId,
   });
+  throwIfSupabaseError(insertError, `Could not insert credit transaction for ${teamId}`);
 }
 
 async function debitTeam(teamId, amount, type, description, seasonId, supabaseClient = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
-  const { data: team } = await client
+  const { data: team, error: teamError } = await client
     .from("teams").select("balance").eq("id", teamId).single();
-  await client.from("teams")
+  throwIfSupabaseError(teamError, `Could not load team balance for debit ${teamId}`);
+  if (!team) throw new Error(`Could not load team balance for debit ${teamId}`);
+  const { error: updateError } = await client.from("teams")
     .update({ balance: team.balance - amount })
     .eq("id", teamId);
-  await client.from("finance_transactions").insert({
+  throwIfSupabaseError(updateError, `Could not debit team ${teamId}`);
+  const { error: insertError } = await client.from("finance_transactions").insert({
     team_id: teamId, type, amount: -amount, description, season_id: seasonId,
   });
+  throwIfSupabaseError(insertError, `Could not insert debit transaction for ${teamId}`);
 }
 
 async function notifyManager(teamId, type, title, message, deps = {}) {

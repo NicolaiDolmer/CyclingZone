@@ -7,6 +7,7 @@ process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-ser
 const {
   buildSeasonEndPreviewRows,
   processSeasonEnd,
+  repairSeasonEndFinanceAndBoard,
   updateRiderValues,
   updateStandings,
 } = await import("./economyEngine.js");
@@ -22,11 +23,13 @@ function createSeasonEndSupabase({
   standings,
   activeLoanCount = 0,
   existingNotifications = [],
+  ridersError = null,
 } = {}) {
   const state = {
     season: clone(season),
     team: clone(team),
     board: clone(board),
+    riders: clone(team?.riders || []),
     standings: clone(standings),
     notifications: clone(existingNotifications),
     inserts: {
@@ -42,7 +45,7 @@ function createSeasonEndSupabase({
   };
 
   state.team.board_profiles = [state.board];
-  state.team.riders = state.team.riders || [];
+  state.team.riders = state.riders;
 
   function getTeamById(teamId) {
     assert.equal(teamId, state.team.id);
@@ -55,7 +58,7 @@ function createSeasonEndSupabase({
       if (table === "seasons") {
         return {
           select(columns) {
-            assert.equal(columns, "number");
+            assert.equal(["number", "id, number, status"].includes(columns), true);
             return {
               eq(column, value) {
                 assert.equal(column, "id");
@@ -63,7 +66,13 @@ function createSeasonEndSupabase({
                 return {
                   single() {
                     return Promise.resolve({
-                      data: { number: state.season.number },
+                      data: columns === "number"
+                        ? { number: state.season.number }
+                        : {
+                            id: state.season.id,
+                            number: state.season.number,
+                            status: state.season.status,
+                          },
                       error: null,
                     });
                   },
@@ -116,6 +125,7 @@ function createSeasonEndSupabase({
               eq(column, value) {
                 if (column === "is_ai") {
                   assert.equal(value, false);
+                  assert.equal(columns.includes("riders("), false);
                   return Promise.resolve({
                     data: [clone(state.team)],
                     error: null,
@@ -196,9 +206,48 @@ function createSeasonEndSupabase({
         };
       }
 
-      if (table === "board_plan_snapshots") {
+      if (table === "riders") {
         return {
           select(columns) {
+            assert.equal(columns.includes("team_id"), true);
+            assert.equal(columns.includes("salary"), true);
+            return {
+              in(column, values) {
+                assert.equal(column, "team_id");
+                assert.deepEqual(values, [state.team.id]);
+                if (ridersError) {
+                  return Promise.resolve({
+                    data: null,
+                    error: ridersError,
+                  });
+                }
+                return Promise.resolve({
+                  data: clone(state.riders),
+                  error: null,
+                });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "board_plan_snapshots") {
+        return {
+          select(columns, options) {
+            if (columns === "id") {
+              assert.deepEqual(options, { count: "exact", head: true });
+              return {
+                eq(column, value) {
+                  assert.equal(column, "season_id");
+                  assert.equal(value, state.season.id);
+                  return Promise.resolve({
+                    count: state.inserts.board_plan_snapshots.filter(row => row.season_id === value).length,
+                    error: null,
+                  });
+                },
+              };
+            }
+
             assert.equal(columns, "goals_met, goals_total, satisfaction_delta");
             return {
               eq(column, value) {
@@ -231,6 +280,19 @@ function createSeasonEndSupabase({
 
       if (table === "board_profiles") {
         return {
+          select(columns) {
+            assert.equal(columns, "*");
+            return {
+              in(column, values) {
+                assert.equal(column, "team_id");
+                assert.deepEqual(values, [state.team.id]);
+                return Promise.resolve({
+                  data: [clone(state.board)],
+                  error: null,
+                });
+              },
+            };
+          },
           update(payload) {
             return {
               eq(column, value) {
@@ -248,6 +310,25 @@ function createSeasonEndSupabase({
 
       if (table === "finance_transactions") {
         return {
+          select(columns, options) {
+            assert.equal(columns, "id");
+            assert.deepEqual(options, { count: "exact", head: true });
+            const filters = {};
+            return {
+              eq(column, value) {
+                filters[column] = value;
+                if (filters.season_id && filters.type) {
+                  return Promise.resolve({
+                    count: state.inserts.finance_transactions.filter(row => (
+                      row.season_id === filters.season_id && row.type === filters.type
+                    )).length,
+                    error: null,
+                  });
+                }
+                return this;
+              },
+            };
+          },
           insert(payload) {
             state.inserts.finance_transactions.push(payload);
             return Promise.resolve({ error: null });
@@ -677,6 +758,221 @@ test("processSeasonEnd skips writing a duplicate board notification when the sam
   });
 
   assert.equal(supabase.state.inserts.notifications.length, 0);
+});
+
+test("processSeasonEnd fails before writes when live-like rider loading fails", async () => {
+  const supabase = createSeasonEndSupabase({
+    season: {
+      id: "season-1",
+      number: 5,
+      status: "active",
+    },
+    team: {
+      id: "team-1",
+      name: "Relationship Drift",
+      is_ai: false,
+      user_id: "user-1",
+      balance: 500,
+      sponsor_income: 200,
+      riders: [],
+    },
+    board: {
+      id: "board-1",
+      team_id: "team-1",
+      plan_type: "1yr",
+      focus: "balanced",
+      satisfaction: 50,
+      budget_modifier: 1.0,
+      current_goals: [],
+      seasons_completed: 0,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      plan_start_sponsor_income: 200,
+    },
+    standings: [
+      {
+        season_id: "season-1",
+        team_id: "team-1",
+        division: 3,
+        total_points: 150,
+        rank_in_division: 1,
+        stage_wins: 0,
+        gc_wins: 0,
+        team: {
+          id: "team-1",
+          is_ai: false,
+        },
+      },
+    ],
+    ridersError: {
+      code: "PGRST201",
+      message: "Could not embed because more than one relationship was found",
+    },
+  });
+
+  await assert.rejects(
+    processSeasonEnd("season-1", {
+      supabase,
+      now: FIXED_SEASON_END_NOW,
+      processLoanInterest: async () => {},
+      createEmergencyLoan: async () => {},
+      updateRiderValues: async () => {},
+    }),
+    /Could not load riders for season end/
+  );
+
+  assert.equal(supabase.state.updates.seasons.length, 0);
+  assert.equal(supabase.state.updates.teams.length, 0);
+  assert.equal(supabase.state.inserts.finance_transactions.length, 0);
+  assert.equal(supabase.state.inserts.board_plan_snapshots.length, 0);
+});
+
+test("processSeasonEnd writes finance and board side effects before completing the season", async () => {
+  const supabase = createSeasonEndSupabase({
+    season: {
+      id: "season-1",
+      number: 5,
+      status: "active",
+    },
+    team: {
+      id: "team-1",
+      name: "Finance Testers",
+      is_ai: false,
+      user_id: "user-1",
+      balance: 70,
+      sponsor_income: 200,
+      riders: [
+        { id: "rider-1", team_id: "team-1", salary: 100 },
+      ],
+    },
+    board: {
+      id: "board-1",
+      team_id: "team-1",
+      plan_type: "1yr",
+      focus: "balanced",
+      satisfaction: 50,
+      budget_modifier: 1.0,
+      current_goals: [],
+      seasons_completed: 0,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      plan_start_sponsor_income: 200,
+    },
+    standings: [
+      {
+        season_id: "season-1",
+        team_id: "team-1",
+        division: 3,
+        total_points: 150,
+        rank_in_division: 1,
+        stage_wins: 0,
+        gc_wins: 0,
+        team: {
+          id: "team-1",
+          is_ai: false,
+        },
+      },
+    ],
+    activeLoanCount: 1,
+  });
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async (teamId, seasonId, client) => {
+      await client.from("finance_transactions").insert({
+        team_id: teamId,
+        type: "loan_interest",
+        amount: -25,
+        description: "Lånerenter tilskrevet (test)",
+        season_id: seasonId,
+      });
+    },
+    createEmergencyLoan: async (teamId, amountNeeded, client) => {
+      await client.from("finance_transactions").insert({
+        team_id: teamId,
+        type: "emergency_loan",
+        amount: amountNeeded,
+        description: "Nødlån oprettet automatisk (test)",
+      });
+      const teamRow = supabase.state.team;
+      teamRow.balance += amountNeeded;
+    },
+    updateRiderValues: async () => {},
+  });
+
+  const transactionTypes = supabase.state.inserts.finance_transactions.map(row => row.type);
+  assert.deepEqual(transactionTypes, ["loan_interest", "emergency_loan", "salary"]);
+  assert.equal(supabase.state.inserts.finance_transactions.find(row => row.type === "salary").amount, -100);
+  assert.equal(supabase.state.inserts.board_plan_snapshots.length, 1);
+  assert.equal(supabase.state.season.status, "completed");
+  assert.equal(supabase.state.updates.seasons.length, 1);
+});
+
+test("repairSeasonEndFinanceAndBoard runs finance and board only without season or division writes", async () => {
+  const supabase = createSeasonEndSupabase({
+    season: {
+      id: "season-1",
+      number: 5,
+      status: "completed",
+    },
+    team: {
+      id: "team-1",
+      name: "Repair Testers",
+      is_ai: false,
+      user_id: "user-1",
+      balance: 200,
+      sponsor_income: 200,
+      riders: [
+        { id: "rider-1", team_id: "team-1", salary: 80 },
+      ],
+    },
+    board: {
+      id: "board-1",
+      team_id: "team-1",
+      plan_type: "1yr",
+      focus: "balanced",
+      satisfaction: 50,
+      budget_modifier: 1.0,
+      current_goals: [],
+      seasons_completed: 0,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      plan_start_sponsor_income: 200,
+    },
+    standings: [
+      {
+        season_id: "season-1",
+        team_id: "team-1",
+        division: 3,
+        total_points: 150,
+        rank_in_division: 1,
+        stage_wins: 0,
+        gc_wins: 0,
+        team: {
+          id: "team-1",
+          is_ai: false,
+        },
+      },
+    ],
+  });
+
+  const result = await repairSeasonEndFinanceAndBoard("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+  });
+
+  assert.equal(result.teamsProcessed, 1);
+  assert.equal(supabase.state.inserts.finance_transactions.length, 1);
+  assert.equal(supabase.state.inserts.finance_transactions[0].type, "salary");
+  assert.equal(supabase.state.inserts.board_plan_snapshots.length, 1);
+  assert.equal(supabase.state.updates.seasons.length, 0);
+  assert.equal(
+    supabase.state.updates.teams.some(update => "division" in update.payload),
+    false
+  );
 });
 
 test("buildSeasonEndPreviewRows projects board modifier on the same path as season end", () => {

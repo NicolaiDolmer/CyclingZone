@@ -24,8 +24,11 @@ async function getDefaultSupabaseClient() {
 
 async function adjustBalance(teamId, amount, supabaseClient = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
-  const { data: team } = await client.from("teams").select("balance").eq("id", teamId).single();
-  await client.from("teams").update({ balance: team.balance + amount }).eq("id", teamId);
+  const { data: team, error: teamError } = await client.from("teams").select("balance").eq("id", teamId).single();
+  if (teamError) throw teamError;
+  if (!team) throw new Error("Hold ikke fundet");
+  const { error: updateError } = await client.from("teams").update({ balance: team.balance + amount }).eq("id", teamId);
+  if (updateError) throw updateError;
 }
 
 export function shouldChargeLoanAgreementSeasonFee(loan, seasonNumber) {
@@ -185,12 +188,13 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
 
   await adjustBalance(teamId, amountNeeded, client);
 
-  await client.from("finance_transactions").insert({
+  const { error: transactionError } = await client.from("finance_transactions").insert({
     team_id: teamId,
     type: "emergency_loan",
     amount: amountNeeded,
     description: `Nødlån oprettet automatisk (gebyr: ${fee} CZ$, rente: ${(interestRate * 100).toFixed(0)}%/sæson)`,
   });
+  if (transactionError) throw transactionError;
 
   await notifyManager(teamId, "emergency_loan",
     "⚠️ Nødlån oprettet",
@@ -246,30 +250,33 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null) {
 
 export async function processLoanInterest(teamId, seasonId, supabaseClient = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
-  const { data: loans } = await client
+  const { data: loans, error: loansError } = await client
     .from("loans")
     .select("*")
     .eq("team_id", teamId)
     .eq("status", "active");
+  if (loansError) throw loansError;
 
   for (const loan of loans || []) {
     const interest = Math.round(loan.amount_remaining * loan.interest_rate);
     const newRemaining = loan.amount_remaining + interest;
     const newSeasonsRemaining = loan.seasons_remaining - 1;
 
-    await client.from("loans").update({
+    const { error: updateError } = await client.from("loans").update({
       amount_remaining: newRemaining,
       seasons_remaining: newSeasonsRemaining,
       updated_at: new Date().toISOString(),
     }).eq("id", loan.id);
+    if (updateError) throw updateError;
 
-    await client.from("finance_transactions").insert({
+    const { error: transactionError } = await client.from("finance_transactions").insert({
       team_id: teamId,
       type: "loan_interest",
       amount: -interest,
       description: `Lånerenter tilskrevet (${(loan.interest_rate * 100).toFixed(0)}%)`,
       season_id: seasonId,
     });
+    if (transactionError) throw transactionError;
   }
 }
 

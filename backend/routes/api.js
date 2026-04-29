@@ -50,8 +50,10 @@ import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
 import {
   buildSeasonEndPreviewRows,
+  loadHumanSeasonEndTeams,
   processSeasonEnd,
   processSeasonStart,
+  repairSeasonEndFinanceAndBoard,
   updateStandings,
 } from "../lib/economyEngine.js";
 import {
@@ -1850,6 +1852,26 @@ router.post("/admin/seasons/:id/end", requireAdmin, async (req, res) => {
   }
 });
 
+router.post("/admin/seasons/:id/repair-finance-board", requireAdmin, async (req, res) => {
+  try {
+    const seasonId = req.params.id;
+    const force = req.body?.force === true;
+    const result = await repairSeasonEndFinanceAndBoard(seasonId, { force });
+
+    await logActivity("season_end_finance_board_repaired", {
+      meta: {
+        season_id: seasonId,
+        teams_processed: result.teamsProcessed,
+        force,
+      },
+    });
+
+    res.json({ success: true, season_id: seasonId, ...result });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.post("/admin/seasons/:id/rebuild-standings", requireAdmin, async (req, res) => {
   try {
     const seasonId = req.params.id;
@@ -2082,15 +2104,14 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
   try {
     const { seasonId } = req.params;
 
-    const [teamsRes, standingsRes, loansRes] = await Promise.all([
-      supabase.from("teams")
-        .select(`id, name, balance, division, sponsor_income, riders(salary, ${BOARD_IDENTITY_RIDER_SELECT}), board_profiles(*)`)
-        .eq("is_ai", false),
+    const [teams, standingsRes, loansRes] = await Promise.all([
+      loadHumanSeasonEndTeams(supabase),
       supabase.from("season_standings").select("*").eq("season_id", seasonId),
       supabase.from("loans").select("team_id, amount_remaining, interest_rate").eq("status", "active"),
     ]);
 
-    const teams = teamsRes.data || [];
+    if (standingsRes.error) throw standingsRes.error;
+    if (loansRes.error) throw loansRes.error;
     const standings = standingsRes.data || [];
     const loanData = loansRes.data || [];
     const preview = buildSeasonEndPreviewRows({ teams, standings, loanData });

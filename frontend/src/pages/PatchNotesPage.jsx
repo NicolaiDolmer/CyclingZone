@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "1.70",
+    date: "2026-04-29",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin",
+        items: [
+          "Sæsonafslutning loader nu hold, ryttere og bestyrelsesplaner separat, så live DB-relationer ikke kan få finance og board til at blive sprunget over",
+          "Hvis sæsonafslutning ikke kan læse eller skrive nødvendige economy-/board-data, fejler den nu før sæsonen markeres færdig",
+          "Der er tilføjet en admin-reparation for sæsonafslutningens finance og board side effects uden at køre oprykning/nedrykning igen",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.69",
     date: "2026-04-29",
     label: "Beta",
