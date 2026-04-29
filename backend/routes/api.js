@@ -449,7 +449,7 @@ router.get("/auctions", requireAuth, async (req, res) => {
     .from("auctions")
     .select(`
       id, starting_price, current_price, calculated_end, actual_end,
-      status, extension_count, created_at,
+      status, extension_count, created_at, is_guaranteed_sale,
       rider:rider_id(id, firstname, lastname, uci_points, is_u25,
         stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
         stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,

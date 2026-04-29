@@ -9,6 +9,14 @@ function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
 }
 
+function getAuctionLeaderId(auction) {
+  if (auction?.current_bidder_id) return auction.current_bidder_id;
+  if (!auction?.is_guaranteed_sale && auction?.seller_team_id && auction?.rider?.team_id !== auction.seller_team_id) {
+    return auction.seller_team_id;
+  }
+  return null;
+}
+
 function StatCard({ label, value, sub, accent = "text-slate-900", icon }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4">
@@ -93,7 +101,7 @@ export default function DashboardPage() {
         .eq("to_team_id", teamData.id)
         .eq("status", "active"),
       supabase.from("auctions")
-        .select("id, current_price, calculated_end, status, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname, team_id)")
+        .select("id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname, team_id)")
         .in("status", ["active", "extended"]),
       supabase.from("races").select("*").not("status", "eq", "completed")
         .order("start_date", { ascending: true, nullsFirst: false }).limit(3),
@@ -160,7 +168,7 @@ export default function DashboardPage() {
     </div>
   );
 
-  const winningAuctions = allAuctions.filter(a => a.current_bidder_id === team?.id);
+  const winningAuctions = allAuctions.filter(a => getAuctionLeaderId(a) === team?.id);
   const myAuctions = allAuctions.filter(a => isAuctionSeller(a, team?.id));
   const satisfactionColor = board?.satisfaction >= 70 ? "text-green-700" : board?.satisfaction >= 40 ? "text-amber-700" : "text-red-700";
 
@@ -284,9 +292,9 @@ export default function DashboardPage() {
             <p className="text-slate-300 text-sm text-center py-4">Ingen aktive auktioner</p>
           ) : (
             <div className="flex flex-col gap-2">
-              {[...winningAuctions, ...myAuctions.filter(a => a.current_bidder_id !== team?.id)]
+              {[...winningAuctions, ...myAuctions.filter(a => getAuctionLeaderId(a) !== team?.id)]
                 .slice(0, 5).map(a => {
-                  const isWinning = a.current_bidder_id === team?.id;
+                  const isWinning = getAuctionLeaderId(a) === team?.id;
                   const isSelling = isAuctionSeller(a, team?.id);
                   const diff = new Date(a.calculated_end) - new Date();
                   const h = Math.floor(diff / 3600000);

@@ -15,6 +15,20 @@ function isManagerSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
 }
 
+function getAuctionLeaderId(auction) {
+  if (auction?.current_bidder_id) return auction.current_bidder_id;
+  if (!auction?.is_guaranteed_sale && auction?.seller_team_id && auction?.rider?.team_id !== auction.seller_team_id) {
+    return auction.seller_team_id;
+  }
+  return null;
+}
+
+function getAuctionLeaderName(auction) {
+  if (auction?.current_bidder?.name) return auction.current_bidder.name;
+  if (getAuctionLeaderId(auction) === auction?.seller_team_id) return auction?.seller?.name;
+  return null;
+}
+
 function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   const active = sort === sortKey;
   return (
@@ -61,7 +75,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
 
   const isMyRider = auction.rider?.team_id === myTeamId;
   const isSeller  = isManagerSeller(auction, myTeamId);
-  const imWinning = auction.current_bidder_id === myTeamId;
+  const imWinning = getAuctionLeaderId(auction) === myTeamId;
   const canBid    = !isMyRider && auction.status !== "completed";
 
   useEffect(() => {
@@ -154,9 +168,9 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
           {auction.current_price?.toLocaleString("da-DK")}
         </span>
         <span className="text-slate-400 text-xs ml-1">CZ$</span>
-        {auction.current_bidder && !imWinning && (
+        {getAuctionLeaderName(auction) && !imWinning && (
           <p className="text-slate-400 text-[10px] truncate max-w-[100px]">
-            {auction.current_bidder.name}
+            {getAuctionLeaderName(auction)}
           </p>
         )}
       </td>
@@ -212,7 +226,7 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller = isManagerSeller(auction, myTeamId);
-  const imWinning = auction.current_bidder_id === myTeamId;
+  const imWinning = getAuctionLeaderId(auction) === myTeamId;
   const canBid = !isMyRider && auction.status !== "completed";
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
 
@@ -268,8 +282,8 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
           <p className="text-slate-900 font-mono font-bold text-sm">
             {auction.current_price?.toLocaleString("da-DK")} CZ$
           </p>
-          {auction.current_bidder && !imWinning && (
-            <p className="text-slate-400 text-[10px] truncate">{auction.current_bidder.name}</p>
+          {getAuctionLeaderName(auction) && !imWinning && (
+            <p className="text-slate-400 text-[10px] truncate">{getAuctionLeaderName(auction)}</p>
           )}
         </div>
       </div>
@@ -356,7 +370,7 @@ export default function AuctionsPage() {
             const prevAuction = prev.find(a => a.id === updated.id);
             if (updated.status === "completed" && prevAuction?.status !== "completed") {
               setMyTeamId(tid => {
-                if (updated.current_bidder_id === tid) {
+                if (getAuctionLeaderId({ ...prevAuction, ...updated }) === tid) {
                   setCelebration({
                     title: "Du vandt auktionen! 🏆",
                     subtitle: `Rytteren er nu på dit hold`,
@@ -381,7 +395,7 @@ export default function AuctionsPage() {
 
     const [auctionsRes, myBidsRes] = await Promise.all([
       supabase.from("auctions")
-        .select(`id, current_price, min_increment, calculated_end, status,
+        .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale,
           seller_team_id, current_bidder_id,
           rider:rider_id(id, firstname, lastname, uci_points, is_u25, team_id, birthdate, nationality_code,
             ${STATS.join(", ")}),
@@ -428,14 +442,14 @@ export default function AuctionsPage() {
   const riderFilters = useClientRiderFilters(auctions.map(a => a.rider).filter(Boolean));
   const filteredRiderIds = new Set(riderFilters.filtered.map(r => r.id));
 
-  const winningCount   = auctions.filter(a => a.current_bidder_id === myTeamId).length;
+  const winningCount   = auctions.filter(a => getAuctionLeaderId(a) === myTeamId).length;
   const myListedCount  = auctions.filter(a => isManagerSeller(a, myTeamId)).length;
   const otherManagerCount = auctions.filter(a => a.rider?.team_id && a.rider.team_id !== myTeamId).length;
 
   const filtered = auctions.filter(a => {
     if (a.rider && !filteredRiderIds.has(a.rider.id)) return false;
     if (filter === "mine")    return isManagerSeller(a, myTeamId);
-    if (filter === "winning") return a.current_bidder_id === myTeamId;
+    if (filter === "winning") return getAuctionLeaderId(a) === myTeamId;
     if (filter === "other")   return a.rider?.team_id && a.rider.team_id !== myTeamId;
     return true;
   });

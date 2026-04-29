@@ -893,3 +893,81 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
   assert.match(notifications[0].title, /vandt/i);
   assert.equal(notifications[1].teamId, "initiator-team");
 });
+
+test("finalizeAuctionById treats legacy non-owned auctions without current_bidder as initiator wins", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+  const notifications = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-legacy-free",
+        status: "active",
+        current_bidder_id: null,
+        current_price: 48,
+        seller_team_id: "initiator-team",
+        is_guaranteed_sale: false,
+        rider: {
+          id: "rider-legacy-free",
+          firstname: "Legacy",
+          lastname: "Free",
+          team_id: null,
+        },
+      },
+      teams: {
+        "initiator-team": {
+          id: "initiator-team",
+          name: "Initiator",
+          balance: 300,
+          division: 3,
+          user_id: "user-init",
+          is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "initiator-team": {
+          riderCount: 4,
+          pendingCount: 0,
+          activeLoanCount: 0,
+        },
+      },
+      auctionUpdates,
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-legacy-free",
+    notifyTeamOwner: async (teamId, type, title, message, entityId) => {
+      notifications.push({ teamId, type, title, message, entityId });
+    },
+    now: new Date("2026-04-29T17:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.deepEqual(auctionUpdates, [{
+    status: "completed",
+    actual_end: "2026-04-29T17:00:00.000Z",
+    seller_team_id: null,
+    current_bidder_id: "initiator-team",
+  }]);
+  assert.deepEqual(teamUpdates, [
+    { teamId: "initiator-team", payload: { balance: 252 } },
+  ]);
+  assert.deepEqual(riderUpdates, [{
+    team_id: "initiator-team",
+    pending_team_id: null,
+    salary: 7,
+  }]);
+  assert.deepEqual(financeInserts[0], [{
+    team_id: "initiator-team",
+    type: "transfer_out",
+    amount: -48,
+    description: "Købt Legacy Free på auktion",
+  }]);
+  assert.equal(notifications[0].teamId, "initiator-team");
+  assert.match(notifications[0].title, /vandt/i);
+});

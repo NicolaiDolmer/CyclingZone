@@ -20,6 +20,14 @@ function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
 }
 
+function getAuctionLeaderId(auction) {
+  if (auction?.current_bidder_id) return auction.current_bidder_id;
+  if (!auction?.is_guaranteed_sale && auction?.seller_team_id && auction?.rider?.team_id !== auction.seller_team_id) {
+    return auction.seller_team_id;
+  }
+  return null;
+}
+
 export default function AuctionHistoryPage() {
   const navigate = useNavigate();
   const [auctions, setAuctions] = useState([]);
@@ -43,7 +51,7 @@ export default function AuctionHistoryPage() {
     setLoading(true);
     let query = supabase
       .from("auctions")
-      .select(`id, current_price, actual_end, status, seller_team_id, current_bidder_id,
+      .select(`id, current_price, actual_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
         rider:rider_id(id, firstname, lastname, uci_points, is_u25, nationality_code, team_id),
         seller:seller_team_id(id, name),
         winner:current_bidder_id(id, name)`,
@@ -59,13 +67,13 @@ export default function AuctionHistoryPage() {
   }
 
   const filtered = auctions.filter(a => {
-    if (filter === "won") return a.current_bidder_id === myTeamId;
+    if (filter === "won") return getAuctionLeaderId(a) === myTeamId;
     if (filter === "sold") return isAuctionSeller(a, myTeamId);
-    if (filter === "lost") return a.current_bidder_id !== myTeamId && !isAuctionSeller(a, myTeamId);
+    if (filter === "lost") return getAuctionLeaderId(a) !== myTeamId && !isAuctionSeller(a, myTeamId);
     return true;
   });
 
-  const myWins = auctions.filter(a => a.current_bidder_id === myTeamId).length;
+  const myWins = auctions.filter(a => getAuctionLeaderId(a) === myTeamId).length;
   const mySales = auctions.filter(a => isAuctionSeller(a, myTeamId)).length;
   const totalSpent = auctions
     .filter(a => a.current_bidder_id === myTeamId)
@@ -138,7 +146,7 @@ export default function AuctionHistoryPage() {
             </thead>
             <tbody>
               {filtered.map(a => {
-                const iWon = a.current_bidder_id === myTeamId;
+                const iWon = getAuctionLeaderId(a) === myTeamId;
                 const iSold = isAuctionSeller(a, myTeamId);
                 const noSale = !a.current_bidder_id;
                 return (

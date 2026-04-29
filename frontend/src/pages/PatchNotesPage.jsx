@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "1.72",
+    date: "2026-04-29",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auktioner",
+        items: [
+          "Auktionsafslutningen har nu en ekstra sikring for aktive fri-/AI-/bankauktioner, der blev startet uden registreret førende budgiver: initiatoren behandles som første budgiver og køber rytteren, hvis ingen overbyder",
+          "Auktioner, Min Aktivitet, Dashboard og historik viser nu også implicitte første bud som en føring, så du kan se at du står til at vinde rytteren",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.71",
     date: "2026-04-29",
     label: "Beta",

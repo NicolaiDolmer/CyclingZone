@@ -37,15 +37,22 @@ async function closeAuction({
   status,
   actualEnd,
   sellerOwned,
+  currentBidderId,
 }) {
+  const payload = {
+    status,
+    actual_end: actualEnd,
+    seller_team_id: getHistorySellerTeamId(auction, sellerOwned),
+  };
+
+  if (currentBidderId) {
+    payload.current_bidder_id = currentBidderId;
+  }
+
   await expectMutation(
     supabase
       .from("auctions")
-      .update({
-        status,
-        actual_end: actualEnd,
-        seller_team_id: getHistorySellerTeamId(auction, sellerOwned),
-      })
+      .update(payload)
       .eq("id", auction.id)
   );
 }
@@ -102,6 +109,18 @@ async function resolveAuctionSellerContext({ supabase, auction }) {
     actualSeller,
     staleHumanOwner: false,
   };
+}
+
+function getEffectiveAuctionBidderId(auction, sellerOwned) {
+  if (auction.current_bidder_id) {
+    return auction.current_bidder_id;
+  }
+
+  if (!auction.is_guaranteed_sale && !sellerOwned && auction.seller_team_id) {
+    return auction.seller_team_id;
+  }
+
+  return null;
 }
 
 async function finalizeAuctionRecord({
@@ -169,9 +188,11 @@ async function finalizeAuctionRecord({
     };
   }
 
-  if (auction.current_bidder_id) {
+  const effectiveBidderId = getEffectiveAuctionBidderId(auction, sellerOwned);
+
+  if (effectiveBidderId) {
     const price = auction.current_price;
-    const baseBuyerState = await getTeamMarketState(supabase, auction.current_bidder_id);
+    const baseBuyerState = await getTeamMarketState(supabase, effectiveBidderId);
     const buyer = {
       ...baseBuyerState,
       squad_limits:
@@ -188,7 +209,7 @@ async function finalizeAuctionRecord({
       });
 
       await notifyTeamOwner(
-        auction.current_bidder_id,
+        effectiveBidderId,
         "auction_lost",
         "Auktion annulleret",
         `Du havde ikke råd til ${auction.rider.firstname} ${auction.rider.lastname}. Saldo: ${buyer?.balance || 0} pts`,
@@ -223,7 +244,7 @@ async function finalizeAuctionRecord({
       });
 
       await notifyTeamOwner(
-        auction.current_bidder_id,
+        effectiveBidderId,
         "auction_lost",
         "Auktion annulleret — hold fuldt",
         `Dit hold (Div ${buyer.division || 3}) kan max have ${squadViolation.maxRiders} ryttere. ${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages.`,
@@ -255,12 +276,12 @@ async function finalizeAuctionRecord({
         .update(
           windowOpen
             ? {
-                team_id: auction.current_bidder_id,
+                team_id: effectiveBidderId,
                 pending_team_id: null,
                 salary: calculateAuctionSalary(price, auction.rider.prize_earnings_bonus || 0),
               }
             : {
-                pending_team_id: auction.current_bidder_id,
+                pending_team_id: effectiveBidderId,
                 salary: calculateAuctionSalary(price, auction.rider.prize_earnings_bonus || 0),
               }
         )
@@ -271,12 +292,12 @@ async function finalizeAuctionRecord({
       supabase
         .from("teams")
         .update({ balance: buyer.balance - price })
-        .eq("id", auction.current_bidder_id)
+        .eq("id", effectiveBidderId)
     );
 
     const financeRows = [
       {
-        team_id: auction.current_bidder_id,
+        team_id: effectiveBidderId,
         type: "transfer_out",
         amount: -price,
         description: `Købt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
@@ -312,13 +333,13 @@ async function finalizeAuctionRecord({
       supabase.from("finance_transactions").insert(financeRows)
     );
 
-    await awardXP(auction.current_bidder_id, "auction_won");
+    await awardXP(effectiveBidderId, "auction_won");
     if (sellerOwned) {
       await awardXP(auction.seller_team_id, "auction_sold");
     }
 
     await notifyTeamOwner(
-      auction.current_bidder_id,
+      effectiveBidderId,
       "auction_won",
       "Du vandt auktionen! 🎉",
       `${auction.rider.firstname} ${auction.rider.lastname} er nu på dit hold for ${price} pts`,
@@ -328,7 +349,7 @@ async function finalizeAuctionRecord({
     discordNotify({
       riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
       finalPrice: price,
-      teamId: auction.current_bidder_id,
+      teamId: effectiveBidderId,
     }).catch(() => {});
 
     if (auction.seller_team_id) {
@@ -344,7 +365,7 @@ async function finalizeAuctionRecord({
     }
 
     await logActivity("auction_won", {
-      team_id: auction.current_bidder_id,
+      team_id: effectiveBidderId,
       team_name: buyer.name,
       rider_id: auction.rider.id,
       rider_name: `${auction.rider.firstname} ${auction.rider.lastname}`,
@@ -357,6 +378,7 @@ async function finalizeAuctionRecord({
       status: "completed",
       actualEnd,
       sellerOwned,
+      currentBidderId: auction.current_bidder_id ? null : effectiveBidderId,
     });
 
     return {

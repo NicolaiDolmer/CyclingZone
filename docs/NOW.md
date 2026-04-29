@@ -10,6 +10,10 @@
   - Første startpris valideres mod disponibel balance og squad-plads inkl. eksisterende auktionsføringer.
   - Auktionslisten, Min Aktivitet, Dashboard og auktionshistorik markerer kun manageren som sælger, når rytteren faktisk er managerens egen; AI/fri/bank-initiativer vises som førende bud i stedet.
   - Patch notes, Help, FEATURE_STATUS og PRODUCT_BACKLOG er afstemt. `npm test` i backend og `npm run build` i frontend passer.
+- Auction implicit-bid safeguard er tilføjet efter live check:
+  - Read-only live check fandt to Dolmer Racing-auktioner (`Luka Mezgec`, `Roman Ermakov`) som stadig var `active`, men havde `current_bidder_id=null` og ingen `auction_bids`.
+  - `auctionFinalization` behandler nu ikke-ejede, ikke-garanterede auktioner uden `current_bidder_id` som initiatorens implicitte første bud, så eksisterende aktive auktioner stadig kan vindes af initiatoren ved finalisering.
+  - UI-fallback viser samme implicitte føring på Auktioner, Min Aktivitet, Dashboard og historik. Patch notes v1.72 er tilføjet. Auction-tests og frontend build passer.
 - Season-flow sanity er kørt som investigation + kontraktfix:
   - Deployed backend `/health` svarer 200, og admin preview/end endpoints svarer 401 uden token som forventet.
   - Live season-end write blev ikke kørt, fordi der ikke må laves admin/write-probe uden admin-session og explicit live action.

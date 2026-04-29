@@ -148,6 +148,7 @@ _Regel: Færdige detaljer bor i `docs/FEATURE_STATUS.md` eller `docs/archive/`; 
 - `Indbakke` er kun til systemhændelser, notifikationer og aktivitetsopsamling.
 - Almindelige auktioner kræver minimum `Værdi`.
 - Når en manager starter auktion på en AI-, bank- eller fri rytter, er startprisen også managerens første førende bud.
+- Finalisering skal bevare denne regel selv for aktive auktioner oprettet før `current_bidder_id` blev skrevet korrekt.
 - `Garanteret salg` er eneste undtagelse og må fortsat bruge 50%.
 - Økonomien skal tunes som **stram men fair**, ikke som let beta-start eller hardcore sim.
 - Concrete economy numbers vælges først efter live data + simulation.

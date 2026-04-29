@@ -32,7 +32,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Minimum overbud håndhæves som 10% over nuværende pris, afrundet op til nærmeste 1.000 CZ$
 - Aktive auktionsføringer reserverer både disponibel balance og squad-plads ved nye bud
 - Auktionsfinalisering via cron (60s) — delt path for cron/admin/API, korrekt ejer-check og squad-limit
-- Bank/AI/fri rytter-auktioner kan startes fra rytterprofilen; startprisen tæller som initiatorens første førende bud og finaliseres uden falsk seller-flow
+- Bank/AI/fri rytter-auktioner kan startes fra rytterprofilen; startprisen tæller som initiatorens første førende bud, og finalizer har fallback for aktive legacy-auktioner hvor første bud ikke blev skrevet til `current_bidder_id`
 - Auktionshistorik-side
 - Discord-notifikationer (auktioner, overbud, transfers, sæsonevents)
 
