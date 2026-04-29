@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "1.67",
+    date: "2026-04-29",
+    label: "Beta",
+    changes: [
+      {
+        category: "Rangliste",
+        items: [
+          "Opryknings- og nedrykningszoner på holdranglisten følger nu samme divisionsregel som den rigtige sæsonafslutning: Division 2-3 kan rykke op, og Division 1-2 kan rykke ned",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.66",
     date: "2026-04-28",
     label: "Beta",

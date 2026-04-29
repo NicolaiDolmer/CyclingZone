@@ -22,6 +22,7 @@
 - `Slice R1 — Review hardening efter Claude-session` ✅ LUKKET (2026-04-28) efter runtime-audit og sidste UI-fix for bank/AI-auktioner på rytterprofilen.
 - Done proof: profilrouting blev auditeret mod `teams.user_id`; `transferExecution` låser accepterede/window_pending handler mod manager-cancel og holder listings i `negotiating` indtil flush; `auctionRules` håndhæver 10%/1.000 CZ$ minimumsbud, balance-reservation og squad-reservation; `auctionFinalization` håndterer AI/bank/fri rytter uden falsk seller-flow; `Layout.pathMatchesNavItem` er segment-aware; `RiderStatsPage` viser nu auktion for bank/AI/fri ryttere; rytterens `Udvikling`-tab er implementeret med `rider_uci_history`/`rider_stat_history`; 24 målrettede backend-tests og frontend build passerer.
 - UI quick fix lukket: Min Profil er igen tilgængelig som indstillingsside på `/profile`, sidebar linker til Profil & Indstillinger, og egen managerprofil linker til redigering af manager- og holdnavn.
+- Rangliste quick fix lukket (2026-04-29): opryknings-/nedrykningsindikatoren på holdranglisten matcher nu `processDivisionEnd` — Division 2-3 kan rykke op, Division 1-2 kan rykke ned.
 
 ## Næste konkrete handling
 1. Fyld/opret live `races` for aktiv sæson eller kør en kontrolleret smoke-sæson med test-races, før admin xlsx/sheets-resultatimport kan verificeres end-to-end.

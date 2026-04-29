@@ -47,6 +47,7 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - Slice UCI-R2 — Løn følger værdi efter UCI-sync ✅ (2026-04-28). Done proof: `.github/workflows/uci_sync.yml` + `backend/scripts/recalculateRiderSalaries.js` + `backend/lib/economyEngine.test.js`
 - Live season-flow quick fix — season-end preview board/sponsor drift ✅ (2026-04-28). Done proof: `backend/lib/economyEngine.js::buildSeasonEndPreviewRows`, `/api/admin/season-end-preview/:seasonId` bruger helperen, og `backend/lib/economyEngine.test.js` dækker projected satisfaction/modifier/sponsor samt løn/renter.
 - Live season-flow quick fix — preview lånerente vs kontantbalance ✅ (2026-04-28). Done proof: `buildSeasonEndPreviewRows` viser lånerente separat, men `balance_after`/nødlånsbehov følger runtime hvor aktive lånerenter lægges på gæld via `processLoanInterest`.
+- Rangliste quick fix — opryknings-/nedrykningsindikator følger season-end runtime ✅ (2026-04-29). Done proof: `frontend/src/pages/StandingsPage.jsx` markerer nu oprykning for Division 2-3 og nedrykning for Division 1-2, i samme retning som `backend/lib/economyEngine.js::processDivisionEnd`.
 - Slice UI-M1 — Mobile beta-critical flows ✅ (2026-04-28). Done proof: `frontend/src/pages/AuctionsPage.jsx` har mobilkort for auktioner; `RiderStatsPage.jsx`, `RidersPage.jsx`, `TransfersPage.jsx`, `NotificationsPage.jsx`, `AdminPage.jsx` og `RiderFilters.jsx` har responsive action-/filterlayouts; `npm run build` i frontend passerer.
 - UI quick fix — Min Profil tilbage i UI ✅ (2026-04-28). Done proof: `/profile` viser igen `ProfilePage`, sidebar linker til Profil & Indstillinger, og egen managerprofil linker til redigering af manager- og holdnavn via `PUT /api/teams/my`.
 - Evne-filter/slider investigation status cleanup ✅ (2026-04-28). Done proof: Patch Notes v1.51 dokumenterer rettelsen; `RiderFilters.jsx` viser separate min/max-slidere pr. evne, og `useRiderFilters.js` anvender evne-min/max i Supabase-query og client-filter. Punktet var en forældet backlogrest.
@@ -191,7 +192,7 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 - ~~Akkumuleret historikvisning/graf pr. løb~~ ✅ (v1.37) — _Slice 11 forbedrer med Google Sheets-data_
 - ~~UCI-point udvikling over tid~~ ✅ (v1.61)
 - ~~Stats-udvikling over tid~~ ✅ (v1.61)
-- Oprykningsindikator under ranglisten
+- ~~Oprykningsindikator under ranglisten~~ ✅ (2026-04-29)
 - ~~Rytterhistorik skal vise AI-salg med pris~~ ✅ (v1.54)
 - ~~Rytterhistorik skal vise alle transfers~~ ✅ (v1.54)
 - ~~Rytterhistorik skal vise manager-handler uden pris~~ ✅ (v1.54, bytter og lån)

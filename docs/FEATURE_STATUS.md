@@ -71,6 +71,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Løbsresultater-import (xlsx) og approve via delt backend result-path
 - Pointtavle (season_standings) inkl. rank_in_division, recalkuleres fra race_results
 - Opryknings/nedrykningslogik (top/bund 2 per division)
+- Holdranglisten viser opryknings-/nedrykningszoner efter samme season-end-regel: Division 2-3 kan rykke op, Division 1-2 kan rykke ned
 - Sæsonpreview-side + Races-side
 - Løbsarkiv (`/race-archive`) og løbshistorik (`/race-archive/:raceSlug`)
 - Season-end preview bruger economy engine til løn, lånerente som gæld, projected board satisfaction og næste sponsorudbetaling, så preview matcher season-end/season-start runtime

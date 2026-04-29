@@ -115,6 +115,8 @@ export default function StandingsPage() {
 
   const maxPts = divStandings[0]?.total_points || 1;
   const color = DIV_COLORS[divTab] || "#e8c547";
+  const canPromote = divTab > 1;
+  const canRelegate = divTab < 3;
   const divCounts = [1, 2, 3].map(d => ({
     div: d,
     count: standings.filter(s => s.team?.division === d).length,
@@ -176,8 +178,8 @@ export default function StandingsPage() {
                   const isMe = s.team_id === myTeamId;
                   const prog = racePoints[s.team_id] || [];
                   const ptsWidth = Math.round(((s.total_points || 0) / maxPts) * 100);
-                  const isPromotion = i < 2 && divTab < 3;
-                  const isRelegation = i >= divStandings.length - 2 && divTab > 1;
+                  const isPromotion = i < 2 && canPromote;
+                  const isRelegation = i >= divStandings.length - 2 && canRelegate;
                   const rowStyle = isPromotion
                     ? { boxShadow: "inset 3px 0 0 #4ade80" }
                     : isRelegation
@@ -186,7 +188,7 @@ export default function StandingsPage() {
                   return (
                     <Fragment key={s.id}>
                       {/* Separator before relegation zone */}
-                      {i === divStandings.length - 2 && divTab > 1 && divStandings.length > 4 && (
+                      {i === divStandings.length - 2 && canRelegate && divStandings.length > 4 && (
                         <tr aria-hidden="true">
                           <td colSpan={6} style={{ padding: 0, lineHeight: 0, border: 0 }}>
                             <div style={{ height: 2, background: "linear-gradient(to right, #fca5a5 40%, transparent)" }} />
@@ -230,7 +232,7 @@ export default function StandingsPage() {
                         </td>
                       </tr>
                       {/* Separator after promotion zone */}
-                      {i === 1 && divTab < 3 && divStandings.length > 2 && (
+                      {i === 1 && canPromote && divStandings.length > 2 && (
                         <tr aria-hidden="true">
                           <td colSpan={6} style={{ padding: 0, lineHeight: 0, border: 0 }}>
                             <div style={{ height: 2, background: "linear-gradient(to right, #86efac 40%, transparent)" }} />
@@ -250,7 +252,7 @@ export default function StandingsPage() {
               <span className="w-2 h-2 rounded-sm bg-green-100 border border-green-200" />
               Oprykningszone (top 2)
             </div>
-            {divTab > 1 && (
+            {canRelegate && (
               <div className="flex items-center gap-1.5 text-xs text-red-700/70">
                 <span className="w-2 h-2 rounded-sm bg-red-100 border border-red-200" />
                 Nedrykningszone (bund 2)
