@@ -270,7 +270,6 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
   console.log(`\n🛠️  Repairing season-end finance/board side effects: ${seasonId}`);
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const notificationNow = deps.now ?? new Date();
-  const force = deps.force === true;
 
   const { data: currentSeason, error: seasonError } = await supabaseClient
     .from("seasons")
@@ -280,24 +279,18 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
   throwIfSupabaseError(seasonError, "Could not load season for season-end repair");
   if (!currentSeason) throw new Error("Season not found");
 
-  const { count: salaryCount, error: salaryCountError } = await supabaseClient
+  const { data: existingFinanceRows, error: existingFinanceError } = await supabaseClient
     .from("finance_transactions")
-    .select("id", { count: "exact", head: true })
+    .select("team_id, type")
     .eq("season_id", seasonId)
-    .eq("type", "salary");
-  throwIfSupabaseError(salaryCountError, "Could not check existing salary transactions");
+    .in("type", ["salary", "loan_interest", "interest", "emergency_loan"]);
+  throwIfSupabaseError(existingFinanceError, "Could not check existing finance transactions");
 
-  const { count: snapshotCount, error: snapshotCountError } = await supabaseClient
+  const { data: existingSnapshots, error: snapshotCountError } = await supabaseClient
     .from("board_plan_snapshots")
-    .select("id", { count: "exact", head: true })
+    .select("team_id, board_id")
     .eq("season_id", seasonId);
   throwIfSupabaseError(snapshotCountError, "Could not check existing board snapshots");
-
-  if (!force && ((salaryCount || 0) > 0 || (snapshotCount || 0) > 0)) {
-    throw new Error(
-      `Season-end finance/board repair refused: found ${salaryCount || 0} salary rows and ${snapshotCount || 0} board snapshots for season`
-    );
-  }
 
   const { data: standings, error: standingsError } = await supabaseClient
     .from("season_standings")
@@ -308,20 +301,54 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
   if (!standings?.length) throw new Error("No standings found for season-end repair");
 
   const teams = await loadHumanSeasonEndTeams(supabaseClient);
+  const existingSalaryTeams = new Set(
+    (existingFinanceRows || []).filter(row => row.type === "salary").map(row => row.team_id)
+  );
+  const existingLoanInterestTeams = new Set(
+    (existingFinanceRows || []).filter(row => row.type === "loan_interest").map(row => row.team_id)
+  );
+  const existingLegacyInterestTeams = new Set(
+    (existingFinanceRows || []).filter(row => row.type === "interest").map(row => row.team_id)
+  );
+  const existingEmergencyLoanTeams = new Set(
+    (existingFinanceRows || []).filter(row => row.type === "emergency_loan").map(row => row.team_id)
+  );
+  const existingSnapshotBoards = new Set(
+    (existingSnapshots || []).map(row => row.board_id).filter(Boolean)
+  );
 
   for (const team of teams) {
-    await processTeamSeasonEnd(team, seasonId, standings, currentSeason.number ?? 1, {
+    const salaryAlreadyProcessed = existingSalaryTeams.has(team.id);
+    const repairTeam = {
+      ...team,
+      riders: salaryAlreadyProcessed ? [] : team.riders,
+      board_profiles: (team.board_profiles || []).filter(board => !existingSnapshotBoards.has(board.id)),
+    };
+
+    await processTeamSeasonEnd(repairTeam, seasonId, standings, currentSeason.number ?? 1, {
       ...deps,
       supabase: supabaseClient,
       now: notificationNow,
+      processLoanInterest: async (teamId, repairSeasonId, client) => {
+        if (existingLoanInterestTeams.has(teamId)) return [];
+        const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
+        return processLoanInterestFn(teamId, repairSeasonId, client);
+      },
+      createEmergencyLoan: async (teamId, amountNeeded, client) => {
+        if (existingEmergencyLoanTeams.has(teamId)) return null;
+        const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
+        return createEmergencyLoanFn(teamId, amountNeeded, client);
+      },
+      skipNegativeBalanceInterest: salaryAlreadyProcessed || existingLegacyInterestTeams.has(team.id),
     });
   }
 
   console.log("  ✅ Season-end finance/board repair complete");
   return {
     teamsProcessed: teams.length,
-    existingSalaryTransactions: salaryCount || 0,
-    existingBoardSnapshots: snapshotCount || 0,
+    existingSalaryTransactions: existingSalaryTeams.size,
+    existingBoardSnapshots: existingSnapshots?.length || 0,
+    existingBoardSnapshotBoards: existingSnapshotBoards.size,
   };
 }
 
@@ -440,7 +467,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   throwIfSupabaseError(postSalaryTeamError, `Could not load post-salary balance for ${team.name}`);
   if (!postSalaryTeam) throw new Error(`Could not load post-salary balance for ${team.name}`);
 
-  if (postSalaryTeam.balance < 0) {
+  if (!deps.skipNegativeBalanceInterest && postSalaryTeam.balance < 0) {
     const interest = Math.round(Math.abs(postSalaryTeam.balance) * INTEREST_RATE);
     await debitTeam(
       team.id,

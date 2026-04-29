@@ -234,6 +234,21 @@ function createSeasonEndSupabase({
       if (table === "board_plan_snapshots") {
         return {
           select(columns, options) {
+            if (columns === "team_id, board_id") {
+              return {
+                eq(column, value) {
+                  assert.equal(column, "season_id");
+                  assert.equal(value, state.season.id);
+                  return Promise.resolve({
+                    data: clone(state.inserts.board_plan_snapshots)
+                      .filter(row => row.season_id === value)
+                      .map(row => ({ team_id: row.team_id, board_id: row.board_id })),
+                    error: null,
+                  });
+                },
+              };
+            }
+
             if (columns === "id") {
               assert.deepEqual(options, { count: "exact", head: true });
               return {
@@ -311,6 +326,26 @@ function createSeasonEndSupabase({
       if (table === "finance_transactions") {
         return {
           select(columns, options) {
+            if (columns === "team_id, type") {
+              return {
+                eq(column, value) {
+                  assert.equal(column, "season_id");
+                  assert.equal(value, state.season.id);
+                  return {
+                    in(secondColumn, values) {
+                      assert.equal(secondColumn, "type");
+                      return Promise.resolve({
+                        data: clone(state.inserts.finance_transactions)
+                          .filter(row => row.season_id === value && values.includes(row.type))
+                          .map(row => ({ team_id: row.team_id, type: row.type })),
+                        error: null,
+                      });
+                    },
+                  };
+                },
+              };
+            }
+
             assert.equal(columns, "id");
             assert.deepEqual(options, { count: "exact", head: true });
             const filters = {};
@@ -973,6 +1008,83 @@ test("repairSeasonEndFinanceAndBoard runs finance and board only without season 
     supabase.state.updates.teams.some(update => "division" in update.payload),
     false
   );
+});
+
+test("repairSeasonEndFinanceAndBoard resumes without duplicating existing salary or board rows", async () => {
+  const supabase = createSeasonEndSupabase({
+    season: {
+      id: "season-1",
+      number: 5,
+      status: "completed",
+    },
+    team: {
+      id: "team-1",
+      name: "Partial Repair",
+      is_ai: false,
+      user_id: "user-1",
+      balance: 200,
+      sponsor_income: 200,
+      riders: [
+        { id: "rider-1", team_id: "team-1", salary: 80 },
+      ],
+    },
+    board: {
+      id: "board-1",
+      team_id: "team-1",
+      plan_type: "1yr",
+      focus: "balanced",
+      satisfaction: 50,
+      budget_modifier: 1.0,
+      current_goals: [],
+      seasons_completed: 0,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      plan_start_sponsor_income: 200,
+    },
+    standings: [
+      {
+        season_id: "season-1",
+        team_id: "team-1",
+        division: 3,
+        total_points: 150,
+        rank_in_division: 1,
+        stage_wins: 0,
+        gc_wins: 0,
+        team: {
+          id: "team-1",
+          is_ai: false,
+        },
+      },
+    ],
+  });
+
+  supabase.state.inserts.finance_transactions.push({
+    team_id: "team-1",
+    type: "salary",
+    amount: -80,
+    season_id: "season-1",
+  });
+  supabase.state.inserts.board_plan_snapshots.push({
+    team_id: "team-1",
+    board_id: "board-1",
+    season_id: "season-1",
+  });
+
+  const result = await repairSeasonEndFinanceAndBoard("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+  });
+
+  assert.equal(result.existingSalaryTransactions, 1);
+  assert.equal(result.existingBoardSnapshotBoards, 1);
+  assert.equal(
+    supabase.state.inserts.finance_transactions.filter(row => row.type === "salary").length,
+    1
+  );
+  assert.equal(supabase.state.inserts.board_plan_snapshots.length, 1);
+  assert.equal(supabase.state.updates.seasons.length, 0);
 });
 
 test("buildSeasonEndPreviewRows projects board modifier on the same path as season end", () => {
