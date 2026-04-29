@@ -12,7 +12,7 @@
 | UCI sync (manuel) | Admin: POST /api/admin/sync-uci → sheetsSync.js → Google Sheets CSV | — |
 | Stats sync (dyn_cyclist) | Admin: POST /api/admin/sync-dyn-cyclist → dynCyclistSync.js → Google Sheets | — |
 
-**Ingen chart-bibliotek installeret endnu.** Recharts anbefales til Del C (rider-udviklingsvisning).
+`recharts` er installeret i frontend og bruges til rytterens `Udvikling`-tab.
 
 ---
 
@@ -33,10 +33,10 @@
 /board                → BoardPage
 /notifications        → NotificationsPage
 /compare              → RiderComparePage
-/profile              → ProfilePage
+/profile              → ProfileRedirect → /managers/:ownTeamId
 /managers/:teamId     → ManagerProfilePage
 /activity             → ActivityPage
-/activity-feed        → ActivityFeedPage
+/activity-feed        → redirect til /notifications
 /watchlist            → WatchlistPage
 /finance              → FinancePage
 /help                 → HelpPage
@@ -46,6 +46,10 @@
 /head-to-head         → HeadToHeadPage
 /patch-notes          → PatchNotesPage
 /races                → RacesPage
+/resultater           → ResultaterPage
+/rider-rankings       → RiderRankingsPage
+/race-archive         → RaceArchivePage
+/race-archive/:raceSlug → RaceHistoryPage
 /admin                → AdminPage
 ```
 

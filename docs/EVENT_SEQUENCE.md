@@ -199,7 +199,7 @@ Ved næste vinduets åbning → alle parkerede ryttere flyttes simultant til `te
 | Transfer begge sider bekræfter | `status = window_pending` (parkeret) | `team_id` skifter øjeblikkeligt |
 | Swap begge sider bekræfter | `status = window_pending` (parkeret) | Begge `team_id` skifter øjeblikkeligt |
 
-**Parkeret = låst:** Når en transfer eller swap parkeres, trækkes alle andre aktive tilbud på de involverede ryttere øjeblikkeligt tilbage. Handlen venter til vinduet åbner og kan stadig annulleres af begge parter.
+**Parkeret = låst:** Når en transfer eller swap parkeres, trækkes alle andre aktive tilbud på de involverede ryttere øjeblikkeligt tilbage. Handlen venter til vinduet åbner og kan ikke manager-annulleres efter gensidig accept; systemet re-checker stadig ejerskab, saldo og squad-limit før endelig gennemførelse.
 
 ### Anbefalet admin-sekvens
 
@@ -277,4 +277,4 @@ Bestyrelsesstatus: pending → (forhandling accepteret) → active
 | `loan_agreements` | `status` (active/completed) |
 
 **Finance transaction types (DB constraints):**  
-`sponsor` · `salary` · `prize` · `interest` · `transfer_in` · `transfer_out` · `loan` · `loan_repayment`
+Contract-audit mod live/schema før økonomituning. Tracked schema kan være stale; runtime skriver bl.a. `sponsor`, `salary`, `prize`, `interest`, `transfer_in`, `transfer_out`, `loan_received`, `emergency_loan`, `loan_interest` og `loan_repayment`.

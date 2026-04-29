@@ -17,7 +17,7 @@
 - Aktive auktionsføringer reserverer både disponibel balance og trupplads
 
 ### Transfers
-- Blocked når window lukket
+- Lukket window parkerer gensidigt accepterede transfers/swaps som `window_pending` i stedet for øjeblikkeligt ejerskifte
 - Accept korrekt
 - Begge parter skal bekræfte før transfer eller byttehandel lukkes
 - Begge parter accepteret + lukket vindue parkerer handlen som `window_pending` uden at markere listing som `sold`

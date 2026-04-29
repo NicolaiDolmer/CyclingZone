@@ -1,36 +1,69 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-- Live season flow verification med admin xlsx som primær resultater-kilde
-- Mål: Verificér at admin-import af resultater, standings, finance og season-end hænger sammen i runtime.
+- **Post-repair verification before economy tuning**
+- Mål: Verificér live sæson 6 finance-/board-repair med admin/service-visible data, før økonomibaseline og tuning starter.
 
 ## Status 2026-04-29
-- `Slice UCI-R1 — Scraper top 3000 hardening` ✅ FÆRDIG.
-- Done proof er flyttet til `docs/archive/UCI_R1_SCRAPER_TOP_3000_DONE_PROOF.md`.
-- Docs truth cleanup er gennemført i `docs/PRODUCT_BACKLOG.md`: roadmap er kortet ned, gamle pause-/ventestatusser er fjernet, og UCI-R2 er nu lukket efter runtime-verifikation.
-- `Slice UCI-R2 — Løn følger værdi efter UCI-sync` ✅ FÆRDIG i runtime.
-- Done proof: `.github/workflows/uci_sync.yml` kører `node backend/scripts/recalculateRiderSalaries.js` efter `python scripts/uci_scraper.py`; `backend/scripts/recalculateRiderSalaries.js` kalder `updateRiderValues`; `backend/lib/economyEngine.test.js` dækker genberegning med `prize_earnings_bonus`.
-- Live season-flow verification er startet statisk/lokalt: xlsx-import og approve deler `applyRaceResults`; backend-tests bekræfter `race_results` → prize finance rows → `season_standings`.
-- Fund lukket: season-end preview brugte en lokal board/sponsor-regel, som kunne afvige fra `processSeasonEnd`/season-start. Preview bruger nu `buildSeasonEndPreviewRows` i `backend/lib/economyEngine.js` og er dækket af regressionstest.
-- Live read-only Supabase-verifikation er kørt med credentials fra `backend/.env` uden at ekko secrets.
-- Fund lukket: live DB har sæson 6 som aktiv; 98 races er nu oprettet, inkl. 97 fra brugerens `Races Cycling Zone`-ark og `Super 8 Classic` tilføjet som ProSeries endagsløb, fordi resultatarket indeholder det.
-- Fund lukket: season-end preview trak aktive lånerenter fra kontant `balance_after`, mens runtime `processLoanInterest` lægger renter på lånets restgæld. Preview viser stadig renter, men nød-lånsbehov følger nu runtime-kontantbalancen efter løn.
-- `Slice UI-M1 — Mobile beta-critical flows` ✅ FÆRDIG (2026-04-28). Rytterliste, rytterside-market actions, auktioner, transfers, indbakke og admin beta quick actions er mobiltilpasset, så primære handlinger ikke kræver horisontal scroll. Frontend build passerer.
-- Frontend code-splitting ✅ FÆRDIG (2026-04-28). `frontend/src/App.jsx` lazy-loader sider på route-niveau med `React.lazy`/`Suspense`; `npm run build` i frontend passerer uden Vite large chunk warning.
-- Status cleanup: `Evne-filter/slider investigation` er lukket som forældet backlogpunkt. Done proof: `frontend/src/components/RiderFilters.jsx` har to separate min/max-slidere pr. evne; `frontend/src/lib/useRiderFilters.js` anvender stat-min/max i både client-filter og Supabase-query; Patch Notes v1.51 dokumenterer rettelsen.
-- Discord/webhook transferhistorik ✅ LUKKET (2026-04-28). Live DB har både `general` standard-webhook og `transfer_history` webhook konfigureret; Admin-testknapperne virker på begge; bruger har runtime-bekræftet at Transferhistorik-funktionen virker for en rigtig transfer completion.
-- `Slice R1 — Review hardening efter Claude-session` ✅ LUKKET (2026-04-28) efter runtime-audit og sidste UI-fix for bank/AI-auktioner på rytterprofilen.
-- Done proof: profilrouting blev auditeret mod `teams.user_id`; `transferExecution` låser accepterede/window_pending handler mod manager-cancel og holder listings i `negotiating` indtil flush; `auctionRules` håndhæver 10%/1.000 CZ$ minimumsbud, balance-reservation og squad-reservation; `auctionFinalization` håndterer AI/bank/fri rytter uden falsk seller-flow; `Layout.pathMatchesNavItem` er segment-aware; `RiderStatsPage` viser nu auktion for bank/AI/fri ryttere; rytterens `Udvikling`-tab er implementeret med `rider_uci_history`/`rider_stat_history`; 24 målrettede backend-tests og frontend build passerer.
-- UI quick fix lukket: Min Profil er igen tilgængelig som indstillingsside på `/profile`, sidebar linker til Profil & Indstillinger, og egen managerprofil linker til redigering af manager- og holdnavn.
-- Rangliste quick fix lukket (2026-04-29): opryknings-/nedrykningsindikatoren på holdranglisten matcher nu `processDivisionEnd` — Division 2-3 kan rykke op, Division 1-2 kan rykke ned.
-- Race result import hardening lukket (2026-04-29): Google Sheets-resultatimport matcher nu løbsnavne på tværs af accenter, tegnsætning og kendte kalenderaliaser. Seneste gamle unmatched-liste ville nu kun mangle `Super 8 Classic`, som ikke findes i det leverede races-ark.
-- UCI race point quick fix lukket (2026-04-29): Adminens løbsklasser er opdateret til moderne herre-UCI-kategorier, og live `race_points` er seedet med 801 point-rækker fra UCI/INRNG 2025-skalaen.
-- Resultatimport live-verificeret (2026-04-29): `Resultater Cycling Zone`-arket importerede 709 rækker for 18 løb i sæson 6 uden skipped races. Live readback viser 709 `race_results`, 25 `season_standings`, 18 completed races og 10 prize finance rows på i alt 2922 efter idempotent re-import-cleanup.
+- Season-flow sanity er kørt som investigation + kontraktfix:
+  - Deployed backend `/health` svarer 200, og admin preview/end endpoints svarer 401 uden token som forventet.
+  - Live season-end write blev ikke kørt, fordi der ikke må laves admin/write-probe uden admin-session og explicit live action.
+  - Read-only live sanity for sæson 6 bekræfter fortsat `races=98`, `completed races=18`, `race_results=709`, `season_standings=25`.
+  - Local preview-runtime mod live read-only data gav `teams=24`, `salary=5.118.000`, `loan_interest=20.848` som gældsforøgelse, `teams_needing_emergency=3`, og `emergency_loan_amount=2.836.247`.
+  - Contract audit fandt runtime/schema-drift for finance-/notification-typer; migration `database/2026-04-29-finance-notification-contract-types.sql` og schema/test er tilføjet.
+  - Frontend build passer, og devserver er startet på `http://127.0.0.1:5173`; agent-browser CLI er ikke tilgængelig i denne shell, så browser-gut-check er ikke udført.
+- Docs/context cleanup er gennemført som docs-only slice:
+  - `docs/PRODUCT_BACKLOG.md` er slanket til launch roadmap + candidate queues.
+  - Detaljeret nyere done proof er flyttet til `docs/archive/RECENT_DONE_PROOF_2026-04-29.md`.
+  - Økonomituning er nu topprioriteret launch-spor, men sanity-verifikation kommer først.
+- Live result-import er verificeret for sæson 6:
+  - `races=98`
+  - `race_results=709`
+  - `season_standings=25`
+  - `completed races=18`
+  - prize finance rows `10` totaling `2922`
+- Resultatimport kører via delt runtime:
+  - xlsx import og approve deler `applyRaceResults`.
+  - Google Sheets-resultatimport matcher løbsnavne robust og er idempotent for prize finance.
+- Season-end preview quick fixes er lukket:
+  - Preview bruger `buildSeasonEndPreviewRows`.
+  - Lånerenter vises separat, men kontant `balance_after` følger runtime hvor renter lægges på lånets restgæld.
+- `Slice UCI-R1`, `Slice UCI-R2`, `Slice R1`, `Slice UI-M1`, Discord/webhook transferhistorik, profilrouting, code-splitting og ranglisteindikator er lukkede. Done proof ligger i `docs/FEATURE_STATUS.md` og `docs/archive/`.
+- Live season-end blev kørt for sæson 6 efter deploy:
+  - `seasons.number=6` er nu `completed` med `end_date=2026-04-29`.
+  - Division side-effect skete: `Ankuva CT` og `Liams geder` rykkede til Division 2.
+  - Read-only postcheck fandt ingen synlige `finance_transactions` eller `board_plan_snapshots` for season 6, og team balances / finance-loan `amount_remaining` så uændrede ud.
+  - Mest sandsynlige root cause: `processSeasonEnd` fetcher teams med embedded `riders(...)`; live DB har flere `teams`↔`riders` relationships, så PostgREST kan returnere PGRST201. Runtime checker ikke `teamsRes.error`, så finance/board loop kan blive skipped, mens divisioner og season completion stadig sker.
+  - Økonomituning er blokeret indtil season-end finance/board side effects er fixed og sæson 6 er repareret.
+- Repo-fix for season-end repair er implementeret 2026-04-29:
+  - `processSeasonEnd` loader nu teams, riders og board_profiles separat og checker load/write errors før sæsonen markeres completed.
+  - Finance/board køres før divisionsopdateringer, så en live relationship/load-fejl ikke kan flytte divisioner og derefter skippe finance.
+  - Admin repair endpoint `POST /api/admin/seasons/:id/repair-finance-board` kører finance/board only og kan resume missing side effects uden `force`, så eksisterende salary/snapshots ikke duplikeres.
+  - Backend regressionstests dækker live-like rider-load failure, finance/board side effects, repair uden season/division writes og resume uden duplikering.
+- Deploy/live status 2026-04-29:
+  - Live DB migration `database/2026-04-29-finance-notification-contract-types.sql` er applied af bruger.
+  - Backend-fix er committet og pushed til `main`:
+    - `e643436` `Fix season-end finance board repair`
+    - `51af288` `Allow season-end repair resume`
+  - Railway/live API svarede `401` uden token på repair-endpointet efter deploy, dvs. endpointet findes live og kræver admin auth.
+  - Bruger kørte live repair med admin auth mod season id `cc4410b4-9d19-4996-adbf-369e5b9e2df8`.
+  - Repair-resultat: `success: true`, `teamsProcessed: 24`, `existingSalaryTransactions: 5`, `existingBoardSnapshots: 72`, `existingBoardSnapshotBoards: 72`.
+  - Read-only postcheck bagefter kan stadig ikke se `finance_transactions` for season 6 (`0` synlige rows), men kan se `board_plan_snapshots=72`, `boardTeams=24`, og `Ankuva CT`/`Liams geder` står fortsat i Division 2. Finance-rækker skal derfor verificeres via admin/service-visible path, ikke read-only RLS.
 
 ## Næste konkrete handling
-1. Verificér deployed season-end preview/end mod løn, lånerente som gæld, sponsor og board-side effects.
-2. Kør en UI sanity-check af Resultater/Rangliste/Race archive på sæson 6-data.
-3. Overvej om eksterne/pro-team-navne i teamresultater skal mappes til managerhold eller bevares som tekst-only historik.
+1. Add/run admin/service-visible verification for season 6 repair:
+   - count season 6 salary rows and teams covered;
+   - count/amount season 6 `loan_interest`, `interest`, `emergency_loan`;
+   - verify active finance-loans had season-end interest applied where relevant;
+   - verify human team balances changed consistently with salary/emergency-loan logic;
+   - verify `board_plan_snapshots=72` for season 6 and no duplicate snapshots per board;
+   - verify `Ankuva CT` and `Liams geder` remain Division 2 with no extra division movement.
+2. Do **not** rerun full season-end and do **not** rerun repair blindly. If verification finds missing finance side effects, repair must be targeted/idempotent.
+3. Then continue UI sanity and economy baseline. Re-audit `/profile` remains a separate launch-critical item.
+
+## Næste launch-spor
+- **Economy baseline & simulation** før alle konkrete økonomital ændres.
+- Target: **stram men fair** økonomi, hvor aktive kompetente managers kan overleve uden automatisk gældsspiral.
 
 ## Kommandoer
 PowerShell skal stå i repo-root:
@@ -38,19 +71,16 @@ PowerShell skal stå i repo-root:
 ```powershell
 cd "C:\Users\ndmh3\OneDrive\Skrivebord\cycling-manager"
 $env:PYTHONIOENCODING='utf-8'
-# Sæt også credentials i samme session. Ekko dem aldrig i chat eller docs.
 python scripts\uci_scraper.py --dry-run
-python scripts\uci_scraper.py
 ```
 
+Live Supabase-inspektion må kun ske read-only og uden at ekko credentials. `.codex.local/supabase-readonly.env` findes lokalt, men de tidligere `npm run db:ai:*` scripts findes ikke i root `package.json`; brug målrettede read-only probes eller tilføj scripts i en separat tooling-slice.
+
 ## Vigtige invarianter
+- Runtime > current docs > spec docs > backlog.
 - Workflow-success alene er ikke bevis på datakvalitet.
 - `--dry-run` må aldrig skrive Sheets eller Supabase.
-- Pagination skal dække rank 1-3000 eller fejle før writes.
-- Mass-nedskrivning til 5 UCI-point skal stoppes af safety-gate.
 - UCI-sync må ikke nulstille eller ignorere eksisterende `prize_earnings_bonus`.
 - Salary update kører efter godkendt UCI-sync i GitHub Actions workflowet og bruger eksisterende `updateRiderValues`-regel.
+- Finance transaction types og notification types skal verificeres mod DB constraints før nye writes eller økonomituning.
 - En afsluttet slice må ikke blive stående som aktiv/næste handling; tjek runtime/test/patch notes før samme opgave startes igen.
-
-## Næste slice efter live season verification
-- Øvrig beta-readiness og post-beta feature candidates.

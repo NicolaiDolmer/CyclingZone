@@ -10,7 +10,7 @@
 | Divisioner | 3 niveauer: 1 (Elite), 2 (Professional), 3 (Amateur) |
 | Oprykning | Top 2 per division rykker op |
 | Nedrykning | Bund 2 per division rykker ned |
-| Hold-min | Div 1: 20, Div 2: 14, Div 3: 8 ryttere |
+| Hold-min | Div 1: 20, Div 2: 15, Div 3: 8 ryttere |
 | Hold-max | Div 1: 30, Div 2: 20, Div 3: 10 ryttere |
 | Race-minimum | 8 ryttere på hold for at deltage |
 
@@ -79,9 +79,10 @@
 ## Transfervindue
 
 - Status styres af admin-endpoints: `POST /api/admin/transfer-window/open` og `POST /api/admin/transfer-window/close`
-- Når ÅBENT: handlers aktiveres øjeblikkeligt. Når LUKKET: 403 returneres på alle opret/acceptér-endpoints.
+- Når ÅBENT: handlers aktiveres øjeblikkeligt. Når LUKKET: auktioner kan stadig parkeres via `pending_team_id`, og gensidigt accepterede direkte transfers/swaps kan lande som `window_pending` frem for øjeblikkeligt ejerskifte.
 - Auktioner: Når LUKKET → rider sættes som `pending_team_id`, aktiveres ved næste åbning af vinduet.
-- Transfers/swaps/lån: Helt blokeret (403) når vinduet er lukket.
+- Transfers/swaps: Parkerede `window_pending` handler er låst mod manager-annullering efter gensidig accept og gennemføres først ved næste vindueåbning efter re-check af ejerskab, saldo og squad-limit.
+- Lån: Følg aktuel runtime/contract audit før regelændringer; rider-lån og finance-lån er separate domæner.
 - Aktive lejeaftaler tæller mod lånerens holdgrænse, så squad-limit checks på markedet inkluderer både ventende handler og lånte ryttere
 - Rider-lån med `loan_fee` opkræver første dækkede sæson ved aktivering og senere dækkede sæsoner ved sæsonstart
 - Reject, withdraw og cancel-handlinger er tilladt uanset vinduesstatus.
@@ -100,8 +101,8 @@ Brug ALDRIG uci_points direkte som pris — brug altid price eller uci_points * 
 
 ### Startkapital & Sponsorindtægt
 ```
-Startkapital (nye hold): 2.000.000 CZ$
-Sponsor-indkomst (default): 400.000 CZ$/sæson
+Startkapital (nye hold/beta reset): 800.000 CZ$
+Sponsor-indkomst (default): 240.000 CZ$/sæson
 Udbetales: Sæsonstart
 Beregning: round(sponsor_income × budget_modifier)
 budget_modifier: se Bestyrelse nedenfor
@@ -109,8 +110,8 @@ budget_modifier: se Bestyrelse nedenfor
 
 ### Løn
 ```
-Beregning: 10% af rytterens pris (uci_points × 4000) — sættes ved køb
-Genberegnes: Til 10% af aktuelle pris ved hver sæsonstart
+Beregning: 15% af effektiv rytterværdi (`uci_points × 4000 + prize_earnings_bonus`)
+Genberegnes: Efter UCI-sync og ved season-end `updateRiderValues`
 Minimum: 1 CZ$
 Trækkes: Sæsonslut (alle ryttere på holdet)
 Shortfall: Auto-nødlån oprettes
@@ -128,6 +129,8 @@ Shortfall: Auto-nødlån oprettes
 
 ### Præmiepenge (default ved løbsimport)
 
+Præmie-/pointskalaen er seedet med moderne herre-UCI-kategorier i `race_points`. Næste økonomituning skal vurdere, om CZ$-præmier fortsat skal følge UCI-point 1:1 eller skaleres separat.
+
 | Placering | Stage | GC | Points/Bjerg | Team | Young |
 |-----------|-------|----|--------------|------|-------|
 | 1 | 200.000 | 800.000 | 120.000 | 400.000 | 200.000 |
@@ -138,6 +141,10 @@ Shortfall: Auto-nødlån oprettes
 
 ### Renter på negativ saldo
 - 10% af negativ saldo pr. sæson (legacy-mekanisme udover lån)
+
+### Finance transaction types
+- Contract-audit mod live DB/schema kræves før nye finance-writes.
+- Kendte runtime-typer inkluderer sponsor, salary, prize, interest, transfer_in/out samt finance-loan typer som `loan_received`, `emergency_loan`, `loan_interest` og `loan_repayment`.
 
 ---
 

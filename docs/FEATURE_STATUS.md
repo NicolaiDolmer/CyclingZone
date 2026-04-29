@@ -13,7 +13,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Login-streak tracking
 - Manager XP + niveauer (level = floor(xp/100)+1, max 50)
 - Manager-profil med historik
-- `/profile` viser Min Profil med konto-, Discord- og holdindstillinger
+- `ProfilePage.jsx` findes med konto-/holdindstillinger, men aktuel route-audit viser at `/profile` stadig routes via `ProfileRedirect`; se kendte bugs før dette regnes som lukket.
 - Hold- og managernavn kan ændres fra Min Profil via kanonisk backend-path `PUT /api/teams/my`
 
 ### Hold & Ryttere
@@ -64,6 +64,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Præmiefordeling ved løbsimport (stage/GC/points/mountain/team/young)
 - Finance-transaktionslog + Finance-side
 - Balance-justering (admin)
+- Finance transaction type-kontrakt er afstemt i schema/migration/test med runtime for lån, lånerenter, nødlån og admin-justeringer
+- Live DB migration for finance-/notification type-kontrakt er applied 2026-04-29.
 - UCI salary recalculation: GitHub Actions kører `backend/scripts/recalculateRiderSalaries.js` efter UCI scraperen, så `riders.salary` følger opdaterede `uci_points` med eksisterende `prize_earnings_bonus`
 
 ### Sæson & Løb
@@ -78,6 +80,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Sæsonpreview-side + Races-side
 - Løbsarkiv (`/race-archive`) og løbshistorik (`/race-archive/:raceSlug`)
 - Season-end preview bruger economy engine til løn, lånerente som gæld, projected board satisfaction og næste sponsorudbetaling, så preview matcher season-end/season-start runtime
+- Season-end runtime loader teams/riders/board_profiles separat og fejler hårdt på Supabase load/write errors, så finance/board side effects ikke silently skippes før season completion.
 
 ### Bestyrelse (Board)
 - Tre parallelle planer (1yr/3yr/5yr) kører simultant per hold med egne mål og tilfredshed → budget_modifier
@@ -98,16 +101,18 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Sæsonopcioner (create/start/end/result import) via kanoniske admin-routes
 - Genberegning af standings fra gemte race_results
 - Løbsoprettelse og season-end preview endpoint
+- Admin repair endpoint til season-end finance/board side effects uden at køre season status eller oprykning/nedrykning igen; deployed 2026-04-29 og kan resume missing side effects uden at duplikere eksisterende salary/snapshots.
 - Beta-reset komplet suite: marked, trupper, balancer, divisioner, bestyrelse, løbskalender, sæsoner, XP/level og achievement unlocks via delt reset-service
 
 ### UI / Misc
 - Responsivt layout med navigation (Layout.jsx)
 - Segment-aware sidebar active-state: `/team` matcher ikke `/teams`
-- Sidebar linker til Profil & Indstillinger, og egen managerprofil linker til redigering af manager- og holdnavn
+- Sidebar og egen managerprofil linker til `/profile`, men route-bindingen skal re-audites fordi `App.jsx` aktuelt bruger `ProfileRedirect`.
 - Mobile beta-critical flows: rytterliste, rytterside-market actions, auktioner/bud, transfers, indbakke og admin beta quick actions er optimeret til smalle skærme uden primær horisontal scroll
 - Frontend route-level code-splitting: sider lazy-loades via `React.lazy`/`Suspense`, så initial bundle er reduceret og Vite-build kører uden large chunk warning
 - Rytterprofilens `Udvikling`-tab viser UCI-point og stats over tid fra `rider_uci_history`/`rider_stat_history`
 - Notifikationssystem (in-app + badge, deduplicering ved cron/retries)
+- Notification type-kontrakt er afstemt i schema/migration/test med runtime for transfer-interesse, watchlist og lånebeskeder
 - Achievement-sync fra live historiktabeller (bid, transfer, watchlist, hold, board)
 - Aktivitets-feed · Head-to-head sammenligning · Hall of Fame · Patch notes · Hjælpeside · Confetti modal
 
@@ -123,18 +128,23 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 🔴 Broken / Kendte bugs
 
 - Ingen kendt live result-import blocker efter 2026-04-29-verifikation. Sæson 6 har 98 races, 709 race_results, 25 standings rows og 10 prize finance rows efter idempotent re-import.
+- Finance-/notification runtime/schema-drift fundet 2026-04-29 er rettet i repo og live DB migrationen er applied.
+- Live season-end for sæson 6 blev kørt 2026-04-29. Status/divisioner blev applied først; root cause var embedded `teams.riders(...)` load uden error-check. Runtime-fix er deployed, og live repair er kørt med `success=true`. Mangler: admin/service-visible verification af season 6 finance rows, balances, loan interest og emergency loans, fordi read-only RLS stadig viser `finance_transactions=0`.
+- Route-audit 2026-04-29: `/profile` peger i `frontend/src/App.jsx` på `ProfileRedirect` i stedet for `ProfilePage`, selvom `ProfilePage.jsx` findes. Det bør rettes/verificeres før launch, fordi Profil & Indstillinger ellers kan være utilgængelig.
 
 ---
 
 ## 🚧 I gang
 
-- [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
-- [ ] Første live beta-verifikation af `season start -> result approval -> season end` (race seed + Sheets-resultatimport + standings + prize finance er live-verificeret 2026-04-29; season-end preview/end mangler stadig deployed/runtime sanity)
+- [ ] Admin/service-visible verification af sæson 6 repair: salary rows, loan-interest-as-debt, emergency loans, balances, notifications og no extra division movement.
+- [ ] Admin-authenticated deployed season-end preview smoke + UI sanity i browser-session efter repair.
 
 ---
 
 ## 📋 Planlagt (backlog)
 
 - Aktiv feature- og forbedringsbacklog vedligeholdes i `docs/PRODUCT_BACKLOG.md`
+- Økonomi baseline & simulation er næste launch-kritiske spor efter season-flow sanity.
 - Team ID-mapping fra PCM
+- Cyclist ID-mapping fra PCM
 - 3-sæsoners glidende gennemsnit for rangliste
