@@ -52,6 +52,43 @@ export function buildRaceResultsFromPending({ pendingRows = [], prizeLookup = {}
   });
 }
 
+async function clearExistingPrizeFinance({ supabase, raceId }) {
+  const { data: existingPrizes, error: existingError } = await supabase
+    .from("finance_transactions")
+    .select("id, team_id, amount")
+    .eq("race_id", raceId)
+    .eq("type", "prize");
+  if (existingError) throw new Error(existingError.message);
+
+  for (const prize of existingPrizes || []) {
+    if (!prize.team_id || !prize.amount) continue;
+
+    const { data: team, error: teamError } = await supabase
+      .from("teams")
+      .select("balance")
+      .eq("id", prize.team_id)
+      .single();
+    if (teamError) throw new Error(teamError.message);
+
+    if (team) {
+      const { error: balanceError } = await supabase
+        .from("teams")
+        .update({ balance: team.balance - prize.amount })
+        .eq("id", prize.team_id);
+      if (balanceError) throw new Error(balanceError.message);
+    }
+  }
+
+  if (existingPrizes?.length) {
+    const { error: deleteError } = await supabase
+      .from("finance_transactions")
+      .delete()
+      .eq("race_id", raceId)
+      .eq("type", "prize");
+    if (deleteError) throw new Error(deleteError.message);
+  }
+}
+
 export async function applyRaceResults({
   supabase,
   race,
@@ -79,6 +116,8 @@ export async function applyRaceResults({
     prize_money: Number(row.prize_money) || 0,
     points_earned: row.points_earned ?? (Number(row.prize_money) || 0),
   }));
+
+  await clearExistingPrizeFinance({ supabase, raceId: race.id });
 
   const { error: insertError } = await supabase.from("race_results").insert(normalizedRows);
   if (insertError) throw new Error(insertError.message);

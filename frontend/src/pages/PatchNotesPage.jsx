@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "1.68",
+    date: "2026-04-29",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin",
+        items: [
+          "Aktiv sæson har nu fået løbskalenderen indlæst fra races-arket, så løbsresultater ikke længere stopper på en tom races-tabel",
+          "Google Sheets-resultatimport matcher nu løbsnavne mere robust på tværs af accenter, bindestreger og kendte kalenderaliaser som Volta Valenciana",
+          "Resultater Cycling Zone-arket er importeret for sæson 6 med 709 resultatrækker fordelt på 18 løb uden skipped races",
+          "Re-import af løbsresultater rydder nu gamle præmie-transaktioner for samme løb først, så finance og holdbalance ikke dubleres ved en ny import",
+          "Adminens løbsklasser og pointtabel bruger nu den moderne herre-UCI-skala: Tour de France, Giro/Vuelta, Monuments, WorldTour A/B/C, ProSeries, Class 1 og Class 2",
+          "UCI-point for klassement, klassikere, etaper, pointtrøje, bjergtrøje og førertrøje er seedet i spillet og kan fortsat redigeres i Admin",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.67",
     date: "2026-04-29",
     label: "Beta",

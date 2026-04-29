@@ -130,7 +130,7 @@ _Dette er den kanoniske udførelsesrækkefølge for de næste større produkt-sl
 - ~~P2: Season-end preview kunne vise sponsor/board-tal fra en lokal forenklet regel i stedet for den delte board/economy-runtime~~ ✅ løst 2026-04-28
 - ~~P2: Season-end preview kunne trække aktive lånerenter fra kontantbalance, selvom runtime lægger lånerenten på lånets restgæld~~ ✅ løst 2026-04-28
 - ~~P1: Google Sheets-resultatimport bypasser den kanoniske `applyRaceResults` path og kan skabe drift mellem `race_results`, standings, finance transactions og balances~~ ✅ løst; `raceResultsSheetSync` delegerer til `applyRaceResults` og backend-test dækker flowet
-- P1: Live result-import kan ikke verificeres end-to-end før `races` er fyldt i live DB; read-only verifikation 2026-04-28 viste 0 races/resultater/standings og `import_log` med 709 rows processed men 0 inserted/updated på grund af unmatched løb.
+- ~~P1: Live result-import kunne ikke verificeres end-to-end før `races` var fyldt i live DB~~ ✅ løst 2026-04-29; sæson 6 har 98 races inkl. `Super 8 Classic`, `Resultater Cycling Zone` importerede 709 rækker for 18 løb uden skipped races, og live readback viser standings + prize finance.
 - ~~P1: Discord/webhook-regression skulle reproduceres via en ægte gennemført transfer/byttehandel og spores gennem completion-pathen til Discord~~ ✅ lukket; Admin-testknapper virker på begge webhooks, og bruger har runtime-bekræftet at en rigtig transfer completion sendes til Transferhistorik
 - ~~P2: `/profile` redirect kan vælge forkert team, fordi query ikke filtrerer på aktuel bruger~~ ✅ løst; `/profile` er igen Min Profil, og offentlig managerprofil tilgås via `/managers/:teamId`
 - ~~P2: `window_pending` handler kan efterlade transfer listings som `sold`, hvis flush fejler senere~~ ✅ løst; parkerede handler holder listing i `negotiating`, og `sold` sættes først i execution
@@ -202,10 +202,10 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 ## 🟣 Data & integrationer
 
 - Google Sheets integration til `dyn_cyclist`-arket
-- Afventer eksempel-Google Sheet fra bruger til resultatformat og datakontrakt
+- ~~Eksempel-Google Sheet fra bruger til resultatformat og datakontrakt~~ ✅ modtaget/verificeret: `Resultater Cycling Zone` med `Rank, Name, Team, Benævnelse, Løb, Sæson`
 - Scraper til UCI-ranglisten
 - UCI rangliste sync
-- Løbsresultater sync
+- ~~Løbsresultater sync~~ ✅ live-verificeret for sæson 6 via Google Sheets-import
 - Teams PCM mapping
 - Cyclists PCM mapping
 
@@ -214,7 +214,7 @@ _Alle punkter implementeret. Se commit-historik for detaljer._
 ## 🟤 Økonomi & tuning
 
 - ~~Startkapital og sponsorindtægt retunede~~ ✅ — startkapital 800K, sponsor 240K/sæson (v1.44)
-- Præmiepenge skal kalibreres — afventer Google Sheets-integration til løbsresultater (Session 6b); præmier og Google Sheets skal designes samlet så de hænger sammen med ranglisten
+- Præmiepenge/pointskala er seedet med moderne herre-UCI-kategorier i `race_points`; næste økonomituning bør vurdere om CZ$-præmier fortsat skal følge UCI-point 1:1
 - Overvej prisfaktor x4000 som særskilt tuning-spor (ikke prioriteret)
 - Finans-overblikket skal ses i sammenhæng med navigationsoverblikket (`Økonomi` → `Finanser`)
 - Gældsloft skal sættes ned og justeres efter ny økonomisk balance; kræver tuning-session med konkrete divisionstal

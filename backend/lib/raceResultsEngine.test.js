@@ -27,9 +27,40 @@ function createSupabaseDouble(initialBalances = {}) {
 
       if (table === "finance_transactions") {
         return {
+          select() {
+            return {
+              eq(column, value) {
+                const filters = [[column, value]];
+                return {
+                  eq(nextColumn, nextValue) {
+                    filters.push([nextColumn, nextValue]);
+                    const data = state.financeTransactions
+                      .filter(row => filters.every(([key, expected]) => row[key] === expected))
+                      .map((row, index) => ({ id: row.id || `finance-${index}`, ...row }));
+                    return Promise.resolve({ data, error: null });
+                  },
+                };
+              },
+            };
+          },
           insert(row) {
             state.financeTransactions.push(row);
             return Promise.resolve({ error: null });
+          },
+          delete() {
+            return {
+              eq(column, value) {
+                const filters = [[column, value]];
+                return {
+                  eq(nextColumn, nextValue) {
+                    filters.push([nextColumn, nextValue]);
+                    state.financeTransactions = state.financeTransactions
+                      .filter(row => !filters.every(([key, expected]) => row[key] === expected));
+                    return Promise.resolve({ error: null });
+                  },
+                };
+              },
+            };
           },
         };
       }
@@ -183,4 +214,46 @@ test("applyRaceResults uses canonical prize finance writes and recalculates stan
   );
   assert.deepEqual(ensureCalls, ["season-1"]);
   assert.deepEqual(updateCalls, [["season-1", "race-1"]]);
+});
+
+test("applyRaceResults reverses existing prize finance before re-importing a race", async () => {
+  const { supabase, state } = createSupabaseDouble({
+    "team-1": 1100,
+  });
+  state.financeTransactions.push({
+    team_id: "team-1",
+    type: "prize",
+    amount: 100,
+    season_id: "season-1",
+    race_id: "race-1",
+  });
+
+  const result = await applyRaceResults({
+    supabase,
+    race: { id: "race-1", season_id: "season-1" },
+    resultRows: [
+      {
+        rider_id: "rider-1",
+        rider_name: "Rider One",
+        team_id: "team-1",
+        result_type: "stage",
+        rank: 1,
+        prize_money: 40,
+        points_earned: 40,
+      },
+    ],
+  });
+
+  assert.equal(result.rowsImported, 1);
+  assert.equal(state.balances["team-1"], 1040);
+  assert.deepEqual(state.financeTransactions, [
+    {
+      team_id: "team-1",
+      type: "prize",
+      amount: 40,
+      description: "Præmiepenge fra løb",
+      season_id: "season-1",
+      race_id: "race-1",
+    },
+  ]);
 });

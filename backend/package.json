@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
+    "seed:uci-race-points": "node scripts/seedUciMenRacePoints.js",
     "test": "node --test"
   },
   "dependencies": {

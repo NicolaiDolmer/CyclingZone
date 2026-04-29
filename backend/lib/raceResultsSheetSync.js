@@ -8,6 +8,7 @@ const BENÆVNELSE_TO_TYPE = {
   "Ungdomstrøje": "young",
   "Bjergtrøje": "mountain",
   "Pointtrøje": "points",
+  "Førertrøje": "leader",
   "Klassiker": "stage",
   "Klassiker Hold": "team",
 };
@@ -16,12 +17,18 @@ const BENÆVNELSE_TO_TYPE = {
 const BENÆVNELSE_TO_POINTS_KEY = {
   "Etapeplacering": "Etapeplacering",
   "Klassement": "Klassement",
-  "Etapeløb Hold": "EtapeløbHold",
-  "Ungdomstrøje": "Ungdomstrøje",
-  "Bjergtrøje": "Bjergtrøje",
-  "Pointtrøje": "Pointtrøje",
+  "Etapeløb Hold": "EtapelobHold",
+  "Ungdomstrøje": "Ungdomstroje",
+  "Bjergtrøje": "Bjergtroje",
+  "Pointtrøje": "Pointtroje",
+  "Førertrøje": "Forertroje",
   "Klassiker": "Klassiker",
   "Klassiker Hold": "KlassikerHold",
+};
+
+const RACE_NAME_ALIASES = {
+  "volta a la communitat valenciana": "volta comunitat valenciana",
+  "volta a la comunitat valenciana": "volta comunitat valenciana",
 };
 
 function extractSheetId(url) {
@@ -57,6 +64,36 @@ function findHeader(headers, name) {
   let idx = headers.indexOf(name);
   if (idx >= 0) return idx;
   return headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+}
+
+function normalizeRaceName(name) {
+  const normalized = String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  return RACE_NAME_ALIASES[normalized] || normalized;
+}
+
+function raceNamesMatch(sheetName, dbName) {
+  const sheetNorm = normalizeRaceName(sheetName);
+  const dbNorm = normalizeRaceName(dbName);
+  if (!sheetNorm || !dbNorm) return false;
+  if (dbNorm === sheetNorm) return true;
+
+  const sheetPrefix = sheetNorm.slice(0, 12);
+  const dbPrefix = dbNorm.slice(0, 12);
+  return dbNorm.includes(sheetPrefix) || sheetNorm.includes(dbPrefix);
+}
+
+function resolveTeamResultName(row, teamIdByName) {
+  if (row.name) return row.name;
+  if (row.team && teamIdByName.has(row.team)) return row.team;
+  return row.team || null;
 }
 
 async function fetchCsv(sheetId, gid) {
@@ -143,7 +180,14 @@ export async function syncRaceResultsFromSheets({
   }
 
   // Batch-resolve team names → IDs once across all rows
-  const allTeamNames = [...new Set(rows.map(r => r.team).filter(Boolean))];
+  const allTeamNames = [...new Set(rows.flatMap(r => {
+    const names = [];
+    if (r.team) names.push(r.team);
+    if ((r.benævnelse === "Etapeløb Hold" || r.benævnelse === "Klassiker Hold") && r.name) {
+      names.push(r.name);
+    }
+    return names;
+  }))];
   const teamIdByName = new Map();
   if (allTeamNames.length) {
     const { data: dbTeams } = await supabase.from("teams").select("id, name");
@@ -195,14 +239,7 @@ export async function syncRaceResultsFromSheets({
     const uniqueRaceNames = [...new Set(sæsonRows.map(r => r.løb).filter(Boolean))];
 
     for (const sheetName of uniqueRaceNames) {
-      const sheetNorm = sheetName.toLowerCase().trim();
-      let match = (dbRaces || []).find(r => r.name.toLowerCase().trim() === sheetNorm);
-      if (!match) {
-        match = (dbRaces || []).find(r => {
-          const dbNorm = r.name.toLowerCase().trim();
-          return dbNorm.includes(sheetNorm.slice(0, 12)) || sheetNorm.includes(dbNorm.slice(0, 12));
-        });
-      }
+      const match = (dbRaces || []).find(r => raceNamesMatch(sheetName, r.name));
       if (match) raceMatches.set(sheetName, match);
       else unmatched.push(sheetName);
     }
@@ -259,7 +296,8 @@ export async function syncRaceResultsFromSheets({
 
         const isTeamResult = row.benævnelse === "Etapeløb Hold" || row.benævnelse === "Klassiker Hold";
         const riderId = !isTeamResult && row.name ? (riderIdByName.get(row.name) || null) : null;
-        const teamId = row.team ? (teamIdByName.get(row.team) || null) : null;
+        const teamName = isTeamResult ? resolveTeamResultName(row, teamIdByName) : row.team;
+        const teamId = teamName ? (teamIdByName.get(teamName) || null) : null;
 
         const pointsKey = BENÆVNELSE_TO_POINTS_KEY[row.benævnelse];
         const points = race.race_class && pointsKey
@@ -274,7 +312,7 @@ export async function syncRaceResultsFromSheets({
           rider_id: riderId,
           rider_name: isTeamResult ? null : (row.name || null),
           team_id: teamId,
-          team_name: row.team || null,
+          team_name: teamName || null,
           finish_time: null,
           points_earned: points,
           prize_money: points,

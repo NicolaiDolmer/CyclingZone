@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS public.races (
   season_id UUID REFERENCES public.seasons(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   race_type TEXT DEFAULT 'single' CHECK (race_type IN ('single', 'stage_race')),
+  race_class TEXT,
   stages INTEGER DEFAULT 1,
   start_date DATE,
   status TEXT DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'active', 'completed')),
@@ -99,7 +100,7 @@ CREATE TABLE IF NOT EXISTS public.race_results (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   race_id UUID REFERENCES public.races(id) ON DELETE CASCADE,
   stage_number INTEGER DEFAULT 1,
-  result_type TEXT NOT NULL CHECK (result_type IN ('stage','gc','points','mountain','young','team')),
+  result_type TEXT NOT NULL CHECK (result_type IN ('stage','gc','points','mountain','young','team','leader')),
   rank INTEGER,
   rider_id UUID REFERENCES public.riders(id) ON DELETE SET NULL,
   rider_name TEXT,
@@ -109,6 +110,16 @@ CREATE TABLE IF NOT EXISTS public.race_results (
   points_earned INTEGER DEFAULT 0,
   prize_money BIGINT DEFAULT 0,
   imported_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.race_points (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  race_class TEXT NOT NULL,
+  result_type TEXT NOT NULL,
+  rank INTEGER NOT NULL CHECK (rank > 0),
+  points INTEGER NOT NULL DEFAULT 0 CHECK (points >= 0),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (race_class, result_type, rank)
 );
 
 -- ── AUCTIONS ──────────────────────────────────────────────────
@@ -293,6 +304,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications    ON public.notifications(user_id,
 CREATE INDEX IF NOT EXISTS idx_finance_team     ON public.finance_transactions(team_id);
 CREATE INDEX IF NOT EXISTS idx_standings_season ON public.season_standings(season_id, division);
 CREATE INDEX IF NOT EXISTS idx_race_results     ON public.race_results(race_id);
+CREATE INDEX IF NOT EXISTS idx_race_points_class ON public.race_points(race_class);
 
 -- ── ROW LEVEL SECURITY ────────────────────────────────────────
 ALTER TABLE public.users               ENABLE ROW LEVEL SECURITY;
@@ -309,6 +321,7 @@ ALTER TABLE public.seasons             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.races               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.race_results        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.season_standings    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.race_points         ENABLE ROW LEVEL SECURITY;
 
 -- ── PUBLIC READ POLICIES ──────────────────────────────────────
 DO $$ BEGIN
@@ -337,6 +350,9 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN
   CREATE POLICY "Public read race_results"     ON public.race_results FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY "Public read race_points"      ON public.race_points FOR SELECT USING (true);
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ── PRIVATE POLICIES ──────────────────────────────────────────

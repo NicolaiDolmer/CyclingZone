@@ -99,6 +99,7 @@ CREATE TABLE races (
   season_id UUID REFERENCES seasons(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   race_type TEXT DEFAULT 'single' CHECK (race_type IN ('single', 'stage_race')),
+  race_class TEXT,
   stages INTEGER DEFAULT 1,
   start_date DATE,
   status TEXT DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'active', 'completed')),
@@ -114,7 +115,7 @@ CREATE TABLE race_results (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   race_id UUID REFERENCES races(id) ON DELETE CASCADE,
   stage_number INTEGER DEFAULT 1,
-  result_type TEXT NOT NULL CHECK (result_type IN ('stage', 'gc', 'points', 'mountain', 'young', 'team')),
+  result_type TEXT NOT NULL CHECK (result_type IN ('stage', 'gc', 'points', 'mountain', 'young', 'team', 'leader')),
   rank INTEGER,
   rider_id UUID REFERENCES riders(id) ON DELETE SET NULL,
   rider_name TEXT, -- denormalized for display
@@ -124,6 +125,16 @@ CREATE TABLE race_results (
   points_earned INTEGER DEFAULT 0,
   prize_money BIGINT DEFAULT 0,
   imported_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE race_points (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  race_class TEXT NOT NULL,
+  result_type TEXT NOT NULL,
+  rank INTEGER NOT NULL CHECK (rank > 0),
+  points INTEGER NOT NULL DEFAULT 0 CHECK (points >= 0),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (race_class, result_type, rank)
 );
 
 -- ============================================================
@@ -381,6 +392,7 @@ CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
 CREATE INDEX idx_finance_team ON finance_transactions(team_id);
 CREATE INDEX idx_standings_season ON season_standings(season_id, division);
 CREATE INDEX idx_race_results_race ON race_results(race_id);
+CREATE INDEX idx_race_points_class ON race_points(race_class);
 
 -- ============================================================
 -- ROW LEVEL SECURITY (Supabase)
@@ -396,6 +408,7 @@ ALTER TABLE transfer_offers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE finance_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE board_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE race_points ENABLE ROW LEVEL SECURITY;
 
 -- Users can read all public data
 CREATE POLICY "Public read riders" ON riders FOR SELECT USING (true);
@@ -407,6 +420,7 @@ CREATE POLICY "Public read standings" ON season_standings FOR SELECT USING (true
 CREATE POLICY "Public read races" ON races FOR SELECT USING (true);
 CREATE POLICY "Public read seasons" ON seasons FOR SELECT USING (true);
 CREATE POLICY "Public read race_results" ON race_results FOR SELECT USING (true);
+CREATE POLICY "Public read race_points" ON race_points FOR SELECT USING (true);
 
 -- Users can only read their own sensitive data
 CREATE POLICY "Own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);

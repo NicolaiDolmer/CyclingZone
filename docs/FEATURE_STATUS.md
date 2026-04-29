@@ -69,6 +69,9 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Sæson & Løb
 - Sæsonoversigt med race-kalender
 - Løbsresultater-import (xlsx) og approve via delt backend result-path
+- Google Sheets-resultatimport matcher løbsnavne robust på accenter, tegnsætning og kendte kalenderaliaser
+- Google Sheets-resultatimport er idempotent for prize finance: gamle prize-transaktioner for samme løb reverseres før re-import
+- Adminens `race_points`-editor bruger moderne herre-UCI-klasser og seedede UCI-point for klassement, klassikere, etaper, pointtrøje, bjergtrøje og førertrøje
 - Pointtavle (season_standings) inkl. rank_in_division, recalkuleres fra race_results
 - Opryknings/nedrykningslogik (top/bund 2 per division)
 - Holdranglisten viser opryknings-/nedrykningszoner efter samme season-end-regel: Division 2-3 kan rykke op, Division 1-2 kan rykke ned
@@ -119,14 +122,14 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 🔴 Broken / Kendte bugs
 
-- Live result-import er blokeret af manglende `races` i Supabase; read-only verifikation 2026-04-28 viste 0 races/resultater/standings og seneste sheets-import skrev 0 rækker pga. unmatched løb
+- Ingen kendt live result-import blocker efter 2026-04-29-verifikation. Sæson 6 har 98 races, 709 race_results, 25 standings rows og 10 prize finance rows efter idempotent re-import.
 
 ---
 
 ## 🚧 I gang
 
 - [ ] Event-sekvens dokumentation (transfervindue åbner/lukker, sæsonstart, sæsonslut)
-- [ ] Første live beta-verifikation af `season start -> result approval -> season end` (lokal/statisk kontraktverifikation og read-only credential-verifikation kørt 2026-04-28; live `races` mangler før end-to-end import kan bevises)
+- [ ] Første live beta-verifikation af `season start -> result approval -> season end` (race seed + Sheets-resultatimport + standings + prize finance er live-verificeret 2026-04-29; season-end preview/end mangler stadig deployed/runtime sanity)
 
 ---
 

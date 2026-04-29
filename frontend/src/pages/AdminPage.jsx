@@ -1,45 +1,13 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import {
+  MAX_RANKS,
+  RACE_CLASSES,
+  RESULT_TYPES,
+  getRaceClassLabel,
+} from "../lib/uciRaceClasses";
 
 const API = import.meta.env.VITE_API_URL;
-
-// ── Løbsklasser ──────────────────────────────────────────────────────────────
-const RACE_CLASSES = [
-  { key: "CWTGTFrance",     label: "Grand Tour France (kat. 1)",   type: "Grand Tour" },
-  { key: "CWTGTAutres",     label: "Grand Tour Autres (kat. 2)",   type: "Grand Tour" },
-  { key: "CWTAutresToursA", label: "CWT Etapeløb A (kat. 3)",      type: "Etapeløb" },
-  { key: "CWTAutresToursB", label: "CWT Etapeløb B (kat. 4)",      type: "Etapeløb" },
-  { key: "CWTAutresToursC", label: "CWT Etapeløb C (kat. 5)",      type: "Etapeløb" },
-  { key: "CWTMajeures",     label: "CWT Monument (kat. 1)",        type: "Endagsløb" },
-  { key: "CWTAutresClasA",  label: "CWT Klassiker A (kat. 2)",     type: "Endagsløb" },
-  { key: "CWTAutresClasB",  label: "CWT Klassiker B (kat. 3)",     type: "Endagsløb" },
-  { key: "CWTAutresClasC",  label: "CWT Klassiker C (kat. 4)",     type: "Endagsløb" },
-  { key: "Cont2HC",         label: "Continental 2.HC (kat. 6)",    type: "Etapeløb" },
-  { key: "Cont21",          label: "Continental 2.1 (kat. 7)",     type: "Etapeløb" },
-  { key: "Cont22",          label: "Continental 2.2 (kat. 8)",     type: "Etapeløb" },
-  { key: "Cont1HC",         label: "Continental 1.HC (kat. 5)",    type: "Endagsløb" },
-  { key: "Cont11",          label: "Continental 1.1 (kat. 6)",     type: "Endagsløb" },
-  { key: "Cont12",          label: "Continental 1.2 (kat. 7)",     type: "Endagsløb" },
-];
-
-// Alle benævnelser der kan give point
-const RESULT_TYPES = [
-  { key: "Etapeplacering", label: "Etapeplacering" },
-  { key: "Klassement",     label: "Klassement" },
-  { key: "Klassiker",      label: "Klassiker" },
-  { key: "Pointtrøje",     label: "Pointtrøje" },
-  { key: "Bjergtrøje",     label: "Bjergtrøje" },
-  { key: "Ungdomstrøje",   label: "Ungdomstrøje" },
-  { key: "EtapeløbHold",  label: "Etapeløb Hold" },
-  { key: "KlassikerHold", label: "Klassiker Hold" },
-];
-
-// Max placeringer der vises per benævnelse
-const MAX_RANKS = {
-  Etapeplacering: 10, Klassement: 10, Klassiker: 10,
-  Pointtrøje: 5, Bjergtrøje: 5, Ungdomstrøje: 5,
-  EtapeløbHold: 1, KlassikerHold: 1,
-};
 
 // ── Hjælpere ─────────────────────────────────────────────────────────────────
 function timeAgo(d) {
@@ -672,7 +640,7 @@ export default function AdminPage() {
                       </td>
                       <td className="px-3 py-2.5 hidden sm:table-cell">
                         {r.race_class ? (
-                          <span className="text-amber-700 text-xs font-mono">{r.race_class}</span>
+                          <span className="text-amber-700 text-xs font-mono">{getRaceClassLabel(r.race_class)}</span>
                         ) : (
                           <span className="text-slate-300 text-xs italic">Ikke sat</span>
                         )}
@@ -721,7 +689,7 @@ export default function AdminPage() {
                                 onChange={e => setEditingRace(er => ({ ...er, race_class: e.target.value }))}
                                 className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400">
                                 <option value="">— Ingen klasse —</option>
-                                {["Grand Tour", "Etapeløb", "Endagsløb"].map(type => (
+                                {["Grand Tour", "WorldTour", "Endagsløb", "Continental Circuit"].map(type => (
                                   <optgroup key={type} label={type}>
                                     {RACE_CLASSES.filter(c => c.type === type).map(c => (
                                       <option key={c.key} value={c.key}>{c.label}</option>
@@ -800,7 +768,7 @@ export default function AdminPage() {
             <select value={raceForm.race_class} onChange={e => setRaceForm(f => ({ ...f, race_class: e.target.value }))}
               className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none">
               <option value="">— Ingen klasse —</option>
-              {["Grand Tour", "Etapeløb", "Endagsløb"].map(type => (
+              {["Grand Tour", "WorldTour", "Endagsløb", "Continental Circuit"].map(type => (
                 <optgroup key={type} label={type}>
                   {RACE_CLASSES.filter(c => c.type === type).map(c => (
                     <option key={c.key} value={c.key}>{c.label}</option>
@@ -856,7 +824,7 @@ export default function AdminPage() {
           <label className="block text-slate-400 text-xs mb-1">Løbsklasse</label>
           <select value={selectedPointsClass} onChange={e => { setSelectedPointsClass(e.target.value); setEditingPoint(null); }}
             className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400 min-w-[260px]">
-            {["Grand Tour", "Etapeløb", "Endagsløb"].map(type => (
+            {["Grand Tour", "WorldTour", "Endagsløb", "Continental Circuit"].map(type => (
               <optgroup key={type} label={type}>
                 {RACE_CLASSES.filter(c => c.type === type).map(c => (
                   <option key={c.key} value={c.key}>{c.label}</option>
