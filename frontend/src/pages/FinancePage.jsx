@@ -14,7 +14,7 @@ const TX_CONFIG = {
   loan_repayment:   { label: "Lånrate",            color: "text-orange-700" },
   loan_interest:    { label: "Lånerenter",         color: "text-red-700" },
   emergency_loan:   { label: "Nødlån",             color: "text-red-700" },
-  prize_money:      { label: "Præmiepenge",        color: "text-green-700" },
+  prize:            { label: "Præmiepenge",        color: "text-green-700" },
   admin_adjustment: { label: "Admin justering",   color: "text-slate-500" },
   interest:         { label: "Renter",             color: "text-red-700" },
 };

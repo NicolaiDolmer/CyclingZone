@@ -315,7 +315,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_board_request_log_team_season_unique
 CREATE TABLE finance_transactions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-  type TEXT NOT NULL CHECK (type IN ('sponsor','prize','salary','transfer_in','transfer_out','interest','bonus','starting_budget')),
+  type TEXT NOT NULL CHECK (type IN (
+    'sponsor','prize','salary','transfer_in','transfer_out','interest','bonus','starting_budget',
+    'loan_received','loan_repayment','loan_interest','emergency_loan','admin_adjustment'
+  )),
   amount BIGINT NOT NULL, -- positive = income, negative = expense
   description TEXT,
   season_id UUID REFERENCES seasons(id),
@@ -351,8 +354,10 @@ CREATE TABLE notifications (
   type TEXT NOT NULL CHECK (type IN (
     'bid_received','bid_placed','auction_won','auction_lost','auction_outbid',
     'transfer_offer_received','transfer_offer_accepted','transfer_offer_rejected','transfer_counter',
+    'transfer_offer_withdrawn','transfer_interest',
     'new_race','race_results_imported','season_started','season_ended',
-    'board_update','salary_paid','sponsor_paid'
+    'board_update','salary_paid','sponsor_paid',
+    'watchlist_rider_listed','loan_created','emergency_loan','loan_paid_off'
   )),
   title TEXT NOT NULL,
   message TEXT NOT NULL,

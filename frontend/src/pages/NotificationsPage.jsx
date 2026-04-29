@@ -13,12 +13,16 @@ const TYPE_CONFIG = {
   transfer_offer_rejected:   { icon: "❌", color: "text-red-700",    bg: "bg-red-500/8 border-red-500/15",     link: "/transfers" },
   transfer_offer_withdrawn:  { icon: "↩",  color: "text-slate-500",   bg: "bg-slate-50 border-slate-200",          link: "/transfers" },
   transfer_counter:          { icon: "↔",  color: "text-amber-700", bg: "bg-amber-50 border-[#e8c547]/15", link: "/transfers" },
+  transfer_interest:         { icon: "↔",  color: "text-blue-700",   bg: "bg-blue-500/8 border-blue-500/15",   link: "/transfers" },
   watchlist_rider_listed:    { icon: "⭐", color: "text-amber-700", bg: "bg-amber-50 border-[#e8c547]/15", link: "/transfers" },
   new_race:                  { icon: "🏁", color: "text-slate-900",      bg: "bg-slate-50 border-slate-200",          link: "/races" },
   season_started:            { icon: "🚀", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/dashboard" },
   season_ended:              { icon: "🏁", color: "text-slate-900",      bg: "bg-slate-50 border-slate-200",          link: "/season-end" },
   salary_paid:               { icon: "💰", color: "text-orange-700", bg: "bg-orange-500/8 border-orange-500/15", link: "/finance" },
   sponsor_paid:              { icon: "💰", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/finance" },
+  loan_created:              { icon: "💰", color: "text-blue-700",   bg: "bg-blue-500/8 border-blue-500/15",   link: "/finance" },
+  emergency_loan:            { icon: "⚠️", color: "text-red-700",    bg: "bg-red-500/8 border-red-500/15",     link: "/finance" },
+  loan_paid_off:             { icon: "✅", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/finance" },
   board_update:              { icon: "📋", color: "text-blue-700",   bg: "bg-blue-500/8 border-blue-500/15",   link: "/board" },
 };
 
@@ -26,9 +30,9 @@ const MINE_FILTER_TYPES = {
   all:       null,
   unread:    null,
   auctions:  ["bid_received","bid_placed","auction_won","auction_lost","auction_outbid"],
-  transfers: ["transfer_offer_received","transfer_offer_accepted","transfer_offer_rejected","transfer_counter","transfer_offer_withdrawn","watchlist_rider_listed"],
+  transfers: ["transfer_offer_received","transfer_offer_accepted","transfer_offer_rejected","transfer_counter","transfer_offer_withdrawn","transfer_interest","watchlist_rider_listed"],
   board:     ["board_update"],
-  finance:   ["salary_paid","sponsor_paid"],
+  finance:   ["salary_paid","sponsor_paid","loan_created","emergency_loan","loan_paid_off"],
 };
 
 const EVENT_CONFIG = {

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "1.69",
+    date: "2026-04-29",
+    label: "Beta",
+    changes: [
+      {
+        category: "Teknik",
+        items: [
+          "Finance- og notifikationskontrakter er afstemt med runtime, så lån, nødlån, lånerenter, admin-justeringer og transfer-interesse ikke rammer DB type-checks forkert",
+          "Notifikationssiden grupperer nu lånebeskeder under Økonomi og transfer-interesse under Transfers",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.68",
     date: "2026-04-29",
     label: "Beta",
