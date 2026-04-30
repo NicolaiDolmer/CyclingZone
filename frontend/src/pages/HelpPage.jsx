@@ -15,6 +15,7 @@ const SECTIONS = [
         steps: [
           "Opret en konto og log ind.",
           "Vælg holdnavn og managernavn i velkomst-wizarden — du skal udfylde begge felter for at fortsætte.",
+          "Velkomstmodalen vises automatisk første gang og gennemgår de tre vigtigste funktioner: Marked, Auktioner og Bestyrelse. Den linker direkte til Hjælp & Regler.",
           "Du starter i Division 3 med et startbudget på 800.000 CZ$.",
           "Gå til Ryttere og find frie ryttere du vil byde på.",
           "Start en auktion på en rytter — vind auktionen og rytteren er din.",
@@ -102,6 +103,10 @@ const SECTIONS = [
       {
         title: "Lejeaftaler og holdgrænser",
         text: "Lejede ryttere tæller med i din holdstørrelse på samme måde som egne ryttere og indgående handler. Systemet tjekker derfor både når du foreslår en lejeaftale, når udlejeren aktiverer den, og når andre handler afsluttes, at dit hold stadig holder sig inden for divisionens min/max-grænser. Første sæsons lejegebyr betales når aftalen aktiveres, og hvis aftalen dækker flere sæsoner bliver næste sæsoners gebyrer opkrævet automatisk ved sæsonstart.",
+      },
+      {
+        title: "Arkivér afsluttede tilbud",
+        text: "Tilbud der er afvist, trukket tilbage eller på anden vis afsluttet kan arkiveres fra Transfers-siden. Arkivering fjerner dem fra aktive lister, så igangværende forhandlinger altid er nemme at finde.",
       },
     ],
   },
@@ -444,6 +449,10 @@ const FAQ = [
   {
     q: "Hvad sker der hvis jeg ikke kan betale lønninger?",
     a: "Hvis din balance er negativ ved sæsonafslutning, optager du automatisk et nødlån. Renter tilskrives ved næste sæsonafslutning.",
+  },
+  {
+    q: "Hvad er gældsloftet, og hvornår gælder det?",
+    a: "Hver division har et maksimalt gældsbeløb: Division 1: 1.200.000 CZ$, Division 2: 900.000 CZ$, Division 3: 600.000 CZ$. Systemet afviser nødlån der ville overskride loftet. Gældsrenter tilskrives ved sæsonafslutning oveni eksisterende gæld.",
   },
   {
     q: "Hvad er præmiepenge, og hvornår udbetales de?",

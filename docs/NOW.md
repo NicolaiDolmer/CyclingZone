@@ -1,14 +1,18 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**S5b — Market UX/value consistency** ✅ lukket (v1.77).
+**S7 — Launch readiness** (open beta go-live)
 
-## Næste sessioner (pre-launch, ~1 uge til open beta)
+S6 ✅ lukket (v1.78) — onboarding MVP, navn-wizard, velkomstmodal.
 
-| Prioritet | Slice | Type |
+## Gate-checks S7
+
+| # | Check | Status |
 |---|---|---|
-| **S6 — NÆSTE** | Onboarding MVP: first-login modal, navn-wizard, 3 tooltip-cards | `small_feature` |
-| S7 | Launch readiness: beta reset, smoke, Help + PatchNotes final | `investigation` |
+| 1 | Beta reset koordineret med alle 17 managers | ⬜ |
+| 2 | Smoke-test: login, auktion, transfer, finance, bestyrelse | ⬜ |
+| 3 | Help + PatchNotes afspejler alle S2–S6 ændringer | ⬜ |
+| 4 | Deploy verify (`pwsh -File scripts/verify-deploy.ps1`) | ⬜ |
 
 ## Post-launch → `docs/PRODUCT_BACKLOG.md`
 
