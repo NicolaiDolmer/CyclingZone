@@ -2,6 +2,33 @@
 
 const PATCHES = [
   {
+    version: "1.81",
+    date: "2026-04-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Ryttere",
+        items: [
+          "Alle 8.699 ryttere har nu korrekt nationalitetsflag baseret på PCM-regiondata — vises overalt: rytterliste, holdside, auktioner, transfers og rytterdetalje",
+          "138 lande repræsenteret fra PCM's fulde region-database (inkl. Kosovo, Timor-Leste, Ghana, Senegal m.fl.)",
+        ],
+      },
+    ],
+  },
+  {
+    version: "1.80",
+    date: "2026-04-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Stabilitet",
+        items: [
+          "Rettet: password reset-flow afventer nu sessionen korrekt ved PKCE-callback, så token ikke mistes ved hurtig redirect",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.79",
     date: "2026-04-30",
     label: "Beta",

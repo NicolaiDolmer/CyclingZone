@@ -14,7 +14,12 @@ S6 ✅ lukket (v1.78) — onboarding MVP, navn-wizard, velkomstmodal.
 | 3 | Help + PatchNotes afspejler alle S2–S6 ændringer | ✅ |
 | 4 | Deploy verify (`pwsh -File scripts/verify-deploy.ps1`) | ✅ |
 
-## Næste session (i morgen)
+## Senest leveret (v1.81, 2026-04-30)
+- Nationalitetsflag: alle 8.699 ryttere opdateret fra PCM-regiondata (138 lande)
+- `import_riders.py` sætter nu `nationality_code` automatisk fremover
+- v1.80 patch notes tilføjet (password reset PKCE fix)
+
+## Næste session
 1. Admin → Beta-testværktøjer → **Fuld nulstilling** (koordinér med managers)
 2. Klik smoke-test: login · auktion på fri rytter · send transfer-tilbud · finance-side · bestyrelse
 3. Admin → start ny sæson hvis season-flow skal testes
