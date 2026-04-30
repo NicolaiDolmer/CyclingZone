@@ -11,14 +11,14 @@ const DEFAULT_READONLY_ENV = path.resolve(SCRIPT_DIR, "../../.codex.local/supaba
 const TARGET_SCENARIOS = [
   {
     name: "local_competent_current_rules",
-    description: "Competent active managers with sensible rosters under current economy rules. Prize columns are placeholders until real CZ$ prize money is designed.",
+    description: "Competent active managers with sensible rosters under current economy rules. Prize money is live: race_points × 15.000 CZ$ per result.",
     salaryMultiplier: 1,
     prizeMultiplier: 1,
     sponsorByDivision: { 1: 240000, 2: 240000, 3: 240000 },
   },
   {
     name: "local_competent_strict_fair_v1",
-    description: "Candidate tuning target for strict but survivable competent play. This must be rerun after real CZ$ prize money exists.",
+    description: "Candidate tuning target for strict but survivable competent play. Prize money is live — rerun at mid-season with accumulated results.",
     salaryMultiplier: 0.67,
     prizeMultiplier: 1,
     sponsorByDivision: { 1: 600000, 2: 400000, 3: 260000 },
@@ -194,7 +194,7 @@ function buildMarkdown(report) {
     "",
     `Live data source: season ${report.live.sourceSeason.number} for results, season ${report.live.activeSeason.number} for current teams/loans.`,
     "",
-    "Note: Cycling Zone currently has result points, not a finished CZ$ prize-money economy. The `Prizes` column is placeholder/import data and larger economy tuning should wait until real prize payouts are implemented.",
+    "Note: Prize money is live since S4 (race_points × 15.000 CZ$). Live rows show actual earned prizes; local scenario rows use fixed representative estimates.",
     "",
     "## Live Current Rules",
     "",

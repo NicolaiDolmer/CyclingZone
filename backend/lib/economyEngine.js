@@ -37,7 +37,7 @@ async function getDefaultSupabaseClient() {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SALARY_RATE = 0.15;          // 15% of effective rider value = yearly salary
+const SALARY_RATE = 0.10;          // 10% of effective rider value = yearly salary
 const INTEREST_RATE = 0.10;        // 10% interest on negative balance per season
 const PROMOTION_SLOTS = 2;         // Top 2 promote
 const RELEGATION_SLOTS = 2;        // Bottom 2 relegate
@@ -685,7 +685,7 @@ async function fetchAllRows(buildQuery, pageSize = SUPABASE_PAGE_SIZE) {
  * prize_earnings_bonus = average of the rider's total prize earnings across
  * the last 1-3 completed seasons (only seasons with actual earnings counted).
  *
- * salary = max(1, round((uci_points * 4000 + prize_earnings_bonus) * 0.15))
+ * salary = max(1, round((uci_points * 4000 + prize_earnings_bonus) * 0.10))
  */
 export async function updateRiderValues(supabaseClient) {
   const { data: recentSeasons } = await supabaseClient

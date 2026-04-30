@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
@@ -15,6 +15,7 @@ const TX_CONFIG = {
   loan_interest:    { label: "Lånerenter",         color: "text-red-700" },
   emergency_loan:   { label: "Nødlån",             color: "text-red-700" },
   prize:            { label: "Præmiepenge",        color: "text-green-700" },
+  bonus:            { label: "Divisionsbonus",     color: "text-green-700" },
   admin_adjustment: { label: "Admin justering",   color: "text-slate-500" },
   interest:         { label: "Renter",             color: "text-red-700" },
 };
@@ -35,6 +36,8 @@ export default function FinancePage() {
   const [loanData, setLoanData] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [team, setTeam] = useState(null);
+  const [prizeTotal, setPrizeTotal] = useState(0);
+  const [prizeRows, setPrizeRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ text: "", type: "" });
 
@@ -59,14 +62,32 @@ export default function FinancePage() {
     setTeam(teamData);
 
     const { data: { session } } = await supabase.auth.getSession();
-    const [loanRes, txRes] = await Promise.all([
+    const [loanRes, txRes, prizeTxRes] = await Promise.all([
       fetch(`${API}/api/finance/loans`, { headers: { Authorization: `Bearer ${session.access_token}` } }),
       supabase.from("finance_transactions").select("*")
         .eq("team_id", teamData.id).order("created_at", { ascending: false }).limit(30),
+      supabase.from("finance_transactions")
+        .select("id, amount, race_id, description, created_at")
+        .eq("team_id", teamData.id)
+        .in("type", ["prize", "bonus"])
+        .order("amount", { ascending: false }),
     ]);
 
     if (loanRes.ok) setLoanData(await loanRes.json());
     setTransactions(txRes.data || []);
+
+    const allPrizeTxs = prizeTxRes.data || [];
+    setPrizeTotal(allPrizeTxs.reduce((s, r) => s + (r.amount || 0), 0));
+
+    const raceIds = [...new Set(allPrizeTxs.map(r => r.race_id).filter(Boolean))];
+    if (raceIds.length > 0) {
+      const { data: raceNames } = await supabase.from("races").select("id, name").in("id", raceIds);
+      const raceMap = Object.fromEntries((raceNames || []).map(r => [r.id, r.name]));
+      setPrizeRows(allPrizeTxs.map(tx => ({ ...tx, raceName: raceMap[tx.race_id] || null })));
+    } else {
+      setPrizeRows(allPrizeTxs);
+    }
+
     setLoading(false);
   }
 
@@ -146,8 +167,8 @@ export default function FinancePage() {
         </div>
       )}
 
-      {/* Balance + gæld */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      {/* Balance + gæld + præmier */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Balance</p>
           <p className={`font-mono font-bold text-2xl ${(team?.balance || 0) >= 0 ? "text-amber-700" : "text-red-700"}`}>
@@ -166,7 +187,36 @@ export default function FinancePage() {
             </p>
           )}
         </div>
+        <div className="col-span-2 md:col-span-1 bg-white border border-slate-200 rounded-xl p-5">
+          <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Præmiepenge</p>
+          <p className={`font-mono font-bold text-2xl ${prizeTotal > 0 ? "text-green-700" : "text-slate-400"}`}>
+            {prizeTotal > 0 ? "+" : ""}{prizeTotal.toLocaleString("da-DK")} CZ$
+          </p>
+          <p className="text-slate-400 text-xs mt-1">{prizeRows.length} løb</p>
+        </div>
       </div>
+
+      {/* Løbspræmier */}
+      {prizeRows.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4">
+          <h2 className="text-slate-900 font-semibold text-sm mb-3">Løbspræmier</h2>
+          <div className="flex flex-col divide-y divide-slate-100">
+            {prizeRows.map(tx => (
+              <div key={tx.id} className="flex items-center justify-between py-2">
+                <div className="flex-1 min-w-0 pr-3">
+                  <p className="text-slate-700 text-xs font-medium truncate">
+                    {tx.raceName || tx.description || "Præmiepenge"}
+                  </p>
+                  <p className="text-slate-400 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
+                </div>
+                <p className="font-mono text-sm font-bold text-green-700 flex-shrink-0">
+                  +{(tx.amount || 0).toLocaleString("da-DK")} CZ$
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Aktive lån */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4">

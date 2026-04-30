@@ -177,7 +177,7 @@ test("applyRaceResults uses canonical prize finance writes and recalculates stan
 
   const result = await applyRaceResults({
     supabase,
-    race: { id: "race-1", season_id: "season-1" },
+    race: { id: "race-1", season_id: "season-1", name: "Tour de Test" },
     resultRows: [
       {
         rider_id: "rider-1",
@@ -256,7 +256,7 @@ test("applyRaceResults reverses existing prize finance before re-importing a rac
 
   const result = await applyRaceResults({
     supabase,
-    race: { id: "race-1", season_id: "season-1" },
+    race: { id: "race-1", season_id: "season-1", name: "Tour de Test" },
     resultRows: [
       {
         rider_id: "rider-1",
@@ -277,7 +277,7 @@ test("applyRaceResults reverses existing prize finance before re-importing a rac
       team_id: "team-1",
       type: "prize",
       amount: 40,
-      description: "Præmiepenge fra løb",
+      description: "Præmiepenge — Tour de Test",
       season_id: "season-1",
       race_id: "race-1",
     },

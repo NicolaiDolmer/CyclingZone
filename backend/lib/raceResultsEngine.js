@@ -162,7 +162,7 @@ export async function applyRaceResults({
         team_id: teamId,
         type: "prize",
         amount,
-        description: "Præmiepenge fra løb",
+        description: `Præmiepenge — ${race.name}`,
         season_id: race.season_id,
         race_id: race.id,
       });

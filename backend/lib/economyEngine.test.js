@@ -1270,14 +1270,14 @@ test("updateRiderValues recalculates salaries after UCI values change", async ()
       id: "rider-1",
       payload: {
         prize_earnings_bonus: 1000,
-        salary: 60150,
+        salary: 40100,
       },
     },
     {
       id: "rider-2",
       payload: {
         prize_earnings_bonus: 500,
-        salary: 3075,
+        salary: 2050,
       },
     },
   ]);
