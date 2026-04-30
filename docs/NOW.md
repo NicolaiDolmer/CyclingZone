@@ -3,8 +3,6 @@
 ## Aktiv slice
 **S7 — Launch readiness** (open beta go-live)
 
-S6 ✅ lukket (v1.78) — onboarding MVP, navn-wizard, velkomstmodal.
-
 ## Gate-checks S7
 
 | # | Check | Status |
@@ -14,23 +12,24 @@ S6 ✅ lukket (v1.78) — onboarding MVP, navn-wizard, velkomstmodal.
 | 3 | Help + PatchNotes afspejler alle S2–S6 ændringer | ✅ |
 | 4 | Deploy verify (`pwsh -File scripts/verify-deploy.ps1`) | ✅ |
 
-## Senest leveret (v1.81, 2026-04-30)
-- Nationalitetsflag: alle 8.699 ryttere opdateret fra PCM-regiondata (138 lande)
-- `import_riders.py` sætter nu `nationality_code` automatisk fremover
-- v1.80 patch notes tilføjet (password reset PKCE fix)
+## Næste session — INVESTIGATION
+**Problem:** dyn_cyclist sync (v1.83) opdaterede kun ~900 ud af 8.699 ryttere.
+Synkronisering kørt med: `https://docs.google.com/spreadsheets/d/1Fm56gvH7IZ4Tks9I_tJfP7xP_7PgUjPxBbZgWJGCIf4`
 
-## Næste session
-1. Admin → Beta-testværktøjer → **Fuld nulstilling** (koordinér med managers)
-2. Klik smoke-test: login · auktion på fri rytter · send transfer-tilbud · finance-side · bestyrelse
-3. Admin → start ny sæson hvis season-flow skal testes
-4. Erklær open beta live
+Mulige årsager — undersøg i rækkefølge:
+1. **Arket har kun ~900 rækker** — PCM dyn_cyclist er måske kun top-ryttere, ikke alle 8.699
+2. **pcm_id mangler på mange ryttere** — tjek `SELECT COUNT(*) FROM riders WHERE pcm_id IS NOT NULL`
+3. **IDcyclist-mismatch** — arkets IDcyclist-værdier matcher ikke DB's pcm_id
+4. **Import_log** — tjek `import_log` tabellen for `rows_in_sheet` og `rows_matched` fra sidste sync
 
-## Post-launch → `docs/PRODUCT_BACKLOG.md`
+Relevante filer: `backend/lib/dynCyclistSync.js`, `import_log` tabel i Supabase
+
+## Senest leveret
+- v1.83 (2026-05-01): Potentiale-stjerner på alle rytteroversigter — guld/sølv, halvstjerner, filter+sort
+- v1.81 (2026-04-30): Nationalitetsflag på alle 8.699 ryttere
 
 ## Kritiske invarianter
 - `/profile` → `ProfilePage` (indstillinger) — `ManagerProfilePage` er read-only view
-- Economy: `DEFAULT_BETA_BALANCE = 800.000 CZ$`, sponsor = 240.000 CZ$/sæson (v1.46)
-- Prize-money: `prize_money = race_points × 15.000`; type=`bonus` divisionsbonus ved sæsonslut
-- Economy v1.76: `SALARY_RATE = 0.10`, default sponsor 260K, gældsloft D1/D2/D3 = 1200K/900K/600K
+- Economy v1.76: `SALARY_RATE = 0.10`, sponsor 260K, gældsloft D1/D2/D3 = 1200K/900K/600K
 - `processSeasonEnd` loader teams/riders/board_profiles separat og fejler hårdt på errors
 - NOW.md: **maks 30 linjer** — flyt historik til `docs/archive/` i samme session som arbejdet lukkes

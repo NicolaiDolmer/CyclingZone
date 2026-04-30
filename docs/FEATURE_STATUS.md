@@ -18,6 +18,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Hold & Ryttere
 - Holdoversigt og holdprofil-sider
 - Nationalitetsflag: alle 8.699 ryttere har ISO 2-bogstavs kode fra PCM `fkIDregion` → 138 lande, vises som emoji-flag overalt (v1.81); `import_riders.py` sætter kode automatisk ved fremtidige imports
+- **Potentiale** (v1.83): `potentiale DECIMAL(3,1)` på riders-tabellen, synkroniseret fra PCM `dyn_cyclist.value_f_potentiel`. Vises med guldstjerner (< 30 år) / sølvstjerner (≥ 30 år), halvstjerner understøttet. Tilgængeligt på alle rytteroversigter med filter (min/max 1–6) og sortering. ⚠️ Kun ~900 ryttere har data — undersøg mismatch (se NOW.md)
 - Rytterbibliotek med søgning + filtre (nation, UCI, U25, ledig, evne-min/max, osv.) + løn-kolonne og lønfilter (v1.47)
 - Rytterværdi i marked/visninger er dynamisk: `market_value = max(5, uci_points) × 4000 + prize_earnings_bonus`, hvor bonus er gennemsnit af seneste op til 3 afsluttede sæsoners præmiepenge (v1.77)
 - Rytterdetalje-side (stats, historik, watchlist-tæller, ryttertype-badge, ⚡-badge ved aktiv auktion)
@@ -61,7 +62,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ### Økonomi & Finans
 - **Alle beløb skaleret ×4000 (v1.43)** — rytterværdi = uci_points × 4000 CZ$
-- **Økonomi retuneret (v1.46)** — startkapital 800K, sponsor 240K/sæson
+- **Økonomi retuneret (v1.46 → v1.76)** — startkapital 800K, sponsor 240K/sæson (v1.46) → 260K (v1.76); SALARY_RATE 0.10, gældsloft D1/D2/D3 = 1200K/900K/600K
 - **Economy baseline simulation (2026-04-29)** — read-only live baseline + lokale scenarier er dokumenteret i `docs/archive/ECONOMY_BASELINE_SIMULATION_2026-04-29.md`, med gentagelig kommando `backend/scripts/economyBaselineSimulation.js`
 - Sponsorindtægt ved sæsonstart (med board-modifier)
 - Lønudbetaling ved sæsonslut
@@ -127,7 +128,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Discord & Integrationer
 - Discord webhooks: admin kan tilføje webhooks med navn, URL og type (general / transfer_history)
 - Gennemførte transfers og byttehandler sendes til `transfer_history` webhook; runtime-bekræftet med rigtig transfer completion 2026-04-28
-- dyn_cyclist sync: PCM-stats (14 stat-felter + højde, vægt, popularitet) fra Google Sheets (match på pcm_id) — logger nu stats-historik i `rider_stat_history` ved hver sync
+- dyn_cyclist sync: PCM-stats (14 stat-felter + højde, vægt, popularitet + `potentiale`) fra Google Sheets (match på pcm_id) — logger stats-historik i `rider_stat_history` ved hver sync; v1.83 tilføjede `value_f_potentiel → potentiale` (bevaret som 0,5-trin float)
 - UCI-points sync fra Google Sheets — logger nu historik i `rider_uci_history` ved hver sync
 - UCI scraper: GitHub Actions cron henter top 3000 fra ProCyclingStats, skriver Google Sheets, synkroniserer Supabase, genberegner rytterlønninger og har safety-gates for coverage og mass minimum downgrade; live data-repair godkendt 2026-04-28
 
@@ -135,24 +136,14 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 🔴 Broken / Kendte bugs
 
-- Ingen kendt live result-import blocker efter 2026-04-29-verifikation. Sæson 6 har 98 races, 709 race_results, 25 standings rows og 10 prize finance rows efter idempotent re-import.
-- Finance-/notification runtime/schema-drift fundet 2026-04-29 er rettet i repo og live DB migrationen er applied.
-- Live season-end for sæson 6 blev kørt 2026-04-29. Status/divisioner blev applied først; root cause var embedded `teams.riders(...)` load uden error-check. Runtime-fix er deployed, og live repair er kørt med `success=true`. Service-visible verification bekræfter salary, loan-interest, emergency-loan rows og board snapshots efter målrettet backfill af 3 emergency-loan finance rows til season 6.
-
----
-
-## 🚧 I gang
-
-- [ ] Economy tuning (S5): Finance-UI viser præmiepenge; economy baseline rerun med rigtige tal; let tuning.
-- [ ] Economy tuning implementation efter prize-money baseline: centraliser/ændr salary rate, division-aware sponsor og debt ceilings med regressionstests.
-- [ ] Admin-authenticated deployed season-end preview smoke + UI sanity i browser-session efter repair.
+- **Potentiale: kun ~900/8.699 ryttere har data** — dyn_cyclist sync opdaterede kun ~900 ryttere. Årsag ukendt: enten har Google Sheet kun ~900 rækker, pcm_id mangler på mange ryttere, eller IDcyclist-mismatch. Undersøges næste session (se NOW.md).
 
 ---
 
 ## 📋 Planlagt (backlog)
 
 - Aktiv feature- og forbedringsbacklog vedligeholdes i `docs/PRODUCT_BACKLOG.md`
-- Economy baseline & simulation er gennemført; næste økonomispor er tuning implementation efter admin/service-visible repair-verifikation.
+- Economy baseline & simulation gennemført (v1.76 tune applied); næste spor er iteration baseret på live beta-data.
 - Team ID-mapping fra PCM
 - Cyclist ID-mapping fra PCM
 - 3-sæsoners glidende gennemsnit for rangliste
