@@ -9,18 +9,6 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 
 Se `docs/NOW.md` for detaljeret rækkefølge. Nedenfor er slice-briefings klar til session-start.
 
-### S4 — Prize-money backend
-**Manager-værdi:** Finance-siden viser rigtige CZ$-præmieindtægter fra løb og sæsonslut.  
-**Besluttet design (S3):**
-- `points_earned` = `race_points[race_class][result_type_dk][rank]`
-- `prize_money` = `points_earned × 15.000`, krediteres ved resultatimport (type=`prize`)
-- result_type-mapping: `stage`→`Etapeplacering`, `gc`→`Klassement`/`Klassiker`, `points`→`Pointtroje`, `mountain`→`Bjergtroje`, `young`→`Ungdomstroje`, `team`→`EtapelobHold`/`KlassikerHold`, `leader`→`Forertroje`
-- Divisionsbonus ved sæsonslut (type=`bonus`): D1: 300K/200K/100K/50K · D2: 150K/100K/50K/25K · D3: 75K/50K/25K
-- `prize_tables` og `DEFAULT_PRIZES` droppes
-**Path:** `backend/lib/raceResultsEngine.js` + `backend/lib/adminImportResultsHandler.js` + `backend/lib/economyEngine.js` (sæsonslut).  
-**Krav:** Finance type-kontrakt verificeres mod DB constraints. Idempotent re-import. Hent `race_class` fra race ved import.  
-**Test:** Målrettede backend-tests for prize-write, type-kontrakt, mapping og idempotens.
-
 ### S5 — Prize-money frontend + baseline
 **Manager-værdi:** Economy er kalibreret mod rigtige præmieindtægter.  
 **Mål:** Finance-UI viser præmiepenge tydeligt; rerun `npm run economy:baseline` med rigtige tal; let tuning af salary rate / sponsor / debt ceilings baseret på ny baseline.  

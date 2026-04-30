@@ -61,8 +61,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Sponsorindtægt ved sæsonstart (med board-modifier)
 - Lønudbetaling ved sæsonslut
 - Renteberegning på negativ saldo (10%/sæson)
-- Resultatpoint ved løbsimport (stage/GC/points/mountain/team/young)
-- CZ$-præmiepenge er ikke færdigdesignet endnu og skal laves før større økonomituning
+- Resultatpoint (`points_earned`) og præmiepenge (`prize_money = points × 15.000 CZ$`) er adskilt ved løbsimport — `points_earned` fra `race_points[race_class]`, `prize_money` krediteres holdbalancen som type=`prize` (v1.75)
+- Divisionsbonus ved sæsonslut: D1 300K/200K/100K/50K · D2 150K/100K/50K/25K · D3 75K/50K/25K, type=`bonus`, idempotent (v1.75)
 - Finance-transaktionslog + Finance-side
 - Balance-justering (admin)
 - Finance transaction type-kontrakt er afstemt i schema/migration/test med runtime for lån, lånerenter, nødlån og admin-justeringer
@@ -138,7 +138,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 🚧 I gang
 
-- [ ] Prize-money backend (S4): `points_earned` fra race_points, `prize_money = points × 15K`, divisionsbonus ved sæsonslut — design godkendt 2026-04-30.
+- [ ] Economy tuning (S5): Finance-UI viser præmiepenge; economy baseline rerun med rigtige tal; let tuning.
 - [ ] Economy tuning implementation efter prize-money baseline: centraliser/ændr salary rate, division-aware sponsor og debt ceilings med regressionstests.
 - [ ] Admin-authenticated deployed season-end preview smoke + UI sanity i browser-session efter repair.
 
