@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { getFlagEmoji, getCountryName } from "../lib/countryUtils";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import PotentialeStars from "../components/PotentialeStars";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazy(() => import("../components/RiderDevelopmentTab"));
@@ -363,6 +364,12 @@ export default function RiderStatsPage() {
               {rider.height && <span className="text-slate-400 text-sm">{rider.height} cm</span>}
               {rider.weight && <span className="text-slate-400 text-sm">{rider.weight} kg</span>}
             </div>
+            {rider.potentiale != null && (
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-slate-400 text-xs uppercase tracking-wider">Potentiale</span>
+                <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} large showValue />
+              </div>
+            )}
             <p className="text-slate-500 text-sm mt-2">{rider.team ? `Hold: ${rider.team.name}` : "Fri agent"}</p>
             {activeAuction && (
               <div className="mt-2 flex items-center gap-2">
@@ -407,6 +414,13 @@ export default function RiderStatsPage() {
 
       {tab === "stats" && (
         <div className="bg-white border border-slate-200 rounded-xl p-5">
+          {rider.potentiale != null && (
+            <div className="flex items-center gap-3 py-2 mb-1 border-b border-slate-100">
+              <span className="text-slate-300 w-4 text-center text-sm">◆</span>
+              <span className="text-slate-500 text-sm w-36 flex-shrink-0">Potentiale</span>
+              <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} showValue />
+            </div>
+          )}
           {STATS.map(s => <StatRow key={s.key} label={s.label} icon={s.icon} value={rider[s.key]} />)}
         </div>
       )}

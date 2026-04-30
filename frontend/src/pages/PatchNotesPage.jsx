@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "1.83",
+    date: "2026-05-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "Ryttere",
+        items: [
+          "Nyt: Potentiale-felt på alle ryttere — vises med guldstjerner (½–6 stjerner) på alle oversigter, rytterdetalje, auktioner, hold og ønskeliste",
+          "Ryttere over 30 år vises med sølvstjerner i stedet for guld — alder afgør fremtidigt potentiale",
+          "Sortering på Potentiale tilgængelig via kolonneoverskrift på alle lister",
+          "Nyt filter: Potentiale (min–max) i filterpanelet på alle rytteroversigter",
+          "Potentiale synkroniseres automatisk fra PCM-data (dyn_cyclist.value_f_potentiel) ved næste dataopdatering",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.82",
     date: "2026-04-30",
     label: "Beta",

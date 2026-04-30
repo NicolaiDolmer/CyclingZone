@@ -46,6 +46,8 @@ export const DEFAULT_FILTERS = {
   max_salary: "",
   min_age: "",
   max_age: "",
+  min_potentiale: "",
+  max_potentiale: "",
   u25: false,
   u23: false,
   free_agent: false,
@@ -105,7 +107,9 @@ export default function RiderFilters({
   const hasBasicActive = filters.q || filters.nationality_code ||
     filters.min_uci || filters.max_uci ||
     filters.min_salary || filters.max_salary ||
-    filters.min_age || filters.max_age || filters.u25 || filters.u23 ||
+    filters.min_age || filters.max_age ||
+    filters.min_potentiale || filters.max_potentiale ||
+    filters.u25 || filters.u23 ||
     filters.free_agent || filters.team_id;
 
   const hasActiveFilters = hasBasicActive || hasActiveStats;
@@ -196,6 +200,21 @@ export default function RiderFilters({
             </div>
           </div>
 
+          {/* Potentiale */}
+          <div>
+            <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Potentiale (min–max)</label>
+            <div className="flex gap-1">
+              <input type="number" value={filters.min_potentiale} onChange={e => onChange("min_potentiale", e.target.value)}
+                placeholder="Min" min={1} max={6} step={0.5}
+                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
+                  text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+              <input type="number" value={filters.max_potentiale} onChange={e => onChange("max_potentiale", e.target.value)}
+                placeholder="Max" min={1} max={6} step={0.5}
+                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
+                  text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+            </div>
+          </div>
+
           {/* Team */}
           {showTeamFilter && teams.length > 0 && (
             <div>
@@ -268,6 +287,8 @@ export default function RiderFilters({
           {filters.max_salary && <Chip label={`Løn ≤ ${parseInt(filters.max_salary).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("max_salary", "")} />}
           {filters.min_age && <Chip label={`Alder ≥ ${filters.min_age}`} onRemove={() => onChange("min_age", "")} />}
           {filters.max_age && <Chip label={`Alder ≤ ${filters.max_age}`} onRemove={() => onChange("max_age", "")} />}
+          {filters.min_potentiale && <Chip label={`Pot. ≥ ${filters.min_potentiale}`} onRemove={() => onChange("min_potentiale", "")} />}
+          {filters.max_potentiale && <Chip label={`Pot. ≤ ${filters.max_potentiale}`} onRemove={() => onChange("max_potentiale", "")} />}
           {filters.u25 && <Chip label="U25" onRemove={() => onChange("u25", false)} />}
           {filters.u23 && <Chip label="U23" onRemove={() => onChange("u23", false)} />}
           {filters.free_agent && <Chip label="Fri agent" onRemove={() => onChange("free_agent", false)} />}

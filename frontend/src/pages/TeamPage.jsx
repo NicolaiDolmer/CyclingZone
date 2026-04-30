@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
 import { getFlagEmoji } from "../lib/countryUtils";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import PotentialeStars from "../components/PotentialeStars";
 
 const SQUAD_LIMITS = {
   1: { min: 20, max: 30 },
@@ -89,6 +90,12 @@ function RiderActionModal({ rider, onClose, onAction }) {
           <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-xl">×</button>
         </div>
         <div className="p-5 border-b border-slate-200">
+          {rider.potentiale != null && (
+            <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
+              <span className="text-slate-400 text-xs">Potentiale</span>
+              <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} showValue />
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
             {STATS.map((key, i) => (
               <div key={key} className="flex items-center justify-between">
@@ -96,7 +103,6 @@ function RiderActionModal({ rider, onClose, onAction }) {
                 <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(rider[key] || 0)}`}>
                   {rider[key] || "—"}
                 </span>
-
               </div>
             ))}
           </div>
@@ -246,6 +252,8 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                   <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium">Værdi</SortTh>
                   <th className="px-3 py-3 text-right text-slate-400 font-medium">Løn</th>
+                  <SortTh sortKey="potentiale" sort={sort} sortDir={sortDir} onSort={handleSort}
+                    className="px-3 py-3 text-left font-medium">Potentiale</SortTh>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
@@ -290,6 +298,9 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                       {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
                     </td>
                     <td className="px-3 py-2.5 text-right text-slate-500 font-mono text-xs">{r.salary || 0}</td>
+                    <td className="px-3 py-2.5">
+                      <PotentialeStars value={r.potentiale} birthdate={r.birthdate} />
+                    </td>
                     {STATS.map(key => (
                       <td key={key} className="px-1.5 py-2.5 text-center">
                         <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(r[key] || 0)}`}>
@@ -452,11 +463,11 @@ export function TeamPage() {
 
     const [ridersRes, pendingRes, finRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, potentiale, ${STATS.join(", ")}`)
         .eq("team_id", t.id)
         .order("uci_points", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, potentiale, ${STATS.join(", ")}`)
         .eq("pending_team_id", t.id)
         .order("uci_points", { ascending: false }),
       supabase.from("finance_transactions")
@@ -470,7 +481,7 @@ export function TeamPage() {
         .eq("from_team_id", t.id).eq("status", "active"),
       // Riders we're borrowing
       supabase.from("loan_agreements")
-        .select(`rider:rider_id(id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, nationality_code, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
+        .select(`rider:rider_id(id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, nationality_code, potentiale, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
         .eq("to_team_id", t.id).eq("status", "active"),
     ]);
 

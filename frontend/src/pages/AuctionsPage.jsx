@@ -7,6 +7,7 @@ import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { getFlagEmoji } from "../lib/countryUtils";
 import { formatCz, getMinimumAuctionBid, getRiderMarketValue } from "../lib/marketValues";
+import PotentialeStars from "../components/PotentialeStars";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -170,6 +171,11 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
         <span className="truncate max-w-[120px] inline-block">{getAuctionSellerLabel(auction)}</span>
       </td>
 
+      {/* Potentiale */}
+      <td className="px-3 py-2.5">
+        <PotentialeStars value={r?.potentiale} birthdate={r?.birthdate} />
+      </td>
+
       {/* Stats */}
       {STATS.map(key => (
         <td key={key} className="px-1 py-2.5 text-center">
@@ -316,7 +322,13 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-5 gap-1.5">
+      {r?.potentiale != null && (
+        <div className="mt-2 flex items-center gap-1.5">
+          <span className="text-slate-300 text-[9px] uppercase tracking-wider">Potentiale</span>
+          <PotentialeStars value={r.potentiale} birthdate={r.birthdate} showValue />
+        </div>
+      )}
+      <div className="mt-2 grid grid-cols-5 gap-1.5">
         {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"], ["UDH", "stat_udh"]].map(([label, key]) => (
           <div key={key} className="text-center">
             <p className="text-slate-300 text-[9px] uppercase mb-0.5">{label}</p>
@@ -428,7 +440,7 @@ export default function AuctionsPage() {
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale,
           seller_team_id, current_bidder_id,
           rider:rider_id(id, firstname, lastname, uci_points, is_u25, team_id, birthdate, nationality_code,
-            prize_earnings_bonus, ${STATS.join(", ")}),
+            prize_earnings_bonus, potentiale, ${STATS.join(", ")}),
           seller:seller_team_id(id, name),
           current_bidder:current_bidder_id(id, name)`)
         .in("status", ["active", "extended"])
@@ -581,6 +593,10 @@ export default function AuctionsPage() {
                     sortDir={activeSortDir("uci_points")} onSort={handleSort}
                     className="px-2 py-3 text-right font-medium">Værdi</SortTh>
                   <th className="px-3 py-3 text-left text-slate-400 font-medium uppercase tracking-wider">Sælger</th>
+                  <SortTh sortKey="potentiale"
+                    sort={activeSort("potentiale") ? "potentiale" : riderFilters.filters.sort}
+                    sortDir={activeSortDir("potentiale")} onSort={handleSort}
+                    className="px-3 py-3 text-left font-medium uppercase tracking-wider whitespace-nowrap">Potentiale</SortTh>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key}
                       sort={activeSort(key) ? key : riderFilters.filters.sort}

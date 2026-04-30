@@ -27,6 +27,7 @@ const STAT_MAP = {
   gene_i_size:              "height",
   gene_i_weight:            "weight",
   gene_f_popularity:        "popularity",
+  value_f_potentiel:        "potentiale",
 };
 
 function extractSheetId(url) {
@@ -101,7 +102,11 @@ export async function syncDynCyclist(spreadsheetUrl, adminUserId) {
     const update = { updated_at: new Date().toISOString() };
     for (const [idx, dbField] of statColumns) {
       const val = parseFloat(cols[idx]);
-      if (!isNaN(val)) update[dbField] = Math.round(val);
+      if (!isNaN(val)) {
+        update[dbField] = dbField === "potentiale"
+          ? Math.round(val * 2) / 2  // round to nearest 0.5
+          : Math.round(val);
+      }
     }
 
     if (Object.keys(update).length > 1) {

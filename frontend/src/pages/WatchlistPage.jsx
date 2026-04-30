@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { statBg } from "../lib/statBg";
 import { getFlagEmoji } from "../lib/countryUtils";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import PotentialeStars from "../components/PotentialeStars";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -38,8 +39,8 @@ export default function WatchlistPage() {
     const { data } = await supabase
       .from("rider_watchlist")
       .select(`id, note, created_at,
-        rider:rider_id(id, firstname, lastname, uci_points, is_u25,
-          salary, team_id, nationality_code, prize_earnings_bonus, ${STATS.join(", ")},
+        rider:rider_id(id, firstname, lastname, birthdate, uci_points, is_u25,
+          salary, team_id, nationality_code, prize_earnings_bonus, potentiale, ${STATS.join(", ")},
           team:team_id(name))`)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
@@ -135,6 +136,8 @@ export default function WatchlistPage() {
                       className="px-3 py-3 text-right font-medium">Værdi</SortTh>
                     <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-right font-medium">Løn</SortTh>
+                    <SortTh sortKey="potentiale" sort={sort} sortDir={sortDir} onSort={handleSort}
+                      className="px-3 py-3 text-left font-medium">Potentiale</SortTh>
                     {STATS.map((key, i) => (
                       <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
                         className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
@@ -171,6 +174,9 @@ export default function WatchlistPage() {
                         </td>
                         <td className="px-3 py-2.5 text-right text-slate-500 font-mono">
                           {r.salary ? r.salary.toLocaleString("da-DK") : "—"}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <PotentialeStars value={r.potentiale} birthdate={r.birthdate} />
                         </td>
                         {STATS.map(key => (
                           <td key={key} className="px-1.5 py-2.5 text-center">

@@ -75,6 +75,7 @@ CREATE TABLE riders (
   stat_mod INTEGER, -- Modstandsdygtighed
   stat_res INTEGER, -- Restituering
   stat_ftr INTEGER, -- Fighter
+  potentiale DECIMAL(3,1),           -- fra dyn_cyclist.value_f_potentiel (1.0–6.0, 0.5-trin)
   -- Flags
   is_u25 BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),

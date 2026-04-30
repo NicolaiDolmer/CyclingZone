@@ -6,6 +6,7 @@ import { statBg } from "../lib/statBg";
 import { useNavigate, Link } from "react-router-dom";
 import { getFlagEmoji } from "../lib/countryUtils";
 import { getRiderMarketValue } from "../lib/marketValues";
+import PotentialeStars from "../components/PotentialeStars";
 
 const STATS = [
   { key: "stat_fl", label: "FL" }, { key: "stat_bj", label: "BJ" },
@@ -86,6 +87,12 @@ function RiderCard({ rider, onClick, watchlist, onToggleWatchlist, isInAuction }
           <StarButton riderId={rider.id} watchlist={watchlist} onToggle={onToggleWatchlist} />
         </div>
       </div>
+      {rider.potentiale != null && (
+        <div className="flex items-center gap-1.5 mb-2" onClick={() => onClick(rider)}>
+          <span className="text-slate-300 text-[9px] uppercase tracking-wider">Potentiale</span>
+          <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} showValue />
+        </div>
+      )}
       <div className="grid grid-cols-5 gap-2" onClick={() => onClick(rider)}>
         {MOBILE_STATS.map(({ key, label }) => (
           <div key={key} className="text-center">
@@ -129,6 +136,9 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }
         <span className="text-slate-500 font-mono text-sm">
           {rider.salary ? rider.salary.toLocaleString("da-DK") : "—"}
         </span>
+      </td>
+      <td className="px-3 py-2.5" onClick={() => onSelect(rider)}>
+        <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} />
       </td>
       {STATS.map(({ key }) => (
         <td key={key} className="px-1.5 py-2.5 w-14" onClick={() => onSelect(rider)}>
@@ -196,7 +206,7 @@ export default function RidersPage() {
     const statKeys = STATS.map(s => s.key).join(", ");
     let query = supabase
       .from("riders")
-      .select(`id, firstname, lastname, birthdate, uci_points, salary, market_value, prize_earnings_bonus, is_u25, nationality_code,
+      .select(`id, firstname, lastname, birthdate, uci_points, salary, market_value, prize_earnings_bonus, is_u25, nationality_code, potentiale,
         ${statKeys}, team:team_id(id, name)`, { count: "exact" })
       .range((filters.page - 1) * 50, filters.page * 50 - 1);
 
@@ -267,6 +277,8 @@ export default function RidersPage() {
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">Værdi</SortTh>
                   <SortTh sortKey="salary" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">Løn</SortTh>
+                  <SortTh sortKey="potentiale" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
+                    className="px-3 py-3 text-left font-medium uppercase tracking-wider w-24">Potentiale</SortTh>
                   {STATS.map(({ key, label }) => (
                     <SortTh key={key} sortKey={key} sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                       className="px-1.5 py-3 text-center font-medium w-14">{label}</SortTh>

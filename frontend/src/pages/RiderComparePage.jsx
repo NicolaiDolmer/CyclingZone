@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { getFlagEmoji } from "../lib/countryUtils";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import PotentialeStars from "../components/PotentialeStars";
 
 const STATS = [
   { key: "stat_fl",  label: "Flad",             icon: "═" },
@@ -157,6 +158,21 @@ export default function RiderComparePage() {
 
           {/* Stats comparison */}
           <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            {/* Potentiale row */}
+            {fullRiders.some(r => r.potentiale != null) && (
+              <div className="grid items-center py-3 px-4 border-b border-slate-200 bg-amber-50/30"
+                style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-300 w-4 text-center">◆</span>
+                  <span className="text-slate-500 text-sm font-medium">Potentiale</span>
+                </div>
+                {fullRiders.map(r => (
+                  <div key={r.id} className="px-2">
+                    <PotentialeStars value={r.potentiale} birthdate={r.birthdate} showValue />
+                  </div>
+                ))}
+              </div>
+            )}
             {STATS.map((stat, idx) => {
               const bestId = getBestForStat(stat.key);
               return (
