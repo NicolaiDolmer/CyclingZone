@@ -34,6 +34,7 @@ const RaceArchivePage = lazy(() => import("./pages/RaceArchivePage"));
 const RaceHistoryPage = lazy(() => import("./pages/RaceHistoryPage"));
 const ManagerProfilePage = lazy(() => import("./pages/ManagerProfilePage"));
 const FinancePage = lazy(() => import("./pages/FinancePage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 
 function LoadingScreen() {
   return (
@@ -115,7 +116,7 @@ export default function App() {
             <Route path="board" element={<BoardPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="compare" element={<RiderComparePage />} />
-            <Route path="profile" element={<ProfileRedirect />} />
+            <Route path="profile" element={<ProfilePage />} />
             <Route path="activity" element={<ActivityPage />} />
             <Route path="activity-feed" element={<Navigate to="/notifications" replace />} />
             <Route path="watchlist" element={<WatchlistPage />} />

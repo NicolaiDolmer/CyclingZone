@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "1.74",
+    date: "2026-04-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Profil",
+        items: [
+          "/profil-siden viser nu korrekt Profil & Indstillinger — holdnavn og managernavn kan redigeres direkte her",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.73",
     date: "2026-04-29",
     label: "Beta",
