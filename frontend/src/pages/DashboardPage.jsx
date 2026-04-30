@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
+import OnboardingModal from "../components/OnboardingModal";
 
 const API = import.meta.env.VITE_API_URL;
 const SQUAD_LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
@@ -245,35 +246,11 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* Onboarding guide for new users */}
       {showOnboarding && (
-        <div className="mb-4 bg-white border border-amber-200 rounded-xl p-5">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-amber-700 font-bold text-sm">🚴 Velkommen til Cycling Zone!</p>
-              <p className="text-slate-500 text-xs mt-0.5">Kom i gang med disse tre trin</p>
-            </div>
-            <button onClick={() => { setShowOnboarding(false); localStorage.setItem("cz_onboarding_done", "1"); }}
-              className="text-slate-300 hover:text-slate-500 text-xl">×</button>
-          </div>
-          <div className="grid sm:grid-cols-3 gap-3">
-            {[
-              { step: "1", title: "Find ryttere", desc: "Gå til Ryttere og filtrer på stats og pris", link: "/riders", linkLabel: "Åbn ryttere →" },
-              { step: "2", title: "Start en auktion", desc: "Klik på en fri rytter og tryk 'Start auktion'", link: "/riders", linkLabel: "Find fri rytter →" },
-              { step: "3", title: "Følg med", desc: "Hold øje med dine bud under Auktioner", link: "/auctions", linkLabel: "Se auktioner →" },
-            ].map(s => (
-              <div key={s.step} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-5 h-5 rounded-full bg-amber-50 text-amber-700 text-xs
-                    font-bold flex items-center justify-center">{s.step}</span>
-                  <p className="text-slate-900 font-medium text-sm">{s.title}</p>
-                </div>
-                <p className="text-slate-500 text-xs mb-2">{s.desc}</p>
-                <Link to={s.link} className="text-amber-700 text-xs hover:underline">{s.linkLabel}</Link>
-              </div>
-            ))}
-          </div>
-        </div>
+        <OnboardingModal onClose={() => {
+          setShowOnboarding(false);
+          localStorage.setItem("cz_onboarding_done", "1");
+        }} />
       )}
 
       {/* Stat cards */}

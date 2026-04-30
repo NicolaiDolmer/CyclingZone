@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "1.78",
+    date: "2026-04-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Onboarding",
+        items: [
+          "Ny tvungen navn-wizard: nye managers skal vælge holdnavn og managernavn ved første login — blokkerer navigationen til det er gjort",
+          "Ny velkomstmodal for nye managers: tre feature-cards (Marked, Auktioner, Bestyrelse) og et fremtrædende link til Hjælp & Regler",
+          "Velkomstmodalen vises automatisk første gang (nul ryttere + ikke tidligere vist) og huskes via localStorage",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.77",
     date: "2026-04-30",
     label: "Beta",

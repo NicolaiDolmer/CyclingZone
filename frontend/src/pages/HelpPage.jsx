@@ -14,6 +14,7 @@ const SECTIONS = [
         title: "Første skridt",
         steps: [
           "Opret en konto og log ind.",
+          "Vælg holdnavn og managernavn i velkomst-wizarden — du skal udfylde begge felter for at fortsætte.",
           "Du starter i Division 3 med et startbudget på 800.000 CZ$.",
           "Gå til Ryttere og find frie ryttere du vil byde på.",
           "Start en auktion på en rytter — vind auktionen og rytteren er din.",

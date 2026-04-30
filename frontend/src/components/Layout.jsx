@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import SetupWizardModal from "./SetupWizardModal";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -76,6 +77,7 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen]       = useState(false);
   const [openGroups, setOpenGroups]       = useState({});
   const [onlineCount, setOnlineCount]     = useState(0);
+  const [teamLoaded, setTeamLoaded]       = useState(false);
   const heartbeatRef = useRef(null);
 
   useEffect(() => {
@@ -93,8 +95,9 @@ export default function Layout() {
       const { data: userData } = await supabase.from("users")
         .select("role, username").eq("id", session.user.id).single();
       setIsAdmin(userData?.role === "admin");
-      const { data: teamData } = await supabase.from("teams").select("id, name, balance, division").eq("user_id", session.user.id).single();
+      const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).single();
       if (teamData) { setTeam(teamData); setBalance(teamData.balance); }
+      setTeamLoaded(true);
       const { data: notifs } = await supabase.from("notifications").select("id").eq("user_id", session.user.id).eq("is_read", false).limit(9);
       setNotifications(notifs || []);
 
@@ -154,6 +157,11 @@ export default function Layout() {
   }
 
   function toggleGroup(key) { setOpenGroups(prev => ({ ...prev, [key]: !prev[key] })); }
+
+  function handleSetupComplete(updatedTeam) {
+    setTeam(updatedTeam);
+    setBalance(updatedTeam.balance);
+  }
 
   const unread = notifications.length;
   const baseGroups = buildNavGroups(team);
@@ -265,6 +273,8 @@ export default function Layout() {
     );
   }
 
+  const needsSetup = teamLoaded && !team?.manager_name;
+
   return (
     <div className="min-h-screen bg-cz-body flex">
       {/* Desktop sidebar */}
@@ -305,6 +315,8 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
+
+      {needsSetup && <SetupWizardModal onComplete={handleSetupComplete} />}
     </div>
   );
 }
