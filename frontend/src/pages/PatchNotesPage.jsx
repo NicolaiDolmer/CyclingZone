@@ -2,6 +2,29 @@
 
 const PATCHES = [
   {
+    version: "1.76",
+    date: "2026-04-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Finanser",
+        items: [
+          "Finanssiden viser nu præmiepenge tydeligt: et dedikeret kort med samlet totalbeløb og en løb-for-løb oversigt med løbsnavn og beløb",
+          "Præmiepenge-transaktioner viser nu løbsnavn (f.eks. 'Præmiepenge — Tour de France') i stedet for generisk tekst",
+          "Divisionsbonus (type: bonus) vises nu korrekt i transaktionshistorik med grøn farve",
+        ],
+      },
+      {
+        category: "Økonomi",
+        items: [
+          "Lønsats sænket fra 15% til 10% af rytterens effektive markedsværdi — giver mere holdbar økonomi med store hold",
+          "Gældslofter hævet markant: D1 360K→1.200K · D2 300K→900K · D3 240K→600K — bedre buffer ved svære sæsoner",
+          "Startsponsoren for nye hold hævet fra 240K til 260K CZ$/sæson",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.75",
     date: "2026-04-30",
     label: "Beta",
