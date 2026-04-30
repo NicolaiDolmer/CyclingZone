@@ -52,6 +52,7 @@ export function useClientRiderFilters(riders = []) {
 
     if (filters.free_agent) result = result.filter(r => !r.team_id);
     if (filters.team_id) result = result.filter(r => r.team_id === filters.team_id);
+    if (filters.nationality_code) result = result.filter(r => r.nationality_code === filters.nationality_code);
 
     // Stat range filters — only apply when range differs from default (50–85)
     for (const key of STAT_KEYS) {
@@ -89,7 +90,15 @@ export function useClientRiderFilters(riders = []) {
     return result;
   }, [riders, filters]);
 
-  return { filters, onChange, onReset, filtered };
+  const nationalities = useMemo(() => {
+    const seen = new Set();
+    for (const r of riders) {
+      if (r.nationality_code) seen.add(r.nationality_code);
+    }
+    return [...seen].sort();
+  }, [riders]);
+
+  return { filters, onChange, onReset, filtered, nationalities };
 }
 
 export function buildSupabaseQuery(query, filters) {
@@ -101,6 +110,7 @@ export function buildSupabaseQuery(query, filters) {
   if (filters.u25) query = query.eq("is_u25", true);
   if (filters.free_agent) query = query.is("team_id", null);
   if (filters.team_id) query = query.eq("team_id", filters.team_id);
+  if (filters.nationality_code) query = query.eq("nationality_code", filters.nationality_code);
 
   if (filters.min_age) {
     const maxBirth = new Date(`${CURRENT_YEAR - parseInt(filters.min_age)}-12-31`).toISOString().split("T")[0];

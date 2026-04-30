@@ -120,7 +120,7 @@ export default function WatchlistPage() {
         </div>
       ) : (
         <>
-          <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange} onReset={riderFilters.onReset} showTeamFilter={false} />
+          <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange} onReset={riderFilters.onReset} showTeamFilter={false} nationalities={riderFilters.nationalities} />
 
           {/* Table */}
           <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">

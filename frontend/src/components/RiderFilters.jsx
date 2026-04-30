@@ -7,22 +7,10 @@
  *   showTeamFilter: bool (default true)
  *   compact: bool — fewer rows, for sidepanels
  *   teams: array
+ *   nationalities: string[] — ISO codes present in the current dataset
  */
 import { useState } from "react";
-
-const SORT_OPTIONS = [
-  { value: "uci_points",  label: "Værdi" },
-  { value: "salary",      label: "Løn" },
-  { value: "firstname",   label: "Navn (A–Z)" },
-  { value: "stat_bj",     label: "Bjerg" },
-  { value: "stat_sp",     label: "Sprint" },
-  { value: "stat_tt",     label: "TT" },
-  { value: "stat_fl",     label: "Flad" },
-  { value: "stat_udh",    label: "Udholdenhed" },
-  { value: "stat_acc",    label: "Acceleration" },
-  { value: "stat_mod",    label: "Modstandsdygtighed" },
-  { value: "birthdate",   label: "Alder (yngst først)" },
-];
+import { getFlagEmoji, getCountryName } from "../lib/countryUtils";
 
 export const STAT_KEYS = [
   "stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
@@ -51,6 +39,7 @@ export const DEFAULT_FILTERS = {
   q: "",
   sort: "uci_points",
   sort_dir: "desc",
+  nationality_code: "",
   min_uci: "",
   max_uci: "",
   min_salary: "",
@@ -106,17 +95,18 @@ function DualStatSlider({ statKey, label, filters, onChange }) {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function RiderFilters({
   filters, onChange, onReset,
-  showTeamFilter = true, compact = false, teams = [],
+  showTeamFilter = true, compact = false, teams = [], nationalities = [],
 }) {
   const [statsOpen, setStatsOpen] = useState(false);
 
   const activeStatKeys = STAT_KEYS.filter(k => isStatActive(filters, k));
   const hasActiveStats = activeStatKeys.length > 0;
 
-  const hasBasicActive = filters.q || filters.min_uci || filters.max_uci ||
+  const hasBasicActive = filters.q || filters.nationality_code ||
+    filters.min_uci || filters.max_uci ||
     filters.min_salary || filters.max_salary ||
     filters.min_age || filters.max_age || filters.u25 || filters.u23 ||
-    filters.free_agent || filters.team_id || filters.sort !== "uci_points";
+    filters.free_agent || filters.team_id;
 
   const hasActiveFilters = hasBasicActive || hasActiveStats;
 
@@ -130,7 +120,7 @@ export default function RiderFilters({
       {/* ── Filter panel ── */}
       <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3">
         <div className="flex items-center justify-between gap-3 mb-3">
-          <p className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Filtrér & Sortér</p>
+          <p className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Filtrér</p>
           {hasActiveFilters && (
             <button onClick={onReset} className="text-xs text-slate-400 hover:text-slate-900 transition-colors flex-shrink-0">
               Nulstil
@@ -148,23 +138,17 @@ export default function RiderFilters({
                 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
           </div>
 
-          {/* Sort */}
+          {/* Country */}
           <div>
-            <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Sortér efter</label>
-            <div className="flex gap-1">
-              <select value={filters.sort} onChange={e => onChange("sort", e.target.value)}
-                className="flex-1 bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
-                  text-slate-900 text-sm focus:outline-none focus:border-amber-400 min-w-0">
-                {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              <button
-                onClick={() => onChange("sort_dir", filters.sort_dir === "desc" ? "asc" : "desc")}
-                title={filters.sort_dir === "desc" ? "Høj → Lav" : "Lav → Høj"}
-                className="px-2.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-500
-                  hover:text-slate-900 hover:bg-slate-100 transition-all text-sm flex-shrink-0">
-                {filters.sort_dir === "desc" ? "↓" : "↑"}
-              </button>
-            </div>
+            <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Land</label>
+            <select value={filters.nationality_code} onChange={e => onChange("nationality_code", e.target.value)}
+              className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
+                text-slate-900 text-sm focus:outline-none focus:border-amber-400">
+              <option value="">Alle lande</option>
+              {nationalities.map(code => (
+                <option key={code} value={code}>{getFlagEmoji(code)} {getCountryName(code)}</option>
+              ))}
+            </select>
           </div>
 
           {/* UCI range */}
@@ -272,6 +256,12 @@ export default function RiderFilters({
       {hasActiveFilters && (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {filters.q && <Chip label={`"${filters.q}"`} onRemove={() => onChange("q", "")} />}
+          {filters.nationality_code && (
+            <Chip
+              label={`${getFlagEmoji(filters.nationality_code)} ${getCountryName(filters.nationality_code)}`}
+              onRemove={() => onChange("nationality_code", "")}
+            />
+          )}
           {filters.min_uci && <Chip label={`Værdi ≥ ${parseInt(filters.min_uci).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("min_uci", "")} />}
           {filters.max_uci && <Chip label={`Værdi ≤ ${parseInt(filters.max_uci).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("max_uci", "")} />}
           {filters.min_salary && <Chip label={`Løn ≥ ${parseInt(filters.min_salary).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("min_salary", "")} />}
@@ -282,10 +272,6 @@ export default function RiderFilters({
           {filters.u23 && <Chip label="U23" onRemove={() => onChange("u23", false)} />}
           {filters.free_agent && <Chip label="Fri agent" onRemove={() => onChange("free_agent", false)} />}
           {filters.team_id && <Chip label="Hold valgt" onRemove={() => onChange("team_id", "")} />}
-          {filters.sort !== "uci_points" && (
-            <Chip label={`Sortér: ${SORT_OPTIONS.find(o => o.value === filters.sort)?.label}`}
-              onRemove={() => onChange("sort", "uci_points")} />
-          )}
           {activeStatKeys.map(key => {
             const min = parseInt(filters[`${key}_min`]) ?? STAT_DEFAULT_MIN;
             const max = parseInt(filters[`${key}_max`]) ?? STAT_DEFAULT_MAX;

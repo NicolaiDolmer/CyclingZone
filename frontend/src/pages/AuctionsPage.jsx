@@ -532,6 +532,7 @@ export default function AuctionsPage() {
         onChange={riderFilters.onChange}
         onReset={riderFilters.onReset}
         showTeamFilter={false}
+        nationalities={riderFilters.nationalities}
       />
 
       {loading ? (

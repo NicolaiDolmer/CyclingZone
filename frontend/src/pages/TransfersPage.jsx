@@ -1346,6 +1346,7 @@ export default function TransfersPage() {
                 onChange={riderFilters.onChange}
                 onReset={riderFilters.onReset}
                 showTeamFilter={false}
+                nationalities={riderFilters.nationalities}
               />
               {filteredListings.length === 0 ? (
                 <div className="text-center py-16 text-slate-300">

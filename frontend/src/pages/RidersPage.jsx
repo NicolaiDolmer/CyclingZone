@@ -152,6 +152,7 @@ export default function RidersPage() {
   const [activeAuctionRiders, setActiveAuctionRiders] = useState(new Set());
   const [userId, setUserId] = useState(null);
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS, page: 1 });
+  const [nationalities, setNationalities] = useState([]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -169,6 +170,15 @@ export default function RidersPage() {
   }, []);
 
   useEffect(() => { loadRiders(); }, [filters]);
+
+  useEffect(() => {
+    supabase.from("riders").select("nationality_code").neq("nationality_code", null)
+      .then(({ data }) => {
+        if (!data) return;
+        const codes = [...new Set(data.map(r => r.nationality_code))].sort();
+        setNationalities(codes);
+      });
+  }, []);
 
   async function toggleWatchlist(riderId) {
     if (!userId) return;
@@ -229,7 +239,7 @@ export default function RidersPage() {
         </Link>
       </div>
 
-      <RiderFilters filters={filters} onChange={setFilter} onReset={onReset} showTeamFilter={false} />
+      <RiderFilters filters={filters} onChange={setFilter} onReset={onReset} showTeamFilter={false} nationalities={nationalities} />
 
       {loading ? (
         <div className="flex justify-center py-16">
