@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "1.82",
+    date: "2026-04-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Filtrering",
+        items: [
+          "Ny land-filter dropdown på alle rytter-oversigter — viser kun lande repræsenteret i det aktuelle datasæt, med flag og fuldt landsnavn",
+          "Fjernet 'Sortér efter' dropdown — sortering sker i stedet ved at klikke direkte på kolonneoverskrifterne (TT, BK, FL, Værdi osv.)",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.81",
     date: "2026-04-30",
     label: "Beta",
