@@ -13,35 +13,40 @@ export default function ResetPasswordPage({ session }) {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    setHasRecoverySession(Boolean(session));
-  }, [session]);
-
-  useEffect(() => {
     let active = true;
+    let resolved = false;
 
-    supabase.auth.getSession().then(({ data: { session: nextSession } }) => {
-      if (!active) return;
-      setHasRecoverySession(Boolean(nextSession));
+    function resolve(hasSession) {
+      if (resolved || !active) return;
+      resolved = true;
+      setHasRecoverySession(hasSession);
       setChecking(false);
-    });
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return;
 
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "USER_UPDATED") {
-        setHasRecoverySession(Boolean(nextSession));
-        setChecking(false);
+        resolve(Boolean(nextSession));
         return;
       }
 
       if (event === "SIGNED_OUT") {
-        setHasRecoverySession(false);
-        setChecking(false);
+        resolve(false);
       }
     });
 
+    // Fast path for implicit flow: session may already be ready
+    supabase.auth.getSession().then(({ data: { session: nextSession } }) => {
+      if (nextSession) resolve(true);
+    });
+
+    // Fallback: if no auth event fires within 2s, declare no recovery session
+    const timeout = setTimeout(() => resolve(false), 2000);
+
     return () => {
       active = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
