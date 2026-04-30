@@ -10,6 +10,7 @@ export default function SetupWizardModal({ onComplete }) {
   const [error, setError] = useState("");
 
   async function handleSave() {
+    if (saving) return;
     if (!teamName.trim() || teamName.trim().length < 3) {
       setError("Holdnavn skal være mindst 3 tegn");
       return;
@@ -22,6 +23,11 @@ export default function SetupWizardModal({ onComplete }) {
     setError("");
 
     const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError("Session udløbet — genindlæs siden og prøv igen");
+      setSaving(false);
+      return;
+    }
     const res = await fetch(`${API}/api/teams/my`, {
       method: "PUT",
       headers: {

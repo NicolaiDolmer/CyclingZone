@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "1.79",
+    date: "2026-04-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Stabilitet",
+        items: [
+          "Rettet: dashboardet kan ikke længere sidde fast i en evig indlæsningsspinner ved netværksfejl",
+          "Rettet: navn-wizarden kan ikke længere sende formularen flere gange ved gentagne Enter-tryk",
+          "Rettet: navn-wizarden viser nu en brugervenlig fejlbesked hvis sessionen er udløbet",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.78",
     date: "2026-04-30",
     label: "Beta",

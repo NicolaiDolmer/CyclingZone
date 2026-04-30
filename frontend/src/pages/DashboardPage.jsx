@@ -64,13 +64,14 @@ export default function DashboardPage() {
   useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
+    try {
     const [{ data: { user } }, { data: { session } }] = await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getSession(),
     ]);
     const { data: teamData } = await supabase
       .from("teams").select("*").eq("user_id", user.id).single();
-    if (!teamData) { setLoading(false); return; }
+    if (!teamData) { return; }
     setTeam(teamData);
 
     const { data: activeSeason } = await supabase
@@ -162,7 +163,11 @@ export default function DashboardPage() {
       setShowOnboarding(true);
     }
 
-    setLoading(false);
+    } catch (e) {
+      console.error("Dashboard load failed:", e);
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (loading) return (
