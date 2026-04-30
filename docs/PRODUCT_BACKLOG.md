@@ -5,27 +5,14 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 
 ---
 
-## Pre-launch roadmap (aktiv uge)
+## Pre-launch roadmap
 
-Se `docs/NOW.md` for detaljeret rækkefølge. Nedenfor er slice-briefings klar til session-start.
+**S6 ✅ lukket (v1.78)** — onboarding MVP, navn-wizard, velkomstmodal.
 
-### S6 — Onboarding MVP
-**Manager-værdi:** Nye managers i open beta forstår spillet fra dag 1.  
-**Scope (minimal):**
-- First-login modal (vises én gang, `first_login` flag)
-- Tvungen hold-/managernavn-wizard (bygger på S2-fix)
-- 3 tooltip-cards: Marked → Auktioner → Bestyrelse
-- Fremtrædende link til Hjælp-siden
-**Out of scope:** Fuld guided wizard med race-calendar og squad-builder (→ Onboarding v2 post-launch).  
-**Test:** Build + manuel gennemgang af new-manager flow.
-
-### S7 — Launch readiness
-**Mål:** Open beta go-live.  
-**Gate-checks:**
-- Beta reset koordineret med alle 17 managers
-- Smoke-test: login, auktion, transfer, finance, bestyrelse
-- Help + PatchNotes afspejler alle S2-S6 ændringer
-- Deploy verify (`pwsh -File scripts/verify-deploy.ps1`)
+### S7 — Launch readiness (aktiv)
+**Status:** Gate 3+4 ✅ · Gate 1+2 ⬜ (kræver manager-koordinering + manuel smoke-test)  
+**Næste session:** Fuld nulstilling → smoke-test → start ny sæson → open beta live.  
+Se `docs/NOW.md` for detaljeret tjekliste.
 
 ---
 

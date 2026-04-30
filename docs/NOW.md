@@ -11,8 +11,14 @@ S6 ✅ lukket (v1.78) — onboarding MVP, navn-wizard, velkomstmodal.
 |---|---|---|
 | 1 | Beta reset koordineret med alle 17 managers | ⬜ |
 | 2 | Smoke-test: login, auktion, transfer, finance, bestyrelse | ⬜ |
-| 3 | Help + PatchNotes afspejler alle S2–S6 ændringer | ⬜ |
-| 4 | Deploy verify (`pwsh -File scripts/verify-deploy.ps1`) | ⬜ |
+| 3 | Help + PatchNotes afspejler alle S2–S6 ændringer | ✅ |
+| 4 | Deploy verify (`pwsh -File scripts/verify-deploy.ps1`) | ✅ |
+
+## Næste session (i morgen)
+1. Admin → Beta-testværktøjer → **Fuld nulstilling** (koordinér med managers)
+2. Klik smoke-test: login · auktion på fri rytter · send transfer-tilbud · finance-side · bestyrelse
+3. Admin → start ny sæson hvis season-flow skal testes
+4. Erklær open beta live
 
 ## Post-launch → `docs/PRODUCT_BACKLOG.md`
 
