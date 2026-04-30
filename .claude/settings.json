@@ -13,5 +13,18 @@
       "mcp__claude_ai_Supabase__generate_typescript_types",
       "mcp__claude_ai_GitHub__search_repositories"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/check-now-md.sh"
+          }
+        ]
+      }
+    ]
   }
 }
