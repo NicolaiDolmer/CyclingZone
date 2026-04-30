@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { getRiderMarketValue } from "../lib/marketValues";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -187,7 +188,7 @@ export default function ActivityPage() {
         .then(r => r.json()).catch(() => ({ lending: [], borrowing: [] })),
 
       supabase.from("rider_watchlist")
-        .select(`id, created_at, rider:rider_id(id, firstname, lastname, uci_points, team:team_id(name))`)
+        .select(`id, created_at, rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, team:team_id(name))`)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
 
@@ -530,7 +531,7 @@ export default function ActivityPage() {
                       </span>
                     )}
                     <span className="text-amber-700 font-mono text-sm font-bold whitespace-nowrap flex-shrink-0">
-                      {r?.uci_points?.toLocaleString("da-DK")} UCI
+                      {getRiderMarketValue(r).toLocaleString("da-DK")} CZ$
                     </span>
                     <button onClick={() => navigate(`/riders/${r?.id}`)}
                       className="text-slate-300 hover:text-amber-700 text-sm transition-colors flex-shrink-0">

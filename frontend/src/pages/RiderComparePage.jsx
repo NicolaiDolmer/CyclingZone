@@ -2,6 +2,7 @@
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { getFlagEmoji } from "../lib/countryUtils";
+import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
 const STATS = [
   { key: "stat_fl",  label: "Flad",             icon: "═" },
@@ -31,7 +32,7 @@ function RiderSearch({ onSelect, excluded }) {
       setLoading(true);
       const { data } = await supabase
         .from("riders")
-        .select("id, firstname, lastname, uci_points, team:team_id(name)")
+        .select("id, firstname, lastname, uci_points, market_value, prize_earnings_bonus, team:team_id(name)")
         .or(`firstname.ilike.%${q}%,lastname.ilike.%${q}%`)
         .order("uci_points", { ascending: false })
         .limit(8);
@@ -67,7 +68,7 @@ function RiderSearch({ onSelect, excluded }) {
                   <p className="text-slate-400 text-xs">{r.team?.name || "Fri agent"}</p>
                 </div>
                 <span className="text-amber-700 font-mono text-xs">
-                  {(r.uci_points * 4000)?.toLocaleString("da-DK")} CZ$
+                  {formatCz(getRiderMarketValue(r))}
                 </span>
               </div>
             ))
@@ -144,7 +145,7 @@ export default function RiderComparePage() {
                 </p>
                 <p className="text-slate-400 text-xs mt-1">{r.team?.name || "Fri agent"}</p>
                 <p className="font-mono font-bold mt-2 text-sm" style={{ color: COLORS[i] }}>
-                  {(r.uci_points * 4000)?.toLocaleString("da-DK")} CZ$
+                  {formatCz(getRiderMarketValue(r))}
                 </p>
                 {r.is_u25 && (
                   <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700

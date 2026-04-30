@@ -112,10 +112,9 @@ export default function DashboardPage() {
             .order("total_points", { ascending: false })
         : Promise.resolve({ data: [] }),
       boardStatusPromise,
-      supabase.from("transfer_offers")
-        .select("id, offer_amount, status, listing:listing_id(rider:rider_id(firstname, lastname), seller_team_id), buyer:buyer_team_id(name)")
-        .eq("status", "pending")
-        .or(`buyer_team_id.eq.${teamData.id},listing_id.in.(select id from transfer_listings where seller_team_id = '${teamData.id}')`),
+      token
+        ? fetch(`${API}/api/transfers/my-offers`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+        : Promise.resolve({ sent: [], received: [] }),
     ]);
 
     setRiders(ridersRes.data || []);
@@ -126,7 +125,10 @@ export default function DashboardPage() {
     const activePlan = boardStatus?.plans?.["1yr"] || boardStatus?.plans?.["3yr"] || boardStatus?.plans?.["5yr"] || null;
     setBoard(activePlan?.board || null);
     setBoardOutlook(activePlan?.outlook || null);
-    setActiveOffers(offersRes.data || []);
+    setActiveOffers([
+      ...(offersRes.received || []).map(offer => ({ ...offer, _dir: "received" })),
+      ...(offersRes.sent || []).map(offer => ({ ...offer, _dir: "sent" })),
+    ]);
 
     const standingsMap = {};
     (standingsRes.data || []).filter(s => !s.team?.is_ai).forEach(s => {
@@ -186,6 +188,9 @@ export default function DashboardPage() {
 
   const totalSalary = riders.reduce((s, r) => s + (r.salary || 0), 0);
   const pendingIncoming = pendingIncomingCount;
+  const activeMarketOffers = activeOffers.filter(o =>
+    ["pending", "countered", "awaiting_confirmation", "window_pending"].includes(o.status)
+  );
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -328,7 +333,7 @@ export default function DashboardPage() {
             <h2 className="font-semibold text-slate-900 text-sm">Transfers & Tilbud</h2>
             <Link to="/transfers" className="text-xs text-amber-700 hover:underline">Se alle →</Link>
           </div>
-          {activeOffers.length === 0 && pendingIncoming === 0 ? (
+          {activeMarketOffers.length === 0 && pendingIncoming === 0 ? (
             <p className="text-slate-300 text-sm text-center py-4">Ingen ventende transfers</p>
           ) : (
             <div className="flex flex-col gap-2">
@@ -339,18 +344,22 @@ export default function DashboardPage() {
                   <span className="ml-auto text-[9px] bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">Afventer vindue</span>
                 </div>
               )}
-              {activeOffers.slice(0, 4).map(o => {
-                const isReceived = o.listing?.seller_team_id === team?.id;
+              {activeMarketOffers.slice(0, 4).map(o => {
+                const isReceived = o._dir === "received";
+                const needsAction = (isReceived && ["pending", "awaiting_confirmation"].includes(o.status) && !o.seller_confirmed)
+                  || (!isReceived && ["countered", "awaiting_confirmation"].includes(o.status) && !o.buyer_confirmed);
                 return (
                   <div key={o.id} onClick={() => navigate("/transfers")}
                     className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-100 rounded px-1 -mx-1">
                     <div>
-                      <p className="text-slate-900 text-sm">{o.listing?.rider?.firstname} {o.listing?.rider?.lastname}</p>
-                      <p className="text-slate-400 text-xs">{isReceived ? `Fra: ${o.buyer?.name}` : "Sendt tilbud"}</p>
+                      <p className="text-slate-900 text-sm">{o.rider?.firstname} {o.rider?.lastname}</p>
+                      <p className="text-slate-400 text-xs">{isReceived ? `Fra: ${o.buyer?.name}` : `Til: ${o.seller?.name}`}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-amber-700 font-mono text-sm">{o.offer_amount?.toLocaleString("da-DK")} CZ$</p>
-                      {isReceived && <span className="text-[9px] text-orange-700">Afventer svar</span>}
+                      <p className="text-amber-700 font-mono text-sm">{(o.counter_amount || o.offer_amount)?.toLocaleString("da-DK")} CZ$</p>
+                      <span className={`text-[9px] ${needsAction ? "text-orange-700" : "text-slate-400"}`}>
+                        {needsAction ? "Kræver handling" : o.status === "window_pending" ? "Afventer vindue" : "Aktiv"}
+                      </span>
                     </div>
                   </div>
                 );

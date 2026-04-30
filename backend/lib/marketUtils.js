@@ -5,6 +5,8 @@ export const MARKET_SQUAD_LIMITS = {
 };
 
 export const MIN_RIDERS_FOR_RACE = 8;
+export const RIDER_VALUE_FACTOR = 4000;
+export const MIN_RIDER_UCI_POINTS = 5;
 
 const DEFAULT_DIVISION = 3;
 
@@ -43,6 +45,14 @@ export function getSquadLimits(division = DEFAULT_DIVISION) {
 
 export function calculateMarketSalary(price, prizeBonus = 0) {
   return Math.max(1, Math.round(((price || 0) + (prizeBonus || 0)) * 0.15));
+}
+
+export function calculateRiderBaseValue(rider = {}) {
+  return Math.max(MIN_RIDER_UCI_POINTS, Number(rider.uci_points) || 0) * RIDER_VALUE_FACTOR;
+}
+
+export function calculateRiderMarketValue(rider = {}) {
+  return calculateRiderBaseValue(rider) + (Number(rider.prize_earnings_bonus) || 0);
 }
 
 export async function getTransferWindowOpen(supabase) {

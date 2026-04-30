@@ -4,6 +4,7 @@ import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
 import { getFlagEmoji } from "../lib/countryUtils";
+import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
 const SQUAD_LIMITS = {
   1: { min: 20, max: 30 },
@@ -26,12 +27,13 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
 }
 
 function RiderActionModal({ rider, onClose, onAction }) {
-  const [auctionPrice, setAuctionPrice] = useState(Math.max((rider.uci_points || 1) * 4000, 1));
-  const [transferPrice, setTransferPrice] = useState(Math.max((rider.uci_points || 1) * 4000, 1));
+  const riderValue = getRiderMarketValue(rider);
+  const [auctionPrice, setAuctionPrice] = useState(riderValue);
+  const [transferPrice, setTransferPrice] = useState(riderValue);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [tab, setTab] = useState("auction");
-  const guaranteedPrice = Math.floor(Math.max((rider.uci_points || 1) * 4000, 1) * 0.5);
+  const guaranteedPrice = Math.floor(riderValue * 0.5);
 
   async function startAuction() {
     setLoading(true);
@@ -82,7 +84,7 @@ function RiderActionModal({ rider, onClose, onAction }) {
         <div className="flex items-start justify-between p-5 border-b border-slate-200">
           <div>
             <h2 className="text-slate-900 font-bold text-lg">{rider.firstname} {rider.lastname}</h2>
-            <p className="text-amber-700 font-mono text-sm mt-0.5">{(rider.uci_points * 4000)?.toLocaleString("da-DK")} CZ$</p>
+            <p className="text-amber-700 font-mono text-sm mt-0.5">{formatCz(riderValue)}</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-xl">×</button>
         </div>
@@ -113,7 +115,7 @@ function RiderActionModal({ rider, onClose, onAction }) {
             <div>
               <p className="text-slate-500 text-xs mb-3">Start auktion — andre managers kan byde.</p>
               <div className="flex gap-2">
-                <input type="number" value={auctionPrice} min={1} onChange={e => setAuctionPrice(parseInt(e.target.value))}
+                <input type="number" value={auctionPrice} min={riderValue} onChange={e => setAuctionPrice(parseInt(e.target.value))}
                   className="flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm font-mono focus:outline-none focus:border-amber-400" />
                 <button onClick={startAuction} disabled={loading}
                   className="px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50">
@@ -285,7 +287,7 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-right text-amber-700 font-mono text-sm font-bold">
-                      {(r.uci_points * 4000)?.toLocaleString("da-DK")}
+                      {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
                     </td>
                     <td className="px-3 py-2.5 text-right text-slate-500 font-mono text-xs">{r.salary || 0}</td>
                     {STATS.map(key => (
@@ -316,7 +318,7 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
 
 function EconomyTab({ team, riders, transactions }) {
   const totalSalary = riders.filter(r => !r._isIncoming).reduce((s, r) => s + (r.salary || 0), 0);
-  const totalValue  = riders.filter(r => !r._isIncoming).reduce((s, r) => s + (r.uci_points || 0) * 4000, 0);
+  const totalValue  = riders.filter(r => !r._isIncoming).reduce((s, r) => s + getRiderMarketValue(r), 0);
   const sponsorIncome = team?.sponsor_income || 100;
   const netPerSeason  = sponsorIncome - totalSalary;
   const typeLabel = {
@@ -450,11 +452,11 @@ export function TeamPage() {
 
     const [ridersRes, pendingRes, finRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("team_id", t.id)
         .order("uci_points", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("pending_team_id", t.id)
         .order("uci_points", { ascending: false }),
       supabase.from("finance_transactions")
@@ -468,7 +470,7 @@ export function TeamPage() {
         .eq("from_team_id", t.id).eq("status", "active"),
       // Riders we're borrowing
       supabase.from("loan_agreements")
-        .select(`rider:rider_id(id, firstname, lastname, uci_points, salary, is_u25, nationality_code, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
+        .select(`rider:rider_id(id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, nationality_code, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
         .eq("to_team_id", t.id).eq("status", "active"),
     ]);
 
@@ -496,7 +498,7 @@ export function TeamPage() {
 
   const currentRiders = riders.filter(r => !r._isIncoming);
   const totalSalary = currentRiders.reduce((s, r) => s + (r.salary || 0), 0);
-  const totalValue  = currentRiders.reduce((s, r) => s + (r.uci_points || 0) * 4000, 0);
+  const totalValue  = currentRiders.reduce((s, r) => s + getRiderMarketValue(r), 0);
   const incomingCount = riders.filter(r => r._isIncoming).length;
   const outgoingCount = riders.filter(r => r._isOutgoing).length;
 

@@ -6,6 +6,7 @@ import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { getFlagEmoji } from "../lib/countryUtils";
+import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -32,7 +33,7 @@ const STATUS_CONFIG = {
 };
 
 // ── Modtaget tilbud ──────────────────────────────────────────────────────────
-function ReceivedOfferCard({ offer, onAction }) {
+function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
   const [counterAmt, setCounterAmt] = useState(offer.offer_amount || 0);
   const [msg, setMsg] = useState("");
   const [mode, setMode] = useState(null);
@@ -42,6 +43,7 @@ function ReceivedOfferCard({ offer, onAction }) {
   const isAwaiting = offer.status === "awaiting_confirmation";
   const isWindowPending = offer.status === "window_pending";
   const isActive = isPending || isAwaiting;
+  const canArchive = showArchive && ["accepted", "rejected", "withdrawn"].includes(offer.status);
   const cfg = STATUS_CONFIG[offer.status] || STATUS_CONFIG.pending;
   const price = (offer.counter_amount || offer.offer_amount)?.toLocaleString("da-DK");
 
@@ -77,8 +79,8 @@ function ReceivedOfferCard({ offer, onAction }) {
           </p>
         </div>
         <div className="sm:text-right">
-          <p className="text-slate-400 text-xs">UCI-pris</p>
-          <p className="text-slate-500 font-mono text-sm">{(offer.rider?.uci_points * 4000)?.toLocaleString("da-DK")} CZ$</p>
+          <p className="text-slate-400 text-xs">Værdi</p>
+          <p className="text-slate-500 font-mono text-sm">{formatCz(getRiderMarketValue(offer.rider))}</p>
         </div>
       </div>
 
@@ -165,12 +167,19 @@ function ReceivedOfferCard({ offer, onAction }) {
           </button>
         </div>
       )}
+
+      {canArchive && (
+        <button onClick={() => doAction("archive")} disabled={loading}
+          className="mt-3 w-full py-2 bg-slate-100 text-slate-500 border border-slate-200 rounded-lg text-sm hover:bg-slate-200 transition-all disabled:opacity-50">
+          Arkivér
+        </button>
+      )}
     </div>
   );
 }
 
 // ── Sendt tilbud ─────────────────────────────────────────────────────────────
-function SentOfferCard({ offer, onAction }) {
+function SentOfferCard({ offer, onAction, showArchive = true }) {
   const [newAmt, setNewAmt] = useState(offer.counter_amount || offer.offer_amount || 0);
   const [msg, setMsg] = useState("");
   const [mode, setMode] = useState(null);
@@ -181,6 +190,7 @@ function SentOfferCard({ offer, onAction }) {
   const isAwaiting = offer.status === "awaiting_confirmation";
   const isWindowPending = offer.status === "window_pending";
   const isActive = isCountered || isPending || isAwaiting;
+  const canArchive = showArchive && ["accepted", "rejected", "withdrawn"].includes(offer.status);
   const cfg = STATUS_CONFIG[offer.status] || STATUS_CONFIG.pending;
   const price = (offer.counter_amount || offer.offer_amount)?.toLocaleString("da-DK");
 
@@ -309,6 +319,13 @@ function SentOfferCard({ offer, onAction }) {
             Annuller handel
           </button>
         </div>
+      )}
+
+      {canArchive && (
+        <button onClick={() => doAction("archive")} disabled={loading}
+          className="mt-3 w-full py-2 bg-slate-100 text-slate-500 border border-slate-200 rounded-lg text-sm hover:bg-slate-200 transition-all disabled:opacity-50">
+          Arkivér
+        </button>
       )}
     </div>
   );
@@ -493,7 +510,7 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
     setSearching(true);
     const { data } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, uci_points, team_id, team:team_id(name)")
+        .select("id, firstname, lastname, uci_points, prize_earnings_bonus, team_id, team:team_id(name)")
       .ilike("lastname", `%${q}%`)
       .not("team_id", "is", null)
       .limit(20);
@@ -525,7 +542,7 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
           className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400">
           <option value="">— Vælg rytter —</option>
           {myRiders.map(r => (
-            <option key={r.id} value={r.id}>{r.firstname} {r.lastname} (UCI {r.uci_points?.toLocaleString("da-DK")})</option>
+              <option key={r.id} value={r.id}>{r.firstname} {r.lastname} ({formatCz(getRiderMarketValue(r))})</option>
           ))}
         </select>
       </div>
@@ -544,7 +561,7 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
                 <button key={r.id} onClick={() => pickRequested(r)}
                   className="w-full text-left px-3 py-2 hover:bg-slate-100 text-slate-900 text-sm border-b border-slate-200 last:border-0">
                   {r.firstname} {r.lastname}
-                  <span className="text-slate-400 text-xs ml-2">{r.team?.name} · UCI {r.uci_points?.toLocaleString("da-DK")}</span>
+                        <span className="text-slate-400 text-xs ml-2">{r.team?.name} · {formatCz(getRiderMarketValue(r))}</span>
                 </button>
               ))}
             </div>
@@ -631,8 +648,8 @@ function LoanCard({ loan, myTeamId, onAction }) {
           <p className="text-slate-900 font-mono text-sm font-bold">{loan.loan_fee?.toLocaleString("da-DK")} CZ$</p>
         </div>
         <div className="bg-slate-50 rounded-lg px-3 py-2 text-center">
-          <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-0.5">UCI-værdi</p>
-          <p className="text-amber-700 font-mono text-sm font-bold">{loan.rider?.uci_points?.toLocaleString("da-DK")}</p>
+            <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-0.5">Værdi</p>
+            <p className="text-amber-700 font-mono text-sm font-bold">{formatCz(getRiderMarketValue(loan.rider))}</p>
         </div>
         <div className="bg-slate-50 rounded-lg px-3 py-2 text-center">
           <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-0.5">Købsoption</p>
@@ -697,7 +714,7 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
     setSearching(true);
     const { data } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, uci_points, team_id, team:team_id(id, name)")
+        .select("id, firstname, lastname, uci_points, prize_earnings_bonus, team_id, team:team_id(id, name)")
       .ilike("lastname", `%${q}%`)
       .not("team_id", "is", null)
       .limit(20);
@@ -736,7 +753,7 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
                 <button key={r.id} onClick={() => { setSelectedRider(r); setSearch(`${r.firstname} ${r.lastname}`); setSearchResults([]); }}
                   className="w-full text-left px-3 py-2 hover:bg-slate-100 text-slate-900 text-sm border-b border-slate-200 last:border-0">
                   {r.firstname} {r.lastname}
-                  <span className="text-slate-400 text-xs ml-2">{r.team?.name} · UCI {r.uci_points?.toLocaleString("da-DK")}</span>
+                    <span className="text-slate-400 text-xs ml-2">{r.team?.name} · {formatCz(getRiderMarketValue(r))}</span>
                 </button>
               ))}
             </div>
@@ -815,7 +832,7 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
         </div>
         <div className="text-right">
           <p className="text-amber-700 font-mono font-bold text-lg">{listing.asking_price?.toLocaleString("da-DK")} CZ$</p>
-          <p className="text-slate-400 text-xs">Værdi: {(listing.rider?.uci_points * 4000)?.toLocaleString("da-DK")} CZ$</p>
+      <p className="text-slate-400 text-xs">Værdi: {formatCz(getRiderMarketValue(listing.rider))}</p>
         </div>
       </div>
 
@@ -880,6 +897,8 @@ export default function TransfersPage() {
   const [listings, setListings] = useState([]);
   const [sentOffers, setSentOffers] = useState([]);
   const [receivedOffers, setReceivedOffers] = useState([]);
+  const [archivedSentOffers, setArchivedSentOffers] = useState([]);
+  const [archivedReceivedOffers, setArchivedReceivedOffers] = useState([]);
   const [sentSwaps, setSentSwaps] = useState([]);
   const [receivedSwaps, setReceivedSwaps] = useState([]);
   const [lendingLoans, setLendingLoans] = useState([]);
@@ -912,13 +931,15 @@ export default function TransfersPage() {
       fetch(`${API}/api/transfers/my-offers`, { headers }).then(r => r.json()),
       fetch(`${API}/api/transfers/swaps`, { headers }).then(r => r.json()),
       fetch(`${API}/api/loans`, { headers }).then(r => r.json()),
-      supabase.from("riders").select("id, firstname, lastname, uci_points").eq("team_id", team.id).order("lastname"),
+      supabase.from("riders").select("id, firstname, lastname, uci_points, prize_earnings_bonus").eq("team_id", team.id).order("lastname"),
       fetch(`${API}/api/transfer-window`, { headers }).then(r => r.json()),
     ]);
 
     setListings(Array.isArray(listingsRes) ? listingsRes : []);
     setSentOffers(offersRes.sent || []);
     setReceivedOffers(offersRes.received || []);
+    setArchivedSentOffers(offersRes.archivedSent || []);
+    setArchivedReceivedOffers(offersRes.archivedReceived || []);
     setSentSwaps(swapsRes.sent || []);
     setReceivedSwaps(swapsRes.received || []);
     setLendingLoans(loansRes.lending || []);
@@ -979,6 +1000,7 @@ export default function TransfersPage() {
           counter:         "↔ Modbud sendt",
           new_offer:       "↔ Nyt bud sendt",
           withdraw:        "Tilbud trukket tilbage",
+          archive:         "Tilbud arkiveret",
         };
         showMsg(msgs[action] || "✅ Opdateret");
       }
@@ -1129,6 +1151,7 @@ export default function TransfersPage() {
         {[
           { key: "received", label: "Modtagne tilbud", badge: pendingReceived },
           { key: "sent",     label: "Sendte tilbud",   badge: pendingSent },
+          { key: "archive",  label: `Historik (${archivedReceivedOffers.length + archivedSentOffers.length})` },
           { key: "swaps",    label: "Byttehandler",  badge: pendingSwaps },
           { key: "loans",    label: "Lejeaftaler",   badge: pendingLoans },
           { key: "market",   label: `Marked (${listings.length})` },
@@ -1182,6 +1205,40 @@ export default function TransfersPage() {
                 sentOffers.map(o => (
                   <SentOfferCard key={o.id} offer={o} onAction={handleOfferAction} />
                 ))
+              )}
+            </div>
+          )}
+
+          {tab === "archive" && (
+            <div className="flex flex-col gap-4">
+              {archivedReceivedOffers.length + archivedSentOffers.length === 0 ? (
+                <div className="text-center py-16 text-slate-300">
+                  <p className="text-4xl mb-3">◎</p>
+                  <p>Ingen arkiverede tilbud</p>
+                </div>
+              ) : (
+                <>
+                  {archivedReceivedOffers.length > 0 && (
+                    <div>
+                      <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Arkiverede modtagne tilbud</p>
+                      <div className="flex flex-col gap-3">
+                        {archivedReceivedOffers.map(o => (
+                          <ReceivedOfferCard key={o.id} offer={o} onAction={handleOfferAction} showArchive={false} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {archivedSentOffers.length > 0 && (
+                    <div>
+                      <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">Arkiverede sendte tilbud</p>
+                      <div className="flex flex-col gap-3">
+                        {archivedSentOffers.map(o => (
+                          <SentOfferCard key={o.id} offer={o} onAction={handleOfferAction} showArchive={false} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

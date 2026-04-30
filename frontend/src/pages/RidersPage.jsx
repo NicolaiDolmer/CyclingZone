@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
 import { useNavigate, Link } from "react-router-dom";
 import { getFlagEmoji } from "../lib/countryUtils";
+import { getRiderMarketValue } from "../lib/marketValues";
 
 const STATS = [
   { key: "stat_fl", label: "FL" }, { key: "stat_bj", label: "BJ" },
@@ -80,7 +81,7 @@ function RiderCard({ rider, onClick, watchlist, onToggleWatchlist, isInAuction }
         </div>
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
           <span className="text-amber-700 font-mono font-bold text-xs whitespace-nowrap">
-            {(rider.uci_points * 4000)?.toLocaleString("da-DK")} CZ$
+            {getRiderMarketValue(rider).toLocaleString("da-DK")} CZ$
           </span>
           <StarButton riderId={rider.id} watchlist={watchlist} onToggle={onToggleWatchlist} />
         </div>
@@ -121,7 +122,7 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }
       </td>
       <td className="px-3 py-2.5 text-right" onClick={() => onSelect(rider)}>
         <span className="text-amber-700 font-mono text-sm font-bold">
-          {(rider.uci_points * 4000)?.toLocaleString("da-DK")}
+          {getRiderMarketValue(rider).toLocaleString("da-DK")}
         </span>
       </td>
       <td className="px-3 py-2.5 text-right" onClick={() => onSelect(rider)}>
@@ -185,7 +186,7 @@ export default function RidersPage() {
     const statKeys = STATS.map(s => s.key).join(", ");
     let query = supabase
       .from("riders")
-      .select(`id, firstname, lastname, birthdate, uci_points, salary, is_u25, nationality_code,
+      .select(`id, firstname, lastname, birthdate, uci_points, salary, market_value, prize_earnings_bonus, is_u25, nationality_code,
         ${statKeys}, team:team_id(id, name)`, { count: "exact" })
       .range((filters.page - 1) * 50, filters.page * 50 - 1);
 

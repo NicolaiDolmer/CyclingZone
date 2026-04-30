@@ -205,7 +205,7 @@ const SECTIONS = [
       },
       {
         title: "Funktioner i Talentspejder",
-        text: "Du kan sortere og filtrere dine gemte ryttere på alle stats, UCI-pris, alder, U25/U23 og fri agent. Du kan tilføje private noter til hver rytter. På fri agents kan du starte en auktion direkte fra ønskelisten.",
+        text: "Du kan sortere og filtrere dine gemte ryttere på alle stats, Værdi, løn, alder, U25/U23 og fri agent. Du kan tilføje private noter til hver rytter. På fri agents kan du starte en auktion direkte fra ønskelisten.",
       },
     ],
   },
@@ -244,7 +244,7 @@ const SECTIONS = [
         title: "Sæsonforløb",
         steps: [
           "Admin lukker transfervinduet og starter ny sæson.",
-          "Ved sæsonstart: ventende transfers behandles, lønninger genberegnes til 15% af markedsværdien, sponsorpenge udbetales.",
+        "Ved sæsonstart: ventende transfers behandles, lønninger følger den aktuelle markedsværdi, og sponsorpenge udbetales.",
           "Løb køres i Pro Cycling Manager og resultaterne indberettes af en manager og godkendes af admin.",
           "Ved sæsonafslutning: divisionsbonus udbetales, point tælles op, op/nedrykning afgøres, lønninger trækkes, gældsrenter tilskrives.",
         ],
@@ -319,11 +319,11 @@ const SECTIONS = [
     content: [
       {
         title: "Værdi og pris",
-        text: "En rytters markedsværdi er UCI-point × 4.000 CZ$ — en rytter med 500 UCI-point er 2.000.000 CZ$ værd. Startprisen på en auktion skal minimum svare til rytterens Værdi. Eneste undtagelse er Garanteret salg, som låser startprisen til 50% af Værdi. Kolonnen 'Værdi' i Rytterdatabasen viser den beregnede markedsværdi.",
+        text: "En rytters markedsværdi er baseværdien (minimum 5 UCI-point × 4.000 CZ$) plus gennemsnittet af rytterens præmiepenge i de seneste op til 3 afsluttede sæsoner. Startprisen på en auktion skal minimum svare til rytterens Værdi. Eneste undtagelse er Garanteret salg, som låser startprisen til 50% af Værdi.",
       },
       {
         title: "Løn",
-        text: "Hver rytters årsløn er ca. 15% af markedsværdien og sættes ved købet. Lønnen er synlig som en separat kolonne i Rytterdatabasen og kan sorteres og filtreres på. Lønninger betales automatisk ved sæsonafslutning. Kan din balance ikke dække lønningerne, optager systemet automatisk et nødlån.",
+        text: "Hver rytters årsløn er ca. 10% af markedsværdien og sættes ved købet eller ved den planlagte løngenberegning. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved sæsonafslutning. Kan din balance ikke dække lønningerne, optager systemet automatisk et nødlån.",
       },
       {
         title: "Rytterstatistik",
@@ -434,7 +434,7 @@ const FAQ = [
   },
   {
     q: "Hvordan ser jeg en rytters løn?",
-    a: "Løn er en synlig kolonne i Rytterdatabasen og kan sorteres og filtreres på. Du kan filtrere på løn-interval under 'Løn CZ$ (min–max)' i filterpanelet. Lønnens størrelse afhænger af rytterens markedsværdi og din sæsonpræmiehistorik på tidspunktet for købet.",
+    a: "Løn er en synlig kolonne i Rytterdatabasen og ønskelisten og kan sorteres og filtreres på. Du kan filtrere på løn-interval under 'Løn CZ$ (min–max)' i filterpanelet. Lønnens størrelse afhænger af rytterens markedsværdi, som også inkluderer gennemsnittet af rytterens seneste sæsonpræmiepenge.",
   },
   {
     q: "Hvor kan jeg se om en rytter udvikler sig?",

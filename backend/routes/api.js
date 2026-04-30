@@ -59,6 +59,7 @@ import {
   repairSeasonEndFinanceAndBoard,
   updateStandings,
 } from "../lib/economyEngine.js";
+import { calculateRiderMarketValue } from "../lib/marketUtils.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
   buildBoardRequestOptions,
@@ -450,7 +451,7 @@ router.get("/auctions", requireAuth, async (req, res) => {
     .select(`
       id, starting_price, current_price, calculated_end, actual_end,
       status, extension_count, created_at, is_guaranteed_sale,
-      rider:rider_id(id, firstname, lastname, uci_points, is_u25,
+      rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, is_u25,
         stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
         stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,
         stat_res, stat_ftr),
@@ -474,7 +475,7 @@ router.post("/auctions", requireAuth, async (req, res) => {
   // Verify rider belongs to this team
   const { data: rider } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, uci_points")
+    .select("id, firstname, lastname, team_id, uci_points, prize_earnings_bonus")
     .eq("id", rider_id)
     .single();
 
@@ -509,7 +510,7 @@ router.post("/auctions", requireAuth, async (req, res) => {
     return res.status(409).json({ error: "Rider already has an active auction" });
   }
 
-  const riderValue = Math.max(rider.uci_points * 4000, 1);
+  const riderValue = Math.max(calculateRiderMarketValue(rider), 1);
 
   if (is_guaranteed_sale && rider.team_id !== req.team.id) {
     return res.status(403).json({ error: "Garanteret salg kan kun bruges på dine egne ryttere" });
@@ -796,7 +797,7 @@ router.get("/transfers", requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from("transfer_listings")
     .select(`id, asking_price, status, created_at,
-      rider:rider_id(id, firstname, lastname, uci_points, is_u25, nationality_code,
+      rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, is_u25, nationality_code,
         stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
         stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod, stat_res, stat_ftr),
       seller:seller_team_id(id, name)`)
@@ -919,20 +920,41 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const [sentRes, receivedRes] = await Promise.all([
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, uci_points, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
         seller:seller_team_id(id, name)`)
       .eq("buyer_team_id", req.team.id)
-      .not("status", "eq", "withdrawn")
+      .is("buyer_archived_at", null)
       .order("updated_at", { ascending: false }),
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, uci_points, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
         buyer:buyer_team_id(id, name)`)
       .eq("seller_team_id", req.team.id)
-      .not("status", "eq", "withdrawn")
+      .is("seller_archived_at", null)
       .order("updated_at", { ascending: false }),
   ]);
-  res.json({ sent: sentRes.data || [], received: receivedRes.data || [] });
+  const [archivedSentRes, archivedReceivedRes] = await Promise.all([
+    supabase.from("transfer_offers")
+      .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
+        rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        seller:seller_team_id(id, name)`)
+      .eq("buyer_team_id", req.team.id)
+      .not("buyer_archived_at", "is", null)
+      .order("buyer_archived_at", { ascending: false }),
+    supabase.from("transfer_offers")
+      .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
+        rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        buyer:buyer_team_id(id, name)`)
+      .eq("seller_team_id", req.team.id)
+      .not("seller_archived_at", "is", null)
+      .order("seller_archived_at", { ascending: false }),
+  ]);
+  res.json({
+    sent: sentRes.data || [],
+    received: receivedRes.data || [],
+    archivedSent: archivedSentRes.data || [],
+    archivedReceived: archivedReceivedRes.data || [],
+  });
 });
 
 // PATCH /api/transfers/offers/:id — accept, reject, counter, confirm, cancel, or withdraw
@@ -949,6 +971,19 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
   const isSeller = offer.seller_team_id === req.team.id;
   const isBuyer = offer.buyer_team_id === req.team.id;
   if (!isSeller && !isBuyer) return res.status(403).json({ error: "Ikke involveret i dette tilbud" });
+
+  if (action === "archive") {
+    if (!["accepted", "rejected", "withdrawn"].includes(offer.status)) {
+      return res.status(400).json({ error: "Kun afsluttede tilbud kan arkiveres" });
+    }
+
+    const archiveField = isSeller ? "seller_archived_at" : "buyer_archived_at";
+    await supabase.from("transfer_offers")
+      .update({ [archiveField]: new Date().toISOString() })
+      .eq("id", offer.id);
+
+    return res.json({ success: true, action: "archived" });
+  }
 
   // ACCEPT — seller accepts buyer's offer → awaiting buyer confirmation
   if (action === "accept" && isSeller && offer.status === "pending") {

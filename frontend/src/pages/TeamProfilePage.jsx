@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
 import { getFlagEmoji } from "../lib/countryUtils";
+import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -46,11 +47,11 @@ export default function TeamProfilePage() {
     const [teamRes, ridersRes, pendingRes, standingRes, windowRes] = await Promise.all([
       supabase.from("teams").select("*").eq("id", id).single(),
       supabase.from("riders")
-        .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("team_id", id)
         .order("uci_points", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, uci_points, salary, is_u25, pending_team_id, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, ${STATS.join(", ")}`)
         .eq("pending_team_id", id)
         .order("uci_points", { ascending: false }),
       supabase.from("season_standings")
@@ -100,7 +101,7 @@ export default function TeamProfilePage() {
   });
 
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
-  const totalValue = currentRiders.reduce((s, r) => s + (r.uci_points || 0), 0);
+  const totalValue = currentRiders.reduce((s, r) => s + getRiderMarketValue(r), 0);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -197,7 +198,7 @@ export default function TeamProfilePage() {
                   <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                     className="px-4 py-3 text-left font-medium uppercase">Rytter</SortTh>
                   <SortTh sortKey="uci_points" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                    className="px-4 py-3 text-right font-medium">UCI</SortTh>
+                    className="px-4 py-3 text-right font-medium">Værdi</SortTh>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key} sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                       className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
@@ -222,7 +223,7 @@ export default function TeamProfilePage() {
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-right text-amber-700 font-mono font-bold">
-                      {r.uci_points?.toLocaleString("da-DK")}
+                      {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
                     </td>
                     {STATS.map(key => (
                       <td key={key} className="px-1.5 py-2.5 text-center">

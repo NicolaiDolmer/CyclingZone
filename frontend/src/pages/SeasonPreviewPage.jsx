@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -22,7 +23,7 @@ export default function SeasonPreviewPage() {
 
     const [teamsRes, ridersRes, seasonRes] = await Promise.all([
       supabase.from("teams").select("id, name, division, sponsor_income").eq("is_ai", false).order("division").order("name"),
-      supabase.from("riders").select("id, team_id, uci_points, is_u25, stat_bj, stat_sp, stat_tt, stat_fl").not("team_id", "is", null),
+      supabase.from("riders").select("id, team_id, uci_points, market_value, prize_earnings_bonus, is_u25, stat_bj, stat_sp, stat_tt, stat_fl").not("team_id", "is", null),
       supabase.from("seasons").select("*").eq("status", "active").single(),
     ]);
 
@@ -34,12 +35,12 @@ export default function SeasonPreviewPage() {
 
     const enriched = (teamsRes.data || []).map(t => {
       const riders = ridersByTeam[t.id] || [];
-      const totalValue = riders.reduce((s, r) => s + (r.uci_points || 0) * 4000, 0);
+      const totalValue = riders.reduce((s, r) => s + getRiderMarketValue(r), 0);
       const avgBj = riders.length ? Math.round(riders.reduce((s, r) => s + (r.stat_bj || 0), 0) / riders.length) : 0;
       const avgSp = riders.length ? Math.round(riders.reduce((s, r) => s + (r.stat_sp || 0), 0) / riders.length) : 0;
       const avgTt = riders.length ? Math.round(riders.reduce((s, r) => s + (r.stat_tt || 0), 0) / riders.length) : 0;
       const u25Count = riders.filter(r => r.is_u25).length;
-      const topRider = riders.sort((a, b) => b.uci_points - a.uci_points)[0];
+      const topRider = riders.sort((a, b) => getRiderMarketValue(b) - getRiderMarketValue(a))[0];
       return { ...t, riders, totalValue, avgBj, avgSp, avgTt, u25Count, topRider, riderCount: riders.length };
     });
 
@@ -157,7 +158,7 @@ export default function SeasonPreviewPage() {
                     {t.topRider.firstname} {t.topRider.lastname}
                   </span>
                   <span className="text-amber-700 font-mono text-xs ml-auto">
-                    {(t.topRider.uci_points * 4000)?.toLocaleString("da-DK")} CZ$
+                    {formatCz(getRiderMarketValue(t.topRider))}
                   </span>
                 </div>
               )}

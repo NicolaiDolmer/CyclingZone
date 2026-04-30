@@ -6,6 +6,7 @@ import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { getFlagEmoji } from "../lib/countryUtils";
+import { formatCz, getMinimumAuctionBid, getRiderMarketValue } from "../lib/marketValues";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -27,6 +28,13 @@ function getAuctionLeaderName(auction) {
   if (auction?.current_bidder?.name) return auction.current_bidder.name;
   if (getAuctionLeaderId(auction) === auction?.seller_team_id) return auction?.seller?.name;
   return null;
+}
+
+function getAuctionSellerLabel(auction) {
+  if (auction?.seller_team_id && auction?.rider?.team_id === auction.seller_team_id) {
+    return auction?.seller?.name || "Manager";
+  }
+  return "AI";
 }
 
 function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
@@ -69,9 +77,10 @@ function Countdown({ end, status }) {
 
 // ── Auction table row ─────────────────────────────────────────────────────────
 function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
-  const minBid = (auction.current_price || 1) + (auction.min_increment || 1);
+  const minBid = getMinimumAuctionBid(auction.current_price || 0);
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
+  const [errorText, setErrorText] = useState("");
 
   const isMyRider = auction.rider?.team_id === myTeamId;
   const isSeller  = isManagerSeller(auction, myTeamId);
@@ -79,22 +88,25 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
   const canBid    = !isMyRider && auction.status !== "completed";
 
   useEffect(() => {
-    setBidAmount((auction.current_price || 1) + (auction.min_increment || 1));
-  }, [auction.current_price, auction.min_increment]);
+    setBidAmount(minBid);
+    setErrorText("");
+  }, [minBid]);
 
   async function handleBid() {
     if (bidAmount > myBalance) {
       setBidStatus("error");
+      setErrorText("Buddet overstiger din balance");
       setTimeout(() => setBidStatus(null), 3000);
       return;
     }
     setBidStatus("loading");
-    const ok = await onBid(auction.id, bidAmount);
-    if (ok) {
+    const result = await onBid(auction.id, bidAmount);
+    if (result.ok) {
       setBidStatus("success");
       setTimeout(() => setBidStatus(null), 2500);
     } else {
       setBidStatus("error");
+      setErrorText(result.error || "Buddet kunne ikke placeres");
       setTimeout(() => setBidStatus(null), 3000);
     }
   }
@@ -150,7 +162,12 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
 
       {/* UCI */}
       <td className="px-2 py-2.5 text-right text-amber-700 font-mono font-bold text-xs whitespace-nowrap">
-        {r?.uci_points ? (r.uci_points * 4000).toLocaleString("da-DK") : "—"}
+        {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
+      </td>
+
+      {/* Sælger */}
+      <td className="px-3 py-2.5 text-left text-slate-500 text-xs whitespace-nowrap">
+        <span className="truncate max-w-[120px] inline-block">{getAuctionSellerLabel(auction)}</span>
       </td>
 
       {/* Stats */}
@@ -207,6 +224,10 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
                bidStatus === "success" ? "✓" :
                imWinning ? "Hæv" : "Byd"}
             </button>
+            <div className="min-w-[110px]">
+              <p className="text-[10px] text-slate-400">Min. {minBid.toLocaleString("da-DK")}</p>
+              {bidStatus === "error" && errorText && <p className="text-[10px] text-red-700">{errorText}</p>}
+            </div>
           </div>
         ) : isSeller ? (
           <span className="text-slate-300 text-xs">Du sælger</span>
@@ -219,9 +240,10 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
 }
 
 function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
-  const minBid = (auction.current_price || 1) + (auction.min_increment || 1);
+  const minBid = getMinimumAuctionBid(auction.current_price || 0);
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
+  const [errorText, setErrorText] = useState("");
 
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -237,13 +259,15 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
   async function handleBid() {
     if (bidAmount > myBalance) {
       setBidStatus("error");
+      setErrorText("Buddet overstiger din balance");
       setTimeout(() => setBidStatus(null), 3000);
       return;
     }
     setBidStatus("loading");
-    const ok = await onBid(auction.id, bidAmount);
-    setBidStatus(ok ? "success" : "error");
-    setTimeout(() => setBidStatus(null), ok ? 2500 : 3000);
+    const result = await onBid(auction.id, bidAmount);
+    setBidStatus(result.ok ? "success" : "error");
+    setErrorText(result.error || "");
+    setTimeout(() => setBidStatus(null), result.ok ? 2500 : 3000);
   }
 
   return (
@@ -274,8 +298,12 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
         <div className="bg-slate-50 rounded-lg px-3 py-2">
           <p className="text-slate-400 text-[10px] uppercase tracking-wider">Værdi</p>
           <p className="text-amber-700 font-mono font-bold text-sm">
-            {r?.uci_points ? (r.uci_points * 4000).toLocaleString("da-DK") : "—"} CZ$
+            {formatCz(getRiderMarketValue(r))}
           </p>
+        </div>
+        <div className="bg-slate-50 rounded-lg px-3 py-2">
+          <p className="text-slate-400 text-[10px] uppercase tracking-wider">Sælger</p>
+          <p className="text-slate-700 text-sm font-medium truncate">{getAuctionSellerLabel(auction)}</p>
         </div>
         <div className="bg-slate-50 rounded-lg px-3 py-2">
           <p className="text-slate-400 text-[10px] uppercase tracking-wider">Højeste bud</p>
@@ -309,6 +337,8 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
               onChange={e => setBidAmount(parseInt(e.target.value) || minBid)}
               className="min-w-0 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none focus:border-amber-400"
             />
+            <p className="col-span-2 text-[10px] text-slate-400">Min. bud: {minBid.toLocaleString("da-DK")} CZ$</p>
+            {bidStatus === "error" && errorText && <p className="col-span-2 text-[11px] text-red-700">{errorText}</p>}
             <button
               onClick={handleBid}
               disabled={bidStatus === "loading" || bidAmount < minBid}
@@ -398,7 +428,7 @@ export default function AuctionsPage() {
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale,
           seller_team_id, current_bidder_id,
           rider:rider_id(id, firstname, lastname, uci_points, is_u25, team_id, birthdate, nationality_code,
-            ${STATS.join(", ")}),
+            prize_earnings_bonus, ${STATS.join(", ")}),
           seller:seller_team_id(id, name),
           current_bidder:current_bidder_id(id, name)`)
         .in("status", ["active", "extended"])
@@ -434,9 +464,11 @@ export default function AuctionsPage() {
         body: JSON.stringify({ context: "auction_bid", data: { amount } }),
       }).catch(() => {});
       loadAll();
-      return true;
+      return { ok: true };
     }
-    return false;
+    let data = {};
+    try { data = await res.json(); } catch {}
+    return { ok: false, error: data.error || "Buddet kunne ikke placeres" };
   }
 
   const riderFilters = useClientRiderFilters(auctions.map(a => a.rider).filter(Boolean));
@@ -547,6 +579,7 @@ export default function AuctionsPage() {
                   <SortTh sortKey="uci_points" sort={activeSort("uci_points") ? "uci_points" : riderFilters.filters.sort}
                     sortDir={activeSortDir("uci_points")} onSort={handleSort}
                     className="px-2 py-3 text-right font-medium">Værdi</SortTh>
+                  <th className="px-3 py-3 text-left text-slate-400 font-medium uppercase tracking-wider">Sælger</th>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key}
                       sort={activeSort(key) ? key : riderFilters.filters.sort}

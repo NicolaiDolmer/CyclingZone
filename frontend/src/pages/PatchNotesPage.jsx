@@ -2,6 +2,28 @@
 
 const PATCHES = [
   {
+    version: "1.77",
+    date: "2026-04-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Marked",
+        items: [
+          "Rytterværdi viser nu dynamisk markedsværdi: baseværdi plus gennemsnit af seneste op til 3 sæsoners præmiepenge",
+          "Auktionsbudsfeltet udfyldes nu med laveste gyldige bud: mindst 10% over nuværende pris, afrundet op til nærmeste 1.000 CZ$",
+          "Auktionslisten viser nu sælger tydeligt som AI eller managerhold",
+        ],
+      },
+      {
+        category: "Transfers",
+        items: [
+          "Sendte og modtagne tilbud kan arkiveres, når de er afsluttede",
+          "Dashboardets Transfers & Tilbud viser nu konkrete tilbud, modpart, beløb og om noget kræver handling",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.76",
     date: "2026-04-30",
     label: "Beta",
@@ -1294,7 +1316,7 @@ const PATCHES = [
           "Sæsonresultater — slutstillinger med op/nedrykning markeret, altid tilgængelig",
           "Pointudviklingsgraf — SVG-linjegraf for dit holds kumulative point løb for løb",
           "Delt RiderFilters komponent — samme filtrering på alle sider med ryttere",
-          "Filtrer på navn, UCI-pris, alder, U25, U23, fri agent og hold",
+          "Filtrer på navn, Værdi, alder, U25, U23, fri agent og hold",
           "Sortering på alle stats med retningspil",
           "Aktive filter-chips der kan fjernes enkeltvis",
         ],

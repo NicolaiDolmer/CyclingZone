@@ -6,6 +6,7 @@ import {
   RESULT_TYPES,
   getRaceClassLabel,
 } from "../lib/uciRaceClasses";
+import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -34,7 +35,7 @@ function ManualOverride({ onMsg, onRefresh, teams }) {
     setQuery(q);
     if (q.length < 2) { setRiderResults([]); return; }
     const { data } = await supabase.from("riders")
-      .select("id, firstname, lastname, uci_points, team:team_id(name)")
+      .select("id, firstname, lastname, uci_points, market_value, prize_earnings_bonus, team:team_id(name)")
       .or(`firstname.ilike.%${q}%,lastname.ilike.%${q}%`)
       .limit(5);
     setRiderResults(data || []);
@@ -68,7 +69,7 @@ function ManualOverride({ onMsg, onRefresh, teams }) {
               <div key={r.id} className="px-3 py-2 cursor-pointer hover:bg-slate-100 border-b border-slate-200 last:border-0"
                 onClick={() => { setSelectedRider(r); setQuery(`${r.firstname} ${r.lastname}`); setRiderResults([]); }}>
                 <p className="text-slate-900 text-sm">{r.firstname} {r.lastname}</p>
-                <p className="text-slate-400 text-xs">{r.team?.name || "Fri agent"} — {(r.uci_points * 4000)?.toLocaleString()} CZ$</p>
+                <p className="text-slate-400 text-xs">{r.team?.name || "Fri agent"} — {formatCz(getRiderMarketValue(r))}</p>
               </div>
             ))}
           </div>

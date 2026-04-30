@@ -22,6 +22,10 @@ import {
   getPlanDuration,
 } from "./boardEngine.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
+import {
+  MIN_RIDER_UCI_POINTS,
+  RIDER_VALUE_FACTOR,
+} from "./marketUtils.js";
 
 let defaultSupabaseClientPromise;
 
@@ -683,7 +687,7 @@ async function fetchAllRows(buildQuery, pageSize = SUPABASE_PAGE_SIZE) {
  * Recalculates prize_earnings_bonus and salary for every rider at season end.
  *
  * prize_earnings_bonus = average of the rider's total prize earnings across
- * the last 1-3 completed seasons (only seasons with actual earnings counted).
+ * the last 1-3 completed seasons. Seasons with no prize money count as 0.
  *
  * salary = max(1, round((uci_points * 4000 + prize_earnings_bonus) * 0.10))
  */
@@ -737,17 +741,15 @@ export async function updateRiderValues(supabaseClient) {
       .select("id, uci_points")
   ));
 
-  const MIN_UCI = 5;
-
   const updates = [];
 
   for (const rider of allRiders || []) {
-    const seasonTotals = Object.values(riderSeasonEarnings[rider.id] || {});
+    const seasonTotals = seasonIds.map(seasonId => riderSeasonEarnings[rider.id]?.[seasonId] || 0);
     const newBonus = seasonTotals.length > 0
       ? Math.round(seasonTotals.reduce((s, v) => s + v, 0) / seasonTotals.length)
       : 0;
 
-    const basePrice = Math.max(MIN_UCI, rider.uci_points || 0) * 4000;
+    const basePrice = Math.max(MIN_RIDER_UCI_POINTS, rider.uci_points || 0) * RIDER_VALUE_FACTOR;
     const newSalary = Math.max(1, Math.round((basePrice + newBonus) * SALARY_RATE));
 
     updates.push({

@@ -18,6 +18,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Hold & Ryttere
 - Holdoversigt og holdprofil-sider
 - Rytterbibliotek med søgning + filtre (nation, UCI, U25, ledig, evne-min/max, osv.) + løn-kolonne og lønfilter (v1.47)
+- Rytterværdi i marked/visninger er dynamisk: `market_value = max(5, uci_points) × 4000 + prize_earnings_bonus`, hvor bonus er gennemsnit af seneste op til 3 afsluttede sæsoners præmiepenge (v1.77)
 - Rytterdetalje-side (stats, historik, watchlist-tæller, ryttertype-badge, ⚡-badge ved aktiv auktion)
 - Rytter-sammenligning (side-by-side)
 - Watchlist + notifikation når ønskeliste-rytter sættes til salg eller auktion (v1.35)
@@ -26,9 +27,11 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Auktioner
 - Opret auktion med starttid + vindueslogik
 - Bud-placering med auto-forlængelse (10 min ved bud nær slut)
-- Garanteret salg (startpris = 50% af UCI-pris) — kun egne ryttere; exploit lukket (v1.46)
+- Garanteret salg (startpris = 50% af markedsværdi) — kun egne ryttere; exploit lukket (v1.46)
 - Minimum startpris håndhævet (backend + frontend): startbud ≥ rytterens Værdi; garanteret salg er eneste undtagelse
 - Minimum overbud håndhæves som 10% over nuværende pris, afrundet op til nærmeste 1.000 CZ$
+- Auktionsbudfeltet forudfyldes med laveste gyldige bud, og UI viser konkrete backend-fejl ved for lavt bud, saldo eller reserveret squad-plads (v1.77)
+- Auktionslisten viser sælger som AI eller managerhold, så ikke-ejede auktioner ikke ligner managersalg (v1.77)
 - Aktive auktionsføringer reserverer både disponibel balance og squad-plads ved nye bud
 - Auktionsfinalisering via cron (60s) — delt path for cron/admin/API, korrekt ejer-check og squad-limit
 - Bank/AI/fri rytter-auktioner kan startes fra rytterprofilen; startprisen tæller som initiatorens første førende bud, og finalizer har fallback for aktive legacy-auktioner hvor første bud ikke blev skrevet til `current_bidder_id`
@@ -43,6 +46,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Parkerede `window_pending` transfers/swaps kan ikke manager-annulleres efter begge parter har accepteret
 - Bank/AI-ryttere skjules fra direkte tilbud på rytterprofilen; bankryttere blokeres også server-side fra direkte transfer/bytte
 - Tilbagetræk tilbud (withdraw, inkl. modtilbud)
+- Sendte og modtagne afsluttede tilbud kan arkiveres per manager-side uden at slette den anden parts historik; dashboardet viser nu konkrete tilbud der kræver handling (v1.77)
 - Notifikationer til sælger ved nyt tilbud
 
 ### Lån

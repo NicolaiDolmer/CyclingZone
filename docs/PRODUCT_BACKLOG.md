@@ -9,11 +9,6 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 
 Se `docs/NOW.md` for detaljeret rækkefølge. Nedenfor er slice-briefings klar til session-start.
 
-### S5 — Prize-money frontend + baseline
-**Manager-værdi:** Economy er kalibreret mod rigtige præmieindtægter.  
-**Mål:** Finance-UI viser præmiepenge tydeligt; rerun `npm run economy:baseline` med rigtige tal; let tuning af salary rate / sponsor / debt ceilings baseret på ny baseline.  
-**Test:** Frontend build + visual smoke på Finance-siden.
-
 ### S6 — Onboarding MVP
 **Manager-værdi:** Nye managers i open beta forstår spillet fra dag 1.  
 **Scope (minimal):**

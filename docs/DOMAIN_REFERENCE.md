@@ -52,7 +52,7 @@
 - Auktionsvarighed: **4 timer** (eller vinduesluk — hvad der sker først)
 - Bud inden for de sidste **10 minutter** → forlænger med 10 min fra budtidspunkt
 - Forlænget slut kan **ikke** overskride vinduesluk samme dag
-- **Guaranteed sale**: Startpris = 50% af rytterens markedsværdi (uci_points × 4000). Banksalg ved ingen bud gælder kun, hvis rytteren faktisk var på sælgerens hold.
+- **Guaranteed sale**: Startpris = 50% af rytterens markedsværdi (`market_value`). Banksalg ved ingen bud gælder kun, hvis rytteren faktisk var på sælgerens hold.
 
 ### Minimumsforøgelse
 - `min_increment` felt på auktionen (hardcoded i API ved oprettelse)
@@ -94,9 +94,11 @@
 
 ### Rytterværdi (pris)
 ```
-Rytterens markedsværdi (CZ$) = uci_points × 4000
-Implementeret som generated column i DB: price = uci_points * 4000
-Brug ALDRIG uci_points direkte som pris — brug altid price eller uci_points * 4000
+Baseværdi (CZ$) = max(5, uci_points) × 4000
+Præmiebonus = gennemsnit af rytterens præmiepenge i de seneste op til 3 afsluttede sæsoner
+Rytterens markedsværdi (CZ$) = baseværdi + prize_earnings_bonus
+Implementeret som generated column i DB: market_value = max(5, uci_points) * 4000 + prize_earnings_bonus
+Brug ALDRIG uci_points direkte som pris — brug altid market_value eller samme beregning.
 ```
 
 ### Startkapital & Sponsorindtægt
@@ -110,7 +112,7 @@ budget_modifier: se Bestyrelse nedenfor
 
 ### Løn
 ```
-Beregning: 15% af effektiv rytterværdi (`uci_points × 4000 + prize_earnings_bonus`)
+Beregning: 10% af markedsværdi (`market_value`)
 Genberegnes: Efter UCI-sync og ved season-end `updateRiderValues`
 Minimum: 1 CZ$
 Trækkes: Sæsonslut (alle ryttere på holdet)

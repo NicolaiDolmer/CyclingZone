@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**S5 — Prize-money frontend + economy baseline** ✅ lukket (v1.76, commit 909a565).
+**S5b — Market UX/value consistency** ✅ lukket (v1.77).
 
 ## Næste sessioner (pre-launch, ~1 uge til open beta)
 

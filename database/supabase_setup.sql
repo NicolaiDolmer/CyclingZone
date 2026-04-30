@@ -47,6 +47,9 @@ CREATE TABLE IF NOT EXISTS public.riders (
   weight INTEGER,
   popularity INTEGER DEFAULT 0,
   uci_points INTEGER DEFAULT 1,
+  prize_earnings_bonus INTEGER NOT NULL DEFAULT 0,
+  price INTEGER GENERATED ALWAYS AS (uci_points * 4000) STORED,
+  market_value INTEGER GENERATED ALWAYS AS (GREATEST(5, uci_points) * 4000 + prize_earnings_bonus) STORED,
   salary INTEGER DEFAULT 0,
   team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL,
   ai_team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL,
@@ -168,6 +171,8 @@ CREATE TABLE IF NOT EXISTS public.transfer_offers (
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending','accepted','rejected','countered')),
   counter_amount INTEGER,
   message TEXT,
+  buyer_archived_at TIMESTAMPTZ,
+  seller_archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

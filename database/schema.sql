@@ -52,7 +52,9 @@ CREATE TABLE riders (
   popularity INTEGER DEFAULT 0,
   -- UCI Points (from Google Sheets top-1000, else 1)
   uci_points INTEGER DEFAULT 1,
+  prize_earnings_bonus INTEGER NOT NULL DEFAULT 0,
   price INTEGER GENERATED ALWAYS AS (uci_points * 4000) STORED,
+  market_value INTEGER GENERATED ALWAYS AS (GREATEST(5, uci_points) * 4000 + prize_earnings_bonus) STORED,
   -- salary: calculated as % of price, set at purchase
   salary INTEGER DEFAULT 0,
   -- Current owner
@@ -191,6 +193,8 @@ CREATE TABLE transfer_offers (
   message TEXT,
   buyer_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
   seller_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+  buyer_archived_at TIMESTAMPTZ,
+  seller_archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

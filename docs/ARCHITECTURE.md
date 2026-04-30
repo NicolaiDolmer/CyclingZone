@@ -346,7 +346,7 @@ import_log         id, import_type, filename, rows_processed, rows_updated,
 { 1: {min:20, max:30}, 2: {min:14, max:20}, 3: {min:8, max:10} }
 MIN_RIDERS_FOR_RACE = 8
 
-// Salary = 10% af rider UCI-pris, min 1 CZ$
+// Salary = 10% af rider market_value, min 1 CZ$
 // Interest på negativ balance = 10% per sæson
 PROMOTION_SLOTS = 2  RELEGATION_SLOTS = 2
 

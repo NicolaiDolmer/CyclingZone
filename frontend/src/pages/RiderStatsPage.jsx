@@ -2,6 +2,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { getFlagEmoji, getCountryName } from "../lib/countryUtils";
+import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazy(() => import("../components/RiderDevelopmentTab"));
@@ -45,7 +46,7 @@ function StatRow({ label, icon, value }) {
 
 function DirectOfferButton({ rider }) {
   const [show, setShow]       = useState(false);
-  const [amount, setAmount]   = useState((rider.uci_points || 0) * 4000);
+  const [amount, setAmount]   = useState(getRiderMarketValue(rider));
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null);
@@ -112,7 +113,7 @@ function DirectOfferButton({ rider }) {
 }
 
 function AuctionButton({ rider, isMyRider, auctionLabel, onStart }) {
-  const riderValue      = Math.max((rider.uci_points || 1) * 4000, 1);
+  const riderValue      = getRiderMarketValue(rider);
   const [guaranteed, setGuaranteed] = useState(false);
   const [price, setPrice]           = useState(riderValue);
   const [loading, setLoading]       = useState(false);
@@ -375,7 +376,7 @@ export default function RiderStatsPage() {
             )}
           </div>
           <div className="sm:text-right bg-slate-50 sm:bg-transparent rounded-lg sm:rounded-none px-3 py-2 sm:p-0">
-            <p className="text-amber-700 font-mono font-bold text-xl sm:text-2xl break-all">{(rider.uci_points * 4000)?.toLocaleString("da-DK")}</p>
+          <p className="text-amber-700 font-mono font-bold text-xl sm:text-2xl break-all">{formatCz(getRiderMarketValue(rider)).replace(" CZ$", "")}</p>
             <p className="text-slate-400 text-xs mt-0.5">Værdi CZ$</p>
             {bestStat && <p className="text-slate-500 text-xs mt-2">Bedste: <span className="text-amber-700">{bestStat.label} ({rider[bestStat.key]})</span></p>}
           </div>

@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { statBg } from "../lib/statBg";
 import { getFlagEmoji } from "../lib/countryUtils";
+import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -38,7 +39,7 @@ export default function WatchlistPage() {
       .from("rider_watchlist")
       .select(`id, note, created_at,
         rider:rider_id(id, firstname, lastname, uci_points, is_u25,
-          team_id, nationality_code, ${STATS.join(", ")},
+          salary, team_id, nationality_code, prize_earnings_bonus, ${STATS.join(", ")},
           team:team_id(name))`)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
@@ -64,7 +65,7 @@ export default function WatchlistPage() {
     const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auctions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ rider_id: rider.id, starting_price: Math.max((rider.uci_points || 1) * 4000, 1) }),
+      body: JSON.stringify({ rider_id: rider.id, starting_price: getRiderMarketValue(rider) }),
     });
     if (res.ok) navigate("/auctions");
     else { const d = await res.json(); alert(d.error); }
@@ -132,6 +133,8 @@ export default function WatchlistPage() {
                     <th className="px-3 py-3 text-left text-slate-400 font-medium uppercase tracking-wider hidden sm:table-cell">Hold</th>
                     <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-right font-medium">Værdi</SortTh>
+                    <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
+                      className="px-3 py-3 text-right font-medium">Løn</SortTh>
                     {STATS.map((key, i) => (
                       <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
                         className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
@@ -164,7 +167,10 @@ export default function WatchlistPage() {
                             : <span className="text-slate-500 text-xs">{r.team?.name}</span>}
                         </td>
                         <td className="px-3 py-2.5 text-right text-amber-700 font-mono font-bold">
-                          {r.uci_points?.toLocaleString("da-DK")}
+                          {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-slate-500 font-mono">
+                          {r.salary ? r.salary.toLocaleString("da-DK") : "—"}
                         </td>
                         {STATS.map(key => (
                           <td key={key} className="px-1.5 py-2.5 text-center">
