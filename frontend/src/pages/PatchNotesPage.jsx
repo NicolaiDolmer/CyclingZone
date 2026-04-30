@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "1.75",
+    date: "2026-04-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Økonomi",
+        items: [
+          "Præmiepenge fra løb er nu adskilt fra sæsonpoint: UCI-point bestemmer ranglisten, og præmiepenge = UCI-point × 15.000 CZ$ udbetales direkte til holdbalancen ved resultatimport",
+          "Divisionsbonus ved sæsonafslutning: D1 300K/200K/100K/50K · D2 150K/100K/50K/25K · D3 75K/50K/25K — bogføres som 'bonus' i finance-loggen",
+          "Præmiepenge knyttes nu til løbets klasse og UCI-pointtabellen — løb uden løbsklasse genererer 0 i præmie",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.74",
     date: "2026-04-30",
     label: "Beta",

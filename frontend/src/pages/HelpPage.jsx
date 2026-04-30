@@ -246,12 +246,25 @@ const SECTIONS = [
           "Admin lukker transfervinduet og starter ny sæson.",
           "Ved sæsonstart: ventende transfers behandles, lønninger genberegnes til 15% af markedsværdien, sponsorpenge udbetales.",
           "Løb køres i Pro Cycling Manager og resultaterne indberettes af en manager og godkendes af admin.",
-          "Ved sæsonafslutning: point tælles op, op/nedrykning afgøres, lønninger trækkes, gældsrenter tilskrives.",
+          "Ved sæsonafslutning: divisionsbonus udbetales, point tælles op, op/nedrykning afgøres, lønninger trækkes, gældsrenter tilskrives.",
         ],
       },
       {
         title: "Løb og resultater",
         text: "Alle managers kan indberette løbsresultater fra PCM via Løbskalender → Indberét resultater. Upload en Excel-fil, match navne og indsend til admin-godkendelse. Præmiepenge beregnes automatisk når admin finaliserer resultaterne, og sæsonstillingen opdateres gennem den samme backend-path uanset om admin godkender en pending submission eller importerer resultater direkte.",
+      },
+      {
+        title: "Præmiepenge fra løb",
+        text: "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: UCI-point for placeringen × 15.000 CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat — UCI-point bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge.",
+      },
+      {
+        title: "Divisionsbonus ved sæsonafslutning",
+        rows: [
+          ["Division", "Plads 1", "Plads 2", "Plads 3", "Plads 4–5"],
+          ["Division 1", "300.000 CZ$", "200.000 CZ$", "100.000 CZ$", "50.000 CZ$"],
+          ["Division 2", "150.000 CZ$", "100.000 CZ$", "50.000 CZ$", "25.000 CZ$"],
+          ["Division 3", "75.000 CZ$", "50.000 CZ$", "25.000 CZ$", "—"],
+        ],
       },
       {
         title: "Løbsarkiv",
@@ -430,6 +443,14 @@ const FAQ = [
   {
     q: "Hvad sker der hvis jeg ikke kan betale lønninger?",
     a: "Hvis din balance er negativ ved sæsonafslutning, optager du automatisk et nødlån. Renter tilskrives ved næste sæsonafslutning.",
+  },
+  {
+    q: "Hvad er præmiepenge, og hvornår udbetales de?",
+    a: "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: UCI-point for placeringen × 15.000 CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge — løb uden løbsklasse giver 0.",
+  },
+  {
+    q: "Hvad er divisionsbonus, og hvornår udbetales den?",
+    a: "Divisionsbonus er en engangsbonus der udbetales ved sæsonafslutning baseret på dit holds endelige placering i din division. Division 1: 300.000 / 200.000 / 100.000 / 50.000 CZ$ for plads 1–4. Division 2: 150.000 / 100.000 / 50.000 / 25.000 CZ$ for plads 1–4. Division 3: 75.000 / 50.000 / 25.000 CZ$ for plads 1–3. Bonussen bogføres som 'bonus' i din finance-log.",
   },
   {
     q: "Hvornår udbetales sponsorpenge?",
