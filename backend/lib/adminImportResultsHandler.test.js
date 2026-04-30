@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createAdminImportResultsHandler } from "./adminImportResultsHandler.js";
+import { PRIZE_PER_POINT } from "./raceResultsEngine.js";
 
 function createResponseDouble() {
   return {
@@ -18,7 +19,7 @@ function createResponseDouble() {
   };
 }
 
-function createSupabaseDouble({ race, prizes, riderId, teamId }) {
+function createSupabaseDouble({ race, racePoints, riderId, teamId }) {
   return {
     from(table) {
       if (table === "races") {
@@ -40,13 +41,13 @@ function createSupabaseDouble({ race, prizes, riderId, teamId }) {
         };
       }
 
-      if (table === "prize_tables") {
+      if (table === "race_points") {
         return {
           select() {
             return {
               async eq() {
                 return {
-                  data: prizes,
+                  data: racePoints,
                   error: null,
                 };
               },
@@ -96,19 +97,20 @@ function createSupabaseDouble({ race, prizes, riderId, teamId }) {
   };
 }
 
-test("admin import-results uses the shared race-results execution path", async () => {
+test("admin import-results uses race_points for points_earned and prize_money = points × PRIZE_PER_POINT", async () => {
   const race = {
     id: "race-1",
     name: "Liege-Bastogne-Liege",
     season_id: "season-1",
     race_type: "stage_race",
+    race_class: "Monuments",
   };
-  const prizes = [
-    { result_type: "stage", rank: 1, prize_amount: 50 },
+  const racePoints = [
+    { result_type: "Etapeplacering", rank: 1, points: 50 },
   ];
   const supabase = createSupabaseDouble({
     race,
-    prizes,
+    racePoints,
     riderId: "rider-1",
     teamId: "team-1",
   });
@@ -119,9 +121,12 @@ test("admin import-results uses the shared race-results execution path", async (
 
   const handler = createAdminImportResultsHandler({
     supabase,
-    buildRacePrizeLookup: ({ prizes: rows }) => ({
-      "stage__1": rows[0].prize_amount,
-    }),
+    buildRacePointsLookup: ({ racePoints: rows, raceType }) => {
+      if (raceType === "stage_race") {
+        return { "stage__1": rows[0].points };
+      }
+      return {};
+    },
     applyRaceResults: async (payload) => {
       applyCalls.push(payload);
       return {
@@ -190,7 +195,7 @@ test("admin import-results uses the shared race-results execution path", async (
       team_name: "Visma",
       finish_time: "04:00:00",
       points_earned: 50,
-      prize_money: 50,
+      prize_money: 50 * PRIZE_PER_POINT,
     },
   ]);
   assert.deepEqual(activityCalls, [
@@ -206,4 +211,59 @@ test("admin import-results uses the shared race-results execution path", async (
       },
     },
   ]);
+});
+
+test("admin import-results sets prize_money to 0 when race has no race_class", async () => {
+  const race = {
+    id: "race-2",
+    name: "Unknown Race",
+    season_id: "season-1",
+    race_type: "single",
+    race_class: null,
+  };
+  const supabase = createSupabaseDouble({
+    race,
+    racePoints: [],
+    riderId: "rider-1",
+    teamId: "team-1",
+  });
+  const applyCalls = [];
+
+  const handler = createAdminImportResultsHandler({
+    supabase,
+    buildRacePointsLookup: () => ({}),
+    applyRaceResults: async (payload) => {
+      applyCalls.push(payload);
+      return { rowsImported: payload.resultRows.length, teamsPaid: 0 };
+    },
+    ensureSeasonStandings: async () => {},
+    updateStandings: async () => {},
+    logActivity: async () => {},
+    xlsxImporter: async () => ({
+      read() {
+        return {
+          SheetNames: ["General Results"],
+          Sheets: { "General Results": {} },
+        };
+      },
+      utils: {
+        sheet_to_json() {
+          return [
+            [],
+            ["Rank", "Name", "Team", "Time"],
+            [1, "Tadej Pogacar", "UAE", "05:00:00"],
+          ];
+        },
+      },
+    }),
+  });
+
+  const req = { body: { race_id: "race-2" }, file: { buffer: Buffer.from("xlsx") } };
+  const res = createResponseDouble();
+
+  await handler(req, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(applyCalls[0].resultRows[0].points_earned, 0);
+  assert.equal(applyCalls[0].resultRows[0].prize_money, 0);
 });

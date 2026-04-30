@@ -46,6 +46,12 @@ const MIN_DIVISION = 1;
 const SUPABASE_PAGE_SIZE = 1000;
 const RIDER_VALUE_PATCH_CONCURRENCY = 25;
 
+const DIVISION_BONUSES = {
+  1: [300_000, 200_000, 100_000, 50_000],
+  2: [150_000, 100_000, 50_000, 25_000],
+  3: [75_000, 50_000, 25_000],
+};
+
 // Board satisfaction thresholds
 const SATISFACTION_RANGES = {
   sponsor_bonus: {
@@ -198,6 +204,38 @@ export async function processSeasonStart(seasonId, deps = {}) {
   return results;
 }
 
+// ─── Division Bonuses ────────────────────────────────────────────────────────
+
+export async function payDivisionBonuses(standings, seasonId, supabaseClient) {
+  const { data: existingRows, error: existingError } = await supabaseClient
+    .from("finance_transactions")
+    .select("team_id")
+    .eq("season_id", seasonId)
+    .eq("type", "bonus");
+  throwIfSupabaseError(existingError, "Could not check existing division bonuses");
+
+  const alreadyPaid = new Set((existingRows || []).map(r => r.team_id));
+
+  for (const standing of standings || []) {
+    if (!standing.team_id || standing.team?.is_ai) continue;
+    if (alreadyPaid.has(standing.team_id)) continue;
+    const bonuses = DIVISION_BONUSES[standing.division];
+    if (!bonuses) continue;
+    const rank = standing.rank_in_division;
+    if (!rank || rank > bonuses.length) continue;
+    const amount = bonuses[rank - 1];
+    if (!amount) continue;
+    await creditTeam(
+      standing.team_id,
+      amount,
+      "bonus",
+      `Divisionsbonus — Division ${standing.division}, plads ${rank}`,
+      seasonId,
+      supabaseClient
+    );
+  }
+}
+
 // ─── Season End Processing ────────────────────────────────────────────────────
 
 /**
@@ -243,6 +281,9 @@ export async function processSeasonEnd(seasonId, deps = {}) {
       now: notificationNow,
     });
   }
+
+  // Pay division bonuses based on final standings
+  await payDivisionBonuses(standings, seasonId, supabaseClient);
 
   // Process each division after finance/board side effects have succeeded.
   for (const division of [1, 2, 3]) {

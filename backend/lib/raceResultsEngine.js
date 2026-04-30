@@ -10,29 +10,43 @@ function ensureRace(race) {
   }
 }
 
-export function buildRacePrizeLookup({ prizes = [], defaultsByType = {} } = {}) {
+export const PRIZE_PER_POINT = 15_000;
+
+const RESULT_TYPE_TO_RACE_POINTS = {
+  stage_race: {
+    stage: "Etapeplacering",
+    gc: "Klassement",
+    points: "Pointtroje",
+    mountain: "Bjergtroje",
+    young: "Ungdomstroje",
+    team: "EtapelobHold",
+    leader: "Forertroje",
+  },
+  single: {
+    gc: "Klassiker",
+    points: "Pointtroje",
+    mountain: "Bjergtroje",
+    young: "Ungdomstroje",
+    team: "KlassikerHold",
+  },
+};
+
+export function buildRacePointsLookup({ racePoints = [], raceType = "stage_race" } = {}) {
+  const typeMap = RESULT_TYPE_TO_RACE_POINTS[raceType] ?? RESULT_TYPE_TO_RACE_POINTS.stage_race;
   const lookup = {};
-
-  for (const prize of prizes || []) {
-    if (!prize?.result_type || prize.rank === undefined || prize.rank === null) continue;
-    lookup[`${prize.result_type}__${prize.rank}`] = prize.prize_amount || 0;
-  }
-
-  for (const [resultType, ranks] of Object.entries(defaultsByType || {})) {
-    for (const [rank, amount] of Object.entries(ranks || {})) {
-      const key = `${resultType}__${rank}`;
-      if (lookup[key] === undefined) {
-        lookup[key] = amount || 0;
+  for (const [enType, dkType] of Object.entries(typeMap)) {
+    for (const row of racePoints || []) {
+      if (row.result_type === dkType) {
+        lookup[`${enType}__${row.rank}`] = row.points || 0;
       }
     }
   }
-
   return lookup;
 }
 
-export function buildRaceResultsFromPending({ pendingRows = [], prizeLookup = {}, raceId } = {}) {
+export function buildRaceResultsFromPending({ pendingRows = [], pointsLookup = {}, raceId } = {}) {
   return (pendingRows || []).map((row) => {
-    const prize = prizeLookup[`${row.result_type}__${row.rank}`] || 0;
+    const pts = pointsLookup[`${row.result_type}__${row.rank}`] || 0;
     const teamId = row.rider?.team_id || null;
     const riderName = row.rider ? `${row.rider.firstname} ${row.rider.lastname}` : null;
 
@@ -46,8 +60,8 @@ export function buildRaceResultsFromPending({ pendingRows = [], prizeLookup = {}
       rank: row.rank,
       stage_number: row.stage_number || 1,
       finish_time: null,
-      prize_money: prize,
-      points_earned: prize,
+      points_earned: pts,
+      prize_money: pts * PRIZE_PER_POINT,
     };
   });
 }
@@ -114,7 +128,7 @@ export async function applyRaceResults({
     stage_number: row.stage_number || 1,
     finish_time: row.finish_time || null,
     prize_money: Number(row.prize_money) || 0,
-    points_earned: row.points_earned ?? (Number(row.prize_money) || 0),
+    points_earned: row.points_earned ?? 0,
   }));
 
   await clearExistingPrizeFinance({ supabase, raceId: race.id });

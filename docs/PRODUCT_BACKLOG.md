@@ -9,27 +9,17 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 
 Se `docs/NOW.md` for detaljeret rækkefølge. Nedenfor er slice-briefings klar til session-start.
 
-### S2 — Profile/settings fix
-**Manager-værdi:** Managers kan igen ændre holdnavn og managernavn.  
-**Root cause:** `App.jsx` router `/profile` via `ProfileRedirect → /managers/:ownTeamId` i stedet for `ProfilePage` med indstillinger.  
-**Path:** `frontend/src/App.jsx` route + `PUT /api/teams/my` (backend eksisterer og er korrekt).  
-**Test:** Build + smoke på `/profile` → redigér holdnavn → gem → verify i DB.  
-**Docs:** PatchNotes + Help.
-
-### S3 — Prize-money investigation
-**Manager-værdi:** Spillet har CZ$-præmier der er fair og gennemsigtige.  
-**Mål:** Kortlæg hvad der allerede er (`buildRacePrizeLookup`, `prize_money` kolonne, 10 finance rows sæson 6 med total 2.922 CZ$). Design endelig payout-skala.  
-**Åbne beslutninger (bruger godkender tal):**
-- Payout pr. race class (WT / Pro / Cont) og result_type (stage / GC / points / mountain / young / team)
-- Sæsonslut rangliste-bonus pr. division (D1/D2/D3) og rank
-- Skal præmier påvirke budget løbende i sæsonen eller kun ved sæsonslut?
-**Output:** Besluttede payout-tal klar til S4 — ingen implementation før godkendelse.
-
 ### S4 — Prize-money backend
 **Manager-værdi:** Finance-siden viser rigtige CZ$-præmieindtægter fra løb og sæsonslut.  
-**Path:** `backend/lib/raceResultsEngine.js` (per-løb) + `backend/lib/economyEngine.js` (sæsonslut).  
-**Krav:** Finance type-kontrakt verificeres mod DB constraints. Idempotent re-import.  
-**Test:** Målrettede backend-tests for prize-write, type-kontrakt og idempotens.
+**Besluttet design (S3):**
+- `points_earned` = `race_points[race_class][result_type_dk][rank]`
+- `prize_money` = `points_earned × 15.000`, krediteres ved resultatimport (type=`prize`)
+- result_type-mapping: `stage`→`Etapeplacering`, `gc`→`Klassement`/`Klassiker`, `points`→`Pointtroje`, `mountain`→`Bjergtroje`, `young`→`Ungdomstroje`, `team`→`EtapelobHold`/`KlassikerHold`, `leader`→`Forertroje`
+- Divisionsbonus ved sæsonslut (type=`bonus`): D1: 300K/200K/100K/50K · D2: 150K/100K/50K/25K · D3: 75K/50K/25K
+- `prize_tables` og `DEFAULT_PRIZES` droppes
+**Path:** `backend/lib/raceResultsEngine.js` + `backend/lib/adminImportResultsHandler.js` + `backend/lib/economyEngine.js` (sæsonslut).  
+**Krav:** Finance type-kontrakt verificeres mod DB constraints. Idempotent re-import. Hent `race_class` fra race ved import.  
+**Test:** Målrettede backend-tests for prize-write, type-kontrakt, mapping og idempotens.
 
 ### S5 — Prize-money frontend + baseline
 **Manager-værdi:** Economy er kalibreret mod rigtige præmieindtægter.  

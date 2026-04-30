@@ -88,7 +88,7 @@ import {
 } from "../lib/marketUtils.js";
 import {
   applyRaceResults,
-  buildRacePrizeLookup,
+  buildRacePointsLookup,
   buildRaceResultsFromPending,
 } from "../lib/raceResultsEngine.js";
 import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
@@ -1542,7 +1542,7 @@ router.post(
   adminImportUpload.single("file"),
   createAdminImportResultsHandler({
     supabase,
-    buildRacePrizeLookup,
+    buildRacePointsLookup,
     applyRaceResults,
     ensureSeasonStandings,
     updateStandings,
@@ -1569,7 +1569,7 @@ router.post("/admin/approve-results", requireAdmin, async (req, res) => {
 
     const { data: race, error: raceError } = await supabase
       .from("races")
-      .select("id, name, season_id, race_type")
+      .select("id, name, season_id, race_type, race_class")
       .eq("id", sub.race_id)
       .single();
     if (raceError) return res.status(500).json({ error: raceError.message });
@@ -1582,16 +1582,20 @@ router.post("/admin/approve-results", requireAdmin, async (req, res) => {
     if (rowsError) return res.status(500).json({ error: rowsError.message });
     if (!rows?.length) return res.status(400).json({ error: "No rows found" });
 
-    const { data: prizes, error: prizesError } = await supabase
-      .from("prize_tables")
-      .select("result_type, rank, prize_amount")
-      .eq("race_type", race.race_type);
-    if (prizesError) return res.status(500).json({ error: prizesError.message });
+    let racePoints = [];
+    if (race.race_class) {
+      const { data: pts, error: racePointsError } = await supabase
+        .from("race_points")
+        .select("result_type, rank, points")
+        .eq("race_class", race.race_class);
+      if (racePointsError) return res.status(500).json({ error: racePointsError.message });
+      racePoints = pts || [];
+    }
 
-    const prizeLookup = buildRacePrizeLookup({ prizes });
+    const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
     const insertRows = buildRaceResultsFromPending({
       pendingRows: rows,
-      prizeLookup,
+      pointsLookup,
       raceId: race.id,
     });
 

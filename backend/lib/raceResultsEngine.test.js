@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 
 import {
   applyRaceResults,
-  buildRacePrizeLookup,
+  buildRacePointsLookup,
   buildRaceResultsFromPending,
+  PRIZE_PER_POINT,
 } from "./raceResultsEngine.js";
 
 function createSupabaseDouble(initialBalances = {}) {
@@ -99,11 +100,36 @@ function createSupabaseDouble(initialBalances = {}) {
   return { supabase, state };
 }
 
-test("buildRaceResultsFromPending maps pending rows onto canonical race_results fields", () => {
-  const prizeLookup = buildRacePrizeLookup({
-    prizes: [
-      { result_type: "stage", rank: 1, prize_amount: 50 },
-    ],
+test("buildRacePointsLookup maps race_points rows to English result_type keys by race_type", () => {
+  const racePoints = [
+    { result_type: "Klassement", rank: 1, points: 100 },
+    { result_type: "Etapeplacering", rank: 1, points: 8 },
+    { result_type: "Klassiker", rank: 1, points: 125 },
+    { result_type: "EtapelobHold", rank: 1, points: 40 },
+    { result_type: "KlassikerHold", rank: 1, points: 50 },
+  ];
+
+  const stageLookup = buildRacePointsLookup({ racePoints, raceType: "stage_race" });
+  assert.equal(stageLookup["gc__1"], 100);
+  assert.equal(stageLookup["stage__1"], 8);
+  assert.equal(stageLookup["team__1"], 40);
+  assert.equal(stageLookup["gc__1_klassiker"], undefined);
+
+  const singleLookup = buildRacePointsLookup({ racePoints, raceType: "single" });
+  assert.equal(singleLookup["gc__1"], 125);
+  assert.equal(singleLookup["stage__1"], undefined);
+  assert.equal(singleLookup["team__1"], 50);
+});
+
+test("buildRacePointsLookup returns empty lookup when no race_class data", () => {
+  const lookup = buildRacePointsLookup({ racePoints: [], raceType: "stage_race" });
+  assert.equal(lookup["gc__1"], undefined);
+});
+
+test("buildRaceResultsFromPending separates points_earned and prize_money", () => {
+  const pointsLookup = buildRacePointsLookup({
+    racePoints: [{ result_type: "Etapeplacering", rank: 1, points: 50 }],
+    raceType: "stage_race",
   });
 
   const rows = buildRaceResultsFromPending({
@@ -120,7 +146,7 @@ test("buildRaceResultsFromPending maps pending rows onto canonical race_results 
         },
       },
     ],
-    prizeLookup,
+    pointsLookup,
     raceId: "race-1",
   });
 
@@ -135,8 +161,8 @@ test("buildRaceResultsFromPending maps pending rows onto canonical race_results 
       rank: 1,
       stage_number: 2,
       finish_time: null,
-      prize_money: 50,
       points_earned: 50,
+      prize_money: 50 * PRIZE_PER_POINT,
     },
   ]);
 });
@@ -161,7 +187,7 @@ test("applyRaceResults uses canonical prize finance writes and recalculates stan
         rank: 1,
         stage_number: 1,
         prize_money: 50,
-        points_earned: 50,
+        points_earned: 8,
       },
       {
         rider_id: "rider-2",
@@ -171,7 +197,7 @@ test("applyRaceResults uses canonical prize finance writes and recalculates stan
         rank: 1,
         stage_number: 1,
         prize_money: 200,
-        points_earned: 200,
+        points_earned: 100,
       },
     ],
     ensureSeasonStandings: async (seasonId) => {
@@ -239,7 +265,7 @@ test("applyRaceResults reverses existing prize finance before re-importing a rac
         result_type: "stage",
         rank: 1,
         prize_money: 40,
-        points_earned: 40,
+        points_earned: 8,
       },
     ],
   });

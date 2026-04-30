@@ -13,8 +13,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Login-streak tracking
 - Manager XP + niveauer (level = floor(xp/100)+1, max 50)
 - Manager-profil med historik
-- `ProfilePage.jsx` findes med konto-/holdindstillinger, men aktuel route-audit viser at `/profile` stadig routes via `ProfileRedirect`; se kendte bugs før dette regnes som lukket.
-- Hold- og managernavn kan ændres fra Min Profil via kanonisk backend-path `PUT /api/teams/my`
+- `ProfilePage.jsx` — `/profile` route viser konto-/holdindstillinger; hold- og managernavn redigeres via `PUT /api/teams/my` (v1.74)
 
 ### Hold & Ryttere
 - Holdoversigt og holdprofil-sider
@@ -111,7 +110,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### UI / Misc
 - Responsivt layout med navigation (Layout.jsx)
 - Segment-aware sidebar active-state: `/team` matcher ikke `/teams`
-- Sidebar og egen managerprofil linker til `/profile`, men route-bindingen skal re-audites fordi `App.jsx` aktuelt bruger `ProfileRedirect`.
+- Sidebar og egen managerprofil linker til `/profile` → `ProfilePage` (indstillinger)
 - Mobile beta-critical flows: rytterliste, rytterside-market actions, auktioner/bud, transfers, indbakke og admin beta quick actions er optimeret til smalle skærme uden primær horisontal scroll
 - Frontend route-level code-splitting: sider lazy-loades via `React.lazy`/`Suspense`, så initial bundle er reduceret og Vite-build kører uden large chunk warning
 - Rytterprofilens `Udvikling`-tab viser UCI-point og stats over tid fra `rider_uci_history`/`rider_stat_history`
@@ -134,13 +133,12 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Ingen kendt live result-import blocker efter 2026-04-29-verifikation. Sæson 6 har 98 races, 709 race_results, 25 standings rows og 10 prize finance rows efter idempotent re-import.
 - Finance-/notification runtime/schema-drift fundet 2026-04-29 er rettet i repo og live DB migrationen er applied.
 - Live season-end for sæson 6 blev kørt 2026-04-29. Status/divisioner blev applied først; root cause var embedded `teams.riders(...)` load uden error-check. Runtime-fix er deployed, og live repair er kørt med `success=true`. Service-visible verification bekræfter salary, loan-interest, emergency-loan rows og board snapshots efter målrettet backfill af 3 emergency-loan finance rows til season 6.
-- Route-audit 2026-04-29: `/profile` peger i `frontend/src/App.jsx` på `ProfileRedirect` i stedet for `ProfilePage`, selvom `ProfilePage.jsx` findes. Det bør rettes/verificeres før launch, fordi Profil & Indstillinger ellers kan være utilgængelig.
 
 ---
 
 ## 🚧 I gang
 
-- [ ] Prize-money economy: design/implementér rigtige CZ$-præmiepenge adskilt fra resultatpoint, før større økonomituning.
+- [ ] Prize-money backend (S4): `points_earned` fra race_points, `prize_money = points × 15K`, divisionsbonus ved sæsonslut — design godkendt 2026-04-30.
 - [ ] Economy tuning implementation efter prize-money baseline: centraliser/ændr salary rate, division-aware sponsor og debt ceilings med regressionstests.
 - [ ] Admin-authenticated deployed season-end preview smoke + UI sanity i browser-session efter repair.
 

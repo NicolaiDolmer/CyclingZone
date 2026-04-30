@@ -1,3 +1,5 @@
+import { PRIZE_PER_POINT } from "./raceResultsEngine.js";
+
 const SHEET_TO_TYPE = {
   "stage results": "stage",
   "general results": "gc",
@@ -5,15 +7,6 @@ const SHEET_TO_TYPE = {
   mountain: "mountain",
   "team results": "team",
   "young results": "young",
-};
-
-const DEFAULT_PRIZES = {
-  stage: { 1: 200000, 2: 120000, 3: 80000, 4: 60000, 5: 48000, 6: 40000, 7: 32000, 8: 24000, 9: 16000, 10: 8000 },
-  gc: { 1: 800000, 2: 600000, 3: 400000, 4: 300000, 5: 200000, 6: 160000, 7: 120000, 8: 80000, 9: 60000, 10: 40000 },
-  points: { 1: 120000, 2: 80000, 3: 60000 },
-  mountain: { 1: 120000, 2: 80000, 3: 60000 },
-  team: { 1: 400000, 2: 280000, 3: 200000, 4: 120000, 5: 80000 },
-  young: { 1: 200000, 2: 120000, 3: 80000 },
 };
 
 function ensureDependency(name, value) {
@@ -24,17 +17,16 @@ function ensureDependency(name, value) {
 
 export function createAdminImportResultsHandler({
   supabase,
-  buildRacePrizeLookup,
+  buildRacePointsLookup,
   applyRaceResults,
   ensureSeasonStandings,
   updateStandings,
   logActivity,
   xlsxImporter = () => import("xlsx"),
   sheetToType = SHEET_TO_TYPE,
-  defaultsByType = DEFAULT_PRIZES,
 } = {}) {
   ensureDependency("supabase", supabase?.from);
-  ensureDependency("buildRacePrizeLookup", buildRacePrizeLookup);
+  ensureDependency("buildRacePointsLookup", buildRacePointsLookup);
   ensureDependency("applyRaceResults", applyRaceResults);
   ensureDependency("ensureSeasonStandings", ensureSeasonStandings);
   ensureDependency("updateStandings", updateStandings);
@@ -49,22 +41,23 @@ export function createAdminImportResultsHandler({
     try {
       const { data: race, error: raceError } = await supabase
         .from("races")
-        .select("id, name, season_id, race_type")
+        .select("id, name, season_id, race_type, race_class")
         .eq("id", race_id)
         .single();
       if (raceError) return res.status(500).json({ error: raceError.message });
       if (!race) return res.status(404).json({ error: "Race not found" });
 
-      const { data: prizes, error: prizesError } = await supabase
-        .from("prize_tables")
-        .select("result_type, rank, prize_amount")
-        .eq("race_type", race.race_type);
-      if (prizesError) return res.status(500).json({ error: prizesError.message });
+      let racePoints = [];
+      if (race.race_class) {
+        const { data: pts, error: ptsError } = await supabase
+          .from("race_points")
+          .select("result_type, rank, points")
+          .eq("race_class", race.race_class);
+        if (ptsError) return res.status(500).json({ error: ptsError.message });
+        racePoints = pts || [];
+      }
 
-      const prizeLookup = buildRacePrizeLookup({
-        prizes,
-        defaultsByType,
-      });
+      const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
 
       const XLSX = await xlsxImporter();
       const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
@@ -88,7 +81,7 @@ export function createAdminImportResultsHandler({
           const rank = Number.parseInt(row[rankIdx], 10);
           if (Number.isNaN(rank)) continue;
 
-          const prize = prizeLookup[`${resultType}__${rank}`] || 0;
+          const pts = pointsLookup[`${resultType}__${rank}`] || 0;
           const riderName = resultType === "team"
             ? null
             : String(row[nameIdx] || "").trim() || null;
@@ -126,8 +119,8 @@ export function createAdminImportResultsHandler({
             team_id: teamId,
             team_name: teamName,
             finish_time: String(row[timeIdx] || "").trim() || null,
-            points_earned: prize,
-            prize_money: prize,
+            points_earned: pts,
+            prize_money: pts * PRIZE_PER_POINT,
           });
         }
       }

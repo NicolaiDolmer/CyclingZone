@@ -6,6 +6,7 @@ process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-ser
 
 const {
   buildSeasonEndPreviewRows,
+  payDivisionBonuses,
   processSeasonEnd,
   repairSeasonEndFinanceAndBoard,
   updateRiderValues,
@@ -326,6 +327,24 @@ function createSeasonEndSupabase({
       if (table === "finance_transactions") {
         return {
           select(columns, options) {
+            if (columns === "team_id") {
+              const filters = {};
+              return {
+                eq(col, val) {
+                  filters[col] = val;
+                  return {
+                    eq(col2, val2) {
+                      filters[col2] = val2;
+                      const data = state.inserts.finance_transactions
+                        .filter(row => Object.entries(filters).every(([k, v]) => row[k] === v))
+                        .map(row => ({ team_id: row.team_id }));
+                      return Promise.resolve({ data, error: null });
+                    },
+                  };
+                },
+              };
+            }
+
             if (columns === "team_id, type") {
               return {
                 eq(column, value) {
@@ -938,7 +957,7 @@ test("processSeasonEnd writes finance and board side effects before completing t
   });
 
   const transactionTypes = supabase.state.inserts.finance_transactions.map(row => row.type);
-  assert.deepEqual(transactionTypes, ["loan_interest", "emergency_loan", "salary"]);
+  assert.deepEqual(transactionTypes, ["loan_interest", "emergency_loan", "salary", "bonus"]);
   assert.equal(
     supabase.state.inserts.finance_transactions.find(row => row.type === "emergency_loan").season_id,
     "season-1"
@@ -1262,4 +1281,96 @@ test("updateRiderValues recalculates salaries after UCI values change", async ()
       },
     },
   ]);
+});
+
+test("payDivisionBonuses credits correct amounts per division rank and is idempotent", async () => {
+  const balances = {
+    "team-d1-r1": 500_000,
+    "team-d2-r3": 300_000,
+    "team-ai": 0,
+    "team-d3-r5": 100_000,
+  };
+  const financeRows = [];
+
+  const supabase = {
+    from(table) {
+      if (table === "finance_transactions") {
+        return {
+          select() {
+            const filters = {};
+            return {
+              eq(col, val) {
+                filters[col] = val;
+                return {
+                  eq(col2, val2) {
+                    filters[col2] = val2;
+                    const data = financeRows
+                      .filter(r => Object.entries(filters).every(([k, v]) => r[k] === v))
+                      .map(r => ({ team_id: r.team_id }));
+                    return Promise.resolve({ data, error: null });
+                  },
+                };
+              },
+            };
+          },
+          insert(payload) {
+            financeRows.push(payload);
+            return Promise.resolve({ error: null });
+          },
+        };
+      }
+
+      if (table === "teams") {
+        return {
+          select() {
+            return {
+              eq(_col, teamId) {
+                return {
+                  single() {
+                    return Promise.resolve({
+                      data: { balance: balances[teamId] ?? 0 },
+                      error: null,
+                    });
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(_col, teamId) {
+                balances[teamId] = payload.balance;
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  const standings = [
+    { team_id: "team-d1-r1", division: 1, rank_in_division: 1, team: { is_ai: false } },
+    { team_id: "team-d2-r3", division: 2, rank_in_division: 3, team: { is_ai: false } },
+    { team_id: "team-ai",    division: 1, rank_in_division: 2, team: { is_ai: true } },
+    { team_id: "team-d3-r5", division: 3, rank_in_division: 5, team: { is_ai: false } },
+  ];
+
+  await payDivisionBonuses(standings, "season-1", supabase);
+
+  assert.equal(balances["team-d1-r1"], 800_000);  // 500K + 300K (D1 rank 1)
+  assert.equal(balances["team-d2-r3"], 350_000);  // 300K + 50K (D2 rank 3)
+  assert.equal(balances["team-ai"], 0);           // AI teams skipped
+  assert.equal(balances["team-d3-r5"], 100_000);  // D3 only pays top 3 — rank 5 skipped
+
+  const bonusTypes = financeRows.map(r => r.type);
+  assert.deepEqual(bonusTypes, ["bonus", "bonus"]);
+
+  // Idempotency: second call does not credit again
+  await payDivisionBonuses(standings, "season-1", supabase);
+  assert.equal(balances["team-d1-r1"], 800_000);
+  assert.equal(balances["team-d2-r3"], 350_000);
+  assert.equal(financeRows.length, 2);
 });
