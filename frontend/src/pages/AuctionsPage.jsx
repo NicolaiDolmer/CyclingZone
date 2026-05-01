@@ -116,11 +116,11 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
 
   return (
-    <tr className={`border-b border-slate-100 hover:bg-slate-100 transition-colors
+    <tr className={`group border-b border-slate-100 hover:bg-slate-100 transition-colors
       ${imWinning ? "bg-[#e8c547]/3" : ""}`}>
 
       {/* Rytter */}
-      <td className="px-3 py-2.5 min-w-[140px]">
+      <td className="px-3 py-1.5 min-w-[140px]">
         <div className="flex flex-col gap-0.5">
           {r?.nationality_code && <span className="text-xs flex-shrink-0">{getFlagEmoji(r.nationality_code)}</span>}
           <button
@@ -157,28 +157,28 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
       </td>
 
       {/* Alder */}
-      <td className="px-2 py-2.5 text-center text-slate-500 font-mono text-xs hidden lg:table-cell">
+      <td className="px-2 py-1.5 text-center text-slate-500 font-mono text-xs hidden xl:table-cell">
         {age ?? "—"}
       </td>
 
       {/* UCI */}
-      <td className="px-2 py-2.5 text-right text-amber-700 font-mono font-bold text-xs whitespace-nowrap">
+      <td className="px-2 py-1.5 text-right text-amber-700 font-mono font-bold text-xs whitespace-nowrap">
         {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
       </td>
 
       {/* Sælger */}
-      <td className="px-3 py-2.5 text-left text-slate-500 text-xs whitespace-nowrap">
+      <td className="px-3 py-1.5 text-left text-slate-500 text-xs whitespace-nowrap hidden xl:table-cell">
         <span className="truncate max-w-[120px] inline-block">{getAuctionSellerLabel(auction)}</span>
       </td>
 
       {/* Potentiale */}
-      <td className="px-3 py-2.5">
+      <td className="px-3 py-1.5">
         <PotentialeStars value={r?.potentiale} birthdate={r?.birthdate} />
       </td>
 
       {/* Stats */}
       {STATS.map(key => (
-        <td key={key} className="px-1 py-2.5 text-center">
+        <td key={key} className="px-1 py-1.5 text-center">
           <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(r?.[key] || 0)}`}>
             {r?.[key] || "—"}
           </span>
@@ -186,7 +186,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
       ))}
 
       {/* Højeste bud */}
-      <td className="px-3 py-2.5 text-right whitespace-nowrap">
+      <td className="px-3 py-1.5 text-right whitespace-nowrap">
         <span className="text-slate-900 font-mono font-bold text-sm">
           {auction.current_price?.toLocaleString("da-DK")}
         </span>
@@ -199,12 +199,12 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
       </td>
 
       {/* Tid tilbage */}
-      <td className="px-3 py-2.5 text-center whitespace-nowrap">
+      <td className="px-3 py-1.5 text-center whitespace-nowrap">
         <Countdown end={auction.calculated_end} status={auction.status} />
       </td>
 
       {/* Byd */}
-      <td className="px-3 py-2.5">
+      <td className={`px-3 py-1.5 sticky right-0 z-10 border-l border-slate-100 transition-colors group-hover:bg-slate-100 ${imWinning ? "bg-[#e8c547]/3" : "bg-white"}`}>
         {canBid ? (
           <div className="flex items-center gap-1.5">
             <input
@@ -230,10 +230,9 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
                bidStatus === "success" ? "✓" :
                imWinning ? "Hæv" : "Byd"}
             </button>
-            <div className="min-w-[110px]">
-              <p className="text-[10px] text-slate-400">Min. {minBid.toLocaleString("da-DK")}</p>
-              {bidStatus === "error" && errorText && <p className="text-[10px] text-red-700">{errorText}</p>}
-            </div>
+            {bidStatus === "error" && errorText && (
+              <p className="text-[10px] text-red-700 max-w-[90px] leading-tight">{errorText}</p>
+            )}
           </div>
         ) : isSeller ? (
           <span className="text-slate-300 text-xs">Du sælger</span>
@@ -594,11 +593,11 @@ export default function AuctionsPage() {
                   <SortTh sortKey="firstname" sort={activeSort("firstname") ? "firstname" : riderFilters.filters.sort}
                     sortDir={activeSortDir("firstname")} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider">Rytter</SortTh>
-                  <th className="px-2 py-3 text-center text-slate-300 font-medium hidden lg:table-cell">Alder</th>
+                  <th className="px-2 py-3 text-center text-slate-300 font-medium hidden xl:table-cell">Alder</th>
                   <SortTh sortKey="uci_points" sort={activeSort("uci_points") ? "uci_points" : riderFilters.filters.sort}
                     sortDir={activeSortDir("uci_points")} onSort={handleSort}
                     className="px-2 py-3 text-right font-medium">Værdi</SortTh>
-                  <th className="px-3 py-3 text-left text-slate-400 font-medium uppercase tracking-wider">Sælger</th>
+                  <th className="px-3 py-3 text-left text-slate-400 font-medium uppercase tracking-wider hidden xl:table-cell">Sælger</th>
                   <SortTh sortKey="potentiale"
                     sort={activeSort("potentiale") ? "potentiale" : riderFilters.filters.sort}
                     sortDir={activeSortDir("potentiale")} onSort={handleSort}
@@ -619,7 +618,7 @@ export default function AuctionsPage() {
                     className="px-3 py-3 text-center font-medium uppercase tracking-wider whitespace-nowrap">
                     Tid tilbage
                   </SortTh>
-                  <th className="px-3 py-3 text-left text-slate-400 font-medium uppercase tracking-wider">Byd</th>
+                  <th className="px-3 py-3 text-left text-slate-400 font-medium uppercase tracking-wider sticky right-0 bg-white z-10 border-l border-slate-100">Byd</th>
                 </tr>
               </thead>
               <tbody>
