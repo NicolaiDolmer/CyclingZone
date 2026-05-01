@@ -9,6 +9,19 @@ const SHEET_TO_TYPE = {
   "young results": "young",
 };
 
+async function defaultParseWorkbook(buffer) {
+  const { default: ExcelJS } = await import("exceljs");
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  return workbook.worksheets.map((worksheet) => {
+    const rows = [];
+    worksheet.eachRow({ includeEmpty: true }, (row) => {
+      rows.push(row.values.slice(1)); // values is 1-indexed; slice(1) gives 0-indexed array
+    });
+    return { name: worksheet.name, rows };
+  });
+}
+
 function ensureDependency(name, value) {
   if (!value) {
     throw new Error(`${name} is required`);
@@ -22,7 +35,7 @@ export function createAdminImportResultsHandler({
   ensureSeasonStandings,
   updateStandings,
   logActivity,
-  xlsxImporter = () => import("xlsx"),
+  parseWorkbook = defaultParseWorkbook,
   sheetToType = SHEET_TO_TYPE,
 } = {}) {
   ensureDependency("supabase", supabase?.from);
@@ -59,16 +72,14 @@ export function createAdminImportResultsHandler({
 
       const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
 
-      const XLSX = await xlsxImporter();
-      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+      const sheets = await parseWorkbook(req.file.buffer);
       const parsedStageNumber = Number.parseInt(stage_number, 10) || 1;
       const resultRows = [];
 
-      for (const sheetName of workbook.SheetNames) {
+      for (const { name: sheetName, rows } of sheets) {
         const resultType = sheetToType[sheetName.trim().toLowerCase()];
         if (!resultType) continue;
 
-        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
         if (rows.length < 2) continue;
 
         const headers = rows[1].map((header) => String(header || "").trim().toLowerCase());

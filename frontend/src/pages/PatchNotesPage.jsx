@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "1.89",
+    date: "2026-05-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sikkerhed",
+        items: [
+          "Erstattet xlsx-biblioteket (afviklet, to kendte sårbarheder) med exceljs — XLSX-import af løbsresultater er upåvirket",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.88",
     date: "2026-05-01",
     label: "Beta",

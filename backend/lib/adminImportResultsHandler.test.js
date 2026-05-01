@@ -139,25 +139,16 @@ test("admin import-results uses race_points for points_earned and prize_money = 
     logActivity: async (type, payload) => {
       activityCalls.push({ type, payload });
     },
-    xlsxImporter: async () => ({
-      read() {
-        return {
-          SheetNames: ["Stage Results"],
-          Sheets: {
-            "Stage Results": {},
-          },
-        };
+    parseWorkbook: async () => [
+      {
+        name: "Stage Results",
+        rows: [
+          [],
+          ["Rank", "Name", "Team", "Time"],
+          [1, "Jonas Vingegaard", "Visma", "04:00:00"],
+        ],
       },
-      utils: {
-        sheet_to_json() {
-          return [
-            [],
-            ["Rank", "Name", "Team", "Time"],
-            [1, "Jonas Vingegaard", "Visma", "04:00:00"],
-          ];
-        },
-      },
-    }),
+    ],
   });
 
   const req = {
@@ -239,23 +230,16 @@ test("admin import-results sets prize_money to 0 when race has no race_class", a
     ensureSeasonStandings: async () => {},
     updateStandings: async () => {},
     logActivity: async () => {},
-    xlsxImporter: async () => ({
-      read() {
-        return {
-          SheetNames: ["General Results"],
-          Sheets: { "General Results": {} },
-        };
+    parseWorkbook: async () => [
+      {
+        name: "General Results",
+        rows: [
+          [],
+          ["Rank", "Name", "Team", "Time"],
+          [1, "Tadej Pogacar", "UAE", "05:00:00"],
+        ],
       },
-      utils: {
-        sheet_to_json() {
-          return [
-            [],
-            ["Rank", "Name", "Team", "Time"],
-            [1, "Tadej Pogacar", "UAE", "05:00:00"],
-          ];
-        },
-      },
-    }),
+    ],
   });
 
   const req = { body: { race_id: "race-2" }, file: { buffer: Buffer.from("xlsx") } };
