@@ -12,19 +12,10 @@
 | 3 | Help + PatchNotes afspejler alle S2–S6 ændringer | ✅ |
 | 4 | Deploy verify (`pwsh -File scripts/verify-deploy.ps1`) | ✅ |
 
-## Næste session — INVESTIGATION
-**Problem:** dyn_cyclist sync (v1.83) opdaterede kun ~900 ud af 8.699 ryttere.
-Synkronisering kørt med: `https://docs.google.com/spreadsheets/d/1Fm56gvH7IZ4Tks9I_tJfP7xP_7PgUjPxBbZgWJGCIf4`
-
-Mulige årsager — undersøg i rækkefølge:
-1. **Arket har kun ~900 rækker** — PCM dyn_cyclist er måske kun top-ryttere, ikke alle 8.699
-2. **pcm_id mangler på mange ryttere** — tjek `SELECT COUNT(*) FROM riders WHERE pcm_id IS NOT NULL`
-3. **IDcyclist-mismatch** — arkets IDcyclist-værdier matcher ikke DB's pcm_id
-4. **Import_log** — tjek `import_log` tabellen for `rows_in_sheet` og `rows_matched` fra sidste sync
-
-Relevante filer: `backend/lib/dynCyclistSync.js`, `import_log` tabel i Supabase
-
 ## Senest leveret
+- v1.87 (2026-05-01): Sticky tabeloverskrift på rytteroversigt og auktionsside
+- v1.85 (2026-05-01): Fix auktions-sortering — rytterkolonner (navn, værdi, stats, potentiale) sorterede ikke
+- v1.84 (2026-05-01): Fix dyn_cyclist sync — Supabase 1000-rækker limit + europæisk decimal → 7.616/8.699 ryttere har nu potentiale
 - v1.83 (2026-05-01): Potentiale-stjerner på alle rytteroversigter — guld/sølv, halvstjerner, filter+sort
 - v1.81 (2026-04-30): Nationalitetsflag på alle 8.699 ryttere
 

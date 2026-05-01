@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "1.87",
+    date: "2026-05-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "UI",
+        items: [
+          "Tabeloverskriften (navn, evner, potentiale mv.) er nu sticky på rytteroversigten og auktionssiden — rækken fryser fast øverst, mens du scroller ned",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.86",
     date: "2026-05-01",
     label: "Beta",
