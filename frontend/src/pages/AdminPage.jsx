@@ -1324,7 +1324,25 @@ export default function AdminPage() {
             {loading["beta_reset-board"] ? "..." : "Nulstil bestyrelse"}
           </button>
           <button
-            onClick={() => handleBeta("reset-calendar", "Ryd løbskalender, pending resultater, race results og standings?\n\nHandlingen kan ikke fortrydes.")}
+            onClick={() => handleBeta("reset-transfer-archive", "Slet HELE transferarkivet — alle listings, tilbud og swap-tilbud for manager-hold?\n\nHandlingen kan ikke fortrydes.")}
+            disabled={loading["beta_reset-transfer-archive"]}
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            {loading["beta_reset-transfer-archive"] ? "..." : "Nulstil transferarkiv"}
+          </button>
+          <button
+            onClick={() => handleBeta("reset-loans", "Slet alle aktive finanslån (inkl. renter) for manager-hold?\n\nHandlingen kan ikke fortrydes.")}
+            disabled={loading["beta_reset-loans"]}
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            {loading["beta_reset-loans"] ? "..." : "Nulstil lån"}
+          </button>
+          <button
+            onClick={() => handleBeta("reset-notifications", "Ryd indbakken for alle manager-brugere?\n\nHandlingen kan ikke fortrydes.")}
+            disabled={loading["beta_reset-notifications"]}
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
+            {loading["beta_reset-notifications"] ? "..." : "Nulstil indbakke"}
+          </button>
+          <button
+            onClick={() => handleBeta("reset-calendar", "Ryd løbskalender, pending resultater, race results, standings og præmiepenge-bonus?\n\nHandlingen kan ikke fortrydes.")}
             disabled={loading["beta_reset-calendar"]}
             className="w-full lg:w-auto px-3 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-all">
             {loading["beta_reset-calendar"] ? "..." : "Nulstil løbskalender"}
@@ -1348,7 +1366,7 @@ export default function AdminPage() {
             {loading["beta_reset-achievements"] ? "..." : "Nulstil achievements"}
           </button>
           <button
-            onClick={() => handleBeta("full-reset", `FULD TEST-NULSTILLING:\n• Alle åbne markedsaktiviteter annulleres\n• Alle manager-ryttere returneres til AI-hold\n• Alle balancer sættes til 800.000 CZ$\n• Managerhold sættes i 3. division\n• Board-profiler resettes til baseline\n• Løbskalender, resultater, standings og sæsoner ryddes\n• XP/level og achievement unlocks nulstilles${betaClearTransactions ? "\n• Finance-transaktioner for manager-hold ryddes" : ""}\n\nDette er en test-reset, ikke et live-reset. Handlingen kan ikke fortrydes. Fortsæt?`, { clear_transactions: betaClearTransactions, reset_mode: "test" })}
+            onClick={() => handleBeta("full-reset", `FULD TEST-NULSTILLING:\n• Alle åbne markedsaktiviteter annulleres\n• Hele transferarkivet slettes (listings, tilbud, swaps)\n• Alle finanslån og renter slettes\n• Indbakke ryddes for alle managers\n• Alle manager-ryttere returneres til AI-hold\n• Alle balancer sættes til 800.000 CZ$\n• Managerhold sættes i 3. division\n• Løbskalender, resultater, standings og præmiepenge-bonus ryddes\n• Sæsoner slettes\n• Board-profiler resettes til baseline\n• XP/level og achievement unlocks nulstilles${betaClearTransactions ? "\n• Finance-transaktioner for manager-hold ryddes" : ""}\n\nDette er en test-reset, ikke et live-reset. Handlingen kan ikke fortrydes. Fortsæt?`, { clear_transactions: betaClearTransactions, reset_mode: "test" })}
             disabled={loading["beta_full-reset"]}
             className="w-full lg:w-auto px-3 py-2 text-xs bg-red-50 text-red-700 border border-red-300 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-all font-semibold">
             {loading["beta_full-reset"] ? "..." : "Fuld nulstilling"}
@@ -1366,6 +1384,15 @@ export default function AdminPage() {
                 <p>Swap-tilbud afvist: {betaResult.cancelled.swap_offers}</p>
                 <p>Låneaftaler annulleret: {betaResult.cancelled.loan_agreements}</p>
               </div>
+            )}
+            {betaResult.transfer_archive && (
+              <p className="mb-1">Transferarkiv slettet: {betaResult.transfer_archive.transfer_listings} listings · {betaResult.transfer_archive.transfer_offers} tilbud · {betaResult.transfer_archive.swap_offers} swaps</p>
+            )}
+            {betaResult.loans != null && (
+              <p className="mb-1">Finanslån slettet: {betaResult.loans?.loans ?? betaResult.loans}</p>
+            )}
+            {betaResult.notifications != null && (
+              <p className="mb-1">Notifikationer slettet: {betaResult.notifications?.notifications ?? betaResult.notifications}</p>
             )}
             {betaResult.rosters != null && (
               <p className="mb-1">Ryttere flyttet: {betaResult.rosters?.moved ?? betaResult.moved} (til AI: {betaResult.rosters?.to_ai ?? betaResult.to_ai}, til NULL: {betaResult.rosters?.to_null ?? betaResult.to_null})</p>

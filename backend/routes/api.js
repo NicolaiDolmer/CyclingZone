@@ -101,10 +101,13 @@ import {
   resetBetaBalances,
   resetBetaBoardProfiles,
   resetBetaDivisions,
+  resetBetaLoans,
   resetBetaManagerProgress,
+  resetBetaNotifications,
   resetBetaRaceCalendar,
   resetBetaRosters,
   resetBetaSeasons,
+  resetBetaTransferArchive,
   runFullBetaReset,
 } from "../lib/betaResetService.js";
 
@@ -3076,6 +3079,33 @@ router.post("/admin/beta/reset-board", requireAdmin, async (req, res) => {
 router.post("/admin/beta/reset-calendar", requireAdmin, async (req, res) => {
   try {
     res.json({ ok: true, race_calendar: await resetBetaRaceCalendar(supabase) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/beta/reset-transfer-archive — slet alt transfer-historik
+router.post("/admin/beta/reset-transfer-archive", requireAdmin, async (req, res) => {
+  try {
+    res.json({ ok: true, transfer_archive: await resetBetaTransferArchive(supabase) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/beta/reset-loans — slet aktive finanslån
+router.post("/admin/beta/reset-loans", requireAdmin, async (req, res) => {
+  try {
+    res.json({ ok: true, loans: await resetBetaLoans(supabase) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/beta/reset-notifications — ryd indbakke for alle managers
+router.post("/admin/beta/reset-notifications", requireAdmin, async (req, res) => {
+  try {
+    res.json({ ok: true, notifications: await resetBetaNotifications(supabase) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -246,12 +246,79 @@ export async function resetBetaRaceCalendar(supabase) {
 
   const races = ensureOk(await supabase.from("races").delete().not("id", "is", null).select("id"));
 
+  // prize_earnings_bonus er koblet til løbsresultater — nulstil for alle ryttere
+  ensureOk(await supabase.from("riders").update({ prize_earnings_bonus: 0 }).not("id", "is", null));
+
   return {
     pending_race_results: countRows(pending),
     race_results: countRows(results),
     season_standings: countRows(standings),
     races: countRows(races),
   };
+}
+
+export async function resetBetaTransferArchive(supabase) {
+  assertSupabase(supabase);
+  const managerTeams = await getBetaManagerTeams(supabase);
+  const teamIds = managerTeams.map((team) => team.id);
+  if (teamIds.length === 0) return { transfer_listings: 0, transfer_offers: 0, swap_offers: 0 };
+
+  // Slet transfer_offers hvor manager er køber (på AI-listings der ikke slettes via CASCADE)
+  const buyerOffers = ensureOk(await supabase
+    .from("transfer_offers")
+    .delete()
+    .in("buyer_team_id", teamIds)
+    .select("id"));
+
+  // Slet transfer_listings for manager-hold (ON DELETE CASCADE fjerner tilhørende offers)
+  const listings = ensureOk(await supabase
+    .from("transfer_listings")
+    .delete()
+    .in("seller_team_id", teamIds)
+    .select("id"));
+
+  // Slet swap_offers for manager-hold (begge sider)
+  const [swaps1, swaps2] = await Promise.all([
+    supabase.from("swap_offers").delete().in("proposing_team_id", teamIds).select("id"),
+    supabase.from("swap_offers").delete().in("receiving_team_id", teamIds).select("id"),
+  ]);
+  [swaps1, swaps2].forEach(ensureOk);
+
+  return {
+    transfer_listings: countRows(listings),
+    transfer_offers: countRows(buyerOffers),
+    swap_offers: countRows(swaps1) + countRows(swaps2),
+  };
+}
+
+export async function resetBetaLoans(supabase) {
+  assertSupabase(supabase);
+  const managerTeams = await getBetaManagerTeams(supabase);
+  const teamIds = managerTeams.map((team) => team.id);
+  if (teamIds.length === 0) return { loans: 0 };
+
+  const loans = ensureOk(await supabase
+    .from("loans")
+    .delete()
+    .in("team_id", teamIds)
+    .select("id"));
+
+  return { loans: countRows(loans) };
+}
+
+export async function resetBetaNotifications(supabase) {
+  assertSupabase(supabase);
+  const managerTeams = await getBetaManagerTeams(supabase);
+  const userIds = [...new Set(managerTeams.map((team) => team.user_id).filter(Boolean))];
+  if (userIds.length === 0) return { notifications: 0 };
+
+  const notifications = ensureOk(await supabase
+    .from("notifications")
+    .delete()
+    .in("user_id", userIds)
+    .select("id"));
+
+  return { notifications: countRows(notifications) };
 }
 
 export async function resetBetaSeasons(supabase) {
@@ -300,6 +367,9 @@ export async function runFullBetaReset(supabase, options = {}) {
   const resetMode = options.resetMode || "test";
 
   const cancelled = await cancelBetaMarket(supabase);
+  const transfer_archive = await resetBetaTransferArchive(supabase);
+  const loans = await resetBetaLoans(supabase);
+  const notifications = await resetBetaNotifications(supabase);
   const rosters = await resetBetaRosters(supabase);
   const balances = await resetBetaBalances(supabase, {
     clearTransactions: Boolean(options.clearTransactions),
@@ -314,6 +384,9 @@ export async function runFullBetaReset(supabase, options = {}) {
   return {
     reset_mode: resetMode,
     cancelled,
+    transfer_archive,
+    loans,
+    notifications,
     rosters,
     balances,
     divisions,
