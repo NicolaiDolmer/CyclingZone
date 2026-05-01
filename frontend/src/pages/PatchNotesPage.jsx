@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "1.91",
+    date: "2026-05-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "Ryttere",
+        items: [
+          "Rettet rytterværdier for 17 ryttere med sammensatte efternavne eller mellemnavne i UCI-data (fx Tobias Lund Andresen, Tobias Halland Johannessen, Magnus Cort Nielsen, Mikkel Honoré m.fl.) — disse var sat til minimumsværdi (20.000 CZ$) pga. navne-mismatch ved import",
+          "Forbedret import-algoritme: navnematch bruger nu token-baseret søgning der håndterer omvendt navnerækkefølge, mellemnavne i UCI og varianter som Joe/Joseph og Bjoern/Bjorn",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.90",
     date: "2026-05-01",
     label: "Beta",

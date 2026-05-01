@@ -393,10 +393,12 @@ def load_worlddb(path: str) -> pd.DataFrame:
     return df
 
 
-def load_uci_points(path: str) -> dict[str, int]:
+def load_uci_points(path: str) -> tuple[dict[str, int], dict[frozenset, int]]:
     """
     Load UCI top-1000 from CSV export of Google Sheets.
-    Returns dict: normalized_name -> uci_points
+    Returns:
+      - exact_map: normalized_name -> uci_points
+      - token_map: frozenset(name_tokens) -> uci_points (for fuzzy matching)
     Format expected: columns Pos, Navn, Point
     """
     print(f"📂 Loading UCI points from: {path}")
@@ -409,39 +411,92 @@ def load_uci_points(path: str) -> dict[str, int]:
     if not name_col or not pts_col:
         raise ValueError(f"Cannot find name/points columns. Found: {list(df.columns)}")
 
-    result = {}
+    exact_map: dict[str, int] = {}
+    token_map: dict[frozenset, int] = {}
     for _, row in df.iterrows():
         name = str(row[name_col]).strip()
         try:
             pts = int(float(row[pts_col]))
         except (ValueError, TypeError):
             continue
-        # UCI sheets format: "POGAČAR Tadej" → normalize
         normalized = normalize_name(name)
-        result[normalized] = pts
+        exact_map[normalized] = pts
+        tokens = frozenset(normalized.split())
+        # Keep highest points when multiple riders share same token set
+        if tokens not in token_map or token_map[tokens] < pts:
+            token_map[tokens] = pts
 
-    print(f"  ✅ {len(result)} riders with UCI points loaded")
-    return result
+    print(f"  ✅ {len(exact_map)} riders with UCI points loaded")
+    return exact_map, token_map
 
 
-def merge_data(worlddb: pd.DataFrame, uci_map: dict[str, int],
+def find_uci_points(match_key: str, exact_map: dict[str, int],
+                    token_map: dict[frozenset, int]) -> int | None:
+    """
+    Multi-strategy UCI points lookup to handle compound surnames, middle names,
+    and name variants between PCM WORLD_DB and UCI ranking format.
+
+    Strategies (in order):
+    1. Exact normalized match  (e.g. "PEDERSEN MADS")
+    2. Reversed token order    (e.g. "MADS PEDERSEN" → "PEDERSEN MADS")
+    3. Exact token-set match   (handles reordered compound names,
+                                e.g. PCM "SOJBERG PEDERSEN RASMUS" ↔ UCI "PEDERSEN RASMUS SOJBERG")
+    4. PCM tokens ⊆ UCI tokens (handles UCI adding middle/extra names,
+                                e.g. PCM "HONORE MIKKEL" ⊆ UCI "HONORE MIKKEL FROLICH")
+    5. UCI tokens ⊆ PCM tokens (handles UCI dropping part of PCM compound surname,
+                                e.g. UCI "CORT MAGNUS" ⊆ PCM "CORT NIELSEN MAGNUS")
+    """
+    # Strategy 1: exact match
+    pts = exact_map.get(match_key)
+    if pts is not None:
+        return pts
+
+    # Strategy 2: reversed
+    parts = match_key.split()
+    if len(parts) >= 2:
+        pts = exact_map.get(" ".join(reversed(parts)))
+        if pts is not None:
+            return pts
+
+    if not parts:
+        return None
+
+    pcm_tokens = frozenset(parts)
+
+    # Strategy 3: exact token-set (same words, different order)
+    pts = token_map.get(pcm_tokens)
+    if pts is not None:
+        return pts
+
+    # Strategies 4 & 5: subset matching — require ≥2 shared tokens to avoid
+    # false positives on common single-word last names.
+    if len(pcm_tokens) >= 2:
+        for uci_tokens, uci_pts in token_map.items():
+            if len(uci_tokens) >= 2:
+                if pcm_tokens.issubset(uci_tokens) or uci_tokens.issubset(pcm_tokens):
+                    return uci_pts
+
+    return None
+
+
+def merge_data(worlddb: pd.DataFrame,
+               uci_map: tuple[dict[str, int], dict[frozenset, int]] | dict[str, int],
                team_map: dict[int, str] | None = None) -> list[dict]:
     """Merge WORLD_DB stats with UCI points."""
+    # Accept both old dict form (backwards compat) and new tuple form
+    if isinstance(uci_map, tuple):
+        exact_map, token_map = uci_map
+    else:
+        exact_map = uci_map
+        token_map = {frozenset(k.split()): v for k, v in uci_map.items()}
+
     records = []
     matched = 0
     unmatched = 0
 
     for _, row in worlddb.iterrows():
-        # Try direct name match
         match_key = row["_match_name"]
-        uci_pts = uci_map.get(match_key)
-
-        # Try reversed name (firstname lastname)
-        if uci_pts is None:
-            parts = match_key.split()
-            if len(parts) >= 2:
-                reversed_key = " ".join(reversed(parts))
-                uci_pts = uci_map.get(reversed_key)
+        uci_pts = find_uci_points(match_key, exact_map, token_map)
 
         if uci_pts is not None:
             matched += 1
