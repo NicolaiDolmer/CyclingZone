@@ -266,10 +266,10 @@ export default function RidersPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl [overflow:clip]">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead>
+              <thead className="sticky top-0 z-20 bg-white shadow-sm">
                 <tr className="border-b border-slate-200">
                   <SortTh sortKey="firstname" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider w-48">Rytter</SortTh>
