@@ -80,13 +80,23 @@ export async function syncDynCyclist(spreadsheetUrl, adminUserId) {
     if (idx !== -1) statColumns.set(idx, dbField);
   }
 
-  // Fetch all riders with pcm_id from DB once
-  const { data: riders } = await supabase
-    .from("riders")
-    .select("id, pcm_id")
-    .not("pcm_id", "is", null);
+  // Fetch all riders with pcm_id from DB — paginate to bypass Supabase 1000-row default limit
+  const allRiders = [];
+  const PAGE = 1000;
+  let offset = 0;
+  while (true) {
+    const { data } = await supabase
+      .from("riders")
+      .select("id, pcm_id")
+      .not("pcm_id", "is", null)
+      .range(offset, offset + PAGE - 1);
+    if (!data?.length) break;
+    allRiders.push(...data);
+    if (data.length < PAGE) break;
+    offset += PAGE;
+  }
 
-  const pcmToId = new Map((riders || []).map(r => [r.pcm_id, r.id]));
+  const pcmToId = new Map(allRiders.map(r => [r.pcm_id, r.id]));
 
   const updates = [];
   let notFound = 0;
@@ -101,7 +111,9 @@ export async function syncDynCyclist(spreadsheetUrl, adminUserId) {
 
     const update = { updated_at: new Date().toISOString() };
     for (const [idx, dbField] of statColumns) {
-      const val = parseFloat(cols[idx]);
+      // Normalize European decimal (comma) to dot before parsing
+      const raw = (cols[idx] || "").replace(",", ".");
+      const val = parseFloat(raw);
       if (!isNaN(val)) {
         update[dbField] = dbField === "potentiale"
           ? Math.round(val * 2) / 2  // round to nearest 0.5
