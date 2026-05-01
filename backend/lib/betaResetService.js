@@ -256,6 +256,10 @@ export async function resetBetaRaceCalendar(supabase) {
 
 export async function resetBetaSeasons(supabase) {
   assertSupabase(supabase);
+  // board_plan_snapshots: NOT NULL FK til seasons — skal slettes før sæsoner
+  ensureOk(await supabase.from("board_plan_snapshots").delete().not("id", "is", null));
+  // board_profiles: nullable FK til seasons uden ON DELETE SET NULL — null det ud
+  ensureOk(await supabase.from("board_profiles").update({ season_id: null }).not("id", "is", null));
   const seasons = ensureOk(await supabase.from("seasons").delete().not("id", "is", null).select("id"));
   return { seasons: countRows(seasons) };
 }
