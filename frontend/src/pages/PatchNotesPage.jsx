@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "1.85",
+    date: "2026-05-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auktioner",
+        items: [
+          "Rettet: Sortering på kolonner (navn, værdi, stats, potentiale) virkede ikke — rækkefølgen forblev uændret uanset valgt sortering",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.84",
     date: "2026-05-01",
     label: "Beta",

@@ -484,19 +484,25 @@ export default function AuctionsPage() {
   }
 
   const riderFilters = useClientRiderFilters(auctions.map(a => a.rider).filter(Boolean));
-  const filteredRiderIds = new Set(riderFilters.filtered.map(r => r.id));
+  const filteredRiderOrder = new Map(riderFilters.filtered.map((r, i) => [r.id, i]));
 
   const winningCount   = auctions.filter(a => getAuctionLeaderId(a) === myTeamId).length;
   const myListedCount  = auctions.filter(a => isManagerSeller(a, myTeamId)).length;
   const otherManagerCount = auctions.filter(a => a.rider?.team_id && a.rider.team_id !== myTeamId).length;
 
-  const filtered = auctions.filter(a => {
-    if (a.rider && !filteredRiderIds.has(a.rider.id)) return false;
-    if (filter === "mine")    return isManagerSeller(a, myTeamId);
-    if (filter === "winning") return getAuctionLeaderId(a) === myTeamId;
-    if (filter === "other")   return a.rider?.team_id && a.rider.team_id !== myTeamId;
-    return true;
-  });
+  const filtered = auctions
+    .filter(a => {
+      if (a.rider && !filteredRiderOrder.has(a.rider.id)) return false;
+      if (filter === "mine")    return isManagerSeller(a, myTeamId);
+      if (filter === "winning") return getAuctionLeaderId(a) === myTeamId;
+      if (filter === "other")   return a.rider?.team_id && a.rider.team_id !== myTeamId;
+      return true;
+    })
+    .sort((a, b) => {
+      const ai = a.rider ? (filteredRiderOrder.get(a.rider.id) ?? Infinity) : Infinity;
+      const bi = b.rider ? (filteredRiderOrder.get(b.rider.id) ?? Infinity) : Infinity;
+      return ai - bi;
+    });
 
   const FILTER_TABS = [
     { key: "all",     label: `Alle (${auctions.length})` },
