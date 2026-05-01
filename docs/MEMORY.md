@@ -21,9 +21,17 @@ Push efter commit uden at spørge. Commit → push er én operation.
 ### Økonomi-principper (gældende fra v1.46)
 - `DEFAULT_BETA_BALANCE = 800.000 CZ$` (kode: `backend/lib/betaResetService.js`)
 - Sponsor-indkomst: **240.000 CZ$/sæson** per team (med board-modifier)
-- Rytterværdi = `uci_points × 4000` (generated column i DB)
+- Rytterværdi = `uci_points × 4000` (generated column `price` i DB)
+- `market_value = GREATEST(5, uci_points) × 4000 + prize_earnings_bonus` (generated)
+- `salary` er IKKE generated — skal altid opdateres manuelt: `salary = uci_points × 400`
 - Økonomi-target: **stram men fair** — aktive kompetente managers kan overleve uden automatisk gældsspiral
-- Større tuning: vent på prize-money baseline (sæson-realistiske CZ$-præmier)
+
+### Rytter-import og UCI-data
+- **Autoritativ kilde:** Google Sheet `1dE6v2zdmflzToGUHf3pA5mEk5Kn7YI2Wq8WsXbUX0Ic` (3000 ryttere, opdateres af GitHub Actions)
+- Lokal kopi: `scripts/uci_top1000.csv` — overskriv ved re-import med ny CSV fra Sheet
+- Import-script: `scripts/import_riders.py` — bruger 5-lags navnematch + PCM_UCI_OVERRIDE
+- Se `docs/CONVENTIONS.md` → "Import af ryttere" for komplet algoritme og invarianter
+- **Fejlmønster der kendes:** PCM sammensatte efternavne, UCI mellemnavne, polske ł/Ø-tegn, alternativ translitteration (Tesfazion/Tesfatsion) — alle håndteres nu i scriptet
 
 ### Launch-kontekst (2026-04-30)
 - **17 aktive managers** i nuværende beta

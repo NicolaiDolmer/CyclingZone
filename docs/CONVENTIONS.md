@@ -74,25 +74,57 @@ Sidebar er mørk navy (`#1a1f38`). Alt andet — sider, kort, formularer — bru
 
 ## Import af ryttere (`scripts/import_riders.py`)
 
-Navnematch mellem PCM WORLD_DB og UCI-CSV bruger 5-lags fallback + explicit override-map:
+### Autoritativ datakilde — Google Sheet
+UCI-ranglisten hentes fra Google Sheets (opdateres løbende af GitHub Actions scraper):
+- **Sheet-URL:** `https://docs.google.com/spreadsheets/d/1dE6v2zdmflzToGUHf3pA5mEk5Kn7YI2Wq8WsXbUX0Ic`
+- Indeholder **3000 ryttere** (ikke bare top-1000) — alle ryttere med UCI-points
+- Kolonneformat: `Rank, Name, Team, Nationality, UCI Points, Updated`
+- Lokal kopi: `scripts/uci_top1000.csv` — skal holdes opdateret ved re-import
 
-1. Eksakt match (normaliseret)
-2. Omvendt token-rækkefølge
-3. Eksakt token-sæt (håndterer omvendt efternavn, fx "CORT NIELSEN MAGNUS" ↔ "CORT MAGNUS NIELSEN")
-4. PCM-tokens ⊆ UCI-tokens (UCI har mellemnavn, fx "HONORE MIKKEL" ⊆ "HONORE MIKKEL FROLICH")
-5. UCI-tokens ⊆ PCM-tokens (UCI bruger kun del af PCM-sammensat efternavn)
+**Opdatér lokal CSV** (ved re-import med ny data): Download fra Google Sheet via Google Drive MCP
+(`download_file_content` med fileId `1dE6v2zdmflzToGUHf3pA5mEk5Kn7YI2Wq8WsXbUX0Ic`, exportMimeType `text/csv`)
+og overskriv `scripts/uci_top1000.csv`.
 
-**`PCM_UCI_OVERRIDE`** (øverst i scriptet): eksplicit map `pcm_id → UCI-navn` for navnevarianter
-algoritmerne ikke kan bryde (fx Joe/Joseph, Bjoern/Bjorn). Tilføj her ved nye mismatch.
+### Navnematch — 5-lags fallback
+PCM WORLD_DB og Google Sheet bruger forskellige navneformater.
+`import_riders.py` prøver strategierne i rækkefølge:
 
-**Hvornår opdateres DB-værdier?**  
+1. **Eksakt match** (normaliseret)
+2. **Omvendt token-rækkefølge** (fx "RASMUS PEDERSEN" ↔ "PEDERSEN RASMUS")
+3. **Eksakt token-sæt** — samme ord, forskellig rækkefølge (fx "CORT NIELSEN MAGNUS" ↔ "CORT MAGNUS NIELSEN")
+4. **PCM-tokens ⊆ UCI-tokens** — UCI har mellemnavn/ekstra token (fx "HONORE MIKKEL" ⊆ "HONORE MIKKEL FROLICH")
+5. **UCI-tokens ⊆ PCM-tokens** — PCM har ekstra navnedel (fx "ALMEIDA JOAO" ⊆ "ALMEIDA JOAO LUIS")
+
+### normalize_name — tegnhåndtering
+Strippér accent-combining chars via NFKD + explicit erstatning af precomposed tegn:
+- `ł / Ł → L` (polsk — Kwiatkowski, Aniołkowski, Bogusławski)
+- `ø / Ø → O` (nordisk — Øxenberg)
+- `æ / Æ → AE`
+- `ß → SS` (tysk)
+- `đ / Đ → D` (kroatisk)
+
+### PCM_UCI_OVERRIDE (øverst i scriptet)
+Eksplicit map `pcm_id → normaliseret UCI-navn` for tilfælde algoritmen ikke klarer:
+```python
+PCM_UCI_OVERRIDE = {
+    9151: "BLACKMORE JOSEPH",      # PCM: "Joe";       UCI: "Joseph"
+    9934: "KOERDT BJORN",          # PCM: "Bjoern";    UCI: "Bjorn"
+    7372: "TESFATSION NATNAEL",    # PCM: "Tesfazion"; UCI: "Tesfatsion"
+}
+```
+**Tilføj her** ved nye mismatch der ikke løses af de 5 strategier eller normalize_name.
+
+### Hvornår opdateres DB-værdier?
 `uci_points` gemmes i `riders`-tabellen. `price` og `market_value` er GENERATED columns
 der genberegnes automatisk. Re-import med nyt UCI-CSV overskriver `uci_points` for alle
-matchede ryttere — DB-fix via SQL-migration er derfor midlertidig og erstattes ved re-import.
-Løsningen er at holde importscriptet opdateret med ovenstående strategier + PCM_UCI_OVERRIDE.
+matchede ryttere — SQL-migrationer er midlertidige patches, erstattes ved re-import.
 
-**Invariant — pris og løn opdateres altid sammen:**  
-`salary` er IKKE en generated column. Hver gang `uci_points` (og dermed `price`) ændres,
-SKAL `salary` opdateres i samme operation: `salary = uci_points * 400`
-(svarende til `CEIL(price * SALARY_RATE)` hvor `SALARY_RATE = 0.10`).
-Dette gælder ved SQL-migrationer, import-script og enhver anden direkte DB-ændring.
+### ⚠️ Invariant — pris og løn opdateres ALTID sammen
+`salary` er IKKE en generated column. Enhver ændring af `uci_points` SKAL efterfølges af:
+```sql
+SET salary = uci_points * 400
+```
+Formlen: `salary = price × SALARY_RATE = uci_points × 4000 × 0.10 = uci_points × 400`
+
+Gælder ved: SQL-migrationer, import-script, admin-override, UCI-sync og enhver direkte DB-ændring.
+`recalculateRiderSalaries.js` håndterer dette automatisk efter GitHub Actions UCI-sync.

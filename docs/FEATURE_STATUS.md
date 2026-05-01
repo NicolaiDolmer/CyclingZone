@@ -103,15 +103,23 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Nationale identitetsmål i balancerede planer; focus-switch lander som gradvis tradeoff
 
 ### Admin
-- Import af ryttere (Python-script)
+- Import af ryttere (Python-script `scripts/import_riders.py`) — se CONVENTIONS.md for navnematch-algoritme
 - Import af løbsresultater (xlsx upload)
-- UCI points sync (Google Sheets CSV)
+- UCI points sync (Google Sheets CSV — autoritativ kilde med 3000 ryttere)
 - Override rider (team/stats)
 - Sæsonopcioner (create/start/end/result import) via kanoniske admin-routes
 - Genberegning af standings fra gemte race_results
 - Løbsoprettelse og season-end preview endpoint
 - Admin repair endpoint til season-end finance/board side effects uden at køre season status eller oprykning/nedrykning igen; deployed 2026-04-29 og kan resume missing side effects uden at duplikere eksisterende salary/snapshots.
 - Beta-reset komplet suite: marked, trupper, balancer, divisioner, bestyrelse, løbskalender, sæsoner, XP/level og achievement unlocks via delt reset-service
+
+**Rider import — kendte fejlmønstre der nu håndteres (v1.91–1.93):**
+- PCM sammensatte efternavne (Cort Nielsen, Halland Johannessen, Søjberg Pedersen) → token-set match
+- UCI mellemnavne (Honoré Mikkel **Frølich**, Sosa Iván **Ramiro**) → subset match
+- Polske/nordiske precomposed tegn (Ł, Ø, Æ) → normalize_name erstatningsregler
+- Alternativ translitteration (Tesfazion/Tesfatsion) → PCM_UCI_OVERRIDE
+- Forældet top-1000 CSV → erstattet med 3000-rytterliste fra Google Sheet
+- 1.138 ryttere masseopdateret til korrekte uci_points + salary (v1.93, 2026-05-02)
 
 ### UI / Misc
 - Responsivt layout med navigation (Layout.jsx)
