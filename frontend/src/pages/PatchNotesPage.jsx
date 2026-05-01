@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "1.93",
+    date: "2026-05-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Ryttere",
+        items: [
+          "Masseopdatering: 1.138 ryttere rettet fra minimumsværdi til korrekte UCI-points — heriblandt João Almeida (14M CZ$), Thomas Silva, Chris Hamilton og hundredvis af andre der manglede i gammel top-1000 CSV",
+          "Alle påvirkede rytteres løn er synkroniseret automatisk",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.92",
     date: "2026-05-01",
     label: "Beta",
