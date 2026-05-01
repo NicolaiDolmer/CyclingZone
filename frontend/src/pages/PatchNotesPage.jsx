@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "1.90",
+    date: "2026-05-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin",
+        items: [
+          "Fuld nulstilling dækker nu alle spildata: transferarkiv (listings, tilbud, swaps), finanslån og renter, indbakke og præmiepenge-bonus på ryttere nulstilles korrekt ved reset",
+          "Nye individuelle reset-knapper: Nulstil transferarkiv, Nulstil lån og Nulstil indbakke",
+          "Rettet fejl hvor sæson-sletning fejlede pga. FK-constraint på board_plan_snapshots og board_profiles",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.89",
     date: "2026-05-01",
     label: "Beta",
