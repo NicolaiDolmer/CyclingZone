@@ -585,8 +585,8 @@ export default function AuctionsPage() {
             />
           ))}
         </div>
-        <div className="hidden md:block bg-white border border-slate-200 rounded-xl [overflow:clip]">
-          <div className="overflow-x-auto">
+        <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="overflow-auto max-h-[calc(100vh-220px)]">
             <table className="w-full text-xs">
               <thead className="sticky top-0 z-20 bg-white shadow-sm">
                 <tr className="border-b border-slate-200">
