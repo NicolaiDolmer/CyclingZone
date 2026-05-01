@@ -13,6 +13,7 @@
 | 4 | Deploy verify (`pwsh -File scripts/verify-deploy.ps1`) | ✅ |
 
 ## Senest leveret
+- v1.88 (2026-05-01): Sæsonstatus-banner på dashboard — dage til sæsonslut, løbsdage-progress, transfervindue
 - v1.87 (2026-05-01): Sticky tabeloverskrift på rytteroversigt og auktionsside
 - v1.85 (2026-05-01): Fix auktions-sortering — rytterkolonner (navn, værdi, stats, potentiale) sorterede ikke
 - v1.84 (2026-05-01): Fix dyn_cyclist sync — Supabase 1000-rækker limit + europæisk decimal → 7.616/8.699 ryttere har nu potentiale

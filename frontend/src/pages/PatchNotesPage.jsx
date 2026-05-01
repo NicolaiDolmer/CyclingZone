@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "1.88",
+    date: "2026-05-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "Dashboard",
+        items: [
+          "Nyt Sæsonstatus-banner på dashboardet — viser aktiv sæson, antal dage til sæsonslut, løbsdage-progress og om transfervinduet er åbent eller lukket",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.87",
     date: "2026-05-01",
     label: "Beta",

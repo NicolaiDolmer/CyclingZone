@@ -57,6 +57,7 @@ export default function DashboardPage() {
   const [activeOffers, setActiveOffers] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [seasonInfo, setSeasonInfo] = useState(null);
   const [transferWindow, setTransferWindow] = useState(null);
   const [isNewUser, setIsNewUser] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -75,7 +76,8 @@ export default function DashboardPage() {
     setTeam(teamData);
 
     const { data: activeSeason } = await supabase
-      .from("seasons").select("id")
+      .from("seasons")
+      .select("id, number, status, start_date, end_date, race_days_total, race_days_completed")
       .eq("status", "active")
       .single();
 
@@ -119,6 +121,7 @@ export default function DashboardPage() {
         : Promise.resolve({ sent: [], received: [] }),
     ]);
 
+    setSeasonInfo(activeSeason || null);
     setRiders(ridersRes.data || []);
     setPendingIncomingCount(pendingIncomingRes.count || 0);
     setActiveLoanCount(loansInRes.count || 0);
@@ -256,6 +259,53 @@ export default function DashboardPage() {
           setShowOnboarding(false);
           localStorage.setItem("cz_onboarding_done", "1");
         }} />
+      )}
+
+      {/* Season Status Banner */}
+      {seasonInfo && (
+        <div className="mb-5 bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-900 text-sm">Sæson {seasonInfo.number}</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border
+              ${seasonInfo.status === "active" ? "bg-green-50 text-green-700 border-green-200"
+              : seasonInfo.status === "upcoming" ? "bg-blue-50 text-blue-700 border-blue-200"
+              : "bg-slate-50 text-slate-500 border-slate-200"}`}>
+              {seasonInfo.status === "active" ? "Aktiv" : seasonInfo.status === "upcoming" ? "Kommende" : "Afsluttet"}
+            </span>
+          </div>
+
+          {seasonInfo.end_date && (() => {
+            const daysLeft = Math.ceil((new Date(seasonInfo.end_date) - new Date()) / 86400000);
+            if (daysLeft <= 0) return <span className="text-slate-400 text-xs">Sæsonslut passeret</span>;
+            return (
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-900 font-mono font-bold text-sm">{daysLeft}</span>
+                <span className="text-slate-400 text-xs">dage til sæsonslut</span>
+              </div>
+            );
+          })()}
+
+          {(seasonInfo.race_days_total || 0) > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-xs whitespace-nowrap">
+                {seasonInfo.race_days_completed || 0}/{seasonInfo.race_days_total} løbsdage
+              </span>
+              <div className="w-20 bg-slate-100 rounded-full h-1.5">
+                <div className="h-1.5 rounded-full bg-amber-400 transition-all"
+                  style={{ width: `${Math.min(100, ((seasonInfo.race_days_completed || 0) / seasonInfo.race_days_total) * 100)}%` }} />
+              </div>
+            </div>
+          )}
+
+          {transferWindow && (
+            <span className={`ml-auto text-[10px] px-2 py-1 rounded-full border font-medium
+              ${transferWindow.status === "open"
+                ? "bg-green-50 text-green-700 border-green-200"
+                : "bg-slate-50 text-slate-500 border-slate-200"}`}>
+              {transferWindow.status === "open" ? "✓ Transfervindue åbent" : "✗ Transfervindue lukket"}
+            </span>
+          )}
+        </div>
       )}
 
       {/* Stat cards */}
