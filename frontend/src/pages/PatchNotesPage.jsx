@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "1.92",
+    date: "2026-05-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "Ryttere",
+        items: [
+          "Synkroniseret rytterværdier med Google Sheet (autoritativ UCI-kilde, 3000 ryttere) — 35 ryttere opdateret inkl. Mick van Dijke, Brent Van Moer, Kwiatkowski, Valter, Tesfazion, Aniołkowski m.fl.",
+          "Rettet forældede værdier sat fra gammel CSV: Tobias Halland Johannessen (2393 pts), Magnus Cort Nielsen (321 pts), Fredrik Dversnes (431 pts) m.fl.",
+          "Forbedret import-algoritme: håndterer nu polske/nordiske specialtegn (ł, Ø) og alternativ translitteration (Tesfazion/Tesfatsion)",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.91",
     date: "2026-05-01",
     label: "Beta",

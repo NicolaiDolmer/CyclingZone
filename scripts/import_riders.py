@@ -45,8 +45,9 @@ U25_CUTOFF_YEAR = date.today().year - 25  # born after this year = U25
 # Add here when PCM stores a nickname (Joe) or alternate spelling (Bjoern/Bjorn)
 # that no normalization strategy can bridge automatically.
 PCM_UCI_OVERRIDE: dict[int, str] = {
-    9151: "BLACKMORE JOSEPH",   # PCM stores "Joe"; UCI uses "Joseph"
-    9934: "KOERDT BJORN",       # PCM stores "Bjoern"; UCI uses "Bjorn"
+    9151: "BLACKMORE JOSEPH",      # PCM: "Joe";      UCI: "Joseph"
+    9934: "KOERDT BJORN",          # PCM: "Bjoern";   UCI: "Bjorn"
+    7372: "TESFATSION NATNAEL",    # PCM: "Tesfazion"; UCI: "Tesfatsion" (different transliteration)
 }
 
 # ── PCM fkIDregion → ISO 3166-1 alpha-2 nationality code ──────────────────────
@@ -365,10 +366,27 @@ def is_u25(birthdate: date | None) -> bool:
 
 
 def normalize_name(name: str) -> str:
-    """Normalize name for matching: uppercase, strip accents best-effort."""
+    """Normalize name: uppercase, strip accent combining chars, then replace
+    precomposed characters that NFKD cannot decompose (Polish ł, Nordic Ø, etc.)
+    so PCM 'Michal' matches Google-Sheet 'Michał', 'Øxenberg' matches 'Oxenberg'.
+    """
     import unicodedata
     nfkd = unicodedata.normalize("NFKD", name.upper())
-    return "".join(c for c in nfkd if not unicodedata.combining(c)).strip()
+    s = "".join(c for c in nfkd if not unicodedata.combining(c))
+    # Precomposed chars not handled by NFKD — map to ASCII equivalents
+    for src, dst in (
+        ("Ł", "L"),   # Ł  (Polish)
+        ("ł", "L"),   # ł
+        ("Ø", "O"),   # Ø  (Nordic)
+        ("ø", "O"),   # ø
+        ("Æ", "AE"),  # Æ
+        ("æ", "AE"),  # æ
+        ("ß", "SS"),  # ß  (German)
+        ("Đ", "D"),   # Đ  (Croatian)
+        ("đ", "D"),   # đ
+    ):
+        s = s.replace(src, dst)
+    return s.strip()
 
 
 def load_worlddb(path: str) -> pd.DataFrame:
