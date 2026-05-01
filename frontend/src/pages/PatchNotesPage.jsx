@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "1.86",
+    date: "2026-05-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auktioner",
+        items: [
+          "Byd-kolonnen er nu fastlåst i højre side af tabellen — input og knap er altid synlige uden vandret scroll",
+          "Fjernet 'Min. bud'-tekst fra hver række — minimumsbud er allerede forudindtastet i feltet",
+          "Tættere rækker giver overblik over flere auktioner på skærmen ad gangen",
+          "Sælger- og Alder-kolonner skjules på mindre skærme og vises kun på meget brede skærme (1280px+)",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.85",
     date: "2026-05-01",
     label: "Beta",
