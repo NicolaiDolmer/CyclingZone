@@ -27,3 +27,9 @@ FROM (VALUES
   (6374,   50)    -- Lucas Hamilton              ← UCI: HAMILTON Lucas (stale: was 7)
 ) AS v(pcm_id, pts)
 WHERE riders.pcm_id = v.pcm_id;
+
+-- salary is NOT a generated column — must be updated alongside uci_points.
+-- Formula: salary = uci_points * 4000 * 0.10 = uci_points * 400
+UPDATE riders
+SET salary = uci_points * 400
+WHERE pcm_id IN (15360,13452,13451,3011,7494,5633,6594,9151,7154,6000,7090,6513,7616,13032,7705,9934,6374);

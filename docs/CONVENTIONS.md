@@ -90,3 +90,9 @@ algoritmerne ikke kan bryde (fx Joe/Joseph, Bjoern/Bjorn). Tilføj her ved nye m
 der genberegnes automatisk. Re-import med nyt UCI-CSV overskriver `uci_points` for alle
 matchede ryttere — DB-fix via SQL-migration er derfor midlertidig og erstattes ved re-import.
 Løsningen er at holde importscriptet opdateret med ovenstående strategier + PCM_UCI_OVERRIDE.
+
+**Invariant — pris og løn opdateres altid sammen:**  
+`salary` er IKKE en generated column. Hver gang `uci_points` (og dermed `price`) ændres,
+SKAL `salary` opdateres i samme operation: `salary = uci_points * 400`
+(svarende til `CEIL(price * SALARY_RATE)` hvor `SALARY_RATE = 0.10`).
+Dette gælder ved SQL-migrationer, import-script og enhver anden direkte DB-ændring.
