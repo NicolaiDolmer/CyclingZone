@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "1.84",
+    date: "2026-05-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "Ryttere",
+        items: [
+          "Rettet: Potentiale-synkronisering opdaterede kun ~900 ryttere — nu opdateres alle 7.600+ ryttere korrekt",
+          "Rettet: Halvstjerner (½) blev afrundet ned pga. europæisk decimalformat — potentiale-værdier som 4,5 vises nu korrekt",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.83",
     date: "2026-05-01",
     label: "Beta",
