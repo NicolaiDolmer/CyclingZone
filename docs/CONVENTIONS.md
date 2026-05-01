@@ -71,3 +71,22 @@ Sidebar er mørk navy (`#1a1f38`). Alt andet — sider, kort, formularer — bru
 - `frontend/src/pages/PatchNotesPage.jsx` er den løbende changelog for brugerrettede releases og fixes
 - `frontend/src/pages/HelpPage.jsx` er den løbende forklaring af regler, flows og FAQ
 - Nye features og mærkbare adfærdsændringer skal reviewe begge sider før opgaven betragtes som færdig
+
+## Import af ryttere (`scripts/import_riders.py`)
+
+Navnematch mellem PCM WORLD_DB og UCI-CSV bruger 5-lags fallback + explicit override-map:
+
+1. Eksakt match (normaliseret)
+2. Omvendt token-rækkefølge
+3. Eksakt token-sæt (håndterer omvendt efternavn, fx "CORT NIELSEN MAGNUS" ↔ "CORT MAGNUS NIELSEN")
+4. PCM-tokens ⊆ UCI-tokens (UCI har mellemnavn, fx "HONORE MIKKEL" ⊆ "HONORE MIKKEL FROLICH")
+5. UCI-tokens ⊆ PCM-tokens (UCI bruger kun del af PCM-sammensat efternavn)
+
+**`PCM_UCI_OVERRIDE`** (øverst i scriptet): eksplicit map `pcm_id → UCI-navn` for navnevarianter
+algoritmerne ikke kan bryde (fx Joe/Joseph, Bjoern/Bjorn). Tilføj her ved nye mismatch.
+
+**Hvornår opdateres DB-værdier?**  
+`uci_points` gemmes i `riders`-tabellen. `price` og `market_value` er GENERATED columns
+der genberegnes automatisk. Re-import med nyt UCI-CSV overskriver `uci_points` for alle
+matchede ryttere — DB-fix via SQL-migration er derfor midlertidig og erstattes ved re-import.
+Løsningen er at holde importscriptet opdateret med ovenstående strategier + PCM_UCI_OVERRIDE.

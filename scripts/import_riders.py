@@ -40,6 +40,15 @@ STAT_MAP = {
 
 U25_CUTOFF_YEAR = date.today().year - 25  # born after this year = U25
 
+# ── Manual UCI-name overrides for cases automated matching can't handle ────────
+# Key: PCM IDcyclist (pcm_id).  Value: exact normalized UCI name string.
+# Add here when PCM stores a nickname (Joe) or alternate spelling (Bjoern/Bjorn)
+# that no normalization strategy can bridge automatically.
+PCM_UCI_OVERRIDE: dict[int, str] = {
+    9151: "BLACKMORE JOSEPH",   # PCM stores "Joe"; UCI uses "Joseph"
+    9934: "KOERDT BJORN",       # PCM stores "Bjoern"; UCI uses "Bjorn"
+}
+
 # ── PCM fkIDregion → ISO 3166-1 alpha-2 nationality code ──────────────────────
 # Source: PCM WORLD_DB regions sheet (col 1=IDregion, col 4=fkIDcountry) +
 #         PCM countries sheet (IDcountry → CONSTANT → ISO 2-letter).
@@ -495,8 +504,17 @@ def merge_data(worlddb: pd.DataFrame,
     unmatched = 0
 
     for _, row in worlddb.iterrows():
+        pcm_id = int(row["IDcyclist"])
         match_key = row["_match_name"]
-        uci_pts = find_uci_points(match_key, exact_map, token_map)
+
+        # Strategy 0: explicit override for cases normal matching can't bridge
+        if pcm_id in PCM_UCI_OVERRIDE:
+            uci_pts = exact_map.get(PCM_UCI_OVERRIDE[pcm_id])
+        else:
+            uci_pts = None
+
+        if uci_pts is None:
+            uci_pts = find_uci_points(match_key, exact_map, token_map)
 
         if uci_pts is not None:
             matched += 1
