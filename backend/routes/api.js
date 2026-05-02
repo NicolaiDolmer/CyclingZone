@@ -2050,6 +2050,20 @@ router.post("/admin/races", requireAdmin, async (req, res) => {
 });
 
 
+// GET /api/race-points — UCI-pointtabel for alle løbsklasser
+router.get("/race-points", requireAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("race_points")
+      .select("race_class, result_type, rank, points")
+      .order("rank");
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Finance Loan Routes ───────────────────────────────────────────────────────
 
 // Separate finance loans from rider loan agreements to keep one canonical path per domain.

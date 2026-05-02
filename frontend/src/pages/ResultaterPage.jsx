@@ -9,6 +9,7 @@ const HUB_LINKS = [
   { to: "/race-archive",   label: "Løbsarkiv",        desc: "Historik pr. løb på tværs af sæsoner",       icon: "📖" },
   { to: "/season-end",     label: "Sæsonresultater",  desc: "Historiske sæsonafslutninger",                icon: "📅" },
   { to: "/hall-of-fame",   label: "Hall of Fame",     desc: "Rekorder og manager-rangliste",               icon: "👑" },
+  { to: "/race-points",    label: "Pointtabel",       desc: "UCI-point og præmier pr. løbsklasse",         icon: "📊" },
 ];
 
 export default function ResultaterPage() {

@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "1.94",
+    date: "2026-05-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Resultater",
+        items: [
+          "Ny side: Pointtabel — vis UCI-point og præmier pr. løbsklasse (Tour de France, Giro/Vuelta, Monuments, WorldTour A/B/C, ProSeries, Klasse 1/2)",
+          "Præmieformlen fremhævet med konkrete eksempler: 1 UCI-point = 15.000 CZ$",
+          "Tilgængelig via Resultater → Pointtabel",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.93",
     date: "2026-05-02",
     label: "Beta",

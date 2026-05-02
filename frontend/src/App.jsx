@@ -35,6 +35,7 @@ const RaceHistoryPage = lazy(() => import("./pages/RaceHistoryPage"));
 const ManagerProfilePage = lazy(() => import("./pages/ManagerProfilePage"));
 const FinancePage = lazy(() => import("./pages/FinancePage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const RacePointsPage = lazy(() => import("./pages/RacePointsPage"));
 
 function LoadingScreen() {
   return (
@@ -132,6 +133,7 @@ export default function App() {
             <Route path="race-archive" element={<RaceArchivePage />} />
             <Route path="race-archive/:raceSlug" element={<RaceHistoryPage />} />
             <Route path="finance" element={<FinancePage />} />
+            <Route path="race-points" element={<RacePointsPage />} />
             <Route path="managers/:teamId" element={<ManagerProfilePage />} />
             <Route path="admin" element={<AdminPage />} />
 
