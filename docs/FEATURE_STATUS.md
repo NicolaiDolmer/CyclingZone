@@ -146,7 +146,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Developer Tooling (v1.99, 2026-05-02)
 - **ESLint** (backend + frontend) — flat config, `@eslint/js` recommended; kører i CI efter tests; 0 errors
 - **Prettier** — 2 spaces, double quotes, semikolon, `trailingComma: es5`; `npm run format` i begge
-- **Supabase TypeScript types** — 63KB genereret fra live DB-schema til `frontend/src/types/database.types.ts`; afventer kobling til `createClient<Database>` i `frontend/src/lib/supabase.js`
+- **Supabase TypeScript types** — 63KB genereret fra live DB-schema til `frontend/src/types/database.types.ts`; koblet til `createClient<Database>` i `frontend/src/lib/supabase.ts` (v2.00)
 - **verify-invariants** — `pwsh -File scripts/verify-invariants.ps1` kører 6 domæne-tjek mod live Supabase (zero npm-deps); exit code 1 ved brud
 - **backend/node_modules** — nu installeret; `npm run test`, `lint`, `format` virker lokalt
 

@@ -10,20 +10,13 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 **S6 ✅ lukket (v1.78)** — onboarding MVP, navn-wizard, velkomstmodal.
 
 ### S7 — Launch readiness (aktiv)
-**Status:** Gate 3+4 ✅ · Gate 1+2 ⬜ (kræver manager-koordinering + manuel smoke-test)  
-**Næste session:** Fuld nulstilling → smoke-test → start ny sæson → open beta live.  
+**Status:** Gate 1 ⬜ · Gate 2+7 ✅ AR (accepteret risiko) · Gate 3+4+6 ✅ · Gate 5 🔒 7/5  
+**Næste session:** Gate #1 (manager-koordinering) → Gate #5 (salary/dyn sync) → beta-reset → start ny sæson → open beta live.  
 Se `docs/NOW.md` for detaljeret tjekliste.
 
 ---
 
 ## Post-launch queue
-
-### S7.5 — Supabase types → frontend klient (mikroslice)
-**Trigger:** Første handling i næste session  
-**Scope:** Én fil — `frontend/src/lib/supabase.js`: skift `createClient(url, key)` til `createClient<Database>(url, key)`, importer `Database` fra `../types/database.types.ts`. Giver type-inferens på alle DB-kald fremover.  
-**Kritiske filer:** `frontend/src/lib/supabase.js` · `frontend/src/types/database.types.ts`
-
----
 
 ### S8 — Discord DM & Manager-rename
 **Trigger:** Umiddelbart efter beta-lancering  
