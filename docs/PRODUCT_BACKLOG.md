@@ -29,12 +29,9 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 - Backend: `GET /api/deadline-day/status`, `PUT /api/admin/deadline-day/override`, `PUT /api/admin/transfer-window/closes-at`
 - **Test nu:** AdminPage → sæt "Tændt" for at se banneret
 
-**S2 — Ticker + Panic Board**
-- `GET /api/deadline-day/ticker` — seneste N auktion/transfer-events (polling 10s)
-- Ticker-komponent: horisontal scrollende live feed i bunden af alle sider
-- `GET /api/deadline-day/squads` — alle holds ryttertal vs. divisions-minimum
-- Panic Board side: tabel med grøn/rød status per hold — tilgængelig kun under Deadline Day
-- **Kritiske filer:** `backend/routes/api.js` · `frontend/src/components/DeadlineDayTicker.jsx` · `frontend/src/pages/DeadlineDayBoard.jsx`
+**S2 ✅ (2026-05-02):** Ticker + Panic Board live
+- `GET /api/deadline-day/ticker` + `DeadlineDayTicker` — horisontal scrollende feed (10s poll, fixed bottom)
+- `GET /api/deadline-day/squads` + `DeadlineDayBoard` (`/deadline-day`) — grøn/gul/rød squad-status (30s poll)
 
 **S3 — Flash Auction + hastebudsignal**
 - Flash Auction: 30-min auktionsvarighed tilgængelig under Deadline Day (backend guard)
