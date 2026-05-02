@@ -48,6 +48,32 @@ Push efter commit uden at spørge. Commit → push er én operation.
 
 ---
 
+## Lokal PC-opsætning (kør ved første session på ny PC eller efter ny devDep)
+
+```powershell
+pwsh -File scripts/setup-local.ps1
+```
+
+Installerer `backend/node_modules` og `frontend/node_modules` (gitignored, skal køres lokalt).
+Derefter virker: `npm run lint`, `npm run format`, `npm test`, `pwsh -File scripts/verify-invariants.ps1`.
+
+**Hvad er installeret (v1.99):** ESLint + Prettier i backend og frontend · devDeps inkl. eslint-plugin-react/hooks · Supabase TypeScript types i `frontend/src/types/database.types.ts`.
+
+---
+
+## Windows: Undgå "command line too long"
+
+Windows har 8191-tegns grænse for kommandolinjer. Overskrides ved meget lange inline PowerShell-kommandoer.
+
+**Forebyggelse — altid:**
+- Git commit-beskeder: brug PowerShell here-string `@'...'@`, maks 4 bullet points
+- Aldrig bash heredoc-syntax (`$(cat <<'EOF'...)`) i PowerShell-tool — brug `@'...'@`
+- Lange operationer: skriv til temp-fil med Write-tool, kør med `-File`
+
+**Why:** Claude Code sender kommandoer som inline argument til `pwsh -Command "..."` — for lang tekst rammer Windows' grænse og fejler med exit code 1.
+
+---
+
 ## Arbejdsmetode — effektive AI-sessioner
 
 Disse mønstre viste sig særligt token-effektive og kvalitetsskabende i session 2026-05-02. Brug dem som default.
