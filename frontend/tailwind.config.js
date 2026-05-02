@@ -3,6 +3,15 @@ export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
+      keyframes: {
+        ticker: {
+          "0%":   { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+      },
+      animation: {
+        ticker: "ticker 60s linear infinite",
+      },
       colors: {
         "cz-body":   "var(--bg-body)",
         "cz-card":   "var(--bg-card)",

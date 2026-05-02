@@ -356,6 +356,79 @@ router.get("/deadline-day/status", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/deadline-day/ticker
+router.get("/deadline-day/ticker", requireAuth, async (req, res) => {
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const [{ data: bids }, { data: sold }, { data: transfers }] = await Promise.all([
+      supabase
+        .from("auction_bids")
+        .select("id, amount, bid_time, team:team_id(name), auction:auction_id(rider:rider_id(firstname, lastname))")
+        .gte("bid_time", since)
+        .order("bid_time", { ascending: false })
+        .limit(15),
+      supabase
+        .from("auctions")
+        .select("id, current_price, actual_end, winner:current_bidder_id(name), rider:rider_id(firstname, lastname)")
+        .eq("status", "completed")
+        .gte("actual_end", since)
+        .order("actual_end", { ascending: false })
+        .limit(10),
+      supabase
+        .from("transfer_offers")
+        .select("id, offer_amount, updated_at, buyer:buyer_team_id(name), rider:rider_id(firstname, lastname), seller:seller_team_id(name)")
+        .eq("status", "accepted")
+        .gte("updated_at", since)
+        .order("updated_at", { ascending: false })
+        .limit(10),
+    ]);
+
+    const events = [];
+    const fmt = n => Math.round(n / 1000) + "K";
+
+    for (const b of (bids || [])) {
+      const rider = b.auction?.rider;
+      if (!rider) continue;
+      events.push({ type: "bid", text: `${b.team?.name ?? "–"} bød ${fmt(b.amount)} på ${rider.firstname} ${rider.lastname}`, timestamp: b.bid_time });
+    }
+    for (const a of (sold || [])) {
+      if (!a.winner || !a.rider) continue;
+      events.push({ type: "sold", text: `${a.rider.firstname} ${a.rider.lastname} solgt til ${a.winner.name} for ${fmt(a.current_price)}`, timestamp: a.actual_end });
+    }
+    for (const t of (transfers || [])) {
+      if (!t.rider || !t.buyer) continue;
+      const sellerPart = t.seller ? ` fra ${t.seller.name}` : "";
+      events.push({ type: "transfer", text: `${t.buyer.name} køber ${t.rider.firstname} ${t.rider.lastname}${sellerPart} for ${fmt(t.offer_amount)}`, timestamp: t.updated_at });
+    }
+
+    events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    res.json(events.slice(0, 20));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/deadline-day/squads
+router.get("/deadline-day/squads", requireAuth, async (req, res) => {
+  try {
+    const LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
+    const [{ data: teams }, { data: riders }] = await Promise.all([
+      supabase.from("teams").select("id, name, division").eq("is_bank", false).order("division").order("name"),
+      supabase.from("riders").select("team_id").not("team_id", "is", null),
+    ]);
+    if (!teams || !riders) throw new Error("data missing");
+
+    const countByTeam = {};
+    for (const r of riders) countByTeam[r.team_id] = (countByTeam[r.team_id] || 0) + 1;
+
+    const squads = teams.map(t => {
+      const count = countByTeam[t.id] || 0;
+      const { min, max } = LIMITS[t.division] || { min: 8, max: 30 };
+      const status = count < min ? "critical" : count <= min + 1 ? "warning" : "ok";
+      return { id: t.id, name: t.name, division: t.division, riders: count, min, max, status };
+    });
+    res.json(squads);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // RIDERS
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -2,6 +2,41 @@
 
 const PATCHES = [
   {
+    version: "2.01",
+    date: "2026-05-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Deadline Day",
+        items: [
+          "Live Ticker — horisontal nyhedsstribe i bunden af alle sider under Deadline Day med seneste bud, salg og transfers",
+          "Panic Board (/deadline-day) — overblik over alle holds truppestørrelse vs. divisions-minimum med grøn/gul/rød status",
+          "Automatisk opdatering hvert 10. sekund (ticker) og 30. sekund (Panic Board)",
+        ],
+      },
+    ],
+  },
+  {
+    version: "2.00",
+    date: "2026-05-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Deadline Day",
+        items: [
+          "Deadline Day-banner — fase-bevidst countdown (anticipation/pressure/chaos) med dynamisk farve og puls",
+          "Admin: toggle til at aktivere/deaktivere Deadline Day manuelt + input til lukketidspunkt for transfervinduet",
+        ],
+      },
+      {
+        category: "Teknisk",
+        items: [
+          "Supabase-klient opgraderet til fuld TypeScript-typesikkerhed via genereret Database-type",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.99",
     date: "2026-05-02",
     label: "Beta",

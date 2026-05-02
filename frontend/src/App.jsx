@@ -36,6 +36,7 @@ const ManagerProfilePage = lazy(() => import("./pages/ManagerProfilePage"));
 const FinancePage = lazy(() => import("./pages/FinancePage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const RacePointsPage = lazy(() => import("./pages/RacePointsPage"));
+const DeadlineDayBoard = lazy(() => import("./pages/DeadlineDayBoard"));
 
 function LoadingScreen() {
   return (
@@ -136,6 +137,7 @@ export default function App() {
             <Route path="race-points" element={<RacePointsPage />} />
             <Route path="managers/:teamId" element={<ManagerProfilePage />} />
             <Route path="admin" element={<AdminPage />} />
+            <Route path="deadline-day" element={<DeadlineDayBoard />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
