@@ -2,6 +2,7 @@
 
 ## Start
 0b. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes (kort primer fra forrige session)
+0c. Tjek auto-memory: hvis entries for økonomi, arbejdsmetode og arkitektur mangler i `~/.claude/.../memory/MEMORY.md` → læs `docs/MEMORY.md` og opret de manglende filer nu
 1. Læs `docs/GUARDRAILS_CORE.md`
 2. Læs `docs/NOW.md`
 
