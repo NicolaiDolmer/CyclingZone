@@ -48,6 +48,16 @@ Push efter commit uden at spørge. Commit → push er én operation.
 
 ---
 
+## Deploy-regler (lært den hårde vej — 3 fejlede Vercel deploys 2026-05-02)
+
+- Kør altid `npm run build` i frontend FØR push, når `package.json` eller devDeps er ændret
+- Kør `pwsh -File scripts/verify-deploy.ps1` EFTER push og vent på READY
+- Hvis verify-deploy.ps1 ikke er tilgængelig: brug Vercel MCP (`list_deployments` + `get_deployment_build_logs`)
+- `npm install --legacy-peer-deps` kan bryde transitive deps i lockfilen — altid byg lokalt bagefter
+- **PatchNotesPage er obligatorisk ved enhver commit** — selv rene tekniske ændringer. Aldrig stille fravalg.
+
+---
+
 ## Lokal PC-opsætning (kør ved første session på ny PC eller efter ny devDep)
 
 ```powershell
