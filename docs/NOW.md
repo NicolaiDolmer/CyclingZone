@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**S7 — Launch readiness** (open beta go-live)
+**S7 — Launch readiness** (open beta go-live) + **Deadline Day** (parallel feature-bygning)
 
 ## Gate-checks S7
 
@@ -16,11 +16,13 @@
 | 7 | S7-C: Notifikation smoke-test — `auction_outbid`, `transfer_offer_received`, `board_update` | ✅ AR |
 
 ## Senest leveret
-- v2.00 (2026-05-02): S7.5 — `supabase.js` → `supabase.ts`, `createClient<Database>` koblet; S7 gate #1+#2+#7 lukket
+- v2.00 (2026-05-02): S7.5 — `supabase.js` → `supabase.ts`, `createClient<Database>` koblet
+- Deadline Day S1 (2026-05-02): `DeadlineDayBanner` + admin toggle + 3 backend endpoints live
 
 ## Næste session — prioriteter
 1. Gate #5 (🔒 7/5): Kør salary-sync + dyn_cyclist sync; spot-check 10 ryttere mod Sheet
 2. Start ny sæson → open beta live
+3. **Deadline Day S2**: Ticker (live feed) + Panic Board — se `docs/PRODUCT_BACKLOG.md`
 
 ## Kritiske invarianter
 - `/profile` → `ProfilePage` (indstillinger) — `ManagerProfilePage` er read-only view

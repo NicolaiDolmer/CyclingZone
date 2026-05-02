@@ -18,6 +18,37 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 
 ## Post-launch queue
 
+### Deadline Day — 4-session feature (parallel med S8+)
+
+**Vision:** 24-timers oplevelse med 3 faser (anticipation → pressure → chaos) der aktiveres automatisk når transfervinduet nærmer sig lukketid. Live feed, holdoversigt og eksklusive mekanikker.
+
+**S1 ✅ (2026-05-02):** Fundament live
+- `DeadlineDayBanner` — fase-aware countdown i Layout (amber/rød/pulserende)
+- Admin toggle: auto/tændt/slukket + `closes_at` input på transfervindue
+- DB: `transfer_windows.closes_at`, `auction_timing_config.deadline_day_override`
+- Backend: `GET /api/deadline-day/status`, `PUT /api/admin/deadline-day/override`, `PUT /api/admin/transfer-window/closes-at`
+- **Test nu:** AdminPage → sæt "Tændt" for at se banneret
+
+**S2 — Ticker + Panic Board**
+- `GET /api/deadline-day/ticker` — seneste N auktion/transfer-events (polling 10s)
+- Ticker-komponent: horisontal scrollende live feed i bunden af alle sider
+- `GET /api/deadline-day/squads` — alle holds ryttertal vs. divisions-minimum
+- Panic Board side: tabel med grøn/rød status per hold — tilgængelig kun under Deadline Day
+- **Kritiske filer:** `backend/routes/api.js` · `frontend/src/components/DeadlineDayTicker.jsx` · `frontend/src/pages/DeadlineDayBoard.jsx`
+
+**S3 — Flash Auction + hastebudsignal**
+- Flash Auction: 30-min auktionsvarighed tilgængelig under Deadline Day (backend guard)
+- Hastebudsignal: 🚨-badge på direkte tilbud til hold under divisions-minimum
+- `frontend/src/pages/AuctionsPage.jsx` + `backend/routes/api.js`
+
+**S4 — Notifikationer + Final Whistle-rapport**
+- Planlagte push-notifikationer: T-24h, T-2h, T-30min (cron eller webhook-trigger)
+- Final Whistle: autogenereret rapport ved vinduesluk — største handel, mest aktive manager, panikhandel
+- Discord embed med rapport sendes til general-webhook
+- `backend/lib/deadlineDayReport.js` · `backend/routes/api.js`
+
+---
+
 ### S8 — Discord DM & Manager-rename
 **Trigger:** Umiddelbart efter beta-lancering  
 **Scope:**

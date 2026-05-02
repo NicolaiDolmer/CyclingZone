@@ -143,6 +143,16 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - UCI-points sync fra Google Sheets — logger nu historik i `rider_uci_history` ved hver sync
 - UCI scraper: GitHub Actions cron henter top 3000 fra ProCyclingStats, skriver Google Sheets, synkroniserer Supabase, genberegner rytterlønninger og har safety-gates for coverage og mass minimum downgrade; live data-repair godkendt 2026-04-28
 
+### Deadline Day (S1, 2026-05-02)
+- `DeadlineDayBanner` — vises øverst i indholdsområdet på alle sider; 3 faser: anticipation (amber), pressure (rød), chaos (pulserende rød)
+- Fase beregnes fra `transfer_windows.closes_at`: chaos ≤30min, pressure ≤2t, anticipation ≤24t
+- Admin override på `auction_timing_config.deadline_day_override`: `auto` / `on` (test) / `off`
+- `GET /api/deadline-day/status` — returnerer `{ active, phase, closes_at, seconds_remaining, override }`
+- `PUT /api/admin/deadline-day/override` — skifter override-tilstand
+- `PUT /api/admin/transfer-window/closes-at` — opdaterer lukketidspunkt på seneste vindue
+- AdminPage: lukketid datetime-input + override-toggle integreret i Transfervindue-sektionen
+- **Mangler (S2–S4):** Ticker, Panic Board, Flash Auction, hastebudsignal, notifikationer, Final Whistle-rapport
+
 ### Developer Tooling (v1.99, 2026-05-02)
 - **ESLint** (backend + frontend) — flat config, `@eslint/js` recommended; kører i CI efter tests; 0 errors
 - **Prettier** — 2 spaces, double quotes, semikolon, `trailingComma: es5`; `npm run format` i begge
