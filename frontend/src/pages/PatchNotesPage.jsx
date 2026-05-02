@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "1.99",
+    date: "2026-05-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Teknisk",
+        items: [
+          "Bugfix: auktionsbud-svar returnerede nu korrekt ISO-tidsformat ved forlængelse",
+          "Intern kodekvalitet: automatisk lint-tjek (ESLint) og formatering (Prettier) tilføjet til begge frontend og backend",
+          "Databasetyper genereret direkte fra live schema — reducerer risiko for fremtidige fejl ved DB-ændringer",
+          "Nyt invariant-tjek: 6 domæne-regler verificeres automatisk mod live data efter hvert deploy",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.98",
     date: "2026-05-02",
     label: "Beta",
