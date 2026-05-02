@@ -18,11 +18,12 @@
 ## Senest leveret
 - v2.00 (2026-05-02): S7.5 — `supabase.js` → `supabase.ts`, `createClient<Database>` koblet
 - Deadline Day S1 (2026-05-02): `DeadlineDayBanner` + admin toggle + 3 backend endpoints live
+- Deadline Day S2 (2026-05-02): `DeadlineDayTicker` + `DeadlineDayBoard` (`/deadline-day`) + 2 backend endpoints
 
 ## Næste session — prioriteter
 1. Gate #5 (🔒 7/5): Kør salary-sync + dyn_cyclist sync; spot-check 10 ryttere mod Sheet
 2. Start ny sæson → open beta live
-3. **Deadline Day S2**: Ticker (live feed) + Panic Board — se `docs/PRODUCT_BACKLOG.md`
+3. **Deadline Day S3**: Flash Auction + hastebudsignal — se `docs/PRODUCT_BACKLOG.md`
 
 ## Kritiske invarianter
 - `/profile` → `ProfilePage` (indstillinger) — `ManagerProfilePage` er read-only view

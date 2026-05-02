@@ -143,7 +143,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - UCI-points sync fra Google Sheets — logger nu historik i `rider_uci_history` ved hver sync
 - UCI scraper: GitHub Actions cron henter top 3000 fra ProCyclingStats, skriver Google Sheets, synkroniserer Supabase, genberegner rytterlønninger og har safety-gates for coverage og mass minimum downgrade; live data-repair godkendt 2026-04-28
 
-### Deadline Day (S1, 2026-05-02)
+### Deadline Day (S1+S2, 2026-05-02)
 - `DeadlineDayBanner` — vises øverst i indholdsområdet på alle sider; 3 faser: anticipation (amber), pressure (rød), chaos (pulserende rød)
 - Fase beregnes fra `transfer_windows.closes_at`: chaos ≤30min, pressure ≤2t, anticipation ≤24t
 - Admin override på `auction_timing_config.deadline_day_override`: `auto` / `on` (test) / `off`
@@ -151,7 +151,11 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - `PUT /api/admin/deadline-day/override` — skifter override-tilstand
 - `PUT /api/admin/transfer-window/closes-at` — opdaterer lukketidspunkt på seneste vindue
 - AdminPage: lukketid datetime-input + override-toggle integreret i Transfervindue-sektionen
-- **Mangler (S2–S4):** Ticker, Panic Board, Flash Auction, hastebudsignal, notifikationer, Final Whistle-rapport
+- `DeadlineDayTicker` — horisontal scrollende live feed (fixed bottom) med seneste bud/salg/transfers; poller 10s, vises kun når active=true
+- `GET /api/deadline-day/ticker` — merger bids + completed auctions + accepted transfers, seneste 20 events inden for 24t
+- `DeadlineDayBoard` (`/deadline-day`) — Panic Board: alle holds truppestørrelse vs. divisions-minimum, grøn/gul/rød, 30s poll; vises kun under Deadline Day
+- `GET /api/deadline-day/squads` — returnerer alle ikke-bank holds squad-count vs. MARKET_SQUAD_LIMITS, med status ok/warning/critical
+- **Mangler (S3–S4):** Flash Auction, hastebudsignal, notifikationer, Final Whistle-rapport
 
 ### Developer Tooling (v1.99, 2026-05-02)
 - **ESLint** (backend + frontend) — flat config, `@eslint/js` recommended; kører i CI efter tests; 0 errors
