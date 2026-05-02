@@ -140,6 +140,11 @@ export default function AdminPage() {
   const [sheetsUrl, setSheetsUrl] = useState("");
   const [sheetsResult, setSheetsResult] = useState(null);
 
+  // Præmieudbetaling
+  const [prizePayoutSeason, setPrizePayoutSeason] = useState("");
+  const [prizePreview, setPrizePreview] = useState(null);
+  const [prizePayResult, setPrizePayResult] = useState(null);
+
   // Sæsonafslutnings-preview
   const [previewSeason, setPreviewSeason] = useState("");
   const [seasonPreview, setSeasonPreview] = useState(null);
@@ -391,6 +396,38 @@ export default function AdminPage() {
     if (res.ok) { setDynSyncResult(data); showMsg(`✅ Sync fuldført — ${data.rows_matched} ryttere opdateret`); }
     else showMsg(`❌ ${data.error}`, "error");
     setLoad("dyn_cyclist", false);
+  }
+
+  async function loadPrizePreview() {
+    if (!prizePayoutSeason) { showMsg("❌ Vælg en sæson", "error"); return; }
+    setLoad("prize_preview", true);
+    setPrizePreview(null);
+    setPrizePayResult(null);
+    const res = await fetch(`${API}/api/admin/prize-payout-preview?season_id=${prizePayoutSeason}`, {
+      headers: await getAuth(),
+    });
+    const data = await res.json();
+    if (res.ok) setPrizePreview(data);
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoad("prize_preview", false);
+  }
+
+  async function handlePayPrizes() {
+    if (!prizePayoutSeason) { showMsg("❌ Vælg en sæson", "error"); return; }
+    setLoad("prize_pay", true);
+    const res = await fetch(`${API}/api/admin/pay-prizes-to-date`, {
+      method: "POST", headers: await getAuth(),
+      body: JSON.stringify({ season_id: prizePayoutSeason }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setPrizePayResult(data);
+      setPrizePreview(null);
+      showMsg(`✅ ${data.races_paid} løb betalt — i alt ${data.total_paid.toLocaleString("da-DK")} CZ$`);
+    } else {
+      showMsg(`❌ ${data.error}`, "error");
+    }
+    setLoad("prize_pay", false);
   }
 
   async function handleSheetsImport() {
@@ -1314,6 +1351,79 @@ export default function AdminPage() {
             {sheetsResult.races_skipped.length > 0 && (
               <p className="text-amber-700">Ikke matchet ({sheetsResult.races_skipped.length}): {sheetsResult.races_skipped.join(", ")}</p>
             )}
+          </div>
+        )}
+      </Section>
+
+      {/* ── Præmieudbetaling ────────────────────────────────────────────────── */}
+      <Section title="Præmieudbetaling">
+        <p className="text-slate-400 text-xs mb-3">
+          Præmier udbetales kun manuelt. Vælg sæson, se hvad der er betalt og hvad der mangler, og godkend udbetaling.
+        </p>
+        <div className="flex gap-2 flex-wrap items-end mb-4">
+          <div>
+            <label className="block text-slate-400 text-xs mb-1">Sæson</label>
+            <select value={prizePayoutSeason} onChange={e => { setPrizePayoutSeason(e.target.value); setPrizePreview(null); setPrizePayResult(null); }}
+              className="bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-amber-400">
+              <option value="">Vælg sæson</option>
+              {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
+            </select>
+          </div>
+          <button onClick={loadPrizePreview} disabled={loading.prize_preview || !prizePayoutSeason}
+            className="px-4 py-2 bg-slate-100 text-slate-500 border border-slate-300 rounded-lg text-sm hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 transition-all">
+            {loading.prize_preview ? "Henter..." : "Se status"}
+          </button>
+        </div>
+
+        {prizePreview && (
+          <div className="space-y-4">
+            {prizePreview.pending_payment.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs space-y-2">
+                <p className="text-amber-800 font-semibold">
+                  Udestående præmier — {prizePreview.pending_payment.length} løb · i alt {prizePreview.total_pending.toLocaleString("da-DK")} CZ$
+                </p>
+                <div className="space-y-1">
+                  {prizePreview.pending_payment.map(r => (
+                    <div key={r.race_id} className="flex justify-between text-amber-700">
+                      <span>{r.race_name}</span>
+                      <span className="font-mono">{r.total_prize.toLocaleString("da-DK")} CZ$</span>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={handlePayPrizes} disabled={loading.prize_pay}
+                  className="mt-2 px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 disabled:opacity-50 transition-all">
+                  {loading.prize_pay ? "Udbetaler..." : `Udbetal ${prizePreview.total_pending.toLocaleString("da-DK")} CZ$ til alle hold`}
+                </button>
+              </div>
+            )}
+            {prizePreview.already_paid.length > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-xs space-y-1">
+                <p className="text-green-700 font-semibold">Allerede udbetalt — {prizePreview.already_paid.length} løb</p>
+                {prizePreview.already_paid.map(r => (
+                  <div key={r.race_id} className="flex justify-between text-green-600">
+                    <span>{r.race_name}</span>
+                    <span className="font-mono">{r.total_paid.toLocaleString("da-DK")} CZ$</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {prizePreview.pending_payment.length === 0 && (
+              <p className="text-green-700 text-sm font-medium">Alle løb er allerede udbetalt for denne sæson.</p>
+            )}
+          </div>
+        )}
+
+        {prizePayResult && (
+          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-xs space-y-1">
+            <p className="text-green-700 font-semibold">
+              Udbetaling gennemført — {prizePayResult.races_paid} løb · {prizePayResult.total_paid.toLocaleString("da-DK")} CZ$
+            </p>
+            {prizePayResult.by_race?.map(r => (
+              <div key={r.race_name} className="flex justify-between text-green-600">
+                <span>{r.race_name}</span>
+                <span className="font-mono">{r.total_prize.toLocaleString("da-DK")} CZ$</span>
+              </div>
+            ))}
           </div>
         )}
       </Section>

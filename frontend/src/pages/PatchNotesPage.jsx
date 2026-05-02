@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "1.98",
+    date: "2026-05-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin",
+        items: [
+          "Præmieudbetaling adskilt fra løbsresultat-import — resultater kan nu re-importeres uden at påvirke allerede udbetalte præmier",
+          "Ny admin-sektion 'Præmieudbetaling': se hvad der er udbetalt og hvad der mangler for hele sæsonen",
+          "Knap til at udbetale alle udestående præmier på én gang med komplet løb-for-løb oversigt",
+          "Præmier udbetales kun når admin godkender — aldrig automatisk ved import",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.97",
     date: "2026-05-02",
     label: "Beta",

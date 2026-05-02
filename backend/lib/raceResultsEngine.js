@@ -66,43 +66,6 @@ export function buildRaceResultsFromPending({ pendingRows = [], pointsLookup = {
   });
 }
 
-async function clearExistingPrizeFinance({ supabase, raceId }) {
-  const { data: existingPrizes, error: existingError } = await supabase
-    .from("finance_transactions")
-    .select("id, team_id, amount")
-    .eq("race_id", raceId)
-    .eq("type", "prize");
-  if (existingError) throw new Error(existingError.message);
-
-  for (const prize of existingPrizes || []) {
-    if (!prize.team_id || !prize.amount) continue;
-
-    const { data: team, error: teamError } = await supabase
-      .from("teams")
-      .select("balance")
-      .eq("id", prize.team_id)
-      .single();
-    if (teamError) throw new Error(teamError.message);
-
-    if (team) {
-      const { error: balanceError } = await supabase
-        .from("teams")
-        .update({ balance: team.balance - prize.amount })
-        .eq("id", prize.team_id);
-      if (balanceError) throw new Error(balanceError.message);
-    }
-  }
-
-  if (existingPrizes?.length) {
-    const { error: deleteError } = await supabase
-      .from("finance_transactions")
-      .delete()
-      .eq("race_id", raceId)
-      .eq("type", "prize");
-    if (deleteError) throw new Error(deleteError.message);
-  }
-}
-
 export async function applyRaceResults({
   supabase,
   race,
@@ -131,50 +94,13 @@ export async function applyRaceResults({
     points_earned: row.points_earned ?? 0,
   }));
 
-  await clearExistingPrizeFinance({ supabase, raceId: race.id });
-
   const { error: insertError } = await supabase.from("race_results").insert(normalizedRows);
   if (insertError) throw new Error(insertError.message);
-
-  const teamPrizes = {};
-  for (const row of normalizedRows) {
-    if (row.team_id && row.prize_money > 0) {
-      teamPrizes[row.team_id] = (teamPrizes[row.team_id] || 0) + row.prize_money;
-    }
-  }
-
-  for (const [teamId, amount] of Object.entries(teamPrizes)) {
-    const { data: team, error: teamError } = await supabase
-      .from("teams")
-      .select("balance")
-      .eq("id", teamId)
-      .single();
-    if (teamError) throw new Error(teamError.message);
-
-    if (team) {
-      const { error: balanceError } = await supabase
-        .from("teams")
-        .update({ balance: team.balance + amount })
-        .eq("id", teamId);
-      if (balanceError) throw new Error(balanceError.message);
-
-      const { error: financeError } = await supabase.from("finance_transactions").insert({
-        team_id: teamId,
-        type: "prize",
-        amount,
-        description: `Præmiepenge — ${race.name}`,
-        season_id: race.season_id,
-        race_id: race.id,
-      });
-      if (financeError) throw new Error(financeError.message);
-    }
-  }
 
   await ensureSeasonStandings(race.season_id);
   await updateStandings(race.season_id, race.id);
 
   return {
     rowsImported: normalizedRows.length,
-    teamsPaid: Object.keys(teamPrizes).length,
   };
 }

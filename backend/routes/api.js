@@ -52,6 +52,7 @@ import {
 } from "../lib/discordNotifier.js";
 import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
+import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
 import {
   buildSeasonEndPreviewRows,
   loadHumanSeasonEndTeams,
@@ -1677,7 +1678,6 @@ router.post("/admin/approve-results", requireAdmin, async (req, res) => {
     res.json({
       success: true,
       rows_imported: result.rowsImported,
-      teams_paid: result.teamsPaid,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -2290,6 +2290,30 @@ router.post("/admin/import-results-sheets", requireAdmin, async (req, res) => {
       updateStandings,
       adminUserId: req.user.id,
     });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/prize-payout-preview — vis betalte og udestående præmier for en sæson
+router.get("/admin/prize-payout-preview", requireAdmin, async (req, res) => {
+  const { season_id } = req.query;
+  if (!season_id) return res.status(400).json({ error: "season_id påkrævet" });
+  try {
+    const preview = await getSeasonPrizePreview(season_id, supabase);
+    res.json(preview);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/pay-prizes-to-date — udbetal alle udestående præmier for en sæson
+router.post("/admin/pay-prizes-to-date", requireAdmin, async (req, res) => {
+  const { season_id } = req.body;
+  if (!season_id) return res.status(400).json({ error: "season_id påkrævet" });
+  try {
+    const result = await paySeasonPrizesToDate(season_id, req.user.id, supabase);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

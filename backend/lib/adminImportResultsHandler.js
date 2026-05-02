@@ -160,7 +160,6 @@ export function createAdminImportResultsHandler({
       return res.json({
         success: true,
         records_imported: result.rowsImported,
-        teams_paid: result.teamsPaid,
       });
     } catch (error) {
       return res.status(500).json({ error: error.message });

@@ -168,7 +168,6 @@ test("admin import-results uses race_points for points_earned and prize_money = 
   assert.deepEqual(res.body, {
     success: true,
     records_imported: 1,
-    teams_paid: 1,
   });
   assert.equal(applyCalls.length, 1);
   assert.equal(applyCalls[0].race, race);

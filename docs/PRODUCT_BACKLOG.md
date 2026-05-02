@@ -18,8 +18,53 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 
 ## Post-launch queue
 
+### S8 — Discord DM & Manager-rename
+**Trigger:** Umiddelbart efter beta-lancering  
+**Scope:**
+- Discord Bot setup (bot-token i Vercel env) — webhooks kan ikke sende DMs; Bot kræves
+- `discordNotifier.js`: tilføj `sendDM(discordId, embed)` ved siden af webhook-logik
+- Discord-status synlig på `ProfilePage` (grøn checkmark / rød mangler-badge)
+- Dashboard-nudge til managers uden `users.discord_id`
+
+**Kritiske filer:** `backend/lib/discordNotifier.js` · `frontend/src/pages/ProfilePage.jsx` · `frontend/src/pages/DashboardPage.jsx` · `backend/routes/api.js`
+
+---
+
+### S8.5 — Løbsresultat-import UX (delvist leveret)
+**Trigger:** Uge 1–2 efter lancering  
+**Leveret (v1.98):** Præmieudbetaling adskilt fra import — admin-kontrolleret, preview før udbetaling, `races.prize_paid_at` tracker status.  
+**Resterende scope:** Import-feedback UI — ingen synlig matchrapport ved filupload (hvilke ryttere matchede eksakt vs. fuzzy, hvilke løb blev skippet). Overvej preview-tilstand til `POST /api/admin/import-results-sheets` der returnerer diff uden at committe.  
+**Næste skridt:** Kan starte direkte — kravene er nu klare fra session 2026-05-02.
+
+---
+
+### S9 — Løb & Info-sider
+**Trigger:** Uge 2–3 efter lancering  
+**Scope:**
+- `/race-library` — alle løb i DB, søgbar/filtrerbar (navn, klasse, sæson, status)  
+  Backend: udvid `GET /api/races?season=&class=&q=`
+- `/seasons/:seasonId` — kalender for afsluttet sæson (ikke kun aktiv)  
+  Frontend: ny `SeasonCalendarPage.jsx`
+- Point-oversigt — `race_points` tabel synlig for managers; ny `GET /api/race-points` public route
+- Præmie-oversigt — forklarer `points × 15.000 CZ$`-formlen med eksempler
+
+**Kritiske filer:** `backend/routes/api.js` · `frontend/src/pages/RaceArchivePage.jsx` · `frontend/src/App.jsx`
+
+---
+
+### S10 — Admin økonomi-panel
+**Trigger:** Uge 3–4 efter lancering  
+**Scope:**
+- `GET /api/admin/teams-economy-summary` — per-hold: balance, sponsor-base, budget_modifier, gæld
+- `GET /api/admin/prize-summary?seasonId=` — præmiepenge per hold per sæson
+- Ny "Økonomi"-tab i `AdminPage.jsx`
+
+**Kritiske filer:** `backend/routes/api.js` · `frontend/src/pages/AdminPage.jsx`
+
+---
+
 - **Economy tuning iteration** — baseret på live data fra første beta-sæson; salary rate, sponsor, debt ceilings
-- **Season countdown + dashboard UX** — synlig sæson-status og dage-til-slut på dashboard
+- **Season countdown + dashboard UX** — ✅ leveret v1.88
 - **Manager cross-season statistik** — fuld historik og vækst over sæsoner fra `board_plan_snapshots` og `season_standings`
 - **XLSX security advisory** — evaluer og patch eller erstat `xlsx`-pakken (high-severity advisory)
 - **Onboarding v2** — progressiv disclosure af bestyrelses- og økonomi-kompleksitet; guided squad-builder

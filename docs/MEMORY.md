@@ -45,3 +45,44 @@ Push efter commit uden at spørge. Commit → push er én operation.
 - Færdige detaljer → `docs/FEATURE_STATUS.md` + `docs/archive/`
 - Læs kun ekstra docs-filer når den konkrete opgave kræver det
 - `docs/MEMORY.md`: læs kun ved ny session eller eksplicit behov
+
+---
+
+## Arbejdsmetode — effektive AI-sessioner
+
+Disse mønstre viste sig særligt token-effektive og kvalitetsskabende i session 2026-05-02. Brug dem som default.
+
+### Læs dybt før du foreslår noget
+Læs 4–6 centrale filer (engine, routes, tests, schema) inden du foreslår arkitektur. I denne session afslørede det at infrastrukturen allerede var 80% færdig — det ændrede hele tilgangen fra "byg nyt" til "forbind eksisterende".
+
+**Filer der altid er relevante at læse ved ny feature:**
+- Den relevante engine-fil (`lib/xxxEngine.js`)
+- `backend/lib/financeNotificationContract.test.js` — viser tilladte DB-typer
+- `database/schema.sql` — faktisk tabelstruktur
+- Eksisterende test-fil for den engine der skal ændres
+
+### Migration sidst — ikke først
+Kør aldrig migration før al kode er klar. En migration der er foran koden skaber inkonsistent state. Rækkefølge: skriv kode → tests grønne → kør migration → deploy. En enkelt deploy-begivenhed.
+
+### Batch queries i engine-funktioner
+Nye engine-funktioner skal hente al nødvendig data i 2–4 forespørgsler uanset antal løb/ryttere. Mønster fra `prizePayoutEngine.js`:
+1. Hent alle relevante rækker med `.in("id", ids)` i én query
+2. Group/aggregate i JavaScript, ikke i DB
+3. Aldrig N+1 (én query per løb/rytter i en løkke)
+
+### Cascading change detection
+Når du fjerner et felt fra et return-objekt (f.eks. `teamsPaid`): søg alle kallers med Grep før du ændrer. Ret alle steder i samme commit. Kør tests umiddelbart efter hver fil-ændring — ikke samlet til sidst.
+
+### Dekobler domæner i stedet for at tilføje betingelser
+I stedet for at tilføje `if (shouldPay)` i eksisterende flow: opret en ny dedikeret funktion. Giver renere kode, lettere test, og administrativ kontrol som sideeffekt. Eksempel: `applyRaceResults` vs. `prizePayoutEngine.paySeasonPrizesToDate`.
+
+---
+
+## Arkitektur-beslutninger
+
+### Præmieudbetaling (v1.98)
+- `applyRaceResults` udbetaler **aldrig** præmier — kun resultater gemmes
+- `prizePayoutEngine.paySeasonPrizesToDate(seasonId, adminUserId, supabase)` er den eneste vej til præmieudbetaling
+- `races.prize_paid_at TIMESTAMPTZ` tracker hvornår et løb er udbetalt
+- Re-import af resultater påvirker ikke allerede udbetalte præmier
+- Preview (`getSeasonPrizePreview`) og udbetaling er adskilt — admin ser diff før godkendelse

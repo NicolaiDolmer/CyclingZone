@@ -167,7 +167,7 @@ test("buildRaceResultsFromPending separates points_earned and prize_money", () =
   ]);
 });
 
-test("applyRaceResults uses canonical prize finance writes and recalculates standings", async () => {
+test("applyRaceResults inserts results and recalculates standings without touching finance", async () => {
   const { supabase, state } = createSupabaseDouble({
     "team-1": 1000,
     "team-2": 500,
@@ -209,50 +209,25 @@ test("applyRaceResults uses canonical prize finance writes and recalculates stan
   });
 
   assert.equal(result.rowsImported, 2);
-  assert.equal(result.teamsPaid, 2);
   assert.equal(state.raceResults.length, 2);
-  assert.equal(state.balances["team-1"], 1050);
-  assert.equal(state.balances["team-2"], 700);
-  assert.deepEqual(
-    state.financeTransactions.map((row) => ({
-      team_id: row.team_id,
-      type: row.type,
-      amount: row.amount,
-      season_id: row.season_id,
-      race_id: row.race_id,
-    })),
-    [
-      {
-        team_id: "team-1",
-        type: "prize",
-        amount: 50,
-        season_id: "season-1",
-        race_id: "race-1",
-      },
-      {
-        team_id: "team-2",
-        type: "prize",
-        amount: 200,
-        season_id: "season-1",
-        race_id: "race-1",
-      },
-    ],
-  );
+  // Balances and finance are untouched — prize payout is a separate admin action
+  assert.equal(state.balances["team-1"], 1000);
+  assert.equal(state.balances["team-2"], 500);
+  assert.deepEqual(state.financeTransactions, []);
   assert.deepEqual(ensureCalls, ["season-1"]);
   assert.deepEqual(updateCalls, [["season-1", "race-1"]]);
 });
 
-test("applyRaceResults reverses existing prize finance before re-importing a race", async () => {
-  const { supabase, state } = createSupabaseDouble({
-    "team-1": 1100,
-  });
-  state.financeTransactions.push({
+test("applyRaceResults re-import does not touch existing prize finance", async () => {
+  const existingTx = {
     team_id: "team-1",
     type: "prize",
     amount: 100,
     season_id: "season-1",
     race_id: "race-1",
-  });
+  };
+  const { supabase, state } = createSupabaseDouble({ "team-1": 1100 });
+  state.financeTransactions.push(existingTx);
 
   const result = await applyRaceResults({
     supabase,
@@ -271,15 +246,7 @@ test("applyRaceResults reverses existing prize finance before re-importing a rac
   });
 
   assert.equal(result.rowsImported, 1);
-  assert.equal(state.balances["team-1"], 1040);
-  assert.deepEqual(state.financeTransactions, [
-    {
-      team_id: "team-1",
-      type: "prize",
-      amount: 40,
-      description: "Præmiepenge — Tour de Test",
-      season_id: "season-1",
-      race_id: "race-1",
-    },
-  ]);
+  // Balance and finance are unchanged — prizes already paid, payout is admin-controlled
+  assert.equal(state.balances["team-1"], 1100);
+  assert.deepEqual(state.financeTransactions, [existingTx]);
 });
