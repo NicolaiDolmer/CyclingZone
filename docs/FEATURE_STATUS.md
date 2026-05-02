@@ -18,7 +18,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Hold & Ryttere
 - Holdoversigt og holdprofil-sider
 - Nationalitetsflag: alle 8.699 ryttere har ISO 2-bogstavs kode fra PCM `fkIDregion` → 138 lande, vises som emoji-flag overalt (v1.81); `import_riders.py` sætter kode automatisk ved fremtidige imports
-- **Potentiale** (v1.83): `potentiale DECIMAL(3,1)` på riders-tabellen, synkroniseret fra PCM `dyn_cyclist.value_f_potentiel`. Vises med guldstjerner (< 30 år) / sølvstjerner (≥ 30 år), halvstjerner understøttet. Tilgængeligt på alle rytteroversigter med filter (min/max 1–6) og sortering. ⚠️ Kun ~900 ryttere har data — undersøg mismatch (se NOW.md)
+- **Potentiale** (v1.83): `potentiale DECIMAL(3,1)` på riders-tabellen, synkroniseret fra PCM `dyn_cyclist.value_f_potentiel`. Vises med guldstjerner (< 30 år) / sølvstjerner (≥ 30 år), halvstjerner understøttet. Tilgængeligt på alle rytteroversigter med filter (min/max 1–6) og sortering. 8.416/8.699 ryttere har data (283 uden — formentlig ryttere uden PCM-match).
 - Rytterbibliotek med søgning + filtre (nation, UCI, U25, ledig, evne-min/max, osv.) + løn-kolonne og lønfilter (v1.47)
 - Rytterværdi i marked/visninger er dynamisk: `market_value = max(5, uci_points) × 4000 + prize_earnings_bonus`, hvor bonus er gennemsnit af seneste op til 3 afsluttede sæsoners præmiepenge (v1.77)
 - Rytterdetalje-side (stats, historik, watchlist-tæller, ryttertype-badge, ⚡-badge ved aktiv auktion)
@@ -67,7 +67,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Sponsorindtægt ved sæsonstart (med board-modifier)
 - Lønudbetaling ved sæsonslut
 - Renteberegning på negativ saldo (10%/sæson)
-- Resultatpoint (`points_earned`) og præmiepenge (`prize_money = points × 15.000 CZ$`) er adskilt ved løbsimport — `points_earned` fra `race_points[race_class]`, `prize_money` krediteres holdbalancen som type=`prize` (v1.75)
+- Resultatpoint (`points_earned`) og præmiepenge (`prize_money = points × 1.500 CZ$`) er adskilt ved løbsimport — `points_earned` fra `race_points[race_class]`, `prize_money` krediteres holdbalancen som type=`prize` (v1.75)
 - Divisionsbonus ved sæsonslut: D1 300K/200K/100K/50K · D2 150K/100K/50K/25K · D3 75K/50K/25K, type=`bonus`, idempotent (v1.75)
 - Finance-transaktionslog + Finance-side
 - Balance-justering (admin)
@@ -100,6 +100,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Én board request pr. sæson (DB-enforced); approved/partial/rejected/tradeoff
 - Mål skaleret efter division, standings og holdspecialisering
 - Afledt holdprofil (specialisering, U25, national kerne + landenavn/flag, stjerneprofil)
+- **S7-B verificeret (2026-05-02):** `budget_modifier` opdateres korrekt ved season-end i `processTeamSeasonEnd()` for både afsluttede og kørende planer. Live DB: 0 inkonsistente rækker. Alle 10 economyEngine-tests grønne.
 - Nationale identitetsmål i balancerede planer; focus-switch lander som gradvis tradeoff
 
 ### Admin
@@ -136,6 +137,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Discord & Integrationer
 - Discord webhooks: admin kan tilføje webhooks med navn, URL og type (general / transfer_history)
 - Gennemførte transfers og byttehandler sendes til `transfer_history` webhook; runtime-bekræftet med rigtig transfer completion 2026-04-28
+- `users.discord_id` gemmes og bruges til @mention i kanal-embeds — **ikke DM** (webhooks kan ikke sende DMs)
+- **Planlagt S8:** Discord Bot (bot-token) til DMs; `discordNotifier.js` udvides med `sendDM()`; dashboard-nudge til managers uden discord_id; Discord-status badge på `ProfilePage`
 - dyn_cyclist sync: PCM-stats (14 stat-felter + højde, vægt, popularitet + `potentiale`) fra Google Sheets (match på pcm_id) — logger stats-historik i `rider_stat_history` ved hver sync; v1.83 tilføjede `value_f_potentiel → potentiale` (bevaret som 0,5-trin float)
 - UCI-points sync fra Google Sheets — logger nu historik i `rider_uci_history` ved hver sync
 - UCI scraper: GitHub Actions cron henter top 3000 fra ProCyclingStats, skriver Google Sheets, synkroniserer Supabase, genberegner rytterlønninger og har safety-gates for coverage og mass minimum downgrade; live data-repair godkendt 2026-04-28
@@ -144,7 +147,6 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 🔴 Broken / Kendte bugs
 
-- **Potentiale: kun ~900/8.699 ryttere har data** — dyn_cyclist sync opdaterede kun ~900 ryttere. Årsag ukendt: enten har Google Sheet kun ~900 rækker, pcm_id mangler på mange ryttere, eller IDcyclist-mismatch. Undersøges næste session (se NOW.md).
 
 ---
 

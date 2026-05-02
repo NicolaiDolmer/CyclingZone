@@ -11,8 +11,13 @@
 | 2 | Smoke-test: login, auktion, transfer, finance, bestyrelse | ⬜ |
 | 3 | Help + PatchNotes afspejler alle S2–S6 ændringer | ✅ |
 | 4 | Deploy verify (`pwsh -File scripts/verify-deploy.ps1`) | ✅ |
+| 5 | S7-A: Kør salary-sync + dyn_cyclist sync; spot-check 10 ryttere mod Sheet | ⬜ |
+| 6 | S7-B: Board end-to-end test — budget_modifier opdateres ved season-end? | ✅ |
+| 7 | S7-C: Notifikation smoke-test — `auction_outbid`, `transfer_offer_received`, `board_update` | ⬜ |
 
 ## Senest leveret
+- v1.95 (2026-05-02): Fix: Præmieformlen rettet til 1 pt = 1.500 CZ$ (var fejlagtigt 15.000)
+- v1.94 (2026-05-02): S9-C — Point- og præmieoversigt: /race-points side med UCI-pointtabel + præmieformlen, ny GET /api/race-points rute
 - v1.88 (2026-05-01): Sæsonstatus-banner på dashboard — dage til sæsonslut, løbsdage-progress, transfervindue
 - v1.87 (2026-05-01): Sticky tabeloverskrift på rytteroversigt og auktionsside
 - v1.85 (2026-05-01): Fix auktions-sortering — rytterkolonner (navn, værdi, stats, potentiale) sorterede ikke

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "1.95",
+    date: "2026-05-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Økonomi",
+        items: [
+          "Fix: Præmieformlen rettet til 1 UCI-point = 1.500 CZ$ (var fejlagtigt sat til 15.000 CZ$)",
+          "Alle fremtidige løbsresultater beregnes med den korrekte faktor",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.94",
     date: "2026-05-02",
     label: "Beta",
@@ -10,7 +24,7 @@ const PATCHES = [
         category: "Resultater",
         items: [
           "Ny side: Pointtabel — vis UCI-point og præmier pr. løbsklasse (Tour de France, Giro/Vuelta, Monuments, WorldTour A/B/C, ProSeries, Klasse 1/2)",
-          "Præmieformlen fremhævet med konkrete eksempler: 1 UCI-point = 15.000 CZ$",
+          "Præmieformlen fremhævet med konkrete eksempler: 1 UCI-point = 1.500 CZ$",
           "Tilgængelig via Resultater → Pointtabel",
         ],
       },
@@ -297,7 +311,7 @@ const PATCHES = [
       {
         category: "Økonomi",
         items: [
-          "Præmiepenge fra løb er nu adskilt fra sæsonpoint: UCI-point bestemmer ranglisten, og præmiepenge = UCI-point × 15.000 CZ$ udbetales direkte til holdbalancen ved resultatimport",
+          "Præmiepenge fra løb er nu adskilt fra sæsonpoint: UCI-point bestemmer ranglisten, og præmiepenge = UCI-point × 1.500 CZ$ udbetales direkte til holdbalancen ved resultatimport",
           "Divisionsbonus ved sæsonafslutning: D1 300K/200K/100K/50K · D2 150K/100K/50K/25K · D3 75K/50K/25K — bogføres som 'bonus' i finance-loggen",
           "Præmiepenge knyttes nu til løbets klasse og UCI-pointtabellen — løb uden løbsklasse genererer 0 i præmie",
         ],

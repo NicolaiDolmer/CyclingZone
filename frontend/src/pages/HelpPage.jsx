@@ -261,7 +261,7 @@ const SECTIONS = [
       },
       {
         title: "Præmiepenge fra løb",
-        text: "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: UCI-point for placeringen × 15.000 CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat — UCI-point bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Resultater → Pointtabel.",
+        text: "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: UCI-point for placeringen × 1.500 CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat — UCI-point bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Resultater → Pointtabel.",
       },
       {
         title: "Divisionsbonus ved sæsonafslutning",
@@ -456,7 +456,7 @@ const FAQ = [
   },
   {
     q: "Hvad er præmiepenge, og hvornår udbetales de?",
-    a: "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: UCI-point for placeringen × 15.000 CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge — løb uden løbsklasse giver 0.",
+    a: "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: UCI-point for placeringen × 1.500 CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge — løb uden løbsklasse giver 0.",
   },
   {
     q: "Hvad er divisionsbonus, og hvornår udbetales den?",

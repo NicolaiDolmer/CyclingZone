@@ -10,7 +10,7 @@ function ensureRace(race) {
   }
 }
 
-export const PRIZE_PER_POINT = 15_000;
+export const PRIZE_PER_POINT = 1_500;
 
 const RESULT_TYPE_TO_RACE_POINTS = {
   stage_race: {

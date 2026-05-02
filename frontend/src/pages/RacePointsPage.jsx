@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
-const PRIZE_PER_POINT = 15_000;
+const PRIZE_PER_POINT = 1_500;
 
 const CLASS_ORDER = [
   "TourFrance", "GiroVuelta", "Monuments",
@@ -104,7 +104,7 @@ export default function RacePointsPage() {
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
         <div className="flex items-center gap-2">
           <span className="text-lg">💰</span>
-          <span className="font-semibold text-slate-900">Præmieformlen: 1 UCI-point = 15.000 CZ$</span>
+          <span className="font-semibold text-slate-900">Præmieformlen: 1 UCI-point = 1.500 CZ$</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {PRIZE_EXAMPLES.map(ex => (
