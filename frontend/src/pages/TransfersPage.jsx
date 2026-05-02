@@ -64,9 +64,16 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
           </p>
           <p className="text-slate-400 text-xs">Fra: {offer.buyer?.name} · Runde {offer.round || 1} · {timeAgo(offer.created_at)}</p>
         </div>
-        <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
-          {cfg.label}
-        </span>
+        <div className="flex flex-col gap-1 items-end flex-shrink-0">
+          <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
+            {cfg.label}
+          </span>
+          {offer.seller_squad_critical && (
+            <span className="text-[10px] px-2 py-1 rounded-full border font-medium bg-red-50 text-red-700 border-red-200 whitespace-nowrap">
+              🚨 Under minimum
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="bg-slate-50 rounded-lg px-4 py-3 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -211,9 +218,16 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
           </p>
           <p className="text-slate-400 text-xs">Til: {offer.seller?.name} · Runde {offer.round || 1} · {timeAgo(offer.updated_at)}</p>
         </div>
-        <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
-          {cfg.label}
-        </span>
+        <div className="flex flex-col gap-1 items-end flex-shrink-0">
+          <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
+            {cfg.label}
+          </span>
+          {offer.seller_squad_critical && (
+            <span className="text-[10px] px-2 py-1 rounded-full border font-medium bg-red-50 text-red-700 border-red-200 whitespace-nowrap">
+              🚨 Sælger under min.
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="bg-slate-50 rounded-lg px-4 py-3 mb-3">

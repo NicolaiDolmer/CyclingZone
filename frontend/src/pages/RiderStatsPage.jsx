@@ -113,11 +113,12 @@ function DirectOfferButton({ rider }) {
   );
 }
 
-function AuctionButton({ rider, isMyRider, auctionLabel, onStart }) {
+function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
   const riderValue      = getRiderMarketValue(rider);
   const [guaranteed, setGuaranteed] = useState(false);
   const [price, setPrice]           = useState(riderValue);
   const [loading, setLoading]       = useState(false);
+  const [flash, setFlash]           = useState(false);
 
   const guaranteedPrice = Math.floor(riderValue * 0.5);
   const effectivePrice  = guaranteed ? guaranteedPrice : price;
@@ -138,6 +139,14 @@ function AuctionButton({ rider, isMyRider, auctionLabel, onStart }) {
           </span>
         </label>
       )}
+      {ddActive && (
+        <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+          <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
+            className="rounded accent-red-600" />
+          <span className="text-sm text-red-700 font-medium">⚡ Flash Auktion (30 min)</span>
+          <span className="text-xs text-slate-400">Deadline Day — afsluttes præcis 30 min efter start</span>
+        </label>
+      )}
       <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="number"
@@ -153,10 +162,11 @@ function AuctionButton({ rider, isMyRider, auctionLabel, onStart }) {
                 : "border-slate-300 focus:border-amber-400"}`}
         />
         <button
-          onClick={async () => { setLoading(true); await onStart(effectivePrice, guaranteed); setLoading(false); }}
+          onClick={async () => { setLoading(true); await onStart(effectivePrice, guaranteed, flash); setLoading(false); }}
           disabled={loading || (!guaranteed && priceError)}
-          className="w-full sm:w-auto px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] transition-all disabled:opacity-50">
-          {loading ? "..." : "Start auktion"}
+          className={`w-full sm:w-auto px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
+            ${flash ? "bg-red-600 text-white hover:bg-red-700" : "bg-[#e8c547] text-[#0a0a0f] hover:bg-[#f0d060]"}`}>
+          {loading ? "..." : flash ? "⚡ Start Flash Auktion" : "Start auktion"}
         </button>
       </div>
       {priceError && (
@@ -186,8 +196,9 @@ export default function RiderStatsPage() {
   const [history, setHistory]               = useState([]);
   const [uciHistory, setUciHistory]         = useState([]);
   const [statHistory, setStatHistory]       = useState([]);
+  const [ddActive, setDdActive]             = useState(false);
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); }, [id]);
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); }, [id]);
 
   async function loadWatchlistStatus() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -280,13 +291,24 @@ export default function RiderStatsPage() {
     }
   }
 
-  async function startAuction(startPrice, isGuaranteedSale = false) {
+  async function loadDdStatus() {
+    try {
+      const h = await authHeaders();
+      const res = await fetch(`${API}/api/deadline-day/status`, { headers: h });
+      if (res.ok) {
+        const data = await res.json();
+        setDdActive(data.active === true);
+      }
+    } catch {}
+  }
+
+  async function startAuction(startPrice, isGuaranteedSale = false, isFlash = false) {
     setAuctionError(null);
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch(`${API}/api/auctions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ rider_id: id, starting_price: startPrice, is_guaranteed_sale: isGuaranteedSale }),
+      body: JSON.stringify({ rider_id: id, starting_price: startPrice, is_guaranteed_sale: isGuaranteedSale, flash_auction: isFlash }),
     });
     if (res.ok) navigate("/auctions");
     else {
@@ -394,7 +416,7 @@ export default function RiderStatsPage() {
           </div>
         )}
         <div className="mt-5 pt-5 border-t border-slate-200 flex flex-col gap-3">
-          {canAuction && !activeAuction && <AuctionButton rider={rider} isMyRider={isMyRider} auctionLabel={auctionLabel} onStart={startAuction} />}
+          {canAuction && !activeAuction && <AuctionButton rider={rider} isMyRider={isMyRider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} />}
           {activeAuction && canAuction && (
             <p className="text-slate-400 text-xs text-center py-1">Rytteren er allerede i en aktiv auktion</p>
           )}

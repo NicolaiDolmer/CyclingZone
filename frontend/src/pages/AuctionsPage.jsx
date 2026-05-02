@@ -149,6 +149,11 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
                 ⚡ Ext
               </span>
             )}
+            {auction.is_flash && (
+              <span className="text-[9px] uppercase bg-red-50 text-red-700 px-1.5 py-0.5 rounded">
+                ⚡ Flash
+              </span>
+            )}
             {r?.is_u25 && (
               <span className="text-[9px] uppercase bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded">U25</span>
             )}
@@ -289,6 +294,7 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
             {imWinning && <span className="text-[9px] uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Vinder</span>}
             {isSeller && <span className="text-[9px] uppercase bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">Sælger</span>}
             {auction.status === "extended" && <span className="text-[9px] uppercase bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded">Ext</span>}
+            {auction.is_flash && <span className="text-[9px] uppercase bg-red-50 text-red-700 px-1.5 py-0.5 rounded">⚡ Flash</span>}
             {r?.is_u25 && <span className="text-[9px] uppercase bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">U25</span>}
             {age && <span className="text-slate-400 text-xs">{age} år</span>}
           </div>
@@ -436,7 +442,7 @@ export default function AuctionsPage() {
 
     const [auctionsRes, myBidsRes] = await Promise.all([
       supabase.from("auctions")
-        .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale,
+        .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash,
           seller_team_id, current_bidder_id,
           rider:rider_id(id, firstname, lastname, uci_points, is_u25, team_id, birthdate, nationality_code,
             prize_earnings_bonus, potentiale, ${STATS.join(", ")}),

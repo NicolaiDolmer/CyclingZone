@@ -602,8 +602,25 @@ router.get("/auctions", requireAuth, async (req, res) => {
 router.post("/auctions", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
 
-  const { rider_id, starting_price, min_increment = 1, is_guaranteed_sale = false } = req.body;
+  const { rider_id, starting_price, min_increment = 1, is_guaranteed_sale = false, flash_auction = false } = req.body;
   if (!rider_id) return res.status(400).json({ error: "rider_id required" });
+
+  // Flash auction guard: only allowed during Deadline Day
+  if (flash_auction) {
+    const [{ data: tw }, { data: ddCfg }] = await Promise.all([
+      supabase.from("transfer_windows").select("status, closes_at").order("created_at", { ascending: false }).limit(1).single(),
+      supabase.from("auction_timing_config").select("deadline_day_override").eq("id", 1).single(),
+    ]);
+    const override = ddCfg?.deadline_day_override || "auto";
+    let ddActive = false;
+    if (override === "on") {
+      ddActive = true;
+    } else if (override !== "off" && tw?.status === "open" && tw?.closes_at) {
+      const secs = (new Date(tw.closes_at) - Date.now()) / 1000;
+      ddActive = secs > 0 && secs <= 86400;
+    }
+    if (!ddActive) return res.status(403).json({ error: "Flash Auktioner er kun tilgængelige under Deadline Day" });
+  }
 
   // Verify rider belongs to this team
   const { data: rider } = await supabase
@@ -658,7 +675,9 @@ router.post("/auctions", requireAuth, async (req, res) => {
     ? guaranteedPrice
     : (starting_price || riderValue);
   const auctionCfg = await getAuctionConfig();
-  const calculatedEnd = calculateAuctionEnd(new Date(), auctionCfg);
+  const calculatedEnd = flash_auction
+    ? new Date(Date.now() + 30 * 60 * 1000)
+    : calculateAuctionEnd(new Date(), auctionCfg);
   const initialBidderId = getAuctionInitialBidderId({
     riderTeamId: rider.team_id,
     managerTeamId: req.team.id,
@@ -702,6 +721,7 @@ router.post("/auctions", requireAuth, async (req, res) => {
       calculated_end: calculatedEnd.toISOString(),
       is_guaranteed_sale,
       guaranteed_price: guaranteedPrice,
+      is_flash: flash_auction,
     })
     .select()
     .single();
@@ -1083,11 +1103,29 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
       .not("seller_archived_at", "is", null)
       .order("seller_archived_at", { ascending: false }),
   ]);
+  // Compute seller_squad_critical for each offer
+  const allSent = [...(sentRes.data || []), ...(archivedSentRes.data || [])];
+  const sentSellerIds = allSent.map(o => o.seller?.id).filter(Boolean);
+  const uniqueTeamIds = [...new Set([req.team.id, ...sentSellerIds])];
+
+  const [{ data: squadRiders }, { data: squadTeams }] = await Promise.all([
+    supabase.from("riders").select("team_id").in("team_id", uniqueTeamIds),
+    supabase.from("teams").select("id, division").in("id", uniqueTeamIds),
+  ]);
+  const SQUAD_MINS = { 1: 20, 2: 14, 3: 8 };
+  const teamDiv = Object.fromEntries((squadTeams || []).map(t => [t.id, t.division]));
+  const riderCounts = {};
+  for (const r of (squadRiders || [])) riderCounts[r.team_id] = (riderCounts[r.team_id] || 0) + 1;
+  const squadCritical = (teamId) => {
+    const min = SQUAD_MINS[teamDiv[teamId]];
+    return min != null && (riderCounts[teamId] || 0) <= min;
+  };
+
   res.json({
-    sent: sentRes.data || [],
-    received: receivedRes.data || [],
-    archivedSent: archivedSentRes.data || [],
-    archivedReceived: archivedReceivedRes.data || [],
+    sent: (sentRes.data || []).map(o => ({ ...o, seller_squad_critical: squadCritical(o.seller?.id) })),
+    received: (receivedRes.data || []).map(o => ({ ...o, seller_squad_critical: squadCritical(req.team.id) })),
+    archivedSent: (archivedSentRes.data || []).map(o => ({ ...o, seller_squad_critical: squadCritical(o.seller?.id) })),
+    archivedReceived: (archivedReceivedRes.data || []).map(o => ({ ...o, seller_squad_critical: squadCritical(req.team.id) })),
   });
 });
 

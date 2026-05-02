@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.02",
+    date: "2026-05-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Deadline Day",
+        items: [
+          "Flash Auktion (30 min) — ny auktionstype tilgængelig under Deadline Day. Afsluttes præcis 30 minutter efter start, uanset aktivt vindue",
+          "Hastebudsignal — 🚨-badge på transfertilbud når sælgerholdet er under eller på divisions-minimum. Vises hos sælger (modtagne tilbud) og køber (sendte tilbud)",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.01",
     date: "2026-05-02",
     label: "Beta",
