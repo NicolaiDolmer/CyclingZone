@@ -10,8 +10,8 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 **S6 ✅ lukket (v1.78)** — onboarding MVP, navn-wizard, velkomstmodal.
 
 ### S7 — Launch readiness (aktiv)
-**Status:** Gate 1 ⬜ · Gate 2+7 ✅ AR (accepteret risiko) · Gate 3+4+6 ✅ · Gate 5 🔒 7/5  
-**Næste session:** Gate #1 (manager-koordinering) → Gate #5 (salary/dyn sync) → beta-reset → start ny sæson → open beta live.  
+**Status:** Gate 1+2+3+4+6+7 ✅ · Gate 5 🔒 7/5  
+**Næste session:** Gate #5 (salary/dyn sync) → start ny sæson → open beta live.  
 Se `docs/NOW.md` for detaljeret tjekliste.
 
 ---

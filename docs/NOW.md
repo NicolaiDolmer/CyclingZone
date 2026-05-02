@@ -7,7 +7,7 @@
 
 | # | Check | Status |
 |---|---|---|
-| 1 | Beta reset koordineret med alle 17 managers | ⬜ |
+| 1 | Beta reset koordineret med alle 17 managers | ✅ |
 | 2 | Smoke-test: login, auktion, transfer, finance, bestyrelse | ✅ AR |
 | 3 | Help + PatchNotes afspejler alle S2–S6 ændringer | ✅ |
 | 4 | Deploy verify (`pwsh -File scripts/verify-deploy.ps1`) | ✅ |
@@ -21,9 +21,8 @@
 - v1.98 (2026-05-02): Præmieudbetaling adskilt fra import — admin kontrollerer via ny panel-sektion
 
 ## Næste session — prioriteter
-1. Gate #1: Koordiner beta-reset med alle 17 managers
-2. Gate #5 (🔒 7/5): Kør salary-sync + dyn_cyclist sync; spot-check 10 ryttere mod Sheet
-3. Beta-reset → start ny sæson → open beta live
+1. Gate #5 (🔒 7/5): Kør salary-sync + dyn_cyclist sync; spot-check 10 ryttere mod Sheet
+2. Start ny sæson → open beta live
 
 ## Kritiske invarianter
 - `/profile` → `ProfilePage` (indstillinger) — `ManagerProfilePage` er read-only view
