@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "1.96",
+    date: "2026-05-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auktioner",
+        items: [
+          "Ny tidsregel: auktioner løber i 6 aktive timer — nattimer tæller ikke med (hverdage 22-16, weekender 23-8)",
+          "Eksempel: auktion startet tirsdag 19:40 udløber onsdag 19:40 — auktion startet lørdag 19:40 udløber søndag 10:40",
+          "Forlængelsesregel: bud inden for de sidste 10 minutter forlænger auktionen med 10 minutter fra budtidspunktet",
+          "Admin: ny sektion 'Auktionsregler' i admin-panelet — rediger varighed, aktive vinduer og forlængelsesfrist",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.95",
     date: "2026-05-02",
     label: "Beta",

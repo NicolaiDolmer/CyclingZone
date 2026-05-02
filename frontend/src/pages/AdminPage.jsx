@@ -153,6 +153,10 @@ export default function AdminPage() {
   // Lånekonfiguration
   const [editingLoan, setEditingLoan] = useState(null);
 
+  // Auktionskonfiguration
+  const [auctionConfig, setAuctionConfig] = useState(null);
+  const [editingAuctionConfig, setEditingAuctionConfig] = useState(null);
+
   // Race editor — NY
   const [editingRace, setEditingRace] = useState(null);
 
@@ -168,7 +172,7 @@ export default function AdminPage() {
   useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
-    const [s, r, t, w, p, w2, lc, al, rp, u] = await Promise.all([
+    const [s, r, t, w, p, w2, lc, al, rp, u, ac] = await Promise.all([
       supabase.from("seasons").select("*").order("number", { ascending: false }),
       supabase.from("races").select("*").order("start_date"),
       supabase.from("teams").select("id,name,balance,division").eq("is_ai", false).order("name"),
@@ -180,6 +184,7 @@ export default function AdminPage() {
         .order("created_at", { ascending: false }).limit(50),
       supabase.from("race_points").select("*").order("race_class").order("result_type").order("rank"),
       supabase.from("users").select("id, email, username, role, created_at, teams(id, name, division)").order("created_at", { ascending: false }),
+      supabase.from("auction_timing_config").select("*").eq("id", 1).single(),
     ]);
     setSeasons(s.data || []);
     setRaces(r.data || []);
@@ -191,6 +196,7 @@ export default function AdminPage() {
     setAdminLogs(al.data || []);
     setRacePoints(rp.data || []);
     setUsers(u.data || []);
+    setAuctionConfig(ac.data || null);
   }
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
@@ -437,6 +443,19 @@ export default function AdminPage() {
     if (res.ok) { showMsg(`✅ Balance justeret med ${parseInt(balAmount).toLocaleString("da-DK")} CZ$`); setBalAmount(""); setBalReason(""); loadAll(); }
     else showMsg(`❌ ${data.error}`, "error");
     setLoad("balance", false);
+  }
+
+  // ── Auktionskonfiguration ──────────────────────────────────────────────────
+  async function saveAuctionConfig() {
+    if (!editingAuctionConfig) return;
+    setLoad("auctionCfg", true);
+    const res = await fetch(`${API}/api/admin/auction-config`, {
+      method: "PUT", headers: await getAuth(), body: JSON.stringify(editingAuctionConfig),
+    });
+    const data = await res.json();
+    if (res.ok) { showMsg("✅ Auktionsregler gemt"); setEditingAuctionConfig(null); loadAll(); }
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoad("auctionCfg", false);
   }
 
   // ── Lånekonfiguration ──────────────────────────────────────────────────────
@@ -1100,6 +1119,88 @@ export default function AdminPage() {
               className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-xs hover:bg-slate-100">Annuller</button>
           </div>
         )}
+      </Section>
+
+      {/* ── Auktionsregler ───────────────────────────────────────────────────── */}
+      <Section title="Auktionsregler">
+        {auctionConfig && !editingAuctionConfig && (
+          <div className="mb-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+              <div className="bg-slate-50 rounded-lg px-3 py-2">
+                <p className="text-slate-400 text-xs mb-0.5">Varighed (aktive timer)</p>
+                <p className="text-slate-900 font-mono font-semibold">{auctionConfig.duration_hours} timer</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg px-3 py-2">
+                <p className="text-slate-400 text-xs mb-0.5">Hverdag aktiv</p>
+                <p className="text-slate-900 font-mono font-semibold">{auctionConfig.weekday_open_hour}:00 – {auctionConfig.weekday_close_hour}:00</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg px-3 py-2">
+                <p className="text-slate-400 text-xs mb-0.5">Weekend aktiv</p>
+                <p className="text-slate-900 font-mono font-semibold">{auctionConfig.weekend_open_hour}:00 – {auctionConfig.weekend_close_hour}:00</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg px-3 py-2">
+                <p className="text-slate-400 text-xs mb-0.5">Forlængelse ved bud</p>
+                <p className="text-slate-900 font-mono font-semibold">{auctionConfig.extension_minutes} min</p>
+              </div>
+            </div>
+            <p className="text-slate-400 text-xs mb-3">Timer uden for det aktive vindue tæller ikke med i varigheden. Bud inden for de sidste {auctionConfig.extension_minutes} minutter forlænger auktionen.</p>
+            <button onClick={() => setEditingAuctionConfig({ ...auctionConfig })}
+              className="px-3 py-1.5 bg-slate-100 text-slate-500 border border-slate-300 rounded-lg text-xs hover:text-slate-900 transition-all">
+              Rediger regler
+            </button>
+          </div>
+        )}
+        {editingAuctionConfig && (
+          <div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+              <div>
+                <label className="block text-slate-400 text-xs mb-1">Varighed (aktive timer)</label>
+                <input type="number" min="1" max="72" value={editingAuctionConfig.duration_hours}
+                  onChange={e => setEditingAuctionConfig(c => ({ ...c, duration_hours: parseInt(e.target.value) }))}
+                  className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-slate-400 text-xs mb-1">Hverdag åbner (time)</label>
+                <input type="number" min="0" max="23" value={editingAuctionConfig.weekday_open_hour}
+                  onChange={e => setEditingAuctionConfig(c => ({ ...c, weekday_open_hour: parseInt(e.target.value) }))}
+                  className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-slate-400 text-xs mb-1">Hverdag lukker (time)</label>
+                <input type="number" min="0" max="23" value={editingAuctionConfig.weekday_close_hour}
+                  onChange={e => setEditingAuctionConfig(c => ({ ...c, weekday_close_hour: parseInt(e.target.value) }))}
+                  className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-slate-400 text-xs mb-1">Weekend åbner (time)</label>
+                <input type="number" min="0" max="23" value={editingAuctionConfig.weekend_open_hour}
+                  onChange={e => setEditingAuctionConfig(c => ({ ...c, weekend_open_hour: parseInt(e.target.value) }))}
+                  className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-slate-400 text-xs mb-1">Weekend lukker (time)</label>
+                <input type="number" min="0" max="23" value={editingAuctionConfig.weekend_close_hour}
+                  onChange={e => setEditingAuctionConfig(c => ({ ...c, weekend_close_hour: parseInt(e.target.value) }))}
+                  className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-slate-400 text-xs mb-1">Forlængelse (minutter)</label>
+                <input type="number" min="1" max="60" value={editingAuctionConfig.extension_minutes}
+                  onChange={e => setEditingAuctionConfig(c => ({ ...c, extension_minutes: parseInt(e.target.value) }))}
+                  className="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={saveAuctionConfig} disabled={loading.auctionCfg}
+                className="px-3 py-1.5 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-xs hover:bg-[#f0d060] disabled:opacity-50">
+                {loading.auctionCfg ? "Gemmer..." : "Gem"}
+              </button>
+              <button onClick={() => setEditingAuctionConfig(null)}
+                className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-xs hover:bg-slate-100">Annuller</button>
+            </div>
+          </div>
+        )}
+        {!auctionConfig && <p className="text-slate-400 text-xs">Kør migrationen for at aktivere auktionskonfiguration.</p>}
       </Section>
 
       {/* ── Discord webhooks ─────────────────────────────────────────────────── */}

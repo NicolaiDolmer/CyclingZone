@@ -19,6 +19,7 @@ import {
   calculateAuctionEnd,
   checkBidExtension,
   isAuctionExpired,
+  DEFAULT_AUCTION_CONFIG,
 } from "../lib/auctionEngine.js";
 import {
   getAuctionBidIssue,
@@ -246,6 +247,13 @@ async function requireAdmin(req, res, next) {
     if (u?.role !== "admin") return res.status(403).json({ error: "Admin only" });
     next();
   });
+}
+
+// ── Auction config helper ─────────────────────────────────────────────────────
+
+async function getAuctionConfig() {
+  const { data } = await supabase.from("auction_timing_config").select("*").eq("id", 1).single();
+  return data || DEFAULT_AUCTION_CONFIG;
 }
 
 // ── Notification helper ───────────────────────────────────────────────────────
@@ -527,7 +535,8 @@ router.post("/auctions", requireAuth, async (req, res) => {
   const price = is_guaranteed_sale
     ? guaranteedPrice
     : (starting_price || riderValue);
-  const calculatedEnd = calculateAuctionEnd(new Date());
+  const auctionCfg = await getAuctionConfig();
+  const calculatedEnd = calculateAuctionEnd(new Date(), auctionCfg);
   const initialBidderId = getAuctionInitialBidderId({
     riderTeamId: rider.team_id,
     managerTeamId: req.team.id,
@@ -692,7 +701,8 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
   }
 
   const bidTime = new Date();
-  const { shouldExtend, newEnd } = checkBidExtension(bidTime, auction.calculated_end);
+  const bidCfg = await getAuctionConfig();
+  const { shouldExtend, newEnd } = checkBidExtension(bidTime, auction.calculated_end, bidCfg);
 
   // Record bid
   await supabase.from("auction_bids").insert({
@@ -2121,6 +2131,41 @@ router.patch("/admin/loan-config", requireAdmin, async (req, res) => {
       .eq("loan_type", loan_type)
       .select().single();
     if (error) throw error;
+    res.json({ success: true, config: data });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/auction-config — hent auktionskonfiguration
+router.get("/admin/auction-config", requireAdmin, async (req, res) => {
+  try {
+    const cfg = await getAuctionConfig();
+    res.json({ config: cfg });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/admin/auction-config — opdater auktionskonfiguration
+router.put("/admin/auction-config", requireAdmin, async (req, res) => {
+  try {
+    const { duration_hours, weekday_open_hour, weekday_close_hour, weekend_open_hour, weekend_close_hour, extension_minutes } = req.body;
+    const { data, error } = await supabase.from("auction_timing_config")
+      .upsert({
+        id: 1,
+        duration_hours: parseInt(duration_hours),
+        weekday_open_hour: parseInt(weekday_open_hour),
+        weekday_close_hour: parseInt(weekday_close_hour),
+        weekend_open_hour: parseInt(weekend_open_hour),
+        weekend_close_hour: parseInt(weekend_close_hour),
+        extension_minutes: parseInt(extension_minutes),
+        updated_at: new Date(),
+      })
+      .select().single();
+    if (error) throw error;
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: "auction_config_update",
+      description: `Auktionsstider opdateret: ${duration_hours}t aktiv, hverdage ${weekday_open_hour}-${weekday_close_hour}, weekend ${weekend_open_hour}-${weekend_close_hour}`,
+      meta: { duration_hours, weekday_open_hour, weekday_close_hour, weekend_open_hour, weekend_close_hour, extension_minutes },
+    });
     res.json({ success: true, config: data });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

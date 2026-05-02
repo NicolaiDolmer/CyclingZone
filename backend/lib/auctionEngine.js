@@ -1,232 +1,142 @@
 /**
  * Cycling Zone Manager — Auction Timing Engine
  * =============================================
- * Handles the complex auction window rules:
+ * Active-time model: auction runs for `duration_hours` of active hours.
+ * Dead hours (outside the active window) are skipped entirely.
  *
- * Weekdays (Mon-Fri):
- *   - Auctions close between 17:00–21:00
- *   - Start before 17:00 → closes at 17:00 same day
- *   - Start after 17:00 → closes when 4h have elapsed (within window)
- *   - Start after 21:00 → closes at 17:00 next weekday
+ * Defaults:
+ *   Weekdays (Mon-Fri): active 16:00–22:00  (dead: 22:00→16:00 next day)
+ *   Weekends (Sat-Sun): active 08:00–23:00  (dead: 23:00→08:00 next day)
+ *   Duration: 6 active hours
  *
- * Saturday:
- *   - Window: 09:00–22:00
- *   - Closes at 22:00 max
- *
- * Sunday:
- *   - Window: 09:00–21:00
- *   - Closes at 21:00 max
+ * Examples with defaults:
+ *   Tuesday 19:40  → Wednesday 19:40  (2h20m Tue + 3h40m Wed)
+ *   Saturday 19:40 → Sunday 10:40     (3h20m Sat + 2h40m Sun)
  *
  * Extension rule:
- *   - Bid in last 10 minutes → extend by 10 minutes from bid time
- *   - Extended end must still respect daily window ceiling
+ *   Bid within last `extension_minutes` → extend by that many minutes from bid time.
+ *   Extended end capped at current day's window close.
  */
 
-const WINDOWS = {
-  0: { open: 9, close: 21 },   // Sunday
-  1: { open: 17, close: 21 },  // Monday
-  2: { open: 17, close: 21 },  // Tuesday
-  3: { open: 17, close: 21 },  // Wednesday
-  4: { open: 17, close: 21 },  // Thursday
-  5: { open: 17, close: 21 },  // Friday  (close 22 — see note)
-  6: { open: 9, close: 22 },   // Saturday
+export const DEFAULT_AUCTION_CONFIG = {
+  duration_hours: 6,
+  weekday_open_hour: 16,
+  weekday_close_hour: 22,
+  weekend_open_hour: 8,
+  weekend_close_hour: 23,
+  extension_minutes: 10,
 };
-// Friday override
-WINDOWS[5] = { open: 17, close: 22 };
 
-const AUCTION_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours
-const EXTENSION_MS = 10 * 60 * 1000;             // 10 minutes
+function isWeekend(dayOfWeek) {
+  return dayOfWeek === 0 || dayOfWeek === 6; // Sun=0, Sat=6
+}
 
-/**
- * Get the window close time for a given date (as Date object).
- * Returns a Date set to the window's closing time on that day.
- */
-function getWindowClose(d) {
-  const close = new Date(d);
-  const dow = close.getDay();
-  const w = WINDOWS[dow];
-  close.setHours(w.close, 0, 0, 0);
-  return close;
+function windowHours(d, cfg) {
+  return isWeekend(d.getDay())
+    ? { openHour: cfg.weekend_open_hour, closeHour: cfg.weekend_close_hour }
+    : { openHour: cfg.weekday_open_hour, closeHour: cfg.weekday_close_hour };
+}
+
+function windowOpenTime(d, cfg) {
+  const t = new Date(d);
+  t.setHours(windowHours(d, cfg).openHour, 0, 0, 0);
+  return t;
+}
+
+function windowCloseTime(d, cfg) {
+  const t = new Date(d);
+  t.setHours(windowHours(d, cfg).closeHour, 0, 0, 0);
+  return t;
+}
+
+function nextWindowOpenTime(d, cfg) {
+  const next = new Date(d);
+  next.setDate(next.getDate() + 1);
+  next.setHours(0, 0, 0, 0);
+  return windowOpenTime(next, cfg);
 }
 
 /**
- * Get the window open time for a given date.
+ * Calculate auction end time given a start time.
+ * Counts only active-window hours toward the duration.
+ *
+ * @param {Date} startTime
+ * @param {object} cfg - auction timing config (defaults to DEFAULT_AUCTION_CONFIG)
+ * @returns {Date}
  */
-function getWindowOpen(d) {
-  const open = new Date(d);
-  const dow = open.getDay();
-  const w = WINDOWS[dow];
-  open.setHours(w.open, 0, 0, 0);
-  return open;
-}
+export function calculateAuctionEnd(startTime, cfg = DEFAULT_AUCTION_CONFIG) {
+  const durationMs = cfg.duration_hours * 60 * 60 * 1000;
+  let current = new Date(startTime);
+  let remaining = durationMs;
 
-/**
- * Advance to the next valid auction window opening.
- * Skips to next calendar day if today's window is past.
- */
-function nextWindowOpen(from) {
-  let candidate = new Date(from);
-  // Try up to 7 days ahead
-  for (let i = 0; i < 7; i++) {
-    const open = getWindowOpen(candidate);
-    const close = getWindowClose(candidate);
-    if (candidate < close) {
-      // Today's window is still open or upcoming
-      return open > candidate ? open : candidate;
+  for (let i = 0; i < 14; i++) {
+    const wOpen = windowOpenTime(current, cfg);
+    const wClose = windowCloseTime(current, cfg);
+
+    // Before window opens today → snap to open
+    if (current < wOpen) current = new Date(wOpen);
+
+    // At or past window close → jump to next day
+    if (current >= wClose) {
+      current = nextWindowOpenTime(current, cfg);
+      continue;
     }
-    // Move to next day at midnight
-    candidate = new Date(candidate);
-    candidate.setDate(candidate.getDate() + 1);
-    candidate.setHours(0, 0, 0, 0);
+
+    // Within active window
+    const availableMs = wClose.getTime() - current.getTime();
+    if (remaining <= availableMs) {
+      return new Date(current.getTime() + remaining);
+    }
+
+    remaining -= availableMs;
+    current = nextWindowOpenTime(wClose, cfg);
   }
-  throw new Error("Could not find next auction window within 7 days");
+
+  throw new Error("Cannot calculate auction end within 14 days");
 }
 
 /**
- * Calculate the auction end time given a start time.
+ * Check whether a new bid triggers an extension.
  *
- * @param {Date} startTime - When the auction was started
- * @returns {Date} - Calculated end time respecting window rules
- */
-export function calculateAuctionEnd(startTime) {
-  const start = new Date(startTime);
-  const windowClose = getWindowClose(start);
-  const windowOpen = getWindowOpen(start);
-
-  // Case 1: Started before window opens today
-  if (start < windowOpen) {
-    // Ends at window open (which is 17:00 on weekdays)
-    return windowOpen;
-  }
-
-  // Case 2: Started after window closes today
-  if (start >= windowClose) {
-    // Move to next valid window
-    const nextOpen = nextWindowOpen(new Date(start.getTime() + 86400000));
-    return nextOpen;
-  }
-
-  // Case 3: Started within window
-  const naturalEnd = new Date(start.getTime() + AUCTION_DURATION_MS);
-
-  if (naturalEnd <= windowClose) {
-    return naturalEnd; // Fits within today's window
-  } else {
-    return windowClose; // Capped at window close
-  }
-}
-
-/**
- * Determine if a new bid triggers an extension.
- *
- * @param {Date} bidTime - When the bid was placed
- * @param {Date} currentEnd - Current auction end time
+ * @param {Date} bidTime
+ * @param {Date} currentEnd
+ * @param {object} cfg
  * @returns {{ shouldExtend: boolean, newEnd: Date | null }}
  */
-export function checkBidExtension(bidTime, currentEnd) {
+export function checkBidExtension(bidTime, currentEnd, cfg = DEFAULT_AUCTION_CONFIG) {
   const bid = new Date(bidTime);
   const end = new Date(currentEnd);
-  const windowClose = getWindowClose(end);
+  const extensionMs = cfg.extension_minutes * 60 * 1000;
+  const wClose = windowCloseTime(end, cfg);
 
   const timeLeft = end.getTime() - bid.getTime();
+  if (timeLeft > extensionMs) return { shouldExtend: false, newEnd: null };
 
-  if (timeLeft > EXTENSION_MS) {
-    return { shouldExtend: false, newEnd: null };
-  }
+  const extendedEnd = new Date(bid.getTime() + extensionMs);
+  const newEnd = extendedEnd > wClose ? wClose : extendedEnd;
 
-  // Extend by 10 minutes from bid time
-  const extendedEnd = new Date(bid.getTime() + EXTENSION_MS);
-
-  // Cannot exceed window close
-  const newEnd = extendedEnd > windowClose ? windowClose : extendedEnd;
-
-  // Only extend if we're actually pushing the end later
-  if (newEnd <= end) {
-    return { shouldExtend: false, newEnd: null };
-  }
+  if (newEnd <= end) return { shouldExtend: false, newEnd: null };
 
   return { shouldExtend: true, newEnd };
 }
 
 /**
  * Check if an auction should be finalized now.
- * Used by the cron job every minute.
- *
- * @param {Date} auctionEnd - The auction's current end time
- * @returns {boolean}
  */
 export function isAuctionExpired(auctionEnd) {
   return new Date() >= new Date(auctionEnd);
 }
 
 /**
- * Format auction end for display.
+ * Format remaining time for display.
  */
 export function formatAuctionEnd(endTime) {
-  const d = new Date(endTime);
-  const now = new Date();
-  const diffMs = d - now;
-
+  const diffMs = new Date(endTime) - new Date();
   if (diffMs <= 0) return "Afsluttet";
-
   const hours = Math.floor(diffMs / 3600000);
   const minutes = Math.floor((diffMs % 3600000) / 60000);
   const seconds = Math.floor((diffMs % 60000) / 1000);
-
   if (hours > 0) return `${hours}t ${minutes}m`;
   if (minutes > 0) return `${minutes}m ${seconds}s`;
   return `${seconds}s`;
-}
-
-// ── Tests ────────────────────────────────────────────────────────────────────
-if (typeof process !== "undefined" && process.argv[1]?.includes("auction")) {
-  const tests = [
-    {
-      label: "Monday 08:00 → should end at 17:00",
-      input: new Date("2025-01-06T08:00:00"),
-      expected: "17:00",
-    },
-    {
-      label: "Monday 13:00 → should end at 17:00",
-      input: new Date("2025-01-06T13:00:00"),
-      expected: "17:00",
-    },
-    {
-      label: "Monday 18:00 → should end 22:00 (4h later but cap 21:00)",
-      input: new Date("2025-01-06T18:00:00"),
-      expected: "21:00",
-    },
-    {
-      label: "Monday 19:30 → should end 21:00 (cap)",
-      input: new Date("2025-01-06T19:30:00"),
-      expected: "21:00",
-    },
-    {
-      label: "Saturday 10:00 → should end 14:00",
-      input: new Date("2025-01-04T10:00:00"),
-      expected: "14:00",
-    },
-    {
-      label: "Sunday 20:00 → should end 21:00 (cap)",
-      input: new Date("2025-01-05T20:00:00"),
-      expected: "21:00",
-    },
-    {
-      label: "Friday 19:00 → should end 22:00 (cap Friday)",
-      input: new Date("2025-01-03T19:00:00"),
-      expected: "22:00",
-    },
-  ];
-
-  console.log("🧪 Auction Timing Tests\n");
-  let passed = 0;
-  for (const t of tests) {
-    const result = calculateAuctionEnd(t.input);
-    const hhmm = `${result.getHours().toString().padStart(2, "0")}:${result.getMinutes().toString().padStart(2, "0")}`;
-    const ok = hhmm === t.expected;
-    console.log(`${ok ? "✅" : "❌"} ${t.label}`);
-    if (!ok) console.log(`   Got: ${hhmm}, Expected: ${t.expected}`);
-    if (ok) passed++;
-  }
-  console.log(`\n${passed}/${tests.length} tests passed`);
 }
