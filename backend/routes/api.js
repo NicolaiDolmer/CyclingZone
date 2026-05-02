@@ -308,6 +308,54 @@ router.get("/transfer-window", requireAuth, async (req, res) => {
   res.json({ open, status: tw?.status || "closed", season_id: tw?.season_id || null });
 });
 
+// ── Deadline Day ──────────────────────────────────────────────────────────────
+
+function computeDeadlineDayPhase(closesAt) {
+  const secs = (new Date(closesAt) - Date.now()) / 1000;
+  if (secs <= 0) return null;
+  if (secs <= 1800) return "chaos";
+  if (secs <= 7200) return "pressure";
+  if (secs <= 86400) return "anticipation";
+  return null;
+}
+
+// GET /api/deadline-day/status
+router.get("/deadline-day/status", requireAuth, async (req, res) => {
+  try {
+    const [{ data: tw }, { data: cfg }] = await Promise.all([
+      supabase.from("transfer_windows").select("status, closes_at").order("created_at", { ascending: false }).limit(1).single(),
+      supabase.from("auction_timing_config").select("deadline_day_override").eq("id", 1).single(),
+    ]);
+
+    const override = cfg?.deadline_day_override || "auto";
+    const closesAt = tw?.closes_at || null;
+
+    if (override === "off") {
+      return res.json({ active: false, phase: null, closes_at: closesAt, seconds_remaining: null, override });
+    }
+
+    if (override === "on") {
+      const phase = closesAt ? (computeDeadlineDayPhase(closesAt) || "pressure") : "pressure";
+      const seconds_remaining = closesAt ? Math.max(0, (new Date(closesAt) - Date.now()) / 1000) : null;
+      return res.json({ active: true, phase, closes_at: closesAt, seconds_remaining, override });
+    }
+
+    // auto: kræver åbent vindue + closes_at sat + indenfor 24 timer
+    if (!tw || tw.status !== "open" || !closesAt) {
+      return res.json({ active: false, phase: null, closes_at: closesAt, seconds_remaining: null, override });
+    }
+    const seconds_remaining = (new Date(closesAt) - Date.now()) / 1000;
+    if (seconds_remaining <= 0) {
+      return res.json({ active: false, phase: null, closes_at: closesAt, seconds_remaining: 0, override });
+    }
+    const phase = computeDeadlineDayPhase(closesAt);
+    if (!phase) {
+      return res.json({ active: false, phase: null, closes_at: closesAt, seconds_remaining, override });
+    }
+    res.json({ active: true, phase, closes_at: closesAt, seconds_remaining, override });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // RIDERS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2200,9 +2248,10 @@ router.post("/admin/transfer-window/open", requireAdmin, async (req, res) => {
     const { season_id } = req.body;
     if (!season_id) return res.status(400).json({ error: "season_id kræves" });
 
+    const { closes_at } = req.body;
     // Insert new window record with status "open"
     const { error: insertErr } = await supabase.from("transfer_windows")
-      .insert({ season_id, status: "open" });
+      .insert({ season_id, status: "open", ...(closes_at ? { closes_at } : {}) });
     if (insertErr) return res.status(500).json({ error: insertErr.message });
 
     // Flush auction winners (pending_team_id → team_id)
@@ -2238,6 +2287,36 @@ router.post("/admin/transfer-window/close", requireAdmin, async (req, res) => {
     if (!tw) return res.status(404).json({ error: "Intet aktivt transfervindue fundet" });
     await supabase.from("transfer_windows").update({ status: "closed" }).eq("id", tw.id);
     res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/admin/deadline-day/override — skift override-tilstand (auto/on/off)
+router.put("/admin/deadline-day/override", requireAdmin, async (req, res) => {
+  try {
+    const { override } = req.body;
+    if (!["auto", "on", "off"].includes(override)) {
+      return res.status(400).json({ error: "override skal være 'auto', 'on' eller 'off'" });
+    }
+    const { error } = await supabase.from("auction_timing_config")
+      .update({ deadline_day_override: override, updated_at: new Date().toISOString() })
+      .eq("id", 1);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true, override });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/admin/transfer-window/closes-at — opdater lukketidspunkt på seneste vindue
+router.put("/admin/transfer-window/closes-at", requireAdmin, async (req, res) => {
+  try {
+    const { closes_at } = req.body;
+    if (!closes_at) return res.status(400).json({ error: "closes_at kræves" });
+    const { data: tw } = await supabase.from("transfer_windows")
+      .select("id").order("created_at", { ascending: false }).limit(1).single();
+    if (!tw) return res.status(404).json({ error: "Intet transfervindue fundet" });
+    const { error } = await supabase.from("transfer_windows")
+      .update({ closes_at }).eq("id", tw.id);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true, closes_at });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

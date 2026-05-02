@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import SetupWizardModal from "./SetupWizardModal";
+import DeadlineDayBanner from "./DeadlineDayBanner";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -311,6 +312,7 @@ export default function Layout() {
           </NavLink>
         </div>
 
+        <DeadlineDayBanner />
         <div className="p-4 md:p-6 max-w-6xl mx-auto">
           <Outlet />
         </div>

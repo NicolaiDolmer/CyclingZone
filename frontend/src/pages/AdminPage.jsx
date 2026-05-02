@@ -165,6 +165,9 @@ export default function AdminPage() {
   // Race editor — NY
   const [editingRace, setEditingRace] = useState(null);
 
+  // Deadline Day
+  const [closesAtInput, setClosesAtInput] = useState("");
+
   // Beta-testværktøjer
   const [betaResult, setBetaResult] = useState(null);
   const [betaClearTransactions, setBetaClearTransactions] = useState(false);
@@ -175,6 +178,15 @@ export default function AdminPage() {
   const [savingPoint, setSavingPoint] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
+
+  // Synkroniser closes_at input fra window_ når det loader
+  useEffect(() => {
+    if (window_?.closes_at) {
+      const d = new Date(window_.closes_at);
+      const pad = n => String(n).padStart(2, "0");
+      setClosesAtInput(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    }
+  }, [window_?.closes_at]);
 
   async function loadAll() {
     const [s, r, t, w, p, w2, lc, al, rp, u, ac] = await Promise.all([
@@ -321,7 +333,9 @@ export default function AdminPage() {
     const isOpen = window_?.status === "open";
     setLoad("window", true);
     const endpoint = isOpen ? "close" : "open";
-    const body = isOpen ? {} : { season_id: seasons.find(s => s.status === "active")?.id };
+    const body = isOpen
+      ? {}
+      : { season_id: seasons.find(s => s.status === "active")?.id, ...(closesAtInput ? { closes_at: new Date(closesAtInput).toISOString() } : {}) };
     if (!isOpen && !body.season_id) { showMsg("❌ Ingen aktiv sæson fundet", "error"); setLoad("window", false); return; }
     const res = await fetch(`${API}/api/admin/transfer-window/${endpoint}`, {
       method: "POST", headers: await getAuth(), body: JSON.stringify(body),
@@ -330,6 +344,33 @@ export default function AdminPage() {
     if (res.ok) showMsg(isOpen ? "✅ Transfervindue lukket" : `✅ Transfervindue åbnet — ${data.riders_processed} ryttere behandlet`);
     else showMsg(`❌ ${data.error}`, "error");
     setLoad("window", false);
+    loadAll();
+  }
+
+  async function updateClosesAt() {
+    if (!closesAtInput) { showMsg("❌ Vælg en lukketid", "error"); return; }
+    setLoad("closesAt", true);
+    const res = await fetch(`${API}/api/admin/transfer-window/closes-at`, {
+      method: "PUT", headers: await getAuth(),
+      body: JSON.stringify({ closes_at: new Date(closesAtInput).toISOString() }),
+    });
+    const data = await res.json();
+    if (res.ok) showMsg("✅ Lukketid gemt");
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoad("closesAt", false);
+    loadAll();
+  }
+
+  async function updateDeadlineDayOverride(override) {
+    setLoad(`dd_${override}`, true);
+    const res = await fetch(`${API}/api/admin/deadline-day/override`, {
+      method: "PUT", headers: await getAuth(),
+      body: JSON.stringify({ override }),
+    });
+    const data = await res.json();
+    if (res.ok) showMsg(`✅ Deadline Day: ${override}`);
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoad(`dd_${override}`, false);
     loadAll();
   }
 
@@ -613,6 +654,57 @@ export default function AdminPage() {
             {loading.window ? "..." : windowOpen ? "Luk vindue" : "Åbn vindue"}
           </button>
         </div>
+
+        {/* Lukketid */}
+        <div className="bg-slate-50 rounded-xl p-4 mb-3">
+          <p className="text-slate-700 font-medium text-sm mb-2">Lukketidspunkt</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="datetime-local"
+              value={closesAtInput}
+              onChange={e => setClosesAtInput(e.target.value)}
+              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-800 bg-white"
+            />
+            {windowOpen && (
+              <button onClick={updateClosesAt} disabled={loading.closesAt}
+                className="px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-medium hover:bg-blue-100 disabled:opacity-50">
+                {loading.closesAt ? "..." : "Gem"}
+              </button>
+            )}
+          </div>
+          <p className="text-slate-300 text-xs mt-1.5">
+            {windowOpen ? "Opdater lukketid — aktiverer Deadline Day countdown automatisk." : "Udfyld inden vinduet åbnes for at sætte countdown."}
+          </p>
+        </div>
+
+        {/* Deadline Day override */}
+        <div className="bg-slate-50 rounded-xl p-4 mb-3">
+          <p className="text-slate-700 font-medium text-sm mb-2">Deadline Day tilstand</p>
+          <div className="flex gap-2">
+            {["auto", "on", "off"].map(mode => {
+              const current = auctionConfig?.deadline_day_override || "auto";
+              const labels = { auto: "Auto", on: "Tændt", off: "Slukket" };
+              const active = current === mode;
+              return (
+                <button key={mode} onClick={() => updateDeadlineDayOverride(mode)}
+                  disabled={loading[`dd_${mode}`] || active}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all disabled:cursor-default
+                    ${active
+                      ? "bg-[#1a1f38] text-white border-[#1a1f38]"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100"}`}>
+                  {labels[mode]}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-slate-300 text-xs mt-1.5">
+            Auto = aktiveres 24t inden lukketid · Tændt = altid aktiv (test) · Slukket = deaktiveret
+          </p>
+          {auctionConfig?.deadline_day_override === "on" && (
+            <p className="text-amber-600 text-xs mt-1 font-medium">⚠ Manuel tilstand aktiv — husk at sætte tilbage til Auto</p>
+          )}
+        </div>
+
         <p className="text-slate-300 text-xs">Når vinduet åbnes behandles alle ventende transfers automatisk.</p>
       </Section>
 
