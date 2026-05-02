@@ -13,6 +13,9 @@ Runtime > current docs > spec docs > backlog. Conflict → runtime vinder, doc m
 Verificér: frontend callsite · backend route · shared engine/service · DB tabel+felter · enum/check constraints · singular execution path.
 Kan ikke verificeres → `investigation`, stop.
 
+## Kompleks feature-redesign → AskUserQuestion-session
+Før kodning på systemer der kræver kravafklaring (flow-redesign, ny automatisering, IA-valg): planlæg en dedikeret session med brugeren. Skriv det ind i backloggen som en separat slice med "Næste skridt: AskUserQuestion".
+
 ## Stop-betingelser → skift til investigation
 - Frontend kalder manglende endpoint
 - Samme route-path bruges til forskellige domæner
