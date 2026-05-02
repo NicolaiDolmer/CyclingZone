@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 
 const RESULT_TYPES = [
   { key: "stage", label: "Etape" },
@@ -390,10 +390,10 @@ export default function RacesPage() {
             <label className="block cursor-pointer mb-4">
               <div className="border-2 border-dashed border-slate-300 hover:border-amber-300
                 rounded-xl p-6 text-center transition-all">
-                <p className="text-slate-400 text-sm">📁 Klik for at uploade PCM Excel-fil (.xlsx)</p>
+                <p className="text-slate-400 text-sm">📁 Klik for at uploade PCM Excel-fil (.xlsx, .xls)</p>
                 <p className="text-slate-300 text-xs mt-1">Forventet format: Placering i kolonne A, Rytternavn i kolonne B</p>
               </div>
-              <input type="file" accept=".xlsx" className="hidden" onChange={handleFileUpload} />
+              <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
             </label>
 
             {editingRows.length > 0 && (
