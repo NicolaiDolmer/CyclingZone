@@ -155,7 +155,13 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - `GET /api/deadline-day/ticker` — merger bids + completed auctions + accepted transfers, seneste 20 events inden for 24t
 - `DeadlineDayBoard` (`/deadline-day`) — Panic Board: alle holds truppestørrelse vs. divisions-minimum, grøn/gul/rød, 30s poll; vises kun under Deadline Day
 - `GET /api/deadline-day/squads` — returnerer alle ikke-bank holds squad-count vs. MARKET_SQUAD_LIMITS, med status ok/warning/critical
-- **Mangler (S3–S4):** Flash Auction, hastebudsignal, notifikationer, Final Whistle-rapport
+
+### Deadline Day S3 (2026-05-02)
+- Flash Auktion: `is_flash boolean` i `auctions`-tabel, guard i `POST /api/auctions` (tjekker DD aktiv via override + closes_at), `calculated_end = now+30min`
+- Flash UI: checkbox i `AuctionButton` (RiderStatsPage) — vises kun når `ddActive=true`; rød knap + `⚡ Flash`-badge i AuctionsPage
+- Hastebudsignal: `GET /api/transfers/my-offers` beregner `seller_squad_critical` (sælger ≤ divisionsminimum) via rider-count + division-opslag
+- 🚨-badge: ReceivedOfferCard ("Under minimum"), SentOfferCard ("Sælger under min.") i TransfersPage
+- **Mangler (S4):** Notifikations-crons (T-24h/T-2h/T-30min) + Final Whistle-rapport
 
 ### Developer Tooling (v1.99, 2026-05-02)
 - **ESLint** (backend + frontend) — flat config, `@eslint/js` recommended; kører i CI efter tests; 0 errors
