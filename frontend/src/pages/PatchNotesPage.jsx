@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "1.97",
+    date: "2026-05-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Teknisk",
+        items: [
+          "Sikkerhedsopdatering: Excel-bibliotek opgraderet til patchet version (CVE-2023-30533)",
+          "PCM-filimport understøtter nu både .xlsx og .xls",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.96",
     date: "2026-05-02",
     label: "Beta",
