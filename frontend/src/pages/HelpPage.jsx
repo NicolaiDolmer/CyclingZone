@@ -52,8 +52,12 @@ const SECTIONS = [
         text: "Gå til Auktioner og find en auktion du vil byde på. Indtast dit bud og klik 'Byd'. Du kan se om du vinder (🏆 Vinder) eller om du har budt men er overbudt (⚡ Du har budt). Minimumsbuddet er mindst 10% over nuværende pris og afrundes op til nærmeste 1.000 CZ$.",
       },
       {
+        title: "Hvornår udløber en auktion?",
+        text: "En auktion løber i 6 aktive timer — nattimer tæller ikke med. Det aktive vindue er hverdage (man–fre) kl. 16–22 og weekender (lør–søn) kl. 08–23. Byder du kl. 19:40 en tirsdag, slutter auktionen onsdag kl. 19:40 (2t20m tirsdag + 3t40m onsdag). Byder du kl. 19:40 en lørdag, slutter den søndag kl. 10:40 (3t20m lørdag + 2t40m søndag).",
+      },
+      {
         title: "10-minutters forlængelse",
-        text: "Hvis der afgives et bud inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter. Dette fortsætter indtil der ikke afgives bud i de sidste 10 minutter.",
+        text: "Hvis der afgives et bud inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter fra budtidspunktet. Dette fortsætter, indtil der ikke afgives bud i de sidste 10 minutter. Forlængelsen er begrænset til det aktive vindues lukningstidspunkt.",
       },
       {
         title: "Holdstørrelse og auktioner",
@@ -397,6 +401,10 @@ const FAQ = [
   {
     q: "Kan jeg købe bankryttere med direkte tilbud?",
     a: "Nej. Bankryttere kan ikke modtage direkte transfer- eller byttetilbud. De skal købes via auktion.",
+  },
+  {
+    q: "Hvornår udløber en auktion?",
+    a: "En auktion varer 6 aktive timer. Nattimer tæller ikke: hverdage (man–fre) er der aktiv tid kl. 16–22, weekender (lør–søn) kl. 08–23. Eksempel: auktion startet tirsdag 19:40 slutter onsdag 19:40. Auktion startet lørdag 19:40 slutter søndag 10:40.",
   },
   {
     q: "Hvor meget skal jeg byde over i en auktion?",
