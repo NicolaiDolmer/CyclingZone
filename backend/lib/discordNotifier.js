@@ -44,7 +44,7 @@ const TYPE_LABELS = {
 /**
  * Get the default webhook URL from settings
  */
-async function getDefaultWebhook() {
+export async function getDefaultWebhook() {
   const { data } = await supabase
     .from("discord_settings")
     .select("webhook_url")
@@ -88,7 +88,7 @@ async function getDiscordId(teamId) {
 /**
  * Send a Discord webhook message
  */
-async function sendWebhook(webhookUrl, payload) {
+export async function sendWebhook(webhookUrl, payload) {
   if (!webhookUrl) return;
   try {
     const res = await fetch(webhookUrl, {

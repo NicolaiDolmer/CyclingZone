@@ -415,6 +415,10 @@ const FAQ = [
     a: "Flash Auktioner er en særlig auktionstype der kun er tilgængelig under Deadline Day. De varer præcis 30 minutter fra starttidspunktet — uanset aktivt vindue. Du finder muligheden på rytterens statistikside, når Deadline Day er aktivt.",
   },
   {
+    q: "Får jeg besked før transfervinduet lukker?",
+    a: "Ja. Når Deadline Day er aktivt, sender systemet automatiske notifikationer 24 timer, 2 timer og 30 minutter før vinduet lukker. Når vinduet lukker, sendes en Final Whistle-rapport til Discord med dagens største handel, mest aktive manager og antal panikhandler.",
+  },
+  {
     q: "Hvor meget skal jeg byde over i en auktion?",
     a: "Dit bud skal være mindst 10% over den nuværende pris og afrundes op til nærmeste 1.000 CZ$. Aktive auktioner hvor du fører, tæller samtidig som reserveret balance og potentiel trupplads.",
   },

@@ -37,11 +37,10 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 - Flash Auktion: 30-min varighed under Deadline Day — guard i `POST /api/auctions`, `is_flash` kolonne i DB
 - Hastebudsignal: 🚨-badge på modtagne og sendte tilbud når sælgerhold er ≤ divisionsminimum
 
-**S4 — Notifikationer + Final Whistle-rapport**
-- Planlagte push-notifikationer: T-24h, T-2h, T-30min (cron eller webhook-trigger)
-- Final Whistle: autogenereret rapport ved vinduesluk — største handel, mest aktive manager, panikhandel
-- Discord embed med rapport sendes til general-webhook
-- `backend/lib/deadlineDayReport.js` · `backend/routes/api.js`
+**S4 ✅ (2026-05-02):** Notifikationer + Final Whistle-rapport live
+- Planlagte advarsler T-24h/T-2h/T-30min via cron (5-min interval) → `notifyTeamOwner` med dedupe på (window_id, step-titel)
+- Final Whistle: atomic claim på `transfer_windows.final_whistle_sent_at` → største handel + mest aktive manager + panikhandler → Discord embed til default webhook
+- Pure functions i `backend/lib/deadlineDayReport.js`, orkestrering i `backend/cron.js`
 
 ---
 

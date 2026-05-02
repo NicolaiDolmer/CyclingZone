@@ -20,7 +20,8 @@ import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
 } from "./lib/notificationService.js";
-import { notifyAuctionWon } from "./lib/discordNotifier.js";
+import { notifyAuctionWon, getDefaultWebhook, sendWebhook } from "./lib/discordNotifier.js";
+import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, '../.env') });
 
@@ -142,6 +143,24 @@ async function logActivity(type, data = {}) {
   }
 }
 
+// ─── Deadline Day ─────────────────────────────────────────────────────────────
+
+async function runDeadlineDayCron() {
+  const result = await processDeadlineDayCron({
+    supabase,
+    notifyTeamOwnerFn: (args) => notifyTeamOwnerShared({ supabase, ...args }),
+    sendDiscordWebhookFn: sendWebhook,
+    getDefaultWebhookFn: getDefaultWebhook,
+    now: new Date(),
+  });
+  if (result.warnings) {
+    console.log(`📣 Deadline Day: ${result.warnings} advarsel(er) afsendt`);
+  }
+  if (result.whistleSent) {
+    console.log("🏁 Deadline Day: Final Whistle-rapport sendt til Discord");
+  }
+}
+
 // ─── Scheduler ───────────────────────────────────────────────────────────────
 
 export function startCron() {
@@ -155,6 +174,15 @@ export function startCron() {
       console.error("Cron error (auctions):", err.message);
     }
   }, 60 * 1000);
+
+  // Every 5 minutes: deadline day warnings + final whistle
+  setInterval(async () => {
+    try {
+      await runDeadlineDayCron();
+    } catch (err) {
+      console.error("Cron error (deadline day):", err.message);
+    }
+  }, 5 * 60 * 1000);
 
   // Every 6 hours: check debt
   setInterval(async () => {

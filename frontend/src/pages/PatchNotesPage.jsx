@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.03",
+    date: "2026-05-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Deadline Day",
+        items: [
+          "Planlagte advarsler — alle aktive managers får en notifikation 24 timer, 2 timer og 30 minutter før transfervinduet lukker",
+          "Final Whistle-rapport — automatisk Discord-opsummering ved vinduesluk: største handel, mest aktive manager, antal panikhandler",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.02",
     date: "2026-05-02",
     label: "Beta",
