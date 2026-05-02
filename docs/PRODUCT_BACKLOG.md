@@ -33,10 +33,9 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 - `GET /api/deadline-day/ticker` + `DeadlineDayTicker` — horisontal scrollende feed (10s poll, fixed bottom)
 - `GET /api/deadline-day/squads` + `DeadlineDayBoard` (`/deadline-day`) — grøn/gul/rød squad-status (30s poll)
 
-**S3 — Flash Auction + hastebudsignal**
-- Flash Auction: 30-min auktionsvarighed tilgængelig under Deadline Day (backend guard)
-- Hastebudsignal: 🚨-badge på direkte tilbud til hold under divisions-minimum
-- `frontend/src/pages/AuctionsPage.jsx` + `backend/routes/api.js`
+**S3 ✅ (2026-05-02):** Flash Auction + hastebudsignal live
+- Flash Auktion: 30-min varighed under Deadline Day — guard i `POST /api/auctions`, `is_flash` kolonne i DB
+- Hastebudsignal: 🚨-badge på modtagne og sendte tilbud når sælgerhold er ≤ divisionsminimum
 
 **S4 — Notifikationer + Final Whistle-rapport**
 - Planlagte push-notifikationer: T-24h, T-2h, T-30min (cron eller webhook-trigger)

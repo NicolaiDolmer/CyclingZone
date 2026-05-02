@@ -16,14 +16,14 @@
 | 7 | S7-C: Notifikation smoke-test — `auction_outbid`, `transfer_offer_received`, `board_update` | ✅ AR |
 
 ## Senest leveret
+- v2.02 (2026-05-02): Deadline Day S3 — Flash Auktion (30 min, backend guard) + hastebudsignal (🚨 på tilbud)
 - v2.00 (2026-05-02): S7.5 — `supabase.js` → `supabase.ts`, `createClient<Database>` koblet
-- Deadline Day S1 (2026-05-02): `DeadlineDayBanner` + admin toggle + 3 backend endpoints live
-- Deadline Day S2 (2026-05-02): `DeadlineDayTicker` + `DeadlineDayBoard` (`/deadline-day`) + 2 backend endpoints
+- Deadline Day S1+S2 (2026-05-02): Banner, Ticker, Panic Board live
 
 ## Næste session — prioriteter
 1. Gate #5 (🔒 7/5): Kør salary-sync + dyn_cyclist sync; spot-check 10 ryttere mod Sheet
 2. Start ny sæson → open beta live
-3. **Deadline Day S3**: Flash Auction + hastebudsignal — se `docs/PRODUCT_BACKLOG.md`
+3. **Deadline Day S4**: Notifikationer (T-24h/T-2h/T-30min cron) + Final Whistle-rapport
 
 ## Kritiske invarianter
 - `/profile` → `ProfilePage` (indstillinger) — `ManagerProfilePage` er read-only view
