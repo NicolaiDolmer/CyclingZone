@@ -3060,7 +3060,7 @@ router.post("/admin/beta/reset-balances", requireAdmin, async (req, res) => {
 // POST /api/admin/beta/reset-divisions — sæt alle aktive managerhold tilbage til 3. division
 router.post("/admin/beta/reset-divisions", requireAdmin, async (req, res) => {
   try {
-    res.json({ ok: true, ...(await resetBetaDivisions(supabase)) });
+    res.json({ ok: true, divisions: await resetBetaDivisions(supabase) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
