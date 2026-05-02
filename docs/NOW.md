@@ -16,9 +16,7 @@
 | 7 | S7-C: Notifikation smoke-test — `auction_outbid`, `transfer_offer_received`, `board_update` | ✅ AR |
 
 ## Senest leveret
-- v2.00 (2026-05-02): S7.5 — `supabase.js` → `supabase.ts`, `createClient<Database>` koblet
-- v1.99 (2026-05-02): Developer tooling — ESLint+Prettier (backend+frontend), Supabase TS types, verify-invariants, bugfix api.js:768
-- v1.98 (2026-05-02): Præmieudbetaling adskilt fra import — admin kontrollerer via ny panel-sektion
+- v2.00 (2026-05-02): S7.5 — `supabase.js` → `supabase.ts`, `createClient<Database>` koblet; S7 gate #1+#2+#7 lukket
 
 ## Næste session — prioriteter
 1. Gate #5 (🔒 7/5): Kør salary-sync + dyn_cyclist sync; spot-check 10 ryttere mod Sheet
