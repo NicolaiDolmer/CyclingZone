@@ -143,6 +143,13 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - UCI-points sync fra Google Sheets — logger nu historik i `rider_uci_history` ved hver sync
 - UCI scraper: GitHub Actions cron henter top 3000 fra ProCyclingStats, skriver Google Sheets, synkroniserer Supabase, genberegner rytterlønninger og har safety-gates for coverage og mass minimum downgrade; live data-repair godkendt 2026-04-28
 
+### Developer Tooling (v1.99, 2026-05-02)
+- **ESLint** (backend + frontend) — flat config, `@eslint/js` recommended; kører i CI efter tests; 0 errors
+- **Prettier** — 2 spaces, double quotes, semikolon, `trailingComma: es5`; `npm run format` i begge
+- **Supabase TypeScript types** — 63KB genereret fra live DB-schema til `frontend/src/types/database.types.ts`; afventer kobling til `createClient<Database>` i `frontend/src/lib/supabase.js`
+- **verify-invariants** — `pwsh -File scripts/verify-invariants.ps1` kører 6 domæne-tjek mod live Supabase (zero npm-deps); exit code 1 ved brud
+- **backend/node_modules** — nu installeret; `npm run test`, `lint`, `format` virker lokalt
+
 ---
 
 ## 🔴 Broken / Kendte bugs

@@ -16,10 +16,13 @@
 | 7 | S7-C: Notifikation smoke-test — `auction_outbid`, `transfer_offer_received`, `board_update` | ⬜ |
 
 ## Senest leveret
+- v1.99 (2026-05-02): Developer tooling — ESLint+Prettier (backend+frontend), Supabase TS types, verify-invariants, bugfix api.js:768
 - v1.98 (2026-05-02): Præmieudbetaling adskilt fra import — admin kontrollerer via ny panel-sektion
-- v1.97 (2026-05-02): Fix: CVE-2023-30533 xlsx-patch
-- v1.96 (2026-05-02): Auktionsstider — 6 aktive timer, nattimer tæller ikke
-- v1.95 (2026-05-02): Fix: Præmieformlen rettet til 1 pt = 1.500 CZ$
+
+## Næste session — prioriteter
+1. Kobl `frontend/src/types/database.types.ts` til Supabase-klienten: `createClient<Database>(url, key)` i `frontend/src/lib/supabase.js`
+2. S7 gate #2: manuel smoke-test (login, auktion, transfer, finance, bestyrelse)
+3. S7 gate #7: notifikations-smoke (`auction_outbid`, `transfer_offer_received`, `board_update`)
 
 ## Kritiske invarianter
 - `/profile` → `ProfilePage` (indstillinger) — `ManagerProfilePage` er read-only view

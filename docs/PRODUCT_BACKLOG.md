@@ -18,6 +18,13 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 
 ## Post-launch queue
 
+### S7.5 — Supabase types → frontend klient (mikroslice)
+**Trigger:** Første handling i næste session  
+**Scope:** Én fil — `frontend/src/lib/supabase.js`: skift `createClient(url, key)` til `createClient<Database>(url, key)`, importer `Database` fra `../types/database.types.ts`. Giver type-inferens på alle DB-kald fremover.  
+**Kritiske filer:** `frontend/src/lib/supabase.js` · `frontend/src/types/database.types.ts`
+
+---
+
 ### S8 — Discord DM & Manager-rename
 **Trigger:** Umiddelbart efter beta-lancering  
 **Scope:**
