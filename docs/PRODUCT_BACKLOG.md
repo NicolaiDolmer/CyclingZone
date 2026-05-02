@@ -44,6 +44,25 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 
 ---
 
+### Dark mode — 3-fase udrulning
+
+**Vision:** Token-baseret tema-system så lyst og mørkt UI vedligeholdes parallelt uden duplikering. Standard = "Følg system".
+
+**S1 ✅ (2026-05-02):** Foundation + chrome + top-5 sider
+- CSS-tokens via `:root` + `[data-theme="dark"]` i `frontend/src/index.css`
+- Tailwind-tokens (`cz-body`, `cz-card`, `cz-1`, `cz-accent`, `cz-success`/`danger`/`warning`/`info`, `cz-sidebar-*`)
+- `frontend/src/lib/theme.jsx` — ThemeProvider med `system | light | dark`, system-preference watcher, localStorage persistence
+- Pre-paint script i `index.html` (undgår FOUC)
+- Tema-vælger i `ProfilePage` under "Udseende"
+- Sidebaren forbliver mørk i begge temaer (option A)
+- Tokeniseret: `Layout`, `App` splash, `LoginPage`, `ResetPasswordPage`, `ProfilePage`, `Dashboard`, `Riders`, `Auctions`, `Team`, `Finance`
+
+**S2 (planlagt):** Resterende sider — `Transfers`, `Board`, `Standings`, `Notifications`, `Watchlist`, `Hall of Fame`, `Race*`, `Admin`, `RiderStats`, `Manager*`, `Help`, `PatchNotes` m.fl. Mekanisk migration, én side/batch ad gangen.
+
+**S3 (planlagt):** Lint-guard mod nye hardkodede farver — ESLint-regel eller pre-commit grep der advarer om nye `bg-[#…]`/`bg-white`/`text-gray-*`/`text-slate-*` i `frontend/src/`.
+
+---
+
 ### S8 — Discord DM & Manager-rename
 **Trigger:** Umiddelbart efter beta-lancering  
 **Scope:**
@@ -110,7 +129,6 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 
 - **Discord-name matching** — trigger: managerprofil/presence poleres
 - **Richer notification filters** — trigger: efter inbox IA er låst
-- **Dark mode decision** — trigger: design/IA-afklaring før UI-retuning
 - **Secret achievement presentation audit** — trigger: hvis runtime viser achievements før unlock
 
 ---

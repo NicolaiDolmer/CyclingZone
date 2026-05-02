@@ -40,8 +40,8 @@ const DeadlineDayBoard = lazy(() => import("./pages/DeadlineDayBoard"));
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-cz-body flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }
@@ -49,7 +49,7 @@ function LoadingScreen() {
 function RouteFallback() {
   return (
     <div className="min-h-[50vh] flex items-center justify-center">
-      <div className="w-7 h-7 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+      <div className="w-7 h-7 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }

@@ -21,7 +21,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   const active = sort === sortKey;
   return (
     <th onClick={() => onSort(sortKey)}
-      className={`cursor-pointer select-none transition-colors ${active ? "text-amber-700/80" : "text-slate-400 hover:text-slate-500"} ${className}`}>
+      className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
       {children}{active && <span className="ml-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
     </th>
   );
@@ -81,25 +81,25 @@ function RiderActionModal({ rider, onClose, onAction }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative bg-white border border-slate-300 rounded-2xl w-full max-w-md">
-        <div className="flex items-start justify-between p-5 border-b border-slate-200">
+      <div className="relative bg-cz-card border border-cz-border rounded-2xl w-full max-w-md">
+        <div className="flex items-start justify-between p-5 border-b border-cz-border">
           <div>
-            <h2 className="text-slate-900 font-bold text-lg">{rider.firstname} {rider.lastname}</h2>
-            <p className="text-amber-700 font-mono text-sm mt-0.5">{formatCz(riderValue)}</p>
+            <h2 className="text-cz-1 font-bold text-lg">{rider.firstname} {rider.lastname}</h2>
+            <p className="text-cz-accent-t font-mono text-sm mt-0.5">{formatCz(riderValue)}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-xl">×</button>
+          <button onClick={onClose} className="text-cz-3 hover:text-cz-1 text-xl">×</button>
         </div>
-        <div className="p-5 border-b border-slate-200">
+        <div className="p-5 border-b border-cz-border">
           {rider.potentiale != null && (
-            <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-100">
-              <span className="text-slate-400 text-xs">Potentiale</span>
+            <div className="flex items-center justify-between mb-2 pb-2 border-b border-cz-border">
+              <span className="text-cz-3 text-xs">Potentiale</span>
               <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} showValue />
             </div>
           )}
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
             {STATS.map((key, i) => (
               <div key={key} className="flex items-center justify-between">
-                <span className="text-slate-400 text-xs">{STAT_LABELS[i]}</span>
+                <span className="text-cz-3 text-xs">{STAT_LABELS[i]}</span>
                 <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(rider[key] || 0)}`}>
                   {rider[key] || "—"}
                 </span>
@@ -112,19 +112,19 @@ function RiderActionModal({ rider, onClose, onAction }) {
             {["auction","transfer","bank"].map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-                  ${tab === t ? "bg-amber-50 text-amber-700 border-amber-200" : "text-slate-500 border-slate-200 hover:text-slate-900"}`}>
+                  ${tab === t ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1"}`}>
                 {t === "auction" ? "⚡ Auktion" : t === "transfer" ? "↔ Transferliste" : "🏦 Sælg til bank"}
               </button>
             ))}
           </div>
           {tab === "auction" && (
             <div>
-              <p className="text-slate-500 text-xs mb-3">Start auktion — andre managers kan byde.</p>
+              <p className="text-cz-2 text-xs mb-3">Start auktion — andre managers kan byde.</p>
               <div className="flex gap-2">
                 <input type="number" value={auctionPrice} min={riderValue} onChange={e => setAuctionPrice(parseInt(e.target.value))}
-                  className="flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm font-mono focus:outline-none focus:border-amber-400" />
+                  className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm font-mono focus:outline-none focus:border-cz-accent" />
                 <button onClick={startAuction} disabled={loading}
-                  className="px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50">
+                  className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
                   {loading ? "..." : "Start"}
                 </button>
               </div>
@@ -132,12 +132,12 @@ function RiderActionModal({ rider, onClose, onAction }) {
           )}
           {tab === "transfer" && (
             <div>
-              <p className="text-slate-500 text-xs mb-3">Sæt til salg med fast pris.</p>
+              <p className="text-cz-2 text-xs mb-3">Sæt til salg med fast pris.</p>
               <div className="flex gap-2">
                 <input type="number" value={transferPrice} min={1} onChange={e => setTransferPrice(parseInt(e.target.value))}
-                  className="flex-1 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm font-mono focus:outline-none focus:border-amber-400" />
+                  className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm font-mono focus:outline-none focus:border-cz-accent" />
                 <button onClick={listTransfer} disabled={loading}
-                  className="px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060] disabled:opacity-50">
+                  className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
                   {loading ? "..." : "Sæt til salg"}
                 </button>
               </div>
@@ -145,17 +145,17 @@ function RiderActionModal({ rider, onClose, onAction }) {
           )}
           {tab === "bank" && (
             <div>
-              <p className="text-slate-500 text-xs mb-3">
-                Starter en auktion til <span className="text-amber-700 font-mono">{guaranteedPrice.toLocaleString("da-DK")} CZ$</span> (50% af værdien).
+              <p className="text-cz-2 text-xs mb-3">
+                Starter en auktion til <span className="text-cz-accent-t font-mono">{guaranteedPrice.toLocaleString("da-DK")} CZ$</span> (50% af værdien).
                 Hvis ingen manager byder højere, køber banken rytteren til denne pris — du er altid garanteret beløbet.
               </p>
               <button onClick={sellToBank} disabled={loading}
-                className="w-full px-4 py-2 bg-blue-600/20 text-blue-300 border border-blue-500/30 font-bold rounded-lg text-sm hover:bg-blue-600/30 disabled:opacity-50">
+                className="w-full px-4 py-2 bg-cz-info/20 text-cz-info border border-cz-info/30 font-bold rounded-lg text-sm hover:bg-cz-info/30 disabled:opacity-50">
                 {loading ? "..." : `Sælg til bank — ${guaranteedPrice.toLocaleString("da-DK")} CZ$ garanteret`}
               </button>
             </div>
           )}
-          {msg && <p className={`text-sm mt-3 ${msg.startsWith("✅") ? "text-green-700" : "text-red-700"}`}>{msg}</p>}
+          {msg && <p className={`text-sm mt-3 ${msg.startsWith("✅") ? "text-cz-success" : "text-cz-danger"}`}>{msg}</p>}
         </div>
       </div>
     </div>
@@ -200,8 +200,8 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
             <button onClick={() => setShowIncoming(!showIncoming)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
                 ${showIncoming
-                  ? "bg-green-50 text-green-700 border-green-200"
-                  : "bg-slate-100 text-slate-400 border-slate-200"}`}>
+                  ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                  : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
               <span className="w-2 h-2 rounded-full bg-green-400" />
               Indgående transfers ({incomingRiders.length})
             </button>
@@ -210,8 +210,8 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
             <button onClick={() => setShowOutgoing(!showOutgoing)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
                 ${showOutgoing
-                  ? "bg-red-50 text-red-700 border-red-200"
-                  : "bg-slate-100 text-slate-400 border-slate-200"}`}>
+                  ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
+                  : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
               <span className="w-2 h-2 rounded-full bg-red-400" />
               Udgående transfers ({outgoingRiders.length})
             </button>
@@ -223,13 +223,13 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
             </span>
           )}
           {loanedOutRiders.length > 0 && (
-            <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-lg">
+            <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-cz-warning/10 text-cz-warning border border-cz-warning/20 rounded-lg">
               <span className="w-2 h-2 rounded-full bg-yellow-400" />
               Udlejede ryttere ({loanedOutRiders.length})
             </span>
           )}
           {!windowOpen && (
-            <span className="px-3 py-1.5 text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg">
+            <span className="px-3 py-1.5 text-xs text-cz-3 bg-cz-subtle border border-cz-border rounded-lg">
               🔒 Transfervindue lukket — skift træder i kraft ved næste åbning
             </span>
           )}
@@ -237,38 +237,38 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
       )}
 
       {displayRiders.length === 0 ? (
-        <div className="text-center py-16 text-slate-300">
+        <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">🚴</p>
           <p>Ingen ryttere på holdet endnu</p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-slate-200">
+                <tr className="border-b border-cz-border">
                   <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider">Rytter</SortTh>
                   <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium">Værdi</SortTh>
-                  <th className="px-3 py-3 text-right text-slate-400 font-medium">Løn</th>
+                  <th className="px-3 py-3 text-right text-cz-3 font-medium">Løn</th>
                   <SortTh sortKey="potentiale" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium">Potentiale</SortTh>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
                   ))}
-                  <th className="px-3 py-3 text-center text-slate-300 font-medium">Handling</th>
+                  <th className="px-3 py-3 text-center text-cz-3 font-medium">Handling</th>
                 </tr>
               </thead>
               <tbody>
                 {displayRiders.map(r => (
                   <tr key={r.id}
-                    className={`border-b border-slate-100 hover:bg-slate-100
-                      ${r._isIncoming  ? "bg-green-500/3"  :
-                        r._isOutgoing  ? "bg-red-500/3"    :
+                    className={`border-b border-cz-border hover:bg-cz-subtle
+                      ${r._isIncoming  ? "bg-cz-success-bg0/3"  :
+                        r._isOutgoing  ? "bg-cz-danger-bg0/3"    :
                         r._isLoanedIn  ? "bg-purple-500/3" :
-                        r._isLoanedOut ? "bg-yellow-500/3" : ""}`}>
+                        r._isLoanedOut ? "bg-cz-warning/10" : ""}`}>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         {r._isIncoming  && <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />}
@@ -276,10 +276,10 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                         {r._isLoanedIn  && <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />}
                         {r._isLoanedOut && <span className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0" />}
                         {r.nationality_code && <span className="flex-shrink-0">{getFlagEmoji(r.nationality_code)}</span>}
-                        <span className="text-slate-900 text-sm font-medium">{r.firstname} {r.lastname}</span>
-                        {r.is_u25       && <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700 px-1.5 py-0.5 rounded">U25</span>}
-                        {r._isIncoming  && <span className="text-[9px] uppercase bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Indgående</span>}
-                        {r._isOutgoing  && <span className="text-[9px] uppercase bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Udgående</span>}
+                        <span className="text-cz-1 text-sm font-medium">{r.firstname} {r.lastname}</span>
+                        {r.is_u25       && <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>}
+                        {r._isIncoming  && <span className="text-[9px] uppercase bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded">Indgående</span>}
+                        {r._isOutgoing  && <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">Udgående</span>}
                         {r._isLoanedIn  && (
                           <span className="text-[9px] uppercase bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded"
                             title={`Lejet fra ${r._loanInInfo?.from_team?.name} · sæson ${r._loanInInfo?.start_season}–${r._loanInInfo?.end_season}`}>
@@ -287,17 +287,17 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                           </span>
                         )}
                         {r._isLoanedOut && (
-                          <span className="text-[9px] uppercase bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded"
+                          <span className="text-[9px] uppercase bg-cz-warning/20 text-cz-warning px-1.5 py-0.5 rounded"
                             title={`Udlejet til ${r._loanOutInfo?.to_team?.name} · sæson ${r._loanOutInfo?.start_season}–${r._loanOutInfo?.end_season}`}>
                             Udlejet
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-right text-amber-700 font-mono text-sm font-bold">
+                    <td className="px-3 py-2.5 text-right text-cz-accent-t font-mono text-sm font-bold">
                       {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
                     </td>
-                    <td className="px-3 py-2.5 text-right text-slate-500 font-mono text-xs">{r.salary || 0}</td>
+                    <td className="px-3 py-2.5 text-right text-cz-2 font-mono text-xs">{r.salary || 0}</td>
                     <td className="px-3 py-2.5">
                       <PotentialeStars value={r.potentiale} birthdate={r.birthdate} />
                     </td>
@@ -311,7 +311,7 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                     <td className="px-3 py-2.5 text-center">
                       {!r._isIncoming && (
                         <button onClick={() => onSelectRider(r)}
-                          className="px-2 py-1 bg-slate-100 hover:bg-slate-100 text-slate-500 hover:text-slate-900 rounded text-xs transition-all border border-slate-200">
+                          className="px-2 py-1 bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border">
                           Sælg / Auktion
                         </button>
                       )}
@@ -337,8 +337,8 @@ function EconomyTab({ team, riders, transactions }) {
     transfer_out:"Køb", salary:"Lønninger", interest:"Renter",
   };
   const typeColor = {
-    prize:"text-green-700", sponsor:"text-blue-700", transfer_in:"text-amber-700",
-    transfer_out:"text-red-700", salary:"text-orange-700", interest:"text-red-700",
+    prize:"text-cz-success", sponsor:"text-cz-info", transfer_in:"text-cz-accent-t",
+    transfer_out:"text-cz-danger", salary:"text-cz-warning", interest:"text-cz-danger",
   };
   const breakdown = transactions.reduce((acc, t) => {
     acc[t.type] = (acc[t.type] || 0) + (t.amount || 0);
@@ -349,54 +349,54 @@ function EconomyTab({ team, riders, transactions }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Balance", value: `${team?.balance?.toLocaleString("da-DK")} CZ$`, color: team?.balance >= 0 ? "text-amber-700" : "text-red-700" },
-          { label: "Holdværdi", value: `${totalValue.toLocaleString("da-DK")} CZ$`, color: "text-slate-900" },
-          { label: "Løn/sæson", value: `${totalSalary.toLocaleString("da-DK")} CZ$`, color: "text-orange-700" },
-          { label: "Sponsor/sæson", value: `${sponsorIncome.toLocaleString("da-DK")} CZ$`, color: "text-blue-700" },
+          { label: "Balance", value: `${team?.balance?.toLocaleString("da-DK")} CZ$`, color: team?.balance >= 0 ? "text-cz-accent-t" : "text-cz-danger" },
+          { label: "Holdværdi", value: `${totalValue.toLocaleString("da-DK")} CZ$`, color: "text-cz-1" },
+          { label: "Løn/sæson", value: `${totalSalary.toLocaleString("da-DK")} CZ$`, color: "text-cz-warning" },
+          { label: "Sponsor/sæson", value: `${sponsorIncome.toLocaleString("da-DK")} CZ$`, color: "text-cz-info" },
         ].map(s => (
-          <div key={s.label} className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">{s.label}</p>
+          <div key={s.label} className="bg-cz-card border border-cz-border rounded-xl p-4">
+            <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{s.label}</p>
             <p className={`font-mono font-bold text-sm ${s.color}`}>{s.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl p-5">
-        <h3 className="text-slate-900 font-semibold text-sm mb-4">Sæsonprognose</h3>
+      <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <h3 className="text-cz-1 font-semibold text-sm mb-4">Sæsonprognose</h3>
         <div className="space-y-2">
           {[
-            { label: `Sponsorindtægt`, value: `+${sponsorIncome.toLocaleString("da-DK")} CZ$`, color: "text-blue-700" },
-            { label: `Lønninger (${riders.filter(r=>!r._isIncoming).length} ryttere)`, value: `-${totalSalary.toLocaleString("da-DK")} CZ$`, color: "text-orange-700" },
+            { label: `Sponsorindtægt`, value: `+${sponsorIncome.toLocaleString("da-DK")} CZ$`, color: "text-cz-info" },
+            { label: `Lønninger (${riders.filter(r=>!r._isIncoming).length} ryttere)`, value: `-${totalSalary.toLocaleString("da-DK")} CZ$`, color: "text-cz-warning" },
           ].map(s => (
-            <div key={s.label} className="flex justify-between items-center py-2 border-b border-slate-200">
-              <span className="text-slate-500 text-sm">{s.label}</span>
+            <div key={s.label} className="flex justify-between items-center py-2 border-b border-cz-border">
+              <span className="text-cz-2 text-sm">{s.label}</span>
               <span className={`font-mono font-bold ${s.color}`}>{s.value}</span>
             </div>
           ))}
-          <div className="flex justify-between items-center py-2 bg-slate-50 rounded-lg px-3 mt-1">
-            <span className={`text-sm font-semibold ${netPerSeason >= 0 ? "text-slate-900" : "text-red-700"}`}>
+          <div className="flex justify-between items-center py-2 bg-cz-subtle rounded-lg px-3 mt-1">
+            <span className={`text-sm font-semibold ${netPerSeason >= 0 ? "text-cz-1" : "text-cz-danger"}`}>
               Netto (ekskl. præmiepenge)
             </span>
-            <span className={`font-mono font-bold ${netPerSeason >= 0 ? "text-green-700" : "text-red-700"}`}>
+            <span className={`font-mono font-bold ${netPerSeason >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
               {netPerSeason >= 0 ? "+" : ""}{netPerSeason.toLocaleString("da-DK")} CZ$
             </span>
           </div>
         </div>
         {netPerSeason < 0 && (
-          <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
-            <p className="text-red-700 text-xs">⚠️ Lønninger overstiger sponsorindtægten. Du er afhængig af præmiepenge.</p>
+          <div className="mt-3 bg-cz-danger-bg border border-cz-danger/30 rounded-lg px-4 py-2.5">
+            <p className="text-cz-danger text-xs">⚠️ Lønninger overstiger sponsorindtægten. Du er afhængig af præmiepenge.</p>
           </div>
         )}
       </div>
 
       {Object.keys(breakdown).length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <h3 className="text-slate-900 font-semibold text-sm mb-4">Fordeling denne sæson</h3>
+        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+          <h3 className="text-cz-1 font-semibold text-sm mb-4">Fordeling denne sæson</h3>
           <div className="space-y-2">
             {Object.entries(breakdown).sort((a,b) => b[1]-a[1]).map(([type, amount]) => (
-              <div key={type} className="flex justify-between items-center py-2 border-b border-slate-200 last:border-0">
-                <span className="text-slate-500 text-sm">{typeLabel[type] || type}</span>
-                <span className={`font-mono font-bold text-sm ${typeColor[type] || (amount >= 0 ? "text-green-700" : "text-red-700")}`}>
+              <div key={type} className="flex justify-between items-center py-2 border-b border-cz-border last:border-0">
+                <span className="text-cz-2 text-sm">{typeLabel[type] || type}</span>
+                <span className={`font-mono font-bold text-sm ${typeColor[type] || (amount >= 0 ? "text-cz-success" : "text-cz-danger")}`}>
                   {amount >= 0 ? "+" : ""}{amount.toLocaleString("da-DK")} CZ$
                 </span>
               </div>
@@ -405,32 +405,32 @@ function EconomyTab({ team, riders, transactions }) {
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200">
-          <h3 className="text-slate-900 font-semibold text-sm">Transaktionshistorik</h3>
+      <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-cz-border">
+          <h3 className="text-cz-1 font-semibold text-sm">Transaktionshistorik</h3>
         </div>
         {transactions.length === 0 ? (
-          <div className="text-center py-10 text-slate-300 text-sm">Ingen transaktioner endnu</div>
+          <div className="text-center py-10 text-cz-3 text-sm">Ingen transaktioner endnu</div>
         ) : (
           <table className="w-full text-sm">
-            <thead><tr className="border-b border-slate-200">
-              <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase">Dato</th>
-              <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase">Type</th>
-              <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs uppercase hidden sm:table-cell">Beskrivelse</th>
-              <th className="px-4 py-3 text-right text-slate-400 font-medium text-xs uppercase">Beløb</th>
+            <thead><tr className="border-b border-cz-border">
+              <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">Dato</th>
+              <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">Type</th>
+              <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">Beskrivelse</th>
+              <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">Beløb</th>
             </tr></thead>
             <tbody>
               {transactions.map(t => (
-                <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-100">
-                  <td className="px-4 py-2.5 text-slate-400 text-xs">{new Date(t.created_at).toLocaleDateString("da-DK")}</td>
+                <tr key={t.id} className="border-b border-cz-border hover:bg-cz-subtle">
+                  <td className="px-4 py-2.5 text-cz-3 text-xs">{new Date(t.created_at).toLocaleDateString("da-DK")}</td>
                   <td className="px-4 py-2.5">
                     <span className={`text-xs px-2 py-0.5 rounded uppercase
-                      ${typeColor[t.type] ? typeColor[t.type].replace("text-","bg-").replace("400","500/10") + " " + typeColor[t.type] : "bg-slate-100 text-slate-500"}`}>
+                      ${typeColor[t.type] ? typeColor[t.type].replace("text-","bg-").replace("400","500/10") + " " + typeColor[t.type] : "bg-cz-subtle text-cz-2"}`}>
                       {typeLabel[t.type] || t.type}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-slate-500 text-sm hidden sm:table-cell">{t.description}</td>
-                  <td className={`px-4 py-2.5 text-right font-mono font-bold ${t.amount > 0 ? "text-green-700" : "text-red-700"}`}>
+                  <td className="px-4 py-2.5 text-cz-2 text-sm hidden sm:table-cell">{t.description}</td>
+                  <td className={`px-4 py-2.5 text-right font-mono font-bold ${t.amount > 0 ? "text-cz-success" : "text-cz-danger"}`}>
                     {t.amount > 0 ? "+" : ""}{t.amount?.toLocaleString("da-DK")} CZ$
                   </td>
                 </tr>
@@ -515,7 +515,7 @@ export function TeamPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
     </div>
   );
 
@@ -523,22 +523,22 @@ export function TeamPage() {
     <div className="max-w-5xl mx-auto">
       <div className="mb-5">
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-xl font-bold text-slate-900">{team?.name || "Mit Hold"}</h1>
+          <h1 className="text-xl font-bold text-cz-1">{team?.name || "Mit Hold"}</h1>
           <span className={`text-xs px-2 py-1 rounded-full border ${
             windowOpen
-              ? "bg-green-50 text-green-700 border-green-200"
-              : "bg-slate-100 text-slate-400 border-slate-200"}`}>
+              ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+              : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
             {windowOpen ? "🟢 Transfervindue åbent" : "🔒 Transfervindue lukket"}
           </span>
         </div>
         <div className="flex gap-4 mt-1 flex-wrap text-sm">
-          <span className="text-amber-700 font-mono font-bold">{team?.balance?.toLocaleString("da-DK")} CZ$</span>
-          <span className="text-slate-400">Division {team?.division}</span>
-          <span className="text-slate-400">{currentRiders.length} ryttere</span>
-          {incomingCount > 0 && <span className="text-green-700 text-xs">+{incomingCount} indgående</span>}
-          {outgoingCount > 0 && <span className="text-red-700 text-xs">-{outgoingCount} udgående</span>}
-          <span className="text-slate-400">Løn/sæson: {totalSalary.toLocaleString("da-DK")} CZ$</span>
-          <span className="text-slate-400">Holdværdi: {totalValue.toLocaleString("da-DK")} CZ$</span>
+          <span className="text-cz-accent-t font-mono font-bold">{team?.balance?.toLocaleString("da-DK")} CZ$</span>
+          <span className="text-cz-3">Division {team?.division}</span>
+          <span className="text-cz-3">{currentRiders.length} ryttere</span>
+          {incomingCount > 0 && <span className="text-cz-success text-xs">+{incomingCount} indgående</span>}
+          {outgoingCount > 0 && <span className="text-cz-danger text-xs">-{outgoingCount} udgående</span>}
+          <span className="text-cz-3">Løn/sæson: {totalSalary.toLocaleString("da-DK")} CZ$</span>
+          <span className="text-cz-3">Holdværdi: {totalValue.toLocaleString("da-DK")} CZ$</span>
         </div>
       </div>
 
@@ -549,7 +549,7 @@ export function TeamPage() {
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${tab === t.key ? "bg-amber-50 text-amber-700 border-amber-200" : "text-slate-500 hover:text-slate-900 bg-white border-slate-200"}`}>
+              ${tab === t.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
             {t.label}
           </button>
         ))}

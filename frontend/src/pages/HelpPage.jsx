@@ -132,6 +132,10 @@ const SECTIONS = [
         text: "På Min Profil kan du gemme eller rette både holdnavn og managernavn. Hvis din konto tidligere blev oprettet uden et rigtigt hold, kan du også initialisere holdet herfra ved at gemme holdinfo.",
       },
       {
+        title: "Tema (lyst / mørkt)",
+        text: "Under Profil & Indstillinger → Udseende kan du vælge mellem 'Følg system' (auto efter din enhed), 'Lyst' og 'Mørkt'. Valget gemmes lokalt i din browser. Sidebaren forbliver mørk i begge temaer for konsistens.",
+      },
+      {
         title: "Glemt password",
         text: "Hvis du ikke kan logge ind, kan du fra login-siden vælge 'Glemt password?'. Systemet sender et reset-link til din email, og linket åbner en dedikeret side hvor du kan vælge en ny adgangskode.",
       },

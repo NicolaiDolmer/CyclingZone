@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.04",
+    date: "2026-05-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Tema",
+        items: [
+          "Dark mode — nyt mørkt tema kan nu vælges under Profil & Indstillinger → Udseende",
+          "Tre valgmuligheder: 'Følg system' (auto), 'Lyst', 'Mørkt'. Standard er 'Følg system'",
+          "Sidebaren forbliver mørk i begge temaer for visuel konsistens. Dashboard, Mit Hold, Auktioner, Ryttere, Finanser, Login og Profil er fuldt understøttet — øvrige sider tokeniseres løbende",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.03",
     date: "2026-05-02",
     label: "Beta",

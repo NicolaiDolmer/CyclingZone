@@ -42,7 +42,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   const active = sort === sortKey;
   return (
     <th onClick={() => onSort(sortKey)}
-      className={`cursor-pointer select-none transition-colors ${active ? "text-amber-700/80" : "text-slate-400 hover:text-slate-500"} ${className}`}>
+      className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
       {children}{active && <span className="ml-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
     </th>
   );
@@ -70,7 +70,7 @@ function Countdown({ end, status }) {
   }, [end, status]);
 
   return (
-    <span className={`font-mono text-xs ${urgent ? "text-red-700 animate-pulse" : "text-slate-500"}`}>
+    <span className={`font-mono text-xs ${urgent ? "text-cz-danger animate-pulse" : "text-cz-2"}`}>
       {text}
     </span>
   );
@@ -116,8 +116,8 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
 
   return (
-    <tr className={`group border-b border-slate-100 hover:bg-slate-100 transition-colors
-      ${imWinning ? "bg-[#e8c547]/3" : ""}`}>
+    <tr className={`group border-b border-cz-border hover:bg-cz-subtle transition-colors
+      ${imWinning ? "bg-cz-accent/[0.08]" : ""}`}>
 
       {/* Rytter */}
       <td className="px-3 py-1.5 min-w-[140px]">
@@ -125,54 +125,54 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
           {r?.nationality_code && <span className="text-xs flex-shrink-0">{getFlagEmoji(r.nationality_code)}</span>}
           <button
             onClick={() => onNavigate(r?.id)}
-            className="text-slate-900 text-sm font-medium hover:text-amber-700 transition-colors text-left truncate max-w-[160px]">
+            className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left truncate max-w-[160px]">
             {r?.firstname} {r?.lastname}
           </button>
           <div className="flex items-center gap-1 flex-wrap">
             {imWinning && (
-              <span className="text-[9px] uppercase bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded">
+              <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t px-1.5 py-0.5 rounded">
                 Vinder
               </span>
             )}
             {isSeller && (
-              <span className="text-[9px] uppercase bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">
+              <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">
                 Sælger
               </span>
             )}
             {isMyRider && !isSeller && (
-              <span className="text-[9px] uppercase bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">
+              <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">
                 Din
               </span>
             )}
             {auction.status === "extended" && (
-              <span className="text-[9px] uppercase bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded">
+              <span className="text-[9px] uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded">
                 ⚡ Ext
               </span>
             )}
             {auction.is_flash && (
-              <span className="text-[9px] uppercase bg-red-50 text-red-700 px-1.5 py-0.5 rounded">
+              <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">
                 ⚡ Flash
               </span>
             )}
             {r?.is_u25 && (
-              <span className="text-[9px] uppercase bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded">U25</span>
+              <span className="text-[9px] uppercase bg-cz-subtle text-cz-3 px-1.5 py-0.5 rounded">U25</span>
             )}
           </div>
         </div>
       </td>
 
       {/* Alder */}
-      <td className="px-2 py-1.5 text-center text-slate-500 font-mono text-xs hidden xl:table-cell">
+      <td className="px-2 py-1.5 text-center text-cz-2 font-mono text-xs hidden xl:table-cell">
         {age ?? "—"}
       </td>
 
       {/* UCI */}
-      <td className="px-2 py-1.5 text-right text-amber-700 font-mono font-bold text-xs whitespace-nowrap">
+      <td className="px-2 py-1.5 text-right text-cz-accent-t font-mono font-bold text-xs whitespace-nowrap">
         {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
       </td>
 
       {/* Sælger */}
-      <td className="px-3 py-1.5 text-left text-slate-500 text-xs whitespace-nowrap hidden xl:table-cell">
+      <td className="px-3 py-1.5 text-left text-cz-2 text-xs whitespace-nowrap hidden xl:table-cell">
         <span className="truncate max-w-[120px] inline-block">{getAuctionSellerLabel(auction)}</span>
       </td>
 
@@ -192,12 +192,12 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
 
       {/* Højeste bud */}
       <td className="px-3 py-1.5 text-right whitespace-nowrap">
-        <span className="text-slate-900 font-mono font-bold text-sm">
+        <span className="text-cz-1 font-mono font-bold text-sm">
           {auction.current_price?.toLocaleString("da-DK")}
         </span>
-        <span className="text-slate-400 text-xs ml-1">CZ$</span>
+        <span className="text-cz-3 text-xs ml-1">CZ$</span>
         {getAuctionLeaderName(auction) && !imWinning && (
-          <p className="text-slate-400 text-[10px] truncate max-w-[100px]">
+          <p className="text-cz-3 text-[10px] truncate max-w-[100px]">
             {getAuctionLeaderName(auction)}
           </p>
         )}
@@ -209,7 +209,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
       </td>
 
       {/* Byd */}
-      <td className={`px-3 py-1.5 sticky right-0 z-10 border-l border-slate-100 transition-colors group-hover:bg-slate-100 ${imWinning ? "bg-[#e8c547]/3" : "bg-white"}`}>
+      <td className={`px-3 py-1.5 sticky right-0 z-10 border-l border-cz-border transition-colors group-hover:bg-cz-subtle ${imWinning ? "bg-cz-accent/[0.08]" : "bg-cz-card"}`}>
         {canBid ? (
           <div className="flex items-center gap-1.5">
             <input
@@ -217,18 +217,18 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
               value={bidAmount}
               min={minBid}
               onChange={e => setBidAmount(parseInt(e.target.value) || minBid)}
-              className="w-24 bg-slate-100 border border-slate-300 rounded px-2 py-1.5
-                text-slate-900 font-mono text-xs focus:outline-none focus:border-amber-400"
+              className="w-24 bg-cz-subtle border border-cz-border rounded px-2 py-1.5
+                text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
             />
             <button
               onClick={handleBid}
               disabled={bidStatus === "loading" || bidAmount < minBid}
               className={`px-3 py-1.5 rounded text-xs font-bold transition-all whitespace-nowrap
-                ${bidStatus === "error"   ? "bg-red-100 text-red-700 border border-red-500/30" :
-                  bidStatus === "success" ? "bg-green-100 text-green-700 border border-green-500/30" :
+                ${bidStatus === "error"   ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
+                  bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                   imWinning
-                    ? "bg-amber-50 text-amber-700 border border-amber-300 hover:bg-[#e8c547]/25"
-                    : "bg-[#e8c547] text-[#0a0a0f] hover:bg-[#f0d060]"}
+                    ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25"
+                    : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
                 disabled:opacity-50`}>
               {bidStatus === "loading" ? "..." :
                bidStatus === "error"   ? "Fejl" :
@@ -236,13 +236,13 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
                imWinning ? "Hæv" : "Byd"}
             </button>
             {bidStatus === "error" && errorText && (
-              <p className="text-[10px] text-red-700 max-w-[90px] leading-tight">{errorText}</p>
+              <p className="text-[10px] text-cz-danger max-w-[90px] leading-tight">{errorText}</p>
             )}
           </div>
         ) : isSeller ? (
-          <span className="text-slate-300 text-xs">Du sælger</span>
+          <span className="text-cz-3 text-xs">Du sælger</span>
         ) : (
-          <span className="text-slate-300 text-xs">—</span>
+          <span className="text-cz-3 text-xs">—</span>
         )}
       </td>
     </tr>
@@ -281,62 +281,62 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
   }
 
   return (
-    <div className={`bg-white border rounded-xl p-4 transition-all ${imWinning ? "border-amber-300 bg-amber-50/40" : "border-slate-200"}`}>
+    <div className={`bg-cz-card border rounded-xl p-4 transition-all ${imWinning ? "border-cz-accent/40 bg-cz-accent/10/40" : "border-cz-border"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <button
             onClick={() => onNavigate(r?.id)}
-            className="text-left text-slate-900 font-semibold text-sm hover:text-amber-700 transition-colors">
+            className="text-left text-cz-1 font-semibold text-sm hover:text-cz-accent-t transition-colors">
             {r?.nationality_code && <span className="mr-1">{getFlagEmoji(r.nationality_code)}</span>}
             {r?.firstname} {r?.lastname}
           </button>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            {imWinning && <span className="text-[9px] uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Vinder</span>}
-            {isSeller && <span className="text-[9px] uppercase bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">Sælger</span>}
-            {auction.status === "extended" && <span className="text-[9px] uppercase bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded">Ext</span>}
-            {auction.is_flash && <span className="text-[9px] uppercase bg-red-50 text-red-700 px-1.5 py-0.5 rounded">⚡ Flash</span>}
-            {r?.is_u25 && <span className="text-[9px] uppercase bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">U25</span>}
-            {age && <span className="text-slate-400 text-xs">{age} år</span>}
+            {imWinning && <span className="text-[9px] uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded">Vinder</span>}
+            {isSeller && <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">Sælger</span>}
+            {auction.status === "extended" && <span className="text-[9px] uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded">Ext</span>}
+            {auction.is_flash && <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">⚡ Flash</span>}
+            {r?.is_u25 && <span className="text-[9px] uppercase bg-cz-subtle text-cz-2 px-1.5 py-0.5 rounded">U25</span>}
+            {age && <span className="text-cz-3 text-xs">{age} år</span>}
           </div>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-slate-400 text-[10px] uppercase tracking-wider">Tid</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Tid</p>
           <Countdown end={auction.calculated_end} status={auction.status} />
         </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className="bg-slate-50 rounded-lg px-3 py-2">
-          <p className="text-slate-400 text-[10px] uppercase tracking-wider">Værdi</p>
-          <p className="text-amber-700 font-mono font-bold text-sm">
+        <div className="bg-cz-subtle rounded-lg px-3 py-2">
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Værdi</p>
+          <p className="text-cz-accent-t font-mono font-bold text-sm">
             {formatCz(getRiderMarketValue(r))}
           </p>
         </div>
-        <div className="bg-slate-50 rounded-lg px-3 py-2">
-          <p className="text-slate-400 text-[10px] uppercase tracking-wider">Sælger</p>
-          <p className="text-slate-700 text-sm font-medium truncate">{getAuctionSellerLabel(auction)}</p>
+        <div className="bg-cz-subtle rounded-lg px-3 py-2">
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Sælger</p>
+          <p className="text-cz-2 text-sm font-medium truncate">{getAuctionSellerLabel(auction)}</p>
         </div>
-        <div className="bg-slate-50 rounded-lg px-3 py-2">
-          <p className="text-slate-400 text-[10px] uppercase tracking-wider">Højeste bud</p>
-          <p className="text-slate-900 font-mono font-bold text-sm">
+        <div className="bg-cz-subtle rounded-lg px-3 py-2">
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Højeste bud</p>
+          <p className="text-cz-1 font-mono font-bold text-sm">
             {auction.current_price?.toLocaleString("da-DK")} CZ$
           </p>
           {getAuctionLeaderName(auction) && !imWinning && (
-            <p className="text-slate-400 text-[10px] truncate">{getAuctionLeaderName(auction)}</p>
+            <p className="text-cz-3 text-[10px] truncate">{getAuctionLeaderName(auction)}</p>
           )}
         </div>
       </div>
 
       {r?.potentiale != null && (
         <div className="mt-2 flex items-center gap-1.5">
-          <span className="text-slate-300 text-[9px] uppercase tracking-wider">Potentiale</span>
+          <span className="text-cz-3 text-[9px] uppercase tracking-wider">Potentiale</span>
           <PotentialeStars value={r.potentiale} birthdate={r.birthdate} showValue />
         </div>
       )}
       <div className="mt-2 grid grid-cols-5 gap-1.5">
         {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"], ["UDH", "stat_udh"]].map(([label, key]) => (
           <div key={key} className="text-center">
-            <p className="text-slate-300 text-[9px] uppercase mb-0.5">{label}</p>
+            <p className="text-cz-3 text-[9px] uppercase mb-0.5">{label}</p>
             <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(r?.[key] || 0)}`}>
               {r?.[key] || "—"}
             </span>
@@ -352,23 +352,23 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
               value={bidAmount}
               min={minBid}
               onChange={e => setBidAmount(parseInt(e.target.value) || minBid)}
-              className="min-w-0 bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-mono text-sm focus:outline-none focus:border-amber-400"
+              className="min-w-0 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent"
             />
-            <p className="col-span-2 text-[10px] text-slate-400">Min. bud: {minBid.toLocaleString("da-DK")} CZ$</p>
-            {bidStatus === "error" && errorText && <p className="col-span-2 text-[11px] text-red-700">{errorText}</p>}
+            <p className="col-span-2 text-[10px] text-cz-3">Min. bud: {minBid.toLocaleString("da-DK")} CZ$</p>
+            {bidStatus === "error" && errorText && <p className="col-span-2 text-[11px] text-cz-danger">{errorText}</p>}
             <button
               onClick={handleBid}
               disabled={bidStatus === "loading" || bidAmount < minBid}
               className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
-                ${bidStatus === "error" ? "bg-red-100 text-red-700 border border-red-500/30" :
-                  bidStatus === "success" ? "bg-green-100 text-green-700 border border-green-500/30" :
-                  imWinning ? "bg-amber-50 text-amber-700 border border-amber-300" : "bg-[#e8c547] text-[#0a0a0f]"}
+                ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
+                  bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
+                  imWinning ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40" : "bg-cz-accent text-cz-on-accent"}
                 disabled:opacity-50`}>
               {bidStatus === "loading" ? "..." : bidStatus === "error" ? "Fejl" : bidStatus === "success" ? "✓" : imWinning ? "Hæv" : "Byd"}
             </button>
           </div>
         ) : (
-          <p className="text-slate-300 text-xs text-center py-1">{isSeller ? "Du sælger" : "—"}</p>
+          <p className="text-cz-3 text-xs text-center py-1">{isSeller ? "Du sælger" : "—"}</p>
         )}
       </div>
     </div>
@@ -529,10 +529,10 @@ export default function AuctionsPage() {
 
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Auktioner</h1>
-          <p className="text-slate-400 text-sm">{auctions.length} aktive auktioner</p>
+          <h1 className="text-xl font-bold text-cz-1">Auktioner</h1>
+          <p className="text-cz-3 text-sm">{auctions.length} aktive auktioner</p>
         </div>
-        <Link to="/auctions/history" className="text-xs text-amber-700 hover:underline">
+        <Link to="/auctions/history" className="text-xs text-cz-accent-t hover:underline">
           Se historik →
         </Link>
       </div>
@@ -543,8 +543,8 @@ export default function AuctionsPage() {
           <button key={t.key} onClick={() => setFilter(t.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
               ${filter === t.key
-                ? "bg-amber-50 text-amber-700 border-amber-200"
-                : "text-slate-500 hover:text-slate-900 bg-white border-slate-200"}`}>
+                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
             {t.label}
           </button>
         ))}
@@ -560,10 +560,10 @@ export default function AuctionsPage() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-slate-300">
+        <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">⚡</p>
           <p>Ingen auktioner i denne kategori</p>
           <p className="text-sm mt-2">Gå til Ryttere og start en auktion</p>
@@ -591,19 +591,19 @@ export default function AuctionsPage() {
             />
           ))}
         </div>
-        <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="hidden md:block bg-cz-card border border-cz-border rounded-xl overflow-hidden">
           <div className="overflow-auto max-h-[calc(100vh-220px)]">
             <table className="w-full text-xs">
-              <thead className="sticky top-0 z-20 bg-white shadow-sm">
-                <tr className="border-b border-slate-200">
+              <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
+                <tr className="border-b border-cz-border">
                   <SortTh sortKey="firstname" sort={activeSort("firstname") ? "firstname" : riderFilters.filters.sort}
                     sortDir={activeSortDir("firstname")} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider">Rytter</SortTh>
-                  <th className="px-2 py-3 text-center text-slate-300 font-medium hidden xl:table-cell">Alder</th>
+                  <th className="px-2 py-3 text-center text-cz-3 font-medium hidden xl:table-cell">Alder</th>
                   <SortTh sortKey="uci_points" sort={activeSort("uci_points") ? "uci_points" : riderFilters.filters.sort}
                     sortDir={activeSortDir("uci_points")} onSort={handleSort}
                     className="px-2 py-3 text-right font-medium">Værdi</SortTh>
-                  <th className="px-3 py-3 text-left text-slate-400 font-medium uppercase tracking-wider hidden xl:table-cell">Sælger</th>
+                  <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden xl:table-cell">Sælger</th>
                   <SortTh sortKey="potentiale"
                     sort={activeSort("potentiale") ? "potentiale" : riderFilters.filters.sort}
                     sortDir={activeSortDir("potentiale")} onSort={handleSort}
@@ -624,7 +624,7 @@ export default function AuctionsPage() {
                     className="px-3 py-3 text-center font-medium uppercase tracking-wider whitespace-nowrap">
                     Tid tilbage
                   </SortTh>
-                  <th className="px-3 py-3 text-left text-slate-400 font-medium uppercase tracking-wider sticky right-0 bg-white z-10 border-l border-slate-100">Byd</th>
+                  <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider sticky right-0 bg-cz-card z-10 border-l border-cz-border">Byd</th>
                 </tr>
               </thead>
               <tbody>

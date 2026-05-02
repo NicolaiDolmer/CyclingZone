@@ -7,6 +7,8 @@
 }
 
 :root {
+  color-scheme: light;
+
   --bg-body:    #f0ede6;
   --bg-card:    #ffffff;
   --bg-subtle:  #f7f4ef;
@@ -16,6 +18,51 @@
   --text-3:     #9896b0;
   --accent:     #e8c547;
   --accent-t:   #a07800;
+  --on-accent:  #1a1f38;
+
+  /* Sidebar — always dark (option A) */
+  --bg-sidebar:       #1a1f38;
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --border-sidebar:   rgba(255, 255, 255, 0.07);
+  --text-sidebar-1:   #ffffff;
+  --text-sidebar-2:   rgba(255, 255, 255, 0.55);
+  --text-sidebar-3:   rgba(255, 255, 255, 0.25);
+
+  /* Semantic states */
+  --success:    #15803d;
+  --success-bg: #dcfce7;
+  --danger:     #b91c1c;
+  --danger-bg:  #fee2e2;
+  --warning:    #b45309;
+  --warning-bg: #fef3c7;
+  --info:       #1d4ed8;
+  --info-bg:    #dbeafe;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-body:    #0e0f15;
+  --bg-card:    #181a23;
+  --bg-subtle:  #14161e;
+  --border:     #2a2d3a;
+  --text-1:     #ededf2;
+  --text-2:     #9da0b3;
+  --text-3:     #6b6d7e;
+  --accent:     #e8c547;
+  --accent-t:   #ffd966;
+  --on-accent:  #1a1f38;
+
+  /* Sidebar identisk i begge temaer (option A) */
+
+  --success:    #4ade80;
+  --success-bg: rgba(74, 222, 128, 0.12);
+  --danger:     #f87171;
+  --danger-bg:  rgba(248, 113, 113, 0.12);
+  --warning:    #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.12);
+  --info:       #60a5fa;
+  --info-bg:    rgba(96, 165, 250, 0.12);
 }
 
 body {
@@ -25,17 +72,13 @@ body {
   font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
 }
 
-select {
-  color-scheme: light;
-}
-
 select option {
-  background-color: #ffffff;
-  color: #1c1b26;
+  background-color: var(--bg-card);
+  color: var(--text-1);
 }
 
-/* Spinner uses brand amber on light background */
+/* Spinner uses brand amber */
 .spinner {
-  border-color: #e5e0d5;
-  border-top-color: #a07800;
+  border-color: var(--border);
+  border-top-color: var(--accent-t);
 }

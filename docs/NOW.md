@@ -15,12 +15,14 @@
 | 7 | Notifikation smoke-test — outbid, offer_received, board_update | ✅ AR |
 
 ## Senest leveret
+- v2.04 (2026-05-02): Dark mode S1 — token-foundation + ThemeProvider + chrome + top-5 sider
 - v2.03 (2026-05-02): Deadline Day S4 — T-24h/T-2h/T-30min cron + Final Whistle Discord-rapport
 - v2.02 (2026-05-02): Deadline Day S3 — Flash Auktion + hastebudsignal
 
 ## Næste session — prioriteter
 1. Gate #5 (🔒 7/5): salary-sync + spot-check 10 ryttere
 2. Start ny sæson → open beta live
+3. Dark mode S2: tokenize resterende sider (Transfers, Board, Standings, Notifications, m.fl.) — én ad gangen
 
 ## Kritiske invarianter
 - `/profile` → `ProfilePage` (indstillinger) — `ManagerProfilePage` er read-only view

@@ -1,7 +1,14 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { useTheme } from "../lib/theme.jsx";
 
 const API = import.meta.env.VITE_API_URL;
+
+const THEME_OPTIONS = [
+  { value: "system", label: "Følg system", hint: "Skifter automatisk med din enhed" },
+  { value: "light",  label: "Lyst",        hint: "Lys baggrund i hele appen" },
+  { value: "dark",   label: "Mørkt",       hint: "Mørk baggrund i hele appen" },
+];
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
@@ -13,6 +20,7 @@ export default function ProfilePage() {
   const [savingDiscord, setSavingDiscord] = useState(false);
   const [savingTeam, setSavingTeam] = useState(false);
   const [msg, setMsg] = useState({ text: "", type: "" });
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => { loadProfile(); }, []);
 
@@ -99,7 +107,7 @@ export default function ProfilePage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
     </div>
   );
 
@@ -108,57 +116,85 @@ export default function ProfilePage() {
   return (
     <div className="max-w-xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">Min Profil</h1>
-        <p className="text-slate-400 text-sm">Indstillinger og hold</p>
+        <h1 className="text-xl font-bold text-cz-1">Min Profil</h1>
+        <p className="text-cz-3 text-sm">Indstillinger og hold</p>
       </div>
 
       {/* Account info */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4">
-        <h2 className="text-slate-900 font-semibold text-sm mb-4">Konto</h2>
+      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+        <h2 className="text-cz-1 font-semibold text-sm mb-4">Konto</h2>
         <div className="space-y-3">
           <div>
-            <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Email</p>
-            <p className="text-slate-900 text-sm">{user?.email}</p>
+            <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Email</p>
+            <p className="text-cz-1 text-sm">{user?.email}</p>
           </div>
           <div>
-            <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Brugernavn</p>
-            <p className="text-slate-900 text-sm">{user?.username}</p>
+            <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Brugernavn</p>
+            <p className="text-cz-1 text-sm">{user?.username}</p>
           </div>
           {user?.role === "admin" && (
             <div>
-              <span className="text-xs bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">Admin</span>
+              <span className="text-xs bg-cz-danger-bg text-cz-danger border border-cz-danger/30 px-2 py-0.5 rounded-full">Admin</span>
             </div>
           )}
         </div>
       </div>
 
+      {/* Tema */}
+      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+        <h2 className="text-cz-1 font-semibold text-sm mb-1">Udseende</h2>
+        <p className="text-cz-3 text-xs mb-4">Vælg tema for hele appen.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {THEME_OPTIONS.map(opt => {
+            const active = theme === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setTheme(opt.value)}
+                aria-pressed={active}
+                className={`text-left rounded-lg border px-3 py-2.5 transition-all
+                  ${active
+                    ? "border-cz-accent bg-cz-accent/10"
+                    : "border-cz-border bg-cz-subtle hover:border-cz-accent/40"}`}
+              >
+                <p className={`text-sm font-semibold ${active ? "text-cz-accent-t" : "text-cz-1"}`}>
+                  {opt.label}
+                </p>
+                <p className="text-cz-3 text-[11px] mt-0.5 leading-snug">{opt.hint}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Team info */}
       {canEditTeam && (
-        <div className="bg-white border border-slate-200 rounded-xl p-5 mb-4">
-          <h2 className="text-slate-900 font-semibold text-sm mb-4">Hold</h2>
+        <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+          <h2 className="text-cz-1 font-semibold text-sm mb-4">Hold</h2>
           <div className="space-y-4">
             {!team && (
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                <p className="text-slate-500 text-sm">
+              <div className="bg-cz-subtle border border-cz-border rounded-lg p-4">
+                <p className="text-cz-2 text-sm">
                   Dit hold mangler stadig at blive initialiseret. Gem holdinfo for at oprette det nu.
                 </p>
               </div>
             )}
             <div>
-              <label className="block text-slate-400 text-xs uppercase tracking-wider mb-1.5">Holdnavn</label>
+              <label className="block text-cz-3 text-xs uppercase tracking-wider mb-1.5">Holdnavn</label>
               <input
                 type="text"
                 value={teamName}
                 onChange={e => setTeamName(e.target.value)}
                 minLength={3}
                 maxLength={30}
-                className="w-full bg-slate-100 border border-slate-300 rounded-lg px-4 py-2.5
-                  text-slate-900 text-sm placeholder-slate-400
-                  focus:outline-none focus:border-amber-400 transition-all"
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-4 py-2.5
+                  text-cz-1 text-sm placeholder-cz-3
+                  focus:outline-none focus:border-cz-accent transition-all"
               />
             </div>
             <div>
-              <label className="block text-slate-400 text-xs uppercase tracking-wider mb-1.5">Managernavn</label>
+              <label className="block text-cz-3 text-xs uppercase tracking-wider mb-1.5">Managernavn</label>
               <input
                 type="text"
                 value={managerName}
@@ -166,17 +202,17 @@ export default function ProfilePage() {
                 placeholder="Dit navn som manager"
                 minLength={2}
                 maxLength={50}
-                className="w-full bg-slate-100 border border-slate-300 rounded-lg px-4 py-2.5
-                  text-slate-900 text-sm placeholder-slate-400
-                  focus:outline-none focus:border-amber-400 transition-all"
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-4 py-2.5
+                  text-cz-1 text-sm placeholder-cz-3
+                  focus:outline-none focus:border-cz-accent transition-all"
               />
             </div>
 
             {msg.text && (
               <div className={`px-4 py-2.5 rounded-lg text-sm border
                 ${msg.type === "success"
-                  ? "bg-green-50 text-green-700 border-green-200"
-                  : "bg-red-50 text-red-700 border-red-200"}`}>
+                  ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                  : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
                 {msg.text}
               </div>
             )}
@@ -184,8 +220,8 @@ export default function ProfilePage() {
             <button
               onClick={saveTeamInfo}
               disabled={savingTeam}
-              className="w-full py-2.5 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm
-                hover:bg-[#f0d060] transition-all disabled:opacity-50">
+              className="w-full py-2.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm
+                hover:brightness-110 transition-all disabled:opacity-50">
               {savingTeam ? "Gemmer..." : team ? "Gem holdinfo" : "Opret holdinfo"}
             </button>
           </div>
@@ -193,26 +229,26 @@ export default function ProfilePage() {
       )}
 
       {/* Discord integration */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5">
+      <div className="bg-cz-card border border-cz-border rounded-xl p-5">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-8 rounded-lg bg-[#5865F2]/20 flex items-center justify-center">
             <span className="text-[#5865F2] text-sm font-bold">D</span>
           </div>
           <div>
-            <h2 className="text-slate-900 font-semibold text-sm">Discord Integration</h2>
-            <p className="text-slate-400 text-xs">Modtag notifikationer direkte i Discord</p>
+            <h2 className="text-cz-1 font-semibold text-sm">Discord Integration</h2>
+            <p className="text-cz-3 text-xs">Modtag notifikationer direkte i Discord</p>
           </div>
         </div>
 
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
-          <p className="text-slate-500 text-xs leading-relaxed">
+        <div className="bg-cz-subtle border border-cz-border rounded-lg p-4 mb-4">
+          <p className="text-cz-2 text-xs leading-relaxed">
             Hvis du tilknytter dit Discord bruger-ID, vil du blive tagget i Discord
             når du overbydes på auktioner, vinder auktioner, modtager transfer-tilbud m.m.
           </p>
         </div>
 
         <div className="mb-4">
-          <label className="block text-slate-400 text-xs uppercase tracking-wider mb-2">
+          <label className="block text-cz-3 text-xs uppercase tracking-wider mb-2">
             Dit Discord Bruger-ID
           </label>
           <input
@@ -220,11 +256,11 @@ export default function ProfilePage() {
             value={discordId}
             onChange={e => setDiscordId(e.target.value)}
             placeholder="f.eks. 123456789012345678"
-            className="w-full bg-slate-100 border border-slate-300 rounded-lg px-4 py-2.5
-              text-slate-900 text-sm placeholder-slate-400 font-mono
+            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-4 py-2.5
+              text-cz-1 text-sm placeholder-cz-3 font-mono
               focus:outline-none focus:border-[#5865F2]/50"
           />
-          <p className="text-slate-300 text-xs mt-2">
+          <p className="text-cz-3 text-xs mt-2">
             Find dit ID: Discord → Indstillinger → Avanceret → Aktivér udviklertilstand
             → Højreklik på dit navn → "Kopiér bruger-ID"
           </p>
@@ -233,8 +269,8 @@ export default function ProfilePage() {
         {!team && msg.text && (
           <div className={`mb-3 px-4 py-2.5 rounded-lg text-sm border
             ${msg.type === "success"
-              ? "bg-green-50 text-green-700 border-green-200"
-              : "bg-red-50 text-red-700 border-red-200"}`}>
+              ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+              : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
             {msg.text}
           </div>
         )}
@@ -242,13 +278,13 @@ export default function ProfilePage() {
         <button
           onClick={saveDiscordId}
           disabled={savingDiscord}
-          className="w-full py-2.5 bg-[#5865F2] text-slate-900 font-bold rounded-lg text-sm
+          className="w-full py-2.5 bg-[#5865F2] text-white font-bold rounded-lg text-sm
             hover:bg-[#4752c4] transition-all disabled:opacity-50">
           {savingDiscord ? "Gemmer..." : "Gem Discord ID"}
         </button>
 
-        <div className="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3">
-          <p className="text-slate-400 text-xs font-medium mb-2">Du modtager Discord-notifikationer når:</p>
+        <div className="mt-4 bg-cz-subtle border border-cz-border rounded-lg p-3">
+          <p className="text-cz-3 text-xs font-medium mb-2">Du modtager Discord-notifikationer når:</p>
           <ul className="space-y-1">
             {[
               "Du overbydes på en auktion",
@@ -258,8 +294,8 @@ export default function ProfilePage() {
               "En ny auktion oprettes",
               "En ny sæson starter eller afsluttes",
             ].map(item => (
-              <li key={item} className="flex items-center gap-2 text-slate-400 text-xs">
-                <span className="text-green-700">✓</span> {item}
+              <li key={item} className="flex items-center gap-2 text-cz-3 text-xs">
+                <span className="text-cz-success">✓</span> {item}
               </li>
             ))}
           </ul>
