@@ -2,7 +2,9 @@
 
 **Formål:** Erstatte den del af manuel soak-gate som kan automatiseres. UI-visuel verifikation (fase-farver, ticker-scroll, badge-rendering) kræver browser+admin-auth og er udskudt til separat UI-smoke.
 
-**Resultat:** 22 invarianter ✅ verificeret · 1 ❌ afviger (manglende DB-migration for `auctions.is_flash`) · 4 ⚠ pending UI-smoke.
+**Resultat (oprindelig):** 22 invarianter ✅ verificeret · 1 ❌ afviger (manglende DB-migration for `auctions.is_flash`) · 4 ⚠ pending UI-smoke.
+
+**Resultat (efter follow-up 2026-05-04):** 23 invarianter ✅ verificeret · 0 ❌ · 4 ⚠ pending UI-smoke. Schema-divergens lukket via [database/2026-05-04-auctions-is-flash.sql](../../database/2026-05-04-auctions-is-flash.sql) + opdaterede `schema.sql` / `supabase_setup.sql` / `setup.py` + regression-test i [backend/lib/auctionSchemaContract.test.js](../../backend/lib/auctionSchemaContract.test.js) (`auction schema includes is_flash column for Deadline Day flash auctions`). Live Supabase havde allerede kolonnen (verificeret via `information_schema.columns` — `boolean NOT NULL DEFAULT false`); fixet er rent source-side så schema-driven setup + tests matcher live tilstand.
 
 ---
 
@@ -42,20 +44,14 @@
 
 | Invariant | Status | Reference |
 |---|---|---|
-| **`auctions.is_flash` kolonne** | **❌ afviger** | **Ingen DB-migration tilføjer kolonnen.** Koden indsætter `is_flash: flash_auction` ([backend/routes/api.js:725](../../backend/routes/api.js)) og selecter `is_flash` ([AuctionsPage.jsx:417](../../frontend/src/pages/AuctionsPage.jsx)), men `database/`-mappen indeholder ingen `ALTER TABLE auctions ADD COLUMN is_flash`. Hverken `schema.sql:147-163` eller `supabase_setup.sql:129-143` indeholder kolonnen. Hvis Supabase-instansen ikke har kolonnen live, vil INSERT fejle med `column "is_flash" does not exist` første gang en flash-auktion startes |
+| **`auctions.is_flash` kolonne** | **✅ rettet 2026-05-04** | Live Supabase havde allerede kolonnen (`boolean NOT NULL DEFAULT false`). Source-divergens lukket: [database/2026-05-04-auctions-is-flash.sql](../../database/2026-05-04-auctions-is-flash.sql) (idempotent `ADD COLUMN IF NOT EXISTS`) + `is_flash` tilføjet til [database/schema.sql](../../database/schema.sql), [database/supabase_setup.sql](../../database/supabase_setup.sql), [setup.py](../../setup.py). Regression-test sikrer at alle tre schema-filer beholder kolonnen ([backend/lib/auctionSchemaContract.test.js](../../backend/lib/auctionSchemaContract.test.js) — `auction schema includes is_flash column for Deadline Day flash auctions`). Tidligere koderef. står stadig: INSERT i [backend/routes/api.js:725](../../backend/routes/api.js); SELECT i [AuctionsPage.jsx:417](../../frontend/src/pages/AuctionsPage.jsx) |
 | Guard i `POST /api/auctions`: kun under aktiv DD → `is_flash=true` + 30 min varighed | ✅ | [backend/routes/api.js:609-624](../../backend/routes/api.js) — afviser med 403 hvis DD ikke aktiv. [api.js:679-681](../../backend/routes/api.js): `flash_auction ? new Date(Date.now() + 30 * 60 * 1000) : calculateAuctionEnd(...)` |
 | Hastebudsignal: 🚨-badge på offers når sælgerhold ≤ divisionsminimum (rødt) | ✅ | Server beregner `seller_squad_critical` ([api.js:1107-1129](../../backend/routes/api.js)) ved `riderCounts[teamId] <= SQUAD_MINS[division]` (D1=20, D2=14, D3=8). Badge rendres på sendte ([TransfersPage.jsx:71-73](../../frontend/src/pages/TransfersPage.jsx)) og modtagne ([:225-227](../../frontend/src/pages/TransfersPage.jsx)) tilbud |
 | Flash-badge `⚡ Flash` på auktioner | ✅ | [AuctionsPage.jsx:152, :297](../../frontend/src/pages/AuctionsPage.jsx) — rendres bag `auction.is_flash` |
 
-**Minimal fix til ❌:**
-```sql
--- database/2026-05-04-auctions-is-flash.sql
-ALTER TABLE auctions
-  ADD COLUMN IF NOT EXISTS is_flash BOOLEAN NOT NULL DEFAULT FALSE;
-```
-Hvis kolonnen allerede er tilføjet manuelt direkte i Supabase (live tilstand), er fixet stadig nødvendig så schema-filen er sandhed. Verificér med `SELECT column_name FROM information_schema.columns WHERE table_name='auctions' AND column_name='is_flash'` mod prod-DB hvis i tvivl.
+**Fix shippet 2026-05-04:** [database/2026-05-04-auctions-is-flash.sql](../../database/2026-05-04-auctions-is-flash.sql) (`ADD COLUMN IF NOT EXISTS`) + tre schema-filer opdateret (schema.sql, supabase_setup.sql, setup.py) + regression-test i auctionSchemaContract.test.js. Live-DB-tilstand var allerede `boolean NOT NULL DEFAULT false` (verificeret før fix); migrationen er no-op mod live, men nødvendig for fresh setups + schema-tooling.
 
-**S3 status:** ❌ schema-divergens; resten af S3 ✅ intakt.
+**S3 status:** ✅ schema-divergens lukket; resten af S3 ✅ intakt.
 
 ---
 
@@ -86,12 +82,12 @@ Hvis kolonnen allerede er tilføjet manuelt direkte i Supabase (live tilstand), 
 
 ---
 
-## Konklusion
+## Konklusion (efter 2026-05-04 follow-up)
 
 | | Antal |
 |---|---|
-| ✅ verificeret | 22 |
-| ❌ afviger | 1 (auctions.is_flash mangler migration) |
+| ✅ verificeret | 23 (+1 fra `is_flash`-fix) |
+| ❌ afviger | 0 |
 | ⚠ pending UI-smoke | 4 (banner-faser, ticker-scroll, Flash-badge, Final Whistle Discord-render) |
 
-**Anbefaling:** Tilføj migration for `auctions.is_flash` før første live flash-auktion. Resten af S1-S4 er kode-mæssigt klar; UI-smoke kan udføres separat når brugeren har tid til browser+admin-test.
+**Status:** Code-level audit er fuldt grøn. UI-smoke (4 punkter) afventer brugerens browser+admin-test, men er ikke blokerende for soak — alle invarianter med kode-evidens er verificeret.

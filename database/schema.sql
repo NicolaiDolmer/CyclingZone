@@ -159,6 +159,7 @@ CREATE TABLE auctions (
   extension_count INTEGER DEFAULT 0,
   is_guaranteed_sale BOOLEAN DEFAULT FALSE,
   guaranteed_price INTEGER,
+  is_flash BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

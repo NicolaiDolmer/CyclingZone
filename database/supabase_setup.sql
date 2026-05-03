@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS public.auctions (
   actual_end TIMESTAMPTZ,
   status TEXT DEFAULT 'active' CHECK (status IN ('active','extended','completed','cancelled')),
   extension_count INTEGER DEFAULT 0,
+  is_flash BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
