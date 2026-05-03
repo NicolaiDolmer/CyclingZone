@@ -142,8 +142,11 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 - Auto-wizard-skip ved første gangs setup: `BoardPage.loadAll` åbner kun wizard automatisk ved sekventiel fortsættelse (`hasAnyPlan === true`). Første gangs managers ser empty-state først → starter wizard via CTA.
 - Tour-trin på `/board` (3 steps: 1yr/3yr/5yr-grid → sponsor-modifier-tabel → KPI-liste). `TOUR_PAGE_BY_STEP` udvidet med `board_plan_set: "board"` så "Vis mig hvordan"-knappen virker for fjerde trin.
 
-**Slice 3 (senere):** Økonomi-explainer
-- Tour eller inline-empty-state på `/finance` der forklarer sponsor/salary/debt loft
+**Slice 3 ✅ (v2.16, 2026-05-03):** Økonomi-explainer
+- `FinanceFirstVisitHint` på `/finance` ved første besøg — 2x2-grid forklarer sponsor (260K base × bestyrelses-modifier, link til `/board`), salary (10% af uci_points × 4000), gældsloft pr. division (D1 1.200K · D2 900K · D3 600K), og kort vs. langt lån. CTA "Vis mig rundt" starter tour og dismisser hint.
+- Tour-trin på `/finance` (3 steps: balance-grid → gældsloft-indikator → transaktionshistorik). Mountet via `OnboardingTour pageKey="finance"`. Trigger via localStorage `cz-finance-hint-shown` — ingen backend-step (finance er passiv explainer, ikke aktiv milestone som "afgiv første bud").
+
+**Status:** Onboarding v2 multi-slice komplet — alle fire sub-slices (1a + 1b + 2 + 3) leveret 2026-05-03.
 
 ---
 

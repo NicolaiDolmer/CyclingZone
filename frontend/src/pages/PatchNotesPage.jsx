@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.16",
+    date: "2026-05-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Onboarding v2 — økonomi-explainer på /finance",
+        items: [
+          "Finanser: nyt explainer-kort ved første besøg forklarer de fire pengestrømme — sponsor (260K base × bestyrelses-modifier, link direkte til /board), løn (10% af rytterværdien pr. sæson), gældsloft pr. division (D1 1.200K · D2 900K · D3 600K), og forskellen på kort vs. langt lån",
+          "'Vis mig rundt'-knap starter en kort tour med 3 peg-pil-tooltips: balance-kortet, gældsloft-indikatoren på Total gæld-kortet, og transaktionshistorikken hvor sponsor og løn løbende tikker ind",
+          "Hint kan skjules permanent med × eller 'Spring over' — efter første dismiss vises explaineren ikke igen (gemt lokalt i din browser)",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.15",
     date: "2026-05-03",
     label: "Beta",

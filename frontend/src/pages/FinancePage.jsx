@@ -1,9 +1,32 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
+import OnboardingTour from "../components/OnboardingTour";
+import { startTour } from "../lib/onboardingTour";
 
 const API = import.meta.env.VITE_API_URL;
 
 const LOAN_TYPE_LABELS = { short: "Kort lån", long: "Langt lån", emergency: "Nødlån" };
+
+// Onboarding v2 Slice 3 — tour-trin på /finance (aktiveres fra FinanceFirstVisitHint
+// "Vis mig rundt"-knap). Pegger på balance-grid, gældsloft og transaktionshistorik.
+const FINANCE_TOUR_STEPS = [
+  {
+    target: "[data-tour='finance-balance']",
+    title: "Din balance og pengestrømme",
+    body: "Din balance opdateres løbende med sponsor (ind), løn og lånerenter (ud), og transfers + præmier. Røde tal = negativ balance — det aktiverer nødlån-mekanismen.",
+  },
+  {
+    target: "[data-tour='finance-debt-ceiling']",
+    title: "Gældsloft pr. division",
+    body: "Hver division har et loft for total gæld (D1 1.200K · D2 900K · D3 600K). Når loftet er nået, spærres nye lån — bestyrelsen straffer også overforbrug ved sæsonafslutning.",
+  },
+  {
+    target: "[data-tour='finance-tx-history']",
+    title: "Følg sponsor og løn løbende",
+    body: "Sponsor udbetales i månedlige rater og løn trækkes løbende. Her ser du hver transaktion — brug den til at spore om økonomien går i den rigtige retning før sæsonen er forbi.",
+  },
+];
 
 const TX_CONFIG = {
   sponsor:          { label: "Sponsorindtægt",    color: "text-cz-success" },
@@ -50,6 +73,21 @@ export default function FinancePage() {
   const [repayId, setRepayId] = useState(null);
   const [repayAmount, setRepayAmount] = useState("");
   const [repaying, setRepaying] = useState(false);
+
+  // Onboarding v2 Slice 3 — first-visit-hint, dismiss persisteres i localStorage
+  const [showHint, setShowHint] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("cz-finance-hint-shown") !== "1",
+  );
+
+  function dismissHint() {
+    try { localStorage.setItem("cz-finance-hint-shown", "1"); } catch { /* private browsing */ }
+    setShowHint(false);
+  }
+
+  function handleStartTour() {
+    startTour("finance");
+    dismissHint();
+  }
 
   useEffect(() => { loadAll(); }, []);
 
@@ -153,6 +191,8 @@ export default function FinancePage() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <OnboardingTour pageKey="finance" steps={FINANCE_TOUR_STEPS} />
+
       <div className="mb-5">
         <h1 className="text-xl font-bold text-cz-1">Finanser</h1>
         <p className="text-cz-3 text-sm">Balance, lån og transaktionshistorik</p>
@@ -167,8 +207,10 @@ export default function FinancePage() {
         </div>
       )}
 
+      {showHint && <FinanceFirstVisitHint onDismiss={dismissHint} onStartTour={handleStartTour} />}
+
       {/* Balance + gæld + præmier */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+      <div data-tour="finance-balance" className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Balance</p>
           <p className={`font-mono font-bold text-2xl ${(team?.balance || 0) >= 0 ? "text-cz-accent-t" : "text-cz-danger"}`}>
@@ -176,7 +218,7 @@ export default function FinancePage() {
           </p>
           <p className="text-cz-3 text-xs mt-1">Division {team?.division}</p>
         </div>
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <div data-tour="finance-debt-ceiling" className="bg-cz-card border border-cz-border rounded-xl p-5">
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Total gæld</p>
           <p className={`font-mono font-bold text-2xl ${(loanData?.total_debt || 0) > 0 ? "text-cz-danger" : "text-cz-3"}`}>
             {(loanData?.total_debt || 0).toLocaleString("da-DK")} CZ$
@@ -395,7 +437,7 @@ export default function FinancePage() {
       )}
 
       {/* Transaktionshistorik */}
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+      <div data-tour="finance-tx-history" className="bg-cz-card border border-cz-border rounded-xl p-5">
         <h2 className="text-cz-1 font-semibold text-sm mb-4">Transaktionshistorik</h2>
         {transactions.length === 0 ? (
           <p className="text-cz-3 text-sm">Ingen transaktioner endnu</p>
