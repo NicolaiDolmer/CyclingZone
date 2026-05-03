@@ -98,6 +98,21 @@ Lært 2026-05-03: 4 stale `claude/*`-branches kostede ~10-15 tool calls i én se
 
 ---
 
+## Untracked filer i main repo — hash-tjek FØR dataloss-antagelse
+
+Lært 2026-05-03: `backend/scripts/verifyRidersAgainstSheets.js` så ud som untracked dataloss-risiko ved session-start, men var byte-identisk med origin/main. Main repo's working tree var bare 8 commits bagud. Falsk alarm kostede ~5 tool-calls + en forkert "kritisk fund"-rapport.
+
+**Default-antagelse i multi-worktree setup:** main repo's working tree er bagud, ikke at filen er tabt. Claude/Codex arbejder næsten altid i feature-worktrees, så main repo akkumulerer bagud-state.
+
+**Tjek-rækkefølge når `git status` i main repo viser `??`:**
+1. `git -C <main_repo> diff origin/main -- <fil>` for hver
+2. Tom diff = identisk med origin/main = ikke dataloss → bare `rm` + `git pull --ff-only`
+3. Reel diff = lokal arbejde der skal committes
+
+**Why:** Eksisterende `git fetch --prune`-regel opdaterer kun refs, ikke working tree. Working tree opdateres kun af `git pull` / `git checkout`. Hullet skal eksplicit lukkes på begge PCs.
+
+---
+
 ## Lokal PC-opsætning (kør ved første session på ny PC eller efter ny devDep)
 
 ```powershell
