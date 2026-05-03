@@ -210,6 +210,14 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **Eksisterende managers:** Card vises retroaktivt for de 17 — men auto-skjules hvis alle 4 trin allerede er gennemført. Ingen blokerende wizard.
 - Verificeret: lint 0 errors, build grøn (`vite built in 5.53s`). UI-smoke pending.
 
+### Onboarding v2 — Slice 2 Bestyrelse-explainer (v2.15, 2026-05-03)
+- **Genbruger eksisterende endpoint:** `GET /api/me/onboarding-progress` returnerer allerede `board_plan_set` (count på `board_profiles.team_id = mit`) — ingen ny route.
+- **BoardPage empty-state:** `frontend/src/components/BoardEmptyState.jsx` rendres øverst på `/board` når der ikke findes nogen plan endnu (`hasAnyPlan === false` + `setupNextPlanType` sat). Forklarer kort bestyrelsens rolle (mål → vurdering → sponsor-modifier), 1yr/3yr/5yr-strukturen (tre parallelle planer med egne mål og tidshorisont), tilfredsheds-tærskler (70%+ → ×>1.0, 40-69% → ×1.0, <40% → ×<1.0) og KPI-kategorier (resultater, økonomi, identitet, rangering). CTA "Forhandl din første plan" åbner wizardens `setup_next_plan_type` (typisk 5yr).
+- **Auto-wizard-skip ved første gangs setup:** `loadAll` i `BoardPage.jsx` åbner kun wizardens setup-flow automatisk når mindst én plan allerede findes (sekventiel fortsættelse). For brand-new managers (ingen planer) vises empty-state først, så de får kontekst inden forhandlingen — og kan starte wizard via CTA.
+- **Tour på /board:** `OnboardingTour pageKey="board"` mountet på BoardPage med 3 trin der peger på empty-state-sektionerne (`[data-tour='board-plans']` → 1yr/3yr/5yr-grid, `board-satisfaction` → modifier-tabellen, `board-kpis` → KPI-listen). Tour fyrer kun når `board_plan_set === false`, så empty-state altid er rendret når targets søges.
+- **Step→tour mapping udvidet:** `TOUR_PAGE_BY_STEP` i `frontend/src/lib/onboardingTour.js` har nu `board_plan_set: "board"` ved siden af de eksisterende `first_rider_owned`/`first_bid_placed`. "💡 Vis mig hvordan"-knappen på `OnboardingProgressCard` virker nu også på fjerde trin og ruter til `/board` med tour startet.
+- Verificeret: lint 0 errors (41 pre-eks. warnings), build grøn (`vite built in 8.05s`). UI-smoke pending.
+
 ### Onboarding v2 — Slice 1b Guided squad-builder (v2.13, 2026-05-03)
 - **Genbruger eksisterende endpoint:** Begge sider læser `GET /api/me/onboarding-progress` for `first_rider_owned`/`first_bid_placed`-flags — ingen nye routes.
 - **RidersPage empty-state:** `frontend/src/components/RidersEmptyState.jsx` rendres øverst på `/riders` når `first_rider_owned === false`. Viser balance vs. division-minimum (D1=20, D2=14, D3=8) + 3 filter-tips (Værdi/Stat/U25-Fri agent). CTA "Find din første rytter" sætter `max_uci`-filter til managerens balance og indsnævrer listen automatisk.

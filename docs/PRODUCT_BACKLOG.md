@@ -135,10 +135,12 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 **Slice 1b ✅ (v2.13, 2026-05-03):** Guided squad-builder UX
 - `RidersEmptyState` på `/riders` for managers uden ryttere (`first_rider_owned === false`) — forklarer filtre, viser balance vs. division-minimum, CTA filtrerer på pris ≤ balance
 - `AuctionsFirstBidHint` på `/auctions` for managers uden bud (`first_bid_placed === false` + localStorage `cz-first-bid-shown !== "1"`) — forklarer +10%-overbud + 10-min auto-forlængelse
-- `OnboardingTour` (generisk peg-pil-overlay) + `lib/onboardingTour.js` (state-helpers) startet fra "Vis mig hvordan"-knap på `OnboardingProgressCard`. Tour-trin på `/riders` (3 steps: filtre → liste → ønskeliste) og `/auctions` (2 steps: bud-input → countdown). State i localStorage `cz-onboarding-tour-step`. Slice 2 vil udvide med `board_plan_set: "board"`.
+- `OnboardingTour` (generisk peg-pil-overlay) + `lib/onboardingTour.js` (state-helpers) startet fra "Vis mig hvordan"-knap på `OnboardingProgressCard`. Tour-trin på `/riders` (3 steps: filtre → liste → ønskeliste) og `/auctions` (2 steps: bud-input → countdown). State i localStorage `cz-onboarding-tour-step`.
 
-**Slice 2 (senere):** Bestyrelse-explainer
-- Tour eller inline-empty-state på `/board` der forklarer 1yr/3yr/5yr planer + KPI'er
+**Slice 2 ✅ (v2.15, 2026-05-03):** Bestyrelse-explainer
+- `BoardEmptyState` på `/board` for managers uden plan (`hasAnyPlan === false`) — forklarer bestyrelsens rolle (mål → vurdering → sponsor-modifier), 1yr/3yr/5yr-strukturen som tre parallelle planer med egne mål og tidshorisont, tilfredsheds-tærskler (70%+/40-69%/<40% → modifier), KPI-kategorier (resultater, økonomi, identitet, rangering). CTA åbner wizardens `setup_next_plan_type`.
+- Auto-wizard-skip ved første gangs setup: `BoardPage.loadAll` åbner kun wizard automatisk ved sekventiel fortsættelse (`hasAnyPlan === true`). Første gangs managers ser empty-state først → starter wizard via CTA.
+- Tour-trin på `/board` (3 steps: 1yr/3yr/5yr-grid → sponsor-modifier-tabel → KPI-liste). `TOUR_PAGE_BY_STEP` udvidet med `board_plan_set: "board"` så "Vis mig hvordan"-knappen virker for fjerde trin.
 
 **Slice 3 (senere):** Økonomi-explainer
 - Tour eller inline-empty-state på `/finance` der forklarer sponsor/salary/debt loft

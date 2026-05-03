@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.15",
+    date: "2026-05-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Onboarding v2 — bestyrelse-explainer",
+        items: [
+          "Bestyrelse: nyt explainer-kort øverst på /board for managers uden plan — forklarer kort hvad bestyrelsen er, hvordan 1yr/3yr/5yr-strukturen virker, og hvilke KPI'er de vurderer på (resultater, økonomi, identitet, rangering)",
+          "Tilfredshed → sponsor-modifier-tabellen vises i empty-state så du forstår hvordan din indsats slår igennem på indkomsten allerede inden første forhandling",
+          "CTA 'Forhandl din første plan med bestyrelsen' åbner wizardens 5-årsplan-trin — og første gangs setup tvinger ikke længere wizarden op før du har set explaineren",
+          "Kom-i-gang-kortets 'Vis mig hvordan' fungerer nu også på det fjerde trin (vælg bestyrelsesplan) — touren peger på de tre planer, sponsor-modifier og KPI-listen",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.14",
     date: "2026-05-04",
     label: "Beta",

@@ -3,10 +3,33 @@ import { supabase } from "../lib/supabase";
 import { satisfactionToModifier, getPlanDuration } from "../lib/boardUtils";
 import { getCountryDisplay } from "../lib/countryUtils";
 import { Link } from "react-router-dom";
+import BoardEmptyState from "../components/BoardEmptyState";
+import OnboardingTour from "../components/OnboardingTour";
 
 const API = import.meta.env.VITE_API_URL;
 const PLAN_LABELS = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" };
 const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
+
+// Onboarding v2 Slice 2 — tour-trin på /board (aktiveres fra Dashboard "Vis mig hvordan").
+// Pegger på BoardEmptyState-sektionerne — tour fyrer kun når board_plan_set === false,
+// hvor empty state er rendered (plan-cards eksisterer endnu ikke).
+const BOARD_TOUR_STEPS = [
+  {
+    target: "[data-tour='board-plans']",
+    title: "Tre planer kører parallelt",
+    body: "1yr, 3yr og 5yr forhandles separat — hver har sine egne mål og tidshorisont. Korte planer = strenge mål; lange planer = blødere straf.",
+  },
+  {
+    target: "[data-tour='board-satisfaction']",
+    title: "Tilfredshed → sponsor-indkomst",
+    body: "Bestyrelsens tilfredshed bliver til en sponsor-modifier (× 1.0 baseline). Opfyld mål → sponsor stiger. Underpræsterer du, falder indkomsten.",
+  },
+  {
+    target: "[data-tour='board-kpis']",
+    title: "Hvad de vurderer på",
+    body: "Resultater (sejre, top-N), økonomi (gæld, sponsor-vækst), identitet (U25/national kerne) og rangering. Nogle mål er obligatoriske, andre giver bonus.",
+  },
+];
 const FOCUS_LABELS = {
   balanced: "Balanceret",
   youth_development: "Ungdomsudvikling",
@@ -960,8 +983,11 @@ export default function BoardPage() {
     setIdentityProfile(data.identity_profile || null);
     setActiveLoanCount(data.active_loans_count || 0);
 
-    // Auto-åbn wizard ved initial opsætning
-    if (data.setup_next_plan_type) {
+    // Auto-åbn wizard ved sekventiel opsætning (når mindst én plan allerede findes).
+    // Første gangs setup (board_plan_set === false) viser BoardEmptyState i hovedvisningen
+    // og lader brugeren starte wizard via CTA, så de får context før forhandlingen.
+    const hasAnyPlan = Object.values(newPlans).some(p => p !== null);
+    if (data.setup_next_plan_type && hasAnyPlan) {
       const existingFocus = newPlans[data.setup_next_plan_type]?.board?.focus || "balanced";
       setWizardPlanType(data.setup_next_plan_type);
       setWizardIsSetup(true);
@@ -1233,8 +1259,10 @@ export default function BoardPage() {
   }
 
   // ── Hoved-visning: tre plan-kort ────────────────────────────────────────────
+  const hasAnyPlan = Object.values(plans).some(p => p !== null);
   return (
     <div className="max-w-4xl mx-auto">
+      <OnboardingTour pageKey="board" steps={BOARD_TOUR_STEPS} />
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-cz-1">Bestyrelse</h1>
@@ -1246,6 +1274,10 @@ export default function BoardPage() {
           💰 Finanser
         </Link>
       </div>
+
+      {!hasAnyPlan && setupNextPlanType && (
+        <BoardEmptyState onOpenWizard={() => openWizard(setupNextPlanType, true)} />
+      )}
 
       <BoardIdentityCard identityProfile={identityProfile} />
 

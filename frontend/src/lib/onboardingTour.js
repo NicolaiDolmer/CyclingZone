@@ -3,10 +3,11 @@
 
 const STORAGE_KEY = "cz-onboarding-tour-step";
 
-// Onboarding step keys → tour pages. Slice 2 vil tilføje board_plan_set→"board".
+// Onboarding step keys → tour pages.
 export const TOUR_PAGE_BY_STEP = {
   first_rider_owned: "riders",
   first_bid_placed: "auctions",
+  board_plan_set: "board",
 };
 
 export function startTour(page) {
