@@ -4,7 +4,7 @@
 **Onboarding v2 — Slice 3 leveret (v2.16+v2.17 fix).** Onboarding v2 multi-slice nu komplet (1a + 1b + 2 + 3).
 
 ## Soak-gate
-**Aktiv: delvis** — Dark mode ✅ · Discord DM ✅ · Deadline Day S1–S4 code-level ✅ (23/23 invarianter; `is_flash` schema-divergens lukket 2026-05-04) · DD UI-smoke 4 punkter pending. Onboarding v2 1a+1b+2+3: code-level (build/lint grøn); UI-smoke pending.
+**Aktiv: delvis** — Dark mode ✅ · Discord DM ✅ · Deadline Day S1–S4 code-level ✅ (23/23 invarianter; `is_flash` schema-divergens lukket 2026-05-04) · DD UI-smoke 4 punkter pending. Onboarding v2 1a+1b+2+3: code-level (build/lint grøn); UI-smoke pending. Flag SVG (v2.18): code-level grøn; UI-smoke på Chrome (Windows) pending.
 
 ## Open beta status
 **Alle 7 launch-gates ✅** — soft-launch-klar.
@@ -16,7 +16,7 @@
 - Ældre v2.13 og før → `docs/archive/NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter
-1. UI-smoke på Onboarding v2 1a+1b+2+3 (samlet — alle fire slices code-level grønne)
+1. UI-smoke på Chrome (Windows) for flag SVG (v2.18) **+** Onboarding v2 1a+1b+2+3 (samlet — alle code-level grønne)
 2. Deadline Day UI-smoke (DD code-level audit kører som baggrunds-task)
 3. Næste post-launch-slice fra backlog (S8.5 import-feedback eller S9 Race Library)
 
