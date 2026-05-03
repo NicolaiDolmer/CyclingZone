@@ -1,24 +1,25 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Ingen** — Dark Mode S3 lint-guard lukket. Næste valg: Onboarding v2 eller anden post-launch slice.
+**Ingen** — Panic Board synlighed + tema-fix (v2.09) lukket. Næste valg: Onboarding v2 eller anden post-launch slice.
 
 ## Soak-gate
-**Aktiv: ja** — 8 user-facing slices uden e2e-smoke (Deadline Day S1–S4, Dark Mode S1+S2+S3-fixes, S8 Discord DM). Sprunget over på brugerens anmodning denne session. Næste session skal starte med 30-60 min smoke i light + dark FØR ny kode-slice startes.
+**Aktiv: delvis** — Dark mode ✅ smoke OK · Discord DM ✅ verificeret · Deadline Day S1–S4: kun Panic Board smokes til dato (afslørede manglende nav-link + light-mode contrast — fixet i v2.09). S1 banner / S2 ticker / S3 flash-auctions / S4 Final Whistle-cron stadig ikke smokes.
 
 ## Open beta status
 **Alle 7 launch-gates ✅** — soft-launch-klar.
 
 ## Senest leveret
-- 2026-05-03: **Dark mode S3 lint-guard** (v2.08) — ESLint `no-restricted-syntax` mod `(slate|gray)-N` i `frontend/eslint.config.js` (Literal + TemplateElement); migration-misser ryddet i `PotentialeStars.jsx` + `statBg.js`. Scope `.{js,jsx}` via dedikeret config-block, pre-eksisterende react-rules forbliver `.js`-only.
-- 2026-05-03: **Discord-privatliv-fix** (v2.07) — `notifyOutbid`/`notifyAuctionWon`/`notifyTransferOffer`/`notifyTransferResponse` er nu DM-only; ingen længere @mention med privat info i fælleskanal. `getDiscordId` og `buildEmbed.discordId` fjernet som dead code.
-- 2026-05-03: **Dark mode S2** (v2.06) — 27 pages + 7 components tokeniseret; ældre historik i `docs/archive/NOW_HISTORIK_2026-05-03.md`
+- 2026-05-03: **Panic Board fix** (v2.09) — `/deadline-day` nav-link tilføjet under Marked; DeadlineDayBoard tokeniseret (`text-white/N`, `border-white/N`, hardcoded `#e8c547` → `cz-1/2/3` + `cz-border` + `cz-subtle` + semantiske status-tokens). Afsløret af manuel smoke.
+- 2026-05-03: **Dark mode S3 lint-guard** (v2.08) — ESLint mod `(slate|gray)-N` i `frontend/eslint.config.js`. **Hul:** guard fanger ikke `text-white/N` eller `border-white/N` — det slap igennem til Panic Board.
+- 2026-05-03: **Discord-privatliv-fix** (v2.07) — DM-only for outbid/won/transfer-offer/response. Smoket: ✅
+- Ældre v2.06 og før → `docs/archive/NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter
-1. **Soak-gate kvittering** — kør 30-60 min e2e smoke i light + dark på top-flows
-2. **JSX react-rules sanitering** — 71 pre-eks. react-fejl i .jsx (no-empty, no-unescaped-entities, react-hooks/immutability) skal saneres så `js,jsx`-scope kan løftes på alle rules
-3. Vælg næste slice: **Onboarding v2** (post-launch retention)
-4. Tjek at de 3 managers med username-format discord_id ser røde warning-badge
+1. **Færdiggør Deadline Day soak** — S1 banner-faser, S2 ticker, S3 flash-auctions, S4 cron + Final Whistle
+2. **Lint-guard udvidelse** — udvid `no-restricted-syntax` til `(white|black)/N` opacity-classes så hardcoded dark-only sider ikke slipper igennem
+3. **JSX react-rules sanitering** — 71 pre-eks. react-fejl i .jsx skal saneres så `js,jsx`-scope kan løftes på alle rules
+4. Vælg næste slice: **Onboarding v2** (post-launch retention)
 
 ## Kritiske invarianter
 - Discord DM-fejl må aldrig blokere transaction (best-effort try/catch i `notifyDiscordDM`)
