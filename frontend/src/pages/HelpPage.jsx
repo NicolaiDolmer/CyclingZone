@@ -166,6 +166,44 @@ const SECTIONS = [
     ],
   },
   {
+    key: "discord",
+    label: "Discord DMs",
+    icon: "D",
+    content: [
+      {
+        title: "Hvorfor Discord-DMs?",
+        text: "Cycling Zone sender notifikationer (overbud, vundne auktioner, transfer-tilbud og -svar) som private beskeder direkte til dig på Discord — så du ikke skal have app'en åben for at fange en hastesituation. Det erstatter ikke in-app notifikationerne; det supplerer dem.",
+      },
+      {
+        title: "Sådan får du DMs",
+        steps: [
+          "I Discord: Indstillinger → Avanceret → Aktivér Udviklertilstand.",
+          "Højreklik på dit eget navn et sted i Discord og vælg \"Kopiér bruger-ID\".",
+          "I Cycling Zone: gå til Profil → Discord Integration og indsæt dit ID i feltet. Klik 'Gem Discord ID'.",
+          "Sørg for at du deler en server med Cycling Zone-botten, og at \"Tillad direkte beskeder fra serverens medlemmer\" er slået til på den server.",
+          "Klik 'Send test-DM' for at verificere at det virker.",
+        ],
+      },
+      {
+        title: "Slå DMs fra (opt-out)",
+        text: "Hvis du ikke vil have private beskeder fra botten, kan du slå \"Modtag DMs ved person-rettede events\" fra under Profil → Discord Integration. Du får stadig @mention i kanalen, og in-app notifikationerne bliver ved med at virke.",
+      },
+      {
+        title: "Hvornår sendes der DMs?",
+        rows: [
+          ["Event", "DM"],
+          ["Du overbydes på en auktion", "Ja"],
+          ["Du vinder en auktion", "Ja"],
+          ["Du modtager et transfer-tilbud", "Ja"],
+          ["Dit transfer-tilbud accepteres / afvises / får modbud", "Ja"],
+          ["En ny auktion oprettes (alle managers)", "Nej — kun kanal"],
+          ["Transfer fuldført (alle managers)", "Nej — kun kanal"],
+          ["Sæsonstart / sæsonslut", "Nej — kun kanal"],
+        ],
+      },
+    ],
+  },
+  {
     key: "achievements",
     label: "Achievements",
     icon: "🏆",

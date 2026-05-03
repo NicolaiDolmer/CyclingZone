@@ -63,15 +63,23 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 
 ---
 
-### S8 — Discord DM & Manager-rename
-**Trigger:** Umiddelbart efter beta-lancering  
-**Scope:**
-- Discord Bot setup (bot-token i Vercel env) — webhooks kan ikke sende DMs; Bot kræves
-- `discordNotifier.js`: tilføj `sendDM(discordId, embed)` ved siden af webhook-logik
-- Discord-status synlig på `ProfilePage` (grøn checkmark / rød mangler-badge)
-- Dashboard-nudge til managers uden `users.discord_id`
+### S8 — Discord DM ✅ (2026-05-03, v2.05)
+**Status:** Kode + docs leveret. Manager-rename droppet fra titlen — allerede løst i v1.74 via `PUT /api/teams/my`.
 
-**Kritiske filer:** `backend/lib/discordNotifier.js` · `frontend/src/pages/ProfilePage.jsx` · `frontend/src/pages/DashboardPage.jsx` · `backend/routes/api.js`
+**Leveret:**
+- `discordNotifier.sendDM(discordId, payload)` + `notifyDiscordDM({teamId, type, ...})` (raw Discord REST, ingen ny dep)
+- 4 person-rettede notifications wires automatisk til DM: `notifyOutbid`, `notifyAuctionWon`, `notifyTransferOffer`, `notifyTransferResponse`. Bredt-rettede (`notifyNewAuction`, `notifyTransferCompleted`, `notifySwapCompleted`, `notifySeasonEvent`) forbliver kanal-only.
+- `users.discord_dm_enabled BOOLEAN DEFAULT true` — opt-out flag (migration `2026-05-03-discord-dm-opt-out.sql`)
+- Backend routes: `GET /api/me/discord-status`, `POST /api/me/discord-dm-test`, `PATCH /api/me/discord-dm-enabled`
+- ProfilePage: status-badge (forbundet/slået fra/bot ikke konfigureret/mangler ID), opt-out toggle, "Send test-DM"-knap
+- DashboardPage: dismissable nudge-card til managers uden `discord_id` (localStorage `cz-dashboard-discord-nudge-dismissed`)
+
+**Manuel sti for at aktivere live:**
+1. Discord developer portal → ny application + bot, kopiér token
+2. Tilføj bot til CZ-serveren (scope: `bot`, ingen privileged intents)
+3. Sæt `DISCORD_BOT_TOKEN` i **Railway** env (ikke Vercel — backend kører på Railway)
+4. Hver manager skal én gang dele server med botten + slå "Allow DMs from server members" til
+5. Kør migration `database/2026-05-03-discord-dm-opt-out.sql` mod Supabase
 
 ---
 
@@ -114,6 +122,28 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 - **XLSX security advisory** — evaluer og patch eller erstat `xlsx`-pakken (high-severity advisory)
 - **Onboarding v2** — progressiv disclosure af bestyrelses- og økonomi-kompleksitet; guided squad-builder
 - **Inbox/activity consolidation v2** — trigger: launch-critical flows er stabile; ingen chat mellem managers
+
+---
+
+## Cykling-fokuserede North Star kandidater (post-launch)
+
+### Race Day Live-ticker
+**Vision:** Når `races.status = active`, vis fixed-bottom ticker (samme pattern som `DeadlineDayTicker`) der streamer race-results-events ind løbende. "🏁 Stage 7: Pogačar vinder", "💰 Movistar tjener 45.000 CZ$ i præmier", "🟢 GC-skifte: Vingegaard rykker til 1.".  
+**Datakilde:** Eksisterende `race_results` + `finance_transactions` (type=prize). Ingen ny data nødvendig.  
+**Manager-værdi:** Race-dage bliver events. Samme texture som Deadline Day, men anvendt på den oprindelige cykling-spændings-akse.  
+**Estimeret slog:** 2 sessioner.
+
+### Rytter-arketype som first-class citizen
+**Vision:** Hver rytter får én af 7 arketyper (Sprinter, GC, Klatrer, Klassiker, Tidskører, Allrounder, Domestique) computed fra stats. Vises som badge på rytterkort, filterbar på `RidersPage`.  
+**Datakilde:** Eksisterende `stat_*`-felter. Pure function, ingen ny DB.  
+**Manager-værdi:** Cykling-fans elsker arketype-debat. Nye managers får entry-point til stat-systemet uden at skulle læse 14 stat-felter. Filtre på arketype = lettere truppestrategi.  
+**Estimeret slog:** 1 session.
+
+### Sponsor-tied-to-results
+**Vision:** Sponsor er i dag flat 260K + board-modifier. Iteration: base 200K + variabel 0–150K baseret på sidste sæsons points/division-rank, så cykling-virkeligheden ("synlighed = penge") afspejles.  
+**Datakilde:** `season_standings.total_points` + `division`. Ingen ny data.  
+**Manager-værdi:** Comeback-mekanik (lille hold der overpresterer får boost), belønner sportsligt fokus, skaber økonomisk drama omkring sæsonslut.  
+**Trigger:** Skal vente til 1–2 sæsoners live beta-data — del af "Economy tuning iteration".
 
 ---
 

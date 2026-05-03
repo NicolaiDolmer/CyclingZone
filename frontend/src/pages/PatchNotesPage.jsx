@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.05",
+    date: "2026-05-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Discord",
+        items: [
+          "Discord DM — push til hvor du allerede er. Når en bot er konfigureret på serveren, modtager du direkte beskeder ved overbud, vundne auktioner og transfer-tilbud/-svar",
+          "Tilføj dit Discord bruger-ID under Profil → Discord Integration. Status-badge viser om DMs virker, og du kan sende en test-DM",
+          "Opt-out: slå DM'er fra hvis du foretrækker kun @mention i kanalen — du kan altid skifte tilbage",
+          "Dashboard-nudge til managers uden Discord-ID (kan dismisses med ×)",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.04",
     date: "2026-05-02",
     label: "Beta",

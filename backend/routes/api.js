@@ -49,6 +49,7 @@ import {
   notifySwapCompleted,
   notifySeasonEvent,
   sendTestEmbed,
+  sendTestDM,
 } from "../lib/discordNotifier.js";
 import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
@@ -1916,6 +1917,47 @@ router.put("/teams/my", requireAuth, async (req, res) => {
   } catch (error) {
     res.status(error.statusCode || 500).json({ error: error.message || "Kunne ikke gemme holdprofil" });
   }
+});
+
+// ── /api/me — current user's Discord DM preferences ───────────────────────────
+
+router.get("/me/discord-status", requireAuth, async (req, res) => {
+  const { data: user } = await supabase
+    .from("users")
+    .select("discord_id, discord_dm_enabled")
+    .eq("id", req.user.id)
+    .single();
+  res.json({
+    discord_id: user?.discord_id || null,
+    dm_enabled: user?.discord_dm_enabled !== false,
+    bot_configured: Boolean(process.env.DISCORD_BOT_TOKEN),
+  });
+});
+
+router.post("/me/discord-dm-test", requireAuth, async (req, res) => {
+  const { data: user } = await supabase
+    .from("users")
+    .select("discord_id")
+    .eq("id", req.user.id)
+    .single();
+  if (!user?.discord_id) return res.status(400).json({ error: "Tilføj først dit Discord-ID" });
+  try {
+    await sendTestDM(user.discord_id);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.patch("/me/discord-dm-enabled", requireAuth, async (req, res) => {
+  const { enabled } = req.body || {};
+  if (typeof enabled !== "boolean") return res.status(400).json({ error: "enabled skal være boolean" });
+  const { error } = await supabase
+    .from("users")
+    .update({ discord_dm_enabled: enabled })
+    .eq("id", req.user.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, dm_enabled: enabled });
 });
 
 // ── Admin: Seasons & Races ────────────────────────────────────────────────────

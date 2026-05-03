@@ -61,6 +61,10 @@ export default function DashboardPage() {
   const [transferWindow, setTransferWindow] = useState(null);
   const [isNewUser, setIsNewUser] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [discordNudgeDismissed, setDiscordNudgeDismissed] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-discord-nudge-dismissed") === "1"
+  );
+  const [showDiscordNudge, setShowDiscordNudge] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -166,11 +170,32 @@ export default function DashboardPage() {
       setShowOnboarding(true);
     }
 
+    // Discord nudge — vises hvis brugeren ikke har discord_id (og ikke har dismissed)
+    if (!discordNudgeDismissed && token) {
+      try {
+        const dmRes = await fetch(`${API}/api/me/discord-status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (dmRes.ok) {
+          const dm = await dmRes.json();
+          if (!dm.discord_id) setShowDiscordNudge(true);
+        }
+      } catch {
+        // best-effort
+      }
+    }
+
     } catch (e) {
       console.error("Dashboard load failed:", e);
     } finally {
       setLoading(false);
     }
+  }
+
+  function dismissDiscordNudge() {
+    localStorage.setItem("cz-dashboard-discord-nudge-dismissed", "1");
+    setDiscordNudgeDismissed(true);
+    setShowDiscordNudge(false);
   }
 
   if (loading) return (
@@ -224,6 +249,30 @@ export default function DashboardPage() {
           <span>⚠️</span>
           <span>{squadWarning.msg}</span>
           <Link to="/team" className="ml-auto text-xs underline opacity-70 hover:opacity-100">Mit Hold →</Link>
+        </div>
+      )}
+
+      {/* Discord DM nudge */}
+      {showDiscordNudge && (
+        <div className="mb-4 px-4 py-3 bg-cz-card border border-[#5865F2]/30 rounded-xl flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#5865F2]/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-[#5865F2] text-sm font-bold">D</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-cz-1 text-sm font-medium">Få DMs ved overbud, transfertilbud og bestyrelses-signaler</p>
+            <p className="text-cz-3 text-xs mt-0.5">Tilføj dit Discord-ID under Profil — så er du på, selv når du ikke har app'en åben.</p>
+          </div>
+          <Link
+            to="/profile"
+            className="px-3 py-1.5 bg-[#5865F2] text-white rounded-lg text-xs font-bold hover:bg-[#4752c4] transition-all flex-shrink-0">
+            Tilføj
+          </Link>
+          <button
+            onClick={dismissDiscordNudge}
+            className="text-cz-3 hover:text-cz-1 text-lg leading-none px-1 flex-shrink-0"
+            aria-label="Skjul">
+            ×
+          </button>
         </div>
       )}
 

@@ -14,6 +14,9 @@ export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [team, setTeam] = useState(null);
   const [discordId, setDiscordId] = useState("");
+  const [dmStatus, setDmStatus] = useState(null);
+  const [savingDmEnabled, setSavingDmEnabled] = useState(false);
+  const [testingDm, setTestingDm] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [managerName, setManagerName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -35,7 +38,19 @@ export default function ProfilePage() {
     setTeam(teamData);
     setTeamName(teamData?.name || "");
     setManagerName(teamData?.manager_name || "");
+    await refreshDmStatus();
     setLoading(false);
+  }
+
+  async function refreshDmStatus() {
+    const headers = await getAuthHeaders();
+    if (!headers) return;
+    try {
+      const res = await fetch(`${API}/api/me/discord-status`, { headers });
+      if (res.ok) setDmStatus(await res.json());
+    } catch {
+      // best-effort — UI viser bare tom status
+    }
   }
 
   function showMsg(text, type = "success") {
@@ -62,7 +77,45 @@ export default function ProfilePage() {
       .eq("id", authUser.id);
     if (error) showMsg(`❌ ${error.message}`, "error");
     else showMsg("✅ Discord ID gemt!");
+    await refreshDmStatus();
     setSavingDiscord(false);
+  }
+
+  async function toggleDmEnabled(enabled) {
+    setSavingDmEnabled(true);
+    const headers = await getAuthHeaders();
+    if (!headers) {
+      showMsg("❌ Ingen aktiv session", "error");
+      setSavingDmEnabled(false);
+      return;
+    }
+    const res = await fetch(`${API}/api/me/discord-dm-enabled`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ enabled }),
+    });
+    const data = await res.json();
+    if (!res.ok) showMsg(`❌ ${data.error}`, "error");
+    else {
+      setDmStatus(prev => ({ ...prev, dm_enabled: data.dm_enabled }));
+      showMsg(enabled ? "✅ DM aktiveret" : "✅ DM slået fra");
+    }
+    setSavingDmEnabled(false);
+  }
+
+  async function sendTestDm() {
+    setTestingDm(true);
+    const headers = await getAuthHeaders();
+    if (!headers) {
+      showMsg("❌ Ingen aktiv session", "error");
+      setTestingDm(false);
+      return;
+    }
+    const res = await fetch(`${API}/api/me/discord-dm-test`, { method: "POST", headers });
+    const data = await res.json();
+    if (!res.ok) showMsg(`❌ ${data.error}`, "error");
+    else showMsg("✅ Test-DM sendt — tjek Discord");
+    setTestingDm(false);
   }
 
   async function saveTeamInfo() {
@@ -240,6 +293,35 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* DM-status badge */}
+        {dmStatus && (
+          dmStatus.discord_id ? (
+            dmStatus.bot_configured ? (
+              dmStatus.dm_enabled ? (
+                <div className="mb-4 px-4 py-2.5 rounded-lg border bg-cz-success-bg text-cz-success border-cz-success/30 text-xs flex items-center gap-2">
+                  <span>✅</span>
+                  <span>Forbundet — du modtager DMs fra botten ved auktioner og transfers.</span>
+                </div>
+              ) : (
+                <div className="mb-4 px-4 py-2.5 rounded-lg border bg-cz-warning-bg text-cz-warning border-cz-warning/30 text-xs flex items-center gap-2">
+                  <span>⏸</span>
+                  <span>Discord-ID er sat, men DMs er slået fra. Du får stadig @mention i kanalen.</span>
+                </div>
+              )
+            ) : (
+              <div className="mb-4 px-4 py-2.5 rounded-lg border bg-cz-warning-bg text-cz-warning border-cz-warning/30 text-xs flex items-center gap-2">
+                <span>⚠️</span>
+                <span>Bot er endnu ikke konfigureret på serveren — kun kanal-mention virker indtil videre.</span>
+              </div>
+            )
+          ) : (
+            <div className="mb-4 px-4 py-2.5 rounded-lg border bg-cz-danger-bg text-cz-danger border-cz-danger/30 text-xs flex items-center gap-2">
+              <span>❌</span>
+              <span>Mangler Discord-ID — tilføj det nedenfor for at modtage DMs.</span>
+            </div>
+          )
+        )}
+
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-4 mb-4">
           <p className="text-cz-2 text-xs leading-relaxed">
             Hvis du tilknytter dit Discord bruger-ID, vil du blive tagget i Discord
@@ -282,6 +364,32 @@ export default function ProfilePage() {
             hover:bg-[#4752c4] transition-all disabled:opacity-50">
           {savingDiscord ? "Gemmer..." : "Gem Discord ID"}
         </button>
+
+        {/* DM-toggle + test-knap (kun når ID er sat) */}
+        {dmStatus?.discord_id && (
+          <div className="mt-4 bg-cz-subtle border border-cz-border rounded-lg p-4 space-y-3">
+            <label className="flex items-center justify-between gap-3 cursor-pointer">
+              <span className="text-cz-1 text-sm font-medium">Modtag DMs ved person-rettede events</span>
+              <input
+                type="checkbox"
+                checked={dmStatus.dm_enabled}
+                disabled={savingDmEnabled}
+                onChange={e => toggleDmEnabled(e.target.checked)}
+                className="w-4 h-4 accent-[#5865F2]"
+              />
+            </label>
+            <p className="text-cz-3 text-xs leading-relaxed">
+              Slå fra hvis du ikke vil have private beskeder fra botten — du får stadig @mention i kanalen.
+            </p>
+            <button
+              onClick={sendTestDm}
+              disabled={testingDm || !dmStatus.bot_configured}
+              className="w-full py-2 border border-cz-border bg-cz-card text-cz-1 text-sm rounded-lg
+                hover:border-[#5865F2]/50 transition-all disabled:opacity-50">
+              {testingDm ? "Sender..." : dmStatus.bot_configured ? "Send test-DM" : "Bot ikke konfigureret"}
+            </button>
+          </div>
+        )}
 
         <div className="mt-4 bg-cz-subtle border border-cz-border rounded-lg p-3">
           <p className="text-cz-3 text-xs font-medium mb-2">Du modtager Discord-notifikationer når:</p>

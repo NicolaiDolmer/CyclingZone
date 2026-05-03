@@ -104,6 +104,121 @@ export async function sendWebhook(webhookUrl, payload) {
   }
 }
 
+// ── Discord DM (Bot REST) ─────────────────────────────────────────────────────
+// Requires DISCORD_BOT_TOKEN in env. Bot must share a server with recipient
+// and recipient must have "Allow DMs from server members" enabled.
+
+const DISCORD_API = "https://discord.com/api/v10";
+
+async function getDmRecipient(teamId) {
+  if (!teamId) return null;
+  const { data: team } = await supabase
+    .from("teams")
+    .select("user_id")
+    .eq("id", teamId)
+    .single();
+  if (!team?.user_id) return null;
+  const { data: user } = await supabase
+    .from("users")
+    .select("discord_id, discord_dm_enabled")
+    .eq("id", team.user_id)
+    .single();
+  if (!user?.discord_id) return null;
+  if (user.discord_dm_enabled === false) return null;
+  return user.discord_id;
+}
+
+async function openDmChannel(discordId, botToken) {
+  const res = await fetch(`${DISCORD_API}/users/@me/channels`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ recipient_id: discordId }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`openDm ${res.status}: ${text}`);
+  }
+  const data = await res.json();
+  return data.id;
+}
+
+async function postDm(channelId, botToken, payload) {
+  const res = await fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`postDm ${res.status}: ${text}`);
+  }
+}
+
+/**
+ * Send a raw payload as DM to a Discord user (best-effort, never throws).
+ */
+export async function sendDM(discordId, payload) {
+  const botToken = process.env.DISCORD_BOT_TOKEN;
+  if (!botToken || !discordId) return;
+  try {
+    const channelId = await openDmChannel(discordId, botToken);
+    await postDm(channelId, botToken, payload);
+  } catch (err) {
+    console.error("Discord sendDM error:", err.message);
+  }
+}
+
+/**
+ * High-level wrapper: send a typed embed as DM to a team owner.
+ * Honors users.discord_dm_enabled opt-out and never blocks the caller.
+ */
+export async function notifyDiscordDM({ teamId, type, title, description, fields = [] }) {
+  const discordId = await getDmRecipient(teamId);
+  if (!discordId) return;
+  const payload = {
+    embeds: [{
+      title: `${TYPE_LABELS[type] || type}: ${title}`,
+      description,
+      color: COLORS[type] || 0xe8c547,
+      fields: fields.map(f => ({ name: f.name, value: String(f.value), inline: f.inline ?? true })),
+      footer: { text: "Cycling Zone" },
+      timestamp: new Date().toISOString(),
+    }],
+  };
+  await sendDM(discordId, payload);
+}
+
+/**
+ * Verify DM delivery to a specific Discord ID. Throws with a Danish message
+ * suitable for displaying to the manager in ProfilePage.
+ */
+export async function sendTestDM(discordId) {
+  const botToken = process.env.DISCORD_BOT_TOKEN;
+  if (!botToken) throw new Error("DISCORD_BOT_TOKEN er ikke sat på serveren");
+  if (!discordId) throw new Error("Intet Discord-ID");
+  let channelId;
+  try {
+    channelId = await openDmChannel(discordId, botToken);
+  } catch (err) {
+    throw new Error(`Kunne ikke åbne DM-kanal — del server med botten og slå "Allow DMs from server members" til (${err.message})`, { cause: err });
+  }
+  await postDm(channelId, botToken, {
+    embeds: [{
+      title: "✅ Discord DM virker",
+      description: "Du modtager nu DMs fra Cycling Zone ved auktioner, transfers og bestyrelsesopdateringer.",
+      color: 0x2ecc71,
+      footer: { text: "Cycling Zone" },
+      timestamp: new Date().toISOString(),
+    }],
+  });
+}
+
 /**
  * Build a Discord embed message
  */
@@ -144,49 +259,52 @@ export async function notifyOutbid({ riderName, newBid, bidderName, teamId, webh
   const url = webhookUrl || await getDefaultWebhook();
   if (!url) return;
   const discordId = await getDiscordId(teamId);
-  const payload = buildEmbed(
-    "auction_outbid",
-    riderName,
-    `Du er blevet overbudt på **${riderName}**!`,
-    [
-      { name: "Nyt bud", value: `${newBid?.toLocaleString("da-DK")} CZ$` },
-      { name: "Budt af", value: bidderName },
-    ],
-    discordId
-  );
+  const fields = [
+    { name: "Nyt bud", value: `${newBid?.toLocaleString("da-DK")} CZ$` },
+    { name: "Budt af", value: bidderName },
+  ];
+  const payload = buildEmbed("auction_outbid", riderName, `Du er blevet overbudt på **${riderName}**!`, fields, discordId);
   await sendWebhook(url, payload);
+  await notifyDiscordDM({
+    teamId,
+    type: "auction_outbid",
+    title: riderName,
+    description: `Du er blevet overbudt på **${riderName}**!`,
+    fields,
+  });
 }
 
 export async function notifyAuctionWon({ riderName, finalPrice, teamId, webhookUrl }) {
   const url = webhookUrl || await getDefaultWebhook();
   if (!url) return;
   const discordId = await getDiscordId(teamId);
-  const payload = buildEmbed(
-    "auction_won",
-    riderName,
-    `Du har vundet auktionen på **${riderName}**! 🎉`,
-    [
-      { name: "Slutpris", value: `${finalPrice?.toLocaleString("da-DK")} CZ$` },
-    ],
-    discordId
-  );
+  const fields = [{ name: "Slutpris", value: `${finalPrice?.toLocaleString("da-DK")} CZ$` }];
+  const payload = buildEmbed("auction_won", riderName, `Du har vundet auktionen på **${riderName}**! 🎉`, fields, discordId);
   await sendWebhook(url, payload);
+  await notifyDiscordDM({
+    teamId,
+    type: "auction_won",
+    title: riderName,
+    description: `Du har vundet auktionen på **${riderName}**! 🎉`,
+    fields,
+  });
 }
 
 export async function notifyTransferOffer({ riderName, offerAmount, buyerName, teamId, webhookUrl }) {
   const url = webhookUrl || await getDefaultWebhook();
   if (!url) return;
   const discordId = await getDiscordId(teamId);
-  const payload = buildEmbed(
-    "transfer_offer",
-    riderName,
-    `**${buyerName}** har sendt et tilbud på **${riderName}**`,
-    [
-      { name: "Tilbud", value: `${offerAmount?.toLocaleString("da-DK")} CZ$` },
-    ],
-    discordId
-  );
+  const fields = [{ name: "Tilbud", value: `${offerAmount?.toLocaleString("da-DK")} CZ$` }];
+  const description = `**${buyerName}** har sendt et tilbud på **${riderName}**`;
+  const payload = buildEmbed("transfer_offer", riderName, description, fields, discordId);
   await sendWebhook(url, payload);
+  await notifyDiscordDM({
+    teamId,
+    type: "transfer_offer",
+    title: riderName,
+    description,
+    fields,
+  });
 }
 
 export async function notifyTransferResponse({ riderName, accepted, teamId, counterAmount, webhookUrl }) {
@@ -196,18 +314,14 @@ export async function notifyTransferResponse({ riderName, accepted, teamId, coun
   const type = accepted ? "transfer_accepted" : "transfer_rejected";
   const fields = [];
   if (counterAmount) fields.push({ name: "Modbud", value: `${counterAmount?.toLocaleString("da-DK")} CZ$` });
-  const payload = buildEmbed(
-    type,
-    riderName,
-    accepted
-      ? `Dit tilbud på **${riderName}** blev accepteret!`
-      : counterAmount
-        ? `Dit tilbud på **${riderName}** fik et modbud`
-        : `Dit tilbud på **${riderName}** blev afvist`,
-    fields,
-    discordId
-  );
+  const description = accepted
+    ? `Dit tilbud på **${riderName}** blev accepteret!`
+    : counterAmount
+      ? `Dit tilbud på **${riderName}** fik et modbud`
+      : `Dit tilbud på **${riderName}** blev afvist`;
+  const payload = buildEmbed(type, riderName, description, fields, discordId);
   await sendWebhook(url, payload);
+  await notifyDiscordDM({ teamId, type, title: riderName, description, fields });
 }
 
 export async function notifyTransferCompleted({ riderName, sellerName, buyerName, price }) {

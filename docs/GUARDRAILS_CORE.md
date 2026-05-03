@@ -39,6 +39,25 @@ Før kodning på systemer der kræver kravafklaring (flow-redesign, ny automatis
 ## Release hygiene (obligatorisk ved enhver brugerrettet ændring)
 - `frontend/src/pages/PatchNotesPage.jsx` — opdatér eller skriv eksplicit hvorfor ikke
 - `frontend/src/pages/HelpPage.jsx` — opdatér hvis regler/flow/FAQ/onboarding påvirkes
+- **Doc-drift sweep:** før close-out, grep for nye env vars, deploy-targets, route-navne og tabel-navne mod `ARCHITECTURE.md` og `PRODUCT_BACKLOG.md`. Drift fundet → ret i samme commit.
+
+## Cadence-regler (efter høj-velocity sessioner)
+
+### Soak-gate
+**Trigger:** Forrige session shippede ≥3 user-facing slices (ikke patches, ikke docs).  
+**Krav:** Næste session starter med 60-min e2e manual smoke gennem nye flows i alle relevante temaer/modes FØR ny kode-slice startes. Smoke-fund noteres i `NOW.md` "Senest leveret".  
+**Hvorfor:** Regression-risiko er højest når velocity er højest, lavest når koden er friskest i hovedet.  
+**Håndhævelse:** `NOW.md` får "Soak-gate aktiv: ja/nej". Hvis ja, ny slice må ikke startes før gate er kvitteret.
+
+### Runtime-anchored feature-brief
+**Trigger:** Alle ikke-trivielle slices (>1 fil eller >30 linjer ny kode).  
+**Krav:** 5-linjers brief i chatten FØR kode:  
+1. Mål (én sætning, manager-værdi)  
+2. Runtime-evidens (fil:linje for nuværende state)  
+3. Invariant der beskyttes  
+4. Minimal change  
+5. Verification path  
+**Hvorfor:** Gør den implicitte "mandatory contract check" eksplicit i <50 tokens og fanger doc/runtime-drift før kode skrives.
 
 ## Fuld version
 Se `docs/GUARDRAILS.md` ved: nye datakontrakter · IA/naming-valg · shared runtime-refactors · features med flere plausible produktmodeller.
