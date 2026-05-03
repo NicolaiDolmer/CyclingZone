@@ -11,7 +11,11 @@
       "mcp__claude_ai_Supabase__list_tables",
       "mcp__claude_ai_Supabase__list_migrations",
       "mcp__claude_ai_Supabase__generate_typescript_types",
-      "mcp__claude_ai_GitHub__search_repositories"
+      "mcp__claude_ai_GitHub__search_repositories",
+      "mcp__ccd_session_mgmt__search_session_transcripts",
+      "mcp__392d630e-5e88-4afd-9c53-0a45062c42af__list_branches",
+      "mcp__claude_ai_Vercel__list_deployments",
+      "mcp__claude_ai_Vercel__get_deployment"
     ]
   },
   "hooks": {
