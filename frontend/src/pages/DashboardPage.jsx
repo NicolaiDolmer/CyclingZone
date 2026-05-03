@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
 import OnboardingModal from "../components/OnboardingModal";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
+import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 
 const API = import.meta.env.VITE_API_URL;
 const SQUAD_LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
@@ -69,6 +70,9 @@ export default function DashboardPage() {
   const [onboardingProgress, setOnboardingProgress] = useState(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-onboarding-dismissed") === "1"
+  );
+  const [completionDismissed, setCompletionDismissed] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-onboarding-completion-dismissed") === "1"
   );
 
   async function loadAll() {
@@ -188,8 +192,10 @@ export default function DashboardPage() {
       }
     }
 
-    // Onboarding progress — alle managers ser kort indtil 4/4 trin nået eller dismissed
-    if (!onboardingDismissed && token) {
+    // Onboarding progress — fetch hvis enten progress- eller completion-kort kan blive vist.
+    // (Eksisterende managers der har dismisset progress, skal stadig kunne se completion-kortet
+    //  første gang efter v2.19-deploy.)
+    if ((!onboardingDismissed || !completionDismissed) && token) {
       try {
         const progRes = await fetch(`${API}/api/me/onboarding-progress`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -221,6 +227,11 @@ export default function DashboardPage() {
   function dismissOnboarding() {
     localStorage.setItem("cz-dashboard-onboarding-dismissed", "1");
     setOnboardingDismissed(true);
+  }
+
+  function dismissCompletion() {
+    localStorage.setItem("cz-dashboard-onboarding-completion-dismissed", "1");
+    setCompletionDismissed(true);
   }
 
   if (loading) return (
@@ -280,6 +291,11 @@ export default function DashboardPage() {
       {/* Onboarding progress — vis indtil alle trin nået eller dismissed */}
       {!onboardingDismissed && onboardingProgress && onboardingProgress.completed_count < onboardingProgress.total_count && (
         <OnboardingProgressCard progress={onboardingProgress} onDismiss={dismissOnboarding} />
+      )}
+
+      {/* Onboarding completion — vis engang når alle 4 trin er gennemført */}
+      {!completionDismissed && onboardingProgress && onboardingProgress.completed_count === onboardingProgress.total_count && (
+        <OnboardingCompletionCard onDismiss={dismissCompletion} />
       )}
 
       {/* Discord DM nudge */}

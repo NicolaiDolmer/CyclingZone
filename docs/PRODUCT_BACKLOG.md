@@ -146,7 +146,12 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 - `FinanceFirstVisitHint` på `/finance` ved første besøg — 2x2-grid forklarer sponsor (260K base × bestyrelses-modifier, link til `/board`), salary (10% af uci_points × 4000), gældsloft pr. division (D1 1.200K · D2 900K · D3 600K), og kort vs. langt lån. CTA "Vis mig rundt" starter tour og dismisser hint.
 - Tour-trin på `/finance` (3 steps: balance-grid → gældsloft-indikator → transaktionshistorik). Mountet via `OnboardingTour pageKey="finance"`. Trigger via localStorage `cz-finance-hint-shown` — ingen backend-step (finance er passiv explainer, ikke aktiv milestone som "afgiv første bud").
 
-**Status:** Onboarding v2 multi-slice komplet — alle fire sub-slices (1a + 1b + 2 + 3) leveret 2026-05-03.
+**Slice 4 ✅ (v2.19, 2026-05-04):** Empty-state-tour + completion-celebration (closure-slice)
+- `RidersEmptyState`/`AuctionsFirstBidHint`/`BoardEmptyState` får sekundær "💡 Vis mig rundt"-knap (matcher `FinanceFirstVisitHint`'s pattern) — manager der lander direkte på siden via menuen får tour-tilbud uanset om de gik via Dashboard "Vis mig hvordan".
+- Ny `OnboardingCompletionCard.jsx` på Dashboard vises engang når `completed_count === total_count` — 🎉 "Du er klar" + 3 quick-links (Deadline Day, Bestyrelse, Hjælp & regler). Dismiss persisteres i localStorage `cz-dashboard-onboarding-completion-dismissed`.
+- `DashboardPage.loadAll` fetch-condition justeret: progress hentes hvis hvilken som helst af progress/completion-kort kan vises — så eksisterende managers der allerede har dismisset progress-kortet stadig ser completion-kortet første gang efter v2.19-deploy.
+
+**Status:** Onboarding v2 multi-slice komplet — alle fem sub-slices (1a + 1b + 2 + 3 + 4) leveret. Closure-slice lukker post-onboarding-cliff'et.
 
 ---
 

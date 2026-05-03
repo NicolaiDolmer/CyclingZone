@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.19",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Onboarding v2 — tour-knap på empty-states + completion-celebration",
+        items: [
+          "Marked, Auktioner og Bestyrelse: empty-state-kortene har nu en 'Vis mig rundt'-knap — managers der lander direkte på siden via menuen får nu tour-tilbuddet uanset om de gik via Dashboard eller ej (før virkede tour kun via 'Vis mig hvordan' på kom-i-gang-kortet)",
+          "Dashboard: nyt celebration-kort vises engang når alle 4 grundtrin er gennemført — 'Du er klar' + tre quick-links til næste fase (Deadline Day, Bestyrelse, Hjælp & regler). Lukker post-onboarding-cliff'et hvor kortet før bare forsvandt",
+          "Eksisterende managers der har dismisset progress-kortet ser stadig completion-kortet første gang efter denne deploy — derefter er begge kort skjult permanent indtil localStorage ryddes",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.18",
     date: "2026-05-03",
     label: "Beta",

@@ -4,8 +4,10 @@
 //
 // Tour-targets (data-tour) matcher BOARD_TOUR_STEPS i BoardPage, så "Vis mig hvordan"-
 // knappen fra OnboardingProgressCard kan pege på sektionerne herunder.
+// Slice 4 (v2.19): sekundær "Vis mig rundt"-knap starter tour direkte for managers
+// der lander her uden at gå via Dashboard.
 
-export default function BoardEmptyState({ onOpenWizard }) {
+export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
   return (
     <div className="mb-5 px-5 py-5 bg-cz-card border border-cz-accent/30 rounded-xl">
       <div className="flex items-start gap-3 mb-4">
@@ -68,12 +70,22 @@ export default function BoardEmptyState({ onOpenWizard }) {
         </ul>
       </div>
 
-      <button
-        onClick={onOpenWizard}
-        className="w-full sm:w-auto bg-cz-accent text-cz-on-accent px-4 py-2.5 rounded-lg text-sm font-bold hover:brightness-110 transition-all"
-      >
-        Forhandl din første plan med bestyrelsen →
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={onOpenWizard}
+          className="w-full sm:w-auto bg-cz-accent text-cz-on-accent px-4 py-2.5 rounded-lg text-sm font-bold hover:brightness-110 transition-all"
+        >
+          Forhandl din første plan med bestyrelsen →
+        </button>
+        {onStartTour && (
+          <button
+            onClick={onStartTour}
+            className="text-cz-accent-t text-xs hover:underline font-medium px-2 py-1"
+          >
+            💡 Vis mig rundt
+          </button>
+        )}
+      </div>
     </div>
   );
 }

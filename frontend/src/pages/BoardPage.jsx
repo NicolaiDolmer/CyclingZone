@@ -6,6 +6,7 @@ import { Flag } from "../components/Flag";
 import { Link } from "react-router-dom";
 import BoardEmptyState from "../components/BoardEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
+import { startTour } from "../lib/onboardingTour";
 
 const API = import.meta.env.VITE_API_URL;
 const PLAN_LABELS = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" };
@@ -1280,7 +1281,10 @@ export default function BoardPage() {
       </div>
 
       {!hasAnyPlan && setupNextPlanType && (
-        <BoardEmptyState onOpenWizard={() => openWizard(setupNextPlanType, true)} />
+        <BoardEmptyState
+          onOpenWizard={() => openWizard(setupNextPlanType, true)}
+          onStartTour={() => startTour("board")}
+        />
       )}
 
       <BoardIdentityCard identityProfile={identityProfile} />

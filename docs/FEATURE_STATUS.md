@@ -199,6 +199,13 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **react-hooks/set-state-in-effect** disabled globalt med begrundelse i config: regelen er en React-Compiler-rule i react-hooks v7 der antager React 19-mønstre. Vi kører React 18.3.1 hvor data-load ved mount + setState i async fn fra useEffect er det idiomatiske pattern (data-fetching, polling, countdown-timers, derived state). Genoverveje hvis vi opgraderer til React 19 + compiler
 - Verificeret: `npm run lint` returnerer 0 errors (42 acceptable warnings: exhaustive-deps + no-unused-vars). Build grøn (`vite built in 4.92s`)
 
+### Onboarding v2 — Slice 4 Empty-state-tour + completion-celebration (v2.19, 2026-05-04)
+- **Empty-state tour-trigger:** `RidersEmptyState`, `AuctionsFirstBidHint` og `BoardEmptyState` får ny `onStartTour`-prop med sekundær "💡 Vis mig rundt"-knap. Manager der lander direkte på siden via menuen får nu tour-tilbud uanset om de gik via Dashboard "Vis mig hvordan". Pattern matcher `FinanceFirstVisitHint`'s allerede-eksisterende `onStartTour`. På `AuctionsFirstBidHint` dismisser tour-knappen samtidig hintet (`handleStartFirstBidTour` i `AuctionsPage`); på Riders/Board dismisses ikke (de er data-driven, ikke localStorage).
+- **DashboardPage completion-celebration:** Ny komponent `frontend/src/components/OnboardingCompletionCard.jsx` vises engang når `completed_count === total_count`. Indeholder 🎉 "Du er klar"-overskrift, kort sub-tekst om næste fase (multi-sæson hold-bygning, Deadline Day, oprykning) og 3 quick-link-cards: Deadline Day, Bestyrelse, Hjælp & regler. Dismiss persisteres i localStorage `cz-dashboard-onboarding-completion-dismissed` (separat fra `cz-dashboard-onboarding-dismissed` så de er uafhængige).
+- **Fetch-condition justeret:** `DashboardPage.loadAll` henter nu progress hvis `!onboardingDismissed || !completionDismissed` (før kun `!onboardingDismissed`). Sikrer at eksisterende managers der har dismisset progress-kortet stadig ser completion-kortet første gang efter v2.19-deploy.
+- **Lukker post-onboarding-cliff:** Før slice 4 forsvandt `OnboardingProgressCard` bare ved completion uden eksplicit "du er klar"-marker. Nu får manager celebration + pegning på næste fase, så de ikke lander på "ingenting" efter at have brugt energi på 4-trins-flowet.
+- Verificeret: lint 0 errors (41 pre-eks. warnings, ingen nye), build grøn.
+
 ### Onboarding v2 — Slice 1a Dashboard progress-card (v2.12, 2026-05-03)
 - **Backend:** `GET /api/me/onboarding-progress` (`backend/routes/api.js` lige efter `/me/discord-dm-enabled`) returnerer 4 step-status fra parallelle DB-counts:
   - `team_named` ← `teams.manager_name IS NOT NULL`

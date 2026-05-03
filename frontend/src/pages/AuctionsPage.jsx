@@ -10,6 +10,7 @@ import { formatCz, getMinimumAuctionBid, getRiderMarketValue } from "../lib/mark
 import PotentialeStars from "../components/PotentialeStars";
 import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
 import OnboardingTour from "../components/OnboardingTour";
+import { startTour } from "../lib/onboardingTour";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -490,6 +491,11 @@ export default function AuctionsPage() {
     setShowFirstBidHint(false);
   }
 
+  function handleStartFirstBidTour() {
+    startTour("auctions");
+    dismissFirstBidHint();
+  }
+
   useEffect(() => {
     loadAll();
     const channel = supabase.channel("auctions-live")
@@ -590,7 +596,12 @@ export default function AuctionsPage() {
         </Link>
       </div>
 
-      {showFirstBidHint && <AuctionsFirstBidHint onDismiss={dismissFirstBidHint} />}
+      {showFirstBidHint && (
+        <AuctionsFirstBidHint
+          onDismiss={dismissFirstBidHint}
+          onStartTour={handleStartFirstBidTour}
+        />
+      )}
 
       {/* Filter tabs */}
       <div className="flex gap-2 mb-4 flex-wrap">
