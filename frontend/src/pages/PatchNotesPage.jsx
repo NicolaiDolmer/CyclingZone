@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.10",
+    date: "2026-05-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Tema — beskyttelse mod lyst-tema bugs",
+        items: [
+          "Lint-guard udvidet så hardcoded dark-only tekst- og kant-farver (text-white/N og border-white/N opacity-classes) ikke længere kan slippe gennem til prod — hullet der gjorde Panic Board ulæselig i lyst tema er nu lukket på rule-level",
+          "Sidste tilbageværende dark-only opacity-class (TEST-label på Deadline Day banner ved override) ryddet samtidig",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.09",
     date: "2026-05-03",
     label: "Beta",

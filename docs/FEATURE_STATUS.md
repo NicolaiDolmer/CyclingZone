@@ -180,12 +180,13 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Kendte intentionelle farver bevaret: PotentialeStars (guld/sølv stjerner), statBg.js (statistik-grading), ConfettiModal farvearray, chart-inline colors (#e8c547/#60a5fa/#a78bfa i Recharts), Discord brand (#5865F2)
 - Build: `✓ vite built in 9.30s` — ingen fejl
 
-### Dark mode S3 lint-guard (v2.08, 2026-05-03)
+### Dark mode S3 lint-guard (v2.08 → udvidet i v2.10, 2026-05-03)
 - ESLint `no-restricted-syntax`-regel i `frontend/eslint.config.js` fejler på `(slate|gray)-(50|100|...|950)` i string-literals OG template-elementer (catches både `className="text-slate-400"` og `` `${x ? 'bg-gray-100' : 'bg-cz-card'}` `` patterns)
+- **v2.10:** udvidet med `(text|border|ring|divide|outline)-(white|black)/\d+` — fanger Panic Board-hullet (text-white/N + border-white/N) der bypassede v2.08-guarden. `bg-(white|black)/N` bevidst tilladt fordi modal-scrims (ConfettiModal, OnboardingModal, SetupWizardModal, Layout, TeamPage) idiomatisk bruger `bg-black/60-70`
 - Scope: `**/*.{js,jsx}` med dedikeret config-block — pre-eksisterende react-rules forbliver `.js`-only (71 latente react-fejl i .jsx skal saneres separat før scope-løft)
-- Migration-misser fra S2 ryddet: `text-slate-300/400` i `frontend/src/components/PotentialeStars.jsx:15+35`, `text-slate-400` i `frontend/src/lib/statBg.js:4` → alle `text-cz-3`
-- `bg-white`/`text-white` IKKE blokeret — bruges legitimt på `cz-accent`/`cz-sidebar`/Discord-brand-knapper. **Hul:** `text-white/N` + `border-white/N` (opacity-classes) heller ikke blokeret; gjorde DeadlineDayBoard ulæselig i lyst tema indtil v2.09 fix. Udvidelse flag'et som separat task.
-- Verificeret: midlertidig `text-slate-500` i .jsx + `text-slate-400` i .js fejler begge med besked om cz-tokens; baseline `npm run lint` grøn (0 errors)
+- Migration-misser fra S2 ryddet: `text-slate-300/400` i `frontend/src/components/PotentialeStars.jsx:15+35`, `text-slate-400` i `frontend/src/lib/statBg.js:4` → alle `text-cz-3`. v2.10: `text-white/20` i `DeadlineDayBanner.jsx:92` (TEST-label) → `text-cz-3`
+- `bg-white`/`text-white` (uden opacity) IKKE blokeret — bruges legitimt på `cz-accent`/`cz-sidebar`/Discord-brand-knapper
+- Verificeret v2.10: sanity-test med `text-white/40` literal + ` `text-white/30 mt-2` ` template literal fejler begge med besked om cz-tokens; `bg-black/60` passerer; `npm run lint` grøn på baseline (0 errors)
 
 ### Deadline Day S4 (2026-05-02)
 - Planlagte advarsler (T-24h / T-2h / T-30min): cron kører hver 5. minut, sender `deadline_day_warning`-notifikationer til alle aktive managers via `notifyTeamOwner`; dedupe via `related_id = window_id` + step-titel (24t-vindue i `notificationService`)
