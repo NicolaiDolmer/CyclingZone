@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "2.08",
+    date: "2026-05-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Tema — finpudsning",
+        items: [
+          "Potentiale-stjerner og rytter-statistik viser nu korrekt dæmpet tekst i begge temaer (PotentialeStars og statBg-fallback brugte tidligere en hardcoded grå der ikke fulgte temaet)",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.07",
     date: "2026-05-03",
     label: "Beta",

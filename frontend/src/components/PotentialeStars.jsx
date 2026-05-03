@@ -12,7 +12,7 @@ function StarIcon({ type, color, emptyColor }) {
 }
 
 export default function PotentialeStars({ value, birthdate, showValue = false, large = false }) {
-  if (value == null) return <span className="text-slate-300 text-xs">—</span>;
+  if (value == null) return <span className="text-cz-3 text-xs">—</span>;
 
   const age = birthdate ? CURRENT_YEAR - new Date(birthdate).getFullYear() : null;
   const isOld = age !== null && age >= 30;
@@ -32,7 +32,7 @@ export default function PotentialeStars({ value, birthdate, showValue = false, l
         <StarIcon key={i} type={type} color={color} emptyColor={emptyColor} />
       ))}
       {showValue && (
-        <span className="ml-1 text-[10px] font-mono text-slate-400">{value}</span>
+        <span className="ml-1 text-[10px] font-mono text-cz-3">{value}</span>
       )}
     </span>
   );

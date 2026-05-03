@@ -180,6 +180,13 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Kendte intentionelle farver bevaret: PotentialeStars (guld/sølv stjerner), statBg.js (statistik-grading), ConfettiModal farvearray, chart-inline colors (#e8c547/#60a5fa/#a78bfa i Recharts), Discord brand (#5865F2)
 - Build: `✓ vite built in 9.30s` — ingen fejl
 
+### Dark mode S3 lint-guard (v2.08, 2026-05-03)
+- ESLint `no-restricted-syntax`-regel i `frontend/eslint.config.js` fejler på `(slate|gray)-(50|100|...|950)` i string-literals OG template-elementer (catches både `className="text-slate-400"` og `` `${x ? 'bg-gray-100' : 'bg-cz-card'}` `` patterns)
+- Scope: `**/*.{js,jsx}` med dedikeret config-block — pre-eksisterende react-rules forbliver `.js`-only (71 latente react-fejl i .jsx skal saneres separat før scope-løft)
+- Migration-misser fra S2 ryddet: `text-slate-300/400` i `frontend/src/components/PotentialeStars.jsx:15+35`, `text-slate-400` i `frontend/src/lib/statBg.js:4` → alle `text-cz-3`
+- `bg-white`/`text-white` IKKE blokeret — bruges legitimt på `cz-accent`/`cz-sidebar`/Discord-brand-knapper og fixed-dark Panic Board
+- Verificeret: midlertidig `text-slate-500` i .jsx + `text-slate-400` i .js fejler begge med besked om cz-tokens; baseline `npm run lint` grøn (0 errors)
+
 ### Deadline Day S4 (2026-05-02)
 - Planlagte advarsler (T-24h / T-2h / T-30min): cron kører hver 5. minut, sender `deadline_day_warning`-notifikationer til alle aktive managers via `notifyTeamOwner`; dedupe via `related_id = window_id` + step-titel (24t-vindue i `notificationService`)
 - Final Whistle-rapport: `transfer_windows.final_whistle_sent_at` atomic claim (UPDATE WHERE IS NULL → SELECT) → `computeFinalWhistleReport` (største handel, mest aktive manager, panikhandler) → Discord embed til default webhook

@@ -1,29 +1,24 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Ingen** — Dark Mode S2 lukket. Næste valg: Onboarding v2 eller næste feature-slice.
+**Ingen** — Dark Mode S3 lint-guard lukket. Næste valg: Onboarding v2 eller anden post-launch slice.
 
 ## Soak-gate
-**Aktiv: ja** — 7 user-facing slices uden e2e-smoke (Deadline Day S1–S4, Dark Mode S1+S2, S8 Discord DM). Næste session skal starte med 30-60 min smoke i light + dark FØR ny kode-slice startes.
+**Aktiv: ja** — 8 user-facing slices uden e2e-smoke (Deadline Day S1–S4, Dark Mode S1+S2+S3-fixes, S8 Discord DM). Sprunget over på brugerens anmodning denne session. Næste session skal starte med 30-60 min smoke i light + dark FØR ny kode-slice startes.
 
 ## Open beta status
 **Alle 7 launch-gates ✅** — soft-launch-klar.
 
 ## Senest leveret
+- 2026-05-03: **Dark mode S3 lint-guard** (v2.08) — ESLint `no-restricted-syntax` mod `(slate|gray)-N` i `frontend/eslint.config.js` (Literal + TemplateElement); migration-misser ryddet i `PotentialeStars.jsx` + `statBg.js`. Scope `.{js,jsx}` via dedikeret config-block, pre-eksisterende react-rules forbliver `.js`-only.
 - 2026-05-03: **Discord-privatliv-fix** (v2.07) — `notifyOutbid`/`notifyAuctionWon`/`notifyTransferOffer`/`notifyTransferResponse` er nu DM-only; ingen længere @mention med privat info i fælleskanal. `getDiscordId` og `buildEmbed.discordId` fjernet som dead code.
-- 2026-05-03: **Dark mode S2** (v2.06) — 27 pages + 7 components tokeniseret; 0 legacy slate/gray/white i migrerede filer; build grøn
-- 2026-05-03: **S8 Discord DM live i prod** (`e0362d9`) — sendDM verified end-to-end mod admin-konto, opt-out + status-badge + Dashboard nudge + input-validering på discord_id (afviser brugernavne, kun 17-19 cifre)
-- 2026-05-03: 3 nye GUARDRAILS_CORE-regler (soak-gate, runtime-anchored brief, doc-drift sweep)
-- v2.04 (2026-05-02): Dark mode S1 — token-foundation + ThemeProvider + chrome + top-5 sider
-- v2.03 (2026-05-02): Deadline Day S4 — T-24h/T-2h/T-30min cron + Final Whistle Discord-rapport
+- 2026-05-03: **Dark mode S2** (v2.06) — 27 pages + 7 components tokeniseret; ældre historik i `docs/archive/NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter
-1. **Soak-gate kvittering** — kør 30-60 min e2e smoke i light + dark på top-flows (auktion, transfer, dashboard, profil)
-2. Vælg næste slice: **Dark Mode S3 lint-guard** (cz-violet token + ESLint mod legacy farver, så S2 ikke regredierer) eller **Onboarding v2** (post-launch retention)
-3. Tjek at de 3 managers med username-format discord_id ser den røde warning-badge og opdaterer
-
-## Værktøjer
-- `backend/scripts/verifyRidersAgainstSheets.js` — read-only Gate #5 verifikation (target: 0/0/0)
+1. **Soak-gate kvittering** — kør 30-60 min e2e smoke i light + dark på top-flows
+2. **JSX react-rules sanitering** — 71 pre-eks. react-fejl i .jsx (no-empty, no-unescaped-entities, react-hooks/immutability) skal saneres så `js,jsx`-scope kan løftes på alle rules
+3. Vælg næste slice: **Onboarding v2** (post-launch retention)
+4. Tjek at de 3 managers med username-format discord_id ser røde warning-badge
 
 ## Kritiske invarianter
 - Discord DM-fejl må aldrig blokere transaction (best-effort try/catch i `notifyDiscordDM`)
