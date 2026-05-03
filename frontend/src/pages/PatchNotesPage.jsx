@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.09",
+    date: "2026-05-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Panic Board — synlighed og læsbarhed",
+        items: [
+          "Panic Board ligger nu i venstremenuen under Marked → så du kan finde den uden at gætte URL'en",
+          "Siden er gjort læsbar i lyst tema — al tekst, kanter og status-farver bruger nu temasystemet i stedet for hardcodede dark-mode farver",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.08",
     date: "2026-05-03",
     label: "Beta",

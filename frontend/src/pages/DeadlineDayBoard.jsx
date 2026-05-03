@@ -5,17 +5,17 @@ import { supabase } from "../lib/supabase";
 const API = import.meta.env.VITE_API_URL;
 
 const STATUS = {
-  critical: { label: "Under min",  cls: "text-red-400",    dot: "bg-red-400" },
-  warning:  { label: "Tæt på min", cls: "text-cz-warning", dot: "bg-yellow-400" },
-  ok:       { label: "OK",         cls: "text-green-400",  dot: "bg-green-400" },
+  critical: { label: "Under min",  cls: "text-cz-danger",  dot: "bg-cz-danger"  },
+  warning:  { label: "Tæt på min", cls: "text-cz-warning", dot: "bg-cz-warning" },
+  ok:       { label: "OK",         cls: "text-cz-success", dot: "bg-cz-success" },
 };
 
 function SquadTable({ rows, dimmed }) {
   return (
-    <div className={`rounded-xl border border-white/8 overflow-hidden${dimmed ? " opacity-50" : ""}`}>
+    <div className={`rounded-xl border border-cz-border overflow-hidden${dimmed ? " opacity-60" : ""}`}>
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-white/8 text-[10px] text-white/30 uppercase tracking-wider">
+          <tr className="border-b border-cz-border text-[10px] text-cz-3 uppercase tracking-wider">
             <th className="px-4 py-2 text-left font-medium">Hold</th>
             <th className="px-4 py-2 text-center font-medium">Div</th>
             <th className="px-4 py-2 text-center font-medium">Ryttere</th>
@@ -27,15 +27,15 @@ function SquadTable({ rows, dimmed }) {
           {rows.map((t, i) => {
             const { label, cls, dot } = STATUS[t.status] || STATUS.ok;
             return (
-              <tr key={t.id} className={`border-b border-white/5 last:border-0${i % 2 === 0 ? " bg-cz-card/[0.02]" : ""}`}>
-                <td className="px-4 py-3 font-medium text-white">
+              <tr key={t.id} className={`border-b border-cz-border last:border-0${i % 2 === 0 ? " bg-cz-subtle" : ""}`}>
+                <td className="px-4 py-3 font-medium text-cz-1">
                   <Link to={`/teams/${t.id}`} className="hover:text-cz-accent transition-colors">
                     {t.name}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-center text-white/40">D{t.division}</td>
-                <td className="px-4 py-3 text-center font-mono font-bold text-white">{t.riders}</td>
-                <td className="px-4 py-3 text-center text-white/40">{t.min}</td>
+                <td className="px-4 py-3 text-center text-cz-3">D{t.division}</td>
+                <td className="px-4 py-3 text-center font-mono font-bold text-cz-1">{t.riders}</td>
+                <td className="px-4 py-3 text-center text-cz-3">{t.min}</td>
                 <td className="px-4 py-3 text-center">
                   <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${cls}`}>
                     <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
@@ -83,7 +83,7 @@ export default function DeadlineDayBoard() {
   if (loading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
-        <div className="w-7 h-7 border-2 border-[#e8c547] border-t-transparent rounded-full animate-spin" />
+        <div className="w-7 h-7 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
       </div>
     );
   }
@@ -92,8 +92,8 @@ export default function DeadlineDayBoard() {
     return (
       <div className="max-w-xl mx-auto text-center py-20 space-y-3">
         <p className="text-4xl">🕐</p>
-        <p className="font-semibold text-white/60">Panic Board er kun aktivt under Deadline Day</p>
-        <p className="text-sm text-white/30">Vender tilbage når transfervinduet nærmer sig lukketid</p>
+        <p className="font-semibold text-cz-2">Panic Board er kun aktivt under Deadline Day</p>
+        <p className="text-sm text-cz-3">Vender tilbage når transfervinduet nærmer sig lukketid</p>
       </div>
     );
   }
@@ -105,15 +105,15 @@ export default function DeadlineDayBoard() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-black text-white tracking-tight">Panic Board</h1>
-        <p className="text-sm text-white/40 mt-0.5">
+        <h1 className="text-xl font-black text-cz-1 tracking-tight">Panic Board</h1>
+        <p className="text-sm text-cz-3 mt-0.5">
           Alle holds truppestørrelse vs. divisions-minimum — opdateres hvert 30s
         </p>
       </div>
 
       {critical.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-[10px] font-bold tracking-[0.15em] uppercase text-red-400">
+          <h2 className="text-[10px] font-bold tracking-[0.15em] uppercase text-cz-danger">
             Under minimum — {critical.length} hold
           </h2>
           <SquadTable rows={critical} />
@@ -131,7 +131,7 @@ export default function DeadlineDayBoard() {
 
       {ok.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-[10px] font-bold tracking-[0.15em] uppercase text-white/25">
+          <h2 className="text-[10px] font-bold tracking-[0.15em] uppercase text-cz-3">
             OK — {ok.length} hold
           </h2>
           <SquadTable rows={ok} dimmed />

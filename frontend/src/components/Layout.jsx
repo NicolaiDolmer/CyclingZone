@@ -29,11 +29,12 @@ function buildNavGroups(team) {
     {
       key: "marked", label: "Marked",
       items: [
-        { to: "/riders",    label: "Ryttere" },
-        { to: "/auctions",  label: "Auktioner" },
-        { to: "/transfers", label: "Transfers" },
-        { to: "/activity",  label: "Min Aktivitet" },
-        { to: "/watchlist", label: "Ønskeliste" },
+        { to: "/riders",       label: "Ryttere" },
+        { to: "/auctions",     label: "Auktioner" },
+        { to: "/transfers",    label: "Transfers" },
+        { to: "/deadline-day", label: "Panic Board" },
+        { to: "/activity",     label: "Min Aktivitet" },
+        { to: "/watchlist",    label: "Ønskeliste" },
       ],
     },
     {
