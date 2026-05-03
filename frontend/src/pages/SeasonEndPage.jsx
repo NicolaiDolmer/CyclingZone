@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
 
 function MiniLineChart({ data, color }) {
-  if (!data || data.length < 2) return <span className="text-slate-300 text-xs">—</span>;
+  if (!data || data.length < 2) return <span className="text-cz-3 text-xs">—</span>;
   const max = Math.max(...data, 1);
   const min = Math.min(...data);
   const range = max - min || 1;
@@ -109,7 +109,7 @@ export default function SeasonEndPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
     </div>
   );
 
@@ -117,8 +117,8 @@ export default function SeasonEndPage() {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Sæsonresultater</h1>
-          <p className="text-slate-400 text-sm">Slutstillinger, op/nedrykning og pointudvikling</p>
+          <h1 className="text-xl font-bold text-cz-1">Sæsonresultater</h1>
+          <p className="text-cz-3 text-sm">Slutstillinger, op/nedrykning og pointudvikling</p>
         </div>
         <select
           value={selectedSeason?.id || ""}
@@ -126,7 +126,7 @@ export default function SeasonEndPage() {
             const s = seasons.find(s => s.id === e.target.value);
             if (s) loadSeason(s);
           }}
-          className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none">
+          className="bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
           {seasons.map(s => (
             <option key={s.id} value={s.id}>
               Sæson {s.number} — {s.status === "active" ? "Igangværende" : "Afsluttet"}
@@ -136,9 +136,9 @@ export default function SeasonEndPage() {
       </div>
 
       {standings.length === 0 ? (
-        <div className="text-center py-20 text-slate-300">
+        <div className="text-center py-20 text-cz-3">
           <p className="text-5xl mb-4">🏁</p>
-          <p className="text-lg font-medium text-slate-400">Ingen resultater endnu</p>
+          <p className="text-lg font-medium text-cz-3">Ingen resultater endnu</p>
           <p className="text-sm mt-2">Afslut løb og sæsoner for at se resultater her</p>
         </div>
       ) : (
@@ -149,25 +149,25 @@ export default function SeasonEndPage() {
             const color = DIV_COLORS[div];
             const isCompleted = selectedSeason?.status === "completed";
             return (
-              <div key={div} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200"
+              <div key={div} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-cz-border"
                   style={{ borderLeft: `3px solid ${color}` }}>
                   <h2 className="font-bold text-sm" style={{ color }}>Division {div}</h2>
                   {isCompleted && div < 3 && (
-                    <span className="text-xs text-slate-400">Top 2 rykker op ↑</span>
+                    <span className="text-xs text-cz-3">Top 2 rykker op ↑</span>
                   )}
                   {isCompleted && div > 1 && (
-                    <span className="text-xs text-slate-400">Bund 2 rykker ned ↓</span>
+                    <span className="text-xs text-cz-3">Bund 2 rykker ned ↓</span>
                   )}
                 </div>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-200">
-                      <th className="px-4 py-2.5 text-left text-slate-400 font-medium text-xs w-8">#</th>
-                      <th className="px-4 py-2.5 text-left text-slate-400 font-medium text-xs">Hold</th>
-                      <th className="px-4 py-2.5 text-right text-slate-400 font-medium text-xs hidden sm:table-cell">Etapesejre</th>
-                      <th className="px-4 py-2.5 text-right text-slate-400 font-medium text-xs">Point</th>
-                      <th className="px-4 py-2.5 text-right text-slate-400 font-medium text-xs hidden md:table-cell">Udvikling</th>
+                    <tr className="border-b border-cz-border">
+                      <th className="px-4 py-2.5 text-left text-cz-3 font-medium text-xs w-8">#</th>
+                      <th className="px-4 py-2.5 text-left text-cz-3 font-medium text-xs">Hold</th>
+                      <th className="px-4 py-2.5 text-right text-cz-3 font-medium text-xs hidden sm:table-cell">Etapesejre</th>
+                      <th className="px-4 py-2.5 text-right text-cz-3 font-medium text-xs">Point</th>
+                      <th className="px-4 py-2.5 text-right text-cz-3 font-medium text-xs hidden md:table-cell">Udvikling</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -193,28 +193,28 @@ export default function SeasonEndPage() {
                           )}
                           <tr
                             style={rowStyle}
-                            className={`border-b border-slate-100 last:border-0 hover:bg-slate-50 cursor-pointer transition-colors
+                            className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle cursor-pointer transition-colors
                               ${isPromotion && !isMe ? "bg-emerald-50" : ""}
-                              ${isRelegation && !isMe ? "bg-red-50" : ""}
-                              ${isMe ? "bg-amber-50/60" : ""}`}
+                              ${isRelegation && !isMe ? "bg-cz-danger-bg" : ""}
+                              ${isMe ? "bg-cz-accent/10/60" : ""}`}
                             onClick={() => navigate(`/teams/${s.team_id}`)}>
                             <td className="px-4 py-3">
                               <span className={`font-mono font-bold text-sm
-                                ${i === 0 ? "text-amber-700" : i === 1 ? "text-slate-500" : "text-slate-400"}`}>
+                                ${i === 0 ? "text-cz-accent-t" : i === 1 ? "text-cz-2" : "text-cz-3"}`}>
                                 #{i + 1}
                               </span>
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
-                                <span className={`font-medium ${isMe ? "text-amber-700" : "text-slate-900"}`}>
+                                <span className={`font-medium ${isMe ? "text-cz-accent-t" : "text-cz-1"}`}>
                                   {s.team?.name}
                                 </span>
-                                {isMe && <span className="text-[9px] uppercase bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full">Dig</span>}
+                                {isMe && <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-1.5 py-0.5 rounded-full">Dig</span>}
                                 {isPromotion && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">↑ Op</span>}
-                                {isRelegation && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-medium">↓ Ned</span>}
+                                {isRelegation && <span className="text-[9px] bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded font-medium">↓ Ned</span>}
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-right text-slate-500 hidden sm:table-cell">
+                            <td className="px-4 py-3 text-right text-cz-2 hidden sm:table-cell">
                               {s.stage_wins || 0}
                             </td>
                             <td className="px-4 py-3 text-right">
@@ -245,8 +245,8 @@ export default function SeasonEndPage() {
 
           {/* Full point progression for my team */}
           {myTeamId && pointsByTeam[myTeamId]?.length > 1 && races.length > 1 && (
-            <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <h2 className="text-slate-900 font-semibold text-sm mb-4">Dit holds pointudvikling</h2>
+            <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+              <h2 className="text-cz-1 font-semibold text-sm mb-4">Dit holds pointudvikling</h2>
               <PointChart
                 data={pointsByTeam[myTeamId]}
                 labels={races.map(r => r.name)}
@@ -294,7 +294,7 @@ function PointChart({ data, labels, color }) {
       {/* X-axis labels */}
       <div className="flex justify-between mt-1 px-1">
         {labels.map((l, i) => (
-          <span key={i} className="text-[8px] text-slate-300 truncate max-w-16 text-center"
+          <span key={i} className="text-[8px] text-cz-3 truncate max-w-16 text-center"
             style={{ width: `${100 / labels.length}%` }}>
             {l.length > 8 ? l.slice(0, 8) + "…" : l}
           </span>

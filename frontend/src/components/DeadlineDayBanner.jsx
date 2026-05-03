@@ -1,19 +1,19 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
 
 const PHASE = {
   anticipation: {
-    bar: "bg-[#e8c547]/10 border-[#e8c547]/25",
-    dot: "bg-[#e8c547]",
-    label: "text-[#e8c547]/80",
-    countdown: "text-[#e8c547]",
+    bar: "bg-cz-accent/10 border-[#e8c547]/25",
+    dot: "bg-cz-accent",
+    label: "text-cz-accent/80",
+    countdown: "text-cz-accent",
     pulse: false,
   },
   pressure: {
     bar: "bg-red-900/35 border-red-500/35",
-    dot: "bg-red-500",
+    dot: "bg-cz-danger-bg0",
     label: "text-red-400",
     countdown: "text-red-300",
     pulse: false,

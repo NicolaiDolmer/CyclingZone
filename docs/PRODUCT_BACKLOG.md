@@ -57,7 +57,7 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 - Sidebaren forbliver mørk i begge temaer (option A)
 - Tokeniseret: `Layout`, `App` splash, `LoginPage`, `ResetPasswordPage`, `ProfilePage`, `Dashboard`, `Riders`, `Auctions`, `Team`, `Finance`
 
-**S2 (planlagt):** Resterende sider — `Transfers`, `Board`, `Standings`, `Notifications`, `Watchlist`, `Hall of Fame`, `Race*`, `Admin`, `RiderStats`, `Manager*`, `Help`, `PatchNotes` m.fl. Mekanisk migration, én side/batch ad gangen.
+**S2 ✅ (2026-05-03):** Resterende sider — `Transfers`, `Board`, `Standings`, `Notifications`, `Watchlist`, `Hall of Fame`, `Race*`, `Admin`, `RiderStats`, `Manager*`, `Help`, `PatchNotes` m.fl. + 7 komponenter. Alle tokeniseret, build grøn (v2.06).
 
 **S3 (planlagt):** Lint-guard mod nye hardkodede farver — ESLint-regel eller pre-commit grep der advarer om nye `bg-[#…]`/`bg-white`/`text-gray-*`/`text-slate-*` i `frontend/src/`.
 

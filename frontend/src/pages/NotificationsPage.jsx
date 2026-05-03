@@ -3,27 +3,27 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
 const TYPE_CONFIG = {
-  bid_received:              { icon: "⚡", color: "text-amber-700", bg: "bg-amber-50 border-[#e8c547]/15", link: "/auctions" },
-  bid_placed:                { icon: "⚡", color: "text-amber-700", bg: "bg-amber-50 border-[#e8c547]/15", link: "/auctions" },
-  auction_won:               { icon: "🏆", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/auctions" },
-  auction_lost:              { icon: "↩",  color: "text-slate-500",   bg: "bg-slate-50 border-slate-200",          link: "/auctions" },
-  auction_outbid:            { icon: "⚠️", color: "text-red-700",    bg: "bg-red-500/8 border-red-500/15",     link: "/auctions" },
-  transfer_offer_received:   { icon: "↔",  color: "text-blue-700",   bg: "bg-blue-500/8 border-blue-500/15",   link: "/transfers" },
-  transfer_offer_accepted:   { icon: "✅", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/transfers" },
-  transfer_offer_rejected:   { icon: "❌", color: "text-red-700",    bg: "bg-red-500/8 border-red-500/15",     link: "/transfers" },
-  transfer_offer_withdrawn:  { icon: "↩",  color: "text-slate-500",   bg: "bg-slate-50 border-slate-200",          link: "/transfers" },
-  transfer_counter:          { icon: "↔",  color: "text-amber-700", bg: "bg-amber-50 border-[#e8c547]/15", link: "/transfers" },
-  transfer_interest:         { icon: "↔",  color: "text-blue-700",   bg: "bg-blue-500/8 border-blue-500/15",   link: "/transfers" },
-  watchlist_rider_listed:    { icon: "⭐", color: "text-amber-700", bg: "bg-amber-50 border-[#e8c547]/15", link: "/transfers" },
-  new_race:                  { icon: "🏁", color: "text-slate-900",      bg: "bg-slate-50 border-slate-200",          link: "/races" },
-  season_started:            { icon: "🚀", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/dashboard" },
-  season_ended:              { icon: "🏁", color: "text-slate-900",      bg: "bg-slate-50 border-slate-200",          link: "/season-end" },
-  salary_paid:               { icon: "💰", color: "text-orange-700", bg: "bg-orange-500/8 border-orange-500/15", link: "/finance" },
-  sponsor_paid:              { icon: "💰", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/finance" },
-  loan_created:              { icon: "💰", color: "text-blue-700",   bg: "bg-blue-500/8 border-blue-500/15",   link: "/finance" },
-  emergency_loan:            { icon: "⚠️", color: "text-red-700",    bg: "bg-red-500/8 border-red-500/15",     link: "/finance" },
-  loan_paid_off:             { icon: "✅", color: "text-green-700",  bg: "bg-green-500/8 border-green-500/15", link: "/finance" },
-  board_update:              { icon: "📋", color: "text-blue-700",   bg: "bg-blue-500/8 border-blue-500/15",   link: "/board" },
+  bid_received:              { icon: "⚡", color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-[#e8c547]/15", link: "/auctions" },
+  bid_placed:                { icon: "⚡", color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-[#e8c547]/15", link: "/auctions" },
+  auction_won:               { icon: "🏆", color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/auctions" },
+  auction_lost:              { icon: "↩",  color: "text-cz-2",   bg: "bg-cz-subtle border-cz-border",          link: "/auctions" },
+  auction_outbid:            { icon: "⚠️", color: "text-cz-danger",    bg: "bg-cz-danger-bg0/8 border-red-500/15",     link: "/auctions" },
+  transfer_offer_received:   { icon: "↔",  color: "text-cz-info",   bg: "bg-cz-info-bg0/8 border-blue-500/15",   link: "/transfers" },
+  transfer_offer_accepted:   { icon: "✅", color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/transfers" },
+  transfer_offer_rejected:   { icon: "❌", color: "text-cz-danger",    bg: "bg-cz-danger-bg0/8 border-red-500/15",     link: "/transfers" },
+  transfer_offer_withdrawn:  { icon: "↩",  color: "text-cz-2",   bg: "bg-cz-subtle border-cz-border",          link: "/transfers" },
+  transfer_counter:          { icon: "↔",  color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-[#e8c547]/15", link: "/transfers" },
+  transfer_interest:         { icon: "↔",  color: "text-cz-info",   bg: "bg-cz-info-bg0/8 border-blue-500/15",   link: "/transfers" },
+  watchlist_rider_listed:    { icon: "⭐", color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-[#e8c547]/15", link: "/transfers" },
+  new_race:                  { icon: "🏁", color: "text-cz-1",      bg: "bg-cz-subtle border-cz-border",          link: "/races" },
+  season_started:            { icon: "🚀", color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/dashboard" },
+  season_ended:              { icon: "🏁", color: "text-cz-1",      bg: "bg-cz-subtle border-cz-border",          link: "/season-end" },
+  salary_paid:               { icon: "💰", color: "text-cz-warning", bg: "bg-cz-warning-bg0/8 border-orange-500/15", link: "/finance" },
+  sponsor_paid:              { icon: "💰", color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/finance" },
+  loan_created:              { icon: "💰", color: "text-cz-info",   bg: "bg-cz-info-bg0/8 border-blue-500/15",   link: "/finance" },
+  emergency_loan:            { icon: "⚠️", color: "text-cz-danger",    bg: "bg-cz-danger-bg0/8 border-red-500/15",     link: "/finance" },
+  loan_paid_off:             { icon: "✅", color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/finance" },
+  board_update:              { icon: "📋", color: "text-cz-info",   bg: "bg-cz-info-bg0/8 border-blue-500/15",   link: "/board" },
 };
 
 const MINE_FILTER_TYPES = {
@@ -36,13 +36,13 @@ const MINE_FILTER_TYPES = {
 };
 
 const EVENT_CONFIG = {
-  auction_won:           { icon: "🏆", color: "text-amber-700",  label: (e) => `${e.team_name} vandt auktion` },
-  auction_started:       { icon: "⚡", color: "text-slate-500",   label: (e) => `${e.team_name} startede auktion` },
-  transfer_accepted:     { icon: "↔",  color: "text-green-700",  label: () => "Transfer gennemført" },
-  rider_listed:          { icon: "📋", color: "text-blue-700",   label: (e) => `${e.team_name} satte rytter til salg` },
-  season_started:        { icon: "🚀", color: "text-green-700",  label: (e) => `Sæson ${e.meta?.season_number} startet` },
-  season_ended:          { icon: "🏁", color: "text-slate-500",   label: (e) => `Sæson ${e.meta?.season_number} afsluttet` },
-  race_results_approved: { icon: "🏅", color: "text-amber-700", label: (e) => `Resultater godkendt: ${e.meta?.race_name}` },
+  auction_won:           { icon: "🏆", color: "text-cz-accent-t",  label: (e) => `${e.team_name} vandt auktion` },
+  auction_started:       { icon: "⚡", color: "text-cz-2",   label: (e) => `${e.team_name} startede auktion` },
+  transfer_accepted:     { icon: "↔",  color: "text-cz-success",  label: () => "Transfer gennemført" },
+  rider_listed:          { icon: "📋", color: "text-cz-info",   label: (e) => `${e.team_name} satte rytter til salg` },
+  season_started:        { icon: "🚀", color: "text-cz-success",  label: (e) => `Sæson ${e.meta?.season_number} startet` },
+  season_ended:          { icon: "🏁", color: "text-cz-2",   label: (e) => `Sæson ${e.meta?.season_number} afsluttet` },
+  race_results_approved: { icon: "🏅", color: "text-cz-accent-t", label: (e) => `Resultater godkendt: ${e.meta?.race_name}` },
 };
 
 const FEED_FILTER_TYPES = {
@@ -179,8 +179,8 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Indbakke</h1>
-          <p className="text-slate-400 text-sm">
+          <h1 className="text-xl font-bold text-cz-1">Indbakke</h1>
+          <p className="text-cz-3 text-sm">
             {tab === "mine"
               ? (unreadCount > 0 ? `${unreadCount} ulæste` : "Alle er læst")
               : "Hvad sker der i ligaen"}
@@ -190,17 +190,17 @@ export default function NotificationsPage() {
           <div className="grid grid-cols-1 sm:flex gap-2 w-full sm:w-auto">
             {unreadCount > 0 && (
               <button onClick={markAllRead} disabled={markingAll}
-                className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-900
-                  bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200
+                className="px-3 py-1.5 text-xs text-cz-2 hover:text-cz-1
+                  bg-cz-subtle hover:bg-cz-border rounded-lg border border-cz-border
                   transition-all disabled:opacity-50">
                 {markingAll ? "Markerer..." : "Marker alle læst"}
               </button>
             )}
             {notifications.some(n => n.is_read) && (
               <button onClick={deleteAllRead}
-                className="px-3 py-1.5 text-xs text-slate-400 hover:text-red-700
-                  bg-slate-100 hover:bg-red-50 rounded-lg border border-slate-200
-                  hover:border-red-200 transition-all">
+                className="px-3 py-1.5 text-xs text-cz-3 hover:text-cz-danger
+                  bg-cz-subtle hover:bg-cz-danger-bg rounded-lg border border-cz-border
+                  hover:border-cz-danger/30 transition-all">
                 Slet læste
               </button>
             )}
@@ -209,7 +209,7 @@ export default function NotificationsPage() {
       </div>
 
       {/* Primary tabs */}
-      <div className="flex border-b border-slate-200 mb-4 overflow-x-auto">
+      <div className="flex border-b border-cz-border mb-4 overflow-x-auto">
         {[
           { key: "mine",   label: "Mine",   badge: unreadCount },
           { key: "ligaen", label: "Ligaen" },
@@ -217,11 +217,11 @@ export default function NotificationsPage() {
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`relative px-4 py-2.5 text-sm font-medium transition-all flex items-center gap-2
               ${tab === t.key
-                ? "text-slate-900 border-b-2 border-[#e8c547] -mb-px"
-                : "text-slate-400 hover:text-slate-600"}`}>
+                ? "text-cz-1 border-b-2 border-[#e8c547] -mb-px"
+                : "text-cz-3 hover:text-cz-2"}`}>
             {t.label}
             {t.badge > 0 && (
-              <span className="px-1.5 py-0.5 text-xs font-bold rounded-full bg-[#e8c547] text-slate-900 leading-none">
+              <span className="px-1.5 py-0.5 text-xs font-bold rounded-full bg-cz-accent text-cz-1 leading-none">
                 {t.badge > 9 ? "9+" : t.badge}
               </span>
             )}
@@ -244,8 +244,8 @@ export default function NotificationsPage() {
               <button key={f.key} onClick={() => setMineFilter(f.key)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
                   ${mineFilter === f.key
-                    ? "bg-amber-50 text-amber-700 border-amber-200"
-                    : "text-slate-500 hover:text-slate-900 bg-white border-slate-200"}`}>
+                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                    : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
                 {f.label}
               </button>
             ))}
@@ -253,45 +253,45 @@ export default function NotificationsPage() {
 
           {notifLoading ? (
             <div className="flex justify-center py-16">
-              <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
             </div>
           ) : filteredNotifs.length === 0 ? (
-            <div className="text-center py-16 text-slate-300">
+            <div className="text-center py-16 text-cz-3">
               <p className="text-4xl mb-3">🔔</p>
               <p>{mineFilter === "unread" ? "Ingen ulæste notifikationer" : "Ingen notifikationer i denne kategori"}</p>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
               {filteredNotifs.map(n => {
-                const config = TYPE_CONFIG[n.type] || { icon: "●", color: "text-slate-500", bg: "bg-slate-50 border-slate-200" };
+                const config = TYPE_CONFIG[n.type] || { icon: "●", color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
                 return (
                   <div key={n.id}
                     className={`flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition-all cursor-pointer
                       ${n.is_read
-                        ? "bg-white border-slate-200 opacity-60 hover:opacity-80"
+                        ? "bg-cz-card border-cz-border opacity-60 hover:opacity-80"
                         : config.bg}`}
                     onClick={() => {
                       if (!n.is_read) markRead(n.id);
                       if (config.link) navigate(config.link);
                     }}>
-                    <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center
+                    <div className="w-9 h-9 rounded-lg bg-cz-subtle flex items-center justify-center
                       text-base flex-shrink-0 mt-0.5">
                       {config.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${n.is_read ? "text-slate-500" : "text-slate-900"}`}>
+                      <p className={`text-sm font-medium ${n.is_read ? "text-cz-2" : "text-cz-1"}`}>
                         {n.title}
                       </p>
-                      <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">{n.message}</p>
-                      <p className="text-slate-300 text-xs mt-1.5">{timeAgo(n.created_at)}</p>
+                      <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{n.message}</p>
+                      <p className="text-cz-3 text-xs mt-1.5">{timeAgo(n.created_at)}</p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
                       {!n.is_read && (
-                        <span className="w-2 h-2 rounded-full bg-[#e8c547] flex-shrink-0" />
+                        <span className="w-2 h-2 rounded-full bg-cz-accent flex-shrink-0" />
                       )}
                       <button
                         onClick={e => { e.stopPropagation(); deleteNotif(n.id); }}
-                        className="text-slate-300 hover:text-slate-500 text-lg transition-colors p-1 rounded">
+                        className="text-cz-3 hover:text-cz-2 text-lg transition-colors p-1 rounded">
                         ×
                       </button>
                     </div>
@@ -314,8 +314,8 @@ export default function NotificationsPage() {
               <button key={f.key} onClick={() => setFeedFilter(f.key)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
                   ${feedFilter === f.key
-                    ? "bg-amber-50 text-amber-700 border-amber-200"
-                    : "text-slate-500 hover:text-slate-900 bg-white border-slate-200"}`}>
+                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                    : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
                 {f.label}
               </button>
             ))}
@@ -323,10 +323,10 @@ export default function NotificationsPage() {
 
           {feedLoading ? (
             <div className="flex justify-center py-16">
-              <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
             </div>
           ) : filteredEvents.length === 0 ? (
-            <div className="text-center py-20 text-slate-300">
+            <div className="text-center py-20 text-cz-3">
               <p className="text-4xl mb-3">◎</p>
               <p>Ingen aktivitet endnu</p>
               <p className="text-xs mt-2">Start auktioner og handler for at se aktivitet her</p>
@@ -334,12 +334,12 @@ export default function NotificationsPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {filteredEvents.map((event, i) => {
-                const cfg = EVENT_CONFIG[event.type] || { icon: "●", color: "text-slate-500", label: () => event.type };
+                const cfg = EVENT_CONFIG[event.type] || { icon: "●", color: "text-cz-2", label: () => event.type };
                 return (
                   <div key={event.id}
                     className={`flex items-start gap-3 px-3 sm:px-4 py-3.5 rounded-xl border transition-all
-                      ${i === 0 ? "bg-white border-slate-300" : "bg-white border-slate-200 hover:border-slate-300"}`}>
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 text-sm">
+                      ${i === 0 ? "bg-cz-card border-cz-border" : "bg-cz-card border-cz-border hover:border-cz-border"}`}>
+                    <div className="w-8 h-8 rounded-lg bg-cz-subtle flex items-center justify-center flex-shrink-0 text-sm">
                       {cfg.icon}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -347,24 +347,24 @@ export default function NotificationsPage() {
                         {cfg.label(event)}
                       </p>
                       {event.rider_name && (
-                        <p className="text-slate-500 text-sm mt-0.5">
+                        <p className="text-cz-2 text-sm mt-0.5">
                           <span
-                            className="hover:text-amber-700 cursor-pointer transition-colors"
+                            className="hover:text-cz-accent-t cursor-pointer transition-colors"
                             onClick={() => event.rider_id && navigate(`/riders/${event.rider_id}`)}>
                             {event.rider_name}
                           </span>
                           {event.amount > 0 && (
-                            <span className="text-amber-700 font-mono ml-2">
+                            <span className="text-cz-accent-t font-mono ml-2">
                               {event.amount.toLocaleString("da-DK")} CZ$
                             </span>
                           )}
                         </p>
                       )}
                       {event.team_name && event.type !== "season_started" && event.type !== "season_ended" && (
-                        <p className="text-slate-400 text-xs mt-0.5">{event.team_name}</p>
+                        <p className="text-cz-3 text-xs mt-0.5">{event.team_name}</p>
                       )}
                     </div>
-                    <span className="text-slate-300 text-xs flex-shrink-0 mt-0.5 whitespace-nowrap">{timeAgo(event.created_at)}</span>
+                    <span className="text-cz-3 text-xs flex-shrink-0 mt-0.5 whitespace-nowrap">{timeAgo(event.created_at)}</span>
                   </div>
                 );
               })}

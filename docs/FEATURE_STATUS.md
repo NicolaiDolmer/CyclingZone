@@ -174,6 +174,12 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Sidebaren forbliver mørk (`#1a1f38`) i begge temaer (option A — Vercel/Linear-stil)
 - Tokeniseret: `Layout`, `App` splash, `LoginPage`, `ResetPasswordPage`, `ProfilePage`, `Dashboard`, `Riders`, `Auctions`, `Team`, `Finance` — øvrige sider ligner status quo (lyst tema-look) i begge modes indtil S2
 
+### Dark mode S2 (v2.06, 2026-05-03)
+- Alle resterende sider tokeniseret (27 pages): TransfersPage, BoardPage, StandingsPage, NotificationsPage, WatchlistPage, HallOfFamePage, RacesPage, RaceArchivePage, RaceHistoryPage, RacePointsPage, AdminPage, RiderStatsPage, ManagerProfilePage, RiderComparePage, ActivityPage, ActivityFeedPage, SeasonEndPage, SeasonPreviewPage, HelpPage, PatchNotesPage, HeadToHeadPage, ResultaterPage, RiderRankingsPage, DeadlineDayBoard, TeamProfilePage, TeamsPage, AuctionHistoryPage
+- Alle komponenter tokeniseret (7): ConfettiModal, DeadlineDayBanner, DeadlineDayTicker, OnboardingModal, RiderDevelopmentTab (inkl. Recharts stroke/fill props), RiderFilters, SetupWizardModal
+- Kendte intentionelle farver bevaret: PotentialeStars (guld/sølv stjerner), statBg.js (statistik-grading), ConfettiModal farvearray, chart-inline colors (#e8c547/#60a5fa/#a78bfa i Recharts), Discord brand (#5865F2)
+- Build: `✓ vite built in 9.30s` — ingen fejl
+
 ### Deadline Day S4 (2026-05-02)
 - Planlagte advarsler (T-24h / T-2h / T-30min): cron kører hver 5. minut, sender `deadline_day_warning`-notifikationer til alle aktive managers via `notifyTeamOwner`; dedupe via `related_id = window_id` + step-titel (24t-vindue i `notificationService`)
 - Final Whistle-rapport: `transfer_windows.final_whistle_sent_at` atomic claim (UPDATE WHERE IS NULL → SELECT) → `computeFinalWhistleReport` (største handel, mest aktive manager, panikhandler) → Discord embed til default webhook

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { getFlagEmoji } from "../lib/countryUtils";
@@ -50,25 +50,25 @@ function RiderSearch({ onSelect, excluded }) {
         value={q}
         onChange={e => setQ(e.target.value)}
         placeholder="Søg rytter at tilføje..."
-        className="w-full bg-slate-100 border border-slate-300 rounded-lg px-4 py-2.5
-          text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400"
+        className="w-full bg-cz-subtle border border-cz-border rounded-lg px-4 py-2.5
+          text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent"
       />
       {(results.length > 0 || loading) && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300
+        <div className="absolute top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border
           rounded-xl shadow-2xl z-20 overflow-hidden">
           {loading ? (
-            <div className="p-3 text-center text-slate-400 text-sm">Søger...</div>
+            <div className="p-3 text-center text-cz-3 text-sm">Søger...</div>
           ) : (
             results.map(r => (
               <div key={r.id}
-                className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-100
-                  cursor-pointer border-b border-slate-200 last:border-0"
+                className="flex items-center justify-between px-4 py-2.5 hover:bg-cz-subtle
+                  cursor-pointer border-b border-cz-border last:border-0"
                 onClick={() => { onSelect(r); setQ(""); setResults([]); }}>
                 <div>
-                  <p className="text-slate-900 text-sm font-medium">{r.firstname} {r.lastname}</p>
-                  <p className="text-slate-400 text-xs">{r.team?.name || "Fri agent"}</p>
+                  <p className="text-cz-1 text-sm font-medium">{r.firstname} {r.lastname}</p>
+                  <p className="text-cz-3 text-xs">{r.team?.name || "Fri agent"}</p>
                 </div>
-                <span className="text-amber-700 font-mono text-xs">
+                <span className="text-cz-accent-t font-mono text-xs">
                   {formatCz(getRiderMarketValue(r))}
                 </span>
               </div>
@@ -113,8 +113,8 @@ export default function RiderComparePage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-slate-900">Sammenlign Ryttere</h1>
-        <p className="text-slate-400 text-sm">Tilføj op til 3 ryttere for at sammenligne stats</p>
+        <h1 className="text-xl font-bold text-cz-1">Sammenlign Ryttere</h1>
+        <p className="text-cz-3 text-sm">Tilføj op til 3 ryttere for at sammenligne stats</p>
       </div>
 
       {/* Search */}
@@ -125,7 +125,7 @@ export default function RiderComparePage() {
       )}
 
       {fullRiders.length === 0 ? (
-        <div className="text-center py-16 text-slate-300">
+        <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">◈</p>
           <p>Søg efter en rytter ovenfor for at starte sammenligning</p>
         </div>
@@ -135,21 +135,21 @@ export default function RiderComparePage() {
           <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
             <div /> {/* Empty cell for label column */}
             {fullRiders.map((r, i) => (
-              <div key={r.id} className="bg-white border rounded-xl p-4 text-center"
+              <div key={r.id} className="bg-cz-card border rounded-xl p-4 text-center"
                 style={{ borderColor: `${COLORS[i]}30` }}>
                 <button
                   onClick={() => removeRider(r.id)}
-                  className="float-right text-slate-300 hover:text-slate-500 text-sm -mt-1 -mr-1">×</button>
-                <p className="font-bold text-slate-900 text-sm cursor-pointer hover:text-amber-700"
+                  className="float-right text-cz-3 hover:text-cz-2 text-sm -mt-1 -mr-1">×</button>
+                <p className="font-bold text-cz-1 text-sm cursor-pointer hover:text-cz-accent-t"
                   onClick={() => navigate(`/riders/${r.id}`)}>
                   {r.nationality_code && <span className="mr-1">{getFlagEmoji(r.nationality_code)}</span>}{r.firstname} {r.lastname}
                 </p>
-                <p className="text-slate-400 text-xs mt-1">{r.team?.name || "Fri agent"}</p>
+                <p className="text-cz-3 text-xs mt-1">{r.team?.name || "Fri agent"}</p>
                 <p className="font-mono font-bold mt-2 text-sm" style={{ color: COLORS[i] }}>
                   {formatCz(getRiderMarketValue(r))}
                 </p>
                 {r.is_u25 && (
-                  <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700
+                  <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info
                     px-1.5 py-0.5 rounded mt-1 inline-block">U25</span>
                 )}
               </div>
@@ -157,14 +157,14 @@ export default function RiderComparePage() {
           </div>
 
           {/* Stats comparison */}
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
             {/* Potentiale row */}
             {fullRiders.some(r => r.potentiale != null) && (
-              <div className="grid items-center py-3 px-4 border-b border-slate-200 bg-amber-50/30"
+              <div className="grid items-center py-3 px-4 border-b border-cz-border bg-cz-accent/10/30"
                 style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-300 w-4 text-center">◆</span>
-                  <span className="text-slate-500 text-sm font-medium">Potentiale</span>
+                  <span className="text-cz-3 w-4 text-center">◆</span>
+                  <span className="text-cz-2 text-sm font-medium">Potentiale</span>
                 </div>
                 {fullRiders.map(r => (
                   <div key={r.id} className="px-2">
@@ -177,12 +177,12 @@ export default function RiderComparePage() {
               const bestId = getBestForStat(stat.key);
               return (
                 <div key={stat.key}
-                  className={`grid items-center py-3 px-4 border-b border-slate-200 last:border-0
+                  className={`grid items-center py-3 px-4 border-b border-cz-border last:border-0
                     ${idx % 2 === 0 ? "bg-transparent" : ""}`}
                   style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-300 w-4 text-center">{stat.icon}</span>
-                    <span className="text-slate-500 text-sm">{stat.label}</span>
+                    <span className="text-cz-3 w-4 text-center">{stat.icon}</span>
+                    <span className="text-cz-2 text-sm">{stat.label}</span>
                   </div>
                   {fullRiders.map((r, i) => {
                     const val = r[stat.key];
@@ -190,7 +190,7 @@ export default function RiderComparePage() {
                     return (
                       <div key={r.id} className="px-2">
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-slate-100 rounded-full h-2">
+                          <div className="flex-1 bg-cz-subtle rounded-full h-2">
                             <div className="h-2 rounded-full transition-all duration-500"
                               style={{
                                 width: `${Math.round(((val || 0) / 99) * 100)}%`,
@@ -198,7 +198,7 @@ export default function RiderComparePage() {
                               }} />
                           </div>
                           <span className={`font-mono text-xs font-bold w-6 text-right flex-shrink-0
-                            ${isBest ? "text-slate-900" : "text-slate-500"}`}
+                            ${isBest ? "text-cz-1" : "text-cz-2"}`}
                             style={{ color: isBest ? COLORS[i] : undefined }}>
                             {val ?? "—"}
                           </span>

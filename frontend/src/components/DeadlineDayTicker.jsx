@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
@@ -56,7 +56,7 @@ export default function DeadlineDayTicker() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0a0a0f]/95 border-t border-[#e8c547]/15 overflow-hidden h-8 flex items-center">
-      <div className="flex whitespace-nowrap animate-ticker text-[11px] text-[#e8c547]/60 font-medium tracking-wide select-none">
+      <div className="flex whitespace-nowrap animate-ticker text-[11px] text-cz-accent/60 font-medium tracking-wide select-none">
         <span>{text}&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;</span>
         <span aria-hidden="true">{text}&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;</span>
       </div>

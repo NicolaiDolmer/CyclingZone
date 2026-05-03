@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { getFlagEmoji } from "../lib/countryUtils";
@@ -30,21 +30,21 @@ function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
 
   return (
     <div className="relative">
-      <label className="block text-slate-400 text-xs uppercase tracking-wider mb-2">{label}</label>
+      <label className="block text-cz-3 text-xs uppercase tracking-wider mb-2">{label}</label>
       <input type="text" value={q} onChange={e => setQ(e.target.value)}
         onFocus={handleFocus} onBlur={handleBlur}
         placeholder="Søg hold..."
-        className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3
-          text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+        className="w-full bg-cz-card border border-cz-border rounded-xl px-4 py-3
+          text-cz-1 placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
       {results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300
+        <div className="absolute top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border
           rounded-xl z-20 overflow-hidden shadow-2xl">
           {results.map(t => (
             <div key={t.id}
-              className="px-4 py-3 hover:bg-slate-100 cursor-pointer border-b border-slate-200 last:border-0"
+              className="px-4 py-3 hover:bg-cz-subtle cursor-pointer border-b border-cz-border last:border-0"
               onClick={() => { onSelect(t); setQ(t.name); setResults([]); }}>
-              <p className="text-slate-900 font-medium text-sm">{t.name}</p>
-              <p className="text-slate-400 text-xs">Division {t.division}</p>
+              <p className="text-cz-1 font-medium text-sm">{t.name}</p>
+              <p className="text-cz-3 text-xs">Division {t.division}</p>
             </div>
           ))}
         </div>
@@ -117,22 +117,22 @@ export default function HeadToHeadPage() {
     const bWins = higherIsBetter ? valueB > valueA : valueB < valueA;
     const maxVal = Math.max(valueA, valueB, 1);
     return (
-      <div className="py-3 border-b border-slate-200 last:border-0">
+      <div className="py-3 border-b border-cz-border last:border-0">
         <div className="flex items-center justify-between mb-2">
-          <span className={`font-mono font-bold text-sm ${aWins ? "text-amber-700" : "text-slate-500"}`}>
+          <span className={`font-mono font-bold text-sm ${aWins ? "text-cz-accent-t" : "text-cz-2"}`}>
             {valueA?.toLocaleString("da-DK")}{unit}
           </span>
-          <span className="text-slate-400 text-xs uppercase tracking-wider">{labelA || labelB}</span>
-          <span className={`font-mono font-bold text-sm ${bWins ? "text-amber-700" : "text-slate-500"}`}>
+          <span className="text-cz-3 text-xs uppercase tracking-wider">{labelA || labelB}</span>
+          <span className={`font-mono font-bold text-sm ${bWins ? "text-cz-accent-t" : "text-cz-2"}`}>
             {valueB?.toLocaleString("da-DK")}{unit}
           </span>
         </div>
         <div className="flex gap-1 h-2">
-          <div className="flex-1 bg-slate-100 rounded-l-full overflow-hidden flex justify-end">
-            <div className="h-2 rounded-l-full bg-[#e8c547]/60 transition-all"
+          <div className="flex-1 bg-cz-subtle rounded-l-full overflow-hidden flex justify-end">
+            <div className="h-2 rounded-l-full bg-cz-accent/60 transition-all"
               style={{ width: `${(valueA / maxVal) * 100}%` }} />
           </div>
-          <div className="flex-1 bg-slate-100 rounded-r-full overflow-hidden">
+          <div className="flex-1 bg-cz-subtle rounded-r-full overflow-hidden">
             <div className="h-2 rounded-r-full bg-blue-300 transition-all"
               style={{ width: `${(valueB / maxVal) * 100}%` }} />
           </div>
@@ -144,8 +144,8 @@ export default function HeadToHeadPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">Head-to-Head</h1>
-        <p className="text-slate-400 text-sm">Sammenlign to managers historik</p>
+        <h1 className="text-xl font-bold text-cz-1">Head-to-Head</h1>
+        <p className="text-cz-3 text-sm">Sammenlign to managers historik</p>
       </div>
 
       {/* Team selection */}
@@ -157,28 +157,28 @@ export default function HeadToHeadPage() {
       {teamA && teamB && (
         <div className="mb-6 flex items-center justify-center gap-4">
           <div className="text-center">
-            <p className="text-amber-700 font-bold text-lg">{teamA.name}</p>
-            <p className="text-slate-400 text-xs">Division {teamA.division}</p>
+            <p className="text-cz-accent-t font-bold text-lg">{teamA.name}</p>
+            <p className="text-cz-3 text-xs">Division {teamA.division}</p>
           </div>
-          <span className="text-slate-400 text-2xl font-bold">VS</span>
+          <span className="text-cz-3 text-2xl font-bold">VS</span>
           <div className="text-center">
-            <p className="text-blue-700 font-bold text-lg">{teamB.name}</p>
-            <p className="text-slate-400 text-xs">Division {teamB.division}</p>
+            <p className="text-cz-info font-bold text-lg">{teamB.name}</p>
+            <p className="text-cz-3 text-xs">Division {teamB.division}</p>
           </div>
         </div>
       )}
 
       {loading && (
         <div className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
         </div>
       )}
 
       {!loading && stats && (
         <div className="flex flex-col gap-4">
           {/* Stat comparison */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5">
-            <h2 className="text-slate-900 font-semibold text-sm mb-4">Sæsonstatistik (alle sæsoner)</h2>
+          <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+            <h2 className="text-cz-1 font-semibold text-sm mb-4">Sæsonstatistik (alle sæsoner)</h2>
             <StatCompare labelA="Point" valueA={stats.totalPointsA} valueB={stats.totalPointsB} />
             <StatCompare labelA="Etapesejre" valueA={stats.stageWinsA} valueB={stats.stageWinsB} />
             <StatCompare labelA="GC-sejre" valueA={stats.gcWinsA} valueB={stats.gcWinsB} />
@@ -187,26 +187,26 @@ export default function HeadToHeadPage() {
 
           {/* Transfer history between them */}
           {(stats.aBoughtFromB.length > 0 || stats.bBoughtFromA.length > 0) && (
-            <div className="bg-white border border-slate-200 rounded-xl p-5">
-              <h2 className="text-slate-900 font-semibold text-sm mb-4">Transferhistorik mellem holdene</h2>
+            <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+              <h2 className="text-cz-1 font-semibold text-sm mb-4">Transferhistorik mellem holdene</h2>
               {stats.aBoughtFromB.length > 0 && (
                 <div className="mb-3">
-                  <p className="text-slate-500 text-xs mb-2">{teamA.name} har købt fra {teamB.name}:</p>
+                  <p className="text-cz-2 text-xs mb-2">{teamA.name} har købt fra {teamB.name}:</p>
                   {stats.aBoughtFromB.map(a => (
-                    <div key={a.id} className="flex justify-between py-1.5 border-b border-slate-200 last:border-0">
-                      <span className="text-slate-900 text-sm">{a.rider?.firstname} {a.rider?.lastname}</span>
-                      <span className="text-amber-700 font-mono text-sm">{a.current_price?.toLocaleString("da-DK")} CZ$</span>
+                    <div key={a.id} className="flex justify-between py-1.5 border-b border-cz-border last:border-0">
+                      <span className="text-cz-1 text-sm">{a.rider?.firstname} {a.rider?.lastname}</span>
+                      <span className="text-cz-accent-t font-mono text-sm">{a.current_price?.toLocaleString("da-DK")} CZ$</span>
                     </div>
                   ))}
                 </div>
               )}
               {stats.bBoughtFromA.length > 0 && (
                 <div>
-                  <p className="text-slate-500 text-xs mb-2">{teamB.name} har købt fra {teamA.name}:</p>
+                  <p className="text-cz-2 text-xs mb-2">{teamB.name} har købt fra {teamA.name}:</p>
                   {stats.bBoughtFromA.map(a => (
-                    <div key={a.id} className="flex justify-between py-1.5 border-b border-slate-200 last:border-0">
-                      <span className="text-slate-900 text-sm">{a.rider?.firstname} {a.rider?.lastname}</span>
-                      <span className="text-blue-700 font-mono text-sm">{a.current_price?.toLocaleString("da-DK")} CZ$</span>
+                    <div key={a.id} className="flex justify-between py-1.5 border-b border-cz-border last:border-0">
+                      <span className="text-cz-1 text-sm">{a.rider?.firstname} {a.rider?.lastname}</span>
+                      <span className="text-cz-info font-mono text-sm">{a.current_price?.toLocaleString("da-DK")} CZ$</span>
                     </div>
                   ))}
                 </div>
@@ -220,17 +220,17 @@ export default function HeadToHeadPage() {
               { team: teamA, riders: stats.topRidersA, color: "#e8c547" },
               { team: teamB, riders: stats.topRidersB, color: "#60a5fa" },
             ].map(({ team, riders, color }) => (
-              <div key={team.id} className="bg-white border border-slate-200 rounded-xl p-4">
+              <div key={team.id} className="bg-cz-card border border-cz-border rounded-xl p-4">
                 <h3 className="font-semibold text-sm mb-3 cursor-pointer hover:underline"
                   style={{ color }} onClick={() => navigate(`/teams/${team.id}`)}>
                   {team.name} — Top 5
                 </h3>
                 {riders.length === 0 ? (
-                  <p className="text-slate-300 text-xs">Ingen ryttere</p>
+                  <p className="text-cz-3 text-xs">Ingen ryttere</p>
                 ) : (
                   riders.map((r, i) => (
-                    <div key={r.id} className="flex justify-between py-1.5 border-b border-slate-200 last:border-0">
-                      <span className="text-slate-600 text-xs cursor-pointer hover:text-slate-900 flex items-center gap-1"
+                    <div key={r.id} className="flex justify-between py-1.5 border-b border-cz-border last:border-0">
+                      <span className="text-cz-2 text-xs cursor-pointer hover:text-cz-1 flex items-center gap-1"
                         onClick={() => navigate(`/riders/${r.id}`)}>
                         {i + 1}. {r.nationality_code && getFlagEmoji(r.nationality_code)} {r.firstname} {r.lastname}
                       </span>
@@ -247,7 +247,7 @@ export default function HeadToHeadPage() {
       )}
 
       {!loading && !stats && teamA && !teamB && (
-        <div className="text-center py-16 text-slate-300">
+        <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">⚔</p>
           <p>Vælg et andet hold for at starte sammenligningen</p>
         </div>

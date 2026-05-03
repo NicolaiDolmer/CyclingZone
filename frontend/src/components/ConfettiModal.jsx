@@ -52,19 +52,19 @@ export function ConfettiModal({ show, onClose, title, subtitle, amount, icon = "
       </div>
 
       {/* Modal */}
-      <div className="relative z-10 bg-white border border-slate-300 rounded-2xl p-8
+      <div className="relative z-10 bg-cz-card border border-cz-border rounded-2xl p-8
         text-center max-w-sm w-full mx-4 shadow-2xl"
         style={{ animation: "scaleIn 0.3s ease-out" }}>
 
         <div className="text-6xl mb-4">{icon}</div>
-        <h2 className="text-slate-900 font-bold text-2xl mb-2">{title}</h2>
-        {subtitle && <p className="text-slate-500 text-sm mb-3">{subtitle}</p>}
+        <h2 className="text-cz-1 font-bold text-2xl mb-2">{title}</h2>
+        {subtitle && <p className="text-cz-2 text-sm mb-3">{subtitle}</p>}
         {amount > 0 && (
-          <p className="text-amber-700 font-mono font-bold text-xl mb-4">
+          <p className="text-cz-accent-t font-mono font-bold text-xl mb-4">
             {amount.toLocaleString("da-DK")} CZ$
           </p>
         )}
-        <p className="text-slate-400 text-xs">Klik for at lukke</p>
+        <p className="text-cz-3 text-xs">Klik for at lukke</p>
       </div>
 
       <style>{`

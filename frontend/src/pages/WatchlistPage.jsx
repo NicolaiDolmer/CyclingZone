@@ -16,7 +16,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   const active = sort === sortKey;
   return (
     <th onClick={() => onSort(sortKey)}
-      className={`cursor-pointer select-none transition-colors ${active ? "text-amber-700/80" : "text-slate-400 hover:text-slate-500"} ${className}`}>
+      className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
       {children}{active && <span className="ml-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
     </th>
   );
@@ -89,7 +89,7 @@ export default function WatchlistPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
     </div>
   );
 
@@ -97,25 +97,25 @@ export default function WatchlistPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Talentspejder</h1>
-          <p className="text-slate-400 text-sm">
+          <h1 className="text-xl font-bold text-cz-1">Talentspejder</h1>
+          <p className="text-cz-3 text-sm">
             {entries.length} ryttere på din ønskeliste — kun synlig for dig
           </p>
         </div>
         <button onClick={() => navigate("/riders")}
-          className="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200
-            rounded-lg text-xs font-medium hover:bg-amber-50 transition-all">
+          className="px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
+            rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
           + Tilføj ryttere
         </button>
       </div>
 
       {entries.length === 0 ? (
-        <div className="text-center py-20 text-slate-300">
+        <div className="text-center py-20 text-cz-3">
           <p className="text-5xl mb-4">⭐</p>
-          <p className="text-lg font-medium text-slate-400">Din ønskeliste er tom</p>
+          <p className="text-lg font-medium text-cz-3">Din ønskeliste er tom</p>
           <p className="text-sm mt-2">Klik på ⭐ ved siden af en rytter i rytterdatabasen for at tilføje dem her</p>
           <button onClick={() => navigate("/riders")}
-            className="mt-5 px-4 py-2 bg-[#e8c547] text-[#0a0a0f] font-bold rounded-lg text-sm hover:bg-[#f0d060]">
+            className="mt-5 px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110">
             Gå til Ryttere
           </button>
         </div>
@@ -124,14 +124,14 @@ export default function WatchlistPage() {
           <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange} onReset={riderFilters.onReset} showTeamFilter={false} nationalities={riderFilters.nationalities} />
 
           {/* Table */}
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200">
+                  <tr className="border-b border-cz-border">
                     <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-left font-medium uppercase tracking-wider">Rytter</SortTh>
-                    <th className="px-3 py-3 text-left text-slate-400 font-medium uppercase tracking-wider hidden sm:table-cell">Hold</th>
+                    <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">Hold</th>
                     <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-right font-medium">Værdi</SortTh>
                     <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
@@ -142,8 +142,8 @@ export default function WatchlistPage() {
                       <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
                         className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
                     ))}
-                    <th className="px-3 py-3 text-center text-slate-300">Note</th>
-                    <th className="px-3 py-3 text-center text-slate-300">Handling</th>
+                    <th className="px-3 py-3 text-center text-cz-3">Note</th>
+                    <th className="px-3 py-3 text-center text-cz-3">Handling</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -151,28 +151,28 @@ export default function WatchlistPage() {
                     const r = entry.rider;
                     const isFree = !r.team_id;
                     return (
-                      <tr key={entry.id} className="border-b border-slate-100 hover:bg-slate-100">
+                      <tr key={entry.id} className="border-b border-cz-border hover:bg-cz-subtle">
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
                             {r.nationality_code && <span className="flex-shrink-0">{getFlagEmoji(r.nationality_code)}</span>}
                             <button onClick={() => navigate(`/riders/${r.id}`)}
-                              className="text-slate-900 text-sm font-medium hover:text-amber-700 transition-colors text-left">
+                              className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left">
                               {r.firstname} {r.lastname}
                             </button>
                             {r.is_u25 && (
-                              <span className="text-[9px] uppercase bg-blue-500/20 text-blue-700 px-1.5 py-0.5 rounded">U25</span>
+                              <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
                             )}
                           </div>
                         </td>
                         <td className="px-3 py-2.5 hidden sm:table-cell">
                           {isFree
-                            ? <span className="text-amber-700/70 text-xs">Fri agent</span>
-                            : <span className="text-slate-500 text-xs">{r.team?.name}</span>}
+                            ? <span className="text-cz-accent-t/70 text-xs">Fri agent</span>
+                            : <span className="text-cz-2 text-xs">{r.team?.name}</span>}
                         </td>
-                        <td className="px-3 py-2.5 text-right text-amber-700 font-mono font-bold">
+                        <td className="px-3 py-2.5 text-right text-cz-accent-t font-mono font-bold">
                           {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
                         </td>
-                        <td className="px-3 py-2.5 text-right text-slate-500 font-mono">
+                        <td className="px-3 py-2.5 text-right text-cz-2 font-mono">
                           {r.salary ? r.salary.toLocaleString("da-DK") : "—"}
                         </td>
                         <td className="px-3 py-2.5">
@@ -190,15 +190,15 @@ export default function WatchlistPage() {
                             <div className="flex gap-1">
                               <input type="text" value={noteText} onChange={e => setNoteText(e.target.value)}
                                 onKeyDown={e => e.key === "Enter" && saveNote(entry.id)}
-                                className="flex-1 bg-slate-100 border border-slate-300 rounded px-2 py-1
-                                  text-slate-900 text-xs focus:outline-none focus:border-amber-400 w-20"
+                                className="flex-1 bg-cz-subtle border border-cz-border rounded px-2 py-1
+                                  text-cz-1 text-xs focus:outline-none focus:border-cz-accent w-20"
                                 autoFocus placeholder="Note..." />
                               <button onClick={() => saveNote(entry.id)}
-                                className="text-green-700 text-xs px-1">✓</button>
+                                className="text-cz-success text-xs px-1">✓</button>
                             </div>
                           ) : (
                             <button onClick={() => { setEditingNote(entry.id); setNoteText(entry.note || ""); }}
-                              className="text-slate-300 hover:text-slate-500 text-xs truncate max-w-24 block mx-auto transition-colors">
+                              className="text-cz-3 hover:text-cz-2 text-xs truncate max-w-24 block mx-auto transition-colors">
                               {entry.note || "+ note"}
                             </button>
                           )}
@@ -207,14 +207,14 @@ export default function WatchlistPage() {
                           <div className="flex items-center justify-center gap-1.5">
                             {isFree && (
                               <button onClick={() => startAuction(r)}
-                                className="px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200
-                                  rounded text-xs hover:bg-amber-50 transition-all whitespace-nowrap">
+                                className="px-2 py-1 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
+                                  rounded text-xs hover:bg-cz-accent/10 transition-all whitespace-nowrap">
                                 Start auktion
                               </button>
                             )}
                             <button onClick={() => removeFromWatchlist(r.id)}
-                              className="px-2 py-1 bg-red-50 text-red-700 border border-red-200
-                                rounded text-xs hover:bg-red-100 transition-all">
+                              className="px-2 py-1 bg-cz-danger-bg text-cz-danger border border-cz-danger/30
+                                rounded text-xs hover:bg-cz-danger-bg transition-all">
                               ★ Fjern
                             </button>
                           </div>

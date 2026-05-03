@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
@@ -6,7 +6,7 @@ const API = import.meta.env.VITE_API_URL;
 
 const STATUS = {
   critical: { label: "Under min",  cls: "text-red-400",    dot: "bg-red-400" },
-  warning:  { label: "Tæt på min", cls: "text-yellow-400", dot: "bg-yellow-400" },
+  warning:  { label: "Tæt på min", cls: "text-cz-warning", dot: "bg-yellow-400" },
   ok:       { label: "OK",         cls: "text-green-400",  dot: "bg-green-400" },
 };
 
@@ -27,9 +27,9 @@ function SquadTable({ rows, dimmed }) {
           {rows.map((t, i) => {
             const { label, cls, dot } = STATUS[t.status] || STATUS.ok;
             return (
-              <tr key={t.id} className={`border-b border-white/5 last:border-0${i % 2 === 0 ? " bg-white/[0.02]" : ""}`}>
+              <tr key={t.id} className={`border-b border-white/5 last:border-0${i % 2 === 0 ? " bg-cz-card/[0.02]" : ""}`}>
                 <td className="px-4 py-3 font-medium text-white">
-                  <Link to={`/teams/${t.id}`} className="hover:text-[#e8c547] transition-colors">
+                  <Link to={`/teams/${t.id}`} className="hover:text-cz-accent transition-colors">
                     {t.name}
                   </Link>
                 </td>
@@ -122,7 +122,7 @@ export default function DeadlineDayBoard() {
 
       {warning.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-[10px] font-bold tracking-[0.15em] uppercase text-yellow-400">
+          <h2 className="text-[10px] font-bold tracking-[0.15em] uppercase text-cz-warning">
             Tæt på minimum — {warning.length} hold
           </h2>
           <SquadTable rows={warning} />

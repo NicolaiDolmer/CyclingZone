@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 
 const SECTIONS = [
   {
@@ -579,8 +579,8 @@ export default function HelpPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">Hjælp & Regler</h1>
-        <p className="text-slate-400 text-sm">Alt du skal vide om Cycling Zone Manager</p>
+        <h1 className="text-xl font-bold text-cz-1">Hjælp & Regler</h1>
+        <p className="text-cz-3 text-sm">Alt du skal vide om Cycling Zone Manager</p>
       </div>
 
       {/* Search */}
@@ -589,8 +589,8 @@ export default function HelpPage() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Søg i hjælp og FAQ..."
-          className="w-full bg-slate-100 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm
-            placeholder-slate-400 focus:outline-none focus:border-amber-300"
+          className="w-full bg-cz-subtle border border-cz-border rounded-xl px-4 py-3 text-cz-1 text-sm
+            placeholder-cz-3 focus:outline-none focus:border-cz-accent/40"
         />
       </div>
 
@@ -599,23 +599,23 @@ export default function HelpPage() {
         <div className="space-y-4">
           {filteredSections && filteredSections.length > 0 && (
             <div>
-              <p className="text-slate-400 text-xs uppercase tracking-wider mb-3">Sektioner</p>
+              <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">Sektioner</p>
               {filteredSections.map(s => (
                 <button key={s.key} onClick={() => { setSearch(""); setActiveSection(s.key); }}
-                  className="w-full text-left bg-white border border-slate-200 rounded-xl px-4 py-3 mb-2
-                    hover:border-slate-300 transition-all">
-                  <p className="text-slate-900 text-sm">{s.icon} {s.label}</p>
+                  className="w-full text-left bg-cz-card border border-cz-border rounded-xl px-4 py-3 mb-2
+                    hover:border-cz-border transition-all">
+                  <p className="text-cz-1 text-sm">{s.icon} {s.label}</p>
                 </button>
               ))}
             </div>
           )}
           {filteredFAQ.length > 0 && (
             <div>
-              <p className="text-slate-400 text-xs uppercase tracking-wider mb-3">FAQ</p>
+              <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">FAQ</p>
               {filteredFAQ.map((f, i) => (
-                <div key={i} className="bg-white border border-slate-200 rounded-xl px-4 py-3 mb-2">
-                  <p className="text-slate-900 text-sm font-medium mb-1">{f.q}</p>
-                  <p className="text-slate-500 text-sm">{f.a}</p>
+                <div key={i} className="bg-cz-card border border-cz-border rounded-xl px-4 py-3 mb-2">
+                  <p className="text-cz-1 text-sm font-medium mb-1">{f.q}</p>
+                  <p className="text-cz-2 text-sm">{f.a}</p>
                 </div>
               ))}
             </div>
@@ -630,18 +630,18 @@ export default function HelpPage() {
                 <button key={s.key} onClick={() => setActiveSection(s.key)}
                   className={`text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-2
                     ${activeSection === s.key
-                      ? "bg-amber-50 text-amber-700 border border-amber-200"
-                      : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"}`}>
+                      ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30"
+                      : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle"}`}>
                   <span>{s.icon}</span>
                   <span>{s.label}</span>
                 </button>
               ))}
-              <div className="h-px bg-slate-100 my-1" />
+              <div className="h-px bg-cz-subtle my-1" />
               <button onClick={() => setActiveSection("faq")}
                 className={`text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-2
                   ${activeSection === "faq"
-                    ? "bg-amber-50 text-amber-700 border border-amber-200"
-                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"}`}>
+                    ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30"
+                    : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle"}`}>
                 <span>❓</span>
                 <span>FAQ</span>
               </button>
@@ -652,18 +652,18 @@ export default function HelpPage() {
           <div className="flex-1 min-w-0">
             {activeSection === "faq" ? (
               <div>
-                <h2 className="text-slate-900 font-bold text-base mb-4">Ofte stillede spørgsmål</h2>
+                <h2 className="text-cz-1 font-bold text-base mb-4">Ofte stillede spørgsmål</h2>
                 <div className="flex flex-col gap-2">
                   {FAQ.map((f, i) => (
-                    <div key={i} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div key={i} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
                       <button onClick={() => setFaqOpen(faqOpen === i ? null : i)}
                         className="w-full flex items-center justify-between px-4 py-3 text-left">
-                        <p className="text-slate-900 text-sm font-medium">{f.q}</p>
-                        <span className={`text-slate-400 text-xs ml-3 flex-shrink-0 transition-transform ${faqOpen === i ? "rotate-180" : ""}`}>▾</span>
+                        <p className="text-cz-1 text-sm font-medium">{f.q}</p>
+                        <span className={`text-cz-3 text-xs ml-3 flex-shrink-0 transition-transform ${faqOpen === i ? "rotate-180" : ""}`}>▾</span>
                       </button>
                       {faqOpen === i && (
-                        <div className="px-4 pb-3 border-t border-slate-200 pt-3">
-                          <p className="text-slate-500 text-sm leading-relaxed">{f.a}</p>
+                        <div className="px-4 pb-3 border-t border-cz-border pt-3">
+                          <p className="text-cz-2 text-sm leading-relaxed">{f.a}</p>
                         </div>
                       )}
                     </div>
@@ -672,22 +672,22 @@ export default function HelpPage() {
               </div>
             ) : currentSection ? (
               <div>
-                <h2 className="text-slate-900 font-bold text-base mb-4">
+                <h2 className="text-cz-1 font-bold text-base mb-4">
                   {currentSection.icon} {currentSection.label}
                 </h2>
                 <div className="flex flex-col gap-4">
                   {currentSection.content.map((block, i) => (
-                    <div key={i} className="bg-white border border-slate-200 rounded-xl p-4">
-                      <h3 className="text-slate-900 font-semibold text-sm mb-2">{block.title}</h3>
+                    <div key={i} className="bg-cz-card border border-cz-border rounded-xl p-4">
+                      <h3 className="text-cz-1 font-semibold text-sm mb-2">{block.title}</h3>
                       {block.text && (
-                        <p className="text-slate-500 text-sm leading-relaxed">{block.text}</p>
+                        <p className="text-cz-2 text-sm leading-relaxed">{block.text}</p>
                       )}
                       {block.steps && (
                         <ol className="flex flex-col gap-1.5 mt-1">
                           {block.steps.map((step, j) => (
                             <li key={j} className="flex items-start gap-2">
-                              <span className="text-amber-700 text-xs font-bold flex-shrink-0 mt-0.5">{j + 1}.</span>
-                              <span className="text-slate-500 text-sm leading-relaxed">{step}</span>
+                              <span className="text-cz-accent-t text-xs font-bold flex-shrink-0 mt-0.5">{j + 1}.</span>
+                              <span className="text-cz-2 text-sm leading-relaxed">{step}</span>
                             </li>
                           ))}
                         </ol>
@@ -696,9 +696,9 @@ export default function HelpPage() {
                         <div className="overflow-x-auto mt-2">
                           <table className="w-full text-sm">
                             <thead>
-                              <tr className="border-b border-slate-200">
+                              <tr className="border-b border-cz-border">
                                 {block.rows[0].map((h, j) => (
-                                  <th key={j} className="px-3 py-2 text-left text-slate-400 text-xs uppercase tracking-wider font-medium">
+                                  <th key={j} className="px-3 py-2 text-left text-cz-3 text-xs uppercase tracking-wider font-medium">
                                     {h}
                                   </th>
                                 ))}
@@ -706,9 +706,9 @@ export default function HelpPage() {
                             </thead>
                             <tbody>
                               {block.rows.slice(1).map((row, j) => (
-                                <tr key={j} className="border-b border-slate-100 last:border-0">
+                                <tr key={j} className="border-b border-cz-border last:border-0">
                                   {row.map((cell, k) => (
-                                    <td key={k} className="px-3 py-2 text-slate-500">{cell}</td>
+                                    <td key={k} className="px-3 py-2 text-cz-2">{cell}</td>
                                   ))}
                                 </tr>
                               ))}

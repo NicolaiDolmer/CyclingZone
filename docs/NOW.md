@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Ingen** — S8 lukket. Næste valg: Dark Mode S2 (tokenize resterende sider) eller Onboarding v2.
+**Ingen** — Dark Mode S2 lukket. Næste valg: Onboarding v2 eller næste feature-slice.
 
 ## Soak-gate
 **Aktiv: ja** — Deadline Day S1–S4 + Dark Mode S1 fra 2026-05-02 + S8 i dag = 6 user-facing slices uden e2e-smoke. Næste session skal starte med 60-min smoke i begge temaer FØR ny kode.
@@ -10,6 +10,7 @@
 **Alle 7 launch-gates ✅** — soft-launch-klar.
 
 ## Senest leveret
+- 2026-05-03: **Dark mode S2** (v2.06) — 27 pages + 7 components tokeniseret; 0 legacy slate/gray/white i migrerede filer; build grøn
 - 2026-05-03: **S8 Discord DM live i prod** (`e0362d9`) — sendDM verified end-to-end mod admin-konto, opt-out + status-badge + Dashboard nudge + input-validering på discord_id (afviser brugernavne, kun 17-19 cifre)
 - 2026-05-03: 3 nye GUARDRAILS_CORE-regler (soak-gate, runtime-anchored brief, doc-drift sweep)
 - v2.04 (2026-05-02): Dark mode S1 — token-foundation + ThemeProvider + chrome + top-5 sider

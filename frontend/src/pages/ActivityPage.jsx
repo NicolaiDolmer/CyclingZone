@@ -58,36 +58,36 @@ function Countdown({ end, status }) {
   }, [end]);
   return (
     <span className={`font-mono text-xs font-bold tabular-nums whitespace-nowrap
-      ${status === "extended" ? "text-orange-700" : urgent ? "text-red-700" : "text-slate-500"}`}>
+      ${status === "extended" ? "text-cz-warning" : urgent ? "text-cz-danger" : "text-cz-2"}`}>
       {text}
     </span>
   );
 }
 
 const OFFER_STATUS = {
-  pending:               { label: "Afventer svar",    cls: "bg-amber-50 text-amber-700 border-amber-200" },
-  countered:             { label: "Modbud modtaget",  cls: "bg-orange-50 text-orange-700 border-orange-200" },
-  awaiting_confirmation: { label: "Bekræft handel",          cls: "bg-blue-50 text-blue-700 border-blue-200" },
+  pending:               { label: "Afventer svar",    cls: "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" },
+  countered:             { label: "Modbud modtaget",  cls: "bg-cz-warning-bg text-cz-warning border-cz-warning/30" },
+  awaiting_confirmation: { label: "Bekræft handel",          cls: "bg-cz-info-bg text-cz-info border-cz-info/30" },
   window_pending:        { label: "Aftalt — afventer vindue", cls: "bg-violet-50 text-violet-700 border-violet-200" },
-  accepted:              { label: "Accepteret",               cls: "bg-green-50 text-green-700 border-green-200" },
-  rejected:              { label: "Afvist",            cls: "bg-red-50 text-red-700 border-red-200" },
-  withdrawn:             { label: "Trukket tilbage",   cls: "bg-slate-100 text-slate-400 border-slate-200" },
+  accepted:              { label: "Accepteret",               cls: "bg-cz-success-bg text-cz-success border-cz-success/30" },
+  rejected:              { label: "Afvist",            cls: "bg-cz-danger-bg text-cz-danger border-cz-danger/30" },
+  withdrawn:             { label: "Trukket tilbage",   cls: "bg-cz-subtle text-cz-3 border-cz-border" },
 };
 
 const LOAN_STATUS = {
-  pending:   { label: "Afventer",   cls: "bg-amber-50 text-amber-700 border-amber-200" },
-  active:    { label: "Aktiv",      cls: "bg-green-50 text-green-700 border-green-200" },
-  completed: { label: "Afsluttet", cls: "bg-slate-100 text-slate-500 border-slate-200" },
-  rejected:  { label: "Afvist",    cls: "bg-red-50 text-red-700 border-red-200" },
-  cancelled: { label: "Annulleret", cls: "bg-slate-100 text-slate-400 border-slate-200" },
+  pending:   { label: "Afventer",   cls: "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" },
+  active:    { label: "Aktiv",      cls: "bg-cz-success-bg text-cz-success border-cz-success/30" },
+  completed: { label: "Afsluttet", cls: "bg-cz-subtle text-cz-2 border-cz-border" },
+  rejected:  { label: "Afvist",    cls: "bg-cz-danger-bg text-cz-danger border-cz-danger/30" },
+  cancelled: { label: "Annulleret", cls: "bg-cz-subtle text-cz-3 border-cz-border" },
   buyout:    { label: "Købt ud",    cls: "bg-purple-50 text-purple-700 border-purple-200" },
 };
 
 function SectionHeader({ title, count }) {
   return (
-    <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{title}</p>
-      {count > 0 && <span className="text-xs font-mono text-slate-400">{count}</span>}
+    <div className="px-4 py-2.5 bg-cz-subtle border-b border-cz-border flex items-center gap-2">
+      <p className="text-xs font-semibold text-cz-2 uppercase tracking-wider">{title}</p>
+      {count > 0 && <span className="text-xs font-mono text-cz-3">{count}</span>}
     </div>
   );
 }
@@ -95,9 +95,9 @@ function SectionHeader({ title, count }) {
 function EmptyState({ icon, title, sub }) {
   return (
     <div className="text-center py-14">
-      <p className="text-4xl mb-3 text-slate-300">{icon}</p>
-      <p className="text-slate-400 font-medium">{title}</p>
-      {sub && <p className="text-sm mt-1 text-slate-300">{sub}</p>}
+      <p className="text-4xl mb-3 text-cz-3">{icon}</p>
+      <p className="text-cz-3 font-medium">{title}</p>
+      {sub && <p className="text-sm mt-1 text-cz-3">{sub}</p>}
     </div>
   );
 }
@@ -107,7 +107,7 @@ function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, 
   const navigate = useNavigate();
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer"
+      className="flex items-center gap-3 px-4 py-3 border-b border-cz-border last:border-0 hover:bg-cz-subtle transition-colors cursor-pointer"
       onClick={onClick}>
       <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase whitespace-nowrap flex-shrink-0 ${badgeCls}`}>
         {badge}
@@ -115,23 +115,23 @@ function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, 
       <div className="flex-1 min-w-0">
         {riderId ? (
           <button
-            className="text-sm font-medium text-slate-900 hover:text-amber-700 transition-colors text-left truncate max-w-full block"
+            className="text-sm font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate max-w-full block"
             onClick={e => { e.stopPropagation(); navigate(`/riders/${riderId}`); }}>
             {rider}
           </button>
         ) : (
-          <p className="text-sm font-medium text-slate-900 truncate">{rider}</p>
+          <p className="text-sm font-medium text-cz-1 truncate">{rider}</p>
         )}
-        {detail && <p className="text-xs text-slate-400 truncate">{detail}</p>}
+        {detail && <p className="text-xs text-cz-3 truncate">{detail}</p>}
       </div>
       {children}
       {amount != null && (
-        <span className="text-amber-700 font-mono text-sm font-bold whitespace-nowrap flex-shrink-0">
+        <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap flex-shrink-0">
           {amount.toLocaleString("da-DK")} CZ$
         </span>
       )}
-      {time && <span className="text-xs text-slate-400 whitespace-nowrap flex-shrink-0">{time}</span>}
-      <span className="text-slate-300 text-sm flex-shrink-0">→</span>
+      {time && <span className="text-xs text-cz-3 whitespace-nowrap flex-shrink-0">{time}</span>}
+      <span className="text-cz-3 text-sm flex-shrink-0">→</span>
     </div>
   );
 }
@@ -251,15 +251,15 @@ export default function ActivityPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
     </div>
   );
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-slate-900">Min Aktivitet</h1>
-        <p className="text-slate-400 text-sm">Dine markedshandlinger samlet ét sted</p>
+        <h1 className="text-xl font-bold text-cz-1">Min Aktivitet</h1>
+        <p className="text-cz-3 text-sm">Dine markedshandlinger samlet ét sted</p>
       </div>
 
       {/* Tab bar */}
@@ -268,14 +268,14 @@ export default function ActivityPage() {
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all border flex-shrink-0
               ${tab === t.key
-                ? "bg-amber-50 text-amber-700 border-amber-200"
-                : "text-slate-500 hover:text-slate-900 bg-white border-slate-200"}`}>
+                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
             {t.label}
             {t.count > 0 && (
               <span className={`text-xs font-mono rounded-full px-1.5 min-w-[18px] text-center leading-5
                 ${tab === t.key
-                  ? (t.key === "action" ? "bg-amber-700 text-white" : "bg-amber-200 text-amber-800")
-                  : "bg-slate-100 text-slate-500"}`}>
+                  ? (t.key === "action" ? "bg-cz-accent-t text-white" : "bg-cz-accent/20 text-cz-accent-t")
+                  : "bg-cz-subtle text-cz-2"}`}>
                 {t.count}
               </span>
             )}
@@ -285,7 +285,7 @@ export default function ActivityPage() {
 
       {/* ── KRÆVER HANDLING ── */}
       {tab === "action" && (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
           {actionCount === 0 && urgentAuctions.length === 0 ? (
             <EmptyState icon="✓" title="Intet der kræver handling" sub="Du er opdateret på alle tilbud og aftaler" />
           ) : (
@@ -337,9 +337,9 @@ export default function ActivityPage() {
                     return (
                       <Row key={a.id}
                         badge={isSelling ? "Sælger" : isWinning ? "Vinder" : "Byder"}
-                        badgeCls={isSelling ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : isWinning ? "bg-green-50 text-green-700 border-green-200"
-                          : "bg-amber-50 text-amber-700 border-amber-200"}
+                        badgeCls={isSelling ? "bg-cz-info-bg text-cz-info border-cz-info/30"
+                          : isWinning ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                          : "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"}
                         rider={`${a.rider?.firstname} ${a.rider?.lastname}`}
                         riderId={a.rider?.id}
                         detail={isSelling
@@ -363,7 +363,7 @@ export default function ActivityPage() {
 
       {/* ── AUKTIONER ── */}
       {tab === "auctions" && (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
           {activeAuctions.length === 0 ? (
             <EmptyState icon="⚡" title="Ingen aktive auktioner" sub="Du byder ikke på nogen auktioner og sælger intet" />
           ) : (
@@ -376,9 +376,9 @@ export default function ActivityPage() {
                 return (
                   <Row key={a.id}
                     badge={isSelling ? "Sælger" : isWinning ? "Vinder" : "Byder"}
-                    badgeCls={isSelling ? "bg-blue-50 text-blue-700 border-blue-200"
-                      : isWinning ? "bg-green-50 text-green-700 border-green-200"
-                      : "bg-amber-50 text-amber-700 border-amber-200"}
+                    badgeCls={isSelling ? "bg-cz-info-bg text-cz-info border-cz-info/30"
+                      : isWinning ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                      : "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"}
                     rider={`${a.rider?.firstname} ${a.rider?.lastname}`}
                     riderId={a.rider?.id}
                     detail={isSelling
@@ -402,13 +402,13 @@ export default function ActivityPage() {
       {tab === "transfers" && (
         <div className="space-y-4">
           {activeReceivedOffers.length + activeSentOffers.length === 0 && (
-            <div className="bg-white border border-slate-200 rounded-xl">
+            <div className="bg-cz-card border border-cz-border rounded-xl">
               <EmptyState icon="↔" title="Ingen aktive transfers" sub="Tilbud du sender eller modtager vises her" />
             </div>
           )}
 
           {activeReceivedOffers.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
               <SectionHeader title="Modtaget tilbud" count={activeReceivedOffers.length} />
               {activeReceivedOffers.map(o => {
                 const cfg = OFFER_STATUS[o.status] || OFFER_STATUS.pending;
@@ -427,7 +427,7 @@ export default function ActivityPage() {
           )}
 
           {activeSentOffers.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
               <SectionHeader title="Sendt tilbud" count={activeSentOffers.length} />
               {activeSentOffers.map(o => {
                 const cfg = OFFER_STATUS[o.status] || OFFER_STATUS.pending;
@@ -451,13 +451,13 @@ export default function ActivityPage() {
       {tab === "loans" && (
         <div className="space-y-4">
           {lendingLoans.length + borrowingLoans.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl">
+            <div className="bg-cz-card border border-cz-border rounded-xl">
               <EmptyState icon="⇄" title="Ingen aktive lejeaftaler" sub="Lejeaftaler du indgår vises her" />
             </div>
           ) : (
             <>
               {lendingLoans.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
                   <SectionHeader title="Jeg udlåner" count={lendingLoans.length} />
                   {lendingLoans.map(l => {
                     const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.active;
@@ -476,7 +476,7 @@ export default function ActivityPage() {
               )}
 
               {borrowingLoans.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
                   <SectionHeader title="Jeg låner" count={borrowingLoans.length} />
                   {borrowingLoans.map(l => {
                     const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.active;
@@ -503,11 +503,11 @@ export default function ActivityPage() {
         <div>
           <div className="flex justify-end mb-3">
             <button onClick={() => navigate("/watchlist")}
-              className="text-sm text-amber-700 hover:text-amber-900 font-medium transition-colors">
+              className="text-sm text-cz-accent-t hover:text-cz-accent-t font-medium transition-colors">
               Gå til fuld Ønskeliste →
             </button>
           </div>
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
             {watchlist.length === 0 ? (
               <EmptyState icon="⭐" title="Din ønskeliste er tom"
                 sub="Tilføj ryttere fra rytterdatabasen ved at klikke ⭐" />
@@ -517,24 +517,24 @@ export default function ActivityPage() {
                 const inAuction = auctionRiderIds.has(r?.id);
                 return (
                   <div key={entry.id}
-                    className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+                    className="flex items-center gap-3 px-4 py-3 border-b border-cz-border last:border-0 hover:bg-cz-subtle transition-colors">
                     <div className="flex-1 min-w-0">
                       <button onClick={() => navigate(`/riders/${r?.id}`)}
-                        className="text-sm font-medium text-slate-900 hover:text-amber-700 transition-colors text-left block truncate">
+                        className="text-sm font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left block truncate">
                         {r?.firstname} {r?.lastname}
                       </button>
-                      <p className="text-xs text-slate-400 truncate">{r?.team?.name || "Fri agent"}</p>
+                      <p className="text-xs text-cz-3 truncate">{r?.team?.name || "Fri agent"}</p>
                     </div>
                     {inAuction && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase bg-amber-50 text-amber-700 border-amber-200 whitespace-nowrap flex-shrink-0">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 whitespace-nowrap flex-shrink-0">
                         I auktion
                       </span>
                     )}
-                    <span className="text-amber-700 font-mono text-sm font-bold whitespace-nowrap flex-shrink-0">
+                    <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap flex-shrink-0">
                       {getRiderMarketValue(r).toLocaleString("da-DK")} CZ$
                     </span>
                     <button onClick={() => navigate(`/riders/${r?.id}`)}
-                      className="text-slate-300 hover:text-amber-700 text-sm transition-colors flex-shrink-0">
+                      className="text-cz-3 hover:text-cz-accent-t text-sm transition-colors flex-shrink-0">
                       →
                     </button>
                   </div>
@@ -549,13 +549,13 @@ export default function ActivityPage() {
       {tab === "history" && (
         <div className="space-y-4">
           {completedAuctions.length + histSentOffers.length + histReceivedOffers.length + historicalLoans.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl">
+            <div className="bg-cz-card border border-cz-border rounded-xl">
               <EmptyState icon="◎" title="Ingen historik endnu" sub="Afsluttede handler vises her" />
             </div>
           ) : (
             <>
               {completedAuctions.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
                   <SectionHeader title="Auktioner" count={completedAuctions.length} />
                   {completedAuctions.map(a => {
                     const iWon  = getAuctionLeaderId(a) === myTeamId;
@@ -563,9 +563,9 @@ export default function ActivityPage() {
                     const noSale = !a.current_bidder_id;
                     const badge = iWon ? "Købt" : iSold && !noSale ? "Solgt" : iSold && noSale ? "Ingen bud" : "Tabt";
                     const badgeCls = iWon
-                      ? "bg-green-50 text-green-700 border-green-200"
-                      : iSold && !noSale ? "bg-blue-50 text-blue-700 border-blue-200"
-                      : "bg-slate-100 text-slate-400 border-slate-200";
+                      ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                      : iSold && !noSale ? "bg-cz-info-bg text-cz-info border-cz-info/30"
+                      : "bg-cz-subtle text-cz-3 border-cz-border";
                     return (
                       <Row key={a.id}
                         badge={badge} badgeCls={badgeCls}
@@ -581,7 +581,7 @@ export default function ActivityPage() {
               )}
 
               {(histReceivedOffers.length + histSentOffers.length) > 0 && (
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
                   <SectionHeader title="Transfers" count={histReceivedOffers.length + histSentOffers.length} />
                   {[
                     ...histReceivedOffers.map(o => ({ ...o, _dir: "received" })),
@@ -606,7 +606,7 @@ export default function ActivityPage() {
               )}
 
               {historicalLoans.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
                   <SectionHeader title="Lån" count={historicalLoans.length} />
                   {historicalLoans.map(l => {
                     const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.completed;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
 import { getFlagEmoji } from "../lib/countryUtils";
@@ -73,15 +73,15 @@ export default function ResultaterPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
     </div>
   );
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">Resultater</h1>
-        <p className="text-slate-400 text-sm">
+        <h1 className="text-xl font-bold text-cz-1">Resultater</h1>
+        <p className="text-cz-3 text-sm">
           {season ? `Sæson ${season.number} · aktiv` : "Ingen aktiv sæson"}
         </p>
       </div>
@@ -90,18 +90,18 @@ export default function ResultaterPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {HUB_LINKS.map(link => (
           <Link key={link.to} to={link.to}
-            className="bg-white border border-slate-200 rounded-xl p-4 hover:border-amber-200 hover:shadow-sm transition-all group text-center">
+            className="bg-cz-card border border-cz-border rounded-xl p-4 hover:border-cz-accent/30 hover:shadow-sm transition-all group text-center">
             <div className="text-2xl mb-2">{link.icon}</div>
-            <p className="font-semibold text-slate-900 text-sm group-hover:text-amber-700 transition-colors">
+            <p className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">
               {link.label}
             </p>
-            <p className="text-slate-400 text-xs mt-0.5 leading-snug">{link.desc}</p>
+            <p className="text-cz-3 text-xs mt-0.5 leading-snug">{link.desc}</p>
           </Link>
         ))}
       </div>
 
       {!season ? (
-        <div className="text-center py-16 text-slate-300">
+        <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">◉</p>
           <p>Ingen aktiv sæson — resultater vises her når sæsonen er i gang</p>
         </div>
@@ -109,79 +109,79 @@ export default function ResultaterPage() {
         <div className="grid md:grid-cols-2 gap-4">
           {/* Tophold */}
           {topTeams.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100">
-                <h2 className="font-semibold text-slate-900 text-sm">Tophold — Sæson {season.number}</h2>
+            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-cz-border">
+                <h2 className="font-semibold text-cz-1 text-sm">Tophold — Sæson {season.number}</h2>
               </div>
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-cz-border">
                 {topTeams.map((s, i) => (
                   <div key={s.team?.id}
                     onClick={() => navigate(`/teams/${s.team?.id}`)}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors">
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-cz-subtle cursor-pointer transition-colors">
                     <span className={`w-5 text-center font-mono font-bold text-sm flex-shrink-0
-                      ${i === 0 ? "text-amber-700" : "text-slate-400"}`}>
+                      ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-900 text-sm truncate">{s.team?.name}</p>
-                      <p className="text-slate-400 text-xs">
+                      <p className="font-medium text-cz-1 text-sm truncate">{s.team?.name}</p>
+                      <p className="text-cz-3 text-xs">
                         {s.stage_wins || 0} etapesejre · {s.gc_wins || 0} GC
                       </p>
                     </div>
-                    <span className="font-mono font-bold text-amber-700 text-sm">
+                    <span className="font-mono font-bold text-cz-accent-t text-sm">
                       {(s.total_points || 0).toLocaleString("da-DK")} pt
                     </span>
                   </div>
                 ))}
               </div>
-              <div className="px-4 py-2 border-t border-slate-100">
-                <Link to="/standings" className="text-xs text-amber-700 hover:underline">Se hele ranglisten →</Link>
+              <div className="px-4 py-2 border-t border-cz-border">
+                <Link to="/standings" className="text-xs text-cz-accent-t hover:underline">Se hele ranglisten →</Link>
               </div>
             </div>
           )}
 
           {/* Topscorere */}
           {topRiders.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100">
-                <h2 className="font-semibold text-slate-900 text-sm">Topscorere — Sæson {season.number}</h2>
+            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-cz-border">
+                <h2 className="font-semibold text-cz-1 text-sm">Topscorere — Sæson {season.number}</h2>
               </div>
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-cz-border">
                 {topRiders.map((a, i) => (
                   <div key={a.rider.id}
                     onClick={() => navigate(`/riders/${a.rider.id}`)}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors">
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-cz-subtle cursor-pointer transition-colors">
                     <span className={`w-5 text-center font-mono font-bold text-sm flex-shrink-0
-                      ${i === 0 ? "text-amber-700" : "text-slate-400"}`}>
+                      ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-900 text-sm truncate">
+                      <p className="font-medium text-cz-1 text-sm truncate">
                         {a.rider.nationality_code && (
                           <span className="mr-1">{getFlagEmoji(a.rider.nationality_code)}</span>
                         )}
                         {a.rider.firstname} {a.rider.lastname}
                       </p>
-                      <p className="text-slate-400 text-xs">
+                      <p className="text-cz-3 text-xs">
                         {a.rider.team?.name || "Fri agent"}
                         {a.stage_wins > 0 && ` · ${a.stage_wins} etapesejre`}
                         {a.gc_wins > 0 && ` · ${a.gc_wins} GC`}
                       </p>
                     </div>
-                    <span className="font-mono font-bold text-amber-700 text-sm">
+                    <span className="font-mono font-bold text-cz-accent-t text-sm">
                       {(a.points || 0).toLocaleString("da-DK")} pt
                     </span>
                   </div>
                 ))}
               </div>
-              <div className="px-4 py-2 border-t border-slate-100">
-                <Link to="/rider-rankings" className="text-xs text-amber-700 hover:underline">Se alle ryttere →</Link>
+              <div className="px-4 py-2 border-t border-cz-border">
+                <Link to="/rider-rankings" className="text-xs text-cz-accent-t hover:underline">Se alle ryttere →</Link>
               </div>
             </div>
           )}
 
           {topTeams.length === 0 && topRiders.length === 0 && (
-            <div className="md:col-span-2 text-center py-12 text-slate-300">
+            <div className="md:col-span-2 text-center py-12 text-cz-3">
               <p className="text-4xl mb-3">◉</p>
               <p>Ingen løbsresultater importeret endnu denne sæson</p>
             </div>

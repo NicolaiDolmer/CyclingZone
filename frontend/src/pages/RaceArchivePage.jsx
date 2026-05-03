@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { Link } from "react-router-dom";
 
@@ -33,21 +33,21 @@ export default function RaceArchivePage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
     </div>
   );
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900">Løbsarkiv</h1>
-        <p className="text-slate-400 text-sm">
+        <h1 className="text-xl font-bold text-cz-1">Løbsarkiv</h1>
+        <p className="text-cz-3 text-sm">
           {groups.length} {groups.length === 1 ? "løb" : "løb"} på tværs af alle sæsoner
         </p>
       </div>
 
       {groups.length === 0 ? (
-        <div className="text-center py-16 text-slate-300">
+        <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">🏁</p>
           <p>Ingen løb registreret endnu</p>
         </div>
@@ -57,27 +57,27 @@ export default function RaceArchivePage() {
             <Link
               key={group.name}
               to={`/race-archive/${encodeURIComponent(group.name)}`}
-              className="bg-white border border-slate-200 rounded-xl p-4 hover:border-amber-200 hover:shadow-sm transition-all group">
+              className="bg-cz-card border border-cz-border rounded-xl p-4 hover:border-cz-accent/30 hover:shadow-sm transition-all group">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-semibold text-slate-900 text-sm group-hover:text-amber-700 transition-colors truncate">
+                  <p className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors truncate">
                     {group.name}
                   </p>
-                  <p className="text-slate-400 text-xs mt-0.5">
+                  <p className="text-cz-3 text-xs mt-0.5">
                     {group.race_type === "stage_race"
                       ? `Etapeløb · ${group.stages} etaper`
                       : "Enkeltdagsløb"}
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-amber-700 font-bold text-sm">{group.editions.length}</p>
-                  <p className="text-slate-400 text-[10px]">
+                  <p className="text-cz-accent-t font-bold text-sm">{group.editions.length}</p>
+                  <p className="text-cz-3 text-[10px]">
                     {group.editions.length === 1 ? "udgave" : "udgaver"}
                   </p>
                 </div>
               </div>
               {group.latestSeason > 0 && (
-                <p className="text-slate-400 text-xs mt-2">
+                <p className="text-cz-3 text-xs mt-2">
                   Seneste: Sæson {group.latestSeason}
                 </p>
               )}

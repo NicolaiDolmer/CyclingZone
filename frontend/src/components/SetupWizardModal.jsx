@@ -48,20 +48,20 @@ export default function SetupWizardModal({ onComplete }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+      <div className="bg-cz-card rounded-2xl shadow-2xl max-w-md w-full p-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-[#e8c547] rounded-xl flex items-center justify-center text-sm font-black text-[#1a1f38] flex-shrink-0">
+          <div className="w-10 h-10 bg-cz-accent rounded-xl flex items-center justify-center text-sm font-black text-cz-on-accent flex-shrink-0">
             CZ
           </div>
           <div>
-            <h2 className="text-slate-900 font-bold text-lg leading-tight">Velkommen til Cycling Zone</h2>
-            <p className="text-slate-400 text-sm">Navngiv dit hold for at komme i gang</p>
+            <h2 className="text-cz-1 font-bold text-lg leading-tight">Velkommen til Cycling Zone</h2>
+            <p className="text-cz-3 text-sm">Navngiv dit hold for at komme i gang</p>
           </div>
         </div>
 
         <div className="space-y-4 mb-5">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Holdnavn</label>
+            <label className="block text-sm font-medium text-cz-2 mb-1.5">Holdnavn</label>
             <input
               type="text"
               value={teamName}
@@ -69,12 +69,12 @@ export default function SetupWizardModal({ onComplete }) {
               onKeyDown={e => e.key === "Enter" && handleSave()}
               placeholder="f.eks. Team Nordic"
               maxLength={40}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm
-                focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+              className="w-full px-3 py-2.5 border border-cz-border rounded-lg text-sm
+                focus:outline-none focus:ring-2 focus:ring-cz-accent focus:border-transparent"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Managernavn</label>
+            <label className="block text-sm font-medium text-cz-2 mb-1.5">Managernavn</label>
             <input
               type="text"
               value={managerName}
@@ -82,14 +82,14 @@ export default function SetupWizardModal({ onComplete }) {
               onKeyDown={e => e.key === "Enter" && handleSave()}
               placeholder="f.eks. Lars Hansen"
               maxLength={40}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm
-                focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+              className="w-full px-3 py-2.5 border border-cz-border rounded-lg text-sm
+                focus:outline-none focus:ring-2 focus:ring-cz-accent focus:border-transparent"
             />
           </div>
         </div>
 
         {error && (
-          <p className="text-red-600 text-sm mb-4 px-3 py-2 bg-red-50 rounded-lg border border-red-200">
+          <p className="text-red-600 text-sm mb-4 px-3 py-2 bg-cz-danger-bg rounded-lg border border-cz-danger/30">
             {error}
           </p>
         )}
@@ -97,13 +97,13 @@ export default function SetupWizardModal({ onComplete }) {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg
+          className="w-full py-2.5 bg-cz-accent hover:brightness-110 text-white font-bold rounded-lg
             text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {saving ? "Gemmer…" : "Opret hold og start →"}
         </button>
 
-        <p className="text-center text-xs text-slate-400 mt-3">
+        <p className="text-center text-xs text-cz-3 mt-3">
           Du kan ændre navnene senere under Profil &amp; Indstillinger
         </p>
       </div>

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * RiderFilters — shared filter/sort component used on all rider pages
  * Props:
  *   filters: object with current filter state
@@ -73,8 +73,8 @@ function DualStatSlider({ statKey, label, filters, onChange }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-slate-400 text-[10px] uppercase tracking-wider">{label}</label>
-        <span className={`text-[10px] font-mono font-bold ${active ? "text-amber-700" : "text-slate-300"}`}>
+        <label className="text-cz-3 text-[10px] uppercase tracking-wider">{label}</label>
+        <span className={`text-[10px] font-mono font-bold ${active ? "text-cz-accent-t" : "text-cz-3"}`}>
           {valMin}–{valMax}
         </span>
       </div>
@@ -82,7 +82,7 @@ function DualStatSlider({ statKey, label, filters, onChange }) {
         <input
           type="range" min={50} max={85} step={1} value={valMin}
           onChange={e => onChange(minKey, Math.min(parseInt(e.target.value), valMax))}
-          className="w-full cursor-pointer accent-slate-400"
+          className="w-full cursor-pointer accent-cz-3"
         />
         <input
           type="range" min={50} max={85} step={1} value={valMax}
@@ -122,11 +122,11 @@ export default function RiderFilters({
   return (
     <>
       {/* ── Filter panel ── */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3">
+      <div className="bg-cz-card border border-cz-border rounded-xl p-4 mb-3">
         <div className="flex items-center justify-between gap-3 mb-3">
-          <p className="text-slate-500 text-xs uppercase tracking-wider font-semibold">Filtrér</p>
+          <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">Filtrér</p>
           {hasActiveFilters && (
-            <button onClick={onReset} className="text-xs text-slate-400 hover:text-slate-900 transition-colors flex-shrink-0">
+            <button onClick={onReset} className="text-xs text-cz-3 hover:text-cz-1 transition-colors flex-shrink-0">
               Nulstil
             </button>
           )}
@@ -135,19 +135,19 @@ export default function RiderFilters({
         <div className={`grid gap-2 ${compact ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"}`}>
           {/* Name */}
           <div>
-            <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Navn</label>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Navn</label>
             <input type="text" value={filters.q} onChange={e => onChange("q", e.target.value)}
               placeholder="Søg rytter..."
-              className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2
-                text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2
+                text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
           </div>
 
           {/* Country */}
           <div>
-            <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Land</label>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Land</label>
             <select value={filters.nationality_code} onChange={e => onChange("nationality_code", e.target.value)}
-              className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
-                text-slate-900 text-sm focus:outline-none focus:border-amber-400">
+              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
               <option value="">Alle lande</option>
               {nationalities.map(code => (
                 <option key={code} value={code}>{getFlagEmoji(code)} {getCountryName(code)}</option>
@@ -157,71 +157,71 @@ export default function RiderFilters({
 
           {/* UCI range */}
           <div>
-            <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Værdi CZ$ (min–max)</label>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Værdi CZ$ (min–max)</label>
             <div className="flex gap-1">
               <input type="number" value={filters.min_uci} onChange={e => onChange("min_uci", e.target.value)}
                 placeholder="Min"
-                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
-                  text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
               <input type="number" value={filters.max_uci} onChange={e => onChange("max_uci", e.target.value)}
                 placeholder="Max"
-                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
-                  text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
             </div>
           </div>
 
           {/* Salary range */}
           <div>
-            <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Løn CZ$ (min–max)</label>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Løn CZ$ (min–max)</label>
             <div className="flex gap-1">
               <input type="number" value={filters.min_salary} onChange={e => onChange("min_salary", e.target.value)}
                 placeholder="Min"
-                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
-                  text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
               <input type="number" value={filters.max_salary} onChange={e => onChange("max_salary", e.target.value)}
                 placeholder="Max"
-                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
-                  text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
             </div>
           </div>
 
           {/* Age range */}
           <div>
-            <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Alder (min–max)</label>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Alder (min–max)</label>
             <div className="flex gap-1">
               <input type="number" value={filters.min_age} onChange={e => onChange("min_age", e.target.value)}
                 placeholder="Min" min={16} max={45}
-                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
-                  text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
               <input type="number" value={filters.max_age} onChange={e => onChange("max_age", e.target.value)}
                 placeholder="Max" min={16} max={45}
-                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
-                  text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
             </div>
           </div>
 
           {/* Potentiale */}
           <div>
-            <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Potentiale (min–max)</label>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Potentiale (min–max)</label>
             <div className="flex gap-1">
               <input type="number" value={filters.min_potentiale} onChange={e => onChange("min_potentiale", e.target.value)}
                 placeholder="Min" min={1} max={6} step={0.5}
-                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
-                  text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
               <input type="number" value={filters.max_potentiale} onChange={e => onChange("max_potentiale", e.target.value)}
                 placeholder="Max" min={1} max={6} step={0.5}
-                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
-                  text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:border-amber-400" />
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
             </div>
           </div>
 
           {/* Team */}
           {showTeamFilter && teams.length > 0 && (
             <div>
-              <label className="block text-slate-400 text-[10px] uppercase tracking-wider mb-1">Hold</label>
+              <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Hold</label>
               <select value={filters.team_id} onChange={e => onChange("team_id", e.target.value)}
-                className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2 py-2
-                  text-slate-900 text-sm focus:outline-none focus:border-amber-400">
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                  text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
                 <option value="">Alle hold</option>
                 {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
@@ -234,8 +234,8 @@ export default function RiderFilters({
               <button key={key} onClick={() => onChange(key, !filters[key])}
                 className={`px-2 py-2 rounded-lg text-xs font-medium transition-all border
                   ${filters[key]
-                    ? "bg-amber-50 text-amber-700 border-amber-300"
-                    : "bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-900 hover:border-slate-400"}`}>
+                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40"
+                    : "bg-cz-subtle text-cz-3 border-cz-border hover:text-cz-1 hover:border-cz-border"}`}>
                 {label}
               </button>
             ))}
@@ -243,13 +243,13 @@ export default function RiderFilters({
         </div>
 
         {/* Evne-filtre (dual sliders) */}
-        <div className="mt-3 pt-3 border-t border-slate-200">
+        <div className="mt-3 pt-3 border-t border-cz-border">
           <button onClick={() => setStatsOpen(o => !o)}
-            className="flex items-center gap-2 text-slate-400 hover:text-slate-500 text-xs transition-colors">
+            className="flex items-center gap-2 text-cz-3 hover:text-cz-2 text-xs transition-colors">
             <span className={`transition-transform duration-150 inline-block ${statsOpen ? "rotate-90" : ""}`}>▶</span>
             <span className="uppercase tracking-wider font-medium">Evne-filtre</span>
             {hasActiveStats && (
-              <span className="bg-amber-50 text-amber-700 text-[10px] px-1.5 py-0.5 rounded-full">
+              <span className="bg-cz-accent/10 text-cz-accent-t text-[10px] px-1.5 py-0.5 rounded-full">
                 {activeStatKeys.length} aktive
               </span>
             )}
@@ -312,10 +312,10 @@ export default function RiderFilters({
 
 function Chip({ label, onRemove }) {
   return (
-    <span className="flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200
+    <span className="flex items-center gap-1 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
       text-[10px] px-2 py-1 rounded-full font-medium">
       {label}
-      <button onClick={onRemove} className="hover:text-slate-900 ml-0.5">×</button>
+      <button onClick={onRemove} className="hover:text-cz-1 ml-0.5">×</button>
     </span>
   );
 }

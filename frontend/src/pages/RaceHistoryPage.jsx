@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { getFlagEmoji } from "../lib/countryUtils";
@@ -88,14 +88,14 @@ export default function RaceHistoryPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-slate-200 border-t-amber-700 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
     </div>
   );
 
   if (!editions.length) return (
     <div className="max-w-4xl mx-auto">
-      <Link to="/race-archive" className="text-xs text-amber-700 hover:underline mb-4 inline-block">← Løbsarkiv</Link>
-      <div className="text-center py-16 text-slate-300">
+      <Link to="/race-archive" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">← Løbsarkiv</Link>
+      <div className="text-center py-16 text-cz-3">
         <p className="text-4xl mb-3">🏁</p>
         <p>Ingen data fundet for "{raceName}"</p>
       </div>
@@ -107,9 +107,9 @@ export default function RaceHistoryPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <Link to="/race-archive" className="text-xs text-amber-700 hover:underline mb-2 inline-block">← Løbsarkiv</Link>
-        <h1 className="text-xl font-bold text-slate-900">{raceName}</h1>
-        <p className="text-slate-400 text-sm">
+        <Link to="/race-archive" className="text-xs text-cz-accent-t hover:underline mb-2 inline-block">← Løbsarkiv</Link>
+        <h1 className="text-xl font-bold text-cz-1">{raceName}</h1>
+        <p className="text-cz-3 text-sm">
           {editions[0].race_type === "stage_race"
             ? `Etapeløb · ${editions[0].stages} etaper`
             : "Enkeltdagsløb"}
@@ -119,17 +119,17 @@ export default function RaceHistoryPage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Editions list */}
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100">
-            <h2 className="font-semibold text-slate-900 text-sm">Udgaver</h2>
+        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-cz-border">
+            <h2 className="font-semibold text-cz-1 text-sm">Udgaver</h2>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-cz-border">
             {editions.map(ed => (
               <div key={ed.id} className="px-4 py-3 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-slate-700 text-sm font-medium">Sæson {ed.season?.number}</p>
+                  <p className="text-cz-2 text-sm font-medium">Sæson {ed.season?.number}</p>
                   {ed.start_date && (
-                    <p className="text-slate-400 text-xs">
+                    <p className="text-cz-3 text-xs">
                       {new Date(ed.start_date).toLocaleDateString("da-DK", {
                         day: "numeric", month: "short", year: "numeric",
                       })}
@@ -140,18 +140,18 @@ export default function RaceHistoryPage() {
                   {ed.winner ? (
                     <div>
                       <p
-                        className="text-slate-900 text-xs font-medium hover:text-amber-700 cursor-pointer transition-colors"
+                        className="text-cz-1 text-xs font-medium hover:text-cz-accent-t cursor-pointer transition-colors"
                         onClick={() => ed.winner?.rider?.id && navigate(`/riders/${ed.winner.rider.id}`)}>
                         {ed.winner.rider
                           ? `${ed.winner.rider.firstname} ${ed.winner.rider.lastname}`
                           : ed.winner.rider_name}
                       </p>
-                      <p className="text-slate-400 text-[10px]">
+                      <p className="text-cz-3 text-[10px]">
                         {ed.winner.rider?.team?.name || ed.winner.team_name || "—"}
                       </p>
                     </div>
                   ) : (
-                    <span className="text-slate-300 text-xs">Ingen resultater</span>
+                    <span className="text-cz-3 text-xs">Ingen resultater</span>
                   )}
                 </div>
               </div>
@@ -160,32 +160,32 @@ export default function RaceHistoryPage() {
         </div>
 
         {/* Best riders */}
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-100">
-            <h2 className="font-semibold text-slate-900 text-sm">Bedste ryttere</h2>
-            <p className="text-slate-400 text-xs">Akkumuleret på tværs af alle udgaver</p>
+        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-cz-border">
+            <h2 className="font-semibold text-cz-1 text-sm">Bedste ryttere</h2>
+            <p className="text-cz-3 text-xs">Akkumuleret på tværs af alle udgaver</p>
           </div>
           {riderStats.length === 0 ? (
-            <div className="px-4 py-8 text-center text-slate-300 text-sm">Ingen resultater endnu</div>
+            <div className="px-4 py-8 text-center text-cz-3 text-sm">Ingen resultater endnu</div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-cz-border">
               {riderStats.map((s, i) => (
                 <div
                   key={s.rider?.id || s.rider_name}
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors"
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-cz-subtle cursor-pointer transition-colors"
                   onClick={() => s.rider?.id && navigate(`/riders/${s.rider.id}`)}>
                   <span className={`w-4 text-center font-mono font-bold text-xs flex-shrink-0
-                    ${i === 0 ? "text-amber-700" : "text-slate-300"}`}>
+                    ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>
                     {i + 1}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-slate-900 text-xs font-medium truncate">
+                    <p className="text-cz-1 text-xs font-medium truncate">
                       {s.rider?.nationality_code && (
                         <span className="mr-1">{getFlagEmoji(s.rider.nationality_code)}</span>
                       )}
                       {s.rider_name}
                     </p>
-                    <p className="text-slate-400 text-[10px]">
+                    <p className="text-cz-3 text-[10px]">
                       {[
                         s.gc_wins > 0 && `${s.gc_wins} GC`,
                         s.stage_wins > 0 && `${s.stage_wins} etapesejre`,
@@ -193,7 +193,7 @@ export default function RaceHistoryPage() {
                       ].filter(Boolean).join(" · ") || "Ingen sejre"}
                     </p>
                   </div>
-                  <span className="text-amber-700 font-mono text-xs font-bold flex-shrink-0">
+                  <span className="text-cz-accent-t font-mono text-xs font-bold flex-shrink-0">
                     {s.total_points.toLocaleString("da-DK")} pt
                   </span>
                 </div>
@@ -205,9 +205,9 @@ export default function RaceHistoryPage() {
 
       {/* Accumulated bar chart */}
       {riderStats.length > 0 && riderStats[0].total_points > 0 && (
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <h2 className="font-semibold text-slate-900 text-sm mb-0.5">Akkumuleret point-total</h2>
-          <p className="text-slate-400 text-xs mb-5">Top ryttere efter samlede point på tværs af alle udgaver</p>
+        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+          <h2 className="font-semibold text-cz-1 text-sm mb-0.5">Akkumuleret point-total</h2>
+          <p className="text-cz-3 text-xs mb-5">Top ryttere efter samlede point på tværs af alle udgaver</p>
           <div className="space-y-3">
             {riderStats.map((s, i) => {
               const pct = maxPoints > 0 ? (s.total_points / maxPoints) * 100 : 0;
@@ -215,19 +215,19 @@ export default function RaceHistoryPage() {
               const barColor = i === 0 ? "#e8c547" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "#e2e8f0";
               return (
                 <div key={s.rider?.id || s.rider_name} className="flex items-center gap-3">
-                  <div className="w-28 text-xs text-slate-600 truncate text-right flex-shrink-0">
+                  <div className="w-28 text-xs text-cz-2 truncate text-right flex-shrink-0">
                     {s.rider?.nationality_code && (
                       <span className="mr-0.5">{getFlagEmoji(s.rider.nationality_code)}</span>
                     )}
                     {lastName}
                   </div>
-                  <div className="flex-1 h-5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="flex-1 h-5 bg-cz-subtle rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${Math.max(pct, 1)}%`, backgroundColor: barColor }}
                     />
                   </div>
-                  <div className="w-16 text-xs font-mono text-slate-600 text-right flex-shrink-0">
+                  <div className="w-16 text-xs font-mono text-cz-2 text-right flex-shrink-0">
                     {s.total_points.toLocaleString("da-DK")}
                   </div>
                 </div>
