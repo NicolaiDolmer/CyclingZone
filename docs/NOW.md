@@ -4,7 +4,7 @@
 **Ingen** — Dark Mode S2 lukket. Næste valg: Onboarding v2 eller næste feature-slice.
 
 ## Soak-gate
-**Aktiv: ja** — Deadline Day S1–S4 + Dark Mode S1 fra 2026-05-02 + S8 i dag = 6 user-facing slices uden e2e-smoke. Næste session skal starte med 60-min smoke i begge temaer FØR ny kode.
+**Aktiv: ja** — 7 user-facing slices uden e2e-smoke (Deadline Day S1–S4, Dark Mode S1+S2, S8 Discord DM). Næste session skal starte med 30-60 min smoke i light + dark FØR ny kode-slice startes.
 
 ## Open beta status
 **Alle 7 launch-gates ✅** — soft-launch-klar.
@@ -17,8 +17,8 @@
 - v2.03 (2026-05-02): Deadline Day S4 — T-24h/T-2h/T-30min cron + Final Whistle Discord-rapport
 
 ## Næste session — prioriteter
-1. **Soak-gate kvittering** — kør 60-min e2e smoke i light + dark, notér fund i denne fil
-2. Vælg næste slice: Dark Mode S2 (mekanisk, lav-risk) eller Onboarding v2 (cykling-fokus, post-launch retention)
+1. **Soak-gate kvittering** — kør 30-60 min e2e smoke i light + dark på top-flows (auktion, transfer, dashboard, profil)
+2. Vælg næste slice: **Dark Mode S3 lint-guard** (cz-violet token + ESLint mod legacy farver, så S2 ikke regredierer) eller **Onboarding v2** (post-launch retention)
 3. Tjek at de 3 managers med username-format discord_id ser den røde warning-badge og opdaterer
 
 ## Værktøjer

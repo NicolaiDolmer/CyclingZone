@@ -58,6 +58,26 @@ Push efter commit uden at spørge. Commit → push er én operation.
 
 ---
 
+## Remote routines (CCR) — best practice
+
+Lært den hårde vej 2026-05-03: en Sonnet-routine "Dark mode S2" gennemførte alt arbejde (31 filer + build + docs + lokalt commit) men kunne ikke pushe pga. manglende write-permissions. Sandbox er ephemeral → arbejdet tabt.
+
+**Før `RemoteTrigger create`:**
+1. `mcp_connections` for GitHub-connectoren SKAL have `permitted_tools` med mindst `create_branch`, `push_files` (eller `create_or_update_file`), `create_pull_request`. Tomt array = read-only.
+2. Prompt skal instruere agenten i at outputte fuld diff i sidste besked hvis push fejler — så vi kan recovere fra routine-siden.
+3. Brug aldrig `persist_session: false` (default for run-once) til en task hvis push-pathen ikke er bombsikker.
+
+**Efter routinen har fyret:**
+1. `RemoteTrigger get` returnerer kun `run_once_fired` — det betyder IKKE at arbejdet landede.
+2. Verificér via GitHub MCP `list_branches` + `list_pull_requests` at branchen og PR'en faktisk eksisterer.
+3. Logs er kun synlige i `claude.ai/code/routines/<id>` i browser — ikke via API.
+
+**Recovery:** hvis push fejlede og diff ikke blev outputtet → arbejde er tabt, kør lokalt forfra med samme prompt.
+
+**Yderligere læring 2026-05-03:** GitHub MCP-integrationen er read-only i nuværende setup. `create_pull_request`, `push_files`, `create_branch` → 403. `git push` virker lokalt (bruger Git Credential Manager). PR-oprettelse er altid manuel via URL: `https://github.com/<owner>/<repo>/pull/new/<branch>`. Hvis vi skal automatisere PR-oprettelse, skal brugeren udvide GitHub-integrationens scope til `pull_request:write`.
+
+---
+
 ## Lokal PC-opsætning (kør ved første session på ny PC eller efter ny devDep)
 
 ```powershell
