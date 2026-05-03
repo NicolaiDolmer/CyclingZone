@@ -186,7 +186,7 @@ const SECTIONS = [
       },
       {
         title: "Slå DMs fra (opt-out)",
-        text: "Hvis du ikke vil have private beskeder fra botten, kan du slå \"Modtag DMs ved person-rettede events\" fra under Profil → Discord Integration. Du får stadig @mention i kanalen, og in-app notifikationerne bliver ved med at virke.",
+        text: "Hvis du ikke vil have private beskeder fra botten, kan du slå \"Modtag DMs ved person-rettede events\" fra under Profil → Discord Integration. In-app notifikationerne bliver ved med at virke. Person-rettet info (overbud, vundne auktioner, transfer-tilbud/-svar) postes ikke i den fælles kanal — den er forbeholdt broadcasts.",
       },
       {
         title: "Hvornår sendes der DMs?",
