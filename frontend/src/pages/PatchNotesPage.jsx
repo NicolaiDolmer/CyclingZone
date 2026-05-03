@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.07",
+    date: "2026-05-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Discord — privatliv",
+        items: [
+          "Privat info bliver privat. Overbud, vundne auktioner, modtagne transfertilbud og svar på dine egne tilbud sendes nu kun som DM — ikke længere som @mention i den fælles kanal hvor alle kan læse med",
+          "Den offentlige kanal viser fortsat broadcasts (nye auktioner, gennemførte handler, byttehandler, sæson-events) men ingen person-rettet info",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.06",
     date: "2026-05-03",
     label: "Beta",

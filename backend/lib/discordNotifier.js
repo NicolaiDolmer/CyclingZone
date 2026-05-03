@@ -67,25 +67,6 @@ async function getWebhookByType(type) {
 }
 
 /**
- * Get Discord ID for a team owner
- */
-async function getDiscordId(teamId) {
-  if (!teamId) return null;
-  const { data } = await supabase
-    .from("teams")
-    .select("user_id")
-    .eq("id", teamId)
-    .single();
-  if (!data?.user_id) return null;
-  const { data: user } = await supabase
-    .from("users")
-    .select("discord_id")
-    .eq("id", data.user_id)
-    .single();
-  return user?.discord_id || null;
-}
-
-/**
  * Send a Discord webhook message
  */
 export async function sendWebhook(webhookUrl, payload) {
@@ -220,12 +201,10 @@ export async function sendTestDM(discordId) {
 }
 
 /**
- * Build a Discord embed message
+ * Build a Discord embed message (kanal-broadcast — uden @mention)
  */
-function buildEmbed(type, title, description, fields = [], discordId = null) {
-  const mention = discordId ? `<@${discordId}> ` : "";
+function buildEmbed(type, title, description, fields = []) {
   return {
-    content: mention || undefined,
     embeds: [{
       title: `${TYPE_LABELS[type] || type}: ${title}`,
       description,
@@ -255,16 +234,12 @@ export async function notifyNewAuction({ riderName, riderUci, sellerName, startP
   await sendWebhook(url, payload);
 }
 
-export async function notifyOutbid({ riderName, newBid, bidderName, teamId, webhookUrl }) {
-  const url = webhookUrl || await getDefaultWebhook();
-  if (!url) return;
-  const discordId = await getDiscordId(teamId);
+// Person-rettede notifications — DM-only (må ikke broadcastes til kanal)
+export async function notifyOutbid({ riderName, newBid, bidderName, teamId }) {
   const fields = [
     { name: "Nyt bud", value: `${newBid?.toLocaleString("da-DK")} CZ$` },
     { name: "Budt af", value: bidderName },
   ];
-  const payload = buildEmbed("auction_outbid", riderName, `Du er blevet overbudt på **${riderName}**!`, fields, discordId);
-  await sendWebhook(url, payload);
   await notifyDiscordDM({
     teamId,
     type: "auction_outbid",
@@ -274,13 +249,8 @@ export async function notifyOutbid({ riderName, newBid, bidderName, teamId, webh
   });
 }
 
-export async function notifyAuctionWon({ riderName, finalPrice, teamId, webhookUrl }) {
-  const url = webhookUrl || await getDefaultWebhook();
-  if (!url) return;
-  const discordId = await getDiscordId(teamId);
+export async function notifyAuctionWon({ riderName, finalPrice, teamId }) {
   const fields = [{ name: "Slutpris", value: `${finalPrice?.toLocaleString("da-DK")} CZ$` }];
-  const payload = buildEmbed("auction_won", riderName, `Du har vundet auktionen på **${riderName}**! 🎉`, fields, discordId);
-  await sendWebhook(url, payload);
   await notifyDiscordDM({
     teamId,
     type: "auction_won",
@@ -290,14 +260,9 @@ export async function notifyAuctionWon({ riderName, finalPrice, teamId, webhookU
   });
 }
 
-export async function notifyTransferOffer({ riderName, offerAmount, buyerName, teamId, webhookUrl }) {
-  const url = webhookUrl || await getDefaultWebhook();
-  if (!url) return;
-  const discordId = await getDiscordId(teamId);
+export async function notifyTransferOffer({ riderName, offerAmount, buyerName, teamId }) {
   const fields = [{ name: "Tilbud", value: `${offerAmount?.toLocaleString("da-DK")} CZ$` }];
   const description = `**${buyerName}** har sendt et tilbud på **${riderName}**`;
-  const payload = buildEmbed("transfer_offer", riderName, description, fields, discordId);
-  await sendWebhook(url, payload);
   await notifyDiscordDM({
     teamId,
     type: "transfer_offer",
@@ -307,10 +272,7 @@ export async function notifyTransferOffer({ riderName, offerAmount, buyerName, t
   });
 }
 
-export async function notifyTransferResponse({ riderName, accepted, teamId, counterAmount, webhookUrl }) {
-  const url = webhookUrl || await getDefaultWebhook();
-  if (!url) return;
-  const discordId = await getDiscordId(teamId);
+export async function notifyTransferResponse({ riderName, accepted, teamId, counterAmount }) {
   const type = accepted ? "transfer_accepted" : "transfer_rejected";
   const fields = [];
   if (counterAmount) fields.push({ name: "Modbud", value: `${counterAmount?.toLocaleString("da-DK")} CZ$` });
@@ -319,8 +281,6 @@ export async function notifyTransferResponse({ riderName, accepted, teamId, coun
     : counterAmount
       ? `Dit tilbud på **${riderName}** fik et modbud`
       : `Dit tilbud på **${riderName}** blev afvist`;
-  const payload = buildEmbed(type, riderName, description, fields, discordId);
-  await sendWebhook(url, payload);
   await notifyDiscordDM({ teamId, type, title: riderName, description, fields });
 }
 

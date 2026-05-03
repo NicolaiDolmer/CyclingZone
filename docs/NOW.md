@@ -10,6 +10,7 @@
 **Alle 7 launch-gates ✅** — soft-launch-klar.
 
 ## Senest leveret
+- 2026-05-03: **Discord-privatliv-fix** (v2.07) — `notifyOutbid`/`notifyAuctionWon`/`notifyTransferOffer`/`notifyTransferResponse` er nu DM-only; ingen længere @mention med privat info i fælleskanal. `getDiscordId` og `buildEmbed.discordId` fjernet som dead code.
 - 2026-05-03: **Dark mode S2** (v2.06) — 27 pages + 7 components tokeniseret; 0 legacy slate/gray/white i migrerede filer; build grøn
 - 2026-05-03: **S8 Discord DM live i prod** (`e0362d9`) — sendDM verified end-to-end mod admin-konto, opt-out + status-badge + Dashboard nudge + input-validering på discord_id (afviser brugernavne, kun 17-19 cifre)
 - 2026-05-03: 3 nye GUARDRAILS_CORE-regler (soak-gate, runtime-anchored brief, doc-drift sweep)
