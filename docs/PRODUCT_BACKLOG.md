@@ -59,7 +59,7 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 
 **S2 ✅ (2026-05-03):** Resterende sider — `Transfers`, `Board`, `Standings`, `Notifications`, `Watchlist`, `Hall of Fame`, `Race*`, `Admin`, `RiderStats`, `Manager*`, `Help`, `PatchNotes` m.fl. + 7 komponenter. Alle tokeniseret, build grøn (v2.06).
 
-**S3 (planlagt):** Lint-guard mod nye hardkodede farver — ESLint-regel eller pre-commit grep der advarer om nye `bg-[#…]`/`bg-white`/`text-gray-*`/`text-slate-*` i `frontend/src/`.
+**S3 ✅ (v2.08 + v2.10, 2026-05-03):** Lint-guard mod nye hardkodede farver — ESLint `no-restricted-syntax` blokerer `(slate|gray)-(50…950)` (v2.08) og `(text|border|ring|divide|outline)-(white|black)/\d+` opacity-classes (v2.10). `bg-(white|black)/N` bevidst tilladt for modal-scrims; `bg-white`/`text-white` (uden opacity) bevidst tilladt fordi de bruges legitimt på `cz-accent`/`cz-sidebar`/Discord-brand-knapper. Se FEATURE_STATUS "Dark mode S3 lint-guard" for fulde detaljer.
 
 ---
 
