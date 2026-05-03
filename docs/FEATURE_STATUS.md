@@ -137,9 +137,9 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Discord & Integrationer
 - Discord webhooks: admin kan tilføje webhooks med navn, URL og type (general / transfer_history)
 - Gennemførte transfers og byttehandler sendes til `transfer_history` webhook; runtime-bekræftet med rigtig transfer completion 2026-04-28
-- `users.discord_id` gemmes og bruges til @mention i kanal-embeds
-- **Discord DM (v2.05, 2026-05-03):** `discordNotifier.sendDM(discordId, payload)` + `notifyDiscordDM({teamId,...})` via raw Discord REST (`POST /users/@me/channels` → `POST /channels/:id/messages`); kræver `DISCORD_BOT_TOKEN` env (Railway). Auto-DM på 4 person-rettede events: outbid, auction_won, transfer_offer, transfer_accepted/rejected/counter. Bredt-rettede (new_auction, transfer_completed, swap_completed, season_event) er kanal-only.
-- **Opt-out:** `users.discord_dm_enabled BOOLEAN DEFAULT true` — slå fra via ProfilePage uden at miste @mention i kanal
+- `users.discord_id` gemmes og bruges udelukkende til DM-lookup (ingen @mention i kanal-embeds — fjernet i v2.07)
+- **Discord DM (v2.05, 2026-05-03; privatliv-fix v2.07, 2026-05-03):** `discordNotifier.sendDM(discordId, payload)` + `notifyDiscordDM({teamId,...})` via raw Discord REST (`POST /users/@me/channels` → `POST /channels/:id/messages`); kræver `DISCORD_BOT_TOKEN` env (Railway). De 4 person-rettede events (outbid, auction_won, transfer_offer, transfer_accepted/rejected/counter) er **DM-only** — postes ikke i nogen kanal. Bredt-rettede (new_auction, transfer_completed, swap_completed, season_event) er kanal-only.
+- **Opt-out:** `users.discord_dm_enabled BOOLEAN DEFAULT true` — slå fra via ProfilePage; person-rettet info bliver da kun vist via in-app notifikationer (ingen kanal-fallback efter v2.07)
 - **ProfilePage:** Discord-status badge (forbundet/slået fra/bot ikke konfigureret/mangler ID), opt-out toggle, "Send test-DM"-knap kalder `POST /api/me/discord-dm-test`
 - **DashboardPage:** dismissable nudge-card til managers uden discord_id (localStorage `cz-dashboard-discord-nudge-dismissed`)
 - Backend routes: `GET /api/me/discord-status`, `POST /api/me/discord-dm-test`, `PATCH /api/me/discord-dm-enabled`
