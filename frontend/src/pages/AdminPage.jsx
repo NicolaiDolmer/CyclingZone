@@ -1148,7 +1148,7 @@ export default function AdminPage() {
         )}
         {seasonPreview && (
           <p className="text-cz-3 text-xs mt-2">
-            Preview er ikke bindende. Bekræft og afslut sæson via "⏹ Afslut"-knappen ovenfor.
+            Preview er ikke bindende. Bekræft og afslut sæson via &quot;⏹ Afslut&quot;-knappen ovenfor.
           </p>
         )}
       </Section>

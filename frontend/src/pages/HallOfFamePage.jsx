@@ -35,8 +35,6 @@ export default function HallOfFamePage() {
   const [myUserId, setMyUserId] = useState(null);
   const [myTeamId, setMyTeamId] = useState(null);
 
-  useEffect(() => { loadAll(); }, []);
-
   async function loadAll() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -69,6 +67,8 @@ export default function HallOfFamePage() {
       .sort((a, b) => (b.level || 1) - (a.level || 1) || (b.xp || 0) - (a.xp || 0)));
     setLoading(false);
   }
+
+  useEffect(() => { loadAll(); }, []);
 
   // Calculate all-time stats from standings if no HoF records yet
   function getBestFromStandings(category) {

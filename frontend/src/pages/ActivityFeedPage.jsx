@@ -30,16 +30,6 @@ export default function ActivityFeedPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
-  useEffect(() => {
-    loadFeed();
-    // Subscribe to new events
-    const channel = supabase.channel("activity-feed-live")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_feed" },
-        payload => setEvents(prev => [payload.new, ...prev].slice(0, 100)))
-      .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, []);
-
   async function loadFeed() {
     const { data } = await supabase
       .from("activity_feed")
@@ -49,6 +39,16 @@ export default function ActivityFeedPage() {
     setEvents(data || []);
     setLoading(false);
   }
+
+  useEffect(() => {
+    loadFeed();
+    // Subscribe to new events
+    const channel = supabase.channel("activity-feed-live")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_feed" },
+        payload => setEvents(prev => [payload.new, ...prev].slice(0, 100)))
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
 
   const FILTER_TYPES = {
     all:       null,

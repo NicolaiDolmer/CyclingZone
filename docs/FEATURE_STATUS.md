@@ -183,10 +183,21 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Dark mode S3 lint-guard (v2.08 → udvidet i v2.10, 2026-05-03)
 - ESLint `no-restricted-syntax`-regel i `frontend/eslint.config.js` fejler på `(slate|gray)-(50|100|...|950)` i string-literals OG template-elementer (catches både `className="text-slate-400"` og `` `${x ? 'bg-gray-100' : 'bg-cz-card'}` `` patterns)
 - **v2.10:** udvidet med `(text|border|ring|divide|outline)-(white|black)/\d+` — fanger Panic Board-hullet (text-white/N + border-white/N) der bypassede v2.08-guarden. `bg-(white|black)/N` bevidst tilladt fordi modal-scrims (ConfettiModal, OnboardingModal, SetupWizardModal, Layout, TeamPage) idiomatisk bruger `bg-black/60-70`
-- Scope: `**/*.{js,jsx}` med dedikeret config-block — pre-eksisterende react-rules forbliver `.js`-only (71 latente react-fejl i .jsx skal saneres separat før scope-løft)
+- Scope: `**/*.{js,jsx}` med dedikeret config-block. **v2.11:** alle øvrige react-rules løftet fra `.js`-only til `.{js,jsx}` efter sanitering af 71 pre-eks. fejl
 - Migration-misser fra S2 ryddet: `text-slate-300/400` i `frontend/src/components/PotentialeStars.jsx:15+35`, `text-slate-400` i `frontend/src/lib/statBg.js:4` → alle `text-cz-3`. v2.10: `text-white/20` i `DeadlineDayBanner.jsx:92` (TEST-label) → `text-cz-3`
 - `bg-white`/`text-white` (uden opacity) IKKE blokeret — bruges legitimt på `cz-accent`/`cz-sidebar`/Discord-brand-knapper
 - Verificeret v2.10: sanity-test med `text-white/40` literal + ` `text-white/30 mt-2` ` template literal fejler begge med besked om cz-tokens; `bg-black/60` passerer; `npm run lint` grøn på baseline (0 errors)
+
+### JSX react-rules sanitering (v2.11, 2026-05-03)
+- React-regelsæt løftet fra `.js`-only til `.{js,jsx}` i `frontend/eslint.config.js`. Sanering af 71 pre-eks. fejl fordelt på 7 regler:
+  - **28 react-hooks/immutability** — `useEffect(() => loadX())` blev kaldt før `async function loadX()` deklareret. Fix: useEffect-blokke flyttet ned under fn-deklarationer på 22 sider (ActivityFeedPage, ActivityPage, AuctionHistoryPage, AuctionsPage, DashboardPage, HallOfFamePage, HeadToHeadPage, Layout, ManagerProfilePage, RaceArchivePage, RaceHistoryPage, RacePointsPage, ResultaterPage, RiderRankingsPage, RiderStatsPage, RidersPage, SeasonPreviewPage, StandingsPage, TeamProfilePage, TeamsPage, WatchlistPage). Layouts `fetchOnlineCount` flyttet op før useEffects der bruger den
+  - **15 react/no-unescaped-entities** — `"text"` og `app'en` JSX-tekst escapet til `&quot;`/`&apos;` i AdminPage, DashboardPage, ProfilePage, RaceHistoryPage, TransfersPage
+  - **8 no-empty** — `catch {}`-blokke i DeadlineDayBanner, DeadlineDayTicker, theme.jsx, AuctionsPage, RiderStatsPage fået kort begrundelse-kommentar
+  - **6 react-hooks/static-components** — `NavItem` + `SidebarContent` flyttet ud af `Layout` (med props-passing); `StatCompare` flyttet ud af `HeadToHeadPage`
+  - **2 react-hooks/purity** — `Math.random()` for ConfettiModal-partikel-radius låst ved mount-time (state-felt `radius`); RiderStats `Date.now()` til age-beregning beholdt med targeted `eslint-disable-next-line` + begrundelse (acceptabel for stabil rytter-alder-visning)
+  - **1 no-useless-assignment** — ubrugt initial-value til `nextNegotiationOptions` i BoardPage fjernet
+- **react-hooks/set-state-in-effect** disabled globalt med begrundelse i config: regelen er en React-Compiler-rule i react-hooks v7 der antager React 19-mønstre. Vi kører React 18.3.1 hvor data-load ved mount + setState i async fn fra useEffect er det idiomatiske pattern (data-fetching, polling, countdown-timers, derived state). Genoverveje hvis vi opgraderer til React 19 + compiler
+- Verificeret: `npm run lint` returnerer 0 errors (42 acceptable warnings: exhaustive-deps + no-unused-vars). Build grøn (`vite built in 4.92s`)
 
 ### Deadline Day S4 (2026-05-02)
 - Planlagte advarsler (T-24h / T-2h / T-30min): cron kører hver 5. minut, sender `deadline_day_warning`-notifikationer til alle aktive managers via `notifyTeamOwner`; dedupe via `related_id = window_id` + step-titel (24t-vindue i `notificationService`)

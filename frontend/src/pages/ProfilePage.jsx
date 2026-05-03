@@ -356,7 +356,7 @@ export default function ProfilePage() {
           />
           <p className="text-cz-3 text-xs mt-2">
             Find dit ID: Discord → Indstillinger → Avanceret → Aktivér udviklertilstand
-            → Højreklik på dit navn → "Kopiér bruger-ID".
+            → Højreklik på dit navn → &quot;Kopiér bruger-ID&quot;.
             <span className="block mt-1 text-cz-2">
               Det er et <strong>17-19-cifret tal</strong>, ikke dit @brugernavn.
             </span>

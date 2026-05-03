@@ -407,34 +407,6 @@ export default function AuctionsPage() {
     return riderFilters.filters.sort_dir;
   }
 
-  useEffect(() => {
-    loadAll();
-    const channel = supabase.channel("auctions-live")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "auctions" },
-        payload => {
-          const updated = payload.new;
-          setAuctions(prev => {
-            const prevAuction = prev.find(a => a.id === updated.id);
-            if (updated.status === "completed" && prevAuction?.status !== "completed") {
-              setMyTeamId(tid => {
-                if (getAuctionLeaderId({ ...prevAuction, ...updated }) === tid) {
-                  setCelebration({
-                    title: "Du vandt auktionen! 🏆",
-                    subtitle: `Rytteren er nu på dit hold`,
-                    amount: updated.current_price,
-                  });
-                }
-                return tid;
-              });
-              return prev.filter(a => a.id !== updated.id);
-            }
-            return prev.map(a => a.id === updated.id ? { ...a, ...updated } : a);
-          });
-        })
-      .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, []);
-
   async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: team } = await supabase.from("teams").select("id, balance").eq("user_id", user.id).single();
@@ -466,6 +438,34 @@ export default function AuctionsPage() {
     setLoading(false);
   }
 
+  useEffect(() => {
+    loadAll();
+    const channel = supabase.channel("auctions-live")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "auctions" },
+        payload => {
+          const updated = payload.new;
+          setAuctions(prev => {
+            const prevAuction = prev.find(a => a.id === updated.id);
+            if (updated.status === "completed" && prevAuction?.status !== "completed") {
+              setMyTeamId(tid => {
+                if (getAuctionLeaderId({ ...prevAuction, ...updated }) === tid) {
+                  setCelebration({
+                    title: "Du vandt auktionen! 🏆",
+                    subtitle: `Rytteren er nu på dit hold`,
+                    amount: updated.current_price,
+                  });
+                }
+                return tid;
+              });
+              return prev.filter(a => a.id !== updated.id);
+            }
+            return prev.map(a => a.id === updated.id ? { ...a, ...updated } : a);
+          });
+        })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
+
   async function handleBid(auctionId, amount) {
     const { data: { session } } = await supabase.auth.getSession();
     const API = import.meta.env.VITE_API_URL;
@@ -484,7 +484,7 @@ export default function AuctionsPage() {
       return { ok: true };
     }
     let data = {};
-    try { data = await res.json(); } catch {}
+    try { data = await res.json(); } catch { /* non-JSON error response — fall back to default error message below */ }
     return { ok: false, error: data.error || "Buddet kunne ikke placeres" };
   }
 

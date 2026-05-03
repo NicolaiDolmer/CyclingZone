@@ -1011,7 +1011,6 @@ export default function BoardPage() {
 
   async function startNegotiation() {
     let goals = previewGoals;
-    let nextNegotiationOptions = negotiationOptions;
     if (!goals.length) {
       const proposal = await fetchBoardProposal(wizardFocus, wizardPlanType);
       if (!proposal) {
@@ -1019,7 +1018,7 @@ export default function BoardPage() {
         return;
       }
       goals = proposal.goals || [];
-      nextNegotiationOptions = proposal.negotiation_options || [];
+      const nextNegotiationOptions = proposal.negotiation_options || [];
       setPreviewGoals(goals);
       setNegotiationOptions(nextNegotiationOptions);
     }

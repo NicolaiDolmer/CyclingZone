@@ -19,8 +19,6 @@ export default function ResultaterPage() {
   const [topRiders, setTopRiders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadAll(); }, []);
-
   async function loadAll() {
     const { data: seasonData } = await supabase
       .from("seasons").select("*").eq("status", "active").single();
@@ -70,6 +68,8 @@ export default function ResultaterPage() {
 
     setLoading(false);
   }
+
+  useEffect(() => { loadAll(); }, []);
 
   if (loading) return (
     <div className="flex justify-center py-16">

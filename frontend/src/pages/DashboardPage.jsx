@@ -66,8 +66,6 @@ export default function DashboardPage() {
   );
   const [showDiscordNudge, setShowDiscordNudge] = useState(false);
 
-  useEffect(() => { loadAll(); }, []);
-
   async function loadAll() {
     try {
     const [{ data: { user } }, { data: { session } }] = await Promise.all([
@@ -192,6 +190,8 @@ export default function DashboardPage() {
     }
   }
 
+  useEffect(() => { loadAll(); }, []);
+
   function dismissDiscordNudge() {
     localStorage.setItem("cz-dashboard-discord-nudge-dismissed", "1");
     setDiscordNudgeDismissed(true);
@@ -260,7 +260,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-cz-1 text-sm font-medium">Få DMs ved overbud, transfertilbud og bestyrelses-signaler</p>
-            <p className="text-cz-3 text-xs mt-0.5">Tilføj dit Discord-ID under Profil — så er du på, selv når du ikke har app'en åben.</p>
+            <p className="text-cz-3 text-xs mt-0.5">Tilføj dit Discord-ID under Profil — så er du på, selv når du ikke har app&apos;en åben.</p>
           </div>
           <Link
             to="/profile"

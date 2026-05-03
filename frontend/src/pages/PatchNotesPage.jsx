@@ -2,6 +2,25 @@
 
 const PATCHES = [
   {
+    version: "2.11",
+    date: "2026-05-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Kodekvalitet — react-rules på alle .jsx",
+        items: [
+          "ESLint react-regelsæt løftet fra .js-only til .{js,jsx} efter saneringspass af 71 pre-eksisterende issues — nye .jsx-filer fanger nu fejl ved samme niveau som .js",
+          "Layout: NavItem og SidebarContent flyttet ud som top-level komponenter (rettede react-hooks/static-components — undgår at remounte sidebaren ved hver render)",
+          "ConfettiModal: konfetti-partiklers borderRadius låst ved mount (rettede react-hooks/purity — Math.random kunne ellers ændre form ved hver render)",
+          "BoardPage: ubrugt initial-værdi til nextNegotiationOptions fjernet",
+          "22 sider: useEffect-blokke flyttet ned under deres data-loader-funktioner (rettede react-hooks/immutability — eliminerer reference-mismatch hvor effect kaldte funktion før den var declared)",
+          "JSX-tekst med citationstegn escapet til &quot;/&apos; på 6 sider (rettede react/no-unescaped-entities)",
+          "8 tomme catch-blokke fået kort begrundelse i stedet for at være helt tomme",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.10",
     date: "2026-05-03",
     label: "Beta",

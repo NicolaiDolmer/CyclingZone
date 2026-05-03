@@ -22,7 +22,7 @@ export default function DeadlineDayTicker() {
       if (!res.ok) return;
       const data = await res.json();
       setActive(data.active);
-    } catch {}
+    } catch { /* best-effort polling: tolerate transient fetch failures */ }
   }
 
   async function fetchTicker() {
@@ -34,7 +34,7 @@ export default function DeadlineDayTicker() {
       });
       if (!res.ok) return;
       setEvents(await res.json());
-    } catch {}
+    } catch { /* best-effort polling: tolerate transient fetch failures */ }
   }
 
   useEffect(() => {

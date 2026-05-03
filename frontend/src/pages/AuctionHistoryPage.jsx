@@ -39,9 +39,6 @@ export default function AuctionHistoryPage() {
   const [total, setTotal] = useState(0);
   const PER_PAGE = 30;
 
-  useEffect(() => { loadMyTeam(); }, []);
-  useEffect(() => { loadAuctions(); }, [filter, page]);
-
   async function loadMyTeam() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: t } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
@@ -66,6 +63,9 @@ export default function AuctionHistoryPage() {
     setTotal(count || 0);
     setLoading(false);
   }
+
+  useEffect(() => { loadMyTeam(); }, []);
+  useEffect(() => { loadAuctions(); }, [filter, page]);
 
   const filtered = auctions.filter(a => {
     if (filter === "won") return getAuctionLeaderId(a) === myTeamId;

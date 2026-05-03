@@ -179,8 +179,6 @@ export default function RidersPage() {
     });
   }, []);
 
-  useEffect(() => { loadRiders(); }, [filters]);
-
   useEffect(() => {
     supabase.from("riders").select("nationality_code").neq("nationality_code", null)
       .then(({ data }) => {
@@ -221,6 +219,8 @@ export default function RidersPage() {
     setActiveAuctionRiders(new Set((auctionData || []).map(a => a.rider_id)));
     setLoading(false);
   }
+
+  useEffect(() => { loadRiders(); }, [filters]);
 
   function setFilter(key, value) {
     setFilters(f => ({ ...f, [key]: value, page: 1 }));

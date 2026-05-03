@@ -36,8 +36,6 @@ export default function TeamProfilePage() {
     setTableSort(s => ({ key, dir: s.key === key ? (s.dir === "desc" ? "asc" : "desc") : "desc" }));
   }
 
-  useEffect(() => { loadAll(); }, [id]);
-
   async function loadAll() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -71,6 +69,8 @@ export default function TeamProfilePage() {
     setWindowOpen(windowRes.data?.status === "open");
     setLoading(false);
   }
+
+  useEffect(() => { loadAll(); }, [id]);
 
   if (loading) return (
     <div className="flex justify-center py-16">

@@ -6,8 +6,6 @@ export default function RaceArchivePage() {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadAll(); }, []);
-
   async function loadAll() {
     const { data: races } = await supabase
       .from("races")
@@ -30,6 +28,8 @@ export default function RaceArchivePage() {
     setGroups(result);
     setLoading(false);
   }
+
+  useEffect(() => { loadAll(); }, []);
 
   if (loading) return (
     <div className="flex justify-center py-16">

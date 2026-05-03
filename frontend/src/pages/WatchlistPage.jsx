@@ -30,8 +30,6 @@ export default function WatchlistPage() {
   const [editingNote, setEditingNote] = useState(null);
   const [noteText, setNoteText] = useState("");
 
-  useEffect(() => { loadWatchlist(); }, []);
-
   async function loadWatchlist() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -47,6 +45,8 @@ export default function WatchlistPage() {
     setEntries(data || []);
     setLoading(false);
   }
+
+  useEffect(() => { loadWatchlist(); }, []);
 
   async function removeFromWatchlist(riderId) {
     await supabase.from("rider_watchlist")

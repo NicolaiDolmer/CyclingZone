@@ -15,8 +15,6 @@ export default function TeamsPage() {
   const [riderCounts, setRiderCounts] = useState({});
   const [standings, setStandings] = useState({});
 
-  useEffect(() => { loadAll(); }, []);
-
   async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
@@ -57,6 +55,8 @@ export default function TeamsPage() {
     setTeams(teamsRes.data || []);
     setLoading(false);
   }
+
+  useEffect(() => { loadAll(); }, []);
 
   const filtered = teams.filter(t => {
     const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase());

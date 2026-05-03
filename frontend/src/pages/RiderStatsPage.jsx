@@ -198,8 +198,6 @@ export default function RiderStatsPage() {
   const [statHistory, setStatHistory]       = useState([]);
   const [ddActive, setDdActive]             = useState(false);
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); }, [id]);
-
   async function loadWatchlistStatus() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data } = await supabase.from("rider_watchlist")
@@ -214,7 +212,7 @@ export default function RiderStatsPage() {
       const res = await fetch(`${API}/api/riders/${id}/watchlist-count`, { headers: h });
       const data = await res.json();
       setWatchlistCount(data.count || 0);
-    } catch (e) {}
+    } catch { /* non-critical: count badge stays at previous value */ }
   }
 
   async function toggleWatchlist() {
@@ -241,7 +239,7 @@ export default function RiderStatsPage() {
       const h = await authHeaders();
       const res = await fetch(`${API}/api/riders/${id}/history`, { headers: h });
       if (res.ok) setHistory(await res.json());
-    } catch (e) {}
+    } catch { /* non-critical: history section stays empty */ }
   }
 
   async function loadDevelopmentHistory() {
@@ -299,8 +297,10 @@ export default function RiderStatsPage() {
         const data = await res.json();
         setDdActive(data.active === true);
       }
-    } catch {}
+    } catch { /* non-critical: deadline-day banner falls back to inactive */ }
   }
+
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); }, [id]);
 
   async function startAuction(startPrice, isGuaranteedSale = false, isFlash = false) {
     setAuctionError(null);
@@ -341,6 +341,7 @@ export default function RiderStatsPage() {
         ? "Start auktion (AI-rytter)"
         : "Start auktion (fri rytter)";
   const age = rider.birthdate
+    // eslint-disable-next-line react-hooks/purity -- Date.now() er acceptabel for rytter-alder-visning (værdi-skift kun ved sæsonskifte)
     ? Math.floor((Date.now() - new Date(rider.birthdate)) / (365.25 * 24 * 3600 * 1000))
     : null;
   const typeLabel = (() => {

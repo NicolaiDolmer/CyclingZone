@@ -12,8 +12,6 @@ export default function RaceHistoryPage() {
   const [riderStats, setRiderStats] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadAll(); }, [raceSlug]);
-
   async function loadAll() {
     setLoading(true);
 
@@ -86,6 +84,8 @@ export default function RaceHistoryPage() {
     setLoading(false);
   }
 
+  useEffect(() => { loadAll(); }, [raceSlug]);
+
   if (loading) return (
     <div className="flex justify-center py-16">
       <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
@@ -97,7 +97,7 @@ export default function RaceHistoryPage() {
       <Link to="/race-archive" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">← Løbsarkiv</Link>
       <div className="text-center py-16 text-cz-3">
         <p className="text-4xl mb-3">🏁</p>
-        <p>Ingen data fundet for "{raceName}"</p>
+        <p>Ingen data fundet for &quot;{raceName}&quot;</p>
       </div>
     </div>
   );

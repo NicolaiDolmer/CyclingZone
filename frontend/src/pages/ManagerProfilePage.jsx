@@ -64,8 +64,6 @@ export default function ManagerProfilePage() {
   const [tab, setTab]         = useState("overblik");
   const [myTeamId, setMyTeamId] = useState(null);
 
-  useEffect(() => { loadProfile(); loadMyTeam(); }, [teamId]);
-
   async function loadMyTeam() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: t } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
@@ -80,6 +78,8 @@ export default function ManagerProfilePage() {
     if (res.ok) setData(json);
     setLoading(false);
   }
+
+  useEffect(() => { loadProfile(); loadMyTeam(); }, [teamId]);
 
   if (loading) return (
     <div className="flex justify-center py-16">

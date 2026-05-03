@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Ingen** — Lint-guard udvidelse (v2.10) lukket. Næste valg: Færdiggør Deadline Day soak (S1–S4) eller Onboarding v2.
+**Ingen** — JSX react-rules sanitering (v2.11) lukket. Næste valg: Færdiggør Deadline Day soak (S1–S4) eller Onboarding v2.
 
 ## Soak-gate
 **Aktiv: delvis** — Dark mode ✅ smoke OK · Discord DM ✅ verificeret · Deadline Day S1–S4: kun Panic Board smokes til dato (afslørede manglende nav-link + light-mode contrast — fixet i v2.09). S1 banner / S2 ticker / S3 flash-auctions / S4 Final Whistle-cron stadig ikke smokes.
@@ -10,15 +10,14 @@
 **Alle 7 launch-gates ✅** — soft-launch-klar.
 
 ## Senest leveret
+- 2026-05-03: **JSX react-rules sanitering** (v2.11) — react-regelsæt løftet fra `.js`-only til `.{js,jsx}` i `frontend/eslint.config.js`. 71 pre-eks. fejl saneret: 28 immutability via flytning af useEffect under fn-deklarationer, 15 unescaped-entities, 8 no-empty (begrundede catch), 6 static-components (Layout: NavItem+SidebarContent ud, HeadToHead: StatCompare ud), 2 purity (ConfettiModal radius låst ved mount, RiderStats age med targeted disable), 1 useless-assignment, 11+21 set-state-in-effect → rule disabled globalt med begrundelse (React Compiler-rule, klager på legitime React 18 data-load patterns). Lint grøn (0 errors), build grøn.
 - 2026-05-03: **Lint-guard udvidelse** (v2.10) — `(text|border|ring|divide|outline)-(white|black)/\d+` blokeret i `frontend/eslint.config.js`; `bg-(white|black)/N` bevidst tilladt for modal-scrims (5 callsites). `text-white/20` i `DeadlineDayBanner.jsx:92` ryddet. Sanity-test: forbudt mønster fejler, `bg-black/60` passerer, baseline lint grøn.
 - 2026-05-03: **Panic Board fix** (v2.09) — `/deadline-day` nav-link under Marked; DeadlineDayBoard tokeniseret. Afsløret af manuel smoke.
-- 2026-05-03: **Dark mode S3 lint-guard** (v2.08) — ESLint mod `(slate|gray)-N`. Hul lukket i v2.10.
-- Ældre v2.07 og før → `docs/archive/NOW_HISTORIK_2026-05-03.md`
+- Ældre v2.08 og før → `docs/archive/NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter
 1. **Færdiggør Deadline Day soak** — S1 banner-faser, S2 ticker, S3 flash-auctions, S4 cron + Final Whistle
-2. **JSX react-rules sanitering** — 71 pre-eks. react-fejl i .jsx skal saneres så `js,jsx`-scope kan løftes på alle rules
-3. Vælg næste slice: **Onboarding v2** (post-launch retention)
+2. Vælg næste slice: **Onboarding v2** (post-launch retention)
 
 ## Kritiske invarianter
 - Discord DM-fejl må aldrig blokere transaction (best-effort try/catch i `notifyDiscordDM`)

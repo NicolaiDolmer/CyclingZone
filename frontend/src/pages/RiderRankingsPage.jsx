@@ -29,8 +29,6 @@ export default function RiderRankingsPage() {
   const [ownerFilter, setOwnerFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  useEffect(() => { loadAll(); }, []);
-
   async function loadAll() {
     const { data: seasonData } = await supabase
       .from("seasons").select("*").eq("status", "active").single();
@@ -83,6 +81,8 @@ export default function RiderRankingsPage() {
     );
     setLoading(false);
   }
+
+  useEffect(() => { loadAll(); }, []);
 
   function handleSort(key) {
     if (sortKey === key) setSortAsc(a => !a);

@@ -43,8 +43,6 @@ export default function StandingsPage() {
   const [racePoints, setRacePoints] = useState({});
   const [races, setRaces] = useState([]);
 
-  useEffect(() => { loadAll(); }, []);
-
   async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: myTeam } = await supabase.from("teams").select("id, division").eq("user_id", user.id).single();
@@ -108,6 +106,8 @@ export default function StandingsPage() {
     }
     setLoading(false);
   }
+
+  useEffect(() => { loadAll(); }, []);
 
   const divStandings = standings
     .filter(s => s.team?.division === divTab)

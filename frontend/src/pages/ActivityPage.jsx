@@ -151,8 +151,6 @@ export default function ActivityPage() {
   const [historicalLoans, setHistoricalLoans]   = useState([]);
   const [watchlist, setWatchlist]               = useState([]);
 
-  useEffect(() => { loadAll(); }, []);
-
   async function loadAll() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -212,6 +210,8 @@ export default function ActivityPage() {
     setHistoricalLoans(histLoansRes.data || []);
     setLoading(false);
   }
+
+  useEffect(() => { loadAll(); }, []);
 
   // "Kræver handling" — items that require the user's action
   const actionTransfers = [

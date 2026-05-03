@@ -93,7 +93,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
 
       {offer.message && (
         <div className="bg-cz-subtle rounded-lg px-3 py-2 mb-3 text-cz-2 text-xs italic">
-          "{offer.message}"
+          &quot;{offer.message}&quot;
         </div>
       )}
 
@@ -247,7 +247,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
 
       {offer.message && (
         <div className="bg-cz-subtle rounded-lg px-3 py-2 mb-3 text-cz-2 text-xs italic">
-          "{offer.message}"
+          &quot;{offer.message}&quot;
         </div>
       )}
 
@@ -411,7 +411,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
 
       {swap.message && (
         <div className="bg-cz-subtle rounded-lg px-3 py-2 mb-3 text-cz-2 text-xs italic">
-          "{swap.message}"
+          &quot;{swap.message}&quot;
         </div>
       )}
 
@@ -1213,7 +1213,7 @@ export default function TransfersPage() {
                 <div className="text-center py-16 text-cz-3">
                   <p className="text-4xl mb-3">↔</p>
                   <p>Du har ikke sendt nogen tilbud endnu</p>
-                  <p className="text-xs mt-2">Find en rytter og klik "Send transfertilbud" på deres side</p>
+                  <p className="text-xs mt-2">Find en rytter og klik &quot;Send transfertilbud&quot; på deres side</p>
                 </div>
               ) : (
                 sentOffers.map(o => (

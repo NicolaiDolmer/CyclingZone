@@ -31,7 +31,7 @@ export function ThemeProvider({ children }) {
   const setTheme = useCallback((next) => {
     if (!VALID.includes(next)) return;
     setThemeState(next);
-    try { localStorage.setItem(STORAGE_KEY, next); } catch {}
+    try { localStorage.setItem(STORAGE_KEY, next); } catch { /* localStorage may be unavailable (private mode, quota) — theme still applies in-memory */ }
     applyTheme(next);
   }, []);
 

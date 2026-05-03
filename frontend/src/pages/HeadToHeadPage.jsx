@@ -53,6 +53,35 @@ function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
   );
 }
 
+function StatCompare({ labelA, valueA, valueB, labelB, unit = "", higherIsBetter = true }) {
+  const aWins = higherIsBetter ? valueA > valueB : valueA < valueB;
+  const bWins = higherIsBetter ? valueB > valueA : valueB < valueA;
+  const maxVal = Math.max(valueA, valueB, 1);
+  return (
+    <div className="py-3 border-b border-cz-border last:border-0">
+      <div className="flex items-center justify-between mb-2">
+        <span className={`font-mono font-bold text-sm ${aWins ? "text-cz-accent-t" : "text-cz-2"}`}>
+          {valueA?.toLocaleString("da-DK")}{unit}
+        </span>
+        <span className="text-cz-3 text-xs uppercase tracking-wider">{labelA || labelB}</span>
+        <span className={`font-mono font-bold text-sm ${bWins ? "text-cz-accent-t" : "text-cz-2"}`}>
+          {valueB?.toLocaleString("da-DK")}{unit}
+        </span>
+      </div>
+      <div className="flex gap-1 h-2">
+        <div className="flex-1 bg-cz-subtle rounded-l-full overflow-hidden flex justify-end">
+          <div className="h-2 rounded-l-full bg-cz-accent/60 transition-all"
+            style={{ width: `${(valueA / maxVal) * 100}%` }} />
+        </div>
+        <div className="flex-1 bg-cz-subtle rounded-r-full overflow-hidden">
+          <div className="h-2 rounded-r-full bg-blue-300 transition-all"
+            style={{ width: `${(valueB / maxVal) * 100}%` }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HeadToHeadPage() {
   const navigate = useNavigate();
   const [teamA, setTeamA] = useState(null);
@@ -67,10 +96,6 @@ export default function HeadToHeadPage() {
         .then(({ data }) => { if (data) setTeamA(data); });
     });
   }, []);
-
-  useEffect(() => {
-    if (teamA && teamB) loadStats();
-  }, [teamA, teamB]);
 
   async function loadStats() {
     setLoading(true);
@@ -112,34 +137,9 @@ export default function HeadToHeadPage() {
     setLoading(false);
   }
 
-  function StatCompare({ labelA, valueA, valueB, labelB, unit = "", higherIsBetter = true }) {
-    const aWins = higherIsBetter ? valueA > valueB : valueA < valueB;
-    const bWins = higherIsBetter ? valueB > valueA : valueB < valueA;
-    const maxVal = Math.max(valueA, valueB, 1);
-    return (
-      <div className="py-3 border-b border-cz-border last:border-0">
-        <div className="flex items-center justify-between mb-2">
-          <span className={`font-mono font-bold text-sm ${aWins ? "text-cz-accent-t" : "text-cz-2"}`}>
-            {valueA?.toLocaleString("da-DK")}{unit}
-          </span>
-          <span className="text-cz-3 text-xs uppercase tracking-wider">{labelA || labelB}</span>
-          <span className={`font-mono font-bold text-sm ${bWins ? "text-cz-accent-t" : "text-cz-2"}`}>
-            {valueB?.toLocaleString("da-DK")}{unit}
-          </span>
-        </div>
-        <div className="flex gap-1 h-2">
-          <div className="flex-1 bg-cz-subtle rounded-l-full overflow-hidden flex justify-end">
-            <div className="h-2 rounded-l-full bg-cz-accent/60 transition-all"
-              style={{ width: `${(valueA / maxVal) * 100}%` }} />
-          </div>
-          <div className="flex-1 bg-cz-subtle rounded-r-full overflow-hidden">
-            <div className="h-2 rounded-r-full bg-blue-300 transition-all"
-              style={{ width: `${(valueB / maxVal) * 100}%` }} />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (teamA && teamB) loadStats();
+  }, [teamA, teamB]);
 
   return (
     <div className="max-w-4xl mx-auto">

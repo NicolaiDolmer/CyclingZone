@@ -69,6 +69,110 @@ function pathMatchesNavItem(pathname, to) {
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 
+function NavItem({ to, label, badge, onClick, location, unread }) {
+  const isActive = pathMatchesNavItem(location.pathname, to);
+  const showBadge = badge && unread > 0;
+  return (
+    <NavLink to={to} onClick={onClick}
+      className={`flex items-center justify-between mx-2 px-3 py-2 rounded-lg text-[13px] transition-all duration-150
+        ${isActive
+          ? "bg-cz-accent/12 text-cz-accent font-medium"
+          : "text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover"}`}>
+      <span>{label}</span>
+      {showBadge && (
+        <span className="bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">
+          {unread > 9 ? "9+" : unread}
+        </span>
+      )}
+    </NavLink>
+  );
+}
+
+function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, openGroups, toggleGroup, signOut, location, unread }) {
+  return (
+    <div className="flex flex-col h-full">
+      {/* Logo + team */}
+      <button
+        onClick={() => navigate("/dashboard")}
+        className="flex items-center gap-2.5 px-4 py-4 border-b border-cz-sidebar-border w-full text-left hover:bg-cz-sidebar-hover transition-colors">
+        <div className="w-7 h-7 bg-cz-accent rounded-md flex items-center justify-center text-[10px] font-black text-cz-on-accent flex-shrink-0">
+          CZ
+        </div>
+        <div className="min-w-0">
+          <p className="text-cz-sidebar-1 text-xs font-bold leading-tight">Cycling Zone</p>
+          <p className="text-cz-sidebar-3 text-[10px] truncate">{team?.name || "…"}</p>
+        </div>
+      </button>
+
+      {/* Balance */}
+      {balance !== null && (
+        <div className="px-4 py-3 border-b border-cz-sidebar-border">
+          <p className="text-[9px] text-cz-sidebar-3 uppercase tracking-widest mb-0.5">Balance</p>
+          <p className="text-cz-accent font-mono font-bold text-sm leading-tight">
+            {balance.toLocaleString("da-DK")} CZ$
+          </p>
+          {team && <p className="text-cz-sidebar-3 text-[10px] mt-0.5">Division {team.division}</p>}
+        </div>
+      )}
+
+      {/* Online indicator */}
+      {onlineCount > 0 && (
+        <div className="px-4 py-2 border-b border-cz-sidebar-border">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+            <span className="text-cz-sidebar-3 text-[10px]">{onlineCount} online nu</span>
+          </span>
+        </div>
+      )}
+
+      {/* Nav groups */}
+      <nav className="flex-1 overflow-y-auto py-2">
+        {navGroups.map(group => {
+          const isOpen = openGroups[group.key];
+          return (
+            <div key={group.key} className="mb-1">
+              {/* Section label — clearly a label, not a link */}
+              <button
+                onClick={() => toggleGroup(group.key)}
+                className="w-full flex items-center justify-between px-4 pt-4 pb-1 group">
+                <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-colors">
+                  {group.label}
+                </span>
+                <span className={`text-[8px] text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-all duration-200 ${isOpen ? "rotate-180" : ""}`}>
+                  ▾
+                </span>
+              </button>
+
+              {isOpen && (
+                <div className="py-0.5">
+                  {group.items.map(item => (
+                    <NavItem key={item.to} {...item} onClick={onNav} location={location} unread={unread} />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Bottom nav items */}
+        <div className="h-px bg-cz-sidebar-border my-3 mx-4" />
+        {BOTTOM_ITEMS.map(item => (
+          <NavItem key={item.to} {...item} onClick={onNav} location={location} unread={unread} />
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="border-t border-cz-sidebar-border px-4 py-3">
+        <button
+          onClick={signOut}
+          className="text-[11px] text-cz-sidebar-3 hover:text-cz-sidebar-2 transition-colors">
+          ← Log ud
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -82,6 +186,16 @@ export default function Layout() {
   const [onlineCount, setOnlineCount]     = useState(0);
   const [teamLoaded, setTeamLoaded]       = useState(false);
   const heartbeatRef = useRef(null);
+
+  async function fetchOnlineCount(headers) {
+    if (!API) return;
+    try {
+      const h = headers || await authHeaders();
+      const res = await fetch(`${API}/api/online-count`, { headers: h });
+      const data = await res.json();
+      setOnlineCount(data.count || 0);
+    } catch (e) { console.error("online-count:", e); }
+  }
 
   useEffect(() => {
     const path = location.pathname;
@@ -144,16 +258,6 @@ export default function Layout() {
     return () => clearInterval(heartbeatRef.current);
   }, [session]);
 
-  async function fetchOnlineCount(headers) {
-    if (!API) return;
-    try {
-      const h = headers || await authHeaders();
-      const res = await fetch(`${API}/api/online-count`, { headers: h });
-      const data = await res.json();
-      setOnlineCount(data.count || 0);
-    } catch (e) { console.error("online-count:", e); }
-  }
-
   async function signOut() {
     await supabase.auth.signOut();
     navigate("/login");
@@ -172,117 +276,14 @@ export default function Layout() {
     ? [...baseGroups, { key: "admin", label: "Admin", items: [{ to: "/admin", label: "Admin" }] }]
     : baseGroups;
 
-  function NavItem({ to, label, badge, onClick }) {
-    const isActive = pathMatchesNavItem(location.pathname, to);
-    const showBadge = badge && unread > 0;
-    return (
-      <NavLink to={to} onClick={onClick}
-        className={`flex items-center justify-between mx-2 px-3 py-2 rounded-lg text-[13px] transition-all duration-150
-          ${isActive
-            ? "bg-cz-accent/12 text-cz-accent font-medium"
-            : "text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover"}`}>
-        <span>{label}</span>
-        {showBadge && (
-          <span className="bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">
-            {unread > 9 ? "9+" : unread}
-          </span>
-        )}
-      </NavLink>
-    );
-  }
-
-  function SidebarContent({ onNav }) {
-    return (
-      <div className="flex flex-col h-full">
-        {/* Logo + team */}
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-2.5 px-4 py-4 border-b border-cz-sidebar-border w-full text-left hover:bg-cz-sidebar-hover transition-colors">
-          <div className="w-7 h-7 bg-cz-accent rounded-md flex items-center justify-center text-[10px] font-black text-cz-on-accent flex-shrink-0">
-            CZ
-          </div>
-          <div className="min-w-0">
-            <p className="text-cz-sidebar-1 text-xs font-bold leading-tight">Cycling Zone</p>
-            <p className="text-cz-sidebar-3 text-[10px] truncate">{team?.name || "…"}</p>
-          </div>
-        </button>
-
-        {/* Balance */}
-        {balance !== null && (
-          <div className="px-4 py-3 border-b border-cz-sidebar-border">
-            <p className="text-[9px] text-cz-sidebar-3 uppercase tracking-widest mb-0.5">Balance</p>
-            <p className="text-cz-accent font-mono font-bold text-sm leading-tight">
-              {balance.toLocaleString("da-DK")} CZ$
-            </p>
-            {team && <p className="text-cz-sidebar-3 text-[10px] mt-0.5">Division {team.division}</p>}
-          </div>
-        )}
-
-        {/* Online indicator */}
-        {onlineCount > 0 && (
-          <div className="px-4 py-2 border-b border-cz-sidebar-border">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-              <span className="text-cz-sidebar-3 text-[10px]">{onlineCount} online nu</span>
-            </span>
-          </div>
-        )}
-
-        {/* Nav groups */}
-        <nav className="flex-1 overflow-y-auto py-2">
-          {navGroups.map(group => {
-            const isOpen = openGroups[group.key];
-            return (
-              <div key={group.key} className="mb-1">
-                {/* Section label — clearly a label, not a link */}
-                <button
-                  onClick={() => toggleGroup(group.key)}
-                  className="w-full flex items-center justify-between px-4 pt-4 pb-1 group">
-                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-colors">
-                    {group.label}
-                  </span>
-                  <span className={`text-[8px] text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-all duration-200 ${isOpen ? "rotate-180" : ""}`}>
-                    ▾
-                  </span>
-                </button>
-
-                {isOpen && (
-                  <div className="py-0.5">
-                    {group.items.map(item => (
-                      <NavItem key={item.to} {...item} onClick={onNav} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Bottom nav items */}
-          <div className="h-px bg-cz-sidebar-border my-3 mx-4" />
-          {BOTTOM_ITEMS.map(item => (
-            <NavItem key={item.to} {...item} onClick={onNav} />
-          ))}
-        </nav>
-
-        {/* Footer */}
-        <div className="border-t border-cz-sidebar-border px-4 py-3">
-          <button
-            onClick={signOut}
-            className="text-[11px] text-cz-sidebar-3 hover:text-cz-sidebar-2 transition-colors">
-            ← Log ud
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const needsSetup = teamLoaded && !team?.manager_name;
+  const sidebarProps = { navigate, team, balance, onlineCount, navGroups, openGroups, toggleGroup, signOut, location, unread };
 
   return (
     <div className="min-h-screen bg-cz-body flex">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-cz-sidebar border-r border-cz-sidebar-border fixed top-0 left-0 h-full z-30">
-        <SidebarContent onNav={() => {}} />
+        <SidebarContent {...sidebarProps} onNav={() => {}} />
       </aside>
 
       {/* Mobile sidebar overlay */}
@@ -290,7 +291,7 @@ export default function Layout() {
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
           <aside className="absolute left-0 top-0 h-full w-52 bg-cz-sidebar border-r border-cz-sidebar-border z-50">
-            <SidebarContent onNav={() => setMobileOpen(false)} />
+            <SidebarContent {...sidebarProps} onNav={() => setMobileOpen(false)} />
           </aside>
         </div>
       )}

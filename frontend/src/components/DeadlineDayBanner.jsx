@@ -54,7 +54,7 @@ export default function DeadlineDayBanner() {
       const data = await res.json();
       setStatus(data);
       setSecs(data.seconds_remaining !== null ? Math.floor(data.seconds_remaining) : null);
-    } catch {}
+    } catch { /* best-effort polling: tolerate transient fetch failures */ }
   }
 
   useEffect(() => {

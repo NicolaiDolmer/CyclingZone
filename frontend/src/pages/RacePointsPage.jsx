@@ -62,8 +62,6 @@ export default function RacePointsPage() {
   const [activeClass, setActiveClass] = useState("TourFrance");
   const [expanded, setExpanded] = useState({});
 
-  useEffect(() => { loadData(); }, []);
-
   async function loadData() {
     const { data: rows } = await supabase
       .from("race_points")
@@ -79,6 +77,8 @@ export default function RacePointsPage() {
     setGrouped(g);
     setLoading(false);
   }
+
+  useEffect(() => { loadData(); }, []);
 
   function toggleExpand(key) {
     setExpanded(prev => ({ ...prev, [key]: !prev[key] }));

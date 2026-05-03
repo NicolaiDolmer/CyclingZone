@@ -13,8 +13,6 @@ export default function SeasonPreviewPage() {
   const [season, setSeason] = useState(null);
   const [myTeamId, setMyTeamId] = useState(null);
 
-  useEffect(() => { loadAll(); }, []);
-
   async function loadAll() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -52,6 +50,8 @@ export default function SeasonPreviewPage() {
     setSeason(seasonRes.data);
     setLoading(false);
   }
+
+  useEffect(() => { loadAll(); }, []);
 
   const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
 

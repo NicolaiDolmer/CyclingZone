@@ -16,6 +16,7 @@ export function ConfettiModal({ show, onClose, title, subtitle, amount, icon = "
         duration: 0.8 + Math.random() * 0.6,
         size: 4 + Math.random() * 6,
         rotate: Math.random() * 360,
+        radius: Math.random() > 0.5 ? "50%" : "2px",
       }))
     );
     // Auto-close after 4 seconds
@@ -42,7 +43,7 @@ export function ConfettiModal({ show, onClose, title, subtitle, amount, icon = "
               width: p.size,
               height: p.size,
               backgroundColor: p.color,
-              borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+              borderRadius: p.radius,
               animationDelay: `${p.delay}s`,
               animationDuration: `${p.duration}s`,
               transform: `rotate(${p.rotate}deg)`,

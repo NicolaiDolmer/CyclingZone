@@ -4,12 +4,13 @@ import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 
 export default [
-  // Pin js.configs.recommended til .js only. Pre-S3 var lint de facto .js-only
-  // (eslint.config.js havde ingen files-pattern, og uden plugin-imports for jsx
-  // blev .jsx ikke discovered af `eslint .`). Vi bevarer den baseline her.
-  { ...js.configs.recommended, files: ["**/*.js"] },
+  // v2.11: react-rules løftet fra .js-only til .{js,jsx} efter sanity-pass af 71 pre-
+  // eksisterende issues (immutability, static-components, unescaped-entities, no-empty,
+  // useless-assignment, purity). Se `docs/archive/` for sanity-detaljer. set-state-in-
+  // effect er bevidst disabled (forklaring nedenfor).
+  { ...js.configs.recommended, files: ["**/*.{js,jsx}"] },
   {
-    files: ["**/*.js"],
+    files: ["**/*.{js,jsx}"],
     plugins: { react, "react-hooks": reactHooks },
     languageOptions: {
       globals: { ...globals.browser },
@@ -25,13 +26,18 @@ export default [
       "react/prop-types": "off",
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "no-console": "off",
+      // react-hooks v7 inkluderer React-Compiler-rules der antager React 19-mønstre.
+      // Vi kører React 18.3.1 hvor "load data on mount → setState i async fn fra useEffect"
+      // er det idiomatiske pattern (data-fetching, polling, countdown-timers, derived
+      // state from props). Reglen vil have alt flyttet til use() eller useTransition,
+      // hvilket ikke giver mening uden compiler. Hvis vi opgraderer til React 19 +
+      // compiler, så genoverveje.
+      "react-hooks/set-state-in-effect": "off",
     },
   },
   // Dark mode S3 color-guard: forhindrer regression af S2-token-migrering ved at fejle
   // hvis nogen introducerer Tailwind slate-*/gray-* i stedet for cz-tokens. Scoped til
-  // .jsx + .js (statBg.js returnerer className-strings). Bevidst surgical: vi aktiverer
-  // IKKE øvrige react-rules på .jsx her — der ligger 71 pre-eksisterende issues der
-  // skal saneres i en separat sanity-pass før vi løfter scope.
+  // .jsx + .js (statBg.js returnerer className-strings).
   //
   // v2.10: udvidet til at fange text/border/ring/divide/outline-(white|black)/N opacity-
   // classes — disse antager mørk/lys baggrund og gav Panic Board light-mode contrast-bug
