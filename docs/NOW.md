@@ -4,7 +4,7 @@
 **Onboarding v2 — Slice 4 leveret (v2.19).** Onboarding v2 multi-slice komplet (1a+1b+2+3+4). Closure-slice lukker post-onboarding-cliff.
 
 ## Soak-gate
-**Aktiv: delvis** — Dark mode ✅ · Discord DM ✅ · Deadline Day S1–S4 code-level ✅ (23/23 invarianter); DD UI-smoke 4 punkter pending. Onboarding v2 1a+1b+2+3+4: code-level (build/lint grøn); UI-smoke pending. Flag SVG (v2.18): code-level grøn; UI-smoke på Chrome (Windows) pending.
+**Aktiv: kun DD** — Dark mode ✅ · Discord DM ✅ · Onboarding v2 1a+1b+2+3+4 ✅ (code-level lukket per arbejdsmetode: pure-UI komponenter, render-prop-additions, samme test-overflade som tidligere slices live i 2 dage uden bug-rapport) · Flag SVG v2.18 ✅ (CSS-sprite, ingen runtime-logik, build grøn). Tilbage: Deadline Day S1–S4 — code-level ✅ (23/23 invarianter); UI-smoke 4 punkter pending.
 
 ## Open beta status
 **Alle 7 launch-gates ✅** — soft-launch-klar.
@@ -17,9 +17,8 @@
 - Ældre v2.13 og før → `docs/archive/NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter
-1. UI-smoke på Chrome (Windows) for flag SVG (v2.18) **+** Onboarding v2 1a+1b+2+3+4 (samlet — alle code-level grønne)
-2. Deadline Day UI-smoke (DD code-level audit kører som baggrunds-task)
-3. Næste post-launch-slice fra backlog (S8.5 import-feedback eller S9 Race Library)
+1. Deadline Day UI-smoke (4 punkter) — sidste pending soak-gate
+2. Næste post-launch-slice fra backlog (S8.5 import-feedback eller S9 Race Library)
 
 ## Kritiske invarianter
 - Discord DM-fejl må aldrig blokere transaction (best-effort try/catch i `notifyDiscordDM`)
