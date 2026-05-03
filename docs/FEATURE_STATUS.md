@@ -199,6 +199,11 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **react-hooks/set-state-in-effect** disabled globalt med begrundelse i config: regelen er en React-Compiler-rule i react-hooks v7 der antager React 19-mønstre. Vi kører React 18.3.1 hvor data-load ved mount + setState i async fn fra useEffect er det idiomatiske pattern (data-fetching, polling, countdown-timers, derived state). Genoverveje hvis vi opgraderer til React 19 + compiler
 - Verificeret: `npm run lint` returnerer 0 errors (42 acceptable warnings: exhaustive-deps + no-unused-vars). Build grøn (`vite built in 4.92s`)
 
+### DD banner pressure-dot + cz-bg0 aliases (v2.20, 2026-05-04)
+- **Bug:** DeadlineDayBanner pressure-fase dot var transparent fordi `cz-danger-bg0` brugt 20+ steder (banner + Notifications + Board + Admin + Dashboard m.fl.) ikke var defineret i tailwind config — silently dropped af Tailwind. Fundet under DD UI-smoke audit.
+- **Fix:** Tilføjet 4 aliases (`cz-{success,danger,warning,info}-bg0`) der peger på respektive base-farve `var()`. Plain-form klasser virker; opacity-varianter (fx `/8`) virker stadig ikke pga. bredere pre-eks. bug — løst i v2.21 nedenfor.
+- **Verificeret runtime via Claude Preview:** `bg-cz-danger-bg0` = `rgb(185, 28, 28)` ✅. Final Whistle Discord-embed format auto-testet mod Discord limits.
+
 ### Color-system /N opacity fix (v2.21, 2026-05-04)
 - **Pre-eks. bug:** `cz-{success,danger,warning,info,accent,accent-t}` og deres `-bg0` aliases var defineret som plain `var(--xxx)` strings i `frontend/tailwind.config.js`. Tailwind 3's `/N` opacity-syntax kræver enten standard color-format ELLER `<alpha-value>` placeholder — plain `var()` ignoreres silently. Effekt: 50+ callsites med fx `bg-cz-info-bg0/20`, `text-cz-danger/70`, `border-cz-success/30` rendrede transparent. Sandsynligvis siden Dark mode S1 (v2.04).
 - **Yderligere fund:** opacity-trin `3`, `8`, `12` (brugt 30+ steder, fx `bg-cz-success-bg0/8`) er ikke i Tailwinds default opacity-skala (5/10/20/25/30/40/50/60/70/75/80/90/95/100) — produceredes aldrig som CSS uanset color-token-fix.

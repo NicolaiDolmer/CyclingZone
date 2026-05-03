@@ -46,6 +46,10 @@ export default {
         "cz-info":       "rgb(var(--info) / <alpha-value>)",
         "cz-info-bg":    "var(--info-bg)",
 
+        // Legacy aliases til base-status-farver. Brugt 74x i source som typo
+        // for `cz-{status}` (uden -bg0). Beholdes for backward compat — alle
+        // 4 callsites virker semantisk identisk med `cz-{status}`. Tilføjet
+        // i v2.20 (DD pressure-dot fix), opgraderet til channel-format i v2.21.
         "cz-success-bg0": "rgb(var(--success) / <alpha-value>)",
         "cz-danger-bg0":  "rgb(var(--danger) / <alpha-value>)",
         "cz-warning-bg0": "rgb(var(--warning) / <alpha-value>)",
