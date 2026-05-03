@@ -5,3 +5,7 @@ backend/node_modules/
 scripts/*.csv
 .codex.local/
 .claude/settings.local.json
+.claude/worktrees/
+.obsidian/
+*.canvas
+/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md
