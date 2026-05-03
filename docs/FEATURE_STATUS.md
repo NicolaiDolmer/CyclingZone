@@ -157,7 +157,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - AdminPage: lukketid datetime-input + override-toggle integreret i Transfervindue-sektionen
 - `DeadlineDayTicker` — horisontal scrollende live feed (fixed bottom) med seneste bud/salg/transfers; poller 10s, vises kun når active=true
 - `GET /api/deadline-day/ticker` — merger bids + completed auctions + accepted transfers, seneste 20 events inden for 24t
-- `DeadlineDayBoard` (`/deadline-day`) — Panic Board: alle holds truppestørrelse vs. divisions-minimum, grøn/gul/rød, 30s poll; vises kun under Deadline Day
+- `DeadlineDayBoard` (`/deadline-day`) — Panic Board: alle holds truppestørrelse vs. divisions-minimum, grøn/gul/rød, 30s poll; vises kun under Deadline Day; nav-link permanent under Marked (v2.09)
 - `GET /api/deadline-day/squads` — returnerer alle ikke-bank holds squad-count vs. MARKET_SQUAD_LIMITS, med status ok/warning/critical
 
 ### Deadline Day S3 (2026-05-02)
@@ -184,7 +184,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - ESLint `no-restricted-syntax`-regel i `frontend/eslint.config.js` fejler på `(slate|gray)-(50|100|...|950)` i string-literals OG template-elementer (catches både `className="text-slate-400"` og `` `${x ? 'bg-gray-100' : 'bg-cz-card'}` `` patterns)
 - Scope: `**/*.{js,jsx}` med dedikeret config-block — pre-eksisterende react-rules forbliver `.js`-only (71 latente react-fejl i .jsx skal saneres separat før scope-løft)
 - Migration-misser fra S2 ryddet: `text-slate-300/400` i `frontend/src/components/PotentialeStars.jsx:15+35`, `text-slate-400` i `frontend/src/lib/statBg.js:4` → alle `text-cz-3`
-- `bg-white`/`text-white` IKKE blokeret — bruges legitimt på `cz-accent`/`cz-sidebar`/Discord-brand-knapper og fixed-dark Panic Board
+- `bg-white`/`text-white` IKKE blokeret — bruges legitimt på `cz-accent`/`cz-sidebar`/Discord-brand-knapper. **Hul:** `text-white/N` + `border-white/N` (opacity-classes) heller ikke blokeret; gjorde DeadlineDayBoard ulæselig i lyst tema indtil v2.09 fix. Udvidelse flag'et som separat task.
 - Verificeret: midlertidig `text-slate-500` i .jsx + `text-slate-400` i .js fejler begge med besked om cz-tokens; baseline `npm run lint` grøn (0 errors)
 
 ### Deadline Day S4 (2026-05-02)
