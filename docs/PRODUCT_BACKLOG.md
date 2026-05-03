@@ -120,8 +120,28 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 - **Season countdown + dashboard UX** — ✅ leveret v1.88
 - **Manager cross-season statistik** — fuld historik og vækst over sæsoner fra `board_plan_snapshots` og `season_standings`
 - **XLSX security advisory** — evaluer og patch eller erstat `xlsx`-pakken (high-severity advisory)
-- **Onboarding v2** — progressiv disclosure af bestyrelses- og økonomi-kompleksitet; guided squad-builder
 - **Inbox/activity consolidation v2** — trigger: launch-critical flows er stabile; ingen chat mellem managers
+
+---
+
+### Onboarding v2 — multi-slice retention-feature (aktiv)
+
+**Vision:** Dashboard-kort med fremskridt-tracking + opt-in tour pr. side. Alle managers (også eksisterende 17) ser kun trin der ikke allerede er gennemført — eksisterende med fuld profil ser intet. Progressiv disclosure af bestyrelses- og økonomi-kompleksitet; guided squad-builder.
+
+**Slice 1a ✅ (v2.12, 2026-05-03):** Dashboard kom-i-gang-kort
+- Backend: `GET /api/me/onboarding-progress` returnerer 4 step-counts (`team_named`, `first_rider_owned`, `first_bid_placed`, `board_plan_set`) som parallelle queries mod `teams`/`riders`/`auction_bids`/`board_profiles`
+- Frontend: `OnboardingProgressCard.jsx` på `DashboardPage` med progress-bar, step-liste, CTA-link på næste trin, dismiss via `cz-dashboard-onboarding-dismissed`. Auto-skjul ved `completed_count === total_count`.
+
+**Slice 1b (næste):** Guided squad-builder UX
+- `RidersPage` empty-state for nye managers (0 ryttere) med forklaring af filtre + budgetoverblik
+- `AuctionsPage` first-bid hint/tooltip når manager byder for første gang
+- Opt-in tour-mekanik der kan startes fra progress-card "Vis mig hvordan"-knap
+
+**Slice 2 (senere):** Bestyrelse-explainer
+- Tour eller inline-empty-state på `/board` der forklarer 1yr/3yr/5yr planer + KPI'er
+
+**Slice 3 (senere):** Økonomi-explainer
+- Tour eller inline-empty-state på `/finance` der forklarer sponsor/salary/debt loft
 
 ---
 

@@ -199,6 +199,17 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **react-hooks/set-state-in-effect** disabled globalt med begrundelse i config: regelen er en React-Compiler-rule i react-hooks v7 der antager React 19-mønstre. Vi kører React 18.3.1 hvor data-load ved mount + setState i async fn fra useEffect er det idiomatiske pattern (data-fetching, polling, countdown-timers, derived state). Genoverveje hvis vi opgraderer til React 19 + compiler
 - Verificeret: `npm run lint` returnerer 0 errors (42 acceptable warnings: exhaustive-deps + no-unused-vars). Build grøn (`vite built in 4.92s`)
 
+### Onboarding v2 — Slice 1a Dashboard progress-card (v2.12, 2026-05-03)
+- **Backend:** `GET /api/me/onboarding-progress` (`backend/routes/api.js` lige efter `/me/discord-dm-enabled`) returnerer 4 step-status fra parallelle DB-counts:
+  - `team_named` ← `teams.manager_name IS NOT NULL`
+  - `first_rider_owned` ← count(`riders.team_id = mit`) > 0
+  - `first_bid_placed` ← count(`auction_bids.team_id = mit`) > 0
+  - `board_plan_set` ← count(`board_profiles.team_id = mit`) > 0
+- **Frontend:** `frontend/src/components/OnboardingProgressCard.jsx` rendres på `DashboardPage` mellem Squad warning og Discord nudge. Progress-bar + step-liste med ✓/▸/○-ikoner, line-through på færdige trin, CTA-link på næste trin (Profil/Marked/Auktioner/Bestyrelse)
+- **Dismiss:** localStorage `cz-dashboard-onboarding-dismissed` (matcher Discord-nudge-pattern). Auto-skjul ved `completed_count === total_count` (uafhængigt af dismiss)
+- **Eksisterende managers:** Card vises retroaktivt for de 17 — men auto-skjules hvis alle 4 trin allerede er gennemført. Ingen blokerende wizard.
+- Verificeret: lint 0 errors, build grøn (`vite built in 5.53s`). UI-smoke pending.
+
 ### Deadline Day S4 (2026-05-02)
 - Planlagte advarsler (T-24h / T-2h / T-30min): cron kører hver 5. minut, sender `deadline_day_warning`-notifikationer til alle aktive managers via `notifyTeamOwner`; dedupe via `related_id = window_id` + step-titel (24t-vindue i `notificationService`)
 - Final Whistle-rapport: `transfer_windows.final_whistle_sent_at` atomic claim (UPDATE WHERE IS NULL → SELECT) → `computeFinalWhistleReport` (største handel, mest aktive manager, panikhandler) → Discord embed til default webhook

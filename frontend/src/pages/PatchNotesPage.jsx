@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.12",
+    date: "2026-05-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Onboarding v2 — kom-i-gang-kort på Dashboard",
+        items: [
+          "Nyt fremskridt-kort på Dashboard viser fire trin du har gennemført (eller mangler at gennemføre) for at få en god start: navngiv hold + manager, køb din første rytter, afgiv dit første bud og vælg en bestyrelsesplan",
+          "Næste trin fremhæves med et direkte CTA-link så du ikke skal gætte hvor du skal hen",
+          "Kortet kan skjules permanent med × — og forsvinder automatisk når alle fire trin er ✓",
+          "Eksisterende managers ser kun de trin der ikke allerede er gennemført — har du fx alle tre indstillinger på plads, vises kortet slet ikke",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.11",
     date: "2026-05-03",
     label: "Beta",

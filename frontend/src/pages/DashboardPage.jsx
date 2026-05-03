@@ -2,6 +2,7 @@
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
 import OnboardingModal from "../components/OnboardingModal";
+import OnboardingProgressCard from "../components/OnboardingProgressCard";
 
 const API = import.meta.env.VITE_API_URL;
 const SQUAD_LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
@@ -65,6 +66,10 @@ export default function DashboardPage() {
     () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-discord-nudge-dismissed") === "1"
   );
   const [showDiscordNudge, setShowDiscordNudge] = useState(false);
+  const [onboardingProgress, setOnboardingProgress] = useState(null);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-onboarding-dismissed") === "1"
+  );
 
   async function loadAll() {
     try {
@@ -183,6 +188,21 @@ export default function DashboardPage() {
       }
     }
 
+    // Onboarding progress — alle managers ser kort indtil 4/4 trin nået eller dismissed
+    if (!onboardingDismissed && token) {
+      try {
+        const progRes = await fetch(`${API}/api/me/onboarding-progress`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (progRes.ok) {
+          const prog = await progRes.json();
+          setOnboardingProgress(prog);
+        }
+      } catch {
+        // best-effort
+      }
+    }
+
     } catch (e) {
       console.error("Dashboard load failed:", e);
     } finally {
@@ -196,6 +216,11 @@ export default function DashboardPage() {
     localStorage.setItem("cz-dashboard-discord-nudge-dismissed", "1");
     setDiscordNudgeDismissed(true);
     setShowDiscordNudge(false);
+  }
+
+  function dismissOnboarding() {
+    localStorage.setItem("cz-dashboard-onboarding-dismissed", "1");
+    setOnboardingDismissed(true);
   }
 
   if (loading) return (
@@ -250,6 +275,11 @@ export default function DashboardPage() {
           <span>{squadWarning.msg}</span>
           <Link to="/team" className="ml-auto text-xs underline opacity-70 hover:opacity-100">Mit Hold →</Link>
         </div>
+      )}
+
+      {/* Onboarding progress — vis indtil alle trin nået eller dismissed */}
+      {!onboardingDismissed && onboardingProgress && onboardingProgress.completed_count < onboardingProgress.total_count && (
+        <OnboardingProgressCard progress={onboardingProgress} onDismiss={dismissOnboarding} />
       )}
 
       {/* Discord DM nudge */}

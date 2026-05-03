@@ -1960,6 +1960,37 @@ router.patch("/me/discord-dm-enabled", requireAuth, async (req, res) => {
   res.json({ ok: true, dm_enabled: enabled });
 });
 
+// GET /api/me/onboarding-progress — Onboarding v2 step-status for current manager
+router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
+  const teamId = req.team?.id;
+  const emptySteps = [
+    { key: "team_named", done: false },
+    { key: "first_rider_owned", done: false },
+    { key: "first_bid_placed", done: false },
+    { key: "board_plan_set", done: false },
+  ];
+  if (!teamId) {
+    return res.json({ steps: emptySteps, completed_count: 0, total_count: emptySteps.length });
+  }
+
+  const [teamRes, ridersRes, bidsRes, boardsRes] = await Promise.all([
+    supabase.from("teams").select("manager_name").eq("id", teamId).single(),
+    supabase.from("riders").select("id", { count: "exact", head: true }).eq("team_id", teamId),
+    supabase.from("auction_bids").select("id", { count: "exact", head: true }).eq("team_id", teamId),
+    supabase.from("board_profiles").select("id", { count: "exact", head: true }).eq("team_id", teamId),
+  ]);
+
+  const steps = [
+    { key: "team_named", done: Boolean(teamRes.data?.manager_name?.trim()) },
+    { key: "first_rider_owned", done: (ridersRes.count || 0) > 0 },
+    { key: "first_bid_placed", done: (bidsRes.count || 0) > 0 },
+    { key: "board_plan_set", done: (boardsRes.count || 0) > 0 },
+  ];
+  const completed_count = steps.filter(s => s.done).length;
+
+  res.json({ steps, completed_count, total_count: steps.length });
+});
+
 // ── Admin: Seasons & Races ────────────────────────────────────────────────────
 
 // POST /api/admin/finalize-expired-auctions — admin bulk finalizer via shared logic
