@@ -4,7 +4,7 @@
 **Ingen** — JSX react-rules sanitering (v2.11) lukket. Næste valg: Færdiggør Deadline Day soak (S1–S4) eller Onboarding v2.
 
 ## Soak-gate
-**Aktiv: delvis** — Dark mode ✅ smoke OK · Discord DM ✅ verificeret · Deadline Day S1–S4: kun Panic Board smokes til dato (afslørede manglende nav-link + light-mode contrast — fixet i v2.09). S1 banner / S2 ticker / S3 flash-auctions / S4 Final Whistle-cron stadig ikke smokes.
+**Aktiv: delvis** — Dark mode ✅ smoke OK · Discord DM ✅ verificeret · Deadline Day S1–S4: code-level audit 22/23 ✅ (se `docs/archive/DD_SOAK_CODE_AUDIT_2026-05-03.md`); ❌ `auctions.is_flash` kolonne mangler DB-migration — fix før første flash-auktion. UI-smoke (banner-faser, ticker-scroll, Final Whistle Discord-render) pending.
 
 ## Open beta status
 **Alle 7 launch-gates ✅** — soft-launch-klar.
