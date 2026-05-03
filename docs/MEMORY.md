@@ -78,6 +78,26 @@ Lært den hårde vej 2026-05-03: en Sonnet-routine "Dark mode S2" gennemførte a
 
 ---
 
+## Branch- og worktree-hygiejne (cross-PC + multi-AI)
+
+Lært 2026-05-03: 4 stale `claude/*`-branches kostede ~10-15 tool calls i én session at undersøge "er dette live arbejde eller færdig?". Skalerer dårligt over uger.
+
+**Pr. session — obligatorisk efter fast-forward push til main:**
+- `git push origin --delete <feature-branch>` — slet feature-branchen på origin (gælder ikke branches med åben PR)
+- `git worktree remove <path>` + `git branch -D <branch>` — fjern lokal worktree + branch på den PC du arbejder på
+
+**Cross-PC adfærd:**
+- Origin-branch deletion er global → den anden PC får det automatisk via `git fetch --prune` (kør altid ved session-start på en ny PC)
+- Lokale worktrees er per-PC → den anden PC har sine egne stale worktrees som skal ryddes der
+
+**Multi-AI compatibility:**
+- Reglen er git-niveau (ikke Claude-specifik) → Codex følger samme konvention
+- Begge AI'er læser denne fil og GUARDRAILS_CORE.md → konvention håndhæves automatisk
+
+**GitHub repo-setting (one-time):** `Settings → General → Pull Requests → Automatically delete head branches` ✅ — auto-cleanup når PRs merges. Dækker IKKE direkte fast-forward pushes (de skal stadig manuel slettes per reglen ovenfor).
+
+---
+
 ## Lokal PC-opsætning (kør ved første session på ny PC eller efter ny devDep)
 
 ```powershell
