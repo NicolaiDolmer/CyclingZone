@@ -14,7 +14,7 @@ const FINANCE_TOUR_STEPS = [
   {
     target: "[data-tour='finance-balance']",
     title: "Din balance og pengestrømme",
-    body: "Din balance opdateres løbende med sponsor (ind), løn og lånerenter (ud), og transfers + præmier. Røde tal = negativ balance — det aktiverer nødlån-mekanismen.",
+    body: "Balance ændrer sig ved sponsor (ind, ved sæsonstart), løn (ud, ved sæsonafslutning), transfers og præmier (løbende). Røde tal = negativ balance, hvilket aktiverer nødlån-mekanismen ved sæsonafslutning.",
   },
   {
     target: "[data-tour='finance-debt-ceiling']",
@@ -23,8 +23,8 @@ const FINANCE_TOUR_STEPS = [
   },
   {
     target: "[data-tour='finance-tx-history']",
-    title: "Følg sponsor og løn løbende",
-    body: "Sponsor udbetales i månedlige rater og løn trækkes løbende. Her ser du hver transaktion — brug den til at spore om økonomien går i den rigtige retning før sæsonen er forbi.",
+    title: "Følg pengestrømmene",
+    body: "Sponsor og løn er sæson-engangs (ind ved start, ud ved slut), mens præmier og transfers tikker ind løbende. Her ser du hver transaktion — brug den til at spore om økonomien går den rigtige vej.",
   },
 ];
 

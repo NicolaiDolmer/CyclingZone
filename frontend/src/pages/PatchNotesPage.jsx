@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.17",
+    date: "2026-05-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fix: Korrekt sponsor- og løntiming i økonomi-explainer",
+        items: [
+          "Økonomi-explainer på /finance sagde fejlagtigt at sponsor udbetales 'månedligt' og løn trækkes 'løbende' — runtime udbetaler i virkeligheden begge som engangsbeløb (sponsor ved sæsonstart, løn ved sæsonafslutning)",
+          "Hint-kort og tour-tekster opdateret så managers får et retvisende billede af hvornår pengene bevæger sig — hjælper til bedre planlægning af transferspidser og lånevalg",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.16",
     date: "2026-05-03",
     label: "Beta",

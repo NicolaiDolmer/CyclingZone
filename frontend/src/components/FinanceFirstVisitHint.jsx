@@ -39,7 +39,7 @@ export default function FinanceFirstVisitHint({ onDismiss, onStartTour }) {
             <Link to="/board" className="text-cz-accent-t hover:underline font-medium">
               bestyrelses-modifier
             </Link>
-            . Udbetales månedligt over sæsonen.
+            . Udbetales som engangsbeløb ved sæsonstart.
           </p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
@@ -48,8 +48,8 @@ export default function FinanceFirstVisitHint({ onDismiss, onStartTour }) {
             <p className="text-cz-1 text-sm font-semibold">Løn til ryttere</p>
           </div>
           <p className="text-cz-3 text-xs">
-            10% af rytterværdien pr. sæson (uci_points × 4000). Trækkes løbende —
-            stjerneryttere er dyre at holde på.
+            10% af rytterværdien pr. sæson (uci_points × 4000). Trækkes som engangsbeløb
+            ved sæsonafslutning — stjerneryttere er dyre at holde på.
           </p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
