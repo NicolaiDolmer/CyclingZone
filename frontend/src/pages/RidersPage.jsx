@@ -9,6 +9,7 @@ import { getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
 import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
+import { startTour } from "../lib/onboardingTour";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -309,6 +310,7 @@ export default function RidersPage() {
           balance={myTeam.balance}
           division={myTeam.division}
           onFilterByBudget={() => setFilter("max_uci", String(myTeam.balance ?? ""))}
+          onStartTour={() => startTour("riders")}
         />
       )}
 
