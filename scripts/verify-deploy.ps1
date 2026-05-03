@@ -161,18 +161,32 @@ function Test-DeploymentStatus {
   return @{ Done = $true; Ok = $allOk; Message = ($messages -join ", ") }
 }
 
+function Invoke-WebRequestAllowError {
+  param([string]$Uri, [int]$TimeoutSec = 30)
+  try {
+    $response = Invoke-WebRequest -Uri $Uri -UseBasicParsing -TimeoutSec $TimeoutSec
+    return [PSCustomObject]@{ StatusCode = [int]$response.StatusCode }
+  } catch {
+    $errResponse = $_.Exception.Response
+    if ($errResponse) {
+      return [PSCustomObject]@{ StatusCode = [int]$errResponse.StatusCode }
+    }
+    throw
+  }
+}
+
 function Test-LiveSmoke {
   $health = Invoke-WebRequest -Uri "$BackendUrl/health" -UseBasicParsing -TimeoutSec 30
   if ($health.StatusCode -ne 200) {
     throw "Backend health returnerede $($health.StatusCode)."
   }
 
-  $auctions = Invoke-WebRequest -Uri "$BackendUrl/api/auctions" -UseBasicParsing -TimeoutSec 30 -SkipHttpErrorCheck
+  $auctions = Invoke-WebRequestAllowError -Uri "$BackendUrl/api/auctions" -TimeoutSec 30
   if ($auctions.StatusCode -ne 401) {
     throw "Backend auth smoke forventede 401 fra /api/auctions, fik $($auctions.StatusCode)."
   }
 
-  $frontend = Invoke-WebRequest -Uri $FrontendAlias -UseBasicParsing -TimeoutSec 30 -SkipHttpErrorCheck
+  $frontend = Invoke-WebRequestAllowError -Uri $FrontendAlias -TimeoutSec 30
   if ($frontend.StatusCode -notin @(200, 401, 403)) {
     throw "Frontend alias returnerede uventet status $($frontend.StatusCode)."
   }
