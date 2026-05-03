@@ -69,11 +69,16 @@ export default function ProfilePage() {
   }
 
   async function saveDiscordId() {
+    const trimmed = discordId.trim();
+    if (trimmed && !/^\d{17,19}$/.test(trimmed)) {
+      showMsg("❌ Discord ID skal være 17-19 cifre (kun tal). Du har sandsynligvis kopieret brugernavnet — højreklik på dit eget navn i Discord → 'Kopiér bruger-ID' (kræver Udviklertilstand under Avanceret).", "error");
+      return;
+    }
     setSavingDiscord(true);
     const { data: { user: authUser } } = await supabase.auth.getUser();
     const { error } = await supabase
       .from("users")
-      .update({ discord_id: discordId.trim() || null })
+      .update({ discord_id: trimmed || null })
       .eq("id", authUser.id);
     if (error) showMsg(`❌ ${error.message}`, "error");
     else showMsg("✅ Discord ID gemt!");
@@ -296,7 +301,14 @@ export default function ProfilePage() {
         {/* DM-status badge */}
         {dmStatus && (
           dmStatus.discord_id ? (
-            dmStatus.bot_configured ? (
+            !/^\d{17,19}$/.test(dmStatus.discord_id) ? (
+              <div className="mb-4 px-4 py-2.5 rounded-lg border bg-cz-danger-bg text-cz-danger border-cz-danger/30 text-xs flex items-start gap-2">
+                <span>❌</span>
+                <span>
+                  Dit gemte ID (<code className="font-mono">{dmStatus.discord_id}</code>) ser ud til at være et brugernavn, ikke et bruger-ID. DMs vil ikke blive leveret. Erstat det med et 17-19-cifret tal — se vejledningen nedenfor.
+                </span>
+              </div>
+            ) : dmStatus.bot_configured ? (
               dmStatus.dm_enabled ? (
                 <div className="mb-4 px-4 py-2.5 rounded-lg border bg-cz-success-bg text-cz-success border-cz-success/30 text-xs flex items-center gap-2">
                   <span>✅</span>
@@ -344,7 +356,10 @@ export default function ProfilePage() {
           />
           <p className="text-cz-3 text-xs mt-2">
             Find dit ID: Discord → Indstillinger → Avanceret → Aktivér udviklertilstand
-            → Højreklik på dit navn → "Kopiér bruger-ID"
+            → Højreklik på dit navn → "Kopiér bruger-ID".
+            <span className="block mt-1 text-cz-2">
+              Det er et <strong>17-19-cifret tal</strong>, ikke dit @brugernavn.
+            </span>
           </p>
         </div>
 
