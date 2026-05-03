@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",
+    "@microsoft/clarity": "^1.0.2",
     "@supabase/supabase-js": "^2.45.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
