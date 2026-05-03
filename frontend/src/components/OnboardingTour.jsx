@@ -125,7 +125,7 @@ export default function OnboardingTour({ pageKey, steps }) {
           height: 0,
           borderLeft: "8px solid transparent",
           borderRight: "8px solid transparent",
-          [placeBelow ? "borderBottom" : "borderTop"]: "8px solid var(--accent)",
+          [placeBelow ? "borderBottom" : "borderTop"]: "8px solid rgb(var(--accent))",
         }}
       />
 

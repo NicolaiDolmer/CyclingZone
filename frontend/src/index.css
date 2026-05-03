@@ -16,8 +16,8 @@
   --text-1:     #1c1b26;
   --text-2:     #66637a;
   --text-3:     #9896b0;
-  --accent:     #e8c547;
-  --accent-t:   #a07800;
+  --accent:     232 197 71;
+  --accent-t:   160 120 0;
   --on-accent:  #1a1f38;
 
   /* Sidebar — always dark (option A) */
@@ -28,14 +28,14 @@
   --text-sidebar-2:   rgba(255, 255, 255, 0.55);
   --text-sidebar-3:   rgba(255, 255, 255, 0.25);
 
-  /* Semantic states */
-  --success:    #15803d;
+  /* Semantic states — base colors as channel format for <alpha-value> support */
+  --success:    21 128 61;
   --success-bg: #dcfce7;
-  --danger:     #b91c1c;
+  --danger:     185 28 28;
   --danger-bg:  #fee2e2;
-  --warning:    #b45309;
+  --warning:    180 83 9;
   --warning-bg: #fef3c7;
-  --info:       #1d4ed8;
+  --info:       29 78 216;
   --info-bg:    #dbeafe;
 }
 
@@ -49,19 +49,19 @@
   --text-1:     #ededf2;
   --text-2:     #9da0b3;
   --text-3:     #6b6d7e;
-  --accent:     #e8c547;
-  --accent-t:   #ffd966;
+  --accent:     232 197 71;
+  --accent-t:   255 217 102;
   --on-accent:  #1a1f38;
 
   /* Sidebar identisk i begge temaer (option A) */
 
-  --success:    #4ade80;
+  --success:    74 222 128;
   --success-bg: rgba(74, 222, 128, 0.12);
-  --danger:     #f87171;
+  --danger:     248 113 113;
   --danger-bg:  rgba(248, 113, 113, 0.12);
-  --warning:    #fbbf24;
+  --warning:    251 191 36;
   --warning-bg: rgba(251, 191, 36, 0.12);
-  --info:       #60a5fa;
+  --info:       96 165 250;
   --info-bg:    rgba(96, 165, 250, 0.12);
 }
 
@@ -80,5 +80,5 @@ select option {
 /* Spinner uses brand amber */
 .spinner {
   border-color: var(--border);
-  border-top-color: var(--accent-t);
+  border-top-color: rgb(var(--accent-t));
 }

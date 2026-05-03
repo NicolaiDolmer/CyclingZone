@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.21",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Under motorhjelmen — Subtile alert-tints og hover-effekter virker nu på tværs af appen",
+        items: [
+          "Alert-cards på Notifikationer, Bestyrelse, Admin, Marked, Auktioner, Transfers m.fl. brugte gennemsigtige farve-varianter (fx 8% rød tint på outbid-alerts, 30% grøn hover på dashboard-knapper) der silently rendrede transparent pga. en pre-eks. opacity-bug i color-tokens — Tailwinds `/N`-syntax virker ikke med plain `var()` farver, og 3 opacity-trin (3%, 8%, 12%) brugt 30+ steder var slet ikke defineret",
+          "Fix: alle status-farver (`cz-success`, `cz-danger`, `cz-warning`, `cz-info`, deres `-bg0` aliases samt `cz-accent`/`cz-accent-t`) konverteret til channel-format med `<alpha-value>` placeholder, og opacity-trin 3/8/12 tilføjet til Tailwind theme",
+          "Verificeret runtime via Claude Preview: 35 opacity-klasser tester nu korrekt — fx `bg-cz-info-bg0/20` = `rgba(29, 78, 216, 0.2)` (var transparent før). Dark mode `cz-*-bg` (uden -0) bevarer sin bevidste rgba 12% tint urørt",
+          "Visuel impact: subtile bg-tints på alert-cards, hover-feedback på CTA-knapper, status-baggrunde og badge-chips er nu synlige som designet — ikke kritisk regression, men polish",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.20",
     date: "2026-05-04",
     label: "Beta",

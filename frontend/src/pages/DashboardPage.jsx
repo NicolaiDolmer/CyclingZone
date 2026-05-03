@@ -33,7 +33,7 @@ function StatCard({ label, value, sub, accent = "text-cz-1", icon }) {
   );
 }
 
-function MiniBar({ value, max, color = "var(--accent)" }) {
+function MiniBar({ value, max, color = "rgb(var(--accent))" }) {
   const pct = Math.min(100, Math.round((value / Math.max(max, 1)) * 100));
   return (
     <div className="flex items-center gap-2">
@@ -544,7 +544,7 @@ export default function DashboardPage() {
                     <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isMe ? "text-cz-accent-t" : "text-cz-3"}`}>#{i+1}</span>
                     <p className={`text-sm w-28 truncate flex-shrink-0 ${isMe ? "text-cz-accent-t font-medium" : "text-cz-2"}`}>{s.team?.name}</p>
                     <div className="flex-1">
-                      <MiniBar value={s.total_points || 0} max={maxPts} color={isMe ? "var(--accent)" : "var(--text-3)"} />
+                      <MiniBar value={s.total_points || 0} max={maxPts} color={isMe ? "rgb(var(--accent))" : "var(--text-3)"} />
                     </div>
                   </div>
                 );
