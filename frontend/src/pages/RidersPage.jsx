@@ -4,7 +4,7 @@ import { buildSupabaseQuery } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
 import { useNavigate, Link } from "react-router-dom";
-import { getFlagEmoji } from "../lib/countryUtils";
+import { Flag } from "../components/Flag";
 import { getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
 import RidersEmptyState from "../components/RidersEmptyState";
@@ -90,7 +90,7 @@ function RiderCard({ rider, onClick, watchlist, onToggleWatchlist, isInAuction }
       <div className="flex items-start justify-between gap-3 mb-3">
         <div onClick={() => onClick(rider)} className="flex-1 min-w-0">
           <p className="text-cz-1 font-medium text-sm truncate">
-            {rider.nationality_code && <span className="mr-1">{getFlagEmoji(rider.nationality_code)}</span>}
+            {rider.nationality_code && <Flag code={rider.nationality_code} className="mr-1" />}
             {rider.firstname} {rider.lastname}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -136,7 +136,7 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }
       <td className="px-3 py-2.5" onClick={() => onSelect(rider)}>
         <div>
           <p className="text-cz-1 text-sm font-medium">
-            {rider.nationality_code && <span className="mr-1">{getFlagEmoji(rider.nationality_code)}</span>}
+            {rider.nationality_code && <Flag code={rider.nationality_code} className="mr-1" />}
             {rider.firstname} {rider.lastname}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">

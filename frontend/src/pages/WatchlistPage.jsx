@@ -4,7 +4,7 @@ import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { statBg } from "../lib/statBg";
-import { getFlagEmoji } from "../lib/countryUtils";
+import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
 
@@ -154,7 +154,7 @@ export default function WatchlistPage() {
                       <tr key={entry.id} className="border-b border-cz-border hover:bg-cz-subtle">
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
-                            {r.nationality_code && <span className="flex-shrink-0">{getFlagEmoji(r.nationality_code)}</span>}
+                            {r.nationality_code && <Flag code={r.nationality_code} className="flex-shrink-0" />}
                             <button onClick={() => navigate(`/riders/${r.id}`)}
                               className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left">
                               {r.firstname} {r.lastname}

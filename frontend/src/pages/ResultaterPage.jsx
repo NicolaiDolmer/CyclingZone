@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
-import { getFlagEmoji } from "../lib/countryUtils";
+import { Flag } from "../components/Flag";
 
 const HUB_LINKS = [
   { to: "/standings",      label: "Ranglisten",      desc: "Holdranglisten for aktiv sæson",              icon: "🏆" },
@@ -158,7 +158,7 @@ export default function ResultaterPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-cz-1 text-sm truncate">
                         {a.rider.nationality_code && (
-                          <span className="mr-1">{getFlagEmoji(a.rider.nationality_code)}</span>
+                          <Flag code={a.rider.nationality_code} className="mr-1" />
                         )}
                         {a.rider.firstname} {a.rider.lastname}
                       </p>

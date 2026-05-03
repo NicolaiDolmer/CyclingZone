@@ -5,7 +5,7 @@ import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
-import { getFlagEmoji } from "../lib/countryUtils";
+import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
 const API = import.meta.env.VITE_API_URL;
@@ -60,7 +60,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
           <p className="text-cz-1 font-semibold">
-            {offer.rider?.nationality_code && <span className="mr-1">{getFlagEmoji(offer.rider.nationality_code)}</span>}{offer.rider?.firstname} {offer.rider?.lastname}
+            {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
           </p>
           <p className="text-cz-3 text-xs">Fra: {offer.buyer?.name} · Runde {offer.round || 1} · {timeAgo(offer.created_at)}</p>
         </div>
@@ -214,7 +214,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
           <p className="text-cz-1 font-semibold">
-            {offer.rider?.nationality_code && <span className="mr-1">{getFlagEmoji(offer.rider.nationality_code)}</span>}{offer.rider?.firstname} {offer.rider?.lastname}
+            {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
           </p>
           <p className="text-cz-3 text-xs">Til: {offer.seller?.name} · Runde {offer.round || 1} · {timeAgo(offer.updated_at)}</p>
         </div>
@@ -835,7 +835,7 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
       <div className="flex items-start justify-between mb-3">
         <div className="cursor-pointer" onClick={() => navigate(`/riders/${listing.rider?.id}`)}>
           <p className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors">
-            {listing.rider?.nationality_code && <span className="mr-1">{getFlagEmoji(listing.rider.nationality_code)}</span>}{listing.rider?.firstname} {listing.rider?.lastname}
+            {listing.rider?.nationality_code && <Flag code={listing.rider.nationality_code} className="mr-1" />}{listing.rider?.firstname} {listing.rider?.lastname}
           </p>
           <p className="text-cz-3 text-xs mt-0.5">{listing.seller?.name}</p>
           {listing.created_at && (

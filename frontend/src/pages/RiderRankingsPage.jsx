@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
-import { getFlagEmoji } from "../lib/countryUtils";
+import { Flag } from "../components/Flag";
 
 const SORT_COLS = [
   { key: "points",      label: "Point",              shortLabel: "Pt" },
@@ -189,7 +189,7 @@ export default function RiderRankingsPage() {
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {rider.nationality_code && (
-                          <span className="flex-shrink-0">{getFlagEmoji(rider.nationality_code)}</span>
+                          <Flag code={rider.nationality_code} className="flex-shrink-0" />
                         )}
                         <span className="font-medium text-cz-1">
                           {rider.firstname} {rider.lastname}

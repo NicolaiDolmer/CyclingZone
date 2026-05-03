@@ -5,7 +5,7 @@ import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
-import { getFlagEmoji } from "../lib/countryUtils";
+import { Flag } from "../components/Flag";
 import { formatCz, getMinimumAuctionBid, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
 import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
@@ -140,7 +140,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }
       {/* Rytter */}
       <td className="px-3 py-1.5 min-w-[140px]">
         <div className="flex flex-col gap-0.5">
-          {r?.nationality_code && <span className="text-xs flex-shrink-0">{getFlagEmoji(r.nationality_code)}</span>}
+          {r?.nationality_code && <Flag code={r.nationality_code} className="text-xs flex-shrink-0" />}
           <button
             onClick={() => onNavigate(r?.id)}
             className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left truncate max-w-[160px]">
@@ -306,7 +306,7 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst 
           <button
             onClick={() => onNavigate(r?.id)}
             className="text-left text-cz-1 font-semibold text-sm hover:text-cz-accent-t transition-colors">
-            {r?.nationality_code && <span className="mr-1">{getFlagEmoji(r.nationality_code)}</span>}
+            {r?.nationality_code && <Flag code={r.nationality_code} className="mr-1" />}
             {r?.firstname} {r?.lastname}
           </button>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">

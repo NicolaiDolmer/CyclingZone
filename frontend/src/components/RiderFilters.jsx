@@ -10,7 +10,8 @@
  *   nationalities: string[] — ISO codes present in the current dataset
  */
 import { useState } from "react";
-import { getFlagEmoji, getCountryName } from "../lib/countryUtils";
+import { getCountryName } from "../lib/countryUtils";
+import { Flag } from "./Flag";
 
 export const STAT_KEYS = [
   "stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
@@ -150,7 +151,7 @@ export default function RiderFilters({
                 text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
               <option value="">Alle lande</option>
               {nationalities.map(code => (
-                <option key={code} value={code}>{getFlagEmoji(code)} {getCountryName(code)}</option>
+                <option key={code} value={code}>{getCountryName(code)}</option>
               ))}
             </select>
           </div>
@@ -277,7 +278,7 @@ export default function RiderFilters({
           {filters.q && <Chip label={`"${filters.q}"`} onRemove={() => onChange("q", "")} />}
           {filters.nationality_code && (
             <Chip
-              label={`${getFlagEmoji(filters.nationality_code)} ${getCountryName(filters.nationality_code)}`}
+              label={<><Flag code={filters.nationality_code} /> {getCountryName(filters.nationality_code)}</>}
               onRemove={() => onChange("nationality_code", "")}
             />
           )}

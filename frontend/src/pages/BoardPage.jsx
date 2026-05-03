@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { satisfactionToModifier, getPlanDuration } from "../lib/boardUtils";
 import { getCountryDisplay } from "../lib/countryUtils";
+import { Flag } from "../components/Flag";
 import { Link } from "react-router-dom";
 import BoardEmptyState from "../components/BoardEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
@@ -60,7 +61,7 @@ function getBoardGoalLabel(goal) {
   if (!goal) return "";
   if (goal.type === "min_national_riders" && goal.nationality_code) {
     const country = getCountryDisplay(goal.nationality_code);
-    return `Min. ${goal.target} ryttere fra ${country.label}`;
+    return `Min. ${goal.target} ryttere fra ${country.name || country.code}`;
   }
   return goal.label || "";
 }
@@ -73,7 +74,7 @@ function formatSignalDelta(delta) {
 function formatBoardCopy(text) {
   if (!text) return "";
   return text
-    .replace(/\bfra ([A-Z]{2})\b/g, (_match, code) => `fra ${getCountryDisplay(code).label}`)
+    .replace(/\bfra ([A-Z]{2})\b/g, (_match, code) => `fra ${getCountryDisplay(code).name || code}`)
     .replace(/\b([A-Z]{2})-kerne\b/g, (_match, code) => `${getCountryDisplay(code).name}-kerne`)
     .replace(/\b([A-Z]{2})-praegede\b/g, (_match, code) => `${getCountryDisplay(code).name}-praegede`);
 }
@@ -278,7 +279,7 @@ function BoardIdentityCard({ identityProfile, title = "Holdidentitet" }) {
   const nationalCore = identityProfile.national_core;
   const starProfile = identityProfile.star_profile;
   const nationalCoreCountry = getCountryDisplay(nationalCore?.code);
-  const nationalCoreValue = nationalCore?.established && nationalCore?.code ? nationalCoreCountry.label : "Blandet";
+  const nationalCoreValue = nationalCore?.established && nationalCore?.code ? (nationalCoreCountry.name || nationalCoreCountry.code) : "Blandet";
   const nationalCoreSub = nationalCore?.established
     ? `${nationalCore.count} ryttere · ${nationalCore.share_pct}% af truppen`
     : "Ingen tydelig kerne endnu";
@@ -322,7 +323,10 @@ function BoardIdentityCard({ identityProfile, title = "Holdidentitet" }) {
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">National kerne</p>
-          <p className="text-cz-1 text-sm font-medium mt-1">{nationalCoreValue}</p>
+          <p className="text-cz-1 text-sm font-medium mt-1 inline-flex items-center gap-1.5">
+            {nationalCore?.established && nationalCore?.code && <Flag code={nationalCore.code} />}
+            {nationalCoreValue}
+          </p>
           <p className="text-cz-3 text-xs mt-1">{nationalCoreSub}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">

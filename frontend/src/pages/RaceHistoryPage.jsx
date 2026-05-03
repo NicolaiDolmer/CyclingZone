@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { getFlagEmoji } from "../lib/countryUtils";
+import { Flag } from "../components/Flag";
 
 export default function RaceHistoryPage() {
   const { raceSlug } = useParams();
@@ -181,7 +181,7 @@ export default function RaceHistoryPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-cz-1 text-xs font-medium truncate">
                       {s.rider?.nationality_code && (
-                        <span className="mr-1">{getFlagEmoji(s.rider.nationality_code)}</span>
+                        <Flag code={s.rider.nationality_code} className="mr-1" />
                       )}
                       {s.rider_name}
                     </p>
@@ -217,7 +217,7 @@ export default function RaceHistoryPage() {
                 <div key={s.rider?.id || s.rider_name} className="flex items-center gap-3">
                   <div className="w-28 text-xs text-cz-2 truncate text-right flex-shrink-0">
                     {s.rider?.nationality_code && (
-                      <span className="mr-0.5">{getFlagEmoji(s.rider.nationality_code)}</span>
+                      <Flag code={s.rider.nationality_code} className="mr-0.5" />
                     )}
                     {lastName}
                   </div>

@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.18",
+    date: "2026-05-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Flag virker nu korrekt i alle browsere (også Chrome på Windows)",
+        items: [
+          "Tidligere: flag blev rendret som Unicode-emoji — virker fint på macOS/iOS/Android og Firefox, men Chrome på Windows viste landekoder som tekst (DK, FR, ES) i stedet for flag, fordi Windows ikke har flag-emoji indbygget",
+          "Nu: ny <Flag>-komponent baseret på flag-icons (SVG-sprite) — viser rigtige flag på tværs af alle browsere og OS, scalerer crisp ved enhver størrelse, virker offline",
+          "22 callsites opdateret — Auktioner, Auktionshistorik, Transfers, Ryttere, Watchlist, Holdside, Hold-profil, Race-historik, Resultater, Rytterrangliste, Rytter-sammenligning, Rytter-stats, Head-to-Head, Bestyrelse",
+          "Land-filter dropdown viser nu kun landenavn (uden emoji-prefix) — chip-visning og rytter-detaljer viser SVG-flag",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.17",
     date: "2026-05-03",
     label: "Beta",

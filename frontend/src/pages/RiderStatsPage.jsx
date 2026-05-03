@@ -1,7 +1,8 @@
 import { lazy, Suspense, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { getFlagEmoji, getCountryName } from "../lib/countryUtils";
+import { getCountryName } from "../lib/countryUtils";
+import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
 
@@ -379,8 +380,8 @@ export default function RiderStatsPage() {
               {rider.is_u25 && <span className="text-xs uppercase bg-cz-info-bg0/20 text-cz-info px-2 py-0.5 rounded">U25</span>}
               <span className="text-xs uppercase bg-cz-subtle text-cz-2 px-2 py-0.5 rounded font-medium">{typeLabel}</span>
               {rider.nationality_code && (
-                <span className="text-cz-2 text-sm">
-                  {getFlagEmoji(rider.nationality_code)} {getCountryName(rider.nationality_code)}
+                <span className="text-cz-2 text-sm inline-flex items-center gap-1">
+                  <Flag code={rider.nationality_code} /> {getCountryName(rider.nationality_code)}
                 </span>
               )}
               {age && <span className="text-cz-3 text-sm">{age} år</span>}

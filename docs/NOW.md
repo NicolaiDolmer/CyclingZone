@@ -10,9 +10,9 @@
 **Alle 7 launch-gates ✅** — soft-launch-klar.
 
 ## Senest leveret
-- 2026-05-03: **Slice 3 + timing-fix** (v2.16+v2.17) — Økonomi-explainer på `/finance`: `FinanceFirstVisitHint.jsx` ved første besøg (sponsor 260K × board-modifier, salary 10% af uci*4000, gældsloft D1/D2/D3, kort vs. langt lån) + tour med 3 trin. Trigger via localStorage `cz-finance-hint-shown` (ingen backend-step). v2.17 fix: sponsor=engangs ved sæsonstart, salary=engangs ved sæsonafslutning (runtime-verificeret mod `economyEngine.js:162,499` — ikke "månedligt"/"løbende" som hint oprindeligt sagde).
-- 2026-05-03: **Onboarding v2 — Slice 2** (v2.15) — Bestyrelse-explainer: `BoardEmptyState.jsx` på `/board` for managers uden plan (rolle + 1yr/3yr/5yr + KPI + modifier-tærskler) med CTA. Auto-wizard-skip ved første gangs setup. Tour 3 trin.
-- 2026-05-04: **DD audit follow-up** (v2.14) — `auctions.is_flash` schema-divergens lukket: ny migration + schema.sql/setup.py + regression-test.
+- 2026-05-03: **Cross-browser flag fix** (v2.18) — Ny `<Flag>` komponent baseret på `flag-icons` SVG-sprite. Erstattet 22 emoji-baserede callsites på tværs af 13 filer + RiderFilters Chip + BoardPage `national kerne`. `/option`-dropdown viser nu kun landenavn (HTML option-tekst kan ikke have JSX). Fix for Windows-Chrome (Segoe UI Emoji har ikke flag-emoji); virker fortsat på Firefox/macOS/iOS/Android.
+- 2026-05-03: **Slice 3 + timing-fix** (v2.16+v2.17) — Økonomi-explainer på `/finance`: `FinanceFirstVisitHint.jsx` (sponsor 260K × board-modifier, salary 10%, gældsloft, lånetyper) + tour 3 trin. v2.17 fix: sponsor=engangs ved sæsonstart, salary=engangs ved sæsonafslutning (runtime-verificeret mod `economyEngine.js:162,499`).
+- 2026-05-03: **Onboarding v2 — Slice 2** (v2.15) + **DD audit follow-up** (v2.14) — `BoardEmptyState.jsx` + `auctions.is_flash` schema-divergens lukket.
 - Ældre v2.13 og før → `docs/archive/NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter

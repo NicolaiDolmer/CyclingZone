@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
-import { getFlagEmoji } from "../lib/countryUtils";
+import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
 function timeAgo(dateStr) {
@@ -157,7 +157,7 @@ export default function AuctionHistoryPage() {
                     onClick={() => a.rider?.id && navigate(`/riders/${a.rider.id}`)}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        {a.rider?.nationality_code && <span className="flex-shrink-0">{getFlagEmoji(a.rider.nationality_code)}</span>}
+                        {a.rider?.nationality_code && <Flag code={a.rider.nationality_code} className="flex-shrink-0" />}
                         <span className="text-cz-1 font-medium">
                           {a.rider?.firstname} {a.rider?.lastname}
                         </span>
