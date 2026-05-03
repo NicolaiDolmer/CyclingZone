@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.20",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Under motorhjelmen — Deadline Day banner-fase pressure-dot fix",
+        items: [
+          "Banneret øverst i siden under Deadline Day havde en bug i 'pressure'-fasen (sidste timer): den røde indikator-prik var transparent fordi en CSS-token (`cz-danger-bg0`) brugt 20+ steder ikke var defineret i tailwind config — silently dropped",
+          "Fix: tilføjet 4 aliases i `tailwind.config.js` for de 4 status-farve-varianter (`cz-{danger,success,warning,info}-bg0` → peger på base-farven). Lukker også samme typo på Notifikationer, Bestyrelse, Admin og flere andre alert-cards",
+          "Verificeret runtime via Claude Preview: pressure-dot er nu `rgb(185, 28, 28)` (rød) som forventet. Final Whistle Discord-embed format auto-testet mod Discord limits — alle felter inden for spec",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.19",
     date: "2026-05-04",
     label: "Beta",

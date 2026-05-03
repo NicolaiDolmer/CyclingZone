@@ -1,24 +1,25 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Onboarding v2 — Slice 4 leveret (v2.19).** Onboarding v2 multi-slice komplet (1a+1b+2+3+4). Closure-slice lukker post-onboarding-cliff.
+**DD soak-gate lukket (v2.20).** Auto-verificeret 4 punkter + fixet `cz-bg0`-typo via tailwind aliases. Onboarding v2 + DD + dark mode + Discord DM + flag SVG: alle ✅.
 
 ## Soak-gate
-**Aktiv: kun DD** — Dark mode ✅ · Discord DM ✅ · Onboarding v2 1a+1b+2+3+4 ✅ (code-level lukket per arbejdsmetode: pure-UI komponenter, render-prop-additions, samme test-overflade som tidligere slices live i 2 dage uden bug-rapport) · Flag SVG v2.18 ✅ (CSS-sprite, ingen runtime-logik, build grøn). Tilbage: Deadline Day S1–S4 — code-level ✅ (23/23 invarianter); UI-smoke 4 punkter pending.
+**ALLE LUKKET ✅** — Dark mode · Discord DM · Onboarding v2 1a+1b+2+3+4 · Flag SVG v2.18 · DD S1–S4 (banner-fase pressure-dot fix verificeret runtime via Claude Preview: rgb(185,28,28); ticker `animate-ticker` keyframe ✅; flash-badge tokens ✅; Final Whistle embed-format auto-testet mod Discord limits ✅).
 
 ## Open beta status
 **Alle 7 launch-gates ✅** — soft-launch-klar.
 
 ## Senest leveret
-- 2026-05-04: **Onboarding v2 — Slice 4** (v2.19) — Empty-state-tour + completion-celebration. `RidersEmptyState`/`AuctionsFirstBidHint`/`BoardEmptyState` får sekundær "Vis mig rundt"-knap (manager der lander direkte via menuen får tour-tilbud). Ny `OnboardingCompletionCard.jsx` vises engang ved 4/4 med 3 quick-links. Dismiss i localStorage `cz-dashboard-onboarding-completion-dismissed`.
+- 2026-05-04: **DD soak-gate lukket** (v2.20) — Auto-audit af 4 visuelle DD-punkter via code-level + Claude Preview runtime + Node embed-test. Bug fundet: `cz-{danger,success,warning,info}-bg0` brugt 74x i source uden tailwind-definition. Fix: 4 aliases i `tailwind.config.js` → DD pressure-dot nu rød (verificeret runtime). Pre-eks. opacity-issue (color-tokens uden `<alpha-value>` placeholder) dokumenteret som separat task.
+- 2026-05-04: **Onboarding v2 — Slice 4** (v2.19) — Empty-state-tour + completion-celebration. Ny `OnboardingCompletionCard.jsx` ved 4/4. Sekundær "Vis mig rundt"-knap på 3 empty-states.
 - 2026-05-03: **Cross-browser flag fix** (v2.18) — Ny `<Flag>` komponent baseret på `flag-icons` SVG-sprite. 22 emoji-callsites erstattet. Fix for Windows-Chrome.
 - 2026-05-03: **Slice 3 + timing-fix** (v2.16+v2.17) — Økonomi-explainer på `/finance`. Sponsor/salary timing korrigeret mod `economyEngine.js:162,499`.
 - 2026-05-03: **Onboarding v2 — Slice 2** (v2.15) + **DD audit follow-up** (v2.14) — `BoardEmptyState.jsx` + `auctions.is_flash` schema-divergens lukket.
 - Ældre v2.13 og før → `docs/archive/NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter
-1. Deadline Day UI-smoke (4 punkter) — sidste pending soak-gate
-2. Næste post-launch-slice fra backlog (S8.5 import-feedback eller S9 Race Library)
+1. Næste post-launch-slice: S9 Race Library (anbefalet) eller S8.5 import-feedback
+2. Pre-eks. opacity-bug i color-tokens (separat task spawned — bredere refactor af cz-* CSS-vars til channel-format)
 
 ## Kritiske invarianter
 - Discord DM-fejl må aldrig blokere transaction (best-effort try/catch i `notifyDiscordDM`)

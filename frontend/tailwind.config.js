@@ -40,6 +40,11 @@ export default {
         "cz-warning-bg": "var(--warning-bg)",
         "cz-info":       "var(--info)",
         "cz-info-bg":    "var(--info-bg)",
+
+        "cz-success-bg0": "var(--success)",
+        "cz-danger-bg0":  "var(--danger)",
+        "cz-warning-bg0": "var(--warning)",
+        "cz-info-bg0":    "var(--info)",
       },
     },
   },
