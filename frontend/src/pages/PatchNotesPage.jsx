@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.14",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Under motorhjelmen — Deadline Day Flash Auction sikret mod fresh-setup-fejl",
+        items: [
+          "Database-opsætningen har manglet kolonnen som markerer en auktion som 'Flash Auction' (de 30-min-auktioner der kun kan startes under aktivt Deadline Day) — den var tilføjet manuelt i live-databasen, men ikke i de scripts der bruges når serveren sættes op fra bunden",
+          "Tilføjet både som ny migration og direkte i schema-filer, plus en automatisk test der fanger det hvis kolonnen forsvinder igen — ingen synlig ændring for dig som manager, men fjerner risikoen for at Flash Auctions fejler hvis databasen genopsættes",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.13",
     date: "2026-05-03",
     label: "Beta",
