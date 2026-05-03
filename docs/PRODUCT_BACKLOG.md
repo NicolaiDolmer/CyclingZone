@@ -132,10 +132,10 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 - Backend: `GET /api/me/onboarding-progress` returnerer 4 step-counts (`team_named`, `first_rider_owned`, `first_bid_placed`, `board_plan_set`) som parallelle queries mod `teams`/`riders`/`auction_bids`/`board_profiles`
 - Frontend: `OnboardingProgressCard.jsx` på `DashboardPage` med progress-bar, step-liste, CTA-link på næste trin, dismiss via `cz-dashboard-onboarding-dismissed`. Auto-skjul ved `completed_count === total_count`.
 
-**Slice 1b (næste):** Guided squad-builder UX
-- `RidersPage` empty-state for nye managers (0 ryttere) med forklaring af filtre + budgetoverblik
-- `AuctionsPage` first-bid hint/tooltip når manager byder for første gang
-- Opt-in tour-mekanik der kan startes fra progress-card "Vis mig hvordan"-knap
+**Slice 1b ✅ (v2.13, 2026-05-03):** Guided squad-builder UX
+- `RidersEmptyState` på `/riders` for managers uden ryttere (`first_rider_owned === false`) — forklarer filtre, viser balance vs. division-minimum, CTA filtrerer på pris ≤ balance
+- `AuctionsFirstBidHint` på `/auctions` for managers uden bud (`first_bid_placed === false` + localStorage `cz-first-bid-shown !== "1"`) — forklarer +10%-overbud + 10-min auto-forlængelse
+- `OnboardingTour` (generisk peg-pil-overlay) + `lib/onboardingTour.js` (state-helpers) startet fra "Vis mig hvordan"-knap på `OnboardingProgressCard`. Tour-trin på `/riders` (3 steps: filtre → liste → ønskeliste) og `/auctions` (2 steps: bud-input → countdown). State i localStorage `cz-onboarding-tour-step`. Slice 2 vil udvide med `board_plan_set: "board"`.
 
 **Slice 2 (senere):** Bestyrelse-explainer
 - Tour eller inline-empty-state på `/board` der forklarer 1yr/3yr/5yr planer + KPI'er

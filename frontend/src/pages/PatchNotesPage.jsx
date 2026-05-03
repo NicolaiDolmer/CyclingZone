@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.13",
+    date: "2026-05-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Onboarding v2 — guided squad-builder",
+        items: [
+          "Marked: nyt empty-state-kort øverst på rytter-listen for managers uden ryttere — forklarer filtre, viser balance + division-minimum, og knappen 'Find din første rytter' filtrerer automatisk listen til ryttere du har råd til",
+          "Auktioner: engangs-banner forklarer +10%-overbud-reglen og 10-min auto-forlængelse første gang du besøger siden uden at have afgivet bud — kan skjules permanent med ×",
+          "Kom-i-gang-kortet på Dashboard har nu en 'Vis mig hvordan'-knap der starter en kort tour med 2-3 peg-pil-tooltips på næste-trin-siden (Marked eller Auktioner)",
+          "Touren peger på filtrene, rytter-listen og ønskelisten på Marked — og på bud-feltet og tid-tilbage-kolonnen på Auktioner — med 'Næste'/'Spring over' kontrol og automatisk scroll-til-element",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.12",
     date: "2026-05-03",
     label: "Beta",

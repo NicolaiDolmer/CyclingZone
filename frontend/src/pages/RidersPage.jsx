@@ -7,6 +7,29 @@ import { useNavigate, Link } from "react-router-dom";
 import { getFlagEmoji } from "../lib/countryUtils";
 import { getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
+import RidersEmptyState from "../components/RidersEmptyState";
+import OnboardingTour from "../components/OnboardingTour";
+
+const API = import.meta.env.VITE_API_URL;
+
+// Onboarding v2 Slice 1b — tour-trin på /riders (aktiveres fra Dashboard "Vis mig hvordan").
+const RIDERS_TOUR_STEPS = [
+  {
+    target: "[data-tour='riders-filters']",
+    title: "Filtrér listen til dit budget",
+    body: "Sæt 'Værdi max' til din balance for kun at se ryttere du har råd til. U25/Fri agent-knapperne åbner billigere veje.",
+  },
+  {
+    target: "[data-tour='riders-list']",
+    title: "Klik på en rytter",
+    body: "Detaljesiden viser fulde stats, kontraktstatus og købs-/auktionsmuligheder. Du kan starte en auktion eller sende et tilbud derfra.",
+  },
+  {
+    target: "[data-tour='riders-watchlist']",
+    title: "Brug ønskelisten",
+    body: "Stjernen tilføjer rytteren til din ønskeliste, så du nemt kan vende tilbage. Listen findes også i menuen under Marked → Ønskeliste.",
+  },
+];
 
 const STATS = [
   { key: "stat_fl", label: "FL" }, { key: "stat_bj", label: "BJ" },
@@ -163,6 +186,8 @@ export default function RidersPage() {
   const [userId, setUserId] = useState(null);
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS, page: 1 });
   const [nationalities, setNationalities] = useState([]);
+  const [myTeam, setMyTeam] = useState(null);
+  const [showEmptyState, setShowEmptyState] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -177,6 +202,35 @@ export default function RidersPage() {
       supabase.from("rider_watchlist").select("rider_id").eq("user_id", user.id)
         .then(({ data }) => setWatchlist(new Set((data || []).map(w => w.rider_id))));
     });
+  }, []);
+
+  // Onboarding v2 Slice 1b — load own team + first_rider_owned-status for empty-state
+  useEffect(() => {
+    async function loadOnboardingContext() {
+      const [{ data: { user } }, { data: { session } }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.auth.getSession(),
+      ]);
+      if (!user) return;
+      const { data: team } = await supabase.from("teams")
+        .select("id, balance, division")
+        .eq("user_id", user.id).single();
+      if (team) setMyTeam(team);
+      const token = session?.access_token;
+      if (!token) return;
+      try {
+        const res = await fetch(`${API}/api/me/onboarding-progress`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const prog = await res.json();
+        const firstRider = prog.steps?.find(s => s.key === "first_rider_owned");
+        setShowEmptyState(firstRider ? !firstRider.done : false);
+      } catch {
+        // best-effort — empty-state forbliver skjult ved fejl
+      }
+    }
+    loadOnboardingContext();
   }, []);
 
   useEffect(() => {
@@ -237,26 +291,37 @@ export default function RidersPage() {
 
   return (
     <div className="max-w-full">
+      <OnboardingTour pageKey="riders" steps={RIDERS_TOUR_STEPS} />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
           <h1 className="text-xl font-bold text-cz-1">Rytterdatabase</h1>
           <p className="text-cz-3 text-sm">{total.toLocaleString("da-DK")} ryttere</p>
         </div>
-        <Link to="/watchlist"
+        <Link to="/watchlist" data-tour="riders-watchlist"
           className="w-full sm:w-auto text-center px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
             rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
           ⭐ Min ønskeliste ({watchlist.size})
         </Link>
       </div>
 
-      <RiderFilters filters={filters} onChange={setFilter} onReset={onReset} showTeamFilter={false} nationalities={nationalities} />
+      {showEmptyState && myTeam && (
+        <RidersEmptyState
+          balance={myTeam.balance}
+          division={myTeam.division}
+          onFilterByBudget={() => setFilter("max_uci", String(myTeam.balance ?? ""))}
+        />
+      )}
+
+      <div data-tour="riders-filters">
+        <RiderFilters filters={filters} onChange={setFilter} onReset={onReset} showTeamFilter={false} nationalities={nationalities} />
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-16">
           <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
         </div>
       ) : isMobile ? (
-        <div className="flex flex-col gap-3">
+        <div data-tour="riders-list" className="flex flex-col gap-3">
           {riders.map(r => (
             <RiderCard key={r.id} rider={r}
               onClick={r => navigate(`/riders/${r.id}`)}
@@ -266,7 +331,7 @@ export default function RidersPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div data-tour="riders-list" className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
           <div className="overflow-auto max-h-[calc(100vh-220px)]">
             <table className="w-full text-xs">
               <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">

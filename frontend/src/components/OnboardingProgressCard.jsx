@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { startTour, TOUR_PAGE_BY_STEP } from "../lib/onboardingTour";
 
 const STEP_META = {
   team_named: {
@@ -20,10 +21,19 @@ const STEP_META = {
 };
 
 export default function OnboardingProgressCard({ progress, onDismiss }) {
+  const navigate = useNavigate();
   if (!progress) return null;
   const { steps, completed_count, total_count } = progress;
   const pct = Math.round((completed_count / Math.max(total_count, 1)) * 100);
   const nextStep = steps.find(s => !s.done);
+  const tourPage = nextStep ? TOUR_PAGE_BY_STEP[nextStep.key] : null;
+  const tourTarget = nextStep ? STEP_META[nextStep.key]?.cta?.to : null;
+
+  function handleStartTour() {
+    if (!tourPage || !tourTarget) return;
+    startTour(tourPage);
+    navigate(tourTarget);
+  }
 
   return (
     <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-accent/30 rounded-xl">
@@ -74,6 +84,16 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
               );
             })}
           </ul>
+          {tourPage && (
+            <div className="mt-3 pt-2 border-t border-cz-border">
+              <button
+                onClick={handleStartTour}
+                className="text-cz-accent-t text-xs hover:underline font-medium"
+              >
+                💡 Vis mig hvordan
+              </button>
+            </div>
+          )}
         </div>
         <button
           onClick={onDismiss}

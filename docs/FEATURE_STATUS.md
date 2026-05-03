@@ -210,6 +210,15 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **Eksisterende managers:** Card vises retroaktivt for de 17 — men auto-skjules hvis alle 4 trin allerede er gennemført. Ingen blokerende wizard.
 - Verificeret: lint 0 errors, build grøn (`vite built in 5.53s`). UI-smoke pending.
 
+### Onboarding v2 — Slice 1b Guided squad-builder (v2.13, 2026-05-03)
+- **Genbruger eksisterende endpoint:** Begge sider læser `GET /api/me/onboarding-progress` for `first_rider_owned`/`first_bid_placed`-flags — ingen nye routes.
+- **RidersPage empty-state:** `frontend/src/components/RidersEmptyState.jsx` rendres øverst på `/riders` når `first_rider_owned === false`. Viser balance vs. division-minimum (D1=20, D2=14, D3=8) + 3 filter-tips (Værdi/Stat/U25-Fri agent). CTA "Find din første rytter" sætter `max_uci`-filter til managerens balance og indsnævrer listen automatisk.
+- **AuctionsPage first-bid hint:** `frontend/src/components/AuctionsFirstBidHint.jsx` rendres på `/auctions` når `first_bid_placed === false` og localStorage `cz-first-bid-shown !== "1"`. Forklarer +10%-overbud + 10-min auto-forlængelse. Dismiss × → permanent skjult.
+- **Opt-in tour:** `frontend/src/components/OnboardingTour.jsx` (generisk peg-pil-overlay) + `frontend/src/lib/onboardingTour.js` (state-helpers). Knappen "💡 Vis mig hvordan" på `OnboardingProgressCard` sætter localStorage `cz-onboarding-tour-step` (JSON `{page, step}`) og navigerer til næste-trin-siden. Mounten på `RidersPage` (3 steps: filtre → liste → ønskeliste) og `AuctionsPage` (2 steps: bud-input → countdown). Tooltip har "Næste"/"Spring over"-kontrol, scroll-til-element ved trin-skift, smart placement (under/over target), highlight-ring + CSS-trekant-pil. Fallback: hvis target ikke findes (fx 0 aktive auktioner), vises kun "Afslut tour"-knap nederst-højre.
+- **Step→tour mapping:** `TOUR_PAGE_BY_STEP = { first_rider_owned: "riders", first_bid_placed: "auctions" }`. "Vis mig hvordan"-knappen er kun synlig på kortet hvis næste trin har en tour (Slice 2 vil tilføje `board_plan_set: "board"`).
+- **Data-tour hooks:** `[data-tour="riders-filters"]`, `riders-list`, `riders-watchlist`, `auctions-bid-input`, `auctions-countdown`. På AuctionsPage tilføjes attributterne kun til første rendrede række/kort (via `isFirst`-prop) for at holde DOM ren.
+- Verificeret: lint 0 errors (42 pre-eks. warnings), build grøn (`vite built in 7.14s`). UI-smoke pending.
+
 ### Deadline Day S4 (2026-05-02)
 - Planlagte advarsler (T-24h / T-2h / T-30min): cron kører hver 5. minut, sender `deadline_day_warning`-notifikationer til alle aktive managers via `notifyTeamOwner`; dedupe via `related_id = window_id` + step-titel (24t-vindue i `notificationService`)
 - Final Whistle-rapport: `transfer_windows.final_whistle_sent_at` atomic claim (UPDATE WHERE IS NULL → SELECT) → `computeFinalWhistleReport` (største handel, mest aktive manager, panikhandler) → Discord embed til default webhook

@@ -8,10 +8,28 @@ import { ConfettiModal } from "../components/ConfettiModal";
 import { getFlagEmoji } from "../lib/countryUtils";
 import { formatCz, getMinimumAuctionBid, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
+import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
+import OnboardingTour from "../components/OnboardingTour";
+
+const API = import.meta.env.VITE_API_URL;
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
 const STAT_LABELS = ["FL","BJ","KB","BK","TT","PRL","Bro","SP","ACC","NED","UDH","MOD","RES","FTR"];
+
+// Onboarding v2 Slice 1b — tour-trin på /auctions (aktiveres fra Dashboard "Vis mig hvordan").
+const AUCTIONS_TOUR_STEPS = [
+  {
+    target: "[data-tour='auctions-bid-input']",
+    title: "Afgiv et bud",
+    body: "Indtast dit bud og tryk 'Byd'. Min-bud er forudfyldt — det er det aktuelle bud +10%, som er reglen i Cycling Zone.",
+  },
+  {
+    target: "[data-tour='auctions-countdown']",
+    title: "Tid tilbage og auto-forlængelse",
+    body: "Hvis du byder i de sidste 10 minutter, forlænges auktionen automatisk. Du kan altid svare igen, hvis nogen overbyder dig på falderebet.",
+  },
+];
 
 function isManagerSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
@@ -77,7 +95,7 @@ function Countdown({ end, status }) {
 }
 
 // ── Auction table row ─────────────────────────────────────────────────────────
-function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
+function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }) {
   const minBid = getMinimumAuctionBid(auction.current_price || 0);
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
@@ -204,7 +222,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
       </td>
 
       {/* Tid tilbage */}
-      <td className="px-3 py-1.5 text-center whitespace-nowrap">
+      <td className="px-3 py-1.5 text-center whitespace-nowrap" data-tour={isFirst ? "auctions-countdown" : undefined}>
         <Countdown end={auction.calculated_end} status={auction.status} />
       </td>
 
@@ -217,6 +235,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
               value={bidAmount}
               min={minBid}
               onChange={e => setBidAmount(parseInt(e.target.value) || minBid)}
+              data-tour={isFirst ? "auctions-bid-input" : undefined}
               className="w-24 bg-cz-subtle border border-cz-border rounded px-2 py-1.5
                 text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
             />
@@ -249,7 +268,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate }) {
   );
 }
 
-function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
+function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }) {
   const minBid = getMinimumAuctionBid(auction.current_price || 0);
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
@@ -299,7 +318,7 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
             {age && <span className="text-cz-3 text-xs">{age} år</span>}
           </div>
         </div>
-        <div className="text-right flex-shrink-0">
+        <div className="text-right flex-shrink-0" data-tour={isFirst ? "auctions-countdown" : undefined}>
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">Tid</p>
           <Countdown end={auction.calculated_end} status={auction.status} />
         </div>
@@ -352,6 +371,7 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate }) {
               value={bidAmount}
               min={minBid}
               onChange={e => setBidAmount(parseInt(e.target.value) || minBid)}
+              data-tour={isFirst ? "auctions-bid-input" : undefined}
               className="min-w-0 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent"
             />
             <p className="col-span-2 text-[10px] text-cz-3">Min. bud: {minBid.toLocaleString("da-DK")} CZ$</p>
@@ -385,6 +405,10 @@ export default function AuctionsPage() {
   const [filter, setFilter] = useState("all");
   const [celebration, setCelebration] = useState(null);
   const [auctionSort, setAuctionSort] = useState({ key: null, dir: "desc" });
+  const [showFirstBidHint, setShowFirstBidHint] = useState(false);
+  const [firstBidDismissed, setFirstBidDismissed] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("cz-first-bid-shown") === "1",
+  );
 
   function handleSort(key) {
     if (key === "current_price" || key === "calculated_end") {
@@ -436,6 +460,34 @@ export default function AuctionsPage() {
       setAuctions(auctionsRes.data.map(a => ({ ...a, myHighestBid: myBidMap[a.id] || null })));
     }
     setLoading(false);
+  }
+
+  // Onboarding v2 Slice 1b — vis first-bid hint indtil manager har afgivet et bud (eller dismissed)
+  useEffect(() => {
+    if (firstBidDismissed) return;
+    async function checkFirstBid() {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      try {
+        const res = await fetch(`${API}/api/me/onboarding-progress`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const prog = await res.json();
+        const firstBid = prog.steps?.find(s => s.key === "first_bid_placed");
+        if (firstBid && !firstBid.done) setShowFirstBidHint(true);
+      } catch {
+        // best-effort — banneret skjult ved fejl
+      }
+    }
+    checkFirstBid();
+  }, [firstBidDismissed]);
+
+  function dismissFirstBidHint() {
+    localStorage.setItem("cz-first-bid-shown", "1");
+    setFirstBidDismissed(true);
+    setShowFirstBidHint(false);
   }
 
   useEffect(() => {
@@ -518,6 +570,7 @@ export default function AuctionsPage() {
 
   return (
     <div className="max-w-[1400px] mx-auto">
+      <OnboardingTour pageKey="auctions" steps={AUCTIONS_TOUR_STEPS} />
       <ConfettiModal
         show={!!celebration}
         onClose={() => setCelebration(null)}
@@ -536,6 +589,8 @@ export default function AuctionsPage() {
           Se historik →
         </Link>
       </div>
+
+      {showFirstBidHint && <AuctionsFirstBidHint onDismiss={dismissFirstBidHint} />}
 
       {/* Filter tabs */}
       <div className="flex gap-2 mb-4 flex-wrap">
@@ -580,7 +635,7 @@ export default function AuctionsPage() {
               ? new Date(b.calculated_end).getTime()
               : (b.current_price || 0);
             return auctionSort.dir === "desc" ? bv - av : av - bv;
-          }).map(a => (
+          }).map((a, i) => (
             <AuctionCard
               key={a.id}
               auction={a}
@@ -588,6 +643,7 @@ export default function AuctionsPage() {
               myBalance={myBalance}
               onBid={handleBid}
               onNavigate={riderId => navigate(`/riders/${riderId}`)}
+              isFirst={i === 0}
             />
           ))}
         </div>
@@ -637,7 +693,7 @@ export default function AuctionsPage() {
                     ? new Date(b.calculated_end).getTime()
                     : (b.current_price || 0);
                   return auctionSort.dir === "desc" ? bv - av : av - bv;
-                }).map(a => (
+                }).map((a, i) => (
                   <AuctionRow
                     key={a.id}
                     auction={a}
@@ -645,6 +701,7 @@ export default function AuctionsPage() {
                     myBalance={myBalance}
                     onBid={handleBid}
                     onNavigate={riderId => navigate(`/riders/${riderId}`)}
+                    isFirst={i === 0}
                   />
                 ))}
               </tbody>
