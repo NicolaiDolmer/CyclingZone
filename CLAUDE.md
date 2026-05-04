@@ -19,3 +19,9 @@
 - `docs/NOW.md`: maks 30 linjer — al historik → `docs/archive/` i samme session som arbejdet lukkes
 - Læs kun ekstra docs når den konkrete opgave kræver det
 - Afslut session med at opdatere `docs/NOW.md`, `docs/PRODUCT_BACKLOG.md` og `docs/FEATURE_STATUS.md`
+
+## Session-rytme (følg AKTIVT)
+- Signalér 🟢/🟡/🔴/🆕 ved naturlige break-points — bruger behøver ikke selv huske at lukke
+- Kør close-out-tjekliste (se `AGENTS.md` "Session-rytme & token-effektivitet") før commit
+- Foreslå "Næste session starter med..." ved close-out
+- Tommelfingerregel: ÉN slice pr. session
