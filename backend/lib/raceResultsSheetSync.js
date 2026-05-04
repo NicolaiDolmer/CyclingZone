@@ -111,6 +111,7 @@ export async function syncRaceResultsFromSheets({
   updateStandings,
   adminUserId,
   fetchCsvFn = fetchCsv,
+  dryRun = false,
 }) {
   const sheetId = extractSheetId(spreadsheetUrl);
   const gid = extractGid(spreadsheetUrl);
@@ -214,6 +215,7 @@ export async function syncRaceResultsFromSheets({
   const allRacesSkipped = [];
   let totalImported = 0;
   const seasonsSummary = [];
+  const previewRaces = [];
 
   for (const [sæsonNum, sæsonRows] of rowsBySæson) {
     // Find DB season
@@ -275,12 +277,13 @@ export async function syncRaceResultsFromSheets({
     for (const [løbName, raceRows] of rowsByRace) {
       const race = raceMatches.get(løbName);
 
-      // Delete existing results (idempotent re-import)
-      await supabase.from("race_results").delete().eq("race_id", race.id);
-
-      // Build result rows with stage number detection
+      // Build result rows with stage number detection (no DB writes yet)
       const stageTracker = {};
       const resultRows = [];
+      const matchedRiderNames = new Set();
+      const unmatchedRiderNames = new Set();
+      const matchedTeamNames = new Set();
+      const unmatchedTeamNames = new Set();
 
       for (const row of raceRows) {
         const resultType = BENÆVNELSE_TO_TYPE[row.benævnelse];
@@ -298,6 +301,15 @@ export async function syncRaceResultsFromSheets({
         const riderId = !isTeamResult && row.name ? (riderIdByName.get(row.name) || null) : null;
         const teamName = isTeamResult ? resolveTeamResultName(row, teamIdByName) : row.team;
         const teamId = teamName ? (teamIdByName.get(teamName) || null) : null;
+
+        if (!isTeamResult && row.name) {
+          if (riderId) matchedRiderNames.add(row.name);
+          else unmatchedRiderNames.add(row.name);
+        }
+        if (teamName) {
+          if (teamId) matchedTeamNames.add(teamName);
+          else unmatchedTeamNames.add(teamName);
+        }
 
         const pointsKey = BENÆVNELSE_TO_POINTS_KEY[row.benævnelse];
         const points = race.race_class && pointsKey
@@ -321,6 +333,29 @@ export async function syncRaceResultsFromSheets({
 
       if (!resultRows.length) continue;
 
+      const totalPoints = resultRows.reduce((sum, r) => sum + (r.points_earned || 0), 0);
+
+      previewRaces.push({
+        sheet_race_name: løbName,
+        db_race_name: race.name,
+        season: sæsonNum,
+        total_rows: resultRows.length,
+        matched_riders: matchedRiderNames.size,
+        unmatched_riders: [...unmatchedRiderNames],
+        matched_teams: matchedTeamNames.size,
+        unmatched_teams: [...unmatchedTeamNames],
+        total_points: totalPoints,
+      });
+
+      if (dryRun) {
+        seasonImported += resultRows.length;
+        seasonRaces.push(løbName);
+        continue;
+      }
+
+      // Delete existing results (idempotent re-import)
+      await supabase.from("race_results").delete().eq("race_id", race.id);
+
       const importResult = await applyRaceResults({
         supabase,
         race: { ...race, season_id: season.id },
@@ -340,20 +375,24 @@ export async function syncRaceResultsFromSheets({
     seasonsSummary.push({ season: sæsonNum, races: seasonRaces.length, rows: seasonImported });
   }
 
-  await supabase.from("import_log").insert({
-    import_type: "race_results_sheets",
-    rows_processed: rows.length,
-    rows_updated: totalImported,
-    rows_inserted: totalImported,
-    errors: allRacesSkipped.length ? allRacesSkipped : [],
-    imported_by: adminUserId,
-  });
+  if (!dryRun) {
+    await supabase.from("import_log").insert({
+      import_type: "race_results_sheets",
+      rows_processed: rows.length,
+      rows_updated: totalImported,
+      rows_inserted: totalImported,
+      errors: allRacesSkipped.length ? allRacesSkipped : [],
+      imported_by: adminUserId,
+    });
+  }
 
   return {
     success: true,
+    dry_run: dryRun,
     rows_imported: totalImported,
     races_imported: allRacesImported,
     races_skipped: allRacesSkipped,
     seasons: seasonsSummary,
+    preview: previewRaces,
   };
 }

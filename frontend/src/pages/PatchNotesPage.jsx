@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.24",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin — Forhåndsvisning før import af løbsresultater",
+        items: [
+          "Sheets-import havde indtil nu ingen synlig matchrapport: når admin trykkede `Importer`, blev resultater committet med det samme — uden at vise hvilke ryttere/hold der matchede, hvilke der blev droppet, eller hvilke løb der ikke fandtes i DB. Det førte til Sæson 6-fejlen hvor forkerte sæsondata blev indlæst og måtte rulles tilbage manuelt",
+          "Ny flow: `Forhåndsvis`-knap kalder backend i dry-run mode (ingen DB writes) og viser per-løb tabel med: sæson-nummer, sheet-navn vs. DB-navn, antal rækker, matched/unmatched ryttere (✓/⚠), matched/unmatched hold, total points der ville blive tildelt. Hover over ⚠-tal viser de konkrete navne der ikke kunne resolves",
+          "`Bekræft import`-knap (grøn) kører den rigtige import; `Annullér` rydder forhåndsvisningen. Skipped løb (race-navne uden DB-match) vises som separat advarsel øverst i preview",
+          "Backend: `POST /api/admin/import-results-sheets` accepterer nu `dry_run: true` i body. Dry-run springer alle DB-writes over (`race_results.delete/insert`, `races.update`, `import_log.insert`, standings-recompute) og returnerer kun `preview`-array. Singular execution path bevares — kun ét nyt parameter, ingen ny endpoint",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.23.1",
     date: "2026-05-04",
     label: "Beta",

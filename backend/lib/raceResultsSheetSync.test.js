@@ -286,6 +286,82 @@ test("syncRaceResultsFromSheets matches race names across accents and punctuatio
   assert.deepEqual(importLogs[0].errors, []);
 });
 
+test("syncRaceResultsFromSheets dryRun returns preview without DB writes", async () => {
+  const applyCalls = [];
+  const raceResultDeletes = [];
+  const raceUpdates = [];
+  const importLogs = [];
+  const ensureCalls = [];
+  const updateCalls = [];
+  const supabase = createSheetSyncSupabase({ raceResultDeletes, raceUpdates, importLogs });
+  const csv = [
+    "Rank,Name,Team,Benævnelse,Løb,Sæson",
+    "1,Test Rider,Test Team,Etapeplacering,Test Race,1",
+    "2,Mystery Ghost,Unknown Team,Etapeplacering,Test Race,1",
+  ].join("\n");
+
+  const result = await syncRaceResultsFromSheets({
+    spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet-id/edit#gid=0",
+    supabase: {
+      from(table) {
+        if (table === "riders") {
+          return {
+            select() {
+              return {
+                ilike(_col, pattern) {
+                  return {
+                    limit() {
+                      if (pattern.toLowerCase().includes("rider")) {
+                        return Promise.resolve({
+                          data: [{ id: "rider-1", firstname: "Test", lastname: "Rider" }],
+                          error: null,
+                        });
+                      }
+                      return Promise.resolve({ data: [], error: null });
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        return supabase.from(table);
+      },
+    },
+    fetchCsvFn: async () => csv,
+    applyRaceResults: async (payload) => {
+      applyCalls.push(payload);
+      return { rowsImported: payload.resultRows.length, teamsPaid: 1 };
+    },
+    ensureSeasonStandings: async (seasonId) => ensureCalls.push(seasonId),
+    updateStandings: async (seasonId, raceId) => updateCalls.push([seasonId, raceId]),
+    adminUserId: "admin-1",
+    dryRun: true,
+  });
+
+  // Zero DB writes
+  assert.equal(applyCalls.length, 0, "applyRaceResults must not be called in dryRun");
+  assert.deepEqual(raceResultDeletes, [], "race_results.delete must not be called in dryRun");
+  assert.deepEqual(raceUpdates, [], "races.update must not be called in dryRun");
+  assert.deepEqual(importLogs, [], "import_log.insert must not be called in dryRun");
+  assert.deepEqual(ensureCalls, [], "ensureSeasonStandings must not be called in dryRun");
+  assert.deepEqual(updateCalls, [], "updateStandings must not be called in dryRun");
+
+  // Preview shape
+  assert.equal(result.dry_run, true);
+  assert.equal(result.preview.length, 1);
+  const p = result.preview[0];
+  assert.equal(p.sheet_race_name, "Test Race");
+  assert.equal(p.db_race_name, "Test Race");
+  assert.equal(p.season, 1);
+  assert.equal(p.total_rows, 2);
+  assert.equal(p.matched_riders, 1);
+  assert.deepEqual(p.unmatched_riders, ["Mystery Ghost"]);
+  assert.equal(p.matched_teams, 1);
+  assert.deepEqual(p.unmatched_teams, ["Unknown Team"]);
+  assert.equal(p.total_points, 200000); // rank 1 only — rank 2 has no point row in lookup
+});
+
 test("syncRaceResultsFromSheets matches known calendar aliases", async () => {
   const applyCalls = [];
   const raceResultDeletes = [];

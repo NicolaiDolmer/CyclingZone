@@ -139,6 +139,7 @@ export default function AdminPage() {
   // Sheets løbsresultater
   const [sheetsUrl, setSheetsUrl] = useState("");
   const [sheetsResult, setSheetsResult] = useState(null);
+  const [sheetsPreview, setSheetsPreview] = useState(null);
 
   // Præmieudbetaling
   const [prizePayoutSeason, setPrizePayoutSeason] = useState("");
@@ -471,19 +472,50 @@ export default function AdminPage() {
     setLoad("prize_pay", false);
   }
 
-  async function handleSheetsImport() {
+  async function handleSheetsPreview() {
     if (!sheetsUrl) { showMsg("❌ Indsæt Google Sheets URL", "error"); return; }
-    setLoad("sheets_import", true);
+    setLoad("sheets_preview", true);
     setSheetsResult(null);
+    setSheetsPreview(null);
+    showMsg("⏳ Henter forhåndsvisning...", "info");
+    const res = await fetch(`${API}/api/admin/import-results-sheets`, {
+      method: "POST", headers: await getAuth(),
+      body: JSON.stringify({ spreadsheet_url: sheetsUrl, dry_run: true }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setSheetsPreview(data);
+      const matchedRaces = data.preview?.length || 0;
+      const skipped = data.races_skipped?.length || 0;
+      showMsg(`✅ Forhåndsvisning klar — ${matchedRaces} løb matchet, ${skipped} skipped`);
+    } else {
+      showMsg(`❌ ${data.error}`, "error");
+    }
+    setLoad("sheets_preview", false);
+  }
+
+  async function handleSheetsConfirm() {
+    if (!sheetsUrl || !sheetsPreview) return;
+    setLoad("sheets_import", true);
     showMsg("⏳ Importerer løbsresultater...", "info");
     const res = await fetch(`${API}/api/admin/import-results-sheets`, {
       method: "POST", headers: await getAuth(),
       body: JSON.stringify({ spreadsheet_url: sheetsUrl }),
     });
     const data = await res.json();
-    if (res.ok) { setSheetsResult(data); showMsg(`✅ Import fuldført — ${data.rows_imported} resultater fra ${data.races_imported.length} løb`); }
-    else showMsg(`❌ ${data.error}`, "error");
+    if (res.ok) {
+      setSheetsResult(data);
+      setSheetsPreview(null);
+      showMsg(`✅ Import fuldført — ${data.rows_imported} resultater fra ${data.races_imported.length} løb`);
+    } else {
+      showMsg(`❌ ${data.error}`, "error");
+    }
     setLoad("sheets_import", false);
+  }
+
+  function handleSheetsCancelPreview() {
+    setSheetsPreview(null);
+    showMsg("Forhåndsvisning annulleret", "info");
   }
 
   async function setDefaultWebhook(id) {
@@ -1417,19 +1449,94 @@ export default function AdminPage() {
           Importerer resultater fra et Google Sheet med kolonnerne: <span className="font-mono text-cz-2">Rank, Name, Team, Benævnelse, Løb, Sæson</span>.
           Sæson-kolonnen bestemmer hvilken sæson hvert resultat tilhører — arket kan indeholde flere sæsoner på én gang.
           Løbene skal eksistere i databasen. Re-import sletter og erstatter eksisterende resultater.
+          <strong className="text-cz-1"> Forhåndsvis altid før du bekræfter</strong> — preview viser hvilke ryttere/hold der matcher, og hvilke der bliver droppet.
         </p>
         <div className="flex gap-2 flex-wrap items-end mb-3">
           <div className="flex-1">
             <label className="block text-cz-3 text-xs mb-1">Google Sheets URL</label>
-            <input type="text" value={sheetsUrl} onChange={e => setSheetsUrl(e.target.value)}
+            <input type="text" value={sheetsUrl} onChange={e => { setSheetsUrl(e.target.value); setSheetsPreview(null); }}
               placeholder="https://docs.google.com/spreadsheets/d/..."
               className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent" />
           </div>
-          <button onClick={handleSheetsImport} disabled={loading.sheets_import || !sheetsUrl}
+          <button onClick={handleSheetsPreview} disabled={loading.sheets_preview || loading.sheets_import || !sheetsUrl}
             className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50 transition-all">
-            {loading.sheets_import ? "Importerer..." : "Importer"}
+            {loading.sheets_preview ? "Henter..." : "Forhåndsvis"}
           </button>
         </div>
+
+        {sheetsPreview && (
+          <div className="bg-cz-subtle border border-cz-border rounded-lg p-4 text-xs space-y-3 mb-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-cz-1 font-semibold">
+                Forhåndsvisning — {sheetsPreview.preview.length} løb klar, {sheetsPreview.rows_imported} rækker, {sheetsPreview.races_skipped.length} skipped
+              </p>
+              <div className="flex gap-2">
+                <button onClick={handleSheetsCancelPreview} disabled={loading.sheets_import}
+                  className="px-3 py-1.5 bg-cz-subtle text-cz-3 border border-cz-border rounded-lg text-xs hover:text-cz-1 disabled:opacity-50">
+                  Annullér
+                </button>
+                <button onClick={handleSheetsConfirm} disabled={loading.sheets_import || sheetsPreview.preview.length === 0}
+                  className="px-3 py-1.5 bg-cz-success text-white border border-cz-success rounded-lg text-xs hover:opacity-90 disabled:opacity-50">
+                  {loading.sheets_import ? "Importerer..." : "Bekræft import"}
+                </button>
+              </div>
+            </div>
+
+            {sheetsPreview.races_skipped.length > 0 && (
+              <div className="bg-cz-accent-t-bg border border-cz-accent-t/30 rounded p-2">
+                <p className="text-cz-accent-t font-semibold mb-1">Skipped løb ({sheetsPreview.races_skipped.length}) — match ikke fundet i DB:</p>
+                <p className="text-cz-2">{sheetsPreview.races_skipped.join(", ")}</p>
+              </div>
+            )}
+
+            {sheetsPreview.preview.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-cz-3 border-b border-cz-border">
+                      <th className="text-left py-1 px-2">Sæson</th>
+                      <th className="text-left py-1 px-2">Sheet-navn</th>
+                      <th className="text-left py-1 px-2">DB-navn</th>
+                      <th className="text-right py-1 px-2">Rækker</th>
+                      <th className="text-right py-1 px-2">Ryttere ✓</th>
+                      <th className="text-right py-1 px-2">Ryttere ⚠</th>
+                      <th className="text-right py-1 px-2">Hold ✓</th>
+                      <th className="text-right py-1 px-2">Hold ⚠</th>
+                      <th className="text-right py-1 px-2">Total points</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sheetsPreview.preview.map((p, i) => (
+                      <tr key={i} className="border-b border-cz-border/50 align-top">
+                        <td className="py-1 px-2 text-cz-2">{p.season}</td>
+                        <td className="py-1 px-2 text-cz-1">{p.sheet_race_name}</td>
+                        <td className="py-1 px-2 text-cz-2">{p.db_race_name}</td>
+                        <td className="py-1 px-2 text-cz-1 text-right">{p.total_rows}</td>
+                        <td className="py-1 px-2 text-cz-success text-right">{p.matched_riders}</td>
+                        <td className="py-1 px-2 text-right" title={p.unmatched_riders.join(", ")}>
+                          <span className={p.unmatched_riders.length > 0 ? "text-cz-accent-t" : "text-cz-3"}>
+                            {p.unmatched_riders.length}
+                          </span>
+                        </td>
+                        <td className="py-1 px-2 text-cz-success text-right">{p.matched_teams}</td>
+                        <td className="py-1 px-2 text-right" title={p.unmatched_teams.join(", ")}>
+                          <span className={p.unmatched_teams.length > 0 ? "text-cz-accent-t" : "text-cz-3"}>
+                            {p.unmatched_teams.length}
+                          </span>
+                        </td>
+                        <td className="py-1 px-2 text-cz-1 text-right">{p.total_points.toLocaleString("da-DK")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="text-cz-3 text-xs mt-2 italic">Hover over ⚠-tal for at se navne på unmatched.</p>
+              </div>
+            ) : (
+              <p className="text-cz-accent-t">Ingen løb klar til import — alle blev skipped.</p>
+            )}
+          </div>
+        )}
+
         {sheetsResult && (
           <div className="bg-cz-success-bg border border-cz-success/30 rounded-lg px-4 py-3 text-xs space-y-2">
             <p className="text-cz-success font-semibold">Import fuldført — {sheetsResult.rows_imported} resultater fra {sheetsResult.races_imported.length} løb</p>

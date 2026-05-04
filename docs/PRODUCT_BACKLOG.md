@@ -83,10 +83,10 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 
 ---
 
-### S8.5 — Løbsresultat-import UX (delvist leveret)
+### S8.5 — Løbsresultat-import UX (leveret 2026-05-04)
 **Trigger:** Uge 1–2 efter lancering  
 **Leveret (v1.98):** Præmieudbetaling adskilt fra import — admin-kontrolleret, preview før udbetaling, `races.prize_paid_at` tracker status.  
-**Resterende scope:** Import-feedback UI — ingen synlig matchrapport ved filupload (hvilke ryttere matchede eksakt vs. fuzzy, hvilke løb blev skippet). Overvej preview-tilstand til `POST /api/admin/import-results-sheets` der returnerer diff uden at committe.  
+**Leveret (v2.24):** Import-feedback UI — `Forhåndsvis`-knap kalder `POST /api/admin/import-results-sheets` med `dry_run: true` (0 DB writes), viser per-løb tabel: sæson, sheet-navn vs. DB-navn, antal rækker, matched/unmatched ryttere (✓/⚠ med hover-tooltip), matched/unmatched hold, total points. `Bekræft import` (grøn) committer; `Annullér` rydder. Skipped løb vises som separat advarsel. Singular execution path bevaret (samme endpoint, ny `dryRun` param).  
 **Næste skridt:** Kan starte direkte — kravene er nu klare fra session 2026-05-02.
 
 ---

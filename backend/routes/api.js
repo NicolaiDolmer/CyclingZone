@@ -2579,9 +2579,9 @@ router.post("/admin/discord/test", requireAdmin, async (req, res) => {
 // POST /api/admin/sync-dyn-cyclist — sync PCM stats fra Google Sheets
 router.post("/admin/sync-dyn-cyclist", requireAdmin, handleDynCyclistSyncRequest);
 
-// POST /api/admin/import-results-sheets — importer løbsresultater fra Google Sheets
+// POST /api/admin/import-results-sheets — importer løbsresultater fra Google Sheets (dry_run for preview)
 router.post("/admin/import-results-sheets", requireAdmin, async (req, res) => {
-  const { spreadsheet_url } = req.body;
+  const { spreadsheet_url, dry_run } = req.body;
   if (!spreadsheet_url) {
     return res.status(400).json({ error: "spreadsheet_url påkrævet" });
   }
@@ -2592,6 +2592,7 @@ router.post("/admin/import-results-sheets", requireAdmin, async (req, res) => {
       ensureSeasonStandings,
       updateStandings,
       adminUserId: req.user.id,
+      dryRun: Boolean(dry_run),
     });
     res.json(result);
   } catch (err) {

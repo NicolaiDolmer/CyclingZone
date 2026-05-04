@@ -1,24 +1,24 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Soak-gate S9 lukket + v2.23.1 polish-fix shipped.** Browser-smoke 10/10 punkter (8 PASS, 2 PARTIAL pga. data-state). 0 P0/P1. P2-B (tomme vinder-kort hover-bug) fixet i samme session — `disabled` + `cursor-default` på empty cards. Resterende 3 P2'er → S9-polish-slice. Rapport: `docs/archive/SMOKE_S9_2026-05-04.md`.
+**S8.5 import-feedback UI shipped (v2.24).** Admin har nu `Forhåndsvis`-knap på Sheets-import der kalder backend i dry-run mode (0 DB writes) og viser per-løb tabel med matched/unmatched ryttere+hold, total points og skipped løb. `Bekræft import`/`Annullér` styrer commit. Reducerer Sæson-6-type fejl. Backend: 1 ny `dryRun` param, 1 ny test (105/105 grønne). Frontend: lint 0/41, build 7.47s.
 
 ## Soak-gate
-**Aktiv: nej** — kvitteret 2026-05-04. S9a + S9b verificeret. P2-A (filter URL-sync), P2-C (deadline-day dedup), P2-D (race-slug encoding) deferred til polish-slice.
+**Aktiv: nej** — kvitteret 2026-05-04.
 
 ## Open beta status
 **Alle 7 launch-gates ✅** — soft-launch-klar.
 
 ## Senest leveret
-- 2026-05-04: **v2.23.1 polish + Soak-gate S9 rapport** — tomme vinder-kort `/seasons/:id` ikke-klikbare. 10/10 punkter, 4 P2 identificeret, ship OK. Lint 0/41, build 9.87s.
-- 2026-05-04: **S9b Sæson-snapshot** (v2.23) — `/seasons/:seasonId` udvidet SeasonEndPage med kalender + 4 vinder-kort. Sidebar `Sæson-snapshot`, `/season-end` redirect.
-- 2026-05-04: **S9a Løb-hub konsolidering** (v2.22) — `/races` udvidet med Bibliotek + Point & præmier-tabs.
-- Ældre v2.21 og før → `docs/archive/NOW_HISTORIK_2026-05-03.md` + FEATURE_STATUS
+- 2026-05-04: **S8.5 Import-feedback UI** (v2.24) — `Forhåndsvis`-knap, dry-run preview-tabel, `Bekræft import`/`Annullér`. Backend `dry_run`-flag på eksisterende endpoint (singular execution path).
+- 2026-05-04: **v2.23.1 polish + Soak-gate S9 rapport** — tomme vinder-kort `/seasons/:id` ikke-klikbare. 10/10 punkter, 4 P2 identificeret.
+- 2026-05-04: **S9b Sæson-snapshot** (v2.23) — `/seasons/:seasonId` med kalender + 4 vinder-kort.
+- 2026-05-04: **S9a Løb-hub konsolidering** (v2.22) — `/races` med Bibliotek + Point & præmier-tabs.
+- Ældre → `docs/archive/NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter
-1. S8.5: import-feedback UI (preview-tilstand til `POST /api/admin/import-results-sheets`)
-2. S10: Admin økonomi-panel
-3. S9-polish-slice (samlet): filter URL-sync på Bibliotek (P2-A), deadline-day dedup (P2-C), race-slug kebab-case (P2-D)
+1. S10: Admin økonomi-panel
+2. S9-polish-slice (samlet): filter URL-sync på Bibliotek (P2-A), deadline-day dedup (P2-C), race-slug kebab-case (P2-D)
 
 ## Kritiske invarianter
 - Discord DM-fejl må aldrig blokere transaction (best-effort try/catch i `notifyDiscordDM`)
