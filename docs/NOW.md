@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**UCI name-match permanent fix (v2.27).** Mandags-cron'en kan ikke længere nulle compound-surname-ryttere som Tobias Lund Andresen. Token-set-match + æ/ø/å-normalisering + high-value safety-gate (popularity ≥ 70 OR uci_points ≥ 100) i `scripts/uci_scraper.py` + `backend/lib/sheetsSync.js`. 14 ryttere fixed via `database/2026-05-04-fix-uci-points-token-mismatch.sql` (anvendt + registreret). 21/21 tests passerer.
+**Session lukket 2026-05-04.** Leveret: S-04 Admin-cancel auktion (v2.26), S-01 prod-smoke verificeret (8699/8699 ryttere matcher 10%-formel), auto-migrate workflow LIVE (`SUPABASE_DB_URL` Session Pooler URL secret konfigureret). Eksternt: v2.27 UCI compound-surname-fix landet 18:23 fra parallel session (token-set-match + safety-gate, 14 ryttere fixed).
 
 ## Soak-gate
 **Aktiv: nej** — kvitteret 2026-05-04.
@@ -10,13 +10,15 @@
 **Alle 7 launch-gates ✅** — soft-launch-klar. **Launch-dato: åben** (kvalitet > deadline besluttet 2026-05-04).
 
 ## Senest leveret
-- 2026-05-04: **UCI name-match fix (v2.27)** — token-set + æ/ø/å-norm + safety-gate; 14 ryttere restitueret (Tobias Lund Andresen 2.514, Halland Johannessen 2.393 m.fl.); `sheetsSync.js` synkroniseret. **S-04 Admin-cancel (v2.26)** + **S-01 prod-smoke ✅** (8699/8699 matcher 10%-formel)
-- 2026-05-04: **S-01 (v2.25)** + **S-01.1 Auto-migrate** + **Roadmap-leverance** + **Lint (v2.24.1)** + **S8.5 (v2.24)** + **S9b (v2.23)** + **S9a (v2.22)**
+- 2026-05-04: **Auto-migrate workflow LIVE** — `SUPABASE_DB_URL` Session Pooler URL secret konfigureret. Læring: GitHub Actions runners er IPv4-only; Supabase free tier Direct connection er IPv6-only → skal bruge Session Pooler. `AUTO_MIGRATION_SETUP.md` opdateret
+- 2026-05-04: **UCI name-match fix (v2.27)** — token-set + æ/ø/å-norm + safety-gate; 14 ryttere restitueret (Tobias Lund Andresen, Halland Johannessen m.fl.); migration `2026-05-04-fix-uci-points-token-mismatch.sql`
+- 2026-05-04: **S-04 Admin-cancel (v2.26)** — `auctionCancellation.js` atomar status-transition, 5 unit tests, AdminPage Section, `auction_cancelled` notification type
+- 2026-05-04: **S-01 prod-smoke ✅** + **S-01 GENERATED column (v2.25)** + **S-01.1 Auto-migrate** + Roadmap + Lint (v2.24.1) + S8.5 (v2.24) + S9a/b (v2.22-23)
 - Ældre → `docs/archive/NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter
-1. **Bruger:** tilføj `SUPABASE_DB_URL` GitHub secret så auto-migrate workflow ikke længere fejler ved push
-2. **S-06 Webhook-smoke** (kort P0) — derefter **S-03 Trupstørrelse-håndhævelse** (se `docs/LAUNCH_ROADMAP.md`)
+1. **S-06 Webhook-smoke** (kort P0) — se `docs/LAUNCH_ROADMAP.md`
+2. Derefter **S-03 Trupstørrelse-håndhævelse**
 
 ## Kritiske invarianter
 - **Verificér runtime FØR claim** (etableret 2026-05-04) — grep koden før du listet noget som TODO/bug
