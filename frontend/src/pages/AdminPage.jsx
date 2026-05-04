@@ -131,6 +131,7 @@ export default function AdminPage() {
   const [importStage, setImportStage] = useState(1);
   const [loading, setLoading] = useState({});
   const [newWebhook, setNewWebhook] = useState({ webhook_name: "", webhook_url: "", webhook_type: "general" });
+  const [webhookTestResults, setWebhookTestResults] = useState({});
   const [dynCyclistUrl, setDynCyclistUrl] = useState("");
   const [dynSyncResult, setDynSyncResult] = useState(null);
 
@@ -425,16 +426,28 @@ export default function AdminPage() {
     showMsg("✅ Webhook tilføjet" + (isFirst ? " og sat som standard" : ""));
   }
 
-  async function testWebhook(webhookUrl) {
-    setLoad(`test_${webhookUrl}`, true);
+  async function testWebhook(webhook) {
+    setLoad(`test_${webhook.id}`, true);
     const res = await fetch(`${API}/api/admin/discord/test`, {
       method: "POST", headers: await getAuth(),
-      body: JSON.stringify({ webhook_url: webhookUrl }),
+      body: JSON.stringify({ webhook_url: webhook.webhook_url }),
     });
     const data = await res.json();
-    if (res.ok) showMsg("✅ Testbesked sendt til Discord");
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad(`test_${webhookUrl}`, false);
+    setWebhookTestResults(prev => ({ ...prev, [webhook.id]: data }));
+    setLoad(`test_${webhook.id}`, false);
+  }
+
+  function formatWebhookTest(result) {
+    if (!result) return null;
+    if (result.ok) {
+      const t = new Date(result.timestamp).toLocaleTimeString("da-DK");
+      return { tone: "ok", text: `✅ leveret (${result.status}) · ${t}` };
+    }
+    if (result.status === 404) return { tone: "err", text: "❌ 404 · webhook ikke fundet (slettet på Discord?)" };
+    if (result.status === 401 || result.status === 403) return { tone: "err", text: `❌ ${result.status} · adgang afvist (token revoket?)` };
+    if (result.status === 429) return { tone: "err", text: "❌ 429 · rate-limited af Discord" };
+    if (result.status === 0) return { tone: "err", text: `❌ netværksfejl · ${(result.error || "ukendt").slice(0, 80)}` };
+    return { tone: "err", text: `❌ ${result.status} · ${(result.error || "").slice(0, 80)}` };
   }
 
   async function handleDynCyclistSync() {
@@ -1409,7 +1422,9 @@ export default function AdminPage() {
       <Section title="Discord webhooks">
         {webhooks.length > 0 && (
           <div className="flex flex-col gap-2 mb-4">
-            {webhooks.map(w => (
+            {webhooks.map(w => {
+              const result = formatWebhookTest(webhookTestResults[w.id]);
+              return (
               <div key={w.id} className="flex items-center justify-between bg-cz-subtle rounded-lg px-3 py-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -1419,11 +1434,16 @@ export default function AdminPage() {
                     )}
                   </div>
                   <p className="text-cz-3 text-xs font-mono truncate max-w-xs">{w.webhook_url?.slice(0, 40)}...</p>
+                  {result && (
+                    <p className={`text-xs font-mono mt-1 ${result.tone === "ok" ? "text-cz-accent-t" : "text-cz-danger"}`}>
+                      {result.text}
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-2 items-center flex-shrink-0">
-                  <button onClick={() => testWebhook(w.webhook_url)} disabled={loading[`test_${w.webhook_url}`]}
+                  <button onClick={() => testWebhook(w)} disabled={loading[`test_${w.id}`]}
                     className="text-cz-3 text-xs hover:text-cz-1 disabled:opacity-50 transition-colors">
-                    {loading[`test_${w.webhook_url}`] ? "..." : "Test"}
+                    {loading[`test_${w.id}`] ? "..." : "Test"}
                   </button>
                   {w.is_default
                     ? <span className="text-cz-accent-t text-xs border border-cz-accent/30 px-2 py-0.5 rounded-full">Standard</span>
@@ -1431,7 +1451,8 @@ export default function AdminPage() {
                   <button onClick={() => deleteWebhook(w.id)} className="text-cz-danger/50 text-xs hover:text-cz-danger">Slet</button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
         <div className="flex gap-2 flex-wrap">

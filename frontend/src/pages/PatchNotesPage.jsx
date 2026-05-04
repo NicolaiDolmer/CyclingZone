@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.28",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin — Discord webhook-test viser nu konkret status pr. webhook (S-06)",
+        items: [
+          "Test-knappen i Discord webhooks-sektionen viste tidligere kun en global toast (\"✅ Testbesked sendt\") uden at sige hvilken webhook der svarede hvad. Hvis testen fejlede, fik admin en generisk fejl-tekst og måtte gætte om det var URL'en, token'et eller netværket. Det gjorde smoke-verifikation upålidelig — man kunne ikke vide om en \"stille død\" webhook var i live eller ej",
+          "Resultatet vises nu inline pr. webhook-row med tidsstempel: \"✅ leveret (204) · 14:23:05\" ved succes, eller en konkret diagnose ved fejl: 404 → \"webhook ikke fundet (slettet på Discord?)\", 401/403 → \"adgang afvist (token revoket?)\", 429 → \"rate-limited\", 0 → netværksfejl med detail. Resten vises med rå Discord-status + fejl-tekst (op til 80 tegn)",
+          "Backend `sendTestEmbed` returnerer nu `{ ok, status, error }` i stedet for at kaste — så routen kan returnere struktureret data og frontend kan vise konkret diagnose. Loading-state nøgles på webhook-id i stedet for URL (mere stabilt hvis URL'en redigeres). Ingen schema-ændring; ingen invariant ændret",
+          "Smoke-værktøjet er hermed launch-klar (S-06 P0 lukket): admin klikker Test pr. webhook → ser status med det samme → fixer eventuelle 404/401-cases ved at opdatere URL'en. Health-check cron er flyttet til P1 \"Drift-monitor\" hvor den hører hjemme",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.27",
     date: "2026-05-04",
     label: "Beta",

@@ -317,12 +317,20 @@ export async function sendTestEmbed(webhookUrl) {
     "Cycling Zone webhook virker korrekt!",
     [{ name: "Tidspunkt", value: new Date().toLocaleString("da-DK") }]
   );
-  const res = await fetch(webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`Discord svarer ${res.status}: ${await res.text()}`);
+  try {
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, status: res.status, error: text.slice(0, 200) };
+    }
+    return { ok: true, status: res.status };
+  } catch (err) {
+    return { ok: false, status: 0, error: err.message };
+  }
 }
 
 export async function notifySeasonEvent({ type, seasonNumber, webhookUrl }) {

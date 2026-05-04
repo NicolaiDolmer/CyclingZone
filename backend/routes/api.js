@@ -2635,13 +2635,12 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
 });
 
 // POST /api/admin/discord/test — send testbesked til en webhook-URL
+// Returnerer struktureret status så frontend kan vise konkret diagnose pr. webhook.
 router.post("/admin/discord/test", requireAdmin, async (req, res) => {
   const { webhook_url } = req.body;
   if (!webhook_url) return res.status(400).json({ error: "webhook_url påkrævet" });
-  try {
-    await sendTestEmbed(webhook_url);
-    res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  const result = await sendTestEmbed(webhook_url);
+  res.json({ ...result, timestamp: new Date().toISOString() });
 });
 
 // POST /api/admin/sync-dyn-cyclist — sync PCM stats fra Google Sheets

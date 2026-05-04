@@ -8,7 +8,7 @@ _Intern master-plan. Opdateret 2026-05-04 efter scope-audit. Launch-dato: åben 
 
 - **Open beta:** Live, 17 managers tester transfermarked. Ingen løb køres pt.
 - **Launch-event:** Full data-reset + sæson 0 (transfer-fase) → sæson 1 (første løbs-sæson).
-- **P0-slices: 6** (skal være grøn før launch). **P1-tasks: ~15** (helst før launch). **P2-spor: 7** (post-launch).
+- **P0-slices: 6 (S-04, S-06 ✅ leveret).** **P1-tasks: ~15** (helst før launch). **P2-spor: 7** (post-launch).
 - **Audit-baseret:** Hvert punkt verificeret mod runtime 2026-05-04. Se `.claude/learnings/2026-05-04-noter-fil-stale.md` for hvorfor.
 
 ---
@@ -40,10 +40,10 @@ _Intern master-plan. Opdateret 2026-05-04 efter scope-audit. Launch-dato: åben 
 **Brief:** `docs/slices/05-inbox-unified-model.md`
 **Estimat:** 1-2 sessioner.
 
-### S-06 · Webhook smoke-verifikation
-**Hvorfor P0:** Noter nævner "webhook fejler ikke længere" uden konkret fejl-symptom. Vi smoke-tester alle webhook-typer (general + transfer_history) med ny test-knap i AdminPage. Hvis fundet → fix samme session.
+### S-06 · Webhook smoke-verifikation ✅ Leveret v2.28 (2026-05-04)
+**Hvorfor P0:** Noter nævner "webhook fejler ikke længere" uden konkret fejl-symptom. Smoke-værktøj: Test-knap pr. webhook + struktureret status-feedback (✅/❌ + Discord-status + diagnose) inline pr. row. Health-check cron downgradet til P1 "Drift-monitor" (separat session).
 **Brief:** `docs/slices/06-webhook-smoke-verification.md`
-**Estimat:** 0.5 session (1 session hvis fix nødvendig).
+**Estimat:** 0.5 session. **Faktisk:** 0.5 session.
 
 ---
 

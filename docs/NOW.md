@@ -1,24 +1,25 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Session lukket 2026-05-04.** Leveret: S-04 Admin-cancel auktion (v2.26), S-01 prod-smoke verificeret (8699/8699 ryttere matcher 10%-formel), auto-migrate workflow LIVE (`SUPABASE_DB_URL` Session Pooler URL secret konfigureret). Eksternt: v2.27 UCI compound-surname-fix landet 18:23 fra parallel session (token-set-match + safety-gate, 14 ryttere fixed).
+**Session lukket 2026-05-04.** Leveret: S-06 Webhook smoke-feedback (v2.28). Test-knap pr. webhook returnerer struktureret status (✅ leveret/❌ 404/401/429-diagnose + tidsstempel) inline pr. row. Backend `sendTestEmbed` returnerer `{ok,status,error}` i stedet for at kaste. Health-check cron flyttet til P1 Drift-monitor.
 
 ## Soak-gate
 **Aktiv: nej** — kvitteret 2026-05-04.
 
 ## Open beta status
-**Alle 7 launch-gates ✅** — soft-launch-klar. **Launch-dato: åben** (kvalitet > deadline besluttet 2026-05-04).
+**Alle 7 launch-gates ✅** — soft-launch-klar. **P0-status: 2/6 leveret (S-04, S-06).** Launch-dato: åben.
 
 ## Senest leveret
-- 2026-05-04: **Auto-migrate workflow LIVE** — `SUPABASE_DB_URL` Session Pooler URL secret konfigureret. Læring: GitHub Actions runners er IPv4-only; Supabase free tier Direct connection er IPv6-only → skal bruge Session Pooler. `AUTO_MIGRATION_SETUP.md` opdateret
-- 2026-05-04: **UCI name-match fix (v2.27)** — token-set + æ/ø/å-norm + safety-gate; 14 ryttere restitueret (Tobias Lund Andresen, Halland Johannessen m.fl.); migration `2026-05-04-fix-uci-points-token-mismatch.sql`
-- 2026-05-04: **S-04 Admin-cancel (v2.26)** — `auctionCancellation.js` atomar status-transition, 5 unit tests, AdminPage Section, `auction_cancelled` notification type
-- 2026-05-04: **S-01 prod-smoke ✅** + **S-01 GENERATED column (v2.25)** + **S-01.1 Auto-migrate** + Roadmap + Lint (v2.24.1) + S8.5 (v2.24) + S9a/b (v2.22-23)
+- 2026-05-04: **S-06 Webhook smoke-feedback (v2.28)** — Test-knap pr. webhook viser konkret status inline (✅ Discord 204 + tid / ❌ 404 webhook ikke fundet / ❌ 401 token revoket / ❌ 429 rate-limited). `sendTestEmbed` returnerer struktureret data; loading-key på id i stedet for URL. Manuel verifikation: admin klikker Test pr. webhook i AdminPage → fixer evt. dårlige URLs i samme session
+- 2026-05-04: **Auto-migrate workflow LIVE** — `SUPABASE_DB_URL` Session Pooler URL secret konfigureret (IPv4-krav for GHA)
+- 2026-05-04: **UCI name-match fix (v2.27)** — token-set + æ/ø/å-norm + safety-gate; 14 ryttere restitueret
+- 2026-05-04: **S-04 Admin-cancel (v2.26)** — `auctionCancellation.js`, 5 unit tests, `auction_cancelled` notification
+- 2026-05-04: **S-01 GENERATED column (v2.25)** + **S-01.1 Auto-migrate** + Lint (v2.24.1) + S8.5 (v2.24) + S9a/b (v2.22-23)
 - Ældre → `docs/archive/NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter
-1. **S-06 Webhook-smoke** (kort P0) — se `docs/LAUNCH_ROADMAP.md`
-2. Derefter **S-03 Trupstørrelse-håndhævelse**
+1. **Manuel smoke-kvittering S-06** — admin klikker Test på alle live webhooks i AdminPage; fix evt. fejl samme session
+2. **S-03 Trupstørrelse-håndhævelse** (D1 20-30, D2 14-20, D3 8-10) — kræver `riders.acquired_at` migration først (5 min)
 
 ## Kritiske invarianter
 - **Verificér runtime FØR claim** (etableret 2026-05-04) — grep koden før du listet noget som TODO/bug

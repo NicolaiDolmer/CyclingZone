@@ -139,7 +139,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Aktivitets-feed · Head-to-head sammenligning · Hall of Fame · Patch notes · Hjælpeside · Confetti modal
 
 ### Discord & Integrationer
-- Discord webhooks: admin kan tilføje webhooks med navn, URL og type (general / transfer_history)
+- Discord webhooks: admin kan tilføje webhooks med navn, URL og type (general / transfer_history); pr. webhook-row vises Test-knap der returnerer struktureret status (✅ leveret + tidsstempel, eller ❌ med 404/401/403/429-diagnose) inline pr. webhook (v2.28, S-06 P0 lukket)
 - Gennemførte transfers og byttehandler sendes til `transfer_history` webhook; runtime-bekræftet med rigtig transfer completion 2026-04-28
 - `users.discord_id` gemmes og bruges udelukkende til DM-lookup (ingen @mention i kanal-embeds — fjernet i v2.07)
 - **Discord DM (v2.05, 2026-05-03; privatliv-fix v2.07, 2026-05-03):** `discordNotifier.sendDM(discordId, payload)` + `notifyDiscordDM({teamId,...})` via raw Discord REST (`POST /users/@me/channels` → `POST /channels/:id/messages`); kræver `DISCORD_BOT_TOKEN` env (Railway). De 4 person-rettede events (outbid, auction_won, transfer_offer, transfer_accepted/rejected/counter) er **DM-only** — postes ikke i nogen kanal. Bredt-rettede (new_auction, transfer_completed, swap_completed, season_event) er kanal-only.
