@@ -55,8 +55,12 @@ CREATE TABLE riders (
   prize_earnings_bonus INTEGER NOT NULL DEFAULT 0,
   price INTEGER GENERATED ALWAYS AS (uci_points * 4000) STORED,
   market_value INTEGER GENERATED ALWAYS AS (GREATEST(5, uci_points) * 4000 + prize_earnings_bonus) STORED,
-  -- salary: calculated as % of price, set at purchase
-  salary INTEGER DEFAULT 0,
+  -- salary: 10% af market_value, beregnes automatisk af DB. Kan ikke skrives fra applikationskode.
+  salary INTEGER GENERATED ALWAYS AS (
+    GREATEST(1, ROUND(
+      (GREATEST(5, uci_points) * 4000 + prize_earnings_bonus) * 0.10
+    ))::INTEGER
+  ) STORED,
   -- Current owner
   team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
   ai_team_id UUID REFERENCES teams(id) ON DELETE SET NULL, -- original AI team

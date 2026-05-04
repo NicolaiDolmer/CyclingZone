@@ -1,5 +1,4 @@
 import {
-  calculateMarketSalary,
   expectMaybeSingle,
   expectMutation,
   expectSingle,
@@ -239,7 +238,6 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       .from("riders")
       .update({
         team_id: offer.buyer_team_id,
-        salary: calculateMarketSalary(price, rider.prize_earnings_bonus || 0),
       })
       .eq("id", rider.id)
       .eq("team_id", offer.seller_team_id)

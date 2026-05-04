@@ -1,5 +1,4 @@
 import {
-  calculateMarketSalary,
   ensureNoError,
   expectMaybeSingle,
   expectMutation,
@@ -17,10 +16,6 @@ const NOOP = async () => {};
 
 export function sellerOwnsAuctionRider(auction) {
   return Boolean(auction?.rider && auction.rider.team_id === auction.seller_team_id);
-}
-
-export function calculateAuctionSalary(price, prizeBonus = 0) {
-  return calculateMarketSalary(price, prizeBonus);
 }
 
 function isHumanManagedTeam(team) {
@@ -278,11 +273,9 @@ async function finalizeAuctionRecord({
             ? {
                 team_id: effectiveBidderId,
                 pending_team_id: null,
-                salary: calculateAuctionSalary(price, auction.rider.prize_earnings_bonus || 0),
               }
             : {
                 pending_team_id: effectiveBidderId,
-                salary: calculateAuctionSalary(price, auction.rider.prize_earnings_bonus || 0),
               }
         )
         .eq("id", auction.rider.id)
@@ -407,7 +400,6 @@ async function finalizeAuctionRecord({
         .update({
           team_id: bankTeam.id,
           pending_team_id: null,
-          salary: 0,
         })
         .eq("id", auction.rider.id)
     );

@@ -22,10 +22,6 @@ import {
   getPlanDuration,
 } from "./boardEngine.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
-import {
-  MIN_RIDER_UCI_POINTS,
-  RIDER_VALUE_FACTOR,
-} from "./marketUtils.js";
 
 let defaultSupabaseClientPromise;
 
@@ -41,7 +37,8 @@ async function getDefaultSupabaseClient() {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SALARY_RATE = 0.10;          // 10% of effective rider value = yearly salary
+// SALARY_RATE (0.10) lever nu i database/2026-05-04-salary-generated-column.sql
+// som GENERATED-formel og kan ikke længere overskrives fra applikationskode.
 const INTEREST_RATE = 0.10;        // 10% interest on negative balance per season
 const PROMOTION_SLOTS = 2;         // Top 2 promote
 const RELEGATION_SLOTS = 2;        // Bottom 2 relegate
@@ -684,12 +681,13 @@ async function fetchAllRows(buildQuery, pageSize = SUPABASE_PAGE_SIZE) {
 }
 
 /**
- * Recalculates prize_earnings_bonus and salary for every rider at season end.
+ * Recalculates prize_earnings_bonus for every rider at season end.
  *
  * prize_earnings_bonus = average of the rider's total prize earnings across
  * the last 1-3 completed seasons. Seasons with no prize money count as 0.
  *
- * salary = max(1, round((uci_points * 4000 + prize_earnings_bonus) * 0.10))
+ * salary er en GENERATED STORED column (se database/2026-05-04-salary-generated-column.sql)
+ * — DB genberegner automatisk når prize_earnings_bonus eller uci_points opdateres.
  */
 export async function updateRiderValues(supabaseClient) {
   const { data: recentSeasons } = await supabaseClient
@@ -738,7 +736,7 @@ export async function updateRiderValues(supabaseClient) {
   const allRiders = await fetchAllRows(() => (
     supabaseClient
       .from("riders")
-      .select("id, uci_points")
+      .select("id")
   ));
 
   const updates = [];
@@ -749,13 +747,9 @@ export async function updateRiderValues(supabaseClient) {
       ? Math.round(seasonTotals.reduce((s, v) => s + v, 0) / seasonTotals.length)
       : 0;
 
-    const basePrice = Math.max(MIN_RIDER_UCI_POINTS, rider.uci_points || 0) * RIDER_VALUE_FACTOR;
-    const newSalary = Math.max(1, Math.round((basePrice + newBonus) * SALARY_RATE));
-
     updates.push({
       id: rider.id,
       prize_earnings_bonus: newBonus,
-      salary: newSalary,
     });
   }
 

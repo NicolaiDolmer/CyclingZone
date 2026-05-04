@@ -1711,7 +1711,7 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
     if (!borrower || borrower.balance < price)
       return res.status(400).json({ error: "Du har ikke råd til at udnytte købsoptionen" });
 
-    await supabase.from("riders").update({ team_id: req.team.id, salary: Math.ceil(price * 0.1) }).eq("id", loan.rider_id);
+    await supabase.from("riders").update({ team_id: req.team.id }).eq("id", loan.rider_id);
     await supabase.from("teams").update({ balance: borrower.balance - price }).eq("id", req.team.id);
     await supabase.from("teams").update({ balance: lender.balance + price }).eq("id", loan.from_team_id);
     await supabase.from("finance_transactions").insert([

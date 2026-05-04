@@ -623,7 +623,7 @@ function createRiderValuesSupabase({ seasons, races, results, riders }) {
       if (table === "riders") {
         return {
           select(columns) {
-            assert.equal(columns, "id, uci_points");
+            assert.equal(columns, "id");
             return {
               range(from, to) {
                 return Promise.resolve({
@@ -1240,7 +1240,7 @@ test("updateStandings stores division ranks and keeps zero-point teams in the ca
   ]);
 });
 
-test("updateRiderValues recalculates salaries after UCI values change", async () => {
+test("updateRiderValues recomputes prize_earnings_bonus from the last 3 seasons", async () => {
   const supabase = createRiderValuesSupabase({
     seasons: [
       { id: "season-3" },
@@ -1257,8 +1257,8 @@ test("updateRiderValues recalculates salaries after UCI values change", async ()
       { rider_id: "rider-2", race_id: "race-2", prize_money: 500 },
     ],
     riders: [
-      { id: "rider-1", uci_points: 100 },
-      { id: "rider-2", uci_points: 0 },
+      { id: "rider-1" },
+      { id: "rider-2" },
     ],
   });
 
@@ -1270,14 +1270,12 @@ test("updateRiderValues recalculates salaries after UCI values change", async ()
       id: "rider-1",
       payload: {
         prize_earnings_bonus: 667,
-        salary: 40067,
       },
     },
     {
       id: "rider-2",
       payload: {
         prize_earnings_bonus: 167,
-        salary: 2017,
       },
     },
   ]);

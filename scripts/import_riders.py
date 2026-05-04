@@ -551,7 +551,6 @@ def merge_data(worlddb: pd.DataFrame,
             "weight": int(row["gene_i_weight"]) if pd.notna(row.get("gene_i_weight")) else None,
             "popularity": int(row.get("gene_f_popularity", 0) or 0),
             "uci_points": uci_pts,
-            "salary": 0,
             "is_u25": bool(row["is_u25"]),
             "nationality_code": REGION_TO_ISO.get(
                 int(row["fkIDregion"]) if pd.notna(row.get("fkIDregion")) else -1

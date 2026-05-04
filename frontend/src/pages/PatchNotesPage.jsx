@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.25",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Økonomi — rytter-løn beregnes nu udelukkende af databasen",
+        items: [
+          "Indtil nu havde to forskellige kode-paths hver sin løn-formel: økonomi-cron og sæson-end skrev 10% af markedsværdien (canonical), mens auktioner, transfers og lån-buyouts skrev 15% (afvigende). Den samme rytter kunne derfor have løn 80.000 mandag (efter cron) og 120.000 onsdag (efter en transfer) — og tilbage til 80.000 næste mandag. Det forvirrede økonomi-rapporter og gjorde sponsor-budgetter upålidelige",
+          "Fix: `riders.salary` er nu en GENERATED STORED column i Postgres med formlen `max(1, round((max(5, uci_points) * 4000 + prize_earnings_bonus) * 0.10))`. Ingen application-path kan længere skrive direkte til kolonnen — DB beregner den automatisk når `uci_points` eller `prize_earnings_bonus` opdateres",
+          "5 write-paths fjernet: `auctionFinalization.js` (vinder-tildeling + bank-salg), `transferExecution.js` (transfer-confirm), `routes/api.js` (lån-buyout), `economyEngine.js` (UCI-cron) og `scripts/import_riders.py`. Funktionerne `calculateMarketSalary` og `calculateAuctionSalary` er slettet (15%-formel forsvinder helt fra kodebasen)",
+          "Migration kører som en del af release: `database/2026-05-04-salary-generated-column.sql` drop+add'er kolonnen, og DB udfylder alle 8.699 ryttere med korrekt 10%-værdi øjeblikkeligt. Fra dette punkt kan rytter-løn IKKE komme ud af sync med uci_points",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.24.1",
     date: "2026-05-04",
     label: "Beta",

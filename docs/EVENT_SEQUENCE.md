@@ -144,15 +144,15 @@ For each auction WHERE status IN ('active','extended') AND calculated_end < now:
      - Stale owner → annullér, notify byder
      - Utilstrækkelig køber-saldo → annullér, notify begge
      - Squad fuld → annullér
-  3. calculateAuctionSalary(price) = price × 0.10
-  4. Udfør transfer:
+  3. Udfør transfer:
      ├─ Transfervindue åbent: rider.team_id = vinder
      └─ Vindue lukket: rider.pending_team_id = vinder
-  5. Debiter køber; kredit sælger (hvis menneske)
-  6. Log finance transactions (type: 'transfer_out', 'transfer_in')
-  7. XP: køber +15 (auction_won), sælger +10 (auction_sold)
-  8. Notify begge parter + Discord
-  9. UPDATE auctions SET status='completed', actual_end=now
+     (rider.salary opdateres IKKE — kolonnen er GENERATED og beregnes af DB fra uci_points + prize_earnings_bonus, v2.25)
+  4. Debiter køber; kredit sælger (hvis menneske)
+  5. Log finance transactions (type: 'transfer_out', 'transfer_in')
+  6. XP: køber +15 (auction_won), sælger +10 (auction_sold)
+  7. Notify begge parter + Discord
+  8. UPDATE auctions SET status='completed', actual_end=now
 ```
 
 ---

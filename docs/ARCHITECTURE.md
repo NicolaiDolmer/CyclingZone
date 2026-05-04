@@ -253,11 +253,11 @@ Season flow notes:
 | `boardEvaluation.js` | `buildBoardOutlook`, `calculateBoardSatisfaction`, `satisfactionToModifier`, `evaluateBoardSeason`, `calculateBoardPerformance` |
 | `boardUtils.js` | `clamp`, `clampSatisfaction`, `roundNumber`, `safeJsonParse`, `averageNumbers`, `averageTopScores`, `clampToStep`, `scoreHigherBetter`, `scoreLowerBetter`, `scoreDebtGoal` |
 | `notificationService.js` | `notifyUser`, `notifyTeamOwner` |
-| `auctionFinalization.js` | `finalizeAuctionById`, `finalizeExpiredAuctions`, `sellerOwnsAuctionRider`, `calculateAuctionSalary` |
+| `auctionFinalization.js` | `finalizeAuctionById`, `finalizeExpiredAuctions`, `sellerOwnsAuctionRider` |
 | `adminImportResultsHandler.js` | `createAdminImportResultsHandler` |
 | `economyEngine.js` | `processSeasonStart`, `processSeasonEnd`, `updateStandings` |
 | `loanEngine.js` | `getLoanConfig`, `getTotalDebt`, `createLoan`, `createEmergencyLoan`, `repayLoan`, `processLoanInterest` |
-| `marketUtils.js` | `getTeamMarketState`, `getIncomingSquadViolation`, `getOutgoingSquadViolation`, `getTransferWindowOpen`, `calculateMarketSalary` |
+| `marketUtils.js` | `getTeamMarketState`, `getIncomingSquadViolation`, `getOutgoingSquadViolation`, `getTransferWindowOpen` |
 | `raceResultsEngine.js` | `buildRacePrizeLookup`, `buildRaceResultsFromPending`, `applyRaceResults` |
 | `sheetsSync.js` | `handleSyncRequest`, `syncUCIPoints` — logger også i `rider_uci_history` |
 | `dynCyclistSync.js` | `handleDynCyclistSyncRequest`, `syncDynCyclist` — logger også i `rider_stat_history` |

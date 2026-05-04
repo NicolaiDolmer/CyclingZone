@@ -43,10 +43,6 @@ export function getSquadLimits(division = DEFAULT_DIVISION) {
   return MARKET_SQUAD_LIMITS[division] || MARKET_SQUAD_LIMITS[DEFAULT_DIVISION];
 }
 
-export function calculateMarketSalary(price, prizeBonus = 0) {
-  return Math.max(1, Math.round(((price || 0) + (prizeBonus || 0)) * 0.15));
-}
-
 export function calculateRiderBaseValue(rider = {}) {
   return Math.max(MIN_RIDER_UCI_POINTS, Number(rider.uci_points) || 0) * RIDER_VALUE_FACTOR;
 }

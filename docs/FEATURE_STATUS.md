@@ -63,6 +63,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Økonomi & Finans
 - **Alle beløb skaleret ×4000 (v1.43)** — rytterværdi = uci_points × 4000 CZ$
 - **Økonomi retuneret (v1.46 → v1.76)** — startkapital 800K, sponsor 240K/sæson (v1.46) → 260K (v1.76); SALARY_RATE 0.10, gældsloft D1/D2/D3 = 1200K/900K/600K
+- **Rytter-løn er en GENERATED column (v2.25, 2026-05-04)** — `riders.salary = max(1, round((max(5, uci_points) * 4000 + prize_earnings_bonus) * 0.10))` beregnes automatisk af Postgres. Ingen application-path kan skrive direkte til `riders.salary` — DB genberegner ved opdatering af `uci_points` eller `prize_earnings_bonus`. Eliminerer permanent dual-formula konflikten mellem 10% (cron) og 15% (auktioner/transfers/lån) der drev løn-drift mellem mandag og onsdag
 - **Economy baseline simulation (2026-04-29)** — read-only live baseline + lokale scenarier er dokumenteret i `docs/archive/ECONOMY_BASELINE_SIMULATION_2026-04-29.md`, med gentagelig kommando `backend/scripts/economyBaselineSimulation.js`
 - Sponsorindtægt ved sæsonstart (med board-modifier)
 - Lønudbetaling ved sæsonslut
@@ -75,7 +76,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Live DB migration for finance-/notification type-kontrakt er applied 2026-04-29.
 - Season-end nødlån sender nu `season_id` med til finance-loggen, så `emergency_loan` rows kan verificeres per sæson fremover.
 - Service-visible season 6 repair verifier findes som `backend/scripts/verifySeasonEndRepair.js` / `npm run season:end:verify-repair -- --markdown`.
-- UCI salary recalculation: GitHub Actions kører `backend/scripts/recalculateRiderSalaries.js` efter UCI scraperen, så `riders.salary` følger opdaterede `uci_points` med eksisterende `prize_earnings_bonus`
+- UCI salary recalculation: GitHub Actions kører `backend/scripts/recalculateRiderSalaries.js` efter UCI scraperen. Scriptet kører `updateRiderValues` som nu kun opdaterer `prize_earnings_bonus` (3-sæson-gennemsnit) — DB genberegner `salary` automatisk via GENERATED-formel når `uci_points` eller `prize_earnings_bonus` ændres (v2.25)
 
 ### Sæson & Løb
 - Sæsonoversigt med race-kalender
