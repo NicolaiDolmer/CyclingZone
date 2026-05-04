@@ -8,17 +8,17 @@ _Intern master-plan. Opdateret 2026-05-04 efter scope-audit. Launch-dato: åben 
 
 - **Open beta:** Live, 17 managers tester transfermarked. Ingen løb køres pt.
 - **Launch-event:** Full data-reset + sæson 0 (transfer-fase) → sæson 1 (første løbs-sæson).
-- **P0-slices: 6 (S-04, S-06 ✅ leveret).** **P1-tasks: ~15** (helst før launch). **P2-spor: 7** (post-launch).
+- **P0-slices: 6 (5/6 leveret: S-01, S-03, S-04, S-05, S-06).** Resterende: S-02. **P1-tasks: ~15** (helst før launch). **P2-spor: 7** (post-launch).
 - **Audit-baseret:** Hvert punkt verificeret mod runtime 2026-05-04. Se `.claude/learnings/2026-05-04-noter-fil-stale.md` for hvorfor.
 
 ---
 
 ## P0 — Launch-blockers (6 slices)
 
-### S-01 · Salary GENERATED column
+### S-01 · Salary GENERATED column ✅ Leveret v2.25 (2026-05-04)
 **Hvorfor P0:** Tilbagevendende værdi/løn-bug i kodebasen siden v1.46. Root cause: dual formula konflikt (`SALARY_RATE 0.10` i [economyEngine.js:44](backend/lib/economyEngine.js:44) vs hardkodet `* 0.15` i [marketUtils.js:47](backend/lib/marketUtils.js:47)). Hver auktion sætter 15%; hver mandags-cron rewriter til 10%. Permanent fix = DB-niveau lockdown.
 **Brief:** `docs/slices/01-salary-generated-column.md`
-**Estimat:** 1 session.
+**Estimat:** 1 session. **Faktisk:** 1 session. `riders.salary` er nu GENERATED ALWAYS AS i DB-skema; 8699/8699 ryttere verificeret matcher formel.
 
 ### S-02 · Bestyrelse-redesign (sekventiel + sæson 0-lås + identity-feedback + auto-accept)
 **Hvorfor P0:** Nuværende bestyrelses-system understøtter ikke den nye sæson-rytme (sæson 1 = baseline, planer aktive fra sæson 2). Sekventiel forhandling 5yr→3yr→1yr-leveres skal låses før launch så managers ikke står med uafklarede planer ved sæsonstart.
@@ -35,10 +35,10 @@ _Intern master-plan. Opdateret 2026-05-04 efter scope-audit. Launch-dato: åben 
 **Brief:** `docs/slices/04-admin-cancel-auction.md`
 **Estimat:** 0.5 session. **Faktisk:** 1 session.
 
-### S-05 · Indbakke unified content-model
-**Hvorfor P0:** Sidebar-IA er allerede på plads (4 grupper: Overblik/Marked/Resultater/Liga). Den manglende del er **indholdsmodellen** — i dag spreder hændelser sig over `notifications`, `activity_feed`, `transfer_offers`, `auctions`, `deadline_day_warnings`. FM-stil unified inbox kræver ÉN forbrugbar liste med kategori-filtre + klik-til-destination. Forudsætning for at indbakke kan blive primær spil-loop.
+### S-05 · Indbakke unified content-model ✅ Leveret v2.30 (2026-05-04)
+**Hvorfor P0:** Sidebar-IA er allerede på plads (4 grupper: Overblik/Marked/Resultater/Liga). Den manglende del er **indholdsmodellen** — i dag spreder hændelser sig over `notifications`, `activity_feed`, `transfer_offers`, `auctions`, `deadline_day_warnings`. FM-stil unified inbox kræver ÉN forbrugbar liste med kategori-filtre + klik-til-destination.
 **Brief:** `docs/slices/05-inbox-unified-model.md`
-**Estimat:** 1-2 sessioner.
+**Estimat:** 1-2 sessioner. **Faktisk:** 0.5 session. **Runtime-divergens fra brief:** NotificationsPage var allerede ~80% færdig (Mine + Ligaen tabs, kategori-filtre, realtime, mark-read, navigation). I stedet for at følge brief'en bogstaveligt (rebrand til InboxPage + bygge VIEW + tabs-routing-refactor) leveredes 3 ægte polish-bidder: (1) `activity_feed`-tabel committed til schema.sql + idempotent migration, (2) orphan `ActivityFeedPage.jsx` slettet (`/activity-feed`-redirect var allerede live), (3) nyt FM-stil "Skal handles"-tab med `inboxPending.js` lib + `GET /api/inbox/pending` der aggregerer pending decisions (transfer offers, swap offers, loan offers) hvor manageren er den part der skal beslutte. Realtime via Supabase channels på 3 kilde-tabeller. 10/10 nye unit tests grønne.
 
 ### S-06 · Webhook smoke-verifikation ✅ Leveret v2.28 (2026-05-04)
 **Hvorfor P0:** Noter nævner "webhook fejler ikke længere" uden konkret fejl-symptom. Smoke-værktøj: Test-knap pr. webhook + struktureret status-feedback (✅/❌ + Discord-status + diagnose) inline pr. row. Health-check cron downgradet til P1 "Drift-monitor" (separat session).

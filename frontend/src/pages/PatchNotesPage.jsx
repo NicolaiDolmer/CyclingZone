@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "2.30",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Indbakke — nyt \"Skal handles\"-tab samler pending decisions (S-05)",
+        items: [
+          "Indbakken havde tabs for personlige notifikationer (\"Mine\") og liga-aktivitet (\"Ligaen\"), men der var ingen FM-stil oversigt over tilbud/byttehandler/lånetilbud du SKAL tage stilling til lige nu. Du måtte hoppe ind på Transfers-siden for at se om nogen ventede på dit svar. Det var sidste P0-slice fra pre-launch roadmap (S-05 Indbakke-unification)",
+          "Nyt tab \"Skal handles\" (mellem Mine og Ligaen) viser præcis de tilbud hvor DU er den part der skal beslutte: pending tilbud du har modtaget som sælger, modbud du har modtaget som køber, awaiting_confirmation hvor din bekræftelse mangler, og pending lånetilbud sendt til dit hold. Tab-knappen får en gul badge med antallet — så du kan se i ét blik om der er noget at handle på",
+          "Hvert item viser rytter, modpart, pris/cash-justering og hvilken handling der ventes (\"Acceptér / afvis tilbud\", \"Bekræft handel\", \"Svar på modbud\"). Klik fører til /transfers hvor du kan accept/reject/counter/confirm. Realtime-subscription på `transfer_offers`, `swap_offers` og `loan_agreements` opdaterer listen instant når en modpart eller du selv ændrer state",
+          "Auctions er IKKE inkluderet i \"Skal handles\" — at være current_bidder er ikke en stillestående beslutning (du KAN bidde højere men er ikke under tidskrav). Outbid-events kommer fortsat som notifikationer i \"Mine\". Backend: ny `inboxPending.js` lib + `GET /api/inbox/pending` (10/10 unit tests grønne for role-classification + aggregation + edge cases)",
+          "Drift-fix: `activity_feed`-tabellen har levet som runtime-only siden v2.x — nu committed til [schema.sql](database/schema.sql) + idempotent migration (`database/2026-05-04-activity-feed-schema-commit.sql`). Ingen data-migration; 467 historiske rows er bevaret intakt. Orphan side `ActivityFeedPage.jsx` slettet (allerede redirected til /notifications siden v2.x — selve filen ryddet op)",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.29",
     date: "2026-05-04",
     label: "Beta",

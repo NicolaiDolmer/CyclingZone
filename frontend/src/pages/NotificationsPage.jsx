@@ -2,6 +2,26 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
+const API = import.meta.env.VITE_API_URL;
+
+const PENDING_ROLE_LABEL = {
+  seller_decide: "Acceptér / afvis tilbud",
+  buyer_decide: "Svar på modbud",
+  seller_confirm: "Bekræft handel",
+  buyer_confirm: "Bekræft handel",
+  receiving_decide: "Acceptér / afvis byttehandel",
+  proposing_decide: "Svar på modbud",
+  receiving_confirm: "Bekræft byttehandel",
+  proposing_confirm: "Bekræft byttehandel",
+  borrower_decide: "Acceptér / afvis lånetilbud",
+};
+
+const PENDING_KIND_ICON = {
+  transfer_offer: "↔",
+  swap_offer: "🔁",
+  loan_offer: "💰",
+};
+
 const TYPE_CONFIG = {
   bid_received:              { icon: "⚡", color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-[#e8c547]/15", link: "/auctions" },
   bid_placed:                { icon: "⚡", color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-[#e8c547]/15", link: "/auctions" },
@@ -81,10 +101,21 @@ export default function NotificationsPage() {
   const [feedLoaded, setFeedLoaded] = useState(false);
   const [feedFilter, setFeedFilter] = useState("all");
 
-  useEffect(() => { loadNotifications(); }, []);
+  // Skal handles tab — pending decisions
+  const [pending, setPending] = useState({
+    transfer_offers: [],
+    swap_offers: [],
+    loan_offers: [],
+    counts: { transfer_offers: 0, swap_offers: 0, loan_offers: 0, total: 0 },
+  });
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingLoaded, setPendingLoaded] = useState(false);
+
+  useEffect(() => { loadNotifications(); loadPending(); }, []);
 
   useEffect(() => {
     if (tab === "ligaen" && !feedLoaded) loadFeed();
+    if (tab === "skal_handles" && !pendingLoaded) loadPending();
   }, [tab]);
 
   // Realtime: personlige notifikationer
@@ -104,6 +135,16 @@ export default function NotificationsPage() {
     const channel = supabase.channel("activity-feed-live")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "activity_feed" },
         payload => setEvents(prev => [payload.new, ...prev].slice(0, 100)))
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  // Realtime: pending decisions — refetch på hver ændring i de 3 kilde-tabeller
+  useEffect(() => {
+    const channel = supabase.channel("inbox-pending-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "transfer_offers" }, () => loadPending())
+      .on("postgres_changes", { event: "*", schema: "public", table: "swap_offers" }, () => loadPending())
+      .on("postgres_changes", { event: "*", schema: "public", table: "loan_agreements" }, () => loadPending())
       .subscribe();
     return () => supabase.removeChannel(channel);
   }, []);
@@ -132,6 +173,23 @@ export default function NotificationsPage() {
     setEvents(data || []);
     setFeedLoading(false);
     setFeedLoaded(true);
+  }
+
+  async function loadPending() {
+    setPendingLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setPendingLoading(false); return; }
+      const res = await fetch(`${API}/api/inbox/pending`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPending(data);
+      }
+    } catch (e) { /* silent — UI viser tom-state */ }
+    setPendingLoading(false);
+    setPendingLoaded(true);
   }
 
   async function markRead(id) {
@@ -183,7 +241,11 @@ export default function NotificationsPage() {
           <p className="text-cz-3 text-sm">
             {tab === "mine"
               ? (unreadCount > 0 ? `${unreadCount} ulæste` : "Alle er læst")
-              : "Hvad sker der i ligaen"}
+              : tab === "skal_handles"
+                ? (pending.counts.total > 0
+                    ? `${pending.counts.total} venter på dig`
+                    : "Intet at handle på lige nu")
+                : "Hvad sker der i ligaen"}
           </p>
         </div>
         {tab === "mine" && (
@@ -211,8 +273,9 @@ export default function NotificationsPage() {
       {/* Primary tabs */}
       <div className="flex border-b border-cz-border mb-4 overflow-x-auto">
         {[
-          { key: "mine",   label: "Mine",   badge: unreadCount },
-          { key: "ligaen", label: "Ligaen" },
+          { key: "mine",         label: "Mine",         badge: unreadCount },
+          { key: "skal_handles", label: "Skal handles", badge: pending.counts.total },
+          { key: "ligaen",       label: "Ligaen" },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`relative px-4 py-2.5 text-sm font-medium transition-all flex items-center gap-2
@@ -298,6 +361,56 @@ export default function NotificationsPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </>
+      ) : tab === "skal_handles" ? (
+        <>
+          {pendingLoading && !pendingLoaded ? (
+            <div className="flex justify-center py-16">
+              <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+            </div>
+          ) : pending.counts.total === 0 ? (
+            <div className="text-center py-20 text-cz-3">
+              <p className="text-4xl mb-3">✅</p>
+              <p>Intet venter på din beslutning</p>
+              <p className="text-xs mt-2">Tilbud, byttehandler og lånetilbud du skal svare på dukker op her</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {[
+                ...pending.transfer_offers.map(item => ({
+                  ...item,
+                  primary: `${item.rider_name} — ${item.price?.toLocaleString("da-DK") || "?"} CZ$`,
+                  secondary: `Fra ${item.counterparty_team_name || "ukendt hold"} · ${PENDING_ROLE_LABEL[item.role] || "Handling påkrævet"}`,
+                })),
+                ...pending.swap_offers.map(item => ({
+                  ...item,
+                  primary: `${item.offered_rider_name} ↔ ${item.requested_rider_name}`,
+                  secondary: `${item.counterparty_team_name || "ukendt hold"} · ${item.cash_adjustment !== 0 ? `Cash ${item.cash_adjustment.toLocaleString("da-DK")} CZ$ · ` : ""}${PENDING_ROLE_LABEL[item.role] || "Handling påkrævet"}`,
+                })),
+                ...pending.loan_offers.map(item => ({
+                  ...item,
+                  primary: `${item.rider_name} — lån ${item.loan_fee?.toLocaleString("da-DK") || "0"} CZ$`,
+                  secondary: `Fra ${item.counterparty_team_name || "ukendt hold"} · Sæson ${item.start_season}${item.end_season !== item.start_season ? `–${item.end_season}` : ""} · ${PENDING_ROLE_LABEL[item.role] || "Handling påkrævet"}`,
+                })),
+              ]
+                .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+                .map(item => (
+                  <div key={`${item.kind}-${item.id}`}
+                    className="flex items-start gap-3 p-3 sm:p-4 rounded-xl border border-cz-accent/30 bg-cz-accent/5 hover:bg-cz-accent/10 transition-all cursor-pointer"
+                    onClick={() => navigate(item.link)}>
+                    <div className="w-9 h-9 rounded-lg bg-cz-subtle flex items-center justify-center text-base flex-shrink-0 mt-0.5">
+                      {PENDING_KIND_ICON[item.kind] || "●"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-cz-1">{item.primary}</p>
+                      <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{item.secondary}</p>
+                      <p className="text-cz-3 text-xs mt-1.5">{timeAgo(item.updated_at)}</p>
+                    </div>
+                    <span className="text-cz-accent-t text-xs flex-shrink-0 mt-1 whitespace-nowrap">→</span>
+                  </div>
+                ))}
             </div>
           )}
         </>

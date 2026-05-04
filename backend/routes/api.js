@@ -52,6 +52,7 @@ import {
   sendTestEmbed,
   sendTestDM,
 } from "../lib/discordNotifier.js";
+import { getPendingInboxItems } from "../lib/inboxPending.js";
 import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
@@ -1874,6 +1875,25 @@ router.patch("/notifications/read-all", requireAuth, async (req, res) => {
     .update({ is_read: true })
     .eq("user_id", req.user.id);
   res.json({ success: true });
+});
+
+// GET /api/inbox/pending — pending decisions ("Skal handles")
+router.get("/inbox/pending", requireAuth, async (req, res) => {
+  if (!req.team) {
+    return res.json({
+      transfer_offers: [],
+      swap_offers: [],
+      loan_offers: [],
+      counts: { transfer_offers: 0, swap_offers: 0, loan_offers: 0, total: 0 },
+    });
+  }
+
+  try {
+    const result = await getPendingInboxItems({ supabase, teamId: req.team.id });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // ── Teams ─────────────────────────────────────────────────────────────────────

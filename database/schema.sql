@@ -355,6 +355,24 @@ CREATE TABLE season_standings (
 );
 
 -- ============================================================
+-- ACTIVITY FEED (offentligt liga-feed)
+-- ============================================================
+
+CREATE TABLE activity_feed (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  type TEXT NOT NULL,
+  team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
+  team_name TEXT,
+  rider_id UUID REFERENCES riders(id) ON DELETE SET NULL,
+  rider_name TEXT,
+  amount INTEGER,
+  meta JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_activity_feed_created ON activity_feed(created_at DESC);
+
+-- ============================================================
 -- NOTIFICATIONS
 -- ============================================================
 
@@ -421,6 +439,7 @@ ALTER TABLE auction_bids ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transfer_listings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transfer_offers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_feed ENABLE ROW LEVEL SECURITY;
 ALTER TABLE finance_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE board_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE race_points ENABLE ROW LEVEL SECURITY;
@@ -436,6 +455,8 @@ CREATE POLICY "Public read races" ON races FOR SELECT USING (true);
 CREATE POLICY "Public read seasons" ON seasons FOR SELECT USING (true);
 CREATE POLICY "Public read race_results" ON race_results FOR SELECT USING (true);
 CREATE POLICY "Public read race_points" ON race_points FOR SELECT USING (true);
+CREATE POLICY "Public read activity_feed" ON activity_feed FOR SELECT USING (true);
+CREATE POLICY "Service insert activity_feed" ON activity_feed FOR INSERT WITH CHECK (true);
 
 -- Users can only read their own sensitive data
 CREATE POLICY "Own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);

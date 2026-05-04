@@ -1,6 +1,12 @@
-# Slice S-05 · Indbakke unified content-model
+# Slice S-05 · Indbakke unified content-model ✅ Leveret v2.30 (2026-05-04)
 
-**Status:** P0, ikke startet. Opdateret 2026-05-04.
+**Status:** P0 LEVERET — runtime-divergens fra brief håndteret med 3 polish-bidder. Se `LAUNCH_ROADMAP.md` for fuld kontekst.
+
+**Kort version af leverancen:** Brief'en antog problemet "spredte hændelser over flere tabeller" var større end runtime — men `notificationService.notifyUser/notifyTeamOwner` med dedup centraliserede allerede alt i `notifications`-tabellen, og NotificationsPage havde allerede tabs + kategori-filtre + realtime + mark-read. I stedet for at rebrande siden leveredes (1) drift-fix på `activity_feed`-skema, (2) orphan-cleanup, (3) nyt "Skal handles"-tab der aggregerer pending decisions (transfer/swap/loan) hvor brugeren skal handle.
+
+---
+
+**Original brief (bevaret som historik):**
 
 ## Mål
 Gør indbakken til primær spil-loop. Alle hændelser samles ét sted med kategori-filtre og klik-til-destination, så manager ikke skal hoppe mellem 5 forskellige sider for at fange hvad der er sket.
