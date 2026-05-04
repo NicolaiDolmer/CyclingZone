@@ -13,8 +13,7 @@
 - 2026-05-04: **Lint-baseline ryddet** (v2.24.1) — 24 unused-vars fjernet på tværs af 14 filer. Baseline 41 → 17 warnings. Build OK.
 - 2026-05-04: **S8.5 Import-feedback UI** (v2.24) — `Forhåndsvis`-knap, dry-run preview-tabel, `Bekræft import`/`Annullér`. Backend `dry_run`-flag på eksisterende endpoint (singular execution path).
 - 2026-05-04: **v2.23.1 polish + Soak-gate S9 rapport** — tomme vinder-kort `/seasons/:id` ikke-klikbare. 10/10 punkter, 4 P2 identificeret.
-- 2026-05-04: **S9b Sæson-snapshot** (v2.23) — `/seasons/:seasonId` med kalender + 4 vinder-kort.
-- 2026-05-04: **S9a Løb-hub konsolidering** (v2.22) — `/races` med Bibliotek + Point & præmier-tabs.
+- 2026-05-04: **S9b Sæson-snapshot** (v2.23) + **S9a Løb-hub** (v2.22).
 - Ældre → `docs/archive/NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter
