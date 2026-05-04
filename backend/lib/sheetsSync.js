@@ -20,18 +20,52 @@ const supabase = createClient(
  * Normalize a name for fuzzy matching.
  * Handles: "POGAČAR Tadej" → "POGACAR TADEJ"
  */
+// Holder denne logik byte-equivalent med scripts/uci_scraper.py \u2014 sync-divergence
+// var root cause for Tobias Lund Andresen-bug 2026-05-04. \u00c6/\u00d8/\u00c5/\u0141 dekomponeres
+// IKKE af NFKD og forsvinder ved ASCII-strip \u2014 substitu\u00e9r eksplicit f\u00f8rst.
+const VOWEL_SUBS = [
+  ["\u00e6", "ae"], ["\u00c6", "AE"],
+  ["\u00f8", "oe"], ["\u00d8", "OE"],
+  ["\u00e5", "aa"], ["\u00c5", "AA"],
+  ["\u0142", "l"], ["\u0141", "L"],
+  ["\u00df", "ss"],
+];
+
+const HIGH_VALUE_POPULARITY_THRESHOLD = 70;
+const HIGH_VALUE_UCI_POINTS_THRESHOLD = 100;
+
 function normalizeName(name) {
-  return name
+  if (!name) return "";
+  let s = name;
+  for (const [src, dst] of VOWEL_SUBS) s = s.split(src).join(dst);
+  return s
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
+    .replace(/[-'.]/g, " ")
     .trim()
     .replace(/\s+/g, " ");
 }
 
+function nameTokenKey(name) {
+  const norm = normalizeName(name);
+  if (!norm) return null;
+  return norm.split(" ").sort().join(" ");
+}
+
+function nameTokenSet(name) {
+  const norm = normalizeName(name);
+  return norm ? new Set(norm.split(" ")) : new Set();
+}
+
+function isSubset(small, large) {
+  for (const t of small) if (!large.has(t)) return false;
+  return true;
+}
+
 /**
  * Fetch UCI points from Google Sheets published CSV URL.
- * Returns Map: normalizedName → points
+ * Returns Map: sortedTokenKey → { tokens: Set<string>, points: number }
  */
 async function fetchUCIPointsFromCSV(csvUrl) {
   const res = await fetch(csvUrl);
@@ -53,8 +87,12 @@ async function fetchUCIPointsFromCSV(csvUrl) {
     const cols = line.split(",");
     const name = (cols[nameIdx] || "").replace(/"/g, "").trim();
     const pts = parseInt(cols[ptsIdx]);
-    if (name && !isNaN(pts)) {
-      map.set(normalizeName(name), pts);
+    if (!name || isNaN(pts)) continue;
+    const key = nameTokenKey(name);
+    if (!key) continue;
+    const existing = map.get(key);
+    if (!existing || existing.points < pts) {
+      map.set(key, { tokens: nameTokenSet(name), points: pts });
     }
   }
 
@@ -62,29 +100,37 @@ async function fetchUCIPointsFromCSV(csvUrl) {
 }
 
 /**
- * Try multiple name formats to find a match in the UCI map.
+ * Token-set-baseret match. Fanger compound surnames (Lund Andresen, Halland
+ * Johannessen) som string-permutationer ikke ville fange.
  */
 function findUCIPoints(rider, uciMap) {
-  const attempts = [
-    // "LASTNAME Firstname"
-    normalizeName(`${rider.lastname} ${rider.firstname}`),
-    // "Firstname LASTNAME"
-    normalizeName(`${rider.firstname} ${rider.lastname}`),
-    // Just lastname
-    normalizeName(rider.lastname),
-  ];
+  const fullName = `${rider.firstname || ""} ${rider.lastname || ""}`;
+  const dbKey = nameTokenKey(fullName);
+  if (!dbKey) return null;
 
-  for (const attempt of attempts) {
-    if (uciMap.has(attempt)) return uciMap.get(attempt);
-    // Try partial match (last name only in longer strings)
-    for (const [key, val] of uciMap) {
-      if (key.includes(normalizeName(rider.lastname)) &&
-          key.includes(normalizeName(rider.firstname).split(" ")[0])) {
-        return val;
-      }
-    }
+  const exact = uciMap.get(dbKey);
+  if (exact) return exact.points;
+
+  const dbTokens = nameTokenSet(fullName);
+
+  // DB ⊆ UCI (UCI har middle name DB ikke har)
+  for (const { tokens, points } of uciMap.values()) {
+    if (isSubset(dbTokens, tokens)) return points;
   }
+
+  // UCI ⊆ DB (DB har middle name UCI ikke har); kræv min. 2 tokens for at undgå false positives
+  for (const { tokens, points } of uciMap.values()) {
+    if (tokens.size >= 2 && isSubset(tokens, dbTokens)) return points;
+  }
+
   return null;
+}
+
+function isHighValueRider(rider) {
+  return (
+    (rider.popularity || 0) >= HIGH_VALUE_POPULARITY_THRESHOLD ||
+    (rider.uci_points || 0) >= HIGH_VALUE_UCI_POINTS_THRESHOLD
+  );
 }
 
 /**
@@ -104,24 +150,34 @@ export async function syncUCIPoints(csvUrl, adminUserId) {
     const uciMap = await fetchUCIPointsFromCSV(csvUrl);
     console.log(`  📊 Fetched ${uciMap.size} riders from Google Sheets`);
 
-    // Fetch all riders from DB
+    // Fetch all riders from DB (popularity needed for high-value safety-gate)
     const { data: riders } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, uci_points")
+      .select("id, firstname, lastname, uci_points, popularity")
       .order("uci_points", { ascending: false });
 
     console.log(`  📂 Processing ${riders?.length || 0} riders in database`);
 
     const updates = [];
+    const highValueProtected = [];
+    const MIN_UCI = 5;
 
     for (const rider of riders || []) {
       const newPoints = findUCIPoints(rider, uciMap);
 
-      const MIN_UCI = 5;
-
       if (newPoints === null) {
         notFound++;
-        // Rider dropped off UCI list — sæt til minimum
+        // High-value safety-gate: aldrig auto-downgrade kendte ryttere til MIN
+        // pga. name-mismatch (Tobias Lund Andresen-bug 2026-05-04).
+        if (isHighValueRider(rider) && rider.uci_points > MIN_UCI) {
+          highValueProtected.push({
+            id: rider.id,
+            name: `${rider.firstname || ""} ${rider.lastname || ""}`.trim(),
+            current: rider.uci_points,
+            popularity: rider.popularity || 0,
+          });
+          continue;
+        }
         if (rider.uci_points !== MIN_UCI) {
           updates.push({ id: rider.id, uci_points: MIN_UCI });
         }
@@ -134,6 +190,15 @@ export async function syncUCIPoints(csvUrl, adminUserId) {
         updated++;
       } else {
         unchanged++;
+      }
+    }
+
+    if (highValueProtected.length > 0) {
+      console.warn(
+        `  ⚠ ${highValueProtected.length} high-value ryttere uden match — bevarede nuværende uci_points:`
+      );
+      for (const r of highValueProtected.slice(0, 10)) {
+        console.warn(`    ${r.name} pop=${r.popularity} pts=${r.current}`);
       }
     }
 
@@ -176,6 +241,7 @@ export async function syncUCIPoints(csvUrl, adminUserId) {
       updated: updates.length,
       unchanged,
       not_found: notFound,
+      high_value_protected: highValueProtected.length,
       history_logged: historyRows.length,
       duration_seconds: parseFloat(duration),
     };

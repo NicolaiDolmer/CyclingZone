@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "2.27",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "UCI-sync fanger nu compound surnames — ingen flere Tobias Lund Andresen-fejl",
+        items: [
+          "Mandags-cron'en (uci_scraper.py) downgradede 14 ryttere til 5 UCI-points pga. name-mismatch — bl.a. Tobias Lund Andresen (skulle være 2.514), Tobias Halland Johannessen (2.393) og Sakarias Koller Løland (319). Root cause: scraperen matchede DB-navne mod UCI-CSV som rene strings, så DB-rytteren \"Tobias\" + \"Lund Andresen\" matchede ikke UCI-formatet \"ANDRESEN Tobias Lund\" pga. ordrækkefølgen, og blev derfor sat til fallback-værdien 5",
+          "Match-logikken er omskrevet til **token-set-baseret**: \"Tobias\" + \"Lund Andresen\" og \"ANDRESEN Tobias Lund\" har samme tokens {ANDRESEN, LUND, TOBIAS} og matches nu uafhængigt af ordrækkefølge. Subset-matching håndterer også middle names der findes på den ene side men ikke den anden (\"HONORÉ Mikkel Frølich\" ↔ \"Mikkel Honoré\")",
+          "Normalisering håndterer nu **æ/ø/å eksplicit** (æ→ae, ø→oe, å→aa) — tidligere blev de fjernet helt af ASCII-strip, så \"Mørkøv\" blev til \"MRKV\". Bindestreger, apostroffer og punktummer normaliseres også til mellemrum (\"Lund-Andresen\" og \"O'Connor\" tokeniseres ens på begge sider)",
+          "**Safety-gate** tilføjet: ryttere med popularity ≥ 70 ELLER nuværende uci_points ≥ 100 vil aldrig blive auto-downgraded til 5 igen pga. matching-fejl. Hvis matching slår fejl for en sådan rytter, bevares den nuværende værdi og der logges en warning til admin",
+          "Backend's manuelle sync-knap (sheetsSync.js) er opdateret med præcis samme normaliseringslogik som mandags-cron'en, så de to paths ikke kan drive fra hinanden. Migration: `database/2026-05-04-fix-uci-points-token-mismatch.sql` (anvendt). 21/21 unit tests passerer for normalize/match/safety-gate",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.26",
     date: "2026-05-04",
     label: "Beta",

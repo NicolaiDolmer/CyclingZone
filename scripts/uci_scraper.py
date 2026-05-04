@@ -32,6 +32,12 @@ DEFAULT_MIN_EXPECTED_RIDERS = 2400
 MAX_MINIMUM_DOWNGRADE_RATIO = 0.10
 MAX_MINIMUM_DOWNGRADE_ABSOLUTE = 25
 
+# Ryttere over disse tærskler må ikke auto-downgrades til MIN ved name-mismatch.
+# Beskytter mod gentagelse af Tobias Lund Andresen-bug 2026-05-04 hvor compound
+# surnames blev nullet ud i mandags-cron'en.
+HIGH_VALUE_POPULARITY_THRESHOLD = 70
+HIGH_VALUE_UCI_POINTS_THRESHOLD = 100
+
 
 class ScraperValidationError(RuntimeError):
     """Raised when PCS data cannot be trusted for writes."""
@@ -48,16 +54,41 @@ class RankingFetchResult(TypedDict):
 
 
 # ── Navn-normalisering (matcher logik i sheetsSync.js) ──────────────────────
+#
+# NB: æ/ø/å/ł dekomponeres IKKE af NFKD, så uden eksplicit substitution forsvinder
+# de helt ved ASCII-strip ("Mørkøv" → "Mrkv"). Erstat dem først så de bliver
+# konsistent ASCII inden normalisering.
+
+_VOWEL_SUBS = {
+    "æ": "ae", "Æ": "AE",
+    "ø": "oe", "Ø": "OE",
+    "å": "aa", "Å": "AA",
+    "ł": "l", "Ł": "L",
+    "ß": "ss",
+}
+
 
 def normalize_name(name: str) -> str:
-    return (
+    if not name:
+        return ""
+    for src, dst in _VOWEL_SUBS.items():
+        name = name.replace(src, dst)
+    name = (
         unicodedata.normalize("NFKD", name)
         .encode("ascii", "ignore")
         .decode()
         .upper()
-        .strip()
-        .replace("  ", " ")
     )
+    # Bindestreger, apostroffer og punktummer skal være whitespace,
+    # så "Lund-Andresen" og "O'Connor" tokeniseres ens på begge sider.
+    for ch in "-'.":
+        name = name.replace(ch, " ")
+    return " ".join(name.split())  # collapse whitespace
+
+
+def name_tokens(name: str) -> frozenset[str]:
+    """Token-set bruges til ordrækkefølge-uafhængigt match (compound surnames)."""
+    return frozenset(normalize_name(name).split())
 
 
 # ── Hent rankings fra ProCyclingStats ───────────────────────────────────────
@@ -241,26 +272,68 @@ def _sb_headers() -> dict:
 def _sb_url(path: str) -> str:
     return f"{_clean_env('SUPABASE_URL')}/rest/v1/{path}"
 
+def _is_high_value_rider(rider: dict) -> bool:
+    popularity = rider.get("popularity") or 0
+    points = rider.get("uci_points") or 0
+    return (
+        popularity >= HIGH_VALUE_POPULARITY_THRESHOLD
+        or points >= HIGH_VALUE_UCI_POINTS_THRESHOLD
+    )
+
+
+def find_uci_match(
+    rider: dict,
+    uci_token_map: dict[frozenset[str], int],
+) -> int | None:
+    """Token-set-baseret match — handler compound surnames og middle-name-drift."""
+    fn = rider.get("firstname") or ""
+    ln = rider.get("lastname") or ""
+    db_tokens = name_tokens(f"{fn} {ln}")
+    if not db_tokens:
+        return None
+
+    # 1. Eksakt token-set match (fanger ordrækkefølge-permutationer)
+    if db_tokens in uci_token_map:
+        return uci_token_map[db_tokens]
+
+    # 2. DB ⊆ UCI — UCI har middle name DB ikke har (fx DB "Magnus Cort" → UCI "CORT Magnus" har 2 tokens; ikke et faktisk subset her, men relevant for "Mikkel Honoré" → "HONORÉ Mikkel Frølich")
+    for uci_tokens, pts in uci_token_map.items():
+        if db_tokens.issubset(uci_tokens):
+            return pts
+
+    # 3. UCI ⊆ DB — DB har middle name UCI ikke har (fx DB "Mateo Pablo Ramírez" → UCI "RAMÍREZ Mateo")
+    for uci_tokens, pts in uci_token_map.items():
+        if len(uci_tokens) >= 2 and uci_tokens.issubset(db_tokens):
+            return pts
+
+    return None
+
+
 def sync_supabase(riders: list[dict], synced_at: str, dry_run: bool, complete_ranking: bool) -> None:
     headers = _sb_headers()
 
-    # Byg UCI-map: normaliseret navn → points
-    uci_map: dict[str, int] = {}
+    # Byg UCI token-map: frozenset(tokens) → points
+    # Hvis to UCI-navne har samme token-set, behold den med flest points
+    uci_token_map: dict[frozenset[str], int] = {}
     for r in riders:
         name = r.get("rider_name", r.get("name", ""))
         pts = int(r.get("points", 0) or 0)
-        if name:
-            uci_map[normalize_name(name)] = pts
+        tokens = name_tokens(name)
+        if not tokens:
+            continue
+        existing = uci_token_map.get(tokens)
+        if existing is None or existing < pts:
+            uci_token_map[tokens] = pts
 
-    # Hent alle ryttere fra DB
+    # Hent alle ryttere fra DB (popularity bruges af high-value safety-gate)
     resp = requests.get(
-        _sb_url("riders?select=id,firstname,lastname,uci_points"),
+        _sb_url("riders?select=id,firstname,lastname,uci_points,popularity"),
         headers=headers,
         timeout=30,
     )
     resp.raise_for_status()
     db_riders = resp.json()
-    print(f"  Matcher {len(uci_map)} UCI-ryttere mod {len(db_riders)} DB-ryttere")
+    print(f"  Matcher {len(uci_token_map)} UCI-ryttere mod {len(db_riders)} DB-ryttere")
 
     rider_updates: list[dict] = []
     history_rows: list[dict] = []
@@ -268,39 +341,34 @@ def sync_supabase(riders: list[dict], synced_at: str, dry_run: bool, complete_ra
     matched = 0
     restored_from_minimum = 0
     minimum_downgrades = 0
+    high_value_protected: list[dict] = []
     old_points_by_id = {rider["id"]: rider["uci_points"] for rider in db_riders}
 
     for rider in db_riders:
-        fn = rider.get("firstname") or ""
-        ln = rider.get("lastname") or ""
-
-        candidates = [
-            normalize_name(f"{ln} {fn}"),
-            normalize_name(f"{fn} {ln}"),
-        ]
-        new_pts: int | None = None
-        for key in candidates:
-            if key in uci_map:
-                new_pts = uci_map[key]
-                break
-
-        # Fallback: delvis match på efternavn + første fornavn
-        if new_pts is None:
-            norm_ln = normalize_name(ln)
-            norm_fn_first = normalize_name(fn).split()[0] if fn else ""
-            if norm_ln and norm_fn_first:
-                for uci_name, pts in uci_map.items():
-                    if norm_ln in uci_name and norm_fn_first in uci_name:
-                        new_pts = pts
-                        break
+        new_pts = find_uci_match(rider, uci_token_map)
 
         if new_pts is None:
             not_found += 1
-            if complete_ranking:
-                new_pts = MIN_UCI_POINTS
-            else:
+            if not complete_ranking:
                 # Ufuldstændige scrapes må aldrig nedskrive eksisterende data.
                 continue
+            # High-value safety-gate: aldrig auto-downgrade kendte/værdifulde ryttere
+            # til MIN udelukkende pga. name-mismatch. Bevar nuværende værdi og log.
+            if _is_high_value_rider(rider) and rider["uci_points"] > MIN_UCI_POINTS:
+                high_value_protected.append({
+                    "id": rider["id"],
+                    "name": f"{rider.get('firstname','')} {rider.get('lastname','')}".strip(),
+                    "current_pts": rider["uci_points"],
+                    "popularity": rider.get("popularity") or 0,
+                })
+                # Log historikrækken med eksisterende værdi så grafen ikke ser et hul
+                history_rows.append({
+                    "rider_id": rider["id"],
+                    "uci_points": rider["uci_points"],
+                    "synced_at": synced_at,
+                })
+                continue
+            new_pts = MIN_UCI_POINTS
         else:
             matched += 1
 
@@ -341,8 +409,21 @@ def sync_supabase(riders: list[dict], synced_at: str, dry_run: bool, complete_ra
         f"matched={matched}, not_found={not_found}, updates={len(rider_updates)}, "
         f"restored_from_minimum={restored_from_minimum}, "
         f"minimum_downgrades={minimum_downgrades}/{downgrade_limit}, "
+        f"high_value_protected={len(high_value_protected)}, "
         f"complete_ranking={complete_ranking}"
     )
+    if high_value_protected:
+        print(
+            "  WARN: High-value ryttere uden match (bevarede nuvaerende uci_points; "
+            "koer scripts/uci_audit.py for fix-migration):"
+        )
+        for entry in high_value_protected[:20]:
+            print(
+                f"    rider_id={entry['id']} {entry['name']} "
+                f"pop={entry['popularity']} pts={entry['current_pts']}"
+            )
+        if len(high_value_protected) > 20:
+            print(f"    ...og {len(high_value_protected) - 20} flere")
     if largest_changes:
         print("  Største pointændringer:")
         for row in largest_changes:
