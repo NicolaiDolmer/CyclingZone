@@ -30,10 +30,10 @@ _Intern master-plan. Opdateret 2026-05-04 efter scope-audit. Launch-dato: åben 
 **Brief:** `docs/slices/03-squad-size-enforcement.md`
 **Estimat:** 1 session. Forudsætning: `riders.acquired_at` migration (5 min).
 
-### S-04 · Admin annullér auktion
+### S-04 · Admin annullér auktion ✅ Leveret v2.26 (2026-05-04)
 **Hvorfor P0:** Live-drift kræver et "undo"-tool. Auktioner oprettet ved fejl eller med forkert pris kan ikke håndteres uden DB-manipulation i dag.
 **Brief:** `docs/slices/04-admin-cancel-auction.md`
-**Estimat:** 0.5 session.
+**Estimat:** 0.5 session. **Faktisk:** 1 session.
 
 ### S-05 · Indbakke unified content-model
 **Hvorfor P0:** Sidebar-IA er allerede på plads (4 grupper: Overblik/Marked/Resultater/Liga). Den manglende del er **indholdsmodellen** — i dag spreder hændelser sig over `notifications`, `activity_feed`, `transfer_offers`, `auctions`, `deadline_day_warnings`. FM-stil unified inbox kræver ÉN forbrugbar liste med kategori-filtre + klik-til-destination. Forudsætning for at indbakke kan blive primær spil-loop.

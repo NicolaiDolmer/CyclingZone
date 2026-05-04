@@ -29,6 +29,7 @@ import {
   finalizeAuctionById,
   finalizeExpiredAuctions as finalizeExpiredAuctionsShared,
 } from "../lib/auctionFinalization.js";
+import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import {
   createLoan,
   repayLoan,
@@ -2006,6 +2007,73 @@ router.post("/admin/finalize-expired-auctions", requireAdmin, async (req, res) =
   res.json({
     finalized: results.filter(result => result.ok).length,
     results,
+  });
+});
+
+// GET /api/admin/auctions/active — list active+extended auktioner med rytter+sælger
+router.get("/admin/auctions/active", requireAdmin, async (req, res) => {
+  const { data, error } = await supabase
+    .from("auctions")
+    .select(
+      "id, current_price, current_bidder_id, calculated_end, status, seller_team_id, is_flash, is_guaranteed_sale, " +
+      "rider:rider_id(id, firstname, lastname, uci_points), " +
+      "seller:seller_team_id(id, name)"
+    )
+    .in("status", ["active", "extended"])
+    .order("calculated_end", { ascending: true });
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  // Tæl unikke bidders pr. auktion via separat query (Supabase nested aggregation er begrænset).
+  const auctionIds = (data || []).map(a => a.id);
+  let bidCounts = {};
+  if (auctionIds.length > 0) {
+    const { data: bids } = await supabase
+      .from("auction_bids")
+      .select("auction_id, team_id")
+      .in("auction_id", auctionIds);
+    bidCounts = (bids || []).reduce((acc, b) => {
+      acc[b.auction_id] = acc[b.auction_id] || new Set();
+      acc[b.auction_id].add(b.team_id);
+      return acc;
+    }, {});
+  }
+
+  const enriched = (data || []).map(a => ({
+    ...a,
+    unique_bidder_count: bidCounts[a.id] ? bidCounts[a.id].size : 0,
+  }));
+
+  res.json({ auctions: enriched });
+});
+
+// POST /api/admin/auctions/:id/cancel — annuller aktiv auktion
+router.post("/admin/auctions/:id/cancel", requireAdmin, async (req, res) => {
+  const result = await cancelAuctionByAdmin({
+    supabase,
+    auctionId: req.params.id,
+    adminUserId: req.user.id,
+    notifyTeamOwner,
+    logActivity,
+    now: new Date(),
+  });
+
+  if (!result.ok) {
+    if (result.code === "not_found") return res.status(404).json({ error: "Auktion ikke fundet" });
+    if (result.code === "not_cancellable") {
+      return res.status(409).json({ error: `Auktionen kan ikke annulleres (status: ${result.status})` });
+    }
+    if (result.code === "race_lost") {
+      return res.status(409).json({ error: "Auktionen blev afsluttet samtidig — prøv at genindlæse" });
+    }
+    return res.status(500).json({ error: "Cancel fejlede" });
+  }
+
+  res.json({
+    success: true,
+    bidder_count: result.bidder_count,
+    rider_name: result.rider_name,
+    message: `Auktion annulleret. ${result.bidder_count} budgivere notificeret.`,
   });
 });
 

@@ -1,6 +1,17 @@
 # Slice S-04 · Admin annullér auktion
 
-**Status:** P0, ikke startet. Opdateret 2026-05-04.
+**Status:** ✅ Leveret 2026-05-04 (v2.26). Opdateret 2026-05-04.
+
+## Leveret
+- DB: `database/2026-05-04-auction-cancellation.sql` (tilføjer `auctions.cancelled_at` + `cancelled_by_user_id`, `auction_cancelled` notification type)
+- Backend: `backend/lib/auctionCancellation.js` (atomar status-transition, race-safe mod cron-finalizer), endpoints `POST /api/admin/auctions/:id/cancel` + `GET /api/admin/auctions/active`
+- Frontend: `Aktive auktioner`-Section i `AdminPage.jsx` med per-auktion Annullér-knap + confirm-modal
+- Tests: 5 unit tests i `auctionCancellation.test.js` (not_found, not_cancellable, race_lost, happy path med 3 bidders, seller-overlap)
+
+## Vigtig opdagelse under implementation
+Bud-reservation er IKKE en fysisk balance-deduction — den beregnes ved query-time fra teamets aktive auktioner som `current_bidder_id`. Cancel = sæt status='cancelled', og reservationen forsvinder automatisk fordi auktionen ikke længere er aktiv. Ingen `unreserveBidAmount`-helper nødvendig.
+
+
 
 ## Mål
 Admin kan annullere en aktiv auktion fra UI'et med ét klik. Alle bud refunderes (balance + reservation), rytter sættes tilbage til oprindelig ejer (eller AI-pool hvis bank-rytter), notifikationer sendes til budgivere.

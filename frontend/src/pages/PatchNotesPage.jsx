@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "2.26",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin — annullér aktive auktioner med ét klik",
+        items: [
+          "Live-drift har manglet et undo-værktøj: hvis en auktion blev oprettet ved fejl eller med forkert pris, var den eneste vej ud direkte DB-manipulation. Det har holdt admin-drift afhængig af manuelle SQL-kald og var en launch-blocker (S-04 i pre-launch roadmap)",
+          "Ny `Aktive auktioner`-sektion i Admin-panelet lister alle aktive og forlængede auktioner med rytter, sælger, pris, antal unikke budgivere og sluttidspunkt. Per-auktion `Annullér`-knap åbner confirm-modal, kører backend-cancel og opdaterer listen",
+          "Backend: nyt `auctionCancellation.js`-modul kører atomar status-transition `active|extended → cancelled` (race-safe mod parallel cron-finalizer — hvis finalizer vinder, returneres 409). Bud frigives automatisk fordi balance-reservation beregnes ved query-time fra aktive auktioner — der er ingen fysisk balance at refundere",
+          "Notifikationer: ny `auction_cancelled`-type sendes til alle unikke budgivere + sælger (hvis ikke allerede budgivet). Inbox + Discord DM dækker begge kanaler. Admin-handling logges i `admin_log` med rytter-id, bidder-count og auktions-pris",
+          "Migration: `auctions.cancelled_at` + `auctions.cancelled_by_user_id` tilføjet til audit-spor. `'cancelled'` var allerede gyldig status i CHECK-constraint",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.25",
     date: "2026-05-04",
     label: "Beta",

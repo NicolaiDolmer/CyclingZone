@@ -161,6 +161,9 @@ export default function AdminPage() {
   const [auctionConfig, setAuctionConfig] = useState(null);
   const [editingAuctionConfig, setEditingAuctionConfig] = useState(null);
 
+  // Aktive auktioner (admin cancel)
+  const [activeAuctions, setActiveAuctions] = useState([]);
+
   // Race editor — NY
   const [editingRace, setEditingRace] = useState(null);
 
@@ -210,6 +213,29 @@ export default function AdminPage() {
     setRacePoints(rp.data || []);
     setUsers(u.data || []);
     setAuctionConfig(ac.data || null);
+    loadActiveAuctions();
+  }
+
+  async function loadActiveAuctions() {
+    try {
+      const res = await fetch(`${API}/api/admin/auctions/active`, { headers: await getAuth() });
+      const data = await res.json();
+      if (res.ok) setActiveAuctions(data.auctions || []);
+    } catch (_e) { /* silent */ }
+  }
+
+  async function handleCancelAuction(auction) {
+    const riderName = `${auction.rider?.firstname || ""} ${auction.rider?.lastname || ""}`.trim() || "rytter";
+    const bidderCount = auction.unique_bidder_count || 0;
+    if (!confirm(`Annullér auktion på ${riderName}?\n\n${bidderCount} budgivere notificeres. Bud frigives automatisk.`)) return;
+    setLoad(`cancel_auction_${auction.id}`, true);
+    const res = await fetch(`${API}/api/admin/auctions/${auction.id}/cancel`, {
+      method: "POST", headers: await getAuth(),
+    });
+    const data = await res.json();
+    if (res.ok) { showMsg(`✅ ${data.message}`); loadActiveAuctions(); }
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoad(`cancel_auction_${auction.id}`, false);
   }
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
@@ -1340,6 +1366,43 @@ export default function AdminPage() {
           </div>
         )}
         {!auctionConfig && <p className="text-cz-3 text-xs">Kør migrationen for at aktivere auktionskonfiguration.</p>}
+      </Section>
+
+      {/* ── Aktive auktioner (admin cancel) ─────────────────────────────────── */}
+      <Section title="Aktive auktioner">
+        {activeAuctions.length === 0 ? (
+          <p className="text-cz-3 text-xs">Ingen aktive eller forlængede auktioner.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {activeAuctions.map(a => {
+              const riderName = `${a.rider?.firstname || ""} ${a.rider?.lastname || ""}`.trim() || "—";
+              const sellerName = a.seller?.name || (a.seller_team_id ? "(ukendt sælger)" : "Banken/AI");
+              const endTxt = a.calculated_end ? new Date(a.calculated_end).toLocaleString("da-DK") : "—";
+              return (
+                <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 bg-cz-subtle rounded-lg px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-cz-1 text-sm font-medium">
+                      {riderName}
+                      {a.is_flash && <span className="ml-2 text-cz-3 text-xs">(flash)</span>}
+                      {a.is_guaranteed_sale && <span className="ml-2 text-cz-3 text-xs">(garanteret)</span>}
+                    </p>
+                    <p className="text-cz-3 text-xs">
+                      Sælger: {sellerName} · Pris: {formatCz(a.current_price)} · Bud: {a.unique_bidder_count} · Slutter: {endTxt}
+                      {a.status === "extended" && <span className="ml-2 text-cz-warn">forlænget</span>}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleCancelAuction(a)}
+                    disabled={loading[`cancel_auction_${a.id}`]}
+                    className="px-3 py-1.5 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-xs hover:brightness-110 disabled:opacity-50 transition-all">
+                    {loading[`cancel_auction_${a.id}`] ? "Annullerer..." : "Annullér"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <p className="text-cz-3 text-xs mt-3">Annullering frigiver alle bud (balance er aldrig deduceret) og notificerer budgivere + sælger.</p>
       </Section>
 
       {/* ── Discord webhooks ─────────────────────────────────────────────────── */}
