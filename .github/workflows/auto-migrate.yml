@@ -1,0 +1,78 @@
+name: Auto-migrate
+
+# Kører nye SQL-filer fra database/ mod live Supabase ved push til main.
+# Idempotent: tracker applied migrations i schema_migrations tabel.
+# Setup: docs/AUTO_MIGRATION_SETUP.md (kræver SUPABASE_DB_URL secret).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'database/2026-*.sql'
+  workflow_dispatch:
+
+concurrency:
+  group: auto-migrate-prod
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify SUPABASE_DB_URL is configured
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "${DB_URL:-}" ]; then
+            echo "❌ SUPABASE_DB_URL secret missing — see docs/AUTO_MIGRATION_SETUP.md"
+            exit 1
+          fi
+
+      - name: Wait for Vercel + backend deploy to settle
+        run: |
+          echo "⏳ Sleeping 3 min so frontend/backend deploys complete before SQL changes land."
+          echo "    Bevidst hardcoded fordi Vercel-MCP og GitHub deployment-API begge er upålidelige"
+          echo "    for race-fri timing — 3 min er empirisk margin for de aktuelle deploys."
+          sleep 180
+
+      - name: Apply pending migrations
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+
+          # Bootstrap-tabel (idempotent — eksisterer efter første run)
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS schema_migrations (filename TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());"
+
+          # Pending = local files - applied filenames
+          ALL_LOCAL=$(ls database/2026-*.sql 2>/dev/null | sort)
+          ALL_APPLIED=$(psql "$DB_URL" -tAc "SELECT filename FROM schema_migrations" | sort)
+          PENDING=$(comm -23 <(echo "$ALL_LOCAL") <(echo "$ALL_APPLIED"))
+
+          if [ -z "$PENDING" ]; then
+            echo "✅ Ingen pending migrations — alt op-to-date."
+            exit 0
+          fi
+
+          echo "📋 Pending migrations:"
+          echo "$PENDING" | sed 's/^/  - /'
+          echo ""
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            echo "▶️  Applying $file"
+            psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$file"
+            psql "$DB_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO schema_migrations (filename) VALUES ('$file') ON CONFLICT DO NOTHING;"
+            echo "✅ $file applied + recorded."
+            echo ""
+          done <<< "$PENDING"
+
+          echo "🎉 All pending migrations applied."
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Migration failed. Tjek logs ovenfor + verificér DB-state via Supabase dashboard."
+          echo "::error::Hot-fix: kør den fejlende migration manuelt + indsæt i schema_migrations + retrig workflow."

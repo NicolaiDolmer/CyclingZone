@@ -77,6 +77,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Season-end nødlån sender nu `season_id` med til finance-loggen, så `emergency_loan` rows kan verificeres per sæson fremover.
 - Service-visible season 6 repair verifier findes som `backend/scripts/verifySeasonEndRepair.js` / `npm run season:end:verify-repair -- --markdown`.
 - UCI salary recalculation: GitHub Actions kører `backend/scripts/recalculateRiderSalaries.js` efter UCI scraperen. Scriptet kører `updateRiderValues` som nu kun opdaterer `prize_earnings_bonus` (3-sæson-gennemsnit) — DB genberegner `salary` automatisk via GENERATED-formel når `uci_points` eller `prize_earnings_bonus` ændres (v2.25)
+- **Auto-migrate workflow (v2.25, 2026-05-04):** `.github/workflows/auto-migrate.yml` kører nye `database/2026-*.sql` filer mod live Supabase ved push til main. Tracker applied filenames i `schema_migrations` tabel (PK = filename) for idempotency. Sleeps 180s for Vercel + backend deploy at færdiggøre, så `psql -f` med `ON_ERROR_STOP=1`. Setup-doc: `docs/AUTO_MIGRATION_SETUP.md` (kræver `SUPABASE_DB_URL` GitHub secret). Eliminerer manuel "kopier SQL ind i dashboard"-proces
 
 ### Sæson & Løb
 - Sæsonoversigt med race-kalender
