@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "2.23",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sæson-snapshot — én side svarer på \"Hvad skete der i sæson N?\"",
+        items: [
+          "Ny deelbar URL `/seasons/:seasonId` samler kalender, slutstilling og sæsonens vindere på ét skærmbillede. Eksisterende `SeasonEndPage` udvidet (ikke ny side) — bevarer slutstilling pr. division, op/ned-rykning og pointudviklings-charts uændret",
+          "Nyt: 4 vinder-kort øverst — 💰 Præmie-leader (mest CZ$ tjent fra løb), 💸 Største enkelt-transfer (køb/salg), 🔄 Mest aktive transfer-marked-hold, 🚴 Stage-king (flest etapesejre). Klikbare → hold-/rytter-profil",
+          "Nyt: Kalender-sektion lister alle løb i sæsonen med dato, type, præmiepulje og status (afsluttet/igang/kommende). Klik åbner løbets historikside",
+          "Sidebar: `Resultater → Sæsonresultater` omdøbt til `Sæson-snapshot` og peger nu på `/seasons` (auto-vælger aktiv eller seneste). Den gamle URL `/season-end` redirecter automatisk",
+          "Bibliotek-tab: `Sæson N`-cellen er nu en klikbar genvej til snapshot-siden — drill-down fra et konkret løb til \"hvilken sæson-kontekst spillede dette i?\"",
+          "Dropdown-skift opdaterer URL så snapshottet kan deles via link, og siden er forudsigelig deeplinkbar",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.22",
     date: "2026-05-04",
     label: "Beta",

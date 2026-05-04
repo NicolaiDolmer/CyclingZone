@@ -17,7 +17,7 @@ const TYPE_CONFIG = {
   watchlist_rider_listed:    { icon: "⭐", color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-[#e8c547]/15", link: "/transfers" },
   new_race:                  { icon: "🏁", color: "text-cz-1",      bg: "bg-cz-subtle border-cz-border",          link: "/races" },
   season_started:            { icon: "🚀", color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/dashboard" },
-  season_ended:              { icon: "🏁", color: "text-cz-1",      bg: "bg-cz-subtle border-cz-border",          link: "/season-end" },
+  season_ended:              { icon: "🏁", color: "text-cz-1",      bg: "bg-cz-subtle border-cz-border",          link: "/seasons" },
   salary_paid:               { icon: "💰", color: "text-cz-warning", bg: "bg-cz-warning-bg0/8 border-orange-500/15", link: "/finance" },
   sponsor_paid:              { icon: "💰", color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/finance" },
   loan_created:              { icon: "💰", color: "text-cz-info",   bg: "bg-cz-info-bg0/8 border-blue-500/15",   link: "/finance" },

@@ -43,7 +43,7 @@ function buildNavGroups(team) {
         { to: "/resultater",     label: "Overblik" },
         { to: "/standings",      label: "Ranglisten" },
         { to: "/rider-rankings", label: "Rytterrangliste" },
-        { to: "/season-end",     label: "Sæsonresultater" },
+        { to: "/seasons",        label: "Sæson-snapshot" },
         { to: "/hall-of-fame",   label: "Hall of Fame" },
       ],
     },

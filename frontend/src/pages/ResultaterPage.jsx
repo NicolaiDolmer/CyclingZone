@@ -7,7 +7,7 @@ const HUB_LINKS = [
   { to: "/standings",          label: "Ranglisten",      desc: "Holdranglisten for aktiv sæson",              icon: "🏆" },
   { to: "/rider-rankings",     label: "Rytterrangliste",  desc: "Individuelle resultater for alle ryttere",    icon: "🚴" },
   { to: "/races?tab=library",  label: "Løbsbibliotek",    desc: "Alle løb på tværs af sæsoner — søg & filtrér", icon: "📖" },
-  { to: "/season-end",         label: "Sæsonresultater",  desc: "Historiske sæsonafslutninger",                icon: "📅" },
+  { to: "/seasons",            label: "Sæson-snapshot",   desc: "Kalender, slutstilling og sæsonens vindere",  icon: "📅" },
   { to: "/hall-of-fame",       label: "Hall of Fame",     desc: "Rekorder og manager-rangliste",               icon: "👑" },
   { to: "/races?tab=points",   label: "Point & præmier",  desc: "UCI-point og præmieformler pr. løbsklasse",   icon: "💰" },
 ];

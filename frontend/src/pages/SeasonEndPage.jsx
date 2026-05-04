@@ -1,8 +1,23 @@
 ﻿import { useState, useEffect, Fragment } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
+
+const RACE_STATUS_LABEL = {
+  completed: { label: "Afsluttet", cls: "bg-cz-success-bg text-cz-success border-cz-success/30" },
+  active:    { label: "Igang",     cls: "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" },
+  scheduled: { label: "Kommende",  cls: "bg-cz-subtle text-cz-3 border-cz-border" },
+};
+
+function formatCZ(amount) {
+  return `${(amount || 0).toLocaleString("da-DK")} CZ$`;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("da-DK", { day: "numeric", month: "short" });
+}
 
 function MiniLineChart({ data, color }) {
   if (!data || data.length < 2) return <span className="text-cz-3 text-xs">—</span>;
@@ -26,17 +41,17 @@ function MiniLineChart({ data, color }) {
 
 export default function SeasonEndPage() {
   const navigate = useNavigate();
+  const { seasonId: urlSeasonId } = useParams();
   const [seasons, setSeasons] = useState([]);
   const [selectedSeason, setSelectedSeason] = useState(null);
   const [standings, setStandings] = useState([]);
   const [races, setRaces] = useState([]);
   const [pointsByTeam, setPointsByTeam] = useState({});
+  const [winners, setWinners] = useState({ prize: null, biggestTransfer: null, mostActive: null, stageKing: null });
   const [myTeamId, setMyTeamId] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadAll(); }, []);
-
-  async function loadAll() {
+  const loadInit = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
@@ -45,13 +60,15 @@ export default function SeasonEndPage() {
     const { data: seasonsData } = await supabase.from("seasons")
       .select("*").order("number", { ascending: false });
     setSeasons(seasonsData || []);
-
-    const latest = seasonsData?.[0];
-    if (latest) await loadSeason(latest);
     setLoading(false);
-  }
+  };
 
-  async function loadSeason(season) {
+  const changeSeason = (season) => {
+    if (!season) return;
+    navigate(`/seasons/${season.id}`);
+  };
+
+  const loadSeason = async (season) => {
     setSelectedSeason(season);
     const [standingsRes, racesRes] = await Promise.all([
       supabase.from("season_standings")
@@ -59,21 +76,25 @@ export default function SeasonEndPage() {
         .eq("season_id", season.id)
         .order("division").order("total_points", { ascending: false }),
       supabase.from("races")
-        .select("id, name, start_date")
+        .select("id, name, race_type, stages, start_date, status, prize_pool")
         .eq("season_id", season.id)
         .order("start_date"),
     ]);
 
-    const standings = (standingsRes.data || []).filter(s => !s.team?.is_ai);
+    const allStandings = standingsRes.data || [];
+    const standings = allStandings.filter(s => !s.team?.is_ai);
+    const humanTeamIds = new Set(standings.map(s => s.team_id));
     setStandings(standings);
     setRaces(racesRes.data || []);
 
-    // Build point progression per team per race
+    // Build point progression + winners per race
+    let resultsData = [];
     if (racesRes.data?.length) {
       const { data: results } = await supabase
         .from("race_results")
-        .select("rider:rider_id(team_id), prize_money, race_id")
+        .select("rider:rider_id(id, firstname, lastname, team_id, team:team_id(id, name, is_ai)), prize_money, race_id, result_type, rank")
         .in("race_id", racesRes.data.map(r => r.id));
+      resultsData = results || [];
 
       const prog = {};
       standings.forEach(s => { prog[s.team_id] = []; });
@@ -82,7 +103,7 @@ export default function SeasonEndPage() {
       standings.forEach(s => { cumulative[s.team_id] = 0; });
 
       racesRes.data.forEach(race => {
-        const raceResults = (results || []).filter(r => r.race_id === race.id);
+        const raceResults = resultsData.filter(r => r.race_id === race.id);
         const racePoints = {};
         raceResults.forEach(r => {
           if (r.rider?.team_id) {
@@ -97,7 +118,66 @@ export default function SeasonEndPage() {
 
       setPointsByTeam(prog);
     }
-  }
+
+    // Vindere
+    const teamMeta = Object.fromEntries(allStandings.map(s => [s.team_id, s.team]));
+
+    // 1. Præmie-leader: sum(prize_money) per human team
+    const prizeByTeam = {};
+    resultsData.forEach(r => {
+      const teamId = r.rider?.team_id;
+      if (!teamId || !humanTeamIds.has(teamId)) return;
+      prizeByTeam[teamId] = (prizeByTeam[teamId] || 0) + (r.prize_money || 0);
+    });
+    const prizeTop = Object.entries(prizeByTeam).sort((a, b) => b[1] - a[1])[0];
+    const prizeWinner = prizeTop ? { team: teamMeta[prizeTop[0]], amount: prizeTop[1] } : null;
+
+    // 2+3. Transfers: finance_transactions type=transfer_in/out for season
+    const { data: txData } = await supabase
+      .from("finance_transactions")
+      .select("team_id, amount, description, created_at, type, team:team_id(id, name, is_ai)")
+      .eq("season_id", season.id)
+      .in("type", ["transfer_in", "transfer_out"]);
+
+    const txs = (txData || []).filter(t => !t.team?.is_ai);
+
+    // Største enkelt-transfer = max ABS(amount), but use type='transfer_in' to count seller's perspective (avoids double-count of same transfer)
+    const sells = txs.filter(t => t.type === "transfer_in");
+    const biggest = sells.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))[0];
+    const biggestTransfer = biggest ? {
+      team: biggest.team, amount: Math.abs(biggest.amount), description: biggest.description,
+    } : null;
+
+    // Mest aktive: count transactions per team (in + out)
+    const activeByTeam = {};
+    txs.forEach(t => { activeByTeam[t.team_id] = (activeByTeam[t.team_id] || 0) + 1; });
+    const activeTop = Object.entries(activeByTeam).sort((a, b) => b[1] - a[1])[0];
+    const mostActive = activeTop ? { team: teamMeta[activeTop[0]] || txs.find(t => t.team_id === activeTop[0])?.team, count: activeTop[1] } : null;
+
+    // 4. Stage-king: count rank=1 stage results per rider
+    const stageWinsByRider = {};
+    resultsData.forEach(r => {
+      if (r.result_type !== "stage" || r.rank !== 1) return;
+      if (!r.rider?.id) return;
+      const k = r.rider.id;
+      if (!stageWinsByRider[k]) stageWinsByRider[k] = { rider: r.rider, count: 0 };
+      stageWinsByRider[k].count += 1;
+    });
+    const stageTop = Object.values(stageWinsByRider).sort((a, b) => b.count - a.count)[0];
+    const stageKing = stageTop || null;
+
+    setWinners({ prize: prizeWinner, biggestTransfer, mostActive, stageKing });
+  };
+
+  useEffect(() => { loadInit(); }, []);
+
+  useEffect(() => {
+    if (!seasons.length) return;
+    let target = null;
+    if (urlSeasonId) target = seasons.find(s => s.id === urlSeasonId);
+    if (!target) target = seasons.find(s => s.status === "active") || seasons[0];
+    if (target && target.id !== selectedSeason?.id) loadSeason(target);
+  }, [urlSeasonId, seasons]);
 
   // Group standings by division
   const byDiv = standings.reduce((acc, s) => {
@@ -117,14 +197,19 @@ export default function SeasonEndPage() {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-cz-1">Sæsonresultater</h1>
-          <p className="text-cz-3 text-sm">Slutstillinger, op/nedrykning og pointudvikling</p>
+          <h1 className="text-xl font-bold text-cz-1">
+            {selectedSeason ? `Sæson ${selectedSeason.number}` : "Sæson-snapshot"}
+          </h1>
+          <p className="text-cz-3 text-sm">
+            {selectedSeason?.status === "active" ? "Igangværende" : "Afsluttet"} ·
+            kalender, slutstilling og sæsonens vindere
+          </p>
         </div>
         <select
           value={selectedSeason?.id || ""}
           onChange={e => {
             const s = seasons.find(s => s.id === e.target.value);
-            if (s) loadSeason(s);
+            changeSeason(s);
           }}
           className="bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
           {seasons.map(s => (
@@ -143,6 +228,80 @@ export default function SeasonEndPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-6">
+          {/* Sæsonens vindere */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <WinnerCard
+              icon="💰"
+              title="Præmie-leader"
+              primary={winners.prize?.team?.name || "—"}
+              secondary={winners.prize ? `+${formatCZ(winners.prize.amount)} tjent` : "Ingen præmier endnu"}
+              onClick={() => winners.prize?.team?.id && navigate(`/teams/${winners.prize.team.id}`)}
+            />
+            <WinnerCard
+              icon="💸"
+              title="Største transfer"
+              primary={winners.biggestTransfer ? formatCZ(winners.biggestTransfer.amount) : "—"}
+              secondary={winners.biggestTransfer
+                ? (winners.biggestTransfer.description || winners.biggestTransfer.team?.name || "Transfer")
+                : "Ingen transfers"}
+              onClick={() => winners.biggestTransfer?.team?.id && navigate(`/teams/${winners.biggestTransfer.team.id}`)}
+            />
+            <WinnerCard
+              icon="🔄"
+              title="Mest aktive"
+              primary={winners.mostActive?.team?.name || "—"}
+              secondary={winners.mostActive ? `${winners.mostActive.count} transfers` : "Ingen handler"}
+              onClick={() => winners.mostActive?.team?.id && navigate(`/teams/${winners.mostActive.team.id}`)}
+            />
+            <WinnerCard
+              icon="🚴"
+              title="Stage-king"
+              primary={winners.stageKing?.rider
+                ? `${winners.stageKing.rider.firstname} ${winners.stageKing.rider.lastname}`
+                : "—"}
+              secondary={winners.stageKing
+                ? `${winners.stageKing.count} etapesejr${winners.stageKing.count === 1 ? "" : "e"}`
+                : "Ingen etaper kørt"}
+              onClick={() => winners.stageKing?.rider?.id && navigate(`/riders/${winners.stageKing.rider.id}`)}
+            />
+          </div>
+
+          {/* Kalender */}
+          {races.length > 0 && (
+            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-cz-border flex items-center justify-between">
+                <h2 className="font-bold text-cz-1 text-sm">📅 Kalender — {races.length} løb</h2>
+                <span className="text-cz-3 text-xs">
+                  {races.filter(r => r.status === "completed").length} afsluttet ·
+                  {" "}{races.filter(r => r.status === "scheduled").length} kommende
+                </span>
+              </div>
+              <div className="divide-y divide-cz-border">
+                {races.map(race => {
+                  const meta = RACE_STATUS_LABEL[race.status] || RACE_STATUS_LABEL.scheduled;
+                  return (
+                    <div key={race.id}
+                      onClick={() => navigate(`/race-archive/${encodeURIComponent(race.name)}`)}
+                      className="flex items-center gap-3 px-5 py-2.5 hover:bg-cz-subtle cursor-pointer transition-colors">
+                      <span className="text-cz-3 text-xs font-mono w-14 flex-shrink-0">{formatDate(race.start_date)}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-cz-1 text-sm font-medium truncate">{race.name}</p>
+                        <p className="text-cz-3 text-xs">
+                          {race.race_type === "stage_race" ? `Etapeløb · ${race.stages} etaper` : "Enkeltdagsløb"}
+                          {race.prize_pool ? ` · ${formatCZ(race.prize_pool)}` : ""}
+                        </p>
+                      </div>
+                      <span className={`text-[9px] uppercase px-2 py-0.5 rounded-full border flex-shrink-0 ${meta.cls}`}>
+                        {meta.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Slutstilling */}
           {[1, 2, 3].map(div => {
             const divStandings = byDiv[div] || [];
             if (!divStandings.length) return null;
@@ -256,6 +415,21 @@ export default function SeasonEndPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function WinnerCard({ icon, title, primary, secondary, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="bg-cz-card border border-cz-border rounded-xl p-3 text-left hover:border-cz-accent/30 transition-colors">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <span className="text-base leading-none">{icon}</span>
+        <span className="text-cz-3 text-[10px] uppercase tracking-wider font-semibold">{title}</span>
+      </div>
+      <p className="text-cz-1 font-bold text-sm truncate">{primary}</p>
+      <p className="text-cz-3 text-xs truncate mt-0.5">{secondary}</p>
+    </button>
   );
 }
 

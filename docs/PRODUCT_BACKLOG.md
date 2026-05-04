@@ -101,12 +101,12 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 - Sidebar: kun ét race-link (`Liga → Løb`). `Resultater → Løbsarkiv` fjernet
 - Backend: `GET /api/races?season=&class=&q=&status=` (auth)
 
-**S9b — `/seasons/:seasonId` snapshot (resterende)**
-- Komplet sæson-snapshot: kalender + slutstilling (top 3 pr. division) + sæsonens største vindere (præmie-leader, points-leader, transfers)
-- Frontend: ny `SeasonCalendarPage.jsx` (~150 linjer)
-- Backend: muligvis udvid `GET /api/season-end?seasonId=` eller ny `/api/seasons/:id/snapshot`
-
-**Kritiske filer (S9b):** `backend/routes/api.js` · `frontend/src/pages/SeasonCalendarPage.jsx` (ny) · `frontend/src/App.jsx`
+**S9b ✅ (v2.23, 2026-05-04):** Sæson-snapshot
+- `/seasons/:seasonId` deelbar URL — refaktor af `SeasonEndPage` (genbrug, ikke ny side). Kalender + slutstilling pr. division + 4 vinder-kort
+- Vindere: 💰 præmie-leader (sum prize_money), 💸 største enkelt-transfer (max ABS finance_transactions), 🔄 mest aktive transfer-marked-hold (count tx), 🚴 stage-king (count rank=1 stage)
+- Routing: `/seasons` (auto-vælger aktiv/seneste), `/seasons/:seasonId`, `/season-end` redirecter
+- IA: sidebar `Sæson-snapshot`, ResultaterPage hub-card opdateret, Bibliotek-tab Sæson-celle klikbar
+- Ingen ny backend — alt via supabase-client
 
 ---
 

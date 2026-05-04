@@ -205,6 +205,26 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **Fix:** Tilføjet 4 aliases (`cz-{success,danger,warning,info}-bg0`) der peger på respektive base-farve `var()`. Plain-form klasser virker; opacity-varianter (fx `/8`) virker stadig ikke pga. bredere pre-eks. bug — løst i v2.21 nedenfor.
 - **Verificeret runtime via Claude Preview:** `bg-cz-danger-bg0` = `rgb(185, 28, 28)` ✅. Final Whistle Discord-embed format auto-testet mod Discord limits.
 
+### Sæson-snapshot (v2.23, 2026-05-04 — S9b)
+- **Mål:** Manager skal kunne svare "Hvad skete der i sæson N?" på ét skærmbillede via deelbar URL `/seasons/:seasonId` — kalender + slutstilling + sæsonens vindere væves sammen
+- **Strategi:** Genbrug af eksisterende `SeasonEndPage.jsx` (315 linjer → ~470 linjer) — refaktoreret til at læse `:seasonId` fra URL via `useParams`, fallback til aktiv eller seneste sæson. Slutstilling pr. division med op/ned-rykning, mini-charts og pointudviklings-charts bevaret uændret
+- **Routing:**
+  - `App.jsx`: nye routes `seasons` (no-param, picker active/latest) og `seasons/:seasonId`. Gammel `season-end`-route konverteret til `<Navigate to="/seasons" replace />` for backwards-compat
+  - `Layout.jsx`: sidebar `Resultater → Sæsonresultater (/season-end)` → `Sæson-snapshot (/seasons)`
+  - `ResultaterPage.jsx`: hub-card "Sæsonresultater (/season-end)" → "Sæson-snapshot (/seasons)" med ny desc
+  - `RacesPage.jsx` Bibliotek-tab: Sæson-cellen er nu klikbar `<button>` til `/seasons/{id}` (med `e.stopPropagation()` så row-click til race-archive bevares)
+- **Vinder-aggregering (4 kort, alle klikbare):**
+  - 💰 **Præmie-leader**: sum(`race_results.prize_money`) per `rider.team_id`, filtreret til human teams. Klik → hold-profil
+  - 💸 **Største enkelt-transfer**: max(ABS(`finance_transactions.amount`)) WHERE `season_id={id}` AND `type='transfer_in'` (sælger-perspektiv undgår double-count). Vises beløb + description (rytter-navn) + hold. Klik → hold-profil
+  - 🔄 **Mest aktive transfer-marked-hold**: count(`finance_transactions`) per `team_id` WHERE `type IN ('transfer_in','transfer_out')`. Klik → hold-profil
+  - 🚴 **Stage-king**: count(`race_results` WHERE `result_type='stage' AND rank=1`) per rider_id. Vises navn + antal etapesejre. Klik → rytter-profil
+- **Kalender-sektion:** alle løb i sæsonen sorteret kronologisk (`races.start_date ASC`). Viser dato (DD MMM), navn, type (etapeløb/enkeltdag), præmiepulje og status-badge (afsluttet/igang/kommende). Header viser totals (`X afsluttet · Y kommende`). Klik på række → `/race-archive/:raceSlug`
+- **Backend:** Ingen nye endpoints — alt læses via supabase-client (`season_standings`, `races`, `race_results`, `finance_transactions`). Reuse-pattern matcher resten af `SeasonEndPage`
+- **URL-flow:** Dropdown-skift kalder `changeSeason(s)` → `navigate('/seasons/{id}')`. `useEffect([urlSeasonId, seasons])` reagerer på URL og kalder `loadSeason(target)`. Re-renders triggered af split useEffect-pattern (init + load) for at undgå `react-hooks/exhaustive-deps` parser-error når function-decl forward-refereres
+- **Empty-states:** Vinder-kort viser "—" + "Ingen X endnu" hvis ingen data. Kalender-sektion vises kun hvis `races.length > 0`
+- **Bevidst ikke i denne slice:** ingen ny dedikeret `SeasonCalendarPage.jsx` (genbrug var bedre — undgår kode-død), ingen StandingsPage-link til snapshot (kan tilføjes senere hvis manager-feedback efterlyser det)
+- Verificeret: `npm run lint` 0 errors (41 pre-eks. warnings — uændret), `npm run build` grøn (10.74s), `npm test` 104/104. UI-smoke pending — manager validerer kalender-orden, vinder-aggregering på live data og dropdown ↔ URL-sync efter deploy
+
 ### Løb-hub konsolidering (v2.22, 2026-05-04 — S9a)
 - **Mål:** Konsolidér 3 overlappende race-sider til ét hub-anker så managere har én indgang i stedet for 3 sidebar-entries i 2 forskellige sektioner
 - **Frontend:** `RacesPage.jsx` udvidet med 2 nye tabs ud over eksisterende `calendar`/`submit`/`approve`:

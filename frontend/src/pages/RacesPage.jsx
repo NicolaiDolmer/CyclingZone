@@ -535,7 +535,13 @@ export default function RacesPage() {
                           className="hover:bg-cz-subtle cursor-pointer transition-colors">
                           <td className="px-4 py-2.5 text-cz-1 font-medium">{r.name}</td>
                           <td className="px-4 py-2.5 text-cz-2 text-xs">
-                            {r.season ? `Sæson ${r.season.number}` : "—"}
+                            {r.season ? (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); navigate(`/seasons/${r.season.id}`); }}
+                                className="text-cz-accent-t hover:underline">
+                                Sæson {r.season.number} →
+                              </button>
+                            ) : "—"}
                           </td>
                           <td className="px-4 py-2.5 text-cz-2 text-xs">
                             {classMeta?.label ?? r.race_class ?? "—"}

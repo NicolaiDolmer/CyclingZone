@@ -127,7 +127,9 @@ export default function App() {
             <Route path="head-to-head" element={<HeadToHeadPage />} />
             <Route path="patch-notes" element={<PatchNotesPage />} />
             <Route path="races" element={<RacesPage />} />
-            <Route path="season-end" element={<SeasonEndPage />} />
+            <Route path="seasons" element={<SeasonEndPage />} />
+            <Route path="seasons/:seasonId" element={<SeasonEndPage />} />
+            <Route path="season-end" element={<Navigate to="/seasons" replace />} />
             <Route path="resultater" element={<ResultaterPage />} />
             <Route path="rider-rankings" element={<RiderRankingsPage />} />
             <Route path="race-archive" element={<Navigate to="/races?tab=library" replace />} />
