@@ -1,23 +1,24 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**S9b Sæson-snapshot leveret + pushet (v2.23, a612069).** `/seasons/:seasonId` deelbar URL der samler kalender + slutstilling + 4 vinder-kort (præmie-leader, største transfer, mest aktive, stage-king) på ét skærmbillede. SeasonEndPage refaktoreret (genbrug, ikke ny side). Sidebar `Sæson-snapshot`, Bibliotek-tab Sæson-celle nu klikbar. Pending: browser-smoke per soak-gate.
+**Soak-gate S9 lukket + v2.23.1 polish-fix shipped.** Browser-smoke 10/10 punkter (8 PASS, 2 PARTIAL pga. data-state). 0 P0/P1. P2-B (tomme vinder-kort hover-bug) fixet i samme session — `disabled` + `cursor-default` på empty cards. Resterende 3 P2'er → S9-polish-slice. Rapport: `docs/archive/SMOKE_S9_2026-05-04.md`.
 
 ## Soak-gate
-**Aktiv: ja** — S9a (v2.22) + S9b (v2.23) er user-facing. Næste session: smoke `/seasons/{id}` direkte URL, sidebar `Sæson-snapshot`, Bibliotek-tab Sæson-cell-klik, dropdown ↔ URL-sync, `/season-end` redirect, vinder-kort på live data, kalender kronologi. S9a-detaljer i FEATURE_STATUS § Løb-hub. **S9a kode-smoke kvitteret:** alle 5 tabs + redirects + back-link + sidebar IA OK statisk; browser-smoke pending.
+**Aktiv: nej** — kvitteret 2026-05-04. S9a + S9b verificeret. P2-A (filter URL-sync), P2-C (deadline-day dedup), P2-D (race-slug encoding) deferred til polish-slice.
 
 ## Open beta status
 **Alle 7 launch-gates ✅** — soft-launch-klar.
 
 ## Senest leveret
-- 2026-05-04: **S9b Sæson-snapshot** (v2.23) — `/seasons/:seasonId` udvidet SeasonEndPage. Kalender-sektion + 4 vinder-kort (💰 præmie · 💸 transfer · 🔄 aktivitet · 🚴 stage). Sidebar `Sæson-snapshot`, `/season-end` redirect, Bibliotek-tab Sæson-celle klikbar. Ingen ny backend. Lint 0/41, build 10.74s, tests 104/104.
-- 2026-05-04: **S9a Løb-hub konsolidering** (v2.22) — `/races` udvidet med Bibliotek + Point & præmier-tabs. Filtre, useMemo, URL-sync. `/race-archive` redirect, sidebar renset.
+- 2026-05-04: **v2.23.1 polish + Soak-gate S9 rapport** — tomme vinder-kort `/seasons/:id` ikke-klikbare. 10/10 punkter, 4 P2 identificeret, ship OK. Lint 0/41, build 9.87s.
+- 2026-05-04: **S9b Sæson-snapshot** (v2.23) — `/seasons/:seasonId` udvidet SeasonEndPage med kalender + 4 vinder-kort. Sidebar `Sæson-snapshot`, `/season-end` redirect.
+- 2026-05-04: **S9a Løb-hub konsolidering** (v2.22) — `/races` udvidet med Bibliotek + Point & præmier-tabs.
 - Ældre v2.21 og før → `docs/archive/NOW_HISTORIK_2026-05-03.md` + FEATURE_STATUS
 
 ## Næste session — prioriteter
-1. Browser-smoke S9a + S9b kombineret (soak-gate kvittering — punkter listet ovenfor)
-2. S8.5: import-feedback UI (preview-tilstand til `POST /api/admin/import-results-sheets`)
-3. S10: Admin økonomi-panel
+1. S8.5: import-feedback UI (preview-tilstand til `POST /api/admin/import-results-sheets`)
+2. S10: Admin økonomi-panel
+3. S9-polish-slice (samlet): filter URL-sync på Bibliotek (P2-A), deadline-day dedup (P2-C), race-slug kebab-case (P2-D)
 
 ## Kritiske invarianter
 - Discord DM-fejl må aldrig blokere transaction (best-effort try/catch i `notifyDiscordDM`)

@@ -235,6 +235,7 @@ export default function SeasonEndPage() {
               title="Præmie-leader"
               primary={winners.prize?.team?.name || "—"}
               secondary={winners.prize ? `+${formatCZ(winners.prize.amount)} tjent` : "Ingen præmier endnu"}
+              hasData={!!winners.prize?.team?.id}
               onClick={() => winners.prize?.team?.id && navigate(`/teams/${winners.prize.team.id}`)}
             />
             <WinnerCard
@@ -244,6 +245,7 @@ export default function SeasonEndPage() {
               secondary={winners.biggestTransfer
                 ? (winners.biggestTransfer.description || winners.biggestTransfer.team?.name || "Transfer")
                 : "Ingen transfers"}
+              hasData={!!winners.biggestTransfer?.team?.id}
               onClick={() => winners.biggestTransfer?.team?.id && navigate(`/teams/${winners.biggestTransfer.team.id}`)}
             />
             <WinnerCard
@@ -251,6 +253,7 @@ export default function SeasonEndPage() {
               title="Mest aktive"
               primary={winners.mostActive?.team?.name || "—"}
               secondary={winners.mostActive ? `${winners.mostActive.count} transfers` : "Ingen handler"}
+              hasData={!!winners.mostActive?.team?.id}
               onClick={() => winners.mostActive?.team?.id && navigate(`/teams/${winners.mostActive.team.id}`)}
             />
             <WinnerCard
@@ -262,6 +265,7 @@ export default function SeasonEndPage() {
               secondary={winners.stageKing
                 ? `${winners.stageKing.count} etapesejr${winners.stageKing.count === 1 ? "" : "e"}`
                 : "Ingen etaper kørt"}
+              hasData={!!winners.stageKing?.rider?.id}
               onClick={() => winners.stageKing?.rider?.id && navigate(`/riders/${winners.stageKing.rider.id}`)}
             />
           </div>
@@ -418,11 +422,14 @@ export default function SeasonEndPage() {
   );
 }
 
-function WinnerCard({ icon, title, primary, secondary, onClick }) {
+function WinnerCard({ icon, title, primary, secondary, onClick, hasData }) {
   return (
     <button
       onClick={onClick}
-      className="bg-cz-card border border-cz-border rounded-xl p-3 text-left hover:border-cz-accent/30 transition-colors">
+      disabled={!hasData}
+      className={`bg-cz-card border border-cz-border rounded-xl p-3 text-left transition-colors ${
+        hasData ? "hover:border-cz-accent/30 cursor-pointer" : "cursor-default"
+      }`}>
       <div className="flex items-center gap-1.5 mb-1.5">
         <span className="text-base leading-none">{icon}</span>
         <span className="text-cz-3 text-[10px] uppercase tracking-wider font-semibold">{title}</span>

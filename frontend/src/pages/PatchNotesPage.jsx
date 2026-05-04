@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.23.1",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sæson-snapshot — tomme vinder-kort er nu ikke-klikbare",
+        items: [
+          "Da Sæson 1 stadig er igangværende uden afsluttede løb, viser de 4 vinder-kort på `/seasons/:seasonId` tom-state (\"Ingen præmier endnu\" / \"Ingen transfers\" / \"Ingen handler\" / \"Ingen etaper kørt\"). Kortene rendrede dog stadig som klikbare buttons med hover-ring — klik gjorde dog intet, hvilket var forvirrende",
+          "Fix: tomme vinder-kort har nu `cursor: default`, ingen hover-effekt og er `disabled`. Når data dukker op (efter første løb afsluttes), bliver kortene automatisk klikbare igen og linker til hold-/rytter-profil",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.23",
     date: "2026-05-04",
     label: "Beta",
