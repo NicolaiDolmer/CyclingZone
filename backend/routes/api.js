@@ -1712,7 +1712,7 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
     if (!borrower || borrower.balance < price)
       return res.status(400).json({ error: "Du har ikke råd til at udnytte købsoptionen" });
 
-    await supabase.from("riders").update({ team_id: req.team.id }).eq("id", loan.rider_id);
+    await supabase.from("riders").update({ team_id: req.team.id, acquired_at: new Date().toISOString() }).eq("id", loan.rider_id);
     await supabase.from("teams").update({ balance: borrower.balance - price }).eq("id", req.team.id);
     await supabase.from("teams").update({ balance: lender.balance + price }).eq("id", loan.from_team_id);
     await supabase.from("finance_transactions").insert([
@@ -1738,7 +1738,7 @@ router.post("/admin/override-rider", requireAdmin, async (req, res) => {
   const { data: rider } = await supabase.from("riders").select("firstname, lastname").eq("id", rider_id).single();
   if (!rider) return res.status(404).json({ error: "Rytter ikke fundet" });
   const { error } = await supabase.from("riders")
-    .update({ team_id: team_id || null, pending_team_id: null }).eq("id", rider_id);
+    .update({ team_id: team_id || null, pending_team_id: null, acquired_at: team_id ? new Date().toISOString() : null }).eq("id", rider_id);
   if (error) return res.status(500).json({ error: error.message });
   const teamRes = team_id ? await supabase.from("teams").select("name").eq("id", team_id).single() : null;
   const teamName = teamRes?.data?.name || "fri agent";
@@ -2554,8 +2554,9 @@ router.post("/admin/transfer-window/open", requireAdmin, async (req, res) => {
 
     let ridersProcessed = 0;
     if (pendingRiders && pendingRiders.length > 0) {
+      const flushedAt = new Date().toISOString();
       await Promise.all(pendingRiders.map(r =>
-        supabase.from("riders").update({ team_id: r.pending_team_id, pending_team_id: null }).eq("id", r.id)
+        supabase.from("riders").update({ team_id: r.pending_team_id, pending_team_id: null, acquired_at: flushedAt }).eq("id", r.id)
       ));
       ridersProcessed = pendingRiders.length;
     }

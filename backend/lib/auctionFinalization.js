@@ -273,6 +273,7 @@ async function finalizeAuctionRecord({
             ? {
                 team_id: effectiveBidderId,
                 pending_team_id: null,
+                acquired_at: actualEnd,
               }
             : {
                 pending_team_id: effectiveBidderId,
@@ -400,6 +401,7 @@ async function finalizeAuctionRecord({
         .update({
           team_id: bankTeam.id,
           pending_team_id: null,
+          acquired_at: actualEnd,
         })
         .eq("id", auction.rider.id)
     );

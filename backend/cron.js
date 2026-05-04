@@ -22,6 +22,8 @@ import {
 } from "./lib/notificationService.js";
 import { notifyAuctionWon, getDefaultWebhook, sendWebhook } from "./lib/discordNotifier.js";
 import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
+import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
+import { createEmergencyLoan } from "./lib/loanEngine.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, '../.env') });
 
@@ -161,6 +163,23 @@ async function runDeadlineDayCron() {
   }
 }
 
+// ─── Squad Enforcement ───────────────────────────────────────────────────────
+
+async function runSquadEnforcementCron() {
+  const result = await processSquadEnforcementCron({
+    supabase,
+    notifyTeamOwner,
+    createEmergencyLoanFn: createEmergencyLoan,
+    now: new Date(),
+    onError: ({ teamId, error }) => {
+      console.error(`  ❌ Squad enforcement failed for team ${teamId}:`, error.message);
+    },
+  });
+  if (result.claimed) {
+    console.log(`🛂 Squad enforcement: window ${result.windowId} — ${result.enforced} hold håndhævet`);
+  }
+}
+
 // ─── Scheduler ───────────────────────────────────────────────────────────────
 
 export function startCron() {
@@ -181,6 +200,15 @@ export function startCron() {
       await runDeadlineDayCron();
     } catch (err) {
       console.error("Cron error (deadline day):", err.message);
+    }
+  }, 5 * 60 * 1000);
+
+  // Every 5 minutes: squad enforcement (kun aktiv på lukkede vinduer der ikke er enforced)
+  setInterval(async () => {
+    try {
+      await runSquadEnforcementCron();
+    } catch (err) {
+      console.error("Cron error (squad enforcement):", err.message);
     }
   }, 5 * 60 * 1000);
 

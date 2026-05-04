@@ -419,6 +419,7 @@ test("finalizeAuctionById pays the actual AI owner instead of the initiator", as
   assert.deepEqual(riderUpdates, [{
     team_id: "buyer-team",
     pending_team_id: null,
+    acquired_at: "2026-04-22T08:00:00.000Z",
   }]);
   assert.equal(financeInserts.length, 1);
   assert.deepEqual(financeInserts[0], [
@@ -592,6 +593,7 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
   assert.deepEqual(riderUpdates, [{
     team_id: "buyer-team",
     pending_team_id: null,
+    acquired_at: "2026-04-22T10:00:00.000Z",
   }]);
   assert.equal(financeInserts.length, 1);
   assert.deepEqual(financeInserts[0], [
@@ -769,6 +771,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on an 
   assert.deepEqual(riderUpdates, [{
     team_id: "initiator-team",
     pending_team_id: null,
+    acquired_at: "2026-04-25T10:00:00.000Z",
   }]);
   assert.equal(financeInserts.length, 1);
   assert.deepEqual(financeInserts[0], [
@@ -863,6 +866,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
   assert.deepEqual(riderUpdates, [{
     team_id: "initiator-team",
     pending_team_id: null,
+    acquired_at: "2026-04-25T10:00:00.000Z",
   }]);
   assert.equal(financeInserts.length, 1);
   assert.deepEqual(financeInserts[0], [
@@ -948,6 +952,7 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
   assert.deepEqual(riderUpdates, [{
     team_id: "initiator-team",
     pending_team_id: null,
+    acquired_at: "2026-04-29T17:00:00.000Z",
   }]);
   assert.deepEqual(financeInserts[0], [{
     team_id: "initiator-team",

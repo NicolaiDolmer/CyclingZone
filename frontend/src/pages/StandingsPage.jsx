@@ -96,11 +96,12 @@ export default function StandingsPage() {
 
   useEffect(() => { loadAll(); }, []);
 
+  const effectivePts = (s) => ((s?.total_points || 0) - (s?.penalty_points || 0));
   const divStandings = standings
     .filter(s => s.team?.division === divTab)
-    .sort((a, b) => (b.total_points || 0) - (a.total_points || 0));
+    .sort((a, b) => effectivePts(b) - effectivePts(a));
 
-  const maxPts = divStandings[0]?.total_points || 1;
+  const maxPts = effectivePts(divStandings[0]) || 1;
   const color = DIV_COLORS[divTab] || "#e8c547";
   const canPromote = divTab > 1;
   const canRelegate = divTab < 3;
@@ -164,7 +165,9 @@ export default function StandingsPage() {
                 {divStandings.map((s, i) => {
                   const isMe = s.team_id === myTeamId;
                   const prog = racePoints[s.team_id] || [];
-                  const ptsWidth = Math.round(((s.total_points || 0) / maxPts) * 100);
+                  const eff = effectivePts(s);
+                  const penalty = s.penalty_points || 0;
+                  const ptsWidth = Math.round((eff / maxPts) * 100);
                   const isPromotion = i < 2 && canPromote;
                   const isRelegation = i >= divStandings.length - 2 && canRelegate;
                   const rowStyle = isPromotion
@@ -211,8 +214,16 @@ export default function StandingsPage() {
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden md:table-cell font-mono">{s.podiums || 0}</td>
                         <td className="px-4 py-3.5 text-right">
                           <span className="font-mono font-bold" style={{ color: isMe ? "#e8c547" : color }}>
-                            {(s.total_points || 0).toLocaleString("da-DK")}
+                            {eff.toLocaleString("da-DK")}
                           </span>
+                          {penalty > 0 && (
+                            <span
+                              className="ml-1.5 font-mono text-[10px] text-cz-danger"
+                              title={`Trupstørrelse-fradrag: ${penalty} point (${(s.total_points || 0).toLocaleString("da-DK")} optjent − ${penalty} fradrag)`}
+                            >
+                              (−{penalty})
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3.5 text-right hidden lg:table-cell">
                           <MiniSparkline points={prog} color={isMe ? "#e8c547" : color} />

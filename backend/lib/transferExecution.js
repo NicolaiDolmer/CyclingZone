@@ -238,6 +238,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       .from("riders")
       .update({
         team_id: offer.buyer_team_id,
+        acquired_at: new Date().toISOString(),
       })
       .eq("id", rider.id)
       .eq("team_id", offer.seller_team_id)
@@ -332,10 +333,11 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     return failure(400, message.error, issue.code);
   }
 
+  const swapTimestamp = new Date().toISOString();
   const movedOffered = await expectMaybeSingle(
     supabase
       .from("riders")
-      .update({ team_id: swap.receiving_team_id })
+      .update({ team_id: swap.receiving_team_id, acquired_at: swapTimestamp })
       .eq("id", offered.id)
       .eq("team_id", swap.proposing_team_id)
       .select("id")
@@ -353,7 +355,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   const movedRequested = await expectMaybeSingle(
     supabase
       .from("riders")
-      .update({ team_id: swap.proposing_team_id })
+      .update({ team_id: swap.proposing_team_id, acquired_at: swapTimestamp })
       .eq("id", requested.id)
       .eq("team_id", swap.receiving_team_id)
       .select("id")
@@ -361,7 +363,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
 
   if (!movedRequested) {
     await expectMutation(
-      supabase.from("riders").update({ team_id: swap.proposing_team_id }).eq("id", offered.id)
+      supabase.from("riders").update({ team_id: swap.proposing_team_id, acquired_at: swapTimestamp }).eq("id", offered.id)
     );
     await withdrawSwapOffer(supabase, swap.id);
     await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", "Byttehandel annulleret",

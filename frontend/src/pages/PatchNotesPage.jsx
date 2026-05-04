@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "2.29",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Trupstørrelse håndhæves automatisk ved vinduesluk (S-03)",
+        items: [
+          "Hidtil har der ikke været en konsekvens for at gå i sæson med ulovlig trup. Squad-grænser (D1 20-30, D2 14-20, D3 8-10) er en dokumenteret invariant, men håndhævelse manglede helt — managers kunne starte sæsonen med fx 5 ryttere i D3 og bare scoor færre point. Det fjernede al deadline-day-pres og var sidste P0 i pre-launch roadmap der kunne lade en manager rage launch-balancen",
+          "Når et transfervindue lukker, fyrer cron én gang pr. lukket vindue (atomic claim på `transfer_windows.squad_enforcement_completed_at` — samme idempotency-mønster som Final Whistle-rapporten). Hvert human-team tjekkes mod sine division-grænser og auto-justeres: under min → cheapeste tilgængelige fri-/AI-rytter købes til 150% × market_value (nødlån oprettes hvis balancen ikke rækker); over max → seneste-erhvervede ejede rytter sælges tilbage til ai_team_id med fuld market_value som kredit",
+          "Bøde + point-fradrag pr. afvigende rytter: 100.000 CZ$ + 200 point (begge retninger). Bøden bogføres som `squad_violation_fine` i finance_transactions; fradraget akkumuleres i en ny `season_standings.penalty_points`-kolonne der ikke overskrives af `updateStandings`-recompute fra race_results. Ranking i ranglisten bruger effektive points (`total_points − penalty_points`) så fradraget faktisk koster placering",
+          "Rangliste-UI viser nu fradraget eksplicit: \"1.500 (−200)\" med tooltip der forklarer både optjente og fradragne points. Ingen visuel støj for hold uden fradrag — notationen vises kun når penalty_points > 0",
+          "Ny `riders.acquired_at`-kolonne sporer hvornår en rytter blev erhvervet, så over_max-salg går efter senest-tilkomne. Backfill brugte `created_at` som rimeligt udgangspunkt. Live-opdatering tilføjet til alle 6 write-paths: auktions-finalisering (vinder + bank-køb), direkte transfer, byttehandel (begge retninger + revert-path), lån-buyout, admin-override, samt window-open flush af pending-team-id",
+          "Migration: `database/2026-05-04-squad-enforcement.sql` — tilføjer `riders.acquired_at`, `transfer_windows.squad_enforcement_completed_at`, `season_standings.penalty_points`, plus tre finance-types (`auto_squad_purchase`, `auto_squad_sale`, `squad_violation_fine`) og notification-type `squad_enforced`. 7/7 unit tests grønne for `enforceTeamSquadCompliance` (within-limits no-op, auto-purchase med bøde, auto-sale med bøde, nødlån-fallback, AI-skip) + idempotency-test for cron-claim",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.28",
     date: "2026-05-04",
     label: "Beta",

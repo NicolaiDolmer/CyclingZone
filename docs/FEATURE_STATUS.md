@@ -164,6 +164,16 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - `DeadlineDayBoard` (`/deadline-day`) — Panic Board: alle holds truppestørrelse vs. divisions-minimum, grøn/gul/rød, 30s poll; vises kun under Deadline Day; nav-link permanent under Marked (v2.09)
 - `GET /api/deadline-day/squads` — returnerer alle ikke-bank holds squad-count vs. MARKET_SQUAD_LIMITS, med status ok/warning/critical
 
+### Trupstørrelse-håndhævelse (S-03 v2.29, 2026-05-04)
+- `backend/lib/squadEnforcement.js` — `enforceTeamSquadCompliance` + `processSquadEnforcementCron`. Cron fyrer hver 5. min via `cron.js`, men kun aktiv på lukkede vinduer der ikke er enforced endnu (atomic claim på `transfer_windows.squad_enforcement_completed_at`)
+- Per-team logik: under min → auto-køb cheapeste fri-/AI-rytter til 150% × market_value (nødlån via `createEmergencyLoan` hvis utilstrækkelig balance); over max → auto-sælg senest-erhvervede til ai_team_id (eller NULL) for fuld market_value som kredit
+- Bøde: `squad_violation_fine` finance_transaction (-100K pr. afvigende rytter); fradrag: `season_standings.penalty_points += 200 × afvigende`
+- `season_standings.penalty_points` preserves på tværs af `updateStandings`-recompute fordi den ikke er i upsert-rows; `updateStandings` ranking bruger `effective = total_points - penalty_points` for `rank_in_division`
+- `riders.acquired_at` tracker hvornår rytter erhvervedes; live-opdateret i alle 6 write-paths: auctionFinalization (vinder + bank-køb), transferExecution (transfer + 2x swap-mutationer + revert), api.js loan-buyout, admin-override, window-open flush
+- StandingsPage: rangliste viser `total (−penalty)`-notation når `penalty_points > 0` med tooltip der forklarer optjent vs. fradragne points; sortering bruger effective points
+- Notifikation: `squad_enforced` notification-type til ramt manager med oversigt over auto-køb/-salg + bøde + fradrag
+- Migration: `database/2026-05-04-squad-enforcement.sql` (acquired_at, squad_enforcement_completed_at, penalty_points, finance/notif type-constraints)
+
 ### Deadline Day S3 (2026-05-02)
 - Flash Auktion: `is_flash boolean` i `auctions`-tabel, guard i `POST /api/auctions` (tjekker DD aktiv via override + closes_at), `calculated_end = now+30min`
 - Flash UI: checkbox i `AuctionButton` (RiderStatsPage) — vises kun når `ddActive=true`; rød knap + `⚡ Flash`-badge i AuctionsPage

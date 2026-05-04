@@ -25,10 +25,10 @@ _Intern master-plan. Opdateret 2026-05-04 efter scope-audit. Launch-dato: åben 
 **Brief:** `docs/slices/02-board-redesign-sequential.md`
 **Estimat:** 2-3 sessioner (split mulig: 02a sekventiel-flow + sæson 0-lås, 02b identity-feedback + auto-accept).
 
-### S-03 · Trupstørrelse-håndhævelse ved vinduesluk
+### S-03 · Trupstørrelse-håndhævelse ved vinduesluk ✅ Leveret v2.29 (2026-05-04)
 **Hvorfor P0:** Uden håndhævelse kan managers gå i sæson med ulovlig trup → blokerer race-flow eller giver urimelig fordel. Skal cron-trigges instant ved vinduesluk.
 **Brief:** `docs/slices/03-squad-size-enforcement.md`
-**Estimat:** 1 session. Forudsætning: `riders.acquired_at` migration (5 min).
+**Estimat:** 1 session. **Faktisk:** 1 session. Inkluderede `riders.acquired_at` + `season_standings.penalty_points` migration, cron-trigger, 6 write-path-opdateringer, ranking-justering i `updateStandings`, rangliste-UI med `(−penalty)`-notation, 7/7 unit tests.
 
 ### S-04 · Admin annullér auktion ✅ Leveret v2.26 (2026-05-04)
 **Hvorfor P0:** Live-drift kræver et "undo"-tool. Auktioner oprettet ved fejl eller med forkert pris kan ikke håndteres uden DB-manipulation i dag.

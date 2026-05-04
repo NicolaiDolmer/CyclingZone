@@ -880,16 +880,33 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
     }
   }
 
+  // Hent eksisterende penalty_points så ranking bruger effective points (total - penalty).
+  // S-03: trupstørrelse-fradrag skal påvirke placeringen, ikke kun visningen.
+  const teamIds = Object.keys(teamStats);
+  const penaltyByTeamId = new Map();
+  if (teamIds.length > 0) {
+    const { data: penaltyRows, error: penaltyError } = await supabaseClient
+      .from("season_standings")
+      .select("team_id, penalty_points")
+      .eq("season_id", seasonId)
+      .in("team_id", teamIds);
+    if (penaltyError) throw new Error(penaltyError.message);
+    for (const row of penaltyRows || []) {
+      penaltyByTeamId.set(row.team_id, row.penalty_points || 0);
+    }
+  }
+
   const rankByTeamId = new Map();
   const divisions = [...new Set(Object.values(teamStats).map(stats => stats.division || 3))];
   for (const division of divisions) {
     const rankedTeams = Object.entries(teamStats)
       .filter(([, stats]) => (stats.division || 3) === division)
-      .sort(([, left], [, right]) => {
-        if ((right.points || 0) !== (left.points || 0)) {
-          return (right.points || 0) - (left.points || 0);
+      .sort(([leftId, left], [rightId, right]) => {
+        const leftEffective = (left.points || 0) - (penaltyByTeamId.get(leftId) || 0);
+        const rightEffective = (right.points || 0) - (penaltyByTeamId.get(rightId) || 0);
+        if (rightEffective !== leftEffective) {
+          return rightEffective - leftEffective;
         }
-
         return 0;
       });
 

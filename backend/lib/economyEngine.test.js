@@ -509,6 +509,19 @@ function createStandingsSupabase({ teams, races, results }) {
 
       if (table === "season_standings") {
         return {
+          select(_cols) {
+            return {
+              eq(_col1, _val1) {
+                return {
+                  in(_col2, _vals) {
+                    // S-03: updateStandings henter penalty_points for at rank-justere.
+                    // Test har ingen pre-existing penalty rows, så returnér tomt sæt.
+                    return Promise.resolve({ data: [], error: null });
+                  },
+                };
+              },
+            };
+          },
           upsert(rows, options) {
             state.upserts.push({
               rows: clone(rows),
