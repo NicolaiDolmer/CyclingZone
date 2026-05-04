@@ -8,13 +8,17 @@ manuel "kopier SQL ind i dashboard"-proces.
 
 ### 1. Hent connection string fra Supabase
 
-Åbn https://supabase.com/dashboard/project/ghwvkxzhsbbltzfnuhhz/settings/database
+Åbn projekt-dashboard → klik **"Connect"**-knappen øverst (toolbaren ved siden af projekt-navn).
 
-Scroll til **"Connection string"** → vælg **"URI"** tab → kopiér hele strengen.
-Format: `postgres://postgres:[YOUR-PASSWORD]@db.ghwvkxzhsbbltzfnuhhz.supabase.co:5432/postgres`
+**VIGTIGT — brug Session Pooler, IKKE Direct connection:**
+GitHub Actions-runners bruger IPv4. Direct connection (`db.<ref>.supabase.co:5432`)
+er IPv6-only på free tier → workflow vil fejle med "connection refused".
 
-(Hvis du har glemt password: klik "Reset database password" først — dette
-ændrer `SUPABASE_SERVICE_KEY` ikke, kun postgres-direct password.)
+I "Connect"-modalet:
+1. Klik **"Pooler settings"**-knappen
+2. Vælg **Session Pooler** (IKKE Transaction Pooler — DDL virker ikke i transaction-mode pooling)
+3. Format: `postgresql://postgres.<project-ref>:[YOUR-PASSWORD]@aws-0-<region>.pooler.supabase.com:5432/postgres`
+4. Erstat `[YOUR-PASSWORD]` med din database-password (klik "Reset database password" hvis glemt — det påvirker IKKE `SUPABASE_SERVICE_KEY`)
 
 ### 2. Tilføj GitHub secret
 
@@ -45,7 +49,7 @@ https://github.com/NicolaiDolmer/CyclingZone/actions/workflows/auto-migrate.yml
 | Symptom | Action |
 |---|---|
 | `SUPABASE_DB_URL secret missing` | Følg step 2 ovenfor |
-| `psql: connection refused` | Tjek IP allowlist i Supabase → Settings → Database. GitHub Actions runner-IPs er dynamiske; Supabase tillader alle by default |
+| `psql: connection refused` eller `Network is unreachable` | Du brugte sandsynligvis Direct connection (IPv6-only). Skift til Session Pooler URL — se step 1 ovenfor |
 | Migration SQL fejler | Workflow stopper og marker run som failed. Hot-fix: kør SQL manuelt via dashboard, indsæt filename i `schema_migrations`, retrig workflow via "Re-run failed jobs" |
 | Migration kører 2x ved race | `concurrency: group + cancel-in-progress: false` forhindrer det. Hvis det alligevel sker: idempotente migrations (IF NOT EXISTS) er safe. Ikke-idempotente (DROP COLUMN osv.) skal koordineres manuelt |
 
