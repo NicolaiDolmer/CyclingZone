@@ -94,7 +94,7 @@ export default function RaceHistoryPage() {
 
   if (!editions.length) return (
     <div className="max-w-4xl mx-auto">
-      <Link to="/race-archive" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">← Løbsarkiv</Link>
+      <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">← Løbsbibliotek</Link>
       <div className="text-center py-16 text-cz-3">
         <p className="text-4xl mb-3">🏁</p>
         <p>Ingen data fundet for &quot;{raceName}&quot;</p>
@@ -107,7 +107,7 @@ export default function RaceHistoryPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <Link to="/race-archive" className="text-xs text-cz-accent-t hover:underline mb-2 inline-block">← Løbsarkiv</Link>
+        <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-2 inline-block">← Løbsbibliotek</Link>
         <h1 className="text-xl font-bold text-cz-1">{raceName}</h1>
         <p className="text-cz-3 text-sm">
           {editions[0].race_type === "stage_race"

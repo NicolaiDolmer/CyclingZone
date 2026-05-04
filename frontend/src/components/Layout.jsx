@@ -45,7 +45,6 @@ function buildNavGroups(team) {
         { to: "/rider-rankings", label: "Rytterrangliste" },
         { to: "/season-end",     label: "Sæsonresultater" },
         { to: "/hall-of-fame",   label: "Hall of Fame" },
-        { to: "/race-archive",   label: "Løbsarkiv" },
       ],
     },
     {
@@ -54,7 +53,7 @@ function buildNavGroups(team) {
         { to: "/teams",          label: "Hold" },
         { to: "/head-to-head",   label: "Head-to-Head" },
         { to: "/season-preview", label: "Sæson Preview" },
-        { to: "/races",          label: "Løbskalender" },
+        { to: "/races",          label: "Løb" },
       ],
     },
   ];

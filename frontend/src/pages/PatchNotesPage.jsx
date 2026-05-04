@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "2.22",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Løb — Konsolideret hub med Bibliotek og Point & præmier",
+        items: [
+          "Tre overlappende race-sider (`/races`, `/race-archive`, `/race-points`) er konsolideret til ét hub `/races` med tabs: Kalender · Bibliotek · Point & præmier",
+          "Nyt: Bibliotek-tab viser alle løb på tværs af alle sæsoner med filtre (sæson, klasse, status, fritekst-søgning). Klik på en række åbner løbets historikside med tidligere udgaver og top-ryttere",
+          "Nyt: Point & præmier-tab samler præmieformlen (1 UCI-point = 1.500 CZ$) og fulde pointtabeller for alle 9 løbsklasser direkte i hubben",
+          "IA: Sidebaren viser nu kun ét race-link — `Liga → Løb`. `Resultater → Løbsarkiv` er fjernet (den gamle URL `/race-archive` redirecter til Bibliotek-tabben). `Resultater`-overbliksiden linker direkte til de relevante tabs",
+          "Backend: ny `GET /api/races?season=&class=&q=&status=` for programmatisk adgang (auth-required, returnerer race-rows + season-relation)",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.21",
     date: "2026-05-04",
     label: "Beta",

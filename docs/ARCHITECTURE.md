@@ -45,11 +45,12 @@
 /season-end           → SeasonEndPage
 /head-to-head         → HeadToHeadPage
 /patch-notes          → PatchNotesPage
-/races                → RacesPage
+/races                → RacesPage (hub: tabs Kalender · Bibliotek · Point & præmier · Indberét · Godkend [admin]; ?tab= styrer initial tab)
 /resultater           → ResultaterPage
 /rider-rankings       → RiderRankingsPage
-/race-archive         → RaceArchivePage
+/race-archive         → redirect → /races?tab=library
 /race-archive/:raceSlug → RaceHistoryPage
+/race-points          → RacePointsPage (alias for /races?tab=points)
 /admin                → AdminPage
 ```
 

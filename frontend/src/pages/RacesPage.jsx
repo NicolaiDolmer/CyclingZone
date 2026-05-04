@@ -1,7 +1,8 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import * as XLSX from "@e965/xlsx";
+import RacePointsPage from "./RacePointsPage";
 
 const RESULT_TYPES = [
   { key: "stage", label: "Etape" },
@@ -9,6 +10,24 @@ const RESULT_TYPES = [
   { key: "points", label: "Point" },
   { key: "mountain", label: "Bjerg" },
   { key: "young", label: "Unge" },
+];
+
+const RACE_CLASS_OPTIONS = [
+  { value: "TourFrance",      label: "Tour de France" },
+  { value: "GiroVuelta",      label: "Giro / Vuelta" },
+  { value: "Monuments",       label: "Monuments" },
+  { value: "OtherWorldTourA", label: "WorldTour A" },
+  { value: "OtherWorldTourB", label: "WorldTour B" },
+  { value: "OtherWorldTourC", label: "WorldTour C" },
+  { value: "ProSeries",       label: "ProSeries" },
+  { value: "Class1",          label: "Klasse 1" },
+  { value: "Class2",          label: "Klasse 2" },
+];
+
+const RACE_STATUS_OPTIONS = [
+  { value: "completed", label: "Afsluttet" },
+  { value: "active",    label: "Igang" },
+  { value: "scheduled", label: "Kommende" },
 ];
 
 function timeAgo(dateStr) {
@@ -21,13 +40,21 @@ function timeAgo(dateStr) {
   return "Lige nu";
 }
 
+const VALID_TABS = ["calendar", "library", "points", "submit", "approve"];
+
 export default function RacesPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const initialTab = VALID_TABS.includes(searchParams.get("tab"))
+    ? searchParams.get("tab")
+    : "calendar";
+
   const [races, setRaces] = useState([]);
   const [season, setSeason] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedRace, setSelectedRace] = useState(null);
-  const [tab, setTab] = useState("calendar");
+  const [tab, setTab] = useState(initialTab);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState(null);
   const [pending, setPending] = useState([]);
@@ -41,7 +68,62 @@ export default function RacesPage() {
   const [uploadResultType, setUploadResultType] = useState("stage");
   const [editingRows, setEditingRows] = useState([]);
 
+  // Library state (lazy loaded når tab="library" åbnes første gang)
+  const [libRaces, setLibRaces] = useState([]);
+  const [libSeasons, setLibSeasons] = useState([]);
+  const [libLoaded, setLibLoaded] = useState(false);
+  const [libLoading, setLibLoading] = useState(false);
+  const [libFilterSeason, setLibFilterSeason] = useState("");
+  const [libFilterClass, setLibFilterClass] = useState("");
+  const [libFilterStatus, setLibFilterStatus] = useState("");
+  const [libSearch, setLibSearch] = useState("");
+
   useEffect(() => { loadAll(); }, []);
+
+  // Tab → URL sync (deep-linkbar fra eksterne kilder, fx /races?tab=library)
+  function changeTab(next) {
+    setTab(next);
+    if (next === "calendar") {
+      searchParams.delete("tab");
+    } else {
+      searchParams.set("tab", next);
+    }
+    setSearchParams(searchParams, { replace: true });
+  }
+
+  useEffect(() => {
+    if (tab === "library" && !libLoaded && !libLoading) {
+      loadLibrary();
+    }
+  }, [tab, libLoaded, libLoading]);
+
+  async function loadLibrary() {
+    setLibLoading(true);
+    const [racesRes, seasonsRes] = await Promise.all([
+      supabase
+        .from("races")
+        .select("id, name, race_type, race_class, stages, start_date, status, prize_pool, season:season_id(id, number, status)")
+        .order("start_date", { ascending: false, nullsFirst: false }),
+      supabase
+        .from("seasons")
+        .select("id, number, status")
+        .order("number", { ascending: false }),
+    ]);
+    setLibRaces(racesRes.data || []);
+    setLibSeasons(seasonsRes.data || []);
+    setLibLoaded(true);
+    setLibLoading(false);
+  }
+
+  const filteredLibRaces = useMemo(() => {
+    return libRaces.filter(r => {
+      if (libFilterSeason && r.season?.id !== libFilterSeason) return false;
+      if (libFilterClass && r.race_class !== libFilterClass) return false;
+      if (libFilterStatus && r.status !== libFilterStatus) return false;
+      if (libSearch && !r.name.toLowerCase().includes(libSearch.toLowerCase())) return false;
+      return true;
+    });
+  }, [libRaces, libFilterSeason, libFilterClass, libFilterStatus, libSearch]);
 
   async function loadAll() {
     setLoading(true);
@@ -192,9 +274,13 @@ export default function RacesPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-cz-1">Løbskalender</h1>
+          <h1 className="text-xl font-bold text-cz-1">Løb</h1>
           <p className="text-cz-3 text-sm">
-            {season ? `Sæson ${season.number}` : "Ingen aktiv sæson"} — {races.length} løb
+            {tab === "library"
+              ? `${libRaces.length} løb på tværs af alle sæsoner`
+              : tab === "points"
+              ? "UCI-pointtabeller og præmieformel"
+              : `${season ? `Sæson ${season.number}` : "Ingen aktiv sæson"} — ${races.length} løb`}
           </p>
         </div>
       </div>
@@ -203,10 +289,12 @@ export default function RacesPage() {
       <div className="flex gap-2 mb-5 flex-wrap">
         {[
           { key: "calendar", label: "📅 Kalender" },
+          { key: "library", label: "📚 Bibliotek" },
+          { key: "points", label: "💰 Point & præmier" },
           { key: "submit", label: "📤 Indberét resultater" },
           ...(isAdmin ? [{ key: "approve", label: `⚙ Godkend (${pending.filter(p => p.status === "pending").length})` }] : []),
         ].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          <button key={t.key} onClick={() => changeTab(t.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
               ${tab === t.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
             {t.label}
@@ -306,7 +394,7 @@ export default function RacesPage() {
                 {!selectedRace.loading && selectedRace.results?.length === 0 && (
                   <div className="text-center py-8 text-cz-3 text-sm">
                     <p>Ingen resultater importeret endnu</p>
-                    <button onClick={() => setTab("submit")}
+                    <button onClick={() => changeTab("submit")}
                       className="mt-3 text-cz-accent-t text-xs hover:underline">
                       Indberét resultater →
                     </button>
@@ -351,6 +439,138 @@ export default function RacesPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Library tab — alle løb på tværs af sæsoner med filtre */}
+      {tab === "library" && (
+        <div>
+          {/* Filter bar */}
+          <div className="bg-cz-card border border-cz-border rounded-xl p-4 mb-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-cz-3 text-xs mb-1">Søg løb</label>
+              <input type="text" value={libSearch} onChange={e => setLibSearch(e.target.value)}
+                placeholder="Tour, Giro, Roubaix…"
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent/40" />
+            </div>
+            <div>
+              <label className="block text-cz-3 text-xs mb-1">Sæson</label>
+              <select value={libFilterSeason} onChange={e => setLibFilterSeason(e.target.value)}
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+                <option value="">Alle sæsoner</option>
+                {libSeasons.map(s => (
+                  <option key={s.id} value={s.id}>
+                    Sæson {s.number}{s.status === "active" ? " (aktiv)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-cz-3 text-xs mb-1">Klasse</label>
+              <select value={libFilterClass} onChange={e => setLibFilterClass(e.target.value)}
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+                <option value="">Alle klasser</option>
+                {RACE_CLASS_OPTIONS.map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-cz-3 text-xs mb-1">Status</label>
+              <select value={libFilterStatus} onChange={e => setLibFilterStatus(e.target.value)}
+                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+                <option value="">Alle</option>
+                {RACE_STATUS_OPTIONS.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {(libFilterSeason || libFilterClass || libFilterStatus || libSearch) && (
+            <div className="flex items-center justify-between mb-3 px-1">
+              <p className="text-cz-3 text-xs">
+                {filteredLibRaces.length} af {libRaces.length} løb
+              </p>
+              <button
+                onClick={() => {
+                  setLibFilterSeason(""); setLibFilterClass(""); setLibFilterStatus(""); setLibSearch("");
+                }}
+                className="text-cz-accent-t text-xs hover:underline">
+                Ryd filtre
+              </button>
+            </div>
+          )}
+
+          {libLoading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+            </div>
+          ) : filteredLibRaces.length === 0 ? (
+            <div className="text-center py-16 text-cz-3">
+              <p className="text-4xl mb-3">🏁</p>
+              <p>Ingen løb matcher filtrene</p>
+            </div>
+          ) : (
+            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-cz-subtle">
+                    <tr className="border-b border-cz-border text-left">
+                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">Løb</th>
+                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">Sæson</th>
+                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">Klasse</th>
+                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">Type</th>
+                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">Dato</th>
+                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-cz-border">
+                    {filteredLibRaces.map(r => {
+                      const classMeta = RACE_CLASS_OPTIONS.find(c => c.value === r.race_class);
+                      const statusMeta = RACE_STATUS_OPTIONS.find(s => s.value === r.status);
+                      return (
+                        <tr key={r.id}
+                          onClick={() => navigate(`/race-archive/${encodeURIComponent(r.name)}`)}
+                          className="hover:bg-cz-subtle cursor-pointer transition-colors">
+                          <td className="px-4 py-2.5 text-cz-1 font-medium">{r.name}</td>
+                          <td className="px-4 py-2.5 text-cz-2 text-xs">
+                            {r.season ? `Sæson ${r.season.number}` : "—"}
+                          </td>
+                          <td className="px-4 py-2.5 text-cz-2 text-xs">
+                            {classMeta?.label ?? r.race_class ?? "—"}
+                          </td>
+                          <td className="px-4 py-2.5 text-cz-2 text-xs">
+                            {r.race_type === "stage_race" ? `Etapeløb (${r.stages})` : "Enkeltdag"}
+                          </td>
+                          <td className="px-4 py-2.5 text-cz-2 text-xs">
+                            {r.start_date
+                              ? new Date(r.start_date).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" })
+                              : "—"}
+                          </td>
+                          <td className="px-4 py-2.5 text-xs">
+                            <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] uppercase
+                              ${r.status === "completed" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                                : r.status === "active" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                                : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
+                              {statusMeta?.label ?? r.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Point & præmier tab — embedder RacePointsPage som tab-indhold */}
+      {tab === "points" && (
+        <div className="-mt-2">
+          <RacePointsPage />
         </div>
       )}
 

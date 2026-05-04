@@ -92,16 +92,21 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 ---
 
 ### S9 — Løb & Info-sider
-**Trigger:** Uge 2–3 efter lancering  
-**Scope:**
-- `/race-library` — alle løb i DB, søgbar/filtrerbar (navn, klasse, sæson, status)  
-  Backend: udvid `GET /api/races?season=&class=&q=`
-- `/seasons/:seasonId` — kalender for afsluttet sæson (ikke kun aktiv)  
-  Frontend: ny `SeasonCalendarPage.jsx`
-- Point-oversigt — `race_points` tabel synlig for managers; ny `GET /api/race-points` public route
-- Præmie-oversigt — forklarer `points × 15.000 CZ$`-formlen med eksempler
 
-**Kritiske filer:** `backend/routes/api.js` · `frontend/src/pages/RaceArchivePage.jsx` · `frontend/src/App.jsx`
+**S9a ✅ (v2.22, 2026-05-04):** Løb-hub konsolideret
+- `/races` udvidet med tabs: Kalender · Bibliotek · Point & præmier (+ existing Indberét/Godkend)
+- Bibliotek = søgbar/filtrerbar liste (sæson/klasse/status/q), client-side filtering, lazy-loaded, klik → `/race-archive/:raceSlug`
+- Point & præmier embedder `RacePointsPage` (præmieformlen `points × 1.500 CZ$` + tabeller for 9 klasser var allerede leveret)
+- `/race-archive` redirecter til `/races?tab=library`; `RaceArchivePage.jsx` slettet (gamle by-name-grupperinger erstattet af søgbar flad liste)
+- Sidebar: kun ét race-link (`Liga → Løb`). `Resultater → Løbsarkiv` fjernet
+- Backend: `GET /api/races?season=&class=&q=&status=` (auth)
+
+**S9b — `/seasons/:seasonId` snapshot (resterende)**
+- Komplet sæson-snapshot: kalender + slutstilling (top 3 pr. division) + sæsonens største vindere (præmie-leader, points-leader, transfers)
+- Frontend: ny `SeasonCalendarPage.jsx` (~150 linjer)
+- Backend: muligvis udvid `GET /api/season-end?seasonId=` eller ny `/api/seasons/:id/snapshot`
+
+**Kritiske filer (S9b):** `backend/routes/api.js` · `frontend/src/pages/SeasonCalendarPage.jsx` (ny) · `frontend/src/App.jsx`
 
 ---
 

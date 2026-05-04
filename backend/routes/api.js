@@ -2305,6 +2305,47 @@ router.get("/race-points", requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/races — søgbar liste over alle løb på tværs af sæsoner
+// Query: season (id eller number), class (race_class), status, q (substring i navn)
+router.get("/races", requireAuth, async (req, res) => {
+  try {
+    const { season, class: raceClass, q, status } = req.query;
+
+    let seasonId = null;
+    if (season) {
+      if (/^\d+$/.test(String(season))) {
+        const { data: s } = await supabase
+          .from("seasons")
+          .select("id")
+          .eq("number", parseInt(season, 10))
+          .maybeSingle();
+        if (!s) return res.json([]);
+        seasonId = s.id;
+      } else {
+        seasonId = season;
+      }
+    }
+
+    let query = supabase
+      .from("races")
+      .select(
+        "id, name, race_type, race_class, stages, start_date, status, prize_pool, season:season_id(id, number, status)"
+      )
+      .order("start_date", { ascending: false, nullsFirst: false });
+
+    if (seasonId) query = query.eq("season_id", seasonId);
+    if (raceClass) query = query.eq("race_class", raceClass);
+    if (status) query = query.eq("status", status);
+    if (q) query = query.ilike("name", `%${q}%`);
+
+    const { data, error } = await query;
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Finance Loan Routes ───────────────────────────────────────────────────────
 
 // Separate finance loans from rider loan agreements to keep one canonical path per domain.

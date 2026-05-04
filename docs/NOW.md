@@ -1,23 +1,25 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Color-system /N opacity fix leveret (v2.21).** Pre-eks. Tailwind 3 opacity-bug ryddet: `cz-*` base + `-bg0` aliases + accent-tokens konverteret til channel-format `rgb(var(--xxx) / <alpha-value>)`. Opacity-trin 3/8/12 tilføjet til theme. 35 opacity-klasser verificeret runtime.
+**S9a Løb-hub leveret (v2.22).** 3 overlappende race-pages konsolideret til ét hub `/races` med tabs Kalender · Bibliotek · Point & præmier · Indberét. `/race-archive` redirecter, sidebar IA renset. Backend: ny `GET /api/races?season=&class=&q=&status=`. Klar til UI-smoke + push.
 
 ## Soak-gate
-**ALLE LUKKET ✅** — Dark mode · Discord DM · Onboarding v2 1a+1b+2+3+4 · Flag SVG v2.18 · DD S1–S4 · Color tokens v2.21 (35 runtime-klasser auto-verificeret via Claude Preview, dark mode `cz-*-bg` rgba 12% tint bevidst urørt og bekræftet).
+**Aktiv: ja** — S9a er ny user-facing slice. Næste session starter med smoke af `/races?tab=library` (filtrer på sæson, klasse, status, søg), `/races?tab=points` (RacePointsPage embedded korrekt), redirect fra `/race-archive`, deep-link `/races?tab=library`.
 
 ## Open beta status
 **Alle 7 launch-gates ✅** — soft-launch-klar.
 
 ## Senest leveret
-- 2026-05-04: **Color-system /N opacity fix** (v2.21) — Base `cz-{success,danger,warning,info,accent,accent-t}` + `-bg0` aliases til channel-format med `<alpha-value>`. Opacity 3/8/12 tilføjet (var ikke i Tailwinds default scale). Direct `var(--accent)` callsites i `index.css` spinner, `DashboardPage` MiniBar, `OnboardingTour` arrow, `Login`/`ResetPassword` grid-pattern wrappet i `rgb(...)`. Subtile bg-tints på alert-cards, hover-feedback og status-baggrunde nu synlige som designet.
+- 2026-05-04: **S9a Løb-hub konsolidering** (v2.22) — `/races` udvidet med Bibliotek + Point & præmier-tabs. Filtre i Bibliotek (sæson/klasse/status/q), client-side useMemo. URL ↔ tab-sync via `useSearchParams`. `/race-archive` redirecter til `/races?tab=library`; `RaceArchivePage.jsx` slettet. Sidebar: kun ét race-link (`Liga → Løb`). Ny `GET /api/races` backend. HelpPage + ResultaterPage opdateret. Lint 0 errors (41 warnings uændret), build 8.55s, 104/104 tests grønne.
+- 2026-05-04: **Color-system /N opacity fix** (v2.21) — Base `cz-{success,danger,warning,info,accent,accent-t}` + `-bg0` aliases til channel-format med `<alpha-value>`. Opacity 3/8/12 tilføjet.
 - 2026-05-04: **DD soak-gate lukket** (v2.20) — `cz-*-bg0` aliases (4 typo-tokens brugt 74x).
-- 2026-05-04: **Onboarding v2 — Slice 4** (v2.19) — Empty-state-tour + completion-celebration. Ny `OnboardingCompletionCard.jsx` ved 4/4.
-- 2026-05-03: **Cross-browser flag fix** (v2.18) — Ny `<Flag>`-komponent (flag-icons SVG). Fix for Windows-Chrome.
-- Ældre v2.17 og før → `docs/archive/NOW_HISTORIK_2026-05-03.md`
+- 2026-05-04: **Onboarding v2 — Slice 4** (v2.19) — Empty-state-tour + completion-celebration.
+- Ældre v2.18 og før → `docs/archive/NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter
-1. Næste post-launch-slice: S9 Race Library (anbefalet) eller S8.5 import-feedback
+1. UI-smoke S9a + push v2.22
+2. S9b: `/seasons/:seasonId` komplet sæson-snapshot (kalender + slutstilling + sæsonens vindere)
+3. Alternativt: S8.5 import-feedback UI
 
 ## Kritiske invarianter
 - Discord DM-fejl må aldrig blokere transaction (best-effort try/catch i `notifyDiscordDM`)

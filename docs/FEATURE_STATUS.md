@@ -86,8 +86,9 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Pointtavle (season_standings) inkl. rank_in_division, recalkuleres fra race_results
 - Opryknings/nedrykningslogik (top/bund 2 per division)
 - Holdranglisten viser opryknings-/nedrykningszoner efter samme season-end-regel: Division 2-3 kan rykke op, Division 1-2 kan rykke ned
-- Sæsonpreview-side + Races-side
-- Løbsarkiv (`/race-archive`) og løbshistorik (`/race-archive/:raceSlug`)
+- Sæsonpreview-side
+- **Løb-hub (v2.22, 2026-05-04):** `/races` konsolideret med tabs Kalender · Bibliotek · Point & præmier · Indberét resultater (· Godkend for admin). Bibliotek = søgbar/filtrerbar liste over alle løb på tværs af sæsoner (sæson/klasse/status/q-filtre, lazy-loadet). Point & præmier embedder `RacePointsPage`. Tab-state synkroniseres til URL (`?tab=library`). Den gamle `/race-archive` redirecter til `/races?tab=library`; `/race-archive/:raceSlug` (RaceHistoryPage) bevaret som detail-side
+- Løbshistorik pr. løbsnavn (`/race-archive/:raceSlug` → RaceHistoryPage) — tidligere udgaver, vinder pr. sæson, akkumuleret rytter-rangliste
 - Season-end preview bruger economy engine til løn, lånerente som gæld, projected board satisfaction og næste sponsorudbetaling, så preview matcher season-end/season-start runtime
 - Season-end runtime loader teams/riders/board_profiles separat og fejler hårdt på Supabase load/write errors, så finance/board side effects ikke silently skippes før season completion.
 
@@ -203,6 +204,23 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **Bug:** DeadlineDayBanner pressure-fase dot var transparent fordi `cz-danger-bg0` brugt 20+ steder (banner + Notifications + Board + Admin + Dashboard m.fl.) ikke var defineret i tailwind config — silently dropped af Tailwind. Fundet under DD UI-smoke audit.
 - **Fix:** Tilføjet 4 aliases (`cz-{success,danger,warning,info}-bg0`) der peger på respektive base-farve `var()`. Plain-form klasser virker; opacity-varianter (fx `/8`) virker stadig ikke pga. bredere pre-eks. bug — løst i v2.21 nedenfor.
 - **Verificeret runtime via Claude Preview:** `bg-cz-danger-bg0` = `rgb(185, 28, 28)` ✅. Final Whistle Discord-embed format auto-testet mod Discord limits.
+
+### Løb-hub konsolidering (v2.22, 2026-05-04 — S9a)
+- **Mål:** Konsolidér 3 overlappende race-sider til ét hub-anker så managere har én indgang i stedet for 3 sidebar-entries i 2 forskellige sektioner
+- **Frontend:** `RacesPage.jsx` udvidet med 2 nye tabs ud over eksisterende `calendar`/`submit`/`approve`:
+  - **`library`** (📚 Bibliotek) — flad liste over alle løb på tværs af alle sæsoner. Filtre: sæson (drop-down), klasse (9 race-klasser fra `RACE_CLASS_OPTIONS`), status (`completed`/`active`/`scheduled`), fritekst-søgning på navn. Filtrering sker client-side via `useMemo` for instant UX (DB har <200 races). Lazy-loaded ved første tab-åbning (`useEffect` watcher på `tab === "library" && !libLoaded && !libLoading`). Klik på række → `/race-archive/:raceSlug`
+  - **`points`** (💰 Point & præmier) — embedder `RacePointsPage`-komponenten direkte som tab-indhold. Begge URLs (`/races?tab=points` og `/race-points`) virker
+- **Tab-state ↔ URL:** `useSearchParams` læser initial tab fra `?tab=`; `changeTab(next)` opdaterer URL (med `replace: true`, ingen historik-bloat). Whitelisted tabs i `VALID_TABS` så ugyldige query-værdier falder tilbage til `calendar`
+- **IA-rensning:**
+  - Sidebar `Layout.jsx`: `Resultater → Løbsarkiv` fjernet; `Liga → Løbskalender` → `Liga → Løb`
+  - `ResultaterPage.jsx` hub-grid: `Løbsarkiv → /race-archive` erstattet med `Løbsbibliotek → /races?tab=library`; `Pointtabel → /race-points` erstattet med `Point & præmier → /races?tab=points` (begge URLs er stadig valide aliases)
+  - `RaceHistoryPage.jsx` back-link: `← Løbsarkiv` → `← Løbsbibliotek` (begge instanser linje 97 + 110)
+  - `App.jsx`: `/race-archive` route bytter `<RaceArchivePage />` ud med `<Navigate to="/races?tab=library" replace />`. `RaceArchivePage.jsx` slettet (var eneste forbruger). `/race-archive/:raceSlug` urørt
+  - `HelpPage.jsx`: 3 tekst-strenge opdateret (`Løbskalender → Indberét` → `Løb → Indberét`; `Resultater → Pointtabel` → `Løb → Point & præmier`; `Løbsarkiv` sektion omdøbt til `Løbsbibliotek` med ny tekst om søg/filtrer)
+- **Backend:** Ny `GET /api/races?season=&class=&q=&status=` (`requireAuth`) ved siden af `/api/race-points`. Accepter både season UUID og season number. Returnerer race-rows med `season:season_id(id, number, status)` join. Frontend bruger fortsat supabase RPC i bibliotek-tab (matcher eksisterende race-pages-mønster — endpoint er for programmatisk/ekstern adgang)
+- **RacesPage h1 dynamisk:** "Løb" + sub-tekst der ændrer sig pr. tab (`X løb på tværs af alle sæsoner` / `UCI-pointtabeller og præmieformel` / `Sæson N — N løb`)
+- **Bevidst ikke i denne slice:** `/seasons/:seasonId` snapshot (S9b), public-gøre `/api/race-points`, paginering på `/api/races`, point × 15.000 typo i backloggen rettet til 1.500 (var aldrig live)
+- Verificeret: `npm run lint` 0 errors (41 pre-eks. warnings — uændret), `npm run build` grøn (8.55s), `npm test` 104/104. UI-smoke pending
 
 ### Color-system /N opacity fix (v2.21, 2026-05-04)
 - **Pre-eks. bug:** `cz-{success,danger,warning,info,accent,accent-t}` og deres `-bg0` aliases var defineret som plain `var(--xxx)` strings i `frontend/tailwind.config.js`. Tailwind 3's `/N` opacity-syntax kræver enten standard color-format ELLER `<alpha-value>` placeholder — plain `var()` ignoreres silently. Effekt: 50+ callsites med fx `bg-cz-info-bg0/20`, `text-cz-danger/70`, `border-cz-success/30` rendrede transparent. Sandsynligvis siden Dark mode S1 (v2.04).
