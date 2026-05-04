@@ -116,7 +116,6 @@ export default function AdminPage() {
   const [races, setRaces] = useState([]);
   const [teams, setTeams] = useState([]);
   const [window_, setWindow_] = useState(null);
-  const [prizes, setPrizes] = useState([]);
   const [webhooks, setWebhooks] = useState([]);
   const [loanConfigs, setLoanConfigs] = useState([]);
   const [adminLogs, setAdminLogs] = useState([]);
@@ -131,7 +130,6 @@ export default function AdminPage() {
   const [importRaceId, setImportRaceId] = useState("");
   const [importStage, setImportStage] = useState(1);
   const [loading, setLoading] = useState({});
-  const [editingPrize, setEditingPrize] = useState(null);
   const [newWebhook, setNewWebhook] = useState({ webhook_name: "", webhook_url: "", webhook_type: "general" });
   const [dynCyclistUrl, setDynCyclistUrl] = useState("");
   const [dynSyncResult, setDynSyncResult] = useState(null);
@@ -176,7 +174,6 @@ export default function AdminPage() {
   // Points editor — NY
   const [selectedPointsClass, setSelectedPointsClass] = useState(RACE_CLASSES[0].key);
   const [editingPoint, setEditingPoint] = useState(null); // { race_class, result_type, rank, points }
-  const [savingPoint, setSavingPoint] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -190,12 +187,11 @@ export default function AdminPage() {
   }, [window_?.closes_at]);
 
   async function loadAll() {
-    const [s, r, t, w, p, w2, lc, al, rp, u, ac] = await Promise.all([
+    const [s, r, t, w, w2, lc, al, rp, u, ac] = await Promise.all([
       supabase.from("seasons").select("*").order("number", { ascending: false }),
       supabase.from("races").select("*").order("start_date"),
       supabase.from("teams").select("id,name,balance,division").eq("is_ai", false).order("name"),
       supabase.from("transfer_windows").select("*").order("created_at", { ascending: false }).limit(1).single(),
-      supabase.from("prize_tables").select("*").order("race_type").order("result_type").order("rank"),
       supabase.from("discord_settings").select("*").order("created_at"),
       supabase.from("loan_config").select("*").order("division").order("loan_type"),
       supabase.from("admin_log").select("*, target_team:target_team_id(name)")
@@ -208,7 +204,6 @@ export default function AdminPage() {
     setRaces(r.data || []);
     setTeams(t.data || []);
     setWindow_(w.data || null);
-    setPrizes(p.data || []);
     setWebhooks(w2.data || []);
     setLoanConfigs(lc.data || []);
     setAdminLogs(al.data || []);
@@ -375,24 +370,14 @@ export default function AdminPage() {
     loadAll();
   }
 
-  // ── Præmiepenge (gammel tabel) ─────────────────────────────────────────────
-  async function savePrize(prize) {
-    await supabase.from("prize_tables").upsert({ ...prize }, { onConflict: "race_type,result_type,rank" });
-    setEditingPrize(null);
-    loadAll();
-    showMsg("✅ Præmiepenge gemt");
-  }
-
   // ── Points (ny tabel) ─────────────────────────────────────────────────────
   async function savePoint(raceClass, resultType, rank, pts) {
-    setSavingPoint(true);
     const { error } = await supabase.from("race_points").upsert(
       { race_class: raceClass, result_type: resultType, rank, points: parseInt(pts) || 0, updated_at: new Date().toISOString() },
       { onConflict: "race_class,result_type,rank" }
     );
     if (!error) { showMsg("✅ Point gemt"); setEditingPoint(null); loadAll(); }
     else showMsg(`❌ ${error.message}`, "error");
-    setSavingPoint(false);
   }
 
   function getPoints(raceClass, resultType, rank) {
@@ -640,13 +625,6 @@ export default function AdminPage() {
   const statusColor = { upcoming: "text-cz-2", active: "text-cz-success", completed: "text-cz-3" };
   const statusLabel = { upcoming: "Kommende", active: "Aktiv", completed: "Afsluttet" };
   const loanTypeLabels = { short: "Kort lån", long: "Langt lån", emergency: "Nødlån" };
-
-  const prizeGroups = prizes.reduce((acc, p) => {
-    const key = `${p.race_type}__${p.result_type}`;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(p);
-    return acc;
-  }, {});
 
   // ── JSX ───────────────────────────────────────────────────────────────────
   return (

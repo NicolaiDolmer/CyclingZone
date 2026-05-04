@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 const EVENT_CONFIG = {
   auction_won:             { icon: "🏆", color: "text-cz-accent-t",  label: (e) => `${e.team_name} vandt auktion` },
   auction_started:         { icon: "⚡", color: "text-cz-2",   label: (e) => `${e.team_name} startede auktion` },
-  transfer_accepted:       { icon: "↔",  color: "text-cz-success",  label: (e) => `Transfer gennemført` },
+  transfer_accepted:       { icon: "↔",  color: "text-cz-success",  label: () => `Transfer gennemført` },
   rider_listed:            { icon: "📋", color: "text-cz-info",   label: (e) => `${e.team_name} satte rytter til salg` },
   season_started:          { icon: "🚀", color: "text-cz-success",  label: (e) => `Sæson ${e.meta?.season_number} startet` },
   season_ended:            { icon: "🏁", color: "text-cz-2",   label: (e) => `Sæson ${e.meta?.season_number} afsluttet` },

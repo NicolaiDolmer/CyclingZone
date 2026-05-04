@@ -62,7 +62,6 @@ export default function RacesPage() {
   const [submitMsg, setSubmitMsg] = useState("");
 
   // Upload state
-  const [uploadedRows, setUploadedRows] = useState([]);
   const [uploadRaceId, setUploadRaceId] = useState("");
   const [uploadStage, setUploadStage] = useState(1);
   const [uploadResultType, setUploadResultType] = useState("stage");
@@ -179,7 +178,6 @@ export default function RacesPage() {
         rider_id: null,
         matched: false,
       }));
-      setUploadedRows(parsed);
       setEditingRows(parsed.map(r => ({ ...r })));
     };
     reader.readAsBinaryString(file);
@@ -188,7 +186,6 @@ export default function RacesPage() {
 
   // Match rider names to IDs
   async function matchRiders() {
-    const names = editingRows.map(r => r.rider_name);
     const updated = [...editingRows];
     for (let i = 0; i < updated.length; i++) {
       const parts = updated[i].rider_name.trim().split(" ");
@@ -232,7 +229,6 @@ export default function RacesPage() {
     await supabase.from("pending_race_result_rows").insert(rows);
     setSubmitMsg("✅ Resultater indsendt — afventer godkendelse fra admin");
     setEditingRows([]);
-    setUploadedRows([]);
     loadAll();
     setSubmitting(false);
   }

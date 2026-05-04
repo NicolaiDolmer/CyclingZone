@@ -42,7 +42,6 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
   const isPending = offer.status === "pending";
   const isAwaiting = offer.status === "awaiting_confirmation";
   const isWindowPending = offer.status === "window_pending";
-  const isActive = isPending || isAwaiting;
   const canArchive = showArchive && ["accepted", "rejected", "withdrawn"].includes(offer.status);
   const cfg = STATUS_CONFIG[offer.status] || STATUS_CONFIG.pending;
   const price = (offer.counter_amount || offer.offer_amount)?.toLocaleString("da-DK");

@@ -67,11 +67,6 @@ function getBoardGoalLabel(goal) {
   return goal.label || "";
 }
 
-function formatSignalDelta(delta) {
-  const points = Math.round(Number(delta || 0) * 100);
-  return `${points > 0 ? "+" : ""}${points}`;
-}
-
 function formatBoardCopy(text) {
   if (!text) return "";
   return text

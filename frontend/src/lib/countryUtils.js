@@ -17,7 +17,7 @@ export function getCountryName(code, locale = "da-DK") {
 
   try {
     return new Intl.DisplayNames([locale, "en"], { type: "region" }).of(normalizedCode) || normalizedCode;
-  } catch (_error) {
+  } catch {
     return normalizedCode;
   }
 }

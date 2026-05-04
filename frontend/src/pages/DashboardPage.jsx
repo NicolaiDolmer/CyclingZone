@@ -61,7 +61,6 @@ export default function DashboardPage() {
 
   const [seasonInfo, setSeasonInfo] = useState(null);
   const [transferWindow, setTransferWindow] = useState(null);
-  const [isNewUser, setIsNewUser] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [discordNudgeDismissed, setDiscordNudgeDismissed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-discord-nudge-dismissed") === "1"
@@ -173,7 +172,6 @@ export default function DashboardPage() {
     // Onboarding — show if user has no riders
     const riderCount = (ridersRes.data || []).length;
     if (riderCount === 0 && !localStorage.getItem("cz_onboarding_done")) {
-      setIsNewUser(true);
       setShowOnboarding(true);
     }
 
@@ -252,7 +250,6 @@ export default function DashboardPage() {
     : null;
 
   // My division standings
-  const myStanding = standings.find(s => s.team_id === team?.id);
   const divStandings = standings.filter(s => !s.team?.is_ai && s.division === team?.division)
     .sort((a, b) => b.total_points - a.total_points).slice(0, 5);
 

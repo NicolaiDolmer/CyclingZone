@@ -1,17 +1,10 @@
 ﻿import { useState, useEffect } from "react";
-import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
-
-const SQUAD_LIMITS = {
-  1: { min: 20, max: 30 },
-  2: { min: 14, max: 20 },
-  3: { min: 8,  max: 10 },
-};
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -166,10 +159,8 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
   const [showIncoming, setShowIncoming] = useState(true);
   const [showOutgoing, setShowOutgoing] = useState(true);
 
-  // Current squad = riders with team_id = myTeam (regardless of pending)
   // Incoming = riders with pending_team_id = myTeam but team_id != myTeam
   // Outgoing = riders with team_id = myTeam but pending different team
-  const currentRiders = riders.filter(r => !r.pending_team_id || r._isOutgoing);
   const incomingRiders = riders.filter(r => r._isIncoming);
   const outgoingRiders = riders.filter(r => r._isOutgoing);
 

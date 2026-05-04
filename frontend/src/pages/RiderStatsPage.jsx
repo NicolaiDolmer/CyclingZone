@@ -191,7 +191,6 @@ export default function RiderStatsPage() {
   const [loading, setLoading]               = useState(true);
   const [tab, setTab]                       = useState("stats");
   const [myTeamId, setMyTeamId]             = useState(null);
-  const [myTeam, setMyTeam]                 = useState(null);
   const [activeAuction, setActiveAuction]   = useState(null);
   const [auctionError, setAuctionError]     = useState(null);
   const [history, setHistory]               = useState([]);
@@ -265,7 +264,7 @@ export default function RiderStatsPage() {
   async function loadMyTeam() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: t } = await supabase.from("teams").select("id, balance, division, name").eq("user_id", user.id).single();
-    if (t) { setMyTeamId(t.id); setMyTeam(t); }
+    if (t) { setMyTeamId(t.id); }
   }
 
   async function loadRider() {

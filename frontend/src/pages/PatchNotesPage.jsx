@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.24.1",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Tech debt — lint-baseline ryddet",
+        items: [
+          "Frontend lint stod på 0 errors / 41 warnings i flere måneder, hvor ~24 af dem var ren død kode (ubrugte imports, dead state, dead funktioner) efterladt fra refactors. Hver ship-rapport måtte verificere \"samme baseline\" i stedet for \"0/0\", hvilket gjorde det svært at opdage hvis en ny warning sneg sig ind",
+          "Ryddet alle 24 unused-vars warnings: fjernet dead `ProfileRedirect` (App), `FormBadge` (Standings), `formatSignalDelta` (Board), gammel `prizes`-state + `savePrize` + `prizeGroups` + `prize_tables`-load (Admin), `myStanding`/`isNewUser` (Dashboard), `myUserId`/`myTeamId` (HallOfFame), `uploadedRows` duplikat-state (Races) og 10 andre dead identifiers",
+          "Baseline er nu 0 errors / 17 warnings — alle resterende er bevidste `react-hooks/exhaustive-deps` på load-once mønstre der ville kræve case-by-case analyse for at \"fixe\" sikkert. Build uændret (8.46s)",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.24",
     date: "2026-05-04",
     label: "Beta",

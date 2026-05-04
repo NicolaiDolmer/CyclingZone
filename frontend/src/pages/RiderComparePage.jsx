@@ -82,7 +82,6 @@ function RiderSearch({ onSelect, excluded }) {
 
 export default function RiderComparePage() {
   const navigate = useNavigate();
-  const [riders, setRiders] = useState([]);
   const [fullRiders, setFullRiders] = useState([]);
 
   async function addRider(rider) {

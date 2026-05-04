@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**S8.5 import-feedback UI shipped (v2.24).** Admin har nu `Forhåndsvis`-knap på Sheets-import der kalder backend i dry-run mode (0 DB writes) og viser per-løb tabel med matched/unmatched ryttere+hold, total points og skipped løb. `Bekræft import`/`Annullér` styrer commit. Reducerer Sæson-6-type fejl. Backend: 1 ny `dryRun` param, 1 ny test (105/105 grønne). Frontend: lint 0/41, build 7.47s.
+**Lint-baseline ryddet (v2.24.1).** Frontend lint var i flere måneder 0/41 hvor ~24 var ren død kode efterladt fra refactors. Fjernet alle 24 unused-vars (dead `ProfileRedirect`, `FormBadge`, `formatSignalDelta`, gammel `prizes`-state + `savePrize` + `prize_tables`-load i Admin, m.fl.). Baseline: 0/41 → 0/17. Resterende 17 er `react-hooks/exhaustive-deps` på load-once mønstre, bevidst urørt. Build 8.46s. Token-disciplin: nye warnings synlige i stedet for at drukne i støj.
 
 ## Soak-gate
 **Aktiv: nej** — kvitteret 2026-05-04.
@@ -10,6 +10,7 @@
 **Alle 7 launch-gates ✅** — soft-launch-klar.
 
 ## Senest leveret
+- 2026-05-04: **Lint-baseline ryddet** (v2.24.1) — 24 unused-vars fjernet på tværs af 14 filer. Baseline 41 → 17 warnings. Build OK.
 - 2026-05-04: **S8.5 Import-feedback UI** (v2.24) — `Forhåndsvis`-knap, dry-run preview-tabel, `Bekræft import`/`Annullér`. Backend `dry_run`-flag på eksisterende endpoint (singular execution path).
 - 2026-05-04: **v2.23.1 polish + Soak-gate S9 rapport** — tomme vinder-kort `/seasons/:id` ikke-klikbare. 10/10 punkter, 4 P2 identificeret.
 - 2026-05-04: **S9b Sæson-snapshot** (v2.23) — `/seasons/:seasonId` med kalender + 4 vinder-kort.

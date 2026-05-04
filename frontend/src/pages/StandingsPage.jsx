@@ -20,19 +20,6 @@ function MiniSparkline({ points, color }) {
   );
 }
 
-function FormBadge({ form }) {
-  // form = array of recent results e.g. [1,5,2,null] — rank in last races
-  if (!form || !form.length) return null;
-  return (
-    <div className="flex gap-0.5">
-      {form.slice(-5).map((rank, i) => {
-        const color = rank === 1 ? "bg-cz-accent" : rank <= 3 ? "bg-green-400" : rank <= 10 ? "bg-blue-300" : "bg-cz-subtle";
-        return <span key={i} className={`w-2 h-2 rounded-full ${color}`} title={rank ? `#${rank}` : "—"} />;
-      })}
-    </div>
-  );
-}
-
 export default function StandingsPage() {
   const navigate = useNavigate();
   const [standings, setStandings] = useState([]);

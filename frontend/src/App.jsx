@@ -53,28 +53,6 @@ function RouteFallback() {
   );
 }
 
-function ProfileRedirect() {
-  const [to, setTo] = useState(null);
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
-        setTo("/dashboard");
-        return;
-      }
-      supabase
-        .from("teams")
-        .select("id")
-        .eq("user_id", user.id)
-        .single()
-        .then(({ data }) => {
-          setTo(data?.id ? `/managers/${data.id}` : "/dashboard");
-        });
-    });
-  }, []);
-  if (!to) return null;
-  return <Navigate to={to} replace />;
-}
-
 function ProtectedRoute({ children, session }) {
   if (!session) return <Navigate to="/login" replace />;
   return children;
