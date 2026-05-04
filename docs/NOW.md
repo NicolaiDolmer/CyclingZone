@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**S9b Sæson-snapshot leveret (v2.23).** `/seasons/:seasonId` deelbar URL der samler kalender + slutstilling + 4 vinder-kort (præmie-leader, største transfer, mest aktive, stage-king) på ét skærmbillede. SeasonEndPage refaktoreret (genbrug, ikke ny side). Sidebar `Sæson-snapshot`, Bibliotek-tab Sæson-celle nu klikbar. Klar til UI-smoke + push.
+**S9b Sæson-snapshot leveret + pushet (v2.23, a612069).** `/seasons/:seasonId` deelbar URL der samler kalender + slutstilling + 4 vinder-kort (præmie-leader, største transfer, mest aktive, stage-king) på ét skærmbillede. SeasonEndPage refaktoreret (genbrug, ikke ny side). Sidebar `Sæson-snapshot`, Bibliotek-tab Sæson-celle nu klikbar. Pending: browser-smoke per soak-gate.
 
 ## Soak-gate
 **Aktiv: ja** — S9a (v2.22) + S9b (v2.23) er user-facing. Næste session: smoke `/seasons/{id}` direkte URL, sidebar `Sæson-snapshot`, Bibliotek-tab Sæson-cell-klik, dropdown ↔ URL-sync, `/season-end` redirect, vinder-kort på live data, kalender kronologi. S9a-detaljer i FEATURE_STATUS § Løb-hub. **S9a kode-smoke kvitteret:** alle 5 tabs + redirects + back-link + sidebar IA OK statisk; browser-smoke pending.
@@ -15,7 +15,7 @@
 - Ældre v2.21 og før → `docs/archive/NOW_HISTORIK_2026-05-03.md` + FEATURE_STATUS
 
 ## Næste session — prioriteter
-1. UI-smoke S9a + S9b kombineret + push v2.23
+1. Browser-smoke S9a + S9b kombineret (soak-gate kvittering — punkter listet ovenfor)
 2. S8.5: import-feedback UI (preview-tilstand til `POST /api/admin/import-results-sheets`)
 3. S10: Admin økonomi-panel
 
