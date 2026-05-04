@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.31",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Ønskeliste — paginering, fryst header og fuld bredde",
+        items: [
+          "Ønskelisten viste hele din watchlist i én lang liste på en smal centreret container — på en bred skærm var der >40% tom plads i siderne, og hvis du havde mange ryttere skulle du scrolle tilbage til toppen for at se kolonnenavne. Nu matcher den ryttersidens layout: tabellen fylder fuld bredde (max-w-full) og kolonne-headeren er sticky så den følger med når du scroller vertikalt",
+          "Client-side paginering: 50 ryttere ad gangen med Forrige/Næste-knapper nederst og \"Viser X–Y af N\" status. Page resettes til 1 når du ændrer et filter eller en sortering, så du ikke ender på en tom side hvis filteret krymper resultatet",
+          "Ryttersiden på mobil er skiftet fra kort-layout til samme tabel som desktop. Tabellen scroller vandret på små skærme i stedet for at gemme kolonner — konsistent oplevelse på tværs af platforme. Død kode (`RiderCard`-komponent, `MOBILE_STATS`-array, isMobile-state og resize-listener) er fjernet",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.30",
     date: "2026-05-04",
     label: "Beta",

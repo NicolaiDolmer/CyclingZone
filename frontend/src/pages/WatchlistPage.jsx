@@ -22,6 +22,8 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   );
 }
 
+const PAGE_SIZE = 50;
+
 export default function WatchlistPage() {
   const navigate = useNavigate();
   const [entries, setEntries] = useState([]);
@@ -29,6 +31,7 @@ export default function WatchlistPage() {
   const [userId, setUserId] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
   const [noteText, setNoteText] = useState("");
+  const [page, setPage] = useState(1);
 
   async function loadWatchlist() {
     setLoading(true);
@@ -79,6 +82,7 @@ export default function WatchlistPage() {
   function handleSort(key) {
     if (sort === key) riderFilters.onChange("sort_dir", sortDir === "desc" ? "asc" : "desc");
     else { riderFilters.onChange("sort", key); riderFilters.onChange("sort_dir", "desc"); }
+    setPage(1);
   }
   const filtered = entries.filter(e => filteredRiders.has(e.rider.id))
     .sort((a, b) => {
@@ -86,6 +90,13 @@ export default function WatchlistPage() {
       const bi = riderFilters.filtered.findIndex(r => r.id === b.rider.id);
       return ai - bi;
     });
+  const total = filtered.length;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const visible = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+
+  useEffect(() => { setPage(1); }, [riderFilters.filters]);
 
   if (loading) return (
     <div className="flex justify-center py-16">
@@ -94,7 +105,7 @@ export default function WatchlistPage() {
   );
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-full">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-cz-1">Talentspejder</h1>
@@ -125,9 +136,9 @@ export default function WatchlistPage() {
 
           {/* Table */}
           <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[calc(100vh-220px)]">
               <table className="w-full text-xs">
-                <thead>
+                <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
                   <tr className="border-b border-cz-border">
                     <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-left font-medium uppercase tracking-wider">Rytter</SortTh>
@@ -147,7 +158,7 @@ export default function WatchlistPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(entry => {
+                  {visible.map(entry => {
                     const r = entry.rider;
                     const isFree = !r.team_id;
                     return (
@@ -224,6 +235,27 @@ export default function WatchlistPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+            <span className="text-cz-3 text-xs">
+              Viser {total === 0 ? 0 : pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, total)} af {total.toLocaleString("da-DK")}
+            </span>
+            <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+              <button disabled={safePage <= 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
+                  hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed">
+                ← Forrige
+              </button>
+              <button disabled={safePage >= pageCount}
+                onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
+                  hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed">
+                Næste →
+              </button>
             </div>
           </div>
         </>

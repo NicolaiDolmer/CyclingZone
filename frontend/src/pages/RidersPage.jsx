@@ -52,12 +52,6 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   );
 }
 
-const MOBILE_STATS = [
-  { key: "stat_bj", label: "BJ" }, { key: "stat_sp", label: "SP" },
-  { key: "stat_tt", label: "TT" }, { key: "stat_fl", label: "FL" },
-  { key: "stat_udh", label: "UDH" },
-];
-
 function StatBar({ value }) {
   const pct = Math.round((value / 99) * 100);
   return (
@@ -81,53 +75,6 @@ function StarButton({ riderId, watchlist, onToggle }) {
       className={`text-lg transition-all hover:scale-110 flex-shrink-0 ${isWatched ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"}`}>
       {isWatched ? "★" : "☆"}
     </button>
-  );
-}
-
-function RiderCard({ rider, onClick, watchlist, onToggleWatchlist, isInAuction }) {
-  return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-4 hover:border-cz-border
-      cursor-pointer transition-all active:scale-98">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div onClick={() => onClick(rider)} className="flex-1 min-w-0">
-          <p className="text-cz-1 font-medium text-sm truncate">
-            {rider.nationality_code && <Flag code={rider.nationality_code} className="mr-1" />}
-            {rider.firstname} {rider.lastname}
-          </p>
-          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            {rider.is_u25 && (
-              <span className="text-[9px] uppercase bg-cz-info/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
-            )}
-            {isInAuction && (
-              <span className="text-[9px] uppercase bg-cz-accent/100/15 text-cz-accent-t px-1.5 py-0.5 rounded">⚡ Auktion</span>
-            )}
-            <span className="text-cz-3 text-xs">{rider.team?.name || "Fri"}</span>
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <span className="text-cz-accent-t font-mono font-bold text-xs whitespace-nowrap">
-            {getRiderMarketValue(rider).toLocaleString("da-DK")} CZ$
-          </span>
-          <StarButton riderId={rider.id} watchlist={watchlist} onToggle={onToggleWatchlist} />
-        </div>
-      </div>
-      {rider.potentiale != null && (
-        <div className="flex items-center gap-1.5 mb-2" onClick={() => onClick(rider)}>
-          <span className="text-cz-3 text-[9px] uppercase tracking-wider">Potentiale</span>
-          <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} showValue />
-        </div>
-      )}
-      <div className="grid grid-cols-5 gap-2" onClick={() => onClick(rider)}>
-        {MOBILE_STATS.map(({ key, label }) => (
-          <div key={key} className="text-center">
-            <p className="text-cz-3 text-[9px] uppercase mb-0.5">{label}</p>
-            <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(rider[key] || 0)}`}>
-              {rider[key] || "—"}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -181,7 +128,6 @@ export default function RidersPage() {
   const [riders, setRiders] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [watchlist, setWatchlist] = useState(new Set());
   const [activeAuctionRiders, setActiveAuctionRiders] = useState(new Set());
   const [userId, setUserId] = useState(null);
@@ -189,12 +135,6 @@ export default function RidersPage() {
   const [nationalities, setNationalities] = useState([]);
   const [myTeam, setMyTeam] = useState(null);
   const [showEmptyState, setShowEmptyState] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -321,16 +261,6 @@ export default function RidersPage() {
       {loading ? (
         <div className="flex justify-center py-16">
           <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-        </div>
-      ) : isMobile ? (
-        <div data-tour="riders-list" className="flex flex-col gap-3">
-          {riders.map(r => (
-            <RiderCard key={r.id} rider={r}
-              onClick={r => navigate(`/riders/${r.id}`)}
-              watchlist={watchlist}
-              onToggleWatchlist={toggleWatchlist}
-              isInAuction={activeAuctionRiders.has(r.id)} />
-          ))}
         </div>
       ) : (
         <div data-tour="riders-list" className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
