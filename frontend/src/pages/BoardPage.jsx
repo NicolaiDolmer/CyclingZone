@@ -302,6 +302,16 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
             <span className="text-cz-3 text-xs font-mono">{cumulativeProgress}/{goal.target}</span>
           </div>
         )}
+        {/* S-02g · relative_rank rich detail — viser live division-rangering så manager
+            kan se konkret hvor mange managers han slår vs. mål-tærsklen. */}
+        {goal.type === "relative_rank"
+          && evaluation?.rank_in_division != null
+          && evaluation?.division_manager_count != null && (
+          <p className="text-[11px] text-cz-3 mt-1.5 leading-relaxed">
+            Du staar <span className="font-medium text-cz-2">#{evaluation.rank_in_division}</span> af {evaluation.division_manager_count} managers i divisionen
+            {" "}— slaar {evaluation.actual ?? 0} (maal: {evaluation.target}{evaluation.actual >= evaluation.target ? " ✓" : ""}).
+          </p>
+        )}
         <div className="flex flex-wrap gap-3 mt-1">
           {!achieved && isRequired && (
             <span className="text-[10px] text-cz-3 uppercase tracking-wider">Krav</span>
@@ -310,6 +320,11 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
             <span className={`text-xs font-medium ${statusMeta.color}`}>{statusMeta.label}</span>
           )}
           {goal.negotiated && <span className="text-xs text-cz-info/70">Forhandlet</span>}
+          {/* S-02g · Tradeoff-stramning indikator. Vises når et mål er hævet pga. tidligere
+              approved board request (lower_results_pressure / ease_identity_requirements). */}
+          {goal.tradeoff_tightened && (
+            <span className="text-xs text-cz-warning/80" title="Strammet af bestyrelsen pga. tidligere request">🔒 Strammet</span>
+          )}
           {goal.satisfaction_bonus > 0 && (
             <span className="text-xs text-cz-success/70">+{goal.satisfaction_bonus} tilfredshed</span>
           )}

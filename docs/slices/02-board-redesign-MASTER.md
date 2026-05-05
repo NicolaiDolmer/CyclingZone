@@ -209,15 +209,25 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 **Ikke leveret (overført til S-02f.1):**
 - DNA-drift-mekanik (gradvis udvikling over 5 sæsoner baseret på faktiske valg). Master-roadmap line 401: "Drift-mekanik defineres i S-02f-implementering" — fundamentet er leveret, drift kommer som mini-slice efter S-02g/h er afsluttet
 
-### S-02g · Manager-konkurrence + mid-season aktiv påvirkning + drej-låsninger
+### S-02g · Manager-konkurrence + mid-season aktiv påvirkning + drej-låsninger ✅ LEVERET 2026-05-05 (v2.39)
 **Dep:** S-02a + S-02d. **Mid-season + tradeoff låst i Q-batch 1B Q15 + Q16.**
-**Leverer:**
-- `relative_rank`-mål bruger live division-intern rangering fra `season_standings.rank_in_division` (Q12)
-- Mid-season auto-banner ved race_day=midpoint: hvis satisfaction <50 ELLER ≥50% mål 'behind' → besked i Indbakke 'Skal handles' med 1-2 actions (anmod om budget-lån ELLER acceptér tightened deadline)
-- Tradeoff-låsninger: efter request-godkendelse (fx `lower_results_pressure`) → 1 sæson stramning af identitetskrav (+1 til U25/national_riders ELLER -5% sponsor_growth-target). DB-felt: `board_profiles.tradeoff_active_until_season_id`
-- Cool-down: én MAJOR focus-skift pr. plan-livscyklus (DB-tracker: `board_profiles.major_pivot_used_at`)
-- Evaluerings-vindue-blokering: requests umulige i sidste 5 race-days
-- Mid-cycle 5yr/3yr-låsning: kræver ≥50% plan-gennemført ELLER >30% satisfaction-delta
+**Q-bekræftelser (2026-05-05 session):**
+- Q-A=c: mid-season action = "Kun acknowledgement" (banner er informationskanal, ingen mekanisk effekt — manager handler via eksisterende request/loan-flows)
+- Q-B=a: MAJOR pivot = kun krydsninger youth↔star (matcher shouldUseBalancedBridge-logikken). Pivots til/fra balanced er ikke MAJOR
+- Q-C=a: Tradeoff hardkodet pr. request-type (`lower_results_pressure` → +1 identity_riders, `ease_identity_requirements` → +5pp sponsor_growth)
+- Q-D=a: Alle 6 mini-features i én session, én commit
+
+**Leveret:**
+- Migration `database/2026-05-05-board-tradeoff-pivot.sql`: `board_profiles.tradeoff_active_until_season_id` (FK seasons) + `tradeoff_payload` (JSONB) + `major_pivot_used_at` (TIMESTAMPTZ) + index for cleanup-cron lookups
+- F1: `relative_rank` rich UI ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)) — GoalCard renderer "Du staar #X af Y managers i divisionen — slaar Z (maal: N ✓)" når evaluation har `rank_in_division` + `division_manager_count`. evaluateGoalProgress udvidet til at returnere disse felter for relative_rank-typen ([boardGoals.js](backend/lib/boardGoals.js))
+- F2: `boardMidSeason.js` motor + cron — `processMidSeasonReviewCron` checker hver human team ved race_days_completed >= midpoint, fyrer `board_critical`-notif "Mid-season check (sæson N)" hvis satisfaction <50 ELLER ≥50% målbare goals 'behind'. Idempotent via eksplicit notif-tabel-tjek på (user_id, type, title, related_id). Cron-interval 30 min, integration i [cron.js](backend/cron.js) med immediate run on startup
+- F3: Tradeoff-låsninger — `applyTradeoffTighteningToGoals` ([boardGoals.js](backend/lib/boardGoals.js)) implementerer 2 kinds: `tighten_identity_riders` (+delta target på min_u25/min_national_riders) og `raise_sponsor_growth_target` (+delta_pct på sponsor_growth). Mål markeres `tradeoff_tightened: true` + `tradeoff_kind`. buildBoardProposal accepterer nu `tradeoffPayload`-param og applyer som sidste step. /api/board/proposal + /api/board/sign læser eksisterende board's tradeoff_payload og clearer ved sign-time. TRADEOFF_PAYLOADS_BY_REQUEST mapper request-type → payload
+- F4: MAJOR pivot cool-down — `isMajorPivotRequest` returnerer true kun for more_youth_focus FRA star_signing ELLER more_results_focus FRA youth_development. resolveBoardRequest sætter `major_pivot_used_at = now()` ved approval. Availability-check blokerer videre MAJOR pivots med "Bestyrelsen har allerede accepteret en MAJOR drejning". Reset til null ved plan-renewal (frisk plan = frisk cool-down)
+- F5: Window-blokering — `getBoardRequestAvailability` returnerer disabled hvis `context.raceDaysLeft <= 5`. Konstant `REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT = 5`. Kontekst pumpes fra api.js /board/status + /board/request-endpoint
+- F6: Mid-cycle-låsning — for plan_type='5yr' eller '3yr', requests blokeres hvis progressPct < 50% OG abs(satisfactionDeltaPct) <= 30%. 1yr-planer har ingen mid-cycle-lås. Konstanter `MID_CYCLE_PROGRESS_THRESHOLD_PCT=50` og `MID_CYCLE_SATISFACTION_DELTA_PCT=30`
+- '🔒 Strammet'-badge på GoalCard når goal.tradeoff_tightened. Beta-reset wiper alle 3 nye felter via DELETE board_profiles (eksisterende pattern, ingen ekstra ændring)
+- HelpPage: 6 nye FAQ-items (mid-season-banner, MAJOR pivot cool-down, window-blokering, mid-cycle-låsning, '🔒 Strammet'-badge, live relative_rank-display)
+- 36 nye backend-tests (286/286 grønne total) i [boardMidSeason.test.js](backend/lib/boardMidSeason.test.js): applyTradeoffTighteningToGoals 2 kinds + null + ikke-matchende type, isMajorPivotRequest 4 kombinationer, tradeoff+pivot-persistens i resolveBoardRequest, F4/F5/F6-guards (12 cases), buildBoardProposal tradeoff-integration, evaluateMidSeasonTrigger 3 cases, processMidSeasonReviewCron 6 cases (trigger ved midpoint, skip pre-midpoint, skip baseline+onboarding, idempotent, AI-skip, pending-board-skip)
 
 ### S-02h · Wizard-redesign — Hybrid B+A
 **Dep:** S-02a + S-02c. **UX-detaljer låst i Q-batch 1C Q17 + Q19 + Q20.**

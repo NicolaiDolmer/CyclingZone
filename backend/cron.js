@@ -25,6 +25,7 @@ import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
 import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
+import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, '../.env') });
 
@@ -185,6 +186,28 @@ async function runBoardAutoAcceptCron() {
   }
 }
 
+// ─── Board Mid-Season Review (S-02g) ────────────────────────────────────────
+// Når race_days_completed krydser midpoint (= floor(race_days_total/2)) tjekker cron
+// hver human team. Hvis satisfaction <50 ELLER ≥50% mål 'behind' → fyrer board_critical-banner.
+// Idempotens: per-board-per-season notif-dedupe via title-match + related_id.
+
+async function runMidSeasonReviewCron() {
+  try {
+    const result = await processMidSeasonReviewCron({
+      supabase,
+      notifyUser: (args) => notifyUserShared({ supabase, ...args }),
+      now: new Date(),
+    });
+    if (result.banners_sent || result.errors) {
+      console.log(
+        `📣 Mid-season review: ${result.teams_checked} hold tjekket — ${result.banners_sent} banner(e) sendt, ${result.errors} fejl`
+      );
+    }
+  } catch (err) {
+    console.error("Cron error (mid-season review):", err.message);
+  }
+}
+
 // ─── Squad Enforcement ───────────────────────────────────────────────────────
 
 async function runSquadEnforcementCron() {
@@ -247,9 +270,14 @@ export function startCron() {
   // Notif-dedup (24h) sikrer ingen spam selv ved hyppig polling.
   setInterval(runBoardAutoAcceptCron, 30 * 60 * 1000);
 
+  // Every 30 minutes: board mid-season review (S-02g).
+  // Per-board-per-season dedupe (eksplicit notification-tabel-tjek) gør cron idempotent.
+  setInterval(runMidSeasonReviewCron, 30 * 60 * 1000);
+
   // Run immediately on start
   finalizeExpiredAuctions();
   runBoardAutoAcceptCron();
+  runMidSeasonReviewCron();
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────

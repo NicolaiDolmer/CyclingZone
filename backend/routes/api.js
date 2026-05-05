@@ -3249,6 +3249,16 @@ router.get("/board/status", requireAuth, async (req, res) => {
             identityProfile,
             overallScore: outlook?.overall_score ?? null,
             requestUsedThisSeason,
+            // S-02g · Window-blokering + mid-cycle-låsning context.
+            // raceDaysLeft = absolute, planDuration/seasonsCompleted bruges
+            // af 5yr/3yr-mid-cycle-guard, satisfactionDeltaPct = abs(current-50)
+            // som proxy for "hvor langt er vi fra plan-start-baseline 50".
+            raceDaysLeft: activeSeason
+              ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
+              : null,
+            planDuration,
+            seasonsCompleted,
+            satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
           },
         })
         : [];
@@ -3574,9 +3584,12 @@ router.post("/board/proposal", requireAuth, async (req, res) => {
       board,
       identityBasis: context.team?.season_1_identity_basis ?? null,
       dnaKey: context.team?.team_dna_key ?? null,
+      // S-02g · Anvend deferred tradeoff-stramning fra forrige sæsons approved request.
+      // Påvirker target+label på min_u25_riders/min_national_riders eller sponsor_growth.
+      tradeoffPayload: board?.tradeoff_payload ?? null,
     });
 
-    res.json({ ok: true, ...proposal });
+    res.json({ ok: true, ...proposal, tradeoff_applied: Boolean(board?.tradeoff_payload) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -3609,6 +3622,8 @@ router.post("/board/sign", requireAuth, async (req, res) => {
       board: existingBoard,
       identityBasis: team?.season_1_identity_basis ?? null,
       dnaKey: team?.team_dna_key ?? null,
+      // S-02g · Tradeoff fra forrige sæsons approved request anvendes nu på den nye plan.
+      tradeoffPayload: existingBoard?.tradeoff_payload ?? null,
     });
 
     let negotiationIndexes = [];
@@ -3652,6 +3667,13 @@ router.post("/board/sign", requireAuth, async (req, res) => {
       cumulative_stage_wins: 0,
       cumulative_gc_wins: 0,
       season_id: activeSeason?.id ?? null,
+      // S-02g · Plan-renewal nulstiller tradeoff (allerede anvendt) + MAJOR-pivot cool-down.
+      // tradeoff_payload + tradeoff_active_until_season_id clears fordi stramningen
+      // er bagt ind i finalGoals via buildBoardProposal. major_pivot_used_at clears
+      // fordi en frisk plan = frisk cool-down (master-doc Q3).
+      tradeoff_active_until_season_id: null,
+      tradeoff_payload: null,
+      major_pivot_used_at: null,
       updated_at: new Date().toISOString(),
     };
 
@@ -3749,18 +3771,39 @@ router.post("/board/request", requireAuth, async (req, res) => {
           stageWins: (board.cumulative_stage_wins || 0) + (standing?.stage_wins || 0),
           gcWins: (board.cumulative_gc_wins || 0) + (standing?.gc_wins || 0),
         },
+        // S-02g · Window-blokering + mid-cycle-låsning + tradeoff/pivot-tracking
+        raceDaysLeft: activeSeason
+          ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
+          : null,
+        satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
+        activeSeasonId: activeSeason?.id ?? null,
       },
     });
 
     let updatedBoard = board;
 
     if (requestResult.updated_board) {
+      // S-02g · Persist tradeoff_active_until_season_id + tradeoff_payload + major_pivot_used_at
+      // sammen med focus + goals. Auto-accept + buildBoardProposal læser disse felter
+      // ved næste plan-renewal og anvender stramning via applyTradeoffTighteningToGoals.
+      const updatePayload = {
+        focus: requestResult.updated_board.focus ?? board.focus,
+        current_goals: requestResult.updated_board.current_goals ?? board.current_goals,
+        updated_at: new Date().toISOString(),
+      };
+      if (requestResult.updated_board.tradeoff_active_until_season_id !== undefined
+          || requestResult.updated_board.tradeoff_payload !== undefined) {
+        updatePayload.tradeoff_active_until_season_id =
+          requestResult.updated_board.tradeoff_active_until_season_id ?? null;
+        updatePayload.tradeoff_payload =
+          requestResult.updated_board.tradeoff_payload ?? null;
+      }
+      if (requestResult.updated_board.major_pivot_used_at !== undefined
+          && requestResult.updated_board.major_pivot_used_at !== null) {
+        updatePayload.major_pivot_used_at = requestResult.updated_board.major_pivot_used_at;
+      }
       const { data: boardUpdate, error: boardUpdateError } = await supabase.from("board_profiles")
-        .update({
-          focus: requestResult.updated_board.focus ?? board.focus,
-          current_goals: requestResult.updated_board.current_goals ?? board.current_goals,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", board.id)
         .select("*")
         .single();

@@ -450,6 +450,53 @@ export function buildNegotiatedGoal(goal) {
   }
 }
 
+// S-02g · Tradeoff-stramning fra approved board request anvendes på næste plan-renewal.
+// Hardkodet pr. request-type (Q-batch 1B Q16):
+//   - lower_results_pressure  →  tighten_identity_riders (target+1 på min_u25/min_national)
+//   - ease_identity_requirements →  raise_sponsor_growth_target (target+5pp på sponsor_growth)
+// Pure function — ingen side-effects, ingen DB. Markerer modificerede mål med tradeoff_tightened: true
+// så frontend kan rendere "🔒 Strammet af bestyrelsen"-badge.
+export function applyTradeoffTighteningToGoals(goals, payload) {
+  if (!payload || !goals?.length) return goals || [];
+  const kind = payload.kind;
+
+  if (kind === "tighten_identity_riders") {
+    const delta = Number(payload.delta) || 1;
+    return goals.map((goal) => {
+      if (goal.type === "min_u25_riders" || goal.type === "min_national_riders") {
+        const newTarget = Math.max(1, (Number(goal.target) || 0) + delta);
+        return addGoalMetadata({
+          ...goal,
+          target: newTarget,
+          label: buildGoalLabel({ ...goal, target: newTarget }),
+          tradeoff_tightened: true,
+          tradeoff_kind: kind,
+        });
+      }
+      return goal;
+    });
+  }
+
+  if (kind === "raise_sponsor_growth_target") {
+    const deltaPct = Number(payload.delta_pct) || 5;
+    return goals.map((goal) => {
+      if (goal.type === "sponsor_growth") {
+        const newTarget = (Number(goal.target) || 0) + deltaPct;
+        return addGoalMetadata({
+          ...goal,
+          target: newTarget,
+          label: buildGoalLabel({ ...goal, target: newTarget }),
+          tradeoff_tightened: true,
+          tradeoff_kind: kind,
+        });
+      }
+      return goal;
+    });
+  }
+
+  return goals;
+}
+
 export function buildBoardProposal({
   focus = "balanced",
   planType = "1yr",
@@ -458,6 +505,7 @@ export function buildBoardProposal({
   standing = null,
   identityBasis = null,
   dnaKey = null,
+  tradeoffPayload = null,
 } = {}) {
   const baseGoals = generateBoardGoals({ focus, planType, team, riders, standing });
   const personality = deriveBoardPersonality({ focus, planType });
@@ -486,6 +534,12 @@ export function buildBoardProposal({
     ? weightedGoals.map((goal) => annotateGoalWithIdentityBasis(goal, identityBasis))
     : weightedGoals;
 
+  // S-02g · Tradeoff-stramning anvendes sidst — modificerer kun target+label
+  // på specifikke mål-typer (identity_riders eller sponsor_growth).
+  const finalGoals = tradeoffPayload
+    ? applyTradeoffTighteningToGoals(annotatedGoals, tradeoffPayload)
+    : annotatedGoals;
+
   return {
     focus,
     plan_type: planType,
@@ -493,8 +547,10 @@ export function buildBoardProposal({
     identity_profile: identityProfile,
     identity_basis: identityBasis,
     dna_key: dnaKey,
-    goals: annotatedGoals,
-    negotiation_options: annotatedGoals.map((goal) => buildNegotiatedGoal(goal)),
+    tradeoff_applied: Boolean(tradeoffPayload),
+    tradeoff_payload: tradeoffPayload,
+    goals: finalGoals,
+    negotiation_options: finalGoals.map((goal) => buildNegotiatedGoal(goal)),
   };
 }
 
@@ -1020,7 +1076,20 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
       actual = divisionManagerCount - standing.rank_in_division;
       score = scoreHigherBetter(actual, target);
       status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
-      break;
+      // S-02g · Rich-payload: BoardPage-GoalCard kan rendere "Du staar #X af Y managers"
+      // uden at importere standings-state separat. rank_in_division + division_manager_count
+      // tilføjes til evaluation-objektet (de øvrige cases får dem ikke — kun her er de relevante).
+      return {
+        ...enrichedGoal,
+        actual,
+        target,
+        score: roundNumber(score),
+        score_pct: Math.round(score * 100),
+        status,
+        missing_data: missingData,
+        rank_in_division: standing.rank_in_division,
+        division_manager_count: divisionManagerCount,
+      };
     }
     case "domestic_dominance":
       // Q-G skeleton — kompleks "hjemland"-detektion deferred til S-02g

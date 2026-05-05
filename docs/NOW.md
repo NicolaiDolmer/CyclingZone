@@ -1,24 +1,24 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**S-02f leveret ✅ 2026-05-05 (v2.38).** Klub-DNA komplet ([boardClubDna.js](backend/lib/boardClubDna.js)): 5 håndlavede DNA-arketyper (🌲 Skandinavisk udviklingshold · 🪨 Italiensk klassiker-traditionalist · ⚡ Sprint-fokuseret kommerciel · ⛰️ Fransk klatrer-arv · 🎯 Britisk all-rounder). Tildeling i sæson 2: 3 forslag (national_match + specialization_match + wildcard) computed fra `season_1_identity_basis`. DNA påvirker board-medlems-alignment ved chairman-replacement, mål-vægtning (×1.6 boost) og injicerer tradition-mål i 5yr-forslag. 18 nye tests (250/250 grønne). Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md). 3 sub-slices tilbage (S-02g + S-02h + S-02i) + polish.
+**S-02g leveret ✅ 2026-05-05 (v2.39).** Manager-konkurrence + mid-season + drej-låsninger komplet. 6 mini-features: F1 live `relative_rank` UI ("Du staar #X af Y managers"), F2 mid-season auto-banner ([boardMidSeason.js](backend/lib/boardMidSeason.js)) ved race_days_completed >= midpoint, F3 tradeoff-låsninger (deferred stramning af identity_riders eller sponsor_growth ved next renewal), F4 MAJOR pivot cool-down (én youth↔star-krydsning pr. plan-livscyklus), F5 window-blokering (sidste 5 race-days), F6 mid-cycle-låsning (5yr/3yr kræver ≥50% gennemført ELLER >30% satisfaction-delta). 36 nye tests (286/286 grønne). Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md). 2 sub-slices tilbage (S-02h + S-02i) + polish.
 
 ## Soak-gate
 **Aktiv: nej** — næste udløses ved S-02i (e2e efter alle 9 sub-slices).
 
 ## Open beta status
-**Alle launch-gates ✅, 5/6 P0 leveret.** Eneste P0 tilbage: S-02 (6/9 sub-slices leveret — S-02a + S-02b + S-02c + S-02d + S-02e + S-02f). ~19 managers live.
+**Alle launch-gates ✅, 5/6 P0 leveret.** Eneste P0 tilbage: S-02 (7/9 sub-slices leveret — S-02a + S-02b + S-02c + S-02d + S-02e + S-02f + S-02g). ~19 managers live.
 
 ## Senest leveret
-- 2026-05-05: **S-02f Klub-DNA** (v2.38). Migration `2026-05-05-board-club-dna.sql` (team_dna-reference-tabel seedet med 5 rows + teams.team_dna_key/team_dna_chosen_at) + ny [boardClubDna.js](backend/lib/boardClubDna.js)-motor (`computeDnaSuggestions` + `getDnaArchetypeAlignmentBonus` + `applyDnaWeightingToGoals` + `buildDnaTraditionGoal`) + DNA-bias hookt ind i `selectBoardMembers` (chairman-replacement) + `buildBoardProposal` (5yr tradition-injection + weighting med dedup mod base-pakken) + 2 nye routes `/api/board/dna-{suggestions,choose}` + BoardPage `ClubDnaSelectionCard` (før plan-cards) + `ClubDnaBadge` (efter valg) + 18 nye tests
+- 2026-05-05: **S-02g Manager-konkurrence + mid-season + drej-låsninger** (v2.39). Migration `2026-05-05-board-tradeoff-pivot.sql` (board_profiles.tradeoff_active_until_season_id + tradeoff_payload + major_pivot_used_at) + ny [boardMidSeason.js](backend/lib/boardMidSeason.js)-motor (`processMidSeasonReviewCron` + `evaluateMidSeasonTrigger`) hookt ind i [cron.js](backend/cron.js) (30-min interval) + `applyTradeoffTighteningToGoals` ([boardGoals.js](backend/lib/boardGoals.js)) anvendt sidst i goal-pipeline + buildBoardProposal accepterer tradeoffPayload + isMajorPivotRequest + getBoardRequestAvailability F4/F5/F6 guards + /api/board/proposal+sign reader/clearer tradeoff-felter + BoardPage relative_rank rich detail + '🔒 Strammet'-badge + 6 nye HelpPage FAQ + 36 nye tests
+- 2026-05-05: S-02f Klub-DNA (v2.38) — 5 DNA-arketyper + 3 forslag i sæson 2 + DNA-bias på alignment + tradition-mål i 5yr
 - 2026-05-05: S-02e Konsekvens-tier (6 lag) (v2.37) — 6-lags graduerings-system + hard-blocks
 - 2026-05-05: S-02d Udvidede mål-typer (v2.36) — 7 nye mål-typer + 3 integreret som 5. mål
-- 2026-05-05: S-02c Navngivne board-medlemmer (v2.35) — 9 arketyper + 5 medlemmer/team + 270 reactions
 - Ældre → `docs/archive/NOW_HISTORIK_2026-05-05.md`
 
 ## Næste session — start med
-**"Start S-02g — Manager-konkurrence + mid-season"** ELLER **"Start S-02h — Wizard-redesign Hybrid B+A"**
-S-02g leverer relative_rank-mål m. live division-rangering, mid-season auto-banner, tradeoff-låsninger, drej-cooldown — har S-02a + S-02d som dep. S-02h leverer compact strategisk dashboard m. mini-dialog board-member-portrætter + multi-plan-fornyelses-flow + mobile-stack — har S-02a + S-02c som dep. ÉN slice = ÉN session = commit + push.
+**"Start S-02h — Wizard-redesign Hybrid B+A"** ELLER **"Start S-02i — Bug-fix-pass + e2e + soak-gate"**
+S-02h leverer compact strategisk dashboard m. mini-dialog board-member-portrætter + multi-plan-fornyelses-flow + mobile-stack — har S-02a + S-02c som dep. S-02i er den endelige soak-gate-slice (60-min e2e gennem alle plan-livscyklusser × arketyper × mål-typer × konsekvens-tiers) — har S-02a-h som dep. ÉN slice = ÉN session = commit + push.
 
 ## Kritiske invarianter
 - **Verificér runtime FØR claim** — grep før TODO-claims

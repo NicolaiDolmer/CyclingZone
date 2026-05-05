@@ -604,6 +604,30 @@ const FAQ = [
       q: "Hvad gør klub-DNA helt konkret?",
       a: "DNA påvirker tre ting: (1) Dine 5-årsplaner får et ekstra DNA-tradition-mål — fx 'mindst ét Monument-podie' for italiensk_klassiker eller 'min. 2 etape-trøjer/sæson' for sprint_kommerciel — som bonus-mål oven på de focus-baserede mål. (2) Mål der matcher DNA'ets prioriteter får boostet satisfaction-bonus + penalty (italiensk_klassiker × 1.6 på monument_podium-mål — vinder du, jubler bestyrelsen ekstra; misser du, er straffen større). (3) Når formanden udskiftes (efter 2× plan-udløb under 30% tilfredshed), tipper DNA-bonus alignment-scoren mod arketyper der matcher klubbens identitet — italiensk_klassiker giver +4 til klassiker_purist og -2 til gc_elsker, så formanden reflekterer DNA'et over tid.",
     },
+    {
+      q: "Hvad er mid-season check, og hvorfor får jeg pludselig en 'Skal handles'-notif midt i sæsonen?",
+      a: "Når halvdelen af sæsonens race-days er ovre, tjekker bestyrelsen din plan-status. Hvis tilfredsheden er under 50% ELLER mindst halvdelen af dine plan-mål ligger 'bagud' efter halvtid → får du en 'Mid-season check'-notif i Indbakke 'Skal handles'. Notifen er informativ: bestyrelsen er bekymret men handler ikke automatisk. Du kan reagere ved at sende en board request (dreje plan-mål), anmode om budget-lån på Økonomi-siden, eller bare skærpe focus resten af sæsonen. Banneret fyrer kun én gang pr. sæson pr. board.",
+    },
+    {
+      q: "Hvad er drej-cooldown og 'MAJOR pivot'?",
+      a: "En MAJOR pivot er en focus-skift mellem extremer — fra ungdomsudvikling til stjernesignering eller omvendt. Dem må du kun gennemføre én gang pr. plan-livscyklus. Når du fx accepterer 'mere stjerner nu' fra et ungdomsspor, registreres et MAJOR-pivot-stempel på din plan, og næste tilsvarende request bliver afvist med 'Bestyrelsen har allerede accepteret en MAJOR drejning'. Stemplet nulstilles når planen bliver fornyet (frisk plan = frisk cool-down). Pivots til/fra balanced er ikke MAJOR — du kan stadig dreje gradvist via balanced-mellemstation.",
+    },
+    {
+      q: "Hvorfor kan jeg ikke sende board requests i sæsonens slutfase?",
+      a: "I de sidste 5 race-days af en sæson er alle requests blokeret. Bestyrelsen vil ikke risikere at planen bliver drejet umiddelbart før evalueringen — det ville miste forbindelsen mellem dine valg og resultatet. Når der er mindre end 6 race-days tilbage, ser du 'Saesonens slutfase er begyndt'-besked på alle request-knapper. Window'et åbner igen ved sæson-start. Brug fasen til at score sidste point i stedet.",
+    },
+    {
+      q: "Hvorfor kan jeg ikke dreje min 5-årsplan før den er halvt færdig?",
+      a: "5-årsplaner og 3-årsplaner er låst de første halvdel af deres løbetid. Konkret: bestyrelsen accepterer ikke requests på en multi-årsplan før mindst 50% af planen er gennemført ELLER din tilfredshed er ændret med over 30 point siden plan-start. Det forhindrer impulsive flip-flops på langtidsplaner og giver bestyrelsen tid til at se om strategien virker. 1-årsplaner har ingen tilsvarende lås.",
+    },
+    {
+      q: "Hvad betyder '🔒 Strammet' badgen på et mål i min nye plan?",
+      a: "Badgen vises når et mål er hævet pga. en tradeoff-låsning fra en tidligere request. Hvis du fx fik godkendt 'Sænk resultatpresset' i forrige sæson, får din nye plans U25- eller national-mål +1 i krav (eller sponsor_growth +5pp ved 'Lemp identitetskrav'). Det er den deferrede konsekvens af at have lempet noget — bestyrelsen forventer at se mere af noget andet til gengæld. Stramningen forsvinder igen efter ÉN sæson.",
+    },
+    {
+      q: "Hvordan virker 'slut foran X andre managers'-mål live?",
+      a: "På Bestyrelse-siden viser balanced-planens relative_rank-mål nu live status: 'Du staar #4 af 8 managers i divisionen — slaar 4 (maal: 3 ✓)'. Tallet opdateres efter hver race-day når season_standings er opdateret. Måler relativt til antallet af humane managers i din division — så det skalerer naturligt fra ~19 nu til 100+ managers efter open beta uden cross-division-støj.",
+    },
 ];
 
 export default function HelpPage() {

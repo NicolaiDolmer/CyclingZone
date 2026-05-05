@@ -35,12 +35,20 @@ export {
   countGoalsMet,
   evaluateGoalProgress,
   computeU25StatSum,
+  applyTradeoffTighteningToGoals,
 } from "./boardGoals.js";
 
 // S-02d · Cumulative + plan-start-baseline kontekst-loader for de 7 nye mål-typer
 export {
   loadGoalContextForBoard,
 } from "./boardGoalContext.js";
+
+// S-02g · Mid-season auto-banner cron + pure trigger-evaluering
+export {
+  processMidSeasonReviewCron,
+  evaluateMidSeasonTrigger,
+  MID_SEASON_TITLE_PREFIX,
+} from "./boardMidSeason.js";
 
 export {
   isValidBoardFocus,
@@ -49,6 +57,12 @@ export {
   getBoardRequestDefinition,
   buildBoardRequestOptions,
   resolveBoardRequest,
+  isMajorPivotRequest,
+  TRADEOFF_PAYLOADS_BY_REQUEST,
+  REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT,
+  MID_CYCLE_PROGRESS_THRESHOLD_PCT,
+  MID_CYCLE_SATISFACTION_DELTA_PCT,
+  MAJOR_PIVOT_REQUEST_TYPES,
 } from "./boardRequests.js";
 
 export {

@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "2.39",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "S-02g · Manager-konkurrence + mid-season + drej-låsninger",
+        items: [
+          "Mid-season auto-banner ([boardMidSeason.js](backend/lib/boardMidSeason.js)): når race_days_completed krydser midpoint (= floor(race_days_total/2)) tjekker en ny cron hver human team. Hvis tilfredshed <50% ELLER ≥50% af målbare plan-mål ligger 'behind'-status → fyrer `board_critical`-notif til Indbakke 'Skal handles'-tier (Q-batch 1B Q15 + Q-batch 1C Q21). Idempotent via per-board-per-season notif-dedupe — én fire pr. board pr. sæson",
+          "`relative_rank`-mål går live på BoardPage ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)): GoalCard renderer nu rich detail 'Du staar #4 af 8 managers i divisionen — slaar 4 (maal: 3 ✓)' baseret på `season_standings.rank_in_division` + antal humane managers i din division (Q-batch 1B Q12). Skalerer fra ~19 til 100+ managers uden cross-division-støj",
+          "Tradeoff-låsninger ([boardRequests.js](backend/lib/boardRequests.js)) introducerer deferred konsekvenser af approved board requests: `lower_results_pressure` → +1 til min_u25_riders/min_national_riders i næste plan-renewal. `ease_identity_requirements` → +5pp på sponsor_growth-target. Stramningen markeres med '🔒 Strammet'-badge på det modificerede mål og forsvinder efter ÉN sæson (Q-batch 1B Q16). Hardkodet pr. request-type for forudsigelighed",
+          "MAJOR pivot cool-down: én MAJOR focus-skift pr. plan-livscyklus (Q-batch 1A Q3). MAJOR = krydsninger mellem extremer (more_youth_focus FRA star_signing eller more_results_focus FRA youth_development) — pivots til/fra balanced er ikke MAJOR og kan gentages. Stempel sidder på `board_profiles.major_pivot_used_at` og nulstilles ved plan-renewal (frisk plan = frisk cool-down)",
+          "Window-blokering: requests umulige i sidste 5 race-days af sæsonen. Bestyrelsen vil ikke have planen drejet umiddelbart før evaluering. Mid-cycle-låsning: 5yr/3yr-planer kræver ≥50% gennemført ELLER >30% absolut satisfaction-delta før de kan drejes — forhindrer impulsive flip-flops på langtidsplaner. 1yr-planer har ingen mid-cycle-lås (Q-batch 1A Q3, Appendix beslutning 3a/c)",
+          "Migration ([2026-05-05-board-tradeoff-pivot.sql](database/2026-05-05-board-tradeoff-pivot.sql)) tilføjer `board_profiles.tradeoff_active_until_season_id` (FK til seasons), `tradeoff_payload` (JSONB med stramnings-detaljer) og `major_pivot_used_at` (timestamp). Indexes for hurtig lookup ved plan-renewal. Cron integration i [cron.js](backend/cron.js) kører mid-season-review hver 30 min med immediate run on startup",
+          "buildBoardProposal accepterer nu `tradeoffPayload`-param og applyTradeoffTighteningToGoals ([boardGoals.js](backend/lib/boardGoals.js)) anvender stramning som sidste step i goal-pipeline. /api/board/proposal + /api/board/sign læser tradeoff fra eksisterende board og clearer ved sign-time. Beta-reset wiper alle 3 nye felter via DELETE board_profiles ([betaResetService.js](backend/lib/betaResetService.js))",
+          "36 nye backend-tests (286/286 grønne total) i [boardMidSeason.test.js](backend/lib/boardMidSeason.test.js): applyTradeoffTighteningToGoals (2 kinds + null + ikke-matchende type), isMajorPivotRequest (4 kombinationer), tradeoff/pivot-persistens i resolveBoardRequest, F4/F5/F6 availability-guards (4 mid-cycle-cases × plan_type-variationer + window-block + MAJOR-block), buildBoardProposal tradeoff-integration, evaluateMidSeasonTrigger (low_satisfaction + many_behind + ingen-trigger), processMidSeasonReviewCron (trigger ved midpoint, skip pre-midpoint, skip baseline/onboarding-fasen, idempotent replay, AI/bank/frozen-skip, pending-board-skip)",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.38",
     date: "2026-05-05",
     label: "Beta",

@@ -471,7 +471,7 @@ test("resolveBoardRequest can lower results pressure in exchange for stricter ec
       overallScore: 0.74,
       activeLoanCount: 0,
       planDuration: 3,
-      seasonsCompleted: 1,
+      seasonsCompleted: 2,
       hasSeasonData: true,
       planStartSponsorIncome: 100,
       currentSponsorIncome: 110,
@@ -479,6 +479,7 @@ test("resolveBoardRequest can lower results pressure in exchange for stricter ec
         stageWins: 2,
         gcWins: 0,
       },
+      // S-02g · 2/3 saesoner = 66% > 50% mid-cycle-graense → re-orientering aabnet
     },
     requestType: "lower_results_pressure",
   });

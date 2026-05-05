@@ -4,6 +4,32 @@ import {
   VALID_BOARD_REQUEST_TYPES,
   BOARD_REQUEST_DEFINITIONS,
 } from "./boardConstants.js";
+
+// S-02g · Mid-cycle-låsning + window-blokering + MAJOR pivot cool-down (Q-batch 1B + Q-batch 1C).
+// Eksporteret som konstanter så tests + frontend hint-tekster kan reference samme tærskler.
+export const REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT = 5;       // F5: requests umulige i sidste 5 race-days
+export const MID_CYCLE_PROGRESS_THRESHOLD_PCT = 50;          // F6: ≥50% plan-gennemført ELLER
+export const MID_CYCLE_SATISFACTION_DELTA_PCT = 30;          // >30% satisfaction-delta åbner re-orientering
+export const MAJOR_PIVOT_REQUEST_TYPES = new Set([           // F4: kun krydsninger youth↔star tæller
+  "more_youth_focus",     // major hvis FRA star_signing
+  "more_results_focus",   // major hvis FRA youth_development
+]);
+
+// S-02g · Tradeoff-låsninger (Q-batch 1B Q16, hardkodet pr. request-type).
+// Anvendes ved næste plan-renewal hvis active_season.id matcher tradeoff_active_until_season_id.
+export const TRADEOFF_PAYLOADS_BY_REQUEST = {
+  lower_results_pressure: { kind: "tighten_identity_riders", delta: 1 },
+  ease_identity_requirements: { kind: "raise_sponsor_growth_target", delta_pct: 5 },
+  // more_youth_focus + more_results_focus har ALLEREDE inline tradeoff-effekter i resolveBoardRequest
+  // (replaceGoal med buildTightenedGoal). Ingen deferred låsning her.
+};
+
+export function isMajorPivotRequest({ requestType, currentFocus }) {
+  if (!MAJOR_PIVOT_REQUEST_TYPES.has(requestType)) return false;
+  if (requestType === "more_youth_focus" && currentFocus === "star_signing") return true;
+  if (requestType === "more_results_focus" && currentFocus === "youth_development") return true;
+  return false;
+}
 import {
   deriveTeamIdentityProfile,
   hasStrongNationalCore,
@@ -287,6 +313,16 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
       : "Til gaengald forventer bestyrelsen et skarpere sportsligt output resten af planen.";
   }
 
+  // S-02g · F3 + F4: deferred tradeoff-stramning + MAJOR-pivot cool-down sat ved approval.
+  // Rejected requests har ingen updated_board → ingen tradeoff/pivot-felter. Approved/partial/tradeoff
+  // outcome er hvor effekten skal gemmes.
+  const tradeoffPayload = TRADEOFF_PAYLOADS_BY_REQUEST[requestType] || null;
+  const isMajorPivot = isMajorPivotRequest({ requestType, currentFocus: board.focus });
+  const tradeoffActiveUntilSeasonId = tradeoffPayload && context.activeSeasonId
+    ? context.activeSeasonId
+    : null;
+  const majorPivotUsedAt = isMajorPivot ? new Date().toISOString() : null;
+
   return {
     request_type: requestType,
     request_label: definition?.label || requestType,
@@ -297,8 +333,13 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     updated_board: {
       focus: nextFocus,
       current_goals: updatedGoals,
+      tradeoff_active_until_season_id: tradeoffActiveUntilSeasonId,
+      tradeoff_payload: tradeoffPayload,
+      major_pivot_used_at: majorPivotUsedAt,
     },
     goal_changes: goalChanges,
+    is_major_pivot: isMajorPivot,
+    has_deferred_tradeoff: Boolean(tradeoffPayload),
   };
 }
 
@@ -313,6 +354,53 @@ function getBoardRequestAvailability({ requestType, board, goals = [], context =
 
   if (context.requestUsedThisSeason) {
     return { disabled: true, reason: "Du har allerede brugt saesonens board request." };
+  }
+
+  // S-02g F5 · Window-blokering: requests umulige i sidste 5 race-days
+  // (lokalt afkortet evalueringsvindue så manager ikke kan dreje plan-mål
+  // lige før plan-evaluering)
+  if (
+    context.raceDaysLeft != null
+    && Number(context.raceDaysLeft) <= REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT
+  ) {
+    return {
+      disabled: true,
+      reason: `Saesonens slutfase er begyndt. Bestyrelsen tager ikke imod requests de sidste ${REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT} race-days.`,
+    };
+  }
+
+  // S-02g F6 · Mid-cycle-låsning for 5yr/3yr-planer: kræver ≥50% plan-gennemført
+  // ELLER >30% satisfaction-delta før plan kan drejes. 1yr-planer er korte nok
+  // til at de altid må drejes (forudsat de andre guards passer).
+  const planType = board.plan_type;
+  if (planType === "5yr" || planType === "3yr") {
+    const planDuration = Number(context.planDuration ?? (planType === "5yr" ? 5 : 3));
+    const seasonsCompleted = Number(context.seasonsCompleted ?? 0);
+    const progressPct = planDuration > 0 ? (seasonsCompleted / planDuration) * 100 : 0;
+    const satisfactionDeltaAbsPct = Math.abs(Number(context.satisfactionDeltaPct ?? 0));
+
+    const progressMet = progressPct >= MID_CYCLE_PROGRESS_THRESHOLD_PCT;
+    const deltaMet = satisfactionDeltaAbsPct > MID_CYCLE_SATISFACTION_DELTA_PCT;
+
+    if (!progressMet && !deltaMet) {
+      const planLabel = planType === "5yr" ? "5-aarsplanen" : "3-aarsplanen";
+      return {
+        disabled: true,
+        reason: `${planLabel} er for tidligt i forloebet til at blive drejet. Bestyrelsen oensker mindst ${MID_CYCLE_PROGRESS_THRESHOLD_PCT}% af planen gennemfoert eller en stor tilfredsheds-aendring foer en re-orientering.`,
+      };
+    }
+  }
+
+  // S-02g F4 · MAJOR pivot cool-down: én MAJOR focus-skift pr. plan-livscyklus.
+  // MAJOR = krydsning mellem extremer (youth↔star) — ikke pivots til/fra balanced.
+  if (
+    isMajorPivotRequest({ requestType, currentFocus: board.focus })
+    && board.major_pivot_used_at
+  ) {
+    return {
+      disabled: true,
+      reason: "Bestyrelsen har allerede accepteret en MAJOR drejning i denne plan-livscyklus. En ny stor retnings-aendring kraever en frisk plan.",
+    };
   }
 
   const satisfaction = board.satisfaction ?? 50;
