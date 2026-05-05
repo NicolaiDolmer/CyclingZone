@@ -51,3 +51,26 @@ export {
   satisfactionToModifier,
   evaluateBoardSeason,
 } from "./boardEvaluation.js";
+
+// S-02c · Board members + arketyper
+export {
+  BOARD_ARCHETYPE_KEYS,
+  BOARD_ARCHETYPES,
+  archetypesConflict,
+  computeArchetypeAlignmentScore,
+  getArchetypeByKey,
+} from "./boardArchetypes.js";
+
+export {
+  TEAM_BOARD_MEMBERS_COUNT,
+  IDENTITY_PICKS,
+  WILDCARD_PICKS,
+  REPLACEMENT_TRIGGER_THRESHOLD,
+  LOW_SATISFACTION_THRESHOLD,
+  selectBoardMembers,
+  assignBoardMembersForTeam,
+  selectDominantMember,
+  sampleReactionForFeedback,
+  sampleReactionForGoal,
+  processReplacementTrigger,
+} from "./boardMembers.js";

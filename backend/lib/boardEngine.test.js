@@ -1273,6 +1273,335 @@ function makeAutoAcceptState({
 
 // Minimal fake supabase-client for sequential-negotiation-tests.
 // Mønster matcher betaResetService.test.js's createBetaResetSupabase men er trimmet ned.
+// ─── S-02c · Navngivne board-members tests ──────────────────────────────────
+
+import {
+  BOARD_ARCHETYPE_KEYS,
+  BOARD_ARCHETYPES,
+  archetypesConflict,
+  computeArchetypeAlignmentScore,
+  selectBoardMembers,
+  assignBoardMembersForTeam,
+  selectDominantMember,
+  sampleReactionForFeedback,
+  sampleReactionForGoal,
+  processReplacementTrigger,
+  TEAM_BOARD_MEMBERS_COUNT,
+  REPLACEMENT_TRIGGER_THRESHOLD,
+} from "./boardEngine.js";
+
+const FRENCH_GC_BASIS = {
+  season_number_observed: 1,
+  rider_count: 8,
+  primary_specialization: "gc",
+  primary_specialization_label: "GC-hold",
+  secondary_specialization: "classics",
+  youth_share_pct: 38,
+  youth_level: "medium",
+  national_core: { code: "FR", count: 5, share_pct: 63, strength: "high", established: true, label: "Tydelig FR-kerne" },
+  star_profile: { level: "high", label: "Nationalt kendt", headline_score: 72, star_rider_count: 2, share_pct: 25 },
+};
+
+const YOUTH_HEAVY_BASIS = {
+  season_number_observed: 1,
+  rider_count: 9,
+  primary_specialization: "youth",
+  primary_specialization_label: "Ungdomshold",
+  secondary_specialization: "balanced",
+  youth_share_pct: 67,
+  youth_level: "high",
+  national_core: { code: null, established: false, strength: "none" },
+  star_profile: { level: "low", label: "Ukendt", headline_score: 30, star_rider_count: 0, share_pct: 0 },
+};
+
+test("BOARD_ARCHETYPES contains exactly 9 archetypes med 30 reactions hver (Q-batch 1B Q9 + A4)", () => {
+  assert.equal(BOARD_ARCHETYPE_KEYS.length, 9);
+  for (const key of BOARD_ARCHETYPE_KEYS) {
+    const arc = BOARD_ARCHETYPES[key];
+    assert.ok(arc, `archetype ${key} mangler`);
+    assert.ok(arc.label && arc.emoji);
+    const total = Object.values(arc.reactions).reduce((sum, list) => sum + list.length, 0);
+    assert.equal(total, 30, `${key} skal have 30 reactions (har ${total})`);
+  }
+});
+
+test("archetypesConflict detects high vs. low på friction-aksen debt_aversion", () => {
+  // Sponsoraten (debt_aversion=high) vs. Resultatjægeren (debt_aversion=low) → konflikt
+  assert.equal(
+    archetypesConflict(BOARD_ARCHETYPES.sponsoraten, BOARD_ARCHETYPES.resultatjaegeren),
+    true,
+  );
+  // Pragmatikeren (medium) vs. Sponsoraten (high) → ingen friction-konflikt
+  assert.equal(
+    archetypesConflict(BOARD_ARCHETYPES.pragmatikeren, BOARD_ARCHETYPES.sponsoraten),
+    false,
+  );
+});
+
+test("computeArchetypeAlignmentScore favoriserer GC-elsker for fransk GC-hold", () => {
+  const gcScore = computeArchetypeAlignmentScore(BOARD_ARCHETYPES.gc_elsker, FRENCH_GC_BASIS);
+  const ungdomsScore = computeArchetypeAlignmentScore(BOARD_ARCHETYPES.ungdomsidealisten, FRENCH_GC_BASIS);
+  assert.ok(gcScore > ungdomsScore, `gc_elsker (${gcScore}) skal score højere end ungdomsidealisten (${ungdomsScore})`);
+});
+
+test("selectBoardMembers returnerer 5 medlemmer (3 identity + 2 wildcard) med præcis én chairman", () => {
+  const selection = selectBoardMembers({ identityBasis: FRENCH_GC_BASIS, teamId: "team-fr-gc" });
+  assert.equal(selection.length, TEAM_BOARD_MEMBERS_COUNT);
+  const identityCount = selection.filter((m) => m.selection_kind === "identity").length;
+  const wildcardCount = selection.filter((m) => m.selection_kind === "wildcard").length;
+  assert.equal(identityCount, 3);
+  assert.equal(wildcardCount, 2);
+  const chairmen = selection.filter((m) => m.is_chairman);
+  assert.equal(chairmen.length, 1, "præcis én chairman");
+  // Chairman = højeste alignment_score
+  const maxScore = Math.max(...selection.map((m) => m.alignment_score));
+  assert.equal(chairmen[0].alignment_score, maxScore);
+});
+
+test("selectBoardMembers undgår friction-konflikt 'hvis muligt' — fransk GC-basis har ingen konflikter", () => {
+  // Brugerens A2-præmis (2026-05-05): "Må dog ikke være modsigende, hvis muligt".
+  // FRENCH_GC_BASIS giver gc_elsker + klassiker_purist + traditionalisten som identity-picks.
+  // Wildcard-pool indeholder mindst 4 non-conflicting kandidater, så algoritmen
+  // SKAL undgå alle konflikter her.
+  const selection = selectBoardMembers({ identityBasis: FRENCH_GC_BASIS, teamId: "team-fr-gc-conflict" });
+  const allMembers = selection.map((m) => BOARD_ARCHETYPES[m.archetype_key]);
+  for (let i = 0; i < allMembers.length; i++) {
+    for (let j = i + 1; j < allMembers.length; j++) {
+      assert.equal(
+        archetypesConflict(allMembers[i], allMembers[j]),
+        false,
+        `Konflikt mellem ${allMembers[i].key} og ${allMembers[j].key}`,
+      );
+    }
+  }
+});
+
+test("selectBoardMembers tillader konflikt-fallback når non-conflicting pool er tom (youth-heavy edge case)", () => {
+  // Youth-heavy basis identity-matcher Talentspejderen + Ungdoms-idealisten + tredje (begge youth_focus=high).
+  // 5 af 6 resterende arketyper har youth_focus=low → konflikter er uundgåelige med 2 wildcards.
+  // Algoritmen skal STADIG returnere 5 medlemmer (fallback er bedre end crash).
+  const selection = selectBoardMembers({ identityBasis: YOUTH_HEAVY_BASIS, teamId: "team-youth-edge" });
+  assert.equal(selection.length, TEAM_BOARD_MEMBERS_COUNT);
+  // Antallet af konflikter må ikke være højere end nødvendigt: max 1 wildcard er ikke-conflicting,
+  // så vi forventer 0-1 wildcards uden konflikt og 1-2 med.
+  const wildcards = selection.filter((m) => m.selection_kind === "wildcard");
+  assert.equal(wildcards.length, 2, "stadig 2 wildcards selv ved konflikt-fallback");
+});
+
+test("selectBoardMembers er deterministisk for samme team_id + identity_basis", () => {
+  const a = selectBoardMembers({ identityBasis: FRENCH_GC_BASIS, teamId: "team-x" });
+  const b = selectBoardMembers({ identityBasis: FRENCH_GC_BASIS, teamId: "team-x" });
+  assert.deepEqual(
+    a.map((m) => m.archetype_key).sort(),
+    b.map((m) => m.archetype_key).sort(),
+  );
+});
+
+test("assignBoardMembersForTeam er idempotent — skipper hvis 5 members allerede findes", async () => {
+  const state = {
+    team_board_members: [
+      { id: "m1", team_id: "t1", archetype_key: "sponsoraten", selection_kind: "identity", alignment_score: 5, is_chairman: false },
+      { id: "m2", team_id: "t1", archetype_key: "traditionalisten", selection_kind: "identity", alignment_score: 4, is_chairman: false },
+      { id: "m3", team_id: "t1", archetype_key: "pragmatikeren", selection_kind: "identity", alignment_score: 3, is_chairman: true },
+      { id: "m4", team_id: "t1", archetype_key: "klassiker_purist", selection_kind: "wildcard", alignment_score: 2, is_chairman: false },
+      { id: "m5", team_id: "t1", archetype_key: "gc_elsker", selection_kind: "wildcard", alignment_score: 1, is_chairman: false },
+    ],
+  };
+  const supabase = makeFakeSupabase(state);
+  const result = await assignBoardMembersForTeam({
+    supabase, teamId: "t1", identityBasis: FRENCH_GC_BASIS,
+  });
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, "already_assigned");
+  assert.equal(state.team_board_members.length, 5, "ingen nye rows tilføjet");
+});
+
+test("assignBoardMembersForTeam inserter 5 rows ved første kald", async () => {
+  const state = { team_board_members: [] };
+  const supabase = makeFakeSupabase(state);
+  const result = await assignBoardMembersForTeam({
+    supabase, teamId: "t-new", identityBasis: FRENCH_GC_BASIS,
+  });
+  assert.equal(result.skipped, false);
+  assert.equal(result.assigned, 5);
+  assert.equal(state.team_board_members.length, 5);
+  const chairmenInDb = state.team_board_members.filter((m) => m.is_chairman);
+  assert.equal(chairmenInDb.length, 1);
+});
+
+test("selectDominantMember bruger category_alignment til at vælge taler", () => {
+  const members = [
+    { archetype_key: "sponsoraten", is_chairman: false },
+    { archetype_key: "resultatjaegeren", is_chairman: false },
+    { archetype_key: "pragmatikeren", is_chairman: true },
+  ];
+  const economyTalker = selectDominantMember({ assignedMembers: members, category: "economy" });
+  assert.equal(economyTalker?.key, "sponsoraten", "Sponsoraten ejer økonomi-kategorien");
+  const resultsTalker = selectDominantMember({ assignedMembers: members, category: "results" });
+  assert.equal(resultsTalker?.key, "resultatjaegeren", "Resultatjægeren ejer results-kategorien");
+});
+
+test("selectDominantMember falder tilbage til chairman ved manglende category-match", () => {
+  const members = [
+    { archetype_key: "sponsoraten", is_chairman: false },
+    { archetype_key: "pragmatikeren", is_chairman: true },
+  ];
+  // Ingen category givet → chairman taler (A6 låst 2026-05-05)
+  const speaker = selectDominantMember({ assignedMembers: members, category: null });
+  assert.equal(speaker?.key, "pragmatikeren");
+});
+
+test("sampleReactionForFeedback vælger feedback_negative for negativ tone", () => {
+  const reaction = sampleReactionForFeedback({
+    archetype: BOARD_ARCHETYPES.resultatjaegeren,
+    tone: "negative",
+    seed: "team-x:5yr:0:feedback:negative",
+  });
+  assert.ok(reaction);
+  assert.equal(reaction.bucket, "feedback_negative");
+  assert.equal(reaction.archetype_key, "resultatjaegeren");
+  assert.ok(BOARD_ARCHETYPES.resultatjaegeren.reactions.feedback_negative.includes(reaction.quote));
+});
+
+test("sampleReactionForGoal vælger goal_failure for behind status", () => {
+  const reaction = sampleReactionForGoal({
+    archetype: BOARD_ARCHETYPES.sponsoraten,
+    goalContext: { type: "no_outstanding_debt", status: "behind" },
+    seed: "team-x:5yr:0:goal:no_outstanding_debt:behind",
+  });
+  assert.ok(reaction);
+  assert.equal(reaction.bucket, "goal_failure");
+});
+
+test("processReplacementTrigger inkrementerer counter ved første lav-sat-udløb", async () => {
+  const state = {
+    teams: [{
+      id: "t1", is_ai: false, is_bank: false, is_frozen: false,
+      consecutive_low_satisfaction_expirations: 0,
+      season_1_identity_basis: FRENCH_GC_BASIS,
+    }],
+    team_board_members: [],
+  };
+  const supabase = makeFakeSupabase(state);
+  const result = await processReplacementTrigger({
+    supabase, teamId: "t1", satisfaction: 25, identityBasis: FRENCH_GC_BASIS,
+  });
+  assert.equal(result.replaced, false);
+  assert.equal(result.counter, 1);
+  assert.equal(state.teams[0].consecutive_low_satisfaction_expirations, 1);
+});
+
+test("processReplacementTrigger nulstiller counter ved sat>=30", async () => {
+  const state = {
+    teams: [{
+      id: "t1", is_ai: false, is_bank: false, is_frozen: false,
+      consecutive_low_satisfaction_expirations: 1,
+      season_1_identity_basis: FRENCH_GC_BASIS,
+    }],
+    team_board_members: [],
+  };
+  const supabase = makeFakeSupabase(state);
+  const result = await processReplacementTrigger({
+    supabase, teamId: "t1", satisfaction: 45, identityBasis: FRENCH_GC_BASIS,
+  });
+  assert.equal(result.replaced, false);
+  assert.equal(result.counter, 0);
+  assert.equal(state.teams[0].consecutive_low_satisfaction_expirations, 0);
+});
+
+test("processReplacementTrigger udskifter formanden når counter rammer threshold", async () => {
+  const initialMembers = selectBoardMembers({ identityBasis: FRENCH_GC_BASIS, teamId: "t1" });
+  const oldChairman = initialMembers.find((m) => m.is_chairman);
+  assert.ok(oldChairman);
+
+  const state = {
+    teams: [{
+      id: "t1", is_ai: false, is_bank: false, is_frozen: false,
+      consecutive_low_satisfaction_expirations: REPLACEMENT_TRIGGER_THRESHOLD - 1,
+      season_1_identity_basis: FRENCH_GC_BASIS,
+    }],
+    team_board_members: initialMembers.map((m, idx) => ({
+      id: `m${idx}`,
+      team_id: "t1",
+      archetype_key: m.archetype_key,
+      selection_kind: m.selection_kind,
+      alignment_score: m.alignment_score,
+      is_chairman: m.is_chairman,
+    })),
+  };
+  const supabase = makeFakeSupabase(state);
+  const result = await processReplacementTrigger({
+    supabase, teamId: "t1", satisfaction: 20, identityBasis: FRENCH_GC_BASIS,
+  });
+
+  assert.equal(result.replaced, true);
+  assert.equal(result.old_chairman_key, oldChairman.archetype_key);
+  assert.ok(result.new_chairman_key && result.new_chairman_key !== oldChairman.archetype_key);
+  assert.equal(result.counter, 0, "counter resettet efter trigger");
+  // Old chairman fjernet, ny chairman tilføjet
+  const oldChairmanRow = state.team_board_members.find((m) => m.archetype_key === oldChairman.archetype_key);
+  assert.equal(oldChairmanRow, undefined);
+  assert.equal(state.team_board_members.length, 5, "stadig 5 medlemmer");
+});
+
+test("processReplacementTrigger skipper AI/bank/frozen teams (Q-batch 1A Q8 — manager-only)", async () => {
+  const state = {
+    teams: [{
+      id: "t-ai", is_ai: true, is_bank: false, is_frozen: false,
+      consecutive_low_satisfaction_expirations: 1,
+    }],
+    team_board_members: [],
+  };
+  const supabase = makeFakeSupabase(state);
+  const result = await processReplacementTrigger({
+    supabase, teamId: "t-ai", satisfaction: 10, identityBasis: FRENCH_GC_BASIS,
+  });
+  assert.equal(result.skipped, true);
+  assert.equal(result.replaced, false);
+});
+
+test("startSequentialNegotiation tildeler 5 board-medlemmer pr. human team (S-02c)", async () => {
+  const state = {
+    teams: [
+      {
+        id: "team-1", is_ai: false, is_bank: false, is_frozen: false, division: 3,
+        season_1_identity_basis: null,
+      },
+      {
+        id: "team-2", is_ai: false, is_bank: false, is_frozen: false, division: 2,
+        season_1_identity_basis: FRENCH_GC_BASIS,
+      },
+    ],
+    riders: [
+      { team_id: "team-1", is_u25: true, nationality_code: "DK", uci_points: 100, popularity: 40,
+        stat_fl: 60, stat_bj: 60, stat_kb: 60, stat_bk: 60, stat_tt: 60, stat_bro: 60,
+        stat_sp: 60, stat_acc: 60, stat_udh: 60, stat_mod: 60, stat_res: 60, stat_ftr: 60 },
+    ],
+    board_profiles: [
+      { id: "bp-1", team_id: "team-1", plan_type: "baseline", is_baseline: true },
+      { id: "bp-2", team_id: "team-2", plan_type: "baseline", is_baseline: true },
+    ],
+    transfer_windows: [
+      { id: "tw-new", board_negotiation_state: "locked", created_at: "2026-05-01T00:00:00Z" },
+    ],
+    team_board_members: [],
+  };
+
+  const supabase = makeFakeSupabase(state);
+  const result = await startSequentialNegotiation({ supabase });
+
+  assert.equal(result.identity_bases_written, 1, "kun team-1 manglede basis");
+  assert.equal(result.board_members_assigned, 10, "5 medlemmer × 2 teams");
+  assert.equal(result.window_state, BOARD_NEGOTIATION_STATES.PENDING_5YR);
+
+  const team1Members = state.team_board_members.filter((m) => m.team_id === "team-1");
+  const team2Members = state.team_board_members.filter((m) => m.team_id === "team-2");
+  assert.equal(team1Members.length, 5);
+  assert.equal(team2Members.length, 5);
+  assert.equal(team1Members.filter((m) => m.is_chairman).length, 1);
+  assert.equal(team2Members.filter((m) => m.is_chairman).length, 1);
+});
+
 function makeFakeSupabase(state) {
   function clone(value) {
     return JSON.parse(JSON.stringify(value));

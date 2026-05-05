@@ -14,9 +14,15 @@
 // fra deres aktuelle hold-state og persisteres på teams.season_1_identity_basis.
 // Dette er den frosne sandhed for identity-feeding-badge ("Bygger på din franske kerne"),
 // 5yr-mål-weighting, 1yr-auto-gen og default-focus ved auto-accept.
+//
+// S-02c · Tilføjelse 2026-05-05:
+// Efter identity_basis er persistet, tildeler vi 5 board-medlemmer pr. human team
+// (3 identity-matched + 2 non-conflicting wildcards). Idempotent — skipper teams
+// der allerede har 5 medlemmer i team_board_members.
 
 import { BOARD_IDENTITY_RIDER_SELECT, BOARD_NEGOTIATION_STATES } from "./boardConstants.js";
 import { computeSeasonOneIdentity } from "./boardIdentity.js";
+import { assignBoardMembersForTeam } from "./boardMembers.js";
 
 function throwIfSupabaseError(error, message) {
   if (!error) return;
@@ -56,11 +62,17 @@ export async function startSequentialNegotiation({ supabase, completedSeasonId =
   const teamIds = (humanTeams || []).map((row) => row.id);
   let baselineRowsDeleted = 0;
   let identityBasesWritten = 0;
+  let boardMembersAssignedTotal = 0;
 
   // S-02b: Compute + persist identity_basis pr. team før baseline slettes.
   // Skip teams der allerede har et frosset basis (idempotent ved cron-replay).
+  // S-02c: Efter identity_basis er persistet (eller allerede findes), tildel 5 board-medlemmer.
   if (teamIds.length > 0) {
     const teamsNeedingBasis = (humanTeams || []).filter((row) => !row.season_1_identity_basis);
+    const teamBasisMap = new Map();
+    (humanTeams || []).forEach((row) => {
+      if (row.season_1_identity_basis) teamBasisMap.set(row.id, row.season_1_identity_basis);
+    });
 
     if (teamsNeedingBasis.length > 0) {
       const { data: ridersByTeam, error: ridersError } = await supabase
@@ -88,8 +100,22 @@ export async function startSequentialNegotiation({ supabase, completedSeasonId =
           .update({ season_1_identity_basis: identityBasis })
           .eq("id", teamRow.id);
         throwIfSupabaseError(updateError, `Could not persist identity_basis for team ${teamRow.id}`);
+        teamBasisMap.set(teamRow.id, identityBasis);
         identityBasesWritten += 1;
       }
+    }
+
+    // S-02c · Tildel 5 board-medlemmer pr. human team (3 identity + 2 non-conflicting wildcards).
+    // Idempotent — skipper teams der allerede har 5 medlemmer.
+    for (const teamId of teamIds) {
+      const basis = teamBasisMap.get(teamId);
+      if (!basis) continue;
+      const result = await assignBoardMembersForTeam({
+        supabase,
+        teamId,
+        identityBasis: basis,
+      });
+      if (!result.skipped) boardMembersAssignedTotal += result.assigned;
     }
 
     const { data: deletedRows, error: deleteError } = await supabase
@@ -127,6 +153,7 @@ export async function startSequentialNegotiation({ supabase, completedSeasonId =
   return {
     baseline_rows_deleted: baselineRowsDeleted,
     identity_bases_written: identityBasesWritten,
+    board_members_assigned: boardMembersAssignedTotal,
     window_state: windowState,
     completed_season_id: completedSeasonId,
   };

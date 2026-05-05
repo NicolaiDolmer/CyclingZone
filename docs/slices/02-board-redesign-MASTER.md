@@ -102,14 +102,33 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 - HelpPage: 3 nye FAQ-items (sæson 1-baseline, identity-badge, auto-accept-cron)
 - 146/146 backend-tests grønne (15 nye for S-02b: computeSeasonOneIdentity stable axes, defaultFocus mapping, 5yr/1yr-annotation, generate1YrFromLongerPlans variants, identity_basis-persist + idempotent replay, auto-accept-cron T-3/T-1/auto-sign/locked-skip)
 
-### S-02c · Navngivne board-members
+### S-02c · Navngivne board-members ✅ LEVERET 2026-05-05 (v2.35)
 **Dep:** S-02a.
-**Leverer:**
-- DB: `board_members` (9 arketyper-rows seedet — se Q-batch 1B Q9) + `team_board_members` (mapping team→members med tildelings-tidspunkt)
-- Hver arketype har personality-akser (besluttes inline i denne slice ud fra arketype-navn) + reaktions-template-pool (30-50 templates × 9 = ~270-450 templates total)
-- `boardEvaluation` udvidet til at sample reaktion fra dominerende medlem ved feedback-build
-- UI: avatar-grid (lille) på BoardPage; mini-dialogs ved enkelt-mål-forhandling
-- Udskiftnings-trigger: 2× plan-udløb i træk under 30% tilfredshed → ny formand
+**Q-bekræftelser (2026-05-05 session):**
+- A1=5 medlemmer fast pr. team
+- A2=3 identity-matched + 2 non-conflicting wildcards (friction-akser: debt_aversion, youth_focus, results_pressure)
+- A3=tildelt ved sæson-1-slut i `startSequentialNegotiation`
+- A4=30 templates pr. arketype (270 total) i kode-konstant (ikke DB-tabel)
+- A5=`boardArchetypes.js` (samme pattern som `BOARD_REQUEST_DEFINITIONS`)
+- A6=kategori-match med fallback til formanden ved tvivl
+- A7=udskift KUN formanden ved replacement-trigger (ikke alle 5)
+- A8=per-team counter på `teams.consecutive_low_satisfaction_expirations`
+- A9=emoji + arketype-label avatar (nul asset-arbejde)
+- A10=GoalCard expand-pattern (genbruger S-02b's identity-badge-pattern)
+- A11=ja, `board_update`-notif ved ny formand
+
+**Leveret:**
+- Migration `database/2026-05-05-board-members.sql`: `team_board_members`-tabel + `teams.consecutive_low_satisfaction_expirations` counter
+- `boardArchetypes.js`: 9 arketyper (Sponsoraten 💰, Traditionalisten 🎩, Talentspejderen 🔭, Resultatjægeren 🏆, Pragmatikeren ⚖️, Ungdoms-idealisten 🌱, Nationalist-purist 🏳️, Klassiker-purist 🪨, GC-elsker ⛰️) med personality-akser + 8 policy-akser + category_alignment + 30 reactions/arketype = 270 templates total
+- `boardMembers.js`: `selectBoardMembers` (top-3 identity + 2 non-conflicting wildcards, deterministisk), `assignBoardMembersForTeam` (idempotent), `selectDominantMember` (kategori → arketype, chairman-fallback), `sampleReactionForFeedback`/`sampleReactionForGoal` (tone/status-routing), `processReplacementTrigger` (counter increment/reset, chairman-udskiftning ved counter≥2)
+- Hook i `boardSequentialNegotiation.startSequentialNegotiation`: assign 5 medlemmer pr. team efter `identity_basis` er persisted (idempotent ved replay)
+- Hook i `economyEngine.processSeasonEnd`'s `planIsComplete`-branch: kald `processReplacementTrigger` med ny `newSatisfaction` + identity_basis; send notif "Bestyrelsen har valgt en ny formand: {label}" ved replacement
+- `boardEvaluation.buildBoardOutlook` udvidet med `attachMembersOverlay`: tilføjer `feedback.dominant_member` + `goal_evaluations[].member_reaction` baseret på `context.assignedMembers`
+- API `/api/board/status` returnerer `team_members[]` (decoreret med arketype-data) + sender `assignedMembers` til `buildBoardOutlook`
+- BoardPage: `BoardMembersGrid` (5-avatar grid med chairman-badge ★), `MemberPortrait`, `MemberReactionPanel`, GoalCard udvidet med 'X reagerer'-expand, PlanCard outlook-feedback udvidet med dominant_member-citat
+- Beta-reset: clearer `team_board_members` + nulstiller `consecutive_low_satisfaction_expirations` + `season_1_identity_basis`
+- HelpPage: 3 nye FAQ-items (medlemmer-pool, formandens rolle, hvorfor forskellige medlemmer reagerer på forskellige mål)
+- 164/164 backend-tests grønne (16 nye for S-02c: arketype-shape 9×30, conflict-detection, alignment-scoring, non-conflicting wildcards + fallback, deterministisk replay, idempotent assignment, dominant-member kategori+chairman, reaction-sampling, replacement counter increment/reset/trigger, AI-skip, end-to-end startSequentialNegotiation)
 
 ### S-02d · Udvidede mål-typer
 **Dep:** S-02a.

@@ -75,6 +75,69 @@ function formatBoardCopy(text) {
     .replace(/\b([A-Z]{2})-praegede\b/g, (_match, code) => `${getCountryDisplay(code).name}-praegede`);
 }
 
+// ── S-02c · Board-medlems-komponenter ──────────────────────────────────────────
+
+// 5-kolonne avatar-grid (mobile-stackbar). Vises mellem BoardIdentityCard og plan-kort.
+function BoardMembersGrid({ members = [] }) {
+  if (!members.length) return null;
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-cz-3 text-xs uppercase tracking-wider">Bestyrelsen</p>
+        <span className="text-cz-3 text-[10px]">{members.length} medlemmer</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {members.map((member) => (
+          <div key={member.archetype_key}
+            className={`bg-cz-subtle border rounded-lg p-3 flex flex-col items-center text-center gap-2
+              ${member.is_chairman ? "border-cz-accent/40" : "border-cz-border"}`}>
+            <div className="relative w-12 h-12 rounded-full bg-cz-card border border-cz-border
+              flex items-center justify-center text-2xl">
+              <span aria-hidden>{member.emoji}</span>
+              {member.is_chairman && (
+                <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-cz-accent
+                  text-cz-on-accent text-[9px] font-bold flex items-center justify-center
+                  border border-cz-card" title="Bestyrelsesformand">★</span>
+              )}
+            </div>
+            <div>
+              <p className="text-cz-1 font-medium text-xs leading-tight">{member.label}</p>
+              <p className="text-cz-3 text-[10px] mt-0.5 leading-tight line-clamp-2">{member.short_description}</p>
+              {member.is_chairman && (
+                <p className="text-cz-accent-t text-[9px] uppercase tracking-wider mt-1 font-semibold">
+                  Formand
+                </p>
+              )}
+              {member.selection_kind === "wildcard" && !member.is_chairman && (
+                <p className="text-cz-3 text-[9px] uppercase tracking-wider mt-1">Wildcard</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Medlem-citat-panel inde i GoalCard expand eller PlanCard outlook-feedback.
+function MemberReactionPanel({ reaction, compact = false }) {
+  if (!reaction?.quote) return null;
+  return (
+    <div className={`flex items-start gap-2 ${compact ? "p-2" : "p-3"} bg-cz-subtle border border-cz-border rounded-lg`}>
+      <div className={`${compact ? "w-8 h-8 text-base" : "w-10 h-10 text-xl"} rounded-full
+        bg-cz-card border border-cz-border flex items-center justify-center flex-shrink-0`}>
+        <span aria-hidden>{reaction.emoji}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-cz-1 font-medium ${compact ? "text-xs" : "text-sm"}`}>{reaction.label}</p>
+        <p className={`text-cz-2 italic mt-0.5 ${compact ? "text-[11px]" : "text-xs"} leading-relaxed`}>
+          &ldquo;{reaction.quote}&rdquo;
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Delte komponenter ─────────────────────────────────────────────────────────
 
 function SatisfactionMeter({ value }) {
@@ -101,12 +164,15 @@ function SatisfactionMeter({ value }) {
 
 function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
   const [identityExpanded, setIdentityExpanded] = useState(false);
+  // S-02c: medlem-reaktion expand — klik på goal viser portræt + citat
+  const [memberExpanded, setMemberExpanded] = useState(false);
   const status = evaluation?.status;
   const statusMeta = !achieved && status ? GOAL_STATUS_META[status] : null;
   const isRequired = goal.importance === "required";
   const isBehind = status === "behind";
   const isNearMiss = status === "near_miss" || status === "watch";
   const identityRationale = goal.identity_basis_rationale || null;
+  const memberReaction = evaluation?.member_reaction || null;
 
   const containerClass = achieved
     ? "bg-cz-success-bg0/8 border-cz-success/30"
@@ -174,6 +240,25 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
               <p className="text-[11px] text-cz-3 mt-1.5 leading-relaxed bg-cz-subtle border border-cz-border rounded-md px-2.5 py-1.5">
                 {formatBoardCopy(identityRationale.long)}
               </p>
+            )}
+          </div>
+        )}
+        {/* S-02c · Medlem-reaktion expand — klik viser portræt + citat fra dominant arketype */}
+        {memberReaction && (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => setMemberExpanded(v => !v)}
+              className="inline-flex items-center gap-1 text-[11px] text-cz-2 hover:text-cz-1 underline-offset-2 hover:underline transition-colors"
+            >
+              <span>{memberReaction.emoji}</span>
+              <span>{memberReaction.label} reagerer</span>
+              <span className="text-cz-3">{memberExpanded ? "↑" : "↓"}</span>
+            </button>
+            {memberExpanded && (
+              <div className="mt-1.5">
+                <MemberReactionPanel reaction={memberReaction} compact />
+              </div>
             )}
           </div>
         )}
@@ -762,6 +847,12 @@ function PlanCard({ planType, planData, riders, standing, activeLoanCount, team,
               <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Bestyrelsens vurdering</p>
               <p className="text-cz-1 text-sm font-semibold">{outlook.feedback.headline}</p>
               <p className="text-cz-2 text-sm mt-1">{formatBoardCopy(outlook.feedback.summary)}</p>
+              {/* S-02c · Dominant medlem-citat — match til strongest/weakest_category */}
+              {outlook.feedback.dominant_member && (
+                <div className="mt-3">
+                  <MemberReactionPanel reaction={outlook.feedback.dominant_member} />
+                </div>
+              )}
               {outlook.personality && (
                 <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-cz-border">
                   {[
@@ -1035,6 +1126,8 @@ export default function BoardPage() {
   const [identityBasis, setIdentityBasis] = useState(null);
   const [autoAccept, setAutoAccept] = useState(null);
   const [boardFeed, setBoardFeed] = useState([]);
+  // S-02c: 5 board-medlemmer (3 identity + 2 wildcards)
+  const [teamMembers, setTeamMembers] = useState([]);
 
   // Wizard state
   const [wizardPlanType, setWizardPlanType] = useState(null);
@@ -1105,6 +1198,7 @@ export default function BoardPage() {
     setIdentityBasis(data.identity_basis || null);
     setAutoAccept(data.auto_accept || null);
     setActiveLoanCount(data.active_loans_count || 0);
+    setTeamMembers(Array.isArray(data.team_members) ? data.team_members : []);
 
     // S-02b: hent seneste board-relaterede notifs til feed-sektion (Q-batch 1C Q21)
     try {
@@ -1446,6 +1540,11 @@ export default function BoardPage() {
       />
 
       <BoardIdentityCard identityProfile={identityProfile} />
+
+      {/* S-02c · Bestyrelse-medlems-grid — vises kun efter sæson-1-slut når members er tildelt */}
+      {!isBaselinePhase && teamMembers.length > 0 && (
+        <BoardMembersGrid members={teamMembers} />
+      )}
 
       {/* S-02a: Plan-kort skjules i baseline-fasen — forhandling åbner ved sæson-slut. */}
       {!isBaselinePhase && (

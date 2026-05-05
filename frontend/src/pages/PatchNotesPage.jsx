@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "2.35",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "S-02c · Navngivne board-medlemmer — bestyrelsen får ansigter og stemmer",
+        items: [
+          "Bestyrelsen er ikke længere en abstrakt enhed. 9 håndlavede arketyper (Sponsoraten 💰, Traditionalisten 🎩, Talentspejderen 🔭, Resultatjægeren 🏆, Pragmatikeren ⚖️, Ungdoms-idealisten 🌱, Nationalist-purist 🏳️, Klassiker-purist 🪨, GC-elsker ⛰️) udgør pool'en. Hvert hold får 5 medlemmer tildelt ved sæson-1-slut: 3 matchet til holdets identitet (`identity_basis`) + 2 wildcards der ikke modsiger de første ([boardArchetypes.js](backend/lib/boardArchetypes.js))",
+          "Avatar-grid på BoardPage viser de 5 medlemmer med emoji, navn, kort beskrivelse og 'Formand'-mærke (★) på den med højeste alignment til dit hold. Wildcards markeres så du kan se hvem der bringer kontrast frem for ekko-kammer ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx))",
+          "Bestyrelsens vurdering på hver plan får nu en stemme: et citat fra det medlem der ejer feedback-kategorien (resultater → Resultatjægeren, økonomi → Sponsoraten, identitet → Traditionalisten/Nationalist-purist, etc.). Ved tvivl falder valget på formanden. 270 reaktions-templates total (30 pr. arketype, fordelt på 6 buckets: positive/warning/negative feedback + goal-proposal/achievement/failure)",
+          "Hver mål-kort har nu en 'X reagerer'-knap der expand'er et citat fra det medlem der ejer mål-kategorien — fx ★ Sponsoraten ved et 'no_outstanding_debt'-mål der bløder. Genbruger samme expand-pattern som S-02b's identity-badge ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx))",
+          "Replacement-trigger live: 2× plan-udløb i træk under 30% tilfredshed → bestyrelsen udskifter formanden. Ny formand vælges fra de 4 ikke-tildelte arketyper baseret på alignment + non-conflict. Counter sidder per-team på `teams.consecutive_low_satisfaction_expirations`, resetes ved tilfredshed ≥30. Notif: \"Bestyrelsen har valgt en ny formand: {arketype-navn}\" ([economyEngine.js](backend/lib/economyEngine.js), [boardMembers.js](backend/lib/boardMembers.js))",
+          "Conflict-detection beskytter mod modsigende holdninger: 3 'friction-akser' (debt_aversion, youth_focus, results_pressure) tjekkes ved wildcard-valg. Algoritmen tillader fallback når non-conflicting pool er tom (sjælden edge case som meget youth-tunge hold), men foretrækker altid harmoni hvis muligt — Q2-præmis 'Må dog ikke være modsigende, hvis muligt'",
+          "Migration ([2026-05-05-board-members.sql](database/2026-05-05-board-members.sql)) tilføjer `team_board_members`-tabel + `teams.consecutive_low_satisfaction_expirations`-counter. Beta-reset clearer alle members + nulstiller counter + identity_basis så næste sæson 1 starter fra ren tavle ([betaResetService.js](backend/lib/betaResetService.js))",
+          "16 nye backend-tests (164/164 grønne total) dækker arketype-shape (9 × 30 templates), conflict-detection, alignment-scoring, non-conflicting wildcard-valg + fallback edge case, deterministisk re-replay, idempotent assignment, dominant-member-selection (kategori + chairman-fallback), reaction-sampling pr. tone/status, replacement-counter increment/reset/trigger, AI/bank skip, og end-to-end startSequentialNegotiation med member-tildeling",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.34",
     date: "2026-05-05",
     label: "Beta",

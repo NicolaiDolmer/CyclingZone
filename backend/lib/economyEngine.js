@@ -22,6 +22,7 @@ import {
   getPlanDuration,
   startSequentialNegotiation,
 } from "./boardEngine.js";
+import { processReplacementTrigger } from "./boardMembers.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 
 let defaultSupabaseClientPromise;
@@ -632,6 +633,29 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         `${feedback.headline}. ${feedback.summary} Tilfredshed: ${newSatisfaction}%. Forhandl en ny plan med bestyrelsen.`,
         notificationDeps
       );
+
+      // S-02c · Replacement-trigger: 2× plan-udløb i træk under 30% sat → ny formand.
+      // Counter lever på teams.consecutive_low_satisfaction_expirations (per-team).
+      try {
+        const replacement = await processReplacementTrigger({
+          supabase: supabaseClient,
+          teamId: team.id,
+          satisfaction: newSatisfaction,
+          identityBasis: team.season_1_identity_basis ?? null,
+        });
+
+        if (replacement?.replaced && replacement.new_chairman_label) {
+          await notifyManager(
+            team.id,
+            "board_update",
+            "Bestyrelsen har valgt en ny formand",
+            `Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. ${replacement.new_chairman_label} overtager — forvent ny tone i de kommende forhandlinger.`,
+            notificationDeps
+          );
+        }
+      } catch (error) {
+        console.error(`  ⚠️  board replacement-trigger failed for ${team.name}:`, error.message);
+      }
     } else {
       // Plan still running — update cumulative stats, keep goals
       const { error: boardUpdateError } = await supabaseClient.from("board_profiles").update({

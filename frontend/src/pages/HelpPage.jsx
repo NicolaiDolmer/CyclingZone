@@ -564,6 +564,18 @@ const FAQ = [
       q: "Hvad sker der hvis jeg glemmer at forhandle min plan?",
       a: "Bestyrelsen tager over. Hvis du ikke har signet en ny plan inden race-day 5 er passeret, signer en cron-job automatisk en plan med default-fokus afledt af dit holds identitet (U25-tungt → ungdomsudvikling, stjerneprofil → stjernesignering, ellers balanceret) og standardmål. Du får først en info-reminder ved race-day 2 ('Bestyrelsen venter paa din N-aarsplan'), derefter en 'Skal handles'-notif ved race-day 4 ('Sidste chance'), og derefter er det bestyrelsens valg. Du kan stadig anmode om ændringer via en board request når planen kører. Tjekker du Bestyrelse-siden ofte, ser du også et live countdown-banner med antal race-days tilbage.",
     },
+    {
+      q: "Hvem er medlemmerne i min bestyrelse?",
+      a: "Bestyrelsen består af 5 navngivne medlemmer fra en pool af 9 arketyper: Sponsoraten 💰 (vogter sponsorforhold), Traditionalisten 🎩 (klubbens arv), Talentspejderen 🔭 (langsigtede unge), Resultatjægeren 🏆 (vil vinde nu), Pragmatikeren ⚖️ (balance), Ungdoms-idealisten 🌱 (fremtid frem for nu), Nationalist-purist 🏳️ (hjemlige farver), Klassiker-purist 🪨 (monumenter), GC-elsker ⛰️ (Tour). Tre medlemmer matches til dit holds identitet ved sæson-1-slut, to vælges som wildcards der bringer kontrast — men aldrig direkte modsigelse (en debt-aversion-purist parres ikke med en risiko-rytter). Avatar-grid'et på Bestyrelse-siden viser hvem der er hvem; den med ★ er formanden.",
+    },
+    {
+      q: "Hvad gør bestyrelsesformanden?",
+      a: "Formanden er medlemmet med højeste alignment til dit hold. Han taler ved tvivl — hvis bestyrelsens vurdering ikke har en tydelig dominerende kategori, er det formandens stemme du hører. Han er også den der udskiftes hvis bestyrelsen mister tålmodigheden: 2× plan-udløb i træk under 30% tilfredshed → ny formand vælges fra de 4 ikke-tildelte arketyper. Du får en 'Bestyrelsen har valgt en ny formand'-notif når det sker.",
+    },
+    {
+      q: "Hvorfor reagerer forskellige bestyrelsesmedlemmer på forskellige mål?",
+      a: "Hver arketype 'ejer' visse kategorier: Sponsoraten ejer økonomi-mål, Resultatjægeren ejer resultater, Traditionalisten/Nationalist-purist ejer identitet, Pragmatikeren rangering. Når du klikker 'X reagerer'-knappen på et mål, vises et citat fra netop det medlem hvis kategori målet falder under. Citaterne er håndlavede pr. arketype og pr. situation (forslag, opfyldt, missed) — så Sponsoraten lyder bekymret ved et bløftende gælds-mål, og Resultatjægeren lyder begejstret ved en sejr.",
+    },
 ];
 
 export default function HelpPage() {

@@ -73,6 +73,7 @@ import {
   buildBoardProposal,
   deriveTeamIdentityProfile,
   finalizeBoardGoals,
+  getArchetypeByKey,
   getBoardRequestDefinition,
   getPlanDuration,
   inferNegotiationIndexesFromGoals,
@@ -3049,10 +3050,10 @@ router.get("/board/status", requireAuth, async (req, res) => {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
 
-    const [seasonRes, boardsRes, teamRes, ridersRes, standingRes, loansRes, windowRes] = await Promise.all([
+    const [seasonRes, boardsRes, teamRes, ridersRes, standingRes, loansRes, windowRes, membersRes] = await Promise.all([
       supabase.from("seasons").select("id, number, race_days_completed, race_days_total").eq("status", "active").single(),
       supabase.from("board_profiles").select("*").eq("team_id", teamId),
-      supabase.from("teams").select("id, balance, sponsor_income, division, season_1_identity_basis").eq("id", teamId).single(),
+      supabase.from("teams").select("id, balance, sponsor_income, division, season_1_identity_basis, consecutive_low_satisfaction_expirations").eq("id", teamId).single(),
       supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
       supabase.from("season_standings").select("*").eq("team_id", teamId)
         .order("updated_at", { ascending: false }).limit(1).single(),
@@ -3061,6 +3062,11 @@ router.get("/board/status", requireAuth, async (req, res) => {
       supabase.from("transfer_windows")
         .select("board_negotiation_state")
         .order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      // S-02c · Hent 5 board-medlemmer for teamet (kan være tom hvis baseline-fasen)
+      supabase.from("team_board_members")
+        .select("archetype_key, selection_kind, alignment_score, is_chairman, assigned_at")
+        .eq("team_id", teamId)
+        .order("alignment_score", { ascending: false }),
     ]);
 
     if (seasonRes.error && !isMissingRow(seasonRes.error)) return res.status(500).json({ error: seasonRes.error.message });
@@ -3070,6 +3076,9 @@ router.get("/board/status", requireAuth, async (req, res) => {
     if (standingRes.error && !isMissingRow(standingRes.error)) return res.status(500).json({ error: standingRes.error.message });
     if (loansRes.error) return res.status(500).json({ error: loansRes.error.message });
     if (windowRes.error && !isMissingRow(windowRes.error)) return res.status(500).json({ error: windowRes.error.message });
+    // S-02c · membersRes må ikke fejle, men tabellen kan være null indtil migration kører
+    const teamBoardMembers = !membersRes?.error && Array.isArray(membersRes?.data)
+      ? membersRes.data : [];
 
     const allBoards = boardsRes.data || [];
     const activeSeason = seasonRes.data || null;
@@ -3164,6 +3173,8 @@ router.get("/board/status", requireAuth, async (req, res) => {
             stageWins: (board.cumulative_stage_wins || 0) + (currentStanding?.stage_wins || 0),
             gcWins: (board.cumulative_gc_wins || 0) + (currentStanding?.gc_wins || 0),
           },
+          // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
+          assignedMembers: teamBoardMembers,
         },
       });
 
@@ -3213,12 +3224,33 @@ router.get("/board/status", requireAuth, async (req, res) => {
       );
     }
 
+    // S-02c · Decorér team_board_members med arketype-data så frontend kan rendere
+    // avatar-grid uden at importere boardArchetypes på frontend-side.
+    const teamMembersDecorated = teamBoardMembers
+      .map((member) => {
+        const archetype = getArchetypeByKey(member.archetype_key);
+        if (!archetype) return null;
+        return {
+          archetype_key: member.archetype_key,
+          selection_kind: member.selection_kind,
+          alignment_score: member.alignment_score,
+          is_chairman: member.is_chairman,
+          assigned_at: member.assigned_at,
+          label: archetype.label,
+          emoji: archetype.emoji,
+          short_description: archetype.short_description,
+          long_description: archetype.long_description,
+        };
+      })
+      .filter(Boolean);
+
     res.json({
       plans,
       setup_next_plan_type: setupNextPlanType,
       board_negotiation_state: boardNegotiationState,
       is_baseline_phase: isBaselinePhase,
       team: teamRes.data,
+      team_members: teamMembersDecorated,
       riders: ridersRes.data || [],
       standing: currentStanding,
       identity_profile: identityProfile,

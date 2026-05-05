@@ -13,13 +13,76 @@ import {
   evaluateGoalProgress,
   countGoalsMet,
 } from "./boardGoals.js";
+import {
+  selectDominantMember,
+  sampleReactionForFeedback,
+  sampleReactionForGoal,
+} from "./boardMembers.js";
 import { clamp, clampSatisfaction, roundNumber } from "./boardUtils.js";
+
+// S-02c · annoter outlook med dominant_member-citat + pr-mål reactions baseret
+// på context.assignedMembers (hentet i api.js fra team_board_members).
+// Bagudkompatibel: hvis ingen members er tilgængelige, returneres outlook uændret.
+function attachMembersOverlay({ outlook, assignedMembers, board, context }) {
+  if (!Array.isArray(assignedMembers) || assignedMembers.length === 0) {
+    return outlook;
+  }
+
+  const fallbackChairmanKey = assignedMembers.find((m) => m.is_chairman)?.archetype_key;
+  const seedBase = `${board?.id ?? board?.team_id ?? ""}:${board?.plan_type ?? ""}:${context?.seasonsCompleted ?? 0}`;
+
+  // Feedback-niveau dominant member: match strongest_category for positive tone,
+  // weakest_category for warning/negative — så taleren matches til budskabet.
+  const tone = outlook.feedback?.tone || "neutral";
+  const targetCategory = (tone === "positive")
+    ? outlook.feedback?.strongest_category
+    : outlook.feedback?.weakest_category;
+  const dominantArchetype = selectDominantMember({
+    assignedMembers,
+    category: targetCategory,
+    fallbackChairmanKey,
+  });
+  const dominantReaction = dominantArchetype
+    ? sampleReactionForFeedback({
+      archetype: dominantArchetype,
+      tone,
+      seed: `${seedBase}:feedback:${tone}`,
+    })
+    : null;
+
+  // Goal-niveau reactions: én pr. evaluerings-objekt så frontend kan vise
+  // mini-dialog ved goal-klik (Q-batch 1C Q17 + S-02c A10).
+  const goalEvaluations = (outlook.goal_evaluations || []).map((evaluation) => {
+    const goalCategory = evaluation?.category || null;
+    const archetype = selectDominantMember({
+      assignedMembers,
+      category: goalCategory,
+      fallbackChairmanKey,
+    });
+    if (!archetype) return evaluation;
+    const reaction = sampleReactionForGoal({
+      archetype,
+      goalContext: { type: evaluation?.type, status: evaluation?.status },
+      seed: `${seedBase}:goal:${evaluation?.type ?? ""}:${evaluation?.status ?? ""}`,
+    });
+    return reaction ? { ...evaluation, member_reaction: reaction } : evaluation;
+  });
+
+  return {
+    ...outlook,
+    feedback: {
+      ...outlook.feedback,
+      dominant_member: dominantReaction,
+    },
+    goal_evaluations: goalEvaluations,
+  };
+}
 
 export function buildBoardOutlook({ board, standing, team, context = {} } = {}) {
   if (!board) return null;
 
   const performance = calculateBoardPerformance({ board, standing, team, context });
-  return {
+  const baseOutlook = {
     personality: performance.personality,
     identity_profile: performance.identityProfile,
     feedback: performance.feedback,
@@ -28,6 +91,13 @@ export function buildBoardOutlook({ board, standing, team, context = {} } = {}) 
     overall_score: performance.adjustedOverallScore,
     status_label: describeOverallStatus(performance.adjustedOverallScore),
   };
+
+  return attachMembersOverlay({
+    outlook: baseOutlook,
+    assignedMembers: context.assignedMembers || [],
+    board,
+    context,
+  });
 }
 
 export function calculateBoardSatisfaction(board, standing, team, context = {}) {

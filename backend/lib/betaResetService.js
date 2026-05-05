@@ -163,11 +163,21 @@ export async function resetBetaDivisions(supabase, { division = DEFAULT_BETA_DIV
 // S-02a · Beta-reset opretter ÉN baseline-row pr. team (sæson 1 = observation),
 // ikke 3 plan-rows som før v1.40-arkitekturen brugte. Eksisterende rows slettes
 // helt — Q-batch 1A Q6 godkendte full reset af alle managers' board-data.
+//
+// S-02c · Beta-reset clearer også team_board_members (5 medlemmer pr. team),
+// nulstiller teams.consecutive_low_satisfaction_expirations counter og
+// teams.season_1_identity_basis (S-02b) — alt re-genereres ved næste sæson-1-slut.
 export async function resetBetaBoardProfiles(supabase) {
   const managerTeams = await getBetaManagerTeams(supabase);
   const teamIds = managerTeams.map((team) => team.id);
   if (teamIds.length === 0) {
-    return { deleted: 0, created: 0, snapshots_deleted: 0, requests_deleted: 0 };
+    return {
+      deleted: 0,
+      created: 0,
+      snapshots_deleted: 0,
+      requests_deleted: 0,
+      board_members_deleted: 0,
+    };
   }
 
   const activeSeasonResult = await supabase
@@ -178,12 +188,22 @@ export async function resetBetaBoardProfiles(supabase) {
   ensureOk(activeSeasonResult);
   const activeSeasonId = activeSeasonResult.data?.id ?? null;
 
-  // Snapshots og request-log skal slettes før board_profiles (FK constraints).
-  const [snapshotsDeleted, requestsDeleted] = await Promise.all([
+  // Snapshots, request-log og board-members skal slettes før board_profiles (FK constraints).
+  const [snapshotsDeleted, requestsDeleted, boardMembersDeleted] = await Promise.all([
     supabase.from("board_plan_snapshots").delete().in("team_id", teamIds).select("id"),
     supabase.from("board_request_log").delete().in("team_id", teamIds).select("id"),
+    supabase.from("team_board_members").delete().in("team_id", teamIds).select("id"),
   ]);
-  [snapshotsDeleted, requestsDeleted].forEach(ensureOk);
+  [snapshotsDeleted, requestsDeleted, boardMembersDeleted].forEach(ensureOk);
+
+  // S-02c · Nulstil per-team counter + identity_basis så næste sæson 1 starter fra ren tavle.
+  ensureOk(await supabase
+    .from("teams")
+    .update({
+      consecutive_low_satisfaction_expirations: 0,
+      season_1_identity_basis: null,
+    })
+    .in("id", teamIds));
 
   // Slet alle eksisterende board_profiles for managers (planer + evt. baseline).
   const existingDeleted = await supabase
@@ -210,6 +230,7 @@ export async function resetBetaBoardProfiles(supabase) {
     created: baselineRows.length,
     snapshots_deleted: countRows(snapshotsDeleted),
     requests_deleted: countRows(requestsDeleted),
+    board_members_deleted: countRows(boardMembersDeleted),
   };
 }
 
