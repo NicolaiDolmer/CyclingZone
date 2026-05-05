@@ -2,7 +2,7 @@
 
 **Skrevet:** 2026-05-05 efter Vision-lock-session 1A.
 **Erstatter:** `02-board-redesign-sequential.md` (er nu S-02a — én sub-slice af denne master).
-**Status:** Vision + mekanik låst (Q-batch 1A + 1B). UX-spørgsmål åbne (Q-batch 1C). Ingen kode endnu.
+**Status:** Vision + mekanik + UX låst (Q-batch 1A + 1B + 1C ✅ 2026-05-05). Ingen kode endnu — næste session = S-02a foundation.
 
 ---
 
@@ -46,6 +46,18 @@ Manageren skal føle: *"Jeg bygger et hold over tid, og bestyrelsen reagerer rea
 
 ---
 
+## Vision-lock — låste beslutninger (Q-batch 1C UX, 2026-05-05)
+
+| # | Spørgsmål | Beslutning |
+|---|-----------|------------|
+| 17 | Wizard hybrid B+A info-tæthed pr. plan-panel | **Compact dashboard.** Hvert panel viser: plan-titel + tilfredshed-delta + **2-3 hovedmål** + status-ikon (✓/!/~/○ matcher eksisterende `GOAL_STATUS_META` i `BoardPage.jsx`). Klik på enkelt-mål → mini-dialog med fulde mål-detaljer + dominerende board-member-reaktion. Side-om-side scaler godt for veteraner; mini-dialog leverer immersion uden at fylde dashboard. |
+| 18 | Identity-feeding-formidling i 5yr-forslag | **Inline 'bygger på'-badge** på hvert relevant mål-kort. Format: `"Bygger på din franske kerne (5/8 ryttere)"`. Badge er klikbar → expand med fuld forklaring (hvilke ryttere bidrager, hvilken `national_core.share_pct`-tærskel ramt). Manageren føler sig 'set' uden tungt UI. Genbruger data fra `boardIdentity.deriveTeamIdentityProfile`. |
+| 19 | Multi-plan-fornyelse-flow (sæson 5+7+11+12 har 2 planer der fornyes samme sæson) | **Sekventiel modal.** Den længste plan-horisont forhandles først (5yr eller 3yr), derefter åbner 1yr automatisk efter accept. Manager kan gå tilbage til længste-plan-trinnet fra 1yr-trinnet via "Tilbage"-knap. Matcher onboarding-pattern fra sæson 2 (5yr→3yr→1yr). Holder hver beslutning fokuseret. |
+| 20 | Mobile-flow for 3-panel-dashboard | **Vertikal stack + fullscreen modal** (bekræfter Appendix B). Paneler stakker under hinanden (5yr → 3yr → 1yr top-down). Klik på mål åbner fullscreen modal med back-knap. Genbruger eksisterende Modal-pattern. Mini-dialog er fullscreen for at undgå tap-target-problemer. |
+| 21 | Notifikations-volume — styringsmodel | **Tier-styret.** Tidskritisk action-required → Indbakke 'Skal handles' (eksisterende v2.30-tier): auto-accept T-1, mid-season banner pr. Q15, konsekvens-event lag 4-5, bonus-tilbud lag 6. Info-only → dedikeret **'Bestyrelse'-feed på BoardPage** (T-3 reminder, plan-evaluering-resumé, satisfaction-delta-snapshots, board-member-reaktioner). ~3-4 Indbakke-notifs/sæson. Genbruger `notifications.type='board_update'` (eksisterende, cron.js:77) + nyt `type='board_critical'` for Skal-handles-routing. |
+
+---
+
 ## Sub-slice-roadmap (9 implementerings-slices + polish)
 
 Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
@@ -61,13 +73,14 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 - Beta-reset: alle eksisterende planer slettes (godkendt full reset)
 
 ### S-02b · 1yr-auto-gen + auto-accept + identity-feeding
-**Dep:** S-02a.
+**Dep:** S-02a. **UX låst i Q-batch 1C Q18 + Q21.**
 **Leverer:**
 - `boardIdentity.computeSeasonOneIdentity` — afleder dominant_nationality, youth_share, specialization fra sæson 1's hold
 - Identity feedes ind som goal-weighting i 5yr-forslag
+- **Inline 'bygger på'-badge (Q18)** på hvert relevant 5yr-mål-kort: `"Bygger på din franske kerne (5/8 ryttere)"`. Klikbar → expand med fuld forklaring
 - `generate1YrFromLongerPlans` — 2 varianter ("Stabil" / "Resultatfokus nu")
 - Auto-accept-cron ved race_day_count ≥ 5
-- Notifikationer T-3, T-1 race_day
+- **Tier-styrede notifs (Q21):** T-1 race_day → 'Skal handles' (`type='board_critical'`); T-3 race_day + auto-accept-resumé → BoardPage 'Bestyrelse'-feed (`type='board_update'`)
 - Countdown-banner
 
 ### S-02c · Navngivne board-members
@@ -93,7 +106,7 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 - `goal-types` integration-test så hver type evaluerer både true og false-cases
 
 ### S-02e · Konsekvens-tier (6 lag)
-**Dep:** S-02a. **Tærskler låst i Q-batch 1B Q11 (Appendix C) + Q14.**
+**Dep:** S-02a. **Tærskler låst i Q-batch 1B Q11 (Appendix C) + Q14. Notif-routing låst i Q-batch 1C Q21.**
 **Leverer:**
 - DB: `board_consequences` (active per team) — type, severity, expires_at
 - `economyEngine` checker aktive consequences ved sæson-start (modifier), ved finance-tx (signing-cap), ved auction-bid (signing-restriktion)
@@ -102,6 +115,7 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 - Tvunget listing: cron ved sæson-slut + tilfredshed <15 → automatisk listing af én navngivet rytter (laveste sportslige værdi)
 - Sponsor-pull-out: narrativ event + -10% sponsor resten af sæsonen, nulstilles ved næste sæson-start
 - Bonus-budget-tilbud (positiv, lag 6): maks 1/sæson når satisfaction >75 OG ≥75% mål 'ahead' → +200K budget mod 1 ekstra-mål (vind 1 monument ELLER sign 1 stjerne pop ≥75). Manager kan afvise.
+- **Notif-routing (Q21):** lag 4 (tvunget listing) + lag 5 (sponsor-pull-out) + lag 6 (bonus-tilbud) → 'Skal handles' (`type='board_critical'`). Lag 1-3 (passive modifiers + auction-restriktioner) = ingen notif, kun synlige som warning på BoardPage 'Bestyrelse'-feed.
 
 ### S-02f · Klub-DNA (håndlavede klub-identiteter)
 **Dep:** S-02c. **Låst i Q-batch 1B Q10.**
@@ -123,13 +137,14 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 - Mid-cycle 5yr/3yr-låsning: kræver ≥50% plan-gennemført ELLER >30% satisfaction-delta
 
 ### S-02h · Wizard-redesign — Hybrid B+A
-**Dep:** S-02a + S-02c.
+**Dep:** S-02a + S-02c. **UX-detaljer låst i Q-batch 1C Q17 + Q19 + Q20.**
 **Leverer:**
-- BoardPage primær view = strategisk dashboard (3 paneler side om side)
+- BoardPage primær view = strategisk dashboard (3 paneler side om side, **compact info-tæthed pr. Q17**: titel + tilfredshed-delta + 2-3 hovedmål + status-ikon vha. eksisterende `GOAL_STATUS_META`)
 - Klik på enkelt-mål → mini-dialog modal med relevant board-member-portræt + reaktions-template
 - Live preview: modifier-impact af hvert valg
 - Onboarding-wizard (sæson 2): sekventielt med "Næste plan: 3yr"-progress
-- Mobile-responsiv (3 paneler stakker vertikalt)
+- **Multi-plan-fornyelse (Q19):** når 2 planer fornyes samme sæson, sekventiel modal — længste-horisont først (5yr→1yr eller 3yr→1yr), derefter 1yr automatisk efter accept. "Tilbage"-knap på 1yr-trinnet vender tilbage til længste-plan-trinnet
+- **Mobile-responsiv (Q20):** 3 paneler stakker vertikalt; mini-dialog er fullscreen modal med back-knap (genbruger eksisterende Modal-pattern)
 
 ### S-02i · Bug-fix-pass + komplet manuel e2e-test + soak-gate
 **Dep:** S-02a–h.
@@ -149,21 +164,16 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 
 ---
 
-## Åbne spørgsmål — Q-batch 1C (UX)
+## Detaljer der lukkes inline i implementerings-slices
 
-**Q-batch 1B ✅ lukket 2026-05-05.** Se beslutnings-tabel "Vision-lock — låste beslutninger (Q-batch 1B)" ovenfor (Q9-16).
+**Q-batch 1A + 1B + 1C ✅ alle lukket 2026-05-05.** Se beslutnings-tabeller ovenfor (Q1-21). Disse detaljer kræver ikke yderligere Q-session — afgøres inline når sub-slicen implementeres:
 
-**Detaljer der lukkes inline i implementerings-slices (ikke kræver Q-session):**
 - Personlighed-akser pr. board-arketype (S-02c)
 - Reaktions-templates (~270-450 stk i S-02c)
 - `profitable_transfers` + `domestic_dominance` N-tærskler (S-02d)
-
-**Q-batch 1C — UX (næste session):**
-1. Wizard hybrid B+A konkret layout — wireframe-niveau.
-2. Identity-feeding-formidling: hvordan vises "din franske kerne påvirker 5yr-forslaget" i UI?
-3. Plan-fornyelse-flow når flere planer udløber samme sæson (sæson 6: 5yr+1yr): seriel modal eller delt skærm?
-4. Mobile-flow for 3-panel-dashboard.
-5. Notifikations-design: hvor mange board-relaterede notifikationer er for mange?
+- Identity-badge expand-content layout (S-02b — Q18 låser inline-badge, expand-detail er CSS/copy-arbejde)
+- `type='board_critical'` schema-detalje + DB-migration (S-02b — Q21 låser tier-routing)
+- "Tilbage"-knap state-machine i sekventiel multi-plan-fornyelse (S-02h — Q19 låser flow, state-machine er implementerings-detalje)
 
 ---
 
@@ -221,10 +231,17 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 ## Næste session — start her
 
 ```
-"Fortsæt S-02 vision-lock — Q-batch 1C UX"
+"Start S-02a — Foundation: sekventiel forhandling + sæson-1-baseline"
 ```
 
-Claude læser denne master-doc + stiller UX-spørgsmål (wizard-layout, identity-feeding-formidling, multi-plan-fornyelse-flow, mobile, notifikations-design). INGEN kode i Q-batch-sessioner. Efter 1C → S-02a kan starte.
+Q-batch 1A + 1B + 1C ✅ alle lukket. Næste session = første implementerings-slice. Claude læser denne master-doc + S-02a-leverer-listen ovenfor og bygger:
+- Migration `database/2026-XX-XX-board-foundation.sql` (board_profiles.activates_in_season_number, is_baseline; transfer_windows.board_negotiation_state)
+- `boardEngine.createBaselineProfile`, `startSequentialNegotiation`, `proposeNextPlan` (5yr→3yr→1yr-orden)
+- `cron.js` sæson-1-slut → `startSequentialNegotiation` for hver human team
+- `BoardPage` + wizard læser `board_negotiation_state`, viser kun aktuelt trin
+- Beta-reset: alle eksisterende planer slettes (godkendt full reset i Q6)
+
+Efter S-02a kan brugeren vælge S-02b (1yr-auto-gen + identity-feeding) eller S-02c (board-members) — begge har kun S-02a som dep og kan parallelt-køres af Codex/Claude.
 
 ---
 

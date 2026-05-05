@@ -1,24 +1,21 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**S-02 Bestyrelse-redesign — Vision+mekanik låst (1A+1B) ✅ 2026-05-05.** Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md). 9 sub-slices + polish. Estimat: ~10-12 sessioner. UX-Q'er (1C) er sidste blocker før S-02a kan starte.
+**S-02 Bestyrelse-redesign — Vision+mekanik+UX låst (1A+1B+1C) ✅ 2026-05-05.** Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md). 9 sub-slices + polish. Estimat: ~10-12 sessioner. **Klar til S-02a foundation.**
 
 ## Soak-gate
 **Aktiv: nej** — næste udløses ved S-02i (e2e efter alle 9 sub-slices).
 
 ## Open beta status
-**Alle launch-gates ✅, 5/6 P0 leveret.** Eneste P0 tilbage: S-02 (vision+mekanik låst, UX-Q'er åbne). ~19 managers live, vokser løbende.
+**Alle launch-gates ✅, 5/6 P0 leveret.** Eneste P0 tilbage: S-02 (al spec låst, kode næste). ~19 managers live, vokser løbende.
 
 ## Senest leveret
-- 2026-05-05: S-02 Q-batch 1B mekanik låst — 8 beslutninger (Q9-16) i master-doc
-- 2026-05-05: S-02 vision-lock 1A + master-roadmap
+- 2026-05-05: S-02 Q-batch 1A+1B+1C alle låst — 21 beslutninger total (vision+mekanik+UX) i master-doc
 - Ældre → `docs/archive/NOW_HISTORIK_2026-05-05.md`
 
 ## Næste session — start med
-**"Fortsæt S-02 vision-lock — Q-batch 1C UX"**
-1. Læs `docs/slices/02-board-redesign-MASTER.md` (kanonisk — Q-batch 1A+1B-tabeller låst)
-2. 5 UX-Q'er: wizard-layout (hybrid B+A), identity-feeding-formidling, multi-plan-fornyelse-flow, mobile, notifikations-design
-3. INGEN kode. Ren Q-session. Efter 1C → S-02a kan starte.
+**"Start S-02a — Foundation: sekventiel forhandling + sæson-1-baseline"**
+Læs `docs/slices/02-board-redesign-MASTER.md` "S-02a"-sektionen. Migration + `boardEngine.startSequentialNegotiation` + `cron.js`-trigger + `BoardPage`-state. Full reset i Q6. ÉN slice = ÉN session = commit + push.
 
 ## Kritiske invarianter
 - **Verificér runtime FØR claim** — grep før TODO-claims
