@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { getRiderMarketValue } from "../lib/marketValues";
+import WatchlistStar from "../components/WatchlistStar";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -212,6 +213,14 @@ export default function ActivityPage() {
   }
 
   useEffect(() => { loadAll(); }, []);
+
+  async function removeFromWatchlist(riderId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("rider_watchlist")
+      .delete().eq("user_id", user.id).eq("rider_id", riderId);
+    setWatchlist(prev => prev.filter(e => e.rider?.id !== riderId));
+  }
 
   // "Kræver handling" — items that require the user's action
   const actionTransfers = [
@@ -519,10 +528,13 @@ export default function ActivityPage() {
                   <div key={entry.id}
                     className="flex items-center gap-3 px-4 py-3 border-b border-cz-border last:border-0 hover:bg-cz-subtle transition-colors">
                     <div className="flex-1 min-w-0">
-                      <button onClick={() => navigate(`/riders/${r?.id}`)}
-                        className="text-sm font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left block truncate">
-                        {r?.firstname} {r?.lastname}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => navigate(`/riders/${r?.id}`)}
+                          className="text-sm font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate">
+                          {r?.firstname} {r?.lastname}
+                        </button>
+                        <WatchlistStar active onToggle={() => removeFromWatchlist(r?.id)} />
+                      </div>
                       <p className="text-xs text-cz-3 truncate">{r?.team?.name || "Fri agent"}</p>
                     </div>
                     {inAuction && (

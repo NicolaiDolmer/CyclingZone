@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.32",
+    date: "2026-05-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Ønskeliste-stjerne flyttet ud — én konsistent placering på tværs af sider",
+        items: [
+          "Ønskeliste-stjernen sad i sidste kolonne på rytteroversigten — langt til højre forbi alle 14 stat-kolonner. Du skulle scrolle vandret for at finde den, og på ønskeliste-siden var fjern-handlingen en separat \"★ Fjern\"-knap i en \"Handling\"-kolonne, mens tilføj-handlingen kun fandtes på rytteroversigten. To forskellige interaktioner for samme funktion",
+          "Stjernen sidder nu i sin egen kolonne lige til højre for rytter-navnet på alle rytteroversigter — rytteroversigten ([RidersPage](frontend/src/pages/RidersPage.jsx)), ønskelisten ([WatchlistPage](frontend/src/pages/WatchlistPage.jsx)) og aktivitets-sidens ønskeliste-tab ([ActivityPage](frontend/src/pages/ActivityPage.jsx)). På ønskelisten er den fyldte stjerne (★) nok til at fjerne — \"★ Fjern\"-knappen er væk; \"Handling\"-kolonnen bruges nu kun til \"Start auktion\" hos fri agents",
+          "Ny delt komponent [WatchlistStar.jsx](frontend/src/components/WatchlistStar.jsx) sikrer at stjernen ser ens ud og opfører sig ens overalt — samme stopPropagation-håndtering så klik på stjernen ikke trigger row-navigation, samme tooltip og hover-effekt",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.31",
     date: "2026-05-04",
     label: "Beta",

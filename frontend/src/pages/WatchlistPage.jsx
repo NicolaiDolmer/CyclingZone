@@ -7,6 +7,7 @@ import { statBg } from "../lib/statBg";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
+import WatchlistStar from "../components/WatchlistStar";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -142,6 +143,7 @@ export default function WatchlistPage() {
                   <tr className="border-b border-cz-border">
                     <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-left font-medium uppercase tracking-wider">Rytter</SortTh>
+                    <th className="px-2 py-3 w-8" />
                     <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">Hold</th>
                     <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-right font-medium">Værdi</SortTh>
@@ -174,6 +176,9 @@ export default function WatchlistPage() {
                               <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
                             )}
                           </div>
+                        </td>
+                        <td className="px-2 py-2.5 w-8">
+                          <WatchlistStar active onToggle={() => removeFromWatchlist(r.id)} />
                         </td>
                         <td className="px-3 py-2.5 hidden sm:table-cell">
                           {isFree
@@ -216,18 +221,15 @@ export default function WatchlistPage() {
                         </td>
                         <td className="px-3 py-2.5">
                           <div className="flex items-center justify-center gap-1.5">
-                            {isFree && (
+                            {isFree ? (
                               <button onClick={() => startAuction(r)}
                                 className="px-2 py-1 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
                                   rounded text-xs hover:bg-cz-accent/10 transition-all whitespace-nowrap">
                                 Start auktion
                               </button>
+                            ) : (
+                              <span className="text-cz-3 text-xs">—</span>
                             )}
-                            <button onClick={() => removeFromWatchlist(r.id)}
-                              className="px-2 py-1 bg-cz-danger-bg text-cz-danger border border-cz-danger/30
-                                rounded text-xs hover:bg-cz-danger-bg transition-all">
-                              ★ Fjern
-                            </button>
                           </div>
                         </td>
                       </tr>

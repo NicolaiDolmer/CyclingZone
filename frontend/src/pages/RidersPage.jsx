@@ -9,6 +9,7 @@ import { getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
 import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
+import WatchlistStar from "../components/WatchlistStar";
 import { startTour } from "../lib/onboardingTour";
 
 const API = import.meta.env.VITE_API_URL;
@@ -66,18 +67,6 @@ function StatBar({ value }) {
   );
 }
 
-function StarButton({ riderId, watchlist, onToggle }) {
-  const isWatched = watchlist.has(riderId);
-  return (
-    <button
-      onClick={e => { e.stopPropagation(); onToggle(riderId); }}
-      title={isWatched ? "Fjern fra ønskeliste" : "Tilføj til ønskeliste"}
-      className={`text-lg transition-all hover:scale-110 flex-shrink-0 ${isWatched ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"}`}>
-      {isWatched ? "★" : "☆"}
-    </button>
-  );
-}
-
 function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }) {
   return (
     <tr className="border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors">
@@ -98,6 +87,9 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }
           </div>
         </div>
       </td>
+      <td className="px-2 py-2.5 w-8">
+        <WatchlistStar active={watchlist.has(rider.id)} onToggle={() => onToggleWatchlist(rider.id)} />
+      </td>
       <td className="px-3 py-2.5 text-right" onClick={() => onSelect(rider)}>
         <span className="text-cz-accent-t font-mono text-sm font-bold">
           {getRiderMarketValue(rider).toLocaleString("da-DK")}
@@ -116,9 +108,6 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }
           <StatBar value={rider[key]} />
         </td>
       ))}
-      <td className="px-3 py-2.5">
-        <StarButton riderId={rider.id} watchlist={watchlist} onToggle={onToggleWatchlist} />
-      </td>
     </tr>
   );
 }
@@ -270,6 +259,7 @@ export default function RidersPage() {
                 <tr className="border-b border-cz-border">
                   <SortTh sortKey="firstname" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider w-48">Rytter</SortTh>
+                  <th className="px-2 py-3 w-8" />
                   <SortTh sortKey="uci_points" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">Værdi</SortTh>
                   <SortTh sortKey="salary" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
@@ -280,7 +270,6 @@ export default function RidersPage() {
                     <SortTh key={key} sortKey={key} sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                       className="px-1.5 py-3 text-center font-medium w-14">{label}</SortTh>
                   ))}
-                  <th className="px-3 py-3 w-8" />
                 </tr>
               </thead>
               <tbody>
