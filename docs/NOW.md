@@ -1,24 +1,22 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**S-02g leveret ✅ 2026-05-05 (v2.39).** Manager-konkurrence + mid-season + drej-låsninger komplet. 6 mini-features: F1 live `relative_rank` UI ("Du staar #X af Y managers"), F2 mid-season auto-banner ([boardMidSeason.js](backend/lib/boardMidSeason.js)) ved race_days_completed >= midpoint, F3 tradeoff-låsninger (deferred stramning af identity_riders eller sponsor_growth ved next renewal), F4 MAJOR pivot cool-down (én youth↔star-krydsning pr. plan-livscyklus), F5 window-blokering (sidste 5 race-days), F6 mid-cycle-låsning (5yr/3yr kræver ≥50% gennemført ELLER >30% satisfaction-delta). 36 nye tests (286/286 grønne). Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md). 2 sub-slices tilbage (S-02h + S-02i) + polish.
+**S-02h leveret ✅ 2026-05-05 (v2.40).** Wizard-redesign Hybrid B+A komplet. 3-kolonne dashboard (lg:grid-cols-3, mobile stack), GoalMiniDialog (klik på mål → portræt + reaktion), wizard som modal overlay (ikke full-page takeover), multi-plan renewal queue Q19 (auto-advance + Tilbage-knap). 286/286 tests grønne. Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md). 1 sub-slice tilbage (S-02i) + polish.
 
 ## Soak-gate
-**Aktiv: nej** — næste udløses ved S-02i (e2e efter alle 9 sub-slices).
+**Aktiv: nej** — udløses ved S-02i (e2e efter alle 9 sub-slices, inkl. manuel browser-check af nyt 3-kolonne layout + GoalMiniDialog + wizard modal).
 
 ## Open beta status
-**Alle launch-gates ✅, 5/6 P0 leveret.** Eneste P0 tilbage: S-02 (7/9 sub-slices leveret — S-02a + S-02b + S-02c + S-02d + S-02e + S-02f + S-02g). ~19 managers live.
+**Alle launch-gates ✅, 5/6 P0 leveret.** Eneste P0 tilbage: S-02 (8/9 sub-slices leveret — S-02a–S-02h). ~19 managers live.
 
 ## Senest leveret
-- 2026-05-05: **S-02g Manager-konkurrence + mid-season + drej-låsninger** (v2.39). Migration `2026-05-05-board-tradeoff-pivot.sql` (board_profiles.tradeoff_active_until_season_id + tradeoff_payload + major_pivot_used_at) + ny [boardMidSeason.js](backend/lib/boardMidSeason.js)-motor (`processMidSeasonReviewCron` + `evaluateMidSeasonTrigger`) hookt ind i [cron.js](backend/cron.js) (30-min interval) + `applyTradeoffTighteningToGoals` ([boardGoals.js](backend/lib/boardGoals.js)) anvendt sidst i goal-pipeline + buildBoardProposal accepterer tradeoffPayload + isMajorPivotRequest + getBoardRequestAvailability F4/F5/F6 guards + /api/board/proposal+sign reader/clearer tradeoff-felter + BoardPage relative_rank rich detail + '🔒 Strammet'-badge + 6 nye HelpPage FAQ + 36 nye tests
-- 2026-05-05: S-02f Klub-DNA (v2.38) — 5 DNA-arketyper + 3 forslag i sæson 2 + DNA-bias på alignment + tradition-mål i 5yr
-- 2026-05-05: S-02e Konsekvens-tier (6 lag) (v2.37) — 6-lags graduerings-system + hard-blocks
-- 2026-05-05: S-02d Udvidede mål-typer (v2.36) — 7 nye mål-typer + 3 integreret som 5. mål
+- 2026-05-05: **S-02h Wizard-redesign Hybrid B+A** (v2.40). [BoardPage.jsx](frontend/src/pages/BoardPage.jsx) redesignet: 3-kolonne dashboard (grid-cols-3, mobile stack), ny `DashboardPlanPanel` (kompakt: tilfredshed% + sponsor× + top 3 mål + status-ikoner + detail-toggle), ny `GoalMiniDialog` (klik på mål → portræt + reaktion modal), wizard er nu modal overlay (ikke full-page takeover), multi-plan renewal queue (auto-advance + Tilbage-knap, Q19). 286/286 tests grønne.
+- 2026-05-05: S-02g–d leveret (v2.39–v2.36) — manager-konkurrence, mid-season, drej-låsninger, DNA, konsekvens-tier, mål-typer
 - Ældre → `docs/archive/NOW_HISTORIK_2026-05-05.md`
 
 ## Næste session — start med
-**"Start S-02h — Wizard-redesign Hybrid B+A"** ELLER **"Start S-02i — Bug-fix-pass + e2e + soak-gate"**
-S-02h leverer compact strategisk dashboard m. mini-dialog board-member-portrætter + multi-plan-fornyelses-flow + mobile-stack — har S-02a + S-02c som dep. S-02i er den endelige soak-gate-slice (60-min e2e gennem alle plan-livscyklusser × arketyper × mål-typer × konsekvens-tiers) — har S-02a-h som dep. ÉN slice = ÉN session = commit + push.
+**"Start S-02i — Bug-fix-pass + e2e + soak-gate"**
+S-02i er den endelige soak-gate-slice: 60-min e2e manuel test af alle plan-livscyklusser × arketyper × mål-typer × konsekvens-tiers × nyt 3-kolonne dashboard + GoalMiniDialog + wizard modal. Regressions-tests for processSeasonEnd. ÉN slice = ÉN session = commit + push.
 
 ## Kritiske invarianter
 - **Verificér runtime FØR claim** — grep før TODO-claims
