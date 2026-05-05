@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Ingen aktiv kode-slice.** Seneste arbejde: v2.48 off-by-fee bugfix på gældsloft-validering (oven på v2.47 QoL-batch). S-02 er komplet (10/10 slices). Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md).
+**Ingen aktiv kode-slice.** Seneste arbejde: v2.49 sponsor-fallback fix (Above & Beyond Cancer Cycling kompenseret 239.900 CZ$). S-02 er komplet (10/10 slices). Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md).
 
 ## Soak-gate
 **Ikke aktiv** — nuværende arbejde er docs/status-afstemning uden ny domænelogik.
@@ -10,6 +10,7 @@
 **Alle launch-gates ✅, 6/6 P0 leveret.** S-02 KOMPLET (S-02a–S-02j, 10/10 slices). ~19 managers live. Næste: vælg ny product-slice fra [PRODUCT_BACKLOG.md](docs/PRODUCT_BACKLOG.md).
 
 ## Senest leveret
+- 2026-05-06: **Sponsor-fallback fix v2.49** — 5 callsites (`economyEngine.js`, `betaResetService.js`, `boardAutoAccept.js`, `api.js`) brugte `team.sponsor_income ?? 100` som fallback. Værdien 100 var stale fra pre-skalerings-æraen (før ×4000 i april). Mindst én manager (Above & Beyond Cancer Cycling, oprettet 3. maj) endte med `sponsor_income = 100` og fik kun 100 CZ$ ved sæson-start i stedet for 240K. Fix: ny eksporteret konstant `DEFAULT_SPONSOR_INCOME = 240000` (matcher DB-default), alle 5 fallbacks bruger den nu. Manuel kompensering: JeppeK's `sponsor_income` opdateret til 240K + balance +239.900 CZ$ med `sponsor`-transaktion synlig i Finanser. 297/297 backend grønne.
 - 2026-05-06: **Gældsloft off-by-fee fix v2.48** — `createLoan` i [loanEngine.js](backend/lib/loanEngine.js) tjekkede `currentDebt + principal` mod loftet, men det indsatte `amount_remaining` var `principal + origination_fee`. Resultat: hvert lån kunne smutte over loftet med præcis fee-beløbet (5% short/long, 10% emergency). En D3-manager (Above & Beyond Cancer Cycling) stablede mange små lån oven på et 600K-lån og endte 54 CZ$ over 600K-loftet. Fix: fee beregnes nu før tjek og indgår i sammenligning. 2 nye regression-tests, 299/299 backend grønne, frontend build grøn. Eksisterende prod-overskridelse (54 CZ$) ikke rørt.
 - 2026-05-06: **QoL-batch v2.47** — 5 polish-fix: (1) refresh-knap + "Sidst opdateret"-tidsstempel på [ActivityPage.jsx](frontend/src/pages/ActivityPage.jsx); (2) [HeadToHeadPage.jsx](frontend/src/pages/HeadToHeadPage.jsx) `loadStats()` try/catch/finally + error-UI med "Prøv igen" (fixede evig spinner ved Promise.all-fejl); (3) `autoSuggest` på Hold A; (4) "Ingen hold fundet"-state i TeamSearch; (5) `console.warn` i ActivityPage `.catch()` der før skjulte API-fejl tavst. 295/295 tests + build grønne.
 - 2026-05-06: **Auktion race condition fix v2.46** — POST /api/auctions havde TOCTOU-race i SELECT-then-INSERT-tjekket; dobbeltklik 5. maj gav 3 auktioner på Gianni Moscon + 2 hver på Silvan Dillier og Morné van Niekerk. Ny migration ([2026-05-06-auctions-unique-active-rider.sql](database/2026-05-06-auctions-unique-active-rider.sql)) tilføjer `uniq_auctions_one_active_per_rider` partial index — DB blokkerer nu enhver dublet og backend mapper 23505 → 409. 4 duplikat-rows ryddet i prod (ingen pengebevægelse). 295/295 tests + frontend build grønne.

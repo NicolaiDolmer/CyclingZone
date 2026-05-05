@@ -58,6 +58,7 @@ import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
 import {
   buildSeasonEndPreviewRows,
+  DEFAULT_SPONSOR_INCOME,
   loadHumanSeasonEndTeams,
   processSeasonEnd,
   processSeasonStart,
@@ -3671,7 +3672,7 @@ router.post("/board/sign", requireAuth, async (req, res) => {
       plan_start_season_number: startSeasonNumber,
       plan_end_season_number: endSeasonNumber,
       plan_start_balance: team?.balance ?? 0,
-      plan_start_sponsor_income: team?.sponsor_income ?? 100,
+      plan_start_sponsor_income: team?.sponsor_income ?? DEFAULT_SPONSOR_INCOME,
       seasons_completed: 0,
       cumulative_stage_wins: 0,
       cumulative_gc_wins: 0,

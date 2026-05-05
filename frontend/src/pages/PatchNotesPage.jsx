@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.49",
+    date: "2026-05-06",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Sponsor-fallback brugte stale 100 CZ$ i stedet for 240K",
+        items: [
+          "Bugfix ([economyEngine.js](backend/lib/economyEngine.js), [betaResetService.js](backend/lib/betaResetService.js), [boardAutoAccept.js](backend/lib/boardAutoAccept.js), [api.js](backend/routes/api.js)): 5 steder i kode-base brugte `team.sponsor_income ?? 100` som fallback når `teams.sponsor_income` var null/undefined. Værdien 100 var en stale default fra pre-skalerings-æraen (før ×4000-multiplier i april). Mindst én manager (Above & Beyond Cancer Cycling, oprettet 3. maj) endte med `sponsor_income = 100` i DB og fik kun 100 CZ$ udbetalt ved sæson-start i stedet for 240.000 CZ$.",
+          "Fix: ny eksporteret konstant `DEFAULT_SPONSOR_INCOME = 240000` i economyEngine.js (matcher DB-default i schema.sql). Alle 5 fallbacks skifter fra `?? 100` til `?? DEFAULT_SPONSOR_INCOME`. Hvis `teams.sponsor_income` af en eller anden grund mangler, vil fremtidige sæson-start payouts og board-plan-baselines bruge 240K i stedet for 100.",
+          "Manuel kompensering: Above & Beyond Cancer Cycling fik `sponsor_income` opdateret til 240.000 og balance krediteret med 239.900 CZ$ (forskellen mellem hvad han fik og hvad han skulle have fået). Kompenseringen vises som en `sponsor`-transaktion i hans Finanser-historik med beskrivelsen 'Kompensering: manglende sponsor-payout'.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.48",
     date: "2026-05-06",
     label: "Beta",

@@ -1,4 +1,5 @@
 import { createBaselineProfile } from "./boardEngine.js";
+import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 
 export const DEFAULT_BETA_BALANCE = 800000;
 export const DEFAULT_BETA_DIVISION = 3;
@@ -226,7 +227,7 @@ export async function resetBetaBoardProfiles(supabase) {
     teamId: team.id,
     seasonId: activeSeasonId,
     balance: team.balance ?? 0,
-    sponsorIncome: team.sponsor_income ?? 100,
+    sponsorIncome: team.sponsor_income ?? DEFAULT_SPONSOR_INCOME,
   }));
 
   if (baselineRows.length > 0) {

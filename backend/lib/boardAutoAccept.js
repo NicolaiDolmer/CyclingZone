@@ -22,6 +22,7 @@ import {
   getPlanDuration,
 } from "./boardGoals.js";
 import { deriveDefaultFocusFromIdentity } from "./boardIdentity.js";
+import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 
 // Tærskler — Q-bekræftelse C (2026-05-05).
 // race_days_completed er counter på seasons-tabellen (schema.sql:100).
@@ -276,7 +277,7 @@ async function autoAcceptPendingPlan({
     plan_start_season_number: startSeasonNumber,
     plan_end_season_number: endSeasonNumber,
     plan_start_balance: team.balance ?? 0,
-    plan_start_sponsor_income: team.sponsor_income ?? 100,
+    plan_start_sponsor_income: team.sponsor_income ?? DEFAULT_SPONSOR_INCOME,
     seasons_completed: 0,
     cumulative_stage_wins: 0,
     cumulative_gc_wins: 0,
