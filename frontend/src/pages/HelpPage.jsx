@@ -588,6 +588,14 @@ const FAQ = [
       q: "Hvad er 'slut foran X andre managers' i balanced-planer?",
       a: "Balanced-fokus får nu et 5. mål: 'Slut foran mindst 3 andre managers i divisionen'. Det handler ikke om absolut rangering, men om relativ — du skal slå over halvdelen i din division. Skalerer automatisk når flere managers joiner: hvis der er 5 humane managers i din division og du er rank 1, har du slået 4. Hvis du er rank 4, har du kun slået 1 → målet er ikke opfyldt. Beregnes fra `season_standings.rank_in_division` mod antal humane managers i din division.",
     },
+    {
+      q: "Hvad sker der når bestyrelsen er meget utilfreds — kan jeg blive fyret?",
+      a: "Du kan ikke blive fyret. I stedet reagerer bestyrelsen gradvist gennem 6 lag jo lavere tilfredsheden bliver: ved <40% pålægger den et lønloft (du kan ikke øge holdets samlede løn — sælg en rytter først). Ved <30% kommer en signing-restriktion: køb over 300K CZ$ blokeres. Ved <15% tvangs-listes en rytter på markedet (laveste market_value, stjerner med pop≥70 eller uci≥100 er beskyttede). Ved <10% trækker en hovedsponsor sig — sponsorindtægten reduceres med 10% i den næste sæson. Alle aktive konsekvenser vises i panelet 'Aktive konsekvenser' på Bestyrelse-siden, og lag 4-5 sender også 'Skal handles'-notifs. Tilfredshed der stiger igen expirerer automatisk lag 2-3.",
+    },
+    {
+      q: "Hvad er bonus-tilbuddet jeg lige fik fra bestyrelsen?",
+      a: "Når tilfredsheden er over 75% OG mindst 75% af dine plan-mål er nået, kan bestyrelsen tilbyde dig +200K CZ$ til balancen mod ét ekstra-mål. Hvis dit fokus er star_signing, vil målet være 'Sign 1 stjerne (popularity ≥75)'; ellers vil det være 'Top-3 i mindst 1 monument'. Du kan acceptere eller afvise. Acceptér og budgettet krediteres straks via en bonus-finance-tx, og målet tilføjes til din 1-årsplan og evalueres ved sæsonens slutning. Bestyrelsen tilbyder kun ét bonus pr. sæson, så afslår du, kommer chancen først igen næste sæson hvis kriterierne stadig er opfyldt.",
+    },
 ];
 
 export default function HelpPage() {

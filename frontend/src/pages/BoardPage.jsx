@@ -567,6 +567,103 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
 // S-02b · "Bestyrelse"-feed (Q-batch 1C Q21).
 // Info-only board-relaterede notifs (board_update + board_critical) vises her
 // så manageren har én samlet oversigt over bestyrelsens seneste reaktioner.
+// S-02e · Konsekvens-tier (lag 2-5).
+// Q-batch 1C Q21 låser routing: lag 1 (passive_modifier) vises kun via tilfredshed.
+// Lag 2-3 = warning på BoardPage (ingen notif). Lag 4-5 = røde events i Bestyrelse-feed
+// + 'Skal handles' notif. Lag 6 (bonus_offer) har egen card-komponent (BonusOfferCard).
+const CONSEQUENCE_LAYER_META = {
+  2: { label: "Lønloft", emoji: "🔒", severity: "warning",
+       describe: (c) => `Bestyrelsen har pålagt et lønloft på ${formatCash(c.severity)}. Du kan ikke øge holdets samlede løn — sælg en rytter først.` },
+  3: { label: "Underskriv-restriktion", emoji: "🛑", severity: "warning",
+       describe: (c) => `Bestyrelsen blokerer alle køb over ${formatCash(c.severity)} indtil tilfredsheden stiger.` },
+  4: { label: "Tvunget salg", emoji: "📢", severity: "critical",
+       describe: (c) => `Bestyrelsen har tvangs-listet ${c.payload?.rider_name || "en rytter"} til ${formatCash(c.severity)}. Kontakt evt. en køber for at lukke handlen hurtigt.` },
+  5: { label: "Sponsor-pull-out", emoji: "💸", severity: "critical",
+       describe: () => `En hovedsponsor har trukket sig. Sponsorindtægten er reduceret med 10% i den næste sæson.` },
+};
+
+function formatCash(value) {
+  const num = Number(value || 0);
+  return `${num.toLocaleString("da-DK")} CZ$`;
+}
+
+function BoardConsequencesPanel({ consequences = [] }) {
+  const visible = consequences.filter((c) => CONSEQUENCE_LAYER_META[c.layer]);
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="mt-5 bg-cz-card border border-cz-border rounded-xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-cz-3 text-xs uppercase tracking-wider">Aktive konsekvenser</p>
+        <span className="text-cz-3 text-[10px]">{visible.length} aktiv{visible.length === 1 ? "" : "e"}</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {visible.sort((a, b) => a.layer - b.layer).map((c) => {
+          const meta = CONSEQUENCE_LAYER_META[c.layer];
+          const isCritical = meta.severity === "critical";
+          return (
+            <div key={c.id}
+              className={`p-3 rounded-lg border ${isCritical
+                ? "bg-cz-danger-bg0/8 border-cz-danger/30"
+                : "bg-cz-accent/10 border-cz-accent/30"}`}>
+              <div className="flex items-start gap-3">
+                <span className="text-xl flex-shrink-0">{meta.emoji}</span>
+                <div className="flex-1">
+                  <p className={`text-sm font-semibold ${isCritical ? "text-red-300" : "text-cz-accent-t"}`}>
+                    {meta.label}
+                  </p>
+                  <p className="text-cz-3 text-xs mt-1 leading-relaxed">{meta.describe(c)}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// S-02e · Bonus-offer card (lag 6). Q-batch 1B Q14: maks 1/sæson, +200K mod ekstra-mål.
+function BonusOfferCard({ offer, onAccept, onDecline, busy }) {
+  if (!offer) return null;
+  const goalLabel = offer.payload?.extra_goal_label || "1 ekstra-mål";
+  const bonus = offer.severity || 0;
+
+  return (
+    <div className="mt-5 rounded-xl p-5 border border-cz-success/40 bg-cz-success-bg0/8">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl flex-shrink-0">🎁</span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-cz-success">Bonus-tilbud fra bestyrelsen</p>
+          <p className="text-cz-2 text-xs mt-2 leading-relaxed">
+            Bestyrelsen er imponeret. De tilbyder <span className="font-mono font-bold text-cz-success">+{formatCash(bonus)}</span> til
+            holdets balance mod ét ekstra-mål: <span className="font-medium text-cz-2">{goalLabel}</span>.
+          </p>
+          <p className="text-cz-3 text-xs mt-2 leading-relaxed">
+            Acceptér og budgettet krediteres straks. Det ekstra mål bliver lagt til din 1-årsplan og evalueres ved sæsonens slutning.
+          </p>
+          <div className="flex gap-2 mt-3">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onAccept}
+              className="px-3 py-2 rounded-md bg-cz-success/20 hover:bg-cz-success/30 text-cz-success text-xs font-semibold border border-cz-success/40 disabled:opacity-50">
+              Acceptér tilbud
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onDecline}
+              className="px-3 py-2 rounded-md bg-cz-subtle hover:bg-cz-subtle/70 text-cz-2 text-xs font-medium border border-cz-border disabled:opacity-50">
+              Afvis
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BoardFeedSection({ items = [] }) {
   if (!items.length) return null;
 
@@ -1128,6 +1225,10 @@ export default function BoardPage() {
   const [boardFeed, setBoardFeed] = useState([]);
   // S-02c: 5 board-medlemmer (3 identity + 2 wildcards)
   const [teamMembers, setTeamMembers] = useState([]);
+  // S-02e: Aktive konsekvenser (lag 2-6). bonusOffer = lag 6 udskilt.
+  const [activeConsequences, setActiveConsequences] = useState([]);
+  const [bonusOffer, setBonusOffer] = useState(null);
+  const [bonusOfferBusy, setBonusOfferBusy] = useState(false);
 
   // Wizard state
   const [wizardPlanType, setWizardPlanType] = useState(null);
@@ -1199,6 +1300,8 @@ export default function BoardPage() {
     setAutoAccept(data.auto_accept || null);
     setActiveLoanCount(data.active_loans_count || 0);
     setTeamMembers(Array.isArray(data.team_members) ? data.team_members : []);
+    setActiveConsequences(Array.isArray(data.active_consequences) ? data.active_consequences : []);
+    setBonusOffer(data.bonus_offer || null);
 
     // S-02b: hent seneste board-relaterede notifs til feed-sektion (Q-batch 1C Q21)
     try {
@@ -1370,6 +1473,31 @@ export default function BoardPage() {
 
     await loadAll();
     setRequestingType("");
+  }
+
+  // S-02e · Bonus-offer accept/decline (lag 6)
+  async function handleBonusOffer(action) {
+    if (!bonusOffer || bonusOfferBusy) return;
+    setBonusOfferBusy(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      const res = await fetch(`${API}/api/board/bonus-offer/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ offer_id: bonusOffer.id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error("Bonus offer action failed:", data.error);
+        return;
+      }
+      await loadAll();
+    } finally {
+      setBonusOfferBusy(false);
+    }
   }
 
   async function renewContract(planType) {
@@ -1544,6 +1672,21 @@ export default function BoardPage() {
       {/* S-02c · Bestyrelse-medlems-grid — vises kun efter sæson-1-slut når members er tildelt */}
       {!isBaselinePhase && teamMembers.length > 0 && (
         <BoardMembersGrid members={teamMembers} />
+      )}
+
+      {/* S-02e · Bonus-tilbud (lag 6) — øverst da det kræver action */}
+      {!isBaselinePhase && bonusOffer && (
+        <BonusOfferCard
+          offer={bonusOffer}
+          busy={bonusOfferBusy}
+          onAccept={() => handleBonusOffer("accept")}
+          onDecline={() => handleBonusOffer("decline")}
+        />
+      )}
+
+      {/* S-02e · Aktive konsekvenser (lag 2-5) */}
+      {!isBaselinePhase && activeConsequences.some((c) => c.layer >= 2 && c.layer <= 5) && (
+        <BoardConsequencesPanel consequences={activeConsequences} />
       )}
 
       {/* S-02a: Plan-kort skjules i baseline-fasen — forhandling åbner ved sæson-slut. */}

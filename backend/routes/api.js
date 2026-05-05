@@ -91,6 +91,12 @@ import {
   getTransferCancelIssue,
 } from "../lib/transferExecution.js";
 import {
+  acceptBonusOffer,
+  assertSigningAllowed,
+  declineBonusOffer,
+  getActiveConsequencesForTeam,
+} from "../lib/boardConsequences.js";
+import {
   getIncomingSquadViolation,
   getTeamMarketState,
   MIN_RIDERS_FOR_RACE,
@@ -848,6 +854,17 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
     });
   }
 
+  // S-02e · Hard-block ved aktivt lag 2 (salary cap) eller lag 3 (signing-restriktion).
+  const signingBlock = await assertSigningAllowed({
+    supabase,
+    buyerTeamId: req.team.id,
+    riderId: auction.rider_id,
+    purchasePrice: amount,
+  });
+  if (signingBlock) {
+    return res.status(403).json({ error: signingBlock.reason, code: signingBlock.code, layer: signingBlock.layer });
+  }
+
   const bidTime = new Date();
   const bidCfg = await getAuctionConfig();
   const { shouldExtend, newEnd } = checkBidExtension(bidTime, auction.calculated_end, bidCfg);
@@ -1044,6 +1061,17 @@ router.post("/transfers/offer", requireAuth, async (req, res) => {
   if (squadViolation)
     return res.status(400).json({ error: `Dit hold kan max have ${squadViolation.maxRiders} ryttere i Division ${buyerState.division || 3}` });
 
+  // S-02e · Hard-block ved aktivt lag 2 (salary cap) eller lag 3 (signing-restriktion).
+  const signingBlock = await assertSigningAllowed({
+    supabase,
+    buyerTeamId: req.team.id,
+    riderId: rider_id,
+    purchasePrice: offer_amount,
+  });
+  if (signingBlock) {
+    return res.status(403).json({ error: signingBlock.reason, code: signingBlock.code, layer: signingBlock.layer });
+  }
+
   const { data, error } = await supabase
     .from("transfer_offers")
     .insert({
@@ -1234,6 +1262,17 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
     const { data: buyer } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
     if (!buyer || buyer.balance < price)
       return res.status(400).json({ error: "Du har ikke råd" });
+
+    // S-02e · Hard-block ved aktivt lag 2/3 (genkontrol — sat kan have ændret sig siden offer).
+    const signingBlock = await assertSigningAllowed({
+      supabase,
+      buyerTeamId: req.team.id,
+      riderId: offer.rider_id,
+      purchasePrice: price,
+    });
+    if (signingBlock) {
+      return res.status(403).json({ error: signingBlock.reason, code: signingBlock.code, layer: signingBlock.layer });
+    }
 
     await supabase.from("transfer_offers").update({
       status: "awaiting_confirmation",
@@ -3265,6 +3304,16 @@ router.get("/board/status", requireAuth, async (req, res) => {
       })
       .filter(Boolean);
 
+    // S-02e · Aktive konsekvenser (lag 2-6) — frontend renderer
+    // BoardConsequencesPanel og BonusOfferCard på baggrund af denne liste.
+    let activeConsequences = [];
+    try {
+      activeConsequences = await getActiveConsequencesForTeam(supabase, req.team.id);
+    } catch (e) {
+      console.warn(`[board/status] getActiveConsequencesForTeam failed:`, e?.message);
+    }
+    const bonusOffer = activeConsequences.find((c) => c.layer === 6) || null;
+
     res.json({
       plans,
       setup_next_plan_type: setupNextPlanType,
@@ -3292,7 +3341,91 @@ router.get("/board/status", requireAuth, async (req, res) => {
         supported: boardRequestsSupported,
         active_season_number: activeSeason?.number ?? null,
       },
+      active_consequences: activeConsequences,
+      bonus_offer: bonusOffer,
     });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// S-02e · Bonus-offer accept/decline (lag 6).
+// Accept: krediterer 200K + tilføjer ekstra-mål til 1yr-board's current_goals.
+// Decline: markerer row 'declined' uden side-effects.
+router.post("/board/bonus-offer/accept", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const { offer_id } = req.body || {};
+    if (!offer_id) return res.status(400).json({ error: "offer_id kræves" });
+
+    const result = await acceptBonusOffer({ supabase, teamId: req.team.id, offerId: offer_id });
+    if (!result.ok) {
+      return res.status(404).json({ error: "Tilbud ikke fundet eller allerede behandlet" });
+    }
+
+    // Krediter holdets balance via samme finance-kontrakt som sponsor (type='bonus').
+    const { data: team } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
+    if (team) {
+      await supabase.from("teams").update({ balance: (team.balance || 0) + result.bonus_amount }).eq("id", req.team.id);
+      const { data: activeSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
+      await supabase.from("finance_transactions").insert({
+        team_id: req.team.id,
+        type: "bonus",
+        amount: result.bonus_amount,
+        description: `Bestyrelsens bonus-tilbud accepteret (mod ekstra-mål: ${result.extra_goal.label})`,
+        season_id: activeSeason?.id ?? null,
+      });
+    }
+
+    // Tilføj ekstra-mål til 1yr-board's current_goals.
+    if (result.source_board_id) {
+      const { data: oneYrBoard } = await supabase
+        .from("board_profiles")
+        .select("id, current_goals, plan_type")
+        .eq("team_id", req.team.id)
+        .eq("plan_type", "1yr")
+        .eq("negotiation_status", "completed")
+        .maybeSingle();
+
+      if (oneYrBoard) {
+        const existingGoals = typeof oneYrBoard.current_goals === "string"
+          ? JSON.parse(oneYrBoard.current_goals)
+          : (oneYrBoard.current_goals || []);
+        const extraGoal = {
+          type: result.extra_goal.type,
+          target: result.extra_goal.target,
+          cumulative: false,
+          source: "bonus_offer",
+          label: result.extra_goal.label,
+        };
+        const updatedGoals = [...existingGoals, extraGoal];
+        await supabase.from("board_profiles")
+          .update({ current_goals: JSON.stringify(updatedGoals), updated_at: new Date().toISOString() })
+          .eq("id", oneYrBoard.id);
+      }
+    }
+
+    res.json({
+      success: true,
+      bonus_amount: result.bonus_amount,
+      extra_goal: result.extra_goal,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/board/bonus-offer/decline", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const { offer_id } = req.body || {};
+    if (!offer_id) return res.status(400).json({ error: "offer_id kræves" });
+
+    const result = await declineBonusOffer({ supabase, teamId: req.team.id, offerId: offer_id });
+    if (!result.ok) {
+      return res.status(404).json({ error: "Tilbud ikke fundet eller allerede behandlet" });
+    }
+    res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

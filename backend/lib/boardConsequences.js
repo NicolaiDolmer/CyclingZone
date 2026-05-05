@@ -1,0 +1,583 @@
+/**
+ * S-02e · Konsekvens-tier (6 lag)
+ * ================================
+ * Master: docs/slices/02-board-redesign-MASTER.md (Appendix C + Q-batch 1B Q11/Q14 + Q-batch 1C Q21)
+ *
+ * Lag 1 (passive sponsor-modifier ±20%) lever stadig i boardEvaluation.satisfactionToModifier
+ * og persisteres i board_profiles.budget_modifier — IKKE i board_consequences.
+ *
+ * Lag 2-6 lever i board_consequences-tabellen og evalueres ved sæson-end via
+ * evaluateAndApplyConsequences. Hard-blocks (lag 2-3) hookes ind i transfer/auction-routes
+ * via assertSigningAllowed. Sponsor-pullout (lag 5) hookes ind i processSeasonStart's
+ * modifier-stack via getActiveSponsorPulloutFactor og auto-expires ved sæson-skifte
+ * (expireSeasonScopedConsequences).
+ */
+
+const SATISFACTION_THRESHOLDS = {
+  SALARY_CAP: 40,
+  SIGNING_RESTRICTION: 30,
+  FORCED_LISTING: 15,
+  SPONSOR_PULLOUT: 10,
+  BONUS_OFFER: 75,
+};
+
+// Lag 3 — pris-tærskel i CZ$. Køb >300K kræver bestyrelsesgodkendelse.
+// Q-batch 1B Q11 låser tærsklerne for satisfaction; selve pris-tærsklen er
+// implementerings-detalje (master line 226: "N-tærskler afgøres inline").
+const SIGNING_RESTRICTION_PRICE_THRESHOLD = 300_000;
+
+// Lag 5 — sponsor-pullout-faktor som basis-points (1000 = 1.00).
+const SPONSOR_PULLOUT_FACTOR_BP = 900; // 0.90 = -10%
+
+// Lag 6 — bonus-budget. Q-batch 1B Q14: ~25% af 800K start-balance.
+const BONUS_OFFER_AMOUNT = 200_000;
+
+// Lag 6 — eligibility. Mindst 75% af mål 'ahead' (proxy: goalsMet / goalsTotal ≥ 0.75).
+const BONUS_OFFER_GOALS_THRESHOLD = 0.75;
+
+// Lag 4 — beskytter star/popularity-rytter mod tvunget listing (parallel til UCI-sync).
+const FORCED_LISTING_PROTECTION_POPULARITY = 70;
+const FORCED_LISTING_PROTECTION_UCI = 100;
+
+// Lag 5 — alternativ trigger: 2× plan-udløb i træk under 30% tilfredshed
+// (samme counter som S-02c chairman-replacement).
+const PULLOUT_PLAN_LAPSE_TRIGGER = 2;
+const PULLOUT_PLAN_LAPSE_SATISFACTION = 30;
+
+export const CONSEQUENCE_CONSTANTS = {
+  SATISFACTION_THRESHOLDS,
+  SIGNING_RESTRICTION_PRICE_THRESHOLD,
+  SPONSOR_PULLOUT_FACTOR_BP,
+  BONUS_OFFER_AMOUNT,
+  BONUS_OFFER_GOALS_THRESHOLD,
+  FORCED_LISTING_PROTECTION_POPULARITY,
+  FORCED_LISTING_PROTECTION_UCI,
+  PULLOUT_PLAN_LAPSE_TRIGGER,
+  PULLOUT_PLAN_LAPSE_SATISFACTION,
+};
+
+export const CONSEQUENCE_LAYERS = {
+  SALARY_CAP: 2,
+  SIGNING_RESTRICTION: 3,
+  FORCED_LISTING: 4,
+  SPONSOR_PULLOUT: 5,
+  BONUS_OFFER: 6,
+};
+
+const LAYER_LABELS = {
+  2: "Lønloft",
+  3: "Underskriv-restriktion",
+  4: "Tvunget salg",
+  5: "Sponsor-pull-out",
+  6: "Bonus-tilbud",
+};
+
+export function getLayerLabel(layer) {
+  return LAYER_LABELS[layer] || `Lag ${layer}`;
+}
+
+function ensureSupabase(supabase) {
+  if (!supabase?.from) throw new Error("Supabase client is required");
+}
+
+async function loadActiveConsequencesByLayer(supabase, teamId) {
+  const { data, error } = await supabase
+    .from("board_consequences")
+    .select("*")
+    .eq("team_id", teamId)
+    .eq("status", "active");
+  if (error) throw new Error(`Could not load board_consequences: ${error.message}`);
+  const byLayer = new Map();
+  for (const row of data || []) byLayer.set(row.layer, row);
+  return byLayer;
+}
+
+export async function getActiveConsequencesForTeam(supabase, teamId) {
+  ensureSupabase(supabase);
+  if (!teamId) return [];
+  const byLayer = await loadActiveConsequencesByLayer(supabase, teamId);
+  return Array.from(byLayer.values()).sort((a, b) => a.layer - b.layer);
+}
+
+/**
+ * Lag 5 · Sponsor-pullout-multiplier til processSeasonStart.
+ * Returnerer 1.0 hvis ingen aktiv pullout. Stacker MULTIPLIKATIVT med budget_modifier (lag 1).
+ */
+export async function getActiveSponsorPulloutFactor(supabase, teamId) {
+  ensureSupabase(supabase);
+  if (!teamId) return 1.0;
+  const byLayer = await loadActiveConsequencesByLayer(supabase, teamId);
+  const pullout = byLayer.get(CONSEQUENCE_LAYERS.SPONSOR_PULLOUT);
+  if (!pullout) return 1.0;
+  return (pullout.severity || 1000) / 1000;
+}
+
+/**
+ * Lag 5 cleanup ved sæson-start. Pullout varer ÉN sæson (Q-batch 1B Q11) — den
+ * row der havde expires_at_season_id = forrige sæson markeres 'expired'.
+ * Idempotent: gentagne kald markerer ingen ekstra rows.
+ */
+export async function expireSeasonScopedConsequences(supabase, completedSeasonId) {
+  ensureSupabase(supabase);
+  if (!completedSeasonId) return { expired: 0 };
+  const { data, error } = await supabase
+    .from("board_consequences")
+    .update({ status: "expired", resolved_at: new Date().toISOString() })
+    .eq("status", "active")
+    .eq("expires_at_season_id", completedSeasonId)
+    .select("id");
+  if (error) throw new Error(`Could not expire season-scoped consequences: ${error.message}`);
+  return { expired: (data || []).length };
+}
+
+// ─── Hard-block helpers (lag 2-3) ─────────────────────────────────────────────
+
+/**
+ * Aggregerer signing-block-tjek for én potentiel handel.
+ * Returnerer null hvis tilladt, ellers { code, layer, reason, threshold }.
+ *
+ * - Lag 2 (salary_cap): blocks hvis (current_total_salary + new_rider_salary) > severity-cap.
+ * - Lag 3 (signing_restriction): blocks hvis purchase_price > severity-pris-tærskel.
+ */
+export async function assertSigningAllowed({ supabase, buyerTeamId, riderId, purchasePrice }) {
+  ensureSupabase(supabase);
+  if (!buyerTeamId) return null;
+
+  const byLayer = await loadActiveConsequencesByLayer(supabase, buyerTeamId);
+  const cap = byLayer.get(CONSEQUENCE_LAYERS.SALARY_CAP);
+  const restriction = byLayer.get(CONSEQUENCE_LAYERS.SIGNING_RESTRICTION);
+
+  if (!cap && !restriction) return null;
+
+  // Lag 3: pris-tærskel — checker først (billigere DB-trip-undgåelse hvis kun lag 3 aktiv).
+  if (restriction && Number(purchasePrice || 0) > restriction.severity) {
+    return {
+      code: "board_signing_restriction",
+      layer: CONSEQUENCE_LAYERS.SIGNING_RESTRICTION,
+      threshold: restriction.severity,
+      reason: `Bestyrelsen blokerer køb over ${restriction.severity.toLocaleString("da-DK")} CZ$ (tilfredshed under ${SATISFACTION_THRESHOLDS.SIGNING_RESTRICTION}%).`,
+    };
+  }
+
+  if (cap) {
+    const { data: buyerRiders, error: ridersError } = await supabase
+      .from("riders")
+      .select("id, salary")
+      .eq("team_id", buyerTeamId);
+    if (ridersError) throw new Error(`Could not load buyer salaries: ${ridersError.message}`);
+
+    const currentSalary = (buyerRiders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
+    let incomingSalary = 0;
+    if (riderId) {
+      const { data: rider, error: riderError } = await supabase
+        .from("riders")
+        .select("salary, team_id")
+        .eq("id", riderId)
+        .single();
+      if (riderError) throw new Error(`Could not load incoming rider salary: ${riderError.message}`);
+      // Hvis køber allerede ejer rytteren (skal ikke kunne ske, men sikkerhed) — ingen delta.
+      if (rider?.team_id !== buyerTeamId) {
+        incomingSalary = rider?.salary || 0;
+      }
+    }
+
+    if (currentSalary + incomingSalary > cap.severity) {
+      return {
+        code: "board_salary_cap",
+        layer: CONSEQUENCE_LAYERS.SALARY_CAP,
+        threshold: cap.severity,
+        reason: `Lønloft pålagt af bestyrelsen (${cap.severity.toLocaleString("da-DK")} CZ$). Du kan ikke øge holdets samlede løn — sælg en rytter først.`,
+      };
+    }
+  }
+
+  return null;
+}
+
+// ─── Forced listing (lag 4) ───────────────────────────────────────────────────
+
+/**
+ * Vælger den rytter der skal tvangs-listes ved sat<15.
+ * - Beskytter pop≥70 OR uci≥100 (parallel til UCI-sync auto-protection).
+ * - Vælger laveste market_value blandt resten.
+ * - Returnerer null hvis ingen kandidat (alle beskyttede eller ingen ryttere).
+ */
+export function selectForcedListingRider(riders) {
+  if (!Array.isArray(riders) || riders.length === 0) return null;
+
+  const candidates = riders.filter((r) => {
+    if (!r || !r.id) return false;
+    if ((r.popularity || 0) >= FORCED_LISTING_PROTECTION_POPULARITY) return false;
+    if ((r.uci_points || 0) >= FORCED_LISTING_PROTECTION_UCI) return false;
+    return true;
+  });
+
+  if (candidates.length === 0) return null;
+
+  // Stabil sortering: laveste market_value, tie-break på id (deterministisk).
+  candidates.sort((a, b) => {
+    const va = a.market_value || 0;
+    const vb = b.market_value || 0;
+    if (va !== vb) return va - vb;
+    return String(a.id).localeCompare(String(b.id));
+  });
+
+  return candidates[0];
+}
+
+// ─── Bonus offer eligibility (lag 6) ──────────────────────────────────────────
+
+export function isBonusOfferEligible({ satisfaction, goalsMet, goalsTotal }) {
+  if ((satisfaction ?? 0) <= SATISFACTION_THRESHOLDS.BONUS_OFFER) return false;
+  if (!goalsTotal || goalsTotal <= 0) return false;
+  const ratio = (goalsMet ?? 0) / goalsTotal;
+  return ratio >= BONUS_OFFER_GOALS_THRESHOLD;
+}
+
+/**
+ * Vælger ekstra-mål baseret på board-fokus. Q-batch 1B Q14 specificerer
+ * "vind 1 monument ELLER sign 1 stjerne pop ≥75". Vi vælger deterministisk:
+ * star_signing → signature_rider, ellers monument_podium.
+ */
+export function selectBonusExtraGoal(board) {
+  const focus = board?.focus || "balanced";
+  if (focus === "star_signing") {
+    return {
+      type: "signature_rider",
+      target: 75,
+      label: "Sign 1 stjerne (popularity ≥75)",
+    };
+  }
+  return {
+    type: "monument_podium",
+    target: 1,
+    label: "Top-3 i mindst 1 monument",
+  };
+}
+
+// ─── Hovedmotor — kaldes fra processTeamSeasonEnd ─────────────────────────────
+
+/**
+ * Evaluerer alle 6 lag for én team ved sæson-end og opretter consequences-rows
+ * + sender notifs (lag 4-6 → board_critical, lag 2-3 = silent).
+ *
+ * Idempotent via unique-active-index på (team_id, layer): forsøger upsert-style
+ * (delete+insert hvis severity skifter for vedvarende lag, skip hvis allerede aktiv).
+ *
+ * Lag 1 (passive_modifier) håndteres IKKE her — det er allerede skrevet til
+ * board_profiles.budget_modifier af evaluateBoardSeason.
+ */
+export async function evaluateAndApplyConsequences({
+  supabase,
+  team,
+  board,
+  newSatisfaction,
+  goalsMet,
+  goalsTotal,
+  planIsComplete,
+  seasonId,
+  notify,
+  consecutiveLowExpirations = 0,
+}) {
+  ensureSupabase(supabase);
+  if (!team?.id || !board?.id) {
+    return { applied: [], skipped: [] };
+  }
+
+  const applied = [];
+  const skipped = [];
+  const byLayer = await loadActiveConsequencesByLayer(supabase, team.id);
+  // status='active' eksplicit (DB har DEFAULT 'active', men vi sætter det explicit
+  // så fake supabase i tests + dependent code kan stole på feltet uden at gå via DB).
+  const baseRow = {
+    team_id: team.id,
+    source_board_id: board.id,
+    status: "active",
+  };
+
+  // ── Lag 2: Salary cap (sat<40)
+  if (newSatisfaction < SATISFACTION_THRESHOLDS.SALARY_CAP) {
+    // Cap = current total salary at trigger-time. Re-evalueres hver sæson-end (frosset til
+    // næste season-end re-evaluering).
+    const totalSalary = (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
+    const newCap = Math.max(totalSalary, 0);
+    const existing = byLayer.get(CONSEQUENCE_LAYERS.SALARY_CAP);
+    if (existing && existing.severity === newCap) {
+      skipped.push({ layer: 2, reason: "unchanged" });
+    } else {
+      // Mark previous as expired før insert (unique-active-index ville ellers fejle).
+      if (existing) {
+        await supabase
+          .from("board_consequences")
+          .update({ status: "expired", resolved_at: new Date().toISOString() })
+          .eq("id", existing.id);
+      }
+      await supabase.from("board_consequences").insert({
+        ...baseRow,
+        layer: CONSEQUENCE_LAYERS.SALARY_CAP,
+        severity: newCap,
+        payload: { satisfaction: newSatisfaction, total_salary_at_create: totalSalary },
+      });
+      applied.push({ layer: 2, severity: newCap });
+    }
+  } else {
+    // Sat steg over 40 → expirér aktiv cap.
+    const existing = byLayer.get(CONSEQUENCE_LAYERS.SALARY_CAP);
+    if (existing) {
+      await supabase
+        .from("board_consequences")
+        .update({ status: "expired", resolved_at: new Date().toISOString() })
+        .eq("id", existing.id);
+      applied.push({ layer: 2, severity: 0, action: "expired" });
+    }
+  }
+
+  // ── Lag 3: Signing-restriktion (sat<30)
+  if (newSatisfaction < SATISFACTION_THRESHOLDS.SIGNING_RESTRICTION) {
+    const existing = byLayer.get(CONSEQUENCE_LAYERS.SIGNING_RESTRICTION);
+    if (!existing) {
+      await supabase.from("board_consequences").insert({
+        ...baseRow,
+        layer: CONSEQUENCE_LAYERS.SIGNING_RESTRICTION,
+        severity: SIGNING_RESTRICTION_PRICE_THRESHOLD,
+        payload: { satisfaction: newSatisfaction },
+      });
+      applied.push({ layer: 3, severity: SIGNING_RESTRICTION_PRICE_THRESHOLD });
+    } else {
+      skipped.push({ layer: 3, reason: "already_active" });
+    }
+  } else {
+    const existing = byLayer.get(CONSEQUENCE_LAYERS.SIGNING_RESTRICTION);
+    if (existing) {
+      await supabase
+        .from("board_consequences")
+        .update({ status: "expired", resolved_at: new Date().toISOString() })
+        .eq("id", existing.id);
+      applied.push({ layer: 3, action: "expired" });
+    }
+  }
+
+  // ── Lag 4: Tvunget listing (sat<15) — vælg + insert listing + create row
+  if (newSatisfaction < SATISFACTION_THRESHOLDS.FORCED_LISTING) {
+    const existing = byLayer.get(CONSEQUENCE_LAYERS.FORCED_LISTING);
+    if (existing) {
+      skipped.push({ layer: 4, reason: "already_active" });
+    } else {
+      const target = selectForcedListingRider(team.riders || []);
+      if (target) {
+        const askingPrice = target.market_value || 0;
+        const { data: listing, error: listingError } = await supabase
+          .from("transfer_listings")
+          .insert({
+            rider_id: target.id,
+            seller_team_id: team.id,
+            asking_price: askingPrice,
+            status: "open",
+          })
+          .select("id")
+          .single();
+        if (listingError) {
+          // Listing-fejl må ikke blokere sæson-end — log + spring over.
+          console.error(`  ⚠️  forced listing failed for ${team.name}: ${listingError.message}`);
+        } else {
+          const riderName = target.firstname && target.lastname
+            ? `${target.firstname} ${target.lastname}`
+            : `Rytter ${target.id}`;
+          await supabase.from("board_consequences").insert({
+            ...baseRow,
+            layer: CONSEQUENCE_LAYERS.FORCED_LISTING,
+            severity: askingPrice,
+            payload: {
+              rider_id: target.id,
+              rider_name: riderName,
+              listing_id: listing.id,
+              satisfaction: newSatisfaction,
+            },
+          });
+          applied.push({ layer: 4, severity: askingPrice, rider_name: riderName });
+          if (notify) {
+            await notify({
+              type: "board_critical",
+              title: "Bestyrelsen kræver salg",
+              message: `Tilfredsheden er på ${newSatisfaction}%. Bestyrelsen har tvangs-listet ${riderName} til ${askingPrice.toLocaleString("da-DK")} CZ$.`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // ── Lag 5: Sponsor-pullout (sat<10 ELLER 2× plan-udløb under 30%)
+  // Trigger b kun ved planIsComplete=true (samme som S-02c chairman-replacement).
+  const pulloutTriggerA = newSatisfaction < SATISFACTION_THRESHOLDS.SPONSOR_PULLOUT;
+  const pulloutTriggerB =
+    planIsComplete &&
+    newSatisfaction < PULLOUT_PLAN_LAPSE_SATISFACTION &&
+    consecutiveLowExpirations >= PULLOUT_PLAN_LAPSE_TRIGGER;
+
+  if (pulloutTriggerA || pulloutTriggerB) {
+    const existing = byLayer.get(CONSEQUENCE_LAYERS.SPONSOR_PULLOUT);
+    if (existing) {
+      skipped.push({ layer: 5, reason: "already_active" });
+    } else {
+      await supabase.from("board_consequences").insert({
+        ...baseRow,
+        layer: CONSEQUENCE_LAYERS.SPONSOR_PULLOUT,
+        severity: SPONSOR_PULLOUT_FACTOR_BP,
+        expires_at_season_id: seasonId,
+        payload: {
+          satisfaction: newSatisfaction,
+          trigger: pulloutTriggerA ? "low_satisfaction" : "double_plan_lapse",
+        },
+      });
+      applied.push({ layer: 5, severity: SPONSOR_PULLOUT_FACTOR_BP });
+      if (notify) {
+        await notify({
+          type: "board_critical",
+          title: "Sponsor trækker sig",
+          message: `Bestyrelsen melder, at en hovedsponsor har trukket sig efter sæsonen. Sponsorindtægten reduceres med 10% i den næste sæson.`,
+        });
+      }
+    }
+  }
+
+  // ── Lag 6: Bonus-offer (sat>75 + ≥75% mål 'ahead')
+  // Idempotency: 1×/sæson — skip hvis aktivt offer ELLER offer skabt i nuværende sæson.
+  if (isBonusOfferEligible({ satisfaction: newSatisfaction, goalsMet, goalsTotal })) {
+    const existing = byLayer.get(CONSEQUENCE_LAYERS.BONUS_OFFER);
+    if (existing) {
+      skipped.push({ layer: 6, reason: "already_active" });
+    } else {
+      // Tjek om der allerede er ETHVERT (aktiv ELLER resolved) bonus-offer i denne sæson.
+      const { data: thisSeasonOffers, error: thisSeasonError } = await supabase
+        .from("board_consequences")
+        .select("id")
+        .eq("team_id", team.id)
+        .eq("layer", CONSEQUENCE_LAYERS.BONUS_OFFER)
+        .eq("expires_at_season_id", seasonId);
+      if (thisSeasonError) {
+        throw new Error(`Could not check season bonus-offers: ${thisSeasonError.message}`);
+      }
+      if ((thisSeasonOffers || []).length > 0) {
+        skipped.push({ layer: 6, reason: "already_offered_this_season" });
+      } else {
+        const extraGoal = selectBonusExtraGoal(board);
+        await supabase.from("board_consequences").insert({
+          ...baseRow,
+          layer: CONSEQUENCE_LAYERS.BONUS_OFFER,
+          severity: BONUS_OFFER_AMOUNT,
+          expires_at_season_id: seasonId,
+          payload: {
+            satisfaction: newSatisfaction,
+            goals_met: goalsMet,
+            goals_total: goalsTotal,
+            extra_goal_type: extraGoal.type,
+            extra_goal_target: extraGoal.target,
+            extra_goal_label: extraGoal.label,
+          },
+        });
+        applied.push({ layer: 6, severity: BONUS_OFFER_AMOUNT, extra_goal: extraGoal });
+        if (notify) {
+          await notify({
+            type: "board_critical",
+            title: "Bonus-tilbud fra bestyrelsen",
+            message: `Bestyrelsen er imponeret (${newSatisfaction}% tilfredshed, ${goalsMet}/${goalsTotal} mål nået). De tilbyder +${BONUS_OFFER_AMOUNT.toLocaleString("da-DK")} CZ$ mod ekstra-mål: ${extraGoal.label}. Acceptér eller afvis på Bestyrelse-siden.`,
+          });
+        }
+      }
+    }
+  }
+
+  return { applied, skipped };
+}
+
+// ─── Manager actions på lag 6 (accept/decline) ────────────────────────────────
+
+/**
+ * Manager accepterer bonus-tilbuddet.
+ * - Markerer row 'accepted' + resolved_at
+ * - Returnerer { ok, bonus_amount, extra_goal } så caller kan kreditere + tilføje mål
+ *
+ * Caller (api.js) er ansvarlig for credit + at tilføje extra_goal til 1yr-board's
+ * current_goals — vi vil ikke duplicere finance-tx-kontrakter her.
+ */
+export async function acceptBonusOffer({ supabase, teamId, offerId }) {
+  ensureSupabase(supabase);
+  const { data: offer, error: offerError } = await supabase
+    .from("board_consequences")
+    .select("*")
+    .eq("id", offerId)
+    .eq("team_id", teamId)
+    .eq("layer", CONSEQUENCE_LAYERS.BONUS_OFFER)
+    .eq("status", "active")
+    .maybeSingle();
+  if (offerError) throw new Error(`Could not load bonus offer: ${offerError.message}`);
+  if (!offer) return { ok: false, code: "not_found" };
+
+  const { error: updateError } = await supabase
+    .from("board_consequences")
+    .update({ status: "accepted", resolved_at: new Date().toISOString() })
+    .eq("id", offer.id);
+  if (updateError) throw new Error(`Could not accept bonus offer: ${updateError.message}`);
+
+  return {
+    ok: true,
+    bonus_amount: offer.severity,
+    extra_goal: {
+      type: offer.payload?.extra_goal_type,
+      target: offer.payload?.extra_goal_target,
+      label: offer.payload?.extra_goal_label,
+    },
+    source_board_id: offer.source_board_id,
+  };
+}
+
+export async function declineBonusOffer({ supabase, teamId, offerId }) {
+  ensureSupabase(supabase);
+  const { data: offer, error: offerError } = await supabase
+    .from("board_consequences")
+    .select("id")
+    .eq("id", offerId)
+    .eq("team_id", teamId)
+    .eq("layer", CONSEQUENCE_LAYERS.BONUS_OFFER)
+    .eq("status", "active")
+    .maybeSingle();
+  if (offerError) throw new Error(`Could not load bonus offer: ${offerError.message}`);
+  if (!offer) return { ok: false, code: "not_found" };
+
+  const { error: updateError } = await supabase
+    .from("board_consequences")
+    .update({ status: "declined", resolved_at: new Date().toISOString() })
+    .eq("id", offer.id);
+  if (updateError) throw new Error(`Could not decline bonus offer: ${updateError.message}`);
+
+  return { ok: true };
+}
+
+// ─── Layer 4 fulfillment — markerer row 'fulfilled' når listing sælges ────────
+
+/**
+ * Kaldes fra transfer/auction-finalize-flow når en listing sælges. Hvis listing-id
+ * matcher et aktivt forced_listing-event for sælgerteamet, markeres det 'fulfilled'.
+ */
+export async function markForcedListingFulfilled({ supabase, teamId, listingId }) {
+  ensureSupabase(supabase);
+  if (!teamId || !listingId) return { ok: false };
+  const { data: rows, error } = await supabase
+    .from("board_consequences")
+    .select("id, payload")
+    .eq("team_id", teamId)
+    .eq("layer", CONSEQUENCE_LAYERS.FORCED_LISTING)
+    .eq("status", "active");
+  if (error) throw new Error(`Could not load forced listings: ${error.message}`);
+
+  const match = (rows || []).find((row) => row.payload?.listing_id === listingId);
+  if (!match) return { ok: false };
+
+  const { error: updateError } = await supabase
+    .from("board_consequences")
+    .update({ status: "fulfilled", resolved_at: new Date().toISOString() })
+    .eq("id", match.id);
+  if (updateError) throw new Error(`Could not fulfill forced listing: ${updateError.message}`);
+  return { ok: true };
+}

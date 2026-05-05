@@ -177,6 +177,7 @@ export async function resetBetaBoardProfiles(supabase) {
       snapshots_deleted: 0,
       requests_deleted: 0,
       board_members_deleted: 0,
+      consequences_deleted: 0,
     };
   }
 
@@ -188,13 +189,16 @@ export async function resetBetaBoardProfiles(supabase) {
   ensureOk(activeSeasonResult);
   const activeSeasonId = activeSeasonResult.data?.id ?? null;
 
-  // Snapshots, request-log og board-members skal slettes før board_profiles (FK constraints).
-  const [snapshotsDeleted, requestsDeleted, boardMembersDeleted] = await Promise.all([
+  // Snapshots, request-log, board-members og konsekvens-events skal slettes før
+  // board_profiles (FK constraints). board_consequences har source_board_id med
+  // ON DELETE SET NULL, men vi rydder rows fuldstændigt for ren tavle.
+  const [snapshotsDeleted, requestsDeleted, boardMembersDeleted, consequencesDeleted] = await Promise.all([
     supabase.from("board_plan_snapshots").delete().in("team_id", teamIds).select("id"),
     supabase.from("board_request_log").delete().in("team_id", teamIds).select("id"),
     supabase.from("team_board_members").delete().in("team_id", teamIds).select("id"),
+    supabase.from("board_consequences").delete().in("team_id", teamIds).select("id"),
   ]);
-  [snapshotsDeleted, requestsDeleted, boardMembersDeleted].forEach(ensureOk);
+  [snapshotsDeleted, requestsDeleted, boardMembersDeleted, consequencesDeleted].forEach(ensureOk);
 
   // S-02c · Nulstil per-team counter + identity_basis så næste sæson 1 starter fra ren tavle.
   ensureOk(await supabase
@@ -231,6 +235,7 @@ export async function resetBetaBoardProfiles(supabase) {
     snapshots_deleted: countRows(snapshotsDeleted),
     requests_deleted: countRows(requestsDeleted),
     board_members_deleted: countRows(boardMembersDeleted),
+    consequences_deleted: countRows(consequencesDeleted),
   };
 }
 

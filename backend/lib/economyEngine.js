@@ -25,6 +25,11 @@ import {
   startSequentialNegotiation,
 } from "./boardEngine.js";
 import { processReplacementTrigger } from "./boardMembers.js";
+import {
+  evaluateAndApplyConsequences,
+  expireSeasonScopedConsequences,
+  getActiveSponsorPulloutFactor,
+} from "./boardConsequences.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 
 let defaultSupabaseClientPromise;
@@ -151,23 +156,44 @@ export async function processSeasonStart(seasonId, deps = {}) {
     .eq("is_ai", false)
     .eq("is_frozen", false);
 
+  // S-02e · Lag 5 sponsor-pullout: load aktive pullouts FØR vi expirer dem.
+  // Pullout oprettes ved sæson-end af forrige sæson (expires_at_season_id = X)
+  // og skal anvendes ÉN gang i den næste sæson-starts sponsor-payment.
+  const { data: activePullouts, error: pulloutLoadError } = await supabaseClient
+    .from("board_consequences")
+    .select("team_id, severity, id")
+    .eq("layer", 5)
+    .eq("status", "active");
+  throwIfSupabaseError(pulloutLoadError, "Could not load active sponsor-pullouts");
+  const pulloutFactorByTeamId = new Map();
+  for (const row of activePullouts || []) {
+    pulloutFactorByTeamId.set(row.team_id, (row.severity || 1000) / 1000);
+  }
+
   const results = [];
 
   for (const team of teams || []) {
     const boards = team.board_profiles || [];
     const activeBoards = boards.filter(b => b.negotiation_status === "completed");
-    const modifier = activeBoards.length > 0
+    const baseModifier = activeBoards.length > 0
       ? activeBoards.reduce((sum, b) => sum + (b.budget_modifier ?? 1.0), 0) / activeBoards.length
       : 1.0;
+    // Lag 5 stacker MULTIPLIKATIVT med lag 1 (budget_modifier).
+    const pulloutFactor = pulloutFactorByTeamId.get(team.id) ?? 1.0;
+    const modifier = baseModifier * pulloutFactor;
     const sponsorBase = team.sponsor_income || 100;
     const sponsorPayout = Math.round(sponsorBase * modifier);
+
+    const description = pulloutFactor < 1.0
+      ? `Sponsorindtægt — Sæson start (×${modifier.toFixed(2)} · sponsor-pullout aktiv)`
+      : `Sponsorindtægt — Sæson start (×${modifier.toFixed(2)})`;
 
     // Pay sponsor income
     await creditTeam(
       team.id,
       sponsorPayout,
       "sponsor",
-      `Sponsorindtægt — Sæson start (×${modifier.toFixed(2)})`,
+      description,
       seasonId,
       supabaseClient
     );
@@ -198,12 +224,28 @@ export async function processSeasonStart(seasonId, deps = {}) {
     }
 
     const totalLoanFees = chargedLoanFees.reduce((sum, loan) => sum + (loan.loan_fee || 0), 0);
-    results.push({ team: team.name, sponsor: sponsorPayout, recurring_loan_fees: totalLoanFees });
+    results.push({
+      team: team.name,
+      sponsor: sponsorPayout,
+      recurring_loan_fees: totalLoanFees,
+      pullout_applied: pulloutFactor < 1.0,
+    });
     console.log(
       `  ✅ ${team.name}: +${sponsorPayout} pts sponsor${
-        totalLoanFees > 0 ? `, -${totalLoanFees} pts lejegebyrer` : ""
-      }`
+        pulloutFactor < 1.0 ? " (sponsor-pullout aktiv)" : ""
+      }${totalLoanFees > 0 ? `, -${totalLoanFees} pts lejegebyrer` : ""}`
     );
+  }
+
+  // S-02e · Expire alle aktive lag 5 efter sponsor-payment. Pullout har nu
+  // ramt sin ene sæsons sponsor-income og frigøres til næste sæson-end.
+  if ((activePullouts || []).length > 0) {
+    const { error: expireError } = await supabaseClient
+      .from("board_consequences")
+      .update({ status: "expired", resolved_at: new Date().toISOString() })
+      .eq("layer", 5)
+      .eq("status", "active");
+    throwIfSupabaseError(expireError, "Could not expire sponsor-pullouts");
   }
 
   return results;
@@ -633,6 +675,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
     });
     throwIfSupabaseError(snapshotError, `Could not insert board snapshot for ${team.name}`);
 
+    let replacementInfo = null;
     if (planIsComplete) {
       // Plan expired — reset for re-negotiation
       const { error: boardUpdateError } = await supabaseClient.from("board_profiles").update({
@@ -658,19 +701,19 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       // S-02c · Replacement-trigger: 2× plan-udløb i træk under 30% sat → ny formand.
       // Counter lever på teams.consecutive_low_satisfaction_expirations (per-team).
       try {
-        const replacement = await processReplacementTrigger({
+        replacementInfo = await processReplacementTrigger({
           supabase: supabaseClient,
           teamId: team.id,
           satisfaction: newSatisfaction,
           identityBasis: team.season_1_identity_basis ?? null,
         });
 
-        if (replacement?.replaced && replacement.new_chairman_label) {
+        if (replacementInfo?.replaced && replacementInfo.new_chairman_label) {
           await notifyManager(
             team.id,
             "board_update",
             "Bestyrelsen har valgt en ny formand",
-            `Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. ${replacement.new_chairman_label} overtager — forvent ny tone i de kommende forhandlinger.`,
+            `Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. ${replacementInfo.new_chairman_label} overtager — forvent ny tone i de kommende forhandlinger.`,
             notificationDeps
           );
         }
@@ -713,6 +756,29 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
           notificationDeps
         );
       }
+    }
+
+    // S-02e · Konsekvens-tier (lag 2-6). Lag 1 (passive sponsor-modifier) er
+    // allerede skrevet via newModifier ovenfor. Hookes her efter board_profiles-
+    // update + replacement-trigger så vi kender (a) endelig satisfaction,
+    // (b) goalsMet/goalsTotal, (c) om en chairman-replacement netop fyrede
+    // (signal til "double_plan_lapse"-trigger på lag 5).
+    try {
+      const triggerDoublePlanLapse = Boolean(planIsComplete && replacementInfo?.replaced);
+      await evaluateAndApplyConsequences({
+        supabase: supabaseClient,
+        team,
+        board,
+        newSatisfaction,
+        goalsMet,
+        goalsTotal: goals.length,
+        planIsComplete,
+        seasonId,
+        consecutiveLowExpirations: triggerDoublePlanLapse ? 2 : 0,
+        notify: ({ type, title, message }) => notifyManager(team.id, type, title, message, notificationDeps),
+      });
+    } catch (error) {
+      console.error(`  ⚠️  board consequences failed for ${team.name}:`, error.message);
     }
 
     console.log(

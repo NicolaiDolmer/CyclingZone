@@ -2,6 +2,25 @@
 
 const PATCHES = [
   {
+    version: "2.37",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "S-02e · Konsekvens-tier — bestyrelsen reagerer gradueret på lav (og høj) tilfredshed",
+        items: [
+          "6-lags konsekvens-system ([boardConsequences.js](backend/lib/boardConsequences.js)) der gradvis hæver presset jo lavere tilfredsheden falder — og belønner overpræstation. Ingen automatisk fyring (Q-batch 1A #4): Lag 1 (passiv sponsor-modifier ±20%, eksisterende), Lag 2 (lønloft ved <40%), Lag 3 (signing-restriktion >300K kræver godkendelse ved <30%), Lag 4 (tvunget salg ved <15%), Lag 5 (sponsor-pull-out ved <10% ELLER 2× plan-udløb under 30%), Lag 6 (bonus-tilbud +200K mod ekstra-mål ved >75%)",
+          "Hard-blocks i transfer/auction-flow ([api.js](backend/routes/api.js)): nye køb ramler ind i `assertSigningAllowed` på `POST /api/auctions/:id/bid`, `POST /api/transfers/offer` og `accept_counter`-action. Returner 403 med `code='board_signing_restriction'` eller `code='board_salary_cap'` så frontend kan rendere klar fejlbesked. Lag 2 frosser holdets samlede løn ved trigger-tidspunktet — manageren kan stadig handle med rytter-rotation, bare ikke vækst",
+          "Tvunget salg (lag 4) auto-lister rytteren med laveste market_value ved sæson-end. Beskytter pop≥70 OR uci_points≥100 (parallel til UCI-sync auto-protection) så bestyrelsen ikke smider stjernen. Inserter `transfer_listings`-row direkte + sender 'Skal handles'-notif. Sponsor-pull-out (lag 5) stacker multiplikativt med budget_modifier ind i næste sæson-starts sponsor-payment og auto-expirer derefter",
+          "Bonus-tilbud (lag 6) er positiv konsekvens — fyrer 1×/sæson når satisfaction >75% OG ≥75% af mål er nået. Tilbyder +200K mod 1 ekstra-mål: signature_rider ved star_signing-fokus, ellers monument_podium. Manager accepterer eller afviser i ny BonusOfferCard på BoardPage; accept krediterer balance + tilføjer mål til 1yr-board's current_goals. To nye routes `/api/board/bonus-offer/{accept,decline}`",
+          "Migration ([2026-05-05-board-consequences.sql](database/2026-05-05-board-consequences.sql)) tilføjer `board_consequences`-tabel med unique-active-index på (team_id, layer) der enforcer 1 aktiv pr. lag. Status-flow active → accepted/declined (lag 6) ELLER active → expired (lag 5 ved sæson-start) ELLER active → fulfilled (lag 4 når listing sælges). Notif-routing låst i Q-batch 1C Q21: lag 4-6 → `type='board_critical'` (Skal handles), lag 2-3 silent på BoardPage warning-panel",
+          "Frontend ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)): nye `BoardConsequencesPanel` (lag 2-5 warning-cards, gul for lag 2-3, rød for lag 4-5) og `BonusOfferCard` (grøn med Acceptér/Afvis-knapper). Begge vises kun udenfor baseline-fasen. Beta-reset ([betaResetService.js](backend/lib/betaResetService.js)) clearer `board_consequences` så næste cyklus starter rent",
+          "41 nye backend-tests (232/232 grønne total) i [boardConsequences.test.js](backend/lib/boardConsequences.test.js) dækker tærskel-trigger pr. lag, idempotency-replay, hard-block-flow med både salary-cap- og restriction-prioritet, forced-listing-rytter-valg med star-protection, sponsor-pullout-stack + season-scoped expiration, og bonus-offer accept/decline + 1×/sæson-guardrail",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.36",
     date: "2026-05-05",
     label: "Beta",

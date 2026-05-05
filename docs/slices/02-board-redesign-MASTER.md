@@ -157,17 +157,28 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 - `domestic_dominance` returnerer `awaiting_data` (kompleks "hjemland"-detektion deferred)
 - `u25_development_delta` returnerer `awaiting_data` i 1. sæson af planen (ingen baseline endnu)
 
-### S-02e · Konsekvens-tier (6 lag)
+### S-02e · Konsekvens-tier (6 lag) ✅ LEVERET 2026-05-05 (v2.37)
 **Dep:** S-02a. **Tærskler låst i Q-batch 1B Q11 (Appendix C) + Q14. Notif-routing låst i Q-batch 1C Q21.**
-**Leverer:**
-- DB: `board_consequences` (active per team) — type, severity, expires_at
-- `economyEngine` checker aktive consequences ved sæson-start (modifier), ved finance-tx (signing-cap), ved auction-bid (signing-restriktion)
-- Salary cap: hard-block i transfer/auction-flow ved tilfredshed <40
-- Signing-restriktion: ved tilfredshed <30 kræver køb >X pris bestyrelses-godkendelse
-- Tvunget listing: cron ved sæson-slut + tilfredshed <15 → automatisk listing af én navngivet rytter (laveste sportslige værdi)
-- Sponsor-pull-out: narrativ event + -10% sponsor resten af sæsonen, nulstilles ved næste sæson-start
-- Bonus-budget-tilbud (positiv, lag 6): maks 1/sæson når satisfaction >75 OG ≥75% mål 'ahead' → +200K budget mod 1 ekstra-mål (vind 1 monument ELLER sign 1 stjerne pop ≥75). Manager kan afvise.
-- **Notif-routing (Q21):** lag 4 (tvunget listing) + lag 5 (sponsor-pull-out) + lag 6 (bonus-tilbud) → 'Skal handles' (`type='board_critical'`). Lag 1-3 (passive modifiers + auction-restriktioner) = ingen notif, kun synlige som warning på BoardPage 'Bestyrelse'-feed.
+**Q-bekræftelser (2026-05-05 session):**
+- A1: signing-restriktion-pris-tærskel = 300K (inline-detalje, master line 226 godkender inline-valg)
+- A2: salary cap = total-salary frosset ved trigger-tidspunkt (re-evalueres hver sæson-end)
+- A3: forced-listing protection = pop≥70 OR uci≥100 (parallel til UCI-sync)
+- A4: lag 5 stack-orden = budget_modifier × pullout_factor (multiplikativ)
+- A5: lag 5 expire = ved næste sæson-start efter ÉN sponsor-payment (Q11-præmis "varer resten af sæsonen")
+- A6: lag 6 extra-goal = signature_rider for star_signing-fokus, ellers monument_podium
+
+**Leveret:**
+- Migration `database/2026-05-05-board-consequences.sql`: `board_consequences`-tabel m. layer (2-6) + status (active/accepted/declined/expired/fulfilled) + severity (lag-specifik) + payload JSONB + source_board_id + expires_at_season_id + unique-active-index på (team_id, layer)
+- `boardConsequences.js`: `evaluateAndApplyConsequences` (master-orchestrator), `assertSigningAllowed` (lag 2-3 hard-block helper), `selectForcedListingRider` (laveste market_value m. star-protection), `getActiveSponsorPulloutFactor` (lag 5 multiplier), `expireSeasonScopedConsequences` (cleanup), `acceptBonusOffer`/`declineBonusOffer`, `markForcedListingFulfilled`, `getActiveConsequencesForTeam`, `getLayerLabel`, `isBonusOfferEligible`, `selectBonusExtraGoal`
+- Hook A i `economyEngine.processTeamSeasonEnd`: efter snapshot + replacement-trigger kalder `evaluateAndApplyConsequences` med planIsComplete-context. Trigger B "double-plan-lapse" passes via `consecutiveLowExpirations: replacement.replaced ? 2 : 0`
+- Hook B i `economyEngine.processSeasonStart`: pre-loader aktive lag-5-pullouts → multiplicerer ind i sponsor-payout (description annoteres med "sponsor-pullout aktiv") → bulk-expirer aktive lag-5 efter loop. Idempotent ved gentaget kald
+- Hook C i `api.js`: `assertSigningAllowed` kaldes på POST /api/auctions/:id/bid + POST /api/transfers/offer + PATCH /api/transfers/offers/:id action='accept_counter'. Returner 403 m. `code='board_signing_restriction'` eller `'board_salary_cap'`
+- 2 nye routes `/api/board/bonus-offer/{accept,decline}`: accept krediterer balance via `finance_transactions.type='bonus'` + tilføjer ekstra-mål med `source: 'bonus_offer'` til 1yr-board's current_goals
+- `/api/board/status` returnerer `active_consequences[]` (sorted by layer) + `bonus_offer` (lag 6 udskilt)
+- BoardPage: `BoardConsequencesPanel` (lag 2-3 gul, lag 4-5 rød), `BonusOfferCard` (grøn m. Acceptér/Afvis), placeret efter BoardMembersGrid før PlanCards. State `activeConsequences` + `bonusOffer` + `bonusOfferBusy`
+- Beta-reset: clearer `board_consequences` (parallelt med snapshots/requests/members)
+- HelpPage: 2 nye FAQ-items (kan-jeg-fyres, bonus-tilbud)
+- 41 nye backend-tests (232/232 grønne total): 6 lag × (trigger-positive + trigger-negative + idempotent-replay) + assertSigningAllowed-prioritering + sponsor-pullout-stack + bonus-offer accept/decline + selectForcedListingRider star-protection
 
 ### S-02f · Klub-DNA (håndlavede klub-identiteter)
 **Dep:** S-02c. **Låst i Q-batch 1B Q10.**
