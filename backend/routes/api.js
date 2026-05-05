@@ -2562,9 +2562,22 @@ router.post("/admin/transfer-window/open", requireAdmin, async (req, res) => {
     if (!season_id) return res.status(400).json({ error: "season_id kræves" });
 
     const { closes_at } = req.body;
+
+    // S-02a: arv board_negotiation_state fra forrige window så onboarding-fasen
+    // ikke resettes til 'locked' bare fordi et nyt sæson-window oprettes.
+    const { data: priorWindow } = await supabase.from("transfer_windows")
+      .select("board_negotiation_state")
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const inheritedState = priorWindow?.board_negotiation_state ?? "locked";
+
     // Insert new window record with status "open"
     const { error: insertErr } = await supabase.from("transfer_windows")
-      .insert({ season_id, status: "open", ...(closes_at ? { closes_at } : {}) });
+      .insert({
+        season_id,
+        status: "open",
+        board_negotiation_state: inheritedState,
+        ...(closes_at ? { closes_at } : {}),
+      });
     if (insertErr) return res.status(500).json({ error: insertErr.message });
 
     // Flush auction winners (pending_team_id → team_id)
@@ -3035,7 +3048,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
 
-    const [seasonRes, boardsRes, teamRes, ridersRes, standingRes, loansRes] = await Promise.all([
+    const [seasonRes, boardsRes, teamRes, ridersRes, standingRes, loansRes, windowRes] = await Promise.all([
       supabase.from("seasons").select("id, number").eq("status", "active").single(),
       supabase.from("board_profiles").select("*").eq("team_id", teamId),
       supabase.from("teams").select("id, balance, sponsor_income, division").eq("id", teamId).single(),
@@ -3044,6 +3057,9 @@ router.get("/board/status", requireAuth, async (req, res) => {
         .order("updated_at", { ascending: false }).limit(1).single(),
       supabase.from("loans").select("id", { count: "exact", head: true })
         .eq("team_id", teamId).eq("status", "active"),
+      supabase.from("transfer_windows")
+        .select("board_negotiation_state")
+        .order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
 
     if (seasonRes.error && !isMissingRow(seasonRes.error)) return res.status(500).json({ error: seasonRes.error.message });
@@ -3052,9 +3068,11 @@ router.get("/board/status", requireAuth, async (req, res) => {
     if (boardsRes.error) return res.status(500).json({ error: boardsRes.error.message });
     if (standingRes.error && !isMissingRow(standingRes.error)) return res.status(500).json({ error: standingRes.error.message });
     if (loansRes.error) return res.status(500).json({ error: loansRes.error.message });
+    if (windowRes.error && !isMissingRow(windowRes.error)) return res.status(500).json({ error: windowRes.error.message });
 
     const allBoards = boardsRes.data || [];
     const activeSeason = seasonRes.data || null;
+    const boardNegotiationState = windowRes.data?.board_negotiation_state ?? "locked";
     const activeLoanCount = loansRes.count || 0;
     const currentStanding = standingRes.data || null;
     const currentTeam = { ...(teamRes.data || {}), riders: ridersRes.data || [] };
@@ -3090,14 +3108,22 @@ router.get("/board/status", requireAuth, async (req, res) => {
       allRequestLogs = boardRequestsSupported ? (requestsRes.data || []) : [];
     }
 
-    // Determine setup sequence: which plan type needs negotiation next (5yr → 3yr → 1yr)
+    // S-02a: Sæson 1 baseline = window 'locked' og kun baseline-rows i board_profiles.
+    // Når window er locked, har manager ingen plans at signe (bestyrelsen observerer).
+    // Per-team-fremdrift udledes stadig af row-eksistens — window-state er global lås.
     const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
-    const setupNextPlanType = PLAN_SEQUENCE.find(pt => !allBoards.find(b => b.plan_type === pt)) || null;
+    const realPlanBoards = allBoards.filter(b => b.plan_type !== "baseline");
+    const baselineBoard = allBoards.find(b => b.plan_type === "baseline" || b.is_baseline) || null;
+    const isBaselinePhase = boardNegotiationState === "locked" && Boolean(baselineBoard);
 
-    // Build per-plan data
+    const setupNextPlanType = isBaselinePhase
+      ? null
+      : (PLAN_SEQUENCE.find(pt => !realPlanBoards.find(b => b.plan_type === pt)) || null);
+
+    // Build per-plan data — kun for rigtige plan-typer (1yr/3yr/5yr), ikke baseline.
     const plans = {};
     for (const planType of PLAN_SEQUENCE) {
-      const board = allBoards.find(b => b.plan_type === planType) || null;
+      const board = realPlanBoards.find(b => b.plan_type === planType) || null;
 
       if (!board) {
         plans[planType] = null;
@@ -3177,6 +3203,8 @@ router.get("/board/status", requireAuth, async (req, res) => {
     res.json({
       plans,
       setup_next_plan_type: setupNextPlanType,
+      board_negotiation_state: boardNegotiationState,
+      is_baseline_phase: isBaselinePhase,
       team: teamRes.data,
       riders: ridersRes.data || [],
       standing: currentStanding,

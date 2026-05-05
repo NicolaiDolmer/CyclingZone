@@ -96,6 +96,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Season-end runtime loader teams/riders/board_profiles separat og fejler hårdt på Supabase load/write errors, så finance/board side effects ikke silently skippes før season completion.
 
 ### Bestyrelse (Board)
+- **S-02a Foundation leveret (2026-05-05, v2.33):** Sæson 1 = baseline observation (ingen mål, modifier 1.0, ingen evaluering). `processSeasonEnd` skipper baseline-rows og kalder `startSequentialNegotiation` inline ved sæson 1-slut → window-state sættes til `pending_5yr` + baseline-rows slettes. Migration: `database/2026-05-05-board-foundation.sql` (board_profiles.is_baseline + plan_type='baseline' + transfer_windows.board_negotiation_state). Beta-reset opretter nu 1 baseline-row pr. team (ikke 3 plan-rows). Per-team-fremdrift udledes stadig af row-eksistens (api.js:3093) — window-state er global fase-lås.
+
 - Tre parallelle planer (1yr/3yr/5yr) kører simultant per hold med egne mål og tilfredshed → budget_modifier
 - Kumulativ mål-tracking, mid-plan review, plan snapshots, board wizard
 - Delt boardEngine for proposal/sign/renew/season-end

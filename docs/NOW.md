@@ -1,21 +1,22 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**S-02 Bestyrelse-redesign — Vision+mekanik+UX låst (1A+1B+1C) ✅ 2026-05-05.** Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md). 9 sub-slices + polish. Estimat: ~10-12 sessioner. **Klar til S-02a foundation.**
+**S-02a Foundation leveret ✅ 2026-05-05 (v2.33).** Sæson 1 = baseline; sæson-1-slut → `startSequentialNegotiation` (inline i `processSeasonEnd`) → window `pending_5yr` + baseline-rows slettes. Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md). 8 sub-slices tilbage + polish.
 
 ## Soak-gate
 **Aktiv: nej** — næste udløses ved S-02i (e2e efter alle 9 sub-slices).
 
 ## Open beta status
-**Alle launch-gates ✅, 5/6 P0 leveret.** Eneste P0 tilbage: S-02 (al spec låst, kode næste). ~19 managers live, vokser løbende.
+**Alle launch-gates ✅, 5/6 P0 leveret.** Eneste P0 tilbage: S-02 (1/9 sub-slices leveret). ~19 managers live, vokser løbende.
 
 ## Senest leveret
+- 2026-05-05: **S-02a foundation** — sekventiel forhandling + sæson-1-baseline (v2.33). Migration `2026-05-05-board-foundation.sql` + `boardSequentialNegotiation.js` + `createBaselineProfile` + processSeasonEnd-integration + BoardPage observations-banner. 131/131 backend-tests grønne. Beta-reset opretter nu 1 baseline-row pr. team
 - 2026-05-05: S-02 Q-batch 1A+1B+1C alle låst — 21 beslutninger total (vision+mekanik+UX) i master-doc
 - Ældre → `docs/archive/NOW_HISTORIK_2026-05-05.md`
 
 ## Næste session — start med
-**"Start S-02a — Foundation: sekventiel forhandling + sæson-1-baseline"**
-Læs `docs/slices/02-board-redesign-MASTER.md` "S-02a"-sektionen. Migration + `boardEngine.startSequentialNegotiation` + `cron.js`-trigger + `BoardPage`-state. Full reset i Q6. ÉN slice = ÉN session = commit + push.
+**"Start S-02b — 1yr-auto-gen + identity-feeding + auto-accept"** ELLER **"Start S-02c — Navngivne board-members"**
+Begge har kun S-02a som dep og kan parallelt-køres af Codex/Claude. S-02b leverer `computeSeasonOneIdentity` + identity-feeding-badge på 5yr-mål + auto-accept ved race_day_count ≥ 5 + tier-styrede notifs. S-02c leverer 9 board-arketyper-rows + reaktions-templates + avatar-grid på BoardPage. ÉN slice = ÉN session = commit + push.
 
 ## Kritiske invarianter
 - **Verificér runtime FØR claim** — grep før TODO-claims

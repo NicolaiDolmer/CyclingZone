@@ -20,6 +20,7 @@ import {
   createInitialBoardProfile,
   evaluateBoardSeason,
   getPlanDuration,
+  startSequentialNegotiation,
 } from "./boardEngine.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 
@@ -305,6 +306,19 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   const updateRiderValuesFn = deps.updateRiderValues ?? updateRiderValues;
   await updateRiderValuesFn(supabaseClient);
 
+  // S-02a: Når sæson 1 (baseline) slutter, åbn sekventiel onboarding for sæson 2.
+  // Inline frem for cron (Q-A 2026-05-05): én truth-path, ingen race conditions.
+  if (currentSeasonNumber === 1) {
+    const startSequentialNegotiationFn = deps.startSequentialNegotiation ?? startSequentialNegotiation;
+    const seqResult = await startSequentialNegotiationFn({
+      supabase: supabaseClient,
+      completedSeasonId: seasonId,
+    });
+    console.log(
+      `  📜 Sequential negotiation started: ${seqResult.baseline_rows_deleted} baseline rows deleted, window=${seqResult.window_state}`
+    );
+  }
+
   console.log("  ✅ Season end processing complete");
 }
 
@@ -523,8 +537,10 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   }
 
   // 4. Plan-aware board evaluation — evaluate all active plans
+  // S-02a: Skip baseline-profiler. Sæson 1 = observation, ingen mål/evaluering/modifier-skift.
   for (const board of boards) {
     if (!board || !teamStanding) continue;
+    if (board.is_baseline || board.plan_type === "baseline") continue;
     const planDuration = getPlanDuration(board.plan_type);
     const seasonsCompleted = (board.seasons_completed || 0) + 1;
     const newCumulativeStageWins = (board.cumulative_stage_wins || 0) + (teamStanding.stage_wins || 0);

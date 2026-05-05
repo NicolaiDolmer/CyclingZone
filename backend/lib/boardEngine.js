@@ -1,9 +1,16 @@
 export {
   BOARD_IDENTITY_RIDER_SELECT,
+  BOARD_NEGOTIATION_STATES,
+  ONBOARDING_PLAN_SEQUENCE,
   VALID_BOARD_FOCUSES,
+  VALID_BOARD_NEGOTIATION_STATES,
   VALID_BOARD_PLAN_TYPES,
   VALID_BOARD_REQUEST_TYPES,
 } from "./boardConstants.js";
+
+export {
+  startSequentialNegotiation,
+} from "./boardSequentialNegotiation.js";
 
 export {
   deriveBoardPersonality,
@@ -16,6 +23,7 @@ export {
   generateBoardGoals,
   buildNegotiatedGoal,
   buildBoardProposal,
+  createBaselineProfile,
   createInitialBoardProfile,
   finalizeBoardGoals,
   inferNegotiationIndexesFromGoals,

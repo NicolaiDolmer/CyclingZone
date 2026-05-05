@@ -4,6 +4,21 @@ export const PLAN_DURATIONS = {
   "5yr": 5,
 };
 
+// S-02a · sekventiel forhandling i sæson 2-onboarding (5yr → 3yr → 1yr).
+// Per-team progression aflæses af board_profiles-rows (api.js:3093);
+// window-state er global fase-lås (transfer_windows.board_negotiation_state).
+export const ONBOARDING_PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
+
+export const BOARD_NEGOTIATION_STATES = {
+  LOCKED: "locked",         // sæson 1 baseline — wizard disabled
+  PENDING_5YR: "pending_5yr", // sæson 2 onboarding åbnet
+  PENDING_3YR: "pending_3yr",
+  PENDING_1YR: "pending_1yr",
+  COMPLETE: "complete",     // onboarding færdig — normal renew-flow
+};
+
+export const VALID_BOARD_NEGOTIATION_STATES = Object.values(BOARD_NEGOTIATION_STATES);
+
 export const PLAN_PENALTY_MODIFIERS = {
   "1yr": 1.0,
   "3yr": 0.8,

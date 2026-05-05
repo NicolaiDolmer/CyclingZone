@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "2.33",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "S-02a · Bestyrelse-redesign foundation — sæson 1 = baseline, sæson 2+ åbner sekventielt",
+        items: [
+          "Sæson 1 er nu en baseline-sæson hvor bestyrelsen *observerer* dit hold uden krav. Ingen mål, ingen tilfredsheds-evaluering, sponsor-modifier låst på 1.0× — du har en hel sæson til at finde din retning før forhandlingerne starter. Bestyrelsesside ([BoardPage](frontend/src/pages/BoardPage.jsx)) viser et nyt observations-banner i baseline-fasen i stedet for tomme plan-kort",
+          "Når sæson 1 slutter, åbner sekventiel onboarding automatisk: 5-årsplan først, derefter 3-årsplan, derefter 1-årsplan. Trigger sker inline i `processSeasonEnd` — ingen separat cron, ingen race conditions ([economyEngine.js](backend/lib/economyEngine.js))",
+          "Migration ([2026-05-05-board-foundation.sql](database/2026-05-05-board-foundation.sql)) tilføjer `board_profiles.is_baseline` + nyt `plan_type='baseline'` samt `transfer_windows.board_negotiation_state` (global onboarding-fase-lås: `locked` → `pending_5yr` → `complete`). Per-team-fremdrift udledes stadig af eksisterende rows i `board_profiles` — window-state låser kun globalt hvad der må forhandles",
+          "Beta-reset opretter nu *én* baseline-row pr. team i stedet for tre plan-rows ([betaResetService.js](backend/lib/betaResetService.js)) — fuld reset af alle eksisterende managers' board-data godkendt i Q-batch 1A Q6 (vision-lock). Næste reset starter alle hold i frisk observations-sæson",
+          "Ny `boardEngine.startSequentialNegotiation` ([boardSequentialNegotiation.js](backend/lib/boardSequentialNegotiation.js)) sletter baseline-rows og åbner window i `pending_5yr` ved sæson-1-slut. `transfer-window/open` arver state fra forrige window så onboarding-fasen ikke nulstilles ved sæson-skift",
+          "Foundation for ~10-12 sub-slices i S-02 master-roadmap. S-02b (1yr-auto-gen + identity-feeding + auto-accept) eller S-02c (navngivne board-medlemmer) kan startes næste session — begge har kun S-02a som dep",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.32",
     date: "2026-05-04",
     label: "Beta",

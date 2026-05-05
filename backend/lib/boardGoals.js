@@ -397,6 +397,34 @@ export function createInitialBoardProfile({
     season_id: seasonId,
     current_goals: generateBoardGoals({ focus, planType }),
     negotiation_status: negotiationStatus,
+    is_baseline: false,
+    plan_start_balance: balance,
+    plan_start_sponsor_income: sponsorIncome,
+    seasons_completed: 0,
+    cumulative_stage_wins: 0,
+    cumulative_gc_wins: 0,
+  };
+}
+
+// S-02a · Sæson 1 = baseline (Q-batch 1A Q2). Bestyrelsen observerer uden mål,
+// modifier holdes på 1.0, og processTeamSeasonEnd skipper evaluering for is_baseline=true.
+// Erstattes af 5yr/3yr/1yr-rows ved sekventiel onboarding i sæson 2.
+export function createBaselineProfile({
+  teamId,
+  seasonId = null,
+  balance = 0,
+  sponsorIncome = 100,
+} = {}) {
+  return {
+    team_id: teamId,
+    plan_type: "baseline",
+    focus: "balanced",
+    satisfaction: 50,
+    budget_modifier: 1.0,
+    season_id: seasonId,
+    current_goals: [],
+    negotiation_status: "completed",
+    is_baseline: true,
     plan_start_balance: balance,
     plan_start_sponsor_income: sponsorIncome,
     seasons_completed: 0,

@@ -204,20 +204,28 @@ test("resetBetaBalances touches only active manager teams and can clear only the
   assert.deepEqual(supabase.state.finance_transactions.map((row) => row.id), ["tx-ai"]);
 });
 
-test("resetBetaBoardProfiles restores baseline board state and creates missing plan profiles", async () => {
+test("resetBetaBoardProfiles deletes all manager board data and creates one baseline row per team (S-02a)", async () => {
   const supabase = createBetaResetSupabase(createInitialState());
 
   const result = await resetBetaBoardProfiles(supabase);
 
-  assert.equal(result.reset, 1);
-  assert.equal(result.created, 2);
+  // S-02a: full reset — eksisterende rows slettes, 1 baseline-row oprettes pr. manager-team.
+  assert.equal(result.deleted, 1);
+  assert.equal(result.created, 1);
   assert.equal(result.snapshots_deleted, 1);
   assert.equal(result.requests_deleted, 1);
-  assert.equal(supabase.state.board_profiles.length, 3);
-  const resetBoard = supabase.state.board_profiles.find((board) => board.id === "board-1");
-  assert.equal(resetBoard.satisfaction, 50);
-  assert.equal(resetBoard.budget_modifier, 1);
-  assert.equal(resetBoard.seasons_completed, 0);
+
+  // Kun 1 manager-team i fixture → 1 baseline-row (gamle "board-1" er slettet).
+  assert.equal(supabase.state.board_profiles.length, 1);
+  const baseline = supabase.state.board_profiles[0];
+  assert.equal(baseline.team_id, "team-1");
+  assert.equal(baseline.plan_type, "baseline");
+  assert.equal(baseline.is_baseline, true);
+  assert.equal(baseline.budget_modifier, 1);
+  assert.equal(baseline.satisfaction, 50);
+  assert.deepEqual(baseline.current_goals, []);
+
+  // AI-team's snapshot må ikke røres.
   assert.deepEqual(supabase.state.board_plan_snapshots.map((row) => row.id), ["snap-ai"]);
 });
 

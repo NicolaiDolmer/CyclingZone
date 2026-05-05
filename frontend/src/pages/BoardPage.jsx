@@ -915,6 +915,8 @@ export default function BoardPage() {
   const [identityProfile, setIdentityProfile] = useState(null);
   const [activeLoanCount, setActiveLoanCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  // S-02a: sæson 1 = baseline observation. Window-state låser wizard.
+  const [isBaselinePhase, setIsBaselinePhase] = useState(false);
 
   // Wizard state
   const [wizardPlanType, setWizardPlanType] = useState(null);
@@ -977,17 +979,18 @@ export default function BoardPage() {
     const newPlans = data.plans || { "5yr": null, "3yr": null, "1yr": null };
     setPlans(newPlans);
     setSetupNextPlanType(data.setup_next_plan_type || null);
+    setIsBaselinePhase(Boolean(data.is_baseline_phase));
     setTeam(data.team || null);
     setRiders(data.riders || []);
     setStanding(data.standing || null);
     setIdentityProfile(data.identity_profile || null);
     setActiveLoanCount(data.active_loans_count || 0);
 
-    // Auto-åbn wizard ved sekventiel opsætning (når mindst én plan allerede findes).
-    // Første gangs setup (board_plan_set === false) viser BoardEmptyState i hovedvisningen
-    // og lader brugeren starte wizard via CTA, så de får context før forhandlingen.
+    // S-02a: I baseline-fase (sæson 1) er wizard låst — bestyrelsen observerer.
+    // Auto-åbn wizard ved sekventiel onboarding (sæson 2+) når mindst én plan allerede findes.
+    // Første gangs setup (board_plan_set === false) viser BoardEmptyState i hovedvisningen.
     const hasAnyPlan = Object.values(newPlans).some(p => p !== null);
-    if (data.setup_next_plan_type && hasAnyPlan) {
+    if (!data.is_baseline_phase && data.setup_next_plan_type && hasAnyPlan) {
       const existingFocus = newPlans[data.setup_next_plan_type]?.board?.focus || "balanced";
       setWizardPlanType(data.setup_next_plan_type);
       setWizardIsSetup(true);
@@ -1275,7 +1278,23 @@ export default function BoardPage() {
         </Link>
       </div>
 
-      {!hasAnyPlan && setupNextPlanType && (
+      {/* S-02a: Sæson 1 baseline — bestyrelsen observerer, ingen forhandling endnu. */}
+      {isBaselinePhase && (
+        <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-5">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">👀</span>
+            <div>
+              <h2 className="text-cz-1 font-semibold text-base mb-1">Bestyrelsen observerer din første sæson</h2>
+              <p className="text-cz-3 text-sm leading-relaxed">
+                Du er i din baseline-sæson — bestyrelsen lærer dit hold at kende uden krav eller mål. Sponsor-modifier holdes på 1.0×.
+                Når sæsonen slutter, åbner forhandlingerne sekventielt: først 5-årsplan, så 3-årsplan, så 1-årsplan.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isBaselinePhase && !hasAnyPlan && setupNextPlanType && (
         <BoardEmptyState
           onOpenWizard={() => openWizard(setupNextPlanType, true)}
           onStartTour={() => startTour("board")}
@@ -1284,28 +1303,31 @@ export default function BoardPage() {
 
       <BoardIdentityCard identityProfile={identityProfile} />
 
-      <div className="mt-5 flex flex-col gap-4">
-        {PLAN_SEQUENCE.map(planType => (
-          <PlanCard
-            key={planType}
-            planType={planType}
-            planData={plans[planType]}
-            team={team}
-            riders={riders}
-            standing={standing}
-            activeLoanCount={activeLoanCount}
-            requestError={requestErrors[planType] || ""}
-            requestingType={
-              requestingType.startsWith(`${planType}:`)
-                ? requestingType.split(":").slice(1).join(":")
-                : ""
-            }
-            onRequest={(requestType) => sendBoardRequest(planType, requestType)}
-            onRenew={() => renewContract(planType)}
-            onNegotiate={() => openWizard(planType, false)}
-          />
-        ))}
-      </div>
+      {/* S-02a: Plan-kort skjules i baseline-fasen — forhandling åbner ved sæson-slut. */}
+      {!isBaselinePhase && (
+        <div className="mt-5 flex flex-col gap-4">
+          {PLAN_SEQUENCE.map(planType => (
+            <PlanCard
+              key={planType}
+              planType={planType}
+              planData={plans[planType]}
+              team={team}
+              riders={riders}
+              standing={standing}
+              activeLoanCount={activeLoanCount}
+              requestError={requestErrors[planType] || ""}
+              requestingType={
+                requestingType.startsWith(`${planType}:`)
+                  ? requestingType.split(":").slice(1).join(":")
+                  : ""
+              }
+              onRequest={(requestType) => sendBoardRequest(planType, requestType)}
+              onRenew={() => renewContract(planType)}
+              onNegotiate={() => openWizard(planType, false)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Tilfredshedsforklaring */}
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-5">

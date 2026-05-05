@@ -1,8 +1,7 @@
-import { createInitialBoardProfile } from "./boardEngine.js";
+import { createBaselineProfile } from "./boardEngine.js";
 
 export const DEFAULT_BETA_BALANCE = 800000;
 export const DEFAULT_BETA_DIVISION = 3;
-export const BOARD_PLAN_TYPES = ["5yr", "3yr", "1yr"];
 
 const MARKET_RESET_STATUSES = {
   auctions: ["active", "extended"],
@@ -161,74 +160,54 @@ export async function resetBetaDivisions(supabase, { division = DEFAULT_BETA_DIV
   return { reset: teamIds.length, division };
 }
 
+// S-02a · Beta-reset opretter ÉN baseline-row pr. team (sæson 1 = observation),
+// ikke 3 plan-rows som før v1.40-arkitekturen brugte. Eksisterende rows slettes
+// helt — Q-batch 1A Q6 godkendte full reset af alle managers' board-data.
 export async function resetBetaBoardProfiles(supabase) {
   const managerTeams = await getBetaManagerTeams(supabase);
   const teamIds = managerTeams.map((team) => team.id);
   if (teamIds.length === 0) {
-    return { reset: 0, created: 0, snapshots_deleted: 0, requests_deleted: 0 };
+    return { deleted: 0, created: 0, snapshots_deleted: 0, requests_deleted: 0 };
   }
 
-  const [activeSeasonResult, existingResult] = await Promise.all([
-    supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle(),
-    supabase.from("board_profiles").select("id, team_id, plan_type").in("team_id", teamIds),
-  ]);
+  const activeSeasonResult = await supabase
+    .from("seasons")
+    .select("id, number")
+    .eq("status", "active")
+    .maybeSingle();
   ensureOk(activeSeasonResult);
-  ensureOk(existingResult);
-
   const activeSeasonId = activeSeasonResult.data?.id ?? null;
-  const existingRows = existingResult.data || [];
-  const existingByTeam = new Map();
-  for (const row of existingRows) {
-    if (!existingByTeam.has(row.team_id)) existingByTeam.set(row.team_id, new Set());
-    existingByTeam.get(row.team_id).add(row.plan_type);
-  }
 
-  const teamById = new Map(managerTeams.map((team) => [team.id, team]));
-  const updates = existingRows.map((row) => {
-    const team = teamById.get(row.team_id) || {};
-    return supabase.from("board_profiles").update({
-      ...createInitialBoardProfile({
-        teamId: row.team_id,
-        seasonId: activeSeasonId,
-        balance: team.balance ?? 0,
-        sponsorIncome: team.sponsor_income ?? 100,
-        planType: row.plan_type || "1yr",
-      }),
-      updated_at: new Date().toISOString(),
-    }).eq("id", row.id);
-  });
-
-  const missingRows = [];
-  for (const team of managerTeams) {
-    const existingPlanTypes = existingByTeam.get(team.id) || new Set();
-    for (const planType of BOARD_PLAN_TYPES) {
-      if (!existingPlanTypes.has(planType)) {
-        missingRows.push(createInitialBoardProfile({
-          teamId: team.id,
-          seasonId: activeSeasonId,
-          balance: team.balance ?? 0,
-          sponsorIncome: team.sponsor_income ?? 100,
-          planType,
-        }));
-      }
-    }
-  }
-
-  const [snapshotsDeleted, requestsDeleted, ...updateResults] = await Promise.all([
+  // Snapshots og request-log skal slettes før board_profiles (FK constraints).
+  const [snapshotsDeleted, requestsDeleted] = await Promise.all([
     supabase.from("board_plan_snapshots").delete().in("team_id", teamIds).select("id"),
     supabase.from("board_request_log").delete().in("team_id", teamIds).select("id"),
-    ...updates,
   ]);
+  [snapshotsDeleted, requestsDeleted].forEach(ensureOk);
 
-  [snapshotsDeleted, requestsDeleted, ...updateResults].forEach(ensureOk);
+  // Slet alle eksisterende board_profiles for managers (planer + evt. baseline).
+  const existingDeleted = await supabase
+    .from("board_profiles")
+    .delete()
+    .in("team_id", teamIds)
+    .select("id");
+  ensureOk(existingDeleted);
 
-  if (missingRows.length > 0) {
-    ensureOk(await supabase.from("board_profiles").insert(missingRows).select("id"));
+  // Opret én baseline-row pr. team — sæson 1 = observation, ingen mål.
+  const baselineRows = managerTeams.map((team) => createBaselineProfile({
+    teamId: team.id,
+    seasonId: activeSeasonId,
+    balance: team.balance ?? 0,
+    sponsorIncome: team.sponsor_income ?? 100,
+  }));
+
+  if (baselineRows.length > 0) {
+    ensureOk(await supabase.from("board_profiles").insert(baselineRows).select("id"));
   }
 
   return {
-    reset: existingRows.length,
-    created: missingRows.length,
+    deleted: countRows(existingDeleted),
+    created: baselineRows.length,
     snapshots_deleted: countRows(snapshotsDeleted),
     requests_deleted: countRows(requestsDeleted),
   };

@@ -62,15 +62,22 @@ Manageren skal føle: *"Jeg bygger et hold over tid, og bestyrelsen reagerer rea
 
 Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 
-### S-02a · Foundation: Sekventiel forhandling + sæson-1-baseline
+### S-02a · Foundation: Sekventiel forhandling + sæson-1-baseline ✅ LEVERET 2026-05-05 (v2.33)
 **Dep:** ingen.
 **Erstatter:** `02-board-redesign-sequential.md`.
-**Leverer:**
-- Migration: `board_profiles.activates_in_season_number`, `is_baseline`, `transfer_windows.board_negotiation_state`
-- `boardEngine`: `createBaselineProfile`, `startSequentialNegotiation`; `proposeNextPlan` følger 5yr→3yr→1yr-rækkefølge
-- `cron.js`: ved sæson-1-slut, kør `startSequentialNegotiation` for hver human team
-- Frontend: `BoardPage` + wizard læser `board_negotiation_state`, viser kun aktuelt trin
-- Beta-reset: alle eksisterende planer slettes (godkendt full reset)
+**Q-afklaringer (2026-05-05):**
+- Q-A: trigger inline i `processSeasonEnd` (ikke cron) — éns truth-path
+- Q-B: global fase-lås på `transfer_windows.board_negotiation_state` (per-team-fremdrift via row-eksistens)
+- Q-C: `activates_in_season_number` droppet (YAGNI)
+
+**Leveret:**
+- Migration `database/2026-05-05-board-foundation.sql`: `board_profiles.is_baseline` + `plan_type='baseline'` + `transfer_windows.board_negotiation_state` (locked/pending_5yr/pending_3yr/pending_1yr/complete)
+- `boardEngine.createBaselineProfile` + `startSequentialNegotiation` (ny fil `boardSequentialNegotiation.js`, eksporteret via facade)
+- `economyEngine.processSeasonEnd`: skip baseline-rows i evaluerings-loop + kald `startSequentialNegotiation` ved sæson 1-slut
+- `transfer-window/open` arver state fra forrige window
+- Frontend: `BoardPage` viser observations-banner i baseline-fasen, skjuler plan-kort. Wizard auto-åbner kun ved `!is_baseline_phase`
+- Beta-reset: 1 baseline-row pr. team (i stedet for 3 plan-rows)
+- 131/131 backend-tests grønne, 5 nye tests for createBaselineProfile + startSequentialNegotiation + processSeasonEnd-integration
 
 ### S-02b · 1yr-auto-gen + auto-accept + identity-feeding
 **Dep:** S-02a. **UX låst i Q-batch 1C Q18 + Q21.**

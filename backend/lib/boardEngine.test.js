@@ -2,15 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  BOARD_NEGOTIATION_STATES,
+  ONBOARDING_PLAN_SEQUENCE,
   buildBoardOutlook,
   buildBoardProposal,
   buildBoardRequestOptions,
+  createBaselineProfile,
   deriveTeamIdentityProfile,
   deriveBoardPersonality,
   evaluateBoardSeason,
   finalizeBoardGoals,
   inferNegotiationIndexesFromGoals,
   resolveBoardRequest,
+  startSequentialNegotiation,
 } from "./boardEngine.js";
 
 test("deriveTeamIdentityProfile reads a sprint-heavy squad and exposes board-facing labels", () => {
@@ -845,3 +849,176 @@ test("resolveBoardRequest rejects lowering results pressure for a star-led team"
   assert.equal(result.outcome, "rejected");
   assert.match(result.summary, /profiler|sponsor/i);
 });
+
+// ─── S-02a · Foundation tests ────────────────────────────────────────────────
+
+test("createBaselineProfile produces a season-1 observation row with no goals and modifier 1.0", () => {
+  const baseline = createBaselineProfile({
+    teamId: "team-1",
+    seasonId: "season-1",
+    balance: 800000,
+    sponsorIncome: 240000,
+  });
+
+  assert.equal(baseline.team_id, "team-1");
+  assert.equal(baseline.plan_type, "baseline");
+  assert.equal(baseline.is_baseline, true);
+  assert.equal(baseline.budget_modifier, 1.0);
+  assert.equal(baseline.satisfaction, 50);
+  assert.equal(baseline.negotiation_status, "completed");
+  assert.deepEqual(baseline.current_goals, []);
+  assert.equal(baseline.plan_start_balance, 800000);
+  assert.equal(baseline.plan_start_sponsor_income, 240000);
+});
+
+test("ONBOARDING_PLAN_SEQUENCE is locked to 5yr → 3yr → 1yr (Q-batch 1A Q2)", () => {
+  assert.deepEqual(ONBOARDING_PLAN_SEQUENCE, ["5yr", "3yr", "1yr"]);
+});
+
+test("startSequentialNegotiation deletes baseline rows for human teams and sets window to pending_5yr", async () => {
+  const state = {
+    teams: [
+      { id: "team-1", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-2", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-ai", is_ai: true, is_bank: false, is_frozen: false },
+      { id: "team-frozen", is_ai: false, is_bank: false, is_frozen: true },
+    ],
+    board_profiles: [
+      { id: "bp-1", team_id: "team-1", plan_type: "baseline", is_baseline: true },
+      { id: "bp-2", team_id: "team-2", plan_type: "baseline", is_baseline: true },
+      { id: "bp-keep", team_id: "team-1", plan_type: "5yr", is_baseline: false },
+      { id: "bp-ai", team_id: "team-ai", plan_type: "baseline", is_baseline: true },
+    ],
+    transfer_windows: [
+      { id: "tw-old", board_negotiation_state: "locked", created_at: "2026-04-01T00:00:00Z" },
+      { id: "tw-new", board_negotiation_state: "locked", created_at: "2026-05-01T00:00:00Z" },
+    ],
+  };
+
+  const supabase = makeFakeSupabase(state);
+  const result = await startSequentialNegotiation({ supabase, completedSeasonId: "season-1" });
+
+  assert.equal(result.baseline_rows_deleted, 2);
+  assert.equal(result.window_state, BOARD_NEGOTIATION_STATES.PENDING_5YR);
+  assert.equal(result.completed_season_id, "season-1");
+
+  const remainingBaselines = state.board_profiles.filter((b) => b.plan_type === "baseline");
+  assert.equal(remainingBaselines.length, 1);
+  assert.equal(remainingBaselines[0].id, "bp-ai", "AI baseline must not be touched");
+
+  assert.ok(state.board_profiles.find((b) => b.id === "bp-keep"), "Non-baseline rows must survive");
+
+  const newestWindow = state.transfer_windows.find((w) => w.id === "tw-new");
+  assert.equal(newestWindow.board_negotiation_state, "pending_5yr");
+
+  const olderWindow = state.transfer_windows.find((w) => w.id === "tw-old");
+  assert.equal(olderWindow.board_negotiation_state, "locked", "Older windows are not touched");
+});
+
+test("startSequentialNegotiation handles empty manager pool without crashing", async () => {
+  const state = {
+    teams: [{ id: "team-ai", is_ai: true, is_bank: false, is_frozen: false }],
+    board_profiles: [],
+    transfer_windows: [
+      { id: "tw-1", board_negotiation_state: "locked", created_at: "2026-05-01T00:00:00Z" },
+    ],
+  };
+
+  const supabase = makeFakeSupabase(state);
+  const result = await startSequentialNegotiation({ supabase });
+
+  assert.equal(result.baseline_rows_deleted, 0);
+  assert.equal(result.window_state, BOARD_NEGOTIATION_STATES.PENDING_5YR);
+});
+
+// Minimal fake supabase-client for sequential-negotiation-tests.
+// Mønster matcher betaResetService.test.js's createBetaResetSupabase men er trimmet ned.
+function makeFakeSupabase(state) {
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function ensureTable(table) {
+    if (!state[table]) state[table] = [];
+    return state[table];
+  }
+
+  function makeQuery(table, action, payload = null) {
+    const filters = [];
+    let order = null;
+    let limit = null;
+
+    function matches(row) {
+      return filters.every((filter) => {
+        if (filter.type === "eq") return row[filter.column] === filter.value;
+        if (filter.type === "in") return filter.values.includes(row[filter.column]);
+        return true;
+      });
+    }
+
+    function execute() {
+      const rows = ensureTable(table);
+
+      if (action === "select") {
+        let result = rows.filter(matches);
+        if (order) {
+          result = [...result].sort((a, b) => {
+            const av = a[order.column];
+            const bv = b[order.column];
+            if (av === bv) return 0;
+            const cmp = av < bv ? -1 : 1;
+            return order.ascending ? cmp : -cmp;
+          });
+        }
+        if (limit != null) result = result.slice(0, limit);
+        return Promise.resolve({ data: clone(result), error: null });
+      }
+
+      if (action === "delete") {
+        const deleted = rows.filter(matches);
+        state[table] = rows.filter((row) => !matches(row));
+        return Promise.resolve({ data: clone(deleted), error: null });
+      }
+
+      if (action === "update") {
+        const updated = [];
+        for (const row of rows) {
+          if (matches(row)) {
+            Object.assign(row, clone(payload));
+            updated.push(row);
+          }
+        }
+        return Promise.resolve({ data: clone(updated), error: null });
+      }
+
+      return Promise.resolve({ data: null, error: null });
+    }
+
+    const query = {
+      eq(column, value) { filters.push({ type: "eq", column, value }); return query; },
+      in(column, values) { filters.push({ type: "in", column, values }); return query; },
+      order(column, opts = {}) { order = { column, ascending: opts.ascending !== false }; return query; },
+      limit(n) { limit = n; return query; },
+      select() { return query; },
+      maybeSingle() {
+        return execute().then((result) => ({ data: result.data[0] || null, error: result.error }));
+      },
+      then(resolve, reject) {
+        return execute().then(resolve, reject);
+      },
+    };
+
+    return query;
+  }
+
+  return {
+    from(table) {
+      ensureTable(table);
+      return {
+        select() { return makeQuery(table, "select"); },
+        delete() { return makeQuery(table, "delete"); },
+        update(payload) { return makeQuery(table, "update", payload); },
+      };
+    },
+  };
+}

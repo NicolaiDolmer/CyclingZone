@@ -981,6 +981,135 @@ test("processSeasonEnd writes finance and board side effects before completing t
   assert.equal(supabase.state.updates.seasons.length, 1);
 });
 
+test("processSeasonEnd skips baseline boards and triggers sequential negotiation after season 1", async () => {
+  const supabase = createSeasonEndSupabase({
+    season: {
+      id: "season-1",
+      number: 1,
+      status: "active",
+    },
+    team: {
+      id: "team-1",
+      name: "Baseline Tester",
+      is_ai: false,
+      user_id: "user-1",
+      balance: 800000,
+      sponsor_income: 240000,
+      riders: [],
+    },
+    board: {
+      id: "board-baseline",
+      team_id: "team-1",
+      plan_type: "baseline",
+      focus: "balanced",
+      satisfaction: 50,
+      budget_modifier: 1.0,
+      current_goals: [],
+      is_baseline: true,
+      seasons_completed: 0,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      plan_start_sponsor_income: 240000,
+    },
+    standings: [
+      {
+        season_id: "season-1",
+        team_id: "team-1",
+        division: 3,
+        total_points: 150,
+        rank_in_division: 1,
+        stage_wins: 2,
+        gc_wins: 1,
+        team: {
+          id: "team-1",
+          is_ai: false,
+        },
+      },
+    ],
+  });
+
+  let sequentialCallArgs = null;
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    startSequentialNegotiation: async (args) => {
+      sequentialCallArgs = args;
+      return { baseline_rows_deleted: 1, window_state: "pending_5yr", completed_season_id: args.completedSeasonId };
+    },
+  });
+
+  // Baseline board må aldrig evalueres — ingen snapshot, modifier uændret, satisfaction uændret.
+  assert.equal(supabase.state.inserts.board_plan_snapshots.length, 0);
+  assert.equal(supabase.state.board.budget_modifier, 1.0);
+  assert.equal(supabase.state.board.satisfaction, 50);
+  assert.equal(supabase.state.inserts.notifications.length, 0);
+
+  // startSequentialNegotiation skal kaldes ved sæson 1-slut med completed seasonId.
+  assert.ok(sequentialCallArgs, "startSequentialNegotiation must be called after season 1");
+  assert.equal(sequentialCallArgs.completedSeasonId, "season-1");
+  assert.equal(supabase.state.season.status, "completed");
+});
+
+test("processSeasonEnd does NOT trigger sequential negotiation after season 5 (only after season 1)", async () => {
+  const supabase = createSeasonEndSupabase({
+    season: {
+      id: "season-5",
+      number: 5,
+      status: "active",
+    },
+    team: {
+      id: "team-1",
+      name: "Late Season Team",
+      is_ai: false,
+      user_id: "user-1",
+      balance: 500,
+      sponsor_income: 200,
+      riders: [],
+    },
+    board: {
+      id: "board-1",
+      team_id: "team-1",
+      plan_type: "1yr",
+      focus: "balanced",
+      satisfaction: 50,
+      budget_modifier: 1.0,
+      current_goals: [],
+      is_baseline: false,
+      seasons_completed: 0,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      plan_start_sponsor_income: 200,
+    },
+    standings: [
+      {
+        season_id: "season-5",
+        team_id: "team-1",
+        division: 3,
+        total_points: 50,
+        rank_in_division: 5,
+        stage_wins: 0,
+        gc_wins: 0,
+        team: { id: "team-1", is_ai: false },
+      },
+    ],
+  });
+
+  let sequentialCalled = false;
+  await processSeasonEnd("season-5", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    startSequentialNegotiation: async () => { sequentialCalled = true; return {}; },
+  });
+
+  assert.equal(sequentialCalled, false, "startSequentialNegotiation must only fire after season 1");
+});
+
 test("repairSeasonEndFinanceAndBoard runs finance and board only without season or division writes", async () => {
   const supabase = createSeasonEndSupabase({
     season: {
