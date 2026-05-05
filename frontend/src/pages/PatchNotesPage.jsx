@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.44",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "UI · Venstremenuen samlet i fire mentale rum",
+        items: [
+          "Venstremenuen er omstruktureret fra de gamle grupper til fire tydeligere områder: Klubhus, Marked, Sæson & Resultater og Liga. Målet er at gøre de vigtigste daglige handlinger lettere at finde: hold, bestyrelse, økonomi og indbakke ligger nu samlet i Klubhus, mens løb er flyttet ind sammen med sæson- og resultatvisninger.",
+          "Panic Board er omdøbt til Deadline Day i menuen, så navnet matcher den faktiske funktion og undgår engelsk event-sprog i den faste navigation. Profil & Indstillinger er kortet ned til Indstillinger, og Finanser hedder nu Økonomi i menuen.",
+          "HelpPage er opdateret med de nye menustier, blandt andet Liga → Head-to-Head og Sæson & Resultater → Løb. Direkte åbning af egen managerprofil åbner nu også Klubhus-gruppen i sidebaren, så den aktive side ikke skjules.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.43",
     date: "2026-05-05",
     label: "Beta",

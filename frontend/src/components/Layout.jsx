@@ -15,15 +15,15 @@ const BOTTOM_ITEMS = [
 function buildNavGroups(team) {
   return [
     {
-      key: "overblik", label: "Overblik",
+      key: "klubhus", label: "Klubhus",
       items: [
         { to: "/dashboard",      label: "Dashboard" },
         { to: "/team",           label: "Mit Hold" },
         { to: "/board",          label: "Bestyrelse" },
-        { to: "/finance",        label: "Finanser" },
+        { to: "/finance",        label: "Økonomi" },
         { to: "/notifications",  label: "Indbakke", badge: true },
         ...(team?.id ? [{ to: `/managers/${team.id}`, label: "Min Managerprofil" }] : []),
-        { to: "/profile",        label: "Profil & Indstillinger" },
+        { to: "/profile",        label: "Indstillinger" },
       ],
     },
     {
@@ -32,17 +32,18 @@ function buildNavGroups(team) {
         { to: "/riders",       label: "Ryttere" },
         { to: "/auctions",     label: "Auktioner" },
         { to: "/transfers",    label: "Transfers" },
-        { to: "/deadline-day", label: "Panic Board" },
-        { to: "/activity",     label: "Min Aktivitet" },
+        { to: "/deadline-day", label: "Deadline Day" },
         { to: "/watchlist",    label: "Ønskeliste" },
+        { to: "/activity",     label: "Min Aktivitet" },
       ],
     },
     {
-      key: "resultater", label: "Resultater",
+      key: "saeson-resultater", label: "Sæson & Resultater",
       items: [
         { to: "/resultater",     label: "Overblik" },
         { to: "/standings",      label: "Ranglisten" },
         { to: "/rider-rankings", label: "Rytterrangliste" },
+        { to: "/races",          label: "Løb" },
         { to: "/seasons",        label: "Sæson-snapshot" },
         { to: "/hall-of-fame",   label: "Hall of Fame" },
       ],
@@ -53,7 +54,6 @@ function buildNavGroups(team) {
         { to: "/teams",          label: "Hold" },
         { to: "/head-to-head",   label: "Head-to-Head" },
         { to: "/season-preview", label: "Sæson Preview" },
-        { to: "/races",          label: "Løb" },
       ],
     },
   ];
@@ -185,6 +185,7 @@ export default function Layout() {
   const [onlineCount, setOnlineCount]     = useState(0);
   const [teamLoaded, setTeamLoaded]       = useState(false);
   const heartbeatRef = useRef(null);
+  const teamId = team?.id;
 
   async function fetchOnlineCount(headers) {
     if (!API) return;
@@ -198,10 +199,13 @@ export default function Layout() {
 
   useEffect(() => {
     const path = location.pathname;
-    const activeGroup = buildNavGroups(null).find(g => g.items.some(i => pathMatchesNavItem(path, i.to)));
+    const groups = buildNavGroups(teamId ? { id: teamId } : null);
+    if (isAdmin) groups.push({ key: "admin", label: "Admin", items: [{ to: "/admin", label: "Admin" }] });
+    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(path, i.to)))
+      || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, teamId, isAdmin]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {

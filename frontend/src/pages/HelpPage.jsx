@@ -190,7 +190,7 @@ const SECTIONS = [
       },
       {
         title: "Tema (lyst / mørkt)",
-        text: "Under Profil & Indstillinger → Udseende kan du vælge mellem 'Følg system' (auto efter din enhed), 'Lyst' og 'Mørkt'. Valget gemmes lokalt i din browser. Sidebaren forbliver mørk i begge temaer for konsistens.",
+        text: "Under Indstillinger → Udseende kan du vælge mellem 'Følg system' (auto efter din enhed), 'Lyst' og 'Mørkt'. Valget gemmes lokalt i din browser. Sidebaren forbliver mørk i begge temaer for konsistens.",
       },
       {
         title: "Glemt password",
@@ -198,7 +198,7 @@ const SECTIONS = [
       },
       {
         title: "Indbakke",
-        text: "Indbakken (under Overblik) samler alle systemhændelser: bud, auktioner, transfertilbud, sæsonstart, økonomi og achievements. Klik på en besked for at gå direkte til den relevante side. Ulæste beskeder vises med et gult tal ved 🔔-ikonet.",
+        text: "Indbakken (under Klubhus) samler alle systemhændelser: bud, auktioner, transfertilbud, sæsonstart, økonomi og achievements. Klik på en besked for at gå direkte til den relevante side. Ulæste beskeder vises med et gult tal ved 🔔-ikonet.",
       },
       {
         title: "Online status",
@@ -218,7 +218,7 @@ const SECTIONS = [
       },
       {
         title: "Head-to-Head",
-        text: "Under Resultater → Head-to-Head kan du sammenligne to holds historik direkte: sæsonpoint, etape- og GC-sejre, transferhistorik imellem holdene og begges nuværende top-5 ryttere. Hold A er automatisk dit eget hold. Klik i Hold B-feltet for at se forslag med det samme — ingen typing nødvendig.",
+        text: "Under Liga → Head-to-Head kan du sammenligne to holds historik direkte: sæsonpoint, etape- og GC-sejre, transferhistorik imellem holdene og begges nuværende top-5 ryttere. Hold A er automatisk dit eget hold. Klik i Hold B-feltet for at se forslag med det samme — ingen typing nødvendig.",
       },
     ],
   },
@@ -364,11 +364,11 @@ const SECTIONS = [
       },
       {
         title: "Løb og resultater",
-        text: "Alle managers kan indberette løbsresultater fra PCM via Løb → Indberét resultater. Upload en Excel-fil, match navne og indsend til admin-godkendelse. Præmiepenge beregnes automatisk når admin finaliserer resultaterne, og sæsonstillingen opdateres gennem den samme backend-path uanset om admin godkender en pending submission eller importerer resultater direkte.",
+        text: "Alle managers kan indberette løbsresultater fra PCM via Sæson & Resultater → Løb → Indberét resultater. Upload en Excel-fil, match navne og indsend til admin-godkendelse. Præmiepenge beregnes automatisk når admin finaliserer resultaterne, og sæsonstillingen opdateres gennem den samme backend-path uanset om admin godkender en pending submission eller importerer resultater direkte.",
       },
       {
         title: "Præmiepenge fra løb",
-        text: "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: UCI-point for placeringen × 1.500 CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat — UCI-point bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Løb → Point & præmier.",
+        text: "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: UCI-point for placeringen × 1.500 CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat — UCI-point bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Sæson & Resultater → Løb → Point & præmier.",
       },
       {
         title: "Divisionsbonus ved sæsonafslutning",
@@ -381,7 +381,7 @@ const SECTIONS = [
       },
       {
         title: "Løbsbibliotek",
-        text: "Under Løb → Bibliotek kan du søge og filtrere alle løb på tværs af sæsoner (sæson, klasse, status, navn). Klik på et løb for at åbne dets historikside med tidligere udgaver, vinderen af hver sæson og en akkumuleret oversigt over de ryttere der historisk har klaret sig bedst i netop det løb.",
+        text: "Under Sæson & Resultater → Løb → Bibliotek kan du søge og filtrere alle løb på tværs af sæsoner (sæson, klasse, status, navn). Klik på et løb for at åbne dets historikside med tidligere udgaver, vinderen af hver sæson og en akkumuleret oversigt over de ryttere der historisk har klaret sig bedst i netop det løb.",
       },
       {
         title: "Op- og nedrykning",
