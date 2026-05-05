@@ -947,241 +947,10 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
   );
 }
 
-// PlanCard er erstattet af DashboardPlanPanel (S-02h) — bevares som reference indtil S-02i
-function _PlanCard({ planType, planData, riders, standing, activeLoanCount, team, requestError, requestingType, onRequest, onRenew, onNegotiate }) {
-  const [expanded, setExpanded] = useState(true);
-
-  if (!planData) {
-    return (
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-cz-subtle flex items-center justify-center text-cz-3 text-sm font-bold">
-            {planType === "5yr" ? "5" : planType === "3yr" ? "3" : "1"}
-          </div>
-          <div>
-            <p className="text-cz-3 text-sm font-medium">{PLAN_LABELS[planType]}</p>
-            <p className="text-cz-3 text-xs">Konfigureres automatisk ved næste sæsonstart</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const { board, plan_duration, seasons_remaining, seasons_completed, plan_progress_pct,
-    cumulative_stats, snapshots, is_expired, outlook, request_status, request_options } = planData;
-
-  const goals = typeof board.current_goals === "string"
-    ? JSON.parse(board.current_goals)
-    : (board.current_goals || []);
-  const modifier = satisfactionToModifier(board.satisfaction);
-  const nonCumGoals = goals.filter(g => !g.cumulative);
-  const cumGoals = goals.filter(g => g.cumulative);
-
-  function goalAchieved(goal) {
-    if (goal.cumulative) {
-      if (goal.type === "stage_wins") return (cumulative_stats?.stage_wins || 0) >= goal.target;
-      if (goal.type === "gc_wins") return (cumulative_stats?.gc_wins || 0) >= goal.target;
-    }
-    const sponsorIncome = team?.sponsor_income ?? 0;
-    const planStartSponsorIncome = board?.plan_start_sponsor_income ?? sponsorIncome;
-    switch (goal.type) {
-      case "min_u25_riders": return (riders || []).filter(r => r.is_u25).length >= goal.target;
-      case "min_national_riders":
-        return (riders || []).filter(r => (r.nationality_code || "").toUpperCase() === goal.nationality_code).length >= goal.target;
-      case "min_riders": return (riders || []).length >= goal.target;
-      case "top_n_finish": return standing ? (standing.rank_in_division || 99) <= goal.target : false;
-      case "stage_wins": return standing ? (standing.stage_wins || 0) >= goal.target : false;
-      case "gc_wins": return standing ? (standing.gc_wins || 0) >= goal.target : false;
-      case "no_outstanding_debt": return activeLoanCount === 0;
-      case "sponsor_growth": {
-        if (!planStartSponsorIncome) return false;
-        return ((sponsorIncome - planStartSponsorIncome) / planStartSponsorIncome * 100) >= goal.target;
-      }
-      default: return false;
-    }
-  }
-
-  const goalsAchieved = nonCumGoals.filter(g => goalAchieved(g)).length;
-  const midpoint = Math.floor(plan_duration / 2);
-  const lastSnapshot = snapshots[snapshots.length - 1];
-  const showMidReviewBanner = plan_duration > 1
-    && lastSnapshot?.season_within_plan === midpoint
-    && seasons_completed === midpoint;
-
-  const satColor = board.satisfaction >= 70 ? "text-cz-success" : board.satisfaction >= 40 ? "text-cz-accent-t" : "text-cz-danger";
-
-  return (
-    <div className={`bg-cz-card border rounded-xl overflow-hidden ${is_expired ? "border-cz-accent/40" : "border-cz-border"}`}>
-      {/* Header */}
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold
-              ${is_expired
-                ? "bg-cz-accent/10 border border-cz-accent/30 text-cz-accent-t"
-                : "bg-cz-subtle border border-cz-border text-cz-2"}`}>
-              {planType === "5yr" ? "5" : planType === "3yr" ? "3" : "1"}
-            </div>
-            <div>
-              <p className="text-cz-1 font-semibold text-sm">{PLAN_LABELS[planType]}</p>
-              <p className="text-cz-3 text-xs">{FOCUS_LABELS[board.focus] || board.focus}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {is_expired ? (
-              <button onClick={onNegotiate}
-                className="px-3 py-1.5 text-xs font-semibold bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 rounded-lg hover:bg-cz-accent/20 transition-all">
-                Forhandl ny plan
-              </button>
-            ) : (
-              <button onClick={onRenew}
-                className="px-3 py-1.5 text-xs border border-cz-border text-cz-3 rounded-lg hover:border-cz-border hover:text-cz-2 transition-all">
-                Forny
-              </button>
-            )}
-            <button onClick={() => setExpanded(e => !e)}
-              className="px-2 py-1.5 text-xs border border-cz-border text-cz-3 rounded-lg hover:text-cz-2 transition-all">
-              {expanded ? "↑" : "↓"}
-            </button>
-          </div>
-        </div>
-
-        {/* Kompakt stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-cz-subtle rounded-lg p-3 text-center">
-            <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">Tilfredshed</p>
-            <p className={`font-mono font-bold text-sm ${satColor}`}>{board.satisfaction}%</p>
-          </div>
-          <div className="bg-cz-subtle rounded-lg p-3 text-center">
-            <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">Mål</p>
-            <p className="font-mono font-bold text-sm text-cz-1">{goalsAchieved}/{nonCumGoals.length}</p>
-          </div>
-          <div className="bg-cz-subtle rounded-lg p-3 text-center">
-            <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">Sponsor ×</p>
-            <p className={`font-mono font-bold text-sm ${modifier >= 1 ? "text-cz-success" : "text-cz-danger"}`}>
-              ×{modifier.toFixed(2)}
-            </p>
-          </div>
-        </div>
-
-        {is_expired && (
-          <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-lg p-3 mt-4">
-            <p className="text-cz-accent-t text-xs font-semibold">Plan udløbet — forhandl en ny plan med bestyrelsen</p>
-          </div>
-        )}
-        {!is_expired && board.satisfaction < 25 && (
-          <div className="bg-cz-danger-bg0/8 border border-cz-danger/30 rounded-lg p-3 mt-4">
-            <p className="text-red-300 text-xs font-semibold">Bestyrelsen er dybt utilfreds</p>
-            <p className="text-red-300/70 text-xs mt-0.5">Fortsat underpræstation skærper kravene ved næste planforhandling.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Udvidet indhold */}
-      {expanded && !is_expired && (
-        <div className="border-t border-cz-border p-5 flex flex-col gap-4">
-          {/* Timeline for 3yr/5yr */}
-          {plan_duration > 1 && (
-            <div>
-              <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Planforløb</p>
-              <PlanTimelineBar planDuration={plan_duration} seasonsCompleted={seasons_completed} snapshots={snapshots} />
-              <div className="mt-2">
-                <div className="bg-cz-subtle rounded-full h-1.5">
-                  <div className="h-1.5 rounded-full bg-cz-accent transition-all"
-                    style={{ width: `${plan_progress_pct || 0}%` }} />
-                </div>
-                <p className="text-cz-3 text-xs text-center mt-1">
-                  {seasons_remaining} sæson{seasons_remaining !== 1 ? "er" : ""} tilbage
-                </p>
-              </div>
-            </div>
-          )}
-
-          {showMidReviewBanner && (
-            <div className="bg-cz-info-bg0/10 border border-blue-500/20 rounded-xl p-4">
-              <p className="text-blue-300 text-sm font-semibold">Halvvejsevaluering afsluttet</p>
-              <p className="text-blue-300/60 text-xs mt-1">Sæson {midpoint} af {plan_duration} evalueret.</p>
-            </div>
-          )}
-
-          {/* Kumulative stats */}
-          {plan_duration > 1 && cumGoals.length > 0 && (
-            <CumulativeStatsRow goals={cumGoals} cumStats={cumulative_stats} />
-          )}
-
-          {/* Mål */}
-          <div>
-            <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">
-              {plan_duration > 1 ? "Planmål" : "Sæsonmål"}
-            </p>
-            <div className="flex flex-col gap-2">
-              {goals.map((g, i) => (
-                <GoalCard
-                  key={i}
-                  goal={g}
-                  achieved={goalAchieved(g)}
-                  evaluation={outlook?.goal_evaluations?.[i]}
-                  cumulativeProgress={
-                    g.cumulative && g.type === "stage_wins" ? (cumulative_stats?.stage_wins ?? 0)
-                    : g.cumulative && g.type === "gc_wins" ? (cumulative_stats?.gc_wins ?? 0)
-                    : undefined
-                  }
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Sæsonhistorik */}
-          {plan_duration > 1 && snapshots.length > 0 && (
-            <SeasonSnapshotGrid snapshots={snapshots} />
-          )}
-
-          {/* Outlook (kompakt) */}
-          {outlook?.feedback && (
-            <div className="bg-cz-subtle border border-cz-border rounded-xl p-4">
-              <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Bestyrelsens vurdering</p>
-              <p className="text-cz-1 text-sm font-semibold">{outlook.feedback.headline}</p>
-              <p className="text-cz-2 text-sm mt-1">{formatBoardCopy(outlook.feedback.summary)}</p>
-              {/* S-02c · Dominant medlem-citat — match til strongest/weakest_category */}
-              {outlook.feedback.dominant_member && (
-                <div className="mt-3">
-                  <MemberReactionPanel reaction={outlook.feedback.dominant_member} />
-                </div>
-              )}
-              {outlook.personality && (
-                <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-cz-border">
-                  {[
-                    PERSONALITY_LABELS.sports_ambition[outlook.personality.sports_ambition],
-                    PERSONALITY_LABELS.financial_risk[outlook.personality.financial_risk],
-                    PERSONALITY_LABELS.identity_strength[outlook.personality.identity_strength],
-                  ].filter(Boolean).map(label => (
-                    <span key={label} className="text-[10px] bg-cz-subtle text-cz-2 px-2 py-0.5 rounded-full border border-cz-border">
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Request panel */}
-          <BoardRequestPanel
-            requestOptions={request_options || []}
-            requestStatus={request_status}
-            requestError={requestError}
-            requestingType={requestingType}
-            onRequest={onRequest}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── S-02h · DashboardPlanPanel — kompakt panel i 3-kolonne grid ───────────────
 
 function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCount, team,
-  requestError, requestingType, onRequest, onNegotiate, onGoalClick }) {
+  requestError, requestingType, onRequest, onRenew, onNegotiate, onGoalClick }) {
   const [detailOpen, setDetailOpen] = useState(false);
 
   if (!planData) {
@@ -1399,6 +1168,13 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
             requestingType={requestingType}
             onRequest={onRequest}
           />
+
+          {!is_expired && (
+            <button onClick={onRenew}
+              className="w-full py-2 text-xs border border-cz-border text-cz-3 rounded-lg hover:text-cz-2 hover:border-cz-border/80 transition-all">
+              Forny plan (status quo)
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -2117,6 +1893,7 @@ export default function BoardPage() {
                   : ""
               }
               onRequest={(requestType) => sendBoardRequest(planType, requestType)}
+              onRenew={() => renewContract(planType)}
               onNegotiate={() => openWizard(planType, false)}
               onGoalClick={(goal, evaluation, achieved, cumProgress) =>
                 setGoalMiniDialog({ goal, evaluation, achieved, cumulativeProgress: cumProgress })}
