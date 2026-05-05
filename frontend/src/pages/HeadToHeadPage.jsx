@@ -6,27 +6,33 @@ import { Flag } from "../components/Flag";
 function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState([]);
+  const [searched, setSearched] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   async function fetchTeams(pattern) {
     const { data } = await supabase.from("teams")
       .select("id, name, division").eq("is_ai", false)
       .ilike("name", `%${pattern}%`).order("name").limit(6);
     setResults((data || []).filter(t => t.id !== excluded));
+    setSearched(true);
   }
 
   useEffect(() => {
-    if (q.length < 1) { setResults([]); return; }
+    if (q.length < 1) { setResults([]); setSearched(false); return; }
     const t = setTimeout(() => fetchTeams(q), 200);
     return () => clearTimeout(t);
   }, [q, excluded]);
 
   function handleFocus() {
+    setFocused(true);
     if (autoSuggest && q.length === 0) fetchTeams("");
   }
 
   function handleBlur() {
-    setTimeout(() => setResults([]), 150);
+    setTimeout(() => { setFocused(false); setResults([]); setSearched(false); }, 150);
   }
+
+  const showEmpty = focused && searched && results.length === 0 && q.length >= 1;
 
   return (
     <div className="relative">
@@ -42,11 +48,17 @@ function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
           {results.map(t => (
             <div key={t.id}
               className="px-4 py-3 hover:bg-cz-subtle cursor-pointer border-b border-cz-border last:border-0"
-              onClick={() => { onSelect(t); setQ(t.name); setResults([]); }}>
+              onMouseDown={() => { onSelect(t); setQ(t.name); setResults([]); setSearched(false); }}>
               <p className="text-cz-1 font-medium text-sm">{t.name}</p>
               <p className="text-cz-3 text-xs">Division {t.division}</p>
             </div>
           ))}
+        </div>
+      )}
+      {showEmpty && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border
+          rounded-xl z-20 overflow-hidden shadow-2xl px-4 py-3">
+          <p className="text-cz-3 text-sm">Ingen hold fundet for &ldquo;{q}&rdquo;</p>
         </div>
       )}
     </div>
@@ -97,44 +109,54 @@ export default function HeadToHeadPage() {
     });
   }, []);
 
+  const [error, setError] = useState(null);
+
   async function loadStats() {
     setLoading(true);
-    const [standingsRes, auctionsRes, ridersARes, ridersBRes] = await Promise.all([
-      supabase.from("season_standings")
-        .select("*, season:season_id(number)")
-        .in("team_id", [teamA.id, teamB.id])
-        .order("season_id"),
+    setError(null);
+    try {
+      const [standingsRes, auctionsRes, ridersARes, ridersBRes] = await Promise.all([
+        supabase.from("season_standings")
+          .select("*, season:season_id(number)")
+          .in("team_id", [teamA.id, teamB.id])
+          .order("season_id"),
 
-      // Auctions where one team bought from the other
-      supabase.from("auctions")
-        .select("id, current_price, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname)")
-        .eq("status", "completed")
-        .or(`and(seller_team_id.eq.${teamA.id},current_bidder_id.eq.${teamB.id}),and(seller_team_id.eq.${teamB.id},current_bidder_id.eq.${teamA.id})`),
+        // Auctions where one team bought from the other
+        supabase.from("auctions")
+          .select("id, current_price, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname)")
+          .eq("status", "completed")
+          .or(`and(seller_team_id.eq.${teamA.id},current_bidder_id.eq.${teamB.id}),and(seller_team_id.eq.${teamB.id},current_bidder_id.eq.${teamA.id})`),
 
-      supabase.from("riders").select("id, firstname, lastname, uci_points, nationality_code").eq("team_id", teamA.id).order("uci_points", { ascending: false }).limit(5),
-      supabase.from("riders").select("id, firstname, lastname, uci_points, nationality_code").eq("team_id", teamB.id).order("uci_points", { ascending: false }).limit(5),
-    ]);
+        supabase.from("riders").select("id, firstname, lastname, uci_points, nationality_code").eq("team_id", teamA.id).order("uci_points", { ascending: false }).limit(5),
+        supabase.from("riders").select("id, firstname, lastname, uci_points, nationality_code").eq("team_id", teamB.id).order("uci_points", { ascending: false }).limit(5),
+      ]);
 
-    const standingsA = standingsRes.data?.filter(s => s.team_id === teamA.id) || [];
-    const standingsB = standingsRes.data?.filter(s => s.team_id === teamB.id) || [];
+      const standingsA = standingsRes.data?.filter(s => s.team_id === teamA.id) || [];
+      const standingsB = standingsRes.data?.filter(s => s.team_id === teamB.id) || [];
 
-    const h2hAuctions = auctionsRes.data || [];
-    const aBoughtFromB = h2hAuctions.filter(a => a.seller_team_id === teamB.id && a.current_bidder_id === teamA.id);
-    const bBoughtFromA = h2hAuctions.filter(a => a.seller_team_id === teamA.id && a.current_bidder_id === teamB.id);
+      const h2hAuctions = auctionsRes.data || [];
+      const aBoughtFromB = h2hAuctions.filter(a => a.seller_team_id === teamB.id && a.current_bidder_id === teamA.id);
+      const bBoughtFromA = h2hAuctions.filter(a => a.seller_team_id === teamA.id && a.current_bidder_id === teamB.id);
 
-    setStats({
-      standingsA, standingsB,
-      totalPointsA: standingsA.reduce((s, r) => s + (r.total_points || 0), 0),
-      totalPointsB: standingsB.reduce((s, r) => s + (r.total_points || 0), 0),
-      stageWinsA: standingsA.reduce((s, r) => s + (r.stage_wins || 0), 0),
-      stageWinsB: standingsB.reduce((s, r) => s + (r.stage_wins || 0), 0),
-      gcWinsA: standingsA.reduce((s, r) => s + (r.gc_wins || 0), 0),
-      gcWinsB: standingsB.reduce((s, r) => s + (r.gc_wins || 0), 0),
-      aBoughtFromB, bBoughtFromA,
-      topRidersA: ridersARes.data || [],
-      topRidersB: ridersBRes.data || [],
-    });
-    setLoading(false);
+      setStats({
+        standingsA, standingsB,
+        totalPointsA: standingsA.reduce((s, r) => s + (r.total_points || 0), 0),
+        totalPointsB: standingsB.reduce((s, r) => s + (r.total_points || 0), 0),
+        stageWinsA: standingsA.reduce((s, r) => s + (r.stage_wins || 0), 0),
+        stageWinsB: standingsB.reduce((s, r) => s + (r.stage_wins || 0), 0),
+        gcWinsA: standingsA.reduce((s, r) => s + (r.gc_wins || 0), 0),
+        gcWinsB: standingsB.reduce((s, r) => s + (r.gc_wins || 0), 0),
+        aBoughtFromB, bBoughtFromA,
+        topRidersA: ridersARes.data || [],
+        topRidersB: ridersBRes.data || [],
+      });
+    } catch (e) {
+      console.error("HeadToHead loadStats failed", e);
+      setStats(null);
+      setError("Kunne ikke hente sammenligningsdata. Prøv igen.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -150,7 +172,7 @@ export default function HeadToHeadPage() {
 
       {/* Team selection */}
       <div className="grid sm:grid-cols-2 gap-4 mb-6">
-        <TeamSearch label="Hold A" onSelect={setTeamA} excluded={teamB?.id} />
+        <TeamSearch label="Hold A" onSelect={setTeamA} excluded={teamB?.id} autoSuggest />
         <TeamSearch label="Hold B" onSelect={setTeamB} excluded={teamA?.id} autoSuggest />
       </div>
 
@@ -174,7 +196,17 @@ export default function HeadToHeadPage() {
         </div>
       )}
 
-      {!loading && stats && (
+      {!loading && error && (
+        <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-xl p-4 mb-4 flex items-center justify-between gap-3">
+          <p className="text-cz-danger text-sm">{error}</p>
+          <button onClick={loadStats}
+            className="px-3 py-1.5 text-xs text-cz-1 bg-cz-card hover:bg-cz-subtle border border-cz-border rounded-lg transition-all">
+            Prøv igen
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && stats && (
         <div className="flex flex-col gap-4">
           {/* Stat comparison */}
           <div className="bg-cz-card border border-cz-border rounded-xl p-5">

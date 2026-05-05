@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.47",
+    date: "2026-05-06",
+    label: "Beta",
+    changes: [
+      {
+        category: "QoL · Refresh på Min aktivitet + bedre Head-to-Head-søgning",
+        items: [
+          "Min aktivitet ([ActivityPage.jsx](frontend/src/pages/ActivityPage.jsx)) får en 'Opdater'-knap i toppen, så du kan hente seneste auktioner, tilbud og lån uden at refreshe browseren. Tidsstemplet 'Sidst opdateret HH:MM' viser hvor friske data er — vises i sidens header på desktop.",
+          "Head-to-Head ([HeadToHeadPage.jsx](frontend/src/pages/HeadToHeadPage.jsx)): begge holdsøgefelter viser nu hold-forslag automatisk ved fokus (før kun det højre felt). Når søgningen ikke giver hits vises 'Ingen hold fundet for X' i stedet for at dropdown skjules tavst.",
+          "Bugfix · Head-to-Head viste evig spinner hvis bare ét af de fire bagvedliggende queries fejlede (`Promise.all` uden try/catch). Fejl fanges nu og viser 'Prøv igen'-knap i stedet.",
+          "Bugfix · Stille fejl-skjul i Min aktivitet — `/api/transfers/my-offers` og `/api/loans` faldt tilbage til tomme lister hvis de fejlede, uden at logge noget. Fejl logges nu i devtools så det kan diagnosticeres.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.46",
     date: "2026-05-06",
     label: "Beta",

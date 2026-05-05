@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Ingen aktiv kode-slice.** Seneste arbejde: v2.46 race condition bugfix på auktion-oprettelse. S-02 er komplet (10/10 slices). Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md).
+**Ingen aktiv kode-slice.** Seneste arbejde: v2.47 QoL-batch (Min aktivitet refresh + Head-to-Head polish). S-02 er komplet (10/10 slices). Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md).
 
 ## Soak-gate
 **Ikke aktiv** — nuværende arbejde er docs/status-afstemning uden ny domænelogik.
@@ -10,11 +10,11 @@
 **Alle launch-gates ✅, 6/6 P0 leveret.** S-02 KOMPLET (S-02a–S-02j, 10/10 slices). ~19 managers live. Næste: vælg ny product-slice fra [PRODUCT_BACKLOG.md](docs/PRODUCT_BACKLOG.md).
 
 ## Senest leveret
+- 2026-05-06: **QoL-batch v2.47** — 5 polish-fix: (1) refresh-knap + "Sidst opdateret"-tidsstempel på [ActivityPage.jsx](frontend/src/pages/ActivityPage.jsx); (2) [HeadToHeadPage.jsx](frontend/src/pages/HeadToHeadPage.jsx) `loadStats()` try/catch/finally + error-UI med "Prøv igen" (fixede evig spinner ved Promise.all-fejl); (3) `autoSuggest` på Hold A; (4) "Ingen hold fundet"-state i TeamSearch; (5) `console.warn` i ActivityPage `.catch()` der før skjulte API-fejl tavst. 295/295 tests + build grønne.
 - 2026-05-06: **Auktion race condition fix v2.46** — POST /api/auctions havde TOCTOU-race i SELECT-then-INSERT-tjekket; dobbeltklik 5. maj gav 3 auktioner på Gianni Moscon + 2 hver på Silvan Dillier og Morné van Niekerk. Ny migration ([2026-05-06-auctions-unique-active-rider.sql](database/2026-05-06-auctions-unique-active-rider.sql)) tilføjer `uniq_auctions_one_active_per_rider` partial index — DB blokkerer nu enhver dublet og backend mapper 23505 → 409. 4 duplikat-rows ryddet i prod (ingen pengebevægelse). 295/295 tests + frontend build grønne.
 - 2026-05-05: **Indbakke ønskeliste-auktionslink v2.45** — `watchlist_rider_auction` adskiller ønskeliste-auktioner fra ønskeliste-transferlistinger, så Indbakke klik går til `/auctions`. Legacy-fallback routes gamle `watchlist_rider_listed` auktion-notifikationer korrekt. Backend 294/294 + frontend build grønne.
 - 2026-05-05: **Docs status-drift sweep** — `NOW.md`, `PRODUCT_BACKLOG.md`, `LAUNCH_ROADMAP.md`, S-03 og S-06 slice-docs afstemt mod runtime. S-03 verificeret via `backend/lib/squadEnforcement.js` + cron + migration + 7/7 målrettede tests. S-06 smoke-tool verificeret via backend endpoint + AdminPage callsite; health-check cron er ikke leveret og står som P1.
 - 2026-05-05: **Menu IA v2.44** — venstremenuen samlet i fire mentale rum, `/races` flyttet til Sæson & Resultater, `/deadline-day` label ændret til Deadline Day, HelpPage/PatchNotes/FEATURE_STATUS afstemt.
-- 2026-05-05: **Admin-fix v2.43** — 'Nulstil sæsoner' blokeret af FK fra `finance_transactions.season_id` (307 prod-rows). [betaResetService.js](backend/lib/betaResetService.js) nuller nu season_id på alle finance_transactions før `DELETE FROM seasons`. 1 ny regression-test, 294/294 grønne.
 - Ældre → `docs/archive/NOW_HISTORIK_2026-05-05.md`
 
 ## Næste session — start med

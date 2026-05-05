@@ -21,3 +21,7 @@ Låste vision-beslutninger (alle 8 godkendt):
 **Skalerings-præmis:** ~19 managers nu, vokser løbende. Al kode skal håndtere variabelt manager-tal — ingen hardcoded antal.
 
 Estimat for S-02 totalt: ~10-12 sessioner over 4-6 uger.
+
+## Tilføjet 2026-05-06 (rolled fra NOW.md ved v2.47-close-out)
+
+- 2026-05-05: **Admin-fix v2.43** — 'Nulstil sæsoner' blokeret af FK fra `finance_transactions.season_id` (307 prod-rows). [betaResetService.js](backend/lib/betaResetService.js) nuller nu season_id på alle finance_transactions før `DELETE FROM seasons`. 1 ny regression-test, 294/294 grønne.

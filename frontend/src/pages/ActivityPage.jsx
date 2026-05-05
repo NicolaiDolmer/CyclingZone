@@ -142,6 +142,8 @@ export default function ActivityPage() {
   const [tab, setTab] = useState("action");
   const [myTeamId, setMyTeamId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastLoaded, setLastLoaded] = useState(null);
 
   const [activeAuctions, setActiveAuctions]     = useState([]);
   const [completedAuctions, setCompletedAuctions] = useState([]);
@@ -152,11 +154,11 @@ export default function ActivityPage() {
   const [historicalLoans, setHistoricalLoans]   = useState([]);
   const [watchlist, setWatchlist]               = useState([]);
 
-  async function loadAll() {
-    setLoading(true);
+  async function loadAll({ silent = false } = {}) {
+    if (silent) setRefreshing(true); else setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     const { data: team } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
-    if (!team) { setLoading(false); return; }
+    if (!team) { setLoading(false); setRefreshing(false); return; }
     setMyTeamId(team.id);
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -181,10 +183,12 @@ export default function ActivityPage() {
         .limit(30),
 
       fetch(`${API}/api/transfers/my-offers`, { headers })
-        .then(r => r.json()).catch(() => ({ sent: [], received: [] })),
+        .then(r => r.json())
+        .catch(err => { console.warn("activity: my-offers load failed", err); return { sent: [], received: [] }; }),
 
       fetch(`${API}/api/loans`, { headers })
-        .then(r => r.json()).catch(() => ({ lending: [], borrowing: [] })),
+        .then(r => r.json())
+        .catch(err => { console.warn("activity: loans load failed", err); return { lending: [], borrowing: [] }; }),
 
       supabase.from("rider_watchlist")
         .select(`id, created_at, rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, team:team_id(name))`)
@@ -209,7 +213,9 @@ export default function ActivityPage() {
     setBorrowingLoans(loansData.borrowing || []);
     setWatchlist(watchlistRes.data || []);
     setHistoricalLoans(histLoansRes.data || []);
+    setLastLoaded(new Date());
     setLoading(false);
+    setRefreshing(false);
   }
 
   useEffect(() => { loadAll(); }, []);
@@ -266,9 +272,26 @@ export default function ActivityPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-cz-1">Min Aktivitet</h1>
-        <p className="text-cz-3 text-sm">Dine markedshandlinger samlet ét sted</p>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-cz-1">Min Aktivitet</h1>
+          <p className="text-cz-3 text-sm">Dine markedshandlinger samlet ét sted</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {lastLoaded && (
+            <span className="text-cz-3 text-xs hidden sm:inline">
+              Sidst opdateret {lastLoaded.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+          <button onClick={() => loadAll({ silent: true })} disabled={refreshing}
+            className="px-3 py-1.5 text-xs text-cz-2 hover:text-cz-1
+              bg-cz-card hover:bg-cz-subtle rounded-lg border border-cz-border
+              transition-all disabled:opacity-50 flex items-center gap-1.5"
+            title="Opdater data">
+            <span className={refreshing ? "inline-block animate-spin" : "inline-block"}>↻</span>
+            {refreshing ? "Opdaterer..." : "Opdater"}
+          </button>
+        </div>
       </div>
 
       {/* Tab bar */}
