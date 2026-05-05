@@ -130,18 +130,32 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 - HelpPage: 3 nye FAQ-items (medlemmer-pool, formandens rolle, hvorfor forskellige medlemmer reagerer på forskellige mål)
 - 164/164 backend-tests grønne (16 nye for S-02c: arketype-shape 9×30, conflict-detection, alignment-scoring, non-conflicting wildcards + fallback, deterministisk replay, idempotent assignment, dominant-member kategori+chairman, reaction-sampling, replacement counter increment/reset/trigger, AI-skip, end-to-end startSequentialNegotiation)
 
-### S-02d · Udvidede mål-typer
+### S-02d · Udvidede mål-typer ✅ LEVERET 2026-05-05 (v2.36)
 **Dep:** S-02a.
-**Leverer (7 nye mål-typer — tærskler låst i Q-batch 1B Q13):**
-- `monument_podium` — top-3 i ≥1 Monuments-løb pr. plan-cyklus (race_class='Monuments', result_type='gc')
-- `jersey_wins` — point/bjerg/young-trøje-vinder pr. etapeløb (result_type IN ('points','mountain','young'))
-- `signature_rider` — 1 rytter med popularity ≥ 75 på holdet
-- `profitable_transfers` — netto transfer-balance ≥ N over plan-perioden (N besluttes i implementering)
-- `u25_development_delta` — gennemsnitlig stat-gain ≥ 3 stat-points/sæson hos U25-ryttere
-- `relative_rank` — slut foran mindst N andre managere i din division (Q-batch 1B Q12: division-internt, bruger `season_standings.rank_in_division`)
-- `domestic_dominance` — vind ≥ N hjemlandsløb pr. sæson (N besluttes i implementering)
-- `evaluateGoal` + `evaluateGoalProgress` udvidet for hver type
-- `goal-types` integration-test så hver type evaluerer både true og false-cases
+**Q-bekræftelser (2026-05-05 session):**
+- A: monument_podium = cumulative over plan-perioden
+- B: jersey_wins = 2/sæson 1yr, cumulative for 3yr/5yr
+- C: signature_rider = tjekkes ved evaluerings-tidspunkt
+- D: profitable_transfers = ≥200K netto cumulative
+- E1: u25_development_delta = column-add `u25_stat_sum`+`u25_count` på `board_plan_snapshots` (snapshot pr. sæson)
+- F: relative_rank = N=3 hardkodet
+- G: domestic_dominance = skeleton (defer til S-02g)
+- H=b: motor + tests + lille integration (3 nye 5. mål i `youth_development`/`star_signing`/`balanced`)
+
+**Leveret:**
+- Migration `database/2026-05-05-board-goal-types.sql`: `board_plan_snapshots.u25_stat_sum` + `u25_count`
+- `boardConstants.js`: 7 nye entries i `GOAL_METADATA_BY_TYPE`
+- `boardGoals.js`: `evaluateGoal` + `evaluateGoalProgress` + `buildGoalLabel` + `buildNegotiatedGoal` udvidet for alle 7 typer; `computeU25StatSum` ny eksport
+- `generateBoardGoals` udvidet med 5. mål pr. focus: `youth_development` += `u25_development_delta`, `star_signing` += `signature_rider`, `balanced` += `relative_rank`
+- Ny `boardGoalContext.js` med `loadGoalContextForBoard` — shared loader for cumulativeMonumentPodiums/JerseyWins/seasonJerseyWins/TransferBalance + planStartU25StatSum/Count + divisionManagerCount
+- `economyEngine.processTeamSeasonEnd` kalder loaderen + spreader kontekst ind; snapshotter `u25_stat_sum`+`u25_count` ved sæson-slut
+- `api.js /board/status` kalder loaderen pr. board (try/catch graceful degradation)
+- 27 nye backend-tests (191/191 grønne total): hver af de 7 typer får true/false/null-cases + cumulative progress + integration-tests for de 3 nye 5. mål
+
+**Ikke leveret (overført til senere slices):**
+- `monument_podium`, `jersey_wins`, `profitable_transfers`, `domestic_dominance` er klar i motor + context-loader, men er endnu ikke valgt af nogen `generateBoardGoals`-pakke — venter på S-02f (DNA) eller S-02g (manager-konkurrence)
+- `domestic_dominance` returnerer `awaiting_data` (kompleks "hjemland"-detektion deferred)
+- `u25_development_delta` returnerer `awaiting_data` i 1. sæson af planen (ingen baseline endnu)
 
 ### S-02e · Konsekvens-tier (6 lag)
 **Dep:** S-02a. **Tærskler låst i Q-batch 1B Q11 (Appendix C) + Q14. Notif-routing låst i Q-batch 1C Q21.**

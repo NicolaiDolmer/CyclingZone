@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "2.36",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "S-02d · Udvidede mål-typer — bestyrelsen kan nu kræve monumenter, trøjer, stjerner og udvikling",
+        items: [
+          "7 nye mål-typer tilføjet til bestyrelsens repertoire ([boardGoals.js](backend/lib/boardGoals.js)): `monument_podium` (top-3 i Monuments-løb cumulative over plan), `jersey_wins` (point/bjerg/young-trøje pr. etapeløb), `signature_rider` (≥1 rytter med popularity ≥75), `profitable_transfers` (netto transfer-balance ≥200K cumulative), `u25_development_delta` (gnsn. ≥3 stat-points/sæson på U25-ryttere), `relative_rank` (slut foran ≥N andre managers i divisionen), `domestic_dominance` (skeleton — aktiveres i S-02g)",
+          "3 af de nye typer integreres med det samme i auto-genererede focus-pakker som 5. mål: `youth_development` får `u25_development_delta` (måler om dine U25-ryttere faktisk udvikler sig), `star_signing` får `signature_rider` (tvinger dig til at signe en stjerne), `balanced` får `relative_rank` (du skal slå over halvdelen i divisionen). De 4 øvrige typer (monument/jersey/profit/domestic) er klar i motoren men venter på S-02f (klub-DNA) eller S-02g (manager-konkurrence) for at blive valgt",
+          "Migration ([2026-05-05-board-goal-types.sql](database/2026-05-05-board-goal-types.sql)) tilføjer `u25_stat_sum` + `u25_count`-kolonner på `board_plan_snapshots`. processSeasonEnd snapshotter U25-stat-sum hver sæson, så `u25_development_delta` kan beregne udvikling fra plan-start-baseline. Pattern matcher eksisterende cumulative_stage_wins/gc_wins ([economyEngine.js](backend/lib/economyEngine.js))",
+          "Ny shared kontekst-loader [boardGoalContext.js](backend/lib/boardGoalContext.js) henter cumulativeMonumentPodiums, cumulativeJerseyWins, seasonJerseyWins, cumulativeTransferBalance, planStartU25StatSum/Count og divisionManagerCount fra DB. Kaldes både fra processSeasonEnd (sæson-evaluering) og /api/board/status (live BoardPage-outlook) — samme query-pattern, ingen drift",
+          "buildNegotiatedGoal udvidet for alle 7 typer: jersey_wins/profitable_transfers/u25_development_delta/relative_rank/domestic_dominance kan lempes på target (-1 hhv. -50K), monument_podium/signature_rider er allerede minimum (target=1) men halverer satisfaction_penalty. buildGoalLabel skriver danske labels for alle 7",
+          "27 nye backend-tests (191/191 grønne total) i [boardGoalTypes.test.js](backend/lib/boardGoalTypes.test.js): hver type får true-case + false-case + null/awaiting_data-edge-case. Plus integration-tests der bekræfter at de 3 nye 5. mål dukker op i `generateBoardGoals` med korrekt category-metadata",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.35",
     date: "2026-05-05",
     label: "Beta",

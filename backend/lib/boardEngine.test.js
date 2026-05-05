@@ -180,7 +180,8 @@ test("buildBoardProposal exposes negotiated variants that can be finalized serve
     planType: "3yr",
   });
 
-  assert.equal(proposal.goals.length, 4);
+  // S-02d · balanced-pakken har nu 5 mål (relative_rank tilføjet)
+  assert.equal(proposal.goals.length, 5);
   assert.equal(proposal.negotiation_options.length, proposal.goals.length);
   assert.notEqual(
     proposal.negotiation_options[0].satisfaction_penalty,

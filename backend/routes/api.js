@@ -80,6 +80,7 @@ import {
   isValidBoardFocus,
   isValidBoardPlanType,
   isValidBoardRequestType,
+  loadGoalContextForBoard,
   resolveBoardRequest,
 } from "../lib/boardEngine.js";
 import {
@@ -3156,6 +3157,25 @@ router.get("/board/status", requireAuth, async (req, res) => {
       );
 
       const workingSeasonIndex = Math.min(planDuration, seasonsCompleted + 1);
+
+      // S-02d · Hent cumulative kontekst-felter for de 7 nye mål-typer.
+      // Best-effort — hvis loaderen fejler, returneres outlook uden de nye
+      // metrics (graceful degradation, eksisterende mål påvirkes ikke).
+      let goalContext = {};
+      if (activeSeason?.id) {
+        try {
+          goalContext = await loadGoalContextForBoard({
+            supabase,
+            teamId,
+            boardId: board.id,
+            currentSeasonId: activeSeason.id,
+            division: currentStanding?.division ?? null,
+          });
+        } catch (e) {
+          console.warn(`[board/status] loadGoalContextForBoard failed for board ${board.id}:`, e?.message);
+        }
+      }
+
       const outlook = buildBoardOutlook({
         board,
         standing: currentStanding,
@@ -3173,6 +3193,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
             stageWins: (board.cumulative_stage_wins || 0) + (currentStanding?.stage_wins || 0),
             gcWins: (board.cumulative_gc_wins || 0) + (currentStanding?.gc_wins || 0),
           },
+          ...goalContext,
           // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
           assignedMembers: teamBoardMembers,
         },

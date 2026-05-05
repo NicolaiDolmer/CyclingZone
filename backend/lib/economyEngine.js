@@ -17,9 +17,11 @@ import {
 } from "./loanEngine.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
+  computeU25StatSum,
   createInitialBoardProfile,
   evaluateBoardSeason,
   getPlanDuration,
+  loadGoalContextForBoard,
   startSequentialNegotiation,
 } from "./boardEngine.js";
 import { processReplacementTrigger } from "./boardMembers.js";
@@ -568,6 +570,17 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       .limit(3);
     throwIfSupabaseError(recentSnapshotsError, `Could not load recent board snapshots for ${team.name}`);
 
+    // S-02d · Hent cumulative + plan-start kontekst-felter for de 7 nye mål-typer.
+    // Genbruger pre-loaded standings til divisionManagerCount (sparer DB-trip).
+    const goalContext = await loadGoalContextForBoard({
+      supabase: supabaseClient,
+      teamId: team.id,
+      boardId: board.id,
+      currentSeasonId: seasonId,
+      division: teamStanding.division,
+      standings,
+    });
+
     const context = {
       isFinalSeason: planIsComplete,
       activeLoanCount: activeLoanCount || 0,
@@ -581,6 +594,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         stageWins: newCumulativeStageWins,
         gcWins: newCumulativeGcWins,
       },
+      ...goalContext,
     };
 
     const {
@@ -597,6 +611,11 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       context,
     });
 
+    // S-02d · Snapshot U25-stat-baseline så u25_development_delta kan beregnes
+    // fra plan-start-værdien i efterfølgende sæsoner.
+    const u25StatSum = computeU25StatSum(team.riders);
+    const u25Count = (team.riders || []).filter((r) => r.is_u25).length;
+
     const { error: snapshotError } = await supabaseClient.from("board_plan_snapshots").insert({
       team_id: team.id,
       board_id: board.id,
@@ -609,6 +628,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       satisfaction_delta: newSatisfaction - board.satisfaction,
       goals_met: goalsMet,
       goals_total: goals.length,
+      u25_stat_sum: u25StatSum,
+      u25_count: u25Count,
     });
     throwIfSupabaseError(snapshotError, `Could not insert board snapshot for ${team.name}`);
 

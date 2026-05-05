@@ -264,6 +264,32 @@ function createSeasonEndSupabase({
               };
             }
 
+            // S-02d · loadGoalContextForBoard select for plan-start U25-baseline
+            if (columns === "season_id, u25_stat_sum, u25_count, season_within_plan") {
+              return {
+                eq(column, value) {
+                  assert.equal(column, "board_id");
+                  return {
+                    order(orderColumn, orderOptions) {
+                      assert.equal(orderColumn, "season_within_plan");
+                      assert.deepEqual(orderOptions, { ascending: true });
+                      return Promise.resolve({
+                        data: clone(state.inserts.board_plan_snapshots)
+                          .filter((row) => row.board_id === value)
+                          .map((row) => ({
+                            season_id: row.season_id,
+                            u25_stat_sum: row.u25_stat_sum ?? 0,
+                            u25_count: row.u25_count ?? 0,
+                            season_within_plan: row.season_within_plan,
+                          })),
+                        error: null,
+                      });
+                    },
+                  };
+                },
+              };
+            }
+
             assert.equal(columns, "goals_met, goals_total, satisfaction_delta");
             return {
               eq(column, value) {
@@ -292,6 +318,24 @@ function createSeasonEndSupabase({
             return Promise.resolve({ error: null });
           },
         };
+      }
+
+      // S-02d · race_results-query for cumulative monument_podium + jersey_wins.
+      // Chain-proxy pattern: alle eq/in/lte returnerer self, terminal er at chain
+      // resolves som thenable. Returnerer altid tom data så context-felterne
+      // bliver 0 (matcher "ingen race-results indleveret" i test-fixturen).
+      if (table === "race_results") {
+        const chain = {};
+        const noopChain = () => chain;
+        Object.assign(chain, {
+          select: noopChain,
+          eq: noopChain,
+          in: noopChain,
+          lte: noopChain,
+          gte: noopChain,
+          then(resolve) { return resolve({ data: [], error: null }); },
+        });
+        return chain;
       }
 
       if (table === "board_profiles") {
@@ -359,6 +403,24 @@ function createSeasonEndSupabase({
                           .map(row => ({ team_id: row.team_id, type: row.type })),
                         error: null,
                       });
+                    },
+                  };
+                },
+              };
+            }
+
+            // S-02d · loadGoalContextForBoard transfer-balance query
+            if (columns === "amount, type") {
+              return {
+                eq(_col1, _val1) {
+                  return {
+                    in(col2, _values2) {
+                      assert.equal(col2, "type");
+                      return {
+                        in() {
+                          return Promise.resolve({ data: [], error: null });
+                        },
+                      };
                     },
                   };
                 },

@@ -182,6 +182,14 @@ export function generateBoardGoals({
         satisfaction_bonus: 12,
         satisfaction_penalty: 8,
       },
+      // S-02d · Q-batch 1B Q13: gnsn. >=3 stat-points/saeson paa U25-ryttere
+      {
+        type: "u25_development_delta",
+        target: 3,
+        label: "Gennemsnitlig U25-stat-gevinst >= 3 stat-points/saeson",
+        satisfaction_bonus: 18,
+        satisfaction_penalty: 8,
+      },
     ],
     star_signing: [
       {
@@ -223,6 +231,14 @@ export function generateBoardGoals({
         satisfaction_bonus: 15,
         satisfaction_penalty: 10,
       },
+      // S-02d · Q-batch 1B Q13: 1 rytter med popularity >= 75
+      {
+        type: "signature_rider",
+        target: 1,
+        label: "Mindst 1 stjerne-rytter (popularity >= 75)",
+        satisfaction_bonus: 18,
+        satisfaction_penalty: 10,
+      },
     ],
     balanced: [
       {
@@ -257,6 +273,14 @@ export function generateBoardGoals({
         type: "no_outstanding_debt",
         target: 0,
         label: "Ingen udestaende gaeld ved saesonslut",
+        satisfaction_bonus: 12,
+        satisfaction_penalty: 8,
+      },
+      // S-02d · Q-F: slut foran mindst 3 andre managers i divisionen
+      {
+        type: "relative_rank",
+        target: 3,
+        label: "Slut foran mindst 3 andre managers i divisionen",
         satisfaction_bonus: 12,
         satisfaction_penalty: 8,
       },
@@ -344,6 +368,73 @@ export function buildNegotiatedGoal(goal) {
         ...enrichedGoal,
         target,
         label: `Sponsor-indkomst vokset med ${target}%`,
+        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
+        negotiated: true,
+      });
+    }
+    // S-02d · 7 nye mål-typer
+    case "monument_podium": {
+      // Allerede minimum (1) — kan ikke lempes på target. Kun penalty halveres.
+      return addGoalMetadata({
+        ...enrichedGoal,
+        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
+        negotiated: true,
+      });
+    }
+    case "jersey_wins": {
+      const target = Math.max(1, enrichedGoal.target - 1);
+      return addGoalMetadata({
+        ...enrichedGoal,
+        target,
+        label: buildGoalLabel({ ...enrichedGoal, target }),
+        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
+        negotiated: true,
+      });
+    }
+    case "signature_rider": {
+      // target=1 er minimum — kan ikke lempes mere
+      return addGoalMetadata({
+        ...enrichedGoal,
+        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
+        negotiated: true,
+      });
+    }
+    case "profitable_transfers": {
+      const target = Math.max(50_000, enrichedGoal.target - 50_000);
+      return addGoalMetadata({
+        ...enrichedGoal,
+        target,
+        label: buildGoalLabel({ ...enrichedGoal, target }),
+        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
+        negotiated: true,
+      });
+    }
+    case "u25_development_delta": {
+      const target = Math.max(1, enrichedGoal.target - 1);
+      return addGoalMetadata({
+        ...enrichedGoal,
+        target,
+        label: buildGoalLabel({ ...enrichedGoal, target }),
+        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
+        negotiated: true,
+      });
+    }
+    case "relative_rank": {
+      const target = Math.max(1, enrichedGoal.target - 1);
+      return addGoalMetadata({
+        ...enrichedGoal,
+        target,
+        label: buildGoalLabel({ ...enrichedGoal, target }),
+        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
+        negotiated: true,
+      });
+    }
+    case "domestic_dominance": {
+      const target = Math.max(1, enrichedGoal.target - 1);
+      return addGoalMetadata({
+        ...enrichedGoal,
+        target,
+        label: buildGoalLabel({ ...enrichedGoal, target }),
         satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
         negotiated: true,
       });
@@ -599,7 +690,20 @@ export function inferNegotiationIndexesFromGoals({
 
 export function evaluateGoal(goal, standing, team, context = {}) {
   const enrichedGoal = addGoalMetadata(goal);
-  const { isFinalSeason = true, activeLoanCount = 0, planStartSponsorIncome, currentSponsorIncome } = context;
+  const {
+    isFinalSeason = true,
+    activeLoanCount = 0,
+    planStartSponsorIncome,
+    currentSponsorIncome,
+    cumulativeStats,
+    cumulativeMonumentPodiums,
+    cumulativeJerseyWins,
+    seasonJerseyWins,
+    cumulativeTransferBalance,
+    planStartU25StatSum,
+    planStartU25Count,
+    divisionManagerCount,
+  } = context;
 
   switch (enrichedGoal.type) {
     case "top_n_finish":
@@ -625,9 +729,67 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       if (!isFinalSeason) return null;
       if (!planStartSponsorIncome || planStartSponsorIncome === 0) return null;
       return ((currentSponsorIncome - planStartSponsorIncome) / planStartSponsorIncome * 100) >= enrichedGoal.target;
+    // S-02d · 7 nye mål-typer
+    case "monument_podium":
+      // Cumulative over plan-perioden (Q-A) — minst N podie-placeringer i Monuments
+      if (cumulativeMonumentPodiums == null) return null;
+      return cumulativeMonumentPodiums >= enrichedGoal.target;
+    case "jersey_wins":
+      // Cumulative for 3yr/5yr (Q-B), per-sæson for 1yr
+      if (enrichedGoal.cumulative) {
+        if (cumulativeJerseyWins == null) return null;
+        return cumulativeJerseyWins >= enrichedGoal.target;
+      }
+      if (seasonJerseyWins == null) return null;
+      return seasonJerseyWins >= enrichedGoal.target;
+    case "signature_rider":
+      // Q-C: tjekkes ved evaluerings-tidspunkt (rider-snapshot)
+      return (team?.riders || []).filter((rider) => Number(rider?.popularity || 0) >= 75).length
+        >= enrichedGoal.target;
+    case "profitable_transfers":
+      // Q-D: cumulative netto-balance over plan-perioden
+      if (!isFinalSeason) return null;
+      if (cumulativeTransferBalance == null) return null;
+      return cumulativeTransferBalance >= enrichedGoal.target;
+    case "u25_development_delta": {
+      // E1: delta = (current_avg − plan_start_avg) / seasons_completed
+      if (!isFinalSeason) return null;
+      if (!planStartU25Count || planStartU25Count === 0 || planStartU25StatSum == null) return null;
+      const currentSum = computeU25StatSum(team?.riders);
+      const currentCount = (team?.riders || []).filter((r) => r.is_u25).length;
+      if (currentCount === 0) return null;
+      const seasonsCompleted = Math.max(context.seasonsCompleted || 1, 1);
+      const planStartAvg = planStartU25StatSum / planStartU25Count;
+      const currentAvg = currentSum / currentCount;
+      const deltaPerSeason = (currentAvg - planStartAvg) / seasonsCompleted;
+      return deltaPerSeason >= enrichedGoal.target;
+    }
+    case "relative_rank": {
+      // Q-F: slut foran mindst N andre managers i din division
+      if (standing?.rank_in_division == null || divisionManagerCount == null) return null;
+      const beatCount = divisionManagerCount - standing.rank_in_division;
+      return beatCount >= enrichedGoal.target;
+    }
+    case "domestic_dominance":
+      // Q-G: skeleton — defer faktisk evaluering til S-02g
+      return null;
     default:
       return false;
   }
+}
+
+// S-02d · sum af 12 stat-felter på U25-ryttere. Bruges af u25_development_delta
+// + ved snapshot i processSeasonEnd så plan-start-baseline kan beregnes.
+export function computeU25StatSum(riders = []) {
+  const STAT_KEYS = [
+    "stat_fl", "stat_bj", "stat_kb", "stat_bk", "stat_tt", "stat_bro",
+    "stat_sp", "stat_acc", "stat_udh", "stat_mod", "stat_res", "stat_ftr",
+  ];
+  return (riders || [])
+    .filter((rider) => rider?.is_u25)
+    .reduce((sum, rider) => {
+      return sum + STAT_KEYS.reduce((s, key) => s + Number(rider?.[key] || 0), 0);
+    }, 0);
 }
 
 export function countGoalsMet(goals, standing, team, context = {}) {
@@ -738,6 +900,115 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
       status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
       break;
     }
+    // S-02d · 7 nye mål-typer
+    case "monument_podium": {
+      const cum = context.cumulativeMonumentPodiums;
+      if (cum == null) {
+        missingData = true;
+        score = 0.6;
+        status = "awaiting_data";
+        break;
+      }
+      actual = cum;
+      target = isFinalSeason
+        ? enrichedGoal.target
+        : Math.max(1, Math.ceil(enrichedGoal.target * (seasonsCompleted / planDuration)));
+      score = scoreHigherBetter(actual, target);
+      status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
+      break;
+    }
+    case "jersey_wins": {
+      if (enrichedGoal.cumulative) {
+        const cum = context.cumulativeJerseyWins;
+        if (cum == null) {
+          missingData = true;
+          score = 0.6;
+          status = "awaiting_data";
+          break;
+        }
+        actual = cum;
+        target = isFinalSeason
+          ? enrichedGoal.target
+          : Math.max(1, Math.ceil(enrichedGoal.target * (seasonsCompleted / planDuration)));
+      } else {
+        const seasonCount = context.seasonJerseyWins;
+        if (seasonCount == null) {
+          missingData = true;
+          score = 0.6;
+          status = "awaiting_data";
+          break;
+        }
+        actual = seasonCount;
+        target = enrichedGoal.target;
+      }
+      score = scoreHigherBetter(actual, target);
+      status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
+      break;
+    }
+    case "signature_rider":
+      actual = riders.filter((rider) => Number(rider?.popularity || 0) >= 75).length;
+      score = scoreHigherBetter(actual, target);
+      status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
+      break;
+    case "profitable_transfers": {
+      const balance = context.cumulativeTransferBalance;
+      if (balance == null) {
+        missingData = true;
+        score = 0.6;
+        status = "awaiting_data";
+        break;
+      }
+      actual = balance;
+      target = isFinalSeason
+        ? enrichedGoal.target
+        : Math.max(50_000, Math.ceil(enrichedGoal.target * (seasonsCompleted / planDuration)));
+      score = scoreHigherBetter(actual, target);
+      status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
+      break;
+    }
+    case "u25_development_delta": {
+      const planStartSum = context.planStartU25StatSum;
+      const planStartCount = context.planStartU25Count;
+      if (!planStartCount || planStartCount === 0 || planStartSum == null) {
+        missingData = true;
+        score = 0.6;
+        status = "awaiting_data";
+        break;
+      }
+      const currentU25 = riders.filter((r) => r.is_u25);
+      if (currentU25.length === 0) {
+        actual = -planStartSum / planStartCount;
+        score = 0;
+        status = "behind";
+        break;
+      }
+      const currentSum = computeU25StatSum(riders);
+      const currentAvg = currentSum / currentU25.length;
+      const planStartAvg = planStartSum / planStartCount;
+      actual = roundNumber((currentAvg - planStartAvg) / seasonsCompleted);
+      score = scoreHigherBetter(actual, target);
+      status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
+      break;
+    }
+    case "relative_rank": {
+      const divisionManagerCount = context.divisionManagerCount;
+      if (standing?.rank_in_division == null || divisionManagerCount == null) {
+        missingData = true;
+        score = 0.6;
+        status = "awaiting_data";
+        break;
+      }
+      actual = divisionManagerCount - standing.rank_in_division;
+      score = scoreHigherBetter(actual, target);
+      status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
+      break;
+    }
+    case "domestic_dominance":
+      // Q-G skeleton — kompleks "hjemland"-detektion deferred til S-02g
+      missingData = true;
+      score = 0.6;
+      status = "awaiting_data";
+      break;
     default:
       actual = null;
       score = 0.5;
@@ -811,9 +1082,35 @@ export function buildGoalLabel(goal = {}) {
         : `Sponsor-indkomst vokset med ${goal.target}%`;
     case "no_outstanding_debt":
       return "Ingen udestaende gaeld ved saesonslut";
+    // S-02d · 7 nye mål-typer
+    case "monument_podium":
+      return goal.cumulative
+        ? `Mindst ${goal.target} podie-placering${goal.target !== 1 ? "er" : ""} i Monuments-loeb over planperioden`
+        : `Top-3 i mindst ${goal.target} Monuments-loeb`;
+    case "jersey_wins":
+      return goal.cumulative
+        ? `Mindst ${goal.target} etapeloeb-troejer over planperioden`
+        : `Mindst ${goal.target} etapeloeb-troeje${goal.target !== 1 ? "r" : ""} (point/bjerg/young)`;
+    case "signature_rider":
+      return `${goal.target === 1 ? "Mindst 1 stjerne-rytter" : `Mindst ${goal.target} stjerne-ryttere`} (popularity >= 75)`;
+    case "profitable_transfers":
+      return `Netto transfer-balance >= ${formatTransferThreshold(goal.target)} over planperioden`;
+    case "u25_development_delta":
+      return `Gennemsnitlig U25-stat-gevinst >= ${goal.target} stat-points/saeson`;
+    case "relative_rank":
+      return `Slut foran mindst ${goal.target} andre managers i divisionen`;
+    case "domestic_dominance":
+      return `Mindst ${goal.target} sejre i hjemlandsloeb pr. saeson`;
     default:
       return goal.label || "";
   }
+}
+
+function formatTransferThreshold(target) {
+  const value = Number(target || 0);
+  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(value) >= 1_000) return `${Math.round(value / 1_000)}K`;
+  return `${value}`;
 }
 
 function normalizeDivisionForGoals(division) {

@@ -576,6 +576,18 @@ const FAQ = [
       q: "Hvorfor reagerer forskellige bestyrelsesmedlemmer på forskellige mål?",
       a: "Hver arketype 'ejer' visse kategorier: Sponsoraten ejer økonomi-mål, Resultatjægeren ejer resultater, Traditionalisten/Nationalist-purist ejer identitet, Pragmatikeren rangering. Når du klikker 'X reagerer'-knappen på et mål, vises et citat fra netop det medlem hvis kategori målet falder under. Citaterne er håndlavede pr. arketype og pr. situation (forslag, opfyldt, missed) — så Sponsoraten lyder bekymret ved et bløftende gælds-mål, og Resultatjægeren lyder begejstret ved en sejr.",
     },
+    {
+      q: "Hvad betyder det nye 'stjerne-rytter'-mål i star_signing-planer?",
+      a: "Star_signing-fokus får nu et 5. mål: 'Mindst 1 stjerne-rytter (popularity ≥75)'. Bestyrelsen forventer at en plan om at jagte resultater også manifester sig i form af mindst én rytter med høj profil — uanset om du køber en eksisterende stjerne på markedet eller udvikler en intern. Tjekkes ved evaluerings-tidspunkt, så det er din nuværende trup der tæller. Du kan forhandle målet, men det er allerede minimum (target=1).",
+    },
+    {
+      q: "Hvad er 'U25-stat-gevinst' i ungdomsplaner?",
+      a: "Youth_development-fokus får nu et 5. mål: 'Gennemsnitlig U25-stat-gevinst ≥3 stat-points/sæson'. Det måler om dine U25-ryttere faktisk udvikler sig — ikke kun at de er på holdet. Plan-start-baseline snapshottes automatisk ved sæson-slut, og bestyrelsen sammenligner mod nuværende gennemsnit. Et udviklings-program der bare flytter unge ryttere ind men ikke udvikler dem opfylder ikke målet. Bestyrelsen forventer at se faktisk vækst.",
+    },
+    {
+      q: "Hvad er 'slut foran X andre managers' i balanced-planer?",
+      a: "Balanced-fokus får nu et 5. mål: 'Slut foran mindst 3 andre managers i divisionen'. Det handler ikke om absolut rangering, men om relativ — du skal slå over halvdelen i din division. Skalerer automatisk når flere managers joiner: hvis der er 5 humane managers i din division og du er rank 1, har du slået 4. Hvis du er rank 4, har du kun slået 1 → målet er ikke opfyldt. Beregnes fra `season_standings.rank_in_division` mod antal humane managers i din division.",
+    },
 ];
 
 export default function HelpPage() {

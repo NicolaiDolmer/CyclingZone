@@ -34,7 +34,13 @@ export {
   evaluateGoal,
   countGoalsMet,
   evaluateGoalProgress,
+  computeU25StatSum,
 } from "./boardGoals.js";
+
+// S-02d · Cumulative + plan-start-baseline kontekst-loader for de 7 nye mål-typer
+export {
+  loadGoalContextForBoard,
+} from "./boardGoalContext.js";
 
 export {
   isValidBoardFocus,

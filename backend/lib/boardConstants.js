@@ -54,6 +54,14 @@ export const GOAL_METADATA_BY_TYPE = {
   min_riders: { category: "identity", importance: "preferred", weight: 0.9 },
   no_outstanding_debt: { category: "economy", importance: "required", weight: 1.0 },
   sponsor_growth: { category: "economy", importance: "required", weight: 1.0 },
+  // S-02d · 7 nye mål-typer (Q-batch 1B Q13 + master-doc S-02d)
+  monument_podium: { category: "results", importance: "required", weight: 1.2 },
+  jersey_wins: { category: "results", importance: "required", weight: 1.0 },
+  signature_rider: { category: "identity", importance: "required", weight: 1.0 },
+  profitable_transfers: { category: "economy", importance: "required", weight: 1.0 },
+  u25_development_delta: { category: "identity", importance: "required", weight: 1.0 },
+  relative_rank: { category: "ranking", importance: "required", weight: 1.0 },
+  domestic_dominance: { category: "results", importance: "required", weight: 1.0 },
 };
 
 export const PERSONALITY_BY_FOCUS = {
