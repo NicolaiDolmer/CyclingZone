@@ -532,6 +532,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
   const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
+  const processReplacementTriggerFn = deps.processReplacementTrigger ?? processReplacementTrigger;
+  const evaluateAndApplyConsequencesFn = deps.evaluateAndApplyConsequences ?? evaluateAndApplyConsequences;
   const notificationDeps = { supabase: supabaseClient, now: deps.now };
   const teamStanding = standings.find(s => s.team_id === team.id);
   const boards = team.board_profiles || [];
@@ -701,7 +703,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       // S-02c · Replacement-trigger: 2× plan-udløb i træk under 30% sat → ny formand.
       // Counter lever på teams.consecutive_low_satisfaction_expirations (per-team).
       try {
-        replacementInfo = await processReplacementTrigger({
+        replacementInfo = await processReplacementTriggerFn({
           supabase: supabaseClient,
           teamId: team.id,
           satisfaction: newSatisfaction,
@@ -766,7 +768,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
     // (signal til "double_plan_lapse"-trigger på lag 5).
     try {
       const triggerDoublePlanLapse = Boolean(planIsComplete && replacementInfo?.replaced);
-      await evaluateAndApplyConsequences({
+      await evaluateAndApplyConsequencesFn({
         supabase: supabaseClient,
         team,
         board,

@@ -1172,6 +1172,188 @@ test("processSeasonEnd does NOT trigger sequential negotiation after season 5 (o
   assert.equal(sequentialCalled, false, "startSequentialNegotiation must only fire after season 1");
 });
 
+// ─── S-02c / S-02d / S-02e regression: processTeamSeasonEnd new paths ─────────
+
+function makePlanCompleteSupabase({ seasonNumber = 5, planType = "1yr", seasonsCompleted = 0, riders = [] } = {}) {
+  return createSeasonEndSupabase({
+    season: { id: "season-5", number: seasonNumber, status: "active" },
+    team: {
+      id: "team-1",
+      name: "Regression Team",
+      is_ai: false,
+      user_id: "user-1",
+      balance: 500,
+      sponsor_income: 200,
+      season_1_identity_basis: { primary_specialization: "gc" },
+      team_dna_key: "skandinavisk_udvikling",
+      riders,
+    },
+    board: {
+      id: "board-1",
+      team_id: "team-1",
+      plan_type: planType,
+      focus: "balanced",
+      satisfaction: 50,
+      budget_modifier: 1.0,
+      current_goals: [],
+      seasons_completed: seasonsCompleted,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      plan_start_sponsor_income: 200,
+    },
+    standings: [
+      {
+        season_id: "season-5",
+        team_id: "team-1",
+        division: 3,
+        total_points: 50,
+        rank_in_division: 2,
+        stage_wins: 0,
+        gc_wins: 0,
+        team: { id: "team-1", is_ai: false },
+      },
+    ],
+  });
+}
+
+function baseDeps(overrides = {}) {
+  return {
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    processReplacementTrigger: async () => ({ counter: 0, replaced: false }),
+    evaluateAndApplyConsequences: async () => {},
+    ...overrides,
+  };
+}
+
+test("processSeasonEnd calls processReplacementTrigger when 1yr plan completes", async () => {
+  const supabase = makePlanCompleteSupabase();
+  let callArgs = null;
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      processReplacementTrigger: async (args) => { callArgs = args; return { counter: 0, replaced: false }; },
+    }),
+  });
+
+  assert.ok(callArgs, "processReplacementTrigger must be called when 1yr plan completes");
+  assert.equal(callArgs.teamId, "team-1");
+  assert.deepEqual(callArgs.identityBasis, { primary_specialization: "gc" });
+  assert.equal(callArgs.dnaKey, "skandinavisk_udvikling");
+  assert.equal(typeof callArgs.satisfaction, "number");
+});
+
+test("processSeasonEnd sends mid-review notification and skips processReplacementTrigger for 3yr plan at midpoint", async () => {
+  // 3yr plan, seasons_completed=0 → seasonsCompleted=1 = Math.floor(3/2) → isMidReview=true, planIsComplete=false
+  const supabase = makePlanCompleteSupabase({ planType: "3yr", seasonsCompleted: 0 });
+  let replacementCalled = false;
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      processReplacementTrigger: async () => { replacementCalled = true; return { counter: 0, replaced: false }; },
+    }),
+  });
+
+  assert.equal(replacementCalled, false, "processReplacementTrigger must not be called mid-cycle");
+  const midReviewNotif = supabase.state.inserts.notifications.find(
+    (n) => n.title === "Halvvejsevaluering"
+  );
+  assert.ok(midReviewNotif, "mid-review notification must be sent for 3yr plan at season 1");
+});
+
+test("processSeasonEnd sends replacement notification when processReplacementTrigger returns replaced=true", async () => {
+  const supabase = makePlanCompleteSupabase();
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      processReplacementTrigger: async () => ({
+        counter: 0,
+        replaced: true,
+        new_chairman_label: "Resultatjægeren 🏆",
+      }),
+    }),
+  });
+
+  const replacementNotif = supabase.state.inserts.notifications.find(
+    (n) => n.title === "Bestyrelsen har valgt en ny formand"
+  );
+  assert.ok(replacementNotif, "replacement notification must be sent when replaced=true");
+  assert.ok(replacementNotif.message.includes("Resultatjægeren"), "notification must include new chairman label");
+});
+
+test("processSeasonEnd passes consecutiveLowExpirations=2 when replacement triggers (triggerDoublePlanLapse)", async () => {
+  const supabase = makePlanCompleteSupabase();
+  let consequencesArgs = null;
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      processReplacementTrigger: async () => ({ counter: 0, replaced: true, new_chairman_label: "Test 🏆" }),
+      evaluateAndApplyConsequences: async (args) => { consequencesArgs = args; },
+    }),
+  });
+
+  assert.ok(consequencesArgs, "evaluateAndApplyConsequences must be called");
+  assert.equal(consequencesArgs.consecutiveLowExpirations, 2,
+    "triggerDoublePlanLapse=true when replaced → consecutiveLowExpirations must be 2");
+});
+
+test("processSeasonEnd passes consecutiveLowExpirations=0 when no replacement occurs", async () => {
+  const supabase = makePlanCompleteSupabase();
+  let consequencesArgs = null;
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      processReplacementTrigger: async () => ({ counter: 0, replaced: false }),
+      evaluateAndApplyConsequences: async (args) => { consequencesArgs = args; },
+    }),
+  });
+
+  assert.ok(consequencesArgs, "evaluateAndApplyConsequences must be called");
+  assert.equal(consequencesArgs.consecutiveLowExpirations, 0,
+    "triggerDoublePlanLapse=false when not replaced → consecutiveLowExpirations must be 0");
+});
+
+test("processSeasonEnd continues and completes season when processReplacementTrigger throws", async () => {
+  const supabase = makePlanCompleteSupabase();
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      processReplacementTrigger: async () => { throw new Error("board members unavailable"); },
+    }),
+  });
+
+  assert.equal(supabase.state.season.status, "completed",
+    "season must complete even when processReplacementTrigger throws");
+  assert.equal(supabase.state.inserts.board_plan_snapshots.length, 1,
+    "board snapshot must still be written when replacement trigger throws");
+});
+
+test("processSeasonEnd writes u25_stat_sum and u25_count to board_plan_snapshots", async () => {
+  const u25Rider = {
+    id: "rider-u25",
+    team_id: "team-1",
+    is_u25: true,
+    salary: 0,
+    stat_fl: 4,
+    stat_bj: 3,
+    stat_kb: 0, stat_bk: 0, stat_tt: 0, stat_bro: 0,
+    stat_sp: 0, stat_acc: 0, stat_udh: 0, stat_mod: 0, stat_res: 0, stat_ftr: 0,
+    uci_points: 0, nationality_code: "DEN", popularity: 30,
+  };
+  const supabase = makePlanCompleteSupabase({ riders: [u25Rider] });
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps(),
+  });
+
+  const snapshot = supabase.state.inserts.board_plan_snapshots[0];
+  assert.ok(snapshot, "board_plan_snapshots must have one row");
+  assert.equal(snapshot.u25_stat_sum, 7, "u25_stat_sum must equal sum of all stat_* for U25 riders (4+3=7)");
+  assert.equal(snapshot.u25_count, 1, "u25_count must equal number of U25 riders");
+});
+
 test("repairSeasonEndFinanceAndBoard runs finance and board only without season or division writes", async () => {
   const supabase = createSeasonEndSupabase({
     season: {

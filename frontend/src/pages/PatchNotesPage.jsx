@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.41",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "S-02i · Bug-fix-pass + regression-tests",
+        items: [
+          "Bugfix ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)): multi-plan-fornyelse starter nu altid med den længste udløbne plan uanset hvilken plan manageren klikker 'Forhandl ny plan →' på — Q-batch 1C Q19 specificerer eksplicit '5yr eller 3yr forhandles først'. Tidligere kunne klik på 1yr-panelet give forkert rækkefølge (1yr → 5yr i stedet for 5yr → 1yr)",
+          "processReplacementTrigger og evaluateAndApplyConsequences gjort deps-injectable i processTeamSeasonEnd ([economyEngine.js](backend/lib/economyEngine.js)) — følger det etablerede mønster for processLoanInterest/createEmergencyLoan og muliggør præcis unit-test af S-02c/S-02e paths",
+          "7 nye regression-tests for processSeasonEnd ([economyEngine.test.js](backend/lib/economyEngine.test.js)): processReplacementTrigger kaldt ved plan-completion, skippet ved mid-cycle, replacement-notifikation sendt ved replaced=true, triggerDoublePlanLapse (consecutiveLowExpirations=2 vs 0), fejl-isolation, u25_stat_sum + u25_count i snapshot. 293/293 tests grønne",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.40",
     date: "2026-05-05",
     label: "Beta",

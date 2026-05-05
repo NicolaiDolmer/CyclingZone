@@ -1563,8 +1563,22 @@ export default function BoardPage() {
   }
 
   function openWizard(planType, isSetup = false) {
-    const existingFocus = plans[planType]?.board?.focus || "balanced";
-    setWizardPlanType(planType);
+    // S-02h Q19: multi-plan renewal always starts with the longest expired plan,
+    // regardless of which plan the user clicked.
+    let activePlanType = planType;
+    if (!isSetup) {
+      const allExpired = PLAN_SEQUENCE.filter(pt => plans[pt]?.is_expired);
+      if (allExpired.length > 1) {
+        activePlanType = allExpired[0];
+        setRenewalQueue(allExpired);
+        setRenewalQueueIdx(0);
+      } else {
+        setRenewalQueue([]);
+        setRenewalQueueIdx(0);
+      }
+    }
+    const existingFocus = plans[activePlanType]?.board?.focus || "balanced";
+    setWizardPlanType(activePlanType);
     setWizardIsSetup(isSetup);
     setWizardFocus(existingFocus);
     setWizardStep(1);
@@ -1572,18 +1586,6 @@ export default function BoardPage() {
     setPreviewError("");
     setNegotiated({});
     setPendingNegotiate(false);
-    // S-02h: Multi-plan renewal queue — build when opening a renewal for a plan that has siblings
-    if (!isSetup) {
-      const allExpired = PLAN_SEQUENCE.filter(pt => plans[pt]?.is_expired);
-      if (allExpired.length > 1) {
-        const queue = [planType, ...allExpired.filter(pt => pt !== planType)];
-        setRenewalQueue(queue);
-        setRenewalQueueIdx(0);
-      } else {
-        setRenewalQueue([]);
-        setRenewalQueueIdx(0);
-      }
-    }
   }
 
   function closeWizard() {
