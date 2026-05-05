@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Ingen aktiv kode-slice.** Seneste arbejde: v2.45 Indbakke ønskeliste-auktionslink bugfix. S-02 er komplet (10/10 slices). Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md).
+**Ingen aktiv kode-slice.** Seneste arbejde: v2.46 race condition bugfix på auktion-oprettelse. S-02 er komplet (10/10 slices). Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md).
 
 ## Soak-gate
 **Ikke aktiv** — nuværende arbejde er docs/status-afstemning uden ny domænelogik.
@@ -10,6 +10,7 @@
 **Alle launch-gates ✅, 6/6 P0 leveret.** S-02 KOMPLET (S-02a–S-02j, 10/10 slices). ~19 managers live. Næste: vælg ny product-slice fra [PRODUCT_BACKLOG.md](docs/PRODUCT_BACKLOG.md).
 
 ## Senest leveret
+- 2026-05-06: **Auktion race condition fix v2.46** — POST /api/auctions havde TOCTOU-race i SELECT-then-INSERT-tjekket; dobbeltklik 5. maj gav 3 auktioner på Gianni Moscon + 2 hver på Silvan Dillier og Morné van Niekerk. Ny migration ([2026-05-06-auctions-unique-active-rider.sql](database/2026-05-06-auctions-unique-active-rider.sql)) tilføjer `uniq_auctions_one_active_per_rider` partial index — DB blokkerer nu enhver dublet og backend mapper 23505 → 409. 4 duplikat-rows ryddet i prod (ingen pengebevægelse). 295/295 tests + frontend build grønne.
 - 2026-05-05: **Indbakke ønskeliste-auktionslink v2.45** — `watchlist_rider_auction` adskiller ønskeliste-auktioner fra ønskeliste-transferlistinger, så Indbakke klik går til `/auctions`. Legacy-fallback routes gamle `watchlist_rider_listed` auktion-notifikationer korrekt. Backend 294/294 + frontend build grønne.
 - 2026-05-05: **Docs status-drift sweep** — `NOW.md`, `PRODUCT_BACKLOG.md`, `LAUNCH_ROADMAP.md`, S-03 og S-06 slice-docs afstemt mod runtime. S-03 verificeret via `backend/lib/squadEnforcement.js` + cron + migration + 7/7 målrettede tests. S-06 smoke-tool verificeret via backend endpoint + AdminPage callsite; health-check cron er ikke leveret og står som P1.
 - 2026-05-05: **Menu IA v2.44** — venstremenuen samlet i fire mentale rum, `/races` flyttet til Sæson & Resultater, `/deadline-day` label ændret til Deadline Day, HelpPage/PatchNotes/FEATURE_STATUS afstemt.

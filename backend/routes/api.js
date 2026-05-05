@@ -741,7 +741,16 @@ router.post("/auctions", requireAuth, async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    // Unique-violation på uniq_auctions_one_active_per_rider betyder en parallel
+    // request (typisk dobbeltklik) lige nåede at oprette auktion på samme rytter
+    // mellem vores SELECT-tjek ovenfor og denne INSERT. Returner samme 409 som
+    // SELECT-tjekket, så frontend ser én konsistent fejl.
+    if (error.code === "23505") {
+      return res.status(409).json({ error: "Rider already has an active auction" });
+    }
+    return res.status(500).json({ error: error.message });
+  }
 
   if (initialBidderId) {
     await supabase.from("auction_bids").insert({

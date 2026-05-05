@@ -59,3 +59,17 @@ test("auction schema includes is_flash column for Deadline Day flash auctions", 
     assert.match(block, /is_flash BOOLEAN NOT NULL DEFAULT FALSE/, `is_flash missing in ${filePath}`);
   }
 });
+
+// Why: 5. maj 2026 fik tre managers dobbelt-/triple-auktioner på samme rytter
+// pga. dobbeltklik der ramte POST /api/auctions før forrige request fik svar.
+// SELECT-then-INSERT-tjekket i api.js har et TOCTOU-vindue. Den eneste pålidelige
+// guard er en unique partial index på DB-niveau — alle 3 source-of-truth-filer
+// skal have den, ellers kan friske setups deploye uden beskyttelse.
+test("auction schema enforces single active auction per rider via unique partial index", () => {
+  // Match: CREATE UNIQUE INDEX ... uniq_auctions_one_active_per_rider ... auctions(rider_id) ... WHERE status IN ('active', 'extended')
+  const indexPattern = /CREATE UNIQUE INDEX[^;'"]*uniq_auctions_one_active_per_rider[^;'"]*auctions\s*\(\s*rider_id\s*\)[^;'"]*WHERE\s+status\s+IN\s*\(\s*'active'\s*,\s*'extended'\s*\)/i;
+  for (const filePath of SCHEMA_FILES) {
+    const content = readFileSync(filePath, "utf8");
+    assert.match(content, indexPattern, `uniq_auctions_one_active_per_rider missing in ${filePath}`);
+  }
+});

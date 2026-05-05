@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.46",
+    date: "2026-05-06",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Umuligt at starte to auktioner på samme rytter (race condition)",
+        items: [
+          "Bugfix ([api.js](backend/routes/api.js)): POST /api/auctions tjekkede 'no active auction for rider' med en SELECT, hvor en parallel request (typisk dobbeltklik på 'Start auktion') kunne smutte forbi inden vores INSERT — TOCTOU race. 5. maj fik én manager 3 auktioner på Gianni Moscon og 2 hver på Silvan Dillier + Morné van Niekerk inden for sub-sekund vinduer.",
+          "Ny migration ([2026-05-06-auctions-unique-active-rider.sql](database/2026-05-06-auctions-unique-active-rider.sql)) tilføjer unique partial index `uniq_auctions_one_active_per_rider ON auctions(rider_id) WHERE status IN ('active','extended')` — DB-niveau guard der gør det fysisk umuligt at have to aktive auktioner på samme rytter. Anden parallel INSERT fejler med 23505 og backend mapper det til samme 409 'Rider already has an active auction' som det eksisterende SELECT-tjek.",
+          "Cleanup: de 4 duplikat-rows i prod sat til `cancelled` (Gianni Moscon's auktion med rigtigt bud bevaret, ældste auktion bevaret for Silvan Dillier + Morné van Niekerk). Ingen pengebevægelse — seed-buddene var fra sælger på egen rytter og udløste ingen reservation.",
+          "Regression-test ([auctionSchemaContract.test.js](backend/lib/auctionSchemaContract.test.js)) verificerer at det unique partial index findes i schema.sql, supabase_setup.sql og setup.py — så friske setups ikke kan deploye uden DB-guarden.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.45",
     date: "2026-05-05",
     label: "Beta",

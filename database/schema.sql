@@ -422,6 +422,8 @@ CREATE INDEX idx_riders_u25 ON riders(is_u25);
 CREATE INDEX idx_riders_pcm_id ON riders(pcm_id);
 CREATE INDEX idx_auctions_status ON auctions(status);
 CREATE INDEX idx_auctions_end ON auctions(calculated_end);
+-- DB-level guard: max én aktiv auktion per rytter. Blokkerer TOCTOU-race i POST /api/auctions.
+CREATE UNIQUE INDEX uniq_auctions_one_active_per_rider ON auctions(rider_id) WHERE status IN ('active', 'extended');
 CREATE INDEX idx_auction_bids_auction ON auction_bids(auction_id);
 CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
 CREATE INDEX idx_finance_team ON finance_transactions(team_id);

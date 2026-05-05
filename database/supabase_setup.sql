@@ -310,6 +310,8 @@ CREATE INDEX IF NOT EXISTS idx_riders_u25       ON public.riders(is_u25);
 CREATE INDEX IF NOT EXISTS idx_riders_pcm_id    ON public.riders(pcm_id);
 CREATE INDEX IF NOT EXISTS idx_auctions_status  ON public.auctions(status);
 CREATE INDEX IF NOT EXISTS idx_auctions_end     ON public.auctions(calculated_end);
+-- DB-level guard: max én aktiv auktion per rytter. Blokkerer TOCTOU-race i POST /api/auctions.
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_auctions_one_active_per_rider ON public.auctions(rider_id) WHERE status IN ('active', 'extended');
 CREATE INDEX IF NOT EXISTS idx_auction_bids     ON public.auction_bids(auction_id);
 CREATE INDEX IF NOT EXISTS idx_notifications    ON public.notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_finance_team     ON public.finance_transactions(team_id);
