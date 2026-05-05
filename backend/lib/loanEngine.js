@@ -119,13 +119,13 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
   const config = configs.find(c => c.loan_type === loanType);
   if (!config) throw new Error("Ugyldig låntype");
 
-  const currentDebt = await getTotalDebt(teamId, client);
-  if (currentDebt + principalAmount > config.debt_ceiling) {
-    throw new Error(`Gældsloft på ${config.debt_ceiling} CZ$ nået for denne division`);
-  }
-
   const fee = Math.round(principalAmount * config.origination_fee_pct);
   const totalOwed = principalAmount + fee;
+
+  const currentDebt = await getTotalDebt(teamId, client);
+  if (currentDebt + totalOwed > config.debt_ceiling) {
+    throw new Error(`Gældsloft på ${config.debt_ceiling} CZ$ nået for denne division`);
+  }
 
   const { data: loan, error } = await client.from("loans").insert({
     team_id: teamId,

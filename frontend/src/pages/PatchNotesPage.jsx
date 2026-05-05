@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.48",
+    date: "2026-05-06",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Gældsloft kunne overskrides med oprettelses-gebyrets størrelse",
+        items: [
+          "Bugfix ([loanEngine.js](backend/lib/loanEngine.js)): `createLoan` tjekkede om `currentDebt + principal` oversteg divisionens gældsloft, men det beløb der blev lagt på `loans.amount_remaining` var `principal + origination_fee`. Det betød at hvert lån kunne presse total-gælden lidt over loftet — præcis fee-beløbet (5% for kort/langt, 10% for nødlån). En manager i D3 fandt mønstret og pressede sin gæld til 600.054 CZ$ (54 over D3-loftet på 600.000) ved at stable mange små lån oven på et stort.",
+          "Fix: fee beregnes nu FØR ceiling-tjekket og tjekket bruger `principal + fee` i stedet for kun principal. To regression-tests i [loanEngine.test.js](backend/lib/loanEngine.test.js) verificerer dels at et lån der ville overskride loftet med præcis fee-beløbet afvises, dels at et lån der præcis fylder headroom op (inkl. fee) stadig accepteres.",
+          "Eksisterende prod-data (en manager 54 CZ$ over loft) ikke rørt — næste sæsons rente vil under alle omstændigheder ændre tallet, og loft-tjekket gælder kun nye lån, ikke renteperiodisering.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.47",
     date: "2026-05-06",
     label: "Beta",

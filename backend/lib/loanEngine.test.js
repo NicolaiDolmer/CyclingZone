@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 process.env.SUPABASE_URL ??= "https://example.supabase.co";
 process.env.SUPABASE_SERVICE_KEY ??= "test-service-key";
 
-const { createEmergencyLoan, processLoanAgreementSeasonFees, shouldChargeLoanAgreementSeasonFee } = await import(
+const { createEmergencyLoan, createLoan, processLoanAgreementSeasonFees, shouldChargeLoanAgreementSeasonFee } = await import(
   "./loanEngine.js"
 );
 
@@ -326,4 +326,107 @@ test("createEmergencyLoan tags the finance transaction with the season id", asyn
       season_id: "season-6",
     },
   ]);
+});
+
+function createCeilingSupabase({
+  teamId = "team-1",
+  division = 3,
+  balance = 0,
+  existingDebt = 0,
+  config = {
+    loan_type: "long",
+    origination_fee_pct: 0.05,
+    interest_rate_pct: 0.12,
+    seasons: 5,
+    debt_ceiling: 600000,
+  },
+} = {}) {
+  const state = { balance, loans: [], financeRows: [], notifications: [] };
+  return {
+    state,
+    client: {
+      from(table) {
+        if (table === "teams") {
+          return {
+            select(columns) {
+              return {
+                eq() {
+                  return {
+                    single() {
+                      if (columns === "division") return Promise.resolve({ data: { division }, error: null });
+                      if (columns === "user_id") return Promise.resolve({ data: { user_id: "user-1" }, error: null });
+                      return Promise.resolve({ data: { balance: state.balance }, error: null });
+                    },
+                  };
+                },
+              };
+            },
+            update(payload) {
+              return { eq() { state.balance = payload.balance; return Promise.resolve({ error: null }); } };
+            },
+          };
+        }
+        if (table === "loan_config") {
+          return {
+            select() { return { eq() { return Promise.resolve({ data: [config], error: null }); } };
+            },
+          };
+        }
+        if (table === "loans") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    eq() {
+                      return Promise.resolve({
+                        data: existingDebt > 0 ? [{ amount_remaining: existingDebt }] : [],
+                        error: null,
+                      });
+                    },
+                  };
+                },
+              };
+            },
+            insert(row) {
+              state.loans.push(row);
+              return { select() { return { single() { return Promise.resolve({ data: { id: "loan-x", ...row }, error: null }); } }; } };
+            },
+          };
+        }
+        if (table === "finance_transactions") {
+          return { insert(row) { state.financeRows.push(row); return Promise.resolve({ error: null }); } };
+        }
+        if (table === "notifications") {
+          const query = { eq() { return query; }, gte() { return query; }, order() { return query; }, is() { return query; }, limit() { return Promise.resolve({ data: [], error: null }); } };
+          return {
+            select() { return query; },
+            insert(row) { state.notifications.push(row); return Promise.resolve({ data: row, error: null }); },
+          };
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      },
+    },
+  };
+}
+
+test("createLoan rejects when principal+fee would exceed debt ceiling (off-by-fee regression)", async () => {
+  // D3 ceiling 600K, existing debt 598479, requesting 1500 principal + 75 fee = 1575
+  // Pre-fix bug: 598479 + 1500 = 599979 ≤ 600000 → passed, but actual debt becomes 600054 (54 over)
+  const supabase = createCeilingSupabase({ existingDebt: 598479 });
+
+  await assert.rejects(
+    () => createLoan("team-1", "long", 1500, supabase.client),
+    /Gældsloft/
+  );
+  assert.equal(supabase.state.loans.length, 0, "no loan should be inserted when ceiling+fee would be breached");
+});
+
+test("createLoan accepts when principal+fee fits exactly within remaining headroom", async () => {
+  // Headroom = 1575. Loan of 1500 (+75 fee) = 1575 exactly hits ceiling, must be allowed.
+  const supabase = createCeilingSupabase({ existingDebt: 600000 - 1575 });
+
+  const loan = await createLoan("team-1", "long", 1500, supabase.client);
+  assert.equal(loan.amount_remaining, 1575);
+  assert.equal(supabase.state.loans.length, 1);
 });
