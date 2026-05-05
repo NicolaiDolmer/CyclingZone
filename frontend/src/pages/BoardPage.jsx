@@ -947,7 +947,8 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
   );
 }
 
-function PlanCard({ planType, planData, riders, standing, activeLoanCount, team, requestError, requestingType, onRequest, onRenew, onNegotiate }) {
+// PlanCard er erstattet af DashboardPlanPanel (S-02h) — bevares som reference indtil S-02i
+function _PlanCard({ planType, planData, riders, standing, activeLoanCount, team, requestError, requestingType, onRequest, onRenew, onNegotiate }) {
   const [expanded, setExpanded] = useState(true);
 
   if (!planData) {
@@ -1180,7 +1181,7 @@ function PlanCard({ planType, planData, riders, standing, activeLoanCount, team,
 // ── S-02h · DashboardPlanPanel — kompakt panel i 3-kolonne grid ───────────────
 
 function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCount, team,
-  requestError, requestingType, onRequest, onRenew, onNegotiate, onGoalClick }) {
+  requestError, requestingType, onRequest, onNegotiate, onGoalClick }) {
   const [detailOpen, setDetailOpen] = useState(false);
 
   if (!planData) {
@@ -1643,8 +1644,7 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true);
   // S-02a: sæson 1 = baseline observation. Window-state låser wizard.
   const [isBaselinePhase, setIsBaselinePhase] = useState(false);
-  // S-02b: identity_basis snapshot + auto-accept countdown + board-feed
-  const [identityBasis, setIdentityBasis] = useState(null);
+  // S-02b: auto-accept countdown + board-feed
   const [autoAccept, setAutoAccept] = useState(null);
   const [boardFeed, setBoardFeed] = useState([]);
   // S-02c: 5 board-medlemmer (3 identity + 2 wildcards)
@@ -1729,7 +1729,6 @@ export default function BoardPage() {
     setRiders(data.riders || []);
     setStanding(data.standing || null);
     setIdentityProfile(data.identity_profile || null);
-    setIdentityBasis(data.identity_basis || null);
     setAutoAccept(data.auto_accept || null);
     setActiveLoanCount(data.active_loans_count || 0);
     setTeamMembers(Array.isArray(data.team_members) ? data.team_members : []);
@@ -2118,7 +2117,6 @@ export default function BoardPage() {
                   : ""
               }
               onRequest={(requestType) => sendBoardRequest(planType, requestType)}
-              onRenew={() => renewContract(planType)}
               onNegotiate={() => openWizard(planType, false)}
               onGoalClick={(goal, evaluation, achieved, cumProgress) =>
                 setGoalMiniDialog({ goal, evaluation, achieved, cumulativeProgress: cumProgress })}
