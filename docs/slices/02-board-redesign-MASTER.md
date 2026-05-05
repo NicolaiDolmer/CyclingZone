@@ -2,7 +2,7 @@
 
 **Skrevet:** 2026-05-05 efter Vision-lock-session 1A.
 **Erstatter:** `02-board-redesign-sequential.md` (er nu S-02a — én sub-slice af denne master).
-**Status:** Vision låst. Mekanik- og UX-spørgsmål åbne (Q-batch 1B + 1C). Ingen kode endnu.
+**Status:** Vision + mekanik låst (Q-batch 1A + 1B). UX-spørgsmål åbne (Q-batch 1C). Ingen kode endnu.
 
 ---
 
@@ -28,6 +28,21 @@ Manageren skal føle: *"Jeg bygger et hold over tid, og bestyrelsen reagerer rea
 | 8 | AI-hold | **Manager-only.** Ingen AI-board for AI-/bank-hold. |
 
 **Skalerings-præmis:** Manager-tal vokser løbende (~19 nu, mere efter open beta). Al kode skal håndtere variabelt antal managers — ingen hardcoded loops eller arrays baseret på fast antal.
+
+---
+
+## Vision-lock — låste beslutninger (Q-batch 1B, 2026-05-05)
+
+| # | Spørgsmål | Beslutning |
+|---|-----------|------------|
+| 9 | Board-arketyper — antal + navne | **9 arketyper** (op fra 5-7 i 1A): Sponsoraten · Traditionalisten · Talentspejderen · Resultatjægeren · Pragmatikeren · Ungdoms-idealisten · Nationalist-purist · Klassiker-purist · GC-elsker. ~270-450 reaktions-templates total (30-50 pr. arketype). Personlighed-akser pr. arketype besluttes i S-02c-implementering. |
+| 10 | Klub-DNA — antal + tildeling | **5 DNA:** Skandinavisk udviklingshold · Italiensk klassiker-traditionalist · Sprint-fokuseret kommerciel · Fransk klatrer-arv · Britisk all-rounder. Manager vælger fra 3 forslag i sæson 2. Forslag afledt af `national_core` + `primary_specialization` fra sæson-1 `identity_profile` (allerede beregnet i `boardIdentity.deriveTeamIdentityProfile`). |
+| 11 | Konsekvens-tier-tærskler | **Appendix C låst som-er:** <40 salary cap · <30 signing-restriktion · <15 tvunget listing · <10 sponsor-pull-out (varer resten af sæson, nulstilles ved næste sæson-start). Matcher eksisterende `satisfactionToModifier`-grænser (40/20). |
+| 12 | Manager-konkurrence-scope | **Division-internt.** `relative_rank`-mål bruger eksisterende `season_standings.rank_in_division`. 0 ny ranking-beregning. Skalerer fra ~19 → 100+ managers uden cross-division-støj. |
+| 13 | Mål-tærskler — 3 nye typer uden naturlig DB-anker | **Anbefalet pakke:** `monument_podium` = top-3 i ≥1 Monuments-løb pr. plan-cyklus (race_class='Monuments') · `signature_rider` = 1 rytter med popularity ≥75 · `u25_development_delta` = gnsn. ≥3 stat-points/sæson på U25-ryttere. |
+| 14 | Bonus-budget-tilbud (lag 6 positiv) | **Sjældent + mærkbart:** maks 1 tilbud/sæson når satisfaction >75 OG ≥75% af aktive plan-mål er på 'ahead'-status. +200K budget mod 1 ekstra-mål (vind 1 monument ELLER sign 1 stjerne pop ≥75). Manager kan afvise. ~25% af 800K start-balance — mærkbart uden gamebreaking. |
+| 15 | Mid-season review-trigger | **Auto-banner ved halvvejs.** Cron tjekker satisfaction + mål-status ved race_day=midpoint. Hvis satisfaction <50 ELLER ≥50% af mål er 'behind' → besked i Indbakke 'Skal handles' med 1-2 mulige actions (anmod om budget-lån ELLER acceptér tightened deadline). Konsistent for alle managers, ingen forglemmelse. |
+| 16 | Tradeoff-låsninger (efter request-godkendelse) | **1 sæson stramning.** Hvis fx `lower_results_pressure` godkendes → næste sæsons identitetskrav er strammere (+1 til U25/national_riders ELLER -5% sponsor_growth-target). Tradeoff sletter sig efter den ene sæson — ren transaktion. Manager kan gentage hver 2. sæson. Matcher eksisterende `tradeoff_preview`-tekster i `boardConstants.BOARD_REQUEST_DEFINITIONS`. |
 
 ---
 
@@ -58,48 +73,51 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 ### S-02c · Navngivne board-members
 **Dep:** S-02a.
 **Leverer:**
-- DB: `board_members` (5-7 arketyper-rows seedet) + `team_board_members` (mapping team→members med tildelings-tidspunkt)
-- Hver arketype har personality-akser + reaktions-template-pool
+- DB: `board_members` (9 arketyper-rows seedet — se Q-batch 1B Q9) + `team_board_members` (mapping team→members med tildelings-tidspunkt)
+- Hver arketype har personality-akser (besluttes inline i denne slice ud fra arketype-navn) + reaktions-template-pool (30-50 templates × 9 = ~270-450 templates total)
 - `boardEvaluation` udvidet til at sample reaktion fra dominerende medlem ved feedback-build
 - UI: avatar-grid (lille) på BoardPage; mini-dialogs ved enkelt-mål-forhandling
 - Udskiftnings-trigger: 2× plan-udløb i træk under 30% tilfredshed → ny formand
 
 ### S-02d · Udvidede mål-typer
 **Dep:** S-02a.
-**Leverer (7 nye mål-typer):**
-- `monument_podium` — top-3 i monument-løb (race_class)
-- `jersey_wins` — point/bjerg/young-trøje-vinder pr. etapeløb
-- `signature_rider` — én rytter med popularity ≥ N på holdet
-- `profitable_transfers` — netto transfer-balance ≥ N over plan-perioden
-- `u25_development_delta` — gennemsnitlig stat-gain hos U25-ryttere ≥ N pr. sæson
-- `relative_rank` — slut foran mindst N andre managere (manager-konkurrence)
-- `domestic_dominance` — vind ≥ N hjemlandsløb pr. sæson
+**Leverer (7 nye mål-typer — tærskler låst i Q-batch 1B Q13):**
+- `monument_podium` — top-3 i ≥1 Monuments-løb pr. plan-cyklus (race_class='Monuments', result_type='gc')
+- `jersey_wins` — point/bjerg/young-trøje-vinder pr. etapeløb (result_type IN ('points','mountain','young'))
+- `signature_rider` — 1 rytter med popularity ≥ 75 på holdet
+- `profitable_transfers` — netto transfer-balance ≥ N over plan-perioden (N besluttes i implementering)
+- `u25_development_delta` — gennemsnitlig stat-gain ≥ 3 stat-points/sæson hos U25-ryttere
+- `relative_rank` — slut foran mindst N andre managere i din division (Q-batch 1B Q12: division-internt, bruger `season_standings.rank_in_division`)
+- `domestic_dominance` — vind ≥ N hjemlandsløb pr. sæson (N besluttes i implementering)
 - `evaluateGoal` + `evaluateGoalProgress` udvidet for hver type
 - `goal-types` integration-test så hver type evaluerer både true og false-cases
 
 ### S-02e · Konsekvens-tier (6 lag)
-**Dep:** S-02a.
+**Dep:** S-02a. **Tærskler låst i Q-batch 1B Q11 (Appendix C) + Q14.**
 **Leverer:**
 - DB: `board_consequences` (active per team) — type, severity, expires_at
 - `economyEngine` checker aktive consequences ved sæson-start (modifier), ved finance-tx (signing-cap), ved auction-bid (signing-restriktion)
 - Salary cap: hard-block i transfer/auction-flow ved tilfredshed <40
+- Signing-restriktion: ved tilfredshed <30 kræver køb >X pris bestyrelses-godkendelse
 - Tvunget listing: cron ved sæson-slut + tilfredshed <15 → automatisk listing af én navngivet rytter (laveste sportslige værdi)
-- Sponsor-pull-out: narrativ event + permanent -10% sponsor resten af sæsonen
-- Bonus-budget-tilbud (positiv): bestyrelse offer-table, manager kan acceptere → +budget mod ekstra-mål
+- Sponsor-pull-out: narrativ event + -10% sponsor resten af sæsonen, nulstilles ved næste sæson-start
+- Bonus-budget-tilbud (positiv, lag 6): maks 1/sæson når satisfaction >75 OG ≥75% mål 'ahead' → +200K budget mod 1 ekstra-mål (vind 1 monument ELLER sign 1 stjerne pop ≥75). Manager kan afvise.
 
 ### S-02f · Klub-DNA (håndlavede klub-identiteter)
-**Dep:** S-02c.
+**Dep:** S-02c. **Låst i Q-batch 1B Q10.**
 **Leverer:**
-- DB: `team_dna` (5-7 håndlavede arketyper, fx "Skandinavisk udviklingshold", "Italiensk klassiker-traditionalist", "Sprint-fokuseret kommerciel")
-- Tildeles ved klub-oprettelse (manager vælger ELLER auto-tildel baseret på sæson-1-identitet)
+- DB: `team_dna` (5 håndlavede arketyper-rows seedet): Skandinavisk udviklingshold · Italiensk klassiker-traditionalist · Sprint-fokuseret kommerciel · Fransk klatrer-arv · Britisk all-rounder
+- Tildelings-flow: ved sæson-2-onboarding (efter sæson 1's identity er observeret) → manager vælger fra 3 forslag
+- 3 forslag afledes af `national_core` + `primary_specialization` fra `boardIdentity.deriveTeamIdentityProfile`
 - DNA påvirker board-medlems-akser, mål-vægtning, klub-tradition-mål
 - DNA kan udvikles over 5 sæsoner (gradvis drift baseret på faktiske valg) — men ikke skifte arketype frit
 
 ### S-02g · Manager-konkurrence + mid-season aktiv påvirkning + drej-låsninger
-**Dep:** S-02a + S-02d.
+**Dep:** S-02a + S-02d. **Mid-season + tradeoff låst i Q-batch 1B Q15 + Q16.**
 **Leverer:**
-- `relative_rank`-mål bruger live manager-rangering (allerede i `season_standings`)
-- Mid-season review (race_day = midpoint): justerer request-godkendelses-sandsynlighed for resten af sæsonen
+- `relative_rank`-mål bruger live division-intern rangering fra `season_standings.rank_in_division` (Q12)
+- Mid-season auto-banner ved race_day=midpoint: hvis satisfaction <50 ELLER ≥50% mål 'behind' → besked i Indbakke 'Skal handles' med 1-2 actions (anmod om budget-lån ELLER acceptér tightened deadline)
+- Tradeoff-låsninger: efter request-godkendelse (fx `lower_results_pressure`) → 1 sæson stramning af identitetskrav (+1 til U25/national_riders ELLER -5% sponsor_growth-target). DB-felt: `board_profiles.tradeoff_active_until_season_id`
 - Cool-down: én MAJOR focus-skift pr. plan-livscyklus (DB-tracker: `board_profiles.major_pivot_used_at`)
 - Evaluerings-vindue-blokering: requests umulige i sidste 5 race-days
 - Mid-cycle 5yr/3yr-låsning: kræver ≥50% plan-gennemført ELLER >30% satisfaction-delta
@@ -131,19 +149,16 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 
 ---
 
-## Åbne spørgsmål — Q-batch 1B (mekanik) + 1C (UX)
+## Åbne spørgsmål — Q-batch 1C (UX)
 
-**Q-batch 1B — Mekanik (næste session):**
-1. Hvilke 5-7 board-arketyper? Personlighed-akser + signaturreaktioner pr. arketype.
-2. Hvilke 5-7 klub-DNA-arketyper? Hvordan tildeles (manager-valg eller auto)?
-3. Mål-type-detaljer: hvilke konkrete tærskler for monument-podie, profil-signering, U25-delta? (kan også først lukkes i S-02d).
-4. Konsekvens-tier-tærskler: præcis tilfredshed-grænse for hver tier? Hvor længe varer en sponsor-pull-out?
-5. Bonus-budget-tilbud: hvor ofte? Hvor meget? Hvilke mål kan triggere det?
-6. Manager-konkurrence-mål: skal det være division-internt (mod nærmeste rivaler) eller cross-division (mod alle managers)?
-7. Mid-season review: skal banner-besked "Bestyrelsen er ikke imponeret af halvvejs-status" være automatisk, eller manager-trigget?
-8. Tradeoff-låsninger: hvis manager beder om "lower_results_pressure" og det godkendes, skal næste sæsons mål automatisk være strammere? Hvor længe varer tradeoffen?
+**Q-batch 1B ✅ lukket 2026-05-05.** Se beslutnings-tabel "Vision-lock — låste beslutninger (Q-batch 1B)" ovenfor (Q9-16).
 
-**Q-batch 1C — UX (efter 1B):**
+**Detaljer der lukkes inline i implementerings-slices (ikke kræver Q-session):**
+- Personlighed-akser pr. board-arketype (S-02c)
+- Reaktions-templates (~270-450 stk i S-02c)
+- `profitable_transfers` + `domestic_dominance` N-tærskler (S-02d)
+
+**Q-batch 1C — UX (næste session):**
 1. Wizard hybrid B+A konkret layout — wireframe-niveau.
 2. Identity-feeding-formidling: hvordan vises "din franske kerne påvirker 5yr-forslaget" i UI?
 3. Plan-fornyelse-flow når flere planer udløber samme sæson (sæson 6: 5yr+1yr): seriel modal eller delt skærm?
@@ -206,10 +221,10 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 ## Næste session — start her
 
 ```
-"Fortsæt S-02 vision-lock — Q-batch 1B mekanik"
+"Fortsæt S-02 vision-lock — Q-batch 1C UX"
 ```
 
-Claude læser denne master-doc + stiller næste batch spørgsmål. INGEN kode i Q-batch-sessioner.
+Claude læser denne master-doc + stiller UX-spørgsmål (wizard-layout, identity-feeding-formidling, multi-plan-fornyelse-flow, mobile, notifikations-design). INGEN kode i Q-batch-sessioner. Efter 1C → S-02a kan starte.
 
 ---
 
@@ -287,11 +302,20 @@ Aldrig fyring. Severity stiger gradvist med tilfredshed-fald. Lag 6 belønner ov
 
 ---
 
-## Appendix D — Klub-DNA tildelings-flow (beslutning til Q-batch 1B)
+## Appendix D — Klub-DNA tildelings-flow (Q-batch 1B Q10 — låst)
 
-5-7 håndlavede arketyper er besluttet, men konkrete arketyper og tildelings-mekanik er åbne for Q-batch 1B. Foreløbig tankegang:
+**5 håndlavede DNA-arketyper:**
+1. **Skandinavisk udviklingshold** — youth-fokus, lavere sponsor-pres, national_core nordisk
+2. **Italiensk klassiker-traditionalist** — klassiker-prestige, monument-podie-vægtet, national_core ITA
+3. **Sprint-fokuseret kommerciel** — sprint-specialization, høj sponsor-vækst-krav, kommerciel-aggressiv
+4. **Fransk klatrer-arv** — GC/bjerg-fokus, Tour de France-prestige, national_core FRA
+5. **Britisk all-rounder** — balanceret, all-discipline, performance-orienteret
 
-- **Tildelings-tidspunkt:** Ved klub-oprettelse (signup) ELLER ved sæson 2-onboarding (når sæson-1-identitet er klar)
-- **Manager-valg vs auto:** Foreslår *manager vælger fra 3 forslag*, hvor de 3 forslag er afledt af sæson-1-rytter-data
-- **Udvikling over tid:** DNA kan drifte gradvist over 5 sæsoner baseret på faktiske valg, men ikke skifte arketype frit
-- Konkrete arketyper besluttes i Q-batch 1B
+**Tildelings-flow:**
+- **Tidspunkt:** Sæson-2-onboarding (efter sæson 1's `identity_profile` er observeret)
+- **Mekanik:** Manager præsenteres for 3 forslag i wizard. De 3 forslag afledes algoritmisk:
+  - Forslag 1 = bedste match til `national_core.code` (hvis etableret)
+  - Forslag 2 = bedste match til `primary_specialization` (gc/sprint/classics/breakaway/youth)
+  - Forslag 3 = wildcard (en af de øvrige 3 DNA, så manager altid har et "step out of mold"-valg)
+- **Manager vælger frit fra de 3** — ingen påtvunget DNA, men forslagene føles "set" pga. data-grunding
+- **DNA kan drifte gradvist over 5 sæsoner** baseret på faktiske valg (køb/salg/race-strategi) — men ikke skifte arketype frit. Drift-mekanik defineres i S-02f-implementering.

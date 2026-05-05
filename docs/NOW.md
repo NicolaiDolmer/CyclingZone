@@ -1,23 +1,24 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**S-02 Bestyrelse-redesign — Vision-lock 1A ✅ 2026-05-05.** Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md). 9 sub-slices + polish. Estimat: ~10-12 sessioner.
+**S-02 Bestyrelse-redesign — Vision+mekanik låst (1A+1B) ✅ 2026-05-05.** Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md). 9 sub-slices + polish. Estimat: ~10-12 sessioner. UX-Q'er (1C) er sidste blocker før S-02a kan starte.
 
 ## Soak-gate
 **Aktiv: nej** — næste udløses ved S-02i (e2e efter alle 9 sub-slices).
 
 ## Open beta status
-**Alle launch-gates ✅, 5/6 P0 leveret.** Eneste P0 tilbage: S-02 (vision låst, mekanik-Q'er åbne). ~19 managers live, vokser løbende.
+**Alle launch-gates ✅, 5/6 P0 leveret.** Eneste P0 tilbage: S-02 (vision+mekanik låst, UX-Q'er åbne). ~19 managers live, vokser løbende.
 
 ## Senest leveret
-- 2026-05-05: S-02 vision-lock + master-roadmap (FM-inspireret, navngivne board-members, hybrid B+A wizard, 6-tier konsekvens, full reset, manager-only)
-- Ældre (v2.32 ønskeliste m.fl.) → `docs/archive/NOW_HISTORIK_2026-05-05.md`
+- 2026-05-05: S-02 Q-batch 1B mekanik låst — 8 beslutninger (Q9-16) i master-doc
+- 2026-05-05: S-02 vision-lock 1A + master-roadmap
+- Ældre → `docs/archive/NOW_HISTORIK_2026-05-05.md`
 
 ## Næste session — start med
-**"Fortsæt S-02 vision-lock — Q-batch 1B mekanik"**
-1. Læs `docs/slices/02-board-redesign-MASTER.md` (kanonisk)
-2. 5-8 mekanik-Q'er: board-arketyper, klub-DNA, mål-tærskler, konsekvens-grænser, manager-konkurrence-scope
-3. INGEN kode. Ren Q-session. Efter 1B + 1C → S-02a kan starte.
+**"Fortsæt S-02 vision-lock — Q-batch 1C UX"**
+1. Læs `docs/slices/02-board-redesign-MASTER.md` (kanonisk — Q-batch 1A+1B-tabeller låst)
+2. 5 UX-Q'er: wizard-layout (hybrid B+A), identity-feeding-formidling, multi-plan-fornyelse-flow, mobile, notifikations-design
+3. INGEN kode. Ren Q-session. Efter 1C → S-02a kan starte.
 
 ## Kritiske invarianter
 - **Verificér runtime FØR claim** — grep før TODO-claims
