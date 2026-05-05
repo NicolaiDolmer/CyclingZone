@@ -13,23 +13,25 @@ const PLAN_LABELS = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årspl
 const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
 
 // Onboarding v2 Slice 2 — tour-trin på /board (aktiveres fra Dashboard "Vis mig hvordan").
-// Pegger på BoardEmptyState-sektionerne — tour fyrer kun når board_plan_set === false,
-// hvor empty state er rendered (plan-cards eksisterer endnu ikke).
+// Pegger på BoardEmptyState-sektionerne — tour fyrer i onboarding-fasen (ingen planer endnu),
+// hvor empty state er rendered. Efter S-02h redesign: planerne vises som 3-panel dashboard
+// med GoalMiniDialog, board-members-grid og konsekvens-panel, men dette tour-segment
+// forklarer koncepterne inden den første plan forhandles.
 const BOARD_TOUR_STEPS = [
   {
     target: "[data-tour='board-plans']",
     title: "Tre planer kører parallelt",
-    body: "1yr, 3yr og 5yr forhandles separat — hver har sine egne mål og tidshorisont. Korte planer = strenge mål; lange planer = blødere straf.",
+    body: "1yr, 3yr og 5yr vises side om side i dashboardet. Hvert panel viser tilfredshed, sponsor×-modifier og top-mål med status-ikoner. Klik et mål for at se bestyrelsens reaktion.",
   },
   {
     target: "[data-tour='board-satisfaction']",
-    title: "Tilfredshed → sponsor-indkomst",
-    body: "Bestyrelsens tilfredshed bliver til en sponsor-modifier (× 1.0 baseline). Opfyld mål → sponsor stiger. Underpræsterer du, falder indkomsten.",
+    title: "Tilfredshed → sponsor + konsekvenser",
+    body: "Høj tilfredshed (>70%) øger sponsor-indkomsten. Lav tilfredshed (<40%) kan udløse lønloft, signing-restriktioner og i sidste ende tvunget ryttersalg — gradvist og forudsigeligt.",
   },
   {
     target: "[data-tour='board-kpis']",
     title: "Hvad de vurderer på",
-    body: "Resultater (sejre, top-N), økonomi (gæld, sponsor-vækst), identitet (U25/national kerne) og rangering. Nogle mål er obligatoriske, andre giver bonus.",
+    body: "Resultater, økonomi, identitet (U25/national kerne) og rangering — plus nyere typer: monumenter, trøjer, stjernerytter og U25-stat-gevinst. Din klub-DNA og 5 navngivne bestyrelsesmedlemmer farver reaktionerne.",
   },
 ];
 const FOCUS_LABELS = {

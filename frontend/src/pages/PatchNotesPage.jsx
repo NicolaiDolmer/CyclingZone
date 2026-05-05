@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.42",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "S-02j · Polish — onboarding-tour, HelpPage bestyrelse-sektion, doc-drift sweep",
+        items: [
+          "Onboarding-tour på BoardPage ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)) opdateret efter S-02h wizard-redesign: de tre tour-trin beskriver nu det nye 3-panel-dashboard (side-om-side visning, klik-mål-mini-dialog, konsekvens-tier) og nævner navngivne bestyrelsesmedlemmer og klub-DNA som eksisterende features manageren vil møde. Tour peger fortsat på BoardEmptyState-sektionerne i onboarding-fasen (inden første plan forhandles).",
+          "HelpPage ([HelpPage.jsx](frontend/src/pages/HelpPage.jsx)) har nu en dedikeret 'Bestyrelse'-sektion (◧) med 9 indholds-blokke: Hvad gør bestyrelsen, Sæson 1 baseline, Sekventiel onboarding sæson 2 (trin-liste), Det strategiske dashboard, Navngivne bestyrelsesmedlemmer (9 arketyper + formand-logik + replacement-trigger), Klub-DNA (5 arketyper + 3 effekter), Konsekvens-tier (6-rækket tabel lag 1–6), Board requests + drej-låsninger og Mid-season check. Sektionen er placeret som andet punkt i sidebaren (efter 'Kom i gang') da bestyrelsen er et af spillets primære systemer.",
+          "Doc-drift sweep: FEATURE_STATUS.md opdateret med S-02h og S-02i leverancer (wizard-redesign, bug-fix-pass + 293/293 tests). BOARD_TOUR_STEPS-kommentar i BoardPage.jsx rettet til at afspejle S-02h-konteksten korrekt.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.41",
     date: "2026-05-05",
     label: "Beta",

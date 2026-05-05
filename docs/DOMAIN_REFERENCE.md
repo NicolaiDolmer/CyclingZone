@@ -152,14 +152,59 @@ Præmie-/pointskalaen er seedet med moderne herre-UCI-kategorier i `race_points`
 
 ## Bestyrelse (Board)
 
+### Sæson-livscyklus (S-02a+)
+- **Sæson 1 = Baseline**: ingen mål, ingen evaluering, sponsor-modifier 1.0×. Bestyrelsen observerer holds national kerne, U25-andel, specialisering og stjerneprofil → gemmer `season_1_identity_basis` JSONB på `teams`.
+- **Sæson 2 = Sekventiel onboarding**: `startSequentialNegotiation` kører ved sæson-1-slut → sletter baseline-rows, åbner window i `pending_5yr`. Forhandlingerne sker 5yr→3yr→1yr i wizard. Clubs DNA vælges i samme onboarding.
+- **Sæson 3+**: 1yr fornyes hvert år, 3yr hvert 3., 5yr hvert 5. Aldrig alle tre på én gang igen.
+- **Auto-accept** (S-02b): Cron T-3/T-1/T-0 (race_days_completed 2/4/≥5) sender reminder → kritisk notif → auto-sign med identity-baseret default-fokus.
+
 ### Plantyper
 | Type | Varighed | Mål-evalueringsperiode |
 |------|----------|----------------------|
+| `baseline` | 1 sæson | Ingen evaluering (sæson 1) |
 | `1yr` | 1 sæson | Slut af sæson |
 | `3yr` | 3 sæsoner | Kumulativt over 3 sæsoner |
 | `5yr` | 5 sæsoner | Kumulativt over 5 sæsoner |
 
-Mid-plan besked sendes ved 50% af planvarighed (kun multi-year).
+Mid-season check fyrer automatisk ved race_days_completed >= floor(race_days_total/2) (S-02g).
+
+### Navngivne bestyrelsesmedlemmer (S-02c)
+- 9 arketyper, hvert hold får 5: 3 identity-matched + 2 non-conflicting wildcards (friction-akser: debt_aversion, youth_focus, results_pressure).
+- Formand = højeste alignment-score. Taler ved tvivl. Udskiftes ved 2× plan-udløb i træk under 30% sat (`teams.consecutive_low_satisfaction_expirations`).
+- 30 reaktions-templates pr. arketype = 270 total.
+
+### Klub-DNA (S-02f)
+5 arketyper i `team_dna`-tabel: skandinavisk_udvikling · italiensk_klassiker · sprint_kommerciel · fransk_klatrer · britisk_allrounder.
+DNA påvirker: (1) 5yr-tradition-mål som bonus-mål, (2) mål-satisfaction weighting, (3) chairman-alignment ved replacement.
+Vælges i sæson-2-onboarding — final indtil drift-mekanik (S-02f.1, ikke leveret endnu).
+
+### Mål-typer (S-02d — extended)
+Ud over `top_n_finish`, `stage_wins`, `gc_wins`, `min_u25_riders`, `min_national_riders`, `no_outstanding_debt`, `sponsor_growth`, `min_riders`:
+- `monument_podium` — top-3 i Monuments-løb cumulative over plan
+- `jersey_wins` — point/bjerg/young-trøje pr. etapeløb
+- `signature_rider` — min. 1 rytter med popularity ≥75
+- `profitable_transfers` — netto transfer-balance ≥200K cumulative
+- `u25_development_delta` — gnsn. ≥3 stat-points/sæson på U25-ryttere (plan-baseline snapshottets)
+- `relative_rank` — slut foran ≥N humane managers i divisionen
+- `domestic_dominance` — skeleton (awaiting_data, deferred)
+
+### Konsekvens-tier (S-02e)
+| Lag | Trigger-sat | Effekt | Hard-block |
+|-----|-------------|--------|------------|
+| 1 | passiv | sponsor-modifier ±20% | — |
+| 2 | <40% | lønloft (total løn frosset) | ja (signing-flow) |
+| 3 | <30% | signing-restriktion >300K | ja (signing-flow) |
+| 4 | <15% | tvunget salg, auto-list laveste market_value (pop≥70 OR uci≥100 beskyttet) | notif |
+| 5 | <10% ELLER 2× lapse | sponsor-pull-out −10% én sæson | event |
+| 6 ✓ | >75% + 75% mål nået | bonus-tilbud +200K mod ekstra-mål | — |
+
+Asserting via `assertSigningAllowed` på POST /api/auctions/:id/bid + POST /api/transfers/offer + accept_counter.
+
+### Drej-låsninger (S-02g)
+- Window-blokering: alle requests disabled de sidste 5 race-days (`REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT=5`).
+- Mid-cycle-lås: 5yr/3yr kan ikke drejes inden 50% gennemført OG sat-delta ≤30% (`MID_CYCLE_PROGRESS_THRESHOLD_PCT=50`, `MID_CYCLE_SATISFACTION_DELTA_PCT=30`). 1yr er fri.
+- MAJOR pivot: youth_development↔star_signing — kun én pr. plan-livscyklus (`board_profiles.major_pivot_used_at`). Reset ved plan-renewal.
+- Tradeoff-payload: `lower_results_pressure` → +1 identity_riders, `ease_identity_requirements` → +5pp sponsor_growth — straf i næste plans mål (`board_profiles.tradeoff_payload`), cleares ved sign.
 
 ### Focus-typer og mål
 

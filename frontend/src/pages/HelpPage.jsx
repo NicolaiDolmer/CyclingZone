@@ -25,6 +25,63 @@ const SECTIONS = [
     ],
   },
   {
+    key: "board",
+    label: "Bestyrelse",
+    icon: "◧",
+    content: [
+      {
+        title: "Hvad gør bestyrelsen?",
+        text: "Bestyrelsen sætter mål for dit hold og evaluerer dig ved sæsonens slutning. Tilfredsheden bestemmer din sponsor-modifier — dvs. hvor meget du får udbetalt af sponsorindtægten. Du kan ikke blive fyret; konsekvenserne er graduerede og altid forudsigelige.",
+      },
+      {
+        title: "Sæson 1: Baseline — ingen krav",
+        text: "Din første sæson er en ren observations-sæson. Bestyrelsen stiller ingen mål, evaluerer ikke tilfredshed og holder sponsor-modifier på 1.0×. Den læser i stedet dit hold — national kerne, U25-andel, specialisering og stjerneprofil — og gemmer et permanent identity-snapshot der bruges som fundament for sæson 2's 5-årsplan-forslag.",
+      },
+      {
+        title: "Sekventiel onboarding i sæson 2",
+        steps: [
+          "Når sæson 1 slutter, åbner bestyrelsen sekventielt: 5-årsplan → 3-årsplan → 1-årsplan.",
+          "Vælg en fokus-retning (Balanceret, Ungdomsudvikling, Stjernesignering) og forhandl hvert mål én gang i wizard'en.",
+          "I sæson 2 vælger du også dit Klub-DNA — én af 5 arketyper der farver mål-forslag og bestyrelsens sammensætning.",
+          "Glemmer du at forhandle inden race-day 5, tager bestyrelsen over og vælger en plan med default-fokus afledt af dit identity-snapshot.",
+          "Derefter fornyes 1yr-planen hvert år, 3yr-planen hvert 3. år og 5yr-planen hvert 5. år — aldrig alle tre på én gang igen.",
+        ],
+      },
+      {
+        title: "Det strategiske dashboard",
+        text: "Bestyrelse-siden viser de tre planer side om side (desktop) eller stablet (mobil). Hvert panel viser tilfredshed-%, sponsor×-modifier, fremdrift pr. mål og status-ikoner (✓ opfyldt · ! i fare · ~ tæt på · ○ neutral). Klik et mål for at åbne en mini-dialog med fulde detaljer, kumulativt fremdrifts-bar og en reaktion fra det bestyrelsesmedlem der ejer den kategori.",
+      },
+      {
+        title: "Navngivne bestyrelsesmedlemmer",
+        text: "Dit hold har 5 navngivne bestyrelsesmedlemmer fra en pool på 9 arketyper: Sponsoraten 💰, Traditionalisten 🎩, Talentspejderen 🔭, Resultatjægeren 🏆, Pragmatikeren ⚖️, Ungdoms-idealisten 🌱, Nationalist-purist 🏳️, Klassiker-purist 🪨 og GC-elsker ⛰️. Tre matches til dit holds sæson-1-identitet, to er wildcards der bringer kontrast. Medlemmet med højeste alignment er formand (★) og taler ved tvivl. 2× plan-udløb under 30% tilfredshed i træk → formanden udskiftes.",
+      },
+      {
+        title: "Klub-DNA",
+        text: "I sæson 2 vælger du én af 5 klub-DNA-arketyper: 🌲 Skandinavisk udviklingshold, 🪨 Italiensk klassiker-traditionalist, ⚡ Sprint-fokuseret kommerciel, ⛰️ Fransk klatrer-arv, 🎯 Britisk all-rounder. DNA påvirker tre ting: (1) 5-årsplaner får et ekstra tradition-mål (fx monumenter for italiensk_klassiker), (2) mål der matcher DNA-prioriteter får boosted satisfaction-bonus og -penalty, (3) ved fremtidige formandsskifter tipper DNA alignment-scoren mod passende arketyper.",
+      },
+      {
+        title: "Konsekvens-tier (6 lag)",
+        rows: [
+          ["Lag", "Trigger", "Effekt"],
+          ["1", "Tilfredshed-baseret", "Sponsor-modifier ±20% (passiv)"],
+          ["2", "Tilfredshed <40%", "Lønloft — total løn frosses, ingen vækst"],
+          ["3", "Tilfredshed <30%", "Signing-restriktion — køb >300K blokeres"],
+          ["4", "Tilfredshed <15%", "Tvunget salg — én rytter auto-listes (pop≥70 og uci≥100 beskyttede)"],
+          ["5", "<10% eller 2× plan-udløb under 30%", "Sponsor-pull-out: −10% sponsor én sæson"],
+          ["6 (positiv)", ">75% tilfredshed + ≥75% mål nået", "Bonus-tilbud: +200K mod ét ekstra-mål"],
+        ],
+      },
+      {
+        title: "Board requests og drej-låsninger",
+        text: "Én gang pr. sæson kan du sende en board request for at dreje din plan (fx 'mere stjernefokus'). Svaret er godkendt, delvist, afvist eller godkendt med tradeoff. MAJOR pivots (ungdom ↔ stjerne) tillades kun én gang pr. plan-livscyklus. 5yr/3yr-planer kan ikke drejes de første 50% af løbetiden medmindre tilfredsheden er ændret >30 point. I de sidste 5 race-days af en sæson er alle requests blokeret.",
+      },
+      {
+        title: "Mid-season check",
+        text: "Midt i sæsonen (halvdelen af race-days gennemført) tjekker bestyrelsen automatisk din plan-status. Hvis tilfredshed <50% eller mindst halvdelen af målbare mål er 'behind', modtager du en 'Skal handles'-notif i Indbakken. Notiffen er informativ — bestyrelsen handler ikke automatisk, men du bør reagere via board request eller de eksisterende økonomi-flows.",
+      },
+    ],
+  },
+  {
     key: "auctions",
     label: "Auktioner",
     icon: "⚡",

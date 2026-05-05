@@ -120,11 +120,17 @@ PATCH /api/notifications/read-all
 
 ### Board
 ```
-GET  /api/board/status            → { board, outlook, personality, identity_profile, standing, riders, snapshots, request_status, request_options }
+GET  /api/board/status            → { board, outlook, personality, identity_profile, standing, riders, snapshots,
+                                       request_status, request_options, team_members, team_dna, dna_suggestions,
+                                       active_consequences, bonus_offer, board_feed, auto_accept, identity_basis }
 POST /api/board/proposal          { plan_type, focus }
 POST /api/board/sign              { plan_type, focus, negotiations? }
 POST /api/board/request           { request_type }
 POST /api/board/renew
+GET  /api/board/dna-suggestions   → { suggestions: [{ dna_key, ... }] } | { already_chosen } (S-02f)
+POST /api/board/dna-choose        { dna_key }                              (S-02f)
+POST /api/board/bonus-offer/accept  { offer_id }                           (S-02e)
+POST /api/board/bonus-offer/decline { offer_id }                           (S-02e)
 ```
 
 ### Misc
@@ -245,13 +251,21 @@ Season flow notes:
 | Fil | Eksporterede funktioner |
 |-----|------------------------|
 | `auctionEngine.js` | `calculateAuctionEnd`, `checkBidExtension`, `isAuctionExpired`, `formatAuctionEnd` |
-| `boardEngine.js` | Facade — re-eksporterer alt fra boardConstants, boardIdentity, boardGoals, boardRequests, boardEvaluation. Ingen egne funktioner. |
-| `boardConstants.js` | Alle board-konstanter og exported configs (`BOARD_IDENTITY_RIDER_SELECT`, `VALID_BOARD_*`, `BOARD_REQUEST_DEFINITIONS`, m.fl.) |
-| `boardIdentity.js` | `deriveTeamIdentityProfile`, `deriveBoardPersonality`, `getDivisionSquadLimits`, `normalizeBoardRider`, `hasStrongNationalCore`, `hasStrongStarProfile`, `getNationalCoreIdentityBonus`, `getStarProfilePrestigeBonus`, `getStarProfileGoalPressure`, `getStarProfileSponsorPressure` |
-| `boardGoals.js` | `getPlanDuration`, `parseBoardGoals`, `generateBoardGoals`, `buildNegotiatedGoal`, `buildBoardProposal`, `createInitialBoardProfile`, `finalizeBoardGoals`, `inferNegotiationIndexesFromGoals`, `evaluateGoal`, `countGoalsMet`, `evaluateGoalProgress`, `addGoalMetadata`, `normalizeComparableGoal`, `buildGoalLabel` |
-| `boardRequests.js` | `isValidBoardFocus`, `isValidBoardPlanType`, `isValidBoardRequestType`, `getBoardRequestDefinition`, `buildBoardRequestOptions`, `resolveBoardRequest` |
+| `boardEngine.js` | Facade — re-eksporterer alt fra boardConstants, boardIdentity, boardGoals, boardRequests, boardEvaluation, boardSequentialNegotiation. Ingen egne funktioner. |
+| `boardConstants.js` | Alle board-konstanter og exported configs (`BOARD_IDENTITY_RIDER_SELECT`, `VALID_BOARD_*`, `BOARD_REQUEST_DEFINITIONS`, `GOAL_METADATA_BY_TYPE`, m.fl.) |
+| `boardIdentity.js` | `deriveTeamIdentityProfile`, `deriveBoardPersonality`, `getDivisionSquadLimits`, `normalizeBoardRider`, `hasStrongNationalCore`, `hasStrongStarProfile`, `computeSeasonOneIdentity`, `deriveDefaultFocusFromIdentity`, `annotateGoalWithIdentityBasis` |
+| `boardGoals.js` | `getPlanDuration`, `parseBoardGoals`, `generateBoardGoals`, `buildNegotiatedGoal`, `buildBoardProposal`, `createInitialBoardProfile`, `finalizeBoardGoals`, `evaluateGoal`, `countGoalsMet`, `evaluateGoalProgress`, `buildGoalLabel`, `generate1YrFromLongerPlans`, `computeU25StatSum`, `applyTradeoffTighteningToGoals`, `applyDnaWeightingToGoals` |
+| `boardGoalContext.js` | `loadGoalContextForBoard` — shared DB-loader for cumulative stats brugt af processSeasonEnd + /api/board/status (S-02d) |
+| `boardRequests.js` | `isValidBoardFocus`, `isValidBoardPlanType`, `isValidBoardRequestType`, `getBoardRequestDefinition`, `buildBoardRequestOptions`, `resolveBoardRequest`, `getBoardRequestAvailability`, `isMajorPivotRequest` |
 | `boardEvaluation.js` | `buildBoardOutlook`, `calculateBoardSatisfaction`, `satisfactionToModifier`, `evaluateBoardSeason`, `calculateBoardPerformance` |
 | `boardUtils.js` | `clamp`, `clampSatisfaction`, `roundNumber`, `safeJsonParse`, `averageNumbers`, `averageTopScores`, `clampToStep`, `scoreHigherBetter`, `scoreLowerBetter`, `scoreDebtGoal` |
+| `boardSequentialNegotiation.js` | `startSequentialNegotiation` — S-02a: sletter baseline-rows, åbner pending_5yr-window, assignerer board-members + DNA-forslag (S-02b+S-02c+S-02f) |
+| `boardArchetypes.js` | 9 arketyper (Sponsoraten, Traditionalisten, Talentspejderen, Resultatjægeren, Pragmatikeren, Ungdoms-idealisten, Nationalist-purist, Klassiker-purist, GC-elsker) — 30 reactions/arketype = 270 templates (S-02c) |
+| `boardMembers.js` | `selectBoardMembers`, `assignBoardMembersForTeam`, `selectDominantMember`, `sampleReactionForFeedback`, `sampleReactionForGoal`, `processReplacementTrigger` (S-02c) |
+| `boardClubDna.js` | 5 DNA-arketyper + `computeDnaSuggestions`, `buildDnaTraditionGoal`, `applyDnaWeightingToGoals` (S-02f) |
+| `boardConsequences.js` | `evaluateAndApplyConsequences`, `assertSigningAllowed`, `selectForcedListingRider`, `getActiveSponsorPulloutFactor`, `expireSeasonScopedConsequences`, `acceptBonusOffer`, `declineBonusOffer`, `getActiveConsequencesForTeam` (S-02e) |
+| `boardAutoAccept.js` | `processBoardAutoAcceptCron` — T-3/T-1/auto-sign ved race_days_completed (S-02b) |
+| `boardMidSeason.js` | `processMidSeasonReviewCron`, `evaluateMidSeasonTrigger` — mid-season banner + tradeoff-låsninger (S-02g) |
 | `notificationService.js` | `notifyUser`, `notifyTeamOwner` |
 | `auctionFinalization.js` | `finalizeAuctionById`, `finalizeExpiredAuctions`, `sellerOwnsAuctionRider` |
 | `adminImportResultsHandler.js` | `createAdminImportResultsHandler` |
@@ -315,19 +329,35 @@ swap_offers        id, offered_rider_id, requested_rider_id, proposing_team_id,
 loan_agreements    id, rider_id, from_team_id, to_team_id, loan_fee, start_season,
                    end_season, buy_option_price,
                    status(pending|active|completed|rejected|cancelled|buyout)
-board_profiles     id, team_id(unique), plan_type(1yr|3yr|5yr),
+board_profiles     id, team_id(unique), plan_type(1yr|3yr|5yr|baseline),
                    focus(youth_development|star_signing|balanced), satisfaction(0-100),
                    budget_modifier, current_goals(JSONB), season_id,
                    negotiation_status(pending|completed), plan_start_season_number,
                    plan_end_season_number, seasons_completed,
                    cumulative_stage_wins, cumulative_gc_wins,
-                   plan_start_balance, plan_start_sponsor_income
+                   plan_start_balance, plan_start_sponsor_income,
+                   is_baseline(bool), tradeoff_active_until_season_id(FK seasons),
+                   tradeoff_payload(JSONB), major_pivot_used_at(timestamptz)
 board_plan_snapshots  id, team_id, board_id, season_id, season_number,
                       season_within_plan, stage_wins, gc_wins, division_rank,
-                      satisfaction_delta, goals_met, goals_total
+                      satisfaction_delta, goals_met, goals_total,
+                      u25_stat_sum(bigint), u25_count(int)         (S-02d)
 board_request_log  id, team_id, board_id, season_id, season_number,
                    request_type, outcome, title, summary, tradeoff_summary,
                    request_payload(JSONB), board_changes(JSONB)
+team_board_members id, team_id, archetype_key, archetype_label, is_chairman,
+                   alignment_score, assigned_at                    (S-02c)
+board_consequences id, team_id, layer(2-6), status(active|accepted|declined|expired|fulfilled),
+                   severity, payload(JSONB), source_board_id(FK), expires_at_season_id(FK),
+                   UNIQUE active index on (team_id, layer)         (S-02e)
+team_dna           key(PK), label, emoji, short_description, long_description,
+                   policy_axes(JSONB), national_affinity(array), specialization_affinity(array),
+                   member_alignment_bonus(JSONB), goal_weighting(JSONB), tradition_goal(JSONB)
+                   — 5 rows seedet inline i migrationen                (S-02f)
+teams              (udvidet): season_1_identity_basis(JSONB), team_dna_key(FK team_dna),
+                   team_dna_chosen_at(timestamptz),
+                   consecutive_low_satisfaction_expirations(int)    (S-02b/S-02c/S-02f)
+transfer_windows   (udvidet): board_negotiation_state(locked|pending_5yr|pending_3yr|pending_1yr|complete)  (S-02a)
 finance_transactions  id, team_id, type(sponsor|prize|salary|transfer_in|transfer_out|
                       interest|bonus|starting_budget), amount, description,
                       season_id, race_id

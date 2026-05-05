@@ -1,23 +1,23 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**S-02i leveret ✅ 2026-05-05 (v2.41).** Bug-fix-pass + regression-tests + soak-gate (kode-audit + browser build-verificering). 1 bug fundet og rettet (renewal queue order). 293/293 tests grønne. Næste: S-02j (polish). Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md).
+**S-02j leveret ✅ 2026-05-05 (v2.42).** Polish: BOARD_TOUR_STEPS opdateret, HelpPage Bestyrelse-sektion tilføjet (9 blokke), PatchNotes v2.42, doc-drift sweep (ARCHITECTURE, DOMAIN_REFERENCE, FEATURE_STATUS). S-02 KOMPLET (10/10 slices leveret). Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md).
 
 ## Soak-gate
-**Aktiv: kvitteret** — S-02i 2026-05-05: code-audit, 1 bug rettet (renewal queue-orden), 7 regression-tests for processSeasonEnd, 293/293 grønne, build ren. Manuel browser-test (login) anbefales inden S-02j.
+**Ikke aktiv** — S-02j er doc/polish, ingen ny kode-slice.
 
 ## Open beta status
-**Alle launch-gates ✅, 5/6 P0 leveret.** S-02 kode-slices 9/9 leveret (S-02a–S-02i). Tilbageværende: S-02j polish (HelpPage, onboarding-tour, doc-drift). ~19 managers live.
+**Alle launch-gates ✅, 5/6 P0 leveret.** S-02 KOMPLET (S-02a–S-02j, 10/10 slices). ~19 managers live. Næste: product backlog for ny slice (se PRODUCT_BACKLOG.md).
 
 ## Senest leveret
-- 2026-05-05: **S-02i Bug-fix-pass + regression-tests** (v2.41). Bug: multi-plan renewal queue startede med clicked plan i stedet for PLAN_SEQUENCE-orden (Q19: "længste plan forhandles først") — rettet i [BoardPage.jsx](frontend/src/pages/BoardPage.jsx). 7 nye regression-tests for processSeasonEnd ([economyEngine.test.js](backend/lib/economyEngine.test.js)) dækker S-02c/d/e paths (replacement trigger, mid-review notif, triggerDoublePlanLapse, u25 snapshot, fejl-isolation). processReplacementTrigger + evaluateAndApplyConsequences gjort deps-injectable. 293/293 grønne.
-- 2026-05-05: **S-02h Wizard-redesign Hybrid B+A** (v2.40). 3-kolonne dashboard, GoalMiniDialog, wizard modal overlay, multi-plan renewal queue. 286/286 grønne.
+- 2026-05-05: **S-02j Polish** (v2.42). BOARD_TOUR_STEPS: 3 trin opdateret med nyt dashboard-/konsekvens-/DNA-sprog. HelpPage: ny 'Bestyrelse'-sektion (◧) som 2. sidebaritem med 9 indholds-blokke (baseline, sekventiel onboarding, dashboard, board-members, DNA, konsekvens-tabel, requests+drej-låsninger, mid-season). PatchNotes v2.42. ARCHITECTURE.md: Board API +4 ruter, Backend Lib +8 board-moduler, DB-tabeller +5 nye (team_board_members, board_consequences, team_dna, teams-ext, transfer_windows-ext). DOMAIN_REFERENCE.md: Board-sektion komplet omskrevet med S-02 features. FEATURE_STATUS.md: S-02h + S-02i entries tilføjet.
+- 2026-05-05: **S-02i Bug-fix-pass + regression-tests** (v2.41). 293/293 grønne.
+- 2026-05-05: **S-02h Wizard-redesign Hybrid B+A** (v2.40). 286/286 grønne.
 - 2026-05-05: S-02g–a leveret (v2.39–v2.33) — manager-konkurrence, mid-season, drej-låsninger, DNA, konsekvens-tier, mål-typer, foundation
 - Ældre → `docs/archive/NOW_HISTORIK_2026-05-05.md`
 
 ## Næste session — start med
-**"Start S-02j — Polish"**
-S-02j: onboarding-tour-trin på BoardPage (opdateret efter wizard-redesign), HelpPage bestyrelses-sektion fuld omskrivning, PatchNotesPage v2.33–v2.41 gennemlæsning, doc-drift sweep (ARCHITECTURE, DOMAIN_REFERENCE, FEATURE_STATUS). Kan splittes i 2 sessioner per master-roadmap. Anbefaling: lav manuel browser-test (login) af board-flows inden S-02j startes.
+Læs PRODUCT_BACKLOG.md og vælg næste slice. S-02 er afsluttet.
 ## Kritiske invarianter
 - **Verificér runtime FØR claim** — grep før TODO-claims
 - **Skaler for variabelt manager-tal** — ingen hardcoded antal (vokser løbende fra ~19)
