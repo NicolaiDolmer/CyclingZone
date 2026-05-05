@@ -1,15 +1,15 @@
 # LAUNCH ROADMAP — Cycling Zone
 
-_Intern master-plan. Opdateret 2026-05-04 efter scope-audit. Launch-dato: åben (ikke låst). Beslutning: kvalitet > deadline._
+_Intern master-plan. Opdateret 2026-05-05 efter runtime status-afstemning. Launch-dato: åben (ikke låst). Beslutning: kvalitet > deadline._
 
 ---
 
 ## Status
 
-- **Open beta:** Live, 17 managers tester transfermarked. Ingen løb køres pt.
+- **Open beta:** Live, ~19 managers tester transfermarked. Ingen løb køres pt.
 - **Launch-event:** Full data-reset + sæson 0 (transfer-fase) → sæson 1 (første løbs-sæson).
-- **P0-slices: 6 (5/6 leveret: S-01, S-03, S-04, S-05, S-06).** Resterende: S-02. **P1-tasks: ~15** (helst før launch). **P2-spor: 7** (post-launch).
-- **Audit-baseret:** Hvert punkt verificeret mod runtime 2026-05-04. Se `.claude/learnings/2026-05-04-noter-fil-stale.md` for hvorfor.
+- **P0-slices: 6/6 leveret** (S-01, S-02, S-03, S-04, S-05, S-06). **P1-tasks: ~15** (helst før launch). **P2-spor: 7** (post-launch).
+- **Audit-baseret:** P0-status verificeret mod runtime 2026-05-04 og genafstemt 2026-05-05 for S-02/S-03/S-06. Se `.claude/learnings/2026-05-04-noter-fil-stale.md` for hvorfor.
 
 ---
 
@@ -20,10 +20,10 @@ _Intern master-plan. Opdateret 2026-05-04 efter scope-audit. Launch-dato: åben 
 **Brief:** `docs/slices/01-salary-generated-column.md`
 **Estimat:** 1 session. **Faktisk:** 1 session. `riders.salary` er nu GENERATED ALWAYS AS i DB-skema; 8699/8699 ryttere verificeret matcher formel.
 
-### S-02 · Bestyrelse-redesign (sekventiel + sæson 0-lås + identity-feedback + auto-accept)
+### S-02 · Bestyrelse-redesign ✅ Leveret v2.33-v2.42 (2026-05-05)
 **Hvorfor P0:** Nuværende bestyrelses-system understøtter ikke den nye sæson-rytme (sæson 1 = baseline, planer aktive fra sæson 2). Sekventiel forhandling 5yr→3yr→1yr-leveres skal låses før launch så managers ikke står med uafklarede planer ved sæsonstart.
-**Brief:** `docs/slices/02-board-redesign-sequential.md`
-**Estimat:** 2-3 sessioner (split mulig: 02a sekventiel-flow + sæson 0-lås, 02b identity-feedback + auto-accept).
+**Brief:** `docs/slices/02-board-redesign-MASTER.md`
+**Estimat:** 2-3 sessioner oprindeligt; faktisk leveret som 10 sub-slices (S-02a–S-02j). Omfatter sæson-1-baseline, sekventiel forhandling, auto-accept, board-members, udvidede mål, konsekvens-tier, klub-DNA, manager-konkurrence, wizard-redesign, regression-pass og polish. Runtime-status afstemt via `docs/FEATURE_STATUS.md` og `docs/NOW.md` 2026-05-05.
 
 ### S-03 · Trupstørrelse-håndhævelse ved vinduesluk ✅ Leveret v2.29 (2026-05-04)
 **Hvorfor P0:** Uden håndhævelse kan managers gå i sæson med ulovlig trup → blokerer race-flow eller giver urimelig fordel. Skal cron-trigges instant ved vinduesluk.
@@ -106,28 +106,20 @@ _Intern master-plan. Opdateret 2026-05-04 efter scope-audit. Launch-dato: åben 
 
 ---
 
-## Foreslået session-rækkefølge
+## Aktuel anbefalet session-rækkefølge
 
 ```
-Session 1 (anbefalet at starte med): S-01 Salary GENERATED column
-  → Lukker den mest tilbagevendende bug; risikofri ved senere arbejde
+Session 1: P1 smoke/audit
+  → Onboarding v2 e2e-smoke + Admin-/FAQ-audit, fordi P0 nu er lukket
 
-Session 2: S-04 Admin cancel + S-06 Webhook smoke-verifikation
-  → Korte P0'er; ryd småt før det store
+Session 2: Cykling-fokuseret product slice
+  → Rytter-arketyper (1 session) eller Race Day Live-ticker (2 sessioner)
 
-Session 3: S-03 Trupstørrelse-håndhævelse (incl. acquired_at-migration)
+Session 3: P1 tooling/ops
+  → Drift-monitor + pre-push hook + postmortem-skabelon (loops A+B+C)
 
-Session 4: Onboarding smoke + Tier 1B polish-cluster (evne-farver, logo-klik, point→værdi)
-
-Session 5-7: S-02 Bestyrelse-redesign (split i 2-3 underslices)
-
-Session 8: S-05 Indbakke unified content-model
-
-Session 9: P1 Tier 1C transfer-historik (3 placeringer)
-
-Session 10: Drift-monitor + pre-push hook + postmortem-skabelon (loops A+B+C)
-
-Session 11: Final smoke + roadmap-post til Discord + launch-readiness-rapport
+Session 4: P1 transfer-historik
+  → Dedikeret side + team/rytter historik-visninger
 
 == LAUNCH ==
 
@@ -135,7 +127,7 @@ Post-launch session 12+: Clarity setup → ugentlig review-loop
 Post-launch sessions 13+: P2-spor i prioriteret rækkefølge (afhænger af manager-feedback)
 ```
 
-**Total:** ~11 pre-launch sessioner. Tempo: 2-3 sessioner/uge → 4-5 ugers arbejde i kvalitets-tempo. Brugeren vælger launch-dato når P0 er grønt.
+**Status 2026-05-05:** P0 er grønt. Næste beslutning er P1 smoke/audit vs. første post-launch product-slice.
 
 ---
 

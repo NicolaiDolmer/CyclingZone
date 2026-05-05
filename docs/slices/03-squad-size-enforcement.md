@@ -1,6 +1,20 @@
 # Slice S-03 · Trupstørrelse-håndhævelse ved vinduesluk
 
-**Status:** P0, ikke startet. Opdateret 2026-05-04.
+**Status:** ✅ Leveret v2.29 (2026-05-04). Runtime-verificeret 2026-05-05.
+
+## Leveret og verificeret
+
+- Commit: `2a6e8c0 Feat: S-03 Trupstørrelse-håndhævelse ved vinduesluk (v2.29)`.
+- Runtime: `backend/cron.js` importerer og kalder `processSquadEnforcementCron`; `backend/lib/squadEnforcement.js` indeholder `enforceTeamSquadCompliance` + window-level atomic claim på `transfer_windows.squad_enforcement_completed_at`.
+- DB/constraints: `database/2026-05-04-squad-enforcement.sql` tilføjer `riders.acquired_at`, `transfer_windows.squad_enforcement_completed_at`, `season_standings.penalty_points`, finance-types `auto_squad_purchase` / `auto_squad_sale` / `squad_violation_fine` og notification-type `squad_enforced`.
+- Write-paths: `acquired_at` opdateres i auktionsfinalisering, direkte transfer, swaps, lån-buyout, admin override og pending-team flush.
+- Test 2026-05-05: `node --test backend/lib/squadEnforcement.test.js` → 7/7 grønne.
+
+**Ikke genkørt i denne docs-sweep:** manuel beta-smoke med et live hold under/over grænsen. Kode- og teststatus er verificeret; live smoke kan stadig være en P1 drift-check hvis ønsket.
+
+---
+
+## Original brief (bevaret som historik)
 
 ## Mål
 Når et transfervindue lukker og en manager er under minimum eller over maksimum trupstørrelse, håndhæver systemet automatisk: auto-køb/salg, 100K bøde og 200 point fradrag pr. afvigende rytter.
@@ -10,7 +24,7 @@ Når et transfervindue lukker og en manager er under minimum eller over maksimum
 - [backend/lib/marketUtils.js:70-110](backend/lib/marketUtils.js:70): `getTeamMarketState()` — tjek af nuværende trupstørrelse
 - [backend/cron.js](backend/cron.js) — 5-min cron der allerede håndterer DD-warnings
 - `transfer_windows.closes_at` — eksisterende kolonne fra Deadline Day S1
-- Schema: ingen `acquired_at` på riders i dag → forudsætnings-migration nødvendig.
+- Schema: `riders.acquired_at` er leveret via `database/2026-05-04-squad-enforcement.sql`.
 
 ## Invariant der beskyttes
 - Squad limits håndhæves efter enhver market action (eksisterende invariant fra GUARDRAILS_CORE).

@@ -5,14 +5,9 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 
 ---
 
-## Pre-launch roadmap
+## Launch-blocker status
 
-**S6 ✅ lukket (v1.78)** — onboarding MVP, navn-wizard, velkomstmodal.
-
-### S7 — Launch readiness (aktiv)
-**Status:** Gate 1+2+3+4+6+7 ✅ · Gate 5 🔒 7/5  
-**Næste session:** Gate #5 (salary/dyn sync) → start ny sæson → open beta live.  
-Se `docs/NOW.md` for detaljeret tjekliste.
+**P0 launch-blockers ✅ lukket (6/6, runtime-verificeret 2026-05-05).** Open beta er live; færdig status bor i `docs/FEATURE_STATUS.md` og `docs/LAUNCH_ROADMAP.md`. Backloggen her er fremadskuende: vælg næste post-launch eller North Star slice.
 
 ---
 
@@ -83,11 +78,11 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 
 ---
 
-### S8.5 — Løbsresultat-import UX (leveret 2026-05-04)
+### S8.5 — Løbsresultat-import UX ✅ (leveret 2026-05-04)
 **Trigger:** Uge 1–2 efter lancering  
 **Leveret (v1.98):** Præmieudbetaling adskilt fra import — admin-kontrolleret, preview før udbetaling, `races.prize_paid_at` tracker status.  
 **Leveret (v2.24):** Import-feedback UI — `Forhåndsvis`-knap kalder `POST /api/admin/import-results-sheets` med `dry_run: true` (0 DB writes), viser per-løb tabel: sæson, sheet-navn vs. DB-navn, antal rækker, matched/unmatched ryttere (✓/⚠ med hover-tooltip), matched/unmatched hold, total points. `Bekræft import` (grøn) committer; `Annullér` rydder. Skipped løb vises som separat advarsel. Singular execution path bevaret (samme endpoint, ny `dryRun` param).  
-**Næste skridt:** Kan starte direkte — kravene er nu klare fra session 2026-05-02.
+**Status:** Lukket; videre polish kræver ny konkret admin-feedback.
 
 ---
 
@@ -129,7 +124,7 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 
 ---
 
-### Onboarding v2 — multi-slice retention-feature (aktiv)
+### Onboarding v2 — multi-slice retention-feature ✅
 
 **Vision:** Dashboard-kort med fremskridt-tracking + opt-in tour pr. side. Alle managers (også eksisterende 17) ser kun trin der ikke allerede er gennemført — eksisterende med fuld profil ser intet. Progressiv disclosure af bestyrelses- og økonomi-kompleksitet; guided squad-builder.
 

@@ -2,7 +2,7 @@
 
 **Skrevet:** 2026-05-05 efter Vision-lock-session 1A.
 **Erstatter:** `02-board-redesign-sequential.md` (er nu S-02a — én sub-slice af denne master).
-**Status:** Vision + mekanik + UX låst (Q-batch 1A + 1B + 1C ✅ 2026-05-05). Ingen kode endnu — næste session = S-02a foundation.
+**Status:** ✅ Leveret som S-02a–S-02j (v2.33-v2.42, 2026-05-05). Runtime-status genafstemt 2026-05-05 via commits `d1f06fb` → `7806f20`, `docs/FEATURE_STATUS.md`, `docs/NOW.md` og patch notes. Fuld manuel S-02 e2e-smoke er ikke genkørt i denne docs-sweep.
 
 ---
 
@@ -229,27 +229,28 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 - HelpPage: 6 nye FAQ-items (mid-season-banner, MAJOR pivot cool-down, window-blokering, mid-cycle-låsning, '🔒 Strammet'-badge, live relative_rank-display)
 - 36 nye backend-tests (286/286 grønne total) i [boardMidSeason.test.js](backend/lib/boardMidSeason.test.js): applyTradeoffTighteningToGoals 2 kinds + null + ikke-matchende type, isMajorPivotRequest 4 kombinationer, tradeoff+pivot-persistens i resolveBoardRequest, F4/F5/F6-guards (12 cases), buildBoardProposal tradeoff-integration, evaluateMidSeasonTrigger 3 cases, processMidSeasonReviewCron 6 cases (trigger ved midpoint, skip pre-midpoint, skip baseline+onboarding, idempotent, AI-skip, pending-board-skip)
 
-### S-02h · Wizard-redesign — Hybrid B+A
+### S-02h · Wizard-redesign — Hybrid B+A ✅ LEVERET 2026-05-05 (v2.40)
 **Dep:** S-02a + S-02c. **UX-detaljer låst i Q-batch 1C Q17 + Q19 + Q20.**
-**Leverer:**
+**Leveret:**
 - BoardPage primær view = strategisk dashboard (3 paneler side om side, **compact info-tæthed pr. Q17**: titel + tilfredshed-delta + 2-3 hovedmål + status-ikon vha. eksisterende `GOAL_STATUS_META`)
 - Klik på enkelt-mål → mini-dialog modal med relevant board-member-portræt + reaktions-template
 - Live preview: modifier-impact af hvert valg
 - Onboarding-wizard (sæson 2): sekventielt med "Næste plan: 3yr"-progress
 - **Multi-plan-fornyelse (Q19):** når 2 planer fornyes samme sæson, sekventiel modal — længste-horisont først (5yr→1yr eller 3yr→1yr), derefter 1yr automatisk efter accept. "Tilbage"-knap på 1yr-trinnet vender tilbage til længste-plan-trinnet
 - **Mobile-responsiv (Q20):** 3 paneler stakker vertikalt; mini-dialog er fullscreen modal med back-knap (genbruger eksisterende Modal-pattern)
+- Original close-out: 286/286 backend-tests grønne (se `docs/FEATURE_STATUS.md`).
 
-### S-02i · Bug-fix-pass + komplet manuel e2e-test + soak-gate
+### S-02i · Bug-fix-pass + regression-tests ✅ LEVERET 2026-05-05 (v2.41)
 **Dep:** S-02a–h.
-**Leverer:**
-- Manuel test: alle plan-livscyklusser × alle board-arketyper × alle mål-typer × alle konsekvens-tiers
-- Regression-tests for `economyEngine.processSeasonEnd` (alle nye paths)
-- Soak-gate: 60-min e2e-smoke FØR launch-gate-flag
-- Bug-pass: alt fundet under test rettes inline
+**Leveret og verificeret:**
+- Bugfix: multi-plan-fornyelse (`renewalQueue`) starter med længste udløbne plan uanset klikpunkt.
+- `processReplacementTrigger` og `evaluateAndApplyConsequences` gjort deps-injectable i `processTeamSeasonEnd`.
+- 7 nye regression-tests for `processSeasonEnd`; original close-out: 293/293 backend-tests grønne (se `docs/FEATURE_STATUS.md`).
+- Ikke genkørt i denne docs-sweep: fuld manuel S-02 e2e/soak.
 
-### S-02j · Polish (kan splittes i 2)
+### S-02j · Polish ✅ LEVERET 2026-05-05 (v2.42)
 **Dep:** S-02i.
-**Leverer:**
+**Leveret:**
 - Onboarding-tour-trin på BoardPage (opdateret efter wizard-redesign)
 - HelpPage opdateret: bestyrelses-sektion fuld omskrevet
 - PatchNotesPage: alle v2.33+ entries
@@ -278,7 +279,7 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 - `boardEvaluation.js` (engine-pipeline bevares, nye signal-justeringer plugges ind)
 - `boardIdentity.js` (`computeSeasonOneIdentity` tilføjes som ny funktion)
 - `boardRequests.js` (4 eksisterende requests bevares + ny tilføjes pr. konsekvens-event)
-- `BoardPage.jsx` skal til redesign (S-02h) men bevarer state-shape
+- `BoardPage.jsx` blev redesignet i S-02h; state-shape blev bevaret
 - DB: `board_profiles`, `board_plan_snapshots`, `board_request_log` bevares; nye tabeller tilføjes ved siden af.
 
 **Nyt:**
@@ -309,32 +310,21 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 
 ---
 
-## Estimat
+## Estimat og faktisk status
 
-**~10-12 sessioner over 4-6 uger** ved 2-3 sessioner/uge.
+**Oprindeligt estimat:** ~10-12 sessioner over 4-6 uger ved 2-3 sessioner/uge.
 - Vision-lock: 1 session ✅ (denne)
-- Q-batch 1B + 1C: 2 sessioner kun spørgsmål
-- Implementering S-02a–i: 9 sessioner kode
-- Polish S-02j: 1-2 sessioner
+- Q-batch 1B + 1C: ✅ lukket
+- Implementering S-02a–i: ✅ leveret
+- Polish S-02j: ✅ leveret
 
-**Hver session = ÉN sub-slice komplet + commit + push.** Per `feedback_session_working_method` og close-out-rytme.
+**Status 2026-05-05:** S-02 er komplet (10/10 slices). Se `docs/FEATURE_STATUS.md` for runtime feature truth og `docs/NOW.md` for næste arbejde.
 
 ---
 
-## Næste session — start her
+## Næste session
 
-```
-"Start S-02a — Foundation: sekventiel forhandling + sæson-1-baseline"
-```
-
-Q-batch 1A + 1B + 1C ✅ alle lukket. Næste session = første implementerings-slice. Claude læser denne master-doc + S-02a-leverer-listen ovenfor og bygger:
-- Migration `database/2026-XX-XX-board-foundation.sql` (board_profiles.activates_in_season_number, is_baseline; transfer_windows.board_negotiation_state)
-- `boardEngine.createBaselineProfile`, `startSequentialNegotiation`, `proposeNextPlan` (5yr→3yr→1yr-orden)
-- `cron.js` sæson-1-slut → `startSequentialNegotiation` for hver human team
-- `BoardPage` + wizard læser `board_negotiation_state`, viser kun aktuelt trin
-- Beta-reset: alle eksisterende planer slettes (godkendt full reset i Q6)
-
-Efter S-02a kan brugeren vælge S-02b (1yr-auto-gen + identity-feeding) eller S-02c (board-members) — begge har kun S-02a som dep og kan parallelt-køres af Codex/Claude.
+S-02 er lukket. Næste session bør vælge en ny slice fra `docs/PRODUCT_BACKLOG.md` i stedet for at starte S-02a igen.
 
 ---
 
