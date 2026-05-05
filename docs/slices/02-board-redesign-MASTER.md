@@ -180,14 +180,34 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 - HelpPage: 2 nye FAQ-items (kan-jeg-fyres, bonus-tilbud)
 - 41 nye backend-tests (232/232 grønne total): 6 lag × (trigger-positive + trigger-negative + idempotent-replay) + assertSigningAllowed-prioritering + sponsor-pullout-stack + bonus-offer accept/decline + selectForcedListingRider star-protection
 
-### S-02f · Klub-DNA (håndlavede klub-identiteter)
+### S-02f · Klub-DNA ✅ LEVERET 2026-05-05 (v2.38)
 **Dep:** S-02c. **Låst i Q-batch 1B Q10.**
-**Leverer:**
-- DB: `team_dna` (5 håndlavede arketyper-rows seedet): Skandinavisk udviklingshold · Italiensk klassiker-traditionalist · Sprint-fokuseret kommerciel · Fransk klatrer-arv · Britisk all-rounder
-- Tildelings-flow: ved sæson-2-onboarding (efter sæson 1's identity er observeret) → manager vælger fra 3 forslag
-- 3 forslag afledes af `national_core` + `primary_specialization` fra `boardIdentity.deriveTeamIdentityProfile`
-- DNA påvirker board-medlems-akser, mål-vægtning, klub-tradition-mål
-- DNA kan udvikles over 5 sæsoner (gradvis drift baseret på faktiske valg) — men ikke skifte arketype frit
+**Q-bekræftelser (2026-05-05 session):**
+- A: 5 DNA seedet i DB-tabel + kode-konstant (samme pattern som S-02c board_archetypes)
+- B: Suggestions deterministiske — 3 slots: national_match → specialization_match → wildcard
+- C: DNA-bias kun ved chairman-replacement (typisk null ved første board-members-tildeling)
+- D: 5yr-tradition-mål injiceres som BONUS-mål, ikke erstatning af focus-pakken
+- E: Tradition-mål dedupliceres mod base-pakken (britisk_allrounder relative_rank ≠ 'balanced'-focus dup)
+- F: DNA er final indtil drift — drift-mekanik leveret som S-02f.1 opfølgnings-slice
+
+**Leveret:**
+- Migration `database/2026-05-05-board-club-dna.sql`: `team_dna` reference-tabel (5 rows seedet inline) + `teams.team_dna_key` (FK) + `teams.team_dna_chosen_at` + idx
+- `boardClubDna.js`: 5 DNA-konstanter (skandinavisk_udvikling, italiensk_klassiker, sprint_kommerciel, fransk_klatrer, britisk_allrounder) med policy_axes + national_affinity + specialization_affinity + member_alignment_bonus + goal_weighting + tradition_goal
+- `computeDnaSuggestions(identityBasis)` — deterministisk 3-slot scoring: national_match (national_core.code i national_affinity) → specialization_match (primary_specialization i specialization_affinity) → wildcard (højest score blandt resterende)
+- Hooks i `boardMembers.selectBoardMembers` + `replaceChairman`: `dnaKey`-parameter tilføjer member_alignment_bonus til alignment-score (italiensk_klassiker: +4 klassiker_purist, -2 gc_elsker)
+- Hooks i `boardGoals.buildBoardProposal`: `dnaKey`-parameter injicerer `buildDnaTraditionGoal` som ekstra (importance: 'bonus') mål i 5yr-forslag (med dedup mod base-pakkens type+nationality_code) + `applyDnaWeightingToGoals` multiplicerer satisfaction_bonus + _penalty på matchende mål-typer
+- `boardSequentialNegotiation.startSequentialNegotiation` passes nu `dnaKey` videre til assignBoardMembersForTeam (typisk null ved første assignment — DNA vælges først efter)
+- `economyEngine.processTeamSeasonEnd` passes `dnaKey: team.team_dna_key` til processReplacementTrigger
+- 2 nye routes: `GET /api/board/dna-suggestions` (returner 3 forslag eller already_chosen + identity_basis_missing-flags) + `POST /api/board/dna-choose` (idempotent — 409 hvis allerede valgt; 409 hvis identity_basis mangler; 403 for AI/bank/frozen)
+- `/api/board/status` udvidet: `team_dna` (decoreret med arketype-data) + `dna_suggestions` (kun når ikke valgt og identity_basis findes)
+- `/api/board/proposal` + `/api/board/sign` tager `dnaKey: team.team_dna_key` så live preview viser tradition-mål + weighting
+- Frontend: `ClubDnaSelectionCard` (3-forslags-grid m. emoji + label + slot-badge + rationale + Vælg-knap) vises før plan-cards når dnaSuggestions findes; `ClubDnaBadge` (kompakt valgt-display m. emoji + long_description) vises efter valg; `chooseDna(dnaKey)` handler m. busy-state + error-display
+- Beta-reset clearer team_dna_key + team_dna_chosen_at (parallelt m. identity_basis + counter)
+- HelpPage: 2 nye FAQ-items (hvad er klub-DNA, hvad gør det konkret)
+- 18 nye backend-tests (250/250 grønne total): konstanter (5 DNA × shape), suggestion-determinisme + national/spec/wildcard slot-tags + fallback uden identityBasis, alignment-bias verificerer at klassiker_purist scorer højere med italiensk DNA, mål-vægtning (1.6× monument_podium for italiensk), tradition-goal markering + dedup + kun-5yr-injection
+
+**Ikke leveret (overført til S-02f.1):**
+- DNA-drift-mekanik (gradvis udvikling over 5 sæsoner baseret på faktiske valg). Master-roadmap line 401: "Drift-mekanik defineres i S-02f-implementering" — fundamentet er leveret, drift kommer som mini-slice efter S-02g/h er afsluttet
 
 ### S-02g · Manager-konkurrence + mid-season aktiv påvirkning + drej-låsninger
 **Dep:** S-02a + S-02d. **Mid-season + tradeoff låst i Q-batch 1B Q15 + Q16.**

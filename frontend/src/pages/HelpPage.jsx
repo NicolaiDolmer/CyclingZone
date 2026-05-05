@@ -596,6 +596,14 @@ const FAQ = [
       q: "Hvad er bonus-tilbuddet jeg lige fik fra bestyrelsen?",
       a: "Når tilfredsheden er over 75% OG mindst 75% af dine plan-mål er nået, kan bestyrelsen tilbyde dig +200K CZ$ til balancen mod ét ekstra-mål. Hvis dit fokus er star_signing, vil målet være 'Sign 1 stjerne (popularity ≥75)'; ellers vil det være 'Top-3 i mindst 1 monument'. Du kan acceptere eller afvise. Acceptér og budgettet krediteres straks via en bonus-finance-tx, og målet tilføjes til din 1-årsplan og evalueres ved sæsonens slutning. Bestyrelsen tilbyder kun ét bonus pr. sæson, så afslår du, kommer chancen først igen næste sæson hvis kriterierne stadig er opfyldt.",
     },
+    {
+      q: "Hvad er klub-DNA og hvornår vælger jeg det?",
+      a: "Klub-DNA er din klubs identitet — én af 5 håndlavede arketyper: 🌲 Skandinavisk udviklingshold, 🪨 Italiensk klassiker-traditionalist, ⚡ Sprint-fokuseret kommerciel, ⛰️ Fransk klatrer-arv eller 🎯 Britisk all-rounder. Du vælger det i sæson 2 — efter sæson 1's identitet er observeret. Bestyrelsen analyserer dit holds national kerne og primære specialisering og foreslår 3 muligheder: ét national-match, ét specialiserings-match og ét wildcard. Du kan vælge frit blandt de tre. DNA'et er final indtil drift-mekanikken kommer (gradvis udvikling over 5 sæsoner — leveres i opfølgningsslice).",
+    },
+    {
+      q: "Hvad gør klub-DNA helt konkret?",
+      a: "DNA påvirker tre ting: (1) Dine 5-årsplaner får et ekstra DNA-tradition-mål — fx 'mindst ét Monument-podie' for italiensk_klassiker eller 'min. 2 etape-trøjer/sæson' for sprint_kommerciel — som bonus-mål oven på de focus-baserede mål. (2) Mål der matcher DNA'ets prioriteter får boostet satisfaction-bonus + penalty (italiensk_klassiker × 1.6 på monument_podium-mål — vinder du, jubler bestyrelsen ekstra; misser du, er straffen større). (3) Når formanden udskiftes (efter 2× plan-udløb under 30% tilfredshed), tipper DNA-bonus alignment-scoren mod arketyper der matcher klubbens identitet — italiensk_klassiker giver +4 til klassiker_purist og -2 til gc_elsker, så formanden reflekterer DNA'et over tid.",
+    },
 ];
 
 export default function HelpPage() {

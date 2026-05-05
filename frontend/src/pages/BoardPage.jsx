@@ -119,6 +119,98 @@ function BoardMembersGrid({ members = [] }) {
   );
 }
 
+// ── S-02f · Klub-DNA-komponenter ───────────────────────────────────────────────
+
+const DNA_SLOT_LABELS = {
+  national_match: "National-match",
+  specialization_match: "Specialiserings-match",
+  wildcard: "Wildcard",
+};
+
+// Vises før første plan-card når manageren er i sæson 2+ (identity_basis findes,
+// is_baseline_phase=false), men endnu ikke har valgt DNA. 3 forslag-kort + Vælg-knap.
+function ClubDnaSelectionCard({ suggestions = [], onChoose, busy = false, error = "" }) {
+  if (!suggestions.length) return null;
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Klub-DNA</p>
+          <h2 className="text-cz-1 font-semibold text-base">Vælg klubbens identitet</h2>
+          <p className="text-cz-2 text-sm mt-1">
+            Bestyrelsen har observeret sæson 1 og foreslår tre retninger. DNA påvirker
+            målvægtning, klub-tradition-mål og hvilke bestyrelses-medlemmer du tildeles
+            ved fremtidige formandsskift.
+          </p>
+        </div>
+      </div>
+      {error && (
+        <div className="mb-3 p-3 rounded-lg border border-cz-danger/30 bg-cz-danger-bg0/8 text-cz-danger text-sm">
+          {error}
+        </div>
+      )}
+      <div className="grid gap-3 sm:grid-cols-3">
+        {suggestions.map((suggestion) => (
+          <div key={suggestion.key}
+            className="bg-cz-subtle border border-cz-border rounded-lg p-4 flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 rounded-full bg-cz-card border border-cz-border
+                flex items-center justify-center text-2xl flex-shrink-0">
+                <span aria-hidden>{suggestion.emoji}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-cz-3 text-[10px] uppercase tracking-wider">
+                  {DNA_SLOT_LABELS[suggestion.suggestion_slot] || "Forslag"}
+                </p>
+                <p className="text-cz-1 font-semibold text-sm leading-tight">{suggestion.label}</p>
+              </div>
+            </div>
+            <p className="text-cz-2 text-xs leading-relaxed">{suggestion.short_description}</p>
+            {suggestion.long_description && (
+              <p className="text-cz-3 text-[11px] italic leading-relaxed line-clamp-3">
+                {suggestion.long_description}
+              </p>
+            )}
+            {suggestion.rationale && (
+              <p className="text-cz-accent-t text-[11px]">{suggestion.rationale}</p>
+            )}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onChoose(suggestion.key)}
+              className="mt-auto py-2 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-lg
+                hover:brightness-110 disabled:opacity-50 transition-all"
+            >
+              {busy ? "Gemmer…" : "Vælg dette DNA"}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Vises efter DNA er valgt — kompakt badge der bekræfter valget + giver kontekst.
+function ClubDnaBadge({ dna }) {
+  if (!dna) return null;
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-xl p-4 mt-4 flex items-start gap-4">
+      <div className="w-12 h-12 rounded-full bg-cz-subtle border border-cz-border
+        flex items-center justify-center text-2xl flex-shrink-0">
+        <span aria-hidden>{dna.emoji}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-cz-3 text-xs uppercase tracking-wider">Klubbens DNA</p>
+        <p className="text-cz-1 font-semibold text-sm">{dna.label}</p>
+        <p className="text-cz-2 text-xs mt-1 leading-relaxed">{dna.short_description}</p>
+        {dna.long_description && (
+          <p className="text-cz-3 text-[11px] mt-1 italic leading-relaxed">{dna.long_description}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Medlem-citat-panel inde i GoalCard expand eller PlanCard outlook-feedback.
 function MemberReactionPanel({ reaction, compact = false }) {
   if (!reaction?.quote) return null;
@@ -1229,6 +1321,11 @@ export default function BoardPage() {
   const [activeConsequences, setActiveConsequences] = useState([]);
   const [bonusOffer, setBonusOffer] = useState(null);
   const [bonusOfferBusy, setBonusOfferBusy] = useState(false);
+  // S-02f: Klub-DNA — valgt arketype + 3 forslag når ikke valgt endnu
+  const [teamDna, setTeamDna] = useState(null);
+  const [dnaSuggestions, setDnaSuggestions] = useState([]);
+  const [dnaChooseBusy, setDnaChooseBusy] = useState(false);
+  const [dnaError, setDnaError] = useState("");
 
   // Wizard state
   const [wizardPlanType, setWizardPlanType] = useState(null);
@@ -1302,6 +1399,9 @@ export default function BoardPage() {
     setTeamMembers(Array.isArray(data.team_members) ? data.team_members : []);
     setActiveConsequences(Array.isArray(data.active_consequences) ? data.active_consequences : []);
     setBonusOffer(data.bonus_offer || null);
+    setTeamDna(data.team_dna || null);
+    setDnaSuggestions(Array.isArray(data.dna_suggestions) ? data.dna_suggestions : []);
+    setDnaError("");
 
     // S-02b: hent seneste board-relaterede notifs til feed-sektion (Q-batch 1C Q21)
     try {
@@ -1476,6 +1576,31 @@ export default function BoardPage() {
   }
 
   // S-02e · Bonus-offer accept/decline (lag 6)
+  async function chooseDna(dnaKey) {
+    if (!dnaKey || dnaChooseBusy) return;
+    setDnaChooseBusy(true);
+    setDnaError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      const res = await fetch(`${API}/api/board/dna-choose`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ dna_key: dnaKey }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setDnaError(data.error || "Kunne ikke vælge DNA");
+        return;
+      }
+      await loadAll();
+    } finally {
+      setDnaChooseBusy(false);
+    }
+  }
+
   async function handleBonusOffer(action) {
     if (!bonusOffer || bonusOfferBusy) return;
     setBonusOfferBusy(true);
@@ -1672,6 +1797,19 @@ export default function BoardPage() {
       {/* S-02c · Bestyrelse-medlems-grid — vises kun efter sæson-1-slut når members er tildelt */}
       {!isBaselinePhase && teamMembers.length > 0 && (
         <BoardMembersGrid members={teamMembers} />
+      )}
+
+      {/* S-02f · Klub-DNA: valgt-badge ELLER 3-forslags-card. Vises kun i sæson 2+
+          (is_baseline_phase=false). Selection-card vises før plan-kort så manageren
+          ledes til DNA-valg før de underskriver første plan. */}
+      {!isBaselinePhase && teamDna && <ClubDnaBadge dna={teamDna} />}
+      {!isBaselinePhase && !teamDna && dnaSuggestions.length > 0 && (
+        <ClubDnaSelectionCard
+          suggestions={dnaSuggestions}
+          onChoose={chooseDna}
+          busy={dnaChooseBusy}
+          error={dnaError}
+        />
       )}
 
       {/* S-02e · Bonus-tilbud (lag 6) — øverst da det kræver action */}

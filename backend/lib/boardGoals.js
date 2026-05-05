@@ -12,6 +12,7 @@ import {
   getStarProfileGoalPressure,
   getStarProfileSponsorPressure,
 } from "./boardIdentity.js";
+import { applyDnaWeightingToGoals, buildDnaTraditionGoal } from "./boardClubDna.js";
 import {
   clamp,
   clampToStep,
@@ -456,17 +457,34 @@ export function buildBoardProposal({
   riders = [],
   standing = null,
   identityBasis = null,
+  dnaKey = null,
 } = {}) {
-  const goals = generateBoardGoals({ focus, planType, team, riders, standing });
+  const baseGoals = generateBoardGoals({ focus, planType, team, riders, standing });
   const personality = deriveBoardPersonality({ focus, planType });
   const identityProfile = deriveTeamIdentityProfile({ team, riders, standing });
+
+  // S-02f · Klub-DNA-tradition-mål injiceres som 6. (bonus) mål for 5yr-forslag.
+  // Bevarer focus-baserede mål uændret — DNA-mål er bonus, ikke erstatning.
+  // Skip duplikat hvis DNA-mål-typen allerede er i base-pakken (fx britisk_allrounder
+  // har relative_rank som tradition, men 'balanced'-focus har det allerede).
+  const traditionGoal = planType === "5yr" && dnaKey ? buildDnaTraditionGoal(dnaKey) : null;
+  const goalsWithTradition = traditionGoal && !baseGoals.some((g) =>
+    g.type === traditionGoal.type
+    && (g.nationality_code || null) === (traditionGoal.nationality_code || null)
+  )
+    ? [...baseGoals, addGoalMetadata(traditionGoal)]
+    : baseGoals;
+
+  // S-02f · DNA-vægtning multiplicerer satisfaction_bonus + _penalty på mål
+  // hvis type matcher DNA's goal_weighting. Subtilt — bevarer mål-targets uændret.
+  const weightedGoals = dnaKey ? applyDnaWeightingToGoals(goalsWithTradition, dnaKey) : goalsWithTradition;
 
   // S-02b · Identity-feeding-badge på 5yr-mål (Q-batch 1C Q18).
   // For 5yr-forslag annoteres mål med rationale fra det frosne sæson-1-snapshot,
   // så frontend kan rendere "Bygger på din franske kerne (5/8 ryttere)"-badge.
   const annotatedGoals = planType === "5yr" && identityBasis
-    ? goals.map((goal) => annotateGoalWithIdentityBasis(goal, identityBasis))
-    : goals;
+    ? weightedGoals.map((goal) => annotateGoalWithIdentityBasis(goal, identityBasis))
+    : weightedGoals;
 
   return {
     focus,
@@ -474,6 +492,7 @@ export function buildBoardProposal({
     personality,
     identity_profile: identityProfile,
     identity_basis: identityBasis,
+    dna_key: dnaKey,
     goals: annotatedGoals,
     negotiation_options: annotatedGoals.map((goal) => buildNegotiatedGoal(goal)),
   };

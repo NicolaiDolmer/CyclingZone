@@ -201,11 +201,15 @@ export async function resetBetaBoardProfiles(supabase) {
   [snapshotsDeleted, requestsDeleted, boardMembersDeleted, consequencesDeleted].forEach(ensureOk);
 
   // S-02c · Nulstil per-team counter + identity_basis så næste sæson 1 starter fra ren tavle.
+  // S-02f · Nulstil også team_dna_key + team_dna_chosen_at — manageren skal vælge DNA
+  // igen ved næste sæson-2-onboarding.
   ensureOk(await supabase
     .from("teams")
     .update({
       consecutive_low_satisfaction_expirations: 0,
       season_1_identity_basis: null,
+      team_dna_key: null,
+      team_dna_chosen_at: null,
     })
     .in("id", teamIds));
 

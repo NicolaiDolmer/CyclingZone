@@ -80,3 +80,16 @@ export {
   sampleReactionForGoal,
   processReplacementTrigger,
 } from "./boardMembers.js";
+
+// S-02f · Klub-DNA (5 håndlavede klub-identiteter)
+export {
+  DNA_KEYS,
+  BOARD_CLUB_DNA,
+  getDnaByKey,
+  isValidDnaKey,
+  computeDnaSuggestions,
+  getDnaArchetypeAlignmentBonus,
+  getDnaGoalWeightMultiplier,
+  buildDnaTraditionGoal,
+  applyDnaWeightingToGoals,
+} from "./boardClubDna.js";

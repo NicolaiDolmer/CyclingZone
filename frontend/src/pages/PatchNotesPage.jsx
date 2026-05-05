@@ -2,6 +2,25 @@
 
 const PATCHES = [
   {
+    version: "2.38",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "S-02f · Klub-DNA — manageren vælger klubbens identitet i sæson 2",
+        items: [
+          "5 håndlavede klub-DNA-arketyper introduceret ([boardClubDna.js](backend/lib/boardClubDna.js)): 🌲 Skandinavisk udviklingshold (ungdom + nordisk arv), 🪨 Italiensk klassiker-traditionalist (forår + monumenter), ⚡ Sprint-fokuseret kommerciel (sprint + sponsorvækst), ⛰️ Fransk klatrer-arv (Tour-bjerge + national kerne), 🎯 Britisk all-rounder (bredde + datadrevet). Hver DNA har 8 policy-akser, member_alignment_bonus til 1-4 board-arketyper og en signature klub-tradition-mål",
+          "Ved sæson-2-onboarding (efter sæson 1's identity er observeret) viser BoardPage et `ClubDnaSelectionCard` med 3 algoritmisk-foreslåede DNA: ét national-match (mod `season_1_identity_basis.national_core`), ét specialization-match (mod `primary_specialization`) og ét wildcard. Manageren vælger frit fra de tre — ingen påtvunget valg, men forslagene føles 'set' pga. data-grunding ([api.js](backend/routes/api.js))",
+          "DNA påvirker board-medlems-tildeling: ved chairman-replacement i senere sæsoner tipper DNA-bonus alignment-scoren mod arketyper der matcher klubbens identitet. Eksempel: italiensk_klassiker giver +4 til klassiker_purist og -2 til gc_elsker, så formandsvalget reflekterer DNA'et ([boardMembers.js](backend/lib/boardMembers.js))",
+          "5-årsplaners forslag får et ekstra DNA-tradition-mål injiceret som bonus (italiensk_klassiker → 'mindst ét Monument-podie pr. plan-cyklus', sprint_kommerciel → 'min. 2 etape-trøjer/sæson'). Plus DNA-vægtning multiplicerer satisfaction_bonus + _penalty på matchende mål-typer (italiensk_klassiker × 1.6 på monument_podium), så DNA føles igennem evaluering uden at ændre mål-targets ([boardGoals.js](backend/lib/boardGoals.js))",
+          "Migration ([2026-05-05-board-club-dna.sql](database/2026-05-05-board-club-dna.sql)) seedet `team_dna`-reference-tabel med alle 5 arketyper + tilføjer `teams.team_dna_key` (FK til team_dna) + `teams.team_dna_chosen_at`. To nye routes: `GET /api/board/dna-suggestions` (3 forslag) og `POST /api/board/dna-choose` (commit-valg). AI/bank/frozen får aldrig DNA — manager-only per Q-batch 1A Q8",
+          "Beta-reset ([betaResetService.js](backend/lib/betaResetService.js)) nulstiller `team_dna_key` + `team_dna_chosen_at` så næste sæson 2-onboarding gentager valget. DNA er 'final indtil drift' i denne slice — gradvis udvikling over 5 sæsoner kommer i opfølgnings-slice (S-02f.1)",
+          "18 nye backend-tests (250/250 grønne total) i [boardClubDna.test.js](backend/lib/boardClubDna.test.js) dækker konstanter (5 DNA × shape), suggestion-determinisme + national/spec-slot-matching, alignment-bias der tipper klassiker_purist højere med italiensk DNA, mål-vægtning (1.6× monument_podium for italiensk), tradition-goal injection i 5yr (med dedup mod base-pakken og kun 5yr) og fallback til defaults uden identityBasis",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.37",
     date: "2026-05-05",
     label: "Beta",

@@ -706,6 +706,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
           teamId: team.id,
           satisfaction: newSatisfaction,
           identityBasis: team.season_1_identity_basis ?? null,
+          dnaKey: team.team_dna_key ?? null,
         });
 
         if (replacementInfo?.replaced && replacementInfo.new_chairman_label) {

@@ -71,15 +71,18 @@ import {
   buildBoardRequestOptions,
   buildBoardOutlook,
   buildBoardProposal,
+  computeDnaSuggestions,
   deriveTeamIdentityProfile,
   finalizeBoardGoals,
   getArchetypeByKey,
   getBoardRequestDefinition,
+  getDnaByKey,
   getPlanDuration,
   inferNegotiationIndexesFromGoals,
   isValidBoardFocus,
   isValidBoardPlanType,
   isValidBoardRequestType,
+  isValidDnaKey,
   loadGoalContextForBoard,
   resolveBoardRequest,
 } from "../lib/boardEngine.js";
@@ -3049,7 +3052,7 @@ function isUniqueViolation(error, constraintName) {
 async function loadBoardPlanningContext(teamId) {
   const [seasonRes, teamRes, ridersRes, standingRes, boardsRes] = await Promise.all([
     supabase.from("seasons").select("id, number, race_days_completed, race_days_total").eq("status", "active").single(),
-    supabase.from("teams").select("id, balance, sponsor_income, division, season_1_identity_basis").eq("id", teamId).single(),
+    supabase.from("teams").select("id, balance, sponsor_income, division, season_1_identity_basis, team_dna_key").eq("id", teamId).single(),
     supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
     supabase.from("season_standings").select("*").eq("team_id", teamId)
       .order("updated_at", { ascending: false }).limit(1).single(),
@@ -3093,7 +3096,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
     const [seasonRes, boardsRes, teamRes, ridersRes, standingRes, loansRes, windowRes, membersRes] = await Promise.all([
       supabase.from("seasons").select("id, number, race_days_completed, race_days_total").eq("status", "active").single(),
       supabase.from("board_profiles").select("*").eq("team_id", teamId),
-      supabase.from("teams").select("id, balance, sponsor_income, division, season_1_identity_basis, consecutive_low_satisfaction_expirations").eq("id", teamId).single(),
+      supabase.from("teams").select("id, balance, sponsor_income, division, season_1_identity_basis, consecutive_low_satisfaction_expirations, team_dna_key, team_dna_chosen_at").eq("id", teamId).single(),
       supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
       supabase.from("season_standings").select("*").eq("team_id", teamId)
         .order("updated_at", { ascending: false }).limit(1).single(),
@@ -3314,6 +3317,16 @@ router.get("/board/status", requireAuth, async (req, res) => {
     }
     const bonusOffer = activeConsequences.find((c) => c.layer === 6) || null;
 
+    // S-02f · Klub-DNA: returnér current valgt DNA + suggestions hvis ikke valgt.
+    // Suggestions kun relevante når identity_basis findes (sæson 2+) og DNA endnu
+    // ikke valgt. AI/bank/frozen får ikke vist DNA-card (men api.js returnerer
+    // allerede 404 før vi når hertil for non-manager teams).
+    const teamDnaKey = teamRes.data?.team_dna_key || null;
+    const dnaArchetype = teamDnaKey ? getDnaByKey(teamDnaKey) : null;
+    const dnaSuggestions = !teamDnaKey && identityBasis && !isBaselinePhase
+      ? computeDnaSuggestions(identityBasis)
+      : [];
+
     res.json({
       plans,
       setup_next_plan_type: setupNextPlanType,
@@ -3325,6 +3338,15 @@ router.get("/board/status", requireAuth, async (req, res) => {
       standing: currentStanding,
       identity_profile: identityProfile,
       identity_basis: identityBasis,
+      team_dna: dnaArchetype ? {
+        key: dnaArchetype.key,
+        label: dnaArchetype.label,
+        emoji: dnaArchetype.emoji,
+        short_description: dnaArchetype.short_description,
+        long_description: dnaArchetype.long_description,
+        chosen_at: teamRes.data?.team_dna_chosen_at || null,
+      } : null,
+      dna_suggestions: dnaSuggestions,
       active_loans_count: activeLoanCount,
       season: activeSeason ? {
         id: activeSeason.id,
@@ -3431,6 +3453,103 @@ router.post("/board/bonus-offer/decline", requireAuth, async (req, res) => {
   }
 });
 
+// S-02f · Klub-DNA endpoints (master-roadmap line 183-190).
+// Suggestions hentes når manageren skal vælge i sæson 2; choose persisterer valget.
+// AI/bank/frozen får aldrig DNA — checkes via req.team meta her.
+router.get("/board/dna-suggestions", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "DNA er kun for manager-hold" });
+    }
+
+    const { data: team, error: teamError } = await supabase
+      .from("teams")
+      .select("id, season_1_identity_basis, team_dna_key")
+      .eq("id", req.team.id)
+      .single();
+    if (teamError) return res.status(500).json({ error: teamError.message });
+
+    if (team.team_dna_key) {
+      const dna = getDnaByKey(team.team_dna_key);
+      return res.json({
+        already_chosen: true,
+        team_dna: dna ? { key: dna.key, label: dna.label, emoji: dna.emoji, short_description: dna.short_description } : null,
+        suggestions: [],
+      });
+    }
+
+    if (!team.season_1_identity_basis) {
+      return res.json({
+        already_chosen: false,
+        identity_basis_missing: true,
+        suggestions: [],
+      });
+    }
+
+    const suggestions = computeDnaSuggestions(team.season_1_identity_basis);
+    res.json({
+      already_chosen: false,
+      identity_basis_missing: false,
+      suggestions,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/board/dna-choose", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "DNA er kun for manager-hold" });
+    }
+
+    const { dna_key } = req.body || {};
+    if (!isValidDnaKey(dna_key)) {
+      return res.status(400).json({ error: "Ukendt DNA-nøgle" });
+    }
+
+    const { data: existing, error: existingError } = await supabase
+      .from("teams")
+      .select("id, team_dna_key, season_1_identity_basis")
+      .eq("id", req.team.id)
+      .single();
+    if (existingError) return res.status(500).json({ error: existingError.message });
+
+    if (existing.team_dna_key) {
+      return res.status(409).json({ error: "Klub-DNA er allerede valgt og kan ikke skiftes (drift kommer i senere slice)" });
+    }
+
+    if (!existing.season_1_identity_basis) {
+      return res.status(409).json({ error: "Du skal afslutte sæson 1 før DNA kan vælges" });
+    }
+
+    const { error: updateError } = await supabase
+      .from("teams")
+      .update({
+        team_dna_key: dna_key,
+        team_dna_chosen_at: new Date().toISOString(),
+      })
+      .eq("id", req.team.id);
+    if (updateError) return res.status(500).json({ error: updateError.message });
+
+    const dna = getDnaByKey(dna_key);
+    res.json({
+      ok: true,
+      team_dna: dna ? {
+        key: dna.key,
+        label: dna.label,
+        emoji: dna.emoji,
+        short_description: dna.short_description,
+        long_description: dna.long_description,
+      } : null,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.post("/board/proposal", requireAuth, async (req, res) => {
   try {
     const teamId = req.team?.id;
@@ -3454,6 +3573,7 @@ router.post("/board/proposal", requireAuth, async (req, res) => {
       standing: context.standing,
       board,
       identityBasis: context.team?.season_1_identity_basis ?? null,
+      dnaKey: context.team?.team_dna_key ?? null,
     });
 
     res.json({ ok: true, ...proposal });
@@ -3488,6 +3608,7 @@ router.post("/board/sign", requireAuth, async (req, res) => {
       standing,
       board: existingBoard,
       identityBasis: team?.season_1_identity_basis ?? null,
+      dnaKey: team?.team_dna_key ?? null,
     });
 
     let negotiationIndexes = [];

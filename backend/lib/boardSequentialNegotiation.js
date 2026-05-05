@@ -53,7 +53,7 @@ export async function startSequentialNegotiation({ supabase, completedSeasonId =
   // 1. Slet baseline-rows for human teams (AI/bank/frozen får ingen baseline)
   const { data: humanTeams, error: humanTeamsError } = await supabase
     .from("teams")
-    .select("id, division, season_1_identity_basis")
+    .select("id, division, season_1_identity_basis, team_dna_key")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false);
@@ -107,6 +107,13 @@ export async function startSequentialNegotiation({ supabase, completedSeasonId =
 
     // S-02c · Tildel 5 board-medlemmer pr. human team (3 identity + 2 non-conflicting wildcards).
     // Idempotent — skipper teams der allerede har 5 medlemmer.
+    // S-02f · DNA er typisk null ved første assignment (manageren vælger DNA i sæson 2,
+    // medlemmerne tildeles ved sæson-1-slut). DNA-bias slår først ind ved chairman-replacement.
+    const teamDnaMap = new Map();
+    (humanTeams || []).forEach((row) => {
+      teamDnaMap.set(row.id, row.team_dna_key || null);
+    });
+
     for (const teamId of teamIds) {
       const basis = teamBasisMap.get(teamId);
       if (!basis) continue;
@@ -114,6 +121,7 @@ export async function startSequentialNegotiation({ supabase, completedSeasonId =
         supabase,
         teamId,
         identityBasis: basis,
+        dnaKey: teamDnaMap.get(teamId) || null,
       });
       if (!result.skipped) boardMembersAssignedTotal += result.assigned;
     }

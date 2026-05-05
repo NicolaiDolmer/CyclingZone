@@ -19,6 +19,7 @@ import {
   computeArchetypeAlignmentScore,
   getArchetypeByKey,
 } from "./boardArchetypes.js";
+import { getDnaArchetypeAlignmentBonus } from "./boardClubDna.js";
 
 export const TEAM_BOARD_MEMBERS_COUNT = 5;
 export const IDENTITY_PICKS = 3;
@@ -54,10 +55,10 @@ function seededShuffle(items, seed) {
  *     fyld op fra resterende uden conflict-rule. Stadig deterministisk.
  *  5. Marker medlemmet med højeste alignment_score som chairman.
  *
- * @param {{ identityBasis: object, teamId?: string, seedExtra?: string }} args
+ * @param {{ identityBasis: object, teamId?: string, seedExtra?: string, dnaKey?: string|null }} args
  * @returns {Array<{ archetype_key, selection_kind, alignment_score, is_chairman }>}
  */
-export function selectBoardMembers({ identityBasis, teamId = "", seedExtra = "" } = {}) {
+export function selectBoardMembers({ identityBasis, teamId = "", seedExtra = "", dnaKey = null } = {}) {
   if (!identityBasis) {
     throw new Error("identity_basis is required to select board members");
   }
@@ -65,12 +66,19 @@ export function selectBoardMembers({ identityBasis, teamId = "", seedExtra = "" 
   const seed = `${teamId}:${seedExtra}:${identityBasis.season_number_observed ?? 1}`;
 
   // 1. Score alle 9 arketyper, sorter desc.
+  // S-02f · DNA-bias: hvis manageren har valgt en klub-DNA, tilføjes
+  // member_alignment_bonus[archetypeKey] til alignment_score så DNA påvirker
+  // hvilke 5 medlemmer der vælges. Tildeling sker først ved sæson-1-slut, så
+  // dnaKey er typisk null ved første assignment — bias slår først ind ved
+  // gen-tildeling efter chairman-replacement i senere sæsoner.
   const scored = BOARD_ARCHETYPE_KEYS.map((key) => {
     const archetype = BOARD_ARCHETYPES[key];
+    const baseScore = computeArchetypeAlignmentScore(archetype, identityBasis);
+    const dnaBonus = dnaKey ? getDnaArchetypeAlignmentBonus(dnaKey, key) : 0;
     return {
       archetype,
       key,
-      score: computeArchetypeAlignmentScore(archetype, identityBasis),
+      score: baseScore + dnaBonus,
     };
   }).sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
@@ -129,10 +137,10 @@ export function selectBoardMembers({ identityBasis, teamId = "", seedExtra = "" 
  * har TEAM_BOARD_MEMBERS_COUNT medlemmer (matcher idempotency-pattern fra
  * boardSequentialNegotiation S-02b for identity_basis).
  *
- * @param {{ supabase: object, teamId: string, identityBasis: object }} args
+ * @param {{ supabase: object, teamId: string, identityBasis: object, dnaKey?: string|null }} args
  * @returns {Promise<{ assigned: number, skipped: boolean, members: Array }>}
  */
-export async function assignBoardMembersForTeam({ supabase, teamId, identityBasis } = {}) {
+export async function assignBoardMembersForTeam({ supabase, teamId, identityBasis, dnaKey = null } = {}) {
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (!teamId) throw new Error("teamId is required");
   if (!identityBasis) {
@@ -150,7 +158,7 @@ export async function assignBoardMembersForTeam({ supabase, teamId, identityBasi
     return { assigned: 0, skipped: true, reason: "already_assigned", members: existing };
   }
 
-  const selection = selectBoardMembers({ identityBasis, teamId });
+  const selection = selectBoardMembers({ identityBasis, teamId, dnaKey });
 
   const rows = selection.map((member) => ({
     team_id: teamId,
@@ -305,13 +313,14 @@ export async function processReplacementTrigger({
   teamId,
   satisfaction,
   identityBasis,
+  dnaKey = null,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (!teamId) throw new Error("teamId is required");
 
   const { data: team, error: teamError } = await supabase
     .from("teams")
-    .select("id, consecutive_low_satisfaction_expirations, season_1_identity_basis, is_ai, is_bank, is_frozen")
+    .select("id, consecutive_low_satisfaction_expirations, season_1_identity_basis, team_dna_key, is_ai, is_bank, is_frozen")
     .eq("id", teamId)
     .maybeSingle();
   throwIfSupabaseError(teamError, "Could not load team for replacement trigger");
@@ -350,7 +359,8 @@ export async function processReplacementTrigger({
 
   // Trigger replacement — udskift formanden.
   const basis = identityBasis ?? team.season_1_identity_basis ?? null;
-  const replacement = await replaceChairman({ supabase, teamId, identityBasis: basis });
+  const effectiveDnaKey = dnaKey ?? team.team_dna_key ?? null;
+  const replacement = await replaceChairman({ supabase, teamId, identityBasis: basis, dnaKey: effectiveDnaKey });
 
   // Reset counter
   const { error: resetError } = await supabase
@@ -368,7 +378,7 @@ export async function processReplacementTrigger({
   };
 }
 
-async function replaceChairman({ supabase, teamId, identityBasis }) {
+async function replaceChairman({ supabase, teamId, identityBasis, dnaKey = null }) {
   const { data: members, error: membersError } = await supabase
     .from("team_board_members")
     .select("id, archetype_key, alignment_score, is_chairman")
@@ -385,6 +395,8 @@ async function replaceChairman({ supabase, teamId, identityBasis }) {
 
   // Pick ny formand fra de 4 ikke-assignede arketyper.
   // Vælg højest alignment, men non-conflicting med tilbageværende 4.
+  // S-02f · DNA-bias slår ind ved chairman-replacement: en manager der har valgt
+  // 'italiensk_klassiker' tipper formandsvalget mod klassiker_purist/traditionalisten.
   const remainingArchetypes = remainingMembers
     .map((m) => getArchetypeByKey(m.archetype_key))
     .filter(Boolean);
@@ -393,10 +405,12 @@ async function replaceChairman({ supabase, teamId, identityBasis }) {
     .filter((key) => !remainingKeys.has(key) && key !== oldChairman.archetype_key)
     .map((key) => {
       const archetype = getArchetypeByKey(key);
+      const baseScore = computeArchetypeAlignmentScore(archetype, identityBasis);
+      const dnaBonus = dnaKey ? getDnaArchetypeAlignmentBonus(dnaKey, key) : 0;
       return {
         key,
         archetype,
-        score: computeArchetypeAlignmentScore(archetype, identityBasis),
+        score: baseScore + dnaBonus,
         hasConflict: remainingArchetypes.some((existing) =>
           archetypesConflict(existing, archetype)
         ),
