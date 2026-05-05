@@ -24,6 +24,7 @@ import { notifyAuctionWon, getDefaultWebhook, sendWebhook } from "./lib/discordN
 import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
 import { createEmergencyLoan } from "./lib/loanEngine.js";
+import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, '../.env') });
 
@@ -163,6 +164,27 @@ async function runDeadlineDayCron() {
   }
 }
 
+// ─── Board Auto-Accept (S-02b) ──────────────────────────────────────────────
+// Tjek alle human teams for pending board-planer + send T-3/T-1 reminders +
+// auto-accept ved race_days_completed >= 5. Notif-dedup (24h) gør cron idempotent.
+
+async function runBoardAutoAcceptCron() {
+  try {
+    const result = await processBoardAutoAcceptCron({
+      supabase,
+      notifyUser: (args) => notifyUserShared({ supabase, ...args }),
+      now: new Date(),
+    });
+    if (result.reminders_sent || result.auto_accepted || result.errors) {
+      console.log(
+        `🪑 Board auto-accept: ${result.teams_checked} hold tjekket — ${result.reminders_sent} reminders, ${result.auto_accepted} auto-accepted, ${result.errors} fejl`
+      );
+    }
+  } catch (err) {
+    console.error("Cron error (board auto-accept):", err.message);
+  }
+}
+
 // ─── Squad Enforcement ───────────────────────────────────────────────────────
 
 async function runSquadEnforcementCron() {
@@ -221,8 +243,13 @@ export function startCron() {
     }
   }, 6 * 60 * 60 * 1000);
 
+  // Every 30 minutes: board auto-accept reminders + auto-accept (S-02b).
+  // Notif-dedup (24h) sikrer ingen spam selv ved hyppig polling.
+  setInterval(runBoardAutoAcceptCron, 30 * 60 * 1000);
+
   // Run immediately on start
   finalizeExpiredAuctions();
+  runBoardAutoAcceptCron();
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────

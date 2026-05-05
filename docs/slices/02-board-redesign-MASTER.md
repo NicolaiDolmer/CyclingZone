@@ -79,16 +79,28 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 - Beta-reset: 1 baseline-row pr. team (i stedet for 3 plan-rows)
 - 131/131 backend-tests grønne, 5 nye tests for createBaselineProfile + startSequentialNegotiation + processSeasonEnd-integration
 
-### S-02b · 1yr-auto-gen + auto-accept + identity-feeding
+### S-02b · 1yr-auto-gen + auto-accept + identity-feeding ✅ LEVERET 2026-05-05 (v2.34)
 **Dep:** S-02a. **UX låst i Q-batch 1C Q18 + Q21.**
-**Leverer:**
-- `boardIdentity.computeSeasonOneIdentity` — afleder dominant_nationality, youth_share, specialization fra sæson 1's hold
-- Identity feedes ind som goal-weighting i 5yr-forslag
-- **Inline 'bygger på'-badge (Q18)** på hvert relevant 5yr-mål-kort: `"Bygger på din franske kerne (5/8 ryttere)"`. Klikbar → expand med fuld forklaring
-- `generate1YrFromLongerPlans` — 2 varianter ("Stabil" / "Resultatfokus nu")
-- Auto-accept-cron ved race_day_count ≥ 5
-- **Tier-styrede notifs (Q21):** T-1 race_day → 'Skal handles' (`type='board_critical'`); T-3 race_day + auto-accept-resumé → BoardPage 'Bestyrelse'-feed (`type='board_update'`)
-- Countdown-banner
+**Q-bekræftelser (2026-05-05 session):**
+- A=b: `teams.season_1_identity_basis JSONB` (én sandhedslocation, ikke per-board-row)
+- B=b: auto-accept default-focus afledes fra `identity_basis.primary_specialization`/youth/star
+- C: T-3 ved `race_days_completed=2` (`board_update`), T-1 ved =4 (`board_critical`), auto-accept ved ≥5
+
+**Leveret:**
+- Migration `database/2026-05-05-board-1yr-autogen.sql`: `teams.season_1_identity_basis JSONB` + `notifications_type_check` udvidet med `board_critical`
+- `boardIdentity.computeSeasonOneIdentity` — afleder dominant_nationality, youth_share, primary_specialization, star_profile fra sæson 1's hold (uden volatile felter som standing/competitive_tier)
+- `boardIdentity.deriveDefaultFocusFromIdentity` — mapper basis → focus (youth_high → youth_development, elite_star → star_signing, gc/sprint/classics → star_signing, ellers balanced)
+- `boardSequentialNegotiation.startSequentialNegotiation` udvidet: computer + persisterer identity_basis for hver human team før baseline-rows slettes (idempotent — skipper teams der allerede har basis)
+- `boardGoals.annotateGoalWithIdentityBasis` — annoterer 5yr-mål med `identity_basis_rationale` (kind + short + long) for inline 'bygger på'-badge
+- `boardGoals.buildBoardProposal` accepterer `identityBasis` og annoterer 5yr-mål automatisk
+- `boardGoals.generate1YrFromLongerPlans` — 2 varianter ("Stabil" arver 5yr-focus, "Resultatfokus nu" forskubber til star_signing)
+- `boardAutoAccept.processBoardAutoAcceptCron` — ny daglig cron-job (kører hver 30 min). T-3 reminder ved race_days_completed=2 → `notifications.type='board_update'`, T-1 ved =4 → `type='board_critical'`, auto-accept ved ≥5 → upserter `board_profiles`-row med default focus + standardmål
+- `cron.js` integration: `setInterval(runBoardAutoAcceptCron, 30 * 60 * 1000)` + immediate run on startup
+- `/api/board/status` returnerer `identity_basis` + `auto_accept` (race_days_left/completed/threshold) + annoterer eksisterende 5yr-mål med rationale ved page-load
+- `/api/board/proposal` + `/api/board/sign` accepterer `identity_basis` så 5yr-forslag og signed-rows får annoterede mål
+- BoardPage: `BoardAutoAcceptCountdown` (countdown-banner med kritisk-farve ved T-1), inline-badge på `GoalCard` (klikbar expand), wizard preview viser også badgen, `BoardFeedSection` (samler `board_update` + `board_critical` notifs)
+- HelpPage: 3 nye FAQ-items (sæson 1-baseline, identity-badge, auto-accept-cron)
+- 146/146 backend-tests grønne (15 nye for S-02b: computeSeasonOneIdentity stable axes, defaultFocus mapping, 5yr/1yr-annotation, generate1YrFromLongerPlans variants, identity_basis-persist + idempotent replay, auto-accept-cron T-3/T-1/auto-sign/locked-skip)
 
 ### S-02c · Navngivne board-members
 **Dep:** S-02a.

@@ -552,6 +552,18 @@ const FAQ = [
       q: "Hvor ser jeg bestyrelsens aktuelle vurdering?",
       a: "Dashboardet viser et kort bestyrelses-outlook med status og category-scores, mens Board-siden viser den mere detaljerede vurdering. Board-siden viser også bestyrelsens læsning af holdet med specialisering, U25-andel, national kerne, stjerneprofil og trupstatus, nu med landenavn og flag på den nationale kerne. Derudover forklarer Board-siden nu tydeligere hvorfor bestyrelsen reagerer, ved at vise hvilke kategorier der driver vurderingen, hvad der holder den tilbage, og hvilke signaler fra historik, identitet eller profiler der spiller ind. De to steder læser samme board-data fra backend, så de bruger den samme sandhed.",
     },
+    {
+      q: "Hvad er sæson 1-baseline, og hvorfor stiller bestyrelsen ikke krav?",
+      a: "Sæson 1 er en observations-sæson. Bestyrelsen stiller ingen mål, evaluerer ikke tilfredshed, og sponsor-modifier holdes på 1.0×. I stedet *læser* den dit hold — hvilken nation dominerer, hvor stor er U25-andelen, hvilken specialisering peger holdet mod, og hvor synlige er dine stjerner. Når sæsonen slutter, gemmes dette \"identity-snapshot\" på dit hold permanent og bruges som grundlag for sæson 2's 5-årsplan-forslag. Du har derfor en hel sæson til at finde din retning før forhandlingerne starter for alvor.",
+    },
+    {
+      q: "Hvad betyder 'Bygger paa din kerne'-badgen på 5-årsmål?",
+      a: "Det er identity-feeding. Når bestyrelsen foreslår 5-årsmål i sæson 2, annoteres relevante mål med en lille badge der forklarer hvorfor netop dét mål eksisterer. Eksempel: 'Bygger paa din FR-kerne (5/8 ryttere)' når dit sæson-1-hold havde fem franske ryttere ud af otte. Klik badgen for fuld forklaring. Badgen viser den frosne sæson-1-observation — dvs. selv hvis du senere skifter ud, husker bestyrelsen hvilket signal der oprindeligt drev målet.",
+    },
+    {
+      q: "Hvad sker der hvis jeg glemmer at forhandle min plan?",
+      a: "Bestyrelsen tager over. Hvis du ikke har signet en ny plan inden race-day 5 er passeret, signer en cron-job automatisk en plan med default-fokus afledt af dit holds identitet (U25-tungt → ungdomsudvikling, stjerneprofil → stjernesignering, ellers balanceret) og standardmål. Du får først en info-reminder ved race-day 2 ('Bestyrelsen venter paa din N-aarsplan'), derefter en 'Skal handles'-notif ved race-day 4 ('Sidste chance'), og derefter er det bestyrelsens valg. Du kan stadig anmode om ændringer via en board request når planen kører. Tjekker du Bestyrelse-siden ofte, ser du også et live countdown-banner med antal race-days tilbage.",
+    },
 ];
 
 export default function HelpPage() {

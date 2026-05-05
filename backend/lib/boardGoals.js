@@ -364,18 +364,141 @@ export function buildBoardProposal({
   team = null,
   riders = [],
   standing = null,
+  identityBasis = null,
 } = {}) {
   const goals = generateBoardGoals({ focus, planType, team, riders, standing });
   const personality = deriveBoardPersonality({ focus, planType });
   const identityProfile = deriveTeamIdentityProfile({ team, riders, standing });
+
+  // S-02b · Identity-feeding-badge på 5yr-mål (Q-batch 1C Q18).
+  // For 5yr-forslag annoteres mål med rationale fra det frosne sæson-1-snapshot,
+  // så frontend kan rendere "Bygger på din franske kerne (5/8 ryttere)"-badge.
+  const annotatedGoals = planType === "5yr" && identityBasis
+    ? goals.map((goal) => annotateGoalWithIdentityBasis(goal, identityBasis))
+    : goals;
 
   return {
     focus,
     plan_type: planType,
     personality,
     identity_profile: identityProfile,
-    goals,
-    negotiation_options: goals.map((goal) => buildNegotiatedGoal(goal)),
+    identity_basis: identityBasis,
+    goals: annotatedGoals,
+    negotiation_options: annotatedGoals.map((goal) => buildNegotiatedGoal(goal)),
+  };
+}
+
+// S-02b · "Bygger på"-badge data for 5yr-mål-kort.
+// Returnerer det aktuelle goal med et identity_basis_rationale-felt der beskriver
+// hvilken sæson-1-observation der retfærdiggjorde målet. Frontend bruger feltet
+// til inline-badge + klikbar expand-text (Q-batch 1C Q18).
+export function annotateGoalWithIdentityBasis(goal, identityBasis) {
+  if (!goal || !identityBasis) return goal;
+
+  const rationale = buildIdentityBasisRationale(goal, identityBasis);
+  if (!rationale) return goal;
+
+  return { ...goal, identity_basis_rationale: rationale };
+}
+
+function buildIdentityBasisRationale(goal, identityBasis) {
+  const nationalCore = identityBasis.national_core || null;
+  const youthShare = Number(identityBasis.youth_share_pct ?? 0);
+  const primarySpec = identityBasis.primary_specialization || "balanced";
+  const riderCount = Number(identityBasis.rider_count ?? 0);
+
+  switch (goal.type) {
+    case "min_national_riders": {
+      if (!nationalCore?.established) return null;
+      return {
+        kind: "national_core",
+        short: `Bygger pa din ${nationalCore.code}-kerne (${nationalCore.count}/${riderCount} ryttere)`,
+        long: `Ved sæson 1's slut havde du ${nationalCore.count} ${nationalCore.code}-ryttere ud af ${riderCount} (${nationalCore.share_pct}%). Bestyrelsen vil bygge videre på den nationale kerne — derfor dette mål.`,
+      };
+    }
+    case "min_u25_riders": {
+      if (identityBasis.youth_level !== "high" && youthShare < 35) return null;
+      return {
+        kind: "youth_share",
+        short: `Bygger pa dit ungdomsaftryk (${youthShare}% U25 i sæson 1)`,
+        long: `Ved sæson 1's slut havde du ${youthShare}% U25-ryttere — et tydeligt ungdomsaftryk. Bestyrelsen forventer du fortsat investerer i unge talenter.`,
+      };
+    }
+    case "gc_wins": {
+      if (primarySpec !== "gc") return null;
+      return {
+        kind: "specialization",
+        short: "Bygger pa din GC-orientering fra saeson 1",
+        long: `Sæson 1 viste GC som dit primære fokus. Bestyrelsen forventer samlede sejre — det er den retning, holdet allerede peger.`,
+      };
+    }
+    case "stage_wins": {
+      if (!["sprint", "classics", "breakaway"].includes(primarySpec)) return null;
+      const specLabel = primarySpec === "sprint"
+        ? "sprint-fokus"
+        : primarySpec === "classics" ? "klassiker-profil" : "breakaway-stil";
+      return {
+        kind: "specialization",
+        short: `Bygger pa dit ${specLabel} fra saeson 1`,
+        long: `Sæson 1 viste ${specLabel} som dit primære spor. Bestyrelsen forventer etapesejre — det er det realistiske afkast af holdets profil.`,
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+// S-02b · Auto-genererer 1yr-plan fra de længere planer ved sekventiel onboarding.
+// Q-batch 1A Q2 + master-doc S-02b: efter 5yr+3yr er signet, foreslår bestyrelsen
+// 2 varianter af 1yr — manageren vælger:
+//   - "stable":         status quo, mål-vægt fra 5yr-fokus, blødere (ingen ekstra pres)
+//   - "results_focus":  resultatpres (top_n_finish + stage/gc_wins skærpes), kort-sigt
+//
+// Begge varianter bruger 5yr's focus som default — manageren kan stadig justere
+// før accept hvis de når det. Auto-accept-cron vælger "stable" (mindst pres).
+export function generate1YrFromLongerPlans({
+  team = null,
+  riders = [],
+  standing = null,
+  fiveYrBoard = null,
+  threeYrBoard = null,
+} = {}) {
+  // Default focus arver fra 5yr (eller 3yr som fallback). Hvis ingen længere
+  // planer findes — defensivt fallback — brug "balanced".
+  const inheritedFocus = fiveYrBoard?.focus || threeYrBoard?.focus || "balanced";
+
+  const stableProposal = buildBoardProposal({
+    focus: inheritedFocus,
+    planType: "1yr",
+    team,
+    riders,
+    standing,
+  });
+
+  const resultsProposal = buildBoardProposal({
+    focus: inheritedFocus === "youth_development" ? "balanced" : "star_signing",
+    planType: "1yr",
+    team,
+    riders,
+    standing,
+  });
+
+  return {
+    inherited_focus: inheritedFocus,
+    variants: [
+      {
+        key: "stable",
+        label: "Stabil",
+        description: "Bygger videre paa 5yr-rytmen — bloedere maal, mindre pres.",
+        proposal: stableProposal,
+      },
+      {
+        key: "results_focus",
+        label: "Resultatfokus nu",
+        description: "Skarpere kortsigtede maal — top-N + sejre vejer tungere.",
+        proposal: resultsProposal,
+      },
+    ],
   };
 }
 

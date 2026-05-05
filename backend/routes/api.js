@@ -67,6 +67,7 @@ import {
 import { calculateRiderMarketValue } from "../lib/marketUtils.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
+  annotateGoalWithIdentityBasis,
   buildBoardRequestOptions,
   buildBoardOutlook,
   buildBoardProposal,
@@ -3006,8 +3007,8 @@ function isUniqueViolation(error, constraintName) {
 
 async function loadBoardPlanningContext(teamId) {
   const [seasonRes, teamRes, ridersRes, standingRes, boardsRes] = await Promise.all([
-    supabase.from("seasons").select("id, number").eq("status", "active").single(),
-    supabase.from("teams").select("id, balance, sponsor_income, division").eq("id", teamId).single(),
+    supabase.from("seasons").select("id, number, race_days_completed, race_days_total").eq("status", "active").single(),
+    supabase.from("teams").select("id, balance, sponsor_income, division, season_1_identity_basis").eq("id", teamId).single(),
     supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
     supabase.from("season_standings").select("*").eq("team_id", teamId)
       .order("updated_at", { ascending: false }).limit(1).single(),
@@ -3049,9 +3050,9 @@ router.get("/board/status", requireAuth, async (req, res) => {
     if (!teamId) return res.status(404).json({ error: "No team" });
 
     const [seasonRes, boardsRes, teamRes, ridersRes, standingRes, loansRes, windowRes] = await Promise.all([
-      supabase.from("seasons").select("id, number").eq("status", "active").single(),
+      supabase.from("seasons").select("id, number, race_days_completed, race_days_total").eq("status", "active").single(),
       supabase.from("board_profiles").select("*").eq("team_id", teamId),
-      supabase.from("teams").select("id, balance, sponsor_income, division").eq("id", teamId).single(),
+      supabase.from("teams").select("id, balance, sponsor_income, division, season_1_identity_basis").eq("id", teamId).single(),
       supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
       supabase.from("season_standings").select("*").eq("team_id", teamId)
         .order("updated_at", { ascending: false }).limit(1).single(),
@@ -3200,6 +3201,18 @@ router.get("/board/status", requireAuth, async (req, res) => {
       };
     }
 
+    // S-02b · Annotér eksisterende 5yr-mål med identity-feeding-rationale så BoardPage
+    // kan rendere "Bygger paa din franske kerne"-badge på allerede signede planer.
+    const identityBasis = teamRes.data?.season_1_identity_basis || null;
+    if (identityBasis && plans["5yr"]?.board?.current_goals) {
+      const fiveYrGoals = typeof plans["5yr"].board.current_goals === "string"
+        ? JSON.parse(plans["5yr"].board.current_goals)
+        : plans["5yr"].board.current_goals;
+      plans["5yr"].board.current_goals = (fiveYrGoals || []).map((goal) =>
+        annotateGoalWithIdentityBasis(goal, identityBasis)
+      );
+    }
+
     res.json({
       plans,
       setup_next_plan_type: setupNextPlanType,
@@ -3209,7 +3222,19 @@ router.get("/board/status", requireAuth, async (req, res) => {
       riders: ridersRes.data || [],
       standing: currentStanding,
       identity_profile: identityProfile,
+      identity_basis: identityBasis,
       active_loans_count: activeLoanCount,
+      season: activeSeason ? {
+        id: activeSeason.id,
+        number: activeSeason.number,
+        race_days_completed: activeSeason.race_days_completed ?? 0,
+        race_days_total: activeSeason.race_days_total ?? null,
+      } : null,
+      auto_accept: {
+        threshold_race_days: 5,
+        race_days_completed: activeSeason?.race_days_completed ?? 0,
+        race_days_left: Math.max(0, 5 - (activeSeason?.race_days_completed ?? 0)),
+      },
       request_support: {
         supported: boardRequestsSupported,
         active_season_number: activeSeason?.number ?? null,
@@ -3242,6 +3267,7 @@ router.post("/board/proposal", requireAuth, async (req, res) => {
       riders: context.riders,
       standing: context.standing,
       board,
+      identityBasis: context.team?.season_1_identity_basis ?? null,
     });
 
     res.json({ ok: true, ...proposal });
@@ -3275,6 +3301,7 @@ router.post("/board/sign", requireAuth, async (req, res) => {
       riders,
       standing,
       board: existingBoard,
+      identityBasis: team?.season_1_identity_basis ?? null,
     });
 
     let negotiationIndexes = [];

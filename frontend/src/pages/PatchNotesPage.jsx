@@ -2,6 +2,25 @@
 
 const PATCHES = [
   {
+    version: "2.34",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "S-02b · 1yr-auto-gen + identity-feeding + auto-accept — bestyrelsen kender dit hold",
+        items: [
+          "Bestyrelsen \"ser\" nu hvem du er. Ved sæson-1-slut tager den et frosset snapshot af dit hold (national kerne, U25-andel, primær specialisering, stjerneprofil) og persisterer det på `teams.season_1_identity_basis`. Snapshottet er *narrativets fundament* — selv hvis dit hold ændrer sig i sæson 2+, husker bestyrelsen hvad den så ([boardIdentity.js](backend/lib/boardIdentity.js))",
+          "5-årsmål viser nu inline-badges der forklarer *hvorfor* målet eksisterer: \"★ Bygger paa din FR-kerne (5/8 ryttere)\" eller \"★ Bygger paa dit ungdomsaftryk (50% U25 i sæson 1)\". Klik badgen → fuld forklaring expand med hvilke data fra sæson 1 der gjorde målet relevant. Implementeret som data-lag (`identity_basis_rationale` på goal-objektet) så fremtidige UI-redesigns kan genbruge det ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx), [boardGoals.js](backend/lib/boardGoals.js))",
+          "Ny auto-accept-cron tager over når manageren glemmer at handle. Tre tærskler styret af `seasons.race_days_completed` ([boardAutoAccept.js](backend/lib/boardAutoAccept.js)): T-3 (race-day 2) → info-reminder i Bestyrelse-feed (`board_update`); T-1 (race-day 4) → kritisk \"Skal handles\"-notif (`board_critical`); T-0 (race-day 5+) → bestyrelsen vælger selv en plan baseret på dit holds identitet og signer den. Notif-dedup (24h) gør cron idempotent",
+          "Auto-accept's default-fokus afledes fra `season_1_identity_basis`: høj U25-andel → ungdomsudvikling, elite-stjerneprofil → stjernesignering, GC/sprint/klassiker-spec → stjernesignering, ellers balanceret. Ingen blind \"balanced\"-fallback — selv hvis bestyrelsen tager over, matcher valget den retning, holdet allerede peger",
+          "Ny countdown-banner på BoardPage: \"Bestyrelsen venter paa din forhandling — N race-days tilbage\". Skifter til kritisk farve ved T-1. Ny Bestyrelse-feed-sektion samler alle board-relaterede notifs (`board_update` + `board_critical`) ét sted så manageren har overblik uden at gå ind i Indbakken",
+          "Migration ([2026-05-05-board-1yr-autogen.sql](database/2026-05-05-board-1yr-autogen.sql)) tilføjer `teams.season_1_identity_basis JSONB` + udvider `notifications_type_check` med `board_critical`. Migration kører automatisk ved push — ingen manuel handling",
+          "Bagved-kulisserne: ny `boardGoals.generate1YrFromLongerPlans` returnerer to varianter (Stabil + Resultatfokus nu) klar til wizard-redesign i S-02h. 15 nye backend-tests dækker computeSeasonOneIdentity, identity-feeding-annotation, auto-accept-tærsklerne og idempotent replay (146/146 grønne)",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.33",
     date: "2026-05-05",
     label: "Beta",

@@ -15,6 +15,8 @@ export {
 export {
   deriveBoardPersonality,
   deriveTeamIdentityProfile,
+  computeSeasonOneIdentity,
+  deriveDefaultFocusFromIdentity,
 } from "./boardIdentity.js";
 
 export {
@@ -23,6 +25,8 @@ export {
   generateBoardGoals,
   buildNegotiatedGoal,
   buildBoardProposal,
+  annotateGoalWithIdentityBasis,
+  generate1YrFromLongerPlans,
   createBaselineProfile,
   createInitialBoardProfile,
   finalizeBoardGoals,

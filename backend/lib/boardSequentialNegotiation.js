@@ -8,8 +8,15 @@
 //
 // Per-team-progression skal IKKE persistere i window-state (Q-B 2026-05-05):
 // data findes allerede i board_profiles-rows.
+//
+// S-02b · Tilføjelse 2026-05-05:
+// Før baseline-rows slettes, beregnes computeSeasonOneIdentity for hver human team
+// fra deres aktuelle hold-state og persisteres på teams.season_1_identity_basis.
+// Dette er den frosne sandhed for identity-feeding-badge ("Bygger på din franske kerne"),
+// 5yr-mål-weighting, 1yr-auto-gen og default-focus ved auto-accept.
 
-import { BOARD_NEGOTIATION_STATES } from "./boardConstants.js";
+import { BOARD_IDENTITY_RIDER_SELECT, BOARD_NEGOTIATION_STATES } from "./boardConstants.js";
+import { computeSeasonOneIdentity } from "./boardIdentity.js";
 
 function throwIfSupabaseError(error, message) {
   if (!error) return;
@@ -40,7 +47,7 @@ export async function startSequentialNegotiation({ supabase, completedSeasonId =
   // 1. Slet baseline-rows for human teams (AI/bank/frozen får ingen baseline)
   const { data: humanTeams, error: humanTeamsError } = await supabase
     .from("teams")
-    .select("id")
+    .select("id, division, season_1_identity_basis")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false);
@@ -48,8 +55,43 @@ export async function startSequentialNegotiation({ supabase, completedSeasonId =
 
   const teamIds = (humanTeams || []).map((row) => row.id);
   let baselineRowsDeleted = 0;
+  let identityBasesWritten = 0;
 
+  // S-02b: Compute + persist identity_basis pr. team før baseline slettes.
+  // Skip teams der allerede har et frosset basis (idempotent ved cron-replay).
   if (teamIds.length > 0) {
+    const teamsNeedingBasis = (humanTeams || []).filter((row) => !row.season_1_identity_basis);
+
+    if (teamsNeedingBasis.length > 0) {
+      const { data: ridersByTeam, error: ridersError } = await supabase
+        .from("riders")
+        .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}`)
+        .in("team_id", teamsNeedingBasis.map((row) => row.id));
+      throwIfSupabaseError(ridersError, "Could not load riders for identity basis");
+
+      const riderMap = new Map();
+      (ridersByTeam || []).forEach((rider) => {
+        if (!rider.team_id) return;
+        if (!riderMap.has(rider.team_id)) riderMap.set(rider.team_id, []);
+        riderMap.get(rider.team_id).push(rider);
+      });
+
+      for (const teamRow of teamsNeedingBasis) {
+        const identityBasis = computeSeasonOneIdentity({
+          team: teamRow,
+          riders: riderMap.get(teamRow.id) || [],
+          seasonNumber: 1,
+        });
+
+        const { error: updateError } = await supabase
+          .from("teams")
+          .update({ season_1_identity_basis: identityBasis })
+          .eq("id", teamRow.id);
+        throwIfSupabaseError(updateError, `Could not persist identity_basis for team ${teamRow.id}`);
+        identityBasesWritten += 1;
+      }
+    }
+
     const { data: deletedRows, error: deleteError } = await supabase
       .from("board_profiles")
       .delete()
@@ -84,6 +126,7 @@ export async function startSequentialNegotiation({ supabase, completedSeasonId =
 
   return {
     baseline_rows_deleted: baselineRowsDeleted,
+    identity_bases_written: identityBasesWritten,
     window_state: windowState,
     completed_season_id: completedSeasonId,
   };

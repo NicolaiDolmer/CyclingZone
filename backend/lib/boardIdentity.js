@@ -37,6 +37,61 @@ export function deriveBoardPersonality({ focus = "balanced", planType = "1yr" } 
   };
 }
 
+// S-02b · Frosset sæson-1-snapshot.
+// Computes ved sæson-1-slut (i startSequentialNegotiation) og persisteres på
+// teams.season_1_identity_basis. Bruges som goal-weighting input til 5yr-forslag,
+// 1yr-auto-gen, identity-feeding-badge ("Bygger på din franske kerne (5/8 ryttere)")
+// og default-focus ved auto-accept (Q-batch 1C Q18 + Q21).
+//
+// Forskel fra deriveTeamIdentityProfile:
+// - Indeholder kun de stabile aksioder narrativen bygger på (ikke fuld squad-state)
+// - Dropper standing/competitive_tier (dem skifter naturligt over sæsoner)
+// - Tilføjer rider_count + season_number_observed for traceability i UI/expand-text
+export function computeSeasonOneIdentity({ team = null, riders = [], seasonNumber = 1 } = {}) {
+  const profile = deriveTeamIdentityProfile({ team, riders });
+
+  return {
+    season_number_observed: seasonNumber,
+    rider_count: profile.rider_count,
+    primary_specialization: profile.primary_specialization,
+    primary_specialization_label: profile.primary_specialization_label,
+    secondary_specialization: profile.secondary_specialization,
+    youth_share_pct: profile.u25_share_pct,
+    youth_level: profile.youth_level,
+    national_core: profile.national_core,
+    star_profile: profile.star_profile,
+  };
+}
+
+// S-02b · Default-focus mapping for auto-accept.
+// Når en manager glemmer at handle og race_days_completed >= 5 fyrer auto-accept,
+// vælger vi det fokus der bedst matcher manageren's identitet — ikke "balanced"
+// blindt (Q-bekræftelse B=b 2026-05-05).
+export function deriveDefaultFocusFromIdentity(identityBasis = null) {
+  if (!identityBasis) return "balanced";
+
+  if (identityBasis.youth_level === "high") {
+    return "youth_development";
+  }
+
+  if (identityBasis.star_profile?.level === "high"
+    || identityBasis.star_profile?.level === "elite") {
+    return "star_signing";
+  }
+
+  if (identityBasis.primary_specialization === "youth") {
+    return "youth_development";
+  }
+
+  if (identityBasis.primary_specialization === "gc"
+    || identityBasis.primary_specialization === "sprint"
+    || identityBasis.primary_specialization === "classics") {
+    return "star_signing";
+  }
+
+  return "balanced";
+}
+
 export function deriveTeamIdentityProfile({ team = null, riders = [], standing = null } = {}) {
   const riderPool = Array.isArray(riders) && riders.length
     ? riders

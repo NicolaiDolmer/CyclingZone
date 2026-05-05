@@ -32,6 +32,7 @@ CREATE TABLE teams (
   is_frozen BOOLEAN DEFAULT FALSE,
   is_bank BOOLEAN DEFAULT FALSE,
   manager_name TEXT,
+  season_1_identity_basis JSONB DEFAULT NULL, -- S-02b: frosset identity-snapshot fra sæson-1-slut
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -384,8 +385,9 @@ CREATE TABLE notifications (
     'transfer_offer_received','transfer_offer_accepted','transfer_offer_rejected','transfer_counter',
     'transfer_offer_withdrawn','transfer_interest',
     'new_race','race_results_imported','season_started','season_ended',
-    'board_update','salary_paid','sponsor_paid',
-    'watchlist_rider_listed','loan_created','emergency_loan','loan_paid_off'
+    'board_update','board_critical','salary_paid','sponsor_paid',
+    'watchlist_rider_listed','loan_created','emergency_loan','loan_paid_off',
+    'deadline_day_warning','auction_cancelled','squad_enforced'
   )),
   title TEXT NOT NULL,
   message TEXT NOT NULL,

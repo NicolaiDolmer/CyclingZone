@@ -7,15 +7,19 @@ import {
   buildBoardOutlook,
   buildBoardProposal,
   buildBoardRequestOptions,
+  computeSeasonOneIdentity,
   createBaselineProfile,
+  deriveDefaultFocusFromIdentity,
   deriveTeamIdentityProfile,
   deriveBoardPersonality,
   evaluateBoardSeason,
   finalizeBoardGoals,
+  generate1YrFromLongerPlans,
   inferNegotiationIndexesFromGoals,
   resolveBoardRequest,
   startSequentialNegotiation,
 } from "./boardEngine.js";
+import { processBoardAutoAcceptCron } from "./boardAutoAccept.js";
 
 test("deriveTeamIdentityProfile reads a sprint-heavy squad and exposes board-facing labels", () => {
   const riders = Array.from({ length: 8 }, (_, index) => ({
@@ -931,6 +935,342 @@ test("startSequentialNegotiation handles empty manager pool without crashing", a
   assert.equal(result.window_state, BOARD_NEGOTIATION_STATES.PENDING_5YR);
 });
 
+// ─── S-02b · 1yr-auto-gen + identity-feeding + auto-accept tests ────────────
+
+test("computeSeasonOneIdentity captures only the stable axes from season 1", () => {
+  const riders = Array.from({ length: 8 }, (_, i) => ({
+    is_u25: i < 4,
+    nationality_code: i < 5 ? "FR" : i === 5 ? "BE" : "ESP",
+    popularity: i < 2 ? 78 : 25,
+    uci_points: 220 - (i * 10),
+    stat_fl: 60, stat_bj: 75, stat_kb: 72, stat_bk: 65, stat_tt: 70,
+    stat_bro: 60, stat_sp: 58, stat_acc: 60, stat_udh: 70, stat_mod: 70,
+    stat_res: 70, stat_ftr: 65,
+  }));
+
+  const basis = computeSeasonOneIdentity({
+    team: { division: 3 },
+    riders,
+    seasonNumber: 1,
+  });
+
+  assert.equal(basis.season_number_observed, 1);
+  assert.equal(basis.rider_count, 8);
+  assert.equal(basis.national_core.code, "FR");
+  assert.equal(basis.national_core.established, true);
+  assert.equal(basis.youth_share_pct, 50);
+  assert.equal(basis.youth_level, "high");
+  assert.ok(basis.primary_specialization);
+  assert.ok(basis.star_profile);
+  // Standing-derived fields skal IKKE være på basis (de skifter naturligt)
+  assert.equal(basis.competitive_tier, undefined);
+});
+
+test("deriveDefaultFocusFromIdentity prefers youth when youth_level is high", () => {
+  const focus = deriveDefaultFocusFromIdentity({
+    youth_level: "high",
+    star_profile: { level: "low" },
+    primary_specialization: "balanced",
+  });
+  assert.equal(focus, "youth_development");
+});
+
+test("deriveDefaultFocusFromIdentity prefers star_signing for elite stars", () => {
+  const focus = deriveDefaultFocusFromIdentity({
+    youth_level: "low",
+    star_profile: { level: "elite" },
+    primary_specialization: "gc",
+  });
+  assert.equal(focus, "star_signing");
+});
+
+test("deriveDefaultFocusFromIdentity falls back to balanced when nothing strong", () => {
+  const focus = deriveDefaultFocusFromIdentity({
+    youth_level: "low",
+    star_profile: { level: "low" },
+    primary_specialization: "balanced",
+  });
+  assert.equal(focus, "balanced");
+});
+
+test("deriveDefaultFocusFromIdentity returns balanced when no basis is provided", () => {
+  assert.equal(deriveDefaultFocusFromIdentity(null), "balanced");
+});
+
+test("buildBoardProposal annotates 5yr goals with identity-basis rationale", () => {
+  const riders = Array.from({ length: 8 }, (_, i) => ({
+    is_u25: i < 5,
+    nationality_code: i < 5 ? "FR" : "BE",
+    uci_points: 100,
+    stat_fl: 65, stat_bj: 70, stat_kb: 70, stat_bk: 65, stat_tt: 70,
+    stat_bro: 60, stat_sp: 60, stat_acc: 62, stat_udh: 70, stat_mod: 68,
+    stat_res: 70, stat_ftr: 62,
+  }));
+
+  const identityBasis = {
+    season_number_observed: 1,
+    rider_count: 8,
+    primary_specialization: "balanced",
+    youth_share_pct: 63,
+    youth_level: "high",
+    national_core: { code: "FR", count: 5, share_pct: 63, strength: "high", established: true },
+    star_profile: { level: "low" },
+  };
+
+  const proposal = buildBoardProposal({
+    focus: "balanced",
+    planType: "5yr",
+    team: { division: 3 },
+    riders,
+    standing: { rank_in_division: 4 },
+    identityBasis,
+  });
+
+  assert.equal(proposal.identity_basis, identityBasis);
+  // Mindst én goal skal have rationale tilknyttet (national_core er stærk)
+  const annotated = proposal.goals.filter((g) => g.identity_basis_rationale);
+  assert.ok(annotated.length > 0, "5yr-mål skal annoteres med identity rationale");
+
+  const nationalGoal = proposal.goals.find((g) => g.type === "min_national_riders");
+  if (nationalGoal) {
+    assert.equal(nationalGoal.identity_basis_rationale.kind, "national_core");
+    assert.match(nationalGoal.identity_basis_rationale.short, /FR-kerne/);
+  }
+});
+
+test("buildBoardProposal does NOT annotate 1yr goals (identity-feeding only on 5yr)", () => {
+  const proposal = buildBoardProposal({
+    focus: "balanced",
+    planType: "1yr",
+    team: { division: 3 },
+    riders: [],
+    standing: null,
+    identityBasis: {
+      youth_share_pct: 50,
+      youth_level: "high",
+      national_core: { code: "FR", count: 5, share_pct: 63, strength: "high", established: true },
+      primary_specialization: "balanced",
+      rider_count: 8,
+    },
+  });
+
+  const annotated = proposal.goals.filter((g) => g.identity_basis_rationale);
+  assert.equal(annotated.length, 0, "1yr-mål må ikke have identity-feeding-badge");
+});
+
+test("generate1YrFromLongerPlans returns two variants (stable + results_focus)", () => {
+  const result = generate1YrFromLongerPlans({
+    team: { division: 3, balance: 0, sponsor_income: 100 },
+    riders: [],
+    standing: null,
+    fiveYrBoard: { focus: "youth_development" },
+    threeYrBoard: { focus: "youth_development" },
+  });
+
+  assert.equal(result.inherited_focus, "youth_development");
+  assert.equal(result.variants.length, 2);
+  assert.equal(result.variants[0].key, "stable");
+  assert.equal(result.variants[0].proposal.focus, "youth_development");
+  assert.equal(result.variants[1].key, "results_focus");
+  // results_focus skal IKKE være youth_development når den arver youth (Q-bekræftelse)
+  assert.notEqual(result.variants[1].proposal.focus, "youth_development");
+});
+
+test("generate1YrFromLongerPlans falls back to balanced when no longer plans exist", () => {
+  const result = generate1YrFromLongerPlans({
+    team: { division: 3 },
+    riders: [],
+    standing: null,
+    fiveYrBoard: null,
+    threeYrBoard: null,
+  });
+
+  assert.equal(result.inherited_focus, "balanced");
+  assert.equal(result.variants[0].proposal.focus, "balanced");
+  assert.equal(result.variants[1].proposal.focus, "star_signing");
+});
+
+test("startSequentialNegotiation persists season_1_identity_basis on each human team", async () => {
+  const state = {
+    teams: [
+      { id: "team-1", is_ai: false, is_bank: false, is_frozen: false, division: 3, season_1_identity_basis: null },
+      { id: "team-ai", is_ai: true, is_bank: false, is_frozen: false, division: 3, season_1_identity_basis: null },
+    ],
+    riders: [
+      { team_id: "team-1", is_u25: true, nationality_code: "FR", uci_points: 100, popularity: 50,
+        stat_fl: 70, stat_bj: 70, stat_kb: 70, stat_bk: 70, stat_tt: 70, stat_bro: 70,
+        stat_sp: 70, stat_acc: 70, stat_udh: 70, stat_mod: 70, stat_res: 70, stat_ftr: 70 },
+      { team_id: "team-1", is_u25: false, nationality_code: "FR", uci_points: 90, popularity: 40,
+        stat_fl: 70, stat_bj: 70, stat_kb: 70, stat_bk: 70, stat_tt: 70, stat_bro: 70,
+        stat_sp: 70, stat_acc: 70, stat_udh: 70, stat_mod: 70, stat_res: 70, stat_ftr: 70 },
+    ],
+    board_profiles: [
+      { id: "bp-1", team_id: "team-1", plan_type: "baseline", is_baseline: true },
+    ],
+    transfer_windows: [
+      { id: "tw-1", board_negotiation_state: "locked", created_at: "2026-05-01T00:00:00Z" },
+    ],
+  };
+
+  const supabase = makeFakeSupabase(state);
+  const result = await startSequentialNegotiation({ supabase });
+
+  assert.equal(result.identity_bases_written, 1);
+  assert.equal(result.baseline_rows_deleted, 1);
+
+  const team1 = state.teams.find((t) => t.id === "team-1");
+  assert.ok(team1.season_1_identity_basis, "Identity basis skal persisteres");
+  assert.equal(team1.season_1_identity_basis.rider_count, 2);
+  assert.equal(team1.season_1_identity_basis.national_core.code, "FR");
+
+  const teamAi = state.teams.find((t) => t.id === "team-ai");
+  assert.equal(teamAi.season_1_identity_basis, null, "AI hold må ikke få basis");
+});
+
+test("startSequentialNegotiation skips identity_basis-write when team already has one (idempotent replay)", async () => {
+  const existingBasis = { rider_count: 99, national_core: { code: "OLD" } };
+  const state = {
+    teams: [
+      { id: "team-1", is_ai: false, is_bank: false, is_frozen: false, division: 3, season_1_identity_basis: existingBasis },
+    ],
+    riders: [],
+    board_profiles: [],
+    transfer_windows: [
+      { id: "tw-1", board_negotiation_state: "locked", created_at: "2026-05-01T00:00:00Z" },
+    ],
+  };
+
+  const supabase = makeFakeSupabase(state);
+  const result = await startSequentialNegotiation({ supabase });
+
+  assert.equal(result.identity_bases_written, 0, "Bevarer eksisterende basis");
+  assert.deepEqual(state.teams[0].season_1_identity_basis, existingBasis);
+});
+
+test("processBoardAutoAcceptCron sends T-3 reminder at race_days_completed=2", async () => {
+  const notifications = [];
+  const state = makeAutoAcceptState({ raceDaysCompleted: 2 });
+  const supabase = makeFakeSupabase(state);
+
+  const summary = await processBoardAutoAcceptCron({
+    supabase,
+    notifyUser: async (args) => {
+      notifications.push({ ...args });
+      return { delivered: true, deduped: false };
+    },
+    now: new Date("2026-05-05T10:00:00Z"),
+  });
+
+  assert.equal(summary.teams_checked, 1);
+  assert.equal(summary.reminders_sent, 1);
+  assert.equal(summary.auto_accepted, 0);
+  assert.equal(notifications.length, 1);
+  assert.equal(notifications[0].type, "board_update");
+  assert.match(notifications[0].title, /5-aarsplan/);
+});
+
+test("processBoardAutoAcceptCron sends T-1 critical reminder at race_days_completed=4", async () => {
+  const notifications = [];
+  const state = makeAutoAcceptState({ raceDaysCompleted: 4 });
+  const supabase = makeFakeSupabase(state);
+
+  const summary = await processBoardAutoAcceptCron({
+    supabase,
+    notifyUser: async (args) => {
+      notifications.push({ ...args });
+      return { delivered: true, deduped: false };
+    },
+  });
+
+  assert.equal(summary.reminders_sent, 1);
+  assert.equal(summary.auto_accepted, 0);
+  assert.equal(notifications[0].type, "board_critical");
+  assert.match(notifications[0].title, /Sidste chance/);
+});
+
+test("processBoardAutoAcceptCron auto-signs default plan at race_days_completed=5 using identity-derived focus", async () => {
+  const notifications = [];
+  const state = makeAutoAcceptState({
+    raceDaysCompleted: 5,
+    identityBasis: {
+      youth_level: "high",
+      youth_share_pct: 60,
+      primary_specialization: "youth",
+      national_core: { code: "DK", count: 5, share_pct: 60, strength: "high", established: true },
+      star_profile: { level: "medium" },
+      rider_count: 8,
+      season_number_observed: 1,
+    },
+  });
+  const supabase = makeFakeSupabase(state);
+
+  const summary = await processBoardAutoAcceptCron({
+    supabase,
+    notifyUser: async (args) => {
+      notifications.push({ ...args });
+      return { delivered: true, deduped: false };
+    },
+  });
+
+  assert.equal(summary.auto_accepted, 1);
+  assert.equal(summary.errors, 0);
+
+  const created = state.board_profiles.find((b) => b.team_id === "team-1" && b.plan_type === "5yr");
+  assert.ok(created, "Auto-accept skal upserte 5yr-row");
+  assert.equal(created.focus, "youth_development", "Identity youth_level=high → youth_development focus");
+  assert.equal(created.negotiation_status, "completed");
+  assert.ok(created.current_goals?.length > 0, "Default-mål skal være populeret");
+});
+
+test("processBoardAutoAcceptCron skips when window is locked (baseline phase)", async () => {
+  const state = makeAutoAcceptState({ raceDaysCompleted: 5, windowState: "locked" });
+  const supabase = makeFakeSupabase(state);
+
+  const summary = await processBoardAutoAcceptCron({
+    supabase,
+    notifyUser: async () => ({ delivered: true, deduped: false }),
+  });
+
+  assert.equal(summary.teams_checked, 0);
+  assert.equal(summary.auto_accepted, 0);
+});
+
+function makeAutoAcceptState({
+  raceDaysCompleted = 0,
+  windowState = "pending_5yr",
+  identityBasis = null,
+} = {}) {
+  return {
+    teams: [{
+      id: "team-1",
+      user_id: "user-1",
+      is_ai: false,
+      is_bank: false,
+      is_frozen: false,
+      division: 3,
+      balance: 800000,
+      sponsor_income: 240000,
+      name: "Test Hold",
+      season_1_identity_basis: identityBasis,
+    }],
+    riders: [],
+    seasons: [{
+      id: "season-2",
+      number: 2,
+      status: "active",
+      race_days_completed: raceDaysCompleted,
+      race_days_total: 60,
+    }],
+    board_profiles: [],
+    season_standings: [],
+    transfer_windows: [{
+      id: "tw-1",
+      board_negotiation_state: windowState,
+      created_at: "2026-05-05T00:00:00Z",
+    }],
+  };
+}
+
 // Minimal fake supabase-client for sequential-negotiation-tests.
 // Mønster matcher betaResetService.test.js's createBetaResetSupabase men er trimmet ned.
 function makeFakeSupabase(state) {
@@ -952,6 +1292,8 @@ function makeFakeSupabase(state) {
       return filters.every((filter) => {
         if (filter.type === "eq") return row[filter.column] === filter.value;
         if (filter.type === "in") return filter.values.includes(row[filter.column]);
+        if (filter.type === "gte") return row[filter.column] >= filter.value;
+        if (filter.type === "is") return row[filter.column] === filter.value;
         return true;
       });
     }
@@ -991,6 +1333,37 @@ function makeFakeSupabase(state) {
         return Promise.resolve({ data: clone(updated), error: null });
       }
 
+      if (action === "insert") {
+        const newRows = (Array.isArray(payload) ? payload : [payload]).map((row) => ({
+          id: row.id || `${table}-${Math.random().toString(36).slice(2, 8)}`,
+          ...clone(row),
+        }));
+        rows.push(...newRows);
+        return Promise.resolve({ data: clone(newRows), error: null });
+      }
+
+      if (action === "upsert") {
+        const conflictKeys = (payload?._onConflict || "id").split(",").map((k) => k.trim());
+        const data = payload?._payload ?? payload;
+        const incoming = Array.isArray(data) ? data : [data];
+        const result = [];
+
+        for (const row of incoming) {
+          const existing = rows.find((existingRow) =>
+            conflictKeys.every((key) => existingRow[key] === row[key])
+          );
+          if (existing) {
+            Object.assign(existing, clone(row));
+            result.push(existing);
+          } else {
+            const inserted = { id: row.id || `${table}-${Math.random().toString(36).slice(2, 8)}`, ...clone(row) };
+            rows.push(inserted);
+            result.push(inserted);
+          }
+        }
+        return Promise.resolve({ data: clone(result), error: null });
+      }
+
       return Promise.resolve({ data: null, error: null });
     }
 
@@ -1000,9 +1373,14 @@ function makeFakeSupabase(state) {
       order(column, opts = {}) { order = { column, ascending: opts.ascending !== false }; return query; },
       limit(n) { limit = n; return query; },
       select() { return query; },
+      single() {
+        return execute().then((result) => ({ data: result.data[0] || null, error: result.error }));
+      },
       maybeSingle() {
         return execute().then((result) => ({ data: result.data[0] || null, error: result.error }));
       },
+      gte(column, value) { filters.push({ type: "gte", column, value }); return query; },
+      is(column, value) { filters.push({ type: "is", column, value }); return query; },
       then(resolve, reject) {
         return execute().then(resolve, reject);
       },
@@ -1018,6 +1396,10 @@ function makeFakeSupabase(state) {
         select() { return makeQuery(table, "select"); },
         delete() { return makeQuery(table, "delete"); },
         update(payload) { return makeQuery(table, "update", payload); },
+        insert(payload) { return makeQuery(table, "insert", payload); },
+        upsert(payload, opts = {}) {
+          return makeQuery(table, "upsert", { _payload: payload, _onConflict: opts.onConflict });
+        },
       };
     },
   };

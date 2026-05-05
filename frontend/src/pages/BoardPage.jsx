@@ -100,11 +100,13 @@ function SatisfactionMeter({ value }) {
 }
 
 function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
+  const [identityExpanded, setIdentityExpanded] = useState(false);
   const status = evaluation?.status;
   const statusMeta = !achieved && status ? GOAL_STATUS_META[status] : null;
   const isRequired = goal.importance === "required";
   const isBehind = status === "behind";
   const isNearMiss = status === "near_miss" || status === "watch";
+  const identityRationale = goal.identity_basis_rationale || null;
 
   const containerClass = achieved
     ? "bg-cz-success-bg0/8 border-cz-success/30"
@@ -157,6 +159,24 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
             <span className="text-xs text-cz-danger/70">-{goal.satisfaction_penalty} hvis ikke opfyldt</span>
           )}
         </div>
+        {identityRationale && (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => setIdentityExpanded(v => !v)}
+              className="inline-flex items-center gap-1 text-[11px] text-cz-info hover:text-cz-info/80 underline-offset-2 hover:underline transition-colors"
+            >
+              <span>★</span>
+              <span>{formatBoardCopy(identityRationale.short)}</span>
+              <span className="text-cz-3">{identityExpanded ? "↑" : "↓"}</span>
+            </button>
+            {identityExpanded && (
+              <p className="text-[11px] text-cz-3 mt-1.5 leading-relaxed bg-cz-subtle border border-cz-border rounded-md px-2.5 py-1.5">
+                {formatBoardCopy(identityRationale.long)}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -458,6 +478,95 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
 }
 
 // ── Plan-kort ─────────────────────────────────────────────────────────────────
+
+// S-02b · "Bestyrelse"-feed (Q-batch 1C Q21).
+// Info-only board-relaterede notifs (board_update + board_critical) vises her
+// så manageren har én samlet oversigt over bestyrelsens seneste reaktioner.
+function BoardFeedSection({ items = [] }) {
+  if (!items.length) return null;
+
+  const recent = items.slice(0, 5);
+
+  return (
+    <div className="mt-5 bg-cz-card border border-cz-border rounded-xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-cz-3 text-xs uppercase tracking-wider">Bestyrelse-feed</p>
+        <span className="text-cz-3 text-[10px]">{items.length} senest</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {recent.map((item) => {
+          const isCritical = item.type === "board_critical";
+          return (
+            <div key={item.id}
+              className={`p-3 rounded-lg border ${isCritical
+                ? "bg-cz-danger-bg0/8 border-cz-danger/30"
+                : "bg-cz-subtle border-cz-border"}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <p className={`text-sm font-medium ${isCritical ? "text-red-300" : "text-cz-2"}`}>
+                    {item.title}
+                  </p>
+                  <p className="text-cz-3 text-xs mt-1 leading-relaxed">{item.message}</p>
+                </div>
+                {isCritical && (
+                  <span className="text-[10px] uppercase tracking-wider text-cz-danger flex-shrink-0">
+                    Skal handles
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// S-02b · Auto-accept countdown-banner.
+// Q-bekræftelse C (2026-05-05): T-3 (race_days=2) info, T-1 (=4) Skal-handles,
+// auto-accept (>=5). UI viser kun hvis der findes en pending plan + race-days igang.
+function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanType, plans }) {
+  if (isBaselinePhase || !autoAccept) return null;
+
+  const hasPendingPlan = Boolean(setupNextPlanType)
+    || PLAN_SEQUENCE.some((pt) => plans[pt]?.is_expired);
+  if (!hasPendingPlan) return null;
+
+  const raceDaysLeft = Number(autoAccept.race_days_left ?? 0);
+  const raceDaysCompleted = Number(autoAccept.race_days_completed ?? 0);
+  if (raceDaysCompleted <= 0 || raceDaysLeft <= 0) return null;
+
+  const isCritical = raceDaysLeft <= 1;
+  const isWarning = raceDaysLeft <= 3;
+
+  const containerClass = isCritical
+    ? "bg-cz-danger-bg0/8 border-cz-danger/40"
+    : isWarning
+      ? "bg-cz-accent/10 border-cz-accent/40"
+      : "bg-cz-info-bg0/10 border-blue-500/30";
+
+  const accentClass = isCritical
+    ? "text-red-300"
+    : isWarning ? "text-cz-accent-t" : "text-blue-300";
+
+  return (
+    <div className={`rounded-xl p-4 mb-5 border ${containerClass}`}>
+      <div className="flex items-start gap-3">
+        <span className="text-2xl">⏳</span>
+        <div className="flex-1">
+          <p className={`font-semibold text-sm ${accentClass}`}>
+            {isCritical
+              ? `Sidste chance — bestyrelsen tager over om ${raceDaysLeft} race-day${raceDaysLeft === 1 ? "" : "s"}`
+              : `Bestyrelsen venter pa din forhandling — ${raceDaysLeft} race-day${raceDaysLeft === 1 ? "" : "s"} tilbage`}
+          </p>
+          <p className="text-cz-3 text-xs mt-1 leading-relaxed">
+            Hvis du ikke har valgt fokus og forhandlet maal naar race-day 5 starter, vaelger bestyrelsen selv en plan baseret paa dit holds identitet fra saeson 1.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function PlanCard({ planType, planData, riders, standing, activeLoanCount, team, requestError, requestingType, onRequest, onRenew, onNegotiate }) {
   const [expanded, setExpanded] = useState(true);
@@ -761,6 +870,11 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
                     {g.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/60">+{g.satisfaction_bonus}</span>}
                     {g.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/60">-{g.satisfaction_penalty} straf</span>}
                   </div>
+                  {g.identity_basis_rationale && (
+                    <p className="text-[11px] text-cz-info mt-1.5">
+                      ★ {formatBoardCopy(g.identity_basis_rationale.short)}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -917,6 +1031,10 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true);
   // S-02a: sæson 1 = baseline observation. Window-state låser wizard.
   const [isBaselinePhase, setIsBaselinePhase] = useState(false);
+  // S-02b: identity_basis snapshot + auto-accept countdown + board-feed
+  const [identityBasis, setIdentityBasis] = useState(null);
+  const [autoAccept, setAutoAccept] = useState(null);
+  const [boardFeed, setBoardFeed] = useState([]);
 
   // Wizard state
   const [wizardPlanType, setWizardPlanType] = useState(null);
@@ -984,7 +1102,25 @@ export default function BoardPage() {
     setRiders(data.riders || []);
     setStanding(data.standing || null);
     setIdentityProfile(data.identity_profile || null);
+    setIdentityBasis(data.identity_basis || null);
+    setAutoAccept(data.auto_accept || null);
     setActiveLoanCount(data.active_loans_count || 0);
+
+    // S-02b: hent seneste board-relaterede notifs til feed-sektion (Q-batch 1C Q21)
+    try {
+      const feedRes = await fetch(`${API}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (feedRes.ok) {
+        const allNotifs = await feedRes.json();
+        const boardNotifs = (allNotifs || []).filter(n =>
+          n.type === "board_update" || n.type === "board_critical"
+        );
+        setBoardFeed(boardNotifs);
+      }
+    } catch {
+      // Feed er ikke kritisk — undlad at blokere page-load
+    }
 
     // S-02a: I baseline-fase (sæson 1) er wizard låst — bestyrelsen observerer.
     // Auto-åbn wizard ved sekventiel onboarding (sæson 2+) når mindst én plan allerede findes.
@@ -1301,6 +1437,14 @@ export default function BoardPage() {
         />
       )}
 
+      {/* S-02b: Auto-accept countdown — vises kun når der er en pending plan + race-days igang. */}
+      <BoardAutoAcceptCountdown
+        isBaselinePhase={isBaselinePhase}
+        autoAccept={autoAccept}
+        setupNextPlanType={setupNextPlanType}
+        plans={plans}
+      />
+
       <BoardIdentityCard identityProfile={identityProfile} />
 
       {/* S-02a: Plan-kort skjules i baseline-fasen — forhandling åbner ved sæson-slut. */}
@@ -1328,6 +1472,9 @@ export default function BoardPage() {
           ))}
         </div>
       )}
+
+      {/* S-02b: Bestyrelse-feed — info-only board-relaterede notifs. */}
+      {!isBaselinePhase && <BoardFeedSection items={boardFeed} />}
 
       {/* Tilfredshedsforklaring */}
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-5">
