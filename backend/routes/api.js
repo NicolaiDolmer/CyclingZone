@@ -778,7 +778,7 @@ router.post("/auctions", requireAuth, async (req, res) => {
       .eq("rider_id", rider_id).neq("user_id", req.user.id);
     if (watchers?.length) {
       await Promise.all(watchers.map(w =>
-        notify(w.user_id, "watchlist_rider_listed", "Ønskeliste-rytter til auktion",
+        notify(w.user_id, "watchlist_rider_auction", "Ønskeliste-rytter til auktion",
           `${riderFullName} er sat til auktion (startpris ${price.toLocaleString("da-DK")} CZ$)`,
           auction.id).catch(() => {})
       ));

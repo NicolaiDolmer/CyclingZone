@@ -23,7 +23,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Rytterværdi i marked/visninger er dynamisk: `market_value = max(5, uci_points) × 4000 + prize_earnings_bonus`, hvor bonus er gennemsnit af seneste op til 3 afsluttede sæsoners præmiepenge (v1.77)
 - Rytterdetalje-side (stats, historik, watchlist-tæller, ryttertype-badge, ⚡-badge ved aktiv auktion)
 - Rytter-sammenligning (side-by-side)
-- Watchlist + notifikation når ønskeliste-rytter sættes til salg eller auktion (v1.35)
+- Watchlist + notifikation når ønskeliste-rytter sættes til salg eller auktion (v1.35). Indbakke-routing adskiller nu auktion (`watchlist_rider_auction` → `/auctions`) fra salg (`watchlist_rider_listed` → `/transfers`) med legacy-fallback for gamle auktion-notifikationer (v2.45)
 - Stat-grid med farvekodning (statBg.js)
 
 ### Auktioner
@@ -143,7 +143,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Frontend route-level code-splitting: sider lazy-loades via `React.lazy`/`Suspense`, så initial bundle er reduceret og Vite-build kører uden large chunk warning
 - Rytterprofilens `Udvikling`-tab viser UCI-point og stats over tid fra `rider_uci_history`/`rider_stat_history`
 - Notifikationssystem (in-app + badge, deduplicering ved cron/retries)
-- Notification type-kontrakt er afstemt i schema/migration/test med runtime for transfer-interesse, watchlist og lånebeskeder
+- Notification type-kontrakt er afstemt i schema/migration/test med runtime for transfer-interesse, watchlist-salg, watchlist-auktion og lånebeskeder
 - Achievement-sync fra live historiktabeller (bid, transfer, watchlist, hold, board)
 - Aktivitets-feed · Head-to-head sammenligning · Hall of Fame · Patch notes · Hjælpeside · Confetti modal
 

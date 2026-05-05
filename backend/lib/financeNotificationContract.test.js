@@ -36,6 +36,7 @@ const RUNTIME_NOTIFICATION_TYPES = [
   "transfer_offer_received",
   "transfer_offer_rejected",
   "transfer_offer_withdrawn",
+  "watchlist_rider_auction",
   "watchlist_rider_listed",
 ];
 

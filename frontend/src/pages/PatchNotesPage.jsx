@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.45",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Ønskeliste-auktioner åbner Auktioner fra Indbakken",
+        items: [
+          "Indbakke-notifikationen 'Ønskeliste-rytter til auktion' linker nu til Auktioner i stedet for Transfers. Backend bruger en ny notification-type `watchlist_rider_auction`, så auktioner og transferlistinger ikke længere deler routing-kontrakt.",
+          "Gamle allerede-sendte ønskeliste-auktionsnotifikationer genkendes på titel/besked og får samme `/auctions`-link, så eksisterende indbakke-elementer også åbner korrekt.",
+          "Migration ([2026-05-05-watchlist-auction-notification-type.sql](database/2026-05-05-watchlist-auction-notification-type.sql)) udvider `notifications_type_check`, og kontrakt-testen er opdateret med den nye type.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.44",
     date: "2026-05-05",
     label: "Beta",

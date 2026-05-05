@@ -22,8 +22,10 @@ const KNOWN_NOTIF_TYPES = new Set([
   "transfer_offer_received", "transfer_offer_accepted", "transfer_offer_rejected",
   "transfer_counter", "transfer_offer_withdrawn", "transfer_interest",
   "new_race", "race_results_imported", "season_started", "season_ended",
-  "board_update", "salary_paid", "sponsor_paid",
-  "watchlist_rider_listed", "loan_created", "emergency_loan", "loan_paid_off",
+  "board_update", "board_critical", "salary_paid", "sponsor_paid",
+  "watchlist_rider_listed", "watchlist_rider_auction",
+  "loan_created", "emergency_loan", "loan_paid_off",
+  "deadline_day_warning", "auction_cancelled", "squad_enforced",
 ]);
 
 function parseArgs(argv) {

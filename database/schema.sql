@@ -386,7 +386,7 @@ CREATE TABLE notifications (
     'transfer_offer_withdrawn','transfer_interest',
     'new_race','race_results_imported','season_started','season_ended',
     'board_update','board_critical','salary_paid','sponsor_paid',
-    'watchlist_rider_listed','loan_created','emergency_loan','loan_paid_off',
+    'watchlist_rider_listed','watchlist_rider_auction','loan_created','emergency_loan','loan_paid_off',
     'deadline_day_warning','auction_cancelled','squad_enforced'
   )),
   title TEXT NOT NULL,

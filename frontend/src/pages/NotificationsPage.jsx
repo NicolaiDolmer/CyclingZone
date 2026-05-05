@@ -28,6 +28,7 @@ const TYPE_CONFIG = {
   auction_won:               { icon: "🏆", color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/auctions" },
   auction_lost:              { icon: "↩",  color: "text-cz-2",   bg: "bg-cz-subtle border-cz-border",          link: "/auctions" },
   auction_outbid:            { icon: "⚠️", color: "text-cz-danger",    bg: "bg-cz-danger-bg0/8 border-red-500/15",     link: "/auctions" },
+  watchlist_rider_auction:   { icon: "⭐", color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-[#e8c547]/15", link: "/auctions" },
   transfer_offer_received:   { icon: "↔",  color: "text-cz-info",   bg: "bg-cz-info-bg0/8 border-blue-500/15",   link: "/transfers" },
   transfer_offer_accepted:   { icon: "✅", color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/transfers" },
   transfer_offer_rejected:   { icon: "❌", color: "text-cz-danger",    bg: "bg-cz-danger-bg0/8 border-red-500/15",     link: "/transfers" },
@@ -46,10 +47,12 @@ const TYPE_CONFIG = {
   board_update:              { icon: "📋", color: "text-cz-info",   bg: "bg-cz-info-bg0/8 border-blue-500/15",   link: "/board" },
 };
 
+const DEFAULT_TYPE_CONFIG = { icon: "●", color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
+
 const MINE_FILTER_TYPES = {
   all:       null,
   unread:    null,
-  auctions:  ["bid_received","bid_placed","auction_won","auction_lost","auction_outbid"],
+  auctions:  ["bid_received","bid_placed","auction_won","auction_lost","auction_outbid","watchlist_rider_auction"],
   transfers: ["transfer_offer_received","transfer_offer_accepted","transfer_offer_rejected","transfer_counter","transfer_offer_withdrawn","transfer_interest","watchlist_rider_listed"],
   board:     ["board_update"],
   finance:   ["salary_paid","sponsor_paid","loan_created","emergency_loan","loan_paid_off"],
@@ -82,6 +85,19 @@ function timeAgo(dateStr) {
   if (h < 24) return `${h}t siden`;
   if (d < 7) return `${d}d siden`;
   return new Date(dateStr).toLocaleDateString("da-DK", { day: "numeric", month: "short" });
+}
+
+function isLegacyWatchlistAuctionNotification(notification) {
+  if (notification.type !== "watchlist_rider_listed") return false;
+  const text = `${notification.title || ""} ${notification.message || ""}`.toLocaleLowerCase("da-DK");
+  return text.includes("auktion");
+}
+
+function getNotificationConfig(notification) {
+  if (isLegacyWatchlistAuctionNotification(notification)) {
+    return TYPE_CONFIG.watchlist_rider_auction;
+  }
+  return TYPE_CONFIG[notification.type] || DEFAULT_TYPE_CONFIG;
 }
 
 export default function NotificationsPage() {
@@ -226,7 +242,12 @@ export default function NotificationsPage() {
     if (mineFilter === "unread") return notifications.filter(n => !n.is_read);
     const types = MINE_FILTER_TYPES[mineFilter];
     if (!types) return notifications;
-    return notifications.filter(n => types.includes(n.type));
+    return notifications.filter(n => {
+      const matchesType = types.includes(n.type);
+      if (mineFilter === "auctions") return matchesType || isLegacyWatchlistAuctionNotification(n);
+      if (mineFilter === "transfers") return matchesType && !isLegacyWatchlistAuctionNotification(n);
+      return matchesType;
+    });
   })();
 
   const feedTypes = FEED_FILTER_TYPES[feedFilter];
@@ -326,7 +347,7 @@ export default function NotificationsPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {filteredNotifs.map(n => {
-                const config = TYPE_CONFIG[n.type] || { icon: "●", color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
+                const config = getNotificationConfig(n);
                 return (
                   <div key={n.id}
                     className={`flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition-all cursor-pointer
