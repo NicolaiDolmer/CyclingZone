@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Session lukket 2026-05-04 (sen).** Leveret: Ønskeliste-polish (v2.31) — paginering 50/side, sticky header og fuld bredde matcher rytterside. Mobil rytterside ensrettet til tabel.
+**Session lukket 2026-05-05.** Leveret: Ønskeliste-stjerne flyttet til egen kolonne efter rytter-navn (v2.32) + Ønskeliste-polish (v2.31).
 
 ## Soak-gate
 **Aktiv: nej** — kvitteret 2026-05-04.
@@ -10,8 +10,8 @@
 **Alle 7 launch-gates ✅** — soft-launch-klar. **P0-status: 5/6 leveret (S-01, S-03, S-04, S-05, S-06).** Eneste P0 tilbage: S-02 Bestyrelse-redesign (kræver AskUserQuestion-spec-session først). Launch-dato: åben.
 
 ## Senest leveret
-- 2026-05-04 (sen 2): **Ønskeliste-polish (v2.31)** — [WatchlistPage.jsx](frontend/src/pages/WatchlistPage.jsx) får client-side paginering (50/side, page reset ved filter-skift), sticky thead + `overflow-auto max-h-[calc(100vh-220px)]`, og `max-w-5xl` → `max-w-full` (matcher [RidersPage.jsx](frontend/src/pages/RidersPage.jsx)). Ryttersiden på mobil skiftet fra kort-layout til samme tabel som desktop — død kode fjernet (`RiderCard`, `MOBILE_STATS`, `isMobile`-state, resize-listener). Verificeret i preview med 53 watchlist-entries: side 1 viser 1–50, side 2 viser 51–53, sticky header bekræftet (`theadStuckToTop: true` efter 400px scroll inden i container). Build grøn.
-- Ældre (S-05 v2.30, S-03 v2.29, S-06 v2.28, UCI v2.27 m.fl.) → `docs/archive/NOW_HISTORIK_2026-05-04_part2.md` + `NOW_HISTORIK_2026-05-03.md`
+- 2026-05-05: **Ønskeliste-stjerne (v2.32)** — ny delt komponent [WatchlistStar.jsx](frontend/src/components/WatchlistStar.jsx) erstatter inline `StarButton` i [RidersPage](frontend/src/pages/RidersPage.jsx) og bruges også i [WatchlistPage](frontend/src/pages/WatchlistPage.jsx) + [ActivityPage](frontend/src/pages/ActivityPage.jsx). Stjernen sidder nu i sin egen smalle kolonne lige efter Rytter-kolonnen — flyttet fra sidste kolonne efter alle 14 stats. Ønskelistens "★ Fjern"-knap fjernet fra Handling-kolonnen (stjernen alene er nok); Handling viser nu kun "Start auktion" for fri agents. ActivityPage's Ønskeliste-tab har nu fjern-stjerne med lokal state-update. Build grøn.
+- Ældre (v2.31 polish, S-05 v2.30, S-03 v2.29, S-06 v2.28, UCI v2.27 m.fl.) → `docs/archive/NOW_HISTORIK_2026-05-04_part2.md` + `NOW_HISTORIK_2026-05-03.md`
 
 ## Næste session — prioriteter
 1. **S-02 Bestyrelse-redesign — AskUserQuestion-spec-session** (sekventiel forhandling 5yr→3yr→1yr, sæson 0-lås, identity-feedback, auto-accept). Per `GUARDRAILS_CORE.md` skal komplekse feature-redesigns starte med dedikeret kravafklaring før kode. Brief: `docs/slices/02-board-redesign-sequential.md`
