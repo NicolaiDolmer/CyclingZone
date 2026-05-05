@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "2.40",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "S-02h · Wizard-redesign — Hybrid B+A (strategisk dashboard + modal wizard)",
+        items: [
+          "BoardPage ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)) redesignet til 3-kolonne dashboard: 5yr / 3yr / 1yr vises side om side på desktop (mobile: vertikal stack). Hvert panel viser tilfredshed%, sponsor×-modifier, mål-progress-bar og top 3 mål med status-ikoner (✓/!/~/○ fra GOAL_STATUS_META) — compact info-tæthed pr. Q-batch 1C Q17",
+          "GoalMiniDialog: klik på et mål i dashboard-panelet åbner en modal med fulde mål-detaljer (fremgang, kumulativt progress-bar, importance, tradeoff-stramning, identity-badge) + dominerende board-member-portræt og reaktions-citat. Giver immersion uden at fylde dashboard (Q-batch 1C Q17)",
+          "Wizard redesignet fra full-page takeover til modal overlay — dashboard forbliver synligt i baggrunden. WizardStep1/2/3 (strategi → forhandling → underskrift) er uændrede internt. Trin-indikator og satisfaction-meter bevaret. Lukkes med '← Tilbage til oversigt' (renewal) eller auto-lukkes ved sign (setup)",
+          "Multi-plan-fornyelse (Q-batch 1C Q19): når 2+ planer er udløbet samme sæson bygges en renewalQueue[] sorted by PLAN_SEQUENCE (5yr → 3yr → 1yr). Første plan åbner wizarden, efter sign åbner næste plan automatisk. Modal-header viser 'Planfornyelse 1/2 — 3-årsplan' + 'Derefter fortsættes med 1-årsplan'. '← Tilbage til 3-årsplan'-knap vises fra trin 2+",
+          "DashboardPlanPanel: ny kompakt komponent med expand-toggle '↓ Vis detaljer'. Detalje-sektionen inkluderer fulde GoalCards, PlanTimelineBar, SeasonSnapshotGrid, outlook/feedback, MemberReactionPanel og BoardRequestPanel — al eksisterende funktionalitet bevaret under fold",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.39",
     date: "2026-05-05",
     label: "Beta",
