@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Pre-push lint-gate. Forhindrer at lint-fejl bliver pushet til main og rød-laver CI.
+# Kører kun lint på den side (frontend/backend) der har ændringer i de pushede commits.
+# Aktivér med: git config core.hooksPath .githooks
+set -e
+
+repo_root="$(git rev-parse --show-toplevel)"
+exit_code=0
+
+while read local_ref local_sha remote_ref remote_sha; do
+  if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+    continue
+  fi
+
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    range="$local_sha"
+  else
+    range="$remote_sha..$local_sha"
+  fi
+
+  changed=$(git diff --name-only "$range" 2>/dev/null || git show --name-only --format= "$local_sha")
+
+  if echo "$changed" | grep -qE '^frontend/'; then
+    echo "→ Pre-push: linting frontend..."
+    (cd "$repo_root/frontend" && npm run lint --silent) || exit_code=1
+  fi
+
+  if echo "$changed" | grep -qE '^backend/'; then
+    echo "→ Pre-push: linting backend..."
+    (cd "$repo_root/backend" && npm run lint --silent) || exit_code=1
+  fi
+done
+
+if [ "$exit_code" -ne 0 ]; then
+  echo ""
+  echo "❌ Pre-push lint fejlede. Fix lint-fejl før push (eller --no-verify hvis bevidst)."
+  exit 1
+fi
+
+exit 0

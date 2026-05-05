@@ -34,7 +34,15 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "Frontend npm install fejlede." }
 } finally { Pop-Location }
 
+Write-Host "`n[3/3] Aktiverer pre-push lint-hook (.githooks/pre-push)"
+Push-Location $repoRoot
+try {
+  & git config core.hooksPath .githooks
+  if ($LASTEXITCODE -ne 0) { throw "Kunne ikke saette core.hooksPath." }
+} finally { Pop-Location }
+
 Write-Host "`n[ok] Lokal opsaetning faerdig."
 Write-Host "      Backend lint:    cd backend && npm run lint"
 Write-Host "      Frontend lint:   cd frontend && npm run lint"
 Write-Host "      Invariant-tjek:  pwsh -File scripts/verify-invariants.ps1"
+Write-Host "      Pre-push hook:   aktiv (lint koeres ved git push)"
