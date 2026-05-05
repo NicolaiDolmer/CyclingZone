@@ -179,8 +179,6 @@ export default function AdminPage() {
   const [selectedPointsClass, setSelectedPointsClass] = useState(RACE_CLASSES[0].key);
   const [editingPoint, setEditingPoint] = useState(null); // { race_class, result_type, rank, points }
 
-  useEffect(() => { loadAll(); }, []);
-
   // Synkroniser closes_at input fra window_ når det loader
   useEffect(() => {
     if (window_?.closes_at) {
@@ -224,6 +222,8 @@ export default function AdminPage() {
       if (res.ok) setActiveAuctions(data.auctions || []);
     } catch (_e) { /* silent */ }
   }
+
+  useEffect(() => { loadAll(); }, []);
 
   async function handleCancelAuction(auction) {
     const riderName = `${auction.rider?.firstname || ""} ${auction.rider?.lastname || ""}`.trim() || "rytter";
