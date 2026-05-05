@@ -51,6 +51,7 @@ Push efter commit uden at spørge. Commit → push er én operation.
 ## Deploy-regler (lært den hårde vej — 3 fejlede Vercel deploys 2026-05-02)
 
 - Kør altid `npm run build` i frontend FØR push, når `package.json` eller devDeps er ændret
+- **Kør `npm run lint --silent` i frontend/ og/eller backend/ FØR push** når kode-filer er ændret. Pre-push hook (`.githooks/pre-push`) blokerer ellers og efterlader push i confused state. Lærepenge fra S-02c (2026-05-05): unused import + unescaped JSX-quote slap igennem til push-attempt.
 - Kør `pwsh -File scripts/verify-deploy.ps1` EFTER push og vent på READY
 - Hvis verify-deploy.ps1 ikke er tilgængelig: brug Vercel MCP (`list_deployments` + `get_deployment_build_logs`)
 - `npm install --legacy-peer-deps` kan bryde transitive deps i lockfilen — altid byg lokalt bagefter
@@ -95,6 +96,27 @@ Lært 2026-05-03: 4 stale `claude/*`-branches kostede ~10-15 tool calls i én se
 - Begge AI'er læser denne fil og GUARDRAILS_CORE.md → konvention håndhæves automatisk
 
 **GitHub repo-setting (one-time):** `Settings → General → Pull Requests → Automatically delete head branches` ✅ — auto-cleanup når PRs merges. Dækker IKKE direkte fast-forward pushes (de skal stadig manuel slettes per reglen ovenfor).
+
+---
+
+## Worktree path unreliable — verificér git-state ved session-start
+
+Lært 2026-05-05 i S-02c-sessionen: jeg skrev 3 filer (`boardArchetypes.js`, SQL-migration, `boardMembers.js`) til `.claude/worktrees/<name>/`-paths. Alle rapporterede "File created successfully", men ved næste verifikation var de første 2 sporløst forsvundet — kun den seneste fil overlevede. `git worktree list` bekræftede at worktreen ikke fandtes som ægte git worktree. `git rev-parse --abbrev-ref HEAD` returnerede `main`, ikke `claude/<name>` som system context påstod. Hypotese: OneDrive-sync på den ikke-registrerede `.claude/worktrees/<name>/` directory eller usynlig harness-cleanup. Spildt arbejde: ~30k tokens.
+
+**Default-antagelse:** Hvis system context claimer worktree-branch men `git rev-parse HEAD` viser `main`, er du IKKE i en faktisk worktree. Skift straks til main-repo absolute paths.
+
+**Verifikations-rækkefølge ved session-start (60 sekunder):**
+1. `git rev-parse --abbrev-ref HEAD` — er branch som system context siger?
+2. `git worktree list` — er denne worktree listed?
+3. `pwd` — matcher det system contextens "Primary working directory"?
+
+**Hvis mismatch:**
+- Opret feature-branch manuelt: `git checkout -b claude/<name>`
+- Brug ABSOLUTE main-repo paths (`/c/Users/.../cycling-manager/...`) for ALLE Write/Edit-operationer
+- Skriv aldrig til `.claude/worktrees/<name>/`-paths uden bekræftet ægte worktree
+- Hvis phantom-paths opdages midt i session: Bash `cp` filerne til main-repo paths og fortsæt der; mappen kan ikke ryddes mens shell-cwd er der (SessionStart-hook'en håndterer det næste gang)
+
+**Multi-AI compatibility:** Reglen er git-niveau, ikke Claude-specifik. Codex følger samme verifikations-rutine.
 
 ---
 

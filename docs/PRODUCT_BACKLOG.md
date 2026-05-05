@@ -198,6 +198,23 @@ Se `docs/NOW.md` for detaljeret tjekliste.
 
 ---
 
+## Developer tooling / harness
+
+### Claude harness safety — multi-PC install
+**Trigger:** Næste gang en ny PC eller fresh Claude install skal have beskyttelsen mod proces-kill (lært 2026-05-04: en session dræbte sit eget process-træ via `Stop-Process` på claude.exe-children).
+**Status:** Live på primær PC — `~/.claude/scripts/protect-claude-process.sh` + `~/.claude/settings.json` med `permissions.deny` (5 rules) + `PreToolUse` hook på `Bash|PowerShell`. `~/.claude/` er IKKE OneDrive-synced → reglen er per-PC, kræver gentaget install pr. maskine.
+**Scope:**
+- `scripts/install-claude-hooks.ps1` i cycling-manager repoet — idempotent (safe at køre flere gange)
+- Kopierer `protect-claude-process.sh` til `~/.claude/scripts/` (chmod +x)
+- Merger `permissions.deny` + `PreToolUse` hook ind i eksisterende `~/.claude/settings.json` UDEN at overskrive andre keys (kritisk: bevar SessionStart `cycling-manager-cleanup.sh`, plugins, theme, autoUpdatesChannel)
+- Pipe-tester scriptet (forventet: 9/9 positive blokeret, 10/10 negative passer)
+- Kort sektion i `docs/CONVENTIONS.md` om kør-procedure: `pwsh -File scripts/install-claude-hooks.ps1`
+**Estimat:** S (~30 min)
+**Why:** I dag kræver ny PC manuel prompt-paste. Install-script reducerer risiko for at glemme beskyttelsen på 3./4. PC.
+**Risiko:** Lav — ingen runtime-impact på spillet, ingen DB, ingen brugerrettet ændring (patch-notes-reglen gælder ikke).
+
+---
+
 ## Locked Product Defaults
 
 - `Liga` beholdes som navn indtil videre

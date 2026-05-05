@@ -3,6 +3,7 @@ frontend/node_modules/
 frontend/dist/
 backend/node_modules/
 scripts/*.csv
+scripts/__pycache__/
 .codex.local/
 .claude/settings.local.json
 .claude/worktrees/
