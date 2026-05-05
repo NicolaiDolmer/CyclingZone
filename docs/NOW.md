@@ -10,7 +10,8 @@
 **Alle launch-gates ✅, 5/6 P0 leveret.** S-02 KOMPLET (S-02a–S-02j, 10/10 slices). ~19 managers live. Næste: product backlog for ny slice (se PRODUCT_BACKLOG.md).
 
 ## Senest leveret
-- 2026-05-05: **S-02j Polish** (v2.42). BOARD_TOUR_STEPS: 3 trin opdateret med nyt dashboard-/konsekvens-/DNA-sprog. HelpPage: ny 'Bestyrelse'-sektion (◧) som 2. sidebaritem med 9 indholds-blokke (baseline, sekventiel onboarding, dashboard, board-members, DNA, konsekvens-tabel, requests+drej-låsninger, mid-season). PatchNotes v2.42. ARCHITECTURE.md: Board API +4 ruter, Backend Lib +8 board-moduler, DB-tabeller +5 nye (team_board_members, board_consequences, team_dna, teams-ext, transfer_windows-ext). DOMAIN_REFERENCE.md: Board-sektion komplet omskrevet med S-02 features. FEATURE_STATUS.md: S-02h + S-02i entries tilføjet.
+- 2026-05-05: **Admin-fix v2.43** — 'Nulstil sæsoner' blokeret af FK fra `finance_transactions.season_id` (307 prod-rows). [betaResetService.js](backend/lib/betaResetService.js) nuller nu season_id på alle finance_transactions før `DELETE FROM seasons`. 1 ny regression-test, 294/294 grønne.
+- 2026-05-05: **S-02j Polish** (v2.42). BOARD_TOUR_STEPS: 3 trin opdateret med nyt dashboard-/konsekvens-/DNA-sprog. HelpPage: ny 'Bestyrelse'-sektion (◧) som 2. sidebaritem med 9 indholds-blokke. PatchNotes v2.42. ARCHITECTURE.md, DOMAIN_REFERENCE.md, FEATURE_STATUS.md doc-drift sweep.
 - 2026-05-05: **S-02i Bug-fix-pass + regression-tests** (v2.41). 293/293 grønne.
 - 2026-05-05: **S-02h Wizard-redesign Hybrid B+A** (v2.40). 286/286 grønne.
 - 2026-05-05: S-02g–a leveret (v2.39–v2.33) — manager-konkurrence, mid-season, drej-låsninger, DNA, konsekvens-tier, mål-typer, foundation

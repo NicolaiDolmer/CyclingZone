@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.43",
+    date: "2026-05-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin-fix · 'Nulstil sæsoner' blokeret af finance_transactions",
+        items: [
+          "Bugfix ([betaResetService.js](backend/lib/betaResetService.js)): admin-knappen 'Nulstil sæsoner' (og 'Fuld nulstilling') fejlede med FK-violation, fordi `finance_transactions.season_id` har `ON DELETE NO ACTION` og 307 rows i produktion holdt sæsonerne fast. `resetBetaSeasons` nuller nu `season_id` på ALLE finance_transactions (manager + AI + bank) før `DELETE FROM seasons` — historikken bevares, kun sæson-koblingen ryger",
+          "Regression-test tilføjet ([betaResetService.test.js](backend/lib/betaResetService.test.js)) der verificerer at både manager- og AI-finance-rows får `season_id = null` før delete. 294/294 grønne",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.42",
     date: "2026-05-05",
     label: "Beta",

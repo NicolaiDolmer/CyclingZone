@@ -336,6 +336,9 @@ export async function resetBetaSeasons(supabase) {
   ensureOk(await supabase.from("board_plan_snapshots").delete().not("id", "is", null));
   // board_profiles: nullable FK til seasons uden ON DELETE SET NULL — null det ud
   ensureOk(await supabase.from("board_profiles").update({ season_id: null }).not("id", "is", null));
+  // finance_transactions: nullable FK til seasons med ON DELETE NO ACTION — null det ud
+  // for alle hold (også AI/bank), ellers blokerer FK-constraint sæson-delete.
+  ensureOk(await supabase.from("finance_transactions").update({ season_id: null }).not("season_id", "is", null));
   const seasons = ensureOk(await supabase.from("seasons").delete().not("id", "is", null).select("id"));
   return { seasons: countRows(seasons) };
 }

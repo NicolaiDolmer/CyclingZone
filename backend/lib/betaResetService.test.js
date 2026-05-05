@@ -6,6 +6,7 @@ import {
   resetBetaBalances,
   resetBetaBoardProfiles,
   resetBetaRosters,
+  resetBetaSeasons,
   runFullBetaReset,
 } from "./betaResetService.js";
 
@@ -140,7 +141,10 @@ function createInitialState() {
     transfer_offers: [{ id: "transfer-1", status: "window_pending" }],
     swap_offers: [{ id: "swap-1", status: "accepted" }],
     loan_agreements: [{ id: "loan-1", status: "active" }],
-    finance_transactions: [{ id: "tx-1", team_id: "team-1" }, { id: "tx-ai", team_id: "team-ai" }],
+    finance_transactions: [
+      { id: "tx-1", team_id: "team-1", season_id: "season-1" },
+      { id: "tx-ai", team_id: "team-ai", season_id: "season-1" },
+    ],
     seasons: [{ id: "season-1", status: "active", number: 1 }],
     races: [{ id: "race-1" }],
     pending_race_results: [{ id: "pending-1" }],
@@ -227,6 +231,21 @@ test("resetBetaBoardProfiles deletes all manager board data and creates one base
 
   // AI-team's snapshot må ikke røres.
   assert.deepEqual(supabase.state.board_plan_snapshots.map((row) => row.id), ["snap-ai"]);
+});
+
+test("resetBetaSeasons nuller finance_transactions.season_id for ALLE hold (også AI/bank) før delete", async () => {
+  // Regression: FK finance_transactions.season_id -> seasons har ON DELETE NO ACTION,
+  // så AI/bank-rows blokerede DELETE FROM seasons indtil 2026-05-05-fix.
+  const supabase = createBetaResetSupabase(createInitialState());
+
+  const result = await resetBetaSeasons(supabase);
+
+  assert.equal(result.seasons, 1);
+  assert.deepEqual(supabase.state.seasons, []);
+  // Begge transactions (manager + AI) skal have season_id = null efter reset
+  for (const tx of supabase.state.finance_transactions) {
+    assert.equal(tx.season_id, null, `tx ${tx.id} har stadig season_id sat`);
+  }
 });
 
 test("runFullBetaReset completes the full test reset suite without touching AI or frozen manager data", async () => {
