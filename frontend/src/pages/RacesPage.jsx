@@ -168,7 +168,7 @@ export default function RacesPage() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const wb = XLSX.read(ev.target.result, { type: "binary" });
+      const wb = XLSX.read(new Uint8Array(ev.target.result));
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
       // Expect columns: Rank, Rider Name (or Rider ID)
@@ -180,7 +180,7 @@ export default function RacesPage() {
       }));
       setEditingRows(parsed.map(r => ({ ...r })));
     };
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
     e.target.value = "";
   }
 
