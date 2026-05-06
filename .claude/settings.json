@@ -41,6 +41,18 @@
     ]
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/session-prefetch-issue.sh",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",
