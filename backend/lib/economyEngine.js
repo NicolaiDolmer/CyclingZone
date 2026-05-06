@@ -193,14 +193,15 @@ export async function processSeasonStart(seasonId, deps = {}) {
       ? `Sponsorindtægt — Sæson start (×${modifier.toFixed(2)} · sponsor-pullout aktiv)`
       : `Sponsorindtægt — Sæson start (×${modifier.toFixed(2)})`;
 
-    // Pay sponsor income
+    // Pay sponsor income (idempotent: cron-retry må ikke double-pay)
     await creditTeam(
       team.id,
       sponsorPayout,
       "sponsor",
       description,
       seasonId,
-      supabaseClient
+      supabaseClient,
+      { idempotent: true }
     );
 
     const chargedLoanFees = await processLoanAgreementSeasonFeesFn(
@@ -283,7 +284,8 @@ export async function payDivisionBonuses(standings, seasonId, supabaseClient) {
       "bonus",
       `Divisionsbonus — Division ${standing.division}, plads ${rank}`,
       seasonId,
-      supabaseClient
+      supabaseClient,
+      { idempotent: true }
     );
   }
 }
@@ -565,7 +567,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       "salary",
       `Sæsonlønninger — ${team.riders.length} ryttere`,
       seasonId,
-      supabaseClient
+      supabaseClient,
+      { idempotent: true }
     );
   }
 
@@ -1078,8 +1081,37 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function creditTeam(teamId, amount, type, description, seasonId, supabaseClient = null) {
+// Slice 07b · Idempotency: når options.idempotent=true, skriv finance row FØRST
+// og spring helt over hvis DB afviser med unique_violation (23505). Det betyder
+// at et tidligere cron-run allerede har foretaget både balance-mutation og
+// finance-insert; vi må IKKE mutere balance igen.
+async function creditTeam(teamId, amount, type, description, seasonId, supabaseClient = null, options = {}) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
+
+  if (options.idempotent) {
+    const { error: insertError } = await client.from("finance_transactions").insert({
+      team_id: teamId, type, amount, description, season_id: seasonId,
+    });
+    if (insertError) {
+      if (insertError.code === "23505") {
+        console.warn(
+          `[economy] ${type} already credited for team ${teamId} season ${seasonId} — skip`
+        );
+        return { skipped: true };
+      }
+      throwIfSupabaseError(insertError, `Could not insert credit transaction for ${teamId}`);
+    }
+    const { data: team, error: teamError } = await client
+      .from("teams").select("balance").eq("id", teamId).single();
+    throwIfSupabaseError(teamError, `Could not load team balance for credit ${teamId}`);
+    if (!team) throw new Error(`Could not load team balance for credit ${teamId}`);
+    const { error: updateError } = await client.from("teams")
+      .update({ balance: team.balance + amount })
+      .eq("id", teamId);
+    throwIfSupabaseError(updateError, `Could not credit team ${teamId}`);
+    return { skipped: false };
+  }
+
   const { data: team, error: teamError } = await client
     .from("teams").select("balance").eq("id", teamId).single();
   throwIfSupabaseError(teamError, `Could not load team balance for credit ${teamId}`);
@@ -1092,10 +1124,36 @@ async function creditTeam(teamId, amount, type, description, seasonId, supabaseC
     team_id: teamId, type, amount, description, season_id: seasonId,
   });
   throwIfSupabaseError(insertError, `Could not insert credit transaction for ${teamId}`);
+  return { skipped: false };
 }
 
-async function debitTeam(teamId, amount, type, description, seasonId, supabaseClient = null) {
+async function debitTeam(teamId, amount, type, description, seasonId, supabaseClient = null, options = {}) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
+
+  if (options.idempotent) {
+    const { error: insertError } = await client.from("finance_transactions").insert({
+      team_id: teamId, type, amount: -amount, description, season_id: seasonId,
+    });
+    if (insertError) {
+      if (insertError.code === "23505") {
+        console.warn(
+          `[economy] ${type} already debited for team ${teamId} season ${seasonId} — skip`
+        );
+        return { skipped: true };
+      }
+      throwIfSupabaseError(insertError, `Could not insert debit transaction for ${teamId}`);
+    }
+    const { data: team, error: teamError } = await client
+      .from("teams").select("balance").eq("id", teamId).single();
+    throwIfSupabaseError(teamError, `Could not load team balance for debit ${teamId}`);
+    if (!team) throw new Error(`Could not load team balance for debit ${teamId}`);
+    const { error: updateError } = await client.from("teams")
+      .update({ balance: team.balance - amount })
+      .eq("id", teamId);
+    throwIfSupabaseError(updateError, `Could not debit team ${teamId}`);
+    return { skipped: false };
+  }
+
   const { data: team, error: teamError } = await client
     .from("teams").select("balance").eq("id", teamId).single();
   throwIfSupabaseError(teamError, `Could not load team balance for debit ${teamId}`);
@@ -1108,6 +1166,7 @@ async function debitTeam(teamId, amount, type, description, seasonId, supabaseCl
     team_id: teamId, type, amount: -amount, description, season_id: seasonId,
   });
   throwIfSupabaseError(insertError, `Could not insert debit transaction for ${teamId}`);
+  return { skipped: false };
 }
 
 async function notifyManager(teamId, type, title, message, deps = {}) {

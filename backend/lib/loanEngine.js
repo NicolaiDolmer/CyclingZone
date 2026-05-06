@@ -122,24 +122,55 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
   const fee = Math.round(principalAmount * config.origination_fee_pct);
   const totalOwed = principalAmount + fee;
 
-  const currentDebt = await getTotalDebt(teamId, client);
-  if (currentDebt + totalOwed > config.debt_ceiling) {
-    throw new Error(`Gældsloft på ${config.debt_ceiling} CZ$ nået for denne division`);
+  // Slice 07b · TOCTOU-fix: brug create_loan_atomic Postgres-RPC når tilgængelig.
+  // RPC'en serialiserer concurrent calls på samme team_id via pg_advisory_xact_lock
+  // og fanger ceiling-overskridelser i samme transaktion som INSERT'en.
+  // Falder tilbage til app-niveau check hvis RPC ikke findes (legacy/test-mocks).
+  let loan;
+  if (typeof client.rpc === "function") {
+    const { data: rpcLoan, error: rpcError } = await client.rpc("create_loan_atomic", {
+      p_team_id: teamId,
+      p_loan_type: loanType,
+      p_principal: principalAmount,
+      p_origination_fee: fee,
+      p_interest_rate: config.interest_rate_pct,
+      p_seasons: config.seasons,
+      p_debt_ceiling: config.debt_ceiling,
+    });
+    if (rpcError) {
+      if (rpcError.code === "check_violation" || /Gældsloft/.test(rpcError.message || "")) {
+        throw new Error(`Gældsloft på ${config.debt_ceiling} CZ$ nået for denne division`);
+      }
+      // PostgREST returnerer 404 (PGRST202) hvis funktionen mangler — fald tilbage.
+      if (rpcError.code !== "PGRST202" && !/function .* does not exist/i.test(rpcError.message || "")) {
+        throw rpcError;
+      }
+    } else if (rpcLoan) {
+      loan = Array.isArray(rpcLoan) ? rpcLoan[0] : rpcLoan;
+    }
   }
 
-  const { data: loan, error } = await client.from("loans").insert({
-    team_id: teamId,
-    loan_type: loanType,
-    principal: principalAmount,
-    origination_fee: fee,
-    interest_rate: config.interest_rate_pct,
-    seasons_total: config.seasons,
-    seasons_remaining: config.seasons,
-    amount_remaining: totalOwed,
-    status: "active",
-  }).select().single();
+  if (!loan) {
+    const currentDebt = await getTotalDebt(teamId, client);
+    if (currentDebt + totalOwed > config.debt_ceiling) {
+      throw new Error(`Gældsloft på ${config.debt_ceiling} CZ$ nået for denne division`);
+    }
 
-  if (error) throw error;
+    const { data: insertedLoan, error } = await client.from("loans").insert({
+      team_id: teamId,
+      loan_type: loanType,
+      principal: principalAmount,
+      origination_fee: fee,
+      interest_rate: config.interest_rate_pct,
+      seasons_total: config.seasons,
+      seasons_remaining: config.seasons,
+      amount_remaining: totalOwed,
+      status: "active",
+    }).select().single();
+
+    if (error) throw error;
+    loan = insertedLoan;
+  }
 
   await adjustBalance(teamId, principalAmount, client);
 
@@ -178,6 +209,21 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
   const fee = Math.round(amountNeeded * feeRate);
   const totalOwed = amountNeeded + fee;
 
+  // Slice 07b · SOFT debt_ceiling-tjek (besluttet 2026-05-07).
+  // Emergency-lån må overstige loftet, men managere skal advares så de kan
+  // sælge ryttere eller reducere aktivitet før konkursspiral. Hard-enforcement
+  // overvejes som follow-up (07i) hvis live-data viser at SOFT er utilstrækkeligt.
+  let breachAmount = 0;
+  if (config.debt_ceiling) {
+    const currentDebt = await getTotalDebt(teamId, client);
+    if (currentDebt + totalOwed > config.debt_ceiling) {
+      breachAmount = currentDebt + totalOwed - config.debt_ceiling;
+      console.warn(
+        `[economy] team ${teamId}: emergency-lån presser gæld ${breachAmount} CZ$ over loft ${config.debt_ceiling} CZ$ — fortsætter SOFT`
+      );
+    }
+  }
+
   const { data: loan, error } = await client.from("loans").insert({
     team_id: teamId,
     loan_type: "emergency",
@@ -208,6 +254,14 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
     `Dit hold havde ikke midler til at betale løn. Der er automatisk oprettet et nødlån på ${amountNeeded} CZ$ med ${(feeRate * 100).toFixed(0)}% gebyr og ${(interestRate * 100).toFixed(0)}% rente. Samlet gæld: ${totalOwed} CZ$.`,
     client
   );
+
+  if (breachAmount > 0) {
+    await notifyManager(teamId, "emergency_loan_breach",
+      "🚨 Gældsloft overskredet",
+      `Dit nødlån presser holdets gæld ${breachAmount} CZ$ over divisions-loftet på ${config.debt_ceiling} CZ$. Du kan stadig drive klubben videre, men du SKAL reducere udgifterne (sælg ryttere, fyr stjernekontrakter) inden næste sæsonslut for at undgå spiral.`,
+      client
+    );
+  }
 
   return loan;
 }
@@ -266,6 +320,28 @@ export async function processLoanInterest(teamId, seasonId, supabaseClient = nul
 
   for (const loan of loans || []) {
     const interest = Math.round(loan.amount_remaining * loan.interest_rate);
+
+    // Slice 07b · Idempotency: skriv finance_transactions FØRST. Hvis DB
+    // afviser med unique_violation (uniq_loan_interest_per_loan_season), er
+    // renten allerede tilskrevet i en tidligere cron-kørsel — skip stille.
+    const { error: transactionError } = await client.from("finance_transactions").insert({
+      team_id: teamId,
+      type: "loan_interest",
+      amount: -interest,
+      description: `Lånerenter tilskrevet (${(loan.interest_rate * 100).toFixed(0)}%)`,
+      season_id: seasonId,
+      related_loan_id: loan.id,
+    });
+    if (transactionError) {
+      if (transactionError.code === "23505") {
+        console.warn(
+          `[economy] loan-interest already charged for loan ${loan.id} season ${seasonId} — skip`
+        );
+        continue;
+      }
+      throw transactionError;
+    }
+
     const newRemaining = loan.amount_remaining + interest;
     const newSeasonsRemaining = loan.seasons_remaining - 1;
 
@@ -275,15 +351,6 @@ export async function processLoanInterest(teamId, seasonId, supabaseClient = nul
       updated_at: new Date().toISOString(),
     }).eq("id", loan.id);
     if (updateError) throw updateError;
-
-    const { error: transactionError } = await client.from("finance_transactions").insert({
-      team_id: teamId,
-      type: "loan_interest",
-      amount: -interest,
-      description: `Lånerenter tilskrevet (${(loan.interest_rate * 100).toFixed(0)}%)`,
-      season_id: seasonId,
-    });
-    if (transactionError) throw transactionError;
   }
 }
 

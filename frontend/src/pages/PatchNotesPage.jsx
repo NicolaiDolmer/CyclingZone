@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "2.51",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Robusthed · TOCTOU-fixes + idempotency-keys for cron-payouts (slice 07b)",
+        items: [
+          "Bugfix ([loanEngine.js](backend/lib/loanEngine.js)): `createLoan` brugte SELECT-then-INSERT til at validere divisions-gældsloftet — to parallelle requests (fx dobbeltklik på 'Optag lån') kunne begge passere tjekket og oprette to lån som tilsammen overstiger loftet. Ny Postgres-funktion `create_loan_atomic` serialiserer concurrent requests på team-niveau via `pg_advisory_xact_lock` så ceiling-tjek + INSERT kører i samme transaktion.",
+          "Idempotency på cron-payouts ([economyEngine.js](backend/lib/economyEngine.js), [loanEngine.js](backend/lib/loanEngine.js)): sponsor (sæson-start), løn + division-bonus + lånerenter (sæson-end) havde ingen DB-håndhævet uniqueness. Hvis en cron timeout'ede og blev retried — eller hvis admin kørte sæson-end-repair efter en delvis kørsel — kunne managere få samme udbetaling/opkrævning to gange. Ny migration ([2026-05-07-economy-idempotency.sql](database/2026-05-07-economy-idempotency.sql)) tilføjer 4 partial UNIQUE indices på `finance_transactions` så DB afviser dubletter; backend fanger `unique_violation` (PG 23505) og skipper stille i stedet for at crashe hele cron-kørslen.",
+          "Renter sporbare per lån: `finance_transactions` får ny kolonne `related_loan_id`, og `processLoanInterest` skriver nu både team-id OG lån-id pr. rente-row. Det betyder dels at idempotency-indexet kan kræve unique-per-(loan, season), dels at FinancePage på sigt kan vise rente-fordeling per individuelt lån.",
+          "Light konkurs-mekanik (lag 1): `createEmergencyLoan` foretager nu et SOFT debt_ceiling-tjek. Hvis et nødlån presser holdets samlede gæld over divisions-loftet, oprettes lånet alligevel (status quo bevaret), men manageren får en `emergency_loan_breach`-notifikation: '🚨 Gældsloft overskredet — du kan stadig drive klubben videre, men du SKAL reducere udgifterne (sælg ryttere, fyr stjernekontrakter) inden næste sæsonslut for at undgå spiral.' Ingen automatiseret konsekvens i denne sæson-cyklus — vi lytter til live-data først.",
+          "Test-disciplin: ny test-fil ([economyInvariants.test.js](backend/lib/economyInvariants.test.js)) med 7 cases skrevet FØR fixen for at validere at race-conditions er reelle, ikke teoretiske. 5 fejlede mod uændret kode, 2 passerede; alle 7 grønne efter fix. Eksisterende 25 backend-tests fortsat grønne.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.50",
     date: "2026-05-07",
     label: "Beta",
