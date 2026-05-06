@@ -18,13 +18,21 @@ Push efter commit uden at spørge. Commit → push er én operation.
 
 ## Projekt-kontekst
 
-### Økonomi-principper (gældende fra v1.46)
+### Økonomi-principper (gældende fra v2.49 / 2026-05-07)
 - `DEFAULT_BETA_BALANCE = 800.000 CZ$` (kode: `backend/lib/betaResetService.js`)
-- Sponsor-indkomst: **240.000 CZ$/sæson** per team (med board-modifier)
+- Sponsor-base: **240.000 CZ$/sæson** per team (DB-default kanonisk, bekræftet 2026-05-07; pre-v1.76-doc om "260K-ramp" er drift). Multiplier = board satisfaction-modifier (0.80–1.20×). Sæson 1 = baseline-introsæson, modifier låst til 1.0×.
+- `DEFAULT_SPONSOR_INCOME = 240000` eksporteret fra `backend/lib/economyEngine.js:63` siden v2.49.
 - Rytterværdi = `uci_points × 4000` (generated column `price` i DB)
 - `market_value = GREATEST(5, uci_points) × 4000 + prize_earnings_bonus` (generated)
-- `salary` er IKKE generated — skal altid opdateres manuelt: `salary = uci_points × 400`
-- Økonomi-target: **stram men fair** — aktive kompetente managers kan overleve uden automatisk gældsspiral
+- `salary` ER GENERATED siden v2.25 (2026-05-04): `max(1, round((max(5, uci_points) × 4000 + prize_earnings_bonus) × 0.10))`. Kan ikke skrives fra app-kode — ændres kun via `uci_points` eller `prize_earnings_bonus`.
+- Prize money = `points × 1.500 CZ$` — `prizePayoutEngine.paySeasonPrizesToDate` er eneste payout-path.
+- Gældsloft pr. division (fra `loan_config`): D1=1.200K · D2=900K · D3=600K.
+- Loan fees/rates fra `loan_config`: short=5%, long=5%, emergency=10% (orig fee + interest pr. sæson). NB: `loanEngine.js:169-170` har `?? 0.15`-fallback der skal væk i 07a (samme bug-mønster som v2.49).
+- Økonomi-target: **stram men fair** — aktive kompetente managers kan overleve uden automatisk gældsspiral.
+
+### Sæson-state-baseline (kritisk for fremtidige sessioner)
+- Open beta åbnet **2026-05-04**. **Sæson 1 aktiv. 0 sæsoner afsluttet.** ~19 managers.
+- Pre-2026-05-04 archive-docs (`ECONOMY_BASELINE_SIMULATION_2026-04-29.md`, `SEASON_6_REPAIR_VERIFICATION_2026-04-29.md`, `RECENT_DONE_PROOF_2026-04-29.md`) refererer til "sæson 6 completed, sæson 7 active". **Det var TEST-database FØR beta-reset til open-beta-launch.** Ignorér ALLE sæson-numre i pre-2026-05-04 archive-docs. Verificér aktuel sæson-state mod live DB eller spørg brugeren.
 
 ### Rytter-import og UCI-data
 - **Autoritativ kilde:** Google Sheet `1dE6v2zdmflzToGUHf3pA5mEk5Kn7YI2Wq8WsXbUX0Ic` (3000 ryttere, opdateres af GitHub Actions)
