@@ -19,6 +19,27 @@
 - Brug konsekvente domæneord: rytter, hold, transfer, lån, auktion, bestyrelse
 - Bland ikke dansk og engelsk i samme UI-flow
 
+## Git Hooks
+
+Repoet bruger plain `.githooks/`-strategi (ikke Husky). Aktiveres med `git config core.hooksPath .githooks` — sættes automatisk af `scripts/setup-local.ps1`.
+
+### Pre-commit (`lint-staged` via `lint-staged.config.mjs`)
+
+Kører kun på den side med staged ændringer:
+
+| Glob | Kør |
+|---|---|
+| `frontend/**/*.{js,jsx}` | `npm run lint --prefix frontend` |
+| `backend/**/*.js` | `npm run lint --prefix backend` |
+
+Commit blokeres ved lint-fejl. Fix fejl og kør `git add` igen.
+
+`lint-staged` er installeret som root devDependency (`npm install` i rodmappen — håndteres af `setup-local.ps1`).
+
+### Pre-push
+
+Kører lint på begge sider (frontend og backend) for de commits der pushes. Se `.githooks/pre-push`.
+
 ## Kodeformat
 
 - Hold docs kompakte og referencevenlige

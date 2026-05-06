@@ -2,5 +2,8 @@
   "name": "cycling-zone-manager",
   "scripts": {
     "sync-docs": "node scripts/sync-docs.js"
+  },
+  "devDependencies": {
+    "lint-staged": "^15.5.1"
   }
 }

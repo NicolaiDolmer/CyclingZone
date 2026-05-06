@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+# Pre-commit lint-gate via lint-staged.
+# Kører kun lint på den side (frontend/backend) der har staged ændringer.
+# Aktiveres automatisk via core.hooksPath=.githooks (sat af scripts/setup-local.ps1).
+set -e
+
+npx lint-staged
