@@ -47,7 +47,7 @@ function Invoke-Step($description, [scriptblock]$action) {
     Write-Host "[EXEC] $description" -ForegroundColor Green
     & $action
     if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
-      throw "Step fejlede med exit code $LASTEXITCODE: $description"
+      throw "Step fejlede med exit code ${LASTEXITCODE}: $description"
     }
   }
 }
@@ -82,12 +82,17 @@ $gitPath = Resolve-GitPath
 $source = (& $gitPath rev-parse --show-toplevel 2>$null).Trim() -replace "/", "\"
 if (-not $source) { throw "Ikke i et git-repo. Kor scriptet inde i CyclingZone-repo." }
 
-# Hvis vi er i en worktree, find hovedrepo'et
+# Hvis vi er i en worktree, find hovedrepo'et.
+# git rev-parse --git-common-dir returnerer relativ ".git" fra hovedrepo,
+# saa vi skal resolve mod current dir for at faa absolut sti foer Split-Path.
 $gitDirInfo = & $gitPath rev-parse --git-common-dir 2>$null
 if ($gitDirInfo) {
   $commonDir = $gitDirInfo.Trim() -replace "/", "\"
+  if (-not [System.IO.Path]::IsPathRooted($commonDir)) {
+    $commonDir = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $commonDir))
+  }
   $mainRepoCandidate = Split-Path -Parent $commonDir
-  if ($mainRepoCandidate -ne $source) {
+  if ($mainRepoCandidate -and ($mainRepoCandidate -ne $source)) {
     Write-Host "  [info] Du korer scriptet fra en worktree." -ForegroundColor Yellow
     Write-Host "         Worktree: $source" -ForegroundColor Yellow
     Write-Host "         Hovedrepo: $mainRepoCandidate" -ForegroundColor Yellow
@@ -114,9 +119,19 @@ if ($ageSec -gt 600) {
   }
 }
 if (-not $state.passed) {
-  throw "preflight failede. Loes fejl og kor preflight igen foer migration."
+  # Migrate accepterer kun ÉN type fail: at repo'et ligger under OneDrive.
+  # Det er hele formaalet med migrationen — saa det er ikke en blocker her.
+  # Alle andre failures (uncommitted, unpushed, manglende toolchain) blokerer.
+  $blockers = @($state.failures | Where-Object { $_ -notlike "*UNDER OneDrive*" })
+  if ($blockers.Count -gt 0) {
+    Write-Host "  [FAIL] Preflight failede med ikke-OneDrive blockers:" -ForegroundColor Red
+    $blockers | ForEach-Object { Write-Host "    - $_" -ForegroundColor Red }
+    throw "Loes blockers og kor preflight igen foer migration."
+  }
+  Write-Host "  [info] Preflight rapporterede 'failed' kun pga. OneDrive — det er forventet og selve aarsagen til migrationen. Fortsaetter." -ForegroundColor Yellow
+} else {
+  Write-Host "  [ok] preflight-state.passed=true (alder: $([int]$ageSec)s)"
 }
-Write-Host "  [ok] preflight-state.passed=true (alder: $([int]$ageSec)s)"
 
 # --- 2. Verificer target ---
 Write-Section "Verificer target er sikker"
@@ -161,10 +176,11 @@ Invoke-Step "git clone $($state.originUrl) $Target" {
 # --- 4. Kopier lokal-only filer ---
 Write-Section "Kopier lokal-only filer"
 
-if ($state.localFiles.PSObject.Properties.Count -eq 0) {
+$localFileProps = @($state.localFiles.PSObject.Properties)
+if ($localFileProps.Count -eq 0) {
   Write-Host "  (ingen lokal-only filer at kopiere)"
 } else {
-  foreach ($prop in $state.localFiles.PSObject.Properties) {
+  foreach ($prop in $localFileProps) {
     $relPath = $prop.Name
     $sourceFull = Join-Path $source $relPath
     $targetFull = Join-Path $Target $relPath
