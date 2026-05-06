@@ -8,6 +8,8 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
+  id-token: write
+  actions: read
 
 jobs:
   review:
@@ -16,7 +18,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            actions: read
           prompt: |
             Review denne PR. Tjek:
             1. Korrekthed (gør ændringerne det de hævder?)
