@@ -158,11 +158,36 @@ if (Test-Path $installHooks) {
   Write-Host "  [skip] install-user-hooks.ps1 ikke fundet i target"
 }
 
-# --- 8. Discord MCP ---
+# --- 8. OneDrive-context links (memory + secrets) ---
+Write-Section "OneDrive-context links"
+
+$linkScript = Join-Path $Target "scripts\link-onedrive-context.ps1"
+$contextRoot = if ($env:OneDrive) { Join-Path $env:OneDrive "CyclingZone-context" } else { $null }
+
+if (-not (Test-Path $linkScript)) {
+  Write-Host "  [skip] link-onedrive-context.ps1 ikke fundet"
+} elseif (-not $contextRoot -or -not (Test-Path $contextRoot)) {
+  Write-Host "  [warn] OneDrive-context mappe findes ikke endnu paa denne PC." -ForegroundColor Yellow
+  Write-Host "         Vent til OneDrive synkroniserer (typisk minutter), og koer derefter:"
+  Write-Host "         pwsh -File scripts\link-onedrive-context.ps1"
+} else {
+  Push-Location $Target
+  try {
+    & pwsh -NoProfile -File $linkScript -RepoRoot $Target
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "  [warn] link-onedrive-context.ps1 fejlede. Tjek output ovenfor." -ForegroundColor Yellow
+    }
+  } finally { Pop-Location }
+}
+
+# --- 9. Discord MCP ---
 Write-Section "Discord MCP setup"
 
 $discordSetup = Join-Path $Target "scripts\setup-discord-mcp.ps1"
-if (Test-Path $discordSetup) {
+$mcpAlreadyLinked = Test-Path (Join-Path $Target ".mcp.json")
+if ($mcpAlreadyLinked) {
+  Write-Host "  [ok] .mcp.json findes (hardlinkede via OneDrive-context). Springer Discord-setup over."
+} elseif (Test-Path $discordSetup) {
   $railwayCmd = Get-Command railway -ErrorAction SilentlyContinue
   if ($railwayCmd) {
     Write-Host "  Railway CLI fundet, koerer setup-discord-mcp.ps1..."
@@ -186,13 +211,11 @@ Write-Section "Setup faerdig"
 
 Write-Host "  Repo placeret: $Target" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Manuelle skridt der maaske mangler:" -ForegroundColor Yellow
-Write-Host "    1. Kopier .env.local fra anden PC (eller fra password manager)"
-Write-Host "         Steder: $Target\backend\.env (Supabase keys)"
-Write-Host "                 $Target\frontend\.env.local (hvis brugt)"
-Write-Host "    2. Hvis .mcp.json ikke blev oprettet automatisk, kor scripts/setup-discord-mcp.ps1 manuelt"
-Write-Host "    3. Aabn mappen i Claude Code og verificer at MCP-servere er tilgaengelige"
-Write-Host "    4. Aabn mappen i Codex og verificer at AGENTS.md er auto-loaded"
+Write-Host "  Tjek folgende efter setup:" -ForegroundColor Yellow
+Write-Host "    1. Memory + secrets sync'es nu via OneDrive (CyclingZone-context\memory og \secrets)"
+Write-Host "       Hvis OneDrive ikke var synket endnu: kor 'pwsh -File scripts/link-onedrive-context.ps1' senere"
+Write-Host "    2. Aabn mappen i Claude Code og verificer at MCP-servere er tilgaengelige"
+Write-Host "    3. Aabn mappen i Codex og verificer at AGENTS.md er auto-loaded"
 Write-Host ""
 Write-Host "  Working directory:" -ForegroundColor Cyan
 Write-Host "    cd $Target"

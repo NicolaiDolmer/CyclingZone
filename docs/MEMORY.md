@@ -172,6 +172,29 @@ Derefter virker: `npm run lint`, `npm run format`, `npm test`, `pwsh -File scrip
 
 ---
 
+## OneDrive-context (cross-PC sync af memory + secrets, etableret 2026-05-07)
+
+Sandsynlig kilde til "hvorfor er denne fil en junction/hardlink?" — alt PC-lokalt der skal være ens på alle udviklingsmaskiner sync'es nu via OneDrive i stedet for manuel kopi.
+
+**Bopæl:** `~\OneDrive\CyclingZone-context\` med tre undermapper:
+- `memory/` — junction-target for `~\.claude\projects\C--dev-CyclingZone\memory\` (Claude auto-memory, ~34 filer)
+- `secrets/` — hardlink-targets for `backend/.env`, `frontend/.env`, `frontend/.env.production`, `.mcp.json`
+- `codex-local/` — hardlink-targets for `.codex.local/SUPABASE_CONTEXT.md`, `.codex.local/supabase-readonly.env`
+
+**Re-skab links efter clone på ny PC** (idempotent, virker i både pwsh 7 og WinPS 5.1):
+
+```powershell
+pwsh -File scripts/link-onedrive-context.ps1
+```
+
+Kaldes også automatisk af `scripts/setup-new-pc.ps1`. Hvis OneDrive ikke er færdigsynket endnu, vent et par minutter og kør scriptet igen — det springer placeholders over og kun skaber links når OneDrive-source er readable.
+
+**Hvorfor OneDrive frem for privat git-repo:** 0 hooks, 0 tokens per session, 0 vedligeholdelse. Brugeren har allerede OneDrive aktivt; memory + secrets er små text-filer der ikke har OneDrive-build-conflict-problem som node_modules havde.
+
+**Risiko:** Hvis to PC'er redigerer samme memory-fil samtidigt før OneDrive synker, kan en konflikt opstå. Mitigation: solo-udvikler bruger typisk én PC ad gangen.
+
+---
+
 ## Discord MCP-opsætning (cross-PC)
 
 ```powershell
