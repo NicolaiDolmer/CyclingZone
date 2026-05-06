@@ -28,7 +28,31 @@ The bridge reads Discord threads from `#bug-reports` and `#feature-request` (and
 
 ---
 
-## 1. Create `.mcp.json` in repo root
+## Quickstart — automatiseret (anbefalet)
+
+Kør én kommando i en normal PowerShell — den henter tokenet fra Railway og skriver `.mcp.json` til main repo + alle worktrees:
+
+```powershell
+pwsh -File scripts/setup-discord-mcp.ps1
+```
+
+Scriptet:
+1. Installerer Railway CLI globalt hvis den mangler
+2. Åbner browser for Railway-login (kun første gang pr. PC)
+3. Kører `railway link` for at vælge projekt + service (kun første gang pr. clone)
+4. Henter `DISCORD_BOT_TOKEN` fra Railway variables
+5. Skriver `.mcp.json` (gitignored) i main repo og hver eksisterende worktree
+6. Sikrer at `.claude/settings.local.json` har `enabledMcpjsonServers: ["discord"]`
+
+Efter scriptet: **genstart Claude Code** (MCP loades kun ved opstart). Verificér med `/mcp` — `discord` skal stå som connected.
+
+---
+
+## Manuel setup (fallback)
+
+Hvis scriptet ikke virker — eller du foretrækker manuelt:
+
+### 1. Create `.mcp.json` in repo root
 
 This file is **gitignored** on purpose (contains secret). It must exist on each machine.
 
@@ -52,7 +76,7 @@ This file is **gitignored** on purpose (contains secret). It must exist on each 
 "args": ["-y", "mcp-discord"]
 ```
 
-## 2. Verify `.claude/settings.local.json` has
+### 2. Verify `.claude/settings.local.json` has
 
 ```json
 {
@@ -62,11 +86,11 @@ This file is **gitignored** on purpose (contains secret). It must exist on each 
 
 Also gitignored. Add it if missing.
 
-## 3. Restart Claude Code
+### 3. Restart Claude Code
 
 MCP servers load only at startup. Close and reopen from project root.
 
-## 4. Verify in Claude Code
+### 4. Verify in Claude Code
 
 - `/mcp` — should list `discord` as connected
 - Or ask: "list Discord servers" / "log in to Discord" — should respond with bot identity
