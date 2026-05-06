@@ -1,26 +1,24 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Ingen aktiv kode-slice.** Seneste arbejde: v2.49 sponsor-fallback fix (Above & Beyond Cancer Cycling kompenseret 239.900 CZ$). S-02 er komplet (10/10 slices). Master-roadmap: [02-board-redesign-MASTER.md](docs/slices/02-board-redesign-MASTER.md).
+**Ingen aktiv kode-slice.** Audit-rapport leveret: 9 økonomi-fund (4 P0, 3 P1, 2 P2) drevet ud i 8 backlog-slices. Master: [07-economy-overhaul-MASTER.md](docs/slices/07-economy-overhaul-MASTER.md). Audit: [ECONOMY_AUDIT_2026-05-07.md](docs/archive/ECONOMY_AUDIT_2026-05-07.md). Anbefalet næste slice: **07a stale fallbacks + 260K/240K-drift** (S, ~30-60 min, ingen DB-migration).
 
 ## Soak-gate
-**Ikke aktiv** — nuværende arbejde er docs/status-afstemning uden ny domænelogik.
+**Ikke aktiv.** Audit er docs-only, ingen kode-ændringer.
 
 ## Open beta status
-**Alle launch-gates ✅, 6/6 P0 leveret.** S-02 KOMPLET (S-02a–S-02j, 10/10 slices). ~19 managers live. Næste: vælg ny product-slice fra [PRODUCT_BACKLOG.md](docs/PRODUCT_BACKLOG.md).
+**Open beta live siden 2026-05-04, sæson 1 aktiv, 0 sæsoner afsluttet.** ~19 managers. S-02 KOMPLET (S-02a–S-02j). Slice 07-økonomi ny prioritet baseret på 3-bugs-på-én-dag-mønsteret 2026-05-06. Alle 3 pre-kode-beslutninger låst 2026-05-07: (1) sponsor=240K, (2) konkurs-mekanik=light (kun forvarsel-lag, ingen auto-actions), (3) 07f aktiverer automatisk fra sæson 2 (sæson 1 = introsæson uændret). NB: pre-launch dev-docs i archive/ refererer til "sæson 6/7" — det var test-DB FØR beta-reset; ignorér de sæson-numre.
 
 ## Senest leveret
-- 2026-05-06: **Sponsor-fallback fix v2.49** — 5 callsites (`economyEngine.js`, `betaResetService.js`, `boardAutoAccept.js`, `api.js`) brugte `team.sponsor_income ?? 100` som fallback. Værdien 100 var stale fra pre-skalerings-æraen (før ×4000 i april). Mindst én manager (Above & Beyond Cancer Cycling, oprettet 3. maj) endte med `sponsor_income = 100` og fik kun 100 CZ$ ved sæson-start i stedet for 240K. Fix: ny eksporteret konstant `DEFAULT_SPONSOR_INCOME = 240000` (matcher DB-default), alle 5 fallbacks bruger den nu. Manuel kompensering: JeppeK's `sponsor_income` opdateret til 240K + balance +239.900 CZ$ med `sponsor`-transaktion synlig i Finanser. 297/297 backend grønne.
-- 2026-05-06: **Gældsloft off-by-fee fix v2.48** — `createLoan` i [loanEngine.js](backend/lib/loanEngine.js) tjekkede `currentDebt + principal` mod loftet, men det indsatte `amount_remaining` var `principal + origination_fee`. Resultat: hvert lån kunne smutte over loftet med præcis fee-beløbet (5% short/long, 10% emergency). En D3-manager (Above & Beyond Cancer Cycling) stablede mange små lån oven på et 600K-lån og endte 54 CZ$ over 600K-loftet. Fix: fee beregnes nu før tjek og indgår i sammenligning. 2 nye regression-tests, 299/299 backend grønne, frontend build grøn. Eksisterende prod-overskridelse (54 CZ$) ikke rørt.
-- 2026-05-06: **QoL-batch v2.47** — 5 polish-fix: (1) refresh-knap + "Sidst opdateret"-tidsstempel på [ActivityPage.jsx](frontend/src/pages/ActivityPage.jsx); (2) [HeadToHeadPage.jsx](frontend/src/pages/HeadToHeadPage.jsx) `loadStats()` try/catch/finally + error-UI med "Prøv igen" (fixede evig spinner ved Promise.all-fejl); (3) `autoSuggest` på Hold A; (4) "Ingen hold fundet"-state i TeamSearch; (5) `console.warn` i ActivityPage `.catch()` der før skjulte API-fejl tavst. 295/295 tests + build grønne.
-- 2026-05-06: **Auktion race condition fix v2.46** — POST /api/auctions havde TOCTOU-race i SELECT-then-INSERT-tjekket; dobbeltklik 5. maj gav 3 auktioner på Gianni Moscon + 2 hver på Silvan Dillier og Morné van Niekerk. Ny migration ([2026-05-06-auctions-unique-active-rider.sql](database/2026-05-06-auctions-unique-active-rider.sql)) tilføjer `uniq_auctions_one_active_per_rider` partial index — DB blokkerer nu enhver dublet og backend mapper 23505 → 409. 4 duplikat-rows ryddet i prod (ingen pengebevægelse). 295/295 tests + frontend build grønne.
-- 2026-05-05: **Indbakke ønskeliste-auktionslink v2.45** — `watchlist_rider_auction` adskiller ønskeliste-auktioner fra ønskeliste-transferlistinger, så Indbakke klik går til `/auctions`. Legacy-fallback routes gamle `watchlist_rider_listed` auktion-notifikationer korrekt. Backend 294/294 + frontend build grønne.
-- 2026-05-05: **Docs status-drift sweep** — `NOW.md`, `PRODUCT_BACKLOG.md`, `LAUNCH_ROADMAP.md`, S-03 og S-06 slice-docs afstemt mod runtime. S-03 verificeret via `backend/lib/squadEnforcement.js` + cron + migration + 7/7 målrettede tests. S-06 smoke-tool verificeret via backend endpoint + AdminPage callsite; health-check cron er ikke leveret og står som P1.
-- 2026-05-05: **Menu IA v2.44** — venstremenuen samlet i fire mentale rum, `/races` flyttet til Sæson & Resultater, `/deadline-day` label ændret til Deadline Day, HelpPage/PatchNotes/FEATURE_STATUS afstemt.
+- 2026-05-07: **Økonomi-audit leveret** — 3 parallelle Explore-agents kortlagde write-paths, stale konstanter og audit-trail-huller. 9 fund (4 P0/3 P1/2 P2): `?? 0` + `?? 0.15`-fallbacks i 4 callsites; 260K vs 240K-drift; TOCTOU i createLoan/payDivisionBonuses/processLoanInterest; createEmergencyLoan uden debt_ceiling; 16 ikke-atomic balance-writes; admin_log-tabel mangler; finance_transactions mangler audit-kolonner. 8 slice-briefings 07a-h ([master](docs/slices/07-economy-overhaul-MASTER.md), [audit](docs/archive/ECONOMY_AUDIT_2026-05-07.md)).
+- 2026-05-06: **Sponsor-fallback fix v2.49** — 5 callsites brugte `team.sponsor_income ?? 100` (stale fra pre-skalering). En D3-manager fik 100 CZ$ ved sæsonstart i stedet for 240K. Fix: ny `DEFAULT_SPONSOR_INCOME = 240000`-konstant. Manuel kompensering +239.900 CZ$. 297/297 backend grønne.
+- 2026-05-06: **Gældsloft off-by-fee fix v2.48** — `createLoan` tjekkede `currentDebt + principal` men indsatte `principal + origination_fee`. Lån kunne smutte over loftet med præcis fee-beløbet. Fix: fee i sammenligning. 2 regression-tests, 299/299 grønne. Eksisterende 54 CZ$-overskridelse ikke rørt.
+- 2026-05-06: **QoL-batch v2.47** — 5 polish-fix: refresh + tidsstempel på ActivityPage; HeadToHead try/catch/finally + retry-UI; autoSuggest Hold A; "Ingen hold fundet"-state; console.warn i ActivityPage. 295/295 grønne.
+- 2026-05-06: **Auktion race condition fix v2.46** — TOCTOU i POST /api/auctions; dobbeltklik gav 3 auktioner på samme rytter. Partial index `uniq_auctions_one_active_per_rider` blokkerer nu dubletter; backend mapper 23505→409. 4 duplikater ryddet. 295/295 grønne.
 - Ældre → `docs/archive/NOW_HISTORIK_2026-05-05.md`
 
 ## Næste session — start med
-Vælg næste slice fra PRODUCT_BACKLOG.md. Undgå S-03/S-06 som "åbne P0" — de er runtime-verificeret leveret; S-06 health-check er separat P1.
+Start **07a stale fallbacks** (S, ~30-60 min, ingen migration). Alle pre-kode-beslutninger låst i [07-economy-overhaul-MASTER.md](docs/slices/07-economy-overhaul-MASTER.md). Anden Claude/Codex-session: læs masteren først; behold rangering medmindre nye runtime-bugs ændrer billedet.
 ## Kritiske invarianter
 - **Verificér runtime FØR claim** — grep før TODO-claims
 - **Skaler for variabelt manager-tal** — ingen hardcoded antal (vokser løbende fra ~19)

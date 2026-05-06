@@ -13,6 +13,38 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 
 ## Post-launch queue
 
+### Slice 07 — Economy Overhaul (8 sub-slices, drevet af 2026-05-07-audit)
+
+**Vision:** Lukke det bug-mønster der gav 3 økonomi-bugs på samme dag (v2.46/v2.48/v2.49 = TOCTOU + stale fallback + off-by-fee), bygge "perfekt admin historik" (komplet finance audit-log + admin_log + super-dashboard) og levere 4 moderne manager-features (sponsor-variabel, finance-forecast, risk-tier, season financial close-out report).
+
+**Audit-rapport:** [docs/archive/ECONOMY_AUDIT_2026-05-07.md](docs/archive/ECONOMY_AUDIT_2026-05-07.md) — 9 fund (4 P0/3 P1/2 P2) verificeret manuelt mod runtime.
+
+**Slice-master:** [docs/slices/07-economy-overhaul-MASTER.md](docs/slices/07-economy-overhaul-MASTER.md) — 5-linje GUARDRAILS-format pr. sub-slice.
+
+| Sub | Titel | Sev/værdi | Estimat | Blokerer |
+|---|---|---|---|---|
+| 07a | Stale fallbacks + 240K/260K-drift | P0 bug | S (~30-60 min) | — |
+| 07b | TOCTOU-fixes + idempotency-keys | P0 bug | M (~2 sessioner) | — |
+| 07c | Atomic balance updates (Postgres-RPC) | P1 safety | M (~1-2 sessioner) | — |
+| 07d | Komplet finance audit-log + admin_log | P1 audit | M (~2 sessioner) | — |
+| 07e | Admin økonomi super-dashboard | Feature | M (~2 sessioner) | 07d |
+| 07f | Sponsor variabel ift. resultater | Feature | M (~1-2 sessioner) | — |
+| 07g | Manager finance-forecast + risk-tier | Feature | M (~2 sessioner) | 07d (delvist) |
+| 07h | Season financial close-out report | Feature | S-M (~1 session) | 07d (delvist) |
+
+**Anbefalet rækkefølge:** 07a → 07b → 07d → 07c → 07e → 07f → 07g → 07h. Bug-fixes først, foundation før features. 07f kan parallelliseres da uafhængig.
+
+**Pre-kode-beslutninger låst 2026-05-07:**
+1. Sponsor-default = **240K** (DB-default kanonisk; 260K-referencen i pre-v1.76-feature-status er doc-drift).
+2. Konkurs-mekanik = **light** — lag 1 forvarsel ved 70% af loft, lag 2 hard-warning ved 90%. Ingen auto-tvangs-salg eller account-freeze i denne iteration. Ved actual breach: status quo (emergency-lån oprettes med soft-log + notif). Hard-enforcement potentielt en fremtidig 07i-slice baseret på live-data.
+3. 07f-aktivering = **automatisk fra sæson 2** (sæson 1 i open beta = introsæson, flat 240K + board-modifier 1.0×). Ingen retroaktiv migration.
+
+**Sæson-state-baseline (2026-05-07):** open beta åbnet 2026-05-04, sæson 1 aktiv, 0 sæsoner afsluttet. Pre-launch dev-docs (`archive/ECONOMY_BASELINE_SIMULATION_2026-04-29.md` o.l.) refererer til "sæson 6/7" — det er test-DB-state fra FØR beta-reset; ignorér numrene når du genbruger de docs.
+
+**Erstatter eksisterende backlog-poster:** "S10 — Admin økonomi-panel" (subset af 07e), "Sponsor-tied-to-results" North Star (= 07f), "Economy tuning iteration" (afhængig af 07a-c-data).
+
+---
+
 ### Deadline Day — 4-session feature (parallel med S8+)
 
 **Vision:** 24-timers oplevelse med 3 faser (anticipation → pressure → chaos) der aktiveres automatisk når transfervinduet nærmer sig lukketid. Live feed, holdoversigt og eksklusive mekanikker.
@@ -105,18 +137,12 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 
 ---
 
-### S10 — Admin økonomi-panel
-**Trigger:** Uge 3–4 efter lancering  
-**Scope:**
-- `GET /api/admin/teams-economy-summary` — per-hold: balance, sponsor-base, budget_modifier, gæld
-- `GET /api/admin/prize-summary?seasonId=` — præmiepenge per hold per sæson
-- Ny "Økonomi"-tab i `AdminPage.jsx`
-
-**Kritiske filer:** `backend/routes/api.js` · `frontend/src/pages/AdminPage.jsx`
+### S10 — Admin økonomi-panel ⮕ erstattet af 07e
+**Status:** Subsumed af [Slice 07e](docs/slices/07-economy-overhaul-MASTER.md). 07e udvider scope til komplet super-dashboard (transaktion-filtre, drill-down, admin_log-feed, korrelering, bulk-export) ovenpå 07d's audit-data.
 
 ---
 
-- **Economy tuning iteration** — baseret på live data fra første beta-sæson; salary rate, sponsor, debt ceilings
+- **Economy tuning iteration** ⮕ skal vente til 07a-c er deployet (live-data uden de 4 P0-bugs giver bedre tuning-baseline)
 - **Season countdown + dashboard UX** — ✅ leveret v1.88
 - **Manager cross-season statistik** — fuld historik og vækst over sæsoner fra `board_plan_snapshots` og `season_standings`
 - **XLSX security advisory** — evaluer og patch eller erstat `xlsx`-pakken (high-severity advisory)
@@ -169,11 +195,8 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 **Manager-værdi:** Cykling-fans elsker arketype-debat. Nye managers får entry-point til stat-systemet uden at skulle læse 14 stat-felter. Filtre på arketype = lettere truppestrategi.  
 **Estimeret slog:** 1 session.
 
-### Sponsor-tied-to-results
-**Vision:** Sponsor er i dag flat 260K + board-modifier. Iteration: base 200K + variabel 0–150K baseret på sidste sæsons points/division-rank, så cykling-virkeligheden ("synlighed = penge") afspejles.  
-**Datakilde:** `season_standings.total_points` + `division`. Ingen ny data.  
-**Manager-værdi:** Comeback-mekanik (lille hold der overpresterer får boost), belønner sportsligt fokus, skaber økonomisk drama omkring sæsonslut.  
-**Trigger:** Skal vente til 1–2 sæsoners live beta-data — del af "Economy tuning iteration".
+### Sponsor-tied-to-results ⮕ erstattet af 07f
+**Status:** Subsumed af [Slice 07f](docs/slices/07-economy-overhaul-MASTER.md). Vision uændret (base 200K + variabel 0–150K), men nu med eksplicit sub-slice-brief i master-roadmap.
 
 ---
 

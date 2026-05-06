@@ -1,7 +1,10 @@
 # NOW-historik 2026-05-05
 
-## Senest leveret (flyttet fra NOW.md ved session-slut 2026-05-05 vision-lock)
+## Senest leveret (flyttet fra NOW.md ved session-slut 2026-05-05 vision-lock + 2026-05-07 økonomi-audit)
 
+- 2026-05-05: **Indbakke ønskeliste-auktionslink v2.45** — `watchlist_rider_auction` adskiller ønskeliste-auktioner fra ønskeliste-transferlistinger, så Indbakke klik går til `/auctions`. Legacy-fallback routes gamle `watchlist_rider_listed` auktion-notifikationer korrekt. Backend 294/294 + frontend build grønne.
+- 2026-05-05: **Docs status-drift sweep** — `NOW.md`, `PRODUCT_BACKLOG.md`, `LAUNCH_ROADMAP.md`, S-03 og S-06 slice-docs afstemt mod runtime. S-03 verificeret via `backend/lib/squadEnforcement.js` + cron + migration + 7/7 målrettede tests. S-06 smoke-tool verificeret via backend endpoint + AdminPage callsite; health-check cron er ikke leveret og står som P1.
+- 2026-05-05: **Menu IA v2.44** — venstremenuen samlet i fire mentale rum, `/races` flyttet til Sæson & Resultater, `/deadline-day` label ændret til Deadline Day, HelpPage/PatchNotes/FEATURE_STATUS afstemt.
 - 2026-05-05: **Ønskeliste-stjerne (v2.32)** — ny delt komponent [WatchlistStar.jsx](frontend/src/components/WatchlistStar.jsx) erstatter inline `StarButton` i [RidersPage](frontend/src/pages/RidersPage.jsx) og bruges også i [WatchlistPage](frontend/src/pages/WatchlistPage.jsx) + [ActivityPage](frontend/src/pages/ActivityPage.jsx). Stjernen sidder nu i sin egen smalle kolonne lige efter Rytter-kolonnen — flyttet fra sidste kolonne efter alle 14 stats. Ønskelistens "★ Fjern"-knap fjernet fra Handling-kolonnen (stjernen alene er nok); Handling viser nu kun "Start auktion" for fri agents. ActivityPage's Ønskeliste-tab har nu fjern-stjerne med lokal state-update. Build grøn.
 
 ## S-02 Vision-lock-session 2026-05-05
