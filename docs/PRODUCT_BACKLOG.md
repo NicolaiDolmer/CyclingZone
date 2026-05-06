@@ -13,6 +13,30 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 
 ## Post-launch queue
 
+### Slice DX — GitHub-integration tier-up (8 lag, drevet af 2026-05-06-setup)
+
+**Vision:** Verdens bedste Claude+GitHub-opsætning — agent-loop hvor Nicolai åbner et issue og resten kører automatisk (auto-triage → @claude → PR → auto-review → grøn CI → auto-merge). Reducerer Nicolais tastatur-touches pr. opgave fra ~20 til 2.
+
+**Workflow-doc:** [docs/GITHUB_WORKFLOW.md](GITHUB_WORKFLOW.md) — vision, lag-status, status & næste skridt.
+
+| Lag | Titel | Hvem | Estimat | Status |
+|---|---|---|---|---|
+| 0 | Foundation: templates + labels + MCP perms | Claude | ✅ done (2026-05-06, `f26f2e5`) | live på main |
+| 1 | Claude GitHub App (`@claude`-trigger) | Nicolai | ~5 min | 🔜 pending — kør `/install-github-app` |
+| 2 | Auto-PR-review workflow | Claude | ~15 min | 🔜 pending — afhænger af Lag 1 |
+| 3 | Auto-issue-triage workflow | Claude | ~15 min | 🔜 pending — afhænger af Lag 1 |
+| 4 | GitHub Projects v2 board | Nicolai (UI) | ~10 min | senere |
+| 5 | Branch protection + auto-merge | Claude | ~5 min | senere |
+| 6 | Pre-commit hooks (husky + lint-staged) | Claude | ~15 min | senere |
+| 7 | Dependabot + CodeQL | Claude | ~5 min | senere |
+| 8 | MCP write-fix (claude.ai-connector reconnect) | Nicolai | ~30 sek | 🔜 pending |
+
+**Anbefalet rækkefølge:** Lag 1 + 8 (Nicolai gør parallelt) → Lag 2 + 3 (Claude). Resten når smerten dikterer det.
+
+**Handoff-issue:** Se åbne `claude:todo` issues — der ligger en specifik "fortsæt GitHub-setup" opgave med præcise instruktioner.
+
+---
+
 ### Slice 07 — Economy Overhaul (8 sub-slices, drevet af 2026-05-07-audit)
 
 **Vision:** Lukke det bug-mønster der gav 3 økonomi-bugs på samme dag (v2.46/v2.48/v2.49 = TOCTOU + stale fallback + off-by-fee), bygge "perfekt admin historik" (komplet finance audit-log + admin_log + super-dashboard) og levere 4 moderne manager-features (sponsor-variabel, finance-forecast, risk-tier, season financial close-out report).
