@@ -1,0 +1,27 @@
+name: Auto issue triage
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Triage dette nye issue:
+            1. Læs title + body
+            2. Foreslå priority-label (high/med/low) baseret på: bug-severity, antal brugere ramt, om der findes workaround. Brug priority:high for crashes/data-loss/blockers; priority:high også for /api/... 5xx errors
+            3. Foreslå type-label hvis ikke allerede sat (bug/feature/refactor/docs/investigation)
+            4. Hvis det er en bug: lav første-pass investigation — grep relevante filer, foreslå hvor problemet sandsynligvis ligger, post som comment
+            5. Hvis det er en task: bekræft acceptkriterier er målbare; comment med spørgsmål hvis uklart
+            Brug `gh label add` og `gh issue comment` via Bash-tool.
+          claude_args: "--max-turns 6 --model claude-sonnet-4-6"
