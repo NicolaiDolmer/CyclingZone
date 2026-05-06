@@ -11,6 +11,30 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 
 ---
 
+## Discord-bridge issue triage queue (2026-05-06)
+
+**42 nye issues filed (#7-#48)** fra 49 aktive Discord-tråde via Discord-GitHub bridge. Auto-triage-workflow labeler dem; manuel review nødvendig før Slice 07b kick-off.
+
+**Fordeling:**
+- 6 manager-feedback (Tier 1) — #8-#10, #29-#31
+- 13 jeppek skærmbillede-rapporter (Tier 2) — #36-#48 (kræver tekstuel beskrivelse fra triage)
+- 22 bobby brainstorm-noter (Tier 3) — #11-#28, #32-#35 (mange potentielt allerede løst)
+- 1 tidszone-håndtering — #7 (launch-blocker for sæson 0)
+
+**Anbefalet bulk-close-kandidater FØR 07b:**
+- #28 (Reset til sæson 0, 13 sub-items) — sæson 0 har fundet sted, mange items sandsynligvis done
+- #45 (Mange små lån over gældsloft) — dækkes af 07b TOCTOU, link og luk når 07b lander
+- #20 (Nye brugere balance/sponsor) — bør verificeres mod nuværende state efter v2.49-fix
+- bobby-brainstorm fra april (#11-#16, #32-#35) — gennemgå med "er dette løst i mellemtiden?"-mindset
+
+**Tier 4 manuel close (i Discord, bot mangler `MANAGE_THREADS` perm):**
+- Tråd `1500927555731984567` "Rytter table i ønskeliste" (cybersimon — bobby spurgte om close)
+- Tråd `1501473256417267722` ".sredna gældsloft falsk-positiv" (bobby skrev "fixet i nat")
+
+Detaljer + workflow: [`docs/MEMORY.md`](MEMORY.md) "Discord → GitHub bridge" + [`docs/DISCORD_MCP_SETUP.md`](DISCORD_MCP_SETUP.md).
+
+---
+
 ## Post-launch queue
 
 ### Slice DX continuation — Lag 4-7 + 8 (ad-hoc når smerte opstår)

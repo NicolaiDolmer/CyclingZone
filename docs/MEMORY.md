@@ -207,3 +207,51 @@ I stedet for at tilføje `if (shouldPay)` i eksisterende flow: opret en ny dedik
 - `races.prize_paid_at TIMESTAMPTZ` tracker hvornår et løb er udbetalt
 - Re-import af resultater påvirker ikke allerede udbetalte præmier
 - Preview (`getSeasonPrizePreview`) og udbetaling er adskilt — admin ser diff før godkendelse
+
+---
+
+## Discord → GitHub bridge (etableret 2026-05-06)
+
+End-to-end pipeline: læs feedback fra Discord-tråde i `#bug-reports` + `#feature-request` → opret GitHub-issues med embedded skærmbilleder.
+
+**Setup-guide:** [`docs/DISCORD_MCP_SETUP.md`](DISCORD_MCP_SETUP.md) — kør altid før første session på en ny PC.
+
+**Komponenter:**
+- `mcp-discord` (community MCP, npm-pakke `mcp-discord`) — read-access via bot-token
+- `.mcp.json` (gitignored, har bot-token) — `command: cmd /c npx -y mcp-discord` med `DISCORD_TOKEN` env
+- `.claude/settings.local.json` har `enabledMcpjsonServers: ["discord"]` for auto-godkendelse
+- Bot: **"Cycling Zone#8784"** (id `1500376268825301033`), server: **"Cycling Career"** (id `474142653529849886`, 126 medlemmer, 49+ aktive tråde)
+- Samme bot bruges til prod DM-notifikationer fra Railway-backend (`backend/lib/discordNotifier.js` læser `process.env.DISCORD_BOT_TOKEN`)
+
+**MCP-begrænsninger lært den hårde vej (workarounds i `docs/DISCORD_MCP_SETUP.md`):**
+- `discord_read_messages` returnerer `attachments` count, **ikke URLs**. Workaround: Discord REST API `GET /channels/{id}/messages` direkte
+- Ingen list-guilds tool. Workaround: bed bruger om server-ID (right-click server-ikon → Copy Server ID, kræver User Settings → Advanced → Developer Mode ON)
+- Ingen list-active-threads tool. Workaround: REST `GET /guilds/{id}/threads/active` — returnerer kun ikke-arkiverede
+- Ingen archive-thread tool. Workaround: PATCH `/channels/{thread_id}` med `{"archived": true}` — kræver `MANAGE_THREADS` perm; ellers `50001 Missing Access`
+- For text-channel-tråde: thread channel ID = parent message ID (Discord-konvention)
+
+**Filer i repo:**
+- [`scripts/sync-discord-attachments.js`](../scripts/sync-discord-attachments.js) — re-sync billeder fra Discord-tråde til `docs/discord-attachments/` + skriv `_mapping.json`
+- [`scripts/file-discord-issues-batch3.js`](../scripts/file-discord-issues-batch3.js) — reference-template for batch-issue-filing med billede-refs (kopier til ny `batch4.js` o.l. ved næste batch)
+- `docs/discord-attachments/*.png` — committed billeder, refereret via `https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/{filename}`
+
+**Issue-filing workflow:**
+1. Læs Discord-tråde via mcp-discord → identificér candidate issues
+2. `node scripts/sync-discord-attachments.js` → download nye billeder
+3. `git add docs/discord-attachments/ && git commit && git push` → billeder live på raw.github
+4. Opret/kopier filing-script med issue-data (incl. billede-refs)
+5. `gh issue create --body-file ...` (NB: MCP-write returnerer 403 Resource not accessible — gh CLI er fallback indtil claude.ai-connector reconnects med write-scope)
+6. Auto-triage-workflow (`claude-triage.yml`) labeler issues automatisk
+
+**Sikkerhed:**
+- Bot-token har stået i chat-transcripts ifm. setup 2026-05-06 — **skal roteres før næste produktive session**
+- Token-rotation rækkefølge: Discord Dev Portal → Reset → opdatér Railway env `DISCORD_BOT_TOKEN` → opdatér lokal `.mcp.json`
+- `.mcp.json` bekræftet i `.gitignore` (linje 10)
+- Supabase service-key blev også eksponeret kortvarigt — rotér samtidig via Supabase Dashboard → Settings → API → Reset service_role key → opdatér Railway `SUPABASE_SERVICE_KEY`
+
+**Antal issues filed via bridge (2026-05-06):**
+- Tier 1 manager-feedback: #8-#10, #29-#31 (6 issues)
+- Tier 2 jeppek skærmbillede-rapporter: #36-#48 (13 issues)
+- Tier 3 bobby brainstorm: #11-#28, #32-#35 (22 issues)
+- Plus #7 tidszone-håndtering (filed direkte fra meta-feedback)
+- **Total: 42 nye issues** fra 49 aktive tråde. Triage anbefalet før Slice 07b kick-off — flere overlapper med 07a-c eller er done.
