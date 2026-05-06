@@ -9,14 +9,14 @@
 ## Senest leveret
 *(2026-05-06 og tidligere arkiveret til [`docs/archive/NOW_HISTORIK_2026-05-06.md`](archive/NOW_HISTORIK_2026-05-06.md))*
 
-- 2026-05-06: **Cross-PC + workflow refactor** ([#67](https://github.com/NicolaiDolmer/CyclingZone/pull/67), commit `2265b33`) — preflight/migrate/setup-new-pc/install-user-hooks scripts + `cross-pc-stop-check.sh`. Bundlet med `#72` SessionStart-hook ([`scripts/session-prefetch-issue.sh`](../scripts/session-prefetch-issue.sh)) som pre-fetcher aktivt issue, `#68` migrerede PRODUCT_BACKLOG.md → 16 GitHub-issues (#79-#94), og `#70` GitHub-first CLAUDE.md cold-start ~800 tok (ned fra ~1500). User-hooks installeret på PC #2; migration på PC #1 mangler.
+- 2026-05-06: **Cross-PC + workflow refactor** ([#67](https://github.com/NicolaiDolmer/CyclingZone/pull/67), commit `2265b33`) — preflight/migrate/setup-new-pc/install-user-hooks scripts + `cross-pc-stop-check.sh`. Bundlet med `#72` SessionStart-hook ([`scripts/session-prefetch-issue.sh`](../scripts/session-prefetch-issue.sh)) som pre-fetcher aktivt issue, `#68` migrerede PRODUCT_BACKLOG.md → 16 GitHub-issues (#79-#94), og `#70` GitHub-first CLAUDE.md cold-start ~800 tok (ned fra ~1500). PC #1 (NicolaiPC) verificeret 2026-05-07: hooks installeret + repo allerede ved `C:\dev\CyclingZone`, ingen migration nødvendig. PC #2-status uverificeret.
 - 2026-05-07: **Slice 07a v2.50** — `backend/lib/economyConstants.js` med 7 delte konstanter; 299/299 backend-tests grønne.
 - 2026-05-07: **Økonomi-audit** — 3 parallelle Explore-agents, 9 fund (4 P0/3 P1/2 P2), 8 slice-briefings 07a-h ([master](slices/07-economy-overhaul-MASTER.md), [audit](archive/ECONOMY_AUDIT_2026-05-07.md)).
 
 ## Næste session
-1. **PC #1 cross-PC migration** (afventer): på OneDrive-PC'en, kør `pwsh -File scripts/preflight-check.ps1` → hvis grøn, `pwsh -File scripts/migrate-to-clean-location.ps1 -DryRun` → review → `-NoDryRun`. Derefter `pwsh -File scripts/install-user-hooks.ps1`. Runbook: [`docs/CROSS_PC_SETUP.md`](CROSS_PC_SETUP.md).
+1. **Slice 07b ([#80](https://github.com/NicolaiDolmer/CyclingZone/issues/80)) — fortsæt** WIP på PC #1: branch `feat/slice-07b-toctou-idempotency` med M `economyEngine.js`+`loanEngine.js` og untracked `backend/lib/economyInvariants.test.js`+`database/2026-05-07-economy-idempotency.sql`. Briefing: `.codex.local/SESSION_CONTEXT.md`.
 2. **Triage Discord-bridge issues** (#7-#52) — bulk-close items done. Især #28 reset-til-sæson-0 + #45 (dækkes af #80/07b).
-3. **Slice 07b ([#80](https://github.com/NicolaiDolmer/CyclingZone/issues/80)) kick-off** efter triage. Briefing auto-loaded i `.codex.local/SESSION_CONTEXT.md` via SessionStart hook.
+3. **PC #2 cross-PC verifikation** når sessionen flyttes — kør `scripts/preflight-check.ps1` for at se om migration er nødvendig der.
 4. **Tier 4 Discord-arkivering:** 2 tråde manuel close (`1500927555731984567` + `1501473256417267722`).
 
 ## Kritiske invarianter
