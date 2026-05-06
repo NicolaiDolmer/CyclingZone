@@ -13,11 +13,10 @@
 - 2026-05-07: **Økonomi-audit** — 3 parallelle Explore-agents, 9 fund (4 P0/3 P1/2 P2), 8 slice-briefings 07a-h ([master](slices/07-economy-overhaul-MASTER.md), [audit](archive/ECONOMY_AUDIT_2026-05-07.md)).
 
 ## Næste session — især efter PC-skift
-1. **Sikkerhed FØRST:** Rotér Discord bot-token (Discord Dev Portal → Reset Token, opdatér Railway env `DISCORD_BOT_TOKEN`) + Supabase service-key (Supabase → Settings → API → Reset, opdatér Railway). Begge eksponeret i tidligere chat-transcript.
-2. **På ny PC:** Pull main + følg [`docs/DISCORD_MCP_SETUP.md`](DISCORD_MCP_SETUP.md) for at recreate `.mcp.json` (gitignored, lokal-only fil med token).
-3. **Triage 42 nye issues** (#7-#48) — bulk-close items done. `gh issue close <NUM> --reason completed --comment "Allerede løst i [version]"`. Især: bobby-brainstorm fra april + #28 reset-til-sæson-0 (sandsynligvis delvist done) + #45 mange-små-lån (dækkes af 07b TOCTOU).
-4. **Tier 4 Discord-arkivering:** 2 tråde manuel close (right-click → Close Thread) — `Rytter table i ønskeliste` (1500927555731984567) + `.sredna gældsloft falsk-positiv` (1501473256417267722).
-5. Slice 07b kick-off først EFTER issue-triage er done.
+1. **På ny PC:** Pull main + følg [`docs/DISCORD_MCP_SETUP.md`](DISCORD_MCP_SETUP.md) for at recreate `.mcp.json` (gitignored, lokal-only fil med token).
+2. **Triage 46 nye issues (#7-#52)** — bulk-close items done. `gh issue close <NUM> --reason completed --comment "Allerede løst i [version]"`. Især: bobby-brainstorm + #28 reset-til-sæson-0 + #45 mange-små-lån (dækkes af 07b). Nye 2026-05-06: #49 ryttertyper (afventer Q1–Q7-svar fra Nicolai før kodning), #50 admin UI-inddeling, #51 Deadline Day news feed (investigate), #52 Clarity-loop.
+3. **Tier 4 Discord-arkivering:** 2 tråde manuel close (right-click → Close Thread) — `Rytter table i ønskeliste` (1500927555731984567) + `.sredna gældsloft falsk-positiv` (1501473256417267722).
+4. Slice 07b kick-off først EFTER issue-triage er done.
 
 ## Kritiske invarianter
 - **Verificér runtime FØR claim** — grep før TODO-claims
