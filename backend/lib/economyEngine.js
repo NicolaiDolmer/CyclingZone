@@ -31,6 +31,7 @@ import {
   getActiveSponsorPulloutFactor,
 } from "./boardConsequences.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
+import { SPONSOR_INCOME_BASE } from "./economyConstants.js";
 
 let defaultSupabaseClientPromise;
 
@@ -56,11 +57,9 @@ const MIN_DIVISION = 1;
 const SUPABASE_PAGE_SIZE = 1000;
 const RIDER_VALUE_PATCH_CONCURRENCY = 25;
 
-// Matcher teams.sponsor_income DB-default (database/schema.sql).
-// Bruges som fallback når team.sponsor_income er null/undefined — tidligere brugte
-// kode-base hardcoded 100, som var en stale værdi fra pre-skalering (×4000) og
-// efterlod mindst én manager med 100 CZ$ sponsor i stedet for 240K.
-export const DEFAULT_SPONSOR_INCOME = 240000;
+// Backward-compat alias for SPONSOR_INCOME_BASE — fjernes i 07b.
+// Importeres af betaResetService, boardAutoAccept og api.js.
+export const DEFAULT_SPONSOR_INCOME = SPONSOR_INCOME_BASE;
 
 const DIVISION_BONUSES = {
   1: [300_000, 200_000, 100_000, 50_000],

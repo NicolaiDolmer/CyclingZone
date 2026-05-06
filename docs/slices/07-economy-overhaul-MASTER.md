@@ -12,7 +12,7 @@
 
 | ID | Titel | Sev/værdi | Estimat | Blokerer | Status |
 |---|---|---|---|---|---|
-| 07a | Stale fallbacks + sponsor-default drift | P0 bug | S (~30-60 min) | — | 🆕 Ready |
+| 07a | Stale fallbacks + sponsor-default drift | P0 bug | S (~30-60 min) | — | ✅ Leveret v2.50 (2026-05-07) |
 | 07b | TOCTOU-fixes + idempotency-keys | P0 bug | M (~2 sessioner) | — | 🆕 Ready |
 | 07c | Atomic balance updates (Postgres-RPC) | P1 safety | M (~1-2 sessioner) | — | 🆕 Ready |
 | 07d | Komplet finance audit-log + admin_log | P1 audit | M (~2 sessioner) | — | 🆕 Ready |

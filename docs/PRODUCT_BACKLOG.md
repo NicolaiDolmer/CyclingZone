@@ -23,7 +23,7 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 
 | Sub | Titel | Sev/værdi | Estimat | Blokerer |
 |---|---|---|---|---|
-| 07a | Stale fallbacks + 240K/260K-drift | P0 bug | S (~30-60 min) | — |
+| 07a | ✅ Stale fallbacks + 240K/260K-drift (v2.50, 2026-05-07) | P0 bug | S | — |
 | 07b | TOCTOU-fixes + idempotency-keys | P0 bug | M (~2 sessioner) | — |
 | 07c | Atomic balance updates (Postgres-RPC) | P1 safety | M (~1-2 sessioner) | — |
 | 07d | Komplet finance audit-log + admin_log | P1 audit | M (~2 sessioner) | — |
@@ -169,7 +169,7 @@ _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._
 - Tour-trin på `/board` (3 steps: 1yr/3yr/5yr-grid → sponsor-modifier-tabel → KPI-liste). `TOUR_PAGE_BY_STEP` udvidet med `board_plan_set: "board"` så "Vis mig hvordan"-knappen virker for fjerde trin.
 
 **Slice 3 ✅ (v2.16, 2026-05-03):** Økonomi-explainer
-- `FinanceFirstVisitHint` på `/finance` ved første besøg — 2x2-grid forklarer sponsor (260K base × bestyrelses-modifier, link til `/board`), salary (10% af uci_points × 4000), gældsloft pr. division (D1 1.200K · D2 900K · D3 600K), og kort vs. langt lån. CTA "Vis mig rundt" starter tour og dismisser hint.
+- `FinanceFirstVisitHint` på `/finance` ved første besøg — 2x2-grid forklarer sponsor (240K base × bestyrelses-modifier, link til `/board`; 260K-værdien i original v2.16-shipping var doc-drift, korrigeret v2.50), salary (10% af uci_points × 4000), gældsloft pr. division (D1 1.200K · D2 900K · D3 600K), og kort vs. langt lån. CTA "Vis mig rundt" starter tour og dismisser hint.
 - Tour-trin på `/finance` (3 steps: balance-grid → gældsloft-indikator → transaktionshistorik). Mountet via `OnboardingTour pageKey="finance"`. Trigger via localStorage `cz-finance-hint-shown` — ingen backend-step (finance er passiv explainer, ikke aktiv milestone som "afgiv første bud").
 
 **Slice 4 ✅ (v2.19, 2026-05-04):** Empty-state-tour + completion-celebration (closure-slice)

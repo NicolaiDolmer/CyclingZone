@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { upsertOwnTeamProfile } from "./teamProfileEngine.js";
+import { INITIAL_BALANCE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -179,6 +180,25 @@ test("upsertOwnTeamProfile creates a missing team and bootstraps a board profile
   assert.equal(supabase.state.teams.length, 1);
   assert.equal(supabase.state.board_profiles.length, 1);
   assert.equal(supabase.state.board_profiles[0].team_id, result.team.id);
+});
+
+test("upsertOwnTeamProfile sætter sponsor_income og balance til de delte konstanter (07a regression)", async () => {
+  // Slice 07a: locker sponsor_income til SPONSOR_INCOME_BASE (240K) i stedet for stale 260K.
+  // Skal fejle hvis nogen rører ved DEFAULT_TEAM_VALUES uden at opdatere DB-default i samme commit.
+  assert.equal(SPONSOR_INCOME_BASE, 240000, "DB-default i schema.sql:31 er 240000");
+  assert.equal(INITIAL_BALANCE, 800000, "DB-default i schema.sql:30 er 800000");
+
+  const supabase = createSupabaseDouble();
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "Sponsor Check",
+    managerName: "Manager",
+  });
+
+  assert.equal(result.team.sponsor_income, SPONSOR_INCOME_BASE);
+  assert.equal(result.team.balance, INITIAL_BALANCE);
+  assert.equal(result.team.division, 3);
 });
 
 test("upsertOwnTeamProfile updates the existing team without duplicating the board profile", async () => {

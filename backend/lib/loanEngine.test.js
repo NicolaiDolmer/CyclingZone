@@ -430,3 +430,17 @@ test("createLoan accepts when principal+fee fits exactly within remaining headro
   assert.equal(loan.amount_remaining, 1575);
   assert.equal(supabase.state.loans.length, 1);
 });
+
+test("createEmergencyLoan kaster hvis loan_config mangler emergency-row (DB-seed-fejl)", async () => {
+  // Slice 07a: fail-fast i stedet for `?? 0.15` stale-fallback.
+  const supabase = createEmergencyLoanSupabase({
+    config: { loan_type: "long", origination_fee_pct: 0.05, interest_rate_pct: 0.12 },
+  });
+
+  await assert.rejects(
+    () => createEmergencyLoan("team-1", 100, supabase.client, "season-6"),
+    /loan_config mangler emergency-row/,
+  );
+  assert.equal(supabase.state.loans.length, 0);
+  assert.equal(supabase.state.financeRows.length, 0);
+});

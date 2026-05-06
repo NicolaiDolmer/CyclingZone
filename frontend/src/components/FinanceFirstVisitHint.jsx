@@ -35,7 +35,7 @@ export default function FinanceFirstVisitHint({ onDismiss, onStartTour }) {
             <p className="text-cz-1 text-sm font-semibold">Sponsor-indkomst</p>
           </div>
           <p className="text-cz-3 text-xs">
-            Base 260.000 CZ$ pr. sæson × din{" "}
+            Base 240.000 CZ$ pr. sæson × din{" "}
             <Link to="/board" className="text-cz-accent-t hover:underline font-medium">
               bestyrelses-modifier
             </Link>

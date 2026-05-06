@@ -1,9 +1,10 @@
 import { createInitialBoardProfile } from "./boardEngine.js";
+import { INITIAL_BALANCE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
 
 const DEFAULT_TEAM_VALUES = {
   division: 3,
-  balance: 800000,
-  sponsor_income: 260000,
+  balance: INITIAL_BALANCE,
+  sponsor_income: SPONSOR_INCOME_BASE,
 };
 
 function createHttpError(statusCode, message) {

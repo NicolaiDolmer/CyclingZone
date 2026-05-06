@@ -13,6 +13,7 @@ import {
   getStarProfileSponsorPressure,
 } from "./boardIdentity.js";
 import { applyDnaWeightingToGoals, buildDnaTraditionGoal } from "./boardClubDna.js";
+import { SPONSOR_INCOME_BASE } from "./economyConstants.js";
 import {
   clamp,
   clampToStep,
@@ -966,7 +967,7 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
         break;
       }
 
-      const currentSponsorIncome = context.currentSponsorIncome ?? team?.sponsor_income ?? 0;
+      const currentSponsorIncome = context.currentSponsorIncome ?? team?.sponsor_income ?? SPONSOR_INCOME_BASE;
       actual = ((currentSponsorIncome - planStartSponsorIncome) / planStartSponsorIncome) * 100;
       target = isFinalSeason
         ? enrichedGoal.target

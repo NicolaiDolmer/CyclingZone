@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "2.50",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Robusthed · Stale fallbacks fjernet, sponsor-default normaliseret til 240K (slice 07a)",
+        items: [
+          "Bugfix ([teamProfileEngine.js](backend/lib/teamProfileEngine.js)): nye hold blev oprettet med hardkodet `sponsor_income: 260000` mens DB-default + alle 5 v2.49-fix-callsites brugte 240K. Drift stammede fra v1.76 (30. april) hvor in-code default blev hævet uden ledsagende DB-migration. Prod-DB-snapshot 2026-05-07: alle 19 hold står med 240K, så ingen tilbage-kompensering var nødvendig.",
+          "Konsolidering ([economyConstants.js](backend/lib/economyConstants.js) · ny fil): 7 økonomi-konstanter samlet ét sted som single source of truth — SPONSOR_INCOME_BASE (240K), INITIAL_BALANCE (800K), MARKET_VALUE_MULTIPLIER (4000), MIN_UCI_POINTS_FOR_VALUE (5), PRIZE_PER_POINT (1500), NEGATIVE_BALANCE_INTEREST_RATE (0.10) og DEBT_CEILING_BY_DIVISION (1.2M/900K/600K). Alle matcher database/schema.sql-defaults. Importeres af teamProfileEngine, economyEngine, boardGoals og api.js.",
+          "Fail-fast i [loanEngine.js](backend/lib/loanEngine.js): `createEmergencyLoan` kastede tidligere et stille `?? 0.15`-fallback hvis `loan_config` manglede emergency-row for en division. Prod-tjek bekræftede alle 3 divisioner har korrekte rows; men hvis en seed-fejl opstår fremover, fejler vi nu eksplicit med 'loan_config mangler emergency-row' i stedet for at oprette lån med forkerte rater. Ny regression-test låser adfærden.",
+          "Stragglers fixet: 3 callsites brugte `team.sponsor_income ?? 0` i stedet for at falde tilbage til base-konstanten (api.js board-outlook for både negotiation- og preview-stien, boardGoals.js sponsor_growth-evaluering). Alle ændret til `?? SPONSOR_INCOME_BASE` så board-tilfredshedsvurdering ikke længere fejlrapporterer 0% sponsor-vækst hvis et team-objekt midlertidigt mangler feltet.",
+          "Doc-drift ryddet op: [FEATURE_STATUS.md](docs/FEATURE_STATUS.md) + finance-onboarding-hint havde 260K-referencer, alle korrigeret til 240K. `DEFAULT_SPONSOR_INCOME` re-eksporteres fra economyEngine som alias for SPONSOR_INCOME_BASE i ét release for backward compat (deprecate i 07b). 299/299 backend-tests grønne, frontend build + lint grøn.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.49",
     date: "2026-05-06",
     label: "Beta",

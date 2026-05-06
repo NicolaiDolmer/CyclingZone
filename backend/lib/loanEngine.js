@@ -166,8 +166,14 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
   const configs = await getLoanConfig(teamId, client);
   const config = configs.find(c => c.loan_type === "emergency");
 
-  const feeRate = config?.origination_fee_pct ?? 0.15;
-  const interestRate = config?.interest_rate_pct ?? 0.15;
+  if (!config) {
+    throw new Error(
+      `loan_config mangler emergency-row for team ${teamId} (division-baseret) — DB-seed-fejl, kan ikke fortsætte`
+    );
+  }
+
+  const feeRate = config.origination_fee_pct;
+  const interestRate = config.interest_rate_pct;
 
   const fee = Math.round(amountNeeded * feeRate);
   const totalOwed = amountNeeded + fee;

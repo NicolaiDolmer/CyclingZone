@@ -65,6 +65,7 @@ import {
   repairSeasonEndFinanceAndBoard,
   updateStandings,
 } from "../lib/economyEngine.js";
+import { SPONSOR_INCOME_BASE } from "../lib/economyConstants.js";
 import { calculateRiderMarketValue } from "../lib/marketUtils.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
@@ -3235,7 +3236,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
         context: {
           activeLoanCount,
           planStartSponsorIncome: board.plan_start_sponsor_income,
-          currentSponsorIncome: teamRes.data?.sponsor_income ?? 0,
+          currentSponsorIncome: teamRes.data?.sponsor_income ?? SPONSOR_INCOME_BASE,
           planDuration,
           seasonsCompleted: workingSeasonIndex,
           hasSeasonData: Boolean(currentStanding),
@@ -3769,7 +3770,7 @@ router.post("/board/request", requireAuth, async (req, res) => {
       standing,
       context: {
         activeLoanCount: loansRes.count || 0,
-        currentSponsorIncome: team?.sponsor_income ?? 0,
+        currentSponsorIncome: team?.sponsor_income ?? SPONSOR_INCOME_BASE,
         hasSeasonData: Boolean(standing),
         isExpired: board.negotiation_status === "pending",
         planDuration,
