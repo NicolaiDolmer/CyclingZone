@@ -11,6 +11,7 @@
 - 2026-05-06: **Slice DX Lag 1+2+3 — agent-loop live** (`c1a8970`). 3 workflows: `claude.yml` (@claude-trigger via OAuth Pro-subscription), `claude-review.yml` (opus-4-7), `claude-triage.yml` (sonnet-4-6). Auto-triage kører nu på Discord-issues.
 - 2026-05-07: **Slice 07a v2.50** — `backend/lib/economyConstants.js` med 7 delte konstanter; 299/299 backend-tests grønne. Doc-drift fix: 260K→240K i FEATURE_STATUS + FinanceFirstVisitHint.
 - 2026-05-07: **Økonomi-audit** — 3 parallelle Explore-agents, 9 fund (4 P0/3 P1/2 P2), 8 slice-briefings 07a-h ([master](slices/07-economy-overhaul-MASTER.md), [audit](archive/ECONOMY_AUDIT_2026-05-07.md)).
+- 2026-05-06: **Discord MCP cross-PC automation** (`2d4377c`). `scripts/setup-discord-mcp.ps1` henter `DISCORD_BOT_TOKEN` fra Railway via Railway CLI og skriver `.mcp.json` til main repo + alle 13 worktrees. Manuel setup → én kommando. Verificeret: bot connected som `Cycling Zone#8784`. Setup-guide: [`docs/DISCORD_MCP_SETUP.md`](DISCORD_MCP_SETUP.md).
 
 ## Næste session — især efter PC-skift
 1. **På ny PC:** Pull main + følg [`docs/DISCORD_MCP_SETUP.md`](DISCORD_MCP_SETUP.md) for at recreate `.mcp.json` (gitignored, lokal-only fil med token).
