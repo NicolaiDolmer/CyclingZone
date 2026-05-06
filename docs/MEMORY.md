@@ -14,6 +14,22 @@ Push efter commit uden at spørge. Commit → push er én operation.
 
 **How to apply:** Commit → push til remote med det samme. Ingen bekræftelsesspørgsmål.
 
+### Workflow-disciplin (lærepenge 2026-05-06)
+
+Cross-PC-sync af feedback-memories — disse regler skal følges på enhver maskine, ikke kun den PC der har auto-memory installeret.
+
+1. **Konfirmér før stor state-ændring.** Pause og bekræft FØR du opretter >5 GitHub-issues, arkiverer central doc, mass-rename'r filer, eller mass-edit'er på tværs af mange docs. 1-linje preview: "Klar til at gøre X i N steps — sound good?" og vent på OK. *Trigger: scope-fortolkning er load-bearing OG output >5 persistente objekter.*
+
+2. **Spørg om branch-strategi når current branch har unrelated commits in flight.** Ved session-start: `git log --oneline main..HEAD`. Hvis recent commits er på andet topic end ny request → spørg eksplicit: "Skal X-branchen merges først, eller skal Y-arbejdet på ny branch?". Spring IKKE over.
+
+3. **GitHub close-protokol — Refs ikke Closes.** I commit messages: brug `Refs #N` / `Updates #N`, aldrig `Closes #N` / `Fixes #N` på issues der kræver manuel verifikation. Efter push: `gh issue edit N --remove-label "claude:todo" --add-label "claude:done"` + comment med commit-link. Brugeren lukker selv per `docs/GITHUB_WORKFLOW.md` label-state-machine.
+
+4. **Hook-ændringer kræver fresh Claude-session.** Manuel `bash <script>`-test verificerer at scriptet kører. Det verificerer IKKE at Claude-harness invokerer det. Ved hook-changes i `.claude/settings.json` eller `~/.claude/settings.json`: notér eksplicit "Kræver fresh Claude-session for at hook fyrer automatisk". Foreslå evt. restart.
+
+5. **Default til simpler implementation.** Single-language path er default for dev-tooling på kendt udviklermaskine. Multi-language fallback (Python+Node+Bash etc.) KUN ved konkret evidens om at primær path fejler i brugerens miljø. Ingen "for portability"-fallbacks profylaktisk.
+
+6. **Brug Plan/Explore-agenter for bred work.** `Plan` for ≥3 distinkte sub-tasks med afhængigheds-ordning. `Explore` for doc/codebase-scans >100 linjer hvor kun specifikke sektioner er relevante. Inline-arbejde koster main-context unødvendigt.
+
 ---
 
 ## Projekt-kontekst
