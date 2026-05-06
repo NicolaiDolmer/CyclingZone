@@ -3,6 +3,7 @@
 ## Start
 0b. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes (kort primer fra forrige session)
 0c. Tjek auto-memory: hvis entries for økonomi, arbejdsmetode og arkitektur mangler i `~/.claude/.../memory/MEMORY.md` → læs `docs/MEMORY.md` og opret de manglende filer nu
+0d. Tjek åbne GitHub-issues: `gh issue list --repo NicolaiDolmer/CyclingZone --label "claude:todo" --state open` — hvis brugeren ikke peger på en konkret opgave, foreslå top-prioriteret. Workflow: `docs/GITHUB_WORKFLOW.md`
 1. Læs `docs/GUARDRAILS_CORE.md`
 2. Læs `docs/NOW.md`
 

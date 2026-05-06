@@ -1,0 +1,34 @@
+name: Claude investigation
+description: Bed Claude undersøge noget og rapportere — uden at lave kode-ændringer
+title: "[investigate] "
+labels: ["claude:todo", "type:investigation"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Spørgsmål
+      description: Hvad vil du gerne vide?
+      placeholder: "Hvorfor er sponsor-tallet 100 i PatchNotesPage når det burde være 240K?"
+    validations:
+      required: true
+  - type: textarea
+    id: known
+    attributes:
+      label: Hvad du allerede ved / har prøvet
+      description: Spar Claude for arbejdet med at gen-opdage det du allerede har tjekket.
+  - type: textarea
+    id: where
+    attributes:
+      label: Hvor Claude bør starte
+      description: Filer, tabeller, logs, dashboards. Tomt = Claude finder selv.
+  - type: dropdown
+    id: output
+    attributes:
+      label: Forventet output
+      options:
+        - "Rapport som issue-comment (ingen kode-ændringer)"
+        - "Rapport + foreslået patch til godkendelse"
+        - "Patch + PR (hvis fix er trivielt)"
+      default: 0
+    validations:
+      required: true

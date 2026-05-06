@@ -1,0 +1,44 @@
+name: Bug report
+description: Noget virker ikke som forventet
+title: "[bug] "
+labels: ["type:bug", "claude:todo"]
+body:
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduktion
+      description: Skridt-for-skridt så Claude (eller du) kan reproducere
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: input
+    id: expected
+    attributes:
+      label: Forventet
+    validations:
+      required: true
+  - type: input
+    id: actual
+    attributes:
+      label: Faktisk
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs / screenshot / version
+      description: Console-fejl, screenshot, app-version (fra patch notes), browser, evt. user-id
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - "priority:high (data-tab eller blocker)"
+        - "priority:med (irriterende, ingen workaround)"
+        - "priority:low (kosmetisk / sjælden)"
+      default: 1
+    validations:
+      required: true
