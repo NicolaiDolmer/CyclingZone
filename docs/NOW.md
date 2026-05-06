@@ -1,23 +1,24 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Slice 07b — TOCTOU + idempotency-keys** ([#80](https://github.com/NicolaiDolmer/CyclingZone/issues/80), parent [#79](https://github.com/NicolaiDolmer/CyclingZone/issues/79), M ~2 sessioner). Foundation LIVE: Slice DX agent-loop (`c1a8970`) + Discord→GitHub bridge (`0d2b703`). Triage issues FØR 07b kick-off — flere overlapper med 07a-c work eller er allerede done. **Soak-gate: ikke aktiv.**
+**Ingen aktiv slice — 07b shipped LIVE 2026-05-07.** Næste kandidat: 07d (audit-log foundation) eller 07c (atomic balance updates). Brugeren prioriterer.
 
 ## Open beta status
-**Open beta live siden 2026-05-04, sæson 1 aktiv, 0 sæsoner afsluttet.** ~19 managers. S-02 KOMPLET. 07a leveret som v2.50. Alle 3 pre-kode-beslutninger til 07 låst 2026-05-07: (1) sponsor=240K, (2) konkurs-mekanik=light, (3) 07f aktiverer automatisk fra sæson 2.
+**Open beta live siden 2026-05-04, sæson 1 aktiv, 0 sæsoner afsluttet.** ~18 managers (DB-tal). S-02 KOMPLET. 07a leveret som v2.50, **07b leveret som v2.51**. Alle 3 pre-kode-beslutninger til 07 låst 2026-05-07: (1) sponsor=240K, (2) konkurs-mekanik=light, (3) 07f aktiverer automatisk fra sæson 2.
 
 ## Senest leveret
 *(2026-05-06 og tidligere arkiveret til [`docs/archive/NOW_HISTORIK_2026-05-06.md`](archive/NOW_HISTORIK_2026-05-06.md))*
 
-- 2026-05-06: **Cross-PC + workflow refactor** ([#67](https://github.com/NicolaiDolmer/CyclingZone/pull/67), commit `2265b33`) — preflight/migrate/setup-new-pc/install-user-hooks scripts + `cross-pc-stop-check.sh`. Bundlet med `#72` SessionStart-hook ([`scripts/session-prefetch-issue.sh`](../scripts/session-prefetch-issue.sh)) som pre-fetcher aktivt issue, `#68` migrerede PRODUCT_BACKLOG.md → 16 GitHub-issues (#79-#94), og `#70` GitHub-first CLAUDE.md cold-start ~800 tok (ned fra ~1500). PC #1 (NicolaiPC) verificeret 2026-05-07: hooks installeret + repo allerede ved `C:\dev\CyclingZone`, ingen migration nødvendig. PC #2-status uverificeret.
+- 2026-05-07: **Slice 07b v2.51 LIVE** ([#80](https://github.com/NicolaiDolmer/CyclingZone/issues/80), [PR #95](https://github.com/NicolaiDolmer/CyclingZone/pull/95), commit `a90128e`) — TOCTOU + idempotency. Migration `2026-05-07-economy-idempotency.sql` anvendt på prod: 4 partial UNIQUE indices (`uniq_{sponsor,salary,bonus}_per_team_season` + `uniq_loan_interest_per_loan_season`), `finance_transactions.related_loan_id`-kolonne, `create_loan_atomic` Postgres-RPC med `pg_advisory_xact_lock`. SOFT debt_ceiling-warning på `createEmergencyLoan` (light konkurs-mekanik lag 1). 1 historisk dublet ryddet (v2.49 sponsor-kompensering reklassificeret til `admin_adjustment`). 32/32 backend-tests grønne, smoke-test af `create_loan_atomic` live OK.
+- 2026-05-06: **Cross-PC + workflow refactor** ([#67](https://github.com/NicolaiDolmer/CyclingZone/pull/67), commit `2265b33`) — preflight/migrate/setup-new-pc/install-user-hooks scripts + `cross-pc-stop-check.sh`. Bundlet med `#72` SessionStart-hook, `#68` PRODUCT_BACKLOG → GitHub-issues, og `#70` GitHub-first CLAUDE.md cold-start ~800 tok.
 - 2026-05-07: **Slice 07a v2.50** — `backend/lib/economyConstants.js` med 7 delte konstanter; 299/299 backend-tests grønne.
-- 2026-05-07: **Økonomi-audit** — 3 parallelle Explore-agents, 9 fund (4 P0/3 P1/2 P2), 8 slice-briefings 07a-h ([master](slices/07-economy-overhaul-MASTER.md), [audit](archive/ECONOMY_AUDIT_2026-05-07.md)).
 
 ## Næste session
-1. **Slice 07b ([#80](https://github.com/NicolaiDolmer/CyclingZone/issues/80)) — fortsæt** WIP på PC #1: branch `feat/slice-07b-toctou-idempotency` med M `economyEngine.js`+`loanEngine.js` og untracked `backend/lib/economyInvariants.test.js`+`database/2026-05-07-economy-idempotency.sql`. Briefing: `.codex.local/SESSION_CONTEXT.md`.
-2. **Triage Discord-bridge issues** (#7-#52) — bulk-close items done. Især #28 reset-til-sæson-0 + #45 (dækkes af #80/07b).
-3. **PC #2 cross-PC verifikation** når sessionen flyttes — kør `scripts/preflight-check.ps1` for at se om migration er nødvendig der.
-4. **Tier 4 Discord-arkivering:** 2 tråde manuel close (`1500927555731984567` + `1501473256417267722`).
+1. **Vælg næste 07-slice:** anbefalet 07d (audit-log foundation, blokerer 07e dashboard) eller 07c (atomic balance updates, lukker resterende lost-update-races på `teams.balance`). Master-doc: [07-economy-overhaul-MASTER.md](slices/07-economy-overhaul-MASTER.md).
+2. **Bug #45** dækket af #80 — luk efter du har verificeret manuelt at gældsloft holder.
+3. **Live cron-verifikation af 07b** ved naturlig sæson-end: tjek 0 dubletter på sponsor/salary/bonus/loan_interest + alle nye `loan_interest`-rows har `related_loan_id` sat.
+4. **PC #2 cross-PC verifikation** når sessionen flyttes — kør `scripts/preflight-check.ps1`.
+5. **Tier 4 Discord-arkivering:** 2 tråde manuel close (`1500927555731984567` + `1501473256417267722`).
 
 ## Kritiske invarianter
 - **Verificér runtime FØR claim** — grep før TODO-claims
