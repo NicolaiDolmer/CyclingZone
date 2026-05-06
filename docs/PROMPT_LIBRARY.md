@@ -13,7 +13,7 @@ Implementér, kør målrettede tests, opdater kun relevante docs, og afslut med 
 
 Principper:
 - Én session = én tydelig slice eller delopgave.
-- Brug `docs/PRODUCT_BACKLOG.md` som samlet sandhed for ideer og plan, ikke chat-historik.
+- Brug GitHub issues (`gh issue list --label "claude:todo"`) som samlet sandhed for ideer og plan, ikke chat-historik. Backlog-fil arkiveret 2026-05-06 per [#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68).
 - Hold `docs/NOW.md` kort: aktiv slice, næste slice, blockers og vigtigste invariant.
 - Start bred review kun ved risikable runtime-paths; simple bugs kan gå direkte til målrettet fix.
 - Gruppér kun tæt relaterede fixes, fx transfer/window_pending samlet eller auction-regler samlet.

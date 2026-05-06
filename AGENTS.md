@@ -15,10 +15,11 @@ _Koordinerings-fil for AI-assistenter der arbejder i cycling-manager-repo'et. Si
 4. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Pre-push hook (loop B i AI_LOOPS.md) håndhæver dette.
 
 5. **Slice close-out kræver:**
-   - `docs/NOW.md`, `docs/PRODUCT_BACKLOG.md`, `docs/FEATURE_STATUS.md` afstemt
+   - `docs/NOW.md` opdateret + relevante GitHub-issues lukket eller opdateret med status (`gh issue comment N --body "..."` / `gh issue close N --reason completed`)
+   - `docs/FEATURE_STATUS.md` afstemt
    - PatchNotesPage opdateret
    - Postmortem-entry i `.claude/learnings/` hvis slice fiksede en bug (loop C)
-   - Doc-drift sweep: grep for nye env vars, deploy-targets, route-navne, tabel-navne mod `ARCHITECTURE.md`/`PRODUCT_BACKLOG.md`
+   - Doc-drift sweep: grep for nye env vars, deploy-targets, route-navne, tabel-navne mod `ARCHITECTURE.md` og åbne issues
 
 6. **Auto-push efter commit:** Push til GitHub automatisk efter hvert commit (Vercel deployer kun ved push).
 
@@ -41,7 +42,7 @@ _Koordinerings-fil for AI-assistenter der arbejder i cycling-manager-repo'et. Si
 |---|---|
 | `docs/MEMORY.md` (indeks) | Ny session eller eksplicit behov — IKKE ved hver bugfix |
 | `docs/GUARDRAILS.md` (fuld) | Nye datakontrakter, IA/naming-valg, shared runtime-refactors |
-| `docs/PRODUCT_BACKLOG.md` | Slice-start, close-out, status-afstemning |
+| GitHub issues (`gh issue list --label "claude:todo"`) | Slice-start, close-out, status-afstemning (task-lag — backlog-fil arkiveret 2026-05-06) |
 | `docs/FEATURE_STATUS.md` | Slice-close, og når runtime-state er usikker |
 | `docs/ARCHITECTURE.md` | Cross-domain refactors |
 | `docs/DOMAIN_REFERENCE.md` | Domænegrænse-spørgsmål |
@@ -158,10 +159,10 @@ Alle skal være ✅ før commit + push:
 2. `frontend/src/pages/PatchNotesPage.jsx` opdateret med ny version (eller eksplicit hvorfor ikke)
 3. `docs/NOW.md` opdateret + under 30 linjer
 4. `docs/FEATURE_STATUS.md` opdateret hvis kontrakter/features ændret
-5. `docs/PRODUCT_BACKLOG.md` opdateret hvis backlog-items lukket
+5. Relevante GitHub-issues lukket eller opdateret med kommentar (task-lag — backlog-fil arkiveret 2026-05-06)
 6. Hvis bug-fix: postmortem-entry i `.claude/learnings/<dato>-<slug>.md`
 7. Slice-doc i `docs/slices/` enten markeret done eller flyttet til `docs/archive/slices/`
-8. Doc-drift sweep: nye env vars, deploy-targets, route-navne, tabel-navne afstemt mod ARCHITECTURE/PRODUCT_BACKLOG
+8. Doc-drift sweep: nye env vars, deploy-targets, route-navne, tabel-navne afstemt mod ARCHITECTURE og åbne issues
 
 ### Tjekliste — planlægnings-/audit-session klar til close-out
 

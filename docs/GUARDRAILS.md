@@ -9,11 +9,11 @@ Klassificér: `direkte implementerbar` / `investigation` / `kræver askuserquest
 Ikke `direkte implementerbar` → sig hvorfor og stop før kodeændringer.
 
 ## Roadmap
-- `docs/PRODUCT_BACKLOG.md` er kanonisk roadmap og backlog for større slices
+- GitHub issues (`gh issue list --label "claude:todo" --state open`) er kanonisk roadmap og backlog for større slices. Backlog-fil arkiveret 2026-05-06 til `docs/archive/PRODUCT_BACKLOG-2026-05-06.md` (per [#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68)).
 - `docs/NOW.md` holdes kort: aktiv slice, næste slice og blockers
-- Nye ideer → backlog; springer ikke foran aktiv slice uden runtime- eller produktgrund
-- Før en slice startes, tjek om runtime, tests eller patch notes allerede viser den som løst; hvis ja, opdatér docs-status i stedet for at implementere samme opgave igen
-- Når en feature/fix lukkes, skal status nedskrives samme dag i `docs/NOW.md`, `docs/PRODUCT_BACKLOG.md` og `docs/FEATURE_STATUS.md`
+- Nye ideer → opret GitHub-issue; springer ikke foran aktiv slice uden runtime- eller produktgrund
+- Før en slice startes, tjek om runtime, tests eller patch notes allerede viser den som løst; hvis ja, opdatér issue-status (`gh issue close N`) i stedet for at implementere samme opgave igen
+- Når en feature/fix lukkes, skal status nedskrives samme dag i `docs/NOW.md`, relevante issues lukkes/kommenteres, og `docs/FEATURE_STATUS.md` opdateres
 
 ## Askuserquestion gates
 Tag afklaringssession ved: IA/naming-valg · features med flere plausible produktmodeller · nye datakontrakter eller integrationer · balancing med fairness-konsekvens

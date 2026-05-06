@@ -341,7 +341,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 📋 Planlagt (backlog)
 
-- Aktiv feature- og forbedringsbacklog vedligeholdes i `docs/PRODUCT_BACKLOG.md`
+- Aktiv feature- og forbedringsbacklog vedligeholdes som GitHub issues (`gh issue list --label "claude:todo" --state open`); backlog-fil arkiveret 2026-05-06 per [#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68).
 - Economy baseline & simulation gennemført (v1.76 tune applied); næste spor er iteration baseret på live beta-data.
 - Team ID-mapping fra PCM
 - Cyclist ID-mapping fra PCM

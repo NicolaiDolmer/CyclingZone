@@ -324,7 +324,7 @@ Hver sub-slice = 1 session. Total: ~10-12 sessioner. Dependencies markeret.
 
 ## Næste session
 
-S-02 er lukket. Næste session bør vælge en ny slice fra `docs/PRODUCT_BACKLOG.md` i stedet for at starte S-02a igen.
+S-02 er lukket. Næste session bør vælge et åbent issue (`gh issue list --label "claude:todo" --state open`) i stedet for at starte S-02a igen. Backlog-fil arkiveret 2026-05-06 per [#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68).
 
 ---
 
