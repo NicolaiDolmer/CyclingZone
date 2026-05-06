@@ -1,14 +1,14 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Slice 07b — TOCTOU + idempotency-keys** (M, ~2 sessioner). Foundation LIVE: Slice DX agent-loop (`c1a8970`) + Discord→GitHub bridge (`0d2b703`, 42 issues #7-#48 fra 49 active tråde). Triage issues FØR 07b kick-off — flere overlapper med 07a-c work eller er allerede done. **Soak-gate: ikke aktiv.**
+**Slice 07b — TOCTOU + idempotency-keys** (M, ~2 sessioner). Foundation LIVE: Slice DX agent-loop (`c1a8970`) + Discord→GitHub bridge (`0d2b703`). Triage issues FØR 07b kick-off (live-tal i "Næste session" nedenfor) — flere overlapper med 07a-c work eller er allerede done. **Soak-gate: ikke aktiv.**
 
 ## Open beta status
 **Open beta live siden 2026-05-04, sæson 1 aktiv, 0 sæsoner afsluttet.** ~19 managers. S-02 KOMPLET (S-02a–S-02j). 07a leveret som v2.50. Alle 3 pre-kode-beslutninger til 07 låst 2026-05-07: (1) sponsor=240K, (2) konkurs-mekanik=light, (3) 07f aktiverer automatisk fra sæson 2. Pre-launch dev-docs i archive/ refererer til "sæson 6/7" = test-DB FØR beta-reset; ignorér.
 
 ## Senest leveret
-- 2026-05-06: **Discord→GitHub bridge LIVE** (`0d2b703`). 42 issues (#7-#48) genereret fra 49 aktive Discord-tråde via `mcp-discord` MCP + `gh` CLI. 27 skærmbilleder downloaded til `docs/discord-attachments/` (refereret via raw.github URLs). Setup: [`docs/DISCORD_MCP_SETUP.md`](DISCORD_MCP_SETUP.md). Re-sync: `scripts/sync-discord-attachments.js`. Batch-filing template: `scripts/file-discord-issues-batch3.js`. Tier 4 archive blokeret — bot mangler `MANAGE_THREADS` perm (manual close i Discord, eller grant perm).
-- 2026-05-06: **Slice DX Lag 1+2+3 — agent-loop live** (`c1a8970`). 3 workflows: `claude.yml` (@claude-trigger via OAuth Pro-subscription), `claude-review.yml` (opus-4-7), `claude-triage.yml` (sonnet-4-6). Auto-triage kører nu på Discord-issues.
+*(2026-05-06 og tidligere arkiveret til [`docs/archive/NOW_HISTORIK_2026-05-06.md`](archive/NOW_HISTORIK_2026-05-06.md))*
+
 - 2026-05-07: **Slice 07a v2.50** — `backend/lib/economyConstants.js` med 7 delte konstanter; 299/299 backend-tests grønne. Doc-drift fix: 260K→240K i FEATURE_STATUS + FinanceFirstVisitHint.
 - 2026-05-07: **Økonomi-audit** — 3 parallelle Explore-agents, 9 fund (4 P0/3 P1/2 P2), 8 slice-briefings 07a-h ([master](slices/07-economy-overhaul-MASTER.md), [audit](archive/ECONOMY_AUDIT_2026-05-07.md)).
 - 2026-05-06: **Discord MCP cross-PC automation** (`2d4377c`). `scripts/setup-discord-mcp.ps1` henter `DISCORD_BOT_TOKEN` fra Railway via Railway CLI og skriver `.mcp.json` til main repo + alle 13 worktrees. Manuel setup → én kommando. Verificeret: bot connected som `Cycling Zone#8784`. Setup-guide: [`docs/DISCORD_MCP_SETUP.md`](DISCORD_MCP_SETUP.md).

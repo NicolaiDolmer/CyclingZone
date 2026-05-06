@@ -156,6 +156,22 @@ Derefter virker: `npm run lint`, `npm run format`, `npm test`, `pwsh -File scrip
 
 ---
 
+## Discord MCP-opsætning (cross-PC)
+
+```powershell
+pwsh -File scripts/setup-discord-mcp.ps1
+```
+
+Installerer Railway CLI (hvis mangler), guider gennem éngangs Railway-login + projekt-link, henter `DISCORD_BOT_TOKEN` fra Railway og skriver `.mcp.json` til main repo + alle eksisterende worktrees. Sikrer også `enabledMcpjsonServers: ["discord"]` i hver `settings.local.json`. Genstart Claude Code efter for at loade MCP.
+
+**Status pr. 2026-05-06: Discord MCP er installeret og verificeret på begge PC'er** — bot logger ind som `Cycling Zone#8784`. PC 1 fik setup ved bridge-launch (`0d2b703`), PC 2 ved automation-script (`2d4377c`). Begge PC'er kan nu bruge `mcp__discord__*` tools direkte i Claude Code.
+
+**Per-worktree caveat:** `.mcp.json` er gitignored (indeholder bot-token) og kopieres derfor IKKE automatisk til nye worktrees. Når en ny worktree spawnes, kør scriptet igen — det er idempotent og opdaterer alle eksisterende worktrees i én kørsel.
+
+**Token-sikkerhed:** Tokenet eksisterer kun i (1) Railway env var `DISCORD_BOT_TOKEN`, (2) lokale `.mcp.json` filer (gitignored), (3) deployed backend's runtime. Ved kompromittering: rotér via Discord Dev Portal → Reset Token, opdatér Railway env, kør scriptet igen begge PC'er.
+
+---
+
 ## Windows: Undgå "command line too long"
 
 Windows har 8191-tegns grænse for kommandolinjer. Overskrides ved meget lange inline PowerShell-kommandoer.
