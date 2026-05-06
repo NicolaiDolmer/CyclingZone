@@ -79,7 +79,7 @@ UPDATE riders SET salary = GREATEST(1, ROUND(
 
 ## Post-deploy
 
-- [ ] Marker slice som **done** i `docs/PRODUCT_BACKLOG.md`
+- [ ] Luk relevante GitHub-issues for slice (`gh issue close N --reason completed`); backlog-fil arkiveret 2026-05-06 per [#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68)
 - [ ] Flyt `docs/slices/01-salary-generated-column.md` til `docs/archive/slices/`
 - [ ] Slet branch lokalt + på origin
 - [ ] Postmortem-entry i `.claude/learnings/2026-05-04-s01-dual-formula-bug.md` (slice fiksede en bug → loop C kræver det)

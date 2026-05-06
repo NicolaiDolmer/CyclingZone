@@ -30,7 +30,7 @@
 ## Kontekst- og tokenhygiejne
 
 - `docs/NOW.md` må kun indeholde aktiv slice, næste slice, blockers og aktuelle release-noter; flyt detaljer til backloggen
-- `docs/PRODUCT_BACKLOG.md` er kanonisk sted for nye ideer, bugs og planlagte forbedringer
+- GitHub issues (`gh issue list`) er kanonisk sted for nye ideer, bugs og planlagte forbedringer (backlog-fil arkiveret 2026-05-06 per [#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68))
 - Undgå at gentage roadmap i chatten; referér til slice-navn og runtime-path
 - Nye sessioner bør starte med prompten i `docs/PROMPT_LIBRARY.md#effektiv-session`
 - Læs ekstra reference-docs efter behov, ikke som standard, medmindre guardrails kræver det

@@ -215,7 +215,7 @@ _Token-disciplin: Loops er beskrevet kompakt. Ved implementering: læs slice-doc
 2. Weekly review (manuel ELLER scripted):
    - **Hvis Clarity-API tilgængeligt:** `scripts/clarityWeeklyReport.js` puls top-N dead-clicks/rage-clicks → markdown-rapport til `docs/clarity/weekly-<dato>.md`
    - **Hvis manuel:** Bruger åbner Clarity-dashboard, kopierer top-3 problemer ind i en Claude-session med prompt "Forslå minimal fix"
-3. Hver weekly-rapport → 1-3 nye P1/P2-slices i `docs/PRODUCT_BACKLOG.md`
+3. Hver weekly-rapport → 1-3 nye P1/P2-issues på GitHub (`gh issue create --label "claude:todo,priority:med,type:feature"`)
 
 **Estimat:** 1 session for setup + 30 min/uge recurring.
 

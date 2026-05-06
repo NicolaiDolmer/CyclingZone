@@ -1,4 +1,47 @@
-# PRODUCT BACKLOG — Cycling Zone
+# PRODUCT BACKLOG (ARKIVERET 2026-05-06)
+
+> **MIGRATION:** Task-laget er flyttet til GitHub issues per [#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68).
+> Brug `gh issue list --label "claude:todo" --state open` for at se aktive opgaver.
+> Denne fil bevares som historisk reference for slice-context og vision-noter.
+
+## Issue-mapping (oprettet 2026-05-06)
+
+| Sektion i denne fil | GitHub-issue | Note |
+|---|---|---|
+| Slice 07 — Economy Overhaul (parent) | [#79](https://github.com/NicolaiDolmer/CyclingZone/issues/79) | Parent epic, 7 sub-issues |
+| → Slice 07b TOCTOU | [#80](https://github.com/NicolaiDolmer/CyclingZone/issues/80) | Sub-issue af #79 |
+| → Slice 07c Atomic balance | [#81](https://github.com/NicolaiDolmer/CyclingZone/issues/81) | Sub-issue af #79 |
+| → Slice 07d Audit-log foundation | [#82](https://github.com/NicolaiDolmer/CyclingZone/issues/82) | Sub-issue af #79 |
+| → Slice 07e Admin super-dashboard | [#83](https://github.com/NicolaiDolmer/CyclingZone/issues/83) | Blocked af #82 |
+| → Slice 07f Sponsor variabel | [#84](https://github.com/NicolaiDolmer/CyclingZone/issues/84) | Sub-issue af #79 |
+| → Slice 07g Finance forecast | [#85](https://github.com/NicolaiDolmer/CyclingZone/issues/85) | Delvist blokeret af #82 |
+| → Slice 07h Season close-out report | [#86](https://github.com/NicolaiDolmer/CyclingZone/issues/86) | Delvist blokeret af #82 |
+| Slice DX Lag 4 (Projects board) | [#87](https://github.com/NicolaiDolmer/CyclingZone/issues/87) | epic:dx-hardening |
+| Slice DX Lag 5 (Branch protection) | [#88](https://github.com/NicolaiDolmer/CyclingZone/issues/88) | epic:dx-hardening |
+| Slice DX Lag 6 (Pre-commit hooks) | [#89](https://github.com/NicolaiDolmer/CyclingZone/issues/89) | epic:dx-hardening |
+| Slice DX Lag 7 (Dependabot+CodeQL) | [#90](https://github.com/NicolaiDolmer/CyclingZone/issues/90) | epic:dx-hardening |
+| Race Day Live-ticker (North Star) | [#91](https://github.com/NicolaiDolmer/CyclingZone/issues/91) | priority:med |
+| Rytter-arketype | [#92](https://github.com/NicolaiDolmer/CyclingZone/issues/92) | priority:med |
+| XLSX security advisory | [#93](https://github.com/NicolaiDolmer/CyclingZone/issues/93) | priority:med |
+| Manager cross-season statistik | [#94](https://github.com/NicolaiDolmer/CyclingZone/issues/94) | priority:low |
+
+**Ikke migreret (bevidst — vage trigger-betingelser):**
+- *Cykling-fokus:* Sponsor-tied-to-results (subsumed af #84/07f)
+- *Data Depth Candidates:* Teams PCM mapping, Cyclists PCM mapping, 3-sæsoners glidende rangliste
+- *Engagement + Polish:* Discord-name matching, Richer notification filters, Secret achievement audit
+- *Developer tooling:* Claude harness multi-PC install (delvist live siden 2026-05-04)
+- *Inbox/activity consolidation v2:* trigger uklart — vent på konkret manager-feedback
+- *Locked Product Defaults:* ground rules (ikke slices) — bør flyttes til `CLAUDE.md` eller separat `PRODUCT_RULES.md`
+
+For vague candidates: filer som GitHub-issues når der opstår konkret trigger.
+
+**Aktive PRs uden issue-link:**
+- [#67](https://github.com/NicolaiDolmer/CyclingZone/pull/67) — feat: cross-PC automation toolkit (ikke linket til specifikt issue)
+- [#2](https://github.com/NicolaiDolmer/CyclingZone/pull/2) — [codex] Add Supabase AI workflow probes (ikke linket)
+
+---
+
+# Originalt indhold (historisk reference)
 
 _Kanonisk, token-effektiv roadmap. Ingen done-historik her — kun fremadskuende slices og kandidater._
 _Færdige detaljer bor i `docs/FEATURE_STATUS.md` og `docs/archive/`._

@@ -266,7 +266,7 @@ Refaktor `auctionCancellation.js` + 5 admin-routes til at skrive til admin_log u
 **1. Mål.** Bygge admin-UI ovenpå 07d's audit-data: per-hold økonomi-overblik, søgbar/filtrerbar finance_transactions historie med drill-down per row, admin_log-feed, bulk-CSV-export, korrelerings-views (cron-runs, sæson-events).
 
 **2. Runtime-evidens.**
-- `AdminPage.jsx` har i dag ingen økonomi-tab. Backlog [PRODUCT_BACKLOG.md "S10 — Admin økonomi-panel"](../PRODUCT_BACKLOG.md) skitserer simpel version; dette slice bygger den fulde version.
+- `AdminPage.jsx` har i dag ingen økonomi-tab. Backlog [PRODUCT_BACKLOG.md "S10 — Admin økonomi-panel"](../archive/PRODUCT_BACKLOG-2026-05-06.md) skitserer simpel version; dette slice bygger den fulde version.
 - `frontend/src/pages/FinancePage.jsx` er manager-rettet, ikke admin.
 - 07d leverer datakolonnerne; uden 07d kan dashboardet kun vise legacy-felter.
 
@@ -301,7 +301,7 @@ Refaktor `auctionCancellation.js` + 5 admin-routes til at skrive til admin_log u
 - [backend/lib/economyEngine.js processSeasonStart] kalder `applySponsorPayout(team, sponsor_income, budget_modifier)`.
 - Aktuel state (2026-05-07): sæson 1 aktiv, 0 sæsoner afsluttet, ingen `season_standings`-data fra forrige sæson endnu.
 - Når sæson 1 lukker: `season_standings.total_points` + `rank_in_division` populeres → 07f's input-data findes.
-- Backlog [PRODUCT_BACKLOG.md "Sponsor-tied-to-results"](../PRODUCT_BACKLOG.md) — vision-doc.
+- Backlog [PRODUCT_BACKLOG.md "Sponsor-tied-to-results"](../archive/PRODUCT_BACKLOG-2026-05-06.md) — vision-doc.
 - v1.76 economy tune-iteration dokumenteret i [archive/ECONOMY_BASELINE_SIMULATION_2026-04-29.md](../archive/ECONOMY_BASELINE_SIMULATION_2026-04-29.md) (NB: archive-doc refererer til pre-launch dev-state med "sæson 6 completed, sæson 7 active" — det var pre-beta-reset; ignorér sæson-numre når simulationen genbruges).
 
 **3. Invariant beskyttet.** Sponsor stiger ikke ubegrænset (max 350K = 200K + 150K). Sponsor falder ikke under 200K (manager kan ikke ende uden sponsor selv ved bundsplacering). Comeback-mekanik aktiveres for hold der overperformer mod division-baseline.
@@ -416,7 +416,7 @@ Hver migration har idempotent UP og dokumenteret DOWN. 07b og 07d's UNIQUE-indic
 - 07d: nye audit-tests; legacy-rows i finance_transactions har NULL i nye kolonner — skal ikke fejle UI'et i 07e.
 
 ## Doc-drift sweep efter hver slice
-Per [GUARDRAILS_CORE.md release hygiene](../GUARDRAILS_CORE.md#release-hygiene-obligatorisk-ved-enhver-brugerrettet-ændring): `PatchNotesPage.jsx`, `HelpPage.jsx`, `FEATURE_STATUS.md`, `PRODUCT_BACKLOG.md` opdateres i samme commit. `economyConstants.js` referenceres i `ARCHITECTURE.md`.
+Per [GUARDRAILS_CORE.md release hygiene](../GUARDRAILS_CORE.md#release-hygiene-obligatorisk-ved-enhver-brugerrettet-ændring): `PatchNotesPage.jsx`, `HelpPage.jsx`, `FEATURE_STATUS.md` opdateres + relevante GitHub-issues lukkes/kommenteres i samme commit. `economyConstants.js` referenceres i `ARCHITECTURE.md`.
 
 ## Soak-gates
 - Efter 07a: ingen — patch-niveau, men spot-check at ingen team har sponsor_income=0 efter deploy.

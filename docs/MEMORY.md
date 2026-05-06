@@ -49,7 +49,7 @@ Push efter commit uden at spørge. Commit → push er én operation.
 
 ### Token-disciplin (gælder alle sessioner)
 - `docs/NOW.md`: **maks 30 linjer** — kun aktiv slice, næste handlinger, blockers, invarianter
-- `docs/PRODUCT_BACKLOG.md`: kun fremadskuende — ingen done-historik
+- GitHub issues = kanonisk task-lag (backlog-fil arkiveret 2026-05-06 per [#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68))
 - Færdige detaljer → `docs/FEATURE_STATUS.md` + `docs/archive/`
 - Læs kun ekstra docs-filer når den konkrete opgave kræver det
 - `docs/MEMORY.md`: læs kun ved ny session eller eksplicit behov
