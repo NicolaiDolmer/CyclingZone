@@ -55,7 +55,8 @@ $sessionStartHook = [PSCustomObject]@{
   )
 }
 
-if (-not ($settings.hooks.PSObject.Properties.Name -contains "SessionStart")) {
+$existingSessionStart = @($settings.hooks.PSObject.Properties | Where-Object { $_.Name -eq "SessionStart" })
+if ($existingSessionStart.Count -eq 0) {
   $settings.hooks | Add-Member -NotePropertyName "SessionStart" -NotePropertyValue @($sessionStartHook) -Force
   Write-Host "Tilfoejet SessionStart hook"
 } else {
@@ -87,7 +88,8 @@ $stopHook = [PSCustomObject]@{
   )
 }
 
-if (-not ($settings.hooks.PSObject.Properties.Name -contains "Stop")) {
+$existingStop = @($settings.hooks.PSObject.Properties | Where-Object { $_.Name -eq "Stop" })
+if ($existingStop.Count -eq 0) {
   $settings.hooks | Add-Member -NotePropertyName "Stop" -NotePropertyValue @($stopHook) -Force
   Write-Host "Tilfoejet Stop hook"
 } else {
