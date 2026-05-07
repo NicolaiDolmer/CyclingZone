@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "2.69",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Auktioner · Historik er nu en tydelig fane øverst på Auktioner-siden — ikke længere et lille tekstlink i hjørnet. Du kan skifte mellem Aktive og Historik fra begge sider (#59).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.68",
     date: "2026-05-08",
     label: "Beta",

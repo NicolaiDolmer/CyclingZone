@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useMemo } from "react";
 import { supabase } from "../lib/supabase";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -801,14 +801,26 @@ export default function AuctionsPage() {
         icon="🏆"
       />
 
-      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">Auktioner</h1>
-          <p className="text-cz-3 text-sm">{auctions.length} aktive auktioner</p>
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-cz-1 mb-3">Auktioner</h1>
+        <div className="flex gap-2">
+          <NavLink to="/auctions" end
+            className={({ isActive }) =>
+              `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                isActive
+                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                  : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+            Aktive ({auctions.length})
+          </NavLink>
+          <NavLink to="/auctions/history"
+            className={({ isActive }) =>
+              `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                isActive
+                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                  : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+            Historik
+          </NavLink>
         </div>
-        <Link to="/auctions/history" className="text-xs text-cz-accent-t hover:underline">
-          Se historik →
-        </Link>
       </div>
 
       {!loading && myTeamId && (
