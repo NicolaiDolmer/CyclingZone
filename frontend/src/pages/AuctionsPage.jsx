@@ -263,34 +263,37 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }
       {/* Byd */}
       <td className={`px-3 py-1.5 sticky right-0 z-10 border-l border-cz-border transition-colors group-hover:bg-cz-subtle ${imWinning ? "bg-cz-accent/[0.08]" : "bg-cz-card"}`}>
         {canBid ? (
-          <div className="flex items-center gap-1.5">
-            <input
-              type="number"
-              value={bidAmount}
-              min={minBid}
-              onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
-              data-tour={isFirst ? "auctions-bid-input" : undefined}
-              className="w-24 bg-cz-subtle border border-cz-border rounded px-2 py-1.5
-                text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
-            />
-            <button
-              onClick={handleBid}
-              disabled={bidStatus === "loading" || bidAmount < minBid}
-              className={`px-3 py-1.5 rounded text-xs font-bold transition-all whitespace-nowrap
-                ${bidStatus === "error"   ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
-                  bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
-                  imWinning
-                    ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25"
-                    : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
-                disabled:opacity-50`}>
-              {bidStatus === "loading" ? "..." :
-               bidStatus === "error"   ? "Fejl" :
-               bidStatus === "success" ? "✓" :
-               imWinning ? "Hæv" : "Byd"}
-            </button>
-            {bidStatus === "error" && errorText && (
-              <p className="text-[10px] text-cz-danger max-w-[90px] leading-tight">{errorText}</p>
-            )}
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                value={bidAmount}
+                min={minBid}
+                onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
+                data-tour={isFirst ? "auctions-bid-input" : undefined}
+                className="w-24 bg-cz-subtle border border-cz-border rounded px-2 py-1.5
+                  text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
+              />
+              <button
+                onClick={handleBid}
+                disabled={bidStatus === "loading" || bidAmount < minBid}
+                className={`px-3 py-1.5 rounded text-xs font-bold transition-all whitespace-nowrap
+                  ${bidStatus === "error"   ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
+                    bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
+                    imWinning
+                      ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25"
+                      : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
+                  disabled:opacity-50`}>
+                {bidStatus === "loading" ? "..." :
+                 bidStatus === "error"   ? "Fejl" :
+                 bidStatus === "success" ? "✓" :
+                 imWinning ? "Hæv" : "Byd"}
+              </button>
+              {bidStatus === "error" && errorText && (
+                <p className="text-[10px] text-cz-danger max-w-[90px] leading-tight">{errorText}</p>
+              )}
+            </div>
+            <p className="text-[9px] text-cz-3 leading-none">Min. {minBid.toLocaleString("da-DK")} CZ$</p>
           </div>
         ) : isSeller ? (
           <span className="text-cz-3 text-xs">Du sælger</span>

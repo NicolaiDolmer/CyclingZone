@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.61",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Auktioner · Fejlbesked ved for lavt bud er nu på dansk og angiver præcist minimumsbuddet: 'Bud skal være mindst X CZ$' (#16).",
+          "Auktioner · Fejlbesked ved utilstrækkelig disponibel balance viser nu det konkrete restbeløb: 'Du har X CZ$ tilbage efter eksisterende bud' (#16).",
+          "Auktioner · Tabelvisning viser nu 'Min. X CZ$' under bud-feltet (som mobilvisningen allerede gjorde), så managere kan se minimumsbuddet uden at gætte (#16).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.60",
     date: "2026-05-07",
     label: "Beta",

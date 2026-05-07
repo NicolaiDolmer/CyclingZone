@@ -773,21 +773,25 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
   ]);
   const activeLeading = leadingAuctions.data || [];
   const activeLeadingExceptCurrent = activeLeading.filter(row => row.id !== auction.id);
+  const reservedBalance = activeLeadingExceptCurrent.reduce((sum, row) => sum + (Number(row.current_price) || 0), 0);
   const bidIssue = getAuctionBidIssue({
     amount,
     currentPrice: auction.current_price,
     teamBalance: req.team.balance,
-    reservedBalance: activeLeadingExceptCurrent.reduce((sum, row) => sum + (Number(row.current_price) || 0), 0),
+    reservedBalance,
   });
 
   if (bidIssue?.code === "bid_below_minimum") {
     return res.status(400).json({
-      error: `Minimum bid: ${bidIssue.minimumBid.toLocaleString("da-DK")} CZ$`,
+      error: `Bud skal være mindst ${bidIssue.minimumBid.toLocaleString("da-DK")} CZ$`,
     });
   }
 
   if (bidIssue?.code === "insufficient_available_balance") {
-    return res.status(400).json({ error: "Buddet overstiger din disponible balance inkl. aktive auktionsføringer" });
+    const availableBalance = (Number(req.team.balance) || 0) - reservedBalance;
+    return res.status(400).json({
+      error: `Du har ${availableBalance.toLocaleString("da-DK")} CZ$ tilbage efter eksisterende bud`,
+    });
   }
 
   // Squad-cap er ikke længere en hard block (#29). Konverteret til warning som UI viser
