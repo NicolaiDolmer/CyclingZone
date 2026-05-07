@@ -292,7 +292,7 @@
       "messageContent": "Man kan annullere en lejeaftale, uden modparten giver accept til dette",
       "author": "jeppek",
       "timestamp": "2026-05-07T19:05:12.807000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1502022740511690955": [
@@ -303,7 +303,7 @@
       "messageContent": "Det er ikke muligt at spørge om byttehandel eller lejeaftale på rytterprofilerne ved andres ryttere",
       "author": "jeppek",
       "timestamp": "2026-05-07T19:02:09.210000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1502022537310371871": [
@@ -314,7 +314,7 @@
       "messageContent": "Det er ikke muligt at lave et modbud på en byttehandel, efter en anden har lavet et modbud til dig, https://cycling-zone.vercel.app/transfers",
       "author": "jeppek",
       "timestamp": "2026-05-07T19:01:20.253000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1502021814224949419": [
@@ -325,7 +325,7 @@
       "messageContent": "",
       "author": "jeppek",
       "timestamp": "2026-05-07T18:58:28.181000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1502019650131726356": [
@@ -336,7 +336,7 @@
       "messageContent": "",
       "author": "jeppek",
       "timestamp": "2026-05-07T18:49:52.077000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1502018453358248127": [
@@ -347,7 +347,7 @@
       "messageContent": "",
       "author": "jeppek",
       "timestamp": "2026-05-07T18:45:06.955000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1502023057454141710": [
@@ -358,7 +358,7 @@
       "messageContent": "",
       "author": "cybersimon",
       "timestamp": "2026-05-07T19:03:30.209000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1500209380413407343": [
@@ -369,6 +369,50 @@
       "messageContent": "",
       "author": ".sredna",
       "timestamp": "2026-05-07T19:18:25.461000+00:00",
+      "cached": true
+    }
+  ],
+  "1502029191233802371": [
+    {
+      "filename": "1502029191233802371-1502029220337942538.jpg",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1502029191233802371-1502029220337942538.jpg",
+      "messageId": "1502029221973856487",
+      "messageContent": "",
+      "author": "cybersimon",
+      "timestamp": "2026-05-07T19:27:52.872000+00:00",
+      "cached": false
+    }
+  ],
+  "1502029625986125905": [
+    {
+      "filename": "1502029625986125905-1502029630230630560.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1502029625986125905-1502029630230630560.png",
+      "messageId": "1502029630515970178",
+      "messageContent": "Når man fjerner beskeder i indbakken, opdateres det ikke i siden, før man klikker F5. Forbliver der, når man flytter sig rundt på sitet",
+      "author": "jeppek",
+      "timestamp": "2026-05-07T19:29:30.276000+00:00",
+      "cached": false
+    }
+  ],
+  "1502042565988450384": [
+    {
+      "filename": "1502042565988450384-1502042571487051986.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1502042565988450384-1502042571487051986.png",
+      "messageId": "1502042571940171900",
+      "messageContent": "Jeg får fejl ved at byde på: Ruslan Mustafayev\nMen mangler fejlmeddelse, så jeg ved hvad jeg gør galt.",
+      "author": "bobby2106",
+      "timestamp": "2026-05-07T20:20:55.752000+00:00",
+      "cached": false
+    }
+  ],
+  "1502043822841135116": [
+    {
+      "filename": "1502043822841135116-1502043827693686825.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1502043822841135116-1502043827693686825.png",
+      "messageId": "1502043828075626527",
+      "messageContent": "",
+      "author": "cybersimon",
+      "timestamp": "2026-05-07T20:25:55.238000+00:00",
       "cached": false
     }
   ]

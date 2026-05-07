@@ -48,6 +48,11 @@ const THREADS = [
   '1502018453358248127', // jeppek Undefined holdnavn i transferhistorik
   '1502023057454141710', // cybersimon Byttehandel/leje under rytterside
   '1500209380413407343', // .sredna Forbedring til budsystemet (proxy-bidding follow-up)
+  // Batch 5 (2026-05-07 sen aften — proxy-bidding regression cluster)
+  '1502029191233802371', // cybersimon Kan ikke byde pris rytter er sat til salg for (10%-rule)
+  '1502029625986125905', // jeppek Ulæste beskeder fjernes ikke i indbakken
+  '1502042565988450384', // bobby2106 Autobud på managerejet rytter — fejl uden besked
+  '1502043822841135116', // cybersimon Auto bud overholder ikke afrundingsregl
 ];
 
 function getJSON(url, headers) {
