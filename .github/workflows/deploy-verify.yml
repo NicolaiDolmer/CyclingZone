@@ -1,0 +1,128 @@
+name: Deploy verify
+
+# Trigger: Push til main (typisk efter merge af PR).
+# Effekt: Venter på Vercel + Railway deploy, smoke-tester prod, kommenterer ✅/❌
+# på den merged PR. Brugeren kan trygt være offline efter mobile-merge.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  deployments: read
+  actions: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find merged PR for this commit
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          PR_NUMBER=$(gh api "repos/${{ github.repository }}/commits/$SHA/pulls" --jq '.[0].number // empty')
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Merged PR: #$PR_NUMBER"
+
+      - name: Wait for Vercel + Railway deployments
+        id: deployments
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+        run: |
+          DEADLINE=$(($(date +%s) + 600))  # 10 min timeout
+          while [ $(date +%s) -lt $DEADLINE ]; do
+            DEPLOYMENTS=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20")
+            VERCEL_OK=false
+            RAILWAY_OK=false
+
+            for ID in $(echo "$DEPLOYMENTS" | jq -r '.[].id'); do
+              CREATOR=$(echo "$DEPLOYMENTS" | jq -r ".[] | select(.id==$ID) | .creator.login")
+              STATE=$(gh api "repos/${{ github.repository }}/deployments/$ID/statuses" --jq '.[0].state // "pending"')
+              echo "  deployment $ID by $CREATOR → $STATE"
+              if [[ "$CREATOR" == vercel* && "$STATE" == "success" ]]; then VERCEL_OK=true; fi
+              if [[ "$CREATOR" == railway* && "$STATE" == "success" ]]; then RAILWAY_OK=true; fi
+            done
+
+            if $VERCEL_OK && $RAILWAY_OK; then
+              echo "Both deployments succeeded"
+              echo "vercel=success" >> "$GITHUB_OUTPUT"
+              echo "railway=success" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            sleep 15
+          done
+
+          echo "Timeout waiting for deployments"
+          echo "vercel=$VERCEL_OK" >> "$GITHUB_OUTPUT"
+          echo "railway=$RAILWAY_OK" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke-test prod
+        id: smoke
+        run: |
+          BACKEND_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" https://cyclingzone-production.up.railway.app/health)
+          BACKEND_AUTH=$(curl -s -o /dev/null -w "%{http_code}" https://cyclingzone-production.up.railway.app/api/auctions)
+          FRONTEND=$(curl -s -o /dev/null -w "%{http_code}" -L https://cycling-zone.vercel.app/)
+
+          echo "backend_health=$BACKEND_HEALTH" >> "$GITHUB_OUTPUT"
+          echo "backend_auth=$BACKEND_AUTH" >> "$GITHUB_OUTPUT"
+          echo "frontend=$FRONTEND" >> "$GITHUB_OUTPUT"
+
+          # Acceptkriterier:
+          # - /health returnerer 200
+          # - /api/auctions uden token returnerer 401 (auth virker)
+          # - frontend root returnerer 200 (efter redirect)
+          OK=true
+          [[ "$BACKEND_HEALTH" != "200" ]] && OK=false
+          [[ "$BACKEND_AUTH" != "401" ]] && OK=false
+          [[ "$FRONTEND" != "200" ]] && OK=false
+
+          if $OK; then
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Comment success on merged PR
+        if: success() && steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.pr.outputs.number }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh pr comment "$PR" --body "✅ **Deploy verificeret LIVE** — \`${SHA:0:7}\`
+          - Vercel deploy: success
+          - Railway deploy: success
+          - Backend \`/health\` = 200
+          - Backend \`/api/auctions\` (no auth) = 401 (auth gates virker)
+          - Frontend root = 200
+
+          Du kan trygt lukke telefonen — det er live."
+
+      - name: Comment failure on merged PR
+        if: failure() && steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.pr.outputs.number }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BACKEND_HEALTH: ${{ steps.smoke.outputs.backend_health }}
+          BACKEND_AUTH: ${{ steps.smoke.outputs.backend_auth }}
+          FRONTEND: ${{ steps.smoke.outputs.frontend }}
+          VERCEL: ${{ steps.deployments.outputs.vercel }}
+          RAILWAY: ${{ steps.deployments.outputs.railway }}
+        run: |
+          gh pr comment "$PR" --body "❌ **Deploy-verify FEJLEDE** — \`${SHA:0:7}\` — [se log]($RUN_URL)
+          - Vercel: \`${VERCEL:-unknown}\`
+          - Railway: \`${RAILWAY:-unknown}\`
+          - Backend \`/health\`: \`${BACKEND_HEALTH:-?}\` (forventet 200)
+          - Backend \`/api/auctions\`: \`${BACKEND_AUTH:-?}\` (forventet 401)
+          - Frontend: \`${FRONTEND:-?}\` (forventet 200)
+
+          **Tjek prod nu** — auto-merge har sendt det live, men smoke-test fejlede. Mulig årsag: deploy-rollback, env-var mangler, healthcheck broken."

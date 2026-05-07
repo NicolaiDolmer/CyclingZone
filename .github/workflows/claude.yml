@@ -66,11 +66,19 @@ jobs:
               - `## Close-out`: bullet-liste over hvilke close-out-filer du opdaterede (NOW.md, FEATURE_STATUS.md, learnings). Hvis du sprang noget over: sig hvorfor.
               - `## Verifikation` med konkret test-procedure
 
+            **AUTO-MERGE (ship-signal):** Efter `gh pr create` afsluttes med succes, parse trigger-eventet (issue/comment-body) for ship-keyword. Hvis brugeren skrev nogen af følgende — ` ship`, `--ship`, `send live`, `auto-merge`, `merge når grøn`, eller `merge naar groen` (case-insensitive, ord-grænser) — tilføj `auto-merge` label til PR'en med:
+            ```
+            gh pr edit <PR-URL> --add-label "auto-merge"
+            ```
+            Dette aktiverer `.github/workflows/auto-merge.yml` som sætter PR i auto-merge-kø. PR'en merger automatisk når `backend-tests` + `frontend-build` er grønne. Brugeren behøver IKKE klikke merge fra mobilen.
+
+            Hvis ingen ship-keyword: gør INGENTING ekstra (default = manuel merge, det eksisterende safety-net for natlige autonome runs).
+
             Hvis du støder på blocker (mangler kontekst, fagligt valg, scope-uklarhed): comment på issuet med `claude:blocked` + spørgsmålet, og lav IKKE PR. Bedre at stoppe end at gætte.
           claude_args: |
             --max-turns 50
             --model claude-sonnet-4-6
-            --allowed-tools Bash(gh pr *),Bash(gh issue *),Bash(gh label *),Bash(git *),Bash(npm *),Bash(node *),Bash(bash *),Bash(pwsh *),Edit,Read,Write,Glob,Grep
+            --allowed-tools Bash(gh pr *),Bash(gh issue *),Bash(gh label *),Bash(gh api *),Bash(git *),Bash(npm *),Bash(node *),Bash(bash *),Bash(pwsh *),Edit,Read,Write,Glob,Grep
 
       - name: Notify on failure
         if: failure()

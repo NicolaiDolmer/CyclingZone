@@ -1,0 +1,51 @@
+name: Auto-merge labeled PR
+
+# Trigger: Bruger tilføjer 'auto-merge' label på en PR (fra mobil eller desktop)
+# Effekt: PR sættes i GitHub's auto-merge kø → merger automatisk når required CI checks
+# (backend-tests + frontend-build) er grønne. Branch slettes efter merge.
+#
+# Sikkerheds-net: Branch protection er stadig håndhævet — PR kan ikke merge før CI grøn.
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.event.label.name == 'auto-merge'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge (squash)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge "$PR_NUMBER" \
+            --repo "${{ github.repository }}" \
+            --auto \
+            --squash \
+            --delete-branch
+
+      - name: Confirm via comment
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr comment "$PR_NUMBER" --body "🚀 **Auto-merge aktiveret** — denne PR merger automatisk når \`backend-tests\` + \`frontend-build\` er grønne. Branch slettes efter merge. Fjern \`auto-merge\` label for at annullere."
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR_NUMBER" --body "❌ **Auto-merge kunne ikke aktiveres** — [se log]($RUN_URL)
+
+          Tjek: er PR i draft? Er der merge-konflikter? Mangler required status check at være konfigureret?
+          Workaround: merge manuelt eller re-tilføj \`auto-merge\` label."
