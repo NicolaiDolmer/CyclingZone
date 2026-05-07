@@ -12,6 +12,8 @@ permissions:
 jobs:
   triage:
     runs-on: ubuntu-latest
+    # Skip issues oprettet af claude[bot] (undgå rekursive triage-loops)
+    if: github.event.issue.user.login != 'claude[bot]'
     steps:
       - uses: actions/checkout@v4
       - uses: anthropics/claude-code-action@v1
@@ -24,5 +26,22 @@ jobs:
             3. Foreslå type-label hvis ikke allerede sat (bug/feature/refactor/docs/investigation)
             4. Hvis det er en bug: lav første-pass investigation — grep relevante filer, foreslå hvor problemet sandsynligvis ligger, post som comment
             5. Hvis det er en task: bekræft acceptkriterier er målbare; comment med spørgsmål hvis uklart
+
             Brug `gh label add` og `gh issue comment` via Bash-tool.
-          claude_args: "--max-turns 6 --model claude-sonnet-4-6"
+            Vær KORT: triage-comment maks 8 linjer + bullet-list. Ikke skriv en udredning.
+          claude_args: |
+            --max-turns 15
+            --model claude-sonnet-4-6
+            --allowed-tools Bash(gh issue *),Bash(gh label *),Bash(gh search *),Read,Glob,Grep
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "🤖 **Auto-triage fejlede** — [se log]($RUN_URL)
+
+          Triage er **advisory** — issuet er stadig brugbart med default-labels fra template.
+          Manuel handling: tilføj \`priority:*\` + \`type:*\` labels selv hvis nødvendigt."
