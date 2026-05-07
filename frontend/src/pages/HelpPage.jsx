@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const SECTIONS = [
   {
@@ -398,6 +399,39 @@ const SECTIONS = [
       {
         title: "Admin: beta-reset",
         text: "Under Admin → Beta-testværktøjer kan admin køre del-reset eller fuld test-reset. Suiten kan annullere åbne markedsaktiviteter, returnere manager-ryttere til AI/fri pulje, nulstille balancer, divisioner, bestyrelser, løbskalender, sæsoner, XP/level og achievement unlocks. AI-hold, bank-hold og frosne hold påvirkes ikke af manager-resettene.",
+      },
+    ],
+  },
+  {
+    key: "prizes",
+    label: "Præmier",
+    icon: "🏅",
+    content: [
+      {
+        title: "Præmieformlen",
+        text: "Præmiepenge beregnes direkte fra UCI-point: 1 UCI-point = 1.500 CZ$. Kun løb med en løbsklasse (Tour de France, Giro/Vuelta, Monumenter, WorldTour, ProSeries, Klasse 1, Klasse 2) genererer præmiepenge — løb uden klasse giver 0 CZ$.",
+      },
+      {
+        title: "Eksempler på præmiebeløb",
+        rows: [
+          ["Sejr", "UCI-point", "Præmie"],
+          ["Tour de France-sejr", "1.300", "1.950.000 CZ$"],
+          ["Monument-sejr", "800", "1.200.000 CZ$"],
+          ["Etapesejr (Tour de France)", "210", "315.000 CZ$"],
+          ["ProSeries-sejr", "200", "300.000 CZ$"],
+          ["Klasse 1-sejr", "125", "187.500 CZ$"],
+          ["Klasse 2-sejr", "40", "60.000 CZ$"],
+        ],
+      },
+      {
+        title: "Udbetaling",
+        text: "Præmiepenge udbetales automatisk til din balance når admin finaliserer løbsresultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat — UCI-point bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance.",
+      },
+      {
+        title: "Den fulde pointtabel",
+        text: "Under Sæson & Resultater → Løb → Point & præmier finder du alle løbsklassers komplette point- og præmieskala med alle pladser.",
+        cta: { label: "Åbn Point & præmier →", to: "/races?tab=points" },
+        disclaimer: "Præmiebeløb kan justeres frem til sæson 1 afsluttes.",
       },
     ],
   },
@@ -848,6 +882,19 @@ export default function HelpPage() {
                             </tbody>
                           </table>
                         </div>
+                      )}
+                      {block.cta && (
+                        <Link
+                          to={block.cta.to}
+                          className="mt-3 inline-flex items-center gap-1 text-xs text-cz-accent-t hover:underline font-medium"
+                        >
+                          {block.cta.label}
+                        </Link>
+                      )}
+                      {block.disclaimer && (
+                        <p className="mt-2 text-xs text-cz-3 italic border-l-2 border-cz-border pl-2">
+                          {block.disclaimer}
+                        </p>
                       )}
                     </div>
                   ))}
