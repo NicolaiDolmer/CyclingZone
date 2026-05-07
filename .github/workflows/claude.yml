@@ -35,28 +35,34 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: true
           additional_permissions: |
             actions: read
           prompt: |
-            Følg instruktionerne i den kommentar/issue der triggede dig.
+            Følg instruktionerne i issue/kommentaren der triggede dig.
+
+            SCOPE-DISCIPLIN (kritisk — fejlmønster fra run 25488982114):
+            - Du må KUN redigere filer der er direkte relevante for issue-acceptkriterierne
+            - Du må ALDRIG slette eller ændre filer som ikke nævnes i issue-body, selv hvis de virker urelaterede eller forældede
+            - Hvis du er i tvivl om en fil hører til scope: lad være med at ændre den
 
             Implementeringsprocedure:
-            1. Læs issue body + alle comments for kontekst
+            1. Læs issue body + alle comments for kontekst (hold dig til relevante filer ved exploration)
             2. Implementer ændringerne (følg konventioner i CLAUDE.md + docs/CONVENTIONS.md)
             3. Commit + push branch
-            4. NÅR branch er pushed: kør `gh pr create --base main --head <branch> --title "<title>" --body "<body>"` for at oprette PR med det samme
+            4. **OBLIGATORISK NÆSTE HANDLING efter push:** kør `gh pr create --base main --head <branch> --title "<title>" --body "<body>"` med det samme. Lav INGEN yderligere fil-exploration eller cleanup mellem push og PR-creation — det er den sidste handling før du afslutter.
 
             PR-konvention (vigtigt):
             - Title: kort summary af ændringen + ` (#N)` suffix hvor N er issue-nummer
-            - Body indeholder:
+            - Body skal indeholde:
               - `## Summary` med 2-5 bullets
-              - `Refs #N` (IKKE `Closes #N` — brugeren lukker selv issues efter manuel verifikation)
-              - `## Patch notes` sektion: hvis ændringen påvirker frontend UI/UX skal `frontend/src/PatchNotesPage.jsx` opdateres med ny version i samme commit; hvis DX-only/intern note det eksplicit
+              - `Refs #N` (IKKE `Closes #N` — bruger lukker selv issues efter manuel verifikation; GitHub matcher `Close*` anywhere i body)
+              - `## Patch notes`: hvis frontend UI/UX-ændring → `frontend/src/PatchNotesPage.jsx` skal opdateres med ny version i samme commit; ellers note "DX-only / intern" eksplicit
               - `## Verifikation` med konkret test-procedure
 
-            Hvis du støder på blocker (fx mangler kontekst, fagligt valg påkrævet): lav IKKE PR, men comment på issuet med `claude:blocked` og spørgsmålet, så bruger kan svare næste gang.
+            Hvis du støder på blocker (mangler kontekst, fagligt valg, scope-uklarhed): comment på issuet med `claude:blocked` + spørgsmålet, og lav IKKE PR. Bedre at stoppe end at gætte.
           claude_args: |
-            --max-turns 25
+            --max-turns 50
             --model claude-sonnet-4-6
             --allowed-tools Bash(gh pr *),Bash(gh issue *),Bash(gh label *),Bash(git *),Bash(npm *),Bash(node *),Bash(bash *),Bash(pwsh *),Edit,Read,Write,Glob,Grep
 
