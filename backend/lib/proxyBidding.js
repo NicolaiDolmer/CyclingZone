@@ -8,10 +8,13 @@ const MAX_PROXY_ITERATIONS = 30;
 //
 // Algorithm:
 //   Each iteration finds challengers (proxies from non-winning teams that can bid).
+//   Stale winner-proxy (max < currentPrice efter eget manuelt bid) behandles som
+//     "ingen proxy" — eliminerer #171 hvor en stale proxy ville få challenger til at
+//     "bide" på et beløb under aktuel pris og dermed bryde loopet uden counter-bid.
 //   If winner has a proxy that beats the top challenger → winner counters just above
 //     challenger's max; loop ends (challenger exhausted).
 //   If challenger's max beats winner's proxy → challenger takes over at
-//     getMinimumAuctionBid(winner.max); previous winner gets "auction_proxy_outbid".
+//     max(winnerProxy.max + 1, minBid); previous winner gets "auction_proxy_outbid".
 //   If winner has no proxy → challenger bids at minimum; loop continues for more challengers.
 export async function resolveProxyBids({
   supabase,
@@ -54,23 +57,34 @@ export async function resolveProxyBids({
     let autoBidder;
     let exhaustedTeam = null;
 
-    if (winnerProxy && winnerProxy.max_amount >= getMinimumAuctionBid(topChallenger.max_amount)) {
+    // Stale-proxy guard (#171): hvis winner manuelt bød over eget proxy-loft,
+    // er winnerProxy.max < currentPrice og repræsenterer ikke længere winners
+    // reelle vilje. Behandl som "ingen proxy" så challenger byder minBid i
+    // stedet for et beløb under currentPrice (som ville trigge break på line 78).
+    const effectiveWinnerProxy =
+      winnerProxy && winnerProxy.max_amount >= currentPrice ? winnerProxy : null;
+
+    if (effectiveWinnerProxy && effectiveWinnerProxy.max_amount >= getMinimumAuctionBid(topChallenger.max_amount)) {
       // Winner's proxy beats top challenger's max — bid just above challenger's max
       autoBidAmount = Math.min(
-        winnerProxy.max_amount,
+        effectiveWinnerProxy.max_amount,
         getMinimumAuctionBid(topChallenger.max_amount)
       );
       autoBidder = currentWinner;
-    } else if (winnerProxy) {
-      // Challenger's max beats winner's max
+    } else if (effectiveWinnerProxy) {
+      // Challenger's max beats winner's proxy — challenger overtager.
+      // Klamp til >= minBid så vi aldrig insert'er et bid under aktuel pris.
       autoBidAmount = Math.min(
         topChallenger.max_amount,
-        getMinimumAuctionBid(winnerProxy.max_amount)
+        Math.max(getMinimumAuctionBid(effectiveWinnerProxy.max_amount), minBid)
       );
       autoBidder = topChallenger.team_id;
       exhaustedTeam = currentWinner;
     } else {
-      // Winner has no proxy — challenger bids at minimum
+      // Winner har ingen aktiv proxy (eller den er stale efter manuelt bid over loftet)
+      // — challenger byder minimum. Hvis winner havde stale proxy, får ejeren
+      // standard auction_outbid-notif (deres manuelle bid var det der ledte —
+      // proxy'en var allerede udtømt af dem selv).
       autoBidAmount = Math.min(topChallenger.max_amount, minBid);
       autoBidder = topChallenger.team_id;
     }

@@ -2,6 +2,25 @@
 
 const PATCHES = [
   {
+    version: "2.68",
+    date: "2026-05-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Auto-by · Resolveren følger nu altid med op når en modstander byder markant over — fixede en edge case hvor et stale eget proxy-loft (sat lavt, derefter manuelt budet over) fik resolveren til at give op uden at place counter-bid (#171).",
+        ],
+      },
+      {
+        category: "Hvorfor",
+        items: [
+          "Pre-fix: hvis du satte auto-by max 60K og senere manuelt bød 80K, troede resolveren stadig dit loft var 60K og lod modstandere lede uden modbud — selvom de andres auto-by max var højere end deres bud. Resolveren behandler nu et udtømt eget loft som 'ingen aktiv proxy', så challengers' auto-by altid byder mindst minimum over.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.67",
     date: "2026-05-07",
     label: "Beta",
