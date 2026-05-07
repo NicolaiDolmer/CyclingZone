@@ -8,6 +8,7 @@ scripts/__pycache__/
 .codex/
 .claude/settings.local.json
 .claude/worktrees/
+.claude/*.lock
 .mcp.json
 .obsidian/
 *.canvas
