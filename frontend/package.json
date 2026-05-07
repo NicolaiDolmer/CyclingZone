@@ -16,7 +16,7 @@
     "@microsoft/clarity": "^1.0.2",
     "@supabase/supabase-js": "^2.45.0",
     "flag-icons": "^7.5.0",
-    "react": "^18.3.1",
+    "react": "^19.2.6",
     "react-dom": "^18.3.1",
     "react-is": "^19.2.5",
     "react-router-dom": "^6.27.0",
