@@ -40,6 +40,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **Admin annullér auktion (v2.26):** `Aktive auktioner`-sektion i AdminPage lister aktive+forlængede auktioner og lader admin annullere med ét klik. Atomar status-transition i `auctionCancellation.js` (race-safe mod parallel cron). Bud frigives automatisk fordi reservation kun beregnes ved query-time. `auction_cancelled` notification-type sendes til alle unikke budgivere + sælger. Admin-handling logges i `admin_log`. `auctions.cancelled_at` + `cancelled_by_user_id` audit-spor.
 - Auktionshistorik-side
 - Discord-notifikationer (auktioner, overbud, transfers, sæsonevents)
+- **Proxy-bidding / auto-by med max-loft (v2.63, #10):** Manager sætter et max-loft; systemet counter-byder automatisk +10%-trin op til loftet. `auction_proxy_bids (auction_id, team_id, max_amount)` UNIQUE per (auction, team). `auction_bids.is_proxy` markerer system-bud. Resolver-loop i `proxyBidding.js` (max 30 iter): højeste proxy vinder, pris sættes til getMinimumAuctionBid(næst-højeste max). `auction_proxy_outbid` notif ved loft-udtømning. Routes: GET/PATCH/DELETE `/api/auctions/:id/proxy`; proxy kan også sendes som `proxy_max` felt ved POST bid. UI: badge + Ændr + Fjern i AuctionRow/AuctionCard.
 
 ### Transfers
 - Opret transfer-liste

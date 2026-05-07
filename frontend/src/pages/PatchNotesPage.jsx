@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.64",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Nyt",
+        items: [
+          "Auktioner · Auto-by med max-loft (proxy-bidding): sæt et max-loft på en auktion, og systemet byder automatisk +10% over modbudene op til dit loft (#10). Aktiveres via '+ Auto-by loft' under bud-feltet.",
+          "Auto-by stopper automatisk når loftet er nået eller du vinder — du får en notifikation i indbakken hvis du er overbudt over dit max.",
+          "Opdatér eller fjern dit max-loft når som helst mens auktionen er aktiv via 'Ændr' / 'Fjern' knapperne.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.63",
     date: "2026-05-07",
     label: "Beta",
