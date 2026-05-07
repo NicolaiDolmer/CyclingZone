@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import SetupWizardModal from "./SetupWizardModal";
 import DeadlineDayBanner from "./DeadlineDayBanner";
 import DeadlineDayTicker from "./DeadlineDayTicker";
+import MobileQuickNav from "./MobileQuickNav";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -184,6 +185,7 @@ export default function Layout() {
   const [openGroups, setOpenGroups]       = useState({});
   const [onlineCount, setOnlineCount]     = useState(0);
   const [teamLoaded, setTeamLoaded]       = useState(false);
+  const [tickerActive, setTickerActive]   = useState(false);
   const heartbeatRef = useRef(null);
   const teamId = team?.id;
 
@@ -319,13 +321,14 @@ export default function Layout() {
         </div>
 
         <DeadlineDayBanner />
-        <div className="p-4 md:p-6 pb-10 max-w-6xl mx-auto">
+        <div className="p-4 md:p-6 pb-24 md:pb-10 max-w-6xl mx-auto">
           <Outlet />
         </div>
       </main>
 
+      <MobileQuickNav unread={unread} tickerActive={tickerActive} />
       {needsSetup && <SetupWizardModal onComplete={handleSetupComplete} />}
-      <DeadlineDayTicker />
+      <DeadlineDayTicker onActiveChange={setTickerActive} />
     </div>
   );
 }

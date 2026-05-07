@@ -8,7 +8,7 @@ async function getToken() {
   return session?.access_token ?? null;
 }
 
-export default function DeadlineDayTicker() {
+export default function DeadlineDayTicker({ onActiveChange }) {
   const [events, setEvents] = useState([]);
   const [active, setActive] = useState(false);
 
@@ -42,6 +42,10 @@ export default function DeadlineDayTicker() {
     const iv = setInterval(fetchStatus, 60_000);
     return () => clearInterval(iv);
   }, []);
+
+  useEffect(() => {
+    if (onActiveChange) onActiveChange(active);
+  }, [active, onActiveChange]);
 
   useEffect(() => {
     if (!active) { setEvents([]); return; }
