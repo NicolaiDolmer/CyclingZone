@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -482,11 +482,14 @@ export default function NotificationsPage() {
                       </p>
                       {event.rider_name && (
                         <p className="text-cz-2 text-sm mt-0.5">
-                          <span
-                            className="hover:text-cz-accent-t cursor-pointer transition-colors"
-                            onClick={() => event.rider_id && navigate(`/riders/${event.rider_id}`)}>
-                            {event.rider_name}
-                          </span>
+                          {event.rider_id ? (
+                            <Link to={`/riders/${event.rider_id}`}
+                              className="hover:text-cz-accent-t cursor-pointer transition-colors">
+                              {event.rider_name}
+                            </Link>
+                          ) : (
+                            <span>{event.rider_name}</span>
+                          )}
                           {event.amount > 0 && (
                             <span className="text-cz-accent-t font-mono ml-2">
                               {event.amount.toLocaleString("da-DK")} CZ$

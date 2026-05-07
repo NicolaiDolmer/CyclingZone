@@ -72,10 +72,11 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }
     <tr className="border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors">
       <td className="px-3 py-2.5" onClick={() => onSelect(rider)}>
         <div>
-          <p className="text-cz-1 text-sm font-medium">
+          <Link to={`/riders/${rider.id}`} onClick={e => e.stopPropagation()}
+            className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors block">
             {rider.nationality_code && <Flag code={rider.nationality_code} className="mr-1" />}
             {rider.firstname} {rider.lastname}
-          </p>
+          </Link>
           <div className="flex items-center gap-1.5 mt-0.5">
             {rider.is_u25 && (
               <span className="text-[9px] uppercase bg-cz-info/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>

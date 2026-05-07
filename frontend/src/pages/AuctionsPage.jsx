@@ -195,11 +195,10 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveP
       <td className="px-3 py-1.5 min-w-[140px]">
         <div className="flex flex-col gap-0.5">
           {r?.nationality_code && <Flag code={r.nationality_code} className="text-xs flex-shrink-0" />}
-          <button
-            onClick={() => onNavigate(r?.id)}
+          <Link to={`/riders/${r?.id}`}
             className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left truncate max-w-[160px]">
             {r?.firstname} {r?.lastname}
-          </button>
+          </Link>
           <div className="flex items-center gap-1 flex-wrap">
             {imWinning && (
               <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t px-1.5 py-0.5 rounded">
@@ -427,12 +426,11 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemove
     <div className={`bg-cz-card border rounded-xl p-4 transition-all ${imWinning ? "border-cz-accent/40 bg-cz-accent/10/40" : "border-cz-border"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <button
-            onClick={() => onNavigate(r?.id)}
+          <Link to={`/riders/${r?.id}`}
             className="text-left text-cz-1 font-semibold text-sm hover:text-cz-accent-t transition-colors">
             {r?.nationality_code && <Flag code={r.nationality_code} className="mr-1" />}
             {r?.firstname} {r?.lastname}
-          </button>
+          </Link>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             {imWinning && <span className="text-[9px] uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded">Vinder</span>}
             {isSeller && <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">Sælger</span>}

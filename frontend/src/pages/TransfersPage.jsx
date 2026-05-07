@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { statBg } from "../lib/statBg";
@@ -58,9 +58,16 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
       ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isPending ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
-          <p className="text-cz-1 font-semibold">
-            {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
-          </p>
+          {offer.rider?.id ? (
+            <Link to={`/riders/${offer.rider.id}`}
+              className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors block">
+              {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
+            </Link>
+          ) : (
+            <p className="text-cz-1 font-semibold">
+              {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
+            </p>
+          )}
           <p className="text-cz-3 text-xs">Fra: {offer.buyer?.name} · Runde {offer.round || 1} · {timeAgo(offer.created_at)}</p>
         </div>
         <div className="flex flex-col gap-1 items-end flex-shrink-0">
@@ -212,9 +219,16 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
       ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isCountered ? "border-cz-warning/30" : isActive ? "border-cz-border" : "border-cz-border opacity-60"}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
-          <p className="text-cz-1 font-semibold">
-            {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
-          </p>
+          {offer.rider?.id ? (
+            <Link to={`/riders/${offer.rider.id}`}
+              className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors block">
+              {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
+            </Link>
+          ) : (
+            <p className="text-cz-1 font-semibold">
+              {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
+            </p>
+          )}
           <p className="text-cz-3 text-xs">Til: {offer.seller?.name} · Runde {offer.round || 1} · {timeAgo(offer.updated_at)}</p>
         </div>
         <div className="flex flex-col gap-1 items-end flex-shrink-0">
@@ -392,7 +406,14 @@ function SwapCard({ swap, myTeamId, onAction }) {
         ].map(({ label, rider }) => (
           <div key={rider?.id} className="bg-cz-subtle rounded-lg px-3 py-2">
             <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{label}</p>
-            <p className="text-cz-1 text-sm font-semibold">{rider?.firstname} {rider?.lastname}</p>
+            {rider?.id ? (
+              <Link to={`/riders/${rider.id}`}
+                className="text-cz-1 text-sm font-semibold hover:text-cz-accent-t transition-colors block">
+                {rider?.firstname} {rider?.lastname}
+              </Link>
+            ) : (
+              <p className="text-cz-1 text-sm font-semibold">{rider?.firstname} {rider?.lastname}</p>
+            )}
             <div className="flex gap-2 mt-1">
               {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"]].map(([l, k]) => (
                 <span key={k} className="text-[10px] text-cz-3">{l}<span className="text-cz-2 ml-0.5">{rider?.[k] ?? "—"}</span></span>
@@ -645,7 +666,14 @@ function LoanCard({ loan, myTeamId, onAction }) {
 
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-cz-1 font-semibold">{loan.rider?.firstname} {loan.rider?.lastname}</p>
+          {loan.rider?.id ? (
+            <Link to={`/riders/${loan.rider.id}`}
+              className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors block">
+              {loan.rider?.firstname} {loan.rider?.lastname}
+            </Link>
+          ) : (
+            <p className="text-cz-1 font-semibold">{loan.rider?.firstname} {loan.rider?.lastname}</p>
+          )}
           <p className="text-cz-3 text-xs">
             {isLender ? `Til: ${loan.to_team?.name}` : `Fra: ${loan.from_team?.name}`} · {seasons}
           </p>
@@ -832,7 +860,7 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
   return (
     <div className="bg-cz-card border border-cz-border hover:border-cz-border rounded-xl p-4 transition-all">
       <div className="flex items-start justify-between mb-3">
-        <div className="cursor-pointer" onClick={() => navigate(`/riders/${listing.rider?.id}`)}>
+        <Link to={`/riders/${listing.rider?.id}`} className="cursor-pointer block">
           <p className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors">
             {listing.rider?.nationality_code && <Flag code={listing.rider.nationality_code} className="mr-1" />}{listing.rider?.firstname} {listing.rider?.lastname}
           </p>
@@ -842,7 +870,7 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
               Til salg siden {new Date(listing.created_at).toLocaleDateString("da-DK", { day: "numeric", month: "short" })}
             </p>
           )}
-        </div>
+        </Link>
         <div className="text-right">
           <p className="text-cz-accent-t font-mono font-bold text-lg">{listing.asking_price?.toLocaleString("da-DK")} CZ$</p>
       <p className="text-cz-3 text-xs">Værdi: {formatCz(getRiderMarketValue(listing.rider))}</p>

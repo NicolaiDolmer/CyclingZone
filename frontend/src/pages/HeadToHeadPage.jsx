@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Flag } from "../components/Flag";
 
 function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
@@ -262,10 +262,10 @@ export default function HeadToHeadPage() {
                 ) : (
                   riders.map((r, i) => (
                     <div key={r.id} className="flex justify-between py-1.5 border-b border-cz-border last:border-0">
-                      <span className="text-cz-2 text-xs cursor-pointer hover:text-cz-1 flex items-center gap-1"
-                        onClick={() => navigate(`/riders/${r.id}`)}>
+                      <Link to={`/riders/${r.id}`}
+                        className="text-cz-2 text-xs cursor-pointer hover:text-cz-1 flex items-center gap-1">
                         {i + 1}. {r.nationality_code && <Flag code={r.nationality_code} />} {r.firstname} {r.lastname}
-                      </span>
+                      </Link>
                       <span className="font-mono text-xs" style={{ color }}>
                         {r.uci_points?.toLocaleString("da-DK")}
                       </span>

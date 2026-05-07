@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { getRiderMarketValue } from "../lib/marketValues";
 import WatchlistStar from "../components/WatchlistStar";
 
@@ -105,7 +105,6 @@ function EmptyState({ icon, title, sub }) {
 
 // Compact row used throughout all tabs
 function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, onClick }) {
-  const navigate = useNavigate();
   return (
     <div
       className="flex items-center gap-3 px-4 py-3 border-b border-cz-border last:border-0 hover:bg-cz-subtle transition-colors cursor-pointer"
@@ -115,11 +114,11 @@ function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, 
       </span>
       <div className="flex-1 min-w-0">
         {riderId ? (
-          <button
-            className="text-sm font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate max-w-full block"
-            onClick={e => { e.stopPropagation(); navigate(`/riders/${riderId}`); }}>
+          <Link to={`/riders/${riderId}`}
+            onClick={e => e.stopPropagation()}
+            className="text-sm font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate max-w-full block">
             {rider}
-          </button>
+          </Link>
         ) : (
           <p className="text-sm font-medium text-cz-1 truncate">{rider}</p>
         )}
@@ -552,10 +551,10 @@ export default function ActivityPage() {
                     className="flex items-center gap-3 px-4 py-3 border-b border-cz-border last:border-0 hover:bg-cz-subtle transition-colors">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => navigate(`/riders/${r?.id}`)}
+                        <Link to={`/riders/${r?.id}`}
                           className="text-sm font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate">
                           {r?.firstname} {r?.lastname}
-                        </button>
+                        </Link>
                         <WatchlistStar active onToggle={() => removeFromWatchlist(r?.id)} />
                       </div>
                       <p className="text-xs text-cz-3 truncate">{r?.team?.name || "Fri agent"}</p>
@@ -568,10 +567,10 @@ export default function ActivityPage() {
                     <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap flex-shrink-0">
                       {getRiderMarketValue(r).toLocaleString("da-DK")} CZ$
                     </span>
-                    <button onClick={() => navigate(`/riders/${r?.id}`)}
+                    <Link to={`/riders/${r?.id}`}
                       className="text-cz-3 hover:text-cz-accent-t text-sm transition-colors flex-shrink-0">
                       →
-                    </button>
+                    </Link>
                   </div>
                 );
               })
