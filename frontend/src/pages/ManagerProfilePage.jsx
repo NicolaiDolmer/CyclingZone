@@ -215,7 +215,10 @@ export default function ManagerProfilePage() {
                   <tr key={r.id} onClick={() => navigate(`/riders/${r.id}`)}
                     className="border-b border-cz-border last:border-0 hover:bg-cz-subtle cursor-pointer transition-all">
                     <td className="px-4 py-3">
-                      <p className="text-cz-1 text-sm">{r.firstname} {r.lastname}</p>
+                      <Link to={`/riders/${r.id}`} onClick={e => e.stopPropagation()}
+                        className="text-cz-1 text-sm hover:text-cz-accent-t transition-colors block">
+                        {r.firstname} {r.lastname}
+                      </Link>
                       {r.is_u25 && <span className="text-[9px] bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>}
                     </td>
                     <td className="px-4 py-3 text-right text-cz-accent-t font-mono text-sm">{r.uci_points?.toLocaleString("da-DK")}</td>

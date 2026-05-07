@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "2.65",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Mit hold · Klik på rytter-rækker åbner nu rytter-detaljesiden — manglede helt før (#157).",
+          "Transfers · Klik på rytternavn i tilbud, byttehandler og lejeaftaler navigerer nu til rytter-profilen (#157).",
+        ],
+      },
+      {
+        category: "Forbedringer",
+        items: [
+          "Højreklik på rytter-rækker viser nu \"Åbn link i ny fane\" — virker også med Cmd/Ctrl-klik og museknap-3 (#166). Gælder /riders, /team, /transfers, /auctions og alle steder hvor rytter-navne vises.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.64",
     date: "2026-05-07",
     label: "Beta",

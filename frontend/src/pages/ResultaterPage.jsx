@@ -148,8 +148,8 @@ export default function ResultaterPage() {
               </div>
               <div className="divide-y divide-cz-border">
                 {topRiders.map((a, i) => (
-                  <div key={a.rider.id}
-                    onClick={() => navigate(`/riders/${a.rider.id}`)}
+                  <Link key={a.rider.id}
+                    to={`/riders/${a.rider.id}`}
                     className="flex items-center gap-3 px-4 py-3 hover:bg-cz-subtle cursor-pointer transition-colors">
                     <span className={`w-5 text-center font-mono font-bold text-sm flex-shrink-0
                       ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>
@@ -171,7 +171,7 @@ export default function ResultaterPage() {
                     <span className="font-mono font-bold text-cz-accent-t text-sm">
                       {(a.points || 0).toLocaleString("da-DK")} pt
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
               <div className="px-4 py-2 border-t border-cz-border">

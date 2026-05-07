@@ -139,13 +139,14 @@ export default function RaceHistoryPage() {
                 <div className="text-right">
                   {ed.winner ? (
                     <div>
-                      <p
-                        className="text-cz-1 text-xs font-medium hover:text-cz-accent-t cursor-pointer transition-colors"
-                        onClick={() => ed.winner?.rider?.id && navigate(`/riders/${ed.winner.rider.id}`)}>
-                        {ed.winner.rider
-                          ? `${ed.winner.rider.firstname} ${ed.winner.rider.lastname}`
-                          : ed.winner.rider_name}
-                      </p>
+                      {ed.winner?.rider?.id ? (
+                        <Link to={`/riders/${ed.winner.rider.id}`}
+                          className="text-cz-1 text-xs font-medium hover:text-cz-accent-t cursor-pointer transition-colors block">
+                          {`${ed.winner.rider.firstname} ${ed.winner.rider.lastname}`}
+                        </Link>
+                      ) : (
+                        <p className="text-cz-1 text-xs font-medium">{ed.winner.rider_name}</p>
+                      )}
                       <p className="text-cz-3 text-[10px]">
                         {ed.winner.rider?.team?.name || ed.winner.team_name || "—"}
                       </p>
@@ -169,11 +170,14 @@ export default function RaceHistoryPage() {
             <div className="px-4 py-8 text-center text-cz-3 text-sm">Ingen resultater endnu</div>
           ) : (
             <div className="divide-y divide-cz-border">
-              {riderStats.map((s, i) => (
-                <div
+              {riderStats.map((s, i) => {
+                const RowEl = s.rider?.id ? Link : "div";
+                const rowProps = s.rider?.id ? { to: `/riders/${s.rider.id}` } : {};
+                return (
+                <RowEl
                   key={s.rider?.id || s.rider_name}
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-cz-subtle cursor-pointer transition-colors"
-                  onClick={() => s.rider?.id && navigate(`/riders/${s.rider.id}`)}>
+                  {...rowProps}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-cz-subtle cursor-pointer transition-colors">
                   <span className={`w-4 text-center font-mono font-bold text-xs flex-shrink-0
                     ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>
                     {i + 1}
@@ -196,8 +200,9 @@ export default function RaceHistoryPage() {
                   <span className="text-cz-accent-t font-mono text-xs font-bold flex-shrink-0">
                     {s.total_points.toLocaleString("da-DK")} pt
                   </span>
-                </div>
-              ))}
+                </RowEl>
+                );
+              })}
             </div>
           )}
         </div>

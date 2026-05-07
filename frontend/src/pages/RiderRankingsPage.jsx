@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Flag } from "../components/Flag";
 
 const SORT_COLS = [
@@ -191,9 +191,10 @@ export default function RiderRankingsPage() {
                         {rider.nationality_code && (
                           <Flag code={rider.nationality_code} className="flex-shrink-0" />
                         )}
-                        <span className="font-medium text-cz-1">
+                        <Link to={`/riders/${rider.id}`} onClick={e => e.stopPropagation()}
+                          className="font-medium text-cz-1 hover:text-cz-accent-t transition-colors">
                           {rider.firstname} {rider.lastname}
-                        </span>
+                        </Link>
                         {rider.is_u25 && (
                           <span className="text-[9px] uppercase bg-cz-info-bg text-blue-600 border border-cz-info/30 px-1 py-0.5 rounded hidden sm:inline flex-shrink-0">
                             U25
