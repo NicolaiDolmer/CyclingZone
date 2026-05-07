@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.56",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "UX · Manager-online-status på holdprofil (#106)",
+        items: [
+          "Bugfix ([TeamProfilePage.jsx](frontend/src/pages/TeamProfilePage.jsx)): tidligere viste hold-profilen en grøn 'Vindue åbent'-pille ved siden af manager-navnet — det indikerede transfervinduets status, men placeringen tæt på 'Manager: ...' fik flere til at læse den som manager-online-status (rapporteret af jeppek, Discord 2026-05-06). Transfervindue-status fjernet fra holdprofil (vises stadig på Dashboard, Mit hold og Transfers).",
+          "I stedet vises nu en korrekt online-prik + 'Online nu / X min siden' efter manager-navnet, baseret på samme `users.last_seen`-felt som ManagerProfilePage allerede bruger (5-min-tærskel matcher backend).",
+          "Refaktor: OnlineBadge ekstraheret fra ManagerProfilePage til delt komponent ([OnlineBadge.jsx](frontend/src/components/OnlineBadge.jsx)), så begge sider deler én implementation.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.55",
     date: "2026-05-07",
     label: "Beta",

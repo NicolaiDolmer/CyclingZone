@@ -1,35 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import OnlineBadge from "../components/OnlineBadge";
 
 const API = import.meta.env.VITE_API_URL;
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
-}
-
-function timeAgo(dateStr) {
-  if (!dateStr) return "aldrig";
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const min  = Math.floor(diff / 60000);
-  if (min < 1)  return "online nu";
-  if (min < 60) return `${min} min siden`;
-  const h = Math.floor(min / 60);
-  if (h < 24)   return `${h}t siden`;
-  const d = Math.floor(h / 24);
-  return `${d}d siden`;
-}
-
-function OnlineBadge({ isOnline, lastSeen }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isOnline ? "bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.8)]" : "bg-cz-subtle0"}`} />
-      <span className={`text-xs ${isOnline ? "text-cz-success" : "text-cz-3"}`}>
-        {isOnline ? "Online nu" : timeAgo(lastSeen)}
-      </span>
-    </span>
-  );
 }
 
 function AchievementBadge({ achievement }) {

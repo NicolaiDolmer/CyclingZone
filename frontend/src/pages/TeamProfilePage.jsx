@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
 import { Flag } from "../components/Flag";
+import OnlineBadge from "../components/OnlineBadge";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
@@ -25,7 +26,7 @@ export default function TeamProfilePage() {
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [standing, setStanding] = useState(null);
-  const [windowOpen, setWindowOpen] = useState(false);
+  const [managerStatus, setManagerStatus] = useState({ isOnline: false, lastSeen: null });
   const [showIncoming, setShowIncoming] = useState(true);
   const [showOutgoing, setShowOutgoing] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -42,8 +43,8 @@ export default function TeamProfilePage() {
     const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
     if (myTeam) setMyTeamId(myTeam.id);
 
-    const [teamRes, ridersRes, pendingRes, standingRes, windowRes] = await Promise.all([
-      supabase.from("teams").select("*").eq("id", id).single(),
+    const [teamRes, ridersRes, pendingRes, standingRes] = await Promise.all([
+      supabase.from("teams").select("*, manager:user_id(last_seen)").eq("id", id).single(),
       supabase.from("riders")
         .select(`id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("team_id", id)
@@ -55,18 +56,18 @@ export default function TeamProfilePage() {
       supabase.from("season_standings")
         .select("*").eq("team_id", id)
         .order("updated_at", { ascending: false }).limit(1).single(),
-      supabase.from("transfer_windows")
-        .select("status").order("created_at", { ascending: false }).limit(1).single(),
     ]);
 
     setTeam(teamRes.data);
+    const lastSeen = teamRes.data?.manager?.last_seen || null;
+    const isOnline = lastSeen ? (Date.now() - new Date(lastSeen).getTime()) < 5 * 60 * 1000 : false;
+    setManagerStatus({ isOnline, lastSeen });
     const current = (ridersRes.data || []).map(r => ({
       ...r, _isOutgoing: r.pending_team_id && r.pending_team_id !== id,
     }));
     const incoming = (pendingRes.data || []).map(r => ({ ...r, _isIncoming: true }));
     setRiders([...current, ...incoming]);
     setStanding(standingRes.data);
-    setWindowOpen(windowRes.data?.status === "open");
     setLoading(false);
   }
 
@@ -117,12 +118,12 @@ export default function TeamProfilePage() {
             <div className="flex items-center gap-3 mb-1 flex-wrap">
               <h1 className="text-xl font-bold text-cz-1">{team.name}</h1>
               {isMyTeam && <span className="text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-full">Dit hold</span>}
-              <span className={`text-xs px-2 py-0.5 rounded-full border ${windowOpen ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-                {windowOpen ? "🟢 Vindue åbent" : "🔒 Vindue lukket"}
-              </span>
             </div>
             {team.manager_name && (
-              <p className="text-cz-2 text-sm">Manager: {team.manager_name}</p>
+              <p className="text-cz-2 text-sm flex items-center gap-2">
+                <span>Manager: {team.manager_name}</span>
+                <OnlineBadge isOnline={managerStatus.isOnline} lastSeen={managerStatus.lastSeen} />
+              </p>
             )}
             <p className="text-cz-2 text-sm">Division {team.division}</p>
           </div>
