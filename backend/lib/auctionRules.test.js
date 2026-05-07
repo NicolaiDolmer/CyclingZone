@@ -12,9 +12,15 @@ import {
   SQUAD_PENALTY_POINTS,
 } from "./squadEnforcement.js";
 
-test("getMinimumAuctionBid requires 10 percent over current price rounded up to 1,000 CZ$", () => {
-  assert.equal(getMinimumAuctionBid(100000), 110000);
-  assert.equal(getMinimumAuctionBid(100001), 111000);
+test("getMinimumAuctionBid is currentPrice + 1 when there is an active bidder", () => {
+  assert.equal(getMinimumAuctionBid(100000), 100001);
+  assert.equal(getMinimumAuctionBid(50000, { hasActiveBid: true }), 50001);
+});
+
+test("getMinimumAuctionBid allows match-bid on asking-price when no active bidder", () => {
+  // Guaranteed-sale at asking price 50.000 CZ$, no bids yet — manager can match.
+  assert.equal(getMinimumAuctionBid(50000, { hasActiveBid: false }), 50000);
+  assert.equal(getMinimumAuctionBid(0, { hasActiveBid: false }), 0);
 });
 
 test("getAuctionInitialBidderId treats non-owned auction creation as the first bid", () => {
@@ -40,15 +46,28 @@ test("getAuctionInitialBidderId treats non-owned auction creation as the first b
   }), null);
 });
 
-test("getAuctionBidIssue blocks bids below the rounded 10 percent minimum", () => {
+test("getAuctionBidIssue blocks bids below currentPrice + 1 when active bidder exists", () => {
   const issue = getAuctionBidIssue({
-    amount: 110999,
-    currentPrice: 100001,
+    amount: 100000,
+    currentPrice: 100000,
+    currentBidderId: "team-a",
     teamBalance: 500000,
   });
 
   assert.equal(issue?.code, "bid_below_minimum");
-  assert.equal(issue?.minimumBid, 111000);
+  assert.equal(issue?.minimumBid, 100001);
+});
+
+test("getAuctionBidIssue allows match-bid on asking-price when no active bidder", () => {
+  // Guaranteed-sale, no bids yet — match-bid at asking price is allowed.
+  const issue = getAuctionBidIssue({
+    amount: 50000,
+    currentPrice: 50000,
+    currentBidderId: null,
+    teamBalance: 500000,
+  });
+
+  assert.equal(issue, null);
 });
 
 test("getAuctionBidIssue counts existing leading bids against available balance", () => {

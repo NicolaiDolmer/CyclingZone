@@ -16,11 +16,10 @@ export function formatCz(value) {
   return `${Number(value).toLocaleString("da-DK")} CZ$`;
 }
 
-export function roundUpToNearest(value, step) {
-  return Math.ceil(value / step) * step;
-}
-
-export function getMinimumAuctionBid(currentPrice) {
+// Min-step = +1 CZ$ over current price når der allerede er bud.
+// Hvis ingen har budt endnu (asking-price på guaranteed sale), tillad match-bud.
+// Spejl af backend/lib/auctionRules.js — droppet 10%/1000-afrunding 2026-05-07 (#178).
+export function getMinimumAuctionBid(currentPrice, { hasActiveBid = true } = {}) {
   const price = Number(currentPrice) || 0;
-  return roundUpToNearest(price + Math.ceil(price / 10), 1000);
+  return hasActiveBid ? price + 1 : price;
 }

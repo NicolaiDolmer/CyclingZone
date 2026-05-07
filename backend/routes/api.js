@@ -789,6 +789,7 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
   const bidIssue = getAuctionBidIssue({
     amount,
     currentPrice: auction.current_price,
+    currentBidderId: auction.current_bidder_id,
     teamBalance: req.team.balance,
     reservedBalance,
   });
@@ -949,7 +950,9 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Auction has ended" });
   }
 
-  const minRequired = getMinimumAuctionBid(auction.current_price);
+  const minRequired = getMinimumAuctionBid(auction.current_price, {
+    hasActiveBid: Boolean(auction.current_bidder_id),
+  });
   if (numericMax < minRequired) {
     return res.status(400).json({
       error: `Max-loft skal være mindst ${minRequired.toLocaleString("da-DK")} CZ$`,

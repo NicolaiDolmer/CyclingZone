@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "2.66",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Auktioner · Min-bud er nu blot **1 CZ$ over** det aktuelle bud — 10%-overbudsregel og 1.000-afrunding er fjernet. Du kan også matche asking-prisen på et garanteret salg uden bud endnu (#175).",
+          "Auto-by · Resolveren bruger samme +1-step, så proxy-bidding følger korrekt med op uanset hvor markant en modstander byder over (#171, #173).",
+        ],
+      },
+      {
+        category: "Hvorfor",
+        items: [
+          "10%-reglen blev oprindeligt indført for at undgå \"+1\"-spam, men proxy-bidding (#10, v2.64) løser det problem indirekte — sæt et max-loft og lad systemet håndtere stepningen. Reglen skabte derfor mere friction end nytte og kolliderede med auto-by-resolveren. Drop'et fjerner en hel klasse af bugs i én bevægelse (#178 polish-sprint).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.65",
     date: "2026-05-07",
     label: "Beta",

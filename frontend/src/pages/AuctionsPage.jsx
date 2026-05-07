@@ -24,7 +24,7 @@ const AUCTIONS_TOUR_STEPS = [
   {
     target: "[data-tour='auctions-bid-input']",
     title: "Afgiv et bud",
-    body: "Indtast dit bud og tryk 'Byd'. Min-bud er forudfyldt — det er det aktuelle bud +10%, som er reglen i Cycling Zone.",
+    body: "Indtast dit bud og tryk 'Byd'. Min-bud er forudfyldt — du skal byde mindst 1 CZ$ over det aktuelle bud.",
   },
   {
     target: "[data-tour='auctions-countdown']",
@@ -125,7 +125,9 @@ function Countdown({ end, status }) {
 
 // ── Auction table row ─────────────────────────────────────────────────────────
 function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveProxy, isFirst }) {
-  const minBid = getMinimumAuctionBid(auction.current_price || 0);
+  const minBid = getMinimumAuctionBid(auction.current_price || 0, {
+    hasActiveBid: Boolean(auction.current_bidder_id),
+  });
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
   const [errorText, setErrorText] = useState("");
@@ -146,7 +148,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveP
   }, [minBid]);
 
   useEffect(() => {
-    if (proxyExpanded) setProxyInput(myProxy || bidAmount + Math.ceil(bidAmount / 10) || minBid);
+    if (proxyExpanded) setProxyInput(myProxy || bidAmount || minBid);
   }, [proxyExpanded]);
 
   async function handleBid() {
@@ -365,7 +367,9 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveP
 }
 
 function AuctionCard({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveProxy, isFirst }) {
-  const minBid = getMinimumAuctionBid(auction.current_price || 0);
+  const minBid = getMinimumAuctionBid(auction.current_price || 0, {
+    hasActiveBid: Boolean(auction.current_bidder_id),
+  });
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
   const [errorText, setErrorText] = useState("");
@@ -387,7 +391,7 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemove
   }, [minBid]);
 
   useEffect(() => {
-    if (proxyExpanded) setProxyInput(myProxy || bidAmount + Math.ceil(bidAmount / 10) || minBid);
+    if (proxyExpanded) setProxyInput(myProxy || bidAmount || minBid);
   }, [proxyExpanded]);
 
   async function handleBid() {
