@@ -434,6 +434,7 @@ export default function AuctionsPage() {
   const [auctions, setAuctions] = useState([]);
   const [myTeamId, setMyTeamId] = useState(null);
   const [myBalance, setMyBalance] = useState(0);
+  const [currentRiderCount, setCurrentRiderCount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [celebration, setCelebration] = useState(null);
@@ -466,10 +467,10 @@ export default function AuctionsPage() {
 
   async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: team } = await supabase.from("teams").select("id, balance").eq("user_id", user.id).single();
+    const { data: team } = await supabase.from("teams").select("id, balance, division").eq("user_id", user.id).single();
     if (team) { setMyTeamId(team.id); setMyBalance(team.balance); }
 
-    const [auctionsRes, myBidsRes] = await Promise.all([
+    const [auctionsRes, myBidsRes, riderCountRes] = await Promise.all([
       supabase.from("auctions")
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash,
           seller_team_id, current_bidder_id,
@@ -481,7 +482,11 @@ export default function AuctionsPage() {
         .order("calculated_end", { ascending: true }),
       team ? supabase.from("auction_bids").select("auction_id, amount").eq("team_id", team.id)
            : Promise.resolve({ data: [] }),
+      team ? supabase.from("riders").select("id", { count: "exact", head: true }).eq("team_id", team.id)
+           : Promise.resolve({ count: 0 }),
     ]);
+
+    if (riderCountRes.count !== null) setCurrentRiderCount(riderCountRes.count);
 
     if (auctionsRes.data) {
       const myBidMap = {};
@@ -583,7 +588,17 @@ export default function AuctionsPage() {
   const riderFilters = useClientRiderFilters(auctions.map(a => a.rider).filter(Boolean));
   const filteredRiderOrder = new Map(riderFilters.filtered.map((r, i) => [r.id, i]));
 
-  const winningCount   = auctions.filter(a => getAuctionLeaderId(a) === myTeamId).length;
+  const winningAuctions  = auctions.filter(a => getAuctionLeaderId(a) === myTeamId);
+  const activeBidSum     = winningAuctions.reduce((sum, a) => sum + (a.current_price || 0), 0);
+  const incomingCount    = winningAuctions.filter(a => a.rider?.team_id !== myTeamId).length;
+  const outgoingCount    = auctions.filter(a => {
+    if (a.rider?.team_id !== myTeamId) return false;
+    const leaderId = getAuctionLeaderId(a);
+    return leaderId !== null && leaderId !== myTeamId;
+  }).length;
+  const projectedRiderCount = currentRiderCount !== null ? currentRiderCount + incomingCount - outgoingCount : null;
+
+  const winningCount   = winningAuctions.length;
   const myListedCount  = auctions.filter(a => isManagerSeller(a, myTeamId)).length;
   const otherManagerCount = auctions.filter(a => a.rider?.team_id && a.rider.team_id !== myTeamId).length;
 
@@ -629,6 +644,50 @@ export default function AuctionsPage() {
           Se historik →
         </Link>
       </div>
+
+      {!loading && myTeamId && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
+            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">Balance</p>
+            <p className="text-cz-accent-t font-mono font-bold text-sm leading-tight">
+              {myBalance.toLocaleString("da-DK")} CZ$
+            </p>
+          </div>
+          <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
+            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">Sum af aktive bud</p>
+            <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
+              {activeBidSum.toLocaleString("da-DK")} CZ$
+            </p>
+            {winningAuctions.length > 0 && (
+              <p className="text-cz-3 text-[10px] mt-0.5">{winningAuctions.length} auktion{winningAuctions.length !== 1 ? "er" : ""} du leder</p>
+            )}
+          </div>
+          <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
+            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">Ryttere nu</p>
+            <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
+              {currentRiderCount ?? "—"}
+            </p>
+          </div>
+          <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
+            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">Projektion</p>
+            <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
+              {projectedRiderCount ?? "—"}
+              {projectedRiderCount !== null && projectedRiderCount !== currentRiderCount && (
+                <span className={`text-xs ml-1.5 font-medium ${projectedRiderCount > currentRiderCount ? "text-cz-success" : "text-cz-danger"}`}>
+                  {projectedRiderCount > currentRiderCount ? "+" : ""}{projectedRiderCount - currentRiderCount}
+                </span>
+              )}
+            </p>
+            {(incomingCount > 0 || outgoingCount > 0) && (
+              <p className="text-cz-3 text-[10px] mt-0.5">
+                {incomingCount > 0 && `+${incomingCount} ind`}
+                {incomingCount > 0 && outgoingCount > 0 && " · "}
+                {outgoingCount > 0 && `-${outgoingCount} ud`}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {showFirstBidHint && (
         <AuctionsFirstBidHint
