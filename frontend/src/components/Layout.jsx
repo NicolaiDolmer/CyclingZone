@@ -252,6 +252,17 @@ export default function Layout() {
     return () => supabase.removeChannel(channel);
   }, [session]);
 
+  // Supabase DELETE-events mangler user_id i payload uden REPLICA IDENTITY FULL — lyt på window-event i stedet.
+  useEffect(() => {
+    if (!session) return;
+    async function handleNotifDeleted() {
+      const { data } = await supabase.from("notifications").select("id").eq("user_id", session.user.id).eq("is_read", false).limit(9);
+      setNotifications(data || []);
+    }
+    window.addEventListener("cz:notif-deleted", handleNotifDeleted);
+    return () => window.removeEventListener("cz:notif-deleted", handleNotifDeleted);
+  }, [session]);
+
   useEffect(() => {
     if (!session) return;
     heartbeatRef.current = setInterval(async () => {

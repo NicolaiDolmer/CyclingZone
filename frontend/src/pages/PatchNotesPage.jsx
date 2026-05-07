@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "2.70",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Indbakke · Ulæste-tælleren i headeren opdateres nu straks når du sletter beskeder — ingen F5 nødvendig (#176).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.69",
     date: "2026-05-07",
     label: "Beta",
