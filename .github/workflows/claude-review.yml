@@ -25,6 +25,9 @@ jobs:
             actions: read
           # Bot's egne kommentarer skal ikke trigge rekursive @claude-loops i andre workflows
           exclude_comments_by_actor: claude[bot]
+          # Tillad dependabot-PRs at få auto-review (default afviser bot-initierede workflows).
+          # Vi vil have dep-bumps reviewet for risiko (peer-deps, breaking changes).
+          allowed_bots: dependabot
           prompt: |
             Review denne PR. Tjek:
             1. Korrekthed (gør ændringerne det de hævder?)

@@ -1,21 +1,75 @@
 version: 2
 updates:
-  - package-ecosystem: npm
-    directory: /
-    schedule:
-      interval: weekly
-
+  # Backend dependencies — Express, Supabase, Multer mv.
   - package-ecosystem: npm
     directory: /backend
     schedule:
       interval: weekly
+    labels:
+      - dependencies
+      - javascript
+    groups:
+      backend-minor-patch:
+        update-types:
+          - minor
+          - patch
+    # Major-bumps lever som separate PRs (kræver review)
+    ignore:
+      # Express 5 har breaking middleware-API — separat migration-issue når relevant
+      - dependency-name: "express"
+        update-types: ["version-update:semver-major"]
 
+  # Frontend dependencies — React, Vite, Tailwind mv.
   - package-ecosystem: npm
     directory: /frontend
     schedule:
       interval: weekly
+    labels:
+      - dependencies
+      - javascript
+    groups:
+      frontend-minor-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # Tailwind 4 kræver postcss-plugin migration (#134) — blokeret indtil løst
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      # Vite 5 → 8 er 3 major-bumps på én gang — kræver dedikeret session
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+      # React 18 → 19 har nye type-defaults og dropped legacy APIs
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
 
+  # Root scripts — sjældent ændret, men dækkes af Dependabot
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - javascript
+    groups:
+      root-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions — semver er stærk her, grupper alle update-types
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    labels:
+      - dependencies
+      - github_actions
+    groups:
+      gha-all:
+        update-types:
+          - major
+          - minor
+          - patch
