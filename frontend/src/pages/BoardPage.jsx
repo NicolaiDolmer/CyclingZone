@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { satisfactionToModifier, getPlanDuration } from "../lib/boardUtils";
+import { satisfactionToModifier, getPlanDuration, FOCUS_LABELS } from "../lib/boardUtils";
 import { getCountryDisplay } from "../lib/countryUtils";
 import { Flag } from "../components/Flag";
 import { Link } from "react-router-dom";
@@ -34,11 +34,6 @@ const BOARD_TOUR_STEPS = [
     body: "Resultater, økonomi, identitet (U25/national kerne) og rangering — plus nyere typer: monumenter, trøjer, stjernerytter og U25-stat-gevinst. Din klub-DNA og 5 navngivne bestyrelsesmedlemmer farver reaktionerne.",
   },
 ];
-const FOCUS_LABELS = {
-  balanced: "Balanceret",
-  youth_development: "Ungdomsudvikling",
-  star_signing: "Stjernesignering",
-};
 const GOAL_CHANGE_META = {
   relaxed: { label: "Lempet", accent: "text-green-300", box: "border-cz-success/30 bg-cz-success-bg0/8" },
   tightened: { label: "Skærpet", accent: "text-red-300", box: "border-cz-danger/30 bg-cz-danger-bg0/8" },
@@ -659,7 +654,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
     <div className="bg-cz-card border border-cz-border rounded-xl p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Board Request</p>
+          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Bestyrelsesforespørgsel</p>
           <p className="text-cz-1 font-semibold text-sm">Én strategisk forespørgsel pr. sæson</p>
         </div>
         <div className="text-right flex-shrink-0">
@@ -671,7 +666,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
 
       {!supported && (
         <div className="rounded-xl border border-cz-accent/30 bg-cz-accent/10 p-4 mt-4">
-          <p className="text-cz-accent-t text-sm font-semibold">Board requests venter på database-migration</p>
+          <p className="text-cz-accent-t text-sm font-semibold">Bestyrelsesforespørgsler venter på database-migration</p>
         </div>
       )}
 
@@ -692,7 +687,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
           )}
           {(focusChanged || goalChanges.length > 0) && (
             <div className="mt-4 pt-4 border-t border-cz-border">
-              <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-3">Det reagerede boardet på</p>
+              <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-3">Det reagerede bestyrelsen på</p>
               <div className="flex flex-col gap-2">
                 {focusChanged && (
                   <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.62",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Bestyrelsesside + Dashboard: al UI-copy bruger nu konsekvent danske labels — 'Board Request' er erstattet med 'Bestyrelsesforespørgsel', 'boardet' med 'bestyrelsen', og bestyrelsesfokus vises nu med de samme danske labels (Balanceret / Ungdomsudvikling / Stjernesignering) som på Bestyrelsessiden fremfor rå enum-værdier (#65).",
+          "Hjælp: 'Board-siden' hedder nu 'Bestyrelsessiden', og 'board request' er oversat til 'bestyrelsesforespørgsel' overalt i FAQ-teksten (#65).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.61",
     date: "2026-05-07",
     label: "Beta",
