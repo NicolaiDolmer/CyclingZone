@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 const PRIZE_PER_POINT = 1_500;
@@ -95,9 +96,19 @@ export default function RacePointsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-cz-1">Point- og præmieoversigt</h1>
-        <p className="text-cz-3 text-sm">Sådan beregnes dine løbspræmier fra UCI-placeringer</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-cz-1">Point- og præmieoversigt</h1>
+          <p className="text-cz-3 text-sm">Sådan beregnes dine løbspræmier fra UCI-placeringer</p>
+        </div>
+        <Link
+          to="/help"
+          className="flex-shrink-0 flex items-center gap-1.5 text-xs text-cz-3 hover:text-cz-2 transition-colors mt-1"
+          title="Hjælp & Regler"
+        >
+          <span className="w-5 h-5 rounded-full border border-cz-border flex items-center justify-center text-xs font-bold leading-none">?</span>
+          <span className="hidden sm:inline">Hjælp & Regler</span>
+        </Link>
       </div>
 
       {/* Prize formula */}

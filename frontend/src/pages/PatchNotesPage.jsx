@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.53",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "UX · Præmiestruktur synlig i Hjælp & Regler (#100)",
+        items: [
+          "Ny sektion 'Præmier' tilføjet i Hjælp & Regler med præmieformlen (1 UCI-point = 1.500 CZ$), eksempler på konkrete beløb (Tour de France-sejr: 1.950.000 CZ$, Monument: 1.200.000 CZ$, osv.), forklaring af udbetaling og et direkte link til den fulde pointtabel under Sæson → Løb → Point & præmier.",
+          "Disclaimer tilføjet i hjælpesektionen: præmiebeløb kan justeres frem til sæson 1 afsluttes.",
+          "Lille hjælp-ikon (?) tilføjet øverst på Point & præmier-siden med direkte link til Hjælp & Regler.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.52",
     date: "2026-05-07",
     label: "Beta",
