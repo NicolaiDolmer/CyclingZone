@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.59",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Nyt",
+        items: [
+          "Mobil quick-nav: fast bundmenu på mobil med direkte adgang til Dashboard, Indbakke, Marked, Ryttere og Mit Hold (#66).",
+          "Menuen skifter automatisk position når DeadlineDayTicker er aktiv, så den aldrig dækker tickeren.",
+          "Aktiv destination fremhæves med accent-farven (guld) og fungerer i lys og mørk tema.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.58",
     date: "2026-05-07",
     label: "Beta",
