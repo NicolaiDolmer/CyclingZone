@@ -379,7 +379,17 @@ router.get("/deadline-day/status", requireAuth, async (req, res) => {
 // GET /api/deadline-day/ticker
 router.get("/deadline-day/ticker", requireAuth, async (req, res) => {
   try {
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: tw } = await supabase
+      .from("transfer_windows")
+      .select("closes_at")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    // Use the actual DD window start (closes_at - 24h) so the ticker only shows
+    // events from the current Deadline Day period, not random prior activity.
+    const since = tw?.closes_at
+      ? new Date(new Date(tw.closes_at).getTime() - 24 * 60 * 60 * 1000).toISOString()
+      : new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const [{ data: bids }, { data: sold }, { data: transfers }] = await Promise.all([
       supabase
         .from("auction_bids")
@@ -421,7 +431,7 @@ router.get("/deadline-day/ticker", requireAuth, async (req, res) => {
       events.push({ type: "transfer", text: `${t.buyer.name} køber ${t.rider.firstname} ${t.rider.lastname}${sellerPart} for ${fmt(t.offer_amount)}`, timestamp: t.updated_at });
     }
 
-    events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     res.json(events.slice(0, 20));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

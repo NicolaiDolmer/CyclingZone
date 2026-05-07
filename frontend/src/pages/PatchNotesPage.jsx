@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.63",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Deadline Day · Tickeren viser nu kun events fra det aktuelle Deadline Day-vindue (de 24 timer op til transferfristens udløb) i stedet for de seneste 24 timer fra browserens aktuelle tidspunkt — feedet starter ikke længere midt i en normal hverdagsdag (#51).",
+          "Deadline Day · Events i tickeren vises nu i kronologisk rækkefølge (ældste → nyeste) så budhistorien opbygges naturligt mod salgshændelsen, fremfor at vise konklusionen (salg) før opbygningen (bud) (#51).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.62",
     date: "2026-05-07",
     label: "Beta",
