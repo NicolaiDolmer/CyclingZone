@@ -123,22 +123,30 @@ function Countdown({ end, status }) {
 }
 
 // ── Auction table row ─────────────────────────────────────────────────────────
-function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }) {
+function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveProxy, onNavigate, isFirst }) {
   const minBid = getMinimumAuctionBid(auction.current_price || 0);
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
   const [errorText, setErrorText] = useState("");
   const [warningText, setWarningText] = useState("");
+  const [proxyExpanded, setProxyExpanded] = useState(false);
+  const [proxyInput, setProxyInput] = useState(0);
+  const [proxyStatus, setProxyStatus] = useState(null);
 
   const isMyRider = auction.rider?.team_id === myTeamId;
   const isSeller  = isManagerSeller(auction, myTeamId);
   const imWinning = getAuctionLeaderId(auction) === myTeamId;
   const canBid    = !isMyRider && auction.status !== "completed";
+  const myProxy   = auction.myProxyMax || null;
 
   useEffect(() => {
     setBidAmount(minBid);
     setErrorText("");
   }, [minBid]);
+
+  useEffect(() => {
+    if (proxyExpanded) setProxyInput(myProxy || bidAmount + Math.ceil(bidAmount / 10) || minBid);
+  }, [proxyExpanded]);
 
   async function handleBid() {
     if (bidAmount > myBalance) {
@@ -162,6 +170,18 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }
       setErrorText(result.error || "Buddet kunne ikke placeres");
       setTimeout(() => setBidStatus(null), 3000);
     }
+  }
+
+  async function handleSaveProxy() {
+    setProxyStatus("loading");
+    const result = await onSetProxy(auction.id, proxyInput);
+    setProxyStatus(result.ok ? "saved" : "error");
+    if (result.ok) setProxyExpanded(false);
+    setTimeout(() => setProxyStatus(null), result.ok ? 2000 : 3000);
+  }
+
+  async function handleRemoveProxy() {
+    await onRemoveProxy(auction.id);
   }
 
   const r = auction.rider;
@@ -294,6 +314,42 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }
               )}
             </div>
             <p className="text-[9px] text-cz-3 leading-none">Min. {minBid.toLocaleString("da-DK")} CZ$</p>
+            {/* Proxy bid section */}
+            {myProxy && !proxyExpanded ? (
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded whitespace-nowrap">
+                  Auto-by: max {myProxy.toLocaleString("da-DK")} CZ$
+                </span>
+                <button onClick={() => setProxyExpanded(true)} className="text-[9px] text-cz-3 hover:text-cz-2">Ændr</button>
+                <button onClick={handleRemoveProxy} className="text-[9px] text-cz-3 hover:text-cz-danger">✕</button>
+              </div>
+            ) : !proxyExpanded ? (
+              <button onClick={() => setProxyExpanded(true)} className="text-[9px] text-cz-3 hover:text-cz-2 text-left mt-0.5">
+                + Auto-by loft
+              </button>
+            ) : (
+              <div className="flex items-center gap-1 mt-0.5">
+                <input
+                  type="number"
+                  value={proxyInput}
+                  min={minBid}
+                  onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
+                  placeholder="Max-loft"
+                  className="w-20 bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-cz-1 font-mono text-[10px] focus:outline-none focus:border-cz-accent"
+                />
+                <button
+                  onClick={handleSaveProxy}
+                  disabled={proxyStatus === "loading" || proxyInput < minBid}
+                  className={`px-2 py-1 rounded text-[10px] font-bold whitespace-nowrap
+                    ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
+                      proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
+                      "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
+                    disabled:opacity-50`}>
+                  {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
+                </button>
+                <button onClick={() => setProxyExpanded(false)} className="text-[9px] text-cz-3 hover:text-cz-2">✕</button>
+              </div>
+            )}
           </div>
         ) : isSeller ? (
           <span className="text-cz-3 text-xs">Du sælger</span>
@@ -308,23 +364,31 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }
   );
 }
 
-function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }) {
+function AuctionCard({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveProxy, onNavigate, isFirst }) {
   const minBid = getMinimumAuctionBid(auction.current_price || 0);
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
   const [errorText, setErrorText] = useState("");
   const [warningText, setWarningText] = useState("");
+  const [proxyExpanded, setProxyExpanded] = useState(false);
+  const [proxyInput, setProxyInput] = useState(0);
+  const [proxyStatus, setProxyStatus] = useState(null);
 
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller = isManagerSeller(auction, myTeamId);
   const imWinning = getAuctionLeaderId(auction) === myTeamId;
   const canBid = !isMyRider && auction.status !== "completed";
+  const myProxy = auction.myProxyMax || null;
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
 
   useEffect(() => {
     setBidAmount(minBid);
   }, [minBid]);
+
+  useEffect(() => {
+    if (proxyExpanded) setProxyInput(myProxy || bidAmount + Math.ceil(bidAmount / 10) || minBid);
+  }, [proxyExpanded]);
 
   async function handleBid() {
     if (bidAmount > myBalance) {
@@ -345,6 +409,18 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst 
       }
     }
     setTimeout(() => setBidStatus(null), result.ok ? 2500 : 3000);
+  }
+
+  async function handleSaveProxy() {
+    setProxyStatus("loading");
+    const result = await onSetProxy(auction.id, proxyInput);
+    setProxyStatus(result.ok ? "saved" : "error");
+    if (result.ok) setProxyExpanded(false);
+    setTimeout(() => setProxyStatus(null), result.ok ? 2000 : 3000);
+  }
+
+  async function handleRemoveProxy() {
+    await onRemoveProxy(auction.id);
   }
 
   return (
@@ -437,6 +513,44 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst 
             {warningText && (
               <p className="col-span-2 text-[11px] text-cz-warning leading-snug">{warningText}</p>
             )}
+            {/* Proxy bid section */}
+            <div className="col-span-2 mt-1">
+              {myProxy && !proxyExpanded ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] bg-cz-success-bg text-cz-success px-2 py-1 rounded-lg">
+                    Auto-by: max {myProxy.toLocaleString("da-DK")} CZ$
+                  </span>
+                  <button onClick={() => setProxyExpanded(true)} className="text-[10px] text-cz-3 hover:text-cz-2">Ændr</button>
+                  <button onClick={handleRemoveProxy} className="text-[10px] text-cz-3 hover:text-cz-danger">Fjern</button>
+                </div>
+              ) : !proxyExpanded ? (
+                <button onClick={() => setProxyExpanded(true)} className="text-[10px] text-cz-3 hover:text-cz-2">
+                  + Sæt auto-by loft
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={proxyInput}
+                    min={minBid}
+                    onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
+                    placeholder="Max-loft"
+                    className="min-w-0 w-32 bg-cz-subtle border border-cz-border rounded-lg px-3 py-1.5 text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
+                  />
+                  <button
+                    onClick={handleSaveProxy}
+                    disabled={proxyStatus === "loading" || proxyInput < minBid}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap
+                      ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
+                        proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
+                        "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
+                      disabled:opacity-50`}>
+                    {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
+                  </button>
+                  <button onClick={() => setProxyExpanded(false)} className="text-[10px] text-cz-3 hover:text-cz-2">✕</button>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <p className="text-cz-3 text-xs text-center py-1">{isSeller ? "Du sælger" : "—"}</p>
@@ -488,7 +602,7 @@ export default function AuctionsPage() {
     const { data: team } = await supabase.from("teams").select("id, balance, division").eq("user_id", user.id).single();
     if (team) { setMyTeamId(team.id); setMyBalance(team.balance); }
 
-    const [auctionsRes, myBidsRes, riderCountRes] = await Promise.all([
+    const [auctionsRes, myBidsRes, riderCountRes, myProxiesRes] = await Promise.all([
       supabase.from("auctions")
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash,
           seller_team_id, current_bidder_id,
@@ -502,6 +616,8 @@ export default function AuctionsPage() {
            : Promise.resolve({ data: [] }),
       team ? supabase.from("riders").select("id", { count: "exact", head: true }).eq("team_id", team.id)
            : Promise.resolve({ count: 0 }),
+      team ? supabase.from("auction_proxy_bids").select("auction_id, max_amount").eq("team_id", team.id)
+           : Promise.resolve({ data: [] }),
     ]);
 
     if (riderCountRes.count !== null) setCurrentRiderCount(riderCountRes.count);
@@ -513,7 +629,13 @@ export default function AuctionsPage() {
           myBidMap[b.auction_id] = b.amount;
         }
       });
-      setAuctions(auctionsRes.data.map(a => ({ ...a, myHighestBid: myBidMap[a.id] || null })));
+      const myProxyMap = {};
+      (myProxiesRes.data || []).forEach(p => { myProxyMap[p.auction_id] = p.max_amount; });
+      setAuctions(auctionsRes.data.map(a => ({
+        ...a,
+        myHighestBid: myBidMap[a.id] || null,
+        myProxyMax: myProxyMap[a.id] || null,
+      })));
     }
     setLoading(false);
   }
@@ -601,6 +723,30 @@ export default function AuctionsPage() {
     let data = {};
     try { data = await res.json(); } catch { /* non-JSON error response — fall back to default error message below */ }
     return { ok: false, error: data.error || "Buddet kunne ikke placeres" };
+  }
+
+  async function handleSetProxy(auctionId, maxAmount) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const API = import.meta.env.VITE_API_URL;
+    const res = await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ max_amount: maxAmount }),
+    });
+    if (res.ok) { loadAll(); return { ok: true }; }
+    let data = {};
+    try { data = await res.json(); } catch { /* ignore */ }
+    return { ok: false, error: data.error || "Fejl ved sæt auto-by" };
+  }
+
+  async function handleRemoveProxy(auctionId) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const API = import.meta.env.VITE_API_URL;
+    await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    loadAll();
   }
 
   const riderFilters = useClientRiderFilters(auctions.map(a => a.rider).filter(Boolean));
@@ -764,6 +910,8 @@ export default function AuctionsPage() {
               myTeamId={myTeamId}
               myBalance={myBalance}
               onBid={handleBid}
+              onSetProxy={handleSetProxy}
+              onRemoveProxy={handleRemoveProxy}
               onNavigate={riderId => navigate(`/riders/${riderId}`)}
               isFirst={i === 0}
             />
@@ -822,6 +970,8 @@ export default function AuctionsPage() {
                     myTeamId={myTeamId}
                     myBalance={myBalance}
                     onBid={handleBid}
+                    onSetProxy={handleSetProxy}
+                    onRemoveProxy={handleRemoveProxy}
                     onNavigate={riderId => navigate(`/riders/${riderId}`)}
                     isFirst={i === 0}
                   />

@@ -25,12 +25,14 @@ import {
   getAuctionBidIssue,
   getAuctionBidWarnings,
   getAuctionInitialBidderId,
+  getMinimumAuctionBid,
 } from "../lib/auctionRules.js";
 import {
   finalizeAuctionById,
   finalizeExpiredAuctions as finalizeExpiredAuctionsShared,
 } from "../lib/auctionFinalization.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
+import { resolveProxyBids } from "../lib/proxyBidding.js";
 import {
   createLoan,
   repayLoan,
@@ -747,7 +749,7 @@ router.post("/auctions", requireAuth, async (req, res) => {
 router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
 
-  const { amount } = req.body;
+  const { amount, proxy_max } = req.body;
   if (!amount) return res.status(400).json({ error: "amount required" });
 
   // Fetch auction
@@ -850,6 +852,15 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
 
   await supabase.from("auctions").update(updates).eq("id", auction.id);
 
+  // Store proxy max-loft if provided with the bid
+  const numericProxyMax = Number(proxy_max);
+  if (Number.isFinite(numericProxyMax) && numericProxyMax > amount) {
+    await supabase.from("auction_proxy_bids").upsert(
+      { auction_id: auction.id, team_id: req.team.id, max_amount: numericProxyMax },
+      { onConflict: "auction_id,team_id" }
+    );
+  }
+
   // Notify previous bidder (outbid)
   if (auction.current_bidder_id && auction.current_bidder_id !== req.team.id) {
     await notifyTeamOwner(
@@ -883,6 +894,17 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
   const { data: bidUser } = await supabase.from("users").select("id").eq("id", (await supabase.from("teams").select("user_id").eq("id", req.team.id).single()).data?.user_id).single();
   if (bidUser) awardXP(bidUser.id, "bid_placed").catch(() => {});
 
+  // Resolve proxy counter-bids — auto-bid on behalf of managers with max-loft
+  try {
+    await resolveProxyBids({
+      supabase,
+      auctionId: auction.id,
+      bidTime,
+      bidCfg,
+      notifyTeamOwner,
+    });
+  } catch { /* never fail the bid response */ }
+
   res.json({
     success: true,
     new_price: amount,
@@ -890,6 +912,91 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
     new_end: shouldExtend ? newEnd?.toISOString() : undefined,
     warnings: bidWarnings,
   });
+});
+
+// GET /api/auctions/:id/proxy — fetch my proxy bid for this auction
+router.get("/auctions/:id/proxy", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const { data } = await supabase
+    .from("auction_proxy_bids")
+    .select("max_amount, created_at")
+    .eq("auction_id", req.params.id)
+    .eq("team_id", req.team.id)
+    .single();
+  res.json({ proxy: data || null });
+});
+
+// PATCH /api/auctions/:id/proxy — set or update my proxy max-loft
+router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+
+  const numericMax = Number(req.body.max_amount);
+  if (!Number.isFinite(numericMax) || numericMax <= 0) {
+    return res.status(400).json({ error: "Ugyldigt max-loft" });
+  }
+
+  const { data: auction } = await supabase
+    .from("auctions")
+    .select("id, current_price, current_bidder_id, status, calculated_end")
+    .eq("id", req.params.id)
+    .single();
+
+  if (!auction) return res.status(404).json({ error: "Auction not found" });
+  if (!["active", "extended"].includes(auction.status)) {
+    return res.status(400).json({ error: "Auction is not active" });
+  }
+  if (isAuctionExpired(auction.calculated_end)) {
+    return res.status(400).json({ error: "Auction has ended" });
+  }
+
+  const minRequired = getMinimumAuctionBid(auction.current_price);
+  if (numericMax < minRequired) {
+    return res.status(400).json({
+      error: `Max-loft skal være mindst ${minRequired.toLocaleString("da-DK")} CZ$`,
+    });
+  }
+
+  // Require team to already have placed a bid on this auction
+  const { data: existingBid } = await supabase
+    .from("auction_bids")
+    .select("id")
+    .eq("auction_id", req.params.id)
+    .eq("team_id", req.team.id)
+    .limit(1);
+
+  if (!existingBid?.length) {
+    return res.status(400).json({ error: "Sæt max-loft sammen med dit første bud" });
+  }
+
+  await supabase.from("auction_proxy_bids").upsert(
+    { auction_id: req.params.id, team_id: req.team.id, max_amount: numericMax },
+    { onConflict: "auction_id,team_id" }
+  );
+
+  const proxyBidTime = new Date();
+  const proxyBidCfg = await getAuctionConfig();
+  try {
+    await resolveProxyBids({
+      supabase,
+      auctionId: req.params.id,
+      bidTime: proxyBidTime,
+      bidCfg: proxyBidCfg,
+      notifyTeamOwner,
+    });
+  } catch { /* never fail */ }
+
+  res.json({ success: true, max_amount: numericMax });
+});
+
+// DELETE /api/auctions/:id/proxy — remove my proxy bid
+router.delete("/auctions/:id/proxy", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  await supabase
+    .from("auction_proxy_bids")
+    .delete()
+    .eq("auction_id", req.params.id)
+    .eq("team_id", req.team.id);
+  res.json({ success: true });
 });
 
 // POST /api/auctions/:id/finalize — complete one auction via shared finalizer

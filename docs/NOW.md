@@ -9,6 +9,7 @@
 ## Senest leveret
 *(2026-05-06 og tidligere arkiveret til [`docs/archive/NOW_HISTORIK_2026-05-06.md`](archive/NOW_HISTORIK_2026-05-06.md))*
 
+- 2026-05-07: **#10 Proxy-bidding (auto-by med max-loft) LIVE som v2.64** — Ny `auction_proxy_bids`-tabel + `auction_bids.is_proxy`-kolonne + `auction_proxy_outbid`-notif-type. Backend `proxyBidding.js` resolver loop (max 30 iter): højeste proxy vinder, andres max + 10% sætter prisen. Routes GET/PATCH/DELETE `/api/auctions/:id/proxy`. Frontend: "Auto-by loft"-sektion i AuctionRow (desktop) + AuctionCard (mobil) med badge, Ændr, Fjern.
 - 2026-05-07: **#13 Admin-cancel endpoint for indgåede handler** — Ny `POST /api/admin/transfers/offers/:id/cancel` og `POST /api/admin/transfers/swaps/:id/cancel` med audit log i `admin_log`. Målretter `window_pending`-handler (aftalt men ikke eksekveret endnu). Begge parter notificeres. Backend-only, ingen patch notes.
 - 2026-05-07: **#51 Deadline Day ticker fix LIVE som v2.63** — Ticker `since` bruger nu `closes_at - 24h` i stedet for `now - 24h` (viser kun DD-relevante events). Events sorteres ASC (tidslinje-stil: ældste → nyeste). Deduplication i `notificationService.js` var allerede korrekt — ingen ændring nødvendig.
 - 2026-05-07: **#65 Konsekvent danske labels LIVE som v2.62** — "Board Request" → "Bestyrelsesforespørgsel", "boardet" → "bestyrelsen", Dashboard-fokus bruger nu FOCUS_LABELS fra boardUtils i stedet for raw `replace(/_/g, " ")`. Help-siden bruger nu "Bestyrelsessiden" og "bestyrelsesforespørgsel" konsekvent.
