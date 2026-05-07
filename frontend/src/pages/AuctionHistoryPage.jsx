@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, NavLink } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
@@ -86,10 +86,25 @@ export default function AuctionHistoryPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">Auktionshistorik</h1>
-          <p className="text-cz-3 text-sm">{total} afsluttede auktioner</p>
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-cz-1 mb-3">Auktioner</h1>
+        <div className="flex gap-2">
+          <NavLink to="/auctions" end
+            className={({ isActive }) =>
+              `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                isActive
+                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                  : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+            Aktive
+          </NavLink>
+          <NavLink to="/auctions/history"
+            className={({ isActive }) =>
+              `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                isActive
+                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                  : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+            Historik ({total})
+          </NavLink>
         </div>
       </div>
 
