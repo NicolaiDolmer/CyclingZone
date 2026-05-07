@@ -96,7 +96,7 @@ jobs:
           PR: ${{ steps.pr.outputs.number }}
           SHA: ${{ github.sha }}
         run: |
-          gh pr comment "$PR" --body "✅ **Deploy verificeret LIVE** — \`${SHA:0:7}\`
+          gh pr comment "$PR" --repo "${{ github.repository }}" --body "✅ **Deploy verificeret LIVE** — \`${SHA:0:7}\`
           - Vercel deploy: success
           - Railway deploy: success
           - Backend \`/health\` = 200
@@ -118,7 +118,7 @@ jobs:
           VERCEL: ${{ steps.deployments.outputs.vercel }}
           RAILWAY: ${{ steps.deployments.outputs.railway }}
         run: |
-          gh pr comment "$PR" --body "❌ **Deploy-verify FEJLEDE** — \`${SHA:0:7}\` — [se log]($RUN_URL)
+          gh pr comment "$PR" --repo "${{ github.repository }}" --body "❌ **Deploy-verify FEJLEDE** — \`${SHA:0:7}\` — [se log]($RUN_URL)
           - Vercel: \`${VERCEL:-unknown}\`
           - Railway: \`${RAILWAY:-unknown}\`
           - Backend \`/health\`: \`${BACKEND_HEALTH:-?}\` (forventet 200)
