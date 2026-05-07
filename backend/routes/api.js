@@ -903,6 +903,7 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
       bidTime,
       bidCfg,
       notifyTeamOwner,
+      notifyOutbidDM: notifyOutbid,
     });
   } catch { /* never fail the bid response */ }
 
@@ -985,6 +986,7 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
       bidTime: proxyBidTime,
       bidCfg: proxyBidCfg,
       notifyTeamOwner,
+      notifyOutbidDM: notifyOutbid,
     });
   } catch { /* never fail */ }
 

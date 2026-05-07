@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "2.67",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Auto-by · Discord DM sendes nu også når et auto-bud overbyder dig — før kom DM'en kun ved manuelle bud, så managers fik kun in-app-notifikationen ved auto-overbud (#155).",
+          "Auto-by · Sælger får nu også besked når et auto-bud bliver afgivet på deres rytter — mirror'er flowet for manuelle bud.",
+        ],
+      },
+      {
+        category: "Forbedringer",
+        items: [
+          "Auto-by · DM'en markerer eksplicit at det er et auto-bud (\"Auto-bud fra X\") og angiver om dit eget max-loft blev nået.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.66",
     date: "2026-05-07",
     label: "Beta",

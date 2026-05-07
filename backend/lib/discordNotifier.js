@@ -235,16 +235,21 @@ export async function notifyNewAuction({ riderName, riderUci, sellerName, startP
 }
 
 // Person-rettede notifications — DM-only (må ikke broadcastes til kanal)
-export async function notifyOutbid({ riderName, newBid, bidderName, teamId }) {
+export async function notifyOutbid({ riderName, newBid, bidderName, teamId, isAuto = false, exhausted = false }) {
   const fields = [
     { name: "Nyt bud", value: `${newBid?.toLocaleString("da-DK")} CZ$` },
-    { name: "Budt af", value: bidderName },
+    { name: isAuto ? "Auto-bud fra" : "Budt af", value: bidderName },
   ];
+  const description = exhausted
+    ? `Din auto-by på **${riderName}** nåede sit max-loft og er overbudt.`
+    : isAuto
+      ? `Du er blevet overbudt på **${riderName}** af et auto-bud!`
+      : `Du er blevet overbudt på **${riderName}**!`;
   await notifyDiscordDM({
     teamId,
     type: "auction_outbid",
     title: riderName,
-    description: `Du er blevet overbudt på **${riderName}**!`,
+    description,
     fields,
   });
 }
