@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate, Link } from "react-router-dom";
+import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
@@ -81,7 +81,6 @@ function RiderSearch({ onSelect, excluded }) {
 }
 
 export default function RiderComparePage() {
-  const navigate = useNavigate();
   const [fullRiders, setFullRiders] = useState([]);
 
   async function addRider(rider) {
@@ -139,10 +138,10 @@ export default function RiderComparePage() {
                 <button
                   onClick={() => removeRider(r.id)}
                   className="float-right text-cz-3 hover:text-cz-2 text-sm -mt-1 -mr-1">×</button>
-                <Link to={`/riders/${r.id}`}
+                <RiderLink id={r.id}
                   className="font-bold text-cz-1 text-sm cursor-pointer hover:text-cz-accent-t block">
                   {r.nationality_code && <Flag code={r.nationality_code} className="mr-1" />}{r.firstname} {r.lastname}
-                </Link>
+                </RiderLink>
                 <p className="text-cz-3 text-xs mt-1">{r.team?.name || "Fri agent"}</p>
                 <p className="font-mono font-bold mt-2 text-sm" style={{ color: COLORS[i] }}>
                   {formatCz(getRiderMarketValue(r))}

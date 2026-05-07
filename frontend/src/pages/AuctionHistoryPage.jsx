@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
@@ -158,16 +159,10 @@ export default function AuctionHistoryPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {a.rider?.nationality_code && <Flag code={a.rider.nationality_code} className="flex-shrink-0" />}
-                        {a.rider?.id ? (
-                          <Link to={`/riders/${a.rider.id}`} onClick={e => e.stopPropagation()}
-                            className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
-                            {a.rider?.firstname} {a.rider?.lastname}
-                          </Link>
-                        ) : (
-                          <span className="text-cz-1 font-medium">
-                            {a.rider?.firstname} {a.rider?.lastname}
-                          </span>
-                        )}
+                        <RiderLink id={a.rider?.id} stopPropagation
+                          className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
+                          {a.rider?.firstname} {a.rider?.lastname}
+                        </RiderLink>
                         {a.rider?.is_u25 && (
                           <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
                         )}

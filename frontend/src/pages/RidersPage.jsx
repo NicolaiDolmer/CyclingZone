@@ -4,6 +4,7 @@ import { buildSupabaseQuery } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
 import { useNavigate, Link } from "react-router-dom";
+import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import { getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
@@ -72,11 +73,11 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }
     <tr className="border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors">
       <td className="px-3 py-2.5" onClick={() => onSelect(rider)}>
         <div>
-          <Link to={`/riders/${rider.id}`} onClick={e => e.stopPropagation()}
+          <RiderLink id={rider.id} stopPropagation
             className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors block">
             {rider.nationality_code && <Flag code={rider.nationality_code} className="mr-1" />}
             {rider.firstname} {rider.lastname}
-          </Link>
+          </RiderLink>
           <div className="flex items-center gap-1.5 mt-0.5">
             {rider.is_u25 && (
               <span className="text-[9px] uppercase bg-cz-info/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>

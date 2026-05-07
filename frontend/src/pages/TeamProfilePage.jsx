@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
 import { Flag } from "../components/Flag";
@@ -217,10 +218,10 @@ export default function TeamProfilePage() {
                         {r._isIncoming && <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />}
                         {r._isOutgoing && <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />}
                         {r.nationality_code && <Flag code={r.nationality_code} className="flex-shrink-0" />}
-                        <Link to={`/riders/${r.id}`} onClick={e => e.stopPropagation()}
+                        <RiderLink id={r.id} stopPropagation
                           className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
                           {r.firstname} {r.lastname}
-                        </Link>
+                        </RiderLink>
                         {r.is_u25 && <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>}
                         {r._isIncoming && <span className="text-[9px] uppercase bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded">Indgående</span>}
                         {r._isOutgoing && <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">Udgående</span>}

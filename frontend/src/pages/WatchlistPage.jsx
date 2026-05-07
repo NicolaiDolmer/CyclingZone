@@ -2,7 +2,8 @@
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import RiderLink from "../components/RiderLink";
 import { statBg } from "../lib/statBg";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
@@ -178,10 +179,10 @@ export default function WatchlistPage() {
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
                             {r.nationality_code && <Flag code={r.nationality_code} className="flex-shrink-0" />}
-                            <Link to={`/riders/${r.id}`}
+                            <RiderLink id={r.id}
                               className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left">
                               {r.firstname} {r.lastname}
-                            </Link>
+                            </RiderLink>
                             {r.is_u25 && (
                               <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
                             )}

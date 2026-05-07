@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useMemo } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import RiderLink from "../components/RiderLink";
 import * as XLSX from "@e965/xlsx";
 import RacePointsPage from "./RacePointsPage";
 
@@ -411,18 +412,11 @@ export default function RacesPage() {
                                 <tr key={r.id} className="border-b border-cz-border last:border-0">
                                   <td className="py-1.5 w-6 text-cz-3 font-mono">#{r.rank}</td>
                                   <td className="py-1.5">
-                                    {r.rider?.id ? (
-                                      <Link to={`/riders/${r.rider.id}`}
-                                        className="cursor-pointer hover:text-cz-accent-t transition-colors block">
-                                        <span className="text-cz-1">{r.rider?.firstname} {r.rider?.lastname}</span>
-                                        <span className="text-cz-3 ml-2">{r.rider?.team?.name || "Fri"}</span>
-                                      </Link>
-                                    ) : (
-                                      <>
-                                        <span className="text-cz-1">{r.rider?.firstname} {r.rider?.lastname}</span>
-                                        <span className="text-cz-3 ml-2">{r.rider?.team?.name || "Fri"}</span>
-                                      </>
-                                    )}
+                                    <RiderLink id={r.rider?.id}
+                                      className="cursor-pointer hover:text-cz-accent-t transition-colors block">
+                                      <span className="text-cz-1">{r.rider?.firstname} {r.rider?.lastname}</span>
+                                      <span className="text-cz-3 ml-2">{r.rider?.team?.name || "Fri"}</span>
+                                    </RiderLink>
                                   </td>
                                   <td className="py-1.5 text-right text-cz-success font-mono">
                                     {r.prize_money > 0 ? `+${r.prize_money}` : ""}

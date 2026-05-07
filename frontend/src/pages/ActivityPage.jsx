@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import RiderLink from "../components/RiderLink";
 import { getRiderMarketValue } from "../lib/marketValues";
 import WatchlistStar from "../components/WatchlistStar";
 
@@ -113,15 +114,10 @@ function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, 
         {badge}
       </span>
       <div className="flex-1 min-w-0">
-        {riderId ? (
-          <Link to={`/riders/${riderId}`}
-            onClick={e => e.stopPropagation()}
-            className="text-sm font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate max-w-full block">
-            {rider}
-          </Link>
-        ) : (
-          <p className="text-sm font-medium text-cz-1 truncate">{rider}</p>
-        )}
+        <RiderLink id={riderId} stopPropagation
+          className="text-sm font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate max-w-full block">
+          {rider}
+        </RiderLink>
         {detail && <p className="text-xs text-cz-3 truncate">{detail}</p>}
       </div>
       {children}
@@ -551,10 +547,10 @@ export default function ActivityPage() {
                     className="flex items-center gap-3 px-4 py-3 border-b border-cz-border last:border-0 hover:bg-cz-subtle transition-colors">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <Link to={`/riders/${r?.id}`}
+                        <RiderLink id={r?.id}
                           className="text-sm font-medium text-cz-1 hover:text-cz-accent-t transition-colors text-left truncate">
                           {r?.firstname} {r?.lastname}
-                        </Link>
+                        </RiderLink>
                         <WatchlistStar active onToggle={() => removeFromWatchlist(r?.id)} />
                       </div>
                       <p className="text-xs text-cz-3 truncate">{r?.team?.name || "Fri agent"}</p>
@@ -567,10 +563,10 @@ export default function ActivityPage() {
                     <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap flex-shrink-0">
                       {getRiderMarketValue(r).toLocaleString("da-DK")} CZ$
                     </span>
-                    <Link to={`/riders/${r?.id}`}
+                    <RiderLink id={r?.id}
                       className="text-cz-3 hover:text-cz-accent-t text-sm transition-colors flex-shrink-0">
                       →
-                    </Link>
+                    </RiderLink>
                   </div>
                 );
               })
