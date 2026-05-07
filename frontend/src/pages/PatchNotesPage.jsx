@@ -14,6 +14,12 @@ const PATCHES = [
           "Aktiv destination fremhæves med accent-farven (guld) og fungerer i lys og mørk tema.",
         ],
       },
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Auktion-bud: Bud-feltet kan nu ryddes uden at hoppe tilbage til minimum-budet, og Byd-knappen forbliver disabled indtil et gyldigt bud er indtastet (#18).",
+        ],
+      },
     ],
   },
   {
