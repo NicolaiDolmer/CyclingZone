@@ -5,6 +5,7 @@ import {
   cancelBetaMarket,
   resetBetaBalances,
   resetBetaBoardProfiles,
+  resetBetaRiderHistory,
   resetBetaRosters,
   resetBetaSeasons,
   runFullBetaReset,
@@ -233,6 +234,51 @@ test("resetBetaBoardProfiles deletes all manager board data and creates one base
   assert.deepEqual(supabase.state.board_plan_snapshots.map((row) => row.id), ["snap-ai"]);
 });
 
+test("resetBetaRiderHistory wipes alle 6 historik-tabeller men bevarer rider_watchlist + riders + teams (#104)", async () => {
+  const initialState = createInitialState();
+  initialState.auction_bids = [
+    { id: "bid-1", auction_id: "auction-1", team_id: "team-1", amount: 50000 },
+    { id: "bid-2", auction_id: "auction-1", team_id: "team-ai", amount: 60000 },
+  ];
+  // Ekstra rows for at sikre alle statuses ryddes (ikke kun "active"/"accepted")
+  initialState.auctions.push({ id: "auction-2", status: "completed" });
+  initialState.transfer_offers.push({ id: "transfer-2", status: "rejected" });
+  initialState.loan_agreements.push({ id: "loan-2", status: "completed" });
+  initialState.loan_agreements.push({ id: "loan-3", status: "buyout" });
+  // Kritisk fixture: ønskelister må ALDRIG røres af denne reset
+  initialState.rider_watchlist = [
+    { id: "wl-1", user_id: "user-1", rider_id: "rider-ai", note: "Stjerne" },
+    { id: "wl-2", user_id: "user-1", rider_id: "rider-free", note: null },
+  ];
+
+  const supabase = createBetaResetSupabase(initialState);
+  const result = await resetBetaRiderHistory(supabase);
+
+  assert.deepEqual(result, {
+    auction_bids: 2,
+    auctions: 2,
+    transfer_offers: 2,
+    transfer_listings: 1,
+    swap_offers: 1,
+    loan_agreements: 3,
+  });
+
+  // Alle 6 historik-tabeller skal være tomme efter reset
+  assert.deepEqual(supabase.state.auctions, []);
+  assert.deepEqual(supabase.state.auction_bids, []);
+  assert.deepEqual(supabase.state.transfer_listings, []);
+  assert.deepEqual(supabase.state.transfer_offers, []);
+  assert.deepEqual(supabase.state.swap_offers, []);
+  assert.deepEqual(supabase.state.loan_agreements, []);
+
+  // KRITISK: ønskelister, ryttere, hold og økonomi bevares
+  assert.equal(supabase.state.rider_watchlist.length, 2, "ønskelister må ikke røres");
+  assert.equal(supabase.state.riders.length, 3, "ryttere bevares");
+  assert.equal(supabase.state.teams.length, 4, "hold bevares");
+  assert.equal(supabase.state.finance_transactions.length, 2, "finance-historik bevares");
+  assert.equal(supabase.state.seasons.length, 1, "sæson bevares");
+});
+
 test("resetBetaSeasons nuller finance_transactions.season_id for ALLE hold (også AI/bank) før delete", async () => {
   // Regression: FK finance_transactions.season_id -> seasons har ON DELETE NO ACTION,
   // så AI/bank-rows blokerede DELETE FROM seasons indtil 2026-05-05-fix.
@@ -259,6 +305,9 @@ test("runFullBetaReset completes the full test reset suite without touching AI o
   assert.equal(result.seasons.seasons, 1);
   assert.equal(result.manager_progress.users, 1);
   assert.equal(result.achievements.manager_achievements, 1);
+  assert.ok(result.rider_history, "rider_history skal være med i full-reset");
+  assert.deepEqual(supabase.state.auctions, []);
+  assert.deepEqual(supabase.state.loan_agreements, []);
   assert.equal(supabase.state.teams.find((team) => team.id === "team-1").division, 3);
   assert.equal(supabase.state.teams.find((team) => team.id === "team-frozen").division, 1);
   assert.equal(supabase.state.users.find((user) => user.id === "user-1").level, 1);

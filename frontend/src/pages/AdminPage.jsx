@@ -1802,6 +1802,12 @@ export default function AdminPage() {
             {loading["beta_reset-transfer-archive"] ? "..." : "Nulstil transferarkiv"}
           </button>
           <button
+            onClick={() => handleBeta("reset-rider-history", "Slet ALL rytter-handelshistorik (auktioner, transfers, swaps, leje-aftaler) på ALLE ryttere?\n\n• Alle ryttersider får ren tavle uden alpha-historik\n• Ønskelister bevares\n• Rytter-roster, balancer og sæsoner påvirkes IKKE\n\nHandlingen kan ikke fortrydes.")}
+            disabled={loading["beta_reset-rider-history"]}
+            className="w-full lg:w-auto px-3 py-2 text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 rounded-lg hover:bg-cz-accent/20 disabled:opacity-50 transition-all">
+            {loading["beta_reset-rider-history"] ? "..." : "Nulstil rytter-historik"}
+          </button>
+          <button
             onClick={() => handleBeta("reset-loans", "Slet alle aktive finanslån (inkl. renter) for manager-hold?\n\nHandlingen kan ikke fortrydes.")}
             disabled={loading["beta_reset-loans"]}
             className="w-full lg:w-auto px-3 py-2 text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 rounded-lg hover:bg-cz-accent/20 disabled:opacity-50 transition-all">
@@ -1838,7 +1844,7 @@ export default function AdminPage() {
             {loading["beta_reset-achievements"] ? "..." : "Nulstil achievements"}
           </button>
           <button
-            onClick={() => handleBeta("full-reset", `FULD TEST-NULSTILLING:\n• Alle åbne markedsaktiviteter annulleres\n• Hele transferarkivet slettes (listings, tilbud, swaps)\n• Alle finanslån og renter slettes\n• Indbakke ryddes for alle managers\n• Alle manager-ryttere returneres til AI-hold\n• Alle balancer sættes til 800.000 CZ$\n• Managerhold sættes i 3. division\n• Løbskalender, resultater, standings og præmiepenge-bonus ryddes\n• Sæsoner slettes\n• Board-profiler resettes til baseline\n• XP/level og achievement unlocks nulstilles${betaClearTransactions ? "\n• Finance-transaktioner for manager-hold ryddes" : ""}\n\nDette er en test-reset, ikke et live-reset. Handlingen kan ikke fortrydes. Fortsæt?`, { clear_transactions: betaClearTransactions, reset_mode: "test" })}
+            onClick={() => handleBeta("full-reset", `FULD TEST-NULSTILLING:\n• Alle åbne markedsaktiviteter annulleres\n• Al rytter-handelshistorik slettes (auktioner, transfers, swaps, leje-aftaler)\n• Hele transferarkivet slettes (listings, tilbud, swaps)\n• Alle finanslån og renter slettes\n• Indbakke ryddes for alle managers\n• Alle manager-ryttere returneres til AI-hold\n• Alle balancer sættes til 800.000 CZ$\n• Managerhold sættes i 3. division\n• Løbskalender, resultater, standings og præmiepenge-bonus ryddes\n• Sæsoner slettes\n• Board-profiler resettes til baseline\n• XP/level og achievement unlocks nulstilles${betaClearTransactions ? "\n• Finance-transaktioner for manager-hold ryddes" : ""}\n\nØnskelister bevares. Dette er en test-reset, ikke et live-reset. Handlingen kan ikke fortrydes. Fortsæt?`, { clear_transactions: betaClearTransactions, reset_mode: "test" })}
             disabled={loading["beta_full-reset"]}
             className="w-full lg:w-auto px-3 py-2 text-xs bg-cz-danger-bg text-cz-danger border border-red-300 rounded-lg hover:bg-cz-danger-bg disabled:opacity-50 transition-all font-semibold">
             {loading["beta_full-reset"] ? "..." : "Fuld nulstilling"}
@@ -1856,6 +1862,9 @@ export default function AdminPage() {
                 <p>Swap-tilbud afvist: {betaResult.cancelled.swap_offers}</p>
                 <p>Låneaftaler annulleret: {betaResult.cancelled.loan_agreements}</p>
               </div>
+            )}
+            {betaResult.rider_history && (
+              <p className="mb-1">Rytter-historik slettet: {betaResult.rider_history.auctions} auktioner ({betaResult.rider_history.auction_bids} bud) · {betaResult.rider_history.transfer_listings} listings · {betaResult.rider_history.transfer_offers} tilbud · {betaResult.rider_history.swap_offers} swaps · {betaResult.rider_history.loan_agreements} leje-aftaler</p>
             )}
             {betaResult.transfer_archive && (
               <p className="mb-1">Transferarkiv slettet: {betaResult.transfer_archive.transfer_listings} listings · {betaResult.transfer_archive.transfer_offers} tilbud · {betaResult.transfer_archive.swap_offers} swaps</p>

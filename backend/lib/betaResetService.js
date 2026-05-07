@@ -301,6 +301,31 @@ export async function resetBetaTransferArchive(supabase) {
   };
 }
 
+// #104 · Sletter ALL public-facing rytter-historik (auctions, transfers, swaps, leje-aftaler)
+// så spillet kan starte fra ren tavle uden alpha-støj på rytter-profiler.
+// Bevarer rider_watchlist, riders, teams, balancer, sæsoner, race-resultater m.m.
+// Sletter child-tabeller før parent-tabeller for at få korrekte counts (i stedet for
+// at lade ON DELETE CASCADE wipe dem stille).
+export async function resetBetaRiderHistory(supabase) {
+  assertSupabase(supabase);
+
+  const auctionBids = ensureOk(await supabase.from("auction_bids").delete().not("id", "is", null).select("id"));
+  const auctions = ensureOk(await supabase.from("auctions").delete().not("id", "is", null).select("id"));
+  const transferOffers = ensureOk(await supabase.from("transfer_offers").delete().not("id", "is", null).select("id"));
+  const transferListings = ensureOk(await supabase.from("transfer_listings").delete().not("id", "is", null).select("id"));
+  const swapOffers = ensureOk(await supabase.from("swap_offers").delete().not("id", "is", null).select("id"));
+  const loanAgreements = ensureOk(await supabase.from("loan_agreements").delete().not("id", "is", null).select("id"));
+
+  return {
+    auction_bids: countRows(auctionBids),
+    auctions: countRows(auctions),
+    transfer_offers: countRows(transferOffers),
+    transfer_listings: countRows(transferListings),
+    swap_offers: countRows(swapOffers),
+    loan_agreements: countRows(loanAgreements),
+  };
+}
+
 export async function resetBetaLoans(supabase) {
   assertSupabase(supabase);
   const managerTeams = await getBetaManagerTeams(supabase);
@@ -380,6 +405,7 @@ export async function runFullBetaReset(supabase, options = {}) {
   const resetMode = options.resetMode || "test";
 
   const cancelled = await cancelBetaMarket(supabase);
+  const rider_history = await resetBetaRiderHistory(supabase);
   const transfer_archive = await resetBetaTransferArchive(supabase);
   const loans = await resetBetaLoans(supabase);
   const notifications = await resetBetaNotifications(supabase);
@@ -397,6 +423,7 @@ export async function runFullBetaReset(supabase, options = {}) {
   return {
     reset_mode: resetMode,
     cancelled,
+    rider_history,
     transfer_archive,
     loans,
     notifications,

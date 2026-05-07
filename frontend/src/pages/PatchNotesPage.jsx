@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.54",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Ny knap: Nulstil rytter-historik (#104)",
+        items: [
+          "Bugfix: Tidligere reset-flow rensede ikke completed auktioner og completed/buyout leje-aftaler — så alpha-historik forblev synlig på rytter-profiler. Ny knap 'Nulstil rytter-historik' under Admin → Beta-testværktøjer wiper ALL handelshistorik (auktioner inkl. bud, transfers, swaps, leje-aftaler) på ALLE ryttere så spillet kan starte uden alpha-støj.",
+          "Bevarer ønskelister, ryttere, hold, balancer, finance-historik, sæsoner, race-resultater og manager-progress — kun event-historikken på rytter-siden ryddes.",
+          "Tilføjet til 'Fuld nulstilling' så fremtidige reset altid rydder rytter-historik som en del af suiten.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.53",
     date: "2026-05-07",
     label: "Beta",

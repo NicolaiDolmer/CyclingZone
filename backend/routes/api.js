@@ -125,6 +125,7 @@ import {
   resetBetaManagerProgress,
   resetBetaNotifications,
   resetBetaRaceCalendar,
+  resetBetaRiderHistory,
   resetBetaRosters,
   resetBetaSeasons,
   resetBetaTransferArchive,
@@ -3898,6 +3899,17 @@ router.post("/admin/beta/reset-board", requireAdmin, async (req, res) => {
 router.post("/admin/beta/reset-calendar", requireAdmin, async (req, res) => {
   try {
     res.json({ ok: true, race_calendar: await resetBetaRaceCalendar(supabase) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/beta/reset-rider-history — slet rytter-handelshistorik (#104)
+// Wipe'er auctions/transfers/swaps/leje-aftaler så ryttere starter fra ren tavle.
+// Bevarer rider_watchlist, riders, teams, balancer m.m.
+router.post("/admin/beta/reset-rider-history", requireAdmin, async (req, res) => {
+  try {
+    res.json({ ok: true, rider_history: await resetBetaRiderHistory(supabase) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
