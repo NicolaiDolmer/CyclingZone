@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "2.52",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Intern infrastruktur · Dependabot + CodeQL (DX Lag 7)",
+        items: [
+          "Ingen brugerrettet ændring. Dependabot konfigureret til automatiske dependency-PRs (npm + github-actions, ugentligt). CodeQL-workflow tilføjet til automatisk sikkerhedsscanning på hvert push til main + ugentlig schedule. Manuel aktivering i GitHub Settings → Code security and analysis udestår.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.51",
     date: "2026-05-07",
     label: "Beta",

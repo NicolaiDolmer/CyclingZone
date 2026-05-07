@@ -34,7 +34,7 @@ Mål: Nicolai rører tastatur 2 gange (åbn issue, skriv `@claude`). Resten kør
 | 4 | **GitHub Projects v2 board** | Nicolai (UI) | 🔜 Senere | Visuelt kanban-overblik |
 | 5 | **Branch protection + auto-merge** | Claude (gh API) | 🔜 Senere | Main beskyttet, Claude-PRs merger sig selv ved grøn CI |
 | 6 | **Pre-commit hooks lokalt** (husky + lint-staged) | Claude | 🔜 Senere | Ingen broken code pushes |
-| 7 | **Dependabot + CodeQL** | Claude | 🔜 Senere | Auto-PRs for deps + sikkerhed |
+| 7 | **Dependabot + CodeQL** | Claude | ✅ Config committet — afventer manuel UI-aktivering | Auto-PRs for deps + sikkerhed |
 | 8 | **MCP write-fix** (claude.ai GitHub-connector) | Nicolai (disconnect/reconnect) | 🔜 Pending | Min terminal-session skriver MCP direkte i stedet for `gh` CLI fallback |
 
 **Foundation (Lag 0) ✅ done** (commit `f26f2e5`):
@@ -145,3 +145,43 @@ gh issue close 42 --reason completed
 - `.claude/settings.json` er committed — MCP perms følger med automatisk
 - På anden PC ved session-start: `git fetch --prune` for at rydde døde branches og se nye
 - gh CLI auth er per-PC — kør `gh auth login` første gang
+
+## Lag 7 — Dependabot + CodeQL
+
+### Hvad kører og hvornår
+
+**Dependabot** (`.github/dependabot.yml`) — opretter automatisk PRs for forældede afhængigheder:
+- `npm` i `/` (rod), `/backend` og `/frontend` — ugentligt
+- `github-actions` i `/` — ugentligt (holder workflow-actions som `actions/checkout` opdaterede)
+
+**CodeQL** (`.github/workflows/codeql.yml`) — statisk sikkerhedsanalyse:
+- Kører på hvert push til `main`
+- Kører desuden ugentligt (mandag 04:00 UTC) uanset commits
+- Sprog: `javascript-typescript` (dækker både backend og frontend)
+
+### Manuel UI-aktivering (skal gøres én gang)
+
+Gå til https://github.com/NicolaiDolmer/CyclingZone/settings/security_analysis og aktivér:
+1. **Dependabot alerts** — notifikationer ved kendte sårbarheder
+2. **Dependabot security updates** — automatiske sikkerhedsfix-PRs
+3. **Code scanning** → **Set up** → vælg "Default" (CodeQL workflow er allerede committet)
+
+### Når Dependabot åbner en PR
+
+1. Tjek at CI (lint + build + tests) er grøn på PR'en
+2. Review ændringslog for den pågældende pakke for breaking changes
+3. Merge direkte hvis minor/patch og CI er grøn
+4. Koordinér med Claude ved major version bumps der kræver kodeændringer
+
+### Når CodeQL finder et alert
+
+1. Gå til **Security → Code scanning alerts** på GitHub
+2. Vurdér severity (Critical/High skal fixes hurtigt; Medium/Low kan issues-tracktes)
+3. Opret et issue med `type:bug` + `priority:high` label og vedhæft CodeQL-alert-linket
+4. Claude tager issuet op i næste session
+
+### Sådan deaktiveres midlertidigt
+
+- **Dependabot:** kommenter den relevante sektion i `.github/dependabot.yml` ud
+- **CodeQL schedule:** fjern `schedule:`-blokken i `.github/workflows/codeql.yml` (behold `push:`-triggeren)
+- **CodeQL helt:** slet `.github/workflows/codeql.yml` (nemt at gendanne via git)
