@@ -142,6 +142,8 @@ gh issue close 42 --reason completed
 
 ## Mobile-first ship-loop (Lag 5 — LIVE 2026-05-08)
 
+> **Status:** Verificeret end-to-end via demo-PR 2026-05-08. `deploy-verify` workflow kørte med `success` på første push — Vercel + Railway + smoke-test alle grønne.
+
 **Mål:** Trigge en ændring fra mobilen og få den LIVE uden at åbne PC'en — uden manuel merge-klik.
 
 ### Sådan virker det
