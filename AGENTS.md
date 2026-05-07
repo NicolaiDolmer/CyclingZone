@@ -23,16 +23,20 @@ _Koordinerings-fil for AI-assistenter der arbejder i cycling-manager-repo'et. Si
 
 6. **Auto-push efter commit:** Push til GitHub automatisk efter hvert commit (Vercel deployer kun ved push).
 
+7. **OneDrive-context hardlinks (siden 2026-05-07):** Memory, secrets (`*.env`, `.mcp.json`), og `.codex.local/SUPABASE_CONTEXT.md` + `supabase-readonly.env` er HARDLINKEDE til `~/OneDrive/CyclingZone-context/`, ikke kopier. Edit-tool BRYDER hardlinket → drift på næste PC. Efter manuel edit af disse filer: kør `pwsh -File scripts/link-onedrive-context.ps1` for at re-etablere. Ved drift-konflikt: læs INDHOLDET af begge versioner — antag ikke "nyeste timestamp vinder". Pure additive → tag den længere; sletning → STOP og spørg bruger. Default: OneDrive vinder. Detaljer: `docs/CROSS_PC_SETUP.md` + `docs/HOOKS.md`.
+
 ---
 
 ## Start-sekvens (hver session)
 
 1. Kør `git rev-parse --show-toplevel` — bekræft repo-root
-2. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes (Codex-primer fra forrige session)
-3. Læs `docs/GUARDRAILS_CORE.md`
-4. Læs `docs/NOW.md`
-5. Hvis arbejde matcher en slice i `docs/slices/<slug>.md` → læs den slice-brief (komplet kontrakt på 30-50 linjer)
-6. Hvis nye loop-implementeringer → læs `docs/AI_LOOPS.md` afsnittet for den specifikke loop
+2. Kør `git fetch --prune origin && git status -sb` — hvis `[behind N]`, kør `git pull --ff-only` før edit (user-level SessionStart-hook gør dette automatisk hvis installeret)
+3. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes (auto-genereret pre-fetched issue-kontekst — produceres af project-hook `scripts/session-prefetch-issue.sh` for Claude, og opdateres af Codex ved session-end)
+4. Læs `docs/GUARDRAILS_CORE.md`
+5. Læs `docs/NOW.md`
+6. Aktivt issue: `gh issue list --label "claude:todo" --state open --limit 10` — første `#N` i NOW.md er typisk det aktive
+7. Hvis arbejde matcher en slice i `docs/slices/<slug>.md` → læs den slice-brief (komplet kontrakt på 30-50 linjer)
+8. Hvis nye loop-implementeringer → læs `docs/AI_LOOPS.md` afsnittet for den specifikke loop
 
 ---
 
@@ -50,6 +54,9 @@ _Koordinerings-fil for AI-assistenter der arbejder i cycling-manager-repo'et. Si
 | `docs/DEPLOYMENT.md` | Deploy-relateret arbejde |
 | `docs/LAUNCH_ROADMAP.md` | Pre-launch session — viser P0/P1/P2-prioritering |
 | `docs/AI_LOOPS.md` | Implementerer en loop-slice |
+| `docs/CROSS_PC_SETUP.md` | Cross-PC migration, OneDrive-context, drift-håndtering |
+| `docs/HOOKS.md` | Project-level + user-level hooks (SessionStart/Stop/PreToolUse) |
+| `docs/GITHUB_WORKFLOW.md` | Issue-state-maskine, `claude:todo`/`claude:done`-labels, Refs vs Closes |
 
 Supabase-inspektion: start med målrettede `npm run db:ai:*` frem for brede dumps.
 
@@ -78,7 +85,7 @@ Supabase-inspektion: start med målrettede `npm run db:ai:*` frem for brede dump
 
 **Output:** Commit-baserede rettelser; opdaterer `.codex.local/SESSION_CONTEXT.md` ved session-end.
 
-**Kontekst-fil:** `.codex.local/` (gitignored, lokalt per PC).
+**Kontekst-fil:** `.codex.local/` (gitignored). `SUPABASE_CONTEXT.md` + `supabase-readonly.env` er hardlinkede via OneDrive-context (sync mellem PC'er); `SESSION_CONTEXT.md` er per-PC og auto-genereres af project-hook ved Claude-sessions, eller skrives manuelt af Codex ved session-end.
 
 ### Microsoft Clarity (UX analytics, IKKE en AI)
 **Primær brug:** Runtime user-behavior data → input til Claude/Codex via loop I i AI_LOOPS.md.
@@ -129,12 +136,27 @@ Kritiske facts:
 
 ## Cross-PC setup
 
-Ved ny PC:
-```bash
-cp -r .codex.local.template/ .codex.local/
-# Tilpas .codex.local/supabase-readonly.env med lokale credentials
-bash scripts/install-hooks.sh  # Når loop B implementeres
-```
+**Kanonisk repo-placering:** `C:\dev\CyclingZone` på alle PC'er. Aldrig under `OneDrive/` eller anden filsync (filsync må ikke røre `.git/`).
+
+**Synk-arkitektur (siden 2026-05-07):**
+- Kode + repo-docs sync'er via Git (`git push` / `git pull`)
+- Memory, secrets, og `.codex.local/SUPABASE_CONTEXT.md` + `supabase-readonly.env` sync'er via **OneDrive-context hardlinks** mod `~/OneDrive/CyclingZone-context/`
+- `.codex.local/SESSION_CONTEXT.md` er per-PC (auto-genereres af session-prefetch-hook eller skrives af Codex)
+
+**Daglig flow:**
+- Session-start: `git fetch --prune origin && git status -sb` (user-hook gør det automatisk). Hvis `[behind N]` → `git pull --ff-only`
+- Session-end: user-hook `cross-pc-stop-check.sh` advarer ved uncommitted/unpushed work
+- Efter manuel edit af hardlinkede filer: `pwsh -File scripts/link-onedrive-context.ps1` for at re-etablere link
+
+**Drift-protokol** ved konflikt mellem lokal og OneDrive-version:
+1. Læs INDHOLDET af begge — antag ikke "nyeste timestamp vinder"
+2. Pure additive (én side er strict superset) → tag den længere
+3. Sletning af noget meningsfuldt → STOP, fortæl bruger HVAD der forsvinder, lad bruger beslutte
+4. Default ved tvivl: OneDrive vinder (den anden PC's seneste arbejde)
+
+**Ny PC (engangs-setup):** følg `docs/CROSS_PC_SETUP.md` — preflight + migrate-script + `install-user-hooks.ps1` + `link-onedrive-context.ps1`.
+
+**Ikke-rør for Codex:** `~/.claude/settings.json` (Claude's user-hooks), `.claude/settings.json` (project-hooks ændres kun via PR), Claude's auto-memory (`~/.claude/projects/<encoded>/memory/`).
 
 ---
 
@@ -241,4 +263,4 @@ Quick reference:
 
 ---
 
-_Sidst opdateret: 2026-05-04 — efter scope-audit og verify-first-disciplinen blev cementeret._
+_Sidst opdateret: 2026-05-07 — cross-PC OneDrive-context + drift-protokol + GitHub-issue task-lag indarbejdet._
