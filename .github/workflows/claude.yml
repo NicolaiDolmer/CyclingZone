@@ -66,11 +66,12 @@ jobs:
               - `## Close-out`: bullet-liste over hvilke close-out-filer du opdaterede (NOW.md, FEATURE_STATUS.md, learnings). Hvis du sprang noget over: sig hvorfor.
               - `## Verifikation` med konkret test-procedure
 
-            **AUTO-MERGE (ship-signal):** Efter `gh pr create` afsluttes med succes, parse trigger-eventet (issue/comment-body) for ship-keyword. Hvis brugeren skrev nogen af følgende — ` ship`, `--ship`, `send live`, `auto-merge`, `merge når grøn`, eller `merge naar groen` (case-insensitive, ord-grænser) — tilføj `auto-merge` label til PR'en med:
+            **AUTO-MERGE (ship-signal):** Efter `gh pr create` afsluttes med succes, parse trigger-eventet (issue/comment-body) for ship-keyword. Hvis brugeren skrev nogen af følgende — ` ship`, `--ship`, `send live`, `auto-merge`, `merge når grøn`, eller `merge naar groen` (case-insensitive, ord-grænser) — kør disse to kommandoer i rækkefølge på den nyoprettede PR:
             ```
-            gh pr edit <PR-URL> --add-label "auto-merge"
+            gh pr edit <PR-NUMBER> --repo NicolaiDolmer/CyclingZone --add-label "auto-merge"
+            gh pr merge <PR-NUMBER> --repo NicolaiDolmer/CyclingZone --auto --squash --delete-branch
             ```
-            Dette aktiverer `.github/workflows/auto-merge.yml` som sætter PR i auto-merge-kø. PR'en merger automatisk når `backend-tests` + `frontend-build` er grønne. Brugeren behøver IKKE klikke merge fra mobilen.
+            Det første tilføjer en synlig label-marker. Det andet sætter PR i auto-merge-kø direkte (siden GITHUB_TOKEN-aktivitet i workflows ikke trigger andre workflows er det nødvendigt at kalde merge eksplicit). PR'en merger automatisk når `backend-tests` + `frontend-build` er grønne. Brugeren behøver IKKE klikke merge fra mobilen.
 
             Hvis ingen ship-keyword: gør INGENTING ekstra (default = manuel merge, det eksisterende safety-net for natlige autonome runs).
 

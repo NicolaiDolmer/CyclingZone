@@ -1,11 +1,16 @@
 name: Deploy verify
 
-# Trigger: Push til main (typisk efter merge af PR).
+# Trigger: Direkte push til main ELLER PR squash-merged til main.
+# `pull_request: closed` fanger auto-merged PRs (hvor push-event ikke trigger
+# downstream workflows pga GitHub Actions infinite-loop-protection).
 # Effekt: Venter på Vercel + Railway deploy, smoke-tester prod, kommenterer ✅/❌
 # på den merged PR. Brugeren kan trygt være offline efter mobile-merge.
 
 on:
   push:
+    branches: [main]
+  pull_request:
+    types: [closed]
     branches: [main]
 
 permissions:
@@ -16,23 +21,35 @@ permissions:
 
 jobs:
   verify:
+    # Skip lukkede PRs der ikke er merged (close uden merge → ingen deploy at verify)
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
-      - name: Find merged PR for this commit
+      - name: Resolve target sha and PR number
         id: pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_SHA: ${{ github.sha }}
+          PR_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          PR_NUMBER=$(gh api "repos/${{ github.repository }}/commits/$SHA/pulls" --jq '.[0].number // empty')
-          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "Merged PR: #$PR_NUMBER"
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            SHA="$PR_MERGE_SHA"
+            NUMBER="$PR_NUMBER"
+          else
+            SHA="$PUSH_SHA"
+            NUMBER=$(gh api "repos/${{ github.repository }}/commits/$SHA/pulls" --jq '.[0].number // empty')
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Verifying sha=$SHA, PR=#${NUMBER:-(direct push)}"
 
       - name: Wait for Vercel + Railway deployments
         id: deployments
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SHA: ${{ github.sha }}
+          SHA: ${{ steps.pr.outputs.sha }}
         run: |
           DEADLINE=$(($(date +%s) + 600))  # 10 min timeout
           while [ $(date +%s) -lt $DEADLINE ]; do
@@ -94,7 +111,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ steps.pr.outputs.number }}
-          SHA: ${{ github.sha }}
+          SHA: ${{ steps.pr.outputs.sha }}
         run: |
           gh pr comment "$PR" --repo "${{ github.repository }}" --body "✅ **Deploy verificeret LIVE** — \`${SHA:0:7}\`
           - Vercel deploy: success
@@ -110,7 +127,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ steps.pr.outputs.number }}
-          SHA: ${{ github.sha }}
+          SHA: ${{ steps.pr.outputs.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           BACKEND_HEALTH: ${{ steps.smoke.outputs.backend_health }}
           BACKEND_AUTH: ${{ steps.smoke.outputs.backend_auth }}

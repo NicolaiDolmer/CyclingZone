@@ -23,7 +23,10 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Label safe updates as auto-merge
+      # Vigtigt: GITHUB_TOKEN-aktivitet trigger ikke andre workflows (anti-loop-safeguard).
+      # Derfor kalder vi BÅDE `gh pr edit --add-label` (UI-marker) OG `gh pr merge --auto`
+      # direkte her, i stedet for at lade auto-merge.yml håndtere det via label-event.
+      - name: Auto-label + queue auto-merge for safe updates
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -32,7 +35,8 @@ jobs:
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
         run: |
           gh pr edit "$PR_URL" --add-label "auto-merge"
-          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "🤖 **Dependabot $UPDATE_TYPE** klassificeret som lav-risiko → auto-merge label tilføjet. Merger automatisk når CI grøn."
+          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" --auto --squash --delete-branch
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "🤖 **Dependabot $UPDATE_TYPE** klassificeret som lav-risiko → auto-merge i kø. Merger automatisk når CI grøn."
 
       - name: Note major bumps for manual review
         if: steps.metadata.outputs.update-type == 'version-update:semver-major'
