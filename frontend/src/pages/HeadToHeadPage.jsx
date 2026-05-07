@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 
 function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
@@ -262,10 +263,10 @@ export default function HeadToHeadPage() {
                 ) : (
                   riders.map((r, i) => (
                     <div key={r.id} className="flex justify-between py-1.5 border-b border-cz-border last:border-0">
-                      <Link to={`/riders/${r.id}`}
+                      <RiderLink id={r.id}
                         className="text-cz-2 text-xs cursor-pointer hover:text-cz-1 flex items-center gap-1">
                         {i + 1}. {r.nationality_code && <Flag code={r.nationality_code} />} {r.firstname} {r.lastname}
-                      </Link>
+                      </RiderLink>
                       <span className="font-mono text-xs" style={{ color }}>
                         {r.uci_points?.toLocaleString("da-DK")}
                       </span>

@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useMemo } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
+import RiderLink from "../components/RiderLink";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { statBg } from "../lib/statBg";
@@ -123,7 +124,7 @@ function Countdown({ end, status }) {
 }
 
 // ── Auction table row ─────────────────────────────────────────────────────────
-function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveProxy, onNavigate, isFirst }) {
+function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveProxy, isFirst }) {
   const minBid = getMinimumAuctionBid(auction.current_price || 0);
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
@@ -195,10 +196,10 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveP
       <td className="px-3 py-1.5 min-w-[140px]">
         <div className="flex flex-col gap-0.5">
           {r?.nationality_code && <Flag code={r.nationality_code} className="text-xs flex-shrink-0" />}
-          <Link to={`/riders/${r?.id}`}
+          <RiderLink id={r?.id}
             className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left truncate max-w-[160px]">
             {r?.firstname} {r?.lastname}
-          </Link>
+          </RiderLink>
           <div className="flex items-center gap-1 flex-wrap">
             {imWinning && (
               <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t px-1.5 py-0.5 rounded">
@@ -363,7 +364,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveP
   );
 }
 
-function AuctionCard({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveProxy, onNavigate, isFirst }) {
+function AuctionCard({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveProxy, isFirst }) {
   const minBid = getMinimumAuctionBid(auction.current_price || 0);
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
@@ -426,11 +427,11 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemove
     <div className={`bg-cz-card border rounded-xl p-4 transition-all ${imWinning ? "border-cz-accent/40 bg-cz-accent/10/40" : "border-cz-border"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Link to={`/riders/${r?.id}`}
+          <RiderLink id={r?.id}
             className="text-left text-cz-1 font-semibold text-sm hover:text-cz-accent-t transition-colors">
             {r?.nationality_code && <Flag code={r.nationality_code} className="mr-1" />}
             {r?.firstname} {r?.lastname}
-          </Link>
+          </RiderLink>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             {imWinning && <span className="text-[9px] uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded">Vinder</span>}
             {isSeller && <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">Sælger</span>}
@@ -560,7 +561,6 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemove
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AuctionsPage() {
-  const navigate = useNavigate();
   const [auctions, setAuctions] = useState([]);
   const [myTeamId, setMyTeamId] = useState(null);
   const [myBalance, setMyBalance] = useState(0);
@@ -910,7 +910,6 @@ export default function AuctionsPage() {
               onBid={handleBid}
               onSetProxy={handleSetProxy}
               onRemoveProxy={handleRemoveProxy}
-              onNavigate={riderId => navigate(`/riders/${riderId}`)}
               isFirst={i === 0}
             />
           ))}
@@ -970,7 +969,6 @@ export default function AuctionsPage() {
                     onBid={handleBid}
                     onSetProxy={handleSetProxy}
                     onRemoveProxy={handleRemoveProxy}
-                    onNavigate={riderId => navigate(`/riders/${riderId}`)}
                     isFirst={i === 0}
                   />
                 ))}
