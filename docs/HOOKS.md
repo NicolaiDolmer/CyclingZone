@@ -54,6 +54,30 @@ Installeret via `pwsh -File scripts/install-user-hooks.ps1`. Idempotent — beva
 
 **Hvad:** Henter remote-state ved session-start så cross-PC-arbejde er synligt.
 
+### `SessionStart` → `pwsh -File scripts/link-onedrive-context.ps1 ... | Where-Object { ... }`
+
+**Hvad:** Genskaber memory-junction + secret-hardlinks fra OneDrive-context hvis de mangler eller peger forkert. Idempotent — første hardlink-tjek afslutter med [skip] når alt er på plads.
+
+**Output-filtrering:** Pipen `| Where-Object { $_ -match 'STOP|err|Exception' }` undertrykker [ok]/[skip]-spam og lader kun konflikter + exceptions slippe igennem til hook-output.
+
+**Edge cases:**
+- `env:OneDrive` ikke sat → exit 0 stille (ny PC uden OneDrive blokerer ikke session-start)
+- `OneDrive\CyclingZone-context` ikke synket endnu → exit 0 stille
+- `memory/` eller `secrets/` mappe mangler → exit 0 stille
+- Lokal fil afviger fra OneDrive (hash mismatch) → throw STOP — Where-Object slipper det igennem som synlig advarsel
+- Fil endnu placeholder (cloud-only) → [skip] (ikke fanget af filteret)
+
+**Manuel debug:** `pwsh -File scripts/link-onedrive-context.ps1 -DryRun` rapporterer hvad scriptet ville gøre uden at mutere noget; samler alle konflikter i en samlet rapport ved bunden og exit'er 1 hvis nogen.
+
+### `SessionStart` → `bash scripts/check-stale-branches.sh`
+
+**Hvad:** Lister lokale branches der har "gone" upstream (origin-branchen er slettet, fx efter PR-merge). Output én linje per stale branch med foreslået `git branch -D <name>` cleanup-kommando. **Sletter aldrig automatisk** — kun rapport.
+
+**Edge cases:**
+- Ikke et git-repo (cwd udenfor worktree) → exit 0 tomt
+- Ingen stale branches → exit 0 tomt (ingen output)
+- Branch checked out i anden worktree (`+` prefix i `git branch -vv`) → strippes via sed; vises som almindelig stale branch
+
 ### `Stop` → `bash scripts/cross-pc-stop-check.sh`
 
 **Hvad:** Advarer (ikke-blokerende) hvis der er uncommitted/unpushed work eller stash-entries ved session-end.

@@ -11,14 +11,22 @@
 #
 # Brug:
 #   pwsh -File scripts/link-onedrive-context.ps1
+#   pwsh -File scripts/link-onedrive-context.ps1 -DryRun     # rapporter uden at skrive
 #   pwsh -File scripts/link-onedrive-context.ps1 -RepoRoot "D:\code\CZ"
 
 param(
-  [string]$RepoRoot = "C:\dev\CyclingZone"
+  [string]$RepoRoot = "C:\dev\CyclingZone",
+  [switch]$DryRun
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+$Script:Conflicts = @()
+
+function Add-Conflict([string]$category, [string]$details) {
+  $Script:Conflicts += [PSCustomObject]@{ Category = $category; Details = $details }
+}
 
 function Write-Section($title) {
   Write-Host ""
@@ -49,7 +57,8 @@ function Test-IsHardlinkOf($linkPath, $expectedTarget) {
 }
 
 # Idempotent hardlink-establishment for en enkelt fil.
-# Returnerer 'skip', 'linked', 'sourceMissing', eller throw'er ved konflikt.
+# Returnerer 'skip', 'linked', 'sourceMissing'.
+# I DryRun-mode skriver vi rapport uden at mutere filsystemet og uden at throw'e.
 function Sync-HardLink {
   param(
     [Parameter(Mandatory)] [string] $Original,
@@ -79,21 +88,38 @@ function Sync-HardLink {
     } catch {
       Write-Host ("  [warn] Kunne ikke hash {0}: {1}" -f $DisplayName, $_.Exception.Message)
     }
-    if ($hashMatches) {
-      Remove-Item $Original -Force
-    } else {
+    if (-not $hashMatches) {
+      $details = "{0}: lokal afviger fra OneDrive (lokal: {1}; OneDrive: {2})" -f $DisplayName, $Original, $SourceFile
+      if ($DryRun) {
+        Write-Host ("  [STOP-conflict] {0}" -f $details) -ForegroundColor Red
+        Add-Conflict "hardlink" $details
+        return
+      }
       Write-Host ("  [STOP] Lokal {0} adskiller sig fra OneDrive - manuel kontrol kraevet" -f $DisplayName) -ForegroundColor Red
       Write-Host ("    lokal:    {0}" -f $Original)
       Write-Host ("    OneDrive: {0}" -f $SourceFile)
       throw "Manuel kontrol kraevet for at undgaa data-tab"
     }
+    if ($DryRun) {
+      Write-Host ("  [would-link] {0} (lokal hash matcher OneDrive; ville erstatte med hardlink)" -f $DisplayName) -ForegroundColor Cyan
+      return
+    }
+    Remove-Item $Original -Force
   } else {
     $parent = Split-Path $Original -Parent
     if ($parent -and -not (Test-Path $parent)) {
-      New-Item -ItemType Directory -Path $parent -Force | Out-Null
+      if ($DryRun) {
+        Write-Host ("  [would-mkdir] {0}" -f $parent) -ForegroundColor Cyan
+      } else {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+      }
     }
   }
 
+  if ($DryRun) {
+    Write-Host ("  [would-link] {0} -> {1}" -f $Original, $SourceFile) -ForegroundColor Cyan
+    return
+  }
   New-Item -ItemType HardLink -Path $Original -Target $SourceFile | Out-Null
   Write-Host ("  [ok] {0}" -f $DisplayName)
 }
@@ -110,7 +136,8 @@ function Remove-Junction($path) {
 Write-Section "Verificer OneDrive-context"
 
 if (-not $env:OneDrive) {
-  throw "OneDrive ikke konfigureret (env:OneDrive er tom). Installer/log ind paa OneDrive og prov igen."
+  Write-Host "  [info] OneDrive ikke konfigureret (env:OneDrive er tom). Skipper." -ForegroundColor Yellow
+  exit 0
 }
 $contextRoot = Join-Path $env:OneDrive "CyclingZone-context"
 $memSource = Join-Path $contextRoot "memory"
@@ -118,15 +145,23 @@ $secSource = Join-Path $contextRoot "secrets"
 $clSource = Join-Path $contextRoot "codex-local"
 
 if (-not (Test-Path $contextRoot)) {
-  throw "Mangler: $contextRoot. Vent paa at OneDrive synkroniserer (kan tage minutter), og koer scriptet igen."
+  Write-Host "  [info] OneDrive-context ikke synket endnu: $contextRoot. Skipper." -ForegroundColor Yellow
+  exit 0
 }
-if (-not (Test-Path $memSource)) { throw "Mangler memory: $memSource" }
-if (-not (Test-Path $secSource)) { throw "Mangler secrets: $secSource" }
+if (-not (Test-Path $memSource)) {
+  Write-Host "  [info] Mangler memory-mappe i OneDrive: $memSource. Skipper." -ForegroundColor Yellow
+  exit 0
+}
+if (-not (Test-Path $secSource)) {
+  Write-Host "  [info] Mangler secrets-mappe i OneDrive: $secSource. Skipper." -ForegroundColor Yellow
+  exit 0
+}
 
 $memCount = (Get-ChildItem $memSource -File -ErrorAction SilentlyContinue).Count
 $secCount = (Get-ChildItem $secSource -File -ErrorAction SilentlyContinue).Count
 $clCount = if (Test-Path $clSource) { (Get-ChildItem $clSource -File -ErrorAction SilentlyContinue).Count } else { 0 }
-Write-Host "  [ok] $contextRoot ($memCount memory-filer, $secCount secret-filer, $clCount codex-local-filer)"
+$mode = if ($DryRun) { " [DRY-RUN]" } else { "" }
+Write-Host "  [ok]$mode $contextRoot ($memCount memory-filer, $secCount secret-filer, $clCount codex-local-filer)"
 
 # --- 2. Memory-junction ---
 Write-Section "Memory junction"
@@ -139,8 +174,12 @@ $projectDir = Join-Path $claudeProjects $encoded
 $memTarget = Join-Path $projectDir "memory"
 
 if (-not (Test-Path $projectDir)) {
-  New-Item -ItemType Directory -Path $projectDir -Force | Out-Null
-  Write-Host "  Oprettet project-mappe: $projectDir"
+  if ($DryRun) {
+    Write-Host "  [would-mkdir] $projectDir" -ForegroundColor Cyan
+  } else {
+    New-Item -ItemType Directory -Path $projectDir -Force | Out-Null
+    Write-Host "  Oprettet project-mappe: $projectDir"
+  }
 }
 
 $needLink = $true
@@ -158,13 +197,23 @@ if (Test-Path $memTarget) {
     Write-Host "  [skip] Junction allerede paa plads -> $memSource"
     $needLink = $false
   } elseif ($isJunction) {
-    Write-Host "  [warn] Junction peger forkert ($($item.Target -join ', ')). Genskaber..."
-    Remove-Junction $memTarget
+    if ($DryRun) {
+      Write-Host ("  [would-relink] Junction peger forkert ({0}); ville genskabe -> $memSource" -f ($item.Target -join ', ')) -ForegroundColor Cyan
+      $needLink = $false
+    } else {
+      Write-Host "  [warn] Junction peger forkert ($($item.Target -join ', ')). Genskaber..."
+      Remove-Junction $memTarget
+    }
   } else {
     $existing = @(Get-ChildItem $memTarget -File -ErrorAction SilentlyContinue)
     if ($existing.Count -eq 0) {
-      Remove-Item $memTarget -Recurse -Force
-      Write-Host "  Tom memory-mappe slettet"
+      if ($DryRun) {
+        Write-Host "  [would-rmdir] Tom memory-mappe; ville slette og lave junction" -ForegroundColor Cyan
+        $needLink = $false
+      } else {
+        Remove-Item $memTarget -Recurse -Force
+        Write-Host "  Tom memory-mappe slettet"
+      }
     } else {
       $extraFiles = @()
       $modifiedFiles = @()
@@ -179,21 +228,38 @@ if (Test-Path $memTarget) {
         }
       }
       if ($extraFiles.Count -gt 0 -or $modifiedFiles.Count -gt 0) {
-        Write-Host "  [STOP] Lokale memory-filer adskiller sig fra OneDrive:" -ForegroundColor Red
-        if ($extraFiles.Count -gt 0)    { Write-Host ("    extra (kun lokalt):    " + ($extraFiles -join ', ')) }
-        if ($modifiedFiles.Count -gt 0) { Write-Host ("    modified (afviger):    " + ($modifiedFiles -join ', ')) }
-        Write-Host "  Flyt unikke filer til $memSource manuelt foer du koerer scriptet igen." -ForegroundColor Red
-        throw "Manuel kontrol kraevet for at undgaa data-tab"
+        $details = "Lokale memory-filer afviger fra OneDrive"
+        if ($extraFiles.Count -gt 0)    { $details += " | extra: " + ($extraFiles -join ', ') }
+        if ($modifiedFiles.Count -gt 0) { $details += " | modified: " + ($modifiedFiles -join ', ') }
+        if ($DryRun) {
+          Write-Host ("  [STOP-conflict] {0}" -f $details) -ForegroundColor Red
+          Add-Conflict "memory-junction" $details
+          $needLink = $false
+        } else {
+          Write-Host "  [STOP] $details" -ForegroundColor Red
+          Write-Host "  Flyt unikke filer til $memSource manuelt foer du koerer scriptet igen." -ForegroundColor Red
+          throw "Manuel kontrol kraevet for at undgaa data-tab"
+        }
+      } else {
+        if ($DryRun) {
+          Write-Host "  [would-rmdir] Lokale filer matcher OneDrive; ville slette og lave junction" -ForegroundColor Cyan
+          $needLink = $false
+        } else {
+          Remove-Item $memTarget -Recurse -Force
+          Write-Host "  Lokale filer matcher OneDrive - slettet for at lave junction"
+        }
       }
-      Remove-Item $memTarget -Recurse -Force
-      Write-Host "  Lokale filer matcher OneDrive - slettet for at lave junction"
     }
   }
 }
 
 if ($needLink) {
-  New-Item -ItemType Junction -Path $memTarget -Target $memSource | Out-Null
-  Write-Host "  [ok] Junction: $memTarget -> $memSource"
+  if ($DryRun) {
+    Write-Host "  [would-link] Junction: $memTarget -> $memSource" -ForegroundColor Cyan
+  } else {
+    New-Item -ItemType Junction -Path $memTarget -Target $memSource | Out-Null
+    Write-Host "  [ok] Junction: $memTarget -> $memSource"
+  }
 }
 
 # --- 3. Secret hardlinks ---
@@ -225,5 +291,17 @@ if (Test-Path $clSource) {
   Write-Host "  [skip] codex-local ikke i OneDrive endnu (valgfri)"
 }
 
+# --- 5. Slut-rapport ---
 Write-Host ""
-Write-Host "Faerdig. Memory + secrets + codex-local synces nu via OneDrive begge veje." -ForegroundColor Green
+if ($DryRun) {
+  if ($Script:Conflicts.Count -gt 0) {
+    Write-Host ("{0} konflikt(er) fundet, fix dem foer du koerer uden -DryRun:" -f $Script:Conflicts.Count) -ForegroundColor Red
+    foreach ($c in $Script:Conflicts) {
+      Write-Host ("  - [{0}] {1}" -f $c.Category, $c.Details) -ForegroundColor Red
+    }
+    exit 1
+  }
+  Write-Host "Dry-run faerdig - ingen konflikter. Koer uden -DryRun for at anvende aendringer." -ForegroundColor Green
+} else {
+  Write-Host "Faerdig. Memory + secrets + codex-local synces nu via OneDrive begge veje." -ForegroundColor Green
+}

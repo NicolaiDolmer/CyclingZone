@@ -4,8 +4,10 @@
 # Idempotent: bevarer eksisterende settings, tilfoejer kun cross-PC hooks hvis de mangler.
 #
 # Hooks:
-#   SessionStart: 'git fetch --prune origin' for at se om denne PC er bagud
-#   Stop:         scripts/cross-pc-stop-check.sh advarer om uncommitted/unpushed work
+#   SessionStart: 'git fetch --prune origin'                                 (cross-PC sync)
+#   SessionStart: 'pwsh -File scripts/link-onedrive-context.ps1' (quiet)     (auto-relink OneDrive)
+#   SessionStart: 'bash scripts/check-stale-branches.sh'                     (warn om gone-branches)
+#   Stop:         'bash scripts/cross-pc-stop-check.sh'                      (warn om uncommitted)
 #
 # Brug: pwsh -File scripts/install-user-hooks.ps1
 
@@ -34,80 +36,67 @@ if (Test-Path $settingsPath) {
   }
 }
 
-if (-not $settings) {
-  $settings = [PSCustomObject]@{}
-}
-
-# Tilfoj 'hooks' hvis det mangler
+if (-not $settings) { $settings = [PSCustomObject]@{} }
 if (-not ($settings.PSObject.Properties.Name -contains "hooks")) {
   $settings | Add-Member -NotePropertyName "hooks" -NotePropertyValue ([PSCustomObject]@{}) -Force
 }
 
-# --- SessionStart hook ---
-$sessionStartCmd = "git fetch --prune origin 2>&1; git status -sb"
-$sessionStartHook = [PSCustomObject]@{
-  matcher = ""
-  hooks   = @(
-    [PSCustomObject]@{
-      type    = "command"
-      command = $sessionStartCmd
-    }
+function Add-Hook {
+  param(
+    [Parameter(Mandatory)] [string] $Event,
+    [Parameter(Mandatory)] [string] $Command,
+    [Parameter(Mandatory)] [string] $MatchPattern,
+    [Parameter(Mandatory)] [string] $DisplayName
   )
-}
-
-$existingSessionStart = @($settings.hooks.PSObject.Properties | Where-Object { $_.Name -eq "SessionStart" })
-if ($existingSessionStart.Count -eq 0) {
-  $settings.hooks | Add-Member -NotePropertyName "SessionStart" -NotePropertyValue @($sessionStartHook) -Force
-  Write-Host "Tilfoejet SessionStart hook"
-} else {
-  $existing = @($settings.hooks.SessionStart)
-  $hasOurHook = $false
+  $newHook = [PSCustomObject]@{
+    matcher = ""
+    hooks   = @(
+      [PSCustomObject]@{
+        type    = "command"
+        command = $Command
+      }
+    )
+  }
+  $existingProp = @($script:settings.hooks.PSObject.Properties | Where-Object { $_.Name -eq $Event })
+  if ($existingProp.Count -eq 0) {
+    $script:settings.hooks | Add-Member -NotePropertyName $Event -NotePropertyValue @($newHook) -Force
+    Write-Host "Tilfoejet ${Event}: $DisplayName"
+    return
+  }
+  $existing = @($script:settings.hooks.$Event)
   foreach ($entry in $existing) {
     foreach ($h in @($entry.hooks)) {
-      if ($h.command -like "*git fetch*origin*") { $hasOurHook = $true; break }
+      if ($h.command -like $MatchPattern) {
+        Write-Host "[skip] ${Event} ($DisplayName) findes allerede"
+        return
+      }
     }
-    if ($hasOurHook) { break }
   }
-  if ($hasOurHook) {
-    Write-Host "[skip] SessionStart hook med 'git fetch origin' findes allerede"
-  } else {
-    $settings.hooks.SessionStart = @($existing + $sessionStartHook)
-    Write-Host "Tilfoejet SessionStart hook (bevarer eksisterende)"
-  }
+  $script:settings.hooks.$Event = @($existing + $newHook)
+  Write-Host "Tilfoejet ${Event}: $DisplayName (bevarer eksisterende)"
 }
 
-# --- Stop hook ---
-$stopCmd = "bash scripts/cross-pc-stop-check.sh"
-$stopHook = [PSCustomObject]@{
-  matcher = ""
-  hooks   = @(
-    [PSCustomObject]@{
-      type    = "command"
-      command = $stopCmd
-    }
-  )
-}
+# --- SessionStart hooks ---
+Add-Hook -Event "SessionStart" `
+  -Command "git fetch --prune origin 2>&1; git status -sb" `
+  -MatchPattern "*git fetch*origin*" `
+  -DisplayName "git fetch + status"
 
-$existingStop = @($settings.hooks.PSObject.Properties | Where-Object { $_.Name -eq "Stop" })
-if ($existingStop.Count -eq 0) {
-  $settings.hooks | Add-Member -NotePropertyName "Stop" -NotePropertyValue @($stopHook) -Force
-  Write-Host "Tilfoejet Stop hook"
-} else {
-  $existing = @($settings.hooks.Stop)
-  $hasOurHook = $false
-  foreach ($entry in $existing) {
-    foreach ($h in @($entry.hooks)) {
-      if ($h.command -like "*cross-pc-stop-check*") { $hasOurHook = $true; break }
-    }
-    if ($hasOurHook) { break }
-  }
-  if ($hasOurHook) {
-    Write-Host "[skip] Stop hook med cross-pc-stop-check.sh findes allerede"
-  } else {
-    $settings.hooks.Stop = @($existing + $stopHook)
-    Write-Host "Tilfoejet Stop hook (bevarer eksisterende)"
-  }
-}
+Add-Hook -Event "SessionStart" `
+  -Command "pwsh -File scripts/link-onedrive-context.ps1 2>&1 | Where-Object { `$_ -match 'STOP|err|Exception' }" `
+  -MatchPattern "*link-onedrive-context*" `
+  -DisplayName "auto-relink OneDrive context"
+
+Add-Hook -Event "SessionStart" `
+  -Command "bash scripts/check-stale-branches.sh" `
+  -MatchPattern "*check-stale-branches*" `
+  -DisplayName "warn om gone-branches"
+
+# --- Stop hooks ---
+Add-Hook -Event "Stop" `
+  -Command "bash scripts/cross-pc-stop-check.sh" `
+  -MatchPattern "*cross-pc-stop-check*" `
+  -DisplayName "cross-pc stop check"
 
 # Skriv tilbage
 $json = $settings | ConvertTo-Json -Depth 10
