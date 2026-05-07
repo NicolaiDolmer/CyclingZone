@@ -227,6 +227,7 @@ export default function NotificationsPage() {
   async function deleteNotif(id) {
     setNotifications(prev => prev.filter(n => n.id !== id));
     await supabase.from("notifications").delete().eq("id", id);
+    window.dispatchEvent(new Event("cz:notif-deleted"));
   }
 
   async function deleteAllRead() {
@@ -235,6 +236,7 @@ export default function NotificationsPage() {
     setNotifications(prev => prev.filter(n => !n.is_read));
     await supabase.from("notifications").delete()
       .eq("user_id", userIdRef.current).eq("is_read", true);
+    window.dispatchEvent(new Event("cz:notif-deleted"));
   }
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
