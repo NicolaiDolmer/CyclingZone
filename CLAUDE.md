@@ -6,7 +6,7 @@
 ## Auto-loaded (intet at gøre)
 
 Disse loader sig selv ved session-start — undgå at re-læse manuelt:
-- `~/.claude/.../memory/MEMORY.md` — auto-memory (~250 tok). Hvis entries for økonomi/arkitektur/arbejdsmetode mangler, læs `docs/MEMORY.md` og opret de manglende filer.
+- `~/.claude/.../memory/MEMORY.md` — auto-memory (~250 tok). Sync'er cross-PC via OneDrive (junction til `~/OneDrive/CyclingZone-context/memory/`). Hvis junction mangler: `pwsh -File scripts/link-onedrive-context.ps1`.
 - `.codex.local/SESSION_CONTEXT.md` — pre-fetched aktivt issue (titel, body, labels, seneste 3 comments) genereret af `scripts/session-prefetch-issue.sh` SessionStart hook (~400 tok). Dokumenteret i [`docs/HOOKS.md`](docs/HOOKS.md).
 
 ## Start (eksplicit, ~150-300 tok)
@@ -24,7 +24,6 @@ Disse loader sig selv ved session-start — undgå at re-læse manuelt:
 |---|---|
 | `docs/GUARDRAILS_CORE.md` | Issue har `needs-contract` eller `shared-refactor` label |
 | `docs/GUARDRAILS.md` (fuld) | Nye datakontrakter · IA/naming-valg · shared runtime-refactors · features med flere plausible produktmodeller |
-| `docs/MEMORY.md` | Eksplicit behov for project context |
 | `docs/HOOKS.md` | Hooks-konfiguration ændres |
 | `docs/ARCHITECTURE.md` | Cross-domain refactor |
 | `docs/DOMAIN_REFERENCE.md` | Domænegrænse-spørgsmål |

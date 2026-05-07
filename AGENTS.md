@@ -40,7 +40,6 @@ _Koordinerings-fil for AI-assistenter der arbejder i cycling-manager-repo'et. Si
 
 | Doc | Læs hvornår |
 |---|---|
-| `docs/MEMORY.md` (indeks) | Ny session eller eksplicit behov — IKKE ved hver bugfix |
 | `docs/GUARDRAILS.md` (fuld) | Nye datakontrakter, IA/naming-valg, shared runtime-refactors |
 | GitHub issues (`gh issue list --label "claude:todo"`) | Slice-start, close-out, status-afstemning (task-lag — backlog-fil arkiveret 2026-05-06) |
 | `docs/FEATURE_STATUS.md` | Slice-close, og når runtime-state er usikker |

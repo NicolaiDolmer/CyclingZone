@@ -218,7 +218,7 @@ $newEncoded = "C--dev-CyclingZone"
 Copy-Item -Path "<gammel-memory-sti>" -Destination "$env:USERPROFILE\.claude\projects\$newEncoded\memory" -Recurse
 ```
 
-Hvis det ikke lykkes: `docs/MEMORY.md` er git-tracked og fungerer som spejl. Næste session læser den og genopretter de individuelle memory-filer (per CLAUDE.md trin 0c).
+Hvis det ikke lykkes: kør `pwsh -File scripts/link-onedrive-context.ps1` — memory + secrets sync'er nu via OneDrive (`~/OneDrive/CyclingZone-context/`) frem for manuel kopi.
 
 ### "Codex åbner stadig i den gamle Codex-mappe"
 
@@ -231,18 +231,25 @@ Trust-entryen i `~/.codex/config.toml` betyder Codex ikke spørger om tilladelse
 
 ---
 
-## Hvad der IKKE skal synces via OneDrive eller andet
+## Sync-mekanismer for hver fil-type
 
-| Type | Hvor | Hvordan flytter den mellem PC'er |
+| Type | Hvor | Hvordan synces mellem PC'er |
 |---|---|---|
 | Kode | Git | `git push` / `git pull` |
-| Docs i repo (NOW.md, MEMORY.md) | Git | Same |
-| `.env.local`, secrets | Lokal | Password manager (1Password / Bitwarden) |
-| `.mcp.json` | Lokal, gitignored | Auto-genereres af `setup-discord-mcp.ps1` |
-| `.codex.local/` | Lokal, gitignored | Codex genskaber den per-session |
-| Claude auto-memory | `~/.claude/projects/<encoded>/memory/` | Spejlet i `docs/MEMORY.md` (git) |
+| Docs i repo (NOW.md, AGENTS.md, etc.) | Git | Same |
+| `backend/.env`, `frontend/.env*`, `.mcp.json` | Lokal, gitignored | **OneDrive-context hardlink** — `~/OneDrive/CyclingZone-context/secrets/` |
+| `.codex.local/SUPABASE_CONTEXT.md`, `.codex.local/supabase-readonly.env` | Lokal, gitignored | **OneDrive-context hardlink** — `~/OneDrive/CyclingZone-context/codex-local/` |
+| Claude auto-memory | `~/.claude/projects/<encoded>/memory/` | **OneDrive-context junction** — `~/OneDrive/CyclingZone-context/memory/` |
 | Codex memories | `~/.codex/memories/` | Per-PC, ingen sync |
 | Worktrees i `.claude/worktrees/` | Per-PC | Cleanes up per-session |
+
+Re-skab links efter clone på ny PC (idempotent):
+
+```powershell
+pwsh -File scripts/link-onedrive-context.ps1
+```
+
+Kaldes også automatisk af `scripts/setup-new-pc.ps1`. Detaljer: [auto-memory `reference_onedrive_context.md`].
 
 ## Hvad der KAN synces via OneDrive (separat mappe, ikke i repo)
 
