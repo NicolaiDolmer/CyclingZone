@@ -4,9 +4,12 @@
  * Active-time model: auction runs for `duration_hours` of active hours.
  * Dead hours (outside the active window) are skipped entirely.
  *
+ * All window-hour calculations use Europe/Copenhagen (handles CEST/CET DST).
+ * Config hours (e.g. weekday_close_hour: 22) are Copenhagen wall-clock hours.
+ *
  * Defaults:
- *   Weekdays (Mon-Fri): active 16:00–22:00  (dead: 22:00→16:00 next day)
- *   Weekends (Sat-Sun): active 08:00–23:00  (dead: 23:00→08:00 next day)
+ *   Weekdays (Mon-Fri): active 16:00–22:00 Copenhagen
+ *   Weekends (Sat-Sun): active 08:00–23:00 Copenhagen
  *   Duration: 6 active hours
  *
  * Examples with defaults:
@@ -18,6 +21,8 @@
  *   Extended end capped at current day's window close.
  */
 
+const GAME_TIMEZONE = "Europe/Copenhagen";
+
 export const DEFAULT_AUCTION_CONFIG = {
   duration_hours: 6,
   weekday_open_hour: 16,
@@ -27,33 +32,48 @@ export const DEFAULT_AUCTION_CONFIG = {
   extension_minutes: 10,
 };
 
+// Returns 0=Sun, 1=Mon, ..., 6=Sat for a UTC Date in Copenhagen timezone.
+function getGameDayOfWeek(date) {
+  const wd = date.toLocaleDateString("en-US", { timeZone: GAME_TIMEZONE, weekday: "short" });
+  return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(wd);
+}
+
+// Returns a UTC Date representing `hour:00:00` on the same Copenhagen calendar date as `date`.
+// Correctly handles CEST (UTC+2) / CET (UTC+1) transitions.
+function gameHourToUTC(date, hour) {
+  const localDate = date.toLocaleDateString("sv-SE", { timeZone: GAME_TIMEZONE }); // "YYYY-MM-DD"
+  const h = String(hour).padStart(2, "0");
+  // Parse the target time as if it were UTC, then adjust for Copenhagen's actual offset
+  const approx = new Date(`${localDate}T${h}:00:00Z`);
+  const wallStr = approx.toLocaleString("sv-SE", { timeZone: GAME_TIMEZONE });
+  const offsetMs = new Date(wallStr + "Z").getTime() - approx.getTime();
+  return new Date(approx.getTime() - offsetMs);
+}
+
 function isWeekend(dayOfWeek) {
-  return dayOfWeek === 0 || dayOfWeek === 6; // Sun=0, Sat=6
+  return dayOfWeek === 0 || dayOfWeek === 6;
 }
 
 function windowHours(d, cfg) {
-  return isWeekend(d.getDay())
+  return isWeekend(getGameDayOfWeek(d))
     ? { openHour: cfg.weekend_open_hour, closeHour: cfg.weekend_close_hour }
     : { openHour: cfg.weekday_open_hour, closeHour: cfg.weekday_close_hour };
 }
 
 function windowOpenTime(d, cfg) {
-  const t = new Date(d);
-  t.setHours(windowHours(d, cfg).openHour, 0, 0, 0);
-  return t;
+  return gameHourToUTC(d, windowHours(d, cfg).openHour);
 }
 
 function windowCloseTime(d, cfg) {
-  const t = new Date(d);
-  t.setHours(windowHours(d, cfg).closeHour, 0, 0, 0);
-  return t;
+  return gameHourToUTC(d, windowHours(d, cfg).closeHour);
 }
 
 function nextWindowOpenTime(d, cfg) {
-  const next = new Date(d);
-  next.setDate(next.getDate() + 1);
-  next.setHours(0, 0, 0, 0);
-  return windowOpenTime(next, cfg);
+  // Advance to the next calendar day in Copenhagen timezone
+  const localDate = d.toLocaleDateString("sv-SE", { timeZone: GAME_TIMEZONE }); // "YYYY-MM-DD"
+  const [year, month, day] = localDate.split("-").map(Number);
+  const nextDayUTC = new Date(Date.UTC(year, month - 1, day + 1, 0, 0, 0));
+  return windowOpenTime(nextDayUTC, cfg);
 }
 
 /**

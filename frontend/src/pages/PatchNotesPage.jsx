@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.60",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Tidszone-fix: Auktionsvinduerne (hverdage 16–22, weekend 08–23) beregnes nu eksplicit i Europe/Copenhagen og håndterer CEST/CET korrekt — auktioner slutter på de forventede tidspunkter uanset hvilken tidszone serveren kører i (#7).",
+          "Auktioner · Countdown viser nu det absolutte sluttidspunkt med tidszone-label (f.eks. '21:00 CEST') under nedtællingen, så managere kan se præcist hvornår auktionen slutter (#7).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.59",
     date: "2026-05-07",
     label: "Beta",

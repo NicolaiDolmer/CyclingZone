@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate, Link } from "react-router-dom";
 import RiderFilters from "../components/RiderFilters";
@@ -84,6 +84,16 @@ function Countdown({ end, status }) {
   const [text, setText] = useState("");
   const [urgent, setUrgent] = useState(false);
 
+  // Absolute end time in user's local timezone with explicit TZ label (e.g. "21:00 CEST")
+  const endLabel = useMemo(() => {
+    if (!end || status === "completed") return null;
+    return new Date(end).toLocaleTimeString("da-DK", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZoneName: "short",
+    });
+  }, [end, status]);
+
   useEffect(() => {
     if (status === "completed") { setText("Afsluttet"); return; }
     function update() {
@@ -101,8 +111,13 @@ function Countdown({ end, status }) {
   }, [end, status]);
 
   return (
-    <span className={`font-mono text-xs ${urgent ? "text-cz-danger animate-pulse" : "text-cz-2"}`}>
-      {text}
+    <span className="inline-flex flex-col items-center gap-0.5">
+      <span className={`font-mono text-xs ${urgent ? "text-cz-danger animate-pulse" : "text-cz-2"}`}>
+        {text}
+      </span>
+      {endLabel && (
+        <span className="text-[9px] text-cz-3 leading-none">{endLabel}</span>
+      )}
     </span>
   );
 }

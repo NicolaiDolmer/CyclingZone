@@ -1390,7 +1390,9 @@ export default function AdminPage() {
             {activeAuctions.map(a => {
               const riderName = `${a.rider?.firstname || ""} ${a.rider?.lastname || ""}`.trim() || "—";
               const sellerName = a.seller?.name || (a.seller_team_id ? "(ukendt sælger)" : "Banken/AI");
-              const endTxt = a.calculated_end ? new Date(a.calculated_end).toLocaleString("da-DK") : "—";
+              const endTxt = a.calculated_end
+                ? new Date(a.calculated_end).toLocaleString("da-DK", { timeZoneName: "short" })
+                : "—";
               return (
                 <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 bg-cz-subtle rounded-lg px-3 py-2">
                   <div className="min-w-0">
