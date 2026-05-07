@@ -72,8 +72,18 @@ export default function WatchlistPage() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ rider_id: rider.id, starting_price: getRiderMarketValue(rider) }),
     });
-    if (res.ok) navigate("/auctions");
-    else { const d = await res.json(); alert(d.error); }
+    if (res.ok) {
+      // Vis squad-cap-warning hvis bud bringer manager over max (#29 — non-blocking).
+      const data = await res.json().catch(() => ({}));
+      const warning = (data.warnings || []).find(w => w?.code === "squad_capacity_exceeded");
+      if (warning) {
+        const fine = warning.finePerRider * warning.exceedBy;
+        const points = warning.penaltyPointsPerRider * warning.exceedBy;
+        alert(`Auktion startet.\n\nOBS: leder nu auktioner svarende til ${warning.totalAfter} ryttere (max ${warning.maxRiders}). ` +
+          `Hvis du stadig er ${warning.exceedBy} over ved vindue-luk: auto-salg + ${fine.toLocaleString("da-DK")} CZ$ bøde + ${points} fradrag-points.`);
+      }
+      navigate("/auctions");
+    } else { const d = await res.json(); alert(d.error); }
   }
 
   const riderFilters = useClientRiderFilters(entries.map(e => e.rider));

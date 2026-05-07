@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "2.55",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auktioner · Squad-cap er nu warning, ikke block (#29)",
+        items: [
+          "Bugfix ([auctionRules.js](backend/lib/auctionRules.js), [api.js](backend/routes/api.js)): manager med 10 ryttere + 1 garanteret salg blev tidligere blokeret fra at byde på andre auktioner — fordi bud-validering ignorerede pending salg ved beregning af 'tilgængelig trupplads'. Reglen i Cycling Zone tillader allerede at gå over/under min/max MIDT i transfervinduet (squadEnforcement-cron auto-sælger + bøder kun ved vindue-luk hvis stadig over max), så hard-blokken på squad-cap modsagde gameplay.",
+          "Konsekvens: bud + start-auktion er ikke længere blokeret af aktuel trupstørrelse. I stedet vises en warning i UI'en når bud/auktion ville bringe manager over max: 'OBS: leder nu auktioner svarende til 11 ryttere (max 10). Hvis du stadig er 1 over ved vindue-luk: auto-salg + 100.000 CZ$ bøde + 200 fradrag-points.' Manager træffer informeret valg.",
+          "Backend ([auctionRules.js](backend/lib/auctionRules.js)): ny `getAuctionBidWarnings()` returnerer non-blocking advarsler; `getAuctionBidIssue` håndterer nu kun hard blocks (bid_below_minimum, insufficient_available_balance). Squad-cap-checks fjernet fra både POST `/api/auctions` (creation) og POST `/api/auctions/:id/bid` (bid placement). Warnings inkluderes i 200-respons.",
+          "Frontend: AuctionsPage.jsx (table + card layout), RiderStatsPage.jsx og WatchlistPage.jsx læser `warnings`-felt og viser dem inline efter bud (~10 sek) eller som alert ved auction creation. Disse var de tre frontend-callsites til POST /api/auctions; TeamPage's egne-rytter-flows udløser ikke warning (initialBidderId=null).",
+          "Test: 8/8 auctionRules.test.js grønne (3 nye warnings-tests, 1 ny non-block-regression). 315/315 backend-tests fortsat grønne. Frontend build grøn.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.54",
     date: "2026-05-07",
     label: "Beta",

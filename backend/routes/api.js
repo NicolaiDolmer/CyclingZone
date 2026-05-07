@@ -23,6 +23,7 @@ import {
 } from "../lib/auctionEngine.js";
 import {
   getAuctionBidIssue,
+  getAuctionBidWarnings,
   getAuctionInitialBidderId,
 } from "../lib/auctionRules.js";
 import {
@@ -630,6 +631,7 @@ router.post("/auctions", requireAuth, async (req, res) => {
     isGuaranteedSale: is_guaranteed_sale,
   });
 
+  let creationWarnings = [];
   if (initialBidderId) {
     const [leadingAuctions, teamState] = await Promise.all([
       supabase
@@ -645,12 +647,11 @@ router.post("/auctions", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Startbuddet overstiger din disponible balance inkl. aktive auktionsføringer" });
     }
 
-    const maxRiders = teamState.squad_limits?.max;
-    if (maxRiders && (teamState.total_count || 0) + activeLeading.length + 1 > maxRiders) {
-      return res.status(400).json({
-        error: `Dit hold kan max have ${maxRiders} ryttere inkl. aktive auktionsføringer`,
-      });
-    }
+    // Squad-cap er ikke længere en hard block (#29) — håndhæves ved vindue-luk via squadEnforcement.
+    creationWarnings = getAuctionBidWarnings({
+      teamState,
+      activeLeadingCount: activeLeading.length,
+    });
   }
 
   const { data: auction, error } = await supabase
@@ -728,6 +729,7 @@ router.post("/auctions", requireAuth, async (req, res) => {
   res.status(201).json({
     auction,
     message: `Auktion startet — slutter ${calculatedEnd.toLocaleString("da-DK")}`,
+    warnings: creationWarnings,
   });
 });
 
@@ -776,9 +778,6 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
     currentPrice: auction.current_price,
     teamBalance: req.team.balance,
     reservedBalance: activeLeadingExceptCurrent.reduce((sum, row) => sum + (Number(row.current_price) || 0), 0),
-    teamState,
-    activeLeadingCount: activeLeadingExceptCurrent.length,
-    alreadyLeadingThisAuction: auction.current_bidder_id === req.team.id,
   });
 
   if (bidIssue?.code === "bid_below_minimum") {
@@ -791,11 +790,14 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Buddet overstiger din disponible balance inkl. aktive auktionsføringer" });
   }
 
-  if (bidIssue?.code === "squad_capacity_reserved") {
-    return res.status(400).json({
-      error: `Dit hold kan max have ${bidIssue.maxRiders} ryttere inkl. aktive auktionsføringer`,
-    });
-  }
+  // Squad-cap er ikke længere en hard block (#29). Konverteret til warning som UI viser
+  // efter bud er placeret. Manager må gerne lede 11+ auktioner under vinduet — squadEnforcement
+  // auto-sælger og bøder kun hvis trupstørrelsen stadig er over max ved vindue-luk.
+  const bidWarnings = getAuctionBidWarnings({
+    teamState,
+    activeLeadingCount: activeLeadingExceptCurrent.length,
+    alreadyLeadingThisAuction: auction.current_bidder_id === req.team.id,
+  });
 
   // S-02e · Hard-block ved aktivt lag 2 (salary cap) eller lag 3 (signing-restriktion).
   const signingBlock = await assertSigningAllowed({
@@ -872,6 +874,7 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
     new_price: amount,
     extended: shouldExtend,
     new_end: shouldExtend ? newEnd?.toISOString() : undefined,
+    warnings: bidWarnings,
   });
 });
 

@@ -1,3 +1,5 @@
+import { SQUAD_FINE_AMOUNT, SQUAD_PENALTY_POINTS } from "./squadEnforcement.js";
+
 export function roundUpToNearest(value, step) {
   return Math.ceil(value / step) * step;
 }
@@ -19,14 +21,14 @@ export function getAuctionInitialBidderId({
   return managerTeamId;
 }
 
+// Hard blocks: bud afvises hvis disse rammer.
+// Squad-cap håndteres separat som warning — gameplay-reglen tillader at gå over max
+// MIDT i transfervinduet (squadEnforcement-cron auto-sælger + bøder ved vindue-luk).
 export function getAuctionBidIssue({
   amount,
   currentPrice,
   teamBalance,
   reservedBalance = 0,
-  teamState,
-  activeLeadingCount = 0,
-  alreadyLeadingThisAuction = false,
 } = {}) {
   const numericAmount = Number(amount);
   const minimumBid = getMinimumAuctionBid(currentPrice);
@@ -40,16 +42,33 @@ export function getAuctionBidIssue({
     return { code: "insufficient_available_balance", totalCommitment };
   }
 
-  const maxRiders = teamState?.squad_limits?.max;
-  if (maxRiders) {
-    const reservedWins = alreadyLeadingThisAuction
-      ? activeLeadingCount
-      : activeLeadingCount + 1;
-    const totalAfter = (teamState.total_count || 0) + reservedWins;
-    if (totalAfter > maxRiders) {
-      return { code: "squad_capacity_reserved", totalAfter, maxRiders };
-    }
-  }
-
   return null;
+}
+
+// Non-blocking advarsler: manager må stadig byde, men UI viser konsekvensen.
+export function getAuctionBidWarnings({
+  teamState,
+  activeLeadingCount = 0,
+  alreadyLeadingThisAuction = false,
+} = {}) {
+  const warnings = [];
+  const maxRiders = teamState?.squad_limits?.max;
+  if (!maxRiders) return warnings;
+
+  const reservedWins = alreadyLeadingThisAuction
+    ? activeLeadingCount
+    : activeLeadingCount + 1;
+  const totalAfter = (teamState.total_count || 0) + reservedWins;
+  if (totalAfter > maxRiders) {
+    const exceedBy = totalAfter - maxRiders;
+    warnings.push({
+      code: "squad_capacity_exceeded",
+      totalAfter,
+      maxRiders,
+      exceedBy,
+      finePerRider: SQUAD_FINE_AMOUNT,
+      penaltyPointsPerRider: SQUAD_PENALTY_POINTS,
+    });
+  }
+  return warnings;
 }

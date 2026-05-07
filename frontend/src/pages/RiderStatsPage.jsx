@@ -310,8 +310,18 @@ export default function RiderStatsPage() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ rider_id: id, starting_price: startPrice, is_guaranteed_sale: isGuaranteedSale, flash_auction: isFlash }),
     });
-    if (res.ok) navigate("/auctions");
-    else {
+    if (res.ok) {
+      // Squad-cap-warning er non-blocking siden #29 — vis besked hvis manager går over max.
+      const data = await res.json().catch(() => ({}));
+      const warning = (data.warnings || []).find(w => w?.code === "squad_capacity_exceeded");
+      if (warning) {
+        const fine = warning.finePerRider * warning.exceedBy;
+        const points = warning.penaltyPointsPerRider * warning.exceedBy;
+        alert(`Auktion startet.\n\nOBS: leder nu auktioner svarende til ${warning.totalAfter} ryttere (max ${warning.maxRiders}). ` +
+          `Hvis du stadig er ${warning.exceedBy} over ved vindue-luk: auto-salg + ${fine.toLocaleString("da-DK")} CZ$ bøde + ${points} fradrag-points.`);
+      }
+      navigate("/auctions");
+    } else {
       const data = await res.json();
       setAuctionError(data.error || "Noget gik galt");
       setTimeout(() => setAuctionError(null), 5000);

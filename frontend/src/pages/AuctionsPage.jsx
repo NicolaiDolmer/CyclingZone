@@ -32,6 +32,18 @@ const AUCTIONS_TOUR_STEPS = [
   },
 ];
 
+// Bug #29 — squad-cap er warning, ikke block. Manager må gå over max under transfer-vinduet;
+// squadEnforcement-cron auto-sælger + bøder først ved vindue-luk hvis stadig over max.
+function formatBidWarning(warning) {
+  if (warning?.code === "squad_capacity_exceeded") {
+    const fine = warning.finePerRider * warning.exceedBy;
+    const points = warning.penaltyPointsPerRider * warning.exceedBy;
+    return `OBS: leder nu auktioner svarende til ${warning.totalAfter} ryttere (max ${warning.maxRiders}). ` +
+      `Hvis du stadig er ${warning.exceedBy} over ved vindue-luk: auto-salg + ${fine.toLocaleString("da-DK")} CZ$ bøde + ${points} fradrag-points.`;
+  }
+  return null;
+}
+
 function isManagerSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
 }
@@ -101,6 +113,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
   const [errorText, setErrorText] = useState("");
+  const [warningText, setWarningText] = useState("");
 
   const isMyRider = auction.rider?.team_id === myTeamId;
   const isSeller  = isManagerSeller(auction, myTeamId);
@@ -123,6 +136,11 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }
     const result = await onBid(auction.id, bidAmount);
     if (result.ok) {
       setBidStatus("success");
+      const warningMsg = (result.warnings || []).map(formatBidWarning).filter(Boolean).join(" ");
+      if (warningMsg) {
+        setWarningText(warningMsg);
+        setTimeout(() => setWarningText(""), 10000);
+      }
       setTimeout(() => setBidStatus(null), 2500);
     } else {
       setBidStatus("error");
@@ -264,6 +282,9 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }
         ) : (
           <span className="text-cz-3 text-xs">—</span>
         )}
+        {warningText && (
+          <p className="text-[10px] text-cz-warning leading-tight mt-1 max-w-[260px]">{warningText}</p>
+        )}
       </td>
     </tr>
   );
@@ -274,6 +295,7 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst 
   const [bidAmount, setBidAmount] = useState(minBid);
   const [bidStatus, setBidStatus] = useState(null);
   const [errorText, setErrorText] = useState("");
+  const [warningText, setWarningText] = useState("");
 
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -297,6 +319,13 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst 
     const result = await onBid(auction.id, bidAmount);
     setBidStatus(result.ok ? "success" : "error");
     setErrorText(result.error || "");
+    if (result.ok) {
+      const warningMsg = (result.warnings || []).map(formatBidWarning).filter(Boolean).join(" ");
+      if (warningMsg) {
+        setWarningText(warningMsg);
+        setTimeout(() => setWarningText(""), 10000);
+      }
+    }
     setTimeout(() => setBidStatus(null), result.ok ? 2500 : 3000);
   }
 
@@ -387,6 +416,9 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst 
                 disabled:opacity-50`}>
               {bidStatus === "loading" ? "..." : bidStatus === "error" ? "Fejl" : bidStatus === "success" ? "✓" : imWinning ? "Hæv" : "Byd"}
             </button>
+            {warningText && (
+              <p className="col-span-2 text-[11px] text-cz-warning leading-snug">{warningText}</p>
+            )}
           </div>
         ) : (
           <p className="text-cz-3 text-xs text-center py-1">{isSeller ? "Du sælger" : "—"}</p>
@@ -539,7 +571,9 @@ export default function AuctionsPage() {
         body: JSON.stringify({ context: "auction_bid", data: { amount } }),
       }).catch(() => {});
       loadAll();
-      return { ok: true };
+      let okData = {};
+      try { okData = await res.json(); } catch { /* tolerér tom body */ }
+      return { ok: true, warnings: okData.warnings || [] };
     }
     let data = {};
     try { data = await res.json(); } catch { /* non-JSON error response — fall back to default error message below */ }
