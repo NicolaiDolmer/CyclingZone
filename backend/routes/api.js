@@ -2099,6 +2099,96 @@ router.post("/admin/auctions/:id/cancel", requireAdmin, async (req, res) => {
   });
 });
 
+// POST /api/admin/transfers/offers/:id/cancel — admin annullerer en indgået transfer-handel (window_pending)
+router.post("/admin/transfers/offers/:id/cancel", requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const { data: offer, error: fetchErr } = await supabase
+      .from("transfer_offers")
+      .select("id, rider_id, seller_team_id, buyer_team_id, offer_amount, counter_amount, status, buyer_confirmed, seller_confirmed, rider:rider_id(id, firstname, lastname)")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+    if (!offer) return res.status(404).json({ error: "Handel ikke fundet" });
+
+    const isBothConfirmed = offer.buyer_confirmed && offer.seller_confirmed;
+    if (offer.status !== "window_pending" && !isBothConfirmed) {
+      return res.status(409).json({ error: `Handlen kan ikke annulleres fra status: ${offer.status}` });
+    }
+
+    await supabase.from("transfer_offers").update({ status: "withdrawn" }).eq("id", offer.id);
+
+    const riderName = offer.rider ? `${offer.rider.firstname} ${offer.rider.lastname}` : "ukendt rytter";
+    const price = offer.counter_amount || offer.offer_amount;
+    const msg = `Handlen på ${riderName} er annulleret af en admin${reason ? `: ${reason}` : "."}`;
+
+    await Promise.allSettled([
+      notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", "Handel annulleret af admin", msg, offer.id),
+      notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", "Handel annulleret af admin", msg, offer.id),
+    ]);
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: "transfer_offer_admin_cancel",
+      description: `Transfer-handel annulleret: ${riderName}, ${price?.toLocaleString()} CZ$ (status: ${offer.status})${reason ? ` — ${reason}` : ""}`,
+      target_rider_id: offer.rider_id,
+      meta: { offer_id: offer.id, seller_team_id: offer.seller_team_id, buyer_team_id: offer.buyer_team_id, price, reason: reason || null },
+    });
+
+    res.json({ success: true, rider_name: riderName, message: `Handel annulleret: ${riderName}` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/transfers/swaps/:id/cancel — admin annullerer en indgået byttehandel (window_pending)
+router.post("/admin/transfers/swaps/:id/cancel", requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const { data: swap, error: fetchErr } = await supabase
+      .from("swap_offers")
+      .select("id, offered_rider_id, requested_rider_id, proposing_team_id, receiving_team_id, status, proposing_confirmed, receiving_confirmed, offered:offered_rider_id(id, firstname, lastname), requested:requested_rider_id(id, firstname, lastname)")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+    if (!swap) return res.status(404).json({ error: "Byttehandel ikke fundet" });
+
+    const isBothConfirmed = swap.proposing_confirmed && swap.receiving_confirmed;
+    if (swap.status !== "window_pending" && !isBothConfirmed) {
+      return res.status(409).json({ error: `Byttehandlen kan ikke annulleres fra status: ${swap.status}` });
+    }
+
+    await supabase.from("swap_offers").update({ status: "withdrawn" }).eq("id", swap.id);
+
+    const offeredName = swap.offered ? `${swap.offered.firstname} ${swap.offered.lastname}` : "ukendt rytter";
+    const requestedName = swap.requested ? `${swap.requested.firstname} ${swap.requested.lastname}` : "ukendt rytter";
+    const msg = `Byttehandlen ${offeredName} ↔ ${requestedName} er annulleret af en admin${reason ? `: ${reason}` : "."}`;
+
+    await Promise.allSettled([
+      notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", "Byttehandel annulleret af admin", msg, swap.id),
+      notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", "Byttehandel annulleret af admin", msg, swap.id),
+    ]);
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: "swap_offer_admin_cancel",
+      description: `Byttehandel annulleret: ${offeredName} ↔ ${requestedName} (status: ${swap.status})${reason ? ` — ${reason}` : ""}`,
+      target_rider_id: swap.offered_rider_id,
+      meta: { swap_id: swap.id, proposing_team_id: swap.proposing_team_id, receiving_team_id: swap.receiving_team_id, reason: reason || null },
+    });
+
+    res.json({ success: true, offered_name: offeredName, requested_name: requestedName, message: `Byttehandel annulleret: ${offeredName} ↔ ${requestedName}` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.post("/admin/seasons", requireAdmin, async (req, res) => {
   try {
     const number = Number.parseInt(req.body.number, 10);
