@@ -39,6 +39,15 @@ const THREADS = [
   '1501358396329164850', // jeppek Balance auktionstabben
   '1501473256417267722', // .sredna Galdsloft falsk-positiv (Tier 4 — for context)
   '1500927555731984567', // cybersimon Rytter table (Tier 4)
+  // Batch 3 (2026-05-07 evening)
+  '1502023507628785907', // jeppek Annullere lejeaftale uden modparts accept
+  '1502022740511690955', // jeppek Byttehandel/leje pa andres ryttere
+  '1502022537310371871', // jeppek Ingen modbyd efter modbyd
+  '1502021814224949419', // jeppek Kan ikke trykke pa rytter (team/transfers)
+  '1502019650131726356', // jeppek Muligt at leje i over 1 saeson
+  '1502018453358248127', // jeppek Undefined holdnavn i transferhistorik
+  '1502023057454141710', // cybersimon Byttehandel/leje under rytterside
+  '1500209380413407343', // .sredna Forbedring til budsystemet (proxy-bidding follow-up)
 ];
 
 function getJSON(url, headers) {
