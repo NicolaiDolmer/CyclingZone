@@ -14,6 +14,8 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
+    # Skip drafts og pure docs-PRs (advisory review giver lille værdi der)
+    if: github.event.pull_request.draft == false
     steps:
       - uses: actions/checkout@v4
       - uses: anthropics/claude-code-action@v1
@@ -21,12 +23,31 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           additional_permissions: |
             actions: read
+          # Bot's egne kommentarer skal ikke trigge rekursive @claude-loops i andre workflows
+          exclude_comments_by_actor: claude[bot]
           prompt: |
             Review denne PR. Tjek:
             1. Korrekthed (gør ændringerne det de hævder?)
             2. Konsistens med projekt-konventioner i CLAUDE.md + docs/CONVENTIONS.md
             3. Sikkerhed (auth-checks, RLS, input-validation)
             4. Tests dækker ny funktionalitet
-            5. Doc-drift (PRODUCT_BACKLOG, NOW.md, FEATURE_STATUS opdateret hvor relevant)
+            5. Doc-drift (NOW.md, FEATURE_STATUS opdateret hvor relevant)
+            6. Patch notes: hvis frontend UI/UX-ændring → er PatchNotesPage.jsx opdateret? Hvis ikke, flag det.
+
             Post fund som review-comments med konkrete linje-referencer.
-          claude_args: "--max-turns 8 --model claude-opus-4-7"
+            Vær PRAGMATISK: rating er advisory, ikke gating. Skarp på korrekthed/sikkerhed; afslappet på style.
+          claude_args: |
+            --max-turns 20
+            --model claude-opus-4-7
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR_NUMBER" --body "🤖 **Auto PR review fejlede** — [se log]($RUN_URL)
+
+          Auto-review er **advisory** (ikke gating) — denne PR kan stadig merges hvis required CI checks (backend-tests, frontend-build) er grønne.
+          For at re-trigge review: push en tom commit eller comment \`@claude review denne PR\`."
