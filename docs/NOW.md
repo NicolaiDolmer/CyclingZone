@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Ingen aktiv slice — 07b shipped LIVE 2026-05-07.** Næste kandidat: 07d (audit-log foundation) eller 07c (atomic balance updates). Brugeren prioriterer.
+**Polish-sprint frem til open beta ([#178](https://github.com/NicolaiDolmer/CyclingZone/issues/178))** — strategisk beslutning 2026-05-07 om at stoppe nye features og fokusere på polish (proxy-bidding cluster, mobile UX, onboarding, friction-cleanup) frem mod ~2026-05-14 launch. 07b/07c/07d og andre features pauset indtil videre.
 
 ## Open beta status
 **Open beta live siden 2026-05-04, sæson 1 aktiv, 0 sæsoner afsluttet.** ~18 managers (DB-tal). S-02 KOMPLET. 07a leveret som v2.50, **07b leveret som v2.51**. Alle 3 pre-kode-beslutninger til 07 låst 2026-05-07: (1) sponsor=240K, (2) konkurs-mekanik=light, (3) 07f aktiverer automatisk fra sæson 2.
@@ -9,6 +9,7 @@
 ## Senest leveret
 *(2026-05-06 og tidligere arkiveret til [`docs/archive/NOW_HISTORIK_2026-05-06.md`](archive/NOW_HISTORIK_2026-05-06.md))*
 
+- 2026-05-07 sen aften: **Discord-triage batch 5 + auction bid-rules cleanup LIVE som v2.66** ([PR #179](https://github.com/NicolaiDolmer/CyclingZone/pull/179), commit [9f1d531](https://github.com/NicolaiDolmer/CyclingZone/commit/9f1d531)) — 7 nye tråde i #samlet-feedback siden batch 4: 6 issues filed (#171-#176, primært proxy-bidding regression cluster + indbakke cache-bug). Strategisk beslutning: 10%-increment + 1.000-afrunding fjernet helt — min-step er nu blot +1 CZ\$, match-bud tilladt på asking-pris uden bud. Closes #169, #173, #175. Refs #171, [#178](https://github.com/NicolaiDolmer/CyclingZone/issues/178) (polish-sprint tracking). 317/317 backend-tests + frontend build grønne. Vercel + Railway deploy verificeret.
 - 2026-05-07 aften: **#157 + #166 Rider-row navigation LIVE som v2.65** — `/team` SquadTab + TransfersPage Offer/Swap/Loan-cards manglede helt klik-til-rytter (kun listings havde det); fix wrap'er rytter-navne i `<Link>`. Samtidig konverteret 14+ steder med `onClick(navigate(/riders/...))` til `<Link>` så højreklik/Cmd+klik åbner ny fane (#166 AC). Stop-propagation tilføjet i name-cell-Links inde i `<tr onClick>` så middle-click ikke navigerer dobbelt. Build grøn (8.22s).
 - 2026-05-07 aften: **Discord-triage batch 4** — 15 nye issues filed ([#155-#169](https://github.com/NicolaiDolmer/CyclingZone/issues/155)) fra `#samlet-feedback`-forum + tidligere chat-kanaler. 8 nye attachments synket til `docs/discord-attachments/`. 3 high-priority bugs efter v2.64 ship: webhook for autobud sender ikke besked (#155), lejeaftale kan annulleres ensidigt (#156), rytter-rækker kan ikke klikkes på /team og /transfers (#157). Plus 5 medium-priority transfer/leje-bugs, 1 mobile-regression (#163), 1 alder-regression efter #108 (#162), 4 features (board, mobile UX, race calendar). Comments tilføjet på #43 (patch notes-scope udvidet), #79 (manager-input om gældsloft fra .sredna), #104 (auctions-historik admin-reminder).
 - 2026-05-07: **#10 Proxy-bidding (auto-by med max-loft) LIVE som v2.64** — Ny `auction_proxy_bids`-tabel + `auction_bids.is_proxy`-kolonne + `auction_proxy_outbid`-notif-type. Backend `proxyBidding.js` resolver loop (max 30 iter): højeste proxy vinder, andres max + 10% sætter prisen. Routes GET/PATCH/DELETE `/api/auctions/:id/proxy`. Frontend: "Auto-by loft"-sektion i AuctionRow (desktop) + AuctionCard (mobil) med badge, Ændr, Fjern.
@@ -32,12 +33,13 @@
 - 2026-05-06: **Cross-PC + workflow refactor** ([#67](https://github.com/NicolaiDolmer/CyclingZone/pull/67), commit `2265b33`) — preflight/migrate/setup-new-pc/install-user-hooks scripts + `cross-pc-stop-check.sh`. Bundlet med `#72` SessionStart-hook, `#68` PRODUCT_BACKLOG → GitHub-issues, og `#70` GitHub-first CLAUDE.md cold-start ~800 tok.
 - 2026-05-07: **Slice 07a v2.50** — `backend/lib/economyConstants.js` med 7 delte konstanter; 299/299 backend-tests grønne.
 
-## Næste session (prioriteret)
-1. **Manuelt klik 'Nulstil rytter-historik'** når du vil rydde alpha-historik før spil-start — knappen er live under Admin → Beta-testværktøjer (#104). Verificér på en rytter-profil bagefter.
-2. **Dependabot-triage** (8 åbne PRs efter #139 mergedes): bucket A-merge (#140 frontend-minor-patch, #126 supabase-js minor, #116 esbuild+vite security); bucket B (majors) afventer review (#114, #118, #127, #141, #142).
-3. **Resterende launch-blockere:** #109 (U25-kategorisering). #7 closet i v2.60, #107 + #108 closet i v2.58, #16 closet i v2.61, #18 + #66 closet i v2.59.
-4. **Vælg næste 07-slice:** 07d (audit-log foundation) eller 07c (atomic balance updates). Master: [07-economy-overhaul-MASTER.md](slices/07-economy-overhaul-MASTER.md).
-5. **Live cron-verifikation af 07b** ved naturlig sæson-end: 0 dubletter sponsor/salary/bonus/loan_interest + `related_loan_id` sat på nye rows.
+## Næste session (prioriteret) — polish-sprint #178
+1. **Manuel verifikation af v2.66** — på prod: bud match-pris på guaranteed sale uden bud, +1-step på almindelig auktion, proxy-bidding resolver-loop med 2 max-lofter af forskellig størrelse.
+2. **#171 proxy-resolver loop verification** — hvis stadig ikke følger med op efter v2.66, dyk ned i `backend/lib/proxyBidding.js` lines 56-67 (resolver-conditions).
+3. **Mobile UX audit** — kør gennem alle hovedsider på 360px viewport (RidersPage, AuctionsPage, TeamPage, BoardPage), notér breakdown-points, prioritér.
+4. **Onboarding session-1 audit** — start som ny manager, notér friction. #158 (kan ikke lukke onboarding) er en kendt blokker.
+5. **Dependabot-triage** (8 åbne PRs efter #139): bucket A-merge (#140 frontend-minor-patch, #126 supabase-js minor, #116 esbuild+vite security); bucket B (majors) afventer review.
+6. **Resterende launch-blockere:** #109 (U25-kategorisering), #176 (indbakke-counter cache).
 
 ## Kritiske invarianter
 - **Verificér runtime FØR claim** — grep før TODO-claims
