@@ -49,15 +49,21 @@ jobs:
             Implementeringsprocedure:
             1. Læs issue body + alle comments for kontekst (hold dig til relevante filer ved exploration)
             2. Implementer ændringerne (følg konventioner i CLAUDE.md + docs/CONVENTIONS.md)
-            3. Commit + push branch
-            4. **OBLIGATORISK NÆSTE HANDLING efter push:** kør `gh pr create --base main --head <branch> --title "<title>" --body "<body>"` med det samme. Lav INGEN yderligere fil-exploration eller cleanup mellem push og PR-creation — det er den sidste handling før du afslutter.
+            3. **Close-out-filer (samme commit som koden):**
+               - `frontend/src/pages/PatchNotesPage.jsx`: ny version-entry hvis ændringen rammer brugerrettede UI/UX. Skip kun hvis ren DX/intern — note hvorfor i PR-body.
+               - `.claude/learnings/<YYYY-MM-DD>-<kort-slug>.md`: oprettes hvis denne PR fixer en bug. Format: `# Bug` / `# Root cause` / `# Fix` / `# Læring`. Se `.claude/learnings/2026-05-07-auction-timezone-utc-vs-cet.md` som eksempel.
+               - `docs/NOW.md`: tilføj en kort entry øverst i "Senest leveret" med dato + issue-ref + 1-3 sætninger om hvad der ændrede sig. Hvis filen overstiger 30 linjer efter din entry: arkivér den ældste entry til `docs/archive/NOW_HISTORIK_<YYYY-MM-DD>.md` (opret eller append).
+               - `docs/FEATURE_STATUS.md`: opdatér KUN hvis kontrakter, runtime-state eller features ændret.
+            4. Commit + push branch (én commit med kode + close-out-filer er fint)
+            5. **OBLIGATORISK NÆSTE HANDLING efter push:** kør `gh pr create --base main --head <branch> --title "<title>" --body "<body>"` med det samme. Lav INGEN yderligere fil-exploration eller cleanup mellem push og PR-creation — det er den sidste handling før du afslutter.
 
             PR-konvention (vigtigt):
             - Title: kort summary af ændringen + ` (#N)` suffix hvor N er issue-nummer
             - Body skal indeholde:
               - `## Summary` med 2-5 bullets
               - `Refs #N` (IKKE `Closes #N` — bruger lukker selv issues efter manuel verifikation; GitHub matcher `Close*` anywhere i body)
-              - `## Patch notes`: hvis frontend UI/UX-ændring → `frontend/src/PatchNotesPage.jsx` skal opdateres med ny version i samme commit; ellers note "DX-only / intern" eksplicit
+              - `## Patch notes`: notér hvilken version der blev tilføjet i PatchNotesPage.jsx, eller "DX-only / intern" hvis sprunget over.
+              - `## Close-out`: bullet-liste over hvilke close-out-filer du opdaterede (NOW.md, FEATURE_STATUS.md, learnings). Hvis du sprang noget over: sig hvorfor.
               - `## Verifikation` med konkret test-procedure
 
             Hvis du støder på blocker (mangler kontekst, fagligt valg, scope-uklarhed): comment på issuet med `claude:blocked` + spørgsmålet, og lav IKKE PR. Bedre at stoppe end at gætte.
