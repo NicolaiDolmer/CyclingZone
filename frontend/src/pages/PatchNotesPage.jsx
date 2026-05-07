@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.57",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auktioner · Balance + rytterstatus synlig i auktion-tabben (#48)",
+        items: [
+          "Ny stats-bar øverst på /auctions: 'Balance', 'Sum af aktive bud', 'Ryttere nu' og 'Projektion'.",
+          "Projektion viser hvor mange ryttere man ville have hvis alle aktive auktioner sluttede med nuværende ledere — tæller +ryttere man vinder og -ryttere man er ved at sælge.",
+          "Aktive bud-felt viser summen af de bud man aktuelt er ledende på, med antal auktioner angivet underneden.",
+          "Balance hentes fra eksisterende teams-query (ingen ny datakilde). Rider-count hentes via count-query på riders-tabellen. Division-felt tilføjet til teams-select.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.56",
     date: "2026-05-07",
     label: "Beta",
