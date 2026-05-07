@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { FOCUS_LABELS } from "../lib/boardUtils";
 import { Link, useNavigate } from "react-router-dom";
 import OnboardingModal from "../components/OnboardingModal";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
@@ -405,7 +406,7 @@ export default function DashboardPage() {
         <StatCard label="Balance" value={`${team?.balance?.toLocaleString("da-DK")}`} sub="CZ$" accent="text-cz-accent-t" icon="💰" />
         <StatCard label="Ryttere" value={riderCount} sub={`Løn: ${totalSalary.toLocaleString("da-DK")} CZ$/sæson`} icon="🚴" />
         <StatCard label="Aktive auktioner" value={allAuctions.length} sub={`${winningAuctions.length} vinder jeg`} icon="⚡" accent={winningAuctions.length > 0 ? "text-cz-success" : "text-cz-1"} />
-        <StatCard label="Bestyrelsestilfredshed" value={board ? `${board.satisfaction}%` : "—"} sub={board?.focus?.replace(/_/g, " ") || "Ingen data"} accent={satisfactionColor} icon="◉" />
+        <StatCard label="Bestyrelsestilfredshed" value={board ? `${board.satisfaction}%` : "—"} sub={FOCUS_LABELS[board?.focus] || board?.focus || "Ingen data"} accent={satisfactionColor} icon="◉" />
       </div>
 
       {/* Main grid */}
@@ -574,7 +575,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">Fokus</p>
-                  <p className="text-cz-1 text-sm capitalize">{board.focus?.replace(/_/g, " ") || "—"}</p>
+                  <p className="text-cz-1 text-sm">{FOCUS_LABELS[board.focus] || board.focus || "—"}</p>
                 </div>
                 <div>
                   <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">Budget multiplikator</p>

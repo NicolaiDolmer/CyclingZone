@@ -2,6 +2,12 @@
  * Frontend-only board helpers.
  */
 
+export const FOCUS_LABELS = {
+  balanced: "Balanceret",
+  youth_development: "Ungdomsudvikling",
+  star_signing: "Stjernesignering",
+};
+
 export function getPlanDuration(planType) {
   return { "1yr": 1, "3yr": 3, "5yr": 5 }[planType] ?? 1;
 }
