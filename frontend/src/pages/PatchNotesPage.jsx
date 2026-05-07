@@ -2,6 +2,31 @@
 
 const PATCHES = [
   {
+    version: "2.58",
+    date: "2026-05-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Onboarding-modal kan nu lukkes (#107)",
+        items: [
+          "Tilføjet synligt × i øverste højre hjørne så modalen tydeligt kan lukkes.",
+          "ESC-tast lukker nu modalen.",
+          "Klik uden for modalen lukker den.",
+          "Modalen scroller på små skærme (vinduet kan ikke længere blokere brugen af spillet).",
+          "Knappen 'Kom i gang' omdøbt til 'Forstået' for at matche dismiss-handlingen.",
+        ],
+      },
+      {
+        category: "Alder-visning og -filter er nu konsistente (#108)",
+        items: [
+          "RiderStatsPage viste tidligere alder ud fra eksakt fødselsdag (24 år for rytter født juni 2001), mens filter og U25-logik bruger 'racing-age' (årstals-aritmetik = 25 år).",
+          "Visningen er nu rettet ind så alder altid beregnes som indeværende år minus fødselsår — samme konvention som filter, U25 og U23-toggles.",
+          "Filter på 'Alder ≤ 25' returnerer fortsat ryttere født 2001 eller senere; nu matcher alder vist på rytter-profilen.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.57",
     date: "2026-05-07",
     label: "Beta",

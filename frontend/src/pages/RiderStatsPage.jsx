@@ -350,9 +350,10 @@ export default function RiderStatsPage() {
       : isAiRider
         ? "Start auktion (AI-rytter)"
         : "Start auktion (fri rytter)";
+  // Racing-age (year-arithmetic) — matches U25/filter-logik andre steder i appen.
+  // Ellers kunne profil vise "24 år" mens max_age=25-filteret tæller rytteren som 25.
   const age = rider.birthdate
-    // eslint-disable-next-line react-hooks/purity -- Date.now() er acceptabel for rytter-alder-visning (værdi-skift kun ved sæsonskifte)
-    ? Math.floor((Date.now() - new Date(rider.birthdate)) / (365.25 * 24 * 3600 * 1000))
+    ? new Date().getFullYear() - new Date(rider.birthdate).getFullYear()
     : null;
   const typeLabel = (() => {
     const vals = STATS.map(s => rider[s.key] || 0);
