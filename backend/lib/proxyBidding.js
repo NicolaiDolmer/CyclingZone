@@ -19,11 +19,12 @@ export async function resolveProxyBids({
   bidTime,
   bidCfg,
   notifyTeamOwner,
+  notifyOutbidDM,
 }) {
   for (let i = 0; i < MAX_PROXY_ITERATIONS; i++) {
     const { data: auction } = await supabase
       .from("auctions")
-      .select("*, rider:rider_id(firstname, lastname)")
+      .select("*, rider:rider_id(firstname, lastname, team_id)")
       .eq("id", auctionId)
       .single();
 
@@ -100,6 +101,13 @@ export async function resolveProxyBids({
 
     const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
 
+    const { data: bidderTeam } = await supabase
+      .from("teams")
+      .select("name")
+      .eq("id", autoBidder)
+      .single();
+    const bidderName = bidderTeam?.name || "Auto-by";
+
     if (notifyTeamOwner) {
       if (exhaustedTeam) {
         // Proxy was beaten by a higher max
@@ -107,7 +115,7 @@ export async function resolveProxyBids({
           exhaustedTeam,
           "auction_proxy_outbid",
           "Din auto-by er stoppet",
-          `Din auto-by på ${riderName} nåede sit max-loft og er overbudt`,
+          `Din auto-by på ${riderName} nåede sit max-loft og er overbudt af ${bidderName}`,
           auctionId
         ).catch(() => {});
       } else if (autoBidder !== currentWinner && currentWinner) {
@@ -116,9 +124,42 @@ export async function resolveProxyBids({
           currentWinner,
           "auction_outbid",
           "Du er blevet overbudt!",
-          `Du er overbudt på ${riderName}`,
+          `${bidderName}'s auto-by overbød dig på ${riderName}`,
           auctionId
         ).catch(() => {});
+      }
+
+      // Notify seller (only if real human selling own rider — mirrors manual bid flow)
+      if (auction.rider?.team_id && auction.rider.team_id === auction.seller_team_id && auction.seller_team_id !== autoBidder) {
+        await notifyTeamOwner(
+          auction.seller_team_id,
+          "bid_received",
+          "Nyt bud modtaget",
+          `${bidderName}'s auto-by bød ${autoBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
+          auctionId
+        ).catch(() => {});
+      }
+    }
+
+    // Send Discord DM to the team that just lost the lead (mirrors manual bid flow)
+    if (notifyOutbidDM) {
+      if (exhaustedTeam) {
+        notifyOutbidDM({
+          riderName,
+          newBid: autoBidAmount,
+          bidderName,
+          teamId: exhaustedTeam,
+          isAuto: true,
+          exhausted: true,
+        }).catch(() => {});
+      } else if (autoBidder !== currentWinner && currentWinner) {
+        notifyOutbidDM({
+          riderName,
+          newBid: autoBidAmount,
+          bidderName,
+          teamId: currentWinner,
+          isAuto: true,
+        }).catch(() => {});
       }
     }
 
