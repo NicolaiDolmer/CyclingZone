@@ -36,7 +36,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr comment "$PR_NUMBER" --body "🚀 **Auto-merge aktiveret** — denne PR merger automatisk når \`backend-tests\` + \`frontend-build\` er grønne. Branch slettes efter merge. Fjern \`auto-merge\` label for at annullere."
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "🚀 **Auto-merge aktiveret** — denne PR merger automatisk når \`backend-tests\` + \`frontend-build\` er grønne. Branch slettes efter merge. Fjern \`auto-merge\` label for at annullere."
 
       - name: Notify on failure
         if: failure()
@@ -45,7 +45,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          gh pr comment "$PR_NUMBER" --body "❌ **Auto-merge kunne ikke aktiveres** — [se log]($RUN_URL)
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "❌ **Auto-merge kunne ikke aktiveres** — [se log]($RUN_URL)
 
           Tjek: er PR i draft? Er der merge-konflikter? Mangler required status check at være konfigureret?
           Workaround: merge manuelt eller re-tilføj \`auto-merge\` label."
