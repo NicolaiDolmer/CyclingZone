@@ -253,7 +253,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst }
               type="number"
               value={bidAmount}
               min={minBid}
-              onChange={e => setBidAmount(parseInt(e.target.value) || minBid)}
+              onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
               data-tour={isFirst ? "auctions-bid-input" : undefined}
               className="w-24 bg-cz-subtle border border-cz-border rounded px-2 py-1.5
                 text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
@@ -400,7 +400,7 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onNavigate, isFirst 
               type="number"
               value={bidAmount}
               min={minBid}
-              onChange={e => setBidAmount(parseInt(e.target.value) || minBid)}
+              onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
               data-tour={isFirst ? "auctions-bid-input" : undefined}
               className="min-w-0 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent"
             />
