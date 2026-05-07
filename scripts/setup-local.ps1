@@ -20,21 +20,28 @@ if (-not (Test-Path $npmPath)) { $npmPath = "npm" }
 
 Write-Host "setup-local.ps1 — $repoRoot`n"
 
-Write-Host "[1/2] Backend: npm install"
+Write-Host "[1/4] Root: npm install (lint-staged)"
+Push-Location $repoRoot
+try {
+  & $npmPath install
+  if ($LASTEXITCODE -ne 0) { throw "Root npm install fejlede." }
+} finally { Pop-Location }
+
+Write-Host "[2/4] Backend: npm install"
 Push-Location (Join-Path $repoRoot "backend")
 try {
   & $npmPath install
   if ($LASTEXITCODE -ne 0) { throw "Backend npm install fejlede." }
 } finally { Pop-Location }
 
-Write-Host "[2/2] Frontend: npm install"
+Write-Host "[3/4] Frontend: npm install"
 Push-Location (Join-Path $repoRoot "frontend")
 try {
   & $npmPath install
   if ($LASTEXITCODE -ne 0) { throw "Frontend npm install fejlede." }
 } finally { Pop-Location }
 
-Write-Host "`n[3/3] Aktiverer pre-push lint-hook (.githooks/pre-push)"
+Write-Host "`n[4/4] Aktiverer git hooks (.githooks/pre-commit + pre-push)"
 Push-Location $repoRoot
 try {
   & git config core.hooksPath .githooks
@@ -45,4 +52,5 @@ Write-Host "`n[ok] Lokal opsaetning faerdig."
 Write-Host "      Backend lint:    cd backend && npm run lint"
 Write-Host "      Frontend lint:   cd frontend && npm run lint"
 Write-Host "      Invariant-tjek:  pwsh -File scripts/verify-invariants.ps1"
+Write-Host "      Pre-commit hook: aktiv (lint koeres ved git commit)"
 Write-Host "      Pre-push hook:   aktiv (lint koeres ved git push)"
