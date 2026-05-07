@@ -107,7 +107,7 @@ const SECTIONS = [
       },
       {
         title: "Byde på auktioner",
-        text: "Gå til Auktioner og find en auktion du vil byde på. Indtast dit bud og klik 'Byd'. Du kan se om du vinder (🏆 Vinder) eller om du har budt men er overbudt (⚡ Du har budt). Minimumsbuddet er mindst 10% over nuværende pris og afrundes op til nærmeste 1.000 CZ$.",
+        text: "Gå til Auktioner og find en auktion du vil byde på. Indtast dit bud og klik 'Byd'. Du kan se om du vinder (🏆 Vinder) eller om du har budt men er overbudt (⚡ Du har budt). Minimumsbuddet er 1 CZ$ over nuværende pris (eller match af asking-pris hvis ingen har budt endnu).",
       },
       {
         title: "Hvornår udløber en auktion?",
@@ -553,7 +553,7 @@ const FAQ = [
   },
   {
     q: "Hvor meget skal jeg byde over i en auktion?",
-    a: "Dit bud skal være mindst 10% over den nuværende pris og afrundes op til nærmeste 1.000 CZ$. Aktive auktioner hvor du fører, tæller samtidig som reserveret balance og potentiel trupplads.",
+    a: "Dit bud skal være mindst 1 CZ$ over den nuværende pris. Hvis ingen har budt endnu (fx på et garanteret salg), kan du matche asking-prisen. Aktive auktioner hvor du fører, tæller samtidig som reserveret balance og potentiel trupplads.",
   },
   {
     q: "Tæller lejede ryttere med i holdgrænsen?",

@@ -1,5 +1,5 @@
 // Onboarding v2 Slice 1b — engangs-banner på AuctionsPage for managers der endnu
-// ikke har afgivet et bud. Forklarer 10%-overbud-reglen og 10-min auto-forlængelse.
+// ikke har afgivet et bud. Forklarer min-bud-regel og 10-min auto-forlængelse.
 // Forsvinder permanent når brugeren klikker × (localStorage cz-first-bid-shown).
 // Slice 4 (v2.19): "Vis mig rundt"-knap starter tour direkte og dismisser hintet.
 
@@ -12,8 +12,8 @@ export default function AuctionsFirstBidHint({ onDismiss, onStartTour }) {
           <p className="text-cz-1 text-sm font-semibold mb-1">Sådan virker auktioner</p>
           <ul className="text-cz-2 text-xs space-y-1">
             <li>
-              <span className="text-cz-1 font-medium">+10%-reglen:</span> Et nyt bud skal mindst være
-              10% over det aktuelle bud. Min-bud er forudfyldt i input-feltet.
+              <span className="text-cz-1 font-medium">Min-bud:</span> Et nyt bud skal mindst være
+              1 CZ$ over det aktuelle bud. Min-bud er forudfyldt i input-feltet.
             </li>
             <li>
               <span className="text-cz-1 font-medium">10-min auto-forlængelse:</span> Bud i de sidste
