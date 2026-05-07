@@ -5,6 +5,7 @@ backend/node_modules/
 scripts/*.csv
 scripts/__pycache__/
 .codex.local/
+.codex/
 .claude/settings.local.json
 .claude/worktrees/
 .mcp.json
