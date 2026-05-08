@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.77",
+    date: "2026-05-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "Intern infrastruktur · Dependabot-hærdning pre-launch",
+        items: [
+          "Dependabot kan ikke længere auto-merge afhængigheds-bumps (heller ikke patch/minor med grøn CI). Workflow'en kommenterer nu kun klassifikation og risiko-vurdering — manuel `auto-merge` label kræves for hver PR. Pre-launch beskyttelse mod runtime-regressioner og supply-chain-overraskelser.",
+          "Vercel preview-builds skippes på `dependabot/*` branches (sparer build minutes og forhindrer kø-stuvning som blokerede main-deploys 2026-05-08).",
+          "`react-router-dom` v7 og `@vitejs/plugin-react` v6 tilføjet til ignore-listen — major-bumps åbnes ikke som PRs igen før manuel un-ignore.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.76",
     date: "2026-05-08",
     label: "Beta",

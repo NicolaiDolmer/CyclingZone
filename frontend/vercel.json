@@ -1,5 +1,7 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  ],
+  "ignoreCommand": "case $VERCEL_GIT_COMMIT_REF in dependabot/*) echo 'skip dependabot preview (#178 hardening)'; exit 0;; *) exit 1;; esac"
 }
