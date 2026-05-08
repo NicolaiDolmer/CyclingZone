@@ -107,6 +107,17 @@ export async function resolveProxyBids({
     const topChallenger = challengers[0];
     const winnerProxy = allProxies.find(p => p.team_id === currentWinner);
 
+    // #183: slet stale winner-proxy fra DB så UI ikke vildleder manageren med
+    // "Auto-by loft 60K" når proxyen aldrig fyrer (effectiveWinnerProxy ignorerer
+    // den). Silent failure-mode pre-fix.
+    if (winnerProxy && winnerProxy.max_amount < currentPrice) {
+      await supabase
+        .from("auction_proxy_bids")
+        .delete()
+        .eq("auction_id", auctionId)
+        .eq("team_id", currentWinner);
+    }
+
     let autoBidAmount;
     let autoBidder;
     let exhaustedTeam = null;
@@ -191,11 +202,14 @@ export async function resolveProxyBids({
 
     const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
 
+    // #183: maybeSingle() returnerer { data: null } i stedet for error ved 0 rækker.
+    // Slettet team midt i auktion (RLS-issue) ville pre-fix få .single() til at
+    // returnere error → ydre try/catch swallow'ede den, men resterende iterationer mistedes.
     const { data: bidderTeam } = await supabase
       .from("teams")
       .select("name")
       .eq("id", autoBidder)
-      .single();
+      .maybeSingle();
     const bidderName = bidderTeam?.name || "Auto-by";
 
     if (notifyTeamOwner) {
