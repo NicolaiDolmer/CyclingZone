@@ -47,6 +47,21 @@ export function getAuctionBidIssue({
   return null;
 }
 
+// Reserved balance per auktion = MAX(current_price, eget proxy_max).
+// Stale proxies (max < current_price) regner med current_price — proxy'en kan ikke
+// længere overbyde den manuelt-budte pris, så manageren har reelt forpligtet
+// current_price på den auktion. Uden proxy: current_price (manageren leder).
+export function computeReservedBalance({
+  leadingAuctions = [],
+  proxiesByAuctionId = {},
+} = {}) {
+  return leadingAuctions.reduce((sum, row) => {
+    const currentPrice = Number(row.current_price) || 0;
+    const proxyMax = Number(proxiesByAuctionId[row.id]?.max_amount) || 0;
+    return sum + Math.max(currentPrice, proxyMax);
+  }, 0);
+}
+
 // Non-blocking advarsler: manager må stadig byde, men UI viser konsekvensen.
 export function getAuctionBidWarnings({
   teamState,
