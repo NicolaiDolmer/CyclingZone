@@ -125,7 +125,7 @@ function Countdown({ end, status }) {
 }
 
 // ── Auction table row ─────────────────────────────────────────────────────────
-function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveProxy, isFirst }) {
+function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, isFirst }) {
   const minBid = getMinimumAuctionBid(auction.current_price || 0, {
     hasActiveBid: Boolean(auction.current_bidder_id),
   });
@@ -153,9 +153,9 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveP
   }, [proxyExpanded]);
 
   async function handleBid() {
-    if (bidAmount > myBalance) {
+    if (bidAmount > myAvailableBalance) {
       setBidStatus("error");
-      setErrorText("Buddet overstiger din balance");
+      setErrorText("Buddet overstiger din tilgængelige balance (efter eksisterende bud)");
       setTimeout(() => setBidStatus(null), 3000);
       return;
     }
@@ -370,7 +370,7 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveP
   );
 }
 
-function AuctionCard({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveProxy, isFirst }) {
+function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, isFirst }) {
   const minBid = getMinimumAuctionBid(auction.current_price || 0, {
     hasActiveBid: Boolean(auction.current_bidder_id),
   });
@@ -399,9 +399,9 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemove
   }, [proxyExpanded]);
 
   async function handleBid() {
-    if (bidAmount > myBalance) {
+    if (bidAmount > myAvailableBalance) {
       setBidStatus("error");
-      setErrorText("Buddet overstiger din balance");
+      setErrorText("Buddet overstiger din tilgængelige balance (efter eksisterende bud)");
       setTimeout(() => setBidStatus(null), 3000);
       return;
     }
@@ -792,6 +792,24 @@ export default function AuctionsPage() {
   const filteredRiderOrder = new Map(riderFilters.filtered.map((r, i) => [r.id, i]));
 
   const winningAuctions  = auctions.filter(a => getAuctionLeaderId(a) === myTeamId);
+  // #44: worst-case reservation = sum af MAX(current_price, eget proxy_max) for
+  // leading + sum af proxy_max for ikke-leading auktioner. Hvis alle proxies
+  // trigger fuldt og hver leading-auction finaliserer, er det her hvad manageren
+  // skylder. availableBalance = balance - reservation, klampet til 0.
+  const reservedBalance = (() => {
+    let total = 0;
+    const seenIds = new Set();
+    for (const a of winningAuctions) {
+      total += Math.max(a.current_price || 0, a.myProxyMax || 0);
+      seenIds.add(a.id);
+    }
+    for (const a of auctions) {
+      if (seenIds.has(a.id)) continue;
+      if (a.myProxyMax) total += a.myProxyMax;
+    }
+    return total;
+  })();
+  const availableBalance = Math.max(0, myBalance - reservedBalance);
   const activeBidSum     = winningAuctions.reduce((sum, a) => sum + (a.current_price || 0), 0);
   const incomingCount    = winningAuctions.filter(a => a.rider?.team_id !== myTeamId).length;
   const outgoingCount    = auctions.filter(a => {
@@ -874,11 +892,16 @@ export default function AuctionsPage() {
             <p className="text-cz-accent-t font-mono font-bold text-sm leading-tight">
               {myBalance.toLocaleString("da-DK")} CZ$
             </p>
+            {reservedBalance > 0 && (
+              <p className="text-cz-3 text-[10px] mt-0.5">
+                {availableBalance.toLocaleString("da-DK")} CZ$ tilgængelig
+              </p>
+            )}
           </div>
           <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
-            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">Sum af aktive bud</p>
+            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">Reserveret i bud</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
-              {activeBidSum.toLocaleString("da-DK")} CZ$
+              {reservedBalance.toLocaleString("da-DK")} CZ$
             </p>
             {winningAuctions.length > 0 && (
               <p className="text-cz-3 text-[10px] mt-0.5">{winningAuctions.length} auktion{winningAuctions.length !== 1 ? "er" : ""} du leder</p>
@@ -966,7 +989,7 @@ export default function AuctionsPage() {
               key={a.id}
               auction={a}
               myTeamId={myTeamId}
-              myBalance={myBalance}
+              myAvailableBalance={availableBalance}
               onBid={handleBid}
               onSetProxy={handleSetProxy}
               onRemoveProxy={handleRemoveProxy}
@@ -1025,7 +1048,7 @@ export default function AuctionsPage() {
                     key={a.id}
                     auction={a}
                     myTeamId={myTeamId}
-                    myBalance={myBalance}
+                    myAvailableBalance={availableBalance}
                     onBid={handleBid}
                     onSetProxy={handleSetProxy}
                     onRemoveProxy={handleRemoveProxy}

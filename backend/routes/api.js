@@ -22,11 +22,15 @@ import {
   DEFAULT_AUCTION_CONFIG,
 } from "../lib/auctionEngine.js";
 import {
+  computeAvailableBalance,
   computeReservedBalance,
+  computeWorstCaseCommitment,
   getAuctionBidIssue,
   getAuctionBidWarnings,
   getAuctionInitialBidderId,
   getMinimumAuctionBid,
+  getProxyMaxIssue,
+  getSpendIssue,
   isExpectedPriceStale,
 } from "../lib/auctionRules.js";
 import {
@@ -202,6 +206,42 @@ async function fetchOwnProxiesByAuctionId(supabaseClient, teamId, auctionIds) {
     byId[row.auction_id] = row;
   }
   return byId;
+}
+
+// #44: hent ALLE mine aktive proxies på tværs af auktioner. Bruges af gates der
+// skal kende worst-case commitment (fx PATCH /proxy, repayLoan, transfer-accept).
+// Filtrerer på auction.status active/extended så vi ikke tæller proxies på lukkede
+// auktioner.
+async function fetchAllMyActiveProxies(supabaseClient, teamId) {
+  if (!teamId) return [];
+  const { data } = await supabaseClient
+    .from("auction_proxy_bids")
+    .select("auction_id, max_amount, auction:auction_id(status)")
+    .eq("team_id", teamId);
+  return (data || [])
+    .filter((row) => ["active", "extended"].includes(row.auction?.status))
+    .map((row) => ({ auction_id: row.auction_id, max_amount: row.max_amount }));
+}
+
+// #44: fetch leading auctions + all proxies + compute worst-case commitment.
+// Canonical "hvad skylder denne manager potentielt?"-svar. Bruges af alle
+// balance-reducerende endpoints (auction-bid, proxy-set, loan-repay, transfer-accept).
+async function fetchTeamCommitment(supabaseClient, teamId) {
+  if (!teamId) return { leadingAuctions: [], allMyProxies: [], commitment: 0 };
+
+  const [leadingRes, allProxies] = await Promise.all([
+    supabaseClient
+      .from("auctions")
+      .select("id, current_price")
+      .in("status", ["active", "extended"])
+      .eq("current_bidder_id", teamId),
+    fetchAllMyActiveProxies(supabaseClient, teamId),
+  ]);
+
+  const leadingAuctions = leadingRes.data || [];
+  const commitment = computeWorstCaseCommitment({ leadingAuctions, allMyProxies: allProxies });
+
+  return { leadingAuctions, allMyProxies: allProxies, commitment };
 }
 
 
@@ -812,27 +852,22 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Du kan ikke byde på din egen rytter" });
     }
   }
-  const [leadingAuctions, teamState] = await Promise.all([
-    supabase
-      .from("auctions")
-      .select("id, current_price")
-      .in("status", ["active", "extended"])
-      .eq("current_bidder_id", req.team.id),
+  // #44: worst-case commitment EXKL. denne auktion. Hvis manageren allerede leder
+  // denne auktion eller har en proxy på den, ekskluderer vi det bidrag — det
+  // tæller med via proxyMax-parameteren til getAuctionBidIssue.
+  const [{ leadingAuctions: allLeading, allMyProxies }, teamState] = await Promise.all([
+    fetchTeamCommitment(supabase, req.team.id),
     getTeamMarketState(supabase, req.team.id),
   ]);
-  const activeLeading = leadingAuctions.data || [];
-  const activeLeadingExceptCurrent = activeLeading.filter(row => row.id !== auction.id);
-  const proxiesByAuctionId = await fetchOwnProxiesByAuctionId(
-    supabase,
-    req.team.id,
-    activeLeadingExceptCurrent.map(row => row.id),
-  );
-  const reservedBalance = computeReservedBalance({
-    leadingAuctions: activeLeadingExceptCurrent,
-    proxiesByAuctionId,
+  const leadingExceptThis = allLeading.filter((row) => row.id !== auction.id);
+  const proxiesExceptThis = allMyProxies.filter((p) => p.auction_id !== auction.id);
+  const reservedBalance = computeWorstCaseCommitment({
+    leadingAuctions: leadingExceptThis,
+    allMyProxies: proxiesExceptThis,
   });
   const bidIssue = getAuctionBidIssue({
     amount,
+    proxyMax: proxy_max,
     currentPrice: auction.current_price,
     currentBidderId: auction.current_bidder_id,
     teamBalance: req.team.balance,
@@ -846,11 +881,17 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
   }
 
   if (bidIssue?.code === "insufficient_available_balance") {
-    const availableBalance = (Number(req.team.balance) || 0) - reservedBalance;
+    const availableBalance = computeAvailableBalance({
+      teamBalance: req.team.balance,
+      commitment: reservedBalance,
+    });
     return res.status(400).json({
       error: `Du har ${availableBalance.toLocaleString("da-DK")} CZ$ tilbage efter eksisterende bud`,
     });
   }
+
+  // Bagudkompat: aktivLedingExceptCurrent bruges af getAuctionBidWarnings nedenfor.
+  const activeLeadingExceptCurrent = leadingExceptThis;
 
   // Squad-cap er ikke længere en hard block (#29). Konverteret til warning som UI viser
   // efter bud er placeret. Manager må gerne lede 11+ auktioner under vinduet — squadEnforcement
@@ -1012,6 +1053,27 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
   if (numericMax < minRequired) {
     return res.status(400).json({
       error: `Max-loft skal være mindst ${minRequired.toLocaleString("da-DK")} CZ$`,
+    });
+  }
+
+  // #44: gate proxy_max mod available balance. Worst case = MAX(current_price, proxy_max)
+  // hvis manageren leder denne auktion, ellers proxy_max. otherCommitment ekskluderer
+  // alle andre auktioner manageren er involveret i (leading + ikke-leading proxies).
+  const { leadingAuctions, allMyProxies } = await fetchTeamCommitment(supabase, req.team.id);
+  const otherCommitment = computeWorstCaseCommitment({
+    leadingAuctions: leadingAuctions.filter((row) => row.id !== req.params.id),
+    allMyProxies: allMyProxies.filter((p) => p.auction_id !== req.params.id),
+  });
+  const proxyIssue = getProxyMaxIssue({
+    proxyMax: numericMax,
+    currentPrice: auction.current_price,
+    isLeading: auction.current_bidder_id === req.team.id,
+    teamBalance: req.team.balance,
+    otherCommitment,
+  });
+  if (proxyIssue?.code === "insufficient_available_balance") {
+    return res.status(400).json({
+      error: `Du har ${proxyIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilbage efter eksisterende bud og auto-bud`,
     });
   }
 
@@ -1827,8 +1889,20 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
     if (loan.loan_fee > 0) {
       const { data: borrower } = await supabase.from("teams").select("balance").eq("id", loan.to_team_id).single();
       const { data: lender }   = await supabase.from("teams").select("balance").eq("id", loan.from_team_id).single();
-      if (!borrower || borrower.balance < loan.loan_fee)
-        return res.status(400).json({ error: "Lejer har ikke råd til lejegebyret" });
+      if (!borrower)
+        return res.status(400).json({ error: "Lejer-hold ikke fundet" });
+      // #44: lejegebyret må ikke pushe lejer i underbalance ift. eksisterende auktioner.
+      const { commitment: borrowerCommitment } = await fetchTeamCommitment(supabase, loan.to_team_id);
+      const spendIssue = getSpendIssue({
+        teamBalance: borrower.balance,
+        commitment: borrowerCommitment,
+        attemptedSpend: loan.loan_fee,
+      });
+      if (spendIssue?.code === "insufficient_available_balance") {
+        return res.status(400).json({
+          error: `Lejer har kun ${spendIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilgængelig efter aktive bud — kan ikke betale lejegebyr på ${loan.loan_fee.toLocaleString("da-DK")} CZ$`,
+        });
+      }
       await supabase.from("teams").update({ balance: borrower.balance - loan.loan_fee }).eq("id", loan.to_team_id);
       await supabase.from("teams").update({ balance: lender.balance + loan.loan_fee }).eq("id", loan.from_team_id);
       await supabase.from("finance_transactions").insert([
@@ -1869,8 +1943,20 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
     const price = loan.buy_option_price;
     const { data: borrower } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
     const { data: lender }   = await supabase.from("teams").select("balance").eq("id", loan.from_team_id).single();
-    if (!borrower || borrower.balance < price)
-      return res.status(400).json({ error: "Du har ikke råd til at udnytte købsoptionen" });
+    if (!borrower)
+      return res.status(400).json({ error: "Hold ikke fundet" });
+    // #44: købsoption må ikke pushe i underbalance ift. eksisterende auktioner.
+    const { commitment: buyerCommitment } = await fetchTeamCommitment(supabase, req.team.id);
+    const buyoutIssue = getSpendIssue({
+      teamBalance: borrower.balance,
+      commitment: buyerCommitment,
+      attemptedSpend: price,
+    });
+    if (buyoutIssue?.code === "insufficient_available_balance") {
+      return res.status(400).json({
+        error: `Du har kun ${buyoutIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilgængelig efter aktive bud — kan ikke udnytte købsoption på ${price.toLocaleString("da-DK")} CZ$`,
+      });
+    }
 
     await supabase.from("riders").update({ team_id: req.team.id, acquired_at: new Date().toISOString() }).eq("id", loan.rider_id);
     await supabase.from("teams").update({ balance: borrower.balance - price }).eq("id", req.team.id);

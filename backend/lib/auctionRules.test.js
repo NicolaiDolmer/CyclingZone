@@ -2,11 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  computeAvailableBalance,
   computeReservedBalance,
+  computeWorstCaseCommitment,
   getAuctionInitialBidderId,
   getAuctionBidIssue,
   getAuctionBidWarnings,
   getMinimumAuctionBid,
+  getProxyMaxIssue,
+  getSpendIssue,
   isExpectedPriceStale,
 } from "./auctionRules.js";
 import {
@@ -195,6 +199,193 @@ test("getAuctionBidIssue returns correct available when proxy bumps reservedBala
   });
   assert.equal(issue?.code, "insufficient_available_balance");
   assert.equal(issue?.totalCommitment, 560000);
+});
+
+// ── #44 worst-case-commitment helpers ────────────────────────────────────────
+
+test("computeWorstCaseCommitment sums leading + non-leading proxy commitments", () => {
+  // Leading uden proxy = current_price (60K)
+  // Leading med proxy = MAX(current_price, proxy_max) (200K)
+  // Ikke-leading med proxy = proxy_max (300K)
+  const total = computeWorstCaseCommitment({
+    leadingAuctions: [
+      { id: "a1", current_price: 60000 },
+      { id: "a2", current_price: 50000 },
+    ],
+    allMyProxies: [
+      { auction_id: "a2", max_amount: 200000 },
+      { auction_id: "a3", max_amount: 300000 },
+    ],
+  });
+  assert.equal(total, 60000 + 200000 + 300000);
+});
+
+test("computeWorstCaseCommitment ignores stale leading proxy (max < current_price)", () => {
+  // Stale proxy: current_price 100K, proxy_max 50K → contribution 100K (proxy kan ikke
+  // overbyde det manuelt-budte). Samme regel som computeReservedBalance.
+  const total = computeWorstCaseCommitment({
+    leadingAuctions: [{ id: "a1", current_price: 100000 }],
+    allMyProxies: [{ auction_id: "a1", max_amount: 50000 }],
+  });
+  assert.equal(total, 100000);
+});
+
+test("computeWorstCaseCommitment dedupes when proxy and lead are on same auction", () => {
+  // Hvis manageren både leder og har proxy på samme auktion, må vi ikke dobbelttælle.
+  const total = computeWorstCaseCommitment({
+    leadingAuctions: [{ id: "a1", current_price: 50000 }],
+    allMyProxies: [{ auction_id: "a1", max_amount: 200000 }],
+  });
+  assert.equal(total, 200000);
+});
+
+test("computeWorstCaseCommitment returns 0 for empty input", () => {
+  assert.equal(computeWorstCaseCommitment({}), 0);
+  assert.equal(computeWorstCaseCommitment({ leadingAuctions: [], allMyProxies: [] }), 0);
+});
+
+test("computeAvailableBalance subtracts commitment and clamps to 0", () => {
+  assert.equal(computeAvailableBalance({ teamBalance: 500000, commitment: 200000 }), 300000);
+  assert.equal(computeAvailableBalance({ teamBalance: 100000, commitment: 200000 }), 0);
+  assert.equal(computeAvailableBalance({ teamBalance: 0, commitment: 0 }), 0);
+});
+
+// ── #44 gates ────────────────────────────────────────────────────────────────
+
+test("getAuctionBidIssue gates MAX(amount, proxyMax) mod available balance", () => {
+  // Manager har 500K balance, 0 reserved. Byder 50K med proxy_max 600K.
+  // Pre-#44: 50K < 500K ✓ pass, men proxy 600K committer mere end balance.
+  // Post-#44: MAX(50K, 600K) = 600K mod 500K → afvist.
+  const issue = getAuctionBidIssue({
+    amount: 50000,
+    proxyMax: 600000,
+    currentPrice: 40000,
+    currentBidderId: "team-other",
+    teamBalance: 500000,
+    reservedBalance: 0,
+  });
+  assert.equal(issue?.code, "insufficient_available_balance");
+  assert.equal(issue?.totalCommitment, 600000);
+});
+
+test("getAuctionBidIssue without proxyMax behaves som før (backwards-compat)", () => {
+  const issue = getAuctionBidIssue({
+    amount: 100000,
+    currentPrice: 50000,
+    currentBidderId: "team-other",
+    teamBalance: 500000,
+    reservedBalance: 0,
+  });
+  assert.equal(issue, null);
+});
+
+test("getAuctionBidIssue accepts when proxyMax er <= amount", () => {
+  // proxyMax 30K på et 50K-bud betyder proxy ikke vil trigger højere — ingen ekstra commitment.
+  const issue = getAuctionBidIssue({
+    amount: 50000,
+    proxyMax: 30000,
+    currentPrice: 40000,
+    currentBidderId: "team-other",
+    teamBalance: 500000,
+    reservedBalance: 100000,
+  });
+  assert.equal(issue, null);
+});
+
+test("getProxyMaxIssue blocks proxy > available balance på ikke-leading auktion", () => {
+  // Manager har 500K balance, 200K commitment fra andre auktioner. Sætter proxy 400K
+  // på en auktion de ikke leder. Worst case: proxy trigger fuldt → 200K + 400K = 600K
+  // > 500K → afvist.
+  const issue = getProxyMaxIssue({
+    proxyMax: 400000,
+    currentPrice: 50000,
+    isLeading: false,
+    teamBalance: 500000,
+    otherCommitment: 200000,
+  });
+  assert.equal(issue?.code, "insufficient_available_balance");
+  assert.equal(issue?.availableBalance, 300000);
+});
+
+test("getProxyMaxIssue accepts proxy som lige passer i available", () => {
+  // 500K balance, 200K commitment, sætter proxy 300K → 500K ≥ 500K total → accepteret.
+  const issue = getProxyMaxIssue({
+    proxyMax: 300000,
+    currentPrice: 50000,
+    isLeading: false,
+    teamBalance: 500000,
+    otherCommitment: 200000,
+  });
+  assert.equal(issue, null);
+});
+
+test("getProxyMaxIssue bruger MAX(current_price, proxy_max) når isLeading=true", () => {
+  // Leading på auktion med current_price 100K. Sætter proxy 80K (under current_price).
+  // Worst case = current_price 100K (proxy kan ikke gå lavere). otherCommitment=0,
+  // balance=150K → 150K ≥ 100K → accepteret.
+  const ok = getProxyMaxIssue({
+    proxyMax: 80000,
+    currentPrice: 100000,
+    isLeading: true,
+    teamBalance: 150000,
+    otherCommitment: 0,
+  });
+  assert.equal(ok, null);
+
+  // Samme manager prøver proxy 200K → worst case 200K, 150K balance → afvist.
+  const bad = getProxyMaxIssue({
+    proxyMax: 200000,
+    currentPrice: 100000,
+    isLeading: true,
+    teamBalance: 150000,
+    otherCommitment: 0,
+  });
+  assert.equal(bad?.code, "insufficient_available_balance");
+});
+
+test("getProxyMaxIssue afviser ugyldige værdier", () => {
+  assert.equal(getProxyMaxIssue({ proxyMax: 0, teamBalance: 1000 })?.code, "invalid_proxy_max");
+  assert.equal(getProxyMaxIssue({ proxyMax: -5, teamBalance: 1000 })?.code, "invalid_proxy_max");
+  assert.equal(getProxyMaxIssue({ proxyMax: NaN, teamBalance: 1000 })?.code, "invalid_proxy_max");
+  assert.equal(getProxyMaxIssue({ proxyMax: "abc", teamBalance: 1000 })?.code, "invalid_proxy_max");
+});
+
+test("getSpendIssue gates loan-repay/transfer/buyout mod available balance", () => {
+  // jeppek-eksemplet: 500K balance, 200K gæld, 400K i bud (commitment).
+  // Tilgængelig = 500K - 400K = 100K. Forsøg at betale 200K af gæld → afvist (kun 100K muligt).
+  const issue = getSpendIssue({
+    teamBalance: 500000,
+    commitment: 400000,
+    attemptedSpend: 200000,
+  });
+  assert.equal(issue?.code, "insufficient_available_balance");
+  assert.equal(issue?.availableBalance, 100000);
+
+  // Repay på 100K passerer.
+  const ok = getSpendIssue({
+    teamBalance: 500000,
+    commitment: 400000,
+    attemptedSpend: 100000,
+  });
+  assert.equal(ok, null);
+
+  // Repay på 100001 afvises (1 CZ$ for meget).
+  const tight = getSpendIssue({
+    teamBalance: 500000,
+    commitment: 400000,
+    attemptedSpend: 100001,
+  });
+  assert.equal(tight?.code, "insufficient_available_balance");
+});
+
+test("getSpendIssue accepts spend uden commitment", () => {
+  // Ingen aktive bud → fuld balance er tilgængelig.
+  const ok = getSpendIssue({
+    teamBalance: 500000,
+    commitment: 0,
+    attemptedSpend: 500000,
+  });
+  assert.equal(ok, null);
 });
 
 test("isExpectedPriceStale returns false when expected matches current", () => {
