@@ -1,8 +1,10 @@
 name: Deploy verify
 
-# Trigger: Direkte push til main ELLER PR squash-merged til main.
-# `pull_request: closed` fanger auto-merged PRs (hvor push-event ikke trigger
-# downstream workflows pga GitHub Actions infinite-loop-protection).
+# Trigger:
+#  - Direkte push til main (manuel commit eller bruger-mergede PR)
+#  - PR squash-merged til main (pull_request: closed) — fanger merges fra non-GITHUB_TOKEN actors
+#  - workflow_dispatch — eksplicit trigger fra auto-merge.yml/dependabot-auto-merge.yml,
+#    fordi GITHUB_TOKEN-merges ikke fyrer push/pull_request events (anti-loop-safeguard).
 # Effekt: Venter på Vercel + Railway deploy, smoke-tester prod, kommenterer ✅/❌
 # på den merged PR. Brugeren kan trygt være offline efter mobile-merge.
 
@@ -12,6 +14,14 @@ on:
   pull_request:
     types: [closed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Commit SHA to verify (defaults to main HEAD)'
+        required: false
+      pr_number:
+        description: 'PR number to comment on (optional, auto-detected from SHA)'
+        required: false
 
 permissions:
   contents: read
@@ -22,7 +32,7 @@ permissions:
 jobs:
   verify:
     # Skip lukkede PRs der ikke er merged (close uden merge → ingen deploy at verify)
-    if: github.event_name == 'push' || github.event.pull_request.merged == true
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Resolve target sha and PR number
@@ -33,10 +43,19 @@ jobs:
           PUSH_SHA: ${{ github.sha }}
           PR_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          INPUT_SHA: ${{ inputs.sha }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
         run: |
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             SHA="$PR_MERGE_SHA"
             NUMBER="$PR_NUMBER"
+          elif [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SHA="${INPUT_SHA:-$(gh api repos/${{ github.repository }}/commits/main --jq .sha)}"
+            if [[ -n "$INPUT_PR_NUMBER" ]]; then
+              NUMBER="$INPUT_PR_NUMBER"
+            else
+              NUMBER=$(gh api "repos/${{ github.repository }}/commits/$SHA/pulls" --jq '.[0].number // empty')
+            fi
           else
             SHA="$PUSH_SHA"
             NUMBER=$(gh api "repos/${{ github.repository }}/commits/$SHA/pulls" --jq '.[0].number // empty')
