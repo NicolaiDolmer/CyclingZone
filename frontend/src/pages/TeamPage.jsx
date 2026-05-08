@@ -306,7 +306,7 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                     <td className="px-3 py-2.5 text-center">
                       {!r._isIncoming && (
                         <button onClick={() => onSelectRider(r)}
-                          className="px-2 py-1 bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border">
+                          className="px-3 min-h-[44px] bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border whitespace-nowrap">
                           Sælg / Auktion
                         </button>
                       )}

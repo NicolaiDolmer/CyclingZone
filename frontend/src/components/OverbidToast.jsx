@@ -31,7 +31,7 @@ export default function OverbidToast({ toasts, onDismiss }) {
           </div>
           <button
             onClick={() => onDismiss(t.id)}
-            className="text-cz-3 hover:text-cz-1 text-xs leading-none px-1"
+            className="text-cz-3 hover:text-cz-1 text-base leading-none min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0 -mr-2"
             aria-label="Luk"
           >
             ✕

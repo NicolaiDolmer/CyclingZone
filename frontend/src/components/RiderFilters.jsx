@@ -336,10 +336,15 @@ export default function RiderFilters({
 
 function Chip({ label, onRemove }) {
   return (
-    <span className="flex items-center gap-1 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-      text-[10px] px-2 py-1 rounded-full font-medium">
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={`Fjern filter: ${label}`}
+      className="inline-flex items-center gap-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
+        text-xs px-3 min-h-[44px] rounded-full font-medium hover:bg-cz-accent/20 transition-colors"
+    >
       {label}
-      <button onClick={onRemove} className="hover:text-cz-1 ml-0.5">×</button>
-    </span>
+      <span aria-hidden="true" className="text-base leading-none">×</span>
+    </button>
   );
 }

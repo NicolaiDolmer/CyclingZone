@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.82",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Mobile polish · 360px touch-targets",
+        items: [
+          "Onboarding-banner og overbudt-toast · × close-knapperne på 'Sådan virker auktioner'-banneret og 'Du er overbudt'-toasten har nu 44×44px tap-target (Apple HIG) i stedet for et lille kryds, der var svært at ramme på telefon.",
+          "Filter-chips · Aktive filtre på rytter- og auktionssiden er nu klikbare i hele deres bredde — tryk hvor som helst på chip'en for at fjerne filteret. Tidligere skulle du ramme det lille × præcist (#181).",
+          "Stats-popover · 'Vis stats'-menuen på auktionssiden har max-bredde der respekterer viewport, så menuen ikke længere kan flyde ud over kanten på 360px-skærme (#181).",
+          "Holdside · 'Sælg / Auktion'-knappen i Squad-tabellen har nu 44px touch-target i stedet for et lille tryk-felt, så den er nemmere at ramme på mobil (#181).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.81",
     date: "2026-05-08",
     label: "Beta",
