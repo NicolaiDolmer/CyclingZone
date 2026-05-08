@@ -1,8 +1,12 @@
 name: Dependabot auto-merge
 
-# Auto-tilføjer 'auto-merge' label til lav-risiko Dependabot-PRs.
-# Lav-risiko = patch eller minor update (ikke major version-bump).
-# Major-bumps får ikke label → kræver manuel review.
+# Auto-merger lav-risiko Dependabot-PRs (patch + minor) når CI er grøn.
+# Major-bumps får ikke auto-merge → kræver manuel review.
+#
+# Hvorfor venter vi synkront i stedet for `gh pr merge --auto`:
+# GitHub's anti-loop-safeguard blokerer downstream workflows fra GITHUB_TOKEN-merges
+# (deploy-verify fyrer ikke). Vi venter på CI, merger selv, og trigger deploy-verify
+# eksplicit via workflow_dispatch (undtaget fra safeguard). Se #118 lærepenge 2026-05-08.
 
 on:
   pull_request:
@@ -11,32 +15,23 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write  # workflow_dispatch på deploy-verify
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   dependabot-auto-merge:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Fetch Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      # Vigtigt: GITHUB_TOKEN-aktivitet trigger ikke andre workflows (anti-loop-safeguard).
-      # Derfor kalder vi BÅDE `gh pr edit --add-label` (UI-marker) OG `gh pr merge --auto`
-      # direkte her, i stedet for at lade auto-merge.yml håndtere det via label-event.
-      - name: Auto-label + queue auto-merge for safe updates
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
-        run: |
-          gh pr edit "$PR_URL" --add-label "auto-merge"
-          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" --auto --squash --delete-branch
-          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "🤖 **Dependabot $UPDATE_TYPE** klassificeret som lav-risiko → auto-merge i kø. Merger automatisk når CI grøn."
 
       - name: Note major bumps for manual review
         if: steps.metadata.outputs.update-type == 'version-update:semver-major'
@@ -45,3 +40,43 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "⚠️ **Major version-bump** — kræver manuel review af breaking changes før merge. Tilføj \`auto-merge\` label manuelt hvis du har verificeret ingen breaking impact."
+
+      - name: Confirm queued (patch/minor)
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+        run: |
+          gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --add-label "auto-merge"
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "🤖 **Dependabot $UPDATE_TYPE** klassificeret som lav-risiko → venter synkront på CI og merger automatisk. Trigger deploy-verify bagefter."
+
+      - name: Wait for required checks
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr checks "$PR_NUMBER" --repo "${{ github.repository }}" --watch --fail-fast --required
+
+      - name: Squash-merge PR
+        id: merge
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" --squash --delete-branch
+          SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json mergeCommit --jq .mergeCommit.oid)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger deploy-verify (anti-loop workaround)
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SHA: ${{ steps.merge.outputs.sha }}
+        run: |
+          gh workflow run deploy-verify.yml --repo "${{ github.repository }}" --ref main \
+            -f sha="$SHA" \
+            -f pr_number="$PR_NUMBER"

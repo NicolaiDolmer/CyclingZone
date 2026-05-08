@@ -1,10 +1,16 @@
 name: Auto-merge labeled PR
 
 # Trigger: Bruger tilføjer 'auto-merge' label på en PR (fra mobil eller desktop)
-# Effekt: PR sættes i GitHub's auto-merge kø → merger automatisk når required CI checks
-# (backend-tests + frontend-build) er grønne. Branch slettes efter merge.
+# Effekt: Venter synkront på required CI checks → squash-merger → trigger deploy-verify
+# eksplicit via workflow_dispatch.
 #
-# Sikkerheds-net: Branch protection er stadig håndhævet — PR kan ikke merge før CI grøn.
+# Hvorfor IKKE `gh pr merge --auto`: GitHub's anti-loop-safeguard blokerer downstream
+# workflows (push, pull_request: closed) når mergen kommer fra GITHUB_TOKEN — det
+# fanger #118 (lint-staged 17, mergede 2026-05-08T10:36 uden deploy-verify).
+# workflow_dispatch er undtaget fra safeguard og fyrer altid en ny run.
+#
+# Sikkerheds-net: Branch protection er stadig håndhævet — `gh pr merge` fejler hvis
+# CI ikke grøn eller PR i draft.
 
 on:
   pull_request:
@@ -13,30 +19,52 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write  # workflow_dispatch på deploy-verify
+
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
 
 jobs:
   auto-merge:
     if: github.event.label.name == 'auto-merge'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Enable auto-merge (squash)
+      - name: Confirm queued
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr merge "$PR_NUMBER" \
-            --repo "${{ github.repository }}" \
-            --auto \
-            --squash \
-            --delete-branch
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "🚀 **Auto-merge i kø** — venter synkront på \`backend-tests\` + \`frontend-build\`. Squash-merger automatisk når grøn, og trigger deploy-verify bagefter. Fjern \`auto-merge\` label for at annullere."
 
-      - name: Confirm via comment
-        if: success()
+      - name: Wait for required checks (backend-tests + frontend-build)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "🚀 **Auto-merge aktiveret** — denne PR merger automatisk når \`backend-tests\` + \`frontend-build\` er grønne. Branch slettes efter merge. Fjern \`auto-merge\` label for at annullere."
+          gh pr checks "$PR_NUMBER" --repo "${{ github.repository }}" --watch --fail-fast --required
+
+      - name: Squash-merge PR
+        id: merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" --squash --delete-branch
+          SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json mergeCommit --jq .mergeCommit.oid)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Merged to $SHA"
+
+      - name: Trigger deploy-verify (anti-loop workaround)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SHA: ${{ steps.merge.outputs.sha }}
+        run: |
+          gh workflow run deploy-verify.yml --repo "${{ github.repository }}" --ref main \
+            -f sha="$SHA" \
+            -f pr_number="$PR_NUMBER"
 
       - name: Notify on failure
         if: failure()
@@ -45,7 +73,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "❌ **Auto-merge kunne ikke aktiveres** — [se log]($RUN_URL)
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "❌ **Auto-merge fejlede** — [se log]($RUN_URL)
 
-          Tjek: er PR i draft? Er der merge-konflikter? Mangler required status check at være konfigureret?
+          Tjek: er PR i draft? Er der merge-konflikter? Er CI rødt?
           Workaround: merge manuelt eller re-tilføj \`auto-merge\` label."
