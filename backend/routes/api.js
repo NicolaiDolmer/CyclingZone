@@ -960,18 +960,6 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
     });
   }
 
-  // Require team to already have placed a bid on this auction
-  const { data: existingBid } = await supabase
-    .from("auction_bids")
-    .select("id")
-    .eq("auction_id", req.params.id)
-    .eq("team_id", req.team.id)
-    .limit(1);
-
-  if (!existingBid?.length) {
-    return res.status(400).json({ error: "Sæt max-loft sammen med dit første bud" });
-  }
-
   await supabase.from("auction_proxy_bids").upsert(
     { auction_id: req.params.id, team_id: req.team.id, max_amount: numericMax },
     { onConflict: "auction_id,team_id" }
