@@ -315,12 +315,14 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
                 min={minBid}
                 onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
                 data-tour={isFirst ? "auctions-bid-input" : undefined}
+                aria-label="Dit bud i CZ$"
                 className="w-24 bg-cz-subtle border border-cz-border rounded px-2 py-1.5
                   text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
               />
               <button
                 onClick={handleBid}
                 disabled={bidStatus === "loading" || bidAmount < minBid}
+                aria-label={imWinning ? "Hæv dit bud" : "Afgiv bud"}
                 className={`px-3 py-1.5 rounded text-xs font-bold transition-all whitespace-nowrap
                   ${bidStatus === "error"   ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                     bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
@@ -344,11 +346,11 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
                 <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded whitespace-nowrap">
                   Auto-by: max {myProxy.toLocaleString("da-DK")} CZ$
                 </span>
-                <button onClick={() => setProxyExpanded(true)} className="text-[9px] text-cz-3 hover:text-cz-2">Ændr</button>
-                <button onClick={handleRemoveProxy} className="text-[9px] text-cz-3 hover:text-cz-danger">✕</button>
+                <button onClick={() => setProxyExpanded(true)} aria-label="Ændr auto-by-loft" className="text-[9px] text-cz-3 hover:text-cz-2">Ændr</button>
+                <button onClick={handleRemoveProxy} aria-label="Fjern auto-by" className="text-[9px] text-cz-3 hover:text-cz-danger">✕</button>
               </div>
             ) : !proxyExpanded ? (
-              <button onClick={() => setProxyExpanded(true)} className="text-[9px] text-cz-3 hover:text-cz-2 text-left mt-0.5">
+              <button onClick={() => setProxyExpanded(true)} aria-label="Sæt auto-by-loft" className="text-[9px] text-cz-3 hover:text-cz-2 text-left mt-0.5">
                 + Auto-by loft
               </button>
             ) : (
@@ -360,11 +362,13 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
                     min={minBid}
                     onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
                     placeholder="Max-loft"
+                    aria-label="Auto-by-loft i CZ$"
                     className="w-20 bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-cz-1 font-mono text-[10px] focus:outline-none focus:border-cz-accent"
                   />
                   <button
                     onClick={handleSaveProxy}
                     disabled={proxyStatus === "loading" || proxyInput < minBid}
+                    aria-label="Gem auto-by-loft"
                     className={`px-2 py-1 rounded text-[10px] font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
@@ -372,7 +376,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
                       disabled:opacity-50`}>
                     {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
                   </button>
-                  <button onClick={() => setProxyExpanded(false)} className="text-[9px] text-cz-3 hover:text-cz-2">✕</button>
+                  <button onClick={() => setProxyExpanded(false)} aria-label="Annullér auto-by-redigering" className="text-[9px] text-cz-3 hover:text-cz-2">✕</button>
                 </div>
                 {proxyStatus === "error" && proxyErrorText && (
                   <p className="text-[10px] text-cz-danger max-w-[160px] leading-tight">{proxyErrorText}</p>
@@ -538,14 +542,16 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
               min={minBid}
               onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
               data-tour={isFirst ? "auctions-bid-input" : undefined}
-              className="min-w-0 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent"
+              aria-label="Dit bud i CZ$"
+              className="min-w-0 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
             />
             <p className="col-span-2 text-[10px] text-cz-3">Min. bud: {minBid.toLocaleString("da-DK")} CZ$</p>
             {bidStatus === "error" && errorText && <p className="col-span-2 text-[11px] text-cz-danger">{errorText}</p>}
             <button
               onClick={handleBid}
               disabled={bidStatus === "loading" || bidAmount < minBid}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
+              aria-label={imWinning ? "Hæv dit bud" : "Afgiv bud"}
+              className={`min-h-[44px] px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
                 ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                   bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                   imWinning ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40" : "bg-cz-accent text-cz-on-accent"}
@@ -558,15 +564,31 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
             {/* Proxy bid section */}
             <div className="col-span-2 mt-1">
               {myProxy && !proxyExpanded ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] bg-cz-success-bg text-cz-success px-2 py-1 rounded-lg">
                     Auto-by: max {myProxy.toLocaleString("da-DK")} CZ$
                   </span>
-                  <button onClick={() => setProxyExpanded(true)} className="text-[10px] text-cz-3 hover:text-cz-2">Ændr</button>
-                  <button onClick={handleRemoveProxy} className="text-[10px] text-cz-3 hover:text-cz-danger">Fjern</button>
+                  <button
+                    onClick={() => setProxyExpanded(true)}
+                    aria-label="Ændr auto-by-loft"
+                    className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-2"
+                  >
+                    Ændr
+                  </button>
+                  <button
+                    onClick={handleRemoveProxy}
+                    aria-label="Fjern auto-by"
+                    className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-danger"
+                  >
+                    Fjern
+                  </button>
                 </div>
               ) : !proxyExpanded ? (
-                <button onClick={() => setProxyExpanded(true)} className="text-[10px] text-cz-3 hover:text-cz-2">
+                <button
+                  onClick={() => setProxyExpanded(true)}
+                  aria-label="Sæt auto-by-loft"
+                  className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-2"
+                >
                   + Sæt auto-by loft
                 </button>
               ) : (
@@ -578,19 +600,27 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
                       min={minBid}
                       onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
                       placeholder="Max-loft"
-                      className="min-w-0 w-32 bg-cz-subtle border border-cz-border rounded-lg px-3 py-1.5 text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
+                      aria-label="Auto-by-loft i CZ$"
+                      className="min-w-0 w-32 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
                     />
                     <button
                       onClick={handleSaveProxy}
                       disabled={proxyStatus === "loading" || proxyInput < minBid}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap
+                      aria-label="Gem auto-by-loft"
+                      className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap
                         ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                           proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                           "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
                         disabled:opacity-50`}>
                       {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
                     </button>
-                    <button onClick={() => setProxyExpanded(false)} className="text-[10px] text-cz-3 hover:text-cz-2">✕</button>
+                    <button
+                      onClick={() => setProxyExpanded(false)}
+                      aria-label="Annullér auto-by-redigering"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-cz-3 hover:text-cz-2"
+                    >
+                      ✕
+                    </button>
                   </div>
                   {proxyStatus === "error" && proxyErrorText && (
                     <p className="text-[11px] text-cz-danger leading-tight">{proxyErrorText}</p>
@@ -1100,7 +1130,7 @@ export default function AuctionsPage() {
       />
 
       {loading ? (
-        <div className="flex justify-center py-16">
+        <div className="flex justify-center py-16" role="status" aria-label="Indlæser auktioner">
           <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
