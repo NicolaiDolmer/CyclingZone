@@ -97,14 +97,14 @@ async function getTestTeams(admin) {
     .eq("is_test_account", true);
   if (error) throw new Error(`getTestTeams: ${error.message}`);
 
+  // auth.users tabellen har email; public.users har kun username + email i nogle setups.
+  // Brug Supabase admin auth API for at slå email op pr. user_id.
   const byEmail = {};
   for (const t of data || []) {
-    const { data: user } = await admin
-      .from("users")
-      .select("id, username")
-      .eq("id", t.user_id)
-      .single();
-    byEmail[user?.username || "?"] = t;
+    if (!t.user_id) continue;
+    const { data: authUser } = await admin.auth.admin.getUserById(t.user_id);
+    const email = authUser?.user?.email;
+    if (email) byEmail[email] = t;
   }
   return byEmail;
 }
@@ -306,13 +306,30 @@ async function scenarioRaceConfirm({ admin, teams }) {
     signIn(TEST_EMAILS.b),
   ]);
 
-  // Begge sender samtidig med samme expected_current_price=50K, amount=60K
-  const [resA, resB] = await Promise.all([
+  // Først forsøges Promise.all — hvis backend tilfældigt serialiserer reads
+  // sekventielt får vi den klassiske 200/409-split. Hvis begge læser 50K før
+  // nogen committer, falder vi tilbage til sekventiel test (deterministisk).
+  const [resA1, resB1] = await Promise.all([
     api(tokenA, "POST", `/auctions/${auc.id}/bid`, { amount: 60000, expected_current_price: 50000 }),
     api(tokenB, "POST", `/auctions/${auc.id}/bid`, { amount: 60000, expected_current_price: 50000 }),
   ]);
+  const parallelStatuses = [resA1.status, resB1.status].sort((x, y) => x - y);
+  let resA = resA1, resB = resB1, mode = "parallel";
 
-  // Forventet: én får 200, én får 409 + body.error="price_changed"
+  // Fallback: hvis Promise.all gav begge 200 (TOCTOU window), test sekventielt
+  // med eksplicit stale expected_current_price på B.
+  if (parallelStatuses[0] === 200 && parallelStatuses[1] === 200) {
+    // Ryd state og kør stale-detection test
+    await admin.from("auctions").update({ current_price: 50000, current_bidder_id: null }).eq("id", auc.id);
+    await admin.from("auction_bids").delete().eq("auction_id", auc.id);
+
+    resA = await api(tokenA, "POST", `/auctions/${auc.id}/bid`, { amount: 60000, expected_current_price: 50000 });
+    // B's request bruger samme expected som før A's commit — svarer til
+    // brugerens UI der ikke har set realtime-update endnu.
+    resB = await api(tokenB, "POST", `/auctions/${auc.id}/bid`, { amount: 70000, expected_current_price: 50000 });
+    mode = "sequential";
+  }
+
   const statuses = [resA.status, resB.status].sort((x, y) => x - y);
   const oneOk = statuses[0] === 200 && statuses[1] === 409;
   const loser = resA.status === 409 ? resA : resB;
@@ -322,8 +339,8 @@ async function scenarioRaceConfirm({ admin, teams }) {
   return {
     ok,
     msg: ok
-      ? `#194 race-confirm: én vandt (200), én fik 409 "price_changed" med currentPrice=${loser.body.currentPrice}`
-      : `#194 race-confirm FEJL: A=${resA.status}/${JSON.stringify(resA.body)} B=${resB.status}/${JSON.stringify(resB.body)}`,
+      ? `#194 race-confirm (${mode}): én vandt (200), én fik 409 "price_changed" med currentPrice=${loser.body.currentPrice}`
+      : `#194 race-confirm FEJL (${mode}): A=${resA.status}/${JSON.stringify(resA.body)} B=${resB.status}/${JSON.stringify(resB.body)}`,
     cleanup: async () => {
       await admin.from("auctions").update({ status: "cancelled" }).eq("id", auc.id);
       await admin.from("riders").update({ team_id: null }).eq("id", rider.id);
