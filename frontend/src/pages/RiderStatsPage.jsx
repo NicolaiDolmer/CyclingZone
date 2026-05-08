@@ -5,6 +5,7 @@ import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
+import { BidConfirmModal } from "../components/BidConfirmModal";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazy(() => import("../components/RiderDevelopmentTab"));
@@ -53,6 +54,7 @@ function DirectOfferButton({ rider }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null);
   const [windowOpen, setWindowOpen] = useState(true);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const API = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
@@ -65,7 +67,7 @@ function DirectOfferButton({ rider }) {
     });
   }, []);
 
-  async function sendOffer() {
+  async function performSendOffer() {
     setLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch(`${API}/api/transfers/offer`, {
@@ -77,7 +79,13 @@ function DirectOfferButton({ rider }) {
     if (res.ok) { setResult({ ok: true, msg: "✅ Tilbud sendt!" }); setShow(false); }
     else        { setResult({ ok: false, msg: `❌ ${data.error}` }); }
     setLoading(false);
+    setConfirmOpen(false);
     setTimeout(() => setResult(null), 4000);
+  }
+
+  function sendOffer() {
+    if (amount <= 0) return;
+    setConfirmOpen(true);
   }
   return (
     <div>
@@ -110,6 +118,15 @@ function DirectOfferButton({ rider }) {
           </button>
         </div>
       )}
+      <BidConfirmModal
+        show={confirmOpen}
+        mode="transfer"
+        riderName={`${rider.firstname} ${rider.lastname}`}
+        amount={amount}
+        busy={loading}
+        onCancel={() => { if (!loading) setConfirmOpen(false); }}
+        onConfirm={performSendOffer}
+      />
     </div>
   );
 }

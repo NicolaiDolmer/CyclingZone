@@ -3,7 +3,6 @@ import { supabase } from "../lib/supabase";
 import { useNavigate, NavLink } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
-import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
 function timeAgo(dateStr) {
   if (!dateStr) return "—";
@@ -51,7 +50,7 @@ export default function AuctionHistoryPage() {
     let query = supabase
       .from("auctions")
       .select(`id, current_price, actual_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
-        rider:rider_id(id, firstname, lastname, uci_points, market_value, prize_earnings_bonus, is_u25, nationality_code, team_id),
+        rider:rider_id(id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, nationality_code, team_id),
         seller:seller_team_id(id, name),
         winner:current_bidder_id(id, name)`,
         { count: "exact" })
@@ -184,7 +183,7 @@ export default function AuctionHistoryPage() {
                         {iWon && <span className="text-[9px] uppercase bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded">Købt</span>}
                         {iSold && !noSale && <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">Solgt</span>}
                       </div>
-                      <p className="text-cz-3 text-xs mt-0.5">UCI: {a.rider?.uci_points?.toLocaleString("da-DK")} pt — Værdi: {formatCz(getRiderMarketValue(a.rider))}</p>
+                      <p className="text-cz-3 text-xs mt-0.5">UCI: {a.rider?.uci_points?.toLocaleString("da-DK")} pt — Løn: {a.rider?.salary ? `${a.rider.salary.toLocaleString("da-DK")} CZ$` : "—"}</p>
                     </td>
                     <td className="px-4 py-3 text-cz-2 hidden sm:table-cell">
                       {a.seller?.name || "—"}
