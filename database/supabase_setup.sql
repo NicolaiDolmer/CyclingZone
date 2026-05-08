@@ -155,7 +155,17 @@ CREATE TABLE IF NOT EXISTS public.auction_bids (
   team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
   amount INTEGER NOT NULL,
   bid_time TIMESTAMPTZ DEFAULT NOW(),
-  triggered_extension BOOLEAN DEFAULT FALSE
+  triggered_extension BOOLEAN DEFAULT FALSE,
+  is_proxy BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS public.auction_proxy_bids (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  auction_id UUID NOT NULL REFERENCES public.auctions(id) ON DELETE CASCADE,
+  team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+  max_amount INTEGER NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(auction_id, team_id)
 );
 
 -- ── TRANSFER LISTINGS ─────────────────────────────────────────
@@ -313,6 +323,7 @@ CREATE INDEX IF NOT EXISTS idx_auctions_end     ON public.auctions(calculated_en
 -- DB-level guard: max én aktiv auktion per rytter. Blokkerer TOCTOU-race i POST /api/auctions.
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_auctions_one_active_per_rider ON public.auctions(rider_id) WHERE status IN ('active', 'extended');
 CREATE INDEX IF NOT EXISTS idx_auction_bids     ON public.auction_bids(auction_id);
+CREATE INDEX IF NOT EXISTS idx_proxy_bids_auction ON public.auction_proxy_bids(auction_id);
 CREATE INDEX IF NOT EXISTS idx_notifications    ON public.notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_finance_team     ON public.finance_transactions(team_id);
 CREATE INDEX IF NOT EXISTS idx_standings_season ON public.season_standings(season_id, division);
@@ -325,6 +336,7 @@ ALTER TABLE public.teams               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.riders              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.auctions            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.auction_bids        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.auction_proxy_bids  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transfer_listings   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transfer_offers     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications       ENABLE ROW LEVEL SECURITY;
@@ -348,6 +360,10 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN
   CREATE POLICY "Public read auction_bids"     ON public.auction_bids FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE POLICY "Own proxy bids" ON public.auction_proxy_bids FOR SELECT
+    USING (EXISTS (SELECT 1 FROM public.teams WHERE teams.id = auction_proxy_bids.team_id AND teams.user_id = auth.uid()));
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN
   CREATE POLICY "Public read transfer_listings" ON public.transfer_listings FOR SELECT USING (true);

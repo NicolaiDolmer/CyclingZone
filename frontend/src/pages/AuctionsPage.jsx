@@ -305,7 +305,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
       </td>
 
       {/* Byd */}
-      <td className={`px-3 py-1.5 sticky right-0 z-10 border-l border-cz-border transition-colors group-hover:bg-cz-subtle ${imWinning ? "bg-cz-accent/[0.08]" : "bg-cz-card"}`}>
+      <td className={`auction-bid-cell px-3 py-1.5 sticky right-0 z-10 min-w-[190px] border-l border-cz-border shadow-[-10px_0_16px_-16px_rgba(0,0,0,0.5)] transition-colors ${imWinning ? "auction-bid-cell-winning" : ""}`}>
         {canBid ? (
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-1.5">
@@ -350,7 +350,11 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
                 <button onClick={handleRemoveProxy} aria-label="Fjern auto-by" className="text-[9px] text-cz-3 hover:text-cz-danger">✕</button>
               </div>
             ) : !proxyExpanded ? (
-              <button onClick={() => setProxyExpanded(true)} aria-label="Sæt auto-by-loft" className="text-[9px] text-cz-3 hover:text-cz-2 text-left mt-0.5">
+              <button
+                onClick={() => setProxyExpanded(true)}
+                aria-label="Sæt auto-by-loft"
+                className="mt-1 inline-flex min-h-[28px] items-center justify-center rounded border border-cz-accent/50 bg-cz-accent/10 px-2 py-1 text-[10px] font-bold text-cz-accent-t hover:bg-cz-accent/20"
+              >
                 + Auto-by loft
               </button>
             ) : (
@@ -587,7 +591,7 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
                 <button
                   onClick={() => setProxyExpanded(true)}
                   aria-label="Sæt auto-by-loft"
-                  className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-2"
+                  className="min-h-[44px] rounded-lg border border-cz-accent/50 bg-cz-accent/10 px-3 text-xs font-bold text-cz-accent-t hover:bg-cz-accent/20"
                 >
                   + Sæt auto-by loft
                 </button>
@@ -1200,7 +1204,7 @@ export default function AuctionsPage() {
                     className="px-3 py-3 text-center font-medium uppercase tracking-wider whitespace-nowrap">
                     Tid tilbage
                   </SortTh>
-                  <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider sticky right-0 bg-cz-card z-10 border-l border-cz-border">Byd</th>
+                  <th className="auction-bid-cell px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider sticky right-0 z-10 border-l border-cz-border shadow-[-10px_0_16px_-16px_rgba(0,0,0,0.5)]">Byd</th>
                 </tr>
               </thead>
               <tbody>

@@ -30,6 +30,7 @@ import {
   getAuctionInitialBidderId,
   getMinimumAuctionBid,
   getProxyMaxIssue,
+  getProxyOpeningBidAmount,
   getSpendIssue,
   isExpectedPriceStale,
 } from "../lib/auctionRules.js";
@@ -1042,7 +1043,7 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
 
   const { data: auction } = await supabase
     .from("auctions")
-    .select("id, current_price, current_bidder_id, status, calculated_end, seller_team_id, rider_id")
+    .select("id, current_price, current_bidder_id, status, calculated_end, seller_team_id, rider_id, extension_count, rider:rider_id(firstname, lastname, team_id)")
     .eq("id", req.params.id)
     .single();
 
@@ -1070,11 +1071,20 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
       error: `Max-loft skal være mindst ${minRequired.toLocaleString("da-DK")} CZ$`,
     });
   }
+  const openingBidAmount = getProxyOpeningBidAmount({
+    proxyMax: numericMax,
+    currentPrice: auction.current_price,
+    currentBidderId: auction.current_bidder_id,
+    isLeading: auction.current_bidder_id === req.team.id,
+  });
 
   // #44: gate proxy_max mod available balance. Worst case = MAX(current_price, proxy_max)
   // hvis manageren leder denne auktion, ellers proxy_max. otherCommitment ekskluderer
   // alle andre auktioner manageren er involveret i (leading + ikke-leading proxies).
-  const { leadingAuctions, allMyProxies } = await fetchTeamCommitment(supabase, req.team.id);
+  const [{ leadingAuctions, allMyProxies }, teamState] = await Promise.all([
+    fetchTeamCommitment(supabase, req.team.id),
+    openingBidAmount !== null ? getTeamMarketState(supabase, req.team.id) : Promise.resolve(null),
+  ]);
   const otherCommitment = computeWorstCaseCommitment({
     leadingAuctions: leadingAuctions.filter((row) => row.id !== req.params.id),
     allMyProxies: allMyProxies.filter((p) => p.auction_id !== req.params.id),
@@ -1092,13 +1102,87 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
     });
   }
 
-  await supabase.from("auction_proxy_bids").upsert(
+  if (openingBidAmount !== null) {
+    const signingBlock = await assertSigningAllowed({
+      supabase,
+      buyerTeamId: req.team.id,
+      riderId: auction.rider_id,
+      purchasePrice: openingBidAmount,
+    });
+    if (signingBlock) {
+      return res.status(403).json({ error: signingBlock.reason, code: signingBlock.code, layer: signingBlock.layer });
+    }
+  }
+
+  const { error: proxyUpsertError } = await supabase.from("auction_proxy_bids").upsert(
     { auction_id: req.params.id, team_id: req.team.id, max_amount: numericMax },
     { onConflict: "auction_id,team_id" }
   );
+  if (proxyUpsertError) {
+    return res.status(500).json({ error: "Auto-bud kunne ikke gemmes" });
+  }
 
   const proxyBidTime = new Date();
   const proxyBidCfg = await getAuctionConfig();
+  let bidWarnings = [];
+  if (openingBidAmount !== null) {
+    const { shouldExtend, newEnd } = checkBidExtension(proxyBidTime, auction.calculated_end, proxyBidCfg);
+    bidWarnings = getAuctionBidWarnings({
+      teamState,
+      activeLeadingCount: leadingAuctions.filter((row) => row.id !== req.params.id).length,
+      alreadyLeadingThisAuction: false,
+    });
+
+    const { error: bidInsertError } = await supabase.from("auction_bids").insert({
+      auction_id: auction.id,
+      team_id: req.team.id,
+      amount: openingBidAmount,
+      bid_time: proxyBidTime.toISOString(),
+      triggered_extension: shouldExtend,
+      is_proxy: true,
+    });
+    if (bidInsertError) {
+      return res.status(500).json({ error: "Auto-bud kunne ikke placeres" });
+    }
+
+    const updates = {
+      current_price: openingBidAmount,
+      current_bidder_id: req.team.id,
+    };
+    if (shouldExtend) {
+      updates.calculated_end = newEnd.toISOString();
+      updates.status = "extended";
+      updates.extension_count = (auction.extension_count || 0) + 1;
+    }
+    const { error: auctionUpdateError } = await supabase
+      .from("auctions")
+      .update(updates)
+      .eq("id", auction.id);
+    if (auctionUpdateError) {
+      return res.status(500).json({ error: "Auto-bud kunne ikke opdatere auktionen" });
+    }
+
+    const riderName = `${auction.rider?.firstname || "Ukendt"} ${auction.rider?.lastname || "rytter"}`.trim();
+    if (auction.current_bidder_id && auction.current_bidder_id !== req.team.id) {
+      await notifyTeamOwner(
+        auction.current_bidder_id,
+        "auction_outbid",
+        "Du er blevet overbudt!",
+        `${req.team.name}'s auto-by bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
+        auction.id,
+      );
+    }
+    if (auction.rider?.team_id === auction.seller_team_id && auction.seller_team_id !== req.team.id) {
+      await notifyTeamOwner(
+        auction.seller_team_id,
+        "bid_received",
+        "Nyt bud modtaget",
+        `${req.team.name}'s auto-by bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
+        auction.id,
+      );
+    }
+    awardXP(req.user.id, "bid_placed").catch(() => {});
+  }
   try {
     await resolveProxyBids({
       supabase,
@@ -1112,7 +1196,13 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
     console.error("[resolveProxyBids] failed for auction", req.params.id, e);
   }
 
-  res.json({ success: true, max_amount: numericMax });
+  res.json({
+    success: true,
+    max_amount: numericMax,
+    placed_bid: openingBidAmount !== null,
+    bid_amount: openingBidAmount ?? undefined,
+    warnings: bidWarnings,
+  });
 });
 
 // DELETE /api/auctions/:id/proxy — remove my proxy bid

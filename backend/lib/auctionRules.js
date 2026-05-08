@@ -90,6 +90,25 @@ export function getProxyMaxIssue({
   return null;
 }
 
+// PATCH /proxy skal fungere som et reelt auto-by-bud når manageren ikke allerede
+// fører: byd minimumsprisen og gem max-loftet i samme handling.
+export function getProxyOpeningBidAmount({
+  proxyMax,
+  currentPrice,
+  currentBidderId = null,
+  isLeading = false,
+} = {}) {
+  if (isLeading) return null;
+
+  const minimumBid = getMinimumAuctionBid(currentPrice, {
+    hasActiveBid: Boolean(currentBidderId),
+  });
+  const numericMax = Number(proxyMax);
+  if (!Number.isFinite(numericMax) || numericMax < minimumBid) return null;
+
+  return minimumBid;
+}
+
 // Reserved balance per auktion = MAX(current_price, eget proxy_max).
 // Stale proxies (max < current_price) regner med current_price — proxy'en kan ikke
 // længere overbyde den manuelt-budte pris, så manageren har reelt forpligtet

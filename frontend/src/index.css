@@ -89,6 +89,22 @@ select option {
   20%  { background-color: rgb(var(--accent) / 0.45); }
   100% { background-color: rgb(var(--accent) / 0); }
 }
+
+.auction-bid-cell {
+  background-color: var(--bg-card);
+}
+
+tr:hover .auction-bid-cell {
+  background-color: var(--bg-subtle);
+}
+
+.auction-bid-cell-winning {
+  background-color: color-mix(in srgb, rgb(var(--accent)) 8%, var(--bg-card));
+}
+
+tr:hover .auction-bid-cell-winning {
+  background-color: color-mix(in srgb, rgb(var(--accent)) 10%, var(--bg-subtle));
+}
 .cz-pulse-flash {
   animation: cz-pulse-flash 1.5s ease-out;
   border-radius: 4px;

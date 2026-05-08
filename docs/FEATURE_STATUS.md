@@ -31,7 +31,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Bud-placering med auto-forlængelse (10 min ved bud nær slut)
 - Garanteret salg (startpris = 50% af markedsværdi) — kun egne ryttere; exploit lukket (v1.46)
 - Minimum startpris håndhævet (backend + frontend): startbud ≥ rytterens Værdi; garanteret salg er eneste undtagelse
-- Minimum overbud håndhæves som 10% over nuværende pris, afrundet op til nærmeste 1.000 CZ$
+- Minimum overbud håndhæves som +1 CZ$ over nuværende pris; hvis ingen har budt endnu, må asking-prisen matches.
 - Auktionsbudfeltet forudfyldes med laveste gyldige bud, og UI viser konkrete backend-fejl ved for lavt bud, saldo eller reserveret squad-plads (v1.77)
 - Auktionslisten viser sælger som AI eller managerhold, så ikke-ejede auktioner ikke ligner managersalg (v1.77)
 - Aktive auktionsføringer reserverer både disponibel balance og squad-plads ved nye bud
@@ -40,7 +40,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **Admin annullér auktion (v2.26):** `Aktive auktioner`-sektion i AdminPage lister aktive+forlængede auktioner og lader admin annullere med ét klik. Atomar status-transition i `auctionCancellation.js` (race-safe mod parallel cron). Bud frigives automatisk fordi reservation kun beregnes ved query-time. `auction_cancelled` notification-type sendes til alle unikke budgivere + sælger. Admin-handling logges i `admin_log`. `auctions.cancelled_at` + `cancelled_by_user_id` audit-spor.
 - Auktionshistorik-side
 - Discord-notifikationer (auktioner, overbud, transfers, sæsonevents)
-- **Proxy-bidding / auto-by med max-loft (v2.63, #10):** Manager sætter et max-loft; systemet counter-byder automatisk +10%-trin op til loftet. `auction_proxy_bids (auction_id, team_id, max_amount)` UNIQUE per (auction, team). `auction_bids.is_proxy` markerer system-bud. Resolver-loop i `proxyBidding.js` (max 30 iter): højeste proxy vinder, pris sættes til getMinimumAuctionBid(næst-højeste max). `auction_proxy_outbid` notif ved loft-udtømning. Routes: GET/PATCH/DELETE `/api/auctions/:id/proxy`; proxy kan også sendes som `proxy_max` felt ved POST bid. UI: badge + Ændr + Fjern i AuctionRow/AuctionCard.
+- **Proxy-bidding / auto-by med max-loft (v2.79, #10):** Manager sætter et privat max-loft; hvis manageren ikke allerede fører, placerer PATCH `/api/auctions/:id/proxy` samtidig minimumsbuddet som `auction_bids.is_proxy=true`, så auto-by fungerer som et reelt første bud. Derefter counter-byder resolveren automatisk i +1 CZ$-trin op til loftet. `auction_proxy_bids (auction_id, team_id, max_amount)` UNIQUE per (auction, team). `auction_proxy_outbid` notif ved loft-udtømning eller balance-stop. Routes: GET/PATCH/DELETE `/api/auctions/:id/proxy`; proxy kan også sendes som `proxy_max` felt ved POST bid. UI: badge + Ændr + Fjern i AuctionRow/AuctionCard.
 
 ### Transfers
 - Opret transfer-liste
