@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "2.83",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Rytter-profil · Mobile polish",
+        items: [
+          "Evner-bar · Stat-rækkerne har nu kortere label-bredde på mobil, så progress-bar'en bliver synligt længere og lettere at læse på 360px-skærme.",
+          "Sæsonhistorik & Løbsresultater · Tabellerne scroller nu pænt horisontalt på mobil i stedet for at presse layoutet, hvis løbsnavne eller præmier er lange (#163).",
+          "Flash Auktion-label · 'Deadline Day'-forklaringen brækker nu på en ny linje på mobil i stedet for at flyde ud over viewport.",
+          "Beløbs- og besked-felter · Input-felter til transfertilbud og auktions-startpris bruger nu 16px font på mobil, så iOS Safari ikke længere zoomer ind når du tapper feltet.",
+          "Action-knapper · 'Send transfertilbud', 'Send tilbud' og 'Start auktion' har nu 44px touch-target (Apple HIG) i stedet for ~36px, så de er nemmere at ramme på telefon (#163).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.82",
     date: "2026-05-09",
     label: "Beta",

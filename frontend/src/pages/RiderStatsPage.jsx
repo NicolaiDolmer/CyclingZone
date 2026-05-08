@@ -38,7 +38,7 @@ function StatRow({ label, icon, value }) {
   return (
     <div className="flex items-center gap-3 py-2">
       <span className="text-cz-3 w-4 text-center text-sm">{icon}</span>
-      <span className="text-cz-2 text-sm w-36 flex-shrink-0">{label}</span>
+      <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{label}</span>
       <div className="flex-1 bg-cz-subtle rounded-full h-2">
         <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
@@ -96,7 +96,7 @@ function DirectOfferButton({ rider }) {
         </div>
       )}
       <button onClick={() => windowOpen && setShow(!show)} disabled={!windowOpen}
-        className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all border
+        className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
           ${!windowOpen
             ? "bg-cz-subtle text-cz-3 border-cz-border cursor-not-allowed"
             : show
@@ -108,12 +108,12 @@ function DirectOfferButton({ rider }) {
         <div className="mt-3 flex flex-col gap-2">
           <input type="number" value={amount} min={1} onChange={e => setAmount(parseInt(e.target.value) || 0)}
             placeholder="Tilbudsbeløb i CZ$"
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           <input type="text" value={message} onChange={e => setMessage(e.target.value)}
             placeholder="Besked (valgfri)"
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent" />
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           <button onClick={sendOffer} disabled={loading || amount <= 0}
-            className="w-full py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
             {loading ? "Sender..." : "Send tilbud"}
           </button>
         </div>
@@ -158,11 +158,13 @@ function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
         </label>
       )}
       {ddActive && (
-        <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
-          <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
-            className="rounded accent-red-600" />
-          <span className="text-sm text-cz-danger font-medium">⚡ Flash Auktion (30 min)</span>
-          <span className="text-xs text-cz-3">Deadline Day — afsluttes præcis 30 min efter start</span>
+        <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 cursor-pointer select-none">
+          <div className="flex items-center gap-2">
+            <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
+              className="rounded accent-red-600" />
+            <span className="text-sm text-cz-danger font-medium">⚡ Flash Auktion (30 min)</span>
+          </div>
+          <span className="text-xs text-cz-3 sm:ml-0 ml-6">Deadline Day — afsluttes præcis 30 min efter start</span>
         </label>
       )}
       <div className="flex flex-col sm:flex-row gap-2">
@@ -172,7 +174,7 @@ function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
           min={guaranteed ? guaranteedPrice : riderValue}
           disabled={guaranteed}
           onChange={e => !guaranteed && setPrice(parseInt(e.target.value) || riderValue)}
-          className={`min-w-0 flex-1 bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-sm font-mono focus:outline-none
+          className={`min-w-0 flex-1 min-h-[44px] bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
             ${guaranteed
               ? "opacity-50 cursor-not-allowed border-cz-border"
               : priceError
@@ -182,7 +184,7 @@ function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
         <button
           onClick={async () => { setLoading(true); await onStart(effectivePrice, guaranteed, flash); setLoading(false); }}
           disabled={loading || (!guaranteed && priceError)}
-          className={`w-full sm:w-auto px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
+          className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
             ${flash ? "bg-red-600 text-white hover:bg-red-700" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
           {loading ? "..." : flash ? "⚡ Start Flash Auktion" : "Start auktion"}
         </button>
@@ -507,7 +509,7 @@ export default function RiderStatsPage() {
           {rider.potentiale != null && (
             <div className="flex items-center gap-3 py-2 mb-1 border-b border-cz-border">
               <span className="text-cz-3 w-4 text-center text-sm">◆</span>
-              <span className="text-cz-2 text-sm w-36 flex-shrink-0">Potentiale</span>
+              <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">Potentiale</span>
               <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} showValue />
             </div>
           )}
@@ -520,24 +522,26 @@ export default function RiderStatsPage() {
           {Object.keys(bySeason).length === 0 ? (
             <p className="text-cz-3 text-center py-8">Ingen historik endnu</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead><tr className="border-b border-cz-border">
-                <th className="py-2 text-left text-cz-3 text-xs uppercase">År</th>
-                <th className="py-2 text-right text-cz-3 text-xs uppercase">Sejre</th>
-                <th className="py-2 text-right text-cz-3 text-xs uppercase">Top 3</th>
-                <th className="py-2 text-right text-cz-3 text-xs uppercase">Præmier</th>
-              </tr></thead>
-              <tbody>
-                {Object.entries(bySeason).map(([yr, d]) => (
-                  <tr key={yr} className="border-b border-cz-border">
-                    <td className="py-2 text-cz-2">{yr}</td>
-                    <td className="py-2 text-right text-cz-accent-t font-mono">{d.wins}</td>
-                    <td className="py-2 text-right text-cz-2 font-mono">{d.top3}</td>
-                    <td className="py-2 text-right text-cz-success font-mono text-xs">+{d.totalPrize.toLocaleString("da-DK")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b border-cz-border">
+                  <th className="py-2 text-left text-cz-3 text-xs uppercase">År</th>
+                  <th className="py-2 text-right text-cz-3 text-xs uppercase">Sejre</th>
+                  <th className="py-2 text-right text-cz-3 text-xs uppercase">Top 3</th>
+                  <th className="py-2 text-right text-cz-3 text-xs uppercase">Præmier</th>
+                </tr></thead>
+                <tbody>
+                  {Object.entries(bySeason).map(([yr, d]) => (
+                    <tr key={yr} className="border-b border-cz-border">
+                      <td className="py-2 text-cz-2">{yr}</td>
+                      <td className="py-2 text-right text-cz-accent-t font-mono">{d.wins}</td>
+                      <td className="py-2 text-right text-cz-2 font-mono">{d.top3}</td>
+                      <td className="py-2 text-right text-cz-success font-mono text-xs">+{d.totalPrize.toLocaleString("da-DK")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
@@ -547,33 +551,35 @@ export default function RiderStatsPage() {
           {results.length === 0 ? (
             <p className="text-cz-3 text-center py-8">Ingen løbsresultater endnu</p>
           ) : (
-            <table className="w-full">
-              <thead><tr className="border-b border-cz-border">
-                <th className="px-4 py-3 text-left text-cz-3 text-[10px] uppercase">Løb</th>
-                <th className="px-4 py-3 text-center text-cz-3 text-[10px] uppercase">Type</th>
-                <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">Plac.</th>
-                <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">Præmie</th>
-              </tr></thead>
-              <tbody>
-                {results.map(r => (
-                  <tr key={r.id} className="border-b border-cz-border last:border-0">
-                    <td className="px-4 py-3">
-                      <p className="text-cz-1 text-sm">{r.race?.name || "—"}</p>
-                      <p className="text-cz-3 text-xs">{r.race?.start_date?.slice(0, 4) || "—"}</p>
-                    </td>
-                    <td className="px-4 py-3 text-center text-cz-2 text-xs">{r.result_type || "—"}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`font-mono font-bold text-sm ${r.position === 1 ? "text-cz-accent-t" : r.position <= 3 ? "text-cz-1" : "text-cz-2"}`}>
-                        #{r.position}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-cz-success font-mono text-xs">
-                      {r.prize_money ? `+${r.prize_money.toLocaleString("da-DK")}` : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead><tr className="border-b border-cz-border">
+                  <th className="px-4 py-3 text-left text-cz-3 text-[10px] uppercase">Løb</th>
+                  <th className="px-4 py-3 text-center text-cz-3 text-[10px] uppercase">Type</th>
+                  <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">Plac.</th>
+                  <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">Præmie</th>
+                </tr></thead>
+                <tbody>
+                  {results.map(r => (
+                    <tr key={r.id} className="border-b border-cz-border last:border-0">
+                      <td className="px-4 py-3">
+                        <p className="text-cz-1 text-sm">{r.race?.name || "—"}</p>
+                        <p className="text-cz-3 text-xs">{r.race?.start_date?.slice(0, 4) || "—"}</p>
+                      </td>
+                      <td className="px-4 py-3 text-center text-cz-2 text-xs">{r.result_type || "—"}</td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={`font-mono font-bold text-sm ${r.position === 1 ? "text-cz-accent-t" : r.position <= 3 ? "text-cz-1" : "text-cz-2"}`}>
+                          #{r.position}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-cz-success font-mono text-xs">
+                        {r.prize_money ? `+${r.prize_money.toLocaleString("da-DK")}` : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
