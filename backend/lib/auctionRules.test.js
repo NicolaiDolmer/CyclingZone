@@ -10,6 +10,7 @@ import {
   getAuctionBidWarnings,
   getMinimumAuctionBid,
   getProxyMaxIssue,
+  getProxyOpeningBidAmount,
   getSpendIssue,
   isExpectedPriceStale,
 } from "./auctionRules.js";
@@ -348,6 +349,36 @@ test("getProxyMaxIssue afviser ugyldige værdier", () => {
   assert.equal(getProxyMaxIssue({ proxyMax: -5, teamBalance: 1000 })?.code, "invalid_proxy_max");
   assert.equal(getProxyMaxIssue({ proxyMax: NaN, teamBalance: 1000 })?.code, "invalid_proxy_max");
   assert.equal(getProxyMaxIssue({ proxyMax: "abc", teamBalance: 1000 })?.code, "invalid_proxy_max");
+});
+
+test("getProxyOpeningBidAmount placerer auto-by som første bud på asking price", () => {
+  const bidAmount = getProxyOpeningBidAmount({
+    proxyMax: 50000,
+    currentPrice: 20000,
+    currentBidderId: null,
+    isLeading: false,
+  });
+  assert.equal(bidAmount, 20000);
+});
+
+test("getProxyOpeningBidAmount placerer auto-by som minimum over aktiv leder", () => {
+  const bidAmount = getProxyOpeningBidAmount({
+    proxyMax: 50000,
+    currentPrice: 20000,
+    currentBidderId: "team-other",
+    isLeading: false,
+  });
+  assert.equal(bidAmount, 20001);
+});
+
+test("getProxyOpeningBidAmount no-op når manager allerede fører", () => {
+  const bidAmount = getProxyOpeningBidAmount({
+    proxyMax: 50000,
+    currentPrice: 20000,
+    currentBidderId: "team-me",
+    isLeading: true,
+  });
+  assert.equal(bidAmount, null);
 });
 
 test("getSpendIssue gates loan-repay/transfer/buyout mod available balance", () => {

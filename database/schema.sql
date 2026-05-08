@@ -174,7 +174,17 @@ CREATE TABLE auction_bids (
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   amount INTEGER NOT NULL,
   bid_time TIMESTAMPTZ DEFAULT NOW(),
-  triggered_extension BOOLEAN DEFAULT FALSE
+  triggered_extension BOOLEAN DEFAULT FALSE,
+  is_proxy BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE auction_proxy_bids (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  auction_id UUID NOT NULL REFERENCES auctions(id) ON DELETE CASCADE,
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  max_amount INTEGER NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(auction_id, team_id)
 );
 
 -- ============================================================
@@ -425,6 +435,7 @@ CREATE INDEX idx_auctions_end ON auctions(calculated_end);
 -- DB-level guard: max én aktiv auktion per rytter. Blokkerer TOCTOU-race i POST /api/auctions.
 CREATE UNIQUE INDEX uniq_auctions_one_active_per_rider ON auctions(rider_id) WHERE status IN ('active', 'extended');
 CREATE INDEX idx_auction_bids_auction ON auction_bids(auction_id);
+CREATE INDEX idx_proxy_bids_auction ON auction_proxy_bids(auction_id);
 CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
 CREATE INDEX idx_finance_team ON finance_transactions(team_id);
 CREATE INDEX idx_standings_season ON season_standings(season_id, division);
@@ -440,6 +451,7 @@ ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE riders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE auctions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE auction_bids ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auction_proxy_bids ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transfer_listings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transfer_offers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
@@ -453,6 +465,8 @@ CREATE POLICY "Public read riders" ON riders FOR SELECT USING (true);
 CREATE POLICY "Public read teams" ON teams FOR SELECT USING (true);
 CREATE POLICY "Public read auctions" ON auctions FOR SELECT USING (true);
 CREATE POLICY "Public read auction_bids" ON auction_bids FOR SELECT USING (true);
+CREATE POLICY "Own proxy bids" ON auction_proxy_bids FOR SELECT
+  USING (EXISTS (SELECT 1 FROM teams WHERE teams.id = auction_proxy_bids.team_id AND teams.user_id = auth.uid()));
 CREATE POLICY "Public read transfer_listings" ON transfer_listings FOR SELECT USING (true);
 CREATE POLICY "Public read standings" ON season_standings FOR SELECT USING (true);
 CREATE POLICY "Public read races" ON races FOR SELECT USING (true);

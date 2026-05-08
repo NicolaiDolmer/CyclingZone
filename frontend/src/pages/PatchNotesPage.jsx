@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.79",
+    date: "2026-05-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Auktioner · BYD-kolonnen på desktop har nu solid baggrund, også når rækken er markeret som vundet, så statistik og tekst ikke skinner igennem under den sticky bud-celle.",
+          "Auto-by · '+ Auto-by loft' er gjort tydeligere, og når du sætter auto-by på en auktion du ikke fører, placerer systemet nu samtidig minimumsbuddet. Auto-by fungerer dermed som et rigtigt første bud — du behøver ikke byde manuelt først.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.78",
     date: "2026-05-08",
     label: "Beta",

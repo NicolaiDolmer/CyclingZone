@@ -73,3 +73,14 @@ test("auction schema enforces single active auction per rider via unique partial
     assert.match(content, indexPattern, `uniq_auctions_one_active_per_rider missing in ${filePath}`);
   }
 });
+
+test("auction proxy schema exists without exposing all managers' max bids", () => {
+  for (const filePath of SCHEMA_FILES) {
+    const content = readFileSync(filePath, "utf8");
+    assert.match(content, /auction_bids[\s\S]*is_proxy BOOLEAN NOT NULL DEFAULT FALSE/i, `auction_bids.is_proxy missing in ${filePath}`);
+    assert.match(content, /CREATE TABLE(?: IF NOT EXISTS)?\s+(?:public\.)?auction_proxy_bids/i, `auction_proxy_bids table missing in ${filePath}`);
+    assert.match(content, /max_amount INTEGER NOT NULL/i, `auction_proxy_bids.max_amount missing in ${filePath}`);
+    assert.match(content, /Own proxy bids/i, `own-proxy RLS policy missing in ${filePath}`);
+    assert.doesNotMatch(content, /Public read auction_proxy_bids/i, `proxy max bids must not be public in ${filePath}`);
+  }
+});

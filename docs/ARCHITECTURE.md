@@ -71,6 +71,8 @@ POST /api/riders/:id/view
 GET  /api/auctions
 POST /api/auctions                 { rider_id, starting_price, requested_start }
 POST /api/auctions/:id/bid         { amount }
+PATCH /api/auctions/:id/proxy      { max_amount }
+DELETE /api/auctions/:id/proxy
 POST /api/auctions/:id/finalize
 ```
 
@@ -190,7 +192,7 @@ Season flow notes:
 ## Canonical Runtime Paths
 
 ### Auktioner
-- UI læser aktive auktioner direkte fra Supabase (`auctions`) og placerer bud via `POST /api/auctions/:id/bid`
+- UI læser aktive auktioner direkte fra Supabase (`auctions`) og placerer manuelle bud via `POST /api/auctions/:id/bid`; auto-by går via `PATCH /api/auctions/:id/proxy`, som placerer minimumsbuddet når manageren ikke allerede fører
 - Manuel afslutning (`POST /api/auctions/:id/finalize`), admin-bulkfinalisering (`POST /api/admin/finalize-expired-auctions`) og cron (`backend/cron.js`) delegérer alle til `backend/lib/auctionFinalization.js`
 - Finalisering skriver til `auctions`, `riders`, `teams`, `finance_transactions`, `notifications` og `activity_feed`
 - `seller_team_id` kan blive nulstillet ved afslutning af ikke-ejede auktionsflows for at undgå falsk historik
@@ -315,7 +317,8 @@ auctions         id, rider_id, seller_team_id, starting_price, current_price,
                  current_bidder_id, min_increment, requested_start, calculated_end,
                  actual_end, status(active|extended|completed|cancelled),
                  extension_count, is_guaranteed_sale, guaranteed_price
-auction_bids     id, auction_id, team_id, amount, bid_time, triggered_extension
+auction_bids     id, auction_id, team_id, amount, bid_time, triggered_extension, is_proxy
+auction_proxy_bids id, auction_id, team_id, max_amount, created_at
 transfer_listings  id, rider_id, seller_team_id, asking_price,
                     status(open|negotiating|sold|withdrawn)
  transfer_offers    id, listing_id, rider_id, seller_team_id, buyer_team_id,
