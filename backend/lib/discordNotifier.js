@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { config } from "dotenv";
+import { resolveDmTargetFromInput } from "./discordDmTarget.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env") });
@@ -115,13 +116,8 @@ async function getDmRecipient(teamId) {
 //   test-channel  → embed til DISCORD_TEST_CHANNEL_WEBHOOK_URL (staging-aggregat)
 // Test-konti (teams.is_test_account = true) tvinger ALTID stdout — så smoke-tests
 // aldrig spammer ægte managers selv hvis env-var er sat forkert.
-
-// Pure helper — exposed for unit-testing uden Supabase-mock.
-export function resolveDmTargetFromInput({ envValue, isTestAccount }) {
-  if (isTestAccount) return "stdout";
-  if (envValue === "stdout" || envValue === "test-channel") return envValue;
-  return "webhook";
-}
+// Pure helper bor i ./discordDmTarget.js så unit-tests kan importere uden at trigge
+// SupabaseClient-init (Node 20 + supabase-realtime-js websocket-factory issue).
 
 async function resolveDmTarget(teamId) {
   let isTestAccount = false;

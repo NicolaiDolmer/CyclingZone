@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveDmTargetFromInput } from "./discordNotifier.js";
+import { resolveDmTargetFromInput } from "./discordDmTarget.js";
 
 // #203: DM-routing-logik. Pure function — tester valg af target uden Supabase.
 test("resolveDmTargetFromInput — test-konto tvinger stdout uanset env", () => {
