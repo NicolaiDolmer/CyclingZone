@@ -131,7 +131,7 @@ export async function resolveProxyBids({
           "Din auto-by er stoppet",
           `Din auto-by på ${riderName} nåede sit max-loft og er overbudt af ${bidderName}`,
           auctionId
-        ).catch(() => {});
+        ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
       } else if (autoBidder !== currentWinner && currentWinner) {
         // Challenger took over, current winner had no proxy (normal outbid via proxy)
         await notifyTeamOwner(
@@ -140,7 +140,7 @@ export async function resolveProxyBids({
           "Du er blevet overbudt!",
           `${bidderName}'s auto-by overbød dig på ${riderName}`,
           auctionId
-        ).catch(() => {});
+        ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
       }
 
       // Notify seller (only if real human selling own rider — mirrors manual bid flow)
@@ -151,30 +151,21 @@ export async function resolveProxyBids({
           "Nyt bud modtaget",
           `${bidderName}'s auto-by bød ${autoBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
           auctionId
-        ).catch(() => {});
+        ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
       }
     }
 
-    // Send Discord DM to the team that just lost the lead (mirrors manual bid flow)
-    if (notifyOutbidDM) {
-      if (exhaustedTeam) {
-        notifyOutbidDM({
-          riderName,
-          newBid: autoBidAmount,
-          bidderName,
-          teamId: exhaustedTeam,
-          isAuto: true,
-          exhausted: true,
-        }).catch(() => {});
-      } else if (autoBidder !== currentWinner && currentWinner) {
-        notifyOutbidDM({
-          riderName,
-          newBid: autoBidAmount,
-          bidderName,
-          teamId: currentWinner,
-          isAuto: true,
-        }).catch(() => {});
-      }
+    // Discord DM only when bidder is fully exhausted — mid-cascade DMs would spam
+    // managers whose proxy steps up but is still leading. In-app notif (above) still fires.
+    if (notifyOutbidDM && exhaustedTeam) {
+      notifyOutbidDM({
+        riderName,
+        newBid: autoBidAmount,
+        bidderName,
+        teamId: exhaustedTeam,
+        isAuto: true,
+        exhausted: true,
+      }).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
     }
 
     // Winner countered challenger successfully — no more iterations needed

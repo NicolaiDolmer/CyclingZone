@@ -905,7 +905,9 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
       notifyTeamOwner,
       notifyOutbidDM: notifyOutbid,
     });
-  } catch { /* never fail the bid response */ }
+  } catch (e) {
+    console.error("[resolveProxyBids] failed for auction", auction.id, e);
+  }
 
   res.json({
     success: true,
@@ -939,7 +941,7 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
 
   const { data: auction } = await supabase
     .from("auctions")
-    .select("id, current_price, current_bidder_id, status, calculated_end")
+    .select("id, current_price, current_bidder_id, status, calculated_end, seller_team_id, rider_id")
     .eq("id", req.params.id)
     .single();
 
@@ -949,6 +951,14 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
   }
   if (isAuctionExpired(auction.calculated_end)) {
     return res.status(400).json({ error: "Auction has ended" });
+  }
+  // Block setting proxy on own rider auction (mirror bid-endpoint guard)
+  if (auction.seller_team_id === req.team.id) {
+    const { data: auctionRider } = await supabase
+      .from("riders").select("team_id").eq("id", auction.rider_id).single();
+    if (auctionRider?.team_id === req.team.id) {
+      return res.status(400).json({ error: "Du kan ikke sætte auto-bud på din egen rytter" });
+    }
   }
 
   const minRequired = getMinimumAuctionBid(auction.current_price, {
@@ -976,7 +986,9 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
       notifyTeamOwner,
       notifyOutbidDM: notifyOutbid,
     });
-  } catch { /* never fail */ }
+  } catch (e) {
+    console.error("[resolveProxyBids] failed for auction", req.params.id, e);
+  }
 
   res.json({ success: true, max_amount: numericMax });
 });
