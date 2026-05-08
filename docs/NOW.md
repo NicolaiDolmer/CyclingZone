@@ -9,6 +9,7 @@
 ## Senest leveret
 *(2026-05-07 og tidligere arkiveret til [`docs/archive/NOW_HISTORIK_2026-05-07.md`](archive/NOW_HISTORIK_2026-05-07.md))*
 
+- 2026-05-08: **Dependabot-triage — #118 merget, 4 majors udskudt** — #118 lint-staged 15→17 (DX-only, pre-commit hook) merget via `auto-merge` label. #114 multer 1→2, #127 dotenv 16→17, #141 @vitejs/plugin-react 4→6, #142 react-router-dom 6→7 fået `post-launch` label + kommentar — major-bumps med runtime-impact er ikke optimale 6 dage før open beta-launch. Re-evalueres efter 14. maj. Workflow-bug flagged: `auto-merge.yml` GITHUB_TOKEN-trigger forhindrer Deploy verify i at fyre (ikke-blokker for #118 da kun root package.json blev rørt).
 - 2026-05-08: **#184 proxy-bidding test-coverage opfyldelse** — 7 nye tests + tier 3-styrkninger på [proxyBidding.test.js](backend/lib/proxyBidding.test.js) (313 linjer ændret). Tier 1: notifyOutbidDM-coverage (isAuto + exhausted=true), sælger `bid_received`-notif når rider.team_id===seller_team_id, bidderName-fallback til "Auto-by". Tier 2: status="extended" + extension_count øges når shouldExtend trigger, MAX_PROXY_ITERATIONS=30 guard via dynamic-proxies mock, challenger-overtages med winnerProxy clamper bud til winnerProxy.max+1. Tier 3: `is_proxy: true`-asserts på alle bid-tests + mock'ens `eq()` validerer column-arg (kaster ved ukendt kolonne). 330/330 backend-tests grønne (op fra 323). DX-only, ingen patch notes.
 - 2026-05-08: **#172 Auto-by guard fjernet LIVE som v2.71** — Fjernede `existingBid`-checket i PATCH `/api/auctions/:id/proxy` der krævede en eksisterende `auction_bids`-row før proxy-loft kunne sættes. Managers kan nu oprette auto-by max-loft uanset om de allerede har budt; `resolveProxyBids` håndterer umiddelbar step-up.
 - 2026-05-07: **#176 Indbakke unread-counter fix LIVE som v2.70** — Supabase Realtime DELETE-events indeholder ikke `user_id` uden REPLICA IDENTITY FULL, så Layout's filter-subscription aldrig fyrede ved sletning. Fix: `cz:notif-deleted` window-event dispatches fra `deleteNotif`/`deleteAllRead` → Layout refetcher uread-count direkte. Badge opdateres nu straks uden F5.
@@ -42,7 +43,7 @@
 1. **Manuel verifikation af v2.66 + v2.68 på prod** — (v2.66) bud match-pris på guaranteed sale uden bud, +1-step på alm. auktion. (v2.68) sæt proxy 60K, byd manuelt 80K, bekræft anden manager med proxy ≥ 80.001 overbyder automatisk.
 2. **Mobile UX audit** — kør gennem alle hovedsider på 360px viewport (RidersPage, AuctionsPage, TeamPage, BoardPage), notér breakdown-points, prioritér.
 3. **Onboarding session-1 audit** — start som ny manager, notér friction. #158 (kan ikke lukke onboarding) er en kendt blokker.
-4. **Dependabot-triage** (8 åbne PRs efter #139): bucket A-merge (#140 frontend-minor-patch, #126 supabase-js minor, #116 esbuild+vite security); bucket B (majors) afventer review.
+4. **Dependabot post-launch-bucket** (4 PRs labeled `post-launch` 2026-05-08): #114 multer 1→2, #127 dotenv 16→17, #141 @vitejs/plugin-react 4→6, #142 react-router-dom 6→7. Re-evalueres efter open beta-launch ~14. maj. Bucket A er fuldt mergede.
 5. **Resterende launch-blockere:** #109 (U25-kategorisering), #176 (indbakke-counter cache).
 
 ## Kritiske invarianter
