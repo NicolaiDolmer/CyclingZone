@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "2.71",
+    date: "2026-05-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Auto-by · Du kan nu sætte auto-by max-loft uden at have budt manuelt først — fix'ede en fejl hvor man kun kunne oprette auto-by hvis man allerede var højestbydende (#172).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.70",
     date: "2026-05-07",
     label: "Beta",
