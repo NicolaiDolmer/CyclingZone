@@ -5,6 +5,7 @@ import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
+import { BidConfirmModal } from "../components/BidConfirmModal";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 
@@ -833,8 +834,18 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
   const [msg, setMsg] = useState("");
   const [showOffer, setShowOffer] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const isOwn = listing.seller?.id === myTeamId;
+  const riderName = listing.rider ? `${listing.rider.firstname} ${listing.rider.lastname}` : "rytter";
+
+  async function performSendOffer() {
+    setLoading(true);
+    await onOffer(listing.rider?.id, offerAmt, msg);
+    setShowOffer(false);
+    setConfirmOpen(false);
+    setLoading(false);
+  }
 
   return (
     <div className="bg-cz-card border border-cz-border hover:border-cz-border rounded-xl p-4 transition-all">
@@ -886,12 +897,7 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
                   onChange={e => setOfferAmt(parseInt(e.target.value) || 0)}
                   className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
                 <button
-                  onClick={async () => {
-                    setLoading(true);
-                    await onOffer(listing.rider?.id, offerAmt, msg);
-                    setShowOffer(false);
-                    setLoading(false);
-                  }}
+                  onClick={() => { if (offerAmt > 0) setConfirmOpen(true); }}
                   disabled={loading || offerAmt <= 0}
                   className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
                   {loading ? "..." : "Send"}
@@ -907,6 +913,15 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
       {isOwn && (
         <p className="text-cz-3 text-xs text-center py-1">Din listing</p>
       )}
+      <BidConfirmModal
+        show={confirmOpen}
+        mode="transfer"
+        riderName={riderName}
+        amount={offerAmt}
+        busy={loading}
+        onCancel={() => { if (!loading) setConfirmOpen(false); }}
+        onConfirm={performSendOffer}
+      />
     </div>
   );
 }

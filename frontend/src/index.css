@@ -90,19 +90,23 @@ select option {
   100% { background-color: rgb(var(--accent) / 0); }
 }
 
-.auction-bid-cell {
+.auction-bid-cell,
+.auction-rider-cell {
   background-color: var(--bg-card);
 }
 
-tr:hover .auction-bid-cell {
+tr:hover .auction-bid-cell,
+tr:hover .auction-rider-cell {
   background-color: var(--bg-subtle);
 }
 
-.auction-bid-cell-winning {
+.auction-bid-cell-winning,
+.auction-rider-cell-winning {
   background-color: color-mix(in srgb, rgb(var(--accent)) 8%, var(--bg-card));
 }
 
-tr:hover .auction-bid-cell-winning {
+tr:hover .auction-bid-cell-winning,
+tr:hover .auction-rider-cell-winning {
   background-color: color-mix(in srgb, rgb(var(--accent)) 10%, var(--bg-subtle));
 }
 .cz-pulse-flash {

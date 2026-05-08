@@ -49,6 +49,8 @@ export const DEFAULT_FILTERS = {
   max_age: "",
   min_potentiale: "",
   max_potentiale: "",
+  min_auction_price: "",
+  max_auction_price: "",
   u25: false,
   u23: false,
   free_agent: false,
@@ -99,6 +101,7 @@ function DualStatSlider({ statKey, label, filters, onChange }) {
 export default function RiderFilters({
   filters, onChange, onReset,
   showTeamFilter = true, compact = false, teams = [], nationalities = [],
+  showAuctionPriceFilter = false,
 }) {
   const [statsOpen, setStatsOpen] = useState(false);
 
@@ -110,6 +113,7 @@ export default function RiderFilters({
     filters.min_salary || filters.max_salary ||
     filters.min_age || filters.max_age ||
     filters.min_potentiale || filters.max_potentiale ||
+    filters.min_auction_price || filters.max_auction_price ||
     filters.u25 || filters.u23 ||
     filters.free_agent || filters.team_id;
 
@@ -201,6 +205,23 @@ export default function RiderFilters({
             </div>
           </div>
 
+          {/* Højeste bud (auction-only) */}
+          {showAuctionPriceFilter && (
+            <div>
+              <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Højeste bud CZ$ (min–max)</label>
+              <div className="flex gap-1">
+                <input type="number" value={filters.min_auction_price} onChange={e => onChange("min_auction_price", e.target.value)}
+                  placeholder="Min"
+                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                    text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
+                <input type="number" value={filters.max_auction_price} onChange={e => onChange("max_auction_price", e.target.value)}
+                  placeholder="Max"
+                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                    text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
+              </div>
+            </div>
+          )}
+
           {/* Potentiale */}
           <div>
             <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Potentiale (min–max)</label>
@@ -290,6 +311,8 @@ export default function RiderFilters({
           {filters.max_age && <Chip label={`Alder ≤ ${filters.max_age}`} onRemove={() => onChange("max_age", "")} />}
           {filters.min_potentiale && <Chip label={`Pot. ≥ ${filters.min_potentiale}`} onRemove={() => onChange("min_potentiale", "")} />}
           {filters.max_potentiale && <Chip label={`Pot. ≤ ${filters.max_potentiale}`} onRemove={() => onChange("max_potentiale", "")} />}
+          {filters.min_auction_price && <Chip label={`Bud ≥ ${parseInt(filters.min_auction_price).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("min_auction_price", "")} />}
+          {filters.max_auction_price && <Chip label={`Bud ≤ ${parseInt(filters.max_auction_price).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("max_auction_price", "")} />}
           {filters.u25 && <Chip label="U25" onRemove={() => onChange("u25", false)} />}
           {filters.u23 && <Chip label="U23" onRemove={() => onChange("u23", false)} />}
           {filters.free_agent && <Chip label="Fri agent" onRemove={() => onChange("free_agent", false)} />}

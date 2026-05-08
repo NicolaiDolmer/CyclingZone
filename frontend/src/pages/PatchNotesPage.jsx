@@ -2,14 +2,20 @@
 
 const PATCHES = [
   {
-    version: "2.80",
+    version: "2.81",
     date: "2026-05-08",
     label: "Beta",
     changes: [
       {
-        category: "Forbedringer",
+        category: "Auktioner · Stort overblik-overhaul",
         items: [
-          "Sprogvask · 'Auto-by' (stavefejl) er omdøbt til 'Autobud' overalt — knapper, badges, hjælpe-tekst, fejlbeskeder og Discord-DM'er bruger nu det rigtige danske ord. Funktionaliteten er uændret.",
+          "Min situation · Ny default-tab på /auctions samler alle auktioner du er involveret i — opdelt i tre scanbare sektioner: 🟢 Du leder, 🔴 Du er overbudt, 🔵 Du sælger. Tomme sektioner skjules automatisk. Erstatter 'Mine'- og 'Vinder'-tabs.",
+          "Stats-toggle · Default vises ingen evne-kolonner i tabellen — det giver markant bedre overblik. Tryk 'Vis stats' øverst for at slå alle 14 evner til, eller vælg enkelt-evner via popover-menuen. Valget huskes på tværs af sessions (også på mobil-cards).",
+          "Wishlist-stjerne · Ⓘ-knappen er flyttet ind i rytter-cellen på auktionssiden — du kan tilføje/fjerne ryttere til din ønskeliste direkte fra auktioner uden at gå over på rytter-siden.",
+          "Løn vises i stedet for Værdi · Auktionssiden viser nu rytternes løn (relevant for dine økonomi-beslutninger) i stedet for markedsværdi. Værdi er stadig synlig på Ryttere-siden og rytter-profilen.",
+          "Kolonner omarrangeret · Ny rækkefølge på desktop: Rytter (sticky venstre) | Højeste bud | Tid tilbage | Alder | Løn | Potentiale | Sælger | Stats | Byd (sticky højre). Rytter-navnet bliver synligt selv når du scroller horisontalt gennem evner.",
+          "Pris-filter · Nyt min/max-felt på 'Højeste bud CZ$' i filter-baren — find fx kun ryttere under 100.000 CZ$ i auktionspris.",
+          "Bekræftelses-popup · Alle bud (auktion, autobud-loft, transferbud) viser nu en 'Er du sikker?'-dialog inden de afgives, så du ikke kommer til at sende et bud ved et uheld.",
         ],
       },
     ],
