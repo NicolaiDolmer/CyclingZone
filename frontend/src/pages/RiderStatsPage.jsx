@@ -197,6 +197,9 @@ export default function RiderStatsPage() {
   const [uciHistory, setUciHistory]         = useState([]);
   const [statHistory, setStatHistory]       = useState([]);
   const [ddActive, setDdActive]             = useState(false);
+  // #195: live bud-timeline for seneste auktion (aktiv eller completed).
+  // Privacy-låst: backend lækker aldrig proxy_max — frontend respekterer samme kontrakt.
+  const [bidTimeline, setBidTimeline]       = useState(null);
 
   async function loadWatchlistStatus() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -240,6 +243,14 @@ export default function RiderStatsPage() {
       const res = await fetch(`${API}/api/riders/${id}/history`, { headers: h });
       if (res.ok) setHistory(await res.json());
     } catch { /* non-critical: history section stays empty */ }
+  }
+
+  async function loadBidTimeline() {
+    try {
+      const h = await authHeaders();
+      const res = await fetch(`${API}/api/riders/${id}/bid-timeline`, { headers: h });
+      if (res.ok) setBidTimeline(await res.json());
+    } catch { /* non-critical: bid-timeline tab falls back to empty state */ }
   }
 
   async function loadDevelopmentHistory() {
@@ -300,7 +311,35 @@ export default function RiderStatsPage() {
     } catch { /* non-critical: deadline-day banner falls back to inactive */ }
   }
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); }, [id]);
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); loadBidTimeline(); }, [id]);
+
+  // #195: Supabase realtime — kun aktive auktioner. Når et nyt bud lander
+  // (auction_bids INSERT scoped til seneste auctionId), refetch'er vi timelinen
+  // så UI opdaterer < 1s uden manual refresh. Egen kanalnavn pr. auction
+  // undgår kollision med AuctionsPage's "auctions-live" channel.
+  useEffect(() => {
+    const auctionId = bidTimeline?.auction_id;
+    const isLive = bidTimeline?.status === "active" || bidTimeline?.status === "extended";
+    if (!auctionId || !isLive) return;
+    const channel = supabase.channel(`rider-bids-${auctionId}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "auction_bids",
+        filter: `auction_id=eq.${auctionId}`,
+      }, () => { loadBidTimeline(); })
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "auctions",
+        filter: `id=eq.${auctionId}`,
+      }, payload => {
+        // Når auktionen finaliserer → refetch så timeline kollapser til final-only shape
+        if (payload.new?.status === "completed") loadBidTimeline();
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [bidTimeline?.auction_id, bidTimeline?.status]);
 
   async function startAuction(startPrice, isGuaranteedSale = false, isFlash = false) {
     setAuctionError(null);
@@ -437,7 +476,7 @@ export default function RiderStatsPage() {
       </div>
 
       <div className="flex gap-2 mb-4 flex-wrap">
-        {[{ key: "stats", label: "Evner" }, { key: "season", label: "Sæsonhistorik" }, { key: "results", label: "Løbsresultater" }, { key: "history", label: "Historik" }, { key: "development", label: "Udvikling" }].map(t => (
+        {[{ key: "stats", label: "Evner" }, { key: "season", label: "Sæsonhistorik" }, { key: "results", label: "Løbsresultater" }, { key: "bids", label: "Bud-historik" }, { key: "history", label: "Historik" }, { key: "development", label: "Udvikling" }].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
               ${tab === t.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1 hover:border-cz-border"}`}>
@@ -522,6 +561,10 @@ export default function RiderStatsPage() {
         </div>
       )}
 
+      {tab === "bids" && (
+        <BidTimelineTab timeline={bidTimeline} />
+      )}
+
       {tab === "history" && (
         <div className="bg-cz-card border border-cz-border rounded-xl divide-y divide-cz-border">
           {history.length === 0 ? (
@@ -538,6 +581,104 @@ export default function RiderStatsPage() {
         </Suspense>
       )}
     </div>
+  );
+}
+
+function BidTimelineTab({ timeline }) {
+  if (!timeline || timeline.auction_id === null) {
+    return (
+      <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <p className="text-cz-3 text-center py-8">Ingen aktuel auktion for denne rytter</p>
+      </div>
+    );
+  }
+
+  if (timeline.status === "completed") {
+    const completedDate = timeline.completed_at
+      ? new Date(timeline.completed_at).toLocaleString("da-DK", {
+          day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+        })
+      : "—";
+    return (
+      <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <div className="flex items-start gap-3">
+          <span className="text-cz-accent-t text-2xl mt-0.5">🏆</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs uppercase tracking-wider text-cz-accent-t font-medium mb-1">Solgt</p>
+            <p className="text-cz-1 text-base">
+              <span className="font-semibold">{timeline.winner_name || "Ukendt køber"}</span>
+              <span className="text-cz-3"> for </span>
+              <span className="font-mono font-bold text-cz-accent-t">
+                {timeline.final_bid?.toLocaleString("da-DK")} CZ$
+              </span>
+            </p>
+            {timeline.seller_name && (
+              <p className="text-cz-2 text-sm mt-1">
+                <span className="text-cz-3">Sælger: </span>{timeline.seller_name}
+              </p>
+            )}
+            <p className="text-cz-3 text-xs mt-1">{completedDate}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const bids = timeline.bid_timeline || [];
+  // Vis nyeste først så aktuelle bud står øverst
+  const ordered = [...bids].reverse();
+
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+      <div className="px-5 py-3 border-b border-cz-border flex items-center justify-between">
+        <span className="text-xs uppercase tracking-wider text-cz-accent-t font-medium">⚡ Aktiv auktion</span>
+        {timeline.current_price != null && (
+          <span className="text-cz-1 font-mono font-bold text-sm">
+            {timeline.current_price.toLocaleString("da-DK")} CZ$
+          </span>
+        )}
+      </div>
+      {ordered.length === 0 ? (
+        <p className="text-cz-3 text-center py-8">Ingen bud endnu</p>
+      ) : (
+        <ul className="divide-y divide-cz-border">
+          {ordered.map((b, i) => (
+            <BidTimelineRow key={`${b.bid_time}-${i}`} bid={b} isLatest={i === 0} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function BidTimelineRow({ bid, isLatest }) {
+  const time = bid.bid_time
+    ? new Date(bid.bid_time).toLocaleString("da-DK", {
+        day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+      })
+    : "—";
+  return (
+    <li className={`px-5 py-3 flex items-center justify-between gap-3 ${isLatest ? "bg-cz-accent/[0.04]" : ""}`}>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-cz-1 text-sm font-medium truncate">{bid.team_name || "Ukendt"}</span>
+          {bid.is_proxy && (
+            <span className="text-[10px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">
+              Auto-by
+            </span>
+          )}
+          {isLatest && (
+            <span className="text-[10px] uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">
+              Højest
+            </span>
+          )}
+        </div>
+        <p className="text-cz-3 text-xs mt-0.5">{time}</p>
+      </div>
+      <span className="text-cz-1 font-mono font-bold text-sm whitespace-nowrap">
+        {bid.amount?.toLocaleString("da-DK")} CZ$
+      </span>
+    </li>
   );
 }
 

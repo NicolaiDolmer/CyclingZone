@@ -63,6 +63,7 @@ import {
 } from "../lib/discordNotifier.js";
 import { getPendingInboxItems } from "../lib/inboxPending.js";
 import { buildRiderHistory } from "../lib/riderHistory.js";
+import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
@@ -583,6 +584,18 @@ router.get("/riders/:id/history", requireAuth, async (req, res) => {
   try {
     const events = await buildRiderHistory(supabase, req.params.id);
     res.json(events);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/riders/:id/bid-timeline — live bud-historik for seneste auktion (#195)
+// Privacy-låst: proxy_max eksponeres ALDRIG. Aktiv auktion returnerer timeline,
+// completed auktion returnerer kun final-bud + vinder/sælger.
+router.get("/riders/:id/bid-timeline", requireAuth, async (req, res) => {
+  try {
+    const payload = await buildRiderBidTimeline(supabase, req.params.id);
+    res.json(payload);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
