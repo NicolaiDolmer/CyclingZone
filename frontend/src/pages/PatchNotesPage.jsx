@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.76",
+    date: "2026-05-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Auktioner · Live bud-feed på desktop: ny sidebar viser bud i realtid på de auktioner du selv deltager i (manuelt bud eller auto-by). Andre managers' moves på fremmede auktioner forbliver private — kun \"din side af bordet\" feeder din skærm (#196).",
+          "Auktioner · Pris-cellen pulser kort i guld når current_price ændrer sig — så du kan se hvilken auktion lige fik et bud uden at skanne hele tabellen.",
+          "Auktioner · Du får nu en toast i hjørnet \"Du er overbudt på X\" når en anden manager overhaler dig — også hvis du allerede ser auktionen. Toasten fyrer aldrig på dit eget bud eller på dit auto-bys eskalering.",
+          "Auktioner · Aggregat-ticker i header viser \"X nye bud i sidste 30s\" — uden navne eller beløb. Et hurtigt puls-tjek på markedet uden at lække andre managers' specifikke moves.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.75",
     date: "2026-05-08",
     label: "Beta",

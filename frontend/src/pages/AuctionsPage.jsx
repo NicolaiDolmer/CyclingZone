@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, NavLink } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
@@ -13,6 +13,15 @@ import PotentialeStars from "../components/PotentialeStars";
 import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
+import AuctionsSidebarFeed from "../components/AuctionsSidebarFeed";
+import OverbidToast from "../components/OverbidToast";
+import {
+  isOverbidEvent,
+  shouldFlashPrice,
+  filterBidEventsForFeed,
+  getMyParticipatingAuctionIds,
+  pruneStaleBidEvents,
+} from "../lib/auctionsRealtime";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -125,7 +134,7 @@ function Countdown({ end, status }) {
 }
 
 // ── Auction table row ─────────────────────────────────────────────────────────
-function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, isFirst }) {
+function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, isFirst, isFlashing }) {
   const minBid = getMinimumAuctionBid(auction.current_price || 0, {
     hasActiveBid: Boolean(auction.current_bidder_id),
   });
@@ -277,10 +286,12 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
 
       {/* Højeste bud */}
       <td className="px-3 py-1.5 text-right whitespace-nowrap">
-        <span className="text-cz-1 font-mono font-bold text-sm">
-          {auction.current_price?.toLocaleString("da-DK")}
+        <span className={`inline-block px-1.5 ${isFlashing ? "cz-pulse-flash" : ""}`}>
+          <span className="text-cz-1 font-mono font-bold text-sm">
+            {auction.current_price?.toLocaleString("da-DK")}
+          </span>
+          <span className="text-cz-3 text-xs ml-1">CZ$</span>
         </span>
-        <span className="text-cz-3 text-xs ml-1">CZ$</span>
         {getAuctionLeaderName(auction) && !imWinning && (
           <p className="text-cz-3 text-[10px] truncate max-w-[100px]">
             {getAuctionLeaderName(auction)}
@@ -382,7 +393,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
   );
 }
 
-function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, isFirst }) {
+function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, isFirst, isFlashing }) {
   const minBid = getMinimumAuctionBid(auction.current_price || 0, {
     hasActiveBid: Boolean(auction.current_bidder_id),
   });
@@ -490,7 +501,7 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">Sælger</p>
           <p className="text-cz-2 text-sm font-medium truncate">{getAuctionSellerLabel(auction)}</p>
         </div>
-        <div className="bg-cz-subtle rounded-lg px-3 py-2">
+        <div className={`bg-cz-subtle rounded-lg px-3 py-2 ${isFlashing ? "cz-pulse-flash" : ""}`}>
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">Højeste bud</p>
           <p className="text-cz-1 font-mono font-bold text-sm">
             {auction.current_price?.toLocaleString("da-DK")} CZ$
@@ -612,6 +623,56 @@ export default function AuctionsPage() {
   const [firstBidDismissed, setFirstBidDismissed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("cz-first-bid-shown") === "1",
   );
+  // #196: realtime UX — recentBidEvents driver både ticker og sidebar-feed,
+  // flashingAuctionIds driver pulse-animation, toasts vises ved overbud.
+  const [recentBidEvents, setRecentBidEvents] = useState([]);
+  const [flashingAuctionIds, setFlashingAuctionIds] = useState(() => new Set());
+  const [toasts, setToasts] = useState([]);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Refs så channel-callback kan se nyeste auctions/myTeamId uden at re-subscribe
+  const auctionsRef = useRef([]);
+  const myTeamIdRef = useRef(null);
+  useEffect(() => { auctionsRef.current = auctions; }, [auctions]);
+  useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
+
+  // 1s tick: opdater "now" så ticker+sidebar relative-tid bevæger sig,
+  // og prune events ældre end 30s ud af bufferen.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      setRecentBidEvents(prev => pruneStaleBidEvents(prev, t, 30_000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  function pushOverbidToast({ riderName, amount }) {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setToasts(prev => [...prev, { id, riderName, amount }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  }
+
+  function dismissToast(id) {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }
+
+  function flashAuctionPrice(auctionId) {
+    setFlashingAuctionIds(prev => {
+      const next = new Set(prev);
+      next.add(auctionId);
+      return next;
+    });
+    setTimeout(() => {
+      setFlashingAuctionIds(prev => {
+        const next = new Set(prev);
+        next.delete(auctionId);
+        return next;
+      });
+    }, 1500);
+  }
 
   function handleSort(key) {
     if (key === "current_price" || key === "calculated_end") {
@@ -716,6 +777,22 @@ export default function AuctionsPage() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "auctions" },
         payload => {
           const updated = payload.new;
+          // #196: pulse + overbid-toast bygger på SAMME prev som auctions-listen,
+          // men læses fra ref så closuren ikke ser stale state efter re-render.
+          const prevFromRef = auctionsRef.current.find(a => a.id === updated.id);
+          const myTeam = myTeamIdRef.current;
+          if (prevFromRef) {
+            if (shouldFlashPrice(prevFromRef, updated)) {
+              flashAuctionPrice(updated.id);
+            }
+            if (isOverbidEvent(prevFromRef, updated, myTeam)) {
+              const r = prevFromRef.rider;
+              pushOverbidToast({
+                riderName: r ? `${r.firstname} ${r.lastname}` : "rytter",
+                amount: updated.current_price,
+              });
+            }
+          }
           setAuctions(prev => {
             const prevAuction = prev.find(a => a.id === updated.id);
             if (updated.status === "completed" && prevAuction?.status !== "completed") {
@@ -733,6 +810,23 @@ export default function AuctionsPage() {
             }
             return prev.map(a => a.id === updated.id ? { ...a, ...updated } : a);
           });
+        })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "auction_bids" },
+        payload => {
+          // #196: nye bud feeder både aggregat-tickeren og sidebar-feeden.
+          // Buffer prunes til 30s rolling vindue.
+          const bid = payload.new;
+          const t = Date.now();
+          setRecentBidEvents(prev => pruneStaleBidEvents([
+            ...prev,
+            {
+              id: bid.id,
+              auction_id: bid.auction_id,
+              team_id: bid.team_id,
+              amount: bid.amount,
+              ts: t,
+            },
+          ], t, 30_000));
         })
       .subscribe();
     return () => supabase.removeChannel(channel);
@@ -868,6 +962,13 @@ export default function AuctionsPage() {
     { key: "other",   label: `Andre managers (${otherManagerCount})` },
   ];
 
+  // #196: feed-events filtreres til auktioner manageren deltager i, og
+  // auctionsById giver sidebar adgang til rytter-navn pr. event.
+  const myParticipatingAuctionIds = getMyParticipatingAuctionIds(auctions);
+  const feedEvents = filterBidEventsForFeed(recentBidEvents, myParticipatingAuctionIds);
+  const auctionsById = auctions.reduce((acc, a) => { acc[a.id] = a; return acc; }, {});
+  const tickerCount = recentBidEvents.length;
+
   return (
     <div className="max-w-[1400px] mx-auto">
       <OnboardingTour pageKey="auctions" steps={AUCTIONS_TOUR_STEPS} />
@@ -887,8 +988,20 @@ export default function AuctionsPage() {
         onConfirm={handleConfirmRaceBid}
       />
 
+      <OverbidToast toasts={toasts} onDismiss={dismissToast} />
+
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-cz-1 mb-3">Auktioner</h1>
+        <div className="flex items-baseline justify-between gap-4 mb-3">
+          <h1 className="text-xl font-bold text-cz-1">Auktioner</h1>
+          {/* #196: aggregat-ticker — 30s rolling vindue, opdateres live via channel + 1s tick */}
+          <span
+            data-testid="auctions-ticker"
+            className="text-cz-3 text-[11px] font-mono tabular-nums whitespace-nowrap"
+            aria-live="polite"
+          >
+            {tickerCount} {tickerCount === 1 ? "nyt bud" : "nye bud"} i sidste 30s
+          </span>
+        </div>
         <div className="flex gap-2">
           <NavLink to="/auctions" end
             className={({ isActive }) =>
@@ -1018,10 +1131,13 @@ export default function AuctionsPage() {
               onSetProxy={handleSetProxy}
               onRemoveProxy={handleRemoveProxy}
               isFirst={i === 0}
+              isFlashing={flashingAuctionIds.has(a.id)}
             />
           ))}
         </div>
-        <div className="hidden md:block bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        {/* #196: desktop layout = main-tabel + 280px sidebar (md+); mobile får ticker+toast i stedet */}
+        <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_280px] md:gap-4">
+        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden min-w-0">
           <div className="overflow-auto max-h-[calc(100vh-220px)]">
             <table className="w-full text-xs">
               <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
@@ -1077,11 +1193,19 @@ export default function AuctionsPage() {
                     onSetProxy={handleSetProxy}
                     onRemoveProxy={handleRemoveProxy}
                     isFirst={i === 0}
+                    isFlashing={flashingAuctionIds.has(a.id)}
                   />
                 ))}
               </tbody>
             </table>
           </div>
+        </div>
+        <AuctionsSidebarFeed
+          events={feedEvents}
+          auctionsById={auctionsById}
+          myTeamId={myTeamId}
+          now={now}
+        />
         </div>
         </>
       )}
