@@ -8,10 +8,16 @@ Refs #
 <!-- Kort kontekst — kan udelades hvis det dækkes af issuet -->
 
 ## Test plan
-- [ ] Lokalt: `npm run build` passerer
-- [ ] Lint: `npm run lint` passerer
+- [ ] Frontend build: `npm run build --prefix frontend` passerer
+- [ ] Backend tests: `npm test --prefix backend` passerer
+- [ ] Lint: `npm run lint --prefix frontend` + `npm run lint --prefix backend` passerer
 - [ ] Manuel: <!-- hvad du klikkede på i browseren -->
 - [ ] Regression: <!-- hvilke andre features blev tjekket -->
+
+## Risk / auto-merge
+<!-- Tilføj label hvis relevant: risk:med, risk:high, security, needs-decision eller manual-review stopper auto-merge. -->
+- [ ] `auto-merge` er kun sat hvis PR'en er lav-risiko og ikke kræver menneskelig beslutning
+- [ ] Dependency/security-impact er vurderet hvis `package*.json`, workflows, auth, DB eller upload-flow ændres
 
 ## Filer rørt
 <!-- Auto-fyldes af git, men nævn særligt risikable filer her -->

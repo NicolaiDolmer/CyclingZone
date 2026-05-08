@@ -31,12 +31,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Guard high-risk labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          LABELS=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json labels --jq '.labels[].name')
+          if echo "$LABELS" | grep -Eq '^(risk:med|risk:high|needs-decision|security|manual-review)$'; then
+            gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --remove-label "auto-merge" || true
+            gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "⛔ **Auto-merge afvist** — PR'en har en høj-risiko label (\`risk:med\`, \`risk:high\`, \`needs-decision\`, \`security\` eller \`manual-review\`). Fjern/ret label efter manuel review og tilføj \`auto-merge\` igen hvis den må shippe automatisk."
+            exit 1
+          fi
+
       - name: Confirm queued
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "🚀 **Auto-merge i kø** — venter synkront på \`backend-tests\` + \`frontend-build\`. Squash-merger automatisk når grøn, og trigger deploy-verify bagefter. Fjern \`auto-merge\` label for at annullere."
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "🚀 **Auto-merge i kø** — venter synkront på required checks (\`backend-tests\`, \`frontend-build\`, \`dependency-review\`) + advisory AI-review. Squash-merger automatisk når grøn, og trigger deploy-verify bagefter. Fjern \`auto-merge\` label for at annullere."
 
       - name: Wait for required checks (backend-tests + frontend-build)
         env:
@@ -44,6 +57,40 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           gh pr checks "$PR_NUMBER" --repo "${{ github.repository }}" --watch --fail-fast --required
+
+      - name: Wait for advisory AI review if present
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          LABELS=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json labels --jq '.labels[].name')
+          if echo "$LABELS" | grep -qx 'skip-ai-review'; then
+            echo "skip-ai-review label present; continuing."
+            exit 0
+          fi
+
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid --jq .headRefOid)
+          for _ in $(seq 1 20); do
+            REVIEW_JSON=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?check_name=review" --jq '.check_runs[0] // empty')
+            if [ -z "$REVIEW_JSON" ]; then
+              echo "No advisory review check found; continuing."
+              exit 0
+            fi
+            STATUS=$(echo "$REVIEW_JSON" | jq -r '.status')
+            CONCLUSION=$(echo "$REVIEW_JSON" | jq -r '.conclusion // ""')
+            if [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ] || [ "$CONCLUSION" = "neutral" ] || [ "$CONCLUSION" = "skipped" ]; then
+                exit 0
+              fi
+              gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --remove-label "auto-merge" || true
+              gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "⛔ **Auto-merge stoppet** — advisory AI-review endte med \`$CONCLUSION\`. Review PR'en manuelt, eller tilføj \`skip-ai-review\` hvis fejlen er kendt og ufarlig."
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "Advisory review is still running; leaving PR open for manual follow-up."
+          exit 1
 
       - name: Squash-merge PR
         id: merge

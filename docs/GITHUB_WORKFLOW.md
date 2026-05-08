@@ -24,70 +24,65 @@ Nicolai får notifikation, verificerer i prod, lukker issue
 
 Mål: Nicolai rører tastatur 2 gange (åbn issue, skriv `@claude`). Resten kører selv.
 
-## 8 lag — opbygning og status
+## Status 2026-05-08 — opbygning og drift
 
 | # | Lag | Hvem | Status | Effekt |
 |---|---|---|---|---|
-| 1 | **Claude GitHub App** (`@claude`-trigger i issues/PRs) | Nicolai (kør `/install-github-app`) | 🔜 Pending | Det vigtigste — async Claude fra browser/mobil |
-| 2 | **Auto-PR-review** workflow | Claude | 🔜 Pending (efter Lag 1) | Hver PR får automatisk Claude-review |
-| 3 | **Auto-issue-triage** workflow | Claude | 🔜 Pending (efter Lag 1) | Nye issues auto-labeles + første-pass-comment |
-| 4 | **GitHub Projects v2 board** | Nicolai (UI) | 🔜 Senere | Visuelt kanban-overblik |
+| 1 | **Claude GitHub App** (`@claude`-trigger i issues/PRs) | Nicolai | ✅ LIVE | Async Claude fra browser/mobil |
+| 2 | **Auto-PR-review** workflow | GitHub Actions | ✅ LIVE, advisory | Hver PR får risikobaseret Claude-review; auto-merge stopper hvis review fejler medmindre `skip-ai-review` er sat |
+| 3 | **Auto-issue-triage** workflow | GitHub Actions | ✅ LIVE | Deterministiske labels først; AI-comment kun for high/investigation for at spare tokens |
+| 4 | **GitHub Projects v2 board** | Nicolai / script | ✅ Script klar | `scripts/setup-github-project.sh` opretter board; kræver PAT med `project`-scope |
 | 5 | **Branch protection + auto-merge** | Claude (gh API) | ✅ LIVE 2026-05-08 | Main beskyttet; PR'er kan auto-merge via label eller ship-keyword |
-| 6 | **Pre-commit hooks lokalt** (husky + lint-staged) | Claude | 🔜 Senere | Ingen broken code pushes |
-| 7 | **Dependabot + CodeQL** | Claude | ✅ Config committet — afventer manuel UI-aktivering | Auto-PRs for deps + sikkerhed |
+| 6 | **Pre-commit/pre-push hooks lokalt** (`.githooks`) | Repo + `setup-local.ps1` | ✅ LIVE | Lint, secret-safety og PatchNotes-versioner fanges før push |
+| 7 | **Dependabot + CodeQL + dependency review** | GitHub Actions | ✅ LIVE | Dep-PRs, code scanning og PR dependency gate |
 | 8 | **MCP write-fix** (claude.ai GitHub-connector) | Nicolai (disconnect/reconnect) | 🔜 Pending | Min terminal-session skriver MCP direkte i stedet for `gh` CLI fallback |
 
-**Foundation (Lag 0) ✅ done** (commit `f26f2e5`):
+**Foundation (Lag 0) ✅ done**:
 - Issue templates: `claude-task`, `claude-investigate`, `bug` + `config.yml` (disable blank issues)
-- `PULL_REQUEST_TEMPLATE.md` med Closes #X + test plan
+- `PULL_REQUEST_TEMPLATE.md` med `Refs #X`, test plan og risk/auto-merge check
 - 12 labels: `claude:{todo,in-progress,blocked,done}`, `priority:{high,med,low}`, `type:{bug,feature,refactor,docs,investigation}`
 - `.claude/settings.json`: GitHub MCP read+write perms + `gh` CLI perms
 - `CLAUDE.md` step 0d: tjek `claude:todo` issues ved session-start
 - Demo-issue #3 oprettet (verificerer skriv-vej via `gh`)
 
-## Status & næste skridt (læs FØRST ved session-start)
+## Health check først
 
-**Hvor vi står:** Foundation er live på `main`. MCP-read virker. MCP-write returnerer 403 (kræver Lag 8). `gh` CLI virker som fallback.
+Kør dette før større workflow-/AI-arbejde:
 
-**Næste skridt — gør i denne rækkefølge:**
-
-### Skridt 1: Lag 1 — Installer Claude GitHub App (Nicolai)
-I Claude Code-terminalen, kør:
+```powershell
+pwsh -File scripts/agent-doctor.ps1
 ```
-/install-github-app
-```
-Den guider gennem:
-1. OAuth til Anthropic GitHub App (https://github.com/apps/claude)
-2. Installation på `NicolaiDolmer/CyclingZone`
-3. Tilføjer `ANTHROPIC_API_KEY` som repo-secret (brug eksisterende API-nøgle fra console.anthropic.com)
-4. Dropper `.github/workflows/claude.yml` (basis trigger på `@claude`)
 
-Test: Skriv `@claude hello` i en kommentar på issue #3. Du skal se en GitHub Actions-run starte og Claude svare i tråden inden for ~1 min.
+Doctoren samler på få linjer:
+- repo-root og local dirty state
+- `gh auth`, `core.hooksPath`, tracked secret-filer
+- GitHub security flags, branch protection, rulesets
+- åbne Dependabot alerts, seneste Actions failures og issue-label schema
 
-### Skridt 2: Lag 8 — Fix MCP write (Nicolai, ~30 sek)
-1. Gå til https://claude.ai/settings/connectors
-2. Find "GitHub" → **Disconnect**
-3. **Reconnect** → giv adgang til `NicolaiDolmer/CyclingZone` → accepter alle Read+Write permissions
-4. Restart Claude Code så ny token loades
+Brug `-FailOnWarning` i dedikerede DX-sessions hvor warnings skal fail'e lokalt.
 
-Verifikation: Bed Claude prøve at kommentere på et issue via MCP — hvis ingen 403, så virker det.
+## Risk-labels og auto-merge policy
 
-### Skridt 3: Lag 2 + 3 — Auto-review + auto-triage (Claude)
-Når Lag 1 er gjort, dropper Claude:
-- `.github/workflows/claude-review.yml` — kører på `pull_request: opened, synchronize`. Bruger `anthropics/claude-code-action@v1` med prompt: "Review this PR for code quality, correctness, security. Post findings as review comments."
-- `.github/workflows/claude-triage.yml` — kører på `issues: opened`. Auto-tilføjer `priority:*` og `type:*` baseret på title/body keywords; poster en første-pass-investigation-comment hvis det er en bug.
+Auto-merge er standard for lav-risiko PRs, men stoppes automatisk hvis en PR har en af disse labels:
 
-Hver workflow = sin egen PR for klar review-historik.
+- `risk:med`
+- `risk:high`
+- `security`
+- `needs-decision`
+- `manual-review`
 
-### Skridt 4: Verifikation af agent-loop
-Opret et test-issue via Claude task-template. Skriv `@claude løs dette` i comment. Følg loop'en igennem ende-til-ende. Hvis alt virker → Lag 1-3 + 8 er done; ryk videre til Lag 4-7.
+Hvis auto-review fejler, stopper auto-merge også. Brug `skip-ai-review` kun som bevidst break-glass når fejlen er kendt og ufarlig.
 
-### Skridt 5+: Lag 4-7 (senere, når 1-3 har kørt nogle dage)
-Prioritér i denne rækkefølge baseret på smerte:
-- Lag 5 (branch protection) hvis broken main bliver et problem
-- Lag 6 (pre-commit) hvis CI fejler ofte på trivielle ting
-- Lag 4 (Projects board) hvis issue-listen bliver uoverskuelig
-- Lag 7 (Dependabot/CodeQL) før første eksterne brugere ud over open beta
+Typisk label-valg:
+
+| Ændring | Label |
+|---|---|
+| Copy/docs/lokal DX uden runtime | ingen risk-label eller `risk:low` |
+| Normal bugfix med tests | ingen risk-label eller `risk:low` |
+| Frontend/backend kontrakt, større UX-flow, shared engine | `risk:med` |
+| DB migration, auth/RLS, økonomi, secrets, dependency major, deploy workflow | `risk:high` eller `security` |
+| Produktvalg mangler | `needs-decision` |
+| AI må ikke shippe uden menneske | `manual-review` |
 
 ## Sådan samarbejder vi via issues
 
@@ -116,7 +111,7 @@ Prioritér i denne rækkefølge baseret på smerte:
 
 ## Commit/PR-konvention
 - Commit-besked nævner issue: `Fix: gæld vises i Min aktivitet (#42)`
-- PR-body har `Closes #42` så GitHub auto-lukker issuet ved merge
+- PR-body har `Refs #42` — brugeren lukker selv issuet efter manuel verifikation
 - En PR = ét issue (med mindre flere er klart koblede — så `Closes #42, closes #43`)
 
 ## Session-start (Claude)
@@ -166,9 +161,10 @@ gh issue close 42 --reason completed
 ### Workflows involveret
 
 - `.github/workflows/claude.yml` — Claude-action; parser ship-keyword og tilføjer label efter PR-creation
-- `.github/workflows/auto-merge.yml` — lytter på `pull_request: labeled` for `auto-merge`-label → kalder `gh pr merge --auto --squash --delete-branch`
+- `.github/workflows/auto-merge.yml` — lytter på `pull_request: labeled` for `auto-merge`-label, stopper high-risk labels, venter på required checks + advisory AI-review, squash-merger og trigger deploy-verify
 - `.github/workflows/dependabot-auto-merge.yml` — auto-mærker lav-risiko dep-PRs som auto-merge
-- `.github/workflows/deploy-verify.yml` — efter merge til main, venter på Vercel + Railway deploy, smoke-tester prod, kommenterer ✅/❌ på merged PR
+- `.github/workflows/dependency-review.yml` — blokerer PRs der introducerer high+ dependency vulnerabilities
+- `.github/workflows/deploy-verify.yml` — efter merge til main, venter på Vercel + Railway deploy, smoke-tester prod, upserter én ✅/❌ comment på merged PR
 
 ### Sikkerheds-net
 
@@ -206,17 +202,30 @@ Hvis CI fejler: PR forbliver åben, ingen merge sker, du får besked via GitHub-
 - `npm` i `/` (rod), `/backend` og `/frontend` — ugentligt
 - `github-actions` i `/` — ugentligt (holder workflow-actions som `actions/checkout` opdaterede)
 
+**Dependency Review** (`.github/workflows/dependency-review.yml`) — PR-gate:
+- Kører på alle PRs
+- Fejler hvis PR'en introducerer high+ vulnerabilities i dependency diff
+
 **CodeQL** (`.github/workflows/codeql.yml`) — statisk sikkerhedsanalyse:
 - Kører på hvert push til `main`
 - Kører desuden ugentligt (mandag 04:00 UTC) uanset commits
 - Sprog: `javascript-typescript` (dækker både backend og frontend)
 
-### Manuel UI-aktivering (skal gøres én gang)
+### Security settings
 
-Gå til https://github.com/NicolaiDolmer/CyclingZone/settings/security_analysis og aktivér:
-1. **Dependabot alerts** — notifikationer ved kendte sårbarheder
-2. **Dependabot security updates** — automatiske sikkerhedsfix-PRs
-3. **Code scanning** → **Set up** → vælg "Default" (CodeQL workflow er allerede committet)
+Kan verificeres med:
+
+```powershell
+pwsh -File scripts/agent-doctor.ps1
+```
+
+Kan forsøges aktiveret via API med:
+
+```powershell
+pwsh -File scripts/enable-github-security.ps1
+```
+
+Målstatus: Dependabot security updates, secret scanning og push protection enabled. Hvis GitHub-planen ikke tillader en setting, skal doctoren vise warning fremfor at blokere produktarbejde.
 
 ### Når Dependabot åbner en PR
 

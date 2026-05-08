@@ -1,39 +1,99 @@
 #!/usr/bin/env bash
-# Pre-push lint-gate. Forhindrer at lint-fejl bliver pushet til main og rød-laver CI.
-# Kører kun lint på den side (frontend/backend) der har ændringer i de pushede commits.
+# Pre-push quality gate.
+# - lint changed frontend/backend areas
+# - block obvious secret files and secret-looking diffs
+# - block PatchNotes version collisions before CI
 # Aktivér med: git config core.hooksPath .githooks
 set -e
 
 repo_root="$(git rev-parse --show-toplevel)"
 exit_code=0
+all_changed=""
+all_changed_status=""
+all_ranges=""
 
 while read local_ref local_sha remote_ref remote_sha; do
+  local_ref="${local_ref//$'\r'/}"
+  local_sha="${local_sha//$'\r'/}"
+  remote_sha="${remote_sha//$'\r'/}"
+  [ -z "${local_ref//[[:space:]]/}" ] && continue
+  [ -z "${local_sha//[[:space:]]/}" ] && continue
+
   if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
     continue
   fi
 
   if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
-    range="$local_sha"
+    default_remote=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || echo "origin/main")
+    base_sha=$(git merge-base "$local_sha" "$default_remote" 2>/dev/null || git rev-list --max-parents=0 "$local_sha" | tail -n 1)
+    range="$base_sha..$local_sha"
   else
     range="$remote_sha..$local_sha"
   fi
 
+  all_ranges="${all_ranges}${range}
+"
   changed=$(git diff --name-only "$range" 2>/dev/null || git show --name-only --format= "$local_sha")
+  changed_status=$(git diff --name-status "$range" 2>/dev/null || git show --name-status --format= "$local_sha")
+  all_changed="${all_changed}${changed}
+"
+  all_changed_status="${all_changed_status}${changed_status}
+"
 
   if echo "$changed" | grep -qE '^frontend/'; then
-    echo "→ Pre-push: linting frontend..."
+    echo "-> Pre-push: linting frontend..."
     (cd "$repo_root/frontend" && npm run lint --silent) || exit_code=1
   fi
 
   if echo "$changed" | grep -qE '^backend/'; then
-    echo "→ Pre-push: linting backend..."
+    echo "-> Pre-push: linting backend..."
     (cd "$repo_root/backend" && npm run lint --silent) || exit_code=1
   fi
 done
 
+non_deleted_changed=$(printf '%s\n' "$all_changed_status" | awk '$1 != "D" { print $NF }')
+secret_file_candidates=$(printf '%s\n' "$non_deleted_changed" | grep -Ev '(^|/)\.env\.(example|sample|template)$' || true)
+
+if echo "$secret_file_candidates" | grep -qE '(^|/)(\.mcp\.json|.*\.env|.*\.env\..*|.*service.*key.*|.*private.*key.*|.*\.pem)$|^\.codex\.local/'; then
+  echo ""
+  echo "❌ Pre-push blokeret: secret-lignende fil er med i push'et."
+  echo "   Brug OneDrive-context hardlinks/gitignore, ikke tracked git, til secrets."
+  exit_code=1
+fi
+
+while IFS= read -r range; do
+  range="${range//$'\r'/}"
+  [ -z "${range//[[:space:]]/}" ] && continue
+  if git diff "$range" -- 2>/dev/null | grep -E '^\+.*(BEGIN (RSA |OPENSSH |)PRIVATE KEY|ghp_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})' >/dev/null; then
+    echo ""
+    echo "❌ Pre-push blokeret: diffen ligner en secret-læk."
+    exit_code=1
+  fi
+
+  if git diff "$range" -- 2>/dev/null | grep -E '^\+.*(SUPABASE_SERVICE_KEY|CLAUDE_CODE_OAUTH_TOKEN|ANTHROPIC_API_KEY)=' | grep -Ev '(replace-me|example|dummy|your-|<[^>]+>)' >/dev/null; then
+    echo ""
+    echo "❌ Pre-push blokeret: diffen ligner en secret-læk."
+    exit_code=1
+  fi
+done <<EOF
+$all_ranges
+EOF
+
+if echo "$all_changed" | grep -q '^frontend/src/pages/PatchNotesPage.jsx$'; then
+  echo "-> Pre-push: checking PatchNotes versions..."
+  (cd "$repo_root" && node scripts/check-patch-notes-version.js) || exit_code=1
+fi
+
+if [ -f "$repo_root/docs/NOW.md" ]; then
+  now_lines=$(wc -l < "$repo_root/docs/NOW.md")
+  if [ "$now_lines" -gt 60 ]; then
+    echo "⚠️  NOW.md er $now_lines linjer (mål: max 30). Arkivér historik snart for token-effektiv session-start."
+  fi
+fi
+
 if [ "$exit_code" -ne 0 ]; then
   echo ""
-  echo "❌ Pre-push lint fejlede. Fix lint-fejl før push (eller --no-verify hvis bevidst)."
+  echo "❌ Pre-push quality gate fejlede. Fix fundene før push (eller --no-verify hvis bevidst break-glass)."
   exit 1
 fi
 

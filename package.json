@@ -1,7 +1,9 @@
 {
   "name": "cycling-zone-manager",
   "scripts": {
-    "sync-docs": "node scripts/sync-docs.js"
+    "sync-docs": "node scripts/sync-docs.js",
+    "check:patchnotes": "node scripts/check-patch-notes-version.js",
+    "doctor": "pwsh -File scripts/agent-doctor.ps1"
   },
   "devDependencies": {
     "lint-staged": "^17.0.2"
