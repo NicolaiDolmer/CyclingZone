@@ -43,6 +43,7 @@ export default function HallOfFamePage() {
       supabase.from("teams")
         .select("id, name, division, user:user_id(id, username, level, xp, role)")
         .eq("is_ai", false)
+        .eq("is_test_account", false)
         .order("name"),
     ]);
 

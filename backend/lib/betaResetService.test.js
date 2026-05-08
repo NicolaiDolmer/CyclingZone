@@ -127,10 +127,10 @@ function createBetaResetSupabase(initialState) {
 function createInitialState() {
   return {
     teams: [
-      { id: "team-1", user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false, division: 1, balance: 12, sponsor_income: 240000 },
-      { id: "team-ai", user_id: null, is_ai: true, is_bank: false, is_frozen: false, division: 1, balance: 999, sponsor_income: 0 },
-      { id: "team-bank", user_id: null, is_ai: false, is_bank: true, is_frozen: false, division: 1, balance: 999, sponsor_income: 0 },
-      { id: "team-frozen", user_id: "user-frozen", is_ai: false, is_bank: false, is_frozen: true, division: 1, balance: 999, sponsor_income: 0 },
+      { id: "team-1", user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 1, balance: 12, sponsor_income: 240000 },
+      { id: "team-ai", user_id: null, is_ai: true, is_bank: false, is_frozen: false, is_test_account: false, division: 1, balance: 999, sponsor_income: 0 },
+      { id: "team-bank", user_id: null, is_ai: false, is_bank: true, is_frozen: false, is_test_account: false, division: 1, balance: 999, sponsor_income: 0 },
+      { id: "team-frozen", user_id: "user-frozen", is_ai: false, is_bank: false, is_frozen: true, is_test_account: false, division: 1, balance: 999, sponsor_income: 0 },
     ],
     riders: [
       { id: "rider-ai", team_id: "team-1", ai_team_id: "team-ai", pending_team_id: "team-2" },

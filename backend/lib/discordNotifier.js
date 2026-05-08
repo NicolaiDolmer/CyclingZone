@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { config } from "dotenv";
+import { resolveDmTargetFromInput } from "./discordDmTarget.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env") });
@@ -109,6 +110,31 @@ async function getDmRecipient(teamId) {
   return user.discord_id;
 }
 
+// #203: DM-routing kan styres via DISCORD_DM_TARGET env-var.
+//   webhook       → ægte Discord DM via bot (default, bagudkompat)
+//   stdout        → struktureret log-line, ingen netværksopkald (smoke-test grep'er logs)
+//   test-channel  → embed til DISCORD_TEST_CHANNEL_WEBHOOK_URL (staging-aggregat)
+// Test-konti (teams.is_test_account = true) tvinger ALTID stdout — så smoke-tests
+// aldrig spammer ægte managers selv hvis env-var er sat forkert.
+// Pure helper bor i ./discordDmTarget.js så unit-tests kan importere uden at trigge
+// SupabaseClient-init (Node 20 + supabase-realtime-js websocket-factory issue).
+
+async function resolveDmTarget(teamId) {
+  let isTestAccount = false;
+  if (teamId) {
+    const { data: team } = await supabase
+      .from("teams")
+      .select("is_test_account")
+      .eq("id", teamId)
+      .single();
+    isTestAccount = !!team?.is_test_account;
+  }
+  return resolveDmTargetFromInput({
+    envValue: process.env.DISCORD_DM_TARGET,
+    isTestAccount,
+  });
+}
+
 async function openDmChannel(discordId, botToken) {
   const res = await fetch(`${DISCORD_API}/users/@me/channels`, {
     method: "POST",
@@ -158,10 +184,14 @@ export async function sendDM(discordId, payload) {
 /**
  * High-level wrapper: send a typed embed as DM to a team owner.
  * Honors users.discord_dm_enabled opt-out and never blocks the caller.
+ *
+ * #203: Routes via resolveDmTarget(teamId) — test-konti og staging-modes
+ * skriver til stdout/test-channel i stedet for ægte DM, så smoke-tests
+ * kan asserter DM uden at spamme rigtige managers.
  */
 export async function notifyDiscordDM({ teamId, type, title, description, fields = [] }) {
-  const discordId = await getDmRecipient(teamId);
-  if (!discordId) return;
+  const target = await resolveDmTarget(teamId);
+
   const payload = {
     embeds: [{
       title: `${TYPE_LABELS[type] || type}: ${title}`,
@@ -172,6 +202,25 @@ export async function notifyDiscordDM({ teamId, type, title, description, fields
       timestamp: new Date().toISOString(),
     }],
   };
+
+  if (target === "stdout") {
+    console.log("[discord-dm:stdout]", JSON.stringify({ teamId, type, title, description, fields }));
+    return;
+  }
+
+  if (target === "test-channel") {
+    const url = process.env.DISCORD_TEST_CHANNEL_WEBHOOK_URL;
+    if (!url) {
+      console.warn("[discord-dm:test-channel] DISCORD_TEST_CHANNEL_WEBHOOK_URL ikke sat — falder tilbage til stdout");
+      console.log("[discord-dm:stdout]", JSON.stringify({ teamId, type, title, description, fields }));
+      return;
+    }
+    await sendWebhook(url, payload);
+    return;
+  }
+
+  const discordId = await getDmRecipient(teamId);
+  if (!discordId) return;
   await sendDM(discordId, payload);
 }
 

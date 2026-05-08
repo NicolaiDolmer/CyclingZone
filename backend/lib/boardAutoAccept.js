@@ -90,7 +90,8 @@ export async function processBoardAutoAcceptCron({
     .select("id, user_id, name, balance, sponsor_income, division, season_1_identity_basis")
     .eq("is_ai", false)
     .eq("is_bank", false)
-    .eq("is_frozen", false);
+    .eq("is_frozen", false)
+    .eq("is_test_account", false);
   if (teamsError) throw teamsError;
 
   for (const team of humanTeams || []) {
