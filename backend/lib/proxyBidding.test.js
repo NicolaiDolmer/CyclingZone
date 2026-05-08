@@ -3,21 +3,37 @@ import assert from "node:assert/strict";
 
 import { resolveProxyBids } from "./proxyBidding.js";
 
-// Bygger en stateful in-memory supabase-mock der dækker præcis de queries
+// Allowed eq() columns per table — resolver må ikke filtrere på andet
+const ALLOWED_EQ_COLUMNS = {
+  auctions: ["id"],
+  auction_proxy_bids: ["auction_id"],
+  teams: ["id"],
+};
+
+// Stateful in-memory supabase-mock der dækker præcis de queries
 // resolveProxyBids udfører. Hold den minimal — vi tester kun resolver-loopet.
-function createMockSupabase({ auction, proxies = [], teams = {} }) {
+function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = null }) {
   const auctionState = { ...auction };
   const bidLog = [];
   const updateLog = [];
+  const teamLookups = [];
+
+  function assertColumn(table, column) {
+    const allowed = ALLOWED_EQ_COLUMNS[table];
+    if (!allowed?.includes(column)) {
+      throw new Error(`Unexpected eq column "${column}" on table "${table}" — allowed: ${allowed?.join(", ") || "(none)"}`);
+    }
+  }
 
   return {
-    state: { auction: auctionState, bids: bidLog, updates: updateLog },
+    state: { auction: auctionState, bids: bidLog, updates: updateLog, teamLookups },
     from(table) {
       if (table === "auctions") {
         return {
           select() {
             return {
-              eq() {
+              eq(col) {
+                assertColumn("auctions", col);
                 return {
                   single() {
                     return Promise.resolve({ data: { ...auctionState }, error: null });
@@ -28,7 +44,8 @@ function createMockSupabase({ auction, proxies = [], teams = {} }) {
           },
           update(payload) {
             return {
-              eq() {
+              eq(col) {
+                assertColumn("auctions", col);
                 Object.assign(auctionState, payload);
                 updateLog.push({ ...payload });
                 return Promise.resolve({ data: null, error: null });
@@ -41,8 +58,10 @@ function createMockSupabase({ auction, proxies = [], teams = {} }) {
         return {
           select() {
             return {
-              eq() {
-                return Promise.resolve({ data: proxies, error: null });
+              eq(col) {
+                assertColumn("auction_proxy_bids", col);
+                const data = proxiesGen ? proxiesGen(auctionState) : proxies;
+                return Promise.resolve({ data, error: null });
               },
             };
           },
@@ -60,7 +79,9 @@ function createMockSupabase({ auction, proxies = [], teams = {} }) {
         return {
           select() {
             return {
-              eq(_col, id) {
+              eq(col, id) {
+                assertColumn("teams", col);
+                teamLookups.push(id);
                 return {
                   single() {
                     return Promise.resolve({ data: teams[id] || null, error: null });
@@ -78,6 +99,19 @@ function createMockSupabase({ auction, proxies = [], teams = {} }) {
 
 const FUTURE_END = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // +1h
 const BID_TIME = new Date();
+
+// Fast tidsstempel der falder på lørdag 12:00 CEST — robust mod weekend/weekday
+// vinduer (08-23 CEST på weekend) og uafhængig af test-runner-tidspunkt.
+const SAT_NOON_UTC = new Date("2026-05-09T10:00:00.000Z");
+// Standard auction-config så windowCloseTime kan beregnes deterministisk
+const FULL_CFG = {
+  duration_hours: 6,
+  weekday_open_hour: 16,
+  weekday_close_hour: 22,
+  weekend_open_hour: 8,
+  weekend_close_hour: 23,
+  extension_minutes: 10,
+};
 
 test("resolver: A's proxy 100K outbidder B's manuelle bid 80K til 80.001 (Test 1 fra #171)", async () => {
   const auction = {
@@ -141,6 +175,7 @@ test("resolver: A 100K vs B 200K opløses til B leder ved 100.001 (Test 2 fra #1
   const lastBid = supabase.state.bids.at(-1);
   assert.equal(lastBid.team_id, "team-b");
   assert.equal(lastBid.amount, 100001);
+  assert.equal(lastBid.is_proxy, true);
   assert.equal(supabase.state.auction.current_price, 100001);
   assert.equal(supabase.state.auction.current_bidder_id, "team-b");
 });
@@ -177,6 +212,7 @@ test("resolver: stale winner-proxy efter eget manuelt bid blokerer ikke counter-
   assert.equal(supabase.state.bids.length, 1, "skulle place præcis 1 counter-bid (A's proxy)");
   assert.equal(supabase.state.bids[0].team_id, "team-a");
   assert.equal(supabase.state.bids[0].amount, 80001);
+  assert.equal(supabase.state.bids[0].is_proxy, true);
   assert.equal(supabase.state.auction.current_price, 80001);
   assert.equal(supabase.state.auction.current_bidder_id, "team-a");
 });
@@ -268,6 +304,267 @@ test("resolver: tre proxies — højeste leder ved næsthøjeste max + 1", async
   const lastBid = supabase.state.bids.at(-1);
   assert.equal(lastBid.team_id, "team-c");
   assert.equal(lastBid.amount, 200001);
+  assert.equal(lastBid.is_proxy, true);
   assert.equal(supabase.state.auction.current_bidder_id, "team-c");
   assert.equal(supabase.state.auction.current_price, 200001);
+});
+
+// =============================================================================
+// Tier 1 — luk v2.67-coverage-hullet (notifyOutbidDM, sælger-notif, bidderName)
+// =============================================================================
+
+test("notifyOutbidDM: kaldes med isAuto=true når proxy outbidder manager uden eget loft", async () => {
+  // Spejler test 1: A's proxy outbidder B's manuelle bid. B har ingen proxy → exhausted=false.
+  const auction = {
+    id: "auc-dm-1",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 80000,
+    current_bidder_id: "team-b",
+    rider: { firstname: "Lasse", lastname: "Norman", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [{ team_id: "team-a", max_amount: 100000 }];
+  const teams = { "team-a": { name: "Aagerups Aalborg" } };
+  const supabase = createMockSupabase({ auction, proxies, teams });
+
+  const dmCalls = [];
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-dm-1",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+    notifyOutbidDM: async (args) => { dmCalls.push(args); },
+  });
+
+  assert.equal(dmCalls.length, 1);
+  assert.equal(dmCalls[0].teamId, "team-b");
+  assert.equal(dmCalls[0].isAuto, true);
+  assert.notEqual(dmCalls[0].exhausted, true, "B havde ingen proxy → exhausted skal IKKE være true");
+  assert.equal(dmCalls[0].newBid, 80001);
+  assert.equal(dmCalls[0].bidderName, "Aagerups Aalborg");
+  assert.equal(dmCalls[0].riderName, "Lasse Norman");
+});
+
+test("notifyOutbidDM: kaldes med exhausted=true når egen proxy bliver overbudt", async () => {
+  // A leder ved cp=50K med proxy 100K. B's proxy 200K kommer ind → A's proxy
+  // udmattes når den klampes mod B's getMinBid(A.max)=100.001.
+  const auction = {
+    id: "auc-dm-2",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 50000,
+    current_bidder_id: "team-a",
+    rider: { firstname: "Mads", lastname: "Pedersen", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { team_id: "team-a", max_amount: 100000 },
+    { team_id: "team-b", max_amount: 200000 },
+  ];
+  const teams = { "team-b": { name: "Brønderslev BMC" } };
+  const supabase = createMockSupabase({ auction, proxies, teams });
+
+  const dmCalls = [];
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-dm-2",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+    notifyOutbidDM: async (args) => { dmCalls.push(args); },
+  });
+
+  // B overtager ved 100.001 (clamped af A's proxy + 1). A's proxy "udmattet".
+  assert.equal(supabase.state.auction.current_bidder_id, "team-b");
+  assert.equal(supabase.state.auction.current_price, 100001);
+
+  const exhaustedDM = dmCalls.find(c => c.exhausted === true);
+  assert.ok(exhaustedDM, "skal sende exhausted=true DM til A");
+  assert.equal(exhaustedDM.teamId, "team-a");
+  assert.equal(exhaustedDM.isAuto, true);
+  assert.equal(exhaustedDM.newBid, 100001);
+  assert.equal(exhaustedDM.bidderName, "Brønderslev BMC");
+});
+
+test("notifyTeamOwner: sælger får bid_received-notif når rider.team_id === seller_team_id (manager-ejet rytter)", async () => {
+  const auction = {
+    id: "auc-seller-notif",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 80000,
+    current_bidder_id: "team-b",
+    rider: { firstname: "Jonas", lastname: "Vingegaard", team_id: "team-seller" },
+    seller_team_id: "team-seller", // sælger er rytter-ejer (manager-listing)
+    extension_count: 0,
+  };
+  const proxies = [{ team_id: "team-a", max_amount: 100000 }];
+  const teams = { "team-a": { name: "Aalborg" } };
+  const supabase = createMockSupabase({ auction, proxies, teams });
+
+  const ownerCalls = [];
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-seller-notif",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async (...args) => { ownerCalls.push(args); },
+  });
+
+  // Forventet: 1) auction_outbid → team-b (current winner), 2) bid_received → team-seller
+  const sellerNotif = ownerCalls.find(c => c[1] === "bid_received");
+  assert.ok(sellerNotif, "skal sende bid_received til seller_team_id");
+  assert.equal(sellerNotif[0], "team-seller");
+  assert.equal(sellerNotif[2], "Nyt bud modtaget");
+  assert.match(sellerNotif[3], /Jonas Vingegaard/);
+  assert.match(sellerNotif[3], /80\.001/);
+  assert.equal(sellerNotif[4], "auc-seller-notif");
+});
+
+test("bidderName: falder tilbage til \"Auto-by\" når team-rækken mangler", async () => {
+  // Spejler test 1, men teams er tom — bidderName-fetch returnerer null.
+  const auction = {
+    id: "auc-fallback",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 80000,
+    current_bidder_id: "team-b",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [{ team_id: "team-a", max_amount: 100000 }];
+  const supabase = createMockSupabase({ auction, proxies, teams: {} });
+
+  const dmCalls = [];
+  const ownerCalls = [];
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-fallback",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async (...args) => { ownerCalls.push(args); },
+    notifyOutbidDM: async (args) => { dmCalls.push(args); },
+  });
+
+  assert.equal(dmCalls[0].bidderName, "Auto-by");
+  const outbidNotif = ownerCalls.find(c => c[1] === "auction_outbid");
+  assert.ok(outbidNotif, "skal sende auction_outbid notif");
+  assert.match(outbidNotif[3], /Auto-by's auto-by overbød dig/);
+  // Verificér at teams-tabellen rent faktisk blev forespurgt
+  assert.deepEqual(supabase.state.teamLookups, ["team-a"]);
+});
+
+// =============================================================================
+// Tier 2 — edge-cases (extended-status + extension_count, runaway-guard, clamp-branch)
+// =============================================================================
+
+test("resolver: status \"extended\" auktion håndteres som active + extension_count øges når shouldExtend trigger", async () => {
+  // Auction allerede forlænget 2 gange. Et nyt bid inden for extension-vinduet skal
+  // a) fortsat behandles (extended er i [active, extended]-whitelist)
+  // b) trigger ny forlængelse → extension_count 2 → 3 og status forbliver "extended"
+  const calculatedEnd = new Date(SAT_NOON_UTC.getTime() + 30_000); // bidTime + 30s
+  const auction = {
+    id: "auc-ext",
+    status: "extended",
+    calculated_end: calculatedEnd.toISOString(),
+    current_price: 50000,
+    current_bidder_id: "team-x", // ingen proxy
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 2,
+  };
+  const proxies = [{ team_id: "team-a", max_amount: 100000 }];
+  const supabase = createMockSupabase({ auction, proxies });
+
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-ext",
+    bidTime: SAT_NOON_UTC, // lørdag 12:00 CEST — robust mod weekend/weekday-vinduer
+    bidCfg: { ...FULL_CFG, extension_minutes: 1 }, // 60s extension > 30s timeLeft
+    notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(supabase.state.bids.length, 1);
+  assert.equal(supabase.state.bids[0].team_id, "team-a");
+  assert.equal(supabase.state.bids[0].amount, 50001);
+  assert.equal(supabase.state.bids[0].is_proxy, true);
+  assert.equal(supabase.state.bids[0].triggered_extension, true);
+  assert.equal(supabase.state.auction.status, "extended");
+  assert.equal(supabase.state.auction.extension_count, 3);
+  // newEnd = bidTime + 60s
+  const expectedNewEnd = new Date(SAT_NOON_UTC.getTime() + 60_000).toISOString();
+  assert.equal(supabase.state.auction.calculated_end, expectedNewEnd);
+});
+
+test("resolver: MAX_PROXY_ITERATIONS guard kapper runaway-loop ved 30 iterationer", async () => {
+  // Konstrueret scenarie: to phantom-proxies hvis max altid er 1.5× currentPrice (genereres
+  // dynamisk pr. select-call). Hver iteration overtages føringen i challenger-overtages-grenen,
+  // hvilket aldrig terminerer naturligt. Uden guard ville loopet køre i prod indtil overflow.
+  const auction = {
+    id: "auc-runaway",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 1000,
+    current_bidder_id: "team-a",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxiesGen = (a) => [
+    { team_id: "team-a", max_amount: Math.round(a.current_price * 1.5) },
+    { team_id: "team-b", max_amount: Math.round(a.current_price * 1.5) },
+  ];
+  const supabase = createMockSupabase({ auction, proxiesGen });
+
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-runaway",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+  });
+
+  // Guarden i proxyBidding.js sætter MAX_PROXY_ITERATIONS = 30 — ingen flere bids end det
+  assert.equal(supabase.state.bids.length, 30, "MAX_PROXY_ITERATIONS = 30 må aldrig overskrides");
+});
+
+test("resolver: challenger-overtages med winnerProxy clamper bud til winnerProxy.max + 1", async () => {
+  // A leder cp=60K med proxy 100K. B's proxy 200K kommer ind. A's proxy clamper B's bid
+  // til 100.001 (winnerProxy.max + 1) i stedet for B's fulde max 200K — ellers ville en
+  // udmattet winnerProxy "stjæle" hele challengerens budget på en gang.
+  const auction = {
+    id: "auc-clamp",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 60000,
+    current_bidder_id: "team-a",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { team_id: "team-a", max_amount: 100000 },
+    { team_id: "team-b", max_amount: 200000 },
+  ];
+  const supabase = createMockSupabase({ auction, proxies });
+
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-clamp",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+  });
+
+  // B vinder ved 100.001 (A.max + 1), ikke 200K
+  assert.equal(supabase.state.bids.length, 1, "skal kun place ÉT counter-bid (B udmatter A)");
+  assert.equal(supabase.state.bids[0].team_id, "team-b");
+  assert.equal(supabase.state.bids[0].amount, 100001);
+  assert.equal(supabase.state.bids[0].is_proxy, true);
+  assert.equal(supabase.state.auction.current_bidder_id, "team-b");
+  assert.equal(supabase.state.auction.current_price, 100001);
 });
