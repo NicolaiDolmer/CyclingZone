@@ -35,7 +35,8 @@ function managerTeamQuery(supabase, columns = "id, user_id, balance, sponsor_inc
     .select(columns)
     .eq("is_ai", false)
     .eq("is_bank", false)
-    .eq("is_frozen", false);
+    .eq("is_frozen", false)
+    .eq("is_test_account", false);
 }
 
 export async function getBetaManagerTeams(supabase) {

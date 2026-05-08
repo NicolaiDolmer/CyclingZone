@@ -884,10 +884,10 @@ test("ONBOARDING_PLAN_SEQUENCE is locked to 5yr → 3yr → 1yr (Q-batch 1A Q2)"
 test("startSequentialNegotiation deletes baseline rows for human teams and sets window to pending_5yr", async () => {
   const state = {
     teams: [
-      { id: "team-1", is_ai: false, is_bank: false, is_frozen: false },
-      { id: "team-2", is_ai: false, is_bank: false, is_frozen: false },
-      { id: "team-ai", is_ai: true, is_bank: false, is_frozen: false },
-      { id: "team-frozen", is_ai: false, is_bank: false, is_frozen: true },
+      { id: "team-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
+      { id: "team-2", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false },
+      { id: "team-ai", is_ai: true, is_bank: false, is_frozen: false, is_test_account: false },
+      { id: "team-frozen", is_ai: false, is_bank: false, is_frozen: true, is_test_account: false },
     ],
     board_profiles: [
       { id: "bp-1", team_id: "team-1", plan_type: "baseline", is_baseline: true },
@@ -923,7 +923,7 @@ test("startSequentialNegotiation deletes baseline rows for human teams and sets 
 
 test("startSequentialNegotiation handles empty manager pool without crashing", async () => {
   const state = {
-    teams: [{ id: "team-ai", is_ai: true, is_bank: false, is_frozen: false }],
+    teams: [{ id: "team-ai", is_ai: true, is_bank: false, is_frozen: false, is_test_account: false }],
     board_profiles: [],
     transfer_windows: [
       { id: "tw-1", board_negotiation_state: "locked", created_at: "2026-05-01T00:00:00Z" },
@@ -1095,8 +1095,8 @@ test("generate1YrFromLongerPlans falls back to balanced when no longer plans exi
 test("startSequentialNegotiation persists season_1_identity_basis on each human team", async () => {
   const state = {
     teams: [
-      { id: "team-1", is_ai: false, is_bank: false, is_frozen: false, division: 3, season_1_identity_basis: null },
-      { id: "team-ai", is_ai: true, is_bank: false, is_frozen: false, division: 3, season_1_identity_basis: null },
+      { id: "team-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, season_1_identity_basis: null },
+      { id: "team-ai", is_ai: true, is_bank: false, is_frozen: false, is_test_account: false, division: 3, season_1_identity_basis: null },
     ],
     riders: [
       { team_id: "team-1", is_u25: true, nationality_code: "FR", uci_points: 100, popularity: 50,
@@ -1133,7 +1133,7 @@ test("startSequentialNegotiation skips identity_basis-write when team already ha
   const existingBasis = { rider_count: 99, national_core: { code: "OLD" } };
   const state = {
     teams: [
-      { id: "team-1", is_ai: false, is_bank: false, is_frozen: false, division: 3, season_1_identity_basis: existingBasis },
+      { id: "team-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, season_1_identity_basis: existingBasis },
     ],
     riders: [],
     board_profiles: [],
@@ -1249,6 +1249,7 @@ function makeAutoAcceptState({
       is_ai: false,
       is_bank: false,
       is_frozen: false,
+      is_test_account: false,
       division: 3,
       balance: 800000,
       sponsor_income: 240000,
@@ -1478,7 +1479,7 @@ test("sampleReactionForGoal vælger goal_failure for behind status", () => {
 test("processReplacementTrigger inkrementerer counter ved første lav-sat-udløb", async () => {
   const state = {
     teams: [{
-      id: "t1", is_ai: false, is_bank: false, is_frozen: false,
+      id: "t1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
       consecutive_low_satisfaction_expirations: 0,
       season_1_identity_basis: FRENCH_GC_BASIS,
     }],
@@ -1496,7 +1497,7 @@ test("processReplacementTrigger inkrementerer counter ved første lav-sat-udløb
 test("processReplacementTrigger nulstiller counter ved sat>=30", async () => {
   const state = {
     teams: [{
-      id: "t1", is_ai: false, is_bank: false, is_frozen: false,
+      id: "t1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
       consecutive_low_satisfaction_expirations: 1,
       season_1_identity_basis: FRENCH_GC_BASIS,
     }],
@@ -1518,7 +1519,7 @@ test("processReplacementTrigger udskifter formanden når counter rammer threshol
 
   const state = {
     teams: [{
-      id: "t1", is_ai: false, is_bank: false, is_frozen: false,
+      id: "t1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
       consecutive_low_satisfaction_expirations: REPLACEMENT_TRIGGER_THRESHOLD - 1,
       season_1_identity_basis: FRENCH_GC_BASIS,
     }],
@@ -1549,7 +1550,7 @@ test("processReplacementTrigger udskifter formanden når counter rammer threshol
 test("processReplacementTrigger skipper AI/bank/frozen teams (Q-batch 1A Q8 — manager-only)", async () => {
   const state = {
     teams: [{
-      id: "t-ai", is_ai: true, is_bank: false, is_frozen: false,
+      id: "t-ai", is_ai: true, is_bank: false, is_frozen: false, is_test_account: false,
       consecutive_low_satisfaction_expirations: 1,
     }],
     team_board_members: [],
@@ -1566,11 +1567,11 @@ test("startSequentialNegotiation tildeler 5 board-medlemmer pr. human team (S-02
   const state = {
     teams: [
       {
-        id: "team-1", is_ai: false, is_bank: false, is_frozen: false, division: 3,
+        id: "team-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3,
         season_1_identity_basis: null,
       },
       {
-        id: "team-2", is_ai: false, is_bank: false, is_frozen: false, division: 2,
+        id: "team-2", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 2,
         season_1_identity_basis: FRENCH_GC_BASIS,
       },
     ],

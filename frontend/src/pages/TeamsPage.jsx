@@ -29,6 +29,7 @@ export default function TeamsPage() {
       supabase.from("teams")
         .select("id, name, division, balance, sponsor_income, user:user_id(last_seen)")
         .eq("is_ai", false)
+        .eq("is_test_account", false)
         .order("division").order("name"),
       supabase.from("riders").select("team_id").not("team_id", "is", null),
       activeSeason

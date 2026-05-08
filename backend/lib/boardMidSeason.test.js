@@ -538,6 +538,7 @@ test("processMidSeasonReviewCron sender ikke til AI/bank/frozen teams", async ()
     is_ai: true,
     is_bank: false,
     is_frozen: false,
+    is_test_account: false,
     division: 1,
     name: "AI hold",
   });
@@ -547,6 +548,7 @@ test("processMidSeasonReviewCron sender ikke til AI/bank/frozen teams", async ()
     is_ai: false,
     is_bank: true,
     is_frozen: false,
+    is_test_account: false,
     division: 1,
     name: "Bank",
   });
@@ -598,6 +600,7 @@ function makeMidSeasonState({
       is_ai: false,
       is_bank: false,
       is_frozen: false,
+      is_test_account: false,
       division: 3,
       name: "Test Hold",
       season_1_identity_basis: null,

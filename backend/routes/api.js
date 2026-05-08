@@ -253,8 +253,10 @@ const supabase = createClient(
 );
 
 async function ensureSeasonStandings(seasonId) {
+  // #203: Test-konti udelukkes fra standings — ellers påvirker de leaderboards
+  // for ægte managers (rank_in_division-måling, balanced-plans, etc.).
   const [{ data: teams, error: teamsError }, { data: standings, error: standingsError }] = await Promise.all([
-    supabase.from("teams").select("id, division"),
+    supabase.from("teams").select("id, division").eq("is_test_account", false),
     supabase.from("season_standings").select("team_id").eq("season_id", seasonId),
   ]);
 

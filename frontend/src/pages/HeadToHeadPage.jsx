@@ -12,7 +12,7 @@ function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
 
   async function fetchTeams(pattern) {
     const { data } = await supabase.from("teams")
-      .select("id, name, division").eq("is_ai", false)
+      .select("id, name, division").eq("is_ai", false).eq("is_test_account", false)
       .ilike("name", `%${pattern}%`).order("name").limit(6);
     setResults((data || []).filter(t => t.id !== excluded));
     setSearched(true);

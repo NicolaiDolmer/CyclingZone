@@ -3,9 +3,16 @@
   "scripts": {
     "sync-docs": "node scripts/sync-docs.js",
     "check:patchnotes": "node scripts/check-patch-notes-version.js",
-    "doctor": "pwsh -File scripts/agent-doctor.ps1"
+    "doctor": "pwsh -File scripts/agent-doctor.ps1",
+    "test:setup": "node scripts/setup-test-accounts.mjs",
+    "test:smoke": "node scripts/smoke-test-prod.mjs",
+    "test:token": "node scripts/get-test-token.mjs"
   },
   "devDependencies": {
     "lint-staged": "^17.0.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.3",
+    "dotenv": "^16.4.5"
   }
 }
