@@ -198,7 +198,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
       setProxyExpanded(false);
     } else {
       // #174: vis dansk fejlbesked fra backend (egen rytter, max-loft, balance, ...)
-      setProxyErrorText(result.error || "Fejl ved sæt auto-by");
+      setProxyErrorText(result.error || "Fejl ved sæt autobud");
     }
     setTimeout(() => setProxyStatus(null), result.ok ? 2000 : 3000);
   }
@@ -344,18 +344,18 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
             {myProxy && !proxyExpanded ? (
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded whitespace-nowrap">
-                  Auto-by: max {myProxy.toLocaleString("da-DK")} CZ$
+                  Autobud: max {myProxy.toLocaleString("da-DK")} CZ$
                 </span>
-                <button onClick={() => setProxyExpanded(true)} aria-label="Ændr auto-by-loft" className="text-[9px] text-cz-3 hover:text-cz-2">Ændr</button>
-                <button onClick={handleRemoveProxy} aria-label="Fjern auto-by" className="text-[9px] text-cz-3 hover:text-cz-danger">✕</button>
+                <button onClick={() => setProxyExpanded(true)} aria-label="Ændr autobud-loft" className="text-[9px] text-cz-3 hover:text-cz-2">Ændr</button>
+                <button onClick={handleRemoveProxy} aria-label="Fjern autobud" className="text-[9px] text-cz-3 hover:text-cz-danger">✕</button>
               </div>
             ) : !proxyExpanded ? (
               <button
                 onClick={() => setProxyExpanded(true)}
-                aria-label="Sæt auto-by-loft"
+                aria-label="Sæt autobud-loft"
                 className="mt-1 inline-flex min-h-[28px] items-center justify-center rounded border border-cz-accent/50 bg-cz-accent/10 px-2 py-1 text-[10px] font-bold text-cz-accent-t hover:bg-cz-accent/20"
               >
-                + Auto-by loft
+                + Autobud loft
               </button>
             ) : (
               <div className="flex flex-col gap-0.5 mt-0.5">
@@ -366,13 +366,13 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
                     min={minBid}
                     onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
                     placeholder="Max-loft"
-                    aria-label="Auto-by-loft i CZ$"
+                    aria-label="Autobud-loft i CZ$"
                     className="w-20 bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-cz-1 font-mono text-[10px] focus:outline-none focus:border-cz-accent"
                   />
                   <button
                     onClick={handleSaveProxy}
                     disabled={proxyStatus === "loading" || proxyInput < minBid}
-                    aria-label="Gem auto-by-loft"
+                    aria-label="Gem autobud-loft"
                     className={`px-2 py-1 rounded text-[10px] font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
@@ -380,7 +380,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
                       disabled:opacity-50`}>
                     {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
                   </button>
-                  <button onClick={() => setProxyExpanded(false)} aria-label="Annullér auto-by-redigering" className="text-[9px] text-cz-3 hover:text-cz-2">✕</button>
+                  <button onClick={() => setProxyExpanded(false)} aria-label="Annullér autobud-redigering" className="text-[9px] text-cz-3 hover:text-cz-2">✕</button>
                 </div>
                 {proxyStatus === "error" && proxyErrorText && (
                   <p className="text-[10px] text-cz-danger max-w-[160px] leading-tight">{proxyErrorText}</p>
@@ -465,7 +465,7 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
       setProxyExpanded(false);
     } else {
       // #174: vis dansk fejlbesked fra backend (egen rytter, max-loft, balance, ...)
-      setProxyErrorText(result.error || "Fejl ved sæt auto-by");
+      setProxyErrorText(result.error || "Fejl ved sæt autobud");
     }
     setTimeout(() => setProxyStatus(null), result.ok ? 2000 : 3000);
   }
@@ -570,18 +570,18 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
               {myProxy && !proxyExpanded ? (
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] bg-cz-success-bg text-cz-success px-2 py-1 rounded-lg">
-                    Auto-by: max {myProxy.toLocaleString("da-DK")} CZ$
+                    Autobud: max {myProxy.toLocaleString("da-DK")} CZ$
                   </span>
                   <button
                     onClick={() => setProxyExpanded(true)}
-                    aria-label="Ændr auto-by-loft"
+                    aria-label="Ændr autobud-loft"
                     className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-2"
                   >
                     Ændr
                   </button>
                   <button
                     onClick={handleRemoveProxy}
-                    aria-label="Fjern auto-by"
+                    aria-label="Fjern autobud"
                     className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-danger"
                   >
                     Fjern
@@ -590,10 +590,10 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
               ) : !proxyExpanded ? (
                 <button
                   onClick={() => setProxyExpanded(true)}
-                  aria-label="Sæt auto-by-loft"
+                  aria-label="Sæt autobud-loft"
                   className="min-h-[44px] rounded-lg border border-cz-accent/50 bg-cz-accent/10 px-3 text-xs font-bold text-cz-accent-t hover:bg-cz-accent/20"
                 >
-                  + Sæt auto-by loft
+                  + Sæt autobud loft
                 </button>
               ) : (
                 <div className="flex flex-col gap-1">
@@ -604,13 +604,13 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
                       min={minBid}
                       onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
                       placeholder="Max-loft"
-                      aria-label="Auto-by-loft i CZ$"
+                      aria-label="Autobud-loft i CZ$"
                       className="min-w-0 w-32 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
                     />
                     <button
                       onClick={handleSaveProxy}
                       disabled={proxyStatus === "loading" || proxyInput < minBid}
-                      aria-label="Gem auto-by-loft"
+                      aria-label="Gem autobud-loft"
                       className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap
                         ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                           proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
@@ -620,7 +620,7 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
                     </button>
                     <button
                       onClick={() => setProxyExpanded(false)}
-                      aria-label="Annullér auto-by-redigering"
+                      aria-label="Annullér autobud-redigering"
                       className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-cz-3 hover:text-cz-2"
                     >
                       ✕
@@ -927,7 +927,7 @@ export default function AuctionsPage() {
     if (res.ok) { loadAll(); return { ok: true }; }
     let data = {};
     try { data = await res.json(); } catch { /* ignore */ }
-    return { ok: false, error: data.error || "Fejl ved sæt auto-by" };
+    return { ok: false, error: data.error || "Fejl ved sæt autobud" };
   }
 
   async function handleRemoveProxy(auctionId) {

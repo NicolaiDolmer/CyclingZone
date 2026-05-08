@@ -29,8 +29,8 @@ const issues = [
     ],
     notes: 'Sandsynligvis manglende `notifyDiscord()`-kald i proxy-bidding resolver-loopet. Se hvordan manuelle bud (PATCH /api/auctions/:id/bid) trigger webhook og spejl flowet.',
     acceptance: [
-      'Auto-bud udløst af proxy-bidding sender Discord-webhook-besked',
-      'Webhook-tekst markerer det som auto-bud (fx "Auto-bud fra X for Y CZ$")',
+      'Autobud udløst af proxy-bidding sender Discord-webhook-besked',
+      'Webhook-tekst markerer det som autobud (fx "Autobud fra X for Y CZ$")',
       'Test: opsæt 2 proxy-bids på samme auktion, verificér webhook-events i kanalen',
     ],
   },

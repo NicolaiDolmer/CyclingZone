@@ -664,7 +664,7 @@ function BidTimelineRow({ bid, isLatest }) {
           <span className="text-cz-1 text-sm font-medium truncate">{bid.team_name || "Ukendt"}</span>
           {bid.is_proxy && (
             <span className="text-[10px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">
-              Auto-by
+              Autobud
             </span>
           )}
           {isLatest && (

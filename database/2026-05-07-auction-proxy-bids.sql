@@ -1,4 +1,4 @@
--- Proxy-bidding: auto-by med max-loft (#10).
+-- Proxy-bidding: autobud med max-loft (#10).
 -- Manager sætter et max-loft; systemet counter-byder automatisk i +10%-trin
 -- op til loftet når andre byder. Stopper når max er nået eller manager vinder.
 --
@@ -9,7 +9,7 @@
 -- auction_bids.is_proxy: markerer auto-placerede proxy-bud i historik/UI.
 --
 -- 'auction_proxy_outbid' notif-type sendes til manager når proxy-loft er
--- overskredet og auto-by ikke kan følge med mere.
+-- overskredet og autobud ikke kan følge med mere.
 
 CREATE TABLE IF NOT EXISTS auction_proxy_bids (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

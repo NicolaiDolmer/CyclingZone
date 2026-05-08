@@ -1,4 +1,4 @@
--- #10/#197 follow-up: frontend skal kunne vise managerens eget auto-by-loft
+-- #10/#197 follow-up: frontend skal kunne vise managerens eget autobud-loft
 -- uden at eksponere andre managers private max_amount.
 
 ALTER TABLE public.auction_proxy_bids ENABLE ROW LEVEL SECURITY;

@@ -90,7 +90,7 @@ export function getProxyMaxIssue({
   return null;
 }
 
-// PATCH /proxy skal fungere som et reelt auto-by-bud når manageren ikke allerede
+// PATCH /proxy skal fungere som et reelt autobud når manageren ikke allerede
 // fører: byd minimumsprisen og gem max-loftet i samme handling.
 export function getProxyOpeningBidAmount({
   proxyMax,

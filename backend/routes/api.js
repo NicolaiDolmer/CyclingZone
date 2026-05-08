@@ -1059,7 +1059,7 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
     const { data: auctionRider } = await supabase
       .from("riders").select("team_id").eq("id", auction.rider_id).single();
     if (auctionRider?.team_id === req.team.id) {
-      return res.status(400).json({ error: "Du kan ikke sætte auto-bud på din egen rytter" });
+      return res.status(400).json({ error: "Du kan ikke sætte autobud på din egen rytter" });
     }
   }
 
@@ -1098,7 +1098,7 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
   });
   if (proxyIssue?.code === "insufficient_available_balance") {
     return res.status(400).json({
-      error: `Du har ${proxyIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilbage efter eksisterende bud og auto-bud`,
+      error: `Du har ${proxyIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilbage efter eksisterende bud og autobud`,
     });
   }
 
@@ -1119,7 +1119,7 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
     { onConflict: "auction_id,team_id" }
   );
   if (proxyUpsertError) {
-    return res.status(500).json({ error: "Auto-bud kunne ikke gemmes" });
+    return res.status(500).json({ error: "Autobud kunne ikke gemmes" });
   }
 
   const proxyBidTime = new Date();
@@ -1142,7 +1142,7 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
       is_proxy: true,
     });
     if (bidInsertError) {
-      return res.status(500).json({ error: "Auto-bud kunne ikke placeres" });
+      return res.status(500).json({ error: "Autobud kunne ikke placeres" });
     }
 
     const updates = {
@@ -1159,7 +1159,7 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
       .update(updates)
       .eq("id", auction.id);
     if (auctionUpdateError) {
-      return res.status(500).json({ error: "Auto-bud kunne ikke opdatere auktionen" });
+      return res.status(500).json({ error: "Autobud kunne ikke opdatere auktionen" });
     }
 
     const riderName = `${auction.rider?.firstname || "Ukendt"} ${auction.rider?.lastname || "rytter"}`.trim();
@@ -1168,7 +1168,7 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
         auction.current_bidder_id,
         "auction_outbid",
         "Du er blevet overbudt!",
-        `${req.team.name}'s auto-by bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
+        `${req.team.name}'s autobud bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
         auction.id,
       );
     }
@@ -1177,7 +1177,7 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
         auction.seller_team_id,
         "bid_received",
         "Nyt bud modtaget",
-        `${req.team.name}'s auto-by bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
+        `${req.team.name}'s autobud bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
         auction.id,
       );
     }

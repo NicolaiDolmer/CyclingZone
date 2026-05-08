@@ -8,7 +8,7 @@
 
 ## Symptom
 
-"Webhooken virker ikke ordentligt sammen med autobud. Der kommer ikke nogen beskeder i kanalen ved brug af autobud." Manager fik in-app-notifikation når et auto-bud overbød dem, men ingen Discord DM — i modsætning til manuelle bud hvor DM altid sendes.
+"Webhooken virker ikke ordentligt sammen med autobud. Der kommer ikke nogen beskeder i kanalen ved brug af autobud." Manager fik in-app-notifikation når et autobud overbød dem, men ingen Discord DM — i modsætning til manuelle bud hvor DM altid sendes.
 
 ## Rod-årsag
 
@@ -28,10 +28,10 @@ Yderligere: sælger-notifikation (`bid_received` når rider.team_id === seller_t
 DI-pattern: ny `notifyOutbidDM`-parameter til `resolveProxyBids`, samme injection-mønster som eksisterende `notifyTeamOwner`. Begge call-sites i `api.js` (`POST /bid` + `PATCH /proxy`) sender `notifyOutbidDM: notifyOutbid`.
 
 `notifyOutbid` udvidet med `isAuto` + `exhausted` flags så DM-tekst varierer:
-- Normal outbid via proxy: "Du er blevet overbudt på X af et auto-bud!"
-- Egen proxy nået max: "Din auto-by på X nåede sit max-loft og er overbudt."
+- Normal outbid via proxy: "Du er blevet overbudt på X af et autobud!"
+- Egen proxy nået max: "Din autobud på X nåede sit max-loft og er overbudt."
 
-Sælger får nu også `bid_received` ved auto-bud (mirror'er manuel flow's sælger-notif).
+Sælger får nu også `bid_received` ved autobud (mirror'er manuel flow's sælger-notif).
 
 ## Tests
 

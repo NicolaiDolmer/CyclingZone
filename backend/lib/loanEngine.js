@@ -303,7 +303,7 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null) {
   const { data: team } = await client.from("teams").select("balance").eq("id", teamId).single();
   if (team.balance < amount) throw new Error("Ikke nok midler");
 
-  // #44: penge låst i aktive bud/auto-bud kan ikke bruges til at betale gæld.
+  // #44: penge låst i aktive bud/autobud kan ikke bruges til at betale gæld.
   // Eksempel fra issue: balance 500K, gæld 200K, 400K i bud → kun 100K kan betales.
   // Worst-case commitment = MAX(current_price, proxy_max) for leading + proxy_max
   // for ikke-leading auktioner. Klamper repay til (balance - commitment).
@@ -311,7 +311,7 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null) {
   const availableForRepay = Math.max(0, team.balance - commitment);
   if (amount > availableForRepay) {
     throw new Error(
-      `Du har kun ${availableForRepay.toLocaleString("da-DK")} CZ$ tilgængelig — resten er låst i aktive bud eller auto-bud`,
+      `Du har kun ${availableForRepay.toLocaleString("da-DK")} CZ$ tilgængelig — resten er låst i aktive bud eller autobud`,
     );
   }
 
