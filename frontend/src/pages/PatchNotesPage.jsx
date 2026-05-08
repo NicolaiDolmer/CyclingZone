@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "2.78",
+    date: "2026-05-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Mobile auktioner · Bedre tap-targets og scroll-håndtering: alle bud-, auto-by- og annuller-knapper på telefon er nu mindst 44×44px (Apple HIG-standard for komfortabel berøring) og bud-felter bruger 16px-skrift, så iOS ikke længere zoomer ind når du fokuserer feltet. Skærmlæsere får nu konkrete labels på alle knapper og indlæsnings-spinneren (#197).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.77",
     date: "2026-05-08",
     label: "Beta",
