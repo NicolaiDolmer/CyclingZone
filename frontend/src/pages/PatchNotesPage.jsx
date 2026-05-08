@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "2.75",
+    date: "2026-05-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Rytterprofil · Ny \"Bud-historik\"-fane viser live bud-timeline mens en auktion kører (manager + beløb + tidspunkt + Auto-by-mærkat). Nye bud popper ind realtid uden refresh. Når auktionen slutter, kollapser fanen til \"Solgt til X for Y CZ$\". Auto-bud-loft eksponeres aldrig — strategi forbliver privat (#195).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.74",
     date: "2026-05-08",
     label: "Beta",
