@@ -46,6 +46,38 @@ cat .codex.local/SESSION_CONTEXT.md
 
 ---
 
+## Git hooks (`.githooks/`)
+
+Aktiveres lokalt med:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`scripts/setup-local.ps1` gør dette automatisk på ny PC.
+
+### `pre-commit` → `npx lint-staged`
+
+Kører kun lint for staged frontend/backend JS/JSX-filer.
+
+### `pre-push` → `.githooks/pre-push`
+
+Kører før push og blokerer:
+- frontend/backend lint-fejl i de pushede commits
+- secret-lignende filer eller diff-linjer
+- PatchNotes version-duplicates eller PR-version ≤ `origin/main`
+
+Advarer, men blokerer ikke, hvis `docs/NOW.md` er over 60 linjer.
+
+Manuel verifikation:
+
+```bash
+node scripts/check-patch-notes-version.js
+pwsh -File scripts/agent-doctor.ps1
+```
+
+---
+
 ## User-level hooks (per-PC, ikke committet)
 
 Installeret via `pwsh -File scripts/install-user-hooks.ps1`. Idempotent — bevarer eksisterende settings.

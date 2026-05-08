@@ -2,6 +2,15 @@ node_modules/
 frontend/node_modules/
 frontend/dist/
 backend/node_modules/
+.env
+.env.*
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
 scripts/*.csv
 scripts/__pycache__/
 .codex.local/

@@ -40,6 +40,13 @@ Commit blokeres ved lint-fejl. Fix fejl og kør `git add` igen.
 
 Kører lint på begge sider (frontend og backend) for de commits der pushes. Se `.githooks/pre-push`.
 
+Derudover blokerer pre-push:
+- secret-lignende filer (`.mcp.json`, `.env*`, service/private keys, `.codex.local/**`)
+- secret-lignende diff-linjer (`SUPABASE_SERVICE_KEY`, OAuth/API keys, private-key blocks)
+- PatchNotes versionskollisioner via `node scripts/check-patch-notes-version.js`
+
+`docs/NOW.md` over 60 linjer giver warning. Det er bevidst warning indtil aktive high-velocity sessions er kompakteret; målet er stadig max 30 linjer.
+
 ## Kodeformat
 
 - Hold docs kompakte og referencevenlige
