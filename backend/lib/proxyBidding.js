@@ -108,7 +108,7 @@ export async function resolveProxyBids({
     const winnerProxy = allProxies.find(p => p.team_id === currentWinner);
 
     // #183: slet stale winner-proxy fra DB så UI ikke vildleder manageren med
-    // "Auto-by loft 60K" når proxyen aldrig fyrer (effectiveWinnerProxy ignorerer
+    // "Autobud loft 60K" når proxyen aldrig fyrer (effectiveWinnerProxy ignorerer
     // den). Silent failure-mode pre-fix.
     if (winnerProxy && winnerProxy.max_amount < currentPrice) {
       await supabase
@@ -163,14 +163,14 @@ export async function resolveProxyBids({
     if (!canAfford) {
       balanceRejectedTeams.add(autoBidder);
       // Notify ejeren af den afviste proxy. Brug auction_proxy_outbid uanset om de
-      // var winner eller challenger — meningen er "din auto-by er stoppet".
+      // var winner eller challenger — meningen er "dit autobud er stoppet".
       const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
       if (notifyTeamOwner) {
         await notifyTeamOwner(
           autoBidder,
           "auction_proxy_outbid",
-          "Din auto-by er stoppet",
-          `Din auto-by på ${riderName} stoppede pga. utilstrækkelig balance — sørg for at have penge på kontoen for at byde igen`,
+          "Dit autobud er stoppet",
+          `Dit autobud på ${riderName} stoppede pga. utilstrækkelig balance — sørg for at have penge på kontoen for at byde igen`,
           auctionId,
         ).catch((e) => console.error("[proxy-balance-reject] notif failed", { auctionId, e }));
       }
@@ -210,7 +210,7 @@ export async function resolveProxyBids({
       .select("name")
       .eq("id", autoBidder)
       .maybeSingle();
-    const bidderName = bidderTeam?.name || "Auto-by";
+    const bidderName = bidderTeam?.name || "Autobud";
 
     if (notifyTeamOwner) {
       if (exhaustedTeam) {
@@ -218,8 +218,8 @@ export async function resolveProxyBids({
         await notifyTeamOwner(
           exhaustedTeam,
           "auction_proxy_outbid",
-          "Din auto-by er stoppet",
-          `Din auto-by på ${riderName} nåede sit max-loft og er overbudt af ${bidderName}`,
+          "Dit autobud er stoppet",
+          `Dit autobud på ${riderName} nåede sit max-loft og er overbudt af ${bidderName}`,
           auctionId
         ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
       } else if (autoBidder !== currentWinner && currentWinner) {
@@ -228,7 +228,7 @@ export async function resolveProxyBids({
           currentWinner,
           "auction_outbid",
           "Du er blevet overbudt!",
-          `${bidderName}'s auto-by overbød dig på ${riderName}`,
+          `${bidderName}'s autobud overbød dig på ${riderName}`,
           auctionId
         ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
       }
@@ -239,7 +239,7 @@ export async function resolveProxyBids({
           auction.seller_team_id,
           "bid_received",
           "Nyt bud modtaget",
-          `${bidderName}'s auto-by bød ${autoBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
+          `${bidderName}'s autobud bød ${autoBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
           auctionId
         ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
       }

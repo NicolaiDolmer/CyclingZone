@@ -110,8 +110,8 @@ const SECTIONS = [
         text: "Gå til Auktioner og find en auktion du vil byde på. Indtast dit bud og klik 'Byd'. Du kan se om du vinder (🏆 Vinder) eller om du har budt men er overbudt (⚡ Du har budt). Minimumsbuddet er 1 CZ$ over nuværende pris (eller match af asking-pris hvis ingen har budt endnu).",
       },
       {
-        title: "Auto-by loft",
-        text: "Auto-by loft lader dig sætte dit private maksimum. Hvis du ikke allerede fører auktionen, placerer auto-by samtidig minimumsbuddet for dig, så du kan tage føringen uden først at byde manuelt. Systemet byder derefter automatisk videre op til dit loft, hvis andre managers overbyder.",
+        title: "Autobud loft",
+        text: "Autobud loft lader dig sætte dit private maksimum. Hvis du ikke allerede fører auktionen, placerer autobud samtidig minimumsbuddet for dig, så du kan tage føringen uden først at byde manuelt. Systemet byder derefter automatisk videre op til dit loft, hvis andre managers overbyder.",
       },
       {
         title: "Hvornår udløber en auktion?",

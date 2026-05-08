@@ -52,7 +52,7 @@ const THREADS = [
   '1502029191233802371', // cybersimon Kan ikke byde pris rytter er sat til salg for (10%-rule)
   '1502029625986125905', // jeppek Ulæste beskeder fjernes ikke i indbakken
   '1502042565988450384', // bobby2106 Autobud på managerejet rytter — fejl uden besked
-  '1502043822841135116', // cybersimon Auto bud overholder ikke afrundingsregl
+  '1502043822841135116', // cybersimon Autobud overholder ikke afrundingsregl
 ];
 
 function getJSON(url, headers) {

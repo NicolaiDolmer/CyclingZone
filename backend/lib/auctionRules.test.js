@@ -351,7 +351,7 @@ test("getProxyMaxIssue afviser ugyldige værdier", () => {
   assert.equal(getProxyMaxIssue({ proxyMax: "abc", teamBalance: 1000 })?.code, "invalid_proxy_max");
 });
 
-test("getProxyOpeningBidAmount placerer auto-by som første bud på asking price", () => {
+test("getProxyOpeningBidAmount placerer autobud som første bud på asking price", () => {
   const bidAmount = getProxyOpeningBidAmount({
     proxyMax: 50000,
     currentPrice: 20000,
@@ -361,7 +361,7 @@ test("getProxyOpeningBidAmount placerer auto-by som første bud på asking price
   assert.equal(bidAmount, 20000);
 });
 
-test("getProxyOpeningBidAmount placerer auto-by som minimum over aktiv leder", () => {
+test("getProxyOpeningBidAmount placerer autobud som minimum over aktiv leder", () => {
   const bidAmount = getProxyOpeningBidAmount({
     proxyMax: 50000,
     currentPrice: 20000,

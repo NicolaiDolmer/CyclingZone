@@ -287,12 +287,12 @@ export async function notifyNewAuction({ riderName, riderUci, sellerName, startP
 export async function notifyOutbid({ riderName, newBid, bidderName, teamId, isAuto = false, exhausted = false }) {
   const fields = [
     { name: "Nyt bud", value: `${newBid?.toLocaleString("da-DK")} CZ$` },
-    { name: isAuto ? "Auto-bud fra" : "Budt af", value: bidderName },
+    { name: isAuto ? "Autobud fra" : "Budt af", value: bidderName },
   ];
   const description = exhausted
-    ? `Din auto-by på **${riderName}** nåede sit max-loft og er overbudt.`
+    ? `Dit autobud på **${riderName}** nåede sit max-loft og er overbudt.`
     : isAuto
-      ? `Du er blevet overbudt på **${riderName}** af et auto-bud!`
+      ? `Du er blevet overbudt på **${riderName}** af et autobud!`
       : `Du er blevet overbudt på **${riderName}**!`;
   await notifyDiscordDM({
     teamId,

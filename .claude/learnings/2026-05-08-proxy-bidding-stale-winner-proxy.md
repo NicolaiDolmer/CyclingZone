@@ -7,7 +7,7 @@
 
 ## Symptom
 
-"Auto-bud følger ikke med op når andre byder markant over." Manager A satte proxy-loft 100K, modstander B bød manuelt 80K, men A's proxy reagerede ikke — selvom A.max var langt over B's bud.
+"Autobud følger ikke med op når andre byder markant over." Manager A satte proxy-loft 100K, modstander B bød manuelt 80K, men A's proxy reagerede ikke — selvom A.max var langt over B's bud.
 
 ## Rod-årsag
 
@@ -52,7 +52,7 @@ Ny `backend/lib/proxyBidding.test.js` med 6 cases:
 
 2. **Tests fra dag 1 ved nye features.** v2.64 shipped uden test-fil for proxyBidding.js (fundet via `Glob: **/*proxyBidding*` returnerede kun source-fil). Test-fil først skrevet 2026-05-08 ved fix. Løsning: tilføj test-fil-tjek til CLAUDE.md eller pre-commit hook.
 
-3. **Cluster-fix ≠ root-cause-fix.** v2.66 droppede 10%-rule troede #171 ville forsvinde. Root cause var en anden (stale proxy) — de delte symptom ("auto-by følger ikke med op") men havde forskellige mekanismer.
+3. **Cluster-fix ≠ root-cause-fix.** v2.66 droppede 10%-rule troede #171 ville forsvinde. Root cause var en anden (stale proxy) — de delte symptom ("autobud følger ikke med op") men havde forskellige mekanismer.
 
 4. **Code-audit slår mock-test for kausal forståelse.** Direkte gennemlæsning af `proxyBidding.js:56-67` med pen-and-paper-trace afdækkede bug'en på <30 min. Mock-driven testing ville have krævet kendt scenarie.
 

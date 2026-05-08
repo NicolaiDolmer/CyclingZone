@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "2.80",
+    date: "2026-05-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Sprogvask · 'Auto-by' (stavefejl) er omdøbt til 'Autobud' overalt — knapper, badges, hjælpe-tekst, fejlbeskeder og Discord-DM'er bruger nu det rigtige danske ord. Funktionaliteten er uændret.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.79",
     date: "2026-05-08",
     label: "Beta",
@@ -10,7 +23,7 @@ const PATCHES = [
         category: "Fejlrettelser",
         items: [
           "Auktioner · BYD-kolonnen på desktop har nu solid baggrund, også når rækken er markeret som vundet, så statistik og tekst ikke skinner igennem under den sticky bud-celle.",
-          "Auto-by · '+ Auto-by loft' er gjort tydeligere, og når du sætter auto-by på en auktion du ikke fører, placerer systemet nu samtidig minimumsbuddet. Auto-by fungerer dermed som et rigtigt første bud — du behøver ikke byde manuelt først.",
+          "Autobud · '+ Autobud loft' er gjort tydeligere, og når du sætter autobud på en auktion du ikke fører, placerer systemet nu samtidig minimumsbuddet. Autobud fungerer dermed som et rigtigt første bud — du behøver ikke byde manuelt først.",
         ],
       },
     ],
@@ -23,7 +36,7 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Mobile auktioner · Bedre tap-targets og scroll-håndtering: alle bud-, auto-by- og annuller-knapper på telefon er nu mindst 44×44px (Apple HIG-standard for komfortabel berøring) og bud-felter bruger 16px-skrift, så iOS ikke længere zoomer ind når du fokuserer feltet. Skærmlæsere får nu konkrete labels på alle knapper og indlæsnings-spinneren (#197).",
+          "Mobile auktioner · Bedre tap-targets og scroll-håndtering: alle bud-, autobud- og annuller-knapper på telefon er nu mindst 44×44px (Apple HIG-standard for komfortabel berøring) og bud-felter bruger 16px-skrift, så iOS ikke længere zoomer ind når du fokuserer feltet. Skærmlæsere får nu konkrete labels på alle knapper og indlæsnings-spinneren (#197).",
         ],
       },
     ],
@@ -51,9 +64,9 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Auktioner · Live bud-feed på desktop: ny sidebar viser bud i realtid på de auktioner du selv deltager i (manuelt bud eller auto-by). Andre managers' moves på fremmede auktioner forbliver private — kun \"din side af bordet\" feeder din skærm (#196).",
+          "Auktioner · Live bud-feed på desktop: ny sidebar viser bud i realtid på de auktioner du selv deltager i (manuelt bud eller autobud). Andre managers' moves på fremmede auktioner forbliver private — kun \"din side af bordet\" feeder din skærm (#196).",
           "Auktioner · Pris-cellen pulser kort i guld når current_price ændrer sig — så du kan se hvilken auktion lige fik et bud uden at skanne hele tabellen.",
-          "Auktioner · Du får nu en toast i hjørnet \"Du er overbudt på X\" når en anden manager overhaler dig — også hvis du allerede ser auktionen. Toasten fyrer aldrig på dit eget bud eller på dit auto-bys eskalering.",
+          "Auktioner · Du får nu en toast i hjørnet \"Du er overbudt på X\" når en anden manager overhaler dig — også hvis du allerede ser auktionen. Toasten fyrer aldrig på dit eget bud eller på dit autobuds eskalering.",
           "Auktioner · Aggregat-ticker i header viser \"X nye bud i sidste 30s\" — uden navne eller beløb. Et hurtigt puls-tjek på markedet uden at lække andre managers' specifikke moves.",
         ],
       },
@@ -67,7 +80,7 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Rytterprofil · Ny \"Bud-historik\"-fane viser live bud-timeline mens en auktion kører (manager + beløb + tidspunkt + Auto-by-mærkat). Nye bud popper ind realtid uden refresh. Når auktionen slutter, kollapser fanen til \"Solgt til X for Y CZ$\". Auto-bud-loft eksponeres aldrig — strategi forbliver privat (#195).",
+          "Rytterprofil · Ny \"Bud-historik\"-fane viser live bud-timeline mens en auktion kører (manager + beløb + tidspunkt + Autobud-mærkat). Nye bud popper ind realtid uden refresh. Når auktionen slutter, kollapser fanen til \"Solgt til X for Y CZ$\". Autobud-loft eksponeres aldrig — strategi forbliver privat (#195).",
         ],
       },
     ],
@@ -80,8 +93,8 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Auto-by · Hvis dit auto-bud-loft afvises (fx ved forsøg på egen rytter, for lavt loft eller utilstrækkelig balance), vises nu en konkret dansk fejlbesked under Gem-knappen — ikke længere bare en tom \"Fejl\"-knap (#174).",
-          "Auto-by · Når du byder manuelt over dit eget auto-bud-loft, slettes det stale loft nu fra dit auktions-overblik. Tidligere blev \"Auto-by max ...\"-mærkatet hængende selvom auto-by reelt var udmattet (#183).",
+          "Autobud · Hvis dit autobud-loft afvises (fx ved forsøg på egen rytter, for lavt loft eller utilstrækkelig balance), vises nu en konkret dansk fejlbesked under Gem-knappen — ikke længere bare en tom \"Fejl\"-knap (#174).",
+          "Autobud · Når du byder manuelt over dit eget autobud-loft, slettes det stale loft nu fra dit auktions-overblik. Tidligere blev \"Autobud max ...\"-mærkatet hængende selvom autobud reelt var udmattet (#183).",
         ],
       },
     ],
@@ -94,13 +107,13 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Auktioner · Aldrig flere annullerede auktioner pga. utilstrækkelig balance: alle bud, auto-bud og auto-eskaleringer tjekker nu mod tilgængelig balance (raw balance minus eksisterende auktions-forpligtelser). Penge låst i auktioner kan heller ikke bruges til at betale gæld eller acceptere transfers/lejegebyrer. Du kan ikke længere vinde en auktion du ikke har råd til (#44).",
+          "Auktioner · Aldrig flere annullerede auktioner pga. utilstrækkelig balance: alle bud, autobud og auto-eskaleringer tjekker nu mod tilgængelig balance (raw balance minus eksisterende auktions-forpligtelser). Penge låst i auktioner kan heller ikke bruges til at betale gæld eller acceptere transfers/lejegebyrer. Du kan ikke længere vinde en auktion du ikke har råd til (#44).",
         ],
       },
       {
         category: "Forbedringer",
         items: [
-          "Auktionssiden · Balance-tile viser nu \"X tilgængelig\" når noget er reserveret i bud, og separat \"Reserveret i bud\"-tile viser worst-case forpligtelse hvis alle dine auto-bud trigger fuldt.",
+          "Auktionssiden · Balance-tile viser nu \"X tilgængelig\" når noget er reserveret i bud, og separat \"Reserveret i bud\"-tile viser worst-case forpligtelse hvis alle dine autobud trigger fuldt.",
           "Finansside · Balance-tile viser \"X tilgængelig\" og \"Y låst i bud\" så det er klart hvor meget der kan bruges på lån og transfers. Lån-rate-input klamper også til tilgængelig.",
         ],
       },
@@ -127,7 +140,7 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Auto-by · Du kan nu sætte auto-by max-loft uden at have budt manuelt først — fix'ede en fejl hvor man kun kunne oprette auto-by hvis man allerede var højestbydende (#172).",
+          "Autobud · Du kan nu sætte autobud max-loft uden at have budt manuelt først — fix'ede en fejl hvor man kun kunne oprette autobud hvis man allerede var højestbydende (#172).",
         ],
       },
     ],
@@ -166,13 +179,13 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Auto-by · Resolveren følger nu altid med op når en modstander byder markant over — fixede en edge case hvor et stale eget proxy-loft (sat lavt, derefter manuelt budet over) fik resolveren til at give op uden at place counter-bid (#171).",
+          "Autobud · Resolveren følger nu altid med op når en modstander byder markant over — fixede en edge case hvor et stale eget proxy-loft (sat lavt, derefter manuelt budet over) fik resolveren til at give op uden at place counter-bid (#171).",
         ],
       },
       {
         category: "Hvorfor",
         items: [
-          "Pre-fix: hvis du satte auto-by max 60K og senere manuelt bød 80K, troede resolveren stadig dit loft var 60K og lod modstandere lede uden modbud — selvom de andres auto-by max var højere end deres bud. Resolveren behandler nu et udtømt eget loft som 'ingen aktiv proxy', så challengers' auto-by altid byder mindst minimum over.",
+          "Pre-fix: hvis du satte autobud max 60K og senere manuelt bød 80K, troede resolveren stadig dit loft var 60K og lod modstandere lede uden modbud — selvom de andres autobud max var højere end deres bud. Resolveren behandler nu et udtømt eget loft som 'ingen aktiv proxy', så challengers' autobud altid byder mindst minimum over.",
         ],
       },
     ],
@@ -185,14 +198,14 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Auto-by · Discord DM sendes nu også når et auto-bud overbyder dig — før kom DM'en kun ved manuelle bud, så managers fik kun in-app-notifikationen ved auto-overbud (#155).",
-          "Auto-by · Sælger får nu også besked når et auto-bud bliver afgivet på deres rytter — mirror'er flowet for manuelle bud.",
+          "Autobud · Discord DM sendes nu også når et autobud overbyder dig — før kom DM'en kun ved manuelle bud, så managers fik kun in-app-notifikationen ved auto-overbud (#155).",
+          "Autobud · Sælger får nu også besked når et autobud bliver afgivet på deres rytter — mirror'er flowet for manuelle bud.",
         ],
       },
       {
         category: "Forbedringer",
         items: [
-          "Auto-by · DM'en markerer eksplicit at det er et auto-bud (\"Auto-bud fra X\") og angiver om dit eget max-loft blev nået.",
+          "Autobud · DM'en markerer eksplicit at det er et autobud (\"Autobud fra X\") og angiver om dit eget max-loft blev nået.",
         ],
       },
     ],
@@ -206,13 +219,13 @@ const PATCHES = [
         category: "Forbedringer",
         items: [
           "Auktioner · Min-bud er nu blot **1 CZ$ over** det aktuelle bud — 10%-overbudsregel og 1.000-afrunding er fjernet. Du kan også matche asking-prisen på et garanteret salg uden bud endnu (#175).",
-          "Auto-by · Resolveren bruger samme +1-step, så proxy-bidding følger korrekt med op uanset hvor markant en modstander byder over (#171, #173).",
+          "Autobud · Resolveren bruger samme +1-step, så proxy-bidding følger korrekt med op uanset hvor markant en modstander byder over (#171, #173).",
         ],
       },
       {
         category: "Hvorfor",
         items: [
-          "10%-reglen blev oprindeligt indført for at undgå \"+1\"-spam, men proxy-bidding (#10, v2.64) løser det problem indirekte — sæt et max-loft og lad systemet håndtere stepningen. Reglen skabte derfor mere friction end nytte og kolliderede med auto-by-resolveren. Drop'et fjerner en hel klasse af bugs i én bevægelse (#178 polish-sprint).",
+          "10%-reglen blev oprindeligt indført for at undgå \"+1\"-spam, men proxy-bidding (#10, v2.64) løser det problem indirekte — sæt et max-loft og lad systemet håndtere stepningen. Reglen skabte derfor mere friction end nytte og kolliderede med autobud-resolveren. Drop'et fjerner en hel klasse af bugs i én bevægelse (#178 polish-sprint).",
         ],
       },
     ],
@@ -245,8 +258,8 @@ const PATCHES = [
       {
         category: "Nyt",
         items: [
-          "Auktioner · Auto-by med max-loft (proxy-bidding): sæt et max-loft på en auktion, og systemet byder automatisk +10% over modbudene op til dit loft (#10). Aktiveres via '+ Auto-by loft' under bud-feltet.",
-          "Auto-by stopper automatisk når loftet er nået eller du vinder — du får en notifikation i indbakken hvis du er overbudt over dit max.",
+          "Auktioner · Autobud med max-loft (proxy-bidding): sæt et max-loft på en auktion, og systemet byder automatisk +10% over modbudene op til dit loft (#10). Aktiveres via '+ Autobud loft' under bud-feltet.",
+          "Autobud stopper automatisk når loftet er nået eller du vinder — du får en notifikation i indbakken hvis du er overbudt over dit max.",
           "Opdatér eller fjern dit max-loft når som helst mens auktionen er aktiv via 'Ændr' / 'Fjern' knapperne.",
         ],
       },

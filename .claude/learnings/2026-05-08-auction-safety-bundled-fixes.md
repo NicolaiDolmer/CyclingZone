@@ -3,7 +3,7 @@
 ## Hvad
 
 3 relaterede fixes på auktionssystemet shipped i ét PR (#199):
-1. Owner-check på `PATCH /api/auctions/:id/proxy` — manager kunne sætte auto-bud på egen rytter via direkte API-kald (bid-endpoint havde guard, proxy-endpoint manglede den).
+1. Owner-check på `PATCH /api/auctions/:id/proxy` — manager kunne sætte autobud på egen rytter via direkte API-kald (bid-endpoint havde guard, proxy-endpoint manglede den).
 2. Logging på 5 silent error-paths — `try/catch` + `.catch(() => {})`-handlers swallowede fejl uden trace, hvilket gjorde proxy-resolver-bugs umulige at diagnosticere fra Railway-logs.
 3. Discord DM-only-exhausted — mid-cascade DMs spammede managers hvis proxy step'ede op men stadig ledte. Vision-beslutning 2026-05-08: kun DM når bydende manager er endeligt overbudt.
 

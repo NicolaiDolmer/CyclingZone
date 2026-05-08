@@ -103,7 +103,7 @@ Bruges efter smoke-test til at verificere runtime-effekter (logging, DM-routing)
 
 - Setup: test-seller ejer rytter X, opretter auktion på X
 - Test: test-seller forsøger at sætte proxy på egen auktion
-- Forventet: HTTP 400 + `"Du kan ikke sætte auto-bud på din egen rytter"`
+- Forventet: HTTP 400 + `"Du kan ikke sætte autobud på din egen rytter"`
 - Pre-fix: ingen owner-check → proxy kunne sættes
 
 ### #193 reserved-balance (`POST /api/auctions/:id/bid`)

@@ -5,7 +5,7 @@
  * regression cluster + indbakke cache-bug. 7 tråde bundlet til 6 issues.
  *
  * Kontekst: v2.64 (#10 proxy-bidding) shipped 2026-05-07 — flere managers (cybersimon,
- * jeppek, bobby2106) rapporterer regressioner i auto-bud og bid-validation samme aften.
+ * jeppek, bobby2106) rapporterer regressioner i autobud og bid-validation samme aften.
  */
 const { execSync } = require('child_process');
 const fs = require('fs');
@@ -19,13 +19,13 @@ const issues = [
   {
     id: 'b5-autobud-follows-not',
     threadId: '1502041570764132483',
-    title: '[bug] Auto-bud følger ikke med op når andre byder markant over (proxy-bidding regression)',
+    title: '[bug] Autobud følger ikke med op når andre byder markant over (proxy-bidding regression)',
     labelType: 'bug',
     priority: 'high',
     author: 'cybersimon + jeppek',
-    threadTitle: 'Auto bud bug / Autobyd',
+    threadTitle: 'Autobud bug / Autobud',
     timestamp: '2026-05-07',
-    text: '*"Auto bud virker ikke hvis man byder markant over det nuværende bud. Det ligner at den kun virker hvis der bliver budt 10% over [og] også aktiveres auto budet hvis der er 10% over det nye bud."* — cybersimon\n\n*"Virker ikke optimalt. Følger ikke med op, når en anden byder på rytteren, så fører man den ikke, selvom ens autobud er langt højere end 10%."* — jeppek (https://cycling-zone.vercel.app/auctions)\n\nTo uafhængige rapporter af samme symptom: proxy-bidding resolver-loopet matcher kun når new bid er præcis 10% over auto-bud-trigger; ved markant højere bud bliver auto-budet ikke aktiveret selvom max-loftet er langt højere.',
+    text: '*"Autobud virker ikke hvis man byder markant over det nuværende bud. Det ligner at den kun virker hvis der bliver budt 10% over [og] også aktiveres autobudet hvis der er 10% over det nye bud."* — cybersimon\n\n*"Virker ikke optimalt. Følger ikke med op, når en anden byder på rytteren, så fører man den ikke, selvom ens autobud er langt højere end 10%."* — jeppek (https://cycling-zone.vercel.app/auctions)\n\nTo uafhængige rapporter af samme symptom: proxy-bidding resolver-loopet matcher kun når new bid er præcis 10% over autobud-trigger; ved markant højere bud bliver autobudet ikke aktiveret selvom max-loftet er langt højere.',
     files: [
       '`backend/lib/proxyBidding.js` — resolver loop / trigger-condition (mistænkes at bruge `===` eller fast 10%-step i stedet for `<= max_amount`)',
       '`backend/lib/auctionRules.js` — 10%-increment-regel interaktion med proxy-bid auto-step',
@@ -33,28 +33,28 @@ const issues = [
     ],
     notes: 'Cross-link: relateret til #155 (webhook missing) og #169 (10%-increment design-overvejelse). Sandsynligvis samme rod-årsag: proxy-bidding-loop respekterer ikke at ny manuel bid kan være >10% over og bør stadig trigge mod max-loftet.',
     acceptance: [
-      'Auto-bud trigges altid når en ny manuel/auto bid < ens max-loft, uanset størrelse',
-      'Test: A sætter auto-bud max 100K. B byder manuelt 80K (markant over min-step). A skal automatisk byde 80K + min-step',
-      'Test: A sætter auto-bud max 100K. B sætter auto-bud max 200K. Resolver opløser til min(maxA + step, maxB)',
+      'Autobud trigges altid når en ny manuel/auto bid < ens max-loft, uanset størrelse',
+      'Test: A sætter autobud max 100K. B byder manuelt 80K (markant over min-step). A skal automatisk byde 80K + min-step',
+      'Test: A sætter autobud max 100K. B sætter autobud max 200K. Resolver opløser til min(maxA + step, maxB)',
     ],
   },
   {
     id: 'b5-autobud-must-be-leading',
     threadId: '1502044264765456494',
-    title: '[bug] Auto-bud kan ikke afgives medmindre du allerede fører auktionen',
+    title: '[bug] Autobud kan ikke afgives medmindre du allerede fører auktionen',
     labelType: 'bug',
     priority: 'high',
     author: 'cybersimon',
-    threadTitle: 'Man skal fører en auktion for at kunne ligge et auto bud',
+    threadTitle: 'Man skal fører en auktion for at kunne ligge et autobud',
     timestamp: '2026-05-07',
-    text: '*"Hvis man ikke selv står til at vinde en auktion får man en fejl ved forsøg på at ligge et auto bud."*\n\nProxy-bidding endpoint returnerer fejl hvis manager ikke allerede er højest-bydende. Forventet adfærd: man kan oprette/opdatere auto-bud max-loft uafhængigt af aktuel leader-status — det er hele pointen med proxy-bidding (sæt loft, gå offline).',
+    text: '*"Hvis man ikke selv står til at vinde en auktion får man en fejl ved forsøg på at ligge et autobud."*\n\nProxy-bidding endpoint returnerer fejl hvis manager ikke allerede er højest-bydende. Forventet adfærd: man kan oprette/opdatere autobud max-loft uafhængigt af aktuel leader-status — det er hele pointen med proxy-bidding (sæt loft, gå offline).',
     files: [
       '`backend/routes/api.js` — POST/PATCH proxy-bid endpoint validation',
       '`backend/lib/proxyBidding.js` — guard mod ikke-leader-managers',
     ],
     notes: 'Sandsynligvis en if-guard der tjekker `currentLeader === managerId` og afviser ellers. Skal fjernes — proxy-bidding skal accepteres uanset aktuel position.',
     acceptance: [
-      'Manager kan oprette auto-bud-max-loft uden at være aktuel leader',
+      'Manager kan oprette autobud-max-loft uden at være aktuel leader',
       'Resolver auto-stepper op til loftet umiddelbart efter opsætning hvis det overgår nuværende top-bid',
       'Manuel bid + proxy-bid fra samme manager kan eksistere samtidigt',
     ],
@@ -62,13 +62,13 @@ const issues = [
   {
     id: 'b5-autobud-rounding',
     threadId: '1502043822841135116',
-    title: '[bug] Auto-bud overholder ikke afrundings-regel og kan derfor ikke afgive bud',
+    title: '[bug] Autobud overholder ikke afrundings-regel og kan derfor ikke afgive bud',
     labelType: 'bug',
     priority: 'high',
     author: 'cybersimon',
-    threadTitle: 'Auto bud overholder ikke afrundingsregl og kan derfor ikke give bud',
+    threadTitle: 'Autobud overholder ikke afrundingsregl og kan derfor ikke give bud',
     timestamp: '2026-05-07',
-    text: 'Skærmbillede uden tekstbeskrivelse — auto-bud-resolver beregner et bid-beløb der ikke overholder afrundings-reglen (sandsynligvis 1K- eller 5K-step) og afvises derfor af bid-validation.',
+    text: 'Skærmbillede uden tekstbeskrivelse — autobud-resolver beregner et bid-beløb der ikke overholder afrundings-reglen (sandsynligvis 1K- eller 5K-step) og afvises derfor af bid-validation.',
     images: ['1502043822841135116-1502043827693686825.png'],
     files: [
       '`backend/lib/proxyBidding.js` — resolver auto-step beregning (mangler runding til nærmeste valid-step)',
@@ -76,9 +76,9 @@ const issues = [
     ],
     notes: 'Symptom: resolver foreslår fx 80.001 hvor 80.000 ville være valid. Mangler `Math.ceil(amount / step) * step` eller tilsvarende clamp. Cross-link til [b5-autobud-follows-not](#) og [#169](https://github.com/NicolaiDolmer/CyclingZone/issues/169).',
     acceptance: [
-      'Auto-bud-resolver afgiver kun bid-beløb der overholder afrundings-reglen',
+      'Autobud-resolver afgiver kun bid-beløb der overholder afrundings-reglen',
       'Hvis beregnet bid ikke kan opfylde både afrunding + 10%-min, afvises bud GRACEFULT (ikke 500)',
-      'Test: opsæt auto-bud med max ikke-deleligt med step-størrelse, verificér at bud afgives med korrekt afrunding',
+      'Test: opsæt autobud med max ikke-deleligt med step-størrelse, verificér at bud afgives med korrekt afrunding',
     ],
   },
   {

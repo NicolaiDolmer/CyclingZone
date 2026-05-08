@@ -258,8 +258,8 @@ test("resolver: stale winner-proxy efter eget manuelt bid blokerer ikke counter-
 });
 
 test("resolver: stale winner-proxy slettes fra DB efter manuelt over-bid (#183)", async () => {
-  // Pre-fix #183: stale proxy hang i auction_proxy_bids → UI viste "Auto-by loft 60K"
-  // selvom resolver ignorerede den. Manageren troede auto-by var aktiv. Silent failure.
+  // Pre-fix #183: stale proxy hang i auction_proxy_bids → UI viste "Autobud loft 60K"
+  // selvom resolver ignorerede den. Manageren troede autobud var aktiv. Silent failure.
   // Post-fix: resolver sletter winnerProxy fra DB når max < currentPrice.
   const auction = {
     id: "auc-stale-delete",
@@ -508,7 +508,7 @@ test("notifyTeamOwner: sælger får bid_received-notif når rider.team_id === se
   assert.equal(sellerNotif[4], "auc-seller-notif");
 });
 
-test("bidderName: falder tilbage til \"Auto-by\" når team-rækken mangler", async () => {
+test("bidderName: falder tilbage til \"Autobud\" når team-rækken mangler", async () => {
   // teams er tom — bidderName-fetch returnerer null. Verificér fallback i in-app notif.
   // Bruger exhausted-scenarie så DM også fyrer og kan testes for fallback.
   const auction = {
@@ -541,11 +541,11 @@ test("bidderName: falder tilbage til \"Auto-by\" når team-rækken mangler", asy
   // B overtager → A udmattes → DM med exhausted=true sendes til A
   const exhaustedDM = dmCalls.find(c => c.exhausted === true);
   assert.ok(exhaustedDM, "exhausted DM skal sendes");
-  assert.equal(exhaustedDM.bidderName, "Auto-by");
+  assert.equal(exhaustedDM.bidderName, "Autobud");
   // In-app proxy_outbid-notif til A bruger samme fallback
   const proxyOutbidNotif = ownerCalls.find(c => c[1] === "auction_proxy_outbid");
   assert.ok(proxyOutbidNotif, "auction_proxy_outbid notif skal fyre");
-  assert.match(proxyOutbidNotif[3], /overbudt af Auto-by/);
+  assert.match(proxyOutbidNotif[3], /overbudt af Autobud/);
   // Verificér at teams-tabellen rent faktisk blev forespurgt (fetcher bidder = team-b)
   assert.ok(supabase.state.teamLookups.includes("team-b"));
 });

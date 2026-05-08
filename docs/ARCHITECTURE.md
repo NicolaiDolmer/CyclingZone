@@ -192,7 +192,7 @@ Season flow notes:
 ## Canonical Runtime Paths
 
 ### Auktioner
-- UI læser aktive auktioner direkte fra Supabase (`auctions`) og placerer manuelle bud via `POST /api/auctions/:id/bid`; auto-by går via `PATCH /api/auctions/:id/proxy`, som placerer minimumsbuddet når manageren ikke allerede fører
+- UI læser aktive auktioner direkte fra Supabase (`auctions`) og placerer manuelle bud via `POST /api/auctions/:id/bid`; autobud går via `PATCH /api/auctions/:id/proxy`, som placerer minimumsbuddet når manageren ikke allerede fører
 - Manuel afslutning (`POST /api/auctions/:id/finalize`), admin-bulkfinalisering (`POST /api/admin/finalize-expired-auctions`) og cron (`backend/cron.js`) delegérer alle til `backend/lib/auctionFinalization.js`
 - Finalisering skriver til `auctions`, `riders`, `teams`, `finance_transactions`, `notifications` og `activity_feed`
 - `seller_team_id` kan blive nulstillet ved afslutning af ikke-ejede auktionsflows for at undgå falsk historik
