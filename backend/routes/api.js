@@ -27,6 +27,7 @@ import {
   getAuctionBidWarnings,
   getAuctionInitialBidderId,
   getMinimumAuctionBid,
+  isExpectedPriceStale,
 } from "../lib/auctionRules.js";
 import {
   finalizeAuctionById,
@@ -789,6 +790,19 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
   if (isAuctionExpired(auction.calculated_end)) {
     return res.status(400).json({ error: "Auction has ended" });
   }
+
+  // #194 race-confirm: hvis client sendte expected_current_price og det er stale,
+  // returnér 409 så frontend kan vise confirm-modal med ny pris/min-bud.
+  if (isExpectedPriceStale(req.body.expected_current_price, auction.current_price)) {
+    return res.status(409).json({
+      error: "price_changed",
+      currentPrice: auction.current_price,
+      minimumBid: getMinimumAuctionBid(auction.current_price, {
+        hasActiveBid: Boolean(auction.current_bidder_id),
+      }),
+    });
+  }
+
   // Allow bidding on own auction ONLY for AI/free rider auctions
   // Block bidding on own auction if selling your own team's rider
   if (auction.seller_team_id === req.team.id) {

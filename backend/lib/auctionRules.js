@@ -62,6 +62,16 @@ export function computeReservedBalance({
   }, 0);
 }
 
+// #194 race-confirm: returner true hvis frontend's expected_current_price ikke
+// matcher det server lige har læst. Undefined/null/non-numeric = ingen check
+// (bagudkompat med ældre clients der ikke sender feltet — first-commit-wins som før).
+export function isExpectedPriceStale(expectedPrice, currentPrice) {
+  if (expectedPrice === undefined || expectedPrice === null) return false;
+  const expected = Number(expectedPrice);
+  if (!Number.isFinite(expected)) return false;
+  return expected !== Number(currentPrice);
+}
+
 // Non-blocking advarsler: manager må stadig byde, men UI viser konsekvensen.
 export function getAuctionBidWarnings({
   teamState,

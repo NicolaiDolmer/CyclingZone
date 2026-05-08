@@ -6,6 +6,7 @@ import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
+import { RacePriceModal } from "../components/RacePriceModal";
 import { Flag } from "../components/Flag";
 import { formatCz, getMinimumAuctionBid, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
@@ -168,6 +169,9 @@ function AuctionRow({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemoveP
         setTimeout(() => setWarningText(""), 10000);
       }
       setTimeout(() => setBidStatus(null), 2500);
+    } else if (result.race) {
+      // #194: top-level RacePriceModal håndterer — ryd loading-state, ingen row-error
+      setBidStatus(null);
     } else {
       setBidStatus("error");
       setErrorText(result.error || "Buddet kunne ikke placeres");
@@ -403,6 +407,11 @@ function AuctionCard({ auction, myTeamId, myBalance, onBid, onSetProxy, onRemove
     }
     setBidStatus("loading");
     const result = await onBid(auction.id, bidAmount);
+    if (result.race) {
+      // #194: top-level RacePriceModal håndterer — ryd loading-state, ingen card-error
+      setBidStatus(null);
+      return;
+    }
     setBidStatus(result.ok ? "success" : "error");
     setErrorText(result.error || "");
     if (result.ok) {
@@ -572,6 +581,8 @@ export default function AuctionsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [celebration, setCelebration] = useState(null);
+  // #194 race-confirm: { auctionId, newPrice, newMinBid } når server returnerer 409 price_changed
+  const [raceConfirm, setRaceConfirm] = useState(null);
   const [auctionSort, setAuctionSort] = useState({ key: null, dir: "desc" });
   const [showFirstBidHint, setShowFirstBidHint] = useState(false);
   const [firstBidDismissed, setFirstBidDismissed] = useState(
@@ -703,14 +714,33 @@ export default function AuctionsPage() {
     return () => supabase.removeChannel(channel);
   }, []);
 
-  async function handleBid(auctionId, amount) {
+  async function handleBid(auctionId, amount, { skipExpectedPrice = false } = {}) {
     const { data: { session } } = await supabase.auth.getSession();
     const API = import.meta.env.VITE_API_URL;
+    const auction = auctions.find(a => a.id === auctionId);
+    const body = { amount };
+    if (!skipExpectedPrice && auction) {
+      // #194 race-guard: send sidste pris vi så, så server kan returnere 409 hvis stale
+      body.expected_current_price = auction.current_price;
+    }
     const res = await fetch(`${API}/api/auctions/${auctionId}/bid`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify(body),
     });
+    if (res.status === 409) {
+      let raceData = {};
+      try { raceData = await res.json(); } catch { /* ignore */ }
+      if (raceData.error === "price_changed") {
+        setRaceConfirm({
+          auctionId,
+          newPrice: raceData.currentPrice,
+          newMinBid: raceData.minimumBid,
+        });
+        loadAll();
+        return { ok: false, race: true };
+      }
+    }
     if (res.ok) {
       fetch(`${API}/api/achievements/check`, {
         method: "POST",
@@ -725,6 +755,13 @@ export default function AuctionsPage() {
     let data = {};
     try { data = await res.json(); } catch { /* non-JSON error response — fall back to default error message below */ }
     return { ok: false, error: data.error || "Buddet kunne ikke placeres" };
+  }
+
+  async function handleConfirmRaceBid() {
+    if (!raceConfirm) return;
+    const { auctionId, newMinBid } = raceConfirm;
+    setRaceConfirm(null);
+    await handleBid(auctionId, newMinBid, { skipExpectedPrice: true });
   }
 
   async function handleSetProxy(auctionId, maxAmount) {
@@ -799,6 +836,13 @@ export default function AuctionsPage() {
         subtitle={celebration?.subtitle}
         amount={celebration?.amount}
         icon="🏆"
+      />
+      <RacePriceModal
+        show={!!raceConfirm}
+        newPrice={raceConfirm?.newPrice ?? 0}
+        newMinBid={raceConfirm?.newMinBid ?? 0}
+        onCancel={() => setRaceConfirm(null)}
+        onConfirm={handleConfirmRaceBid}
       />
 
       <div className="mb-5">

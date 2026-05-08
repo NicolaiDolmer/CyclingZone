@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "2.72",
+    date: "2026-05-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "Forbedringer",
+        items: [
+          "Auktioner · Race-beskyttelse: hvis prisen stiger mens du sender dit bud, viser vi nu en confirm-dialog med ny pris og nyt min-bud så du kan vælge at byde igen eller annullere — slut med at miste auktioner uden at vide hvorfor (#194).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.71",
     date: "2026-05-08",
     label: "Beta",

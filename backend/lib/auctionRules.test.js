@@ -7,6 +7,7 @@ import {
   getAuctionBidIssue,
   getAuctionBidWarnings,
   getMinimumAuctionBid,
+  isExpectedPriceStale,
 } from "./auctionRules.js";
 import {
   SQUAD_FINE_AMOUNT,
@@ -194,4 +195,20 @@ test("getAuctionBidIssue returns correct available when proxy bumps reservedBala
   });
   assert.equal(issue?.code, "insufficient_available_balance");
   assert.equal(issue?.totalCommitment, 560000);
+});
+
+test("isExpectedPriceStale returns false when expected matches current", () => {
+  assert.equal(isExpectedPriceStale(50000, 50000), false);
+  assert.equal(isExpectedPriceStale(0, 0), false);
+});
+
+test("isExpectedPriceStale returns true when expected differs from current", () => {
+  assert.equal(isExpectedPriceStale(50000, 60000), true);
+  assert.equal(isExpectedPriceStale(60000, 50000), true);
+});
+
+test("isExpectedPriceStale returns false when expected is undefined or invalid (bagudkompat)", () => {
+  assert.equal(isExpectedPriceStale(undefined, 50000), false);
+  assert.equal(isExpectedPriceStale(null, 50000), false);
+  assert.equal(isExpectedPriceStale("notanumber", 50000), false);
 });
