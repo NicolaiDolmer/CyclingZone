@@ -313,8 +313,10 @@ test("resolver: tre proxies — højeste leder ved næsthøjeste max + 1", async
 // Tier 1 — luk v2.67-coverage-hullet (notifyOutbidDM, sælger-notif, bidderName)
 // =============================================================================
 
-test("notifyOutbidDM: kaldes med isAuto=true når proxy outbidder manager uden eget loft", async () => {
-  // Spejler test 1: A's proxy outbidder B's manuelle bid. B har ingen proxy → exhausted=false.
+test("notifyOutbidDM: IKKE kaldt mid-cascade når mid-bidder ikke er udmattet (#192)", async () => {
+  // Mid-cascade scenario: A's proxy outbidder B's manuelle bid. B har ingen proxy
+  // og er ikke "exhausted" — B kunne stadig byde højere manuelt. DM ville være spam.
+  // In-app notif (auction_outbid) fyrer stadig — kun Discord DM-adfærd ændret.
   const auction = {
     id: "auc-dm-1",
     status: "active",
@@ -330,22 +332,21 @@ test("notifyOutbidDM: kaldes med isAuto=true når proxy outbidder manager uden e
   const supabase = createMockSupabase({ auction, proxies, teams });
 
   const dmCalls = [];
+  const ownerCalls = [];
   await resolveProxyBids({
     supabase,
     auctionId: "auc-dm-1",
     bidTime: BID_TIME,
     bidCfg: { extension_minutes: 10 },
-    notifyTeamOwner: async () => {},
+    notifyTeamOwner: async (...args) => { ownerCalls.push(args); },
     notifyOutbidDM: async (args) => { dmCalls.push(args); },
   });
 
-  assert.equal(dmCalls.length, 1);
-  assert.equal(dmCalls[0].teamId, "team-b");
-  assert.equal(dmCalls[0].isAuto, true);
-  assert.notEqual(dmCalls[0].exhausted, true, "B havde ingen proxy → exhausted skal IKKE være true");
-  assert.equal(dmCalls[0].newBid, 80001);
-  assert.equal(dmCalls[0].bidderName, "Aagerups Aalborg");
-  assert.equal(dmCalls[0].riderName, "Lasse Norman");
+  assert.equal(dmCalls.length, 0, "B er ikke exhausted → INGEN DM");
+  // In-app notif til B skal stadig fyre
+  const outbidNotif = ownerCalls.find(c => c[1] === "auction_outbid");
+  assert.ok(outbidNotif, "auction_outbid in-app notif skal stadig fyre");
+  assert.equal(outbidNotif[0], "team-b");
 });
 
 test("notifyOutbidDM: kaldes med exhausted=true når egen proxy bliver overbudt", async () => {
@@ -425,18 +426,22 @@ test("notifyTeamOwner: sælger får bid_received-notif når rider.team_id === se
 });
 
 test("bidderName: falder tilbage til \"Auto-by\" når team-rækken mangler", async () => {
-  // Spejler test 1, men teams er tom — bidderName-fetch returnerer null.
+  // teams er tom — bidderName-fetch returnerer null. Verificér fallback i in-app notif.
+  // Bruger exhausted-scenarie så DM også fyrer og kan testes for fallback.
   const auction = {
     id: "auc-fallback",
     status: "active",
     calculated_end: FUTURE_END,
-    current_price: 80000,
-    current_bidder_id: "team-b",
+    current_price: 50000,
+    current_bidder_id: "team-a",
     rider: { firstname: "Test", lastname: "Rider", team_id: null },
     seller_team_id: "ai-team",
     extension_count: 0,
   };
-  const proxies = [{ team_id: "team-a", max_amount: 100000 }];
+  const proxies = [
+    { team_id: "team-a", max_amount: 100000 },
+    { team_id: "team-b", max_amount: 200000 },
+  ];
   const supabase = createMockSupabase({ auction, proxies, teams: {} });
 
   const dmCalls = [];
@@ -450,12 +455,16 @@ test("bidderName: falder tilbage til \"Auto-by\" når team-rækken mangler", asy
     notifyOutbidDM: async (args) => { dmCalls.push(args); },
   });
 
-  assert.equal(dmCalls[0].bidderName, "Auto-by");
-  const outbidNotif = ownerCalls.find(c => c[1] === "auction_outbid");
-  assert.ok(outbidNotif, "skal sende auction_outbid notif");
-  assert.match(outbidNotif[3], /Auto-by's auto-by overbød dig/);
-  // Verificér at teams-tabellen rent faktisk blev forespurgt
-  assert.deepEqual(supabase.state.teamLookups, ["team-a"]);
+  // B overtager → A udmattes → DM med exhausted=true sendes til A
+  const exhaustedDM = dmCalls.find(c => c.exhausted === true);
+  assert.ok(exhaustedDM, "exhausted DM skal sendes");
+  assert.equal(exhaustedDM.bidderName, "Auto-by");
+  // In-app proxy_outbid-notif til A bruger samme fallback
+  const proxyOutbidNotif = ownerCalls.find(c => c[1] === "auction_proxy_outbid");
+  assert.ok(proxyOutbidNotif, "auction_proxy_outbid notif skal fyre");
+  assert.match(proxyOutbidNotif[3], /overbudt af Auto-by/);
+  // Verificér at teams-tabellen rent faktisk blev forespurgt (fetcher bidder = team-b)
+  assert.ok(supabase.state.teamLookups.includes("team-b"));
 });
 
 // =============================================================================
