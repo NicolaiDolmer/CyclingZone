@@ -13,7 +13,8 @@ const resolveProxyBids = (args) =>
 // Allowed eq() columns per table — resolver må ikke filtrere på andet
 const ALLOWED_EQ_COLUMNS = {
   auctions: ["id"],
-  auction_proxy_bids: ["auction_id"],
+  // #183: auction_id på select, auction_id+team_id på delete af stale winner-proxy
+  auction_proxy_bids: ["auction_id", "team_id"],
   teams: ["id"],
 };
 
@@ -21,9 +22,12 @@ const ALLOWED_EQ_COLUMNS = {
 // resolveProxyBids udfører. Hold den minimal — vi tester kun resolver-loopet.
 function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = null }) {
   const auctionState = { ...auction };
+  // #183: muterbar kopi så delete på auction_proxy_bids reflekteres i efterfølgende selects.
+  const proxiesState = [...proxies];
   const bidLog = [];
   const updateLog = [];
   const teamLookups = [];
+  const proxyDeleteLog = [];
 
   function assertColumn(table, column) {
     const allowed = ALLOWED_EQ_COLUMNS[table];
@@ -33,7 +37,7 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
   }
 
   return {
-    state: { auction: auctionState, bids: bidLog, updates: updateLog, teamLookups },
+    state: { auction: auctionState, bids: bidLog, updates: updateLog, teamLookups, proxies: proxiesState, proxyDeletes: proxyDeleteLog },
     from(table) {
       if (table === "auctions") {
         return {
@@ -67,10 +71,38 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
             return {
               eq(col) {
                 assertColumn("auction_proxy_bids", col);
-                const data = proxiesGen ? proxiesGen(auctionState) : proxies;
+                const data = proxiesGen ? proxiesGen(auctionState) : proxiesState;
                 return Promise.resolve({ data, error: null });
               },
             };
+          },
+          // #183: delete + chained .eq() — muterer proxiesState så efterfølgende
+          // selects (inkl. samme resolver-iteration) ser den slettede række borte.
+          delete() {
+            const filters = {};
+            const applyAndResolve = () => {
+              proxyDeleteLog.push({ ...filters });
+              for (let i = proxiesState.length - 1; i >= 0; i--) {
+                const row = proxiesState[i];
+                let matches = true;
+                for (const [col, val] of Object.entries(filters)) {
+                  if (row[col] !== val) { matches = false; break; }
+                }
+                if (matches) proxiesState.splice(i, 1);
+              }
+              return { data: null, error: null };
+            };
+            const chain = {
+              eq(col, val) {
+                assertColumn("auction_proxy_bids", col);
+                filters[col] = val;
+                return chain;
+              },
+              then(onFulfilled, onRejected) {
+                return Promise.resolve(applyAndResolve()).then(onFulfilled, onRejected);
+              },
+            };
+            return chain;
           },
         };
       }
@@ -89,10 +121,11 @@ function createMockSupabase({ auction, proxies = [], teams = {}, proxiesGen = nu
               eq(col, id) {
                 assertColumn("teams", col);
                 teamLookups.push(id);
+                const resolveTeam = () =>
+                  Promise.resolve({ data: teams[id] || null, error: null });
                 return {
-                  single() {
-                    return Promise.resolve({ data: teams[id] || null, error: null });
-                  },
+                  single: resolveTeam,
+                  maybeSingle: resolveTeam,
                 };
               },
             };
@@ -222,6 +255,49 @@ test("resolver: stale winner-proxy efter eget manuelt bid blokerer ikke counter-
   assert.equal(supabase.state.bids[0].is_proxy, true);
   assert.equal(supabase.state.auction.current_price, 80001);
   assert.equal(supabase.state.auction.current_bidder_id, "team-a");
+});
+
+test("resolver: stale winner-proxy slettes fra DB efter manuelt over-bid (#183)", async () => {
+  // Pre-fix #183: stale proxy hang i auction_proxy_bids → UI viste "Auto-by loft 60K"
+  // selvom resolver ignorerede den. Manageren troede auto-by var aktiv. Silent failure.
+  // Post-fix: resolver sletter winnerProxy fra DB når max < currentPrice.
+  const auction = {
+    id: "auc-stale-delete",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 80000,
+    current_bidder_id: "team-b",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { auction_id: "auc-stale-delete", team_id: "team-a", max_amount: 100000 },
+    { auction_id: "auc-stale-delete", team_id: "team-b", max_amount: 60000 }, // STALE — under currentPrice
+  ];
+  const supabase = createMockSupabase({ auction, proxies });
+
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-stale-delete",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+  });
+
+  // Stale proxy (team-b) skal være slettet
+  const remainingProxies = supabase.state.proxies;
+  assert.equal(remainingProxies.length, 1, "team-b's stale proxy skal være slettet");
+  assert.equal(remainingProxies[0].team_id, "team-a", "kun team-a's proxy må være tilbage");
+
+  // Delete-kaldet skal være rettet mod auction_id + team_id
+  const stale = supabase.state.proxyDeletes.find((d) => d.team_id === "team-b");
+  assert.ok(stale, "delete skal være kaldt for team-b");
+  assert.equal(stale.auction_id, "auc-stale-delete");
+
+  // Resolver-adfærd uændret fra #171-test: A overtager ved 80.001
+  assert.equal(supabase.state.auction.current_bidder_id, "team-a");
+  assert.equal(supabase.state.auction.current_price, 80001);
 });
 
 test("resolver: ingen challengers (proxies under minBid) → no-op", async () => {

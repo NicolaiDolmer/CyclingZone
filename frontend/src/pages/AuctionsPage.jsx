@@ -136,6 +136,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
   const [proxyExpanded, setProxyExpanded] = useState(false);
   const [proxyInput, setProxyInput] = useState(0);
   const [proxyStatus, setProxyStatus] = useState(null);
+  const [proxyErrorText, setProxyErrorText] = useState("");
 
   const isMyRider = auction.rider?.team_id === myTeamId;
   const isSeller  = isManagerSeller(auction, myTeamId);
@@ -181,9 +182,15 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
 
   async function handleSaveProxy() {
     setProxyStatus("loading");
+    setProxyErrorText("");
     const result = await onSetProxy(auction.id, proxyInput);
     setProxyStatus(result.ok ? "saved" : "error");
-    if (result.ok) setProxyExpanded(false);
+    if (result.ok) {
+      setProxyExpanded(false);
+    } else {
+      // #174: vis dansk fejlbesked fra backend (egen rytter, max-loft, balance, ...)
+      setProxyErrorText(result.error || "Fejl ved sæt auto-by");
+    }
     setTimeout(() => setProxyStatus(null), result.ok ? 2000 : 3000);
   }
 
@@ -334,26 +341,31 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy, 
                 + Auto-by loft
               </button>
             ) : (
-              <div className="flex items-center gap-1 mt-0.5">
-                <input
-                  type="number"
-                  value={proxyInput}
-                  min={minBid}
-                  onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
-                  placeholder="Max-loft"
-                  className="w-20 bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-cz-1 font-mono text-[10px] focus:outline-none focus:border-cz-accent"
-                />
-                <button
-                  onClick={handleSaveProxy}
-                  disabled={proxyStatus === "loading" || proxyInput < minBid}
-                  className={`px-2 py-1 rounded text-[10px] font-bold whitespace-nowrap
-                    ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
-                      proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
-                      "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
-                    disabled:opacity-50`}>
-                  {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
-                </button>
-                <button onClick={() => setProxyExpanded(false)} className="text-[9px] text-cz-3 hover:text-cz-2">✕</button>
+              <div className="flex flex-col gap-0.5 mt-0.5">
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    value={proxyInput}
+                    min={minBid}
+                    onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
+                    placeholder="Max-loft"
+                    className="w-20 bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-cz-1 font-mono text-[10px] focus:outline-none focus:border-cz-accent"
+                  />
+                  <button
+                    onClick={handleSaveProxy}
+                    disabled={proxyStatus === "loading" || proxyInput < minBid}
+                    className={`px-2 py-1 rounded text-[10px] font-bold whitespace-nowrap
+                      ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
+                        proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
+                        "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
+                      disabled:opacity-50`}>
+                    {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
+                  </button>
+                  <button onClick={() => setProxyExpanded(false)} className="text-[9px] text-cz-3 hover:text-cz-2">✕</button>
+                </div>
+                {proxyStatus === "error" && proxyErrorText && (
+                  <p className="text-[10px] text-cz-danger max-w-[160px] leading-tight">{proxyErrorText}</p>
+                )}
               </div>
             )}
           </div>
@@ -381,6 +393,7 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
   const [proxyExpanded, setProxyExpanded] = useState(false);
   const [proxyInput, setProxyInput] = useState(0);
   const [proxyStatus, setProxyStatus] = useState(null);
+  const [proxyErrorText, setProxyErrorText] = useState("");
 
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -426,9 +439,15 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
 
   async function handleSaveProxy() {
     setProxyStatus("loading");
+    setProxyErrorText("");
     const result = await onSetProxy(auction.id, proxyInput);
     setProxyStatus(result.ok ? "saved" : "error");
-    if (result.ok) setProxyExpanded(false);
+    if (result.ok) {
+      setProxyExpanded(false);
+    } else {
+      // #174: vis dansk fejlbesked fra backend (egen rytter, max-loft, balance, ...)
+      setProxyErrorText(result.error || "Fejl ved sæt auto-by");
+    }
     setTimeout(() => setProxyStatus(null), result.ok ? 2000 : 3000);
   }
 
@@ -540,26 +559,31 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, onBid, onSetProxy,
                   + Sæt auto-by loft
                 </button>
               ) : (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={proxyInput}
-                    min={minBid}
-                    onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
-                    placeholder="Max-loft"
-                    className="min-w-0 w-32 bg-cz-subtle border border-cz-border rounded-lg px-3 py-1.5 text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
-                  />
-                  <button
-                    onClick={handleSaveProxy}
-                    disabled={proxyStatus === "loading" || proxyInput < minBid}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap
-                      ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
-                        proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
-                        "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
-                      disabled:opacity-50`}>
-                    {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
-                  </button>
-                  <button onClick={() => setProxyExpanded(false)} className="text-[10px] text-cz-3 hover:text-cz-2">✕</button>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={proxyInput}
+                      min={minBid}
+                      onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
+                      placeholder="Max-loft"
+                      className="min-w-0 w-32 bg-cz-subtle border border-cz-border rounded-lg px-3 py-1.5 text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
+                    />
+                    <button
+                      onClick={handleSaveProxy}
+                      disabled={proxyStatus === "loading" || proxyInput < minBid}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap
+                        ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
+                          proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
+                          "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
+                        disabled:opacity-50`}>
+                      {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
+                    </button>
+                    <button onClick={() => setProxyExpanded(false)} className="text-[10px] text-cz-3 hover:text-cz-2">✕</button>
+                  </div>
+                  {proxyStatus === "error" && proxyErrorText && (
+                    <p className="text-[11px] text-cz-danger leading-tight">{proxyErrorText}</p>
+                  )}
                 </div>
               )}
             </div>

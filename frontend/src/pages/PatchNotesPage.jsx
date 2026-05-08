@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.74",
+    date: "2026-05-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Auto-by · Hvis dit auto-bud-loft afvises (fx ved forsøg på egen rytter, for lavt loft eller utilstrækkelig balance), vises nu en konkret dansk fejlbesked under Gem-knappen — ikke længere bare en tom \"Fejl\"-knap (#174).",
+          "Auto-by · Når du byder manuelt over dit eget auto-bud-loft, slettes det stale loft nu fra dit auktions-overblik. Tidligere blev \"Auto-by max ...\"-mærkatet hængende selvom auto-by reelt var udmattet (#183).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.73",
     date: "2026-05-08",
     label: "Beta",
