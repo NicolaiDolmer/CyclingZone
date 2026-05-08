@@ -61,6 +61,7 @@ export default function FinancePage() {
   const [team, setTeam] = useState(null);
   const [prizeTotal, setPrizeTotal] = useState(0);
   const [prizeRows, setPrizeRows] = useState([]);
+  const [reservedBalance, setReservedBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ text: "", type: "" });
 
@@ -100,7 +101,7 @@ export default function FinancePage() {
     setTeam(teamData);
 
     const { data: { session } } = await supabase.auth.getSession();
-    const [loanRes, txRes, prizeTxRes] = await Promise.all([
+    const [loanRes, txRes, prizeTxRes, leadingRes, proxiesRes] = await Promise.all([
       fetch(`${API}/api/finance/loans`, { headers: { Authorization: `Bearer ${session.access_token}` } }),
       supabase.from("finance_transactions").select("*")
         .eq("team_id", teamData.id).order("created_at", { ascending: false }).limit(30),
@@ -109,10 +110,39 @@ export default function FinancePage() {
         .eq("team_id", teamData.id)
         .in("type", ["prize", "bonus"])
         .order("amount", { ascending: false }),
+      // #44: hent leading auktioner + proxies så vi kan vise reserveret balance
+      supabase.from("auctions")
+        .select("id, current_price")
+        .in("status", ["active", "extended"])
+        .eq("current_bidder_id", teamData.id),
+      supabase.from("auction_proxy_bids")
+        .select("auction_id, max_amount, auction:auction_id(status)")
+        .eq("team_id", teamData.id),
     ]);
 
     if (loanRes.ok) setLoanData(await loanRes.json());
     setTransactions(txRes.data || []);
+
+    // #44: worst-case commitment = MAX(current_price, my_proxy_max) for leading
+    // + my_proxy_max for ikke-leading auktioner.
+    const leadingMap = new Map();
+    for (const a of leadingRes.data || []) leadingMap.set(a.id, a.current_price || 0);
+    const proxyMap = new Map();
+    for (const p of proxiesRes.data || []) {
+      if (["active", "extended"].includes(p.auction?.status)) {
+        proxyMap.set(p.auction_id, p.max_amount || 0);
+      }
+    }
+    let reserved = 0;
+    const seen = new Set();
+    for (const [auctionId, currentPrice] of leadingMap) {
+      reserved += Math.max(currentPrice, proxyMap.get(auctionId) || 0);
+      seen.add(auctionId);
+    }
+    for (const [auctionId, proxyMax] of proxyMap) {
+      if (!seen.has(auctionId)) reserved += proxyMax;
+    }
+    setReservedBalance(reserved);
 
     const allPrizeTxs = prizeTxRes.data || [];
     setPrizeTotal(allPrizeTxs.reduce((s, r) => s + (r.amount || 0), 0));
@@ -217,6 +247,12 @@ export default function FinancePage() {
             {(team?.balance || 0).toLocaleString("da-DK")} CZ$
           </p>
           <p className="text-cz-3 text-xs mt-1">Division {team?.division}</p>
+          {reservedBalance > 0 && (
+            <p className="text-cz-3 text-xs mt-2 leading-snug">
+              {Math.max(0, (team?.balance || 0) - reservedBalance).toLocaleString("da-DK")} CZ$ tilgængelig<br />
+              <span className="text-cz-3/70">{reservedBalance.toLocaleString("da-DK")} CZ$ låst i bud</span>
+            </p>
+          )}
         </div>
         <div data-tour="finance-debt-ceiling" className="bg-cz-card border border-cz-border rounded-xl p-5">
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Total gæld</p>
@@ -268,7 +304,11 @@ export default function FinancePage() {
         ) : (
           <div className="flex flex-col gap-3">
             {activeLoans.map(loan => {
-              const maxRepay = Math.min(team?.balance || 0, loan.amount_remaining);
+              // #44: maxRepay = MIN(available_balance, amount_remaining). Penge låst i
+              // bud kan ikke bruges til at betale gæld (ellers ville auktioner kunne
+              // gå i minus ved finalization).
+              const availableBalance = Math.max(0, (team?.balance || 0) - reservedBalance);
+              const maxRepay = Math.min(availableBalance, loan.amount_remaining);
               return (
                 <div key={loan.id} className="bg-cz-subtle rounded-xl border border-cz-border p-4">
                   <div className="flex items-start justify-between mb-3">

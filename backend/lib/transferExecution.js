@@ -1,3 +1,4 @@
+import { computeWorstCaseCommitment } from "./auctionRules.js";
 import {
   expectMaybeSingle,
   expectMutation,
@@ -7,6 +8,30 @@ import {
   getTeamMarketState,
   getTransferWindowOpen,
 } from "./marketUtils.js";
+
+// #44: hent worst-case commitment fra teamets aktive auktioner. Bruges af
+// transfer/swap-execution så et accepteret transfer ikke kan pushe køber i
+// underbalance ift. allerede placerede bud.
+async function fetchTeamAuctionCommitment(supabase, teamId) {
+  if (!teamId) return 0;
+  const [leadingRes, proxiesRes] = await Promise.all([
+    supabase
+      .from("auctions")
+      .select("id, current_price")
+      .in("status", ["active", "extended"])
+      .eq("current_bidder_id", teamId),
+    supabase
+      .from("auction_proxy_bids")
+      .select("auction_id, max_amount, auction:auction_id(status)")
+      .eq("team_id", teamId),
+  ]);
+
+  const leadingAuctions = leadingRes.data || [];
+  const allMyProxies = (proxiesRes.data || [])
+    .filter((row) => ["active", "extended"].includes(row.auction?.status))
+    .map((row) => ({ auction_id: row.auction_id, max_amount: row.max_amount }));
+  return computeWorstCaseCommitment({ leadingAuctions, allMyProxies });
+}
 
 const NOOP = async () => {};
 const ACTIVE_MARKET_STATUSES = ["pending", "countered", "awaiting_confirmation"];
@@ -27,7 +52,16 @@ function getSwapCash(swap) {
   return swap.counter_cash ?? swap.cash_adjustment;
 }
 
-export function getTransferExecutionIssue({ rider, sellerState, buyerState, price }) {
+// #44: buyerCommitment / proposingCommitment / receivingCommitment ekskluderer
+// auktions-låste midler fra balance-checks. Default 0 = bagudkompat for ældre
+// callere/tests der ikke skal håndhæve auction-låsning.
+export function getTransferExecutionIssue({
+  rider,
+  sellerState,
+  buyerState,
+  price,
+  buyerCommitment = 0,
+}) {
   if (!rider || rider.team_id !== sellerState.id) {
     return { code: "seller_no_longer_owns_rider" };
   }
@@ -42,7 +76,8 @@ export function getTransferExecutionIssue({ rider, sellerState, buyerState, pric
     return { code: "buyer_squad_full", ...buyerViolation };
   }
 
-  if ((buyerState.balance || 0) < price) {
+  const buyerAvailable = Math.max(0, (buyerState.balance || 0) - (Number(buyerCommitment) || 0));
+  if (buyerAvailable < price) {
     return { code: "buyer_insufficient_balance" };
   }
 
@@ -56,6 +91,8 @@ export function getSwapExecutionIssue({
   proposingState,
   receivingState,
   cash,
+  proposingCommitment = 0,
+  receivingCommitment = 0,
 }) {
   if (!offered || offered.team_id !== swap.proposing_team_id) {
     return { code: "offered_rider_moved" };
@@ -65,11 +102,14 @@ export function getSwapExecutionIssue({
     return { code: "requested_rider_moved" };
   }
 
-  if (cash > 0 && (proposingState.balance || 0) < cash) {
+  const proposingAvailable = Math.max(0, (proposingState.balance || 0) - (Number(proposingCommitment) || 0));
+  const receivingAvailable = Math.max(0, (receivingState.balance || 0) - (Number(receivingCommitment) || 0));
+
+  if (cash > 0 && proposingAvailable < cash) {
     return { code: "proposing_insufficient_balance" };
   }
 
-  if (cash < 0 && (receivingState.balance || 0) < Math.abs(cash)) {
+  if (cash < 0 && receivingAvailable < Math.abs(cash)) {
     return { code: "receiving_insufficient_balance" };
   }
 
@@ -218,12 +258,13 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       .select("id, firstname, lastname, team_id, salary, prize_earnings_bonus")
       .eq("id", offer.rider_id)
   );
-  const [buyerState, sellerState] = await Promise.all([
+  const [buyerState, sellerState, buyerCommitment] = await Promise.all([
     getTeamMarketState(supabase, offer.buyer_team_id),
     getTeamMarketState(supabase, offer.seller_team_id),
+    fetchTeamAuctionCommitment(supabase, offer.buyer_team_id),
   ]);
 
-  const issue = getTransferExecutionIssue({ rider, sellerState, buyerState, price });
+  const issue = getTransferExecutionIssue({ rider, sellerState, buyerState, price, buyerCommitment });
 
   if (issue) {
     const message = describeTransferIssue(issue, { rider, buyerState, sellerState });
@@ -318,12 +359,23 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
       supabase.from("riders").select("id, firstname, lastname, team_id").eq("id", swap.requested_rider_id)
     ),
   ]);
-  const [proposingState, receivingState] = await Promise.all([
+  const [proposingState, receivingState, proposingCommitment, receivingCommitment] = await Promise.all([
     getTeamMarketState(supabase, swap.proposing_team_id),
     getTeamMarketState(supabase, swap.receiving_team_id),
+    fetchTeamAuctionCommitment(supabase, swap.proposing_team_id),
+    fetchTeamAuctionCommitment(supabase, swap.receiving_team_id),
   ]);
 
-  const issue = getSwapExecutionIssue({ swap, offered, requested, proposingState, receivingState, cash });
+  const issue = getSwapExecutionIssue({
+    swap,
+    offered,
+    requested,
+    proposingState,
+    receivingState,
+    cash,
+    proposingCommitment,
+    receivingCommitment,
+  });
 
   if (issue) {
     const message = describeSwapIssue(issue, { offered, requested });

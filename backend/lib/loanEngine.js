@@ -8,7 +8,33 @@
  *     UPDATE teams SET balance = balance + amount WHERE id = team_id;
  *   $$ LANGUAGE sql;
  */
+import { computeWorstCaseCommitment } from "./auctionRules.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
+
+// #44: hent manager's worst-case commitment fra aktive auktioner (leading +
+// proxies). Bruges af repayLoan + andre lån-paths så manageren ikke kan betale
+// gæld med penge der er låst i bud.
+async function fetchTeamCommitment(client, teamId) {
+  if (!teamId) return 0;
+  const [leadingRes, proxiesRes] = await Promise.all([
+    client
+      .from("auctions")
+      .select("id, current_price")
+      .in("status", ["active", "extended"])
+      .eq("current_bidder_id", teamId),
+    client
+      .from("auction_proxy_bids")
+      .select("auction_id, max_amount, auction:auction_id(status)")
+      .eq("team_id", teamId),
+  ]);
+
+  const leadingAuctions = leadingRes.data || [];
+  const allMyProxies = (proxiesRes.data || [])
+    .filter((row) => ["active", "extended"].includes(row.auction?.status))
+    .map((row) => ({ auction_id: row.auction_id, max_amount: row.max_amount }));
+
+  return computeWorstCaseCommitment({ leadingAuctions, allMyProxies });
+}
 
 let defaultSupabaseClientPromise;
 
@@ -276,6 +302,18 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null) {
 
   const { data: team } = await client.from("teams").select("balance").eq("id", teamId).single();
   if (team.balance < amount) throw new Error("Ikke nok midler");
+
+  // #44: penge låst i aktive bud/auto-bud kan ikke bruges til at betale gæld.
+  // Eksempel fra issue: balance 500K, gæld 200K, 400K i bud → kun 100K kan betales.
+  // Worst-case commitment = MAX(current_price, proxy_max) for leading + proxy_max
+  // for ikke-leading auktioner. Klamper repay til (balance - commitment).
+  const commitment = await fetchTeamCommitment(client, teamId);
+  const availableForRepay = Math.max(0, team.balance - commitment);
+  if (amount > availableForRepay) {
+    throw new Error(
+      `Du har kun ${availableForRepay.toLocaleString("da-DK")} CZ$ tilgængelig — resten er låst i aktive bud eller auto-bud`,
+    );
+  }
 
   const actualAmount = Math.min(amount, loan.amount_remaining);
   const newRemaining = loan.amount_remaining - actualAmount;

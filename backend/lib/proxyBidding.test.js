@@ -1,7 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveProxyBids } from "./proxyBidding.js";
+import { resolveProxyBids as resolveProxyBidsRaw } from "./proxyBidding.js";
+
+// #44: balance-gate er injectable. Eksisterende tests stuber den til "altid råd"
+// så vi kan teste cascade-logikken isoleret. Tests for selve gaten passerer
+// canAffordAutoBidFn eksplicit.
+const ALWAYS_AFFORD = async () => true;
+const resolveProxyBids = (args) =>
+  resolveProxyBidsRaw({ canAffordAutoBidFn: ALWAYS_AFFORD, ...args });
 
 // Allowed eq() columns per table — resolver må ikke filtrere på andet
 const ALLOWED_EQ_COLUMNS = {
@@ -576,4 +583,83 @@ test("resolver: challenger-overtages med winnerProxy clamper bud til winnerProxy
   assert.equal(supabase.state.bids[0].is_proxy, true);
   assert.equal(supabase.state.auction.current_bidder_id, "team-b");
   assert.equal(supabase.state.auction.current_price, 100001);
+});
+
+// =============================================================================
+// #44 — balance-gate på auto-bid (canAffordAutoBidFn)
+// =============================================================================
+
+test("#44: challenger med proxy > balance behandles som udmattet, næste challenger overtager", async () => {
+  // A leder cp=50K, ingen proxy. B har proxy 200K men kun 100K balance (kan ikke afford 200K).
+  // C har proxy 150K og 200K balance. Forventet: B afvises, C overtager ved 150K eller minBid.
+  const auction = {
+    id: "auc-balance",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 50000,
+    current_bidder_id: "team-a",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { team_id: "team-b", max_amount: 200000 },
+    { team_id: "team-c", max_amount: 150000 },
+  ];
+  const supabase = createMockSupabase({ auction, proxies });
+
+  const ownerCalls = [];
+  await resolveProxyBidsRaw({
+    supabase,
+    auctionId: "auc-balance",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async (...args) => { ownerCalls.push(args); },
+    canAffordAutoBidFn: async (_supabase, teamId, amount) => {
+      if (teamId === "team-b") return false; // afvis B
+      return true;
+    },
+  });
+
+  // C skal vinde — B afvist
+  assert.equal(supabase.state.bids.length, 1);
+  assert.equal(supabase.state.bids[0].team_id, "team-c");
+  // B skal have notif om at deres proxy stoppede pga. utilstrækkelig balance
+  const bRejectNotif = ownerCalls.find((c) => c[0] === "team-b" && c[1] === "auction_proxy_outbid");
+  assert.ok(bRejectNotif, "team-b skal have proxy-outbid notif");
+  assert.match(bRejectNotif[3], /utilstr.kkelig balance/);
+});
+
+test("#44: alle challengers afvist på balance → cascade stopper uden counter-bid", async () => {
+  // A leder cp=50K. B og C har proxy men ingen råd → cascade ender uden bids.
+  const auction = {
+    id: "auc-no-afford",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 50000,
+    current_bidder_id: "team-a",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { team_id: "team-b", max_amount: 200000 },
+    { team_id: "team-c", max_amount: 150000 },
+  ];
+  const supabase = createMockSupabase({ auction, proxies });
+
+  await resolveProxyBidsRaw({
+    supabase,
+    auctionId: "auc-no-afford",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+    canAffordAutoBidFn: async () => false, // ingen kan afford
+  });
+
+  // Ingen counter-bids
+  assert.equal(supabase.state.bids.length, 0);
+  // A leder stadig
+  assert.equal(supabase.state.auction.current_bidder_id, "team-a");
+  assert.equal(supabase.state.auction.current_price, 50000);
 });

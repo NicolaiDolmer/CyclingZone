@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "2.73",
+    date: "2026-05-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fejlrettelser",
+        items: [
+          "Auktioner · Aldrig flere annullerede auktioner pga. utilstrækkelig balance: alle bud, auto-bud og auto-eskaleringer tjekker nu mod tilgængelig balance (raw balance minus eksisterende auktions-forpligtelser). Penge låst i auktioner kan heller ikke bruges til at betale gæld eller acceptere transfers/lejegebyrer. Du kan ikke længere vinde en auktion du ikke har råd til (#44).",
+        ],
+      },
+      {
+        category: "Forbedringer",
+        items: [
+          "Auktionssiden · Balance-tile viser nu \"X tilgængelig\" når noget er reserveret i bud, og separat \"Reserveret i bud\"-tile viser worst-case forpligtelse hvis alle dine auto-bud trigger fuldt.",
+          "Finansside · Balance-tile viser \"X tilgængelig\" og \"Y låst i bud\" så det er klart hvor meget der kan bruges på lån og transfers. Lån-rate-input klamper også til tilgængelig.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.72",
     date: "2026-05-08",
     label: "Beta",

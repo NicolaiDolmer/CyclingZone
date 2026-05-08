@@ -1,7 +1,46 @@
-import { getMinimumAuctionBid } from "./auctionRules.js";
+import {
+  computeWorstCaseCommitment,
+  getMinimumAuctionBid,
+} from "./auctionRules.js";
 import { checkBidExtension, isAuctionExpired } from "./auctionEngine.js";
 
 const MAX_PROXY_ITERATIONS = 30;
+
+// #44: gate auto-bid mod current balance. Hvis en proxy ville pushe vinderen i
+// negativ tilgængelig balance (fx pga. salary-deduction eller anden auktion
+// finaliseret efter proxy blev sat), behandles proxy som udmattet. Worst-case
+// commitment ekskluderer denne auktion — autoBidAmount tæller separat.
+async function canAffordAutoBid(supabase, teamId, autoBidAmount, currentAuctionId) {
+  const { data: team } = await supabase
+    .from("teams")
+    .select("balance")
+    .eq("id", teamId)
+    .single();
+  if (!team) return false;
+
+  const [leadingRes, proxiesRes] = await Promise.all([
+    supabase
+      .from("auctions")
+      .select("id, current_price")
+      .in("status", ["active", "extended"])
+      .eq("current_bidder_id", teamId),
+    supabase
+      .from("auction_proxy_bids")
+      .select("auction_id, max_amount, auction:auction_id(status)")
+      .eq("team_id", teamId),
+  ]);
+
+  const leadingAuctions = (leadingRes.data || []).filter(
+    (row) => row.id !== currentAuctionId,
+  );
+  const allMyProxies = (proxiesRes.data || [])
+    .filter((row) => ["active", "extended"].includes(row.auction?.status))
+    .filter((row) => row.auction_id !== currentAuctionId)
+    .map((row) => ({ auction_id: row.auction_id, max_amount: row.max_amount }));
+
+  const otherCommitment = computeWorstCaseCommitment({ leadingAuctions, allMyProxies });
+  return (Number(team.balance) || 0) >= otherCommitment + autoBidAmount;
+}
 
 // Runs after each bid. Finds competing proxy bids and places automatic
 // counter-bids until no proxy can challenge or the auction expires.
@@ -23,7 +62,17 @@ export async function resolveProxyBids({
   bidCfg,
   notifyTeamOwner,
   notifyOutbidDM,
+  // #44: balance-check er injectable så tests kan stube den uden at mock'e
+  // teams/auctions/auction_proxy_bids-tabellerne i fuld bredde. Default = real
+  // DB-aware impl.
+  canAffordAutoBidFn = canAffordAutoBid,
 }) {
+  // #44: teams hvis auto-bid blev rejected pga. utilstrækkelig balance i denne
+  // resolveProxyBids-kørsel. Eksluderes fra challengers så vi ikke looper uendeligt
+  // på samme proxy. Forbliver in-memory — proxy-record slettes ikke (manageren kan
+  // selv sætte en lavere proxy senere hvis de ønsker).
+  const balanceRejectedTeams = new Set();
+
   for (let i = 0; i < MAX_PROXY_ITERATIONS; i++) {
     const { data: auction } = await supabase
       .from("auctions")
@@ -45,7 +94,12 @@ export async function resolveProxyBids({
 
     const allProxies = proxies || [];
     const challengers = allProxies
-      .filter(p => p.team_id !== currentWinner && p.max_amount >= minBid)
+      .filter(
+        (p) =>
+          p.team_id !== currentWinner &&
+          p.max_amount >= minBid &&
+          !balanceRejectedTeams.has(p.team_id),
+      )
       .sort((a, b) => b.max_amount - a.max_amount);
 
     if (challengers.length === 0) break;
@@ -90,6 +144,28 @@ export async function resolveProxyBids({
     }
 
     if (autoBidAmount <= currentPrice || autoBidAmount < minBid) break;
+
+    // #44: gate auto-bid mod autoBidder's available balance. Hvis de ikke har
+    // råd (fx pga. salary-deduction siden proxy blev sat), behandles deres proxy
+    // som udmattet i denne run — næste iteration finder næste challenger.
+    const canAfford = await canAffordAutoBidFn(supabase, autoBidder, autoBidAmount, auctionId);
+    if (!canAfford) {
+      balanceRejectedTeams.add(autoBidder);
+      // Notify ejeren af den afviste proxy. Brug auction_proxy_outbid uanset om de
+      // var winner eller challenger — meningen er "din auto-by er stoppet".
+      const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
+      if (notifyTeamOwner) {
+        await notifyTeamOwner(
+          autoBidder,
+          "auction_proxy_outbid",
+          "Din auto-by er stoppet",
+          `Din auto-by på ${riderName} stoppede pga. utilstrækkelig balance — sørg for at have penge på kontoen for at byde igen`,
+          auctionId,
+        ).catch((e) => console.error("[proxy-balance-reject] notif failed", { auctionId, e }));
+      }
+      // Ingen bid-insert; loop fortsætter med næste challenger.
+      continue;
+    }
 
     const { shouldExtend, newEnd } = checkBidExtension(bidTime, auction.calculated_end, bidCfg);
 
