@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  computeReservedBalance,
   getAuctionInitialBidderId,
   getAuctionBidIssue,
   getAuctionBidWarnings,
@@ -129,4 +130,68 @@ test("getAuctionBidWarnings returns empty when within squad cap", () => {
   });
 
   assert.equal(warnings.length, 0);
+});
+
+test("computeReservedBalance uses proxy_max when proxy >= current_price", () => {
+  // Auktion 1 fra issue #193: current=50K, proxy=200K → reserved 200K (proxy vinder)
+  const reserved = computeReservedBalance({
+    leadingAuctions: [{ id: "a1", current_price: 50000 }],
+    proxiesByAuctionId: { a1: { max_amount: 200000 } },
+  });
+  assert.equal(reserved, 200000);
+});
+
+test("computeReservedBalance uses current_price when no proxy exists", () => {
+  // Auktion 2 fra issue #193: current=80K, ingen proxy → reserved 80K
+  const reserved = computeReservedBalance({
+    leadingAuctions: [{ id: "a2", current_price: 80000 }],
+    proxiesByAuctionId: {},
+  });
+  assert.equal(reserved, 80000);
+});
+
+test("computeReservedBalance uses current_price when proxy is stale (max < current)", () => {
+  // Auktion 3 fra issue #193: current=30K, proxy=20K (stale) → reserved 30K
+  // Stale proxy kan ikke længere overbyde manuelt-budt pris, så manageren har
+  // reelt forpligtet current_price på den auktion.
+  const reserved = computeReservedBalance({
+    leadingAuctions: [{ id: "a3", current_price: 30000 }],
+    proxiesByAuctionId: { a3: { max_amount: 20000 } },
+  });
+  assert.equal(reserved, 30000);
+});
+
+test("computeReservedBalance sums combined scenario from issue #193", () => {
+  // Kombineret eksempel fra issue body: 200K + 80K + 30K = 310K reserved.
+  const reserved = computeReservedBalance({
+    leadingAuctions: [
+      { id: "a1", current_price: 50000 },
+      { id: "a2", current_price: 80000 },
+      { id: "a3", current_price: 30000 },
+    ],
+    proxiesByAuctionId: {
+      a1: { max_amount: 200000 },
+      a3: { max_amount: 20000 },
+    },
+  });
+  assert.equal(reserved, 310000);
+});
+
+test("computeReservedBalance returns 0 for empty input", () => {
+  assert.equal(computeReservedBalance({}), 0);
+  assert.equal(computeReservedBalance({ leadingAuctions: [] }), 0);
+});
+
+test("getAuctionBidIssue returns correct available when proxy bumps reservedBalance", () => {
+  // Integration: bud-endpoint får reservedBalance=310K (fra computeReservedBalance);
+  // bud på 250K mod balance 500K skal afvises (310K + 250K = 560K > 500K).
+  const issue = getAuctionBidIssue({
+    amount: 250000,
+    currentPrice: 100000,
+    currentBidderId: "team-other",
+    teamBalance: 500000,
+    reservedBalance: 310000,
+  });
+  assert.equal(issue?.code, "insufficient_available_balance");
+  assert.equal(issue?.totalCommitment, 560000);
 });

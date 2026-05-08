@@ -22,6 +22,7 @@ import {
   DEFAULT_AUCTION_CONFIG,
 } from "../lib/auctionEngine.js";
 import {
+  computeReservedBalance,
   getAuctionBidIssue,
   getAuctionBidWarnings,
   getAuctionInitialBidderId,
@@ -186,6 +187,20 @@ async function awardXP(userId, action) {
     await supabase.from("users").update({ xp: newXp, level: newLevel }).eq("id", userId);
     await supabase.from("xp_log").insert({ user_id: userId, amount, reason: action });
   } catch (e) { /* silent fail */ }
+}
+
+async function fetchOwnProxiesByAuctionId(supabaseClient, teamId, auctionIds) {
+  if (!auctionIds?.length || !teamId) return {};
+  const { data } = await supabaseClient
+    .from("auction_proxy_bids")
+    .select("auction_id, max_amount")
+    .eq("team_id", teamId)
+    .in("auction_id", auctionIds);
+  const byId = {};
+  for (const row of data || []) {
+    byId[row.auction_id] = row;
+  }
+  return byId;
 }
 
 
@@ -654,7 +669,15 @@ router.post("/auctions", requireAuth, async (req, res) => {
       getTeamMarketState(supabase, initialBidderId),
     ]);
     const activeLeading = leadingAuctions.data || [];
-    const totalCommitment = activeLeading.reduce((sum, row) => sum + (Number(row.current_price) || 0), 0) + price;
+    const proxiesByAuctionId = await fetchOwnProxiesByAuctionId(
+      supabase,
+      initialBidderId,
+      activeLeading.map(row => row.id),
+    );
+    const totalCommitment = computeReservedBalance({
+      leadingAuctions: activeLeading,
+      proxiesByAuctionId,
+    }) + price;
     if ((Number(teamState.balance) || 0) < totalCommitment) {
       return res.status(400).json({ error: "Startbuddet overstiger din disponible balance inkl. aktive auktionsføringer" });
     }
@@ -785,7 +808,15 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
   ]);
   const activeLeading = leadingAuctions.data || [];
   const activeLeadingExceptCurrent = activeLeading.filter(row => row.id !== auction.id);
-  const reservedBalance = activeLeadingExceptCurrent.reduce((sum, row) => sum + (Number(row.current_price) || 0), 0);
+  const proxiesByAuctionId = await fetchOwnProxiesByAuctionId(
+    supabase,
+    req.team.id,
+    activeLeadingExceptCurrent.map(row => row.id),
+  );
+  const reservedBalance = computeReservedBalance({
+    leadingAuctions: activeLeadingExceptCurrent,
+    proxiesByAuctionId,
+  });
   const bidIssue = getAuctionBidIssue({
     amount,
     currentPrice: auction.current_price,
