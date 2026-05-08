@@ -13,13 +13,13 @@
 | ID | Titel | Sev/værdi | Estimat | Blokerer | Status |
 |---|---|---|---|---|---|
 | 07a | Stale fallbacks + sponsor-default drift | P0 bug | S (~30-60 min) | — | ✅ Leveret v2.50 (2026-05-07) |
-| 07b | TOCTOU-fixes + idempotency-keys | P0 bug | M (~2 sessioner) | — | 🆕 Ready |
-| 07c | Atomic balance updates (Postgres-RPC) | P1 safety | M (~1-2 sessioner) | — | 🆕 Ready |
-| 07d | Komplet finance audit-log + admin_log | P1 audit | M (~2 sessioner) | — | 🆕 Ready |
-| 07e | Admin økonomi super-dashboard | Feature | M (~2 sessioner) | 07d | 🆕 Blocked |
-| 07f | Sponsor variabel ift. resultater | Feature | M (~1-2 sessioner) | — | 🆕 Ready |
-| 07g | Manager finance-forecast + risk-tier | Feature | M (~2 sessioner) | 07d (delvist) | 🆕 Ready |
-| 07h | Season financial close-out report | Feature | S-M (~1 session) | 07d (delvist) | 🆕 Ready |
+| 07b | TOCTOU-fixes + idempotency-keys | P0 bug | M (~2 sessioner) | — | ✅ Leveret 2026-05-07 (a90128e, [#80](https://github.com/NicolaiDolmer/CyclingZone/issues/80)) |
+| 07c | Atomic balance updates (Postgres-RPC) | P1 safety | M (~1-2 sessioner) | — | 🆕 Ready ([#81](https://github.com/NicolaiDolmer/CyclingZone/issues/81)) |
+| 07d | Komplet finance audit-log + admin_log | P1 audit | M (~2 sessioner) | — | 🆕 **Næste** ([#82](https://github.com/NicolaiDolmer/CyclingZone/issues/82)) |
+| 07e | Admin økonomi super-dashboard | Feature | M (~2 sessioner) | 07d | 🆕 Blocked ([#83](https://github.com/NicolaiDolmer/CyclingZone/issues/83)) |
+| 07f | Sponsor variabel ift. resultater | Feature | M (~1-2 sessioner) | — | 🆕 Ready ([#84](https://github.com/NicolaiDolmer/CyclingZone/issues/84)) |
+| 07g | Manager finance-forecast + risk-tier | Feature | M (~2 sessioner) | 07d (delvist) | 🆕 Ready ([#85](https://github.com/NicolaiDolmer/CyclingZone/issues/85)) |
+| 07h | Season financial close-out report | Feature | S-M (~1 session) | 07d (delvist) | 🆕 Ready ([#86](https://github.com/NicolaiDolmer/CyclingZone/issues/86)) |
 
 ---
 
@@ -64,7 +64,9 @@
 
 ---
 
-# 07b · TOCTOU-fixes + idempotency-keys
+# 07b · TOCTOU-fixes + idempotency-keys ✅ Leveret 2026-05-07
+
+**Status:** Leveret commit [a90128e](https://github.com/NicolaiDolmer/CyclingZone/commit/a90128e), parent-issue [#80](https://github.com/NicolaiDolmer/CyclingZone/issues/80) closed. Migration `database/2026-05-07-economy-idempotency.sql` anvendt på prod (4 unique-indices + `related_loan_id`-kolonne + `create_loan_atomic()` RPC verificeret 2026-05-09 via `pg_indexes`-query). 7 nye `economyInvariants.test.js`-cases grønne. Resterende beskrivelse nedenfor er bevaret som historisk reference.
 
 **1. Mål.** Lukke 3 race-conditions (createLoan debt-ceiling, payDivisionBonuses double-pay, processLoanInterest double-charge) og tilføje DB-håndhævede idempotency-keys for sponsor/salary/bonus/loan-interest cron-payouts. Tilføje debt_ceiling-tjek til createEmergencyLoan.
 
@@ -433,8 +435,8 @@ Per [GUARDRAILS_CORE.md release hygiene](../GUARDRAILS_CORE.md#release-hygiene-o
 2. Konkurs-mekanik = light (lag 1 forvarsel ved 70%, lag 2 hard-warning ved 90%, ingen auto-actions). Ved breach: status quo + log + notif.
 3. 07f-aktivering = automatisk fra sæson 2 (sæson 1 = introsæson uændret).
 
-**Aktuel sæson-state:** sæson 1 aktiv i open beta, 0 sæsoner afsluttet. Pre-launch dev-docs (archive/ECONOMY_BASELINE_SIMULATION_2026-04-29.md o.l.) der refererer til "sæson 6/7" er fra TEST-database FØR beta-reset; ignorér deres sæson-numre.
+**Aktuel sæson-state (2026-05-09):** sæson 1 aktiv i open beta, 0 sæsoner afsluttet. Pre-launch dev-docs (archive/ECONOMY_BASELINE_SIMULATION_2026-04-29.md o.l.) der refererer til "sæson 6/7" er fra TEST-database FØR beta-reset; ignorér deres sæson-numre.
 
-**Klar til kode:** start med 07a (S, ~30-60 min, ingen migration).
+**Klar til kode:** næste er **07d** ([#82](https://github.com/NicolaiDolmer/CyclingZone/issues/82)) — audit-log foundation. Skala-uafhængig migration (kun nye tabeller + nullable-kolonner, ingen UPDATE/DELETE på eksisterende rows). 07a leveret v2.50; 07b leveret commit a90128e ([#80](https://github.com/NicolaiDolmer/CyclingZone/issues/80) closed 2026-05-07).
 
 Audit + slice-briefings komplet 2026-05-07. Audit-rapport: [docs/archive/ECONOMY_AUDIT_2026-05-07.md](../archive/ECONOMY_AUDIT_2026-05-07.md).
