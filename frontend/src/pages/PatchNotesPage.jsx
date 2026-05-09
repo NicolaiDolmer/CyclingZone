@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "2.95",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Auktionsside viste '—' i Løn-kolonnen",
+        items: [
+          "Frontend · AuctionsPage Supabase-select hentede ikke `salary` for auktionerede ryttere, så Løn-kolonnen (både desktop-row og mobile-card) faldt tilbage til '—' selvom GENERATED salary-kolonnen var korrekt udfyldt i DB. Tilføjet til select-listen. Regression-test (readFileSync+regex på AuctionsPage.jsx) holder os ærlige hvis nogen fjerner et af de fire UI-renderede felter (salary, birthdate, nationality_code, potentiale) igen.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.94",
     date: "2026-05-09",
     label: "Beta",
