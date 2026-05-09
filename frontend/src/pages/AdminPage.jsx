@@ -9,6 +9,7 @@ import {
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import EconomyAdminSection from "../components/admin/EconomyAdminSection";
 import SeasonCycleSection from "../components/admin/SeasonCycleSection";
+import RacePoolSection from "../components/admin/RacePoolSection";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -732,6 +733,11 @@ export default function AdminPage() {
           )}
         </div>
       )}
+
+      {/* ── Race-katalog (Slice 09) ────────────────────────────────────────── */}
+      <Section title="🏁 Race-katalog">
+        <RacePoolSection getAuth={getAuth} onMsg={showMsg} />
+      </Section>
 
       {/* ── Sæson-cyklus (Slice 08) ────────────────────────────────────────── */}
       <Section title="🔄 Sæson-cyklus">
