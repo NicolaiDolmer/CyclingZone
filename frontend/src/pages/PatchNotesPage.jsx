@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.93",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Økonomi-dashboard (07e Fase A)",
+        items: [
+          "Admin · Ny 'Økonomi'-sektion i admin-panelet med tre sub-views der bygger på 07d's audit-trail-fundament: Sundhed (audit-population + balance-drift watchdog som live health-widgets), Overblik (per-hold tabel med balance, sponsor, gæld, gældsloft, ratio og 🟢/🟡/🔴 sustainability-badge filtreret per division), og Transaktioner (paginated finance_transactions-historik med filter på actor_type, reason_code, type, hold, sæson, source_path-substring, dato-range og beløbs-range).",
+          "Admin · Klik på en transaktions-row åbner en drill-down-modal der viser alle 9 audit-kolonner inkl. kontrol af before/after-balance-invarianten (after − before = amount). Audit-leak detekteres automatisk og lyser rødt hvis nye finance_transactions skulle slippe igennem uden actor_type efter 07d Fase B-deploy.",
+          "Backend · Tre nye admin-endpoints (`GET /api/admin/economy-overview`, `GET /api/admin/finance-transactions`, `GET /api/admin/economy-health`) bag requireAdmin-middleware. Pagination clamper limit til max 200 så drill-down-queries ikke kan trække hele rækken på én gang. 8 nye unit-tests + route-ownership-assertions, 423/423 backend-tests grønne.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.92",
     date: "2026-05-09",
     label: "Beta",
