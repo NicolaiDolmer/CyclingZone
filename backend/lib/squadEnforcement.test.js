@@ -292,8 +292,26 @@ function createMockSupabase(initialState) {
     };
   }
 
+  // Slice 07c: balance + finance_transactions atomic via RPC.
+  function rpc(name, params) {
+    if (name !== "increment_balance_with_audit") {
+      throw new Error(`Unexpected rpc: ${name}`);
+    }
+    const team = teamById(params.p_team_id);
+    if (team) {
+      team.balance = (team.balance ?? 0) + params.p_delta;
+      state.teamUpdates.push({ id: team.id, payload: { balance: team.balance } });
+    }
+    state.financeTransactions.push({
+      team_id: params.p_team_id,
+      ...params.p_finance_payload,
+    });
+    return Promise.resolve({ data: team?.balance ?? params.p_delta, error: null });
+  }
+
   return {
     from,
+    rpc,
     state,
   };
 }

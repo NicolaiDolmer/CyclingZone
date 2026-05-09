@@ -44,6 +44,31 @@ function createIdempotencySupabase({
   return {
     state,
     client: {
+      // Slice 07c: balance-mutationer går nu via RPC. Mock kombinerer UPDATE+INSERT
+      // og respekterer uniqueViolations på finance_transactions så samme idempotency-
+      // tests kører uændret post-RPC-refactor.
+      rpc(name, params) {
+        if (name === "create_loan_atomic") {
+          // Lad app-koden falde tilbage til app-niveau debt-ceiling tjek + INSERT.
+          return Promise.resolve({ data: null, error: { code: "PGRST202", message: "function not exposed in mock" } });
+        }
+        if (name === "increment_balance_with_audit") {
+          const row = {
+            team_id: params.p_team_id,
+            ...params.p_finance_payload,
+          };
+          const violation = matchUniqueViolation(row, uniqueViolations, state.financeRows);
+          if (violation) {
+            return Promise.resolve({ data: null, error: violation });
+          }
+          const team = teamById.get(params.p_team_id);
+          if (team) team.balance = (team.balance ?? 0) + params.p_delta;
+          state.financeRows.push({ ...row });
+          state.insertedFinanceRows.push({ ...row });
+          return Promise.resolve({ data: team?.balance ?? params.p_delta, error: null });
+        }
+        throw new Error(`Unexpected rpc: ${name}`);
+      },
       from(table) {
         if (table === "finance_transactions") {
           return {

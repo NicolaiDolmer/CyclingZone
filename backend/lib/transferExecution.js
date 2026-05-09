@@ -8,6 +8,7 @@ import {
   getTeamMarketState,
   getTransferWindowOpen,
 } from "./marketUtils.js";
+import { incrementBalanceWithAudit } from "./balanceRpc.js";
 
 // #44: hent worst-case commitment fra teamets aktive auktioner. Bruges af
 // transfer/swap-execution så et accepteret transfer ikke kan pushe køber i
@@ -305,28 +306,25 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     return failure(409, "Rytteren skiftede status under bekræftelsen — handlen er annulleret", "stale_rider_state");
   }
 
-  await expectMutation(
-    supabase.from("teams").update({ balance: buyerState.balance - price }).eq("id", offer.buyer_team_id)
-  );
-  await expectMutation(
-    supabase.from("teams").update({ balance: sellerState.balance + price }).eq("id", offer.seller_team_id)
-  );
-  await expectMutation(
-    supabase.from("finance_transactions").insert([
-      {
-        team_id: offer.buyer_team_id,
-        type: "transfer_out",
-        amount: -price,
-        description: `Købt ${rider.firstname} ${rider.lastname} via transfer`,
-      },
-      {
-        team_id: offer.seller_team_id,
-        type: "transfer_in",
-        amount: price,
-        description: `Solgt ${rider.firstname} ${rider.lastname} via transfer`,
-      },
-    ])
-  );
+  // Slice 07c: balance + finance_transactions atomic via RPC.
+  await incrementBalanceWithAudit(supabase, {
+    teamId: offer.buyer_team_id,
+    delta: -price,
+    payload: {
+      type: "transfer_out",
+      amount: -price,
+      description: `Købt ${rider.firstname} ${rider.lastname} via transfer`,
+    },
+  });
+  await incrementBalanceWithAudit(supabase, {
+    teamId: offer.seller_team_id,
+    delta: price,
+    payload: {
+      type: "transfer_in",
+      amount: price,
+      description: `Solgt ${rider.firstname} ${rider.lastname} via transfer`,
+    },
+  });
 
   await closeTransferListingsForRiders(supabase, [rider.id], "sold");
   await withdrawTransferOffersForRiders(supabase, [rider.id], offer.id);
@@ -435,53 +433,31 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     return failure(409, "Den ønskede rytter ændrede status under bekræftelsen — byttehandlen er annulleret", "stale_requested_rider_state");
   }
 
-  if (cash > 0) {
-    await expectMutation(
-      supabase.from("teams").update({ balance: proposingState.balance - cash }).eq("id", swap.proposing_team_id)
-    );
-    await expectMutation(
-      supabase.from("teams").update({ balance: receivingState.balance + cash }).eq("id", swap.receiving_team_id)
-    );
-    await expectMutation(
-      supabase.from("finance_transactions").insert([
-        {
-          team_id: swap.proposing_team_id,
-          type: "transfer_out",
-          amount: -cash,
-          description: `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`,
-        },
-        {
-          team_id: swap.receiving_team_id,
-          type: "transfer_in",
-          amount: cash,
-          description: `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`,
-        },
-      ])
-    );
-  } else if (cash < 0) {
+  if (cash !== 0) {
+    // Slice 07c: balance + finance_transactions atomic via RPC.
+    const swapDescription = `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`;
+    const payerId = cash > 0 ? swap.proposing_team_id : swap.receiving_team_id;
+    const receiverId = cash > 0 ? swap.receiving_team_id : swap.proposing_team_id;
     const absCash = Math.abs(cash);
-    await expectMutation(
-      supabase.from("teams").update({ balance: receivingState.balance - absCash }).eq("id", swap.receiving_team_id)
-    );
-    await expectMutation(
-      supabase.from("teams").update({ balance: proposingState.balance + absCash }).eq("id", swap.proposing_team_id)
-    );
-    await expectMutation(
-      supabase.from("finance_transactions").insert([
-        {
-          team_id: swap.receiving_team_id,
-          type: "transfer_out",
-          amount: -absCash,
-          description: `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`,
-        },
-        {
-          team_id: swap.proposing_team_id,
-          type: "transfer_in",
-          amount: absCash,
-          description: `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`,
-        },
-      ])
-    );
+
+    await incrementBalanceWithAudit(supabase, {
+      teamId: payerId,
+      delta: -absCash,
+      payload: {
+        type: "transfer_out",
+        amount: -absCash,
+        description: swapDescription,
+      },
+    });
+    await incrementBalanceWithAudit(supabase, {
+      teamId: receiverId,
+      delta: absCash,
+      payload: {
+        type: "transfer_in",
+        amount: absCash,
+        description: swapDescription,
+      },
+    });
   }
 
   await closeTransferListingsForRiders(

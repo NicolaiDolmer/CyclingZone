@@ -24,6 +24,7 @@ import {
   expectMutation,
   expectSingle,
 } from "./marketUtils.js";
+import { incrementBalanceWithAudit } from "./balanceRpc.js";
 
 const NOOP = async () => {};
 export const SQUAD_FINE_AMOUNT = 100000;
@@ -140,16 +141,17 @@ async function executeAutoPurchase({
     await createEmergencyLoanFn(team.id, shortfall, supabase, seasonId);
   }
 
-  const balanceAfterLoan = await expectSingle(
-    supabase.from("teams").select("balance").eq("id", team.id)
-  );
-
-  await expectMutation(
-    supabase
-      .from("teams")
-      .update({ balance: balanceAfterLoan.balance - price })
-      .eq("id", team.id)
-  );
+  // Slice 07c: balance + finance_transactions atomic via RPC.
+  await incrementBalanceWithAudit(supabase, {
+    teamId: team.id,
+    delta: -price,
+    payload: {
+      type: "auto_squad_purchase",
+      amount: -price,
+      description: `Auto-køb (trupstørrelse): ${rider.firstname} ${rider.lastname}`,
+      season_id: seasonId,
+    },
+  });
 
   await expectMutation(
     supabase
@@ -160,16 +162,6 @@ async function executeAutoPurchase({
         acquired_at: now.toISOString(),
       })
       .eq("id", rider.id)
-  );
-
-  await expectMutation(
-    supabase.from("finance_transactions").insert({
-      team_id: team.id,
-      type: "auto_squad_purchase",
-      amount: -price,
-      description: `Auto-køb (trupstørrelse): ${rider.firstname} ${rider.lastname}`,
-      season_id: seasonId,
-    })
   );
 
   return { riderId: rider.id, riderName: `${rider.firstname} ${rider.lastname}`, price };
@@ -183,16 +175,17 @@ async function executeAutoSale({
 }) {
   const credit = rider.market_value || 0;
 
-  const freshTeam = await expectSingle(
-    supabase.from("teams").select("balance").eq("id", team.id)
-  );
-
-  await expectMutation(
-    supabase
-      .from("teams")
-      .update({ balance: freshTeam.balance + credit })
-      .eq("id", team.id)
-  );
+  // Slice 07c: balance + finance_transactions atomic via RPC.
+  await incrementBalanceWithAudit(supabase, {
+    teamId: team.id,
+    delta: credit,
+    payload: {
+      type: "auto_squad_sale",
+      amount: credit,
+      description: `Auto-salg (trupstørrelse): ${rider.firstname} ${rider.lastname}`,
+      season_id: seasonId,
+    },
+  });
 
   await expectMutation(
     supabase
@@ -202,16 +195,6 @@ async function executeAutoSale({
         pending_team_id: null,
       })
       .eq("id", rider.id)
-  );
-
-  await expectMutation(
-    supabase.from("finance_transactions").insert({
-      team_id: team.id,
-      type: "auto_squad_sale",
-      amount: credit,
-      description: `Auto-salg (trupstørrelse): ${rider.firstname} ${rider.lastname}`,
-      season_id: seasonId,
-    })
   );
 
   return { riderId: rider.id, riderName: `${rider.firstname} ${rider.lastname}`, credit };
@@ -228,26 +211,17 @@ async function applyFinesAndPenalty({
   const fineAmount = SQUAD_FINE_AMOUNT * deviatingCount;
   const penaltyPoints = SQUAD_PENALTY_POINTS * deviatingCount;
 
-  const freshTeam = await expectSingle(
-    supabase.from("teams").select("balance").eq("id", team.id)
-  );
-
-  await expectMutation(
-    supabase
-      .from("teams")
-      .update({ balance: freshTeam.balance - fineAmount })
-      .eq("id", team.id)
-  );
-
-  await expectMutation(
-    supabase.from("finance_transactions").insert({
-      team_id: team.id,
+  // Slice 07c: balance + finance_transactions atomic via RPC.
+  await incrementBalanceWithAudit(supabase, {
+    teamId: team.id,
+    delta: -fineAmount,
+    payload: {
       type: "squad_violation_fine",
       amount: -fineAmount,
       description: `Trupstørrelse-bøde: ${deviatingCount} afvigende rytter${deviatingCount === 1 ? "" : "e"} × ${SQUAD_FINE_AMOUNT.toLocaleString("da-DK")} CZ$`,
       season_id: seasonId,
-    })
-  );
+    },
+  });
 
   // Increment penalty_points på det aktive sæsons standings-row.
   // Hvis der ikke findes en row endnu (sæsonen er lige startet), opretter vi den.

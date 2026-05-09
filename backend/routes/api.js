@@ -88,6 +88,7 @@ import {
   updateStandings,
 } from "../lib/economyEngine.js";
 import { SPONSOR_INCOME_BASE, ADMIN_ACTION_TYPE } from "../lib/economyConstants.js";
+import { incrementBalanceWithAudit } from "../lib/balanceRpc.js";
 import { calculateRiderMarketValue } from "../lib/marketUtils.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
@@ -2081,14 +2082,25 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
           error: `Lejer har kun ${spendIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilgængelig efter aktive bud — kan ikke betale lejegebyr på ${loan.loan_fee.toLocaleString("da-DK")} CZ$`,
         });
       }
-      await supabase.from("teams").update({ balance: borrower.balance - loan.loan_fee }).eq("id", loan.to_team_id);
-      await supabase.from("teams").update({ balance: lender.balance + loan.loan_fee }).eq("id", loan.from_team_id);
-      await supabase.from("finance_transactions").insert([
-        { team_id: loan.to_team_id,   type: "transfer_out", amount: -loan.loan_fee,
-          description: `Lejegebyr: ${loan.rider.firstname} ${loan.rider.lastname} (sæson ${loan.start_season})` },
-        { team_id: loan.from_team_id, type: "transfer_in",  amount: loan.loan_fee,
-          description: `Lejegebyr modtaget: ${loan.rider.firstname} ${loan.rider.lastname} (sæson ${loan.start_season})` },
-      ]);
+      // Slice 07c: balance + finance_transactions atomic via RPC.
+      await incrementBalanceWithAudit(supabase, {
+        teamId: loan.to_team_id,
+        delta: -loan.loan_fee,
+        payload: {
+          type: "transfer_out",
+          amount: -loan.loan_fee,
+          description: `Lejegebyr: ${loan.rider.firstname} ${loan.rider.lastname} (sæson ${loan.start_season})`,
+        },
+      });
+      await incrementBalanceWithAudit(supabase, {
+        teamId: loan.from_team_id,
+        delta: loan.loan_fee,
+        payload: {
+          type: "transfer_in",
+          amount: loan.loan_fee,
+          description: `Lejegebyr modtaget: ${loan.rider.firstname} ${loan.rider.lastname} (sæson ${loan.start_season})`,
+        },
+      });
     }
     await supabase.from("loan_agreements").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", loan.id);
     await notifyTeamOwner(loan.to_team_id, "transfer_offer_accepted",
@@ -2144,14 +2156,25 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
     }
 
     await supabase.from("riders").update({ team_id: req.team.id, acquired_at: new Date().toISOString() }).eq("id", loan.rider_id);
-    await supabase.from("teams").update({ balance: borrower.balance - price }).eq("id", req.team.id);
-    await supabase.from("teams").update({ balance: lender.balance + price }).eq("id", loan.from_team_id);
-    await supabase.from("finance_transactions").insert([
-      { team_id: req.team.id,       type: "transfer_out", amount: -price,
-        description: `Købsoption udnyttet: ${loan.rider.firstname} ${loan.rider.lastname}` },
-      { team_id: loan.from_team_id, type: "transfer_in",  amount: price,
-        description: `Købsoption udnyttet: ${loan.rider.firstname} ${loan.rider.lastname}` },
-    ]);
+    // Slice 07c: balance + finance_transactions atomic via RPC.
+    await incrementBalanceWithAudit(supabase, {
+      teamId: req.team.id,
+      delta: -price,
+      payload: {
+        type: "transfer_out",
+        amount: -price,
+        description: `Købsoption udnyttet: ${loan.rider.firstname} ${loan.rider.lastname}`,
+      },
+    });
+    await incrementBalanceWithAudit(supabase, {
+      teamId: loan.from_team_id,
+      delta: price,
+      payload: {
+        type: "transfer_in",
+        amount: price,
+        description: `Købsoption udnyttet: ${loan.rider.firstname} ${loan.rider.lastname}`,
+      },
+    });
     await supabase.from("loan_agreements").update({ status: "buyout" }).eq("id", loan.id);
     await notifyTeamOwner(loan.from_team_id, "transfer_offer_accepted",
       "Købsoption udnyttet",
@@ -2650,14 +2673,25 @@ router.post("/admin/loans/:id/cancel", requireAdmin, async (req, res) => {
       if (!borrower || !lender) {
         return res.status(500).json({ error: "Kunne ikke hente hold-balancer for refusion" });
       }
-      await supabase.from("teams").update({ balance: borrower.balance + loan.loan_fee }).eq("id", loan.to_team_id);
-      await supabase.from("teams").update({ balance: lender.balance - loan.loan_fee }).eq("id", loan.from_team_id);
-      await supabase.from("finance_transactions").insert([
-        { team_id: loan.to_team_id,   type: "transfer_in",  amount: loan.loan_fee,
-          description: `Lejegebyr refunderet (admin-annullering): ${riderName}` },
-        { team_id: loan.from_team_id, type: "transfer_out", amount: -loan.loan_fee,
-          description: `Lejegebyr tilbageført (admin-annullering): ${riderName}` },
-      ]);
+      // Slice 07c: balance + finance_transactions atomic via RPC.
+      await incrementBalanceWithAudit(supabase, {
+        teamId: loan.to_team_id,
+        delta: loan.loan_fee,
+        payload: {
+          type: "transfer_in",
+          amount: loan.loan_fee,
+          description: `Lejegebyr refunderet (admin-annullering): ${riderName}`,
+        },
+      });
+      await incrementBalanceWithAudit(supabase, {
+        teamId: loan.from_team_id,
+        delta: -loan.loan_fee,
+        payload: {
+          type: "transfer_out",
+          amount: -loan.loan_fee,
+          description: `Lejegebyr tilbageført (admin-annullering): ${riderName}`,
+        },
+      });
       refundedFee = loan.loan_fee;
     }
 
@@ -3239,12 +3273,15 @@ router.post("/admin/adjust-balance", requireAdmin, async (req, res) => {
     if (!team_id || amount === undefined) return res.status(400).json({ error: "team_id og amount kræves" });
     const { data: team } = await supabase.from("teams").select("balance").eq("id", team_id).single();
     if (!team) return res.status(404).json({ error: "Hold ikke fundet" });
-    await supabase.from("teams").update({ balance: team.balance + parseInt(amount) }).eq("id", team_id);
-    await supabase.from("finance_transactions").insert({
-      team_id,
-      type: "admin_adjustment",
-      amount: parseInt(amount),
-      description: reason || "Admin justering",
+    // Slice 07c: balance + finance_transactions atomic via RPC.
+    await incrementBalanceWithAudit(supabase, {
+      teamId: team_id,
+      delta: parseInt(amount),
+      payload: {
+        type: "admin_adjustment",
+        amount: parseInt(amount),
+        description: reason || "Admin justering",
+      },
     });
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
@@ -4055,14 +4092,17 @@ router.post("/board/bonus-offer/accept", requireAuth, async (req, res) => {
     // Krediter holdets balance via samme finance-kontrakt som sponsor (type='bonus').
     const { data: team } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
     if (team) {
-      await supabase.from("teams").update({ balance: (team.balance || 0) + result.bonus_amount }).eq("id", req.team.id);
       const { data: activeSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
-      await supabase.from("finance_transactions").insert({
-        team_id: req.team.id,
-        type: "bonus",
-        amount: result.bonus_amount,
-        description: `Bestyrelsens bonus-tilbud accepteret (mod ekstra-mål: ${result.extra_goal.label})`,
-        season_id: activeSeason?.id ?? null,
+      // Slice 07c: balance + finance_transactions atomic via RPC.
+      await incrementBalanceWithAudit(supabase, {
+        teamId: req.team.id,
+        delta: result.bonus_amount,
+        payload: {
+          type: "bonus",
+          amount: result.bonus_amount,
+          description: `Bestyrelsens bonus-tilbud accepteret (mod ekstra-mål: ${result.extra_goal.label})`,
+          season_id: activeSeason?.id ?? null,
+        },
       });
     }
 

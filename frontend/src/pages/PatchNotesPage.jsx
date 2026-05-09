@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.91",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Backend · Atomic balance-RPC eliminerer tabte penge-mutationer (07c)",
+        items: [
+          "Backend · Alle ~22 callsites der opdaterer holdets balance — auktion-køb/-salg, transfer-køb/-salg, byttehandel-kontant, præmiepenge, lejegebyr og lejegebyr-refusion, lån (oprettelse, afdrag, nødlån, købsoption), sponsor-payout, sæson-løn, divisionsbonus, negativ-balance-rente, trupstørrelse-auto-køb/-salg/-bøde, board-bonus-tilbud og admin-balance-justering — kører nu via én Postgres-funktion `increment_balance_with_audit(team_id, delta, payload)` der atomic UPDATE'er teams.balance OG INSERT'er finance_transactions i én DB-transaktion pr. team.",
+          "Backend · Lost-update-races elimineret: pg_advisory_xact_lock(team_id) serialiserer concurrent calls på samme hold, så to samtidige finansoperationer ikke længere kan overskrive hinandens balance-ændring. Mellem-state hvor balance er ændret men finance_transactions mangler kan ikke længere opstå (rolled back atomic).",
+          "Backend · Hver finance-row får nu automatisk udfyldt before_balance + after_balance fra RPC'en — fundament for 07d Fase B's fulde audit-trail-population af de øvrige 7 audit-felter (actor_type, source_path, reason_code m.fl.).",
+          "Backend · 8 nye unit-tests i balanceAtomicity.test.js + live race-test mod prod (10 deltas, audit-invariant after = before + amount holder for alle rows). 410/410 backend-tests grønne.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.90",
     date: "2026-05-09",
     label: "Beta",

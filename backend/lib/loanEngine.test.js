@@ -46,6 +46,19 @@ function createLoanAgreementSeasonFeeSupabase({
     balanceMap,
     financeRows,
     client: {
+      // Slice 07c: balance + finance_transactions går nu via RPC. Mock simulerer
+      // den atomic UPDATE+INSERT i én operation.
+      rpc(name, params) {
+        assert.equal(name, "increment_balance_with_audit");
+        const before = balanceMap.get(params.p_team_id) ?? 0;
+        const after = before + params.p_delta;
+        balanceMap.set(params.p_team_id, after);
+        financeRows.push({
+          team_id: params.p_team_id,
+          ...params.p_finance_payload,
+        });
+        return Promise.resolve({ data: after, error: null });
+      },
       from(table) {
         if (table === "loan_agreements") {
           return {
@@ -69,47 +82,6 @@ function createLoanAgreementSeasonFeeSupabase({
                   };
                 },
               };
-            },
-          };
-        }
-
-        if (table === "teams") {
-          return {
-            select(columns) {
-              assert.equal(columns, "balance");
-
-              return {
-                eq(column, value) {
-                  assert.equal(column, "id");
-
-                  return {
-                    single() {
-                      return Promise.resolve({
-                        data: { balance: balanceMap.get(value) ?? 0 },
-                        error: null,
-                      });
-                    },
-                  };
-                },
-              };
-            },
-            update(payload) {
-              return {
-                eq(column, value) {
-                  assert.equal(column, "id");
-                  balanceMap.set(value, payload.balance);
-                  return Promise.resolve({ error: null });
-                },
-              };
-            },
-          };
-        }
-
-        if (table === "finance_transactions") {
-          return {
-            insert(rows) {
-              financeRows.push(...rows);
-              return Promise.resolve({ error: null });
             },
           };
         }
@@ -197,11 +169,22 @@ function createEmergencyLoanSupabase({
   return {
     state,
     client: {
+      // Slice 07c: balance + finance_transactions atomic via RPC.
+      rpc(name, params) {
+        assert.equal(name, "increment_balance_with_audit");
+        assert.equal(params.p_team_id, teamId);
+        state.balance = state.balance + params.p_delta;
+        state.financeRows.push({
+          team_id: params.p_team_id,
+          ...params.p_finance_payload,
+        });
+        return Promise.resolve({ data: state.balance, error: null });
+      },
       from(table) {
         if (table === "teams") {
           return {
             select(columns) {
-              assert.equal(["division", "balance", "user_id"].includes(columns), true);
+              assert.equal(["division", "user_id"].includes(columns), true);
               return {
                 eq(column, value) {
                   assert.equal(column, "id");
@@ -214,19 +197,9 @@ function createEmergencyLoanSupabase({
                       if (columns === "user_id") {
                         return Promise.resolve({ data: { user_id: "user-1" }, error: null });
                       }
-                      return Promise.resolve({ data: { balance: state.balance }, error: null });
+                      throw new Error(`Unexpected teams.select columns: ${columns}`);
                     },
                   };
-                },
-              };
-            },
-            update(payload) {
-              return {
-                eq(column, value) {
-                  assert.equal(column, "id");
-                  assert.equal(value, teamId);
-                  state.balance = payload.balance;
-                  return Promise.resolve({ error: null });
                 },
               };
             },
@@ -261,15 +234,6 @@ function createEmergencyLoanSupabase({
                   };
                 },
               };
-            },
-          };
-        }
-
-        if (table === "finance_transactions") {
-          return {
-            insert(row) {
-              state.financeRows.push(row);
-              return Promise.resolve({ error: null });
             },
           };
         }
@@ -345,6 +309,23 @@ function createCeilingSupabase({
   return {
     state,
     client: {
+      // Slice 07c: balance + finance_transactions atomic via RPC.
+      rpc(name, params) {
+        if (name === "create_loan_atomic") {
+          // Mock create_loan_atomic ved at returnere PGRST202 så app falder
+          // tilbage til app-niveau path (mirror af gammel test-mock-adfærd).
+          return Promise.resolve({ data: null, error: { code: "PGRST202", message: "function not exposed in mock" } });
+        }
+        if (name === "increment_balance_with_audit") {
+          state.balance = state.balance + params.p_delta;
+          state.financeRows.push({
+            team_id: params.p_team_id,
+            ...params.p_finance_payload,
+          });
+          return Promise.resolve({ data: state.balance, error: null });
+        }
+        throw new Error(`Unexpected rpc: ${name}`);
+      },
       from(table) {
         if (table === "teams") {
           return {
@@ -355,14 +336,11 @@ function createCeilingSupabase({
                     single() {
                       if (columns === "division") return Promise.resolve({ data: { division }, error: null });
                       if (columns === "user_id") return Promise.resolve({ data: { user_id: "user-1" }, error: null });
-                      return Promise.resolve({ data: { balance: state.balance }, error: null });
+                      throw new Error(`Unexpected teams.select columns: ${columns}`);
                     },
                   };
                 },
               };
-            },
-            update(payload) {
-              return { eq() { state.balance = payload.balance; return Promise.resolve({ error: null }); } };
             },
           };
         }
@@ -393,9 +371,6 @@ function createCeilingSupabase({
               return { select() { return { single() { return Promise.resolve({ data: { id: "loan-x", ...row }, error: null }); } }; } };
             },
           };
-        }
-        if (table === "finance_transactions") {
-          return { insert(row) { state.financeRows.push(row); return Promise.resolve({ error: null }); } };
         }
         if (table === "notifications") {
           const query = { eq() { return query; }, gte() { return query; }, order() { return query; }, is() { return query; }, limit() { return Promise.resolve({ data: [], error: null }); } };

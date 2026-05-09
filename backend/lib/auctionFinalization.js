@@ -8,6 +8,7 @@ import {
   getTransferWindowOpen,
   MARKET_SQUAD_LIMITS,
 } from "./marketUtils.js";
+import { incrementBalanceWithAudit } from "./balanceRpc.js";
 
 export const AUCTION_SQUAD_LIMITS = MARKET_SQUAD_LIMITS;
 
@@ -282,50 +283,28 @@ async function finalizeAuctionRecord({
         .eq("id", auction.rider.id)
     );
 
-    await expectMutation(
-      supabase
-        .from("teams")
-        .update({ balance: buyer.balance - price })
-        .eq("id", effectiveBidderId)
-    );
-
-    const financeRows = [
-      {
-        team_id: effectiveBidderId,
+    // Slice 07c: balance + finance_transactions atomic via RPC.
+    await incrementBalanceWithAudit(supabase, {
+      teamId: effectiveBidderId,
+      delta: -price,
+      payload: {
         type: "transfer_out",
         amount: -price,
         description: `Købt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
       },
-    ];
+    });
 
     if (actualSellerTeamId) {
-      const seller = actualSellerTeamId === auction.seller_team_id && sellerOwned
-        ? await expectSingle(
-            supabase
-              .from("teams")
-              .select("balance")
-              .eq("id", auction.seller_team_id)
-          )
-        : actualSeller;
-
-      await expectMutation(
-        supabase
-          .from("teams")
-          .update({ balance: seller.balance + price })
-          .eq("id", actualSellerTeamId)
-      );
-
-      financeRows.push({
-        team_id: actualSellerTeamId,
-        type: "transfer_in",
-        amount: price,
-        description: `Solgt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
+      await incrementBalanceWithAudit(supabase, {
+        teamId: actualSellerTeamId,
+        delta: price,
+        payload: {
+          type: "transfer_in",
+          amount: price,
+          description: `Solgt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
+        },
       });
     }
-
-    await expectMutation(
-      supabase.from("finance_transactions").insert(financeRows)
-    );
 
     await awardXP(effectiveBidderId, "auction_won");
     if (sellerOwned) {
@@ -406,28 +385,16 @@ async function finalizeAuctionRecord({
         .eq("id", auction.rider.id)
     );
 
-    const seller = await expectSingle(
-      supabase
-        .from("teams")
-        .select("balance")
-        .eq("id", auction.seller_team_id)
-    );
-
-    await expectMutation(
-      supabase
-        .from("teams")
-        .update({ balance: seller.balance + salePrice })
-        .eq("id", auction.seller_team_id)
-    );
-
-    await expectMutation(
-      supabase.from("finance_transactions").insert({
-        team_id: auction.seller_team_id,
+    // Slice 07c: balance + finance_transactions atomic via RPC.
+    await incrementBalanceWithAudit(supabase, {
+      teamId: auction.seller_team_id,
+      delta: salePrice,
+      payload: {
         type: "transfer_in",
         amount: salePrice,
         description: `Garanteret banksalg: ${auction.rider.firstname} ${auction.rider.lastname}`,
-      })
-    );
+      },
+    });
 
     await notifyTeamOwner(
       auction.seller_team_id,
