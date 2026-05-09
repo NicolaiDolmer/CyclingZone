@@ -2,7 +2,6 @@ import { SQUAD_FINE_AMOUNT, SQUAD_PENALTY_POINTS } from "./squadEnforcement.js";
 
 // Min-step = +1 CZ$ over current price når der allerede er bud.
 // Hvis ingen har budt endnu (asking-price på guaranteed sale), tillad match-bud.
-// Tidligere: 10%-increment afrundet op til 1000 — droppet 2026-05-07 (#178 polish-sprint).
 export function getMinimumAuctionBid(currentPrice, { hasActiveBid = true } = {}) {
   const price = Number(currentPrice) || 0;
   return hasActiveBid ? price + 1 : price;

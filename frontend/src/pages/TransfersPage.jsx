@@ -464,15 +464,37 @@ function SwapCard({ swap, myTeamId, onAction }) {
       )}
 
       {isCountered && isProposing && (
-        <div className="flex gap-2">
-          <button onClick={() => doAction("accept_counter")} disabled={loading}
-            className="flex-1 py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
-            ✓ Accepter modbud
-          </button>
-          <button onClick={() => doAction("withdraw")} disabled={loading}
-            className="px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm hover:bg-cz-danger-bg disabled:opacity-50">
-            Afvis
-          </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <button onClick={() => doAction("accept_counter")} disabled={loading}
+              className="flex-1 py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              ✓ Accepter modbud
+            </button>
+            <button onClick={() => setMode(mode === "counter" ? null : "counter")}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all
+                ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-orange-500/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
+              ↔ Modbud
+            </button>
+            <button onClick={() => doAction("withdraw")} disabled={loading}
+              className="px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm hover:bg-cz-danger-bg disabled:opacity-50">
+              Afvis
+            </button>
+          </div>
+          {mode === "counter" && (
+            <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
+              <label className="text-cz-3 text-xs uppercase tracking-wider">Kontantbetaling (CZ$) · positiv = du betaler, negativ = du modtager</label>
+              <div className="flex gap-2">
+                <input type="number" value={counterCash}
+                  onChange={e => setCounterCash(parseInt(e.target.value) || 0)}
+                  className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                <button onClick={() => doAction("counter", { counter_cash: counterCash })}
+                  disabled={loading}
+                  className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+                  Send
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -726,7 +748,6 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
   const [selectedRider, setSelectedRider] = useState(null);
   const [loanFee, setLoanFee]         = useState(0);
   const [startSeason, setStartSeason] = useState("");
-  const [endSeason, setEndSeason]     = useState("");
   const [buyOption, setBuyOption]     = useState("");
   const [loading, setLoading]         = useState(false);
   const [searching, setSearching]     = useState(false);
@@ -745,13 +766,13 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
   }
 
   async function handleSubmit() {
-    if (!selectedRider || !startSeason || !endSeason) return;
+    if (!selectedRider || !startSeason) return;
     setLoading(true);
     await onSubmit({
       rider_id: selectedRider.id,
       loan_fee: loanFee,
       start_season: parseInt(startSeason),
-      end_season: parseInt(endSeason),
+      end_season: parseInt(startSeason),
       buy_option_price: buyOption ? parseInt(buyOption) : null,
     });
     setLoading(false);
@@ -786,19 +807,11 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">Fra sæson</label>
-          <input type="number" value={startSeason} onChange={e => setStartSeason(e.target.value)}
-            placeholder="fx. 3"
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
-        </div>
-        <div>
-          <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">Til sæson</label>
-          <input type="number" value={endSeason} onChange={e => setEndSeason(e.target.value)}
-            placeholder="fx. 4"
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
-        </div>
+      <div>
+        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">Sæson (max 1 sæson)</label>
+        <input type="number" value={startSeason} onChange={e => setStartSeason(e.target.value)}
+          placeholder="fx. 3"
+          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
       </div>
 
       <div>
@@ -815,7 +828,7 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
       </div>
 
       <div className="flex gap-2">
-        <button onClick={handleSubmit} disabled={loading || !selectedRider || !startSeason || !endSeason}
+        <button onClick={handleSubmit} disabled={loading || !selectedRider || !startSeason}
           className="flex-1 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-40">
           {loading ? "Sender..." : "Send forslag"}
         </button>
