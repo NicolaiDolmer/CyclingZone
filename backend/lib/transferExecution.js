@@ -9,6 +9,11 @@ import {
   getTransferWindowOpen,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import {
+  FINANCE_ACTOR_TYPE,
+  FINANCE_REASON,
+  FINANCE_RELATED_ENTITY,
+} from "./economyConstants.js";
 
 // #44: hent worst-case commitment fra teamets aktive auktioner. Bruges af
 // transfer/swap-execution så et accepteret transfer ikke kan pushe køber i
@@ -261,7 +266,7 @@ function describeSwapIssue(issue, { offered, requested }) {
 }
 
 // Private: execute a fully-agreed transfer offer. Window must be open at call site.
-async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notifyTeamOwner = NOOP, notifyDiscordHistory = NOOP }) {
+async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notifyTeamOwner = NOOP, notifyDiscordHistory = NOOP, auditCtx = null }) {
   const price = getTransferPrice(offer);
   const rider = await expectSingle(
     supabase
@@ -307,6 +312,10 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   }
 
   // Slice 07c: balance + finance_transactions atomic via RPC.
+  // 07d Fase B: actor flyder gennem auditCtx (api fra confirmTransferOffer,
+  // cron fra flushWindowPendingOffers). Default cron/null hvis ikke sat.
+  const actorType = auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON;
+  const actorId = auditCtx?.actorId || null;
   await incrementBalanceWithAudit(supabase, {
     teamId: offer.buyer_team_id,
     delta: -price,
@@ -314,6 +323,12 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       type: "transfer_out",
       amount: -price,
       description: `Købt ${rider.firstname} ${rider.lastname} via transfer`,
+      actor_type: actorType,
+      actor_id: actorId,
+      source_path: "transferExecution.executeTransferOffer.buyer",
+      reason_code: FINANCE_REASON.TRANSFER_PURCHASE,
+      related_entity_type: FINANCE_RELATED_ENTITY.TRANSFER,
+      related_entity_id: offer.id,
     },
   });
   await incrementBalanceWithAudit(supabase, {
@@ -323,6 +338,12 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       type: "transfer_in",
       amount: price,
       description: `Solgt ${rider.firstname} ${rider.lastname} via transfer`,
+      actor_type: actorType,
+      actor_id: actorId,
+      source_path: "transferExecution.executeTransferOffer.seller",
+      reason_code: FINANCE_REASON.TRANSFER_SALE,
+      related_entity_type: FINANCE_RELATED_ENTITY.TRANSFER,
+      related_entity_id: offer.id,
     },
   });
 
@@ -357,7 +378,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
 }
 
 // Private: execute a fully-agreed swap offer. Window must be open at call site.
-async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notifyDiscordHistory = NOOP }) {
+async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notifyDiscordHistory = NOOP, auditCtx = null }) {
   const cash = getSwapCash(swap);
   const [offered, requested] = await Promise.all([
     expectSingle(
@@ -435,10 +456,13 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
 
   if (cash !== 0) {
     // Slice 07c: balance + finance_transactions atomic via RPC.
+    // 07d Fase B: actor via auditCtx (api/cron afhængigt af caller).
     const swapDescription = `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`;
     const payerId = cash > 0 ? swap.proposing_team_id : swap.receiving_team_id;
     const receiverId = cash > 0 ? swap.receiving_team_id : swap.proposing_team_id;
     const absCash = Math.abs(cash);
+    const swapActorType = auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON;
+    const swapActorId = auditCtx?.actorId || null;
 
     await incrementBalanceWithAudit(supabase, {
       teamId: payerId,
@@ -447,6 +471,12 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
         type: "transfer_out",
         amount: -absCash,
         description: swapDescription,
+        actor_type: swapActorType,
+        actor_id: swapActorId,
+        source_path: "transferExecution.executeSwapOffer.payer",
+        reason_code: FINANCE_REASON.SWAP_CASH_DELTA,
+        related_entity_type: FINANCE_RELATED_ENTITY.SWAP,
+        related_entity_id: swap.id,
       },
     });
     await incrementBalanceWithAudit(supabase, {
@@ -456,6 +486,12 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
         type: "transfer_in",
         amount: absCash,
         description: swapDescription,
+        actor_type: swapActorType,
+        actor_id: swapActorId,
+        source_path: "transferExecution.executeSwapOffer.receiver",
+        reason_code: FINANCE_REASON.SWAP_CASH_DELTA,
+        related_entity_type: FINANCE_RELATED_ENTITY.SWAP,
+        related_entity_id: swap.id,
       },
     });
   }
@@ -494,6 +530,7 @@ export async function confirmTransferOffer({
   notifyTeamOwner,
   logActivity = NOOP,
   notifyDiscordHistory = NOOP,
+  auditCtx = null,
 }) {
   const offer = await expectMaybeSingle(
     supabase
@@ -563,7 +600,7 @@ export async function confirmTransferOffer({
     return success({ action: "window_pending" });
   }
 
-  return executeTransferOffer(supabase, confirmedOffer, { logActivity, notifyTeamOwner, notifyDiscordHistory });
+  return executeTransferOffer(supabase, confirmedOffer, { logActivity, notifyTeamOwner, notifyDiscordHistory, auditCtx });
 }
 
 export async function confirmSwapOffer({
@@ -572,6 +609,7 @@ export async function confirmSwapOffer({
   confirmingTeamId,
   notifyTeamOwner,
   notifyDiscordHistory = NOOP,
+  auditCtx = null,
 }) {
   const swap = await expectMaybeSingle(
     supabase
@@ -640,15 +678,17 @@ export async function confirmSwapOffer({
     return success({ action: "window_pending" });
   }
 
-  return executeSwapOffer(supabase, confirmedSwap, { notifyTeamOwner, notifyDiscordHistory });
+  return executeSwapOffer(supabase, confirmedSwap, { notifyTeamOwner, notifyDiscordHistory, auditCtx });
 }
 
 // Executes all window_pending offers and swaps — called when the transfer window opens.
+// Cron-triggered → auditCtx defaults to actor_type=cron, actor_id=null.
 export async function flushWindowPendingOffers(supabase, {
   logActivity = NOOP,
   notifyTeamOwner = NOOP,
   notifyTransferCompleted = NOOP,
   notifySwapCompleted = NOOP,
+  auditCtx = null,
 }) {
   const [pendingTransfers, pendingSwaps] = await Promise.all([
     supabase
@@ -667,6 +707,7 @@ export async function flushWindowPendingOffers(supabase, {
       logActivity,
       notifyTeamOwner,
       notifyDiscordHistory: notifyTransferCompleted,
+      auditCtx,
     });
     if (result.ok) transfersProcessed++;
   }
@@ -676,6 +717,7 @@ export async function flushWindowPendingOffers(supabase, {
     const result = await executeSwapOffer(supabase, swap, {
       notifyTeamOwner,
       notifyDiscordHistory: notifySwapCompleted,
+      auditCtx,
     });
     if (result.ok) swapsProcessed++;
   }

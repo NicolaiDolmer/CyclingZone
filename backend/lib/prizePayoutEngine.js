@@ -1,4 +1,9 @@
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import {
+  FINANCE_ACTOR_TYPE,
+  FINANCE_REASON,
+  FINANCE_RELATED_ENTITY,
+} from "./economyConstants.js";
 
 export async function getSeasonPrizePreview(seasonId, supabase) {
   const { data: races, error: racesError } = await supabase
@@ -105,6 +110,8 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase) {
   for (const race of preview.pending_payment) {
     for (const team of race.by_team) {
       // Slice 07c: balance + finance_transactions atomic via RPC.
+      // 07d Fase B: admin-trigger → actor_type=admin, actor_id=adminUserId.
+      // idempotency_key (race_prize:race:team) supplerer prize_paid_at-gaten.
       await incrementBalanceWithAudit(supabase, {
         teamId: team.team_id,
         delta: team.prize,
@@ -114,8 +121,15 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase) {
           description: `Præmiepenge — ${race.race_name}`,
           season_id: seasonId,
           race_id: race.race_id,
+          actor_type: FINANCE_ACTOR_TYPE.ADMIN,
+          actor_id: adminUserId || null,
+          source_path: "prizePayoutEngine.paySeasonPrizesToDate",
+          reason_code: FINANCE_REASON.RACE_PRIZE_PAYOUT,
+          related_entity_type: FINANCE_RELATED_ENTITY.RACE,
+          related_entity_id: race.race_id,
+          idempotency_key: `race_prize:${race.race_id}:${team.team_id}`,
         },
-      });
+      }, { allowDuplicate: true });
     }
 
     const { error: raceError } = await supabase

@@ -9,6 +9,11 @@
 import { computeWorstCaseCommitment } from "./auctionRules.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import {
+  FINANCE_ACTOR_TYPE,
+  FINANCE_REASON,
+  FINANCE_RELATED_ENTITY,
+} from "./economyConstants.js";
 
 // #44: hent manager's worst-case commitment fra aktive auktioner (leading +
 // proxies). Bruges af repayLoan + andre lån-paths så manageren ikke kan betale
@@ -61,7 +66,8 @@ export async function processLoanAgreementSeasonFees(
   teamId,
   seasonNumber,
   seasonId,
-  supabaseClient = null
+  supabaseClient = null,
+  auditCtx = null
 ) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
   const { data: loans, error } = await client
@@ -76,6 +82,11 @@ export async function processLoanAgreementSeasonFees(
     shouldChargeLoanAgreementSeasonFee(loan, seasonNumber)
   );
 
+  // Default actor: cron (called from sponsor-payment ved sæsonstart). Tests/admin
+  // kan overskrive via auditCtx for at registrere api/admin actor_id.
+  const actorType = auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON;
+  const actorId = auditCtx?.actorId || null;
+
   for (const loan of chargeableLoans) {
     const riderName = loan.rider
       ? `${loan.rider.firstname} ${loan.rider.lastname}`
@@ -89,8 +100,15 @@ export async function processLoanAgreementSeasonFees(
         amount: -loan.loan_fee,
         description: `Lejegebyr: ${riderName} (sæson ${seasonNumber})`,
         season_id: seasonId,
+        actor_type: actorType,
+        actor_id: actorId,
+        source_path: "loanEngine.processLoanAgreementSeasonFees.payer",
+        reason_code: FINANCE_REASON.LOAN_FEE_PAID,
+        related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
+        related_entity_id: loan.id,
+        idempotency_key: `loan_fee_paid:${loan.id}:${seasonId}`,
       },
-    });
+    }, { allowDuplicate: true });
     await incrementBalanceWithAudit(client, {
       teamId: loan.from_team_id,
       delta: loan.loan_fee,
@@ -99,8 +117,15 @@ export async function processLoanAgreementSeasonFees(
         amount: loan.loan_fee,
         description: `Lejegebyr modtaget: ${riderName} (sæson ${seasonNumber})`,
         season_id: seasonId,
+        actor_type: actorType,
+        actor_id: actorId,
+        source_path: "loanEngine.processLoanAgreementSeasonFees.receiver",
+        reason_code: FINANCE_REASON.LOAN_FEE_RECEIVED,
+        related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
+        related_entity_id: loan.id,
+        idempotency_key: `loan_fee_received:${loan.id}:${seasonId}`,
       },
-    });
+    }, { allowDuplicate: true });
   }
 
   return chargeableLoans.map((loan) => ({
@@ -130,7 +155,7 @@ export async function getTotalDebt(teamId, supabaseClient = null) {
 
 // ── Opret lån (manager-initieret: short eller long) ───────────────────────────
 
-export async function createLoan(teamId, loanType, principalAmount, supabaseClient = null) {
+export async function createLoan(teamId, loanType, principalAmount, supabaseClient = null, auditCtx = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
   const configs = await getLoanConfig(teamId, client);
   const config = configs.find(c => c.loan_type === loanType);
@@ -196,6 +221,12 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
       type: "loan_received",
       amount: principalAmount,
       description: `${loanType === "short" ? "Kort" : "Langt"} lån optaget (gebyr: ${fee} CZ$)`,
+      actor_type: auditCtx?.actorType || FINANCE_ACTOR_TYPE.API,
+      actor_id: auditCtx?.actorId || null,
+      source_path: "loanEngine.createLoan",
+      reason_code: FINANCE_REASON.LOAN_PRINCIPAL_RECEIVED,
+      related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
+      related_entity_id: loan.id,
     },
   });
 
@@ -210,7 +241,7 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
 
 // ── Nødlån — oprettes automatisk hvis holdet ikke kan betale løn ───────────────
 
-export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient = null, seasonId = null) {
+export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient = null, seasonId = null, auditCtx = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
   const configs = await getLoanConfig(teamId, client);
   const config = configs.find(c => c.loan_type === "emergency");
@@ -264,6 +295,12 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
       amount: amountNeeded,
       description: `Nødlån oprettet automatisk (gebyr: ${fee} CZ$, rente: ${(interestRate * 100).toFixed(0)}%/sæson)`,
       season_id: seasonId,
+      actor_type: auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON,
+      actor_id: auditCtx?.actorId || null,
+      source_path: "loanEngine.createEmergencyLoan",
+      reason_code: FINANCE_REASON.EMERGENCY_LOAN_RECEIVED,
+      related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
+      related_entity_id: loan.id,
     },
   });
 
@@ -286,7 +323,7 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
 
 // ── Betal rate på et lån ──────────────────────────────────────────────────────
 
-export async function repayLoan(loanId, teamId, amount, supabaseClient = null) {
+export async function repayLoan(loanId, teamId, amount, supabaseClient = null, auditCtx = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
   const { data: loan } = await client.from("loans").select("*").eq("id", loanId).single();
   if (!loan || loan.team_id !== teamId) throw new Error("Lån ikke fundet");
@@ -324,6 +361,12 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null) {
       type: "loan_repayment",
       amount: -actualAmount,
       description: `Lånrate betalt${isPaidOff ? " — lån fuldt tilbagebetalt! 🎉" : ` (resterende: ${newRemaining} CZ$)`}`,
+      actor_type: auditCtx?.actorType || FINANCE_ACTOR_TYPE.API,
+      actor_id: auditCtx?.actorId || null,
+      source_path: "loanEngine.repayLoan",
+      reason_code: FINANCE_REASON.LOAN_REPAYMENT,
+      related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
+      related_entity_id: loanId,
     },
   });
 
