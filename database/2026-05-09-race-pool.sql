@@ -44,5 +44,8 @@ CREATE INDEX IF NOT EXISTS idx_races_pool_race_id ON races(pool_race_id);
 
 -- RLS: pool er public-readable (alle kan se verdens-kalenderen).
 -- Mutation kun via service_role (admin-endpoints går igennem service-key).
+-- DROP+CREATE pattern fordi CREATE POLICY ikke understøtter IF NOT EXISTS i Postgres
+-- — vigtigt for idempotency i auto-migrate workflow.
 ALTER TABLE race_pool ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS race_pool_public_read ON race_pool;
 CREATE POLICY race_pool_public_read ON race_pool FOR SELECT USING (true);
