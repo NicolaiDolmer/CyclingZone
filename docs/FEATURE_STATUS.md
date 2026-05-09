@@ -131,6 +131,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Løbsoprettelse og season-end preview endpoint
 - Admin repair endpoint til season-end finance/board side effects uden at køre season status eller oprykning/nedrykning igen; deployed 2026-04-29 og kan resume missing side effects uden at duplikere eksisterende salary/snapshots.
 - Beta-reset komplet suite: marked, trupper, balancer, divisioner, bestyrelse, løbskalender, sæsoner, XP/level og achievement unlocks via delt reset-service
+- **Økonomi-dashboard (07e Fase A, v2.93, 2026-05-09):** Ny Økonomi-sektion i AdminPage med tre sub-views — Sundhed (NULL actor_type-counter + balance-drift watchdog), Overblik (per-hold balance/sponsor/gæld/loft/sustainability) og Transaktioner (paginated finance_transactions m. filter på actor_type/reason_code/source_path/team/season/dato/beløb + drill-down-modal m. before/after-balance-invariant-check). Tre nye GET-endpoints (`/admin/economy-overview`, `/finance-transactions`, `/economy-health`) bag requireAdmin med limit-clamping (max 200). Fase B (admin_log-feed + cron-run-korrelering + CSV-export) parkeret til næste session.
 
 **Rider import — kendte fejlmønstre der nu håndteres (v1.91–1.93):**
 - PCM sammensatte efternavne (Cort Nielsen, Halland Johannessen, Søjberg Pedersen) → token-set match
