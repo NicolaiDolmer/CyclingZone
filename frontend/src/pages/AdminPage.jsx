@@ -8,6 +8,7 @@ import {
 } from "../lib/uciRaceClasses";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import EconomyAdminSection from "../components/admin/EconomyAdminSection";
+import SeasonCycleSection from "../components/admin/SeasonCycleSection";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -731,6 +732,11 @@ export default function AdminPage() {
           )}
         </div>
       )}
+
+      {/* ── Sæson-cyklus (Slice 08) ────────────────────────────────────────── */}
+      <Section title="🔄 Sæson-cyklus">
+        <SeasonCycleSection getAuth={getAuth} onMsg={showMsg} />
+      </Section>
 
       {/* ── Marked-pause kill switch ───────────────────────────────────────── */}
       <Section title="Marked-pause">

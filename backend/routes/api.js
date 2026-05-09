@@ -39,6 +39,10 @@ import {
   finalizeAuctionById,
   finalizeExpiredAuctions as finalizeExpiredAuctionsShared,
 } from "../lib/auctionFinalization.js";
+import {
+  buildTransitionPlan,
+  transitionToNextSeason,
+} from "../lib/seasonTransition.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import {
   PAUSE_LEVELS,
@@ -3517,6 +3521,59 @@ router.post("/admin/market/resume", requireAdmin, async (req, res) => {
       auctions_shifted: auctionsShifted,
       elapsed_minutes: elapsedMinutes,
     });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Slice 08 — sæson-cyklus
+// =======================
+// GET /api/admin/season-transition/preview — dry-run plan for næste transition
+router.get("/admin/season-transition/preview", requireAdmin, async (req, res) => {
+  try {
+    const { data: activeSeason, error: seasonError } = await supabase
+      .from("seasons")
+      .select("id, number, status, start_date")
+      .eq("status", "active")
+      .order("number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (seasonError) throw seasonError;
+    if (!activeSeason) {
+      return res.status(404).json({ error: "Ingen aktiv sæson fundet" });
+    }
+    const plan = await buildTransitionPlan({ supabase, fromSeasonId: activeSeason.id });
+    res.json({ ok: true, plan });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/season-transition — udfør sæson-skifte
+// Body: { fromSeasonId? (default = aktiv sæson), transitionAt? (default = nu) }
+router.post("/admin/season-transition", requireAdmin, async (req, res) => {
+  try {
+    const { fromSeasonId: bodyFromSeasonId, transitionAt } = req.body || {};
+    let fromSeasonId = bodyFromSeasonId;
+    if (!fromSeasonId) {
+      const { data: activeSeason, error: seasonError } = await supabase
+        .from("seasons")
+        .select("id")
+        .eq("status", "active")
+        .order("number", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (seasonError) throw seasonError;
+      if (!activeSeason) {
+        return res.status(404).json({ error: "Ingen aktiv sæson fundet" });
+      }
+      fromSeasonId = activeSeason.id;
+    }
+
+    const result = await transitionToNextSeason({
+      supabase,
+      fromSeasonId,
+      transitionAt: transitionAt ? new Date(transitionAt) : new Date(),
+      adminUserId: req.user?.id ?? null,
+    });
+
+    res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

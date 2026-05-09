@@ -60,6 +60,7 @@ export const ADMIN_ACTION_TYPE = Object.freeze({
   ECONOMY_EXPORT: "economy_export",
   TEAM_DATA_EDITED: "team_data_edited",
   RIDER_DATA_EDITED: "rider_data_edited",
+  SEASON_TRANSITION: "season_transition",
 });
 
 // finance_transactions.actor_type — hvem genererede pengebevægelsen.

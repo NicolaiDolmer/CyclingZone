@@ -74,6 +74,7 @@ const ADMIN_ACTION_TYPES = [
   "economy_export",
   "team_data_edited",
   "rider_data_edited",
+  "season_transition",
 ];
 
 const SUSTAINABILITY_LABEL = {

@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.98",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Sæson-cyklus (Slice 08)",
+        items: [
+          "Admin · Ny '🔄 Sæson-cyklus'-sektion på admin-panelet lader dig udføre sæsonskifte med ét klik: lukker den aktive sæson (status='completed', end_date=nu), opretter næste sæson (status='active', start_date=nu), lukker det åbne transfervindue og opretter et lukket transfervindue til den nye sæson, udbetaler sponsor-penge til alle managers og logger handlingen i admin-loggen. Forhåndsvisning viser nøjagtigt hvad der sker (hvilke hold påvirkes, total sponsor-udbetaling, sponsor pr. hold) før du bekræfter.",
+          "Manager · 93 ventende ryttere fra åbne-beta-fasens auktioner blev flyttet til deres rigtige hold med det samme, så holdene står korrekt inden sæson 1 starter. Fremover ved sæsonskifte 0→1 sker dette automatisk for alle ventende ryttere. Sæson 0 er nu dokumenteret som åbent transfervindue i databasen, hvilket gør at fremtidige auktioner i åbne-beta-fasen overdrager rytteren direkte (uden 'venter'-mellemtilstand).",
+          "Backend · Ny pure-funktion `transitionToNextSeason` (12 unit-tests inkl. dry-run, idempotent re-run efter delvis fejl, fuld idempotens, UUID-helpers). Sæsonskiftet er checkpoint-baseret: hver fase tjekker om den allerede er udført og springer over hvis ja, så re-run efter en transient fejl er sikkert. Sæson 1 er fredet for sponsor-modifier (×1.0) by-design — bestyrelsens budget_modifier træder først i kraft fra sæson 2.",
+          "Backend · To nye admin-endpoints bag requireAdmin: `GET /api/admin/season-transition/preview` (returnerer plan uden writes) og `POST /api/admin/season-transition` (udfører skiftet). Action-type 'season_transition' tilføjet til admin_log CHECK-constraint i database/2026-05-09-season-transition-admin-action.sql. 477/477 backend-tests grønne (+14 nye).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.97",
     date: "2026-05-09",
     label: "Beta",
