@@ -1813,8 +1813,8 @@ router.patch("/transfers/swaps/:id", requireAuth, async (req, res) => {
     return res.json({ success: true, action: "rejected" });
   }
 
-  // COUNTER — receiving team counters with different cash adjustment
-  if (action === "counter" && isReceiving && counter_cash !== undefined) {
+  // COUNTER — receiving team counters a pending offer
+  if (action === "counter" && isReceiving && swap.status === "pending" && counter_cash !== undefined) {
     await supabase.from("swap_offers").update({
       status: "countered",
       counter_cash,
@@ -1826,6 +1826,22 @@ router.patch("/transfers/swaps/:id", requireAuth, async (req, res) => {
       `${req.team.name} sender modbud: ${swap.offered.firstname} ${swap.offered.lastname} ↔ ${swap.requested.firstname} ${swap.requested.lastname} (${counter_cash > 0 ? "+" : ""}${counter_cash.toLocaleString()} CZ$)`,
       swap.id);
     return res.json({ success: true, action: "countered", counter_cash });
+  }
+
+  // COUNTER-COUNTER — proposing team counters back after receiving a counter
+  if (action === "counter" && isProposing && swap.status === "countered" && counter_cash !== undefined) {
+    await supabase.from("swap_offers").update({
+      status: "pending",
+      cash_adjustment: counter_cash,
+      counter_cash: null,
+      message: message || swap.message,
+      updated_at: new Date().toISOString(),
+    }).eq("id", swap.id);
+    await notifyTeamOwner(swap.receiving_team_id, "transfer_counter",
+      "Modbud på byttehandel",
+      `${req.team.name} sender modbud: ${swap.offered.firstname} ${swap.offered.lastname} ↔ ${swap.requested.firstname} ${swap.requested.lastname} (${counter_cash > 0 ? "+" : ""}${counter_cash.toLocaleString()} CZ$)`,
+      swap.id);
+    return res.json({ success: true, action: "re_countered", counter_cash });
   }
 
   // ACCEPT COUNTER — proposing team accepts receiver's counter → awaiting receiving confirmation
@@ -1922,6 +1938,8 @@ router.post("/loans", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "rider_id, start_season og end_season kræves" });
   if (end_season < start_season)
     return res.status(400).json({ error: "end_season skal være >= start_season" });
+  if (end_season > start_season)
+    return res.status(400).json({ error: "Lejeaftale kan max dække 1 sæson — sæt start og slut til samme sæsonnummer" });
 
   const { data: rider } = await supabase
     .from("riders").select("id, team_id, firstname, lastname").eq("id", rider_id).single();

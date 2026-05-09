@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.84",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Transfer · Byttehandel & Lejeaftale",
+        items: [
+          "Rytter-profil · Du kan nu foreslå byttehandel og lejeaftale direkte fra en anden managers rytter-profil — ligesom transferbud (#158). Knapperne 'Foreslå byttehandel' og 'Foreslå lejeaftale' vises under transferbud-knappen.",
+          "Byttehandel · Forhandlings-loop virker nu korrekt: du kan sende modbud igen og igen til den anden part accepterer eller trækker sig. Tidligere stoppede loop'et efter første modbud (#159).",
+          "Lejeaftale · Lejeaftaler kan kun oprettes for 1 sæson ad gangen (spilleregel). Formularen beder nu kun om ét sæsonnummer, og backend afviser forsøg på lejer i flere sæsoner (#160).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.83",
     date: "2026-05-09",
     label: "Beta",

@@ -1,5 +1,5 @@
 -- Proxy-bidding: autobud med max-loft (#10).
--- Manager sætter et max-loft; systemet counter-byder automatisk i +10%-trin
+-- Manager sætter et max-loft; systemet counter-byder automatisk med +1 CZ$ trin
 -- op til loftet når andre byder. Stopper når max er nået eller manager vinder.
 --
 -- auction_proxy_bids: gemmer max-loft per manager per auktion.

@@ -47,6 +47,177 @@ function StatRow({ label, icon, value }) {
   );
 }
 
+function SwapOfferButton({ rider, myTeamId }) {
+  const [show, setShow]         = useState(false);
+  const [myRiders, setMyRiders] = useState([]);
+  const [offeredId, setOfferedId] = useState("");
+  const [cash, setCash]         = useState(0);
+  const [loading, setLoading]   = useState(false);
+  const [result, setResult]     = useState(null);
+  const [windowOpen, setWindowOpen] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      fetch(`${API}/api/transfer-window`, { headers: { Authorization: `Bearer ${session.access_token}` } })
+        .then(r => r.json())
+        .then(d => setWindowOpen(d?.open !== false))
+        .catch(() => {});
+    });
+  }, []);
+
+  async function loadMyRiders() {
+    const { data } = await supabase
+      .from("riders")
+      .select("id, firstname, lastname, uci_points, prize_earnings_bonus")
+      .eq("team_id", myTeamId)
+      .order("lastname");
+    setMyRiders(data || []);
+  }
+
+  function openForm() {
+    if (!windowOpen) return;
+    loadMyRiders();
+    setShow(!show);
+  }
+
+  async function sendSwap() {
+    if (!offeredId) return;
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${API}/api/transfers/swaps`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ offered_rider_id: offeredId, requested_rider_id: rider.id, cash_adjustment: cash }),
+    });
+    const data = await res.json();
+    if (res.ok) { setResult({ ok: true, msg: "✅ Byttehandel foreslået!" }); setShow(false); }
+    else        { setResult({ ok: false, msg: `❌ ${data.error}` }); }
+    setLoading(false);
+    setTimeout(() => setResult(null), 4000);
+  }
+
+  return (
+    <div>
+      {result && (
+        <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
+          ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
+          {result.msg}
+        </div>
+      )}
+      <button onClick={openForm} disabled={!windowOpen}
+        className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
+          ${!windowOpen
+            ? "bg-cz-subtle text-cz-3 border-cz-border cursor-not-allowed"
+            : show
+              ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
+              : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
+        {windowOpen ? "⇄ Foreslå byttehandel" : "Transfervindue lukket"}
+      </button>
+      {show && windowOpen && (
+        <div className="mt-3 flex flex-col gap-2">
+          <select value={offeredId} onChange={e => setOfferedId(e.target.value)}
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent">
+            <option value="">Vælg rytter du tilbyder</option>
+            {myRiders.map(r => (
+              <option key={r.id} value={r.id}>{r.firstname} {r.lastname} ({getRiderMarketValue(r).toLocaleString("da-DK")} CZ$)</option>
+            ))}
+          </select>
+          <div className="flex items-center gap-2">
+            <label className="text-cz-3 text-xs flex-shrink-0">Kontantbetaling (CZ$)</label>
+            <input type="number" value={cash} onChange={e => setCash(parseInt(e.target.value) || 0)}
+              className="flex-1 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+          </div>
+          <p className="text-cz-3 text-xs">Positiv = du betaler, negativ = du modtager</p>
+          <button onClick={sendSwap} disabled={loading || !offeredId}
+            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            {loading ? "Sender..." : "Send byttehandel"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LoanOfferButton({ rider }) {
+  const [show, setShow]         = useState(false);
+  const [loanFee, setLoanFee]   = useState(0);
+  const [season, setSeason]     = useState("");
+  const [buyOption, setBuyOption] = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [result, setResult]     = useState(null);
+  const [windowOpen, setWindowOpen] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      fetch(`${API}/api/transfer-window`, { headers: { Authorization: `Bearer ${session.access_token}` } })
+        .then(r => r.json())
+        .then(d => setWindowOpen(d?.open !== false))
+        .catch(() => {});
+    });
+  }, []);
+
+  async function sendLoan() {
+    if (!season) return;
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${API}/api/loans`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({
+        rider_id: rider.id,
+        loan_fee: loanFee,
+        start_season: parseInt(season),
+        end_season: parseInt(season),
+        buy_option_price: buyOption ? parseInt(buyOption) : null,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) { setResult({ ok: true, msg: "✅ Lejeforslag sendt!" }); setShow(false); }
+    else        { setResult({ ok: false, msg: `❌ ${data.error}` }); }
+    setLoading(false);
+    setTimeout(() => setResult(null), 4000);
+  }
+
+  return (
+    <div>
+      {result && (
+        <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
+          ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
+          {result.msg}
+        </div>
+      )}
+      <button onClick={() => windowOpen && setShow(!show)} disabled={!windowOpen}
+        className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
+          ${!windowOpen
+            ? "bg-cz-subtle text-cz-3 border-cz-border cursor-not-allowed"
+            : show
+              ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
+              : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
+        {windowOpen ? "📋 Foreslå lejeaftale" : "Transfervindue lukket"}
+      </button>
+      {show && windowOpen && (
+        <div className="mt-3 flex flex-col gap-2">
+          <input type="number" value={season} onChange={e => setSeason(e.target.value)}
+            placeholder="Sæsonnummer (fx. 3)"
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+          <input type="number" value={loanFee} onChange={e => setLoanFee(parseInt(e.target.value) || 0)}
+            placeholder="Lejegebyr (CZ$)"
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+          <input type="number" value={buyOption} onChange={e => setBuyOption(e.target.value)}
+            placeholder="Købsoption (CZ$) — valgfri"
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+          <button onClick={sendLoan} disabled={loading || !season}
+            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            {loading ? "Sender..." : "Send lejeforslag"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DirectOfferButton({ rider }) {
   const [show, setShow]       = useState(false);
   const [amount, setAmount]   = useState(getRiderMarketValue(rider));
@@ -491,6 +662,8 @@ export default function RiderStatsPage() {
             <p className="text-cz-3 text-xs text-center py-1">Rytteren er allerede i en aktiv auktion</p>
           )}
           {canDirectOffer && <DirectOfferButton rider={rider} />}
+          {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
+          {canDirectOffer && <LoanOfferButton rider={rider} />}
         </div>
       </div>
 
