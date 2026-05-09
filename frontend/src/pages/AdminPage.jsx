@@ -162,6 +162,9 @@ export default function AdminPage() {
   const [auctionConfig, setAuctionConfig] = useState(null);
   const [editingAuctionConfig, setEditingAuctionConfig] = useState(null);
 
+  // Marked-pause kill switch
+  const [marketPause, setMarketPause] = useState({ level: "none", pausedAt: null, reason: null });
+
   // Aktive auktioner (admin cancel)
   const [activeAuctions, setActiveAuctions] = useState([]);
 
@@ -212,6 +215,11 @@ export default function AdminPage() {
     setRacePoints(rp.data || []);
     setUsers(u.data || []);
     setAuctionConfig(ac.data || null);
+    setMarketPause({
+      level: ac.data?.market_pause_level || "none",
+      pausedAt: ac.data?.market_paused_at || null,
+      reason: ac.data?.market_paused_reason || null,
+    });
     loadActiveAuctions();
   }
 
@@ -394,6 +402,35 @@ export default function AdminPage() {
     if (res.ok) showMsg(`✅ Deadline Day: ${override}`);
     else showMsg(`❌ ${data.error}`, "error");
     setLoad(`dd_${override}`, false);
+    loadAll();
+  }
+
+  async function pauseMarket(level) {
+    const scopeText = level === "all" ? "HELE markedet (auktioner + transfers + bytter + lejeaftaler + bank-lån)" : "alle auktioner";
+    const reason = window.prompt(`Pause ${scopeText}?\n\nÅrsag (vises til managere):`, "");
+    if (reason === null) return; // cancelled
+    setLoad(`pause_${level}`, true);
+    const res = await fetch(`${API}/api/admin/market/pause`, {
+      method: "POST", headers: await getAuth(),
+      body: JSON.stringify({ level, reason: reason || null }),
+    });
+    const data = await res.json();
+    if (res.ok) showMsg(`✅ ${level === "all" ? "Hele markedet pauset" : "Auktioner pauset"}`);
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoad(`pause_${level}`, false);
+    loadAll();
+  }
+
+  async function resumeMarket() {
+    if (!confirm("Genoptag markedet?\n\nAuktioners slut-tid skubbes frem med pause-varigheden, så bydere får samme resterende tid som før.")) return;
+    setLoad("market_resume", true);
+    const res = await fetch(`${API}/api/admin/market/resume`, {
+      method: "POST", headers: await getAuth(),
+    });
+    const data = await res.json();
+    if (res.ok) showMsg(`✅ Marked genoptaget · ${data.auctions_shifted} auktioner forlænget med ${data.elapsed_minutes} min`);
+    else showMsg(`❌ ${data.error}`, "error");
+    setLoad("market_resume", false);
     loadAll();
   }
 
@@ -681,6 +718,50 @@ export default function AdminPage() {
           {msg.text}
         </div>
       )}
+
+      {marketPause.level !== "none" && (
+        <div className="mb-4 px-4 py-3 rounded-xl text-sm border bg-cz-danger-bg text-cz-danger border-cz-danger/30">
+          <p className="font-semibold">
+            🛑 {marketPause.level === "all" ? "Hele markedet er pauset" : "Auktioner er pauset"}
+          </p>
+          {marketPause.reason && <p className="text-xs mt-1">Årsag: {marketPause.reason}</p>}
+          {marketPause.pausedAt && (
+            <p className="text-xs mt-1 text-cz-3">Pauset siden {new Date(marketPause.pausedAt).toLocaleString("da-DK")}</p>
+          )}
+        </div>
+      )}
+
+      {/* ── Marked-pause kill switch ───────────────────────────────────────── */}
+      <Section title="Marked-pause">
+        <p className="text-cz-3 text-xs mb-3">
+          Brug i nødstilfælde — fryser auktioners slut-tid og blokerer nye bud/handler.
+          Ved genoptagelse skubbes auktionernes calculated_end frem med pause-varigheden.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => pauseMarket("auctions")}
+            disabled={marketPause.level !== "none" || loading.pause_auctions}
+            className="px-4 py-2 bg-cz-warning-bg text-cz-warning border border-cz-warning/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed">
+            {loading.pause_auctions ? "..." : "🛑 Frys auktioner"}
+          </button>
+          <button
+            onClick={() => pauseMarket("all")}
+            disabled={marketPause.level === "all" || loading.pause_all}
+            className="px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed">
+            {loading.pause_all ? "..." : "🛑 Frys hele markedet"}
+          </button>
+          <button
+            onClick={resumeMarket}
+            disabled={marketPause.level === "none" || loading.market_resume}
+            className="px-4 py-2 bg-cz-success-bg text-cz-success border border-cz-success/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed">
+            {loading.market_resume ? "..." : "▶ Genoptag"}
+          </button>
+        </div>
+        <p className="text-cz-3 text-xs mt-3">
+          <strong>Frys auktioner:</strong> nye bud, autobud-loft og oprettelse af auktioner blokeres. Cron pauser finalisering.<br/>
+          <strong>Frys hele markedet:</strong> ovenstående + transfertilbud, byttehandler, lejeaftaler og bank-lån. Cleanup-handlinger (annuller/afvis/træk-tilbage) virker stadig.
+        </p>
+      </Section>
 
       {/* ── Transfervindue ──────────────────────────────────────────────────── */}
       <Section title="Transfervindue">

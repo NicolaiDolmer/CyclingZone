@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.88",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Marked-pause kill switch",
+        items: [
+          "Admin · Ny 'Marked-pause'-sektion i admin-panelet med to nødstop-niveauer: 'Frys auktioner' (blokerer nye bud, autobud-loft og nye auktioner) og 'Frys hele markedet' (samme + transfertilbud, byttehandler, lejeaftaler og bank-lån).",
+          "Auktioner forlænges automatisk ved genoptagelse — calculated_end skubbes frem med pause-varigheden, så bydere får samme resterende tid som de havde da pausen blev slået til. Cron pauser finalisering mens markedet er frosset, så ingen auktioner finaliseres bag scenen.",
+          "Cleanup-handlinger (annullér eget bud, afvis modbud, træk lejeforslag tilbage) virker stadig under pause, så managere kan rydde op i pending tilbud uden admin-indblanding.",
+          "Spilleruvendt fejlmeddelelse: 'Auktioner/Markedet er midlertidigt pauset af admin' med valgfri årsag — vises som 503-svar når en blokeret handling forsøges.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.87",
     date: "2026-05-09",
     label: "Beta",

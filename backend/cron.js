@@ -16,6 +16,7 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { finalizeExpiredAuctions as finalizeExpiredAuctionsShared } from "./lib/auctionFinalization.js";
+import { getMarketPauseState, isAuctionsBlocked } from "./lib/marketPause.js";
 import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
@@ -42,6 +43,12 @@ const XP_REWARDS = {
 // ─── Auction Finalizer ────────────────────────────────────────────────────────
 
 async function finalizeExpiredAuctions() {
+  // Skip finalization while auctions are paused — otherwise frozen auctions whose
+  // calculated_end is past would silently finalize before the admin resumes the market.
+  // On resume, /api/admin/market/resume shifts calculated_end forward by the pause duration.
+  const pauseState = await getMarketPauseState(supabase);
+  if (isAuctionsBlocked(pauseState.level)) return;
+
   const results = await finalizeExpiredAuctionsShared({
     supabase,
     notifyTeamOwner,

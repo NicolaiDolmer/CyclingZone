@@ -39,6 +39,15 @@ import {
   finalizeExpiredAuctions as finalizeExpiredAuctionsShared,
 } from "../lib/auctionFinalization.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
+import {
+  PAUSE_LEVELS,
+  buildPauseErrorBody,
+  getMarketPauseState,
+  isActionBlockedDuringMarketPause,
+  isAuctionsBlocked,
+  isMarketBlocked,
+  shiftCalculatedEnd,
+} from "../lib/marketPause.js";
 import { resolveProxyBids } from "../lib/proxyBidding.js";
 import {
   createLoan,
@@ -340,6 +349,23 @@ async function getAuctionConfig() {
   return data || DEFAULT_AUCTION_CONFIG;
 }
 
+// ── Market pause kill switch ──────────────────────────────────────────────────
+// scope = 'auction' (auction-only routes) | 'market' (transfer/swap/loan routes)
+// Returns true if the request is allowed; if false the response has already been
+// sent with 503. Callers should `if (!await assertMarketOpen(...)) return;`.
+async function assertMarketOpen(req, res, scope) {
+  const state = await getMarketPauseState(supabase);
+  if (scope === "auction" && isAuctionsBlocked(state.level)) {
+    res.status(503).json(buildPauseErrorBody({ scope: "auctions", reason: state.reason }));
+    return false;
+  }
+  if (scope === "market" && isMarketBlocked(state.level)) {
+    res.status(503).json(buildPauseErrorBody({ scope: "market", reason: state.reason }));
+    return false;
+  }
+  return true;
+}
+
 // ── Notification helper ───────────────────────────────────────────────────────
 
 async function notify(userId, type, title, message, relatedId = null) {
@@ -633,6 +659,7 @@ router.get("/auctions", requireAuth, async (req, res) => {
 // POST /api/auctions — start new auction
 router.post("/auctions", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
+  if (!(await assertMarketOpen(req, res, "auction"))) return;
 
   const { rider_id, starting_price, min_increment = 1, is_guaranteed_sale = false, flash_auction = false } = req.body;
   if (!rider_id) return res.status(400).json({ error: "rider_id required" });
@@ -829,6 +856,7 @@ router.post("/auctions", requireAuth, async (req, res) => {
 // POST /api/auctions/:id/bid — place a bid
 router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
+  if (!(await assertMarketOpen(req, res, "auction"))) return;
 
   const { amount, proxy_max } = req.body;
   if (!amount) return res.status(400).json({ error: "amount required" });
@@ -1036,6 +1064,7 @@ router.get("/auctions/:id/proxy", requireAuth, async (req, res) => {
 // PATCH /api/auctions/:id/proxy — set or update my proxy max-loft
 router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
+  if (!(await assertMarketOpen(req, res, "auction"))) return;
 
   const numericMax = Number(req.body.max_amount);
   if (!Number.isFinite(numericMax) || numericMax <= 0) {
@@ -1316,6 +1345,7 @@ router.delete("/transfers/:id", requireAuth, async (req, res) => {
 
 // POST /api/transfers/offer — direct offer on any rider (no listing needed)
 router.post("/transfers/offer", requireAuth, async (req, res) => {
+  if (!(await assertMarketOpen(req, res, "market"))) return;
   const { open } = await getTransferWindowStatus();
   if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke sende tilbud i denne periode." });
 
@@ -1451,6 +1481,11 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
 // PATCH /api/transfers/offers/:id — accept, reject, counter, confirm, cancel, or withdraw
 router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
   const { action, counter_amount, message } = req.body;
+
+  // Market pause: allow only cleanup actions (withdraw/reject/cancel/archive) when paused.
+  if (isActionBlockedDuringMarketPause(action)) {
+    if (!(await assertMarketOpen(req, res, "market"))) return;
+  }
 
   const { data: offer } = await supabase
     .from("transfer_offers")
@@ -1643,6 +1678,7 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
 
 // POST /api/transfers/:id/offer — legacy route (listing-based offer)
 router.post("/transfers/:id/offer", requireAuth, async (req, res) => {
+  if (!(await assertMarketOpen(req, res, "market"))) return;
   const { open } = await getTransferWindowStatus();
   if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke sende tilbud i denne periode." });
 
@@ -1713,6 +1749,7 @@ router.get("/transfers/swaps", requireAuth, async (req, res) => {
 
 // POST /api/transfers/swaps — propose a swap
 router.post("/transfers/swaps", requireAuth, async (req, res) => {
+  if (!(await assertMarketOpen(req, res, "market"))) return;
   const { open } = await getTransferWindowStatus();
   if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke foreslå byttehandler i denne periode." });
 
@@ -1772,6 +1809,11 @@ router.post("/transfers/swaps", requireAuth, async (req, res) => {
 // PATCH /api/transfers/swaps/:id — accept, reject, counter, confirm, cancel, withdraw
 router.patch("/transfers/swaps/:id", requireAuth, async (req, res) => {
   const { action, counter_cash, message } = req.body;
+
+  // Market pause: allow only cleanup actions (withdraw/reject/cancel/archive) when paused.
+  if (isActionBlockedDuringMarketPause(action)) {
+    if (!(await assertMarketOpen(req, res, "market"))) return;
+  }
 
   const { data: swap } = await supabase
     .from("swap_offers")
@@ -1931,6 +1973,7 @@ router.get("/loans", requireAuth, async (req, res) => {
 
 // POST /api/loans — propose a loan (borrowing team initiates)
 router.post("/loans", requireAuth, async (req, res) => {
+  if (!(await assertMarketOpen(req, res, "market"))) return;
   const { open } = await getTransferWindowStatus();
   if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke foreslå lejeaftaler i denne periode." });
 
@@ -1985,6 +2028,11 @@ router.post("/loans", requireAuth, async (req, res) => {
 // PATCH /api/loans/:id — accept, reject, cancel, or buyout
 router.patch("/loans/:id", requireAuth, async (req, res) => {
   const { action } = req.body;
+
+  // Market pause: allow only cleanup actions (reject/cancel) when paused.
+  if (isActionBlockedDuringMarketPause(action)) {
+    if (!(await assertMarketOpen(req, res, "market"))) return;
+  }
 
   if (["accept", "buyout"].includes(action)) {
     const { open } = await getTransferWindowStatus();
@@ -3001,6 +3049,7 @@ router.get("/finance/loans", requireAuth, async (req, res) => {
 router.post("/finance/loans", requireAuth, async (req, res) => {
   try {
     if (!req.team) return res.status(400).json({ error: "No team found" });
+    if (!(await assertMarketOpen(req, res, "market"))) return;
     const { loan_type, amount } = req.body;
     if (!["short", "long"].includes(loan_type))
       return res.status(400).json({ error: "Ugyldig låntype — brug short eller long" });
@@ -3068,6 +3117,112 @@ router.put("/admin/auction-config", requireAdmin, async (req, res) => {
       meta: { duration_hours, weekday_open_hour, weekday_close_hour, weekend_open_hour, weekend_close_hour, extension_minutes },
     });
     res.json({ success: true, config: data });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/market/pause — hent pause-state (level + paused_at + reason)
+router.get("/admin/market/pause", requireAdmin, async (req, res) => {
+  try {
+    const state = await getMarketPauseState(supabase);
+    res.json(state);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/market/pause — pause auktioner eller hele markedet
+// body: { level: 'auctions' | 'all', reason?: string }
+router.post("/admin/market/pause", requireAdmin, async (req, res) => {
+  try {
+    const { level, reason } = req.body || {};
+    if (!PAUSE_LEVELS.includes(level) || level === "none") {
+      return res.status(400).json({ error: "level skal være 'auctions' eller 'all'" });
+    }
+    const trimmedReason = typeof reason === "string" ? reason.trim().slice(0, 500) : null;
+    const pausedAt = new Date().toISOString();
+    const { error } = await supabase.from("auction_timing_config")
+      .update({
+        market_pause_level: level,
+        market_paused_at: pausedAt,
+        market_paused_reason: trimmedReason || null,
+        updated_at: pausedAt,
+      })
+      .eq("id", 1);
+    if (error) throw error;
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: "market_pause",
+      description: level === "all"
+        ? `Hele markedet pauset${trimmedReason ? ` — ${trimmedReason}` : ""}`
+        : `Auktioner pauset${trimmedReason ? ` — ${trimmedReason}` : ""}`,
+      meta: { level, reason: trimmedReason || null, paused_at: pausedAt },
+    });
+    res.json({ success: true, level, paused_at: pausedAt, reason: trimmedReason || null });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/admin/market/resume — genoptag marked og skub auktioners calculated_end frem
+router.post("/admin/market/resume", requireAdmin, async (req, res) => {
+  try {
+    const state = await getMarketPauseState(supabase);
+    if (state.level === "none") {
+      return res.status(400).json({ error: "Markedet er ikke pauset" });
+    }
+
+    const resumedAt = new Date().toISOString();
+
+    // Skub calculated_end frem på alle aktive/extended auktioner med pause-varigheden,
+    // så bydere får samme resterende tid som de havde da pausen blev slået til.
+    let auctionsShifted = 0;
+    if (state.pausedAt) {
+      const { data: activeAuctions } = await supabase
+        .from("auctions")
+        .select("id, calculated_end")
+        .in("status", ["active", "extended"]);
+      const updates = (activeAuctions || []).map(a => ({
+        id: a.id,
+        calculated_end: shiftCalculatedEnd(a.calculated_end, state.pausedAt, resumedAt),
+      })).filter(u => u.calculated_end !== null);
+      if (updates.length > 0) {
+        await Promise.all(updates.map(u =>
+          supabase.from("auctions").update({ calculated_end: u.calculated_end }).eq("id", u.id)
+        ));
+        auctionsShifted = updates.length;
+      }
+    }
+
+    const { error } = await supabase.from("auction_timing_config")
+      .update({
+        market_pause_level: "none",
+        market_paused_at: null,
+        market_paused_reason: null,
+        updated_at: resumedAt,
+      })
+      .eq("id", 1);
+    if (error) throw error;
+
+    const elapsedMs = state.pausedAt
+      ? new Date(resumedAt).getTime() - new Date(state.pausedAt).getTime()
+      : 0;
+    const elapsedMinutes = Math.round(elapsedMs / 60000);
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: "market_resume",
+      description: `Marked genoptaget efter ${elapsedMinutes} min pause (${auctionsShifted} auktioner forlænget)`,
+      meta: {
+        prior_level: state.level,
+        prior_reason: state.reason,
+        paused_at: state.pausedAt,
+        resumed_at: resumedAt,
+        elapsed_ms: elapsedMs,
+        auctions_shifted: auctionsShifted,
+      },
+    });
+
+    res.json({
+      success: true,
+      auctions_shifted: auctionsShifted,
+      elapsed_minutes: elapsedMinutes,
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
