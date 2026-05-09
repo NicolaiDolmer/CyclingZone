@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "2.96",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Manager · Næste sæsons forecast + 🟢/🟡/🔴 risk-tier (07g)",
+        items: [
+          "Manager · Ny prognose-sektion på Finanser-siden viser forventet cashflow næste sæson: sponsor + præmie − løn − lånerenter − lejegebyr = projected_net. Spændet (±20% på præmie-estimatet) viser usikkerheden, og en 🟢 grøn / 🟡 gul / 🔴 rød badge fortæller med ét blik om holdet er sundt, presset eller konkurs-tæt. Tærskler matcher 07g-spec: grøn = net ≥ +50K og gæld < 50% af loftet, gul = net mellem ±50K eller gæld 50-80%, rød = net < -50K eller gæld > 80% eller hvis underskuddet pejler mod gældsloftet inden for 2 sæsoner.",
+          "Manager · Lille forecast-widget på Dashboard under squad-warning viser projected_net + risk-tier-badge så manageren kan måle finansiel sundhed uden først at klikke til Finanser-siden. Linker direkte til /finance for fuld breakdown.",
+          "Manager · Kontekstuelle warnings rapporterer specifikke trusler: 'Forventet underskud', 'Gæld nær loftet (X%)', 'Med det nuværende underskud rammer du gældsloftet inden for 2 sæsoner — handl nu', 'Løn overstiger sponsor — rolig drift dækker ikke længere lønnen'. Hver warning er actionable (sælg en rytter, reducér lån, forhandl bedre sponsor).",
+          "Backend · Ny pure-function `computeFinanceForecast` i backend/lib/financeForecast.js (11 unit-tests dækker 4 manager-arketyper + 7 edge cases inkl. risk-tier-grænser, sponsor-pullout, lejegebyr-vinduer). Endpoint `GET /api/me/finance-forecast` aggregerer team + roster + active loans + loan_agreements + boards + sponsor-pullouts + debt_ceiling og kalder pure-funktionen — UI er en tynd render af responsen. 448/448 backend-tests grønne (op fra 437).",
+          "Hjælp · Ny FAQ 'Hvordan beregnes prognosen for næste sæson?' i Hjælp & Regler forklarer alle fem inputs (sponsor × board-modifier, prize_earnings_bonus, riders.salary, lån-renter, lejegebyr) plus risk-tier-tærsklerne og hvorfor præmie-estimatet er den variable komponent.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.95",
     date: "2026-05-09",
     label: "Beta",

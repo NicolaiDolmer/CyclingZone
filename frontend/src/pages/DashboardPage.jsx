@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import OnboardingModal from "../components/OnboardingModal";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
+import { FinanceForecastBadge } from "../components/FinanceForecastCard";
 
 const API = import.meta.env.VITE_API_URL;
 const SQUAD_LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
@@ -58,6 +59,7 @@ export default function DashboardPage() {
   const [board, setBoard] = useState(null);
   const [boardOutlook, setBoardOutlook] = useState(null);
   const [activeOffers, setActiveOffers] = useState([]);
+  const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const [seasonInfo, setSeasonInfo] = useState(null);
@@ -146,6 +148,18 @@ export default function DashboardPage() {
       ...(offersRes.received || []).map(offer => ({ ...offer, _dir: "received" })),
       ...(offersRes.sent || []).map(offer => ({ ...offer, _dir: "sent" })),
     ]);
+
+    // Slice 07g · Forecast-widget — best-effort, fejler stille hvis endpoint smider 500.
+    if (token) {
+      try {
+        const forecastRes = await fetch(`${API}/api/me/finance-forecast`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (forecastRes.ok) setForecast(await forecastRes.json());
+      } catch {
+        // best-effort
+      }
+    }
 
     const standingsMap = {};
     (standingsRes.data || []).filter(s => !s.team?.is_ai).forEach(s => {
@@ -284,6 +298,14 @@ export default function DashboardPage() {
           <span>⚠️</span>
           <span>{squadWarning.msg}</span>
           <Link to="/team" className="ml-auto text-xs underline opacity-70 hover:opacity-100">Mit Hold →</Link>
+        </div>
+      )}
+
+      {/* Slice 07g · Finance forecast widget — synlig altid (også grøn), så manageren
+          får et stabilt blik på kommende sæsons cashflow inden FinancePage. */}
+      {forecast && (
+        <div className="mb-4">
+          <FinanceForecastBadge forecast={forecast} />
         </div>
       )}
 

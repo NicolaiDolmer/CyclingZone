@@ -80,6 +80,7 @@ import {
   computeDebtRatio,
   computeSustainabilityTier,
 } from "../lib/economyAdminDashboard.js";
+import { computeFinanceForecast } from "../lib/financeForecast.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
 import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
@@ -2502,6 +2503,123 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
   const completed_count = steps.filter(s => s.done).length;
 
   res.json({ steps, completed_count, total_count: steps.length });
+});
+
+// GET /api/me/finance-forecast — slice 07g manager finance-forecast + risk-tier
+//
+// Aggregerer alle inputs til pure-function computeFinanceForecast og returnerer
+// projected sponsor/prize/salary/loan_interest/loan_fees + 🟢/🟡/🔴 risk-tier +
+// warnings. Kaldes fra Dashboard og FinancePage.
+router.get("/me/finance-forecast", requireAuth, async (req, res) => {
+  try {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    const teamId = req.team.id;
+
+    const [
+      teamRes,
+      ridersRes,
+      activeLoansRes,
+      inboundAgreementsRes,
+      outboundAgreementsRes,
+      boardsRes,
+      pulloutRes,
+      activeSeasonRes,
+      configsRes,
+    ] = await Promise.all([
+      supabase
+        .from("teams")
+        .select("id, division, balance, sponsor_income")
+        .eq("id", teamId)
+        .single(),
+      supabase
+        .from("riders")
+        .select("id, salary, prize_earnings_bonus")
+        .eq("team_id", teamId),
+      supabase
+        .from("loans")
+        .select("amount_remaining, interest_rate")
+        .eq("team_id", teamId)
+        .eq("status", "active"),
+      supabase
+        .from("loan_agreements")
+        .select("loan_fee, start_season, end_season, status")
+        .eq("to_team_id", teamId)
+        .eq("status", "active"),
+      supabase
+        .from("loan_agreements")
+        .select("loan_fee, start_season, end_season, status")
+        .eq("from_team_id", teamId)
+        .eq("status", "active"),
+      supabase
+        .from("board_profiles")
+        .select("budget_modifier, negotiation_status")
+        .eq("team_id", teamId),
+      supabase
+        .from("board_consequences")
+        .select("severity")
+        .eq("team_id", teamId)
+        .eq("layer", 5)
+        .eq("status", "active"),
+      supabase
+        .from("seasons")
+        .select("number")
+        .eq("status", "active")
+        .maybeSingle(),
+      supabase.from("loan_config").select("debt_ceiling").eq("division", req.team.division),
+    ]);
+
+    if (teamRes.error) throw teamRes.error;
+    const team = teamRes.data;
+    if (!team) return res.status(404).json({ error: "Team not found" });
+
+    const riders = ridersRes.data || [];
+    const activeLoans = activeLoansRes.data || [];
+    const inboundLoanAgreements = inboundAgreementsRes.data || [];
+    const outboundLoanAgreements = outboundAgreementsRes.data || [];
+
+    // Board-modifier = avg af completed plans (matcher economyEngine.processSeasonStart).
+    const completedBoards = (boardsRes.data || []).filter(
+      (b) => b.negotiation_status === "completed"
+    );
+    const boardModifier =
+      completedBoards.length > 0
+        ? completedBoards.reduce((sum, b) => sum + (b.budget_modifier ?? 1.0), 0) /
+          completedBoards.length
+        : 1.0;
+
+    // Sponsor-pullout (lag 5) reducerer sponsor multiplikativt — én aktiv pullout
+    // reducerer typisk med 10%. Tager den dybeste severity hvis flere er aktive.
+    const pulloutFactor =
+      (pulloutRes.data || []).length > 0
+        ? Math.min(
+            ...pulloutRes.data.map((row) => (row.severity || 1000) / 1000)
+          )
+        : 1.0;
+
+    const totalDebt = activeLoans.reduce(
+      (sum, l) => sum + (l.amount_remaining || 0),
+      0
+    );
+    const debtCeiling = configsRes.data?.[0]?.debt_ceiling ?? null;
+    const currentSeasonNumber = activeSeasonRes.data?.number ?? null;
+
+    const forecast = computeFinanceForecast({
+      team,
+      boardModifier,
+      pulloutFactor,
+      riders,
+      activeLoans,
+      inboundLoanAgreements,
+      outboundLoanAgreements,
+      totalDebt,
+      debtCeiling,
+      currentSeasonNumber,
+    });
+
+    res.json(forecast);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Admin: Seasons & Races ────────────────────────────────────────────────────

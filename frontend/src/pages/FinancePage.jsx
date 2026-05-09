@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
+import FinanceForecastCard from "../components/FinanceForecastCard";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 
@@ -62,6 +63,8 @@ export default function FinancePage() {
   const [prizeTotal, setPrizeTotal] = useState(0);
   const [prizeRows, setPrizeRows] = useState([]);
   const [reservedBalance, setReservedBalance] = useState(0);
+  const [forecast, setForecast] = useState(null);
+  const [forecastLoading, setForecastLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ text: "", type: "" });
 
@@ -101,8 +104,10 @@ export default function FinancePage() {
     setTeam(teamData);
 
     const { data: { session } } = await supabase.auth.getSession();
-    const [loanRes, txRes, prizeTxRes, leadingRes, proxiesRes] = await Promise.all([
-      fetch(`${API}/api/finance/loans`, { headers: { Authorization: `Bearer ${session.access_token}` } }),
+    const authHeaders = { Authorization: `Bearer ${session.access_token}` };
+    const [loanRes, forecastRes, txRes, prizeTxRes, leadingRes, proxiesRes] = await Promise.all([
+      fetch(`${API}/api/finance/loans`, { headers: authHeaders }),
+      fetch(`${API}/api/me/finance-forecast`, { headers: authHeaders }),
       supabase.from("finance_transactions").select("*")
         .eq("team_id", teamData.id).order("created_at", { ascending: false }).limit(30),
       supabase.from("finance_transactions")
@@ -121,6 +126,12 @@ export default function FinancePage() {
     ]);
 
     if (loanRes.ok) setLoanData(await loanRes.json());
+    if (forecastRes.ok) {
+      setForecast(await forecastRes.json());
+    } else {
+      setForecast(null);
+    }
+    setForecastLoading(false);
     setTransactions(txRes.data || []);
 
     // #44: worst-case commitment = MAX(current_price, my_proxy_max) for leading
@@ -273,6 +284,9 @@ export default function FinancePage() {
           <p className="text-cz-3 text-xs mt-1">{prizeRows.length} løb</p>
         </div>
       </div>
+
+      {/* Slice 07g · Næste sæsons forecast + risk-tier */}
+      <FinanceForecastCard forecast={forecast} loading={forecastLoading} />
 
       {/* Løbspræmier */}
       {prizeRows.length > 0 && (
