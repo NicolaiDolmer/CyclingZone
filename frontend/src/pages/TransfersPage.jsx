@@ -730,11 +730,10 @@ function LoanCard({ loan, myTeamId, onAction }) {
               Udnyt købsoption ({loan.buy_option_price?.toLocaleString("da-DK")} CZ$)
             </button>
           )}
-          <button onClick={() => doAction("cancel")} disabled={loading}
-            className="w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
-              hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-            Annuller lejeaftale
-          </button>
+          {/* #156: aktive lejeaftaler er bindende — kun admin kan annullere. */}
+          <p className="text-cz-3 text-xs italic">
+            Aktive lejeaftaler er bindende og kan kun annulleres af en admin.
+          </p>
         </div>
       )}
     </div>

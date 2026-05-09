@@ -132,6 +132,16 @@ export function getSwapCancelIssue(swap) {
   return null;
 }
 
+// #156: en aktiv lejeaftale er en bindende kontrakt — manager kan ikke annullere
+// ensidigt. Pending må stadig trækkes tilbage (lender har ikke accepteret endnu).
+export function getLoanCancelIssue(loan) {
+  if (loan?.status === "active") {
+    return { code: "loan_already_active" };
+  }
+
+  return null;
+}
+
 async function withdrawTransferOffer(supabase, offerId) {
   await expectMutation(
     supabase.from("transfer_offers").update({ status: "withdrawn" }).eq("id", offerId)

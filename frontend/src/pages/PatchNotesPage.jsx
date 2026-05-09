@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.85",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Lejeaftale · Kontraktintegritet",
+        items: [
+          "Lejeaftale · Aktive lejeaftaler kan ikke længere annulleres ensidigt — bruger ser nu kun købsoption-knappen (hvis den findes) plus en note om at admin skal kontaktes for annullering. Tidligere kunne enten part bryde en indgået aftale uden modpartens accept (#156).",
+          "Pending lejeforslag kan stadig trækkes tilbage frit (lender har ikke accepteret endnu), så loop'et 'foreslå → fortryd' fungerer som før.",
+          "Admin · Nyt endpoint `POST /api/admin/loans/:id/cancel` til nødannulleringer; refunderer betalt lejegebyr automatisk til lejer og trækker fra udlejer, og logger handlingen i admin_log med begrundelse.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.84",
     date: "2026-05-09",
     label: "Beta",

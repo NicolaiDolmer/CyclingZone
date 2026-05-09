@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  getLoanCancelIssue,
   getSwapCancelIssue,
   getSwapExecutionIssue,
   getTransferCancelIssue,
@@ -267,4 +268,15 @@ test("getSwapCancelIssue blocks manager cancel after both parties accepted", () 
     }),
     null
   );
+});
+
+test("getLoanCancelIssue blocks manager cancel on active loan, allows on pending", () => {
+  assert.equal(
+    getLoanCancelIssue({ status: "active" })?.code,
+    "loan_already_active"
+  );
+
+  assert.equal(getLoanCancelIssue({ status: "pending" }), null);
+  assert.equal(getLoanCancelIssue({ status: "rejected" }), null);
+  assert.equal(getLoanCancelIssue(null), null);
 });

@@ -104,6 +104,7 @@ import {
   confirmSwapOffer,
   confirmTransferOffer,
   flushWindowPendingOffers,
+  getLoanCancelIssue,
   getSwapCancelIssue,
   getTransferCancelIssue,
 } from "../lib/transferExecution.js";
@@ -2051,14 +2052,21 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
     return res.json({ success: true, action: "rejected" });
   }
 
-  // CANCEL — either party cancels pending or active loan
-  if (action === "cancel" && ["pending","active"].includes(loan.status)) {
+  // CANCEL — kun pending kan trækkes tilbage ensidigt (ingen kontrakt endnu).
+  // #156: aktive lejeaftaler er bindende — kun admin kan annullere via
+  // POST /api/admin/loans/:id/cancel.
+  if (action === "cancel" && loan.status === "pending") {
     await supabase.from("loan_agreements").update({ status: "cancelled" }).eq("id", loan.id);
     const otherTeamId = isLender ? loan.to_team_id : loan.from_team_id;
     await notifyTeamOwner(otherTeamId, "transfer_offer_rejected",
       "Lejeaftale annulleret",
       `${req.team.name} har annulleret lejeaftalen på ${loan.rider.firstname} ${loan.rider.lastname}`, loan.id);
     return res.json({ success: true, action: "cancelled" });
+  }
+  if (action === "cancel" && getLoanCancelIssue(loan)) {
+    return res.status(400).json({
+      error: "Lejeaftalen er aktiv og kan ikke annulleres ensidigt — kontakt en admin.",
+    });
   }
 
   // BUYOUT — borrowing team exercises buy option
@@ -2550,6 +2558,81 @@ router.post("/admin/transfers/swaps/:id/cancel", requireAdmin, async (req, res) 
     });
 
     res.json({ success: true, offered_name: offeredName, requested_name: requestedName, message: `Byttehandel annulleret: ${offeredName} ↔ ${requestedName}` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/loans/:id/cancel — admin annullerer en aktiv lejeaftale (#156)
+// Refunderer betalt loan_fee til lejer og trækker fra udlejer (2A).
+router.post("/admin/loans/:id/cancel", requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const { data: loan, error: fetchErr } = await supabase
+      .from("loan_agreements")
+      .select(`id, rider_id, from_team_id, to_team_id, loan_fee, start_season, status,
+        rider:rider_id(id, firstname, lastname)`)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+    if (!loan) return res.status(404).json({ error: "Lejeaftale ikke fundet" });
+
+    if (!["pending", "active"].includes(loan.status)) {
+      return res.status(409).json({ error: `Lejeaftalen kan ikke annulleres fra status: ${loan.status}` });
+    }
+
+    const riderName = loan.rider ? `${loan.rider.firstname} ${loan.rider.lastname}` : "ukendt rytter";
+    let refundedFee = 0;
+
+    // Refund loan_fee hvis den allerede er udvekslet (status=active + fee > 0).
+    if (loan.status === "active" && loan.loan_fee > 0) {
+      const [{ data: borrower }, { data: lender }] = await Promise.all([
+        supabase.from("teams").select("balance").eq("id", loan.to_team_id).single(),
+        supabase.from("teams").select("balance").eq("id", loan.from_team_id).single(),
+      ]);
+      if (!borrower || !lender) {
+        return res.status(500).json({ error: "Kunne ikke hente hold-balancer for refusion" });
+      }
+      await supabase.from("teams").update({ balance: borrower.balance + loan.loan_fee }).eq("id", loan.to_team_id);
+      await supabase.from("teams").update({ balance: lender.balance - loan.loan_fee }).eq("id", loan.from_team_id);
+      await supabase.from("finance_transactions").insert([
+        { team_id: loan.to_team_id,   type: "transfer_in",  amount: loan.loan_fee,
+          description: `Lejegebyr refunderet (admin-annullering): ${riderName}` },
+        { team_id: loan.from_team_id, type: "transfer_out", amount: -loan.loan_fee,
+          description: `Lejegebyr tilbageført (admin-annullering): ${riderName}` },
+      ]);
+      refundedFee = loan.loan_fee;
+    }
+
+    await supabase.from("loan_agreements").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", loan.id);
+
+    const refundStr = refundedFee > 0 ? ` Lejegebyr (${refundedFee.toLocaleString("da-DK")} CZ$) er refunderet.` : "";
+    const msg = `Lejeaftalen på ${riderName} er annulleret af en admin${reason ? `: ${reason}` : "."}${refundStr}`;
+
+    await Promise.allSettled([
+      notifyTeamOwner(loan.from_team_id, "transfer_offer_rejected", "Lejeaftale annulleret af admin", msg, loan.id),
+      notifyTeamOwner(loan.to_team_id,   "transfer_offer_rejected", "Lejeaftale annulleret af admin", msg, loan.id),
+    ]);
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: "loan_agreement_admin_cancel",
+      description: `Lejeaftale annulleret: ${riderName} (status: ${loan.status}, refund: ${refundedFee.toLocaleString("da-DK")} CZ$)${reason ? ` — ${reason}` : ""}`,
+      target_rider_id: loan.rider_id,
+      meta: {
+        loan_id: loan.id,
+        from_team_id: loan.from_team_id,
+        to_team_id: loan.to_team_id,
+        prior_status: loan.status,
+        refunded_fee: refundedFee,
+        reason: reason || null,
+      },
+    });
+
+    res.json({ success: true, rider_name: riderName, refunded_fee: refundedFee, message: `Lejeaftale annulleret: ${riderName}` });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
