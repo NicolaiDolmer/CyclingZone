@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.90",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Backend · Audit-fundament for økonomi-historik (07d Fase A)",
+        items: [
+          "Admin · admin_log fik 4 nye indices (admin_user_id, action_type, target_team_id, created_at) og en CHECK-constraint der håndhæver de 24 godkendte action_types — utilsigtede typoer fanges nu på databaseniveau i stedet for at blive lukket stille gennem.",
+          "Admin · auctionCancellation skriver nu admin_log med højlydt fejl i stedet for best-effort try/catch, så annullering ikke kan ske uden audit-spor.",
+          "Backend · finance_transactions udvidet med 9 audit-kolonner (actor_type, actor_id, source_path, reason_code, before_balance, after_balance, related_entity_type, related_entity_id, idempotency_key) — alle nullable og NULL-default for eksisterende rows, så ingen historik mistes. Population følger i 07d Fase B sammen med 07c atomic balance RPC.",
+          "Backend · Nye enum-konstanter (ADMIN_ACTION_TYPE, FINANCE_ACTOR_TYPE, FINANCE_RELATED_ENTITY, FINANCE_REASON) i economyConstants.js erstatter hardkodede strings i 11 admin-routes. 7 nye unit-tests håndhæver at enum-values matcher DB CHECK-constraints så afvigelser fanges af CI før prod.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.89",
     date: "2026-05-09",
     label: "Beta",

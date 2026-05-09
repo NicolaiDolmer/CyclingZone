@@ -1,4 +1,5 @@
 import { ensureNoError, expectMaybeSingle, expectMutation } from "./marketUtils.js";
+import { ADMIN_ACTION_TYPE } from "./economyConstants.js";
 
 const NOOP = async () => {};
 const CANCELLABLE_STATUSES = ["active", "extended"];
@@ -101,16 +102,16 @@ export async function cancelAuctionByAdmin({
     meta: { auction_id: auctionId, admin_user_id: adminUserId, bidder_count: bidderTeamIds.length },
   });
 
-  try {
-    await supabase.from("admin_log").insert({
+  await expectMutation(
+    supabase.from("admin_log").insert({
       admin_user_id: adminUserId,
-      action_type: "auction_cancel",
+      action_type: ADMIN_ACTION_TYPE.AUCTION_CANCEL,
       description: `Auktion annulleret: ${riderName} (${bidderTeamIds.length} bud frigivet)`,
       target_team_id: auction.seller_team_id || null,
       target_rider_id: auction.rider?.id || null,
       meta: { auction_id: auctionId, current_price: auction.current_price, bidder_count: bidderTeamIds.length },
-    });
-  } catch (_e) { /* best-effort */ }
+    })
+  );
 
   return {
     ok: true,

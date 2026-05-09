@@ -15,7 +15,7 @@
 | 07a | Stale fallbacks + sponsor-default drift | P0 bug | S (~30-60 min) | — | ✅ Leveret v2.50 (2026-05-07) |
 | 07b | TOCTOU-fixes + idempotency-keys | P0 bug | M (~2 sessioner) | — | ✅ Leveret 2026-05-07 (a90128e, [#80](https://github.com/NicolaiDolmer/CyclingZone/issues/80)) |
 | 07c | Atomic balance updates (Postgres-RPC) | P1 safety | M (~1-2 sessioner) | — | 🆕 Ready ([#81](https://github.com/NicolaiDolmer/CyclingZone/issues/81)) |
-| 07d | Komplet finance audit-log + admin_log | P1 audit | M (~2 sessioner) | — | 🆕 **Næste** ([#82](https://github.com/NicolaiDolmer/CyclingZone/issues/82)) |
+| 07d | Komplet finance audit-log + admin_log | P1 audit | M (~2 sessioner) | — | 🟡 Fase A leveret 2026-05-09 (v2.90); Fase B venter på 07c-RPC ([#82](https://github.com/NicolaiDolmer/CyclingZone/issues/82)) |
 | 07e | Admin økonomi super-dashboard | Feature | M (~2 sessioner) | 07d | 🆕 Blocked ([#83](https://github.com/NicolaiDolmer/CyclingZone/issues/83)) |
 | 07f | Sponsor variabel ift. resultater | Feature | M (~1-2 sessioner) | — | 🆕 Ready ([#84](https://github.com/NicolaiDolmer/CyclingZone/issues/84)) |
 | 07g | Manager finance-forecast + risk-tier | Feature | M (~2 sessioner) | 07d (delvist) | 🆕 Ready ([#85](https://github.com/NicolaiDolmer/CyclingZone/issues/85)) |
@@ -193,6 +193,10 @@ if (error) throw error;
 ---
 
 # 07d · Komplet finance audit-log + admin_log
+
+**Status 2026-05-09:** Fase A leveret v2.90 (migration `database/2026-05-09-audit-log-foundation.sql`, enum-konstanter, 11 callsite-refaktor, 7 nye tests). Fase B udskudt til 07c er færdig (atomic balance RPC) — finance_transactions audit-kolonner er klar i schema men endnu ikke populeret af engines.
+
+**Faktisk fund 2026-05-09 (modsiger master):** `admin_log`-tabellen eksisterede ALLEREDE på prod (oprettet ad-hoc 2026-04-29) med 18 rows og 4 distinct action_types. CREATE TABLE blev sprunget over; migration tilføjede i stedet 4 indices + CHECK constraint. Faktisk antal callsites: 11 (ikke 6 som master skrev), inkl. nyere features `loan_agreement_admin_cancel`, `market_pause`, `market_resume`, `auction_config_update`.
 
 **1. Mål.** Bygge fundament for "perfekt admin historik": (1) faktisk opret `admin_log`-tabellen som 6 callsites allerede prøver at skrive til, og (2) udvid `finance_transactions` med audit-kolonner (actor, source_path, reason_code, before/after balance, related_entity, idempotency_key) så hver pengebevægelse er sporbar til hvem/hvad/hvorfor.
 

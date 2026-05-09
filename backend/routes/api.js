@@ -87,7 +87,7 @@ import {
   repairSeasonEndFinanceAndBoard,
   updateStandings,
 } from "../lib/economyEngine.js";
-import { SPONSOR_INCOME_BASE } from "../lib/economyConstants.js";
+import { SPONSOR_INCOME_BASE, ADMIN_ACTION_TYPE } from "../lib/economyConstants.js";
 import { calculateRiderMarketValue } from "../lib/marketUtils.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
@@ -2560,7 +2560,7 @@ router.post("/admin/transfers/offers/:id/cancel", requireAdmin, async (req, res)
 
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
-      action_type: "transfer_offer_admin_cancel",
+      action_type: ADMIN_ACTION_TYPE.TRANSFER_OFFER_ADMIN_CANCEL,
       description: `Transfer-handel annulleret: ${riderName}, ${price?.toLocaleString()} CZ$ (status: ${offer.status})${reason ? ` — ${reason}` : ""}`,
       target_rider_id: offer.rider_id,
       meta: { offer_id: offer.id, seller_team_id: offer.seller_team_id, buyer_team_id: offer.buyer_team_id, price, reason: reason || null },
@@ -2605,7 +2605,7 @@ router.post("/admin/transfers/swaps/:id/cancel", requireAdmin, async (req, res) 
 
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
-      action_type: "swap_offer_admin_cancel",
+      action_type: ADMIN_ACTION_TYPE.SWAP_OFFER_ADMIN_CANCEL,
       description: `Byttehandel annulleret: ${offeredName} ↔ ${requestedName} (status: ${swap.status})${reason ? ` — ${reason}` : ""}`,
       target_rider_id: swap.offered_rider_id,
       meta: { swap_id: swap.id, proposing_team_id: swap.proposing_team_id, receiving_team_id: swap.receiving_team_id, reason: reason || null },
@@ -2673,7 +2673,7 @@ router.post("/admin/loans/:id/cancel", requireAdmin, async (req, res) => {
 
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
-      action_type: "loan_agreement_admin_cancel",
+      action_type: ADMIN_ACTION_TYPE.LOAN_AGREEMENT_ADMIN_CANCEL,
       description: `Lejeaftale annulleret: ${riderName} (status: ${loan.status}, refund: ${refundedFee.toLocaleString("da-DK")} CZ$)${reason ? ` — ${reason}` : ""}`,
       target_rider_id: loan.rider_id,
       meta: {
@@ -3118,7 +3118,7 @@ router.put("/admin/auction-config", requireAdmin, async (req, res) => {
     if (error) throw error;
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
-      action_type: "auction_config_update",
+      action_type: ADMIN_ACTION_TYPE.AUCTION_CONFIG_UPDATE,
       description: `Auktionsstider opdateret: ${duration_hours}t aktiv, hverdage ${weekday_open_hour}-${weekday_close_hour}, weekend ${weekend_open_hour}-${weekend_close_hour}`,
       meta: { duration_hours, weekday_open_hour, weekday_close_hour, weekend_open_hour, weekend_close_hour, extension_minutes },
     });
@@ -3155,7 +3155,7 @@ router.post("/admin/market/pause", requireAdmin, async (req, res) => {
     if (error) throw error;
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
-      action_type: "market_pause",
+      action_type: ADMIN_ACTION_TYPE.MARKET_PAUSE,
       description: level === "all"
         ? `Hele markedet pauset${trimmedReason ? ` — ${trimmedReason}` : ""}`
         : `Auktioner pauset${trimmedReason ? ` — ${trimmedReason}` : ""}`,
@@ -3212,7 +3212,7 @@ router.post("/admin/market/resume", requireAdmin, async (req, res) => {
 
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
-      action_type: "market_resume",
+      action_type: ADMIN_ACTION_TYPE.MARKET_RESUME,
       description: `Marked genoptaget efter ${elapsedMinutes} min pause (${auctionsShifted} auktioner forlænget)`,
       meta: {
         prior_level: state.level,
@@ -3248,7 +3248,7 @@ router.post("/admin/adjust-balance", requireAdmin, async (req, res) => {
     });
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
-      action_type: "balance_adjustment",
+      action_type: ADMIN_ACTION_TYPE.BALANCE_ADJUSTMENT,
       description: `Balance justeret med ${amount} CZ$: ${reason || "—"}`,
       target_team_id: team_id,
       meta: { amount, reason },
@@ -3464,7 +3464,7 @@ router.delete("/admin/users/:userId", requireAdmin, async (req, res) => {
 
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
-      action_type: "user_deleted",
+      action_type: ADMIN_ACTION_TYPE.USER_DELETED,
       description: `Bruger slettet: ${target.username} (${target.email})`,
       meta: { deleted_user_id: userId },
     });
@@ -3487,7 +3487,7 @@ router.patch("/admin/users/:userId/role", requireAdmin, async (req, res) => {
 
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
-      action_type: "role_changed",
+      action_type: ADMIN_ACTION_TYPE.ROLE_CHANGED,
       description: `Rolle ændret for ${data.username} → ${role}`,
       meta: { user_id: userId, role },
     });
@@ -3509,7 +3509,7 @@ router.delete("/admin/races/:raceId", requireAdmin, async (req, res) => {
 
     await supabase.from("admin_log").insert({
       admin_user_id: req.user.id,
-      action_type: "race_deleted",
+      action_type: ADMIN_ACTION_TYPE.RACE_DELETED,
       description: `Løb slettet: ${race.name}`,
       meta: { race_id: raceId, name: race.name },
     });
