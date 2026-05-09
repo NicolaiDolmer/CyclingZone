@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.99",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Race-katalog (Slice 09)",
+        items: [
+          "Admin · Ny '🏁 Race-katalog'-sektion på admin-panelet med verdens-kalenderen (97 løb i alt på tværs af 7 klasser) og en wizard til at sammensætte sæsonens kalender. Vælg klasser via checkbox-grid, sæt race-dage-mål (default 60), klik 'Generér forslag' for at få en pre-checked liste, justér ved at af-vælge enkelte løb, og gem som sæsonens kalender. WorldTour-klasser er ekskluderet by-default for sæson 1 (per beslutning 2026-05-09 om gradvis opskalering).",
+          "Manager · Ny '🌍 Verdens-kalender'-tab på Løb-siden viser hele kataloget over tilgængelige løb. Klik en klasse for at filtrere; tabellen viser navn, klasse, type (Endags/Etape), antal etaper og dato. Read-only — udvælgelse til specifikke sæsoner sker via admin-panelet.",
+          "Backend · Ny race_pool-tabel som katalog (separeret fra eksisterende races-tabel som nu er sæson-instans af et pool-løb via FK pool_race_id). race_class bruger frontend's 9-key-taksonomi (TourFrance, GiroVuelta, Monuments, OtherWorldTourA/B/C, ProSeries, Class1, Class2). 4 nye admin-endpoints: GET /api/admin/race-pool (overblik), POST /api/admin/race-pool/import-csv (idempotent re-upload), POST /api/admin/seasons/:id/race-selection/preview (forslag uden writes), POST /api/admin/seasons/:id/race-selection (gem som races-rows). Plus public GET /api/race-pool. Pure-funktioner: parseRacePoolCsv (deterministisk external_id via SHA-256 af navn+dato → idempotent re-import) + selectSeasonRaces (filter på klasser + race-dage-mål + overshoot-tolerance). 499/499 backend-tests grønne (+22 nye).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.98",
     date: "2026-05-09",
     label: "Beta",

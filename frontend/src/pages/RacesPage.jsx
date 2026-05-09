@@ -41,7 +41,7 @@ function timeAgo(dateStr) {
   return "Lige nu";
 }
 
-const VALID_TABS = ["calendar", "library", "points", "submit", "approve"];
+const VALID_TABS = ["calendar", "library", "world", "points", "submit", "approve"];
 
 export default function RacesPage() {
   const navigate = useNavigate();
@@ -78,6 +78,13 @@ export default function RacesPage() {
   const [libFilterStatus, setLibFilterStatus] = useState("");
   const [libSearch, setLibSearch] = useState("");
 
+  // World pool state (Slice 09 — lazy load når tab="world" åbnes)
+  const [worldPool, setWorldPool] = useState([]);
+  const [worldSummary, setWorldSummary] = useState({});
+  const [worldLoaded, setWorldLoaded] = useState(false);
+  const [worldLoading, setWorldLoading] = useState(false);
+  const [worldFilterClass, setWorldFilterClass] = useState("");
+
   useEffect(() => { loadAll(); }, []);
 
   // Tab → URL sync (deep-linkbar fra eksterne kilder, fx /races?tab=library)
@@ -95,7 +102,23 @@ export default function RacesPage() {
     if (tab === "library" && !libLoaded && !libLoading) {
       loadLibrary();
     }
-  }, [tab, libLoaded, libLoading]);
+    if (tab === "world" && !worldLoaded && !worldLoading) {
+      loadWorld();
+    }
+  }, [tab, libLoaded, libLoading, worldLoaded, worldLoading]);
+
+  async function loadWorld() {
+    setWorldLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/race-pool`);
+      const data = await res.json();
+      setWorldPool(data.pool || []);
+      setWorldSummary(data.summary || {});
+      setWorldLoaded(true);
+    } finally {
+      setWorldLoading(false);
+    }
+  }
 
   async function loadLibrary() {
     setLibLoading(true);
@@ -287,6 +310,7 @@ export default function RacesPage() {
         {[
           { key: "calendar", label: "📅 Kalender" },
           { key: "library", label: "📚 Bibliotek" },
+          { key: "world", label: "🌍 Verdens-kalender" },
           { key: "points", label: "💰 Point & præmier" },
           { key: "submit", label: "📤 Indberét resultater" },
           ...(isAdmin ? [{ key: "approve", label: `⚙ Godkend (${pending.filter(p => p.status === "pending").length})` }] : []),
@@ -568,6 +592,80 @@ export default function RacesPage() {
                 </table>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Verdens-kalender tab (Slice 09) — read-only katalog af alle løb */}
+      {tab === "world" && (
+        <div>
+          {worldLoading && <p className="text-cz-3 text-sm">Indlæser verdens-kalender…</p>}
+          {!worldLoading && (
+            <>
+              <div className="bg-cz-card border border-cz-border rounded-xl p-4 mb-4">
+                <p className="text-cz-2 font-medium text-sm mb-3">
+                  {worldPool.length} løb totalt på tværs af verdens-kalenderen
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                  {RACE_CLASS_OPTIONS.map(opt => {
+                    const s = worldSummary[opt.value];
+                    if (!s || s.count === 0) return null;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => setWorldFilterClass(worldFilterClass === opt.value ? "" : opt.value)}
+                        className={`flex justify-between items-center px-3 py-2 rounded-lg border text-left transition-all
+                          ${worldFilterClass === opt.value
+                            ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t"
+                            : "border-cz-border text-cz-2 hover:bg-cz-subtle"}`}
+                      >
+                        <span className="truncate">{opt.label}</span>
+                        <span className="text-cz-3 text-xs whitespace-nowrap ml-2">
+                          {s.count} løb · {s.raceDays} dage
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {worldFilterClass && (
+                  <p className="text-cz-3 text-xs mt-2">
+                    Filtreret på {worldFilterClass}.{" "}
+                    <button onClick={() => setWorldFilterClass("")} className="text-cz-accent-t underline">
+                      Ryd filter
+                    </button>
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-cz-subtle text-cz-3 text-xs">
+                      <tr>
+                        <th className="text-left px-3 py-2">Løb</th>
+                        <th className="text-left px-3 py-2">Klasse</th>
+                        <th className="text-left px-3 py-2">Type</th>
+                        <th className="text-right px-3 py-2">Etaper</th>
+                        <th className="text-left px-3 py-2">Dato</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {worldPool
+                        .filter(r => !worldFilterClass || r.race_class === worldFilterClass)
+                        .map(r => (
+                          <tr key={r.id} className="border-t border-cz-border hover:bg-cz-subtle/50">
+                            <td className="px-3 py-2 text-cz-1">{r.name}</td>
+                            <td className="px-3 py-2 text-cz-2">{r.race_class}</td>
+                            <td className="px-3 py-2 text-cz-2">{r.race_type === "single" ? "Endags" : "Etape"}</td>
+                            <td className="px-3 py-2 text-right text-cz-2">{r.stages}</td>
+                            <td className="px-3 py-2 text-cz-3">{r.date_text || "—"}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}

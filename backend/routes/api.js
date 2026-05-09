@@ -155,6 +155,12 @@ import {
 import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
 import { checkAchievements } from "../lib/achievementEngine.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
+import { parseRacePoolCsv, summarizePool, WORLD_TOUR_CLASSES } from "../lib/racePoolImport.js";
+import {
+  selectFirstSeasonRaces,
+  selectSeasonRaces,
+  DEFAULT_RACE_DAYS_TARGET,
+} from "../lib/seasonRaceSelection.js";
 import {
   cancelBetaMarket,
   resetBetaAchievements,
@@ -3254,6 +3260,176 @@ router.post("/admin/races", requireAdmin, async (req, res) => {
     if (createError) return res.status(500).json({ error: createError.message });
 
     res.status(201).json(createdRace);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/race-pool — public katalog af alle tilgængelige løb (Slice 09)
+router.get("/race-pool", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("race_pool")
+      .select("id, name, race_class, race_type, stages, date_text, country")
+      .order("race_class")
+      .order("name");
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ pool: data || [], summary: summarizePool(data || []) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/race-pool — admin overblik (samme data, men som admin)
+router.get("/admin/race-pool", requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("race_pool")
+      .select("id, external_id, name, race_class, race_type, stages, date_text, country, created_at")
+      .order("race_class")
+      .order("name");
+    if (error) return res.status(500).json({ error: error.message });
+    const pool = data || [];
+    res.json({
+      pool,
+      summary: summarizePool(pool),
+      total_count: pool.length,
+      total_race_days: pool.reduce((sum, r) => sum + (Number(r.stages) || 0), 0),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/race-pool/import-csv — upsert pool fra CSV-tekst (idempotent via external_id)
+router.post("/admin/race-pool/import-csv", requireAdmin, async (req, res) => {
+  try {
+    const { csv_text } = req.body || {};
+    if (!csv_text || typeof csv_text !== "string") {
+      return res.status(400).json({ error: "csv_text (string) kræves" });
+    }
+    const { rows, errors } = parseRacePoolCsv(csv_text);
+    if (rows.length === 0) {
+      return res.status(400).json({ error: "Ingen gyldige rækker i CSV", parse_errors: errors });
+    }
+    const { data, error } = await supabase
+      .from("race_pool")
+      .upsert(
+        rows.map((r) => ({ ...r, updated_at: new Date().toISOString() })),
+        { onConflict: "external_id" },
+      )
+      .select("id, external_id, name");
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({
+      success: true,
+      processed: rows.length,
+      upserted: (data || []).length,
+      parse_errors: errors,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/seasons/:seasonId/race-selection/preview — generér forslag (ingen writes)
+router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, async (req, res) => {
+  try {
+    const {
+      include_classes = null,
+      exclude_classes = null,
+      race_days_target = DEFAULT_RACE_DAYS_TARGET,
+      use_first_season_default = false,
+    } = req.body || {};
+
+    const { data: pool, error: poolError } = await supabase
+      .from("race_pool")
+      .select("id, name, race_class, race_type, stages, date_text");
+    if (poolError) return res.status(500).json({ error: poolError.message });
+
+    const result = use_first_season_default
+      ? selectFirstSeasonRaces(pool || [], { raceDaysTarget: Number(race_days_target) })
+      : selectSeasonRaces({
+          pool: pool || [],
+          includeClasses: include_classes,
+          excludeClasses: exclude_classes ?? [],
+          raceDaysTarget: Number(race_days_target),
+        });
+
+    res.json({
+      ...result,
+      world_tour_classes: WORLD_TOUR_CLASSES,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/seasons/:seasonId/race-selection — gem udvalg som races-rows
+router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, async (req, res) => {
+  try {
+    const { seasonId } = req.params;
+    const { pool_race_ids } = req.body || {};
+    if (!Array.isArray(pool_race_ids) || pool_race_ids.length === 0) {
+      return res.status(400).json({ error: "pool_race_ids (array) kræves" });
+    }
+
+    const { data: season, error: seasonError } = await supabase
+      .from("seasons")
+      .select("id, status")
+      .eq("id", seasonId)
+      .single();
+    if (seasonError) return res.status(500).json({ error: seasonError.message });
+    if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+    if (season.status === "completed") {
+      return res.status(400).json({ error: "Kan ikke ændre kalender på en afsluttet sæson" });
+    }
+
+    const { data: poolRaces, error: poolError } = await supabase
+      .from("race_pool")
+      .select("id, name, race_class, race_type, stages")
+      .in("id", pool_race_ids);
+    if (poolError) return res.status(500).json({ error: poolError.message });
+
+    const { data: existing, error: existingError } = await supabase
+      .from("races")
+      .select("pool_race_id")
+      .eq("season_id", seasonId)
+      .not("pool_race_id", "is", null);
+    if (existingError) return res.status(500).json({ error: existingError.message });
+    const existingPoolIds = new Set((existing || []).map((r) => r.pool_race_id));
+
+    const toInsert = (poolRaces || [])
+      .filter((p) => !existingPoolIds.has(p.id))
+      .map((p) => ({
+        season_id: seasonId,
+        pool_race_id: p.id,
+        name: p.name,
+        race_class: p.race_class,
+        race_type: p.race_type,
+        stages: p.stages,
+        status: "scheduled",
+        prize_pool: 0,
+      }));
+
+    if (toInsert.length === 0) {
+      return res.json({
+        success: true,
+        inserted: 0,
+        skipped_already_present: poolRaces?.length || 0,
+      });
+    }
+
+    const { data: created, error: createError } = await supabase
+      .from("races")
+      .insert(toInsert)
+      .select("id, pool_race_id, name");
+    if (createError) return res.status(500).json({ error: createError.message });
+
+    res.json({
+      success: true,
+      inserted: created?.length || 0,
+      skipped_already_present: (poolRaces?.length || 0) - (created?.length || 0),
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
