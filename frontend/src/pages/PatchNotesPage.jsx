@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.87",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auktioner · Forlængelse over døgnskifte",
+        items: [
+          "Auktioner · Bud i de sidste 10 minutter kan nu forlænge auktionen op til 1 time efter dagens vindueslukning (hverdage til 23:00, weekend til 00:00). Tidligere blev forlængelsen kappet præcist ved lukningstidspunktet — fx et bud kl. 21:55 hverdag rundede ned til 22:00 i stedet for at give de fulde 10 minutter.",
+          "Auktioner · Hvis et bud sent i grace-timen ville skubbe slutningen længere, ruller den resterende tid over til næste vindues åbning. Eksempel: fredag bud kl. 22:55 → auktionen slutter lørdag kl. 08:05 (5 min overflow). Reglen er nu beskrevet i Hjælp-siden.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.86",
     date: "2026-05-09",
     label: "Beta",

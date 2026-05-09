@@ -142,7 +142,9 @@ const BID_TIME = new Date();
 
 // Fast tidsstempel der falder på lørdag 12:00 CEST — robust mod weekend/weekday
 // vinduer (08-23 CEST på weekend) og uafhængig af test-runner-tidspunkt.
-const SAT_NOON_UTC = new Date("2026-05-09T10:00:00.000Z");
+// Bevidst valgt langt i fremtiden: isAuctionExpired bruger real Date.now() og
+// ville få resolver til at bail før checkBidExtension hvis datoen var i fortiden.
+const SAT_NOON_UTC = new Date("2030-05-04T10:00:00.000Z");
 // Standard auction-config så windowCloseTime kan beregnes deterministisk
 const FULL_CFG = {
   duration_hours: 6,
