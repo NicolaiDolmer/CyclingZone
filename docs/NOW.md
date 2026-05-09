@@ -28,8 +28,10 @@
 - 2026-05-08: **#193 Reserved-balance off-by-one for proxies LIVE** ([PR #200](https://github.com/NicolaiDolmer/CyclingZone/pull/200), commit [20edc43](https://github.com/NicolaiDolmer/CyclingZone/commit/20edc43)) — `computeReservedBalance` bruger nu `MAX(current_price, own_proxy_max)` per auktion. Backend-only, ingen patch notes.
 - 2026-05-08: **#192 Auktions-safety-pakke LIVE** ([PR #199](https://github.com/NicolaiDolmer/CyclingZone/pull/199), commit [a747404](https://github.com/NicolaiDolmer/CyclingZone/commit/a747404)) — owner-check på proxy, logging af silent error paths og Discord DM kun ved udmattet proxy.
 
-## Næste session (prioriteret) — polish-sprint #178
-1. **Manuel verifikation på prod** — v2.66 + v2.68 + #193 + #194 (race-confirm-modal: 2 Chrome-tabs, byd nær-samtidigt, modal vises med ny pris/min-bud) + **#197 (mobile-polish: åbn /auctions på iPhone eller Chrome DevTools 360px → mål proxy-knapper med inspector → ≥44px; fokuser bud-input på iPhone Safari → ingen zoom-jump)**.
+## Næste session (prioriteret)
+1. **Slice 07c — atomic balance RPC** ([#81](https://github.com/NicolaiDolmer/CyclingZone/issues/81)) — bygger `increment_balance_with_audit(team_id, delta, finance_payload)` Postgres-RPC. Eliminerer lost-update-races på `teams.balance` ved at samle UPDATE + finance_transactions INSERT i én DB-transaktion. **Blokerer 07d Fase B** ([#235](https://github.com/NicolaiDolmer/CyclingZone/issues/235)) — audit-kolonnerne ligger klar i schema men engine-callsites populerer dem ikke før RPC eksisterer.
+2. **Slice 07d Fase B** ([#235](https://github.com/NicolaiDolmer/CyclingZone/issues/235)) — populér 9 audit-kolonner i 16 finance write-paths. Skal shippes lige efter 07c er soak-testet 24t.
+3. **Manuel verifikation på prod** — v2.66 + v2.68 + #193 + #194 (race-confirm-modal: 2 Chrome-tabs, byd nær-samtidigt, modal vises med ny pris/min-bud) + **#197 (mobile-polish: åbn /auctions på iPhone eller Chrome DevTools 360px → mål proxy-knapper med inspector → ≥44px; fokuser bud-input på iPhone Safari → ingen zoom-jump)**.
 2. **Roter Supabase keys** — service key + anon key blev historisk committed (fjernet i #201, men lå i Git-historikken).
 3. **Mobile UX audit:** #163 + #181 lukket; resterende mobile friction tages ad-hoc.
 4. **Onboarding session-1 audit** — start som ny manager og noter friction.
