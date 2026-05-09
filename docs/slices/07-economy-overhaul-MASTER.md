@@ -18,7 +18,7 @@
 | 07d | Komplet finance audit-log + admin_log | P1 audit | M (~2 sessioner) | — | ✅ Fase A + B leveret 2026-05-09 (v2.90 + v2.92, [#82](https://github.com/NicolaiDolmer/CyclingZone/issues/82) + [#235](https://github.com/NicolaiDolmer/CyclingZone/issues/235)) |
 | 07e | Admin økonomi super-dashboard | Feature | M (~2 sessioner) | 07d | 🟡 Fase A leveret 2026-05-09 (v2.93 — Sundhed + Overblik + Transaktioner + drill-down). Fase B (admin_log-feed + korrelering + CSV-export) afventer ([#83](https://github.com/NicolaiDolmer/CyclingZone/issues/83)) |
 | 07f | Sponsor variabel ift. resultater | Feature | M (~1-2 sessioner) | — | 🆕 Ready ([#84](https://github.com/NicolaiDolmer/CyclingZone/issues/84)) |
-| 07g | Manager finance-forecast + risk-tier | Feature | M (~2 sessioner) | 07d (delvist) | 🆕 Ready ([#85](https://github.com/NicolaiDolmer/CyclingZone/issues/85)) |
+| 07g | Manager finance-forecast + risk-tier | Feature | M (~2 sessioner) | 07d (delvist) | ✅ Leveret v2.96 (2026-05-09, [#85](https://github.com/NicolaiDolmer/CyclingZone/issues/85)) |
 | 07h | Season financial close-out report | Feature | S-M (~1 session) | 07d (delvist) | 🆕 Ready ([#86](https://github.com/NicolaiDolmer/CyclingZone/issues/86)) |
 
 ---
