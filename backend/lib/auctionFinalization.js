@@ -9,6 +9,11 @@ import {
   MARKET_SQUAD_LIMITS,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import {
+  FINANCE_ACTOR_TYPE,
+  FINANCE_REASON,
+  FINANCE_RELATED_ENTITY,
+} from "./economyConstants.js";
 
 export const AUCTION_SQUAD_LIMITS = MARKET_SQUAD_LIMITS;
 
@@ -284,6 +289,7 @@ async function finalizeAuctionRecord({
     );
 
     // Slice 07c: balance + finance_transactions atomic via RPC.
+    // 07d Fase B: cron-finalizer → actor_type=cron, actor_id=null.
     await incrementBalanceWithAudit(supabase, {
       teamId: effectiveBidderId,
       delta: -price,
@@ -291,6 +297,12 @@ async function finalizeAuctionRecord({
         type: "transfer_out",
         amount: -price,
         description: `Købt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
+        actor_type: FINANCE_ACTOR_TYPE.CRON,
+        actor_id: null,
+        source_path: "auctionFinalization.finalizeAuctionRecord.buyer",
+        reason_code: FINANCE_REASON.AUCTION_WINNER_PAYMENT,
+        related_entity_type: FINANCE_RELATED_ENTITY.AUCTION,
+        related_entity_id: auction.id,
       },
     });
 
@@ -302,6 +314,12 @@ async function finalizeAuctionRecord({
           type: "transfer_in",
           amount: price,
           description: `Solgt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
+          actor_type: FINANCE_ACTOR_TYPE.CRON,
+          actor_id: null,
+          source_path: "auctionFinalization.finalizeAuctionRecord.seller",
+          reason_code: FINANCE_REASON.AUCTION_SELLER_PAYOUT,
+          related_entity_type: FINANCE_RELATED_ENTITY.AUCTION,
+          related_entity_id: auction.id,
         },
       });
     }
@@ -393,6 +411,12 @@ async function finalizeAuctionRecord({
         type: "transfer_in",
         amount: salePrice,
         description: `Garanteret banksalg: ${auction.rider.firstname} ${auction.rider.lastname}`,
+        actor_type: FINANCE_ACTOR_TYPE.CRON,
+        actor_id: null,
+        source_path: "auctionFinalization.finalizeAuctionRecord.guaranteedBankSale",
+        reason_code: FINANCE_REASON.AUCTION_GUARANTEED_BANK_SALE,
+        related_entity_type: FINANCE_RELATED_ENTITY.AUCTION,
+        related_entity_id: auction.id,
       },
     });
 

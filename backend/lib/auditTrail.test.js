@@ -112,3 +112,350 @@ test("Enum-objekter er Object.freeze'd (forhindrer runtime-mutation)", () => {
     assert.ok(Object.isFrozen(frozen), `${name} er ikke frozen — kan muteres ved en fejl`);
   }
 });
+
+// ============================================================
+// 07d Fase B: per-callsite audit-coverage. Hver write-path skal sende
+// korrekte actor_type, source_path, reason_code felter til RPC'en — så
+// finance_transactions med NULL actor_type aftager til 0 efter udrulning.
+// ============================================================
+
+import { processLoanAgreementSeasonFees, createEmergencyLoan, createLoan, repayLoan } from "./loanEngine.js";
+import { finalizeAuctionById } from "./auctionFinalization.js";
+import { paySeasonPrizesToDate } from "./prizePayoutEngine.js";
+
+function makeAuditCaptureClient({ teams = {}, loans = [], extras = {} } = {}) {
+  const captures = [];
+  const balances = new Map(Object.entries(teams).map(([id, t]) => [id, t.balance ?? 0]));
+
+  const tableHandlers = {
+    loan_agreements: () => ({
+      select: () => ({
+        eq: () => ({
+          eq: () => Promise.resolve({ data: loans, error: null }),
+        }),
+      }),
+    }),
+    teams: () => ({
+      select: (cols) => ({
+        eq: (_c, value) => ({
+          single: () => Promise.resolve({
+            data: cols === "division" ? { division: 3 } : (teams[value] || null),
+            error: null,
+          }),
+        }),
+      }),
+    }),
+    loan_config: () => ({
+      select: () => ({
+        eq: () => Promise.resolve({
+          data: [{ loan_type: "emergency", origination_fee_pct: 0.15, interest_rate_pct: 0.15, debt_ceiling: 600000 }],
+          error: null,
+        }),
+      }),
+    }),
+    loans: () => ({
+      insert: () => ({
+        select: () => ({ single: () => Promise.resolve({ data: { id: "loan-x" }, error: null }) }),
+      }),
+      select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+    }),
+    notifications: () => ({ insert: () => Promise.resolve({ data: null, error: null }) }),
+    user_preferences: () => ({
+      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
+    }),
+    ...extras,
+  };
+
+  return {
+    captures,
+    balances,
+    client: {
+      rpc(name, params) {
+        assert.equal(name, "increment_balance_with_audit");
+        const before = balances.get(params.p_team_id) ?? 0;
+        const after = before + params.p_delta;
+        balances.set(params.p_team_id, after);
+        captures.push({ teamId: params.p_team_id, delta: params.p_delta, payload: params.p_finance_payload });
+        return Promise.resolve({ data: after, error: null });
+      },
+      from(table) {
+        const handler = tableHandlers[table];
+        if (!handler) throw new Error(`Unexpected table: ${table}`);
+        return handler();
+      },
+    },
+  };
+}
+
+test("processLoanAgreementSeasonFees populerer audit-fields på begge sider (cron)", async () => {
+  const fixture = makeAuditCaptureClient({
+    loans: [{
+      id: "loan-A",
+      from_team_id: "lender",
+      to_team_id: "borrower",
+      loan_fee: 100,
+      start_season: 1,
+      end_season: 2,
+      status: "active",
+      rider: { firstname: "X", lastname: "Y" },
+    }],
+  });
+
+  await processLoanAgreementSeasonFees("borrower", 2, "season-2", fixture.client);
+
+  assert.equal(fixture.captures.length, 2);
+  const [payer, receiver] = fixture.captures;
+  assert.equal(payer.payload.actor_type, FINANCE_ACTOR_TYPE.CRON);
+  assert.equal(payer.payload.source_path, "loanEngine.processLoanAgreementSeasonFees.payer");
+  assert.equal(payer.payload.reason_code, FINANCE_REASON.LOAN_FEE_PAID);
+  assert.equal(payer.payload.related_entity_type, FINANCE_RELATED_ENTITY.LOAN);
+  assert.equal(payer.payload.related_entity_id, "loan-A");
+  assert.equal(payer.payload.idempotency_key, "loan_fee_paid:loan-A:season-2");
+
+  assert.equal(receiver.payload.actor_type, FINANCE_ACTOR_TYPE.CRON);
+  assert.equal(receiver.payload.source_path, "loanEngine.processLoanAgreementSeasonFees.receiver");
+  assert.equal(receiver.payload.reason_code, FINANCE_REASON.LOAN_FEE_RECEIVED);
+  assert.equal(receiver.payload.idempotency_key, "loan_fee_received:loan-A:season-2");
+});
+
+function makeLoanEngineCaptureClient({ rpcOverride } = {}) {
+  const captures = [];
+  const client = {
+    rpc(name, params) {
+      if (rpcOverride) {
+        const override = rpcOverride(name, params);
+        if (override) return override;
+      }
+      assert.equal(name, "increment_balance_with_audit");
+      captures.push(params.p_finance_payload);
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({ data: { division: 3, user_id: "u1" }, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === "loan_config") {
+        return {
+          select: () => ({
+            eq: () => Promise.resolve({
+              data: [{
+                loan_type: "emergency",
+                origination_fee_pct: 0.15,
+                interest_rate_pct: 0.15,
+                seasons: 5,
+                debt_ceiling: 600000,
+              }, {
+                loan_type: "short",
+                origination_fee_pct: 0.05,
+                interest_rate_pct: 0.10,
+                seasons: 2,
+                debt_ceiling: 600000,
+              }],
+              error: null,
+            }),
+          }),
+        };
+      }
+      if (table === "loans") {
+        return {
+          insert: () => ({
+            select: () => ({
+              single: () => Promise.resolve({ data: { id: "loan-N" }, error: null }),
+            }),
+          }),
+          select: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) }),
+        };
+      }
+      if (table === "notifications") {
+        // notificationService bygger lang chain (.select.eq.eq.eq.gte.order.eq.limit).
+        // Brug en thenable-builder der opløser til {data:[], error:null} ved await.
+        const makeBuilder = () => {
+          const builder = {
+            eq: () => builder,
+            is: () => builder,
+            gte: () => builder,
+            order: () => builder,
+            limit: () => Promise.resolve({ data: [], error: null }),
+            then: (onFulfilled) => Promise.resolve({ data: [], error: null }).then(onFulfilled),
+          };
+          return builder;
+        };
+        return {
+          insert: () => Promise.resolve({ data: null, error: null }),
+          select: () => makeBuilder(),
+        };
+      }
+      if (table === "user_preferences") {
+        return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }) };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+  return { captures, client };
+}
+
+test("createEmergencyLoan populerer audit-fields (cron)", async () => {
+  const fixture = makeLoanEngineCaptureClient();
+  await createEmergencyLoan("team-E", 200, fixture.client, "season-1");
+
+  assert.equal(fixture.captures.length, 1);
+  const payload = fixture.captures[0];
+  assert.equal(payload.actor_type, FINANCE_ACTOR_TYPE.CRON);
+  assert.equal(payload.source_path, "loanEngine.createEmergencyLoan");
+  assert.equal(payload.reason_code, FINANCE_REASON.EMERGENCY_LOAN_RECEIVED);
+  assert.equal(payload.related_entity_type, FINANCE_RELATED_ENTITY.LOAN);
+  assert.equal(payload.related_entity_id, "loan-N");
+});
+
+test("createLoan respekterer api auditCtx (actor_id propageres)", async () => {
+  const fixture = makeLoanEngineCaptureClient({
+    rpcOverride: (name) => {
+      if (name === "create_loan_atomic") {
+        // PGRST202 = funktion findes ikke → falder tilbage til app-niveau path.
+        return Promise.resolve({ data: null, error: { code: "PGRST202", message: "function does not exist" } });
+      }
+      return null;
+    },
+  });
+
+  await createLoan("team-L", "short", 50000, fixture.client, {
+    actorType: FINANCE_ACTOR_TYPE.API,
+    actorId: "user-xyz",
+  });
+
+  assert.equal(fixture.captures.length, 1);
+  const payload = fixture.captures[0];
+  assert.equal(payload.actor_type, FINANCE_ACTOR_TYPE.API);
+  assert.equal(payload.actor_id, "user-xyz");
+  assert.equal(payload.source_path, "loanEngine.createLoan");
+  assert.equal(payload.reason_code, FINANCE_REASON.LOAN_PRINCIPAL_RECEIVED);
+  assert.equal(payload.related_entity_type, FINANCE_RELATED_ENTITY.LOAN);
+});
+
+test("repayLoan respekterer api auditCtx", async () => {
+  const captures = [];
+  const loanRow = {
+    id: "loan-R",
+    team_id: "team-R",
+    amount_remaining: 50000,
+    status: "active",
+  };
+  const client = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      captures.push(params.p_finance_payload);
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "loans") {
+        return {
+          select: () => ({
+            eq: () => ({ single: () => Promise.resolve({ data: loanRow, error: null }) }),
+          }),
+          update: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }),
+        };
+      }
+      if (table === "teams") {
+        return {
+          select: () => ({
+            eq: () => ({ single: () => Promise.resolve({ data: { balance: 100000 }, error: null }) }),
+          }),
+        };
+      }
+      if (table === "auctions") {
+        return { select: () => ({ in: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) }) };
+      }
+      if (table === "auction_proxy_bids") {
+        return { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) };
+      }
+      if (table === "notifications") {
+        return { insert: () => Promise.resolve({ data: null, error: null }) };
+      }
+      if (table === "user_preferences") {
+        return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }) };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  await repayLoan("loan-R", "team-R", 25000, client, {
+    actorType: FINANCE_ACTOR_TYPE.API,
+    actorId: "user-repay",
+  });
+
+  assert.equal(captures.length, 1);
+  assert.equal(captures[0].actor_type, FINANCE_ACTOR_TYPE.API);
+  assert.equal(captures[0].actor_id, "user-repay");
+  assert.equal(captures[0].source_path, "loanEngine.repayLoan");
+  assert.equal(captures[0].reason_code, FINANCE_REASON.LOAN_REPAYMENT);
+  assert.equal(captures[0].related_entity_type, FINANCE_RELATED_ENTITY.LOAN);
+  assert.equal(captures[0].related_entity_id, "loan-R");
+});
+
+test("paySeasonPrizesToDate populerer admin auditCtx + idempotency_key", async () => {
+  const captures = [];
+  const teamPrize = { team_id: "team-P", team_name: "P", prize: 5000 };
+  const race = { race_id: "race-1", race_name: "Race A", total_prize: 5000, by_team: [teamPrize] };
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      captures.push(params.p_finance_payload);
+      return Promise.resolve({ data: 5000, error: null });
+    },
+    from(table) {
+      if (table === "races") {
+        return {
+          select: () => ({
+            eq: (col1, val1) => ({
+              eq: () => Promise.resolve({
+                data: [{ id: "race-1", name: "Race A", prize_paid_at: null, status: "completed" }],
+                error: null,
+              }),
+            }),
+          }),
+          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        };
+      }
+      if (table === "race_results") {
+        return {
+          select: () => ({
+            in: () => ({
+              gt: () => Promise.resolve({
+                data: [{ race_id: "race-1", team_id: "team-P", prize_money: 5000 }],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "teams") {
+        return {
+          select: () => ({
+            in: () => Promise.resolve({ data: [{ id: "team-P", name: "P" }], error: null }),
+          }),
+        };
+      }
+      if (table === "import_log") {
+        return { insert: () => Promise.resolve({ data: null, error: null }) };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  await paySeasonPrizesToDate("season-1", "admin-99", supabase);
+
+  assert.equal(captures.length, 1);
+  assert.equal(captures[0].actor_type, FINANCE_ACTOR_TYPE.ADMIN);
+  assert.equal(captures[0].actor_id, "admin-99");
+  assert.equal(captures[0].source_path, "prizePayoutEngine.paySeasonPrizesToDate");
+  assert.equal(captures[0].reason_code, FINANCE_REASON.RACE_PRIZE_PAYOUT);
+  assert.equal(captures[0].related_entity_type, FINANCE_RELATED_ENTITY.RACE);
+  assert.equal(captures[0].related_entity_id, "race-1");
+  assert.equal(captures[0].idempotency_key, "race_prize:race-1:team-P");
+});

@@ -87,7 +87,13 @@ import {
   repairSeasonEndFinanceAndBoard,
   updateStandings,
 } from "../lib/economyEngine.js";
-import { SPONSOR_INCOME_BASE, ADMIN_ACTION_TYPE } from "../lib/economyConstants.js";
+import {
+  SPONSOR_INCOME_BASE,
+  ADMIN_ACTION_TYPE,
+  FINANCE_ACTOR_TYPE,
+  FINANCE_REASON,
+  FINANCE_RELATED_ENTITY,
+} from "../lib/economyConstants.js";
 import { incrementBalanceWithAudit } from "../lib/balanceRpc.js";
 import { calculateRiderMarketValue } from "../lib/marketUtils.js";
 import {
@@ -1624,6 +1630,7 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
       notifyTeamOwner,
       logActivity,
       notifyDiscordHistory: notifyTransferCompleted,
+      auditCtx: { actorType: FINANCE_ACTOR_TYPE.API, actorId: req.user.id },
     });
 
     if (!result.ok) {
@@ -1922,6 +1929,7 @@ router.patch("/transfers/swaps/:id", requireAuth, async (req, res) => {
       confirmingTeamId: req.team.id,
       notifyTeamOwner,
       notifyDiscordHistory: notifySwapCompleted,
+      auditCtx: { actorType: FINANCE_ACTOR_TYPE.API, actorId: req.user.id },
     });
 
     if (!result.ok) {
@@ -2083,6 +2091,7 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
         });
       }
       // Slice 07c: balance + finance_transactions atomic via RPC.
+      // 07d Fase B: api-actor; lender bekræfter aktivering så req.user.id = lender.
       await incrementBalanceWithAudit(supabase, {
         teamId: loan.to_team_id,
         delta: -loan.loan_fee,
@@ -2090,6 +2099,12 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
           type: "transfer_out",
           amount: -loan.loan_fee,
           description: `Lejegebyr: ${loan.rider.firstname} ${loan.rider.lastname} (sæson ${loan.start_season})`,
+          actor_type: FINANCE_ACTOR_TYPE.API,
+          actor_id: req.user.id,
+          source_path: "api.loans.accept.borrower",
+          reason_code: FINANCE_REASON.LOAN_FEE_PAID,
+          related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
+          related_entity_id: loan.id,
         },
       });
       await incrementBalanceWithAudit(supabase, {
@@ -2099,6 +2114,12 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
           type: "transfer_in",
           amount: loan.loan_fee,
           description: `Lejegebyr modtaget: ${loan.rider.firstname} ${loan.rider.lastname} (sæson ${loan.start_season})`,
+          actor_type: FINANCE_ACTOR_TYPE.API,
+          actor_id: req.user.id,
+          source_path: "api.loans.accept.lender",
+          reason_code: FINANCE_REASON.LOAN_FEE_RECEIVED,
+          related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
+          related_entity_id: loan.id,
         },
       });
     }
@@ -2157,6 +2178,7 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
 
     await supabase.from("riders").update({ team_id: req.team.id, acquired_at: new Date().toISOString() }).eq("id", loan.rider_id);
     // Slice 07c: balance + finance_transactions atomic via RPC.
+    // 07d Fase B: borrower aktiverer købsoption → req.user.id = køber.
     await incrementBalanceWithAudit(supabase, {
       teamId: req.team.id,
       delta: -price,
@@ -2164,6 +2186,12 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
         type: "transfer_out",
         amount: -price,
         description: `Købsoption udnyttet: ${loan.rider.firstname} ${loan.rider.lastname}`,
+        actor_type: FINANCE_ACTOR_TYPE.API,
+        actor_id: req.user.id,
+        source_path: "api.loans.buyout.buyer",
+        reason_code: FINANCE_REASON.LOAN_BUYOUT,
+        related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
+        related_entity_id: loan.id,
       },
     });
     await incrementBalanceWithAudit(supabase, {
@@ -2173,6 +2201,12 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
         type: "transfer_in",
         amount: price,
         description: `Købsoption udnyttet: ${loan.rider.firstname} ${loan.rider.lastname}`,
+        actor_type: FINANCE_ACTOR_TYPE.API,
+        actor_id: req.user.id,
+        source_path: "api.loans.buyout.seller",
+        reason_code: FINANCE_REASON.LOAN_BUYOUT,
+        related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
+        related_entity_id: loan.id,
       },
     });
     await supabase.from("loan_agreements").update({ status: "buyout" }).eq("id", loan.id);
@@ -2674,6 +2708,7 @@ router.post("/admin/loans/:id/cancel", requireAdmin, async (req, res) => {
         return res.status(500).json({ error: "Kunne ikke hente hold-balancer for refusion" });
       }
       // Slice 07c: balance + finance_transactions atomic via RPC.
+      // 07d Fase B: admin-trigger → actor_type=admin, actor_id=req.user.id.
       await incrementBalanceWithAudit(supabase, {
         teamId: loan.to_team_id,
         delta: loan.loan_fee,
@@ -2681,6 +2716,12 @@ router.post("/admin/loans/:id/cancel", requireAdmin, async (req, res) => {
           type: "transfer_in",
           amount: loan.loan_fee,
           description: `Lejegebyr refunderet (admin-annullering): ${riderName}`,
+          actor_type: FINANCE_ACTOR_TYPE.ADMIN,
+          actor_id: req.user.id,
+          source_path: "api.admin.loans.cancel.refundBorrower",
+          reason_code: FINANCE_REASON.LOAN_FEE_REFUNDED,
+          related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
+          related_entity_id: loan.id,
         },
       });
       await incrementBalanceWithAudit(supabase, {
@@ -2690,6 +2731,12 @@ router.post("/admin/loans/:id/cancel", requireAdmin, async (req, res) => {
           type: "transfer_out",
           amount: -loan.loan_fee,
           description: `Lejegebyr tilbageført (admin-annullering): ${riderName}`,
+          actor_type: FINANCE_ACTOR_TYPE.ADMIN,
+          actor_id: req.user.id,
+          source_path: "api.admin.loans.cancel.clawbackLender",
+          reason_code: FINANCE_REASON.LOAN_FEE_REFUNDED,
+          related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
+          related_entity_id: loan.id,
         },
       });
       refundedFee = loan.loan_fee;
@@ -3095,7 +3142,10 @@ router.post("/finance/loans", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "Ugyldig låntype — brug short eller long" });
     if (!amount || amount < 1)
       return res.status(400).json({ error: "Ugyldigt beløb" });
-    const loan = await createLoan(req.team.id, loan_type, parseInt(amount));
+    const loan = await createLoan(req.team.id, loan_type, parseInt(amount), null, {
+      actorType: FINANCE_ACTOR_TYPE.API,
+      actorId: req.user.id,
+    });
     res.json({ success: true, loan });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -3106,7 +3156,10 @@ router.post("/finance/loans/:id/repay", requireAuth, async (req, res) => {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     const { amount } = req.body;
     if (!amount || amount < 1) return res.status(400).json({ error: "Ugyldigt beløb" });
-    const result = await repayLoan(req.params.id, req.team.id, parseInt(amount));
+    const result = await repayLoan(req.params.id, req.team.id, parseInt(amount), null, {
+      actorType: FINANCE_ACTOR_TYPE.API,
+      actorId: req.user.id,
+    });
     res.json({ success: true, ...result });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -3274,6 +3327,7 @@ router.post("/admin/adjust-balance", requireAdmin, async (req, res) => {
     const { data: team } = await supabase.from("teams").select("balance").eq("id", team_id).single();
     if (!team) return res.status(404).json({ error: "Hold ikke fundet" });
     // Slice 07c: balance + finance_transactions atomic via RPC.
+    // 07d Fase B: admin-trigger → actor_type=admin, actor_id=req.user.id.
     await incrementBalanceWithAudit(supabase, {
       teamId: team_id,
       delta: parseInt(amount),
@@ -3281,6 +3335,12 @@ router.post("/admin/adjust-balance", requireAdmin, async (req, res) => {
         type: "admin_adjustment",
         amount: parseInt(amount),
         description: reason || "Admin justering",
+        actor_type: FINANCE_ACTOR_TYPE.ADMIN,
+        actor_id: req.user.id,
+        source_path: "api.admin.adjustBalance",
+        reason_code: FINANCE_REASON.ADMIN_BALANCE_ADJUSTMENT,
+        related_entity_type: FINANCE_RELATED_ENTITY.MANUAL,
+        related_entity_id: null,
       },
     });
     await supabase.from("admin_log").insert({
@@ -4094,6 +4154,7 @@ router.post("/board/bonus-offer/accept", requireAuth, async (req, res) => {
     if (team) {
       const { data: activeSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
       // Slice 07c: balance + finance_transactions atomic via RPC.
+      // 07d Fase B: api-actor — manager accepterer bonus-tilbud.
       await incrementBalanceWithAudit(supabase, {
         teamId: req.team.id,
         delta: result.bonus_amount,
@@ -4102,6 +4163,12 @@ router.post("/board/bonus-offer/accept", requireAuth, async (req, res) => {
           amount: result.bonus_amount,
           description: `Bestyrelsens bonus-tilbud accepteret (mod ekstra-mål: ${result.extra_goal.label})`,
           season_id: activeSeason?.id ?? null,
+          actor_type: FINANCE_ACTOR_TYPE.API,
+          actor_id: req.user.id,
+          source_path: "api.board.bonusOffer.accept",
+          reason_code: FINANCE_REASON.BOARD_BONUS_ACCEPTED,
+          related_entity_type: FINANCE_RELATED_ENTITY.SEASON,
+          related_entity_id: activeSeason?.id ?? null,
         },
       });
     }

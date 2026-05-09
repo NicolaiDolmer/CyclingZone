@@ -97,6 +97,7 @@ export const FINANCE_REASON = Object.freeze({
   // Auctions
   AUCTION_WINNER_PAYMENT: "auction_winner_payment",
   AUCTION_SELLER_PAYOUT: "auction_seller_payout",
+  AUCTION_GUARANTEED_BANK_SALE: "auction_guaranteed_bank_sale",
   // Transfers
   TRANSFER_PURCHASE: "transfer_purchase",
   TRANSFER_SALE: "transfer_sale",
@@ -111,6 +112,12 @@ export const FINANCE_REASON = Object.freeze({
   LOAN_BUYOUT: "loan_buyout",
   LOAN_ORIGINATION_FEE: "loan_origination_fee",
   EMERGENCY_LOAN_RECEIVED: "emergency_loan_received",
+  // Squad-enforcement (cron — window-close)
+  SQUAD_AUTO_PURCHASE: "squad_auto_purchase",
+  SQUAD_AUTO_SALE: "squad_auto_sale",
+  SQUAD_VIOLATION_FINE: "squad_violation_fine",
+  // Board (manager-initieret bonus-tilbud)
+  BOARD_BONUS_ACCEPTED: "board_bonus_accepted",
   // Admin
   ADMIN_BALANCE_ADJUSTMENT: "admin_balance_adjustment",
   ADMIN_FORCE_PRIZE: "admin_force_prize",

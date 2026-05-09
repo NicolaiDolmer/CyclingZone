@@ -139,6 +139,13 @@ test("processLoanAgreementSeasonFees charges only continuing active rider loans"
       amount: -50,
       description: "Lejegebyr: Anna Bjerg (sæson 4)",
       season_id: "season-4",
+      actor_type: "cron",
+      actor_id: null,
+      source_path: "loanEngine.processLoanAgreementSeasonFees.payer",
+      reason_code: "loan_fee_paid",
+      related_entity_type: "loan",
+      related_entity_id: "loan-1",
+      idempotency_key: "loan_fee_paid:loan-1:season-4",
     },
     {
       team_id: "lender-team",
@@ -146,6 +153,13 @@ test("processLoanAgreementSeasonFees charges only continuing active rider loans"
       amount: 50,
       description: "Lejegebyr modtaget: Anna Bjerg (sæson 4)",
       season_id: "season-4",
+      actor_type: "cron",
+      actor_id: null,
+      source_path: "loanEngine.processLoanAgreementSeasonFees.receiver",
+      reason_code: "loan_fee_received",
+      related_entity_type: "loan",
+      related_entity_id: "loan-1",
+      idempotency_key: "loan_fee_received:loan-1:season-4",
     },
   ]);
 });
@@ -288,6 +302,12 @@ test("createEmergencyLoan tags the finance transaction with the season id", asyn
       amount: 100,
       description: "Nødlån oprettet automatisk (gebyr: 15 CZ$, rente: 15%/sæson)",
       season_id: "season-6",
+      actor_type: "cron",
+      actor_id: null,
+      source_path: "loanEngine.createEmergencyLoan",
+      reason_code: "emergency_loan_received",
+      related_entity_type: "loan",
+      related_entity_id: "loan-1",
     },
   ]);
 });

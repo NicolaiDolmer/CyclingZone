@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.92",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Backend · Komplet audit-trail på alle penge-bevægelser (07d Fase B)",
+        items: [
+          "Backend · Alle 26 callsites der mutere holdets balance via increment_balance_with_audit-RPC populerer nu actor_type (cron/api/admin), source_path, reason_code, related_entity_type/_id og — for cron-paths — en idempotency_key. Hver finance_transactions-row kan nu trace 'hvem ændrede saldo og hvorfor' uden at læse engine-koden.",
+          "Backend · Cron-paths (sponsor, salary, divisionsbonus, lejegebyr, præmiepenge) får UNIQUE-håndhævet idempotency_key så uniq_finance_idempotency_key giver en ekstra sikkerhedsspær oven på de eksisterende partial UNIQUE indices fra 07b — cron-retries kan ikke længere double-credit.",
+          "Backend · 5 nye reason-codes i FINANCE_REASON (auction_guaranteed_bank_sale, squad_auto_purchase/_sale, squad_violation_fine, board_bonus_accepted) dækker manglende økonomi-paths så alle write-paths har en eksplicit årsag.",
+          "Backend · Per-callsite audit-coverage tests verificerer at hver write sender korrekt actor_type + source_path + reason_code. 415/415 backend-tests grønne (op fra 410). Fundament for 07e admin økonomi-dashboard #83.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.91",
     date: "2026-05-09",
     label: "Beta",

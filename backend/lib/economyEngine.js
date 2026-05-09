@@ -31,7 +31,12 @@ import {
   getActiveSponsorPulloutFactor,
 } from "./boardConsequences.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
-import { SPONSOR_INCOME_BASE } from "./economyConstants.js";
+import {
+  FINANCE_ACTOR_TYPE,
+  FINANCE_REASON,
+  FINANCE_RELATED_ENTITY,
+  SPONSOR_INCOME_BASE,
+} from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 
 let defaultSupabaseClientPromise;
@@ -202,7 +207,14 @@ export async function processSeasonStart(seasonId, deps = {}) {
       description,
       seasonId,
       supabaseClient,
-      { idempotent: true }
+      {
+        idempotent: true,
+        audit: {
+          sourcePath: "economyEngine.processSeasonStart.sponsor",
+          reasonCode: FINANCE_REASON.SEASON_START_SPONSOR,
+          idempotencyKey: `sponsor:${team.id}:${seasonId}`,
+        },
+      }
     );
 
     const chargedLoanFees = await processLoanAgreementSeasonFeesFn(
@@ -286,7 +298,14 @@ export async function payDivisionBonuses(standings, seasonId, supabaseClient) {
       `Divisionsbonus — Division ${standing.division}, plads ${rank}`,
       seasonId,
       supabaseClient,
-      { idempotent: true }
+      {
+        idempotent: true,
+        audit: {
+          sourcePath: "economyEngine.payDivisionBonuses",
+          reasonCode: FINANCE_REASON.SEASON_END_DIVISION_BONUS,
+          idempotencyKey: `bonus:${standing.team_id}:${seasonId}`,
+        },
+      }
     );
   }
 }
@@ -569,7 +588,14 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       `Sæsonlønninger — ${team.riders.length} ryttere`,
       seasonId,
       supabaseClient,
-      { idempotent: true }
+      {
+        idempotent: true,
+        audit: {
+          sourcePath: "economyEngine.processSeasonEnd.salary",
+          reasonCode: FINANCE_REASON.SEASON_END_SALARY,
+          idempotencyKey: `salary:${team.id}:${seasonId}`,
+        },
+      }
     );
   }
 
@@ -587,7 +613,13 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       "interest",
       `Renter på gæld (10% af ${Math.abs(postSalaryTeam.balance).toLocaleString()} pts)`,
       seasonId,
-      supabaseClient
+      supabaseClient,
+      {
+        audit: {
+          sourcePath: "economyEngine.processSeasonEnd.negativeInterest",
+          reasonCode: FINANCE_REASON.SEASON_END_NEGATIVE_INTEREST,
+        },
+      }
     );
     console.log(`  💸 ${team.name}: -${interest} pts interest on negative balance`);
   }
@@ -1086,15 +1118,32 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
 // passerer vi `allowDuplicate: true` så hele transaktionen rulles tilbage stille hvis
 // DB afviser INSERT med 23505 (fra de partial UNIQUE-indices på sponsor/salary/bonus).
 // Hverken balance eller finance row ændres — perfekt cron-retry-sikkerhed.
+//
+// Slice 07d Fase B · audit-felter populeres fra `audit`-options:
+//   { sourcePath, reasonCode, idempotencyKey?, actorType?, actorId? }.
+// Defaults: actorType=cron, actorId=null, related_entity=season+seasonId.
 async function creditTeam(teamId, amount, type, description, seasonId, supabaseClient = null, options = {}) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
+  const audit = options.audit || {};
 
   const result = await incrementBalanceWithAudit(
     client,
     {
       teamId,
       delta: amount,
-      payload: { type, amount, description, season_id: seasonId },
+      payload: {
+        type,
+        amount,
+        description,
+        season_id: seasonId,
+        actor_type: audit.actorType || FINANCE_ACTOR_TYPE.CRON,
+        actor_id: audit.actorId || null,
+        source_path: audit.sourcePath,
+        reason_code: audit.reasonCode,
+        related_entity_type: audit.relatedEntityType || FINANCE_RELATED_ENTITY.SEASON,
+        related_entity_id: audit.relatedEntityId || seasonId || null,
+        idempotency_key: audit.idempotencyKey,
+      },
     },
     { allowDuplicate: !!options.idempotent }
   );
@@ -1109,13 +1158,26 @@ async function creditTeam(teamId, amount, type, description, seasonId, supabaseC
 
 async function debitTeam(teamId, amount, type, description, seasonId, supabaseClient = null, options = {}) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
+  const audit = options.audit || {};
 
   const result = await incrementBalanceWithAudit(
     client,
     {
       teamId,
       delta: -amount,
-      payload: { type, amount: -amount, description, season_id: seasonId },
+      payload: {
+        type,
+        amount: -amount,
+        description,
+        season_id: seasonId,
+        actor_type: audit.actorType || FINANCE_ACTOR_TYPE.CRON,
+        actor_id: audit.actorId || null,
+        source_path: audit.sourcePath,
+        reason_code: audit.reasonCode,
+        related_entity_type: audit.relatedEntityType || FINANCE_RELATED_ENTITY.SEASON,
+        related_entity_id: audit.relatedEntityId || seasonId || null,
+        idempotency_key: audit.idempotencyKey,
+      },
     },
     { allowDuplicate: !!options.idempotent }
   );

@@ -25,6 +25,11 @@ import {
   expectSingle,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import {
+  FINANCE_ACTOR_TYPE,
+  FINANCE_REASON,
+  FINANCE_RELATED_ENTITY,
+} from "./economyConstants.js";
 
 const NOOP = async () => {};
 export const SQUAD_FINE_AMOUNT = 100000;
@@ -142,6 +147,7 @@ async function executeAutoPurchase({
   }
 
   // Slice 07c: balance + finance_transactions atomic via RPC.
+  // 07d Fase B: cron-trigger via processSquadEnforcementCron.
   await incrementBalanceWithAudit(supabase, {
     teamId: team.id,
     delta: -price,
@@ -150,6 +156,12 @@ async function executeAutoPurchase({
       amount: -price,
       description: `Auto-køb (trupstørrelse): ${rider.firstname} ${rider.lastname}`,
       season_id: seasonId,
+      actor_type: FINANCE_ACTOR_TYPE.CRON,
+      actor_id: null,
+      source_path: "squadEnforcement.executeAutoPurchase",
+      reason_code: FINANCE_REASON.SQUAD_AUTO_PURCHASE,
+      related_entity_type: FINANCE_RELATED_ENTITY.SEASON,
+      related_entity_id: seasonId || null,
     },
   });
 
@@ -184,6 +196,12 @@ async function executeAutoSale({
       amount: credit,
       description: `Auto-salg (trupstørrelse): ${rider.firstname} ${rider.lastname}`,
       season_id: seasonId,
+      actor_type: FINANCE_ACTOR_TYPE.CRON,
+      actor_id: null,
+      source_path: "squadEnforcement.executeAutoSale",
+      reason_code: FINANCE_REASON.SQUAD_AUTO_SALE,
+      related_entity_type: FINANCE_RELATED_ENTITY.SEASON,
+      related_entity_id: seasonId || null,
     },
   });
 
@@ -220,6 +238,12 @@ async function applyFinesAndPenalty({
       amount: -fineAmount,
       description: `Trupstørrelse-bøde: ${deviatingCount} afvigende rytter${deviatingCount === 1 ? "" : "e"} × ${SQUAD_FINE_AMOUNT.toLocaleString("da-DK")} CZ$`,
       season_id: seasonId,
+      actor_type: FINANCE_ACTOR_TYPE.CRON,
+      actor_id: null,
+      source_path: "squadEnforcement.applyFinesAndPenalty",
+      reason_code: FINANCE_REASON.SQUAD_VIOLATION_FINE,
+      related_entity_type: FINANCE_RELATED_ENTITY.SEASON,
+      related_entity_id: seasonId || null,
     },
   });
 
