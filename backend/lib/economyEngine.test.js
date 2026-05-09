@@ -55,6 +55,18 @@ function createSeasonEndSupabase({
 
   return {
     state,
+    // Slice 07c: balance + finance_transactions atomic via RPC.
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      const team = getTeamById(params.p_team_id);
+      team.balance = (team.balance ?? 0) + params.p_delta;
+      state.updates.teams.push({ id: params.p_team_id, payload: { balance: team.balance } });
+      state.inserts.finance_transactions.push({
+        team_id: params.p_team_id,
+        ...params.p_finance_payload,
+      });
+      return Promise.resolve({ data: team.balance, error: null });
+    },
     from(table) {
       if (table === "seasons") {
         return {
@@ -1677,6 +1689,13 @@ test("payDivisionBonuses credits correct amounts per division rank and is idempo
   const financeRows = [];
 
   const supabase = {
+    // Slice 07c: balance + finance_transactions atomic via RPC.
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      balances[params.p_team_id] = (balances[params.p_team_id] ?? 0) + params.p_delta;
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: balances[params.p_team_id], error: null });
+    },
     from(table) {
       if (table === "finance_transactions") {
         return {
@@ -1694,37 +1713,6 @@ test("payDivisionBonuses credits correct amounts per division rank and is idempo
                     return Promise.resolve({ data, error: null });
                   },
                 };
-              },
-            };
-          },
-          insert(payload) {
-            financeRows.push(payload);
-            return Promise.resolve({ error: null });
-          },
-        };
-      }
-
-      if (table === "teams") {
-        return {
-          select() {
-            return {
-              eq(_col, teamId) {
-                return {
-                  single() {
-                    return Promise.resolve({
-                      data: { balance: balances[teamId] ?? 0 },
-                      error: null,
-                    });
-                  },
-                };
-              },
-            };
-          },
-          update(payload) {
-            return {
-              eq(_col, teamId) {
-                balances[teamId] = payload.balance;
-                return Promise.resolve({ error: null });
               },
             };
           },

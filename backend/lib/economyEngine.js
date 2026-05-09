@@ -32,6 +32,7 @@ import {
 } from "./boardConsequences.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { SPONSOR_INCOME_BASE } from "./economyConstants.js";
+import { incrementBalanceWithAudit } from "./balanceRpc.js";
 
 let defaultSupabaseClientPromise;
 
@@ -1081,92 +1082,50 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Slice 07b · Idempotency: når options.idempotent=true, skriv finance row FØRST
-// og spring helt over hvis DB afviser med unique_violation (23505). Det betyder
-// at et tidligere cron-run allerede har foretaget både balance-mutation og
-// finance-insert; vi må IKKE mutere balance igen.
+// Slice 07c · balance + finance_transactions atomic via RPC. Når options.idempotent=true
+// passerer vi `allowDuplicate: true` så hele transaktionen rulles tilbage stille hvis
+// DB afviser INSERT med 23505 (fra de partial UNIQUE-indices på sponsor/salary/bonus).
+// Hverken balance eller finance row ændres — perfekt cron-retry-sikkerhed.
 async function creditTeam(teamId, amount, type, description, seasonId, supabaseClient = null, options = {}) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
 
-  if (options.idempotent) {
-    const { error: insertError } = await client.from("finance_transactions").insert({
-      team_id: teamId, type, amount, description, season_id: seasonId,
-    });
-    if (insertError) {
-      if (insertError.code === "23505") {
-        console.warn(
-          `[economy] ${type} already credited for team ${teamId} season ${seasonId} — skip`
-        );
-        return { skipped: true };
-      }
-      throwIfSupabaseError(insertError, `Could not insert credit transaction for ${teamId}`);
-    }
-    const { data: team, error: teamError } = await client
-      .from("teams").select("balance").eq("id", teamId).single();
-    throwIfSupabaseError(teamError, `Could not load team balance for credit ${teamId}`);
-    if (!team) throw new Error(`Could not load team balance for credit ${teamId}`);
-    const { error: updateError } = await client.from("teams")
-      .update({ balance: team.balance + amount })
-      .eq("id", teamId);
-    throwIfSupabaseError(updateError, `Could not credit team ${teamId}`);
-    return { skipped: false };
-  }
+  const result = await incrementBalanceWithAudit(
+    client,
+    {
+      teamId,
+      delta: amount,
+      payload: { type, amount, description, season_id: seasonId },
+    },
+    { allowDuplicate: !!options.idempotent }
+  );
 
-  const { data: team, error: teamError } = await client
-    .from("teams").select("balance").eq("id", teamId).single();
-  throwIfSupabaseError(teamError, `Could not load team balance for credit ${teamId}`);
-  if (!team) throw new Error(`Could not load team balance for credit ${teamId}`);
-  const { error: updateError } = await client.from("teams")
-    .update({ balance: team.balance + amount })
-    .eq("id", teamId);
-  throwIfSupabaseError(updateError, `Could not credit team ${teamId}`);
-  const { error: insertError } = await client.from("finance_transactions").insert({
-    team_id: teamId, type, amount, description, season_id: seasonId,
-  });
-  throwIfSupabaseError(insertError, `Could not insert credit transaction for ${teamId}`);
-  return { skipped: false };
+  if (result.skipped) {
+    console.warn(
+      `[economy] ${type} already credited for team ${teamId} season ${seasonId} — skip`
+    );
+  }
+  return { skipped: result.skipped };
 }
 
 async function debitTeam(teamId, amount, type, description, seasonId, supabaseClient = null, options = {}) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
 
-  if (options.idempotent) {
-    const { error: insertError } = await client.from("finance_transactions").insert({
-      team_id: teamId, type, amount: -amount, description, season_id: seasonId,
-    });
-    if (insertError) {
-      if (insertError.code === "23505") {
-        console.warn(
-          `[economy] ${type} already debited for team ${teamId} season ${seasonId} — skip`
-        );
-        return { skipped: true };
-      }
-      throwIfSupabaseError(insertError, `Could not insert debit transaction for ${teamId}`);
-    }
-    const { data: team, error: teamError } = await client
-      .from("teams").select("balance").eq("id", teamId).single();
-    throwIfSupabaseError(teamError, `Could not load team balance for debit ${teamId}`);
-    if (!team) throw new Error(`Could not load team balance for debit ${teamId}`);
-    const { error: updateError } = await client.from("teams")
-      .update({ balance: team.balance - amount })
-      .eq("id", teamId);
-    throwIfSupabaseError(updateError, `Could not debit team ${teamId}`);
-    return { skipped: false };
-  }
+  const result = await incrementBalanceWithAudit(
+    client,
+    {
+      teamId,
+      delta: -amount,
+      payload: { type, amount: -amount, description, season_id: seasonId },
+    },
+    { allowDuplicate: !!options.idempotent }
+  );
 
-  const { data: team, error: teamError } = await client
-    .from("teams").select("balance").eq("id", teamId).single();
-  throwIfSupabaseError(teamError, `Could not load team balance for debit ${teamId}`);
-  if (!team) throw new Error(`Could not load team balance for debit ${teamId}`);
-  const { error: updateError } = await client.from("teams")
-    .update({ balance: team.balance - amount })
-    .eq("id", teamId);
-  throwIfSupabaseError(updateError, `Could not debit team ${teamId}`);
-  const { error: insertError } = await client.from("finance_transactions").insert({
-    team_id: teamId, type, amount: -amount, description, season_id: seasonId,
-  });
-  throwIfSupabaseError(insertError, `Could not insert debit transaction for ${teamId}`);
-  return { skipped: false };
+  if (result.skipped) {
+    console.warn(
+      `[economy] ${type} already debited for team ${teamId} season ${seasonId} — skip`
+    );
+  }
+  return { skipped: result.skipped };
 }
 
 async function notifyManager(teamId, type, title, message, deps = {}) {

@@ -95,6 +95,23 @@ function createFinalizeAuctionSupabase({
   const bankTeam = Object.values(teams).find(team => team.is_bank) || null;
 
   return {
+    // Slice 07c: balance + finance_transactions atomic via RPC.
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      const team = teams[params.p_team_id];
+      const before = team?.balance ?? 0;
+      const after = before + params.p_delta;
+      if (team) {
+        team.balance = after;
+        teams[params.p_team_id] = team;
+      }
+      teamUpdates.push({ teamId: params.p_team_id, payload: { balance: after } });
+      financeInserts.push({
+        team_id: params.p_team_id,
+        ...params.p_finance_payload,
+      });
+      return Promise.resolve({ data: after, error: null });
+    },
     from(table) {
       if (table === "auctions") {
         return {
@@ -421,8 +438,7 @@ test("finalizeAuctionById pays the actual AI owner instead of the initiator", as
     pending_team_id: null,
     acquired_at: "2026-04-22T08:00:00.000Z",
   }]);
-  assert.equal(financeInserts.length, 1);
-  assert.deepEqual(financeInserts[0], [
+  assert.deepEqual(financeInserts, [
     {
       team_id: "buyer-team",
       type: "transfer_out",
@@ -595,8 +611,7 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
     pending_team_id: null,
     acquired_at: "2026-04-22T10:00:00.000Z",
   }]);
-  assert.equal(financeInserts.length, 1);
-  assert.deepEqual(financeInserts[0], [
+  assert.deepEqual(financeInserts, [
     {
       team_id: "buyer-team",
       type: "transfer_out",
@@ -773,8 +788,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on an 
     pending_team_id: null,
     acquired_at: "2026-04-25T10:00:00.000Z",
   }]);
-  assert.equal(financeInserts.length, 1);
-  assert.deepEqual(financeInserts[0], [
+  assert.deepEqual(financeInserts, [
     {
       team_id: "initiator-team",
       type: "transfer_out",
@@ -868,8 +882,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
     pending_team_id: null,
     acquired_at: "2026-04-25T10:00:00.000Z",
   }]);
-  assert.equal(financeInserts.length, 1);
-  assert.deepEqual(financeInserts[0], [
+  assert.deepEqual(financeInserts, [
     {
       team_id: "initiator-team",
       type: "transfer_out",
@@ -954,7 +967,7 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
     pending_team_id: null,
     acquired_at: "2026-04-29T17:00:00.000Z",
   }]);
-  assert.deepEqual(financeInserts[0], [{
+  assert.deepEqual(financeInserts, [{
     team_id: "initiator-team",
     type: "transfer_out",
     amount: -48,

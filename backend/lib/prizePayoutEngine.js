@@ -1,3 +1,5 @@
+import { incrementBalanceWithAudit } from "./balanceRpc.js";
+
 export async function getSeasonPrizePreview(seasonId, supabase) {
   const { data: races, error: racesError } = await supabase
     .from("races")
@@ -102,28 +104,18 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase) {
 
   for (const race of preview.pending_payment) {
     for (const team of race.by_team) {
-      const { data: teamData, error: teamError } = await supabase
-        .from("teams")
-        .select("balance")
-        .eq("id", team.team_id)
-        .single();
-      if (teamError) throw new Error(teamError.message);
-
-      const { error: balError } = await supabase
-        .from("teams")
-        .update({ balance: teamData.balance + team.prize })
-        .eq("id", team.team_id);
-      if (balError) throw new Error(balError.message);
-
-      const { error: txError } = await supabase.from("finance_transactions").insert({
-        team_id: team.team_id,
-        type: "prize",
-        amount: team.prize,
-        description: `Præmiepenge — ${race.race_name}`,
-        season_id: seasonId,
-        race_id: race.race_id,
+      // Slice 07c: balance + finance_transactions atomic via RPC.
+      await incrementBalanceWithAudit(supabase, {
+        teamId: team.team_id,
+        delta: team.prize,
+        payload: {
+          type: "prize",
+          amount: team.prize,
+          description: `Præmiepenge — ${race.race_name}`,
+          season_id: seasonId,
+          race_id: race.race_id,
+        },
       });
-      if (txError) throw new Error(txError.message);
     }
 
     const { error: raceError } = await supabase

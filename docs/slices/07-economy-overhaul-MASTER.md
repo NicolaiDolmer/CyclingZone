@@ -14,7 +14,7 @@
 |---|---|---|---|---|---|
 | 07a | Stale fallbacks + sponsor-default drift | P0 bug | S (~30-60 min) | — | ✅ Leveret v2.50 (2026-05-07) |
 | 07b | TOCTOU-fixes + idempotency-keys | P0 bug | M (~2 sessioner) | — | ✅ Leveret 2026-05-07 (a90128e, [#80](https://github.com/NicolaiDolmer/CyclingZone/issues/80)) |
-| 07c | Atomic balance updates (Postgres-RPC) | P1 safety | M (~1-2 sessioner) | — | 🆕 Ready ([#81](https://github.com/NicolaiDolmer/CyclingZone/issues/81)) |
+| 07c | Atomic balance updates (Postgres-RPC) | P1 safety | M (~1-2 sessioner) | — | ✅ Leveret v2.91 (2026-05-09) |
 | 07d | Komplet finance audit-log + admin_log | P1 audit | M (~2 sessioner) | — | 🟡 Fase A leveret 2026-05-09 (v2.90); Fase B venter på 07c-RPC ([#82](https://github.com/NicolaiDolmer/CyclingZone/issues/82)) |
 | 07e | Admin økonomi super-dashboard | Feature | M (~2 sessioner) | 07d | 🆕 Blocked ([#83](https://github.com/NicolaiDolmer/CyclingZone/issues/83)) |
 | 07f | Sponsor variabel ift. resultater | Feature | M (~1-2 sessioner) | — | 🆕 Ready ([#84](https://github.com/NicolaiDolmer/CyclingZone/issues/84)) |
@@ -126,7 +126,9 @@ Backend-ændringer:
 
 ---
 
-# 07c · Atomic balance updates (Postgres-RPC)
+# 07c · Atomic balance updates (Postgres-RPC) ✅ Leveret v2.91 (2026-05-09)
+
+**Status:** Migration `database/2026-05-09-balance-rpc.sql` anvendt på prod 2026-05-09. RPC `increment_balance_with_audit(team_id, delta, payload jsonb)` LIVE. Alle ~22 backend-callsites refaktoreret til at bruge RPC via `backend/lib/balanceRpc.js`-helperen. Ny `balanceAtomicity.test.js` med 8 tests (helper-kontrakt + race-property: 10 parallelle deltas → final balance = baseline + Σ deltas, idempotency_key dedup). 410/410 backend-tests grønne. Live race-test mod test-seller verificerede `audit_invariant_holds = true` for alle 10 finance-rows. **Faktisk callsite-tal: 22** (ikke 16 som master sagde) — 5 i loanEngine, 4 logiske via creditTeam/debitTeam i economyEngine, 3 i auctionFinalization, 6 i transferExecution, 1 i prizePayoutEngine, 3 i squadEnforcement, 5 i api.js. Master-spec'en er bevaret som historisk reference nedenfor.
 
 **1. Mål.** Eliminere lost-update-races på `teams.balance` ved at samle alle balance-mutationer i én Postgres-funktion `increment_balance_with_audit(team_id, delta, finance_payload jsonb)` der atomic UPDATE'er + INSERT'er finance_transactions i én DB-transaktion.
 
