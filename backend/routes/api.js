@@ -80,6 +80,7 @@ import {
   computeDebtRatio,
   computeSustainabilityTier,
 } from "../lib/economyAdminDashboard.js";
+import { groupCronRuns } from "../lib/cronRunCorrelation.js";
 import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
 import {
@@ -3790,6 +3791,80 @@ router.get("/admin/economy-health", requireAdmin, async (req, res) => {
         starting_balance: STARTING_BALANCE,
       },
       deploy_cutoff: PHASE_B_DEPLOY_CUTOFF,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/admin-log — paginated + filtreret feed af admin-handlinger
+router.get("/admin/admin-log", requireAdmin, async (req, res) => {
+  try {
+    const { action_type, admin_user_id, target_team_id, target_rider_id, date_from, date_to } = req.query;
+
+    let limit = parseInt(req.query.limit ?? FINANCE_TX_DEFAULT_LIMIT, 10);
+    if (!Number.isFinite(limit) || limit < 1) limit = FINANCE_TX_DEFAULT_LIMIT;
+    if (limit > FINANCE_TX_MAX_LIMIT) limit = FINANCE_TX_MAX_LIMIT;
+    let offset = parseInt(req.query.offset ?? 0, 10);
+    if (!Number.isFinite(offset) || offset < 0) offset = 0;
+
+    let query = supabase
+      .from("admin_log")
+      .select(
+        "id, admin_user_id, action_type, description, target_team_id, target_rider_id, meta, created_at",
+        { count: "exact" }
+      );
+
+    if (action_type) query = query.eq("action_type", action_type);
+    if (admin_user_id) query = query.eq("admin_user_id", admin_user_id);
+    if (target_team_id) query = query.eq("target_team_id", target_team_id);
+    if (target_rider_id) query = query.eq("target_rider_id", target_rider_id);
+    if (date_from) query = query.gte("created_at", date_from);
+    if (date_to) query = query.lte("created_at", date_to);
+
+    query = query.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    res.json({ entries: data || [], total: count ?? 0, limit, offset });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/cron-runs — finance_transactions grupperet per cron-tick / request-burst
+router.get("/admin/cron-runs", requireAdmin, async (req, res) => {
+  try {
+    const { actor_type, source_path, date_from, date_to } = req.query;
+    const windowSeconds = parseInt(req.query.window_seconds ?? 5, 10);
+
+    // Default: sidste 7 dage. Grouping kræver hele tx-vinduet i memory, så
+    // begræns altid til en max-batch (matcher FINANCE_TX_MAX_LIMIT × ~100).
+    const fromDefault = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    let query = supabase
+      .from("finance_transactions")
+      .select("id, team_id, amount, created_at, actor_type, actor_id, source_path, reason_code")
+      .not("actor_id", "is", null)
+      .not("source_path", "is", null)
+      .gte("created_at", date_from || fromDefault);
+    if (date_to) query = query.lte("created_at", date_to);
+    if (actor_type) query = query.eq("actor_type", actor_type);
+    if (source_path) query = query.ilike("source_path", `%${source_path}%`);
+
+    // Hard cap så vi aldrig trækker hele tabellen ind ved et fejl-filter.
+    query = query.order("created_at", { ascending: false }).limit(20000);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const runs = groupCronRuns(data || [], { windowSeconds });
+    res.json({
+      runs,
+      total_tx: (data || []).length,
+      window_seconds: windowSeconds,
+      date_from: date_from || fromDefault,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

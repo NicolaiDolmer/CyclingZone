@@ -7,6 +7,8 @@ const SUB_TABS = [
   { key: "health", label: "Sundhed" },
   { key: "overview", label: "Overblik" },
   { key: "transactions", label: "Transaktioner" },
+  { key: "admin_log", label: "Admin-handlinger" },
+  { key: "correlation", label: "Korrelering" },
 ];
 
 const ACTOR_TYPES = ["", "cron", "api", "admin", "system", "migration"];
@@ -45,6 +47,35 @@ const REASON_CODES = [
   "admin_beta_reset",
 ];
 
+// Spejl af ADMIN_ACTION_TYPE i backend/lib/economyConstants.js (24 godkendte action_types).
+const ADMIN_ACTION_TYPES = [
+  "",
+  "auction_cancel",
+  "transfer_offer_admin_cancel",
+  "swap_offer_admin_cancel",
+  "loan_agreement_admin_cancel",
+  "auction_config_update",
+  "market_pause",
+  "market_resume",
+  "balance_adjustment",
+  "user_deleted",
+  "role_changed",
+  "race_deleted",
+  "race_results_imported",
+  "race_results_approved",
+  "beta_reset",
+  "prize_force_paid",
+  "season_repaired",
+  "season_started",
+  "season_ended",
+  "discord_webhook_added",
+  "discord_webhook_removed",
+  "manual_override",
+  "economy_export",
+  "team_data_edited",
+  "rider_data_edited",
+];
+
 const SUSTAINABILITY_LABEL = {
   green: { label: "🟢 Sund", className: "text-cz-success" },
   yellow: { label: "🟡 Pres", className: "text-cz-warning" },
@@ -54,6 +85,11 @@ const SUSTAINABILITY_LABEL = {
 function fmtDate(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short" });
+}
+
+function fmtDateTimeSec(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "medium" });
 }
 
 function HealthBadge({ ok, children }) {
@@ -340,26 +376,29 @@ function TransactionDetailModal({ tx, onClose }) {
   );
 }
 
-function TransactionsView({ getAuth, onMsg }) {
+const EMPTY_TX_FILTERS = {
+  type: "", actor_type: "", reason_code: "", source_path: "",
+  team_id: "", season_id: "",
+  date_from: "", date_to: "", amount_min: "", amount_max: "",
+};
+
+function TransactionsView({ getAuth, onMsg, initialFilters }) {
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [limit, setLimit] = useState(50);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [filters, setFilters] = useState({
-    type: "", actor_type: "", reason_code: "", source_path: "",
-    team_id: "", season_id: "",
-    date_from: "", date_to: "", amount_min: "", amount_max: "",
-  });
+  const [filters, setFilters] = useState(() => ({ ...EMPTY_TX_FILTERS, ...(initialFilters || {}) }));
 
-  async function refresh(nextOffset = 0) {
+  async function refresh(nextOffset = 0, overrideFilters = null) {
+    const effective = overrideFilters || filters;
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("limit", String(limit));
       params.set("offset", String(nextOffset));
-      for (const [k, v] of Object.entries(filters)) if (v) params.set(k, v);
+      for (const [k, v] of Object.entries(effective)) if (v) params.set(k, v);
       const res = await fetch(`${API}/api/admin/finance-transactions?${params}`, { headers: await getAuth() });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Kunne ikke hente transaktioner");
@@ -373,15 +412,16 @@ function TransactionsView({ getAuth, onMsg }) {
     }
   }
 
-  useEffect(() => { refresh(0); /* eslint-disable-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => {
+    // initialFilters er kun "live" ved første render — drill-down genmounter via key prop.
+    refresh(0);
+    /* eslint-disable-line react-hooks/exhaustive-deps */
+  }, []);
 
   function applyFilters() { refresh(0); }
   function resetFilters() {
-    setFilters({
-      type: "", actor_type: "", reason_code: "", source_path: "",
-      team_id: "", season_id: "", date_from: "", date_to: "", amount_min: "", amount_max: "",
-    });
-    setTimeout(() => refresh(0), 0);
+    setFilters(EMPTY_TX_FILTERS);
+    setTimeout(() => refresh(0, EMPTY_TX_FILTERS), 0);
   }
 
   const pageStart = total === 0 ? 0 : offset + 1;
@@ -534,8 +574,353 @@ function TransactionsView({ getAuth, onMsg }) {
   );
 }
 
+function AdminLogDetailModal({ entry, onClose }) {
+  if (!entry) return null;
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4 py-6 overflow-y-auto"
+      onClick={onClose}>
+      <div className="bg-cz-card border border-cz-border rounded-xl max-w-2xl w-full p-5"
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-cz-1 font-semibold text-base">Admin-handling</h3>
+          <button onClick={onClose} aria-label="Luk"
+            className="text-cz-3 hover:text-cz-1 text-xl leading-none">✕</button>
+        </div>
+        <dl className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-x-3 gap-y-1 text-xs font-mono mb-3">
+          <dt className="text-cz-3 sm:text-right">ID</dt>
+          <dd className="text-cz-1 break-all">{entry.id}</dd>
+          <dt className="text-cz-3 sm:text-right">Tidspunkt</dt>
+          <dd className="text-cz-1">{fmtDateTimeSec(entry.created_at)}</dd>
+          <dt className="text-cz-3 sm:text-right">Action type</dt>
+          <dd className="text-cz-1">{entry.action_type}</dd>
+          <dt className="text-cz-3 sm:text-right">Admin user ID</dt>
+          <dd className="text-cz-1 break-all">{entry.admin_user_id}</dd>
+          <dt className="text-cz-3 sm:text-right">Target team ID</dt>
+          <dd className="text-cz-1 break-all">{entry.target_team_id || "—"}</dd>
+          <dt className="text-cz-3 sm:text-right">Target rider ID</dt>
+          <dd className="text-cz-1 break-all">{entry.target_rider_id || "—"}</dd>
+          <dt className="text-cz-3 sm:text-right">Beskrivelse</dt>
+          <dd className="text-cz-1 whitespace-pre-wrap">{entry.description}</dd>
+        </dl>
+        <div className="border-t border-cz-border pt-3">
+          <p className="text-cz-3 text-xs mb-1">meta (JSON)</p>
+          <pre className="bg-cz-subtle border border-cz-border rounded-lg p-3 text-[11px] text-cz-1 font-mono overflow-x-auto">
+{entry.meta ? JSON.stringify(entry.meta, null, 2) : "(tom)"}
+          </pre>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminLogView({ getAuth, onMsg }) {
+  const [entries, setEntries] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [limit, setLimit] = useState(50);
+  const [offset, setOffset] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [filters, setFilters] = useState({
+    action_type: "", admin_user_id: "", target_team_id: "", target_rider_id: "",
+    date_from: "", date_to: "",
+  });
+
+  async function refresh(nextOffset = 0) {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("limit", String(limit));
+      params.set("offset", String(nextOffset));
+      for (const [k, v] of Object.entries(filters)) if (v) params.set(k, v);
+      const res = await fetch(`${API}/api/admin/admin-log?${params}`, { headers: await getAuth() });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Kunne ikke hente admin-log");
+      setEntries(body.entries || []);
+      setTotal(body.total || 0);
+      setOffset(nextOffset);
+    } catch (e) {
+      onMsg(`❌ ${e.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { refresh(0); /* eslint-disable-line react-hooks/exhaustive-deps */ }, []);
+
+  function applyFilters() { refresh(0); }
+  function resetFilters() {
+    setFilters({
+      action_type: "", admin_user_id: "", target_team_id: "", target_rider_id: "",
+      date_from: "", date_to: "",
+    });
+    setTimeout(() => refresh(0), 0);
+  }
+
+  const pageStart = total === 0 ? 0 : offset + 1;
+  const pageEnd = Math.min(offset + entries.length, total);
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div>
+          <label className="block text-cz-3 text-xs mb-1">Action type</label>
+          <select value={filters.action_type} onChange={(e) => setFilters((f) => ({ ...f, action_type: e.target.value }))}
+            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
+            {ADMIN_ACTION_TYPES.map((a) => <option key={a} value={a}>{a || "Alle"}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-cz-3 text-xs mb-1">Admin user ID</label>
+          <input type="text" value={filters.admin_user_id}
+            onChange={(e) => setFilters((f) => ({ ...f, admin_user_id: e.target.value }))}
+            placeholder="UUID"
+            onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
+            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm font-mono" />
+        </div>
+        <div>
+          <label className="block text-cz-3 text-xs mb-1">Hold-ID (target)</label>
+          <input type="text" value={filters.target_team_id}
+            onChange={(e) => setFilters((f) => ({ ...f, target_team_id: e.target.value }))}
+            placeholder="UUID"
+            onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
+            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm font-mono" />
+        </div>
+        <div>
+          <label className="block text-cz-3 text-xs mb-1">Rytter-ID (target)</label>
+          <input type="text" value={filters.target_rider_id}
+            onChange={(e) => setFilters((f) => ({ ...f, target_rider_id: e.target.value }))}
+            placeholder="UUID"
+            onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
+            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm font-mono" />
+        </div>
+        <div>
+          <label className="block text-cz-3 text-xs mb-1">Fra dato</label>
+          <input type="date" value={filters.date_from}
+            onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value }))}
+            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+        </div>
+        <div>
+          <label className="block text-cz-3 text-xs mb-1">Til dato</label>
+          <input type="date" value={filters.date_to}
+            onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value }))}
+            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <button onClick={applyFilters} disabled={loading}
+          className="px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+          {loading ? "..." : "Anvend filtre"}
+        </button>
+        <button onClick={resetFilters} disabled={loading}
+          className="px-3 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-card disabled:opacity-50">
+          Nulstil
+        </button>
+        <span className="ml-auto text-xs text-cz-3">
+          {total === 0 ? "Ingen rows" : `Viser ${pageStart}–${pageEnd} af ${total.toLocaleString("da-DK")}`}
+        </span>
+      </div>
+
+      <div className="overflow-x-auto rounded-lg border border-cz-border">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-cz-border bg-cz-subtle">
+              <th className="px-3 py-2 text-left text-cz-3 font-medium">Tid</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium">Action</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium">Beskrivelse</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden md:table-cell">Target hold</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden lg:table-cell">Target rytter</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.length === 0 && (
+              <tr><td colSpan={5} className="px-3 py-4 text-center text-cz-3">{loading ? "Indlæser..." : "Ingen admin-handlinger matcher filteret."}</td></tr>
+            )}
+            {entries.map((entry) => (
+              <tr key={entry.id} onClick={() => setSelected(entry)}
+                className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/50 cursor-pointer">
+                <td className="px-3 py-2 text-cz-2 whitespace-nowrap">{fmtDate(entry.created_at)}</td>
+                <td className="px-3 py-2 text-cz-1 font-mono text-[11px]">{entry.action_type}</td>
+                <td className="px-3 py-2 text-cz-2 truncate max-w-[460px]">{entry.description}</td>
+                <td className="px-3 py-2 text-cz-3 hidden md:table-cell font-mono text-[11px]">{entry.target_team_id?.slice(0, 8) || "—"}</td>
+                <td className="px-3 py-2 text-cz-3 hidden lg:table-cell font-mono text-[11px]">{entry.target_rider_id?.slice(0, 8) || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 justify-between">
+        <div className="flex items-center gap-2">
+          <label className="text-cz-3 text-xs">Pr. side</label>
+          <select value={limit}
+            onChange={(e) => { const n = parseInt(e.target.value, 10); setLimit(n); setTimeout(() => refresh(0), 0); }}
+            className="bg-cz-subtle border border-cz-border rounded-lg px-2 py-1.5 text-cz-1 text-xs">
+            {[25, 50, 100, 200].map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => refresh(Math.max(0, offset - limit))} disabled={loading || offset === 0}
+            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50">‹ Forrige</button>
+          <button onClick={() => refresh(offset + limit)} disabled={loading || offset + limit >= total}
+            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50">Næste ›</button>
+        </div>
+      </div>
+
+      <AdminLogDetailModal entry={selected} onClose={() => setSelected(null)} />
+    </div>
+  );
+}
+
+function CorrelationView({ getAuth, onMsg, onDrillDown }) {
+  const [runs, setRuns] = useState([]);
+  const [totalTx, setTotalTx] = useState(0);
+  const [windowSeconds, setWindowSeconds] = useState(5);
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    actor_type: "cron", source_path: "", date_from: "", date_to: "",
+  });
+
+  async function refresh() {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("window_seconds", String(windowSeconds));
+      for (const [k, v] of Object.entries(filters)) if (v) params.set(k, v);
+      const res = await fetch(`${API}/api/admin/cron-runs?${params}`, { headers: await getAuth() });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Kunne ikke hente cron-runs");
+      setRuns(body.runs || []);
+      setTotalTx(body.total_tx || 0);
+    } catch (e) {
+      onMsg(`❌ ${e.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { refresh(); /* eslint-disable-line react-hooks/exhaustive-deps */ }, []);
+
+  function drillIntoRun(run) {
+    // Pre-fyld Transaktioner-view med actor_id + source_path + ±vindue om started_at..ended_at.
+    const start = new Date(new Date(run.started_at).getTime() - windowSeconds * 1000);
+    const end = new Date(new Date(run.ended_at).getTime() + windowSeconds * 1000);
+    onDrillDown({
+      actor_type: filters.actor_type || "",
+      source_path: run.source_path,
+      date_from: start.toISOString().slice(0, 10),
+      date_to: end.toISOString().slice(0, 10),
+    });
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div>
+          <label className="block text-cz-3 text-xs mb-1">Actor type</label>
+          <select value={filters.actor_type}
+            onChange={(e) => setFilters((f) => ({ ...f, actor_type: e.target.value }))}
+            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
+            {ACTOR_TYPES.map((a) => <option key={a} value={a}>{a || "Alle"}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-cz-3 text-xs mb-1">Source path (substring)</label>
+          <input type="text" value={filters.source_path}
+            onChange={(e) => setFilters((f) => ({ ...f, source_path: e.target.value }))}
+            placeholder="fx sponsorPayout"
+            onKeyDown={(e) => { if (e.key === "Enter") refresh(); }}
+            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+        </div>
+        <div>
+          <label className="block text-cz-3 text-xs mb-1">Fra dato</label>
+          <input type="date" value={filters.date_from}
+            onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value }))}
+            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+        </div>
+        <div>
+          <label className="block text-cz-3 text-xs mb-1">Til dato</label>
+          <input type="date" value={filters.date_to}
+            onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value }))}
+            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+        </div>
+        <div>
+          <label className="block text-cz-3 text-xs mb-1">Vindue (sek)</label>
+          <input type="number" value={windowSeconds} min={1} max={300}
+            onChange={(e) => setWindowSeconds(parseInt(e.target.value, 10) || 5)}
+            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <button onClick={refresh} disabled={loading}
+          className="px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+          {loading ? "..." : "Anvend filtre"}
+        </button>
+        <span className="ml-auto text-xs text-cz-3">
+          {runs.length} runs · {totalTx.toLocaleString("da-DK")} tx i vinduet
+        </span>
+      </div>
+
+      <p className="text-cz-3 text-[11px]">
+        Klik en row for at drille ned i Transaktioner-view med samme actor + source_path + tidsvindue.
+      </p>
+
+      <div className="overflow-x-auto rounded-lg border border-cz-border">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-cz-border bg-cz-subtle">
+              <th className="px-3 py-2 text-left text-cz-3 font-medium">Start</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden sm:table-cell">Slut</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium">Source path</th>
+              <th className="px-3 py-2 text-right text-cz-3 font-medium">Tx</th>
+              <th className="px-3 py-2 text-right text-cz-3 font-medium">Σ beløb</th>
+              <th className="px-3 py-2 text-right text-cz-3 font-medium hidden md:table-cell">Hold</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden lg:table-cell">Reasons</th>
+            </tr>
+          </thead>
+          <tbody>
+            {runs.length === 0 && (
+              <tr><td colSpan={7} className="px-3 py-4 text-center text-cz-3">
+                {loading ? "Indlæser..." : "Ingen runs i vinduet."}
+              </td></tr>
+            )}
+            {runs.map((run, i) => (
+              <tr key={`${run.actor_id}-${run.source_path}-${run.started_at}-${i}`}
+                onClick={() => drillIntoRun(run)}
+                className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/50 cursor-pointer">
+                <td className="px-3 py-2 text-cz-2 whitespace-nowrap">{fmtDateTimeSec(run.started_at)}</td>
+                <td className="px-3 py-2 text-cz-3 whitespace-nowrap hidden sm:table-cell">{fmtDateTimeSec(run.ended_at)}</td>
+                <td className="px-3 py-2 text-cz-1 font-mono text-[11px] truncate max-w-[260px]">{run.source_path}</td>
+                <td className="px-3 py-2 text-right font-mono text-cz-2">{run.tx_count}</td>
+                <td className={`px-3 py-2 text-right font-mono ${run.total_amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
+                  {run.total_amount >= 0 ? "+" : ""}{run.total_amount.toLocaleString("da-DK")}
+                </td>
+                <td className="px-3 py-2 text-right font-mono text-cz-3 hidden md:table-cell">{run.affected_teams.length}</td>
+                <td className="px-3 py-2 text-cz-3 hidden lg:table-cell font-mono text-[11px]">
+                  {run.reason_codes.join(", ") || "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function EconomyAdminSection({ getAuth, onMsg }) {
   const [tab, setTab] = useState("health");
+  const [txInitialFilters, setTxInitialFilters] = useState(null);
+  // Bumpes når drill-down anmoder om en frisk TransactionsView med nye initialFilters.
+  const [txMountKey, setTxMountKey] = useState(0);
+
+  function drillIntoTransactions(initialFilters) {
+    setTxInitialFilters(initialFilters);
+    setTxMountKey((k) => k + 1);
+    setTab("transactions");
+  }
+
   return (
     <div>
       <div className="flex flex-wrap gap-1 mb-4 border-b border-cz-border pb-2">
@@ -551,7 +936,18 @@ export default function EconomyAdminSection({ getAuth, onMsg }) {
       </div>
       {tab === "health" && <HealthView getAuth={getAuth} onMsg={onMsg} />}
       {tab === "overview" && <OverviewView getAuth={getAuth} onMsg={onMsg} />}
-      {tab === "transactions" && <TransactionsView getAuth={getAuth} onMsg={onMsg} />}
+      {tab === "transactions" && (
+        <TransactionsView
+          key={`tx-${txMountKey}`}
+          getAuth={getAuth}
+          onMsg={onMsg}
+          initialFilters={txInitialFilters}
+        />
+      )}
+      {tab === "admin_log" && <AdminLogView getAuth={getAuth} onMsg={onMsg} />}
+      {tab === "correlation" && (
+        <CorrelationView getAuth={getAuth} onMsg={onMsg} onDrillDown={drillIntoTransactions} />
+      )}
     </div>
   );
 }

@@ -41,7 +41,7 @@ test("debt ratio — returns 0 when ceiling missing", () => {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const apiSource = readFileSync(join(__dirname, "../routes/api.js"), "utf8");
 
-test("07e admin endpoints — three GET routes exist behind requireAdmin", () => {
+test("07e admin endpoints — five GET routes exist behind requireAdmin", () => {
   assert.match(
     apiSource,
     /router\.get\(\s*"\/admin\/economy-overview"\s*,\s*requireAdmin/,
@@ -57,9 +57,33 @@ test("07e admin endpoints — three GET routes exist behind requireAdmin", () =>
     /router\.get\(\s*"\/admin\/economy-health"\s*,\s*requireAdmin/,
     "GET /admin/economy-health must be admin-protected",
   );
+  assert.match(
+    apiSource,
+    /router\.get\(\s*"\/admin\/admin-log"\s*,\s*requireAdmin/,
+    "GET /admin/admin-log must be admin-protected (07e Fase B)",
+  );
+  assert.match(
+    apiSource,
+    /router\.get\(\s*"\/admin\/cron-runs"\s*,\s*requireAdmin/,
+    "GET /admin/cron-runs must be admin-protected (07e Fase B)",
+  );
 });
 
 test("07e finance-transactions endpoint clamps limit to a sane max", () => {
   assert.match(apiSource, /FINANCE_TX_MAX_LIMIT\s*=\s*200/);
   assert.match(apiSource, /FINANCE_TX_DEFAULT_LIMIT\s*=\s*50/);
+});
+
+test("07e cron-runs endpoint filters out NULL actor_id/source_path before grouping", () => {
+  // Grouping helper drops dem også, men SQL-side-filter halverer bytes på wire.
+  const cronRunsRoute = apiSource.match(/router\.get\(\s*"\/admin\/cron-runs"[\s\S]*?^\}\);/m);
+  assert.ok(cronRunsRoute, "cron-runs route block must be findable");
+  assert.match(cronRunsRoute[0], /\.not\(\s*"actor_id"\s*,\s*"is"\s*,\s*null\s*\)/);
+  assert.match(cronRunsRoute[0], /\.not\(\s*"source_path"\s*,\s*"is"\s*,\s*null\s*\)/);
+});
+
+test("07e cron-runs endpoint defaults to a bounded date window", () => {
+  const cronRunsRoute = apiSource.match(/router\.get\(\s*"\/admin\/cron-runs"[\s\S]*?^\}\);/m);
+  assert.match(cronRunsRoute[0], /7\s*\*\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
+  assert.match(cronRunsRoute[0], /\.limit\(\s*20000\s*\)/);
 });

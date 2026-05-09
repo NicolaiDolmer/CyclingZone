@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "2.94",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Økonomi-dashboard udvidet med admin-feed + cron-korrelering (07e Fase B)",
+        items: [
+          "Admin · Ny 'Admin-handlinger'-sub-tab på Økonomi-sektionen viser et paginated feed af admin_log med filter på action_type (24 godkendte typer), admin user, target hold/rytter og dato-range. Klik på en row åbner en modal der pretty-printer den fulde meta-JSON, så du kan se nøjagtig hvilke felter en admin-handling påvirkede.",
+          "Admin · Ny 'Korrelering'-sub-tab grupperer finance_transactions per (actor_id, source_path) med ±5s tidsvindue og lister cron-runs nyeste først med tx-count, Σ-beløb, antal hold ramt og reason-codes. Klik en run for at drille direkte ned i Transaktioner-view med pre-fyldte filtre — rydder hurtigt mistænkeligt store cron-batches.",
+          "Backend · To nye admin-endpoints bag requireAdmin: `GET /api/admin/admin-log` (paginated + filtreret) og `GET /api/admin/cron-runs` (gruppe-aggregeret med konfigurerbart tidsvindue). Pure helper `groupCronRuns` i backend/lib/cronRunCorrelation.js holder grouping-logikken testbar uden HTTP/DB. CSV-bulk-export bevidst droppet fra scope — kører SQL direkte i Supabase Studio når ad hoc-eksport en sjælden gang skulle blive aktuelt.",
+          "Backend · 12 nye unit-tests for cron-grouping + 4 nye route-ownership-assertions (admin-log + cron-runs admin-protection, default 7-dages vindue, NULL-actor-filter). 437/437 backend-tests grønne.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.93",
     date: "2026-05-09",
     label: "Beta",
