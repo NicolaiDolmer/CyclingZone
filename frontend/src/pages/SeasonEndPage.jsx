@@ -205,19 +205,28 @@ export default function SeasonEndPage() {
             kalender, slutstilling og sæsonens vindere
           </p>
         </div>
-        <select
-          value={selectedSeason?.id || ""}
-          onChange={e => {
-            const s = seasons.find(s => s.id === e.target.value);
-            changeSeason(s);
-          }}
-          className="bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
-          {seasons.map(s => (
-            <option key={s.id} value={s.id}>
-              Sæson {s.number} — {s.status === "active" ? "Igangværende" : "Afsluttet"}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2 flex-wrap">
+          {selectedSeason && myTeamId && (
+            <button
+              onClick={() => navigate(`/seasons/${selectedSeason.id}/finance/${myTeamId}`)}
+              className="text-sm bg-cz-card border border-cz-border hover:border-cz-accent rounded-lg px-3 py-2 text-cz-2 hover:text-cz-1 transition-colors">
+              📊 Finansrapport
+            </button>
+          )}
+          <select
+            value={selectedSeason?.id || ""}
+            onChange={e => {
+              const s = seasons.find(s => s.id === e.target.value);
+              changeSeason(s);
+            }}
+            className="bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+            {seasons.map(s => (
+              <option key={s.id} value={s.id}>
+                Sæson {s.number} — {s.status === "active" ? "Igangværende" : "Afsluttet"}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {standings.length === 0 ? (

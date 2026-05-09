@@ -33,6 +33,7 @@ const RiderRankingsPage = lazy(() => import("./pages/RiderRankingsPage"));
 const RaceHistoryPage = lazy(() => import("./pages/RaceHistoryPage"));
 const ManagerProfilePage = lazy(() => import("./pages/ManagerProfilePage"));
 const FinancePage = lazy(() => import("./pages/FinancePage"));
+const SeasonFinanceReport = lazy(() => import("./pages/SeasonFinanceReport"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const RacePointsPage = lazy(() => import("./pages/RacePointsPage"));
 const DeadlineDayBoard = lazy(() => import("./pages/DeadlineDayBoard"));
@@ -113,6 +114,7 @@ export default function App() {
             <Route path="race-archive" element={<Navigate to="/races?tab=library" replace />} />
             <Route path="race-archive/:raceSlug" element={<RaceHistoryPage />} />
             <Route path="finance" element={<FinancePage />} />
+            <Route path="seasons/:seasonId/finance/:teamId" element={<SeasonFinanceReport />} />
             <Route path="race-points" element={<RacePointsPage />} />
             <Route path="managers/:teamId" element={<ManagerProfilePage />} />
             <Route path="admin" element={<AdminPage />} />

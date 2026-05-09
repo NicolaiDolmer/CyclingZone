@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
 import FinanceForecastCard from "../components/FinanceForecastCard";
@@ -65,6 +66,7 @@ export default function FinancePage() {
   const [reservedBalance, setReservedBalance] = useState(0);
   const [forecast, setForecast] = useState(null);
   const [forecastLoading, setForecastLoading] = useState(true);
+  const [activeSeasonId, setActiveSeasonId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ text: "", type: "" });
 
@@ -105,7 +107,7 @@ export default function FinancePage() {
 
     const { data: { session } } = await supabase.auth.getSession();
     const authHeaders = { Authorization: `Bearer ${session.access_token}` };
-    const [loanRes, forecastRes, txRes, prizeTxRes, leadingRes, proxiesRes] = await Promise.all([
+    const [loanRes, forecastRes, txRes, prizeTxRes, leadingRes, proxiesRes, seasonRes] = await Promise.all([
       fetch(`${API}/api/finance/loans`, { headers: authHeaders }),
       fetch(`${API}/api/me/finance-forecast`, { headers: authHeaders }),
       supabase.from("finance_transactions").select("*")
@@ -123,7 +125,10 @@ export default function FinancePage() {
       supabase.from("auction_proxy_bids")
         .select("auction_id, max_amount, auction:auction_id(status)")
         .eq("team_id", teamData.id),
+      // Slice 07h: aktiv sæson — bruges som default for "Sæsonsrapport"-link.
+      supabase.from("seasons").select("id").eq("status", "active").order("number", { ascending: false }).limit(1).maybeSingle(),
     ]);
+    setActiveSeasonId(seasonRes?.data?.id || null);
 
     if (loanRes.ok) setLoanData(await loanRes.json());
     if (forecastRes.ok) {
@@ -234,9 +239,19 @@ export default function FinancePage() {
     <div className="max-w-3xl mx-auto">
       <OnboardingTour pageKey="finance" steps={FINANCE_TOUR_STEPS} />
 
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-cz-1">Finanser</h1>
-        <p className="text-cz-3 text-sm">Balance, lån og transaktionshistorik</p>
+      <div className="mb-5 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl font-bold text-cz-1">Finanser</h1>
+          <p className="text-cz-3 text-sm">Balance, lån og transaktionshistorik</p>
+        </div>
+        {activeSeasonId && team?.id && (
+          <Link
+            to={`/seasons/${activeSeasonId}/finance/${team.id}`}
+            className="text-sm bg-cz-card border border-cz-border hover:border-cz-accent rounded-lg px-3 py-2 text-cz-2 hover:text-cz-1 transition-colors"
+          >
+            📊 Sæsonsrapport
+          </Link>
+        )}
       </div>
 
       {msg.text && (

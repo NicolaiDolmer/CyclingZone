@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.97",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Manager · Sæson-finansrapport (07h)",
+        items: [
+          "Manager · Ny dedikeret finansrapport per sæson: åbnes via 📊 Sæsonsrapport-knap på Finanser-siden eller via 📊 Finansrapport-knap på sæson-snapshot-siden (/seasons). Rapporten viser hero-kort med totalt indtægt/udgift/net cashflow, to donut-diagrammer over hvor pengene kommer fra (sponsor, præmiepenge, auktion-salg, ...) og hvor de går hen (auktion-køb, løn, lånerenter, ...), top-3 transaktioner i hver retning og en oversigt over aktive lån med næste sæsons forventede rente. Rapporten er privat per hold — ingen kan se andres økonomi.",
+          "Backend · Ny migration seeder sæson 0 (open beta transfervindue, 2026-05-08 18:00 UTC). Backfill'er alle 82 eksisterende finance_transactions med season_id og reason_code så donut-aggregeringen virker fra dag 1. Database-trigger auto-stamper season_id på fremtidige transaktioner — ingen callsite-ændringer nødvendige. Spillere mærker intet bortset fra rapportens nye data.",
+          "Backend · Ny pure-function `buildSeasonFinanceReport` (15 unit-tests dækker hero-aggregering, donut-fordeling, top-N-extraction, loan-summary + privatlivs-test der verificerer audit-internals ikke lækker til public output). Endpoint `GET /api/teams/:teamId/finance-report?seasonId=` har auth-gate: kun team-owner ELLER admin kan tilgå et hold's rapport. Sponsor-modifier-kurve placeholder vist når board_plan_snapshots er tom (dvs. før første afsluttede sæson) — vi viser ikke fake data.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.96",
     date: "2026-05-09",
     label: "Beta",

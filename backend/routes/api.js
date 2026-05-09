@@ -81,6 +81,7 @@ import {
   computeSustainabilityTier,
 } from "../lib/economyAdminDashboard.js";
 import { computeFinanceForecast } from "../lib/financeForecast.js";
+import { buildSeasonFinanceReport } from "../lib/seasonFinanceReport.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
 import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
@@ -2617,6 +2618,83 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
     });
 
     res.json(forecast);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/teams/:teamId/finance-report — slice 07h sæson-finansrapport
+//
+// Auth-gate: team-owner ELLER admin. Læs-kun reproduktion af given sæson.
+// Privatliv: hver requester ser KUN ét hold (sit eget eller — for admin —
+// det specifikke teamId i URL'en). Ingen cross-team aggregering.
+router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const { seasonId } = req.query;
+    if (!seasonId) return res.status(400).json({ error: "seasonId is required" });
+
+    // Auth-gate: er requester team-owner eller admin?
+    const isOwner = req.team?.id === teamId;
+    let isAdmin = false;
+    if (!isOwner) {
+      const { data: u } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", req.user.id)
+        .single();
+      isAdmin = u?.role === "admin";
+    }
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const [teamRes, seasonRes, txRes, loansRes] = await Promise.all([
+      supabase
+        .from("teams")
+        .select("id, name, division, balance, sponsor_income")
+        .eq("id", teamId)
+        .single(),
+      supabase
+        .from("seasons")
+        .select("id, number, status, start_date, end_date")
+        .eq("id", seasonId)
+        .single(),
+      supabase
+        .from("finance_transactions")
+        .select("id, type, amount, description, reason_code, created_at")
+        .eq("team_id", teamId)
+        .eq("season_id", seasonId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("loans")
+        .select("id, loan_type, principal, amount_remaining, interest_rate, seasons_remaining, status")
+        .eq("team_id", teamId)
+        .eq("status", "active"),
+    ]);
+
+    if (teamRes.error || !teamRes.data) {
+      return res.status(404).json({ error: "Team not found" });
+    }
+    if (seasonRes.error || !seasonRes.data) {
+      return res.status(404).json({ error: "Season not found" });
+    }
+
+    const report = buildSeasonFinanceReport({
+      transactions: txRes.data || [],
+      loans: loansRes.data || [],
+    });
+
+    res.json({
+      team: { id: teamRes.data.id, name: teamRes.data.name, division: teamRes.data.division },
+      season: seasonRes.data,
+      ...report,
+      // Sponsor-modifier-kurve: tilgængelig fra sæson 2 når board_plan_snapshots
+      // er populeret. Vi returnerer eksplicit null så frontend kan vise
+      // "Tilgængelig fra sæson 2" frem for at tro vi glemte den.
+      sponsor_modifier_curve: null,
+      viewer: { is_admin: isAdmin, is_owner: isOwner },
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
