@@ -399,6 +399,30 @@ function createCeilingSupabase({
             insert(row) { state.notifications.push(row); return Promise.resolve({ data: row, error: null }); },
           };
         }
+        if (table === "seasons") {
+          // 07d Fase B / #240: createLoan slår activeSeason op for season_id-stamping.
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    order() {
+                      return {
+                        limit() {
+                          return {
+                            maybeSingle() {
+                              return Promise.resolve({ data: { id: "season-active-mock" }, error: null });
+                            },
+                          };
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
         throw new Error(`Unexpected table: ${table}`);
       },
     },

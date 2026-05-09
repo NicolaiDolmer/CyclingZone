@@ -52,6 +52,20 @@ async function getDefaultSupabaseClient() {
   return defaultSupabaseClientPromise;
 }
 
+// 07d Fase B / #240: Slå aktiv sæson op, så api-callsites til createLoan/repayLoan
+// kan stamp'e season_id eksplicit i payload. DB-trigger fill_finance_tx_season()
+// er en safety-net, men callsites skal være selv-dokumenterende.
+async function fetchActiveSeasonId(client) {
+  const { data } = await client
+    .from("seasons")
+    .select("id")
+    .eq("status", "active")
+    .order("number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
 export function shouldChargeLoanAgreementSeasonFee(loan, seasonNumber) {
   if (!loan || loan.status !== "active") return false;
   if ((loan.loan_fee || 0) <= 0) return false;
@@ -214,6 +228,7 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
     loan = insertedLoan;
   }
 
+  const activeSeasonId = await fetchActiveSeasonId(client);
   await incrementBalanceWithAudit(client, {
     teamId,
     delta: principalAmount,
@@ -221,6 +236,7 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
       type: "loan_received",
       amount: principalAmount,
       description: `${loanType === "short" ? "Kort" : "Langt"} lån optaget (gebyr: ${fee} CZ$)`,
+      season_id: activeSeasonId,
       actor_type: auditCtx?.actorType || FINANCE_ACTOR_TYPE.API,
       actor_id: auditCtx?.actorId || null,
       source_path: "loanEngine.createLoan",
@@ -354,6 +370,7 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
     updated_at: new Date().toISOString(),
   }).eq("id", loanId);
 
+  const repaySeasonId = await fetchActiveSeasonId(client);
   await incrementBalanceWithAudit(client, {
     teamId,
     delta: -actualAmount,
@@ -361,6 +378,7 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
       type: "loan_repayment",
       amount: -actualAmount,
       description: `Lånrate betalt${isPaidOff ? " — lån fuldt tilbagebetalt! 🎉" : ` (resterende: ${newRemaining} CZ$)`}`,
+      season_id: repaySeasonId,
       actor_type: auditCtx?.actorType || FINANCE_ACTOR_TYPE.API,
       actor_id: auditCtx?.actorId || null,
       source_path: "loanEngine.repayLoan",

@@ -1,11 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   ADMIN_ACTION_TYPE,
   FINANCE_ACTOR_TYPE,
   FINANCE_RELATED_ENTITY,
   FINANCE_REASON,
 } from "./economyConstants.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // CHECK-constraint listen i database/2026-05-09-audit-log-foundation.sql.
 // Hvis denne liste og DB-constraint divergerer fejler INSERT på prod højlydt.
@@ -232,6 +237,20 @@ function makeLoanEngineCaptureClient({ rpcOverride } = {}) {
       return Promise.resolve({ data: 0, error: null });
     },
     from(table) {
+      if (table === "seasons") {
+        // 07d Fase B / #240: createLoan/repayLoan slår activeSeason op for season_id-stamping.
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => ({
+                  maybeSingle: () => Promise.resolve({ data: { id: "season-active-mock" }, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
       if (table === "teams") {
         return {
           select: () => ({
@@ -354,6 +373,19 @@ test("repayLoan respekterer api auditCtx", async () => {
       return Promise.resolve({ data: 0, error: null });
     },
     from(table) {
+      if (table === "seasons") {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => ({
+                  maybeSingle: () => Promise.resolve({ data: { id: "season-active-mock" }, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
       if (table === "loans") {
         return {
           select: () => ({
@@ -459,4 +491,179 @@ test("paySeasonPrizesToDate populerer admin auditCtx + idempotency_key", async (
   assert.equal(captures[0].related_entity_type, FINANCE_RELATED_ENTITY.RACE);
   assert.equal(captures[0].related_entity_id, "race-1");
   assert.equal(captures[0].idempotency_key, "race_prize:race-1:team-P");
+});
+
+// ============================================================
+// 07d Fase B / #240: per-callsite static-source audit. Parser kildekoden
+// for ALLE incrementBalanceWithAudit-callsites og håndhæver at payload
+// indeholder de obligatoriske audit-felter. Forhindrer at "glemt season_id"
+// eller "glemt idempotency_key" bug genopstår — som vi så i 07h hvor
+// auctionFinalization.js glemte season_id i payload trods triggeren som
+// safety-net. Triggeren er ikke en undskyldning for sjuskede callsites.
+// ============================================================
+
+// type + amount håndhæves runtime af incrementBalanceWithAudit selv (balanceRpc.js)
+// — her listes kun de audit-trail-felter der skal være selv-dokumenterende per callsite.
+const MANDATORY_PAYLOAD_KEYS = [
+  "season_id",
+  "actor_type",
+  "actor_id",
+  "source_path",
+  "reason_code",
+  "related_entity_type",
+  "related_entity_id",
+];
+
+// Source-paths der ER idempotent og SKAL have idempotency_key. Cron-retries
+// må ikke double-pay: hvis ét felt mangler her er der reel race-risiko.
+// Wrapper-callsites (creditTeam/debitTeam) bruger dynamic source_path og
+// dækkes af "creditTeam/debitTeam idempotent options"-testen længere nede.
+const IDEMPOTENT_LITERAL_SOURCE_PATHS = new Set([
+  "loanEngine.processLoanAgreementSeasonFees.payer",
+  "loanEngine.processLoanAgreementSeasonFees.receiver",
+  "prizePayoutEngine.paySeasonPrizesToDate",
+  "auctionFinalization.finalizeAuctionRecord.buyer",
+  "auctionFinalization.finalizeAuctionRecord.seller",
+  "auctionFinalization.finalizeAuctionRecord.guaranteedBankSale",
+]);
+
+const CALLSITE_FILES = [
+  { rel: "../routes/api.js", expectedCalls: 8 },
+  { rel: "./transferExecution.js", expectedCalls: 4 },
+  { rel: "./squadEnforcement.js", expectedCalls: 3 },
+  { rel: "./prizePayoutEngine.js", expectedCalls: 1 },
+  { rel: "./loanEngine.js", expectedCalls: 5 },
+  { rel: "./economyEngine.js", expectedCalls: 2 },
+  { rel: "./auctionFinalization.js", expectedCalls: 3 },
+];
+
+function extractIncrementCalls(source) {
+  const callRegex = /incrementBalanceWithAudit\s*\(/g;
+  const calls = [];
+  let match;
+  while ((match = callRegex.exec(source)) !== null) {
+    const callStart = match.index;
+    const payloadKeyIdx = source.indexOf("payload:", callStart);
+    if (payloadKeyIdx === -1) continue;
+    const openIdx = source.indexOf("{", payloadKeyIdx);
+    if (openIdx === -1) continue;
+    let depth = 1;
+    let i = openIdx + 1;
+    let inString = null;
+    while (i < source.length && depth > 0) {
+      const ch = source[i];
+      if (inString) {
+        if (ch === "\\") { i += 2; continue; }
+        if (ch === inString) inString = null;
+      } else if (ch === '"' || ch === "'" || ch === "`") {
+        inString = ch;
+      } else if (ch === "{") {
+        depth++;
+      } else if (ch === "}") {
+        depth--;
+      }
+      i++;
+    }
+    if (depth !== 0) continue;
+    const body = source.slice(openIdx + 1, i - 1);
+    const line = source.slice(0, callStart).split("\n").length;
+    const sourcePathLiteralMatch = body.match(/source_path:\s*"([^"]+)"/);
+    calls.push({
+      line,
+      body,
+      sourcePathLiteral: sourcePathLiteralMatch?.[1] ?? null,
+    });
+  }
+  return calls;
+}
+
+const ALL_CALLSITES = CALLSITE_FILES.map(({ rel, expectedCalls }) => {
+  const filePath = resolve(__dirname, rel);
+  const source = readFileSync(filePath, "utf8");
+  const calls = extractIncrementCalls(source);
+  return { rel, expectedCalls, calls };
+});
+
+for (const { rel, expectedCalls, calls } of ALL_CALLSITES) {
+  test(`${rel} har ${expectedCalls} incrementBalanceWithAudit-callsites (drift-detector)`, () => {
+    assert.equal(
+      calls.length,
+      expectedCalls,
+      `Forventet ${expectedCalls} callsites men fandt ${calls.length}. Hvis du har tilføjet/fjernet et callsite, opdater CALLSITE_FILES i auditTrail.test.js.`,
+    );
+  });
+
+  for (const { line, body, sourcePathLiteral } of calls) {
+    const label = sourcePathLiteral ?? "<dynamic source_path>";
+    test(`${rel}:${line} (${label}) — payload har alle obligatoriske audit-felter`, () => {
+      const missing = MANDATORY_PAYLOAD_KEYS.filter(
+        (key) => !new RegExp(`\\b${key}\\s*:`).test(body),
+      );
+      assert.deepEqual(
+        missing,
+        [],
+        `Manglende felter: ${missing.join(", ")}. Triggeren er en safety-net, ikke en undskyldning — alle penge-callsites skal være selv-dokumenterende.`,
+      );
+    });
+
+    if (sourcePathLiteral && IDEMPOTENT_LITERAL_SOURCE_PATHS.has(sourcePathLiteral)) {
+      test(`${rel}:${line} (${label}) — idempotent cron-path skal sætte idempotency_key`, () => {
+        assert.match(
+          body,
+          /\bidempotency_key\s*:/,
+          `Cron-paths må ikke kunne double-pay ved retries — sæt idempotency_key i payload`,
+        );
+      });
+    }
+  }
+}
+
+// creditTeam/debitTeam wrappers (economyEngine.js) bygger payload fra
+// options.audit; dynamisk source_path → kan ikke verificeres af parser-test
+// ovenfor. Test i stedet alle creditTeam/debitTeam-callsites med
+// idempotent: true: de SKAL også sætte audit.idempotencyKey.
+test("creditTeam/debitTeam-callsites med idempotent: true sætter audit.idempotencyKey", () => {
+  const economySource = readFileSync(resolve(__dirname, "./economyEngine.js"), "utf8");
+  const callRegex = /(creditTeam|debitTeam)\s*\(/g;
+  let match;
+  const callsites = [];
+  while ((match = callRegex.exec(economySource)) !== null) {
+    const start = match.index;
+    // Skip funktion-definitioner
+    if (/async function\s+$/.test(economySource.slice(0, start))) continue;
+    // Slice frem til matching ");" (top-level close af call)
+    let depth = 0;
+    let i = economySource.indexOf("(", start);
+    if (i === -1) continue;
+    depth = 1;
+    i++;
+    let inString = null;
+    while (i < economySource.length && depth > 0) {
+      const ch = economySource[i];
+      if (inString) {
+        if (ch === "\\") { i += 2; continue; }
+        if (ch === inString) inString = null;
+      } else if (ch === '"' || ch === "'" || ch === "`") {
+        inString = ch;
+      } else if (ch === "(") {
+        depth++;
+      } else if (ch === ")") {
+        depth--;
+      }
+      i++;
+    }
+    const body = economySource.slice(start, i);
+    const line = economySource.slice(0, start).split("\n").length;
+    callsites.push({ line, body });
+  }
+  assert.ok(callsites.length >= 4, `Fandt ${callsites.length} creditTeam/debitTeam-callsites; forventer mindst 4`);
+  for (const { line, body } of callsites) {
+    if (/idempotent:\s*true/.test(body)) {
+      assert.match(
+        body,
+        /idempotencyKey\s*:/,
+        `economyEngine.js:${line} — idempotent: true uden idempotencyKey: race-vinduer ved cron-retry`,
+      );
+    }
+  }
 });

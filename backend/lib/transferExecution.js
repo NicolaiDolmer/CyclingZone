@@ -42,6 +42,20 @@ async function fetchTeamAuctionCommitment(supabase, teamId) {
 const NOOP = async () => {};
 const ACTIVE_MARKET_STATUSES = ["pending", "countered", "awaiting_confirmation"];
 
+// 07d Fase B / #240: Slå aktiv sæson op så transfer/swap-callsites kan stamp'e
+// season_id eksplicit. DB-trigger fill_finance_tx_season() er en safety-net,
+// men callsites skal være selv-dokumenterende.
+async function fetchActiveSeasonId(supabase) {
+  const { data } = await supabase
+    .from("seasons")
+    .select("id")
+    .eq("status", "active")
+    .order("number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
 function success(payload) {
   return { ok: true, ...payload };
 }
@@ -312,10 +326,11 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   }
 
   // Slice 07c: balance + finance_transactions atomic via RPC.
-  // 07d Fase B: actor flyder gennem auditCtx (api fra confirmTransferOffer,
-  // cron fra flushWindowPendingOffers). Default cron/null hvis ikke sat.
+  // 07d Fase B / #240: actor flyder gennem auditCtx (api fra confirmTransferOffer,
+  // cron fra flushWindowPendingOffers). season_id sættes eksplicit fra activeSeason.
   const actorType = auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON;
   const actorId = auditCtx?.actorId || null;
+  const transferSeasonId = await fetchActiveSeasonId(supabase);
   await incrementBalanceWithAudit(supabase, {
     teamId: offer.buyer_team_id,
     delta: -price,
@@ -323,6 +338,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       type: "transfer_out",
       amount: -price,
       description: `Købt ${rider.firstname} ${rider.lastname} via transfer`,
+      season_id: transferSeasonId,
       actor_type: actorType,
       actor_id: actorId,
       source_path: "transferExecution.executeTransferOffer.buyer",
@@ -338,6 +354,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       type: "transfer_in",
       amount: price,
       description: `Solgt ${rider.firstname} ${rider.lastname} via transfer`,
+      season_id: transferSeasonId,
       actor_type: actorType,
       actor_id: actorId,
       source_path: "transferExecution.executeTransferOffer.seller",
@@ -456,13 +473,15 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
 
   if (cash !== 0) {
     // Slice 07c: balance + finance_transactions atomic via RPC.
-    // 07d Fase B: actor via auditCtx (api/cron afhængigt af caller).
+    // 07d Fase B / #240: actor via auditCtx (api/cron afhængigt af caller),
+    // season_id eksplicit fra activeSeason.
     const swapDescription = `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`;
     const payerId = cash > 0 ? swap.proposing_team_id : swap.receiving_team_id;
     const receiverId = cash > 0 ? swap.receiving_team_id : swap.proposing_team_id;
     const absCash = Math.abs(cash);
     const swapActorType = auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON;
     const swapActorId = auditCtx?.actorId || null;
+    const swapSeasonId = await fetchActiveSeasonId(supabase);
 
     await incrementBalanceWithAudit(supabase, {
       teamId: payerId,
@@ -471,6 +490,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
         type: "transfer_out",
         amount: -absCash,
         description: swapDescription,
+        season_id: swapSeasonId,
         actor_type: swapActorType,
         actor_id: swapActorId,
         source_path: "transferExecution.executeSwapOffer.payer",
@@ -486,6 +506,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
         type: "transfer_in",
         amount: absCash,
         description: swapDescription,
+        season_id: swapSeasonId,
         actor_type: swapActorType,
         actor_id: swapActorId,
         source_path: "transferExecution.executeSwapOffer.receiver",

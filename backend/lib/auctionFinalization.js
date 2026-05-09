@@ -143,6 +143,19 @@ async function finalizeAuctionRecord({
   }
 
   const actualEnd = now.toISOString();
+
+  // 07d Fase B / #240: Slå aktiv sæson op én gang så audit-payloads kan stamp'e
+  // season_id eksplicit. DB-trigger fill_finance_tx_season() er en safety-net,
+  // men callsites skal være selv-dokumenterende. activeSeasonId kan være null
+  // i edge-cases (ingen aktiv sæson registreret) — lad triggeren tage over.
+  const { data: activeSeason } = await supabase
+    .from("seasons")
+    .select("id")
+    .eq("status", "active")
+    .order("number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const activeSeasonId = activeSeason?.id ?? null;
   const {
     sellerOwned,
     actualSellerTeamId,
@@ -289,7 +302,8 @@ async function finalizeAuctionRecord({
     );
 
     // Slice 07c: balance + finance_transactions atomic via RPC.
-    // 07d Fase B: cron-finalizer → actor_type=cron, actor_id=null.
+    // 07d Fase B / #240: cron-finalizer → actor_type=cron, actor_id=null,
+    // season_id eksplicit + idempotency_key så cron-retries ikke double-pay.
     await incrementBalanceWithAudit(supabase, {
       teamId: effectiveBidderId,
       delta: -price,
@@ -297,14 +311,16 @@ async function finalizeAuctionRecord({
         type: "transfer_out",
         amount: -price,
         description: `Købt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
+        season_id: activeSeasonId,
         actor_type: FINANCE_ACTOR_TYPE.CRON,
         actor_id: null,
         source_path: "auctionFinalization.finalizeAuctionRecord.buyer",
         reason_code: FINANCE_REASON.AUCTION_WINNER_PAYMENT,
         related_entity_type: FINANCE_RELATED_ENTITY.AUCTION,
         related_entity_id: auction.id,
+        idempotency_key: `auction_winner:${auction.id}`,
       },
-    });
+    }, { allowDuplicate: true });
 
     if (actualSellerTeamId) {
       await incrementBalanceWithAudit(supabase, {
@@ -314,14 +330,16 @@ async function finalizeAuctionRecord({
           type: "transfer_in",
           amount: price,
           description: `Solgt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
+          season_id: activeSeasonId,
           actor_type: FINANCE_ACTOR_TYPE.CRON,
           actor_id: null,
           source_path: "auctionFinalization.finalizeAuctionRecord.seller",
           reason_code: FINANCE_REASON.AUCTION_SELLER_PAYOUT,
           related_entity_type: FINANCE_RELATED_ENTITY.AUCTION,
           related_entity_id: auction.id,
+          idempotency_key: `auction_seller:${auction.id}`,
         },
-      });
+      }, { allowDuplicate: true });
     }
 
     await awardXP(effectiveBidderId, "auction_won");
@@ -404,6 +422,7 @@ async function finalizeAuctionRecord({
     );
 
     // Slice 07c: balance + finance_transactions atomic via RPC.
+    // 07d Fase B / #240: season_id eksplicit + idempotency_key per auction.
     await incrementBalanceWithAudit(supabase, {
       teamId: auction.seller_team_id,
       delta: salePrice,
@@ -411,14 +430,16 @@ async function finalizeAuctionRecord({
         type: "transfer_in",
         amount: salePrice,
         description: `Garanteret banksalg: ${auction.rider.firstname} ${auction.rider.lastname}`,
+        season_id: activeSeasonId,
         actor_type: FINANCE_ACTOR_TYPE.CRON,
         actor_id: null,
         source_path: "auctionFinalization.finalizeAuctionRecord.guaranteedBankSale",
         reason_code: FINANCE_REASON.AUCTION_GUARANTEED_BANK_SALE,
         related_entity_type: FINANCE_RELATED_ENTITY.AUCTION,
         related_entity_id: auction.id,
+        idempotency_key: `auction_bank_sale:${auction.id}`,
       },
-    });
+    }, { allowDuplicate: true });
 
     await notifyTeamOwner(
       auction.seller_team_id,

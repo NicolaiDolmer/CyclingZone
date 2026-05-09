@@ -287,6 +287,21 @@ function createFinalizeAuctionSupabase({
         };
       }
 
+      if (table === "seasons") {
+        // 07d Fase B / #240: finalizeAuctionRecord slår activeSeason op for season_id-stamping.
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => ({
+                  maybeSingle: () => Promise.resolve({ data: { id: "season-active-mock" }, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+
       throw new Error(`Unexpected table: ${table}`);
     },
   };
@@ -444,24 +459,28 @@ test("finalizeAuctionById pays the actual AI owner instead of the initiator", as
       type: "transfer_out",
       amount: -120,
       description: "Købt AI Owner på auktion",
+      season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
       source_path: "auctionFinalization.finalizeAuctionRecord.buyer",
       reason_code: "auction_winner_payment",
       related_entity_type: "auction",
       related_entity_id: "auction-ai",
+      idempotency_key: "auction_winner:auction-ai",
     },
     {
       team_id: "ai-team",
       type: "transfer_in",
       amount: 120,
       description: "Solgt AI Owner på auktion",
+      season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
       source_path: "auctionFinalization.finalizeAuctionRecord.seller",
       reason_code: "auction_seller_payout",
       related_entity_type: "auction",
       related_entity_id: "auction-ai",
+      idempotency_key: "auction_seller:auction-ai",
     },
   ]);
   assert.deepEqual(xpAwards, [
@@ -629,24 +648,28 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
       type: "transfer_out",
       amount: -150,
       description: "Købt Owned Seller på auktion",
+      season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
       source_path: "auctionFinalization.finalizeAuctionRecord.buyer",
       reason_code: "auction_winner_payment",
       related_entity_type: "auction",
       related_entity_id: "auction-owned",
+      idempotency_key: "auction_winner:auction-owned",
     },
     {
       team_id: "seller-team",
       type: "transfer_in",
       amount: 150,
       description: "Solgt Owned Seller på auktion",
+      season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
       source_path: "auctionFinalization.finalizeAuctionRecord.seller",
       reason_code: "auction_seller_payout",
       related_entity_type: "auction",
       related_entity_id: "auction-owned",
+      idempotency_key: "auction_seller:auction-owned",
     },
   ]);
   assert.deepEqual(xpAwards, [
@@ -818,24 +841,28 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on an 
       type: "transfer_out",
       amount: -120,
       description: "Købt AI SelfBid på auktion",
+      season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
       source_path: "auctionFinalization.finalizeAuctionRecord.buyer",
       reason_code: "auction_winner_payment",
       related_entity_type: "auction",
       related_entity_id: "auction-self-bid",
+      idempotency_key: "auction_winner:auction-self-bid",
     },
     {
       team_id: "ai-team",
       type: "transfer_in",
       amount: 120,
       description: "Solgt AI SelfBid på auktion",
+      season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
       source_path: "auctionFinalization.finalizeAuctionRecord.seller",
       reason_code: "auction_seller_payout",
       related_entity_type: "auction",
       related_entity_id: "auction-self-bid",
+      idempotency_key: "auction_seller:auction-self-bid",
     },
   ]);
   assert.deepEqual(xpAwards, [
@@ -924,12 +951,14 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
       type: "transfer_out",
       amount: -80,
       description: "Købt Free Agent på auktion",
+      season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
       source_path: "auctionFinalization.finalizeAuctionRecord.buyer",
       reason_code: "auction_winner_payment",
       related_entity_type: "auction",
       related_entity_id: "auction-free-self-bid",
+      idempotency_key: "auction_winner:auction-free-self-bid",
     },
   ]);
   assert.deepEqual(xpAwards, [
@@ -1014,12 +1043,14 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
     type: "transfer_out",
     amount: -48,
     description: "Købt Legacy Free på auktion",
+    season_id: "season-active-mock",
     actor_type: "cron",
     actor_id: null,
     source_path: "auctionFinalization.finalizeAuctionRecord.buyer",
     reason_code: "auction_winner_payment",
     related_entity_type: "auction",
     related_entity_id: "auction-legacy-free",
+    idempotency_key: "auction_winner:auction-legacy-free",
   }]);
   assert.equal(notifications[0].teamId, "initiator-team");
   assert.match(notifications[0].title, /vandt/i);

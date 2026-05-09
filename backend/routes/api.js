@@ -2108,7 +2108,10 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
         });
       }
       // Slice 07c: balance + finance_transactions atomic via RPC.
-      // 07d Fase B: api-actor; lender bekræfter aktivering så req.user.id = lender.
+      // 07d Fase B / #240: api-actor; lender bekræfter aktivering så req.user.id = lender.
+      // season_id sættes eksplicit fra activeSeason — triggeren er en safety-net, ikke en undskyldning.
+      const { data: loanAcceptSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
+      const loanAcceptSeasonId = loanAcceptSeason?.id ?? null;
       await incrementBalanceWithAudit(supabase, {
         teamId: loan.to_team_id,
         delta: -loan.loan_fee,
@@ -2116,6 +2119,7 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
           type: "transfer_out",
           amount: -loan.loan_fee,
           description: `Lejegebyr: ${loan.rider.firstname} ${loan.rider.lastname} (sæson ${loan.start_season})`,
+          season_id: loanAcceptSeasonId,
           actor_type: FINANCE_ACTOR_TYPE.API,
           actor_id: req.user.id,
           source_path: "api.loans.accept.borrower",
@@ -2131,6 +2135,7 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
           type: "transfer_in",
           amount: loan.loan_fee,
           description: `Lejegebyr modtaget: ${loan.rider.firstname} ${loan.rider.lastname} (sæson ${loan.start_season})`,
+          season_id: loanAcceptSeasonId,
           actor_type: FINANCE_ACTOR_TYPE.API,
           actor_id: req.user.id,
           source_path: "api.loans.accept.lender",
@@ -2195,7 +2200,10 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
 
     await supabase.from("riders").update({ team_id: req.team.id, acquired_at: new Date().toISOString() }).eq("id", loan.rider_id);
     // Slice 07c: balance + finance_transactions atomic via RPC.
-    // 07d Fase B: borrower aktiverer købsoption → req.user.id = køber.
+    // 07d Fase B / #240: borrower aktiverer købsoption → req.user.id = køber.
+    // season_id sættes eksplicit fra activeSeason.
+    const { data: buyoutSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
+    const buyoutSeasonId = buyoutSeason?.id ?? null;
     await incrementBalanceWithAudit(supabase, {
       teamId: req.team.id,
       delta: -price,
@@ -2203,6 +2211,7 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
         type: "transfer_out",
         amount: -price,
         description: `Købsoption udnyttet: ${loan.rider.firstname} ${loan.rider.lastname}`,
+        season_id: buyoutSeasonId,
         actor_type: FINANCE_ACTOR_TYPE.API,
         actor_id: req.user.id,
         source_path: "api.loans.buyout.buyer",
@@ -2218,6 +2227,7 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
         type: "transfer_in",
         amount: price,
         description: `Købsoption udnyttet: ${loan.rider.firstname} ${loan.rider.lastname}`,
+        season_id: buyoutSeasonId,
         actor_type: FINANCE_ACTOR_TYPE.API,
         actor_id: req.user.id,
         source_path: "api.loans.buyout.seller",
@@ -2919,7 +2929,10 @@ router.post("/admin/loans/:id/cancel", requireAdmin, async (req, res) => {
         return res.status(500).json({ error: "Kunne ikke hente hold-balancer for refusion" });
       }
       // Slice 07c: balance + finance_transactions atomic via RPC.
-      // 07d Fase B: admin-trigger → actor_type=admin, actor_id=req.user.id.
+      // 07d Fase B / #240: admin-trigger → actor_type=admin, actor_id=req.user.id,
+      // season_id eksplicit fra activeSeason.
+      const { data: refundSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
+      const refundSeasonId = refundSeason?.id ?? null;
       await incrementBalanceWithAudit(supabase, {
         teamId: loan.to_team_id,
         delta: loan.loan_fee,
@@ -2927,6 +2940,7 @@ router.post("/admin/loans/:id/cancel", requireAdmin, async (req, res) => {
           type: "transfer_in",
           amount: loan.loan_fee,
           description: `Lejegebyr refunderet (admin-annullering): ${riderName}`,
+          season_id: refundSeasonId,
           actor_type: FINANCE_ACTOR_TYPE.ADMIN,
           actor_id: req.user.id,
           source_path: "api.admin.loans.cancel.refundBorrower",
@@ -2942,6 +2956,7 @@ router.post("/admin/loans/:id/cancel", requireAdmin, async (req, res) => {
           type: "transfer_out",
           amount: -loan.loan_fee,
           description: `Lejegebyr tilbageført (admin-annullering): ${riderName}`,
+          season_id: refundSeasonId,
           actor_type: FINANCE_ACTOR_TYPE.ADMIN,
           actor_id: req.user.id,
           source_path: "api.admin.loans.cancel.clawbackLender",
@@ -3761,7 +3776,9 @@ router.post("/admin/adjust-balance", requireAdmin, async (req, res) => {
     const { data: team } = await supabase.from("teams").select("balance").eq("id", team_id).single();
     if (!team) return res.status(404).json({ error: "Hold ikke fundet" });
     // Slice 07c: balance + finance_transactions atomic via RPC.
-    // 07d Fase B: admin-trigger → actor_type=admin, actor_id=req.user.id.
+    // 07d Fase B / #240: admin-trigger → actor_type=admin, actor_id=req.user.id,
+    // season_id eksplicit fra activeSeason.
+    const { data: adjustSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
     await incrementBalanceWithAudit(supabase, {
       teamId: team_id,
       delta: parseInt(amount),
@@ -3769,6 +3786,7 @@ router.post("/admin/adjust-balance", requireAdmin, async (req, res) => {
         type: "admin_adjustment",
         amount: parseInt(amount),
         description: reason || "Admin justering",
+        season_id: adjustSeason?.id ?? null,
         actor_type: FINANCE_ACTOR_TYPE.ADMIN,
         actor_id: req.user.id,
         source_path: "api.admin.adjustBalance",
