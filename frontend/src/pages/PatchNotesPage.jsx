@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "2.86",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auktioner · Ønskeliste-filter",
+        items: [
+          "Auktioner · Ny 'Kun ønskeliste'-knap ved siden af filter-tabsene — slå til for at se kun aktive auktioner på ryttere du har stjernemarkeret. Kombineres oven på den aktive tab (Min situation / Alle / Andre managers).",
+          "Valget huskes på tværs af sessions, så hvis du primært jagter et udvalg af ryttere, behøver du ikke slå filteret til hver gang du åbner siden.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.85",
     date: "2026-05-09",
     label: "Beta",

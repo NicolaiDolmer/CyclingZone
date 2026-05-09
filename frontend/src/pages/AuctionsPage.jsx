@@ -713,6 +713,19 @@ export default function AuctionsPage() {
   const [currentRiderCount, setCurrentRiderCount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("my-situation");
+  // Ønskeliste-filter — toggle der viser kun auktioner på ryttere i manager's wishlist.
+  // Kombineres oven på den aktive filter-tab (my-situation/all/other).
+  const [wishlistOnly, setWishlistOnly] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem("cz-auctions-wishlist-only") === "1",
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("cz-auctions-wishlist-only", wishlistOnly ? "1" : "0");
+    } catch {
+      // localStorage kan være disabled (privacy mode); accepter tab af persistens
+    }
+  }, [wishlistOnly]);
   const [celebration, setCelebration] = useState(null);
   // Stats toggle (persisted i localStorage) — default tomt, manageren vælger selv
   const { visibleStats, toggleStat, showAll, hideAll } = useStatsToggle();
@@ -1103,10 +1116,16 @@ export default function AuctionsPage() {
     return true;
   }
 
+  function passesWishlistFilter(a) {
+    if (!wishlistOnly) return true;
+    return Boolean(a.rider?.id && watchlist.has(a.rider.id));
+  }
+
   const filtered = auctions
     .filter(a => {
       if (a.rider && !filteredRiderOrder.has(a.rider.id)) return false;
       if (!passesAuctionPriceFilter(a)) return false;
+      if (!passesWishlistFilter(a)) return false;
       if (filter === "my-situation") return mySituationIds.has(a.id);
       if (filter === "other")        return a.rider?.team_id && a.rider.team_id !== myTeamId;
       return true;
@@ -1249,9 +1268,9 @@ export default function AuctionsPage() {
         />
       )}
 
-      {/* Filter tabs + StatsToggle */}
+      {/* Filter tabs + Wishlist-toggle + StatsToggle */}
       <div className="flex gap-2 mb-4 flex-wrap items-center justify-between">
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
           {FILTER_TABS.map(t => (
             <button key={t.key} onClick={() => setFilter(t.key)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
@@ -1261,6 +1280,17 @@ export default function AuctionsPage() {
               {t.label}
             </button>
           ))}
+          <button
+            onClick={() => setWishlistOnly(v => !v)}
+            aria-pressed={wishlistOnly}
+            title={wishlistOnly ? "Vis alle ryttere" : "Vis kun ryttere på din ønskeliste"}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+              ${wishlistOnly
+                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+            <span className={wishlistOnly ? "text-cz-accent-t" : "text-cz-3"}>{wishlistOnly ? "★" : "☆"}</span>
+            Kun ønskeliste
+          </button>
         </div>
         <StatsToggle
           visibleStats={visibleStats}
@@ -1287,10 +1317,11 @@ export default function AuctionsPage() {
         <AuctionsContent
           filter={filter}
           filtered={filtered}
+          wishlistOnly={wishlistOnly}
           mySituationBuckets={{
-            leading: myLeadingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a)),
-            overbid: myOverbidAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a)),
-            selling: mySellingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a)),
+            leading: myLeadingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a)),
+            overbid: myOverbidAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a)),
+            selling: mySellingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a)),
           }}
           myTeamId={myTeamId}
           availableBalance={availableBalance}
@@ -1443,7 +1474,7 @@ function MySituationSection({ title, badgeClass, auctions, sectionId, sharedProp
 
 function AuctionsContent(props) {
   const {
-    filter, filtered, mySituationBuckets,
+    filter, filtered, wishlistOnly, mySituationBuckets,
     feedEvents, auctionsById, myTeamId, now,
     ...rest
   } = props;
@@ -1459,9 +1490,17 @@ function AuctionsContent(props) {
       <div className="min-w-0">
         {isEmpty ? (
           <div className="text-center py-16 text-cz-3">
-            <p className="text-4xl mb-3">⚡</p>
-            <p>{filter === "my-situation" ? "Du er ikke involveret i nogen aktive auktioner" : "Ingen auktioner i denne kategori"}</p>
-            <p className="text-sm mt-2">{filter === "my-situation" ? "Skift til 'Alle' for at browse markedet" : "Gå til Ryttere og start en auktion"}</p>
+            <p className="text-4xl mb-3">{wishlistOnly ? "★" : "⚡"}</p>
+            <p>
+              {wishlistOnly
+                ? "Ingen aktive auktioner på dine ønskelistede ryttere"
+                : (filter === "my-situation" ? "Du er ikke involveret i nogen aktive auktioner" : "Ingen auktioner i denne kategori")}
+            </p>
+            <p className="text-sm mt-2">
+              {wishlistOnly
+                ? "Slå 'Kun ønskeliste' fra eller tilføj ryttere fra rytter-oversigten"
+                : (filter === "my-situation" ? "Skift til 'Alle' for at browse markedet" : "Gå til Ryttere og start en auktion")}
+            </p>
           </div>
         ) : filter === "my-situation" ? (
           <>
