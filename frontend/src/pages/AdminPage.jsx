@@ -7,6 +7,7 @@ import {
   getRaceClassLabel,
 } from "../lib/uciRaceClasses";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import EconomyAdminSection from "../components/admin/EconomyAdminSection";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -761,6 +762,11 @@ export default function AdminPage() {
           <strong>Frys auktioner:</strong> nye bud, autobud-loft og oprettelse af auktioner blokeres. Cron pauser finalisering.<br/>
           <strong>Frys hele markedet:</strong> ovenstående + transfertilbud, byttehandler, lejeaftaler og bank-lån. Cleanup-handlinger (annuller/afvis/træk-tilbage) virker stadig.
         </p>
+      </Section>
+
+      {/* ── Økonomi (07e) ──────────────────────────────────────────────────── */}
+      <Section title="Økonomi">
+        <EconomyAdminSection getAuth={getAuth} onMsg={showMsg} />
       </Section>
 
       {/* ── Transfervindue ──────────────────────────────────────────────────── */}

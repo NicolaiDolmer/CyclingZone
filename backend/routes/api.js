@@ -76,6 +76,10 @@ import { getPendingInboxItems } from "../lib/inboxPending.js";
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
+import {
+  computeDebtRatio,
+  computeSustainabilityTier,
+} from "../lib/economyAdminDashboard.js";
 import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
 import {
@@ -3591,6 +3595,205 @@ router.patch("/admin/users/:userId/role", requireAdmin, async (req, res) => {
 
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Slice 07e · Admin økonomi-dashboard ──────────────────────────────────────
+
+// Fase B blev udrullet 2026-05-09 17:00 UTC; rows skrevet før den tid mangler
+// audit-kolonner og er forventede legacy-NULL'er — health-endpointet skelner.
+const PHASE_B_DEPLOY_CUTOFF = "2026-05-09T17:00:00Z";
+const STARTING_BALANCE = 800000; // matcher DEFAULT_BETA_BALANCE i economyConstants
+const FINANCE_TX_MAX_LIMIT = 200;
+const FINANCE_TX_DEFAULT_LIMIT = 50;
+
+// GET /api/admin/economy-overview — per-hold økonomi-overblik
+router.get("/admin/economy-overview", requireAdmin, async (req, res) => {
+  try {
+    const { division, q, include_ai, include_frozen } = req.query;
+    const includeAi = include_ai === "true" || include_ai === "1";
+    const includeFrozen = include_frozen === "true" || include_frozen === "1";
+
+    let teamsQuery = supabase
+      .from("teams")
+      .select("id, name, division, balance, sponsor_income, is_ai, is_bank, is_frozen, user_id")
+      .eq("is_bank", false);
+    if (division) teamsQuery = teamsQuery.eq("division", parseInt(division, 10));
+    if (q) teamsQuery = teamsQuery.ilike("name", `%${q}%`);
+    if (!includeAi) teamsQuery = teamsQuery.eq("is_ai", false);
+    if (!includeFrozen) teamsQuery = teamsQuery.eq("is_frozen", false);
+
+    const { data: teams, error: teamsErr } = await teamsQuery.order("division").order("name");
+    if (teamsErr) throw teamsErr;
+
+    if (!teams || teams.length === 0) return res.json({ teams: [] });
+
+    const divisions = [...new Set(teams.map((t) => t.division))];
+    const teamIds = teams.map((t) => t.id);
+
+    const [{ data: loanConfigs }, { data: activeLoans }] = await Promise.all([
+      supabase.from("loan_config").select("division, debt_ceiling").in("division", divisions),
+      supabase.from("loans").select("team_id, amount_remaining").in("team_id", teamIds).eq("status", "active"),
+    ]);
+
+    const ceilingByDivision = new Map();
+    for (const cfg of loanConfigs || []) ceilingByDivision.set(cfg.division, cfg.debt_ceiling);
+
+    const debtByTeam = new Map();
+    for (const loan of activeLoans || []) {
+      debtByTeam.set(loan.team_id, (debtByTeam.get(loan.team_id) || 0) + (loan.amount_remaining || 0));
+    }
+
+    const enriched = teams.map((t) => {
+      const totalDebt = debtByTeam.get(t.id) || 0;
+      const debtCeiling = ceilingByDivision.get(t.division) || 0;
+      return {
+        id: t.id,
+        name: t.name,
+        division: t.division,
+        balance: t.balance,
+        sponsor_income: t.sponsor_income,
+        total_debt: totalDebt,
+        debt_ceiling: debtCeiling,
+        debt_ratio: computeDebtRatio(totalDebt, debtCeiling),
+        sustainability: computeSustainabilityTier(totalDebt, debtCeiling),
+        is_ai: t.is_ai,
+        is_frozen: t.is_frozen,
+      };
+    });
+
+    res.json({ teams: enriched });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/finance-transactions — paginated + filtreret tx-historik
+router.get("/admin/finance-transactions", requireAdmin, async (req, res) => {
+  try {
+    const {
+      type, team_id, season_id, actor_type, reason_code, source_path,
+      related_entity_type, related_entity_id,
+      date_from, date_to, amount_min, amount_max,
+    } = req.query;
+
+    let limit = parseInt(req.query.limit ?? FINANCE_TX_DEFAULT_LIMIT, 10);
+    if (!Number.isFinite(limit) || limit < 1) limit = FINANCE_TX_DEFAULT_LIMIT;
+    if (limit > FINANCE_TX_MAX_LIMIT) limit = FINANCE_TX_MAX_LIMIT;
+    let offset = parseInt(req.query.offset ?? 0, 10);
+    if (!Number.isFinite(offset) || offset < 0) offset = 0;
+
+    let query = supabase
+      .from("finance_transactions")
+      .select(
+        "id, team_id, type, amount, description, season_id, race_id, created_at, related_loan_id, " +
+        "actor_type, actor_id, source_path, reason_code, before_balance, after_balance, " +
+        "related_entity_type, related_entity_id, idempotency_key, " +
+        "team:team_id(id, name, division), season:season_id(id, number)",
+        { count: "exact" }
+      );
+
+    if (type) query = query.eq("type", type);
+    if (team_id) query = query.eq("team_id", team_id);
+    if (season_id) query = query.eq("season_id", season_id);
+    if (actor_type) query = query.eq("actor_type", actor_type);
+    if (reason_code) query = query.eq("reason_code", reason_code);
+    if (related_entity_type) query = query.eq("related_entity_type", related_entity_type);
+    if (related_entity_id) query = query.eq("related_entity_id", related_entity_id);
+    if (source_path) query = query.ilike("source_path", `%${source_path}%`);
+    if (date_from) query = query.gte("created_at", date_from);
+    if (date_to) query = query.lte("created_at", date_to);
+    if (amount_min) query = query.gte("amount", parseInt(amount_min, 10));
+    if (amount_max) query = query.lte("amount", parseInt(amount_max, 10));
+
+    query = query.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    res.json({
+      transactions: data || [],
+      total: count ?? 0,
+      limit,
+      offset,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/economy-health — health-widgets (NULL-counter + balance-drift)
+router.get("/admin/economy-health", requireAdmin, async (req, res) => {
+  try {
+    const [
+      { count: preNull },
+      { count: postNull },
+      { count: postPopulated },
+      { count: totalTx },
+      { data: humanTeams },
+    ] = await Promise.all([
+      supabase
+        .from("finance_transactions")
+        .select("id", { count: "exact", head: true })
+        .lt("created_at", PHASE_B_DEPLOY_CUTOFF)
+        .is("actor_type", null),
+      supabase
+        .from("finance_transactions")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", PHASE_B_DEPLOY_CUTOFF)
+        .is("actor_type", null),
+      supabase
+        .from("finance_transactions")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", PHASE_B_DEPLOY_CUTOFF)
+        .not("actor_type", "is", null),
+      supabase.from("finance_transactions").select("id", { count: "exact", head: true }),
+      supabase
+        .from("teams")
+        .select("id, balance")
+        .not("user_id", "is", null)
+        .eq("is_ai", false)
+        .eq("is_bank", false),
+    ]);
+
+    const teamIds = (humanTeams || []).map((t) => t.id);
+    let driftTeams = 0;
+    let maxDrift = 0;
+    if (teamIds.length > 0) {
+      const { data: txRows, error: txErr } = await supabase
+        .from("finance_transactions")
+        .select("team_id, amount")
+        .in("team_id", teamIds);
+      if (txErr) throw txErr;
+      const sumByTeam = new Map();
+      for (const row of txRows || []) {
+        sumByTeam.set(row.team_id, (sumByTeam.get(row.team_id) || 0) + (row.amount || 0));
+      }
+      for (const t of humanTeams) {
+        const expected = STARTING_BALANCE + (sumByTeam.get(t.id) || 0);
+        const drift = Math.abs(t.balance - expected);
+        if (drift > 0) driftTeams += 1;
+        if (drift > maxDrift) maxDrift = drift;
+      }
+    }
+
+    res.json({
+      finance_null_actor_type: {
+        pre_phase_b: preNull ?? 0,
+        post_phase_b: postNull ?? 0,
+        post_phase_b_populated: postPopulated ?? 0,
+        total: totalTx ?? 0,
+      },
+      balance_drift: {
+        teams_with_drift: driftTeams,
+        max_drift: maxDrift,
+        teams_checked: teamIds.length,
+        starting_balance: STARTING_BALANCE,
+      },
+      deploy_cutoff: PHASE_B_DEPLOY_CUTOFF,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // DELETE /api/admin/races/:raceId — slet løb (cascader til race_results)
