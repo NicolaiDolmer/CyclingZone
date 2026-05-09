@@ -570,8 +570,9 @@ export default function RiderStatsPage() {
   const isFreeAgent = !rider.team_id;
   const isBankRider = Boolean(rider.team?.is_bank);
   const isAiRider = Boolean(rider.team?.is_ai);
-  const canAuction  = isFreeAgent || isMyRider || isBankRider || isAiRider;
-  const canDirectOffer = rider.team_id && rider.team_id !== myTeamId && !isBankRider && !isAiRider;
+  const isPendingTransfer = Boolean(rider.pending_team_id);
+  const canAuction  = (isFreeAgent || isMyRider || isBankRider || isAiRider) && !isPendingTransfer;
+  const canDirectOffer = rider.team_id && rider.team_id !== myTeamId && !isBankRider && !isAiRider && !isPendingTransfer;
   const auctionLabel = isMyRider
     ? "Sæt til auktion"
     : isBankRider
@@ -657,6 +658,11 @@ export default function RiderStatsPage() {
           </div>
         )}
         <div className="mt-5 pt-5 border-t border-cz-border flex flex-col gap-3">
+          {isPendingTransfer && (
+            <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
+              🔒 Rytteren er vundet på auktion og afventer overførsel til det nye hold — kan ikke handles før overførslen er gennemført.
+            </p>
+          )}
           {canAuction && !activeAuction && <AuctionButton rider={rider} isMyRider={isMyRider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} />}
           {activeAuction && canAuction && (
             <p className="text-cz-3 text-xs text-center py-1">Rytteren er allerede i en aktiv auktion</p>

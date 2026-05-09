@@ -1,5 +1,21 @@
 import { SQUAD_FINE_AMOUNT, SQUAD_PENALTY_POINTS } from "./squadEnforcement.js";
 
+// Hard block: ny auktion på rytter der har vundet en tidligere auktion og
+// afventer overførsel (pending_team_id sat). Uden denne gate kunne enhver
+// re-auktionere en rytter der allerede er på vej til et andet hold —
+// finalize-steget ville senere annullere den nye auktion via stale-owner-tjek
+// i auctionFinalization.js, men UX'en er ødelagt: bud afgivet, leder
+// notificeres "auktion annulleret", penge bundet i mellemtiden.
+//
+// Rammer alle managers (også winneren selv) — rytteren er ikke fysisk på noget
+// hold endnu og kan ikke sælges videre før transfervinduet flusher pending → team_id.
+export function getAuctionStartIssue({ rider } = {}) {
+  if (rider?.pending_team_id) {
+    return { code: "rider_pending_transfer" };
+  }
+  return null;
+}
+
 // Min-step = +1 CZ$ over current price når der allerede er bud.
 // Hvis ingen har budt endnu (asking-price på guaranteed sale), tillad match-bud.
 export function getMinimumAuctionBid(currentPrice, { hasActiveBid = true } = {}) {

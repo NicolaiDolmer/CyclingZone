@@ -8,6 +8,7 @@ import {
   getAuctionInitialBidderId,
   getAuctionBidIssue,
   getAuctionBidWarnings,
+  getAuctionStartIssue,
   getMinimumAuctionBid,
   getProxyMaxIssue,
   getProxyOpeningBidAmount,
@@ -18,6 +19,28 @@ import {
   SQUAD_FINE_AMOUNT,
   SQUAD_PENALTY_POINTS,
 } from "./squadEnforcement.js";
+
+test("getAuctionStartIssue blocks rider with pending_team_id (awaiting transfer)", () => {
+  // Rider won previous auction, transfer window closed → pending_team_id sat.
+  // Enhver ny auktion ville senere blive cancelled af stale-owner-tjek i finalize.
+  const issue = getAuctionStartIssue({
+    rider: { id: "r1", team_id: null, pending_team_id: "winning-team" },
+  });
+  assert.deepEqual(issue, { code: "rider_pending_transfer" });
+});
+
+test("getAuctionStartIssue allows rider without pending transfer", () => {
+  assert.equal(
+    getAuctionStartIssue({ rider: { id: "r1", team_id: "ai-team", pending_team_id: null } }),
+    null,
+  );
+  assert.equal(
+    getAuctionStartIssue({ rider: { id: "r1", team_id: null, pending_team_id: null } }),
+    null,
+  );
+  assert.equal(getAuctionStartIssue({}), null);
+  assert.equal(getAuctionStartIssue(), null);
+});
 
 test("getMinimumAuctionBid is currentPrice + 1 when there is an active bidder", () => {
   assert.equal(getMinimumAuctionBid(100000), 100001);

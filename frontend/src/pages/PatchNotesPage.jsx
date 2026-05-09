@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "2.89",
+    date: "2026-05-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auktioner · Lås rytter under afventende overførsel",
+        items: [
+          "Auktioner · Når en rytter har vundet en auktion men endnu ikke er overført til vinderens hold (fordi transfervinduet er lukket og rytteren står som 'indgående'), kan ingen nu starte en ny auktion på rytteren. Tidligere kunne andre managere flash-auktionere rytteren væk fra den retmæssige vinder, hvilket fik den oprindelige finalisering til at annullere overførslen — bud bundet, ingen rytter til nogen.",
+          "Rytter-profil · Profilen viser nu en lås-besked '🔒 Rytteren er vundet på auktion og afventer overførsel' og skjuler 'Start auktion'-, transferbud-, byttehandel- og lejeaftale-knapperne så længe rytteren er i transit.",
+          "Backend · POST /api/auctions returnerer 409 'Rytteren er vundet på en auktion og afventer overførsel' hvis nogen forsøger at omgå UI-låsen. Ny pure-funktion `getAuctionStartIssue` med 2 unit-tests.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.88",
     date: "2026-05-09",
     label: "Beta",

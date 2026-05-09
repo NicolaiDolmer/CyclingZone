@@ -28,6 +28,7 @@ import {
   getAuctionBidIssue,
   getAuctionBidWarnings,
   getAuctionInitialBidderId,
+  getAuctionStartIssue,
   getMinimumAuctionBid,
   getProxyMaxIssue,
   getProxyOpeningBidAmount,
@@ -684,11 +685,16 @@ router.post("/auctions", requireAuth, async (req, res) => {
   // Verify rider belongs to this team
   const { data: rider } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, uci_points, prize_earnings_bonus")
+    .select("id, firstname, lastname, team_id, pending_team_id, uci_points, prize_earnings_bonus")
     .eq("id", rider_id)
     .single();
 
   if (!rider) return res.status(404).json({ error: "Rider not found" });
+
+  // Block: rider awaits transfer to a previous auction winner.
+  if (getAuctionStartIssue({ rider })) {
+    return res.status(409).json({ error: "Rytteren er vundet på en auktion og afventer overførsel til det nye hold" });
+  }
 
   // Allow auction if:
   // 1. Rider is on manager's own team, OR
