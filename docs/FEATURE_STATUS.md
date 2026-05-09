@@ -28,7 +28,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ### Auktioner
 - Opret auktion med starttid + vindueslogik
-- Bud-placering med auto-forlængelse (10 min ved bud nær slut)
+- Bud-placering med auto-forlængelse (10 min ved bud nær slut). Forlængelsen må overskride dagens vindueslukning med op til 1 time (grace), og ved overflow ruller den resterende tid videre til næste vindues åbning (v2.87)
 - Garanteret salg (startpris = 50% af markedsværdi) — kun egne ryttere; exploit lukket (v1.46)
 - Minimum startpris håndhævet (backend + frontend): startbud ≥ rytterens Værdi; garanteret salg er eneste undtagelse
 - Minimum overbud håndhæves som +1 CZ$ over nuværende pris; hvis ingen har budt endnu, må asking-prisen matches.

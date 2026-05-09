@@ -123,7 +123,7 @@ const SECTIONS = [
       },
       {
         title: "10-minutters forlængelse",
-        text: "Hvis der afgives et bud inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter fra budtidspunktet. Dette fortsætter, indtil der ikke afgives bud i de sidste 10 minutter. Forlængelsen er begrænset til det aktive vindues lukningstidspunkt.",
+        text: "Hvis der afgives et bud inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter fra budtidspunktet. Dette fortsætter, indtil der ikke afgives bud i de sidste 10 minutter. Forlængelsen må overskride dagens vindueslukning med op til 1 time — så fx en hverdag (close 22:00) kan auktionen forlænges helt op til 23:00. Hvis et bud i den ekstra time ville skubbe slutningen længere, ruller de resterende minutter over til næste vindues åbning (fx fredag bud kl. 22:55 → auktionen slutter lørdag kl. 08:05).",
       },
       {
         title: "Holdstørrelse og auktioner",

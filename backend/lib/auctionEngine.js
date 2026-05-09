@@ -18,7 +18,14 @@
  *
  * Extension rule:
  *   Bid within last `extension_minutes` → extend by that many minutes from bid time.
- *   Extended end capped at current day's window close.
+ *   Extended end may exceed the day's window close by up to `extension_grace_minutes`
+ *   (hard cap = close + grace). If the extension would push past the hard cap, the
+ *   auction rolls over to the next day's window open, carrying the overflow minutes.
+ *
+ * Examples (weekday close 22:00, grace 60 → hard cap 23:00):
+ *   Bid 21:55 → ends 22:05      (extends past close, within grace)
+ *   Bid 22:50 → ends 23:00      (lands at cap, no overflow)
+ *   Bid 22:55 → ends next-open + 05  (e.g. Fri 22:55 → Sat 08:05)
  */
 
 const GAME_TIMEZONE = "Europe/Copenhagen";
@@ -30,6 +37,7 @@ export const DEFAULT_AUCTION_CONFIG = {
   weekend_open_hour: 8,
   weekend_close_hour: 23,
   extension_minutes: 10,
+  extension_grace_minutes: 60,
 };
 
 // Returns 0=Sun, 1=Mon, ..., 6=Sat for a UTC Date in Copenhagen timezone.
@@ -118,6 +126,10 @@ export function calculateAuctionEnd(startTime, cfg = DEFAULT_AUCTION_CONFIG) {
 /**
  * Check whether a new bid triggers an extension.
  *
+ * Cap-with-rollover: extended end may pass the day's window close by up to
+ * `extension_grace_minutes`. If the extension would land past that hard cap,
+ * the overflow minutes carry over to the next day's window open.
+ *
  * @param {Date} bidTime
  * @param {Date} currentEnd
  * @param {object} cfg
@@ -127,13 +139,23 @@ export function checkBidExtension(bidTime, currentEnd, cfg = DEFAULT_AUCTION_CON
   const bid = new Date(bidTime);
   const end = new Date(currentEnd);
   const extensionMs = cfg.extension_minutes * 60 * 1000;
-  const wClose = windowCloseTime(end, cfg);
+  const graceMs = (cfg.extension_grace_minutes ?? 0) * 60 * 1000;
 
   const timeLeft = end.getTime() - bid.getTime();
   if (timeLeft > extensionMs) return { shouldExtend: false, newEnd: null };
 
   const extendedEnd = new Date(bid.getTime() + extensionMs);
-  const newEnd = extendedEnd > wClose ? wClose : extendedEnd;
+  const wClose = windowCloseTime(end, cfg);
+  const hardCap = new Date(wClose.getTime() + graceMs);
+
+  let newEnd;
+  if (extendedEnd > hardCap) {
+    const overflowMs = extendedEnd.getTime() - hardCap.getTime();
+    const nextOpen = nextWindowOpenTime(end, cfg);
+    newEnd = new Date(nextOpen.getTime() + overflowMs);
+  } else {
+    newEnd = extendedEnd;
+  }
 
   if (newEnd <= end) return { shouldExtend: false, newEnd: null };
 
