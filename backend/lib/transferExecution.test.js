@@ -298,10 +298,12 @@ test("getListingCancelIssue: ejer kan fjerne open/negotiating, fremmede afvises,
     "not_owner"
   );
 
-  // already_closed — closed/sold/expired listing kan ikke lukkes igen
+  // already_closed — withdrawn/sold listing kan ikke lukkes igen.
+  // 'withdrawn' og 'sold' er de eneste terminale states i CHECK-enum'en
+  // (open|negotiating|sold|withdrawn).
   assert.equal(
     getListingCancelIssue(
-      { seller_team_id: "T1", status: "closed" },
+      { seller_team_id: "T1", status: "withdrawn" },
       { teamId: "T1" }
     )?.code,
     "already_closed"
