@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "3.02",
+    date: "2026-05-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Forsidens squad-tæller tager nu højde for transfers (#250)",
+        items: [
+          "Manager · Forsidens 'Ryttere'-tæller og squad-warning forudsiger nu fremtidens hold-størrelse efter vinduet lukker (ejede MINUS pending-out PLUS pending-in PLUS aktive lån) i stedet for kun at tælle nuværende ejede. Tidligere kunne advarslen vise falsk 'for stort' hvis du var ved at sælge en rytter, eller falsk 'for lille' hvis du havde vundet auktioner i sæson 0 der venter på vinduet — begge dele er væk nu.",
+          "Manager · Header viser breakdown når der er bevægelse i holdet: 'Division 3 · 8 ryttere +2 ind −1 ud +1 leje', så du kan se på et øjeblik hvilke transfers der er undervejs. Stat-kortet 'Ryttere' viser fremtidens størrelse som primær tal og nuværende som sub.",
+          "Refactor · Ny pure-funktion `computeDashboardSquadStats` i `frontend/src/lib/` med 11 unit-tests dækker alle hjørner: pending-in, pending-out, self-pending edge-case, deadline-day med både pending-in+pending-out, aktive lån, divisions-skalering. Sætter fundament for at samme regel kan genbruges på SeasonEnd, Finance og admin-overblik når de skal forudsige squad-status.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.01",
     date: "2026-05-10",
     label: "Beta",

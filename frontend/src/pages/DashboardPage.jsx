@@ -6,9 +6,9 @@ import OnboardingModal from "../components/OnboardingModal";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
+import { computeDashboardSquadStats } from "../lib/dashboardSquadStats";
 
 const API = import.meta.env.VITE_API_URL;
-const SQUAD_LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
 
 function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
@@ -258,12 +258,18 @@ export default function DashboardPage() {
   const myAuctions = allAuctions.filter(a => isAuctionSeller(a, team?.id));
   const satisfactionColor = board?.satisfaction >= 70 ? "text-cz-success" : board?.satisfaction >= 40 ? "text-cz-accent-t" : "text-cz-danger";
 
-  // Squad warnings
-  const limits = SQUAD_LIMITS[team?.division] || SQUAD_LIMITS[3];
-  const riderCount = riders.length + pendingIncomingCount + activeLoanCount;
-  const squadWarning = riderCount > limits.max ? { type: "over", msg: `Hold er for stort — max ${limits.max} i Division ${team?.division}. Sælg ${riderCount - limits.max} ryttere.`, color: "red" }
-    : riderCount < limits.min ? { type: "under", msg: `Hold er for lille — min ${limits.min} i Division ${team?.division}. Køb ${limits.min - riderCount} ryttere mere.`, color: "orange" }
-    : null;
+  // Squad warnings — bug #250: tæller skal forudsige fremtidens hold-størrelse
+  // (ejede MINUS pending-out PLUS pending-in PLUS aktive lån), ikke nuværende
+  // ejet-tal. Ellers viser dashboardet falske over/under-warnings når en
+  // manager har transfers pending over et vindue.
+  const squadStats = computeDashboardSquadStats({
+    riders,
+    pendingIncomingCount,
+    activeLoanCount,
+    myTeamId: team?.id,
+    division: team?.division,
+  });
+  const { ownedNow, outgoingCount, futureRiderCount, warning: squadWarning } = squadStats;
 
   // My division standings
   const divStandings = standings.filter(s => !s.team?.is_ai && s.division === team?.division)
@@ -281,7 +287,12 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-cz-1">{team?.name}</h1>
-          <p className="text-cz-3 text-sm">Division {team?.division} · {riderCount} ryttere</p>
+          <p className="text-cz-3 text-sm">
+            Division {team?.division} · {ownedNow} ryttere
+            {pendingIncomingCount > 0 && <span className="text-cz-success"> +{pendingIncomingCount} ind</span>}
+            {outgoingCount > 0 && <span className="text-cz-danger"> −{outgoingCount} ud</span>}
+            {activeLoanCount > 0 && <span className="text-purple-400"> +{activeLoanCount} leje</span>}
+          </p>
         </div>
         <div className="text-right">
           <p className="text-cz-accent-t font-mono font-bold text-xl">{team?.balance?.toLocaleString("da-DK")} CZ$</p>
@@ -427,7 +438,16 @@ export default function DashboardPage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="Balance" value={`${team?.balance?.toLocaleString("da-DK")}`} sub="CZ$" accent="text-cz-accent-t" icon="💰" />
-        <StatCard label="Ryttere" value={riderCount} sub={`Løn: ${totalSalary.toLocaleString("da-DK")} CZ$/sæson`} icon="🚴" />
+        <StatCard
+          label="Ryttere"
+          value={futureRiderCount}
+          sub={
+            pendingIncomingCount > 0 || outgoingCount > 0
+              ? `${ownedNow} nu · Løn ${totalSalary.toLocaleString("da-DK")} CZ$/sæson`
+              : `Løn: ${totalSalary.toLocaleString("da-DK")} CZ$/sæson`
+          }
+          icon="🚴"
+        />
         <StatCard label="Aktive auktioner" value={allAuctions.length} sub={`${winningAuctions.length} vinder jeg`} icon="⚡" accent={winningAuctions.length > 0 ? "text-cz-success" : "text-cz-1"} />
         <StatCard label="Bestyrelsestilfredshed" value={board ? `${board.satisfaction}%` : "—"} sub={FOCUS_LABELS[board?.focus] || board?.focus || "Ingen data"} accent={satisfactionColor} icon="◉" />
       </div>
