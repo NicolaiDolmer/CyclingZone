@@ -5,7 +5,7 @@ CyclingZone UCI Scraper
 Henter UCI individuel world ranking (top N ryttere) fra ProCyclingStats,
 skriver til Google Sheets og synkroniserer direkte til Supabase.
 
-Kører automatisk via GitHub Actions hver mandag kl. 06:00 UTC.
+Kører automatisk via GitHub Actions hver onsdag kl. 06:00 UTC.
 Kan også køres manuelt:
   python uci_scraper.py              # fuld kørsel
   python uci_scraper.py --dry-run    # hent + skriv Sheets, spring Supabase over

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.11",
+    date: "2026-05-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Drift · UCI-point synkroniseres nu om onsdagen i stedet for mandagen",
+        items: [
+          "Manager · Den ugentlige UCI-point-opdatering fra ProCyclingStats (top 3000 ryttere → rytter-værdi/løn) flyttes fra mandag morgen 06:00 UTC til onsdag morgen 06:00 UTC. Dine ryttere får derfor friske UCI-point én gang om ugen onsdag i stedet for mandag — alle safety-gates fra v2.27 (compound-surname-match, høj-værdi-beskyttelse, mass-downgrade-loft) er uændrede.",
+          "Internt · `.github/workflows/uci_sync.yml` cron ændret fra `0 6 * * 1` til `0 6 * * 3`. 21/21 unit tests grønne; sidste schedule-run mandag 2026-05-04 verificeret success (3000 ryttere, 4/100 downgrades, ingen safety-trip).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.10",
     date: "2026-05-10",
     label: "Beta",

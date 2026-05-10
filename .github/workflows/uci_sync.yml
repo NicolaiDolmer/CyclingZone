@@ -2,7 +2,7 @@ name: UCI Rankings Sync
 
 on:
   schedule:
-    - cron: '0 6 * * 1'   # Hver mandag kl. 06:00 UTC
+    - cron: '0 6 * * 3'   # Hver onsdag kl. 06:00 UTC
   workflow_dispatch:        # Manuel kørsel fra GitHub Actions-siden
 
 jobs:

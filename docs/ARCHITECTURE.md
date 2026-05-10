@@ -8,7 +8,7 @@
 | Backend | Node.js + Express (ES modules) | Railway |
 | Database / Auth | Supabase (PostgreSQL + RLS) | Supabase cloud |
 | Realtime sync | Cron (backend/cron.js, 60s interval) | Railway (via backend-processen) |
-| UCI sync (automatisk) | GitHub Actions cron (mandag 06:00 UTC) → scripts/uci_scraper.py → ProCyclingStats → Google Sheets + Supabase | GitHub Actions |
+| UCI sync (automatisk) | GitHub Actions cron (onsdag 06:00 UTC) → scripts/uci_scraper.py → ProCyclingStats → Google Sheets + Supabase | GitHub Actions |
 | UCI sync (manuel) | Admin: POST /api/admin/sync-uci → sheetsSync.js → Google Sheets CSV | — |
 | Stats sync (dyn_cyclist) | Admin: POST /api/admin/sync-dyn-cyclist → dynCyclistSync.js → Google Sheets | — |
 
