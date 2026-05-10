@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.05",
+    date: "2026-05-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Fjern rytter fra transferlisten igen (#270)",
+        items: [
+          "Manager · Du kan nu fjerne en rytter fra transferlisten igen efter du har sat den til salg. Knappen '🗑️ Fjern fra transferlisten' vises på din egen listing under Transfers → Marked. Klik → bekræft → listingen lukkes og rytteren forsvinder fra markedet med det samme.",
+          "Manager · Aktive tilbud på rytteren forbliver i deres state — købere kan stadig trække tilbage og du kan stadig afvise dem via det normale tilbuds-flow. Hvis du vil have dem helt af bordet, skal du afvise dem separat under Modtagne tilbud.",
+          "Manager · Virker både i åbent og lukket transfervindue, så du kan rydde op i gamle listings uanset hvor i sæsonen du er.",
+          "Backend · Endpoint `DELETE /api/transfers/:id` har eksisteret siden start, men UI-knappen var aldrig blevet bygget — kun statisk 'Din listing'-tekst blev vist på egne rækker. Ny pure-funktion `getListingCancelIssue` i `transferExecution.js` parallel til `getTransferCancelIssue`/`getSwapCancelIssue`/`getLoanCancelIssue` håndhæver ejer-check + status-gating (open/negotiating tilladt, closed/sold afvises som 400). 570/570 backend-tests grønne (+1 ny dækker not_found, not_owner, already_closed og happy path).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.04",
     date: "2026-05-10",
     label: "Beta",

@@ -133,6 +133,7 @@ import {
   confirmSwapOffer,
   confirmTransferOffer,
   flushWindowPendingOffers,
+  getListingCancelIssue,
   getLoanCancelIssue,
   getSwapCancelIssue,
   getTransferCancelIssue,
@@ -1416,9 +1417,20 @@ router.post("/transfers", requireAuth, async (req, res) => {
 // DELETE /api/transfers/:id — remove own listing
 router.delete("/transfers/:id", requireAuth, async (req, res) => {
   const { data: listing } = await supabase
-    .from("transfer_listings").select("seller_team_id").eq("id", req.params.id).single();
-  if (!listing || listing.seller_team_id !== req.team.id)
-    return res.status(403).json({ error: "Ikke din liste" });
+    .from("transfer_listings")
+    .select("seller_team_id, status")
+    .eq("id", req.params.id)
+    .maybeSingle();
+  const issue = getListingCancelIssue(listing, { teamId: req.team.id });
+  if (issue) {
+    const message = {
+      not_found: "Listing findes ikke",
+      not_owner: "Ikke din liste",
+      already_closed: "Listingen er allerede lukket",
+    }[issue.code];
+    const status = issue.code === "already_closed" ? 400 : 403;
+    return res.status(status).json({ error: message });
+  }
   await supabase.from("transfer_listings").update({ status: "closed" }).eq("id", req.params.id);
   res.json({ success: true });
 });

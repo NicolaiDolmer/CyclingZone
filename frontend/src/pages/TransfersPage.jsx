@@ -841,12 +841,13 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
 }
 
 // ── Transfer market listing card ─────────────────────────────────────────────
-function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
+function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true }) {
   const [offerAmt, setOfferAmt] = useState(listing.asking_price || 0);
   const [msg, setMsg] = useState("");
   const [showOffer, setShowOffer] = useState(false);
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   const isOwn = listing.seller?.id === myTeamId;
   const riderName = listing.rider ? `${listing.rider.firstname} ${listing.rider.lastname}` : "rytter";
@@ -857,6 +858,14 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
     setShowOffer(false);
     setConfirmOpen(false);
     setLoading(false);
+  }
+
+  async function performRemove() {
+    if (!onRemove) return;
+    if (!window.confirm(`Fjern ${riderName} fra transferlisten?`)) return;
+    setRemoving(true);
+    await onRemove(listing.id, riderName);
+    setRemoving(false);
   }
 
   return (
@@ -923,7 +932,15 @@ function TransferCard({ listing, myTeamId, onOffer, windowOpen = true }) {
         </div>
       )}
       {isOwn && (
-        <p className="text-cz-3 text-xs text-center py-1">Din listing</p>
+        <button
+          onClick={performRemove}
+          disabled={removing}
+          aria-label={`Fjern ${riderName} fra transferlisten`}
+          className="w-full min-h-[44px] py-2 rounded-lg text-sm font-medium transition-all border
+            bg-cz-subtle text-cz-2 border-cz-border
+            hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 disabled:opacity-50">
+          {removing ? "Fjerner..." : "🗑️ Fjern fra transferlisten"}
+        </button>
       )}
       <BidConfirmModal
         show={confirmOpen}
@@ -1015,6 +1032,20 @@ export default function TransfersPage() {
     const data = await res.json();
     if (res.ok) { showMsg("✅ Tilbud sendt!"); loadAll(); setTab("sent"); }
     else showMsg(`❌ ${data.error}`, "error");
+  }
+
+  async function handleRemoveListing(listingId) {
+    const res = await fetch(`${API}/api/transfers/${listingId}`, {
+      method: "DELETE",
+      headers: await getHeaders(),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      showMsg("✅ Rytter fjernet fra transferlisten");
+      loadAll();
+    } else {
+      showMsg(`❌ ${data.error || "Kunne ikke fjerne listingen"}`, "error");
+    }
   }
 
   async function handleOfferAction(offerId, action, extra = {}) {
@@ -1408,6 +1439,7 @@ export default function TransfersPage() {
                       listing={l}
                       myTeamId={myTeamId}
                       onOffer={(riderId, amt, msg) => handleOffer(riderId, amt, msg)}
+                      onRemove={handleRemoveListing}
                       windowOpen={transferWindow.open}
                     />
                   ))}

@@ -170,6 +170,19 @@ export function getLoanCancelIssue(loan) {
   return null;
 }
 
+// #270: ejeren må fjerne sin egen listing i både "open" og "negotiating" status.
+// Aktive offers påvirkes ikke — køber kan stadig trække tilbage / sælger afvise via
+// offers-flowet. not_found returneres bevidst (i stedet for at differentiere
+// "ikke ejer") så routen ikke afslører om id'et eksisterer for ikke-ejere.
+export function getListingCancelIssue(listing, { teamId } = {}) {
+  if (!listing) return { code: "not_found" };
+  if (listing.seller_team_id !== teamId) return { code: "not_owner" };
+  if (listing.status !== "open" && listing.status !== "negotiating") {
+    return { code: "already_closed" };
+  }
+  return null;
+}
+
 async function withdrawTransferOffer(supabase, offerId) {
   await expectMutation(
     supabase.from("transfer_offers").update({ status: "withdrawn" }).eq("id", offerId)

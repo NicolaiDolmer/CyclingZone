@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  getListingCancelIssue,
   getLoanCancelIssue,
   getSwapCancelIssue,
   getSwapExecutionIssue,
@@ -279,4 +280,53 @@ test("getLoanCancelIssue blocks manager cancel on active loan, allows on pending
   assert.equal(getLoanCancelIssue({ status: "pending" }), null);
   assert.equal(getLoanCancelIssue({ status: "rejected" }), null);
   assert.equal(getLoanCancelIssue(null), null);
+});
+
+test("getListingCancelIssue: ejer kan fjerne open/negotiating, fremmede afvises, lukkede er no-op", () => {
+  // not_found — listing eksisterer ikke
+  assert.equal(
+    getListingCancelIssue(null, { teamId: "T1" })?.code,
+    "not_found"
+  );
+
+  // not_owner — fremmed manager må ikke
+  assert.equal(
+    getListingCancelIssue(
+      { seller_team_id: "T2", status: "open" },
+      { teamId: "T1" }
+    )?.code,
+    "not_owner"
+  );
+
+  // already_closed — closed/sold/expired listing kan ikke lukkes igen
+  assert.equal(
+    getListingCancelIssue(
+      { seller_team_id: "T1", status: "closed" },
+      { teamId: "T1" }
+    )?.code,
+    "already_closed"
+  );
+  assert.equal(
+    getListingCancelIssue(
+      { seller_team_id: "T1", status: "sold" },
+      { teamId: "T1" }
+    )?.code,
+    "already_closed"
+  );
+
+  // happy path — ejer fjerner open eller negotiating
+  assert.equal(
+    getListingCancelIssue(
+      { seller_team_id: "T1", status: "open" },
+      { teamId: "T1" }
+    ),
+    null
+  );
+  assert.equal(
+    getListingCancelIssue(
+      { seller_team_id: "T1", status: "negotiating" },
+      { teamId: "T1" }
+    ),
+    null
+  );
 });
