@@ -31,7 +31,7 @@ Mål: Nicolai rører tastatur 2 gange (åbn issue, skriv `@claude`). Resten kør
 | 1 | **Claude GitHub App** (`@claude`-trigger i issues/PRs) | Nicolai | ✅ LIVE | Async Claude fra browser/mobil |
 | 2 | **Auto-PR-review** workflow | GitHub Actions | ✅ LIVE, advisory | Hver PR får risikobaseret Claude-review; auto-merge stopper hvis review fejler medmindre `skip-ai-review` er sat |
 | 3 | **Auto-issue-triage** workflow | GitHub Actions | ✅ LIVE | Deterministiske labels først; AI-comment kun for high/investigation for at spare tokens |
-| 4 | **GitHub Projects v2 board** | Claude (gh CLI + GraphQL) | ✅ LIVE 2026-05-10 | [`CyclingZone Roadmap`](https://github.com/users/NicolaiDolmer/projects/2) (#2) — 5 kolonner: 📋 Backlog · 🟢 Ready · 🟡 In Progress · 🔵 Review · ✅ Done. Auto-add via `.github/workflows/add-to-project.yml` (kræver `PROJECTS_PAT`-secret med `project`+`repo` scope) |
+| 4 | **GitHub Projects v2 board** | Claude (gh CLI + GraphQL) | ✅ LIVE 2026-05-10 | [`CyclingZone Roadmap`](https://github.com/users/NicolaiDolmer/projects/2) (#2) — 5 kolonner: 📋 Backlog · 🟢 Ready · 🟡 In Progress · 🔵 Review · ✅ Done. Auto-add via `.github/workflows/add-to-project.yml` (kræver `PROJECTS_PAT`-secret med `project`+`repo` scope; **rotér inden 2026-08-08**) |
 | 5 | **Branch protection + auto-merge** | Claude (gh API) | ✅ LIVE 2026-05-08 | Main beskyttet; PR'er kan auto-merge via label eller ship-keyword |
 | 6 | **Pre-commit/pre-push hooks lokalt** (`.githooks`) | Repo + `setup-local.ps1` | ✅ LIVE | Lint, secret-safety og PatchNotes-versioner fanges før push |
 | 7 | **Dependabot + CodeQL + dependency review** | GitHub Actions | ✅ LIVE | Dep-PRs, code scanning og PR dependency gate |

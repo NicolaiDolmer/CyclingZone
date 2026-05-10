@@ -1,0 +1,147 @@
+name: RLS audit
+
+# Catches the slice 14 / #279 bug pattern: tables with RLS enabled but no
+# policy covering authenticated reads, where the frontend uses
+# supabase.from('<name>'). Service_role bypass means backend tests pass while
+# frontend reads silently return [].
+#
+# Triggers:
+#   - PR touching DB schema, frontend supabase calls, or the audit itself
+#     → blocks merge if a frontend-referenced table is missing coverage
+#   - Weekly cron (mondays 05:00 UTC, just before UCI scraper) → catches
+#     drift introduced via Supabase Studio outside migration flow
+#   - Manual workflow_dispatch
+
+on:
+  pull_request:
+    paths:
+      - 'database/**'
+      - 'frontend/src/**'
+      - 'backend/scripts/audit-rls-coverage.js'
+      - '.github/workflows/rls-audit.yml'
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Run RLS audit
+        id: audit
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          export SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
+          export SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
+          node backend/scripts/audit-rls-coverage.js --json > rls-audit.json
+          node backend/scripts/audit-rls-coverage.js | tee rls-audit.txt
+          critical=$(node -e "const d=require('./rls-audit.json');console.log(d.critical_count)")
+          echo "critical=$critical" >> "$GITHUB_OUTPUT"
+
+      - name: Upload report
+        uses: actions/upload-artifact@v7
+        with:
+          name: rls-audit-report
+          path: |
+            rls-audit.json
+            rls-audit.txt
+
+      - name: Comment on PR if findings (PR runs only)
+        if: github.event_name == 'pull_request' && steps.audit.outputs.critical != '0'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('rls-audit.txt', 'utf8');
+            const body = [
+              '## ❌ RLS audit fandt frontend-blokerede tabeller',
+              '',
+              'Disse tabeller har RLS enabled men ingen policy der dækker `authenticated`/`public` SELECT — frontend læser tom-state.',
+              '',
+              '```',
+              report.trim(),
+              '```',
+              '',
+              'Fix: tilføj `CREATE POLICY ... FOR SELECT TO authenticated USING (...)` for hver kritisk tabel. Brug `DROP POLICY IF EXISTS ...` først for idempotency.',
+              '',
+              'Mønster: se [#279](https://github.com/${{ github.repository }}/issues/279) for kontekst.',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Open or update tracking issue (scheduled runs only)
+        if: github.event_name == 'schedule' && steps.audit.outputs.critical != '0'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('rls-audit.json', 'utf8'));
+            const report = fs.readFileSync('rls-audit.txt', 'utf8');
+            const title = `[bot] RLS-audit fandt ${data.critical_count} frontend-blokerede tabel(ler)`;
+            const body = [
+              '## RLS-audit drift detected',
+              '',
+              `Ugentligt cron-run (${new Date().toISOString().slice(0,10)}) fandt **${data.critical_count}** kritiske tabel(ler) hvor RLS blokerer frontend-reads.`,
+              '',
+              'Mest sandsynligt: nogen har enabled RLS via Supabase Studio uden at tilføje en SELECT-policy for `authenticated`/`public`.',
+              '',
+              '```',
+              report.trim(),
+              '```',
+              '',
+              'Run-link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            ].join('\n');
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'rls-audit',
+            });
+            if (existing.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing[0].number,
+                title,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['rls-audit', 'priority:high', 'type:bug', 'claude:todo'],
+              });
+            }
+
+      - name: Fail if critical findings
+        if: steps.audit.outputs.critical != '0'
+        run: |
+          echo "::error::RLS audit found ${{ steps.audit.outputs.critical }} frontend-blocked table(s). See report artifact."
+          exit 1
