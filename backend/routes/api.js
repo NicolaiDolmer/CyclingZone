@@ -1431,7 +1431,14 @@ router.delete("/transfers/:id", requireAuth, async (req, res) => {
     const status = issue.code === "already_closed" ? 400 : 403;
     return res.status(status).json({ error: message });
   }
-  await supabase.from("transfer_listings").update({ status: "closed" }).eq("id", req.params.id);
+  // 'withdrawn' matcher status-enum'en (open|negotiating|sold|withdrawn) og parallelt
+  // mønster i transfer_offers/swap_offers withdraw-flows. 'closed' er ikke i CHECK-
+  // enum'en og fejlede silently i prod (#270 follow-up: silent CHECK violation).
+  const { error: updateErr } = await supabase
+    .from("transfer_listings")
+    .update({ status: "withdrawn" })
+    .eq("id", req.params.id);
+  if (updateErr) return res.status(500).json({ error: updateErr.message });
   res.json({ success: true });
 });
 

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.07",
+    date: "2026-05-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Fjern-knappen virker nu rigtigt (#270 follow-up)",
+        items: [
+          "Manager · '🗑️ Fjern fra transferlisten'-knappen virker nu reelt — tidligere klikkede knappen, viste en grøn 'fjernet'-toast, men listingen forblev i markedet. Bag kulisserne fejlede DB-skrivningen lydløst, og frontend troede den var lykkedes.",
+          "Backend · Endpointet skrev `status='closed'` til `transfer_listings`, men kolonnens CHECK-constraint tillader kun `open|negotiating|sold|withdrawn` — så UPDATE'en blev afvist af Postgres uden at backend tjekkede returkoden. Nu bruges `'withdrawn'` (samme værdi som transfer_offers/swap_offers withdraw-flows) og UPDATE-fejl propageres som 500 i stedet for at blive ignoreret.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.06",
     date: "2026-05-10",
     label: "Beta",
