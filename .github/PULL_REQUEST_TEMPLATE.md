@@ -14,6 +14,16 @@ Refs #
 - [ ] Manuel: <!-- hvad du klikkede på i browseren -->
 - [ ] Regression: <!-- hvilke andre features blev tjekket -->
 
+## Brugerverifikation (KRÆVET)
+<!-- Indført efter slice 14 / #279: service_role-tests var grønne, authenticated frontend-reads var broken. -->
+<!-- Skip kun via label `docs-only` eller `backend-only` — ellers skal mindst én checkbox være sat. -->
+
+- [ ] Jeg har åbnet feature i prod eller preview-deploy og bekræftet at brugere ser forventet UI/data
+- [ ] Jeg har testet som **authenticated user** (ikke kun service_role / admin)
+- [ ] Hvis ikke testet end-to-end: forklar hvorfor (pure backend-refactor / docs-only / migration uden UI-impact osv.)
+
+**Hvad jeg verificerede konkret:** <!-- URL + 1-2 sætninger om hvad jeg så -->
+
 ## Risk / auto-merge
 <!-- Tilføj label hvis relevant: risk:med, risk:high, security, needs-decision eller manual-review stopper auto-merge. -->
 - [ ] `auto-merge` er kun sat hvis PR'en er lav-risiko og ikke kræver menneskelig beslutning
