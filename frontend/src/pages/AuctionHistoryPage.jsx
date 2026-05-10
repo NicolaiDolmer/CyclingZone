@@ -21,6 +21,14 @@ function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
 }
 
+// #244: self-purchase = manageren er BÅDE sælger og vinder. Skal vises neutralt
+// (ingen +/- prefix, "(selv)"-badge) så det er tydeligt at handlen er en intern
+// rytter-tilbagekøb og ikke et reelt nettoflow.
+function isSelfPurchase(auction, teamId) {
+  if (!auction?.current_bidder_id || !teamId) return false;
+  return auction.current_bidder_id === teamId && auction.seller_team_id === teamId;
+}
+
 function getAuctionLeaderId(auction) {
   if (auction?.current_bidder_id) return auction.current_bidder_id;
   if (!auction?.is_guaranteed_sale && auction?.seller_team_id && auction?.rider?.team_id !== auction.seller_team_id) {
@@ -37,6 +45,10 @@ export default function AuctionHistoryPage() {
   const [filter, setFilter] = useState("all"); // all | won | sold | lost
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  // #246: stats fetched separat så de er korrekte på tværs af pagination —
+  // tidligere blev de udregnet fra current page's 30 rækker, hvilket gjorde
+  // counters inkonsistente med fane-filteret og misvisende totalt.
+  const [stats, setStats] = useState({ wins: 0, sales: 0, spent: 0, earned: 0 });
   const PER_PAGE = 30;
 
   async function loadMyTeam() {
@@ -46,6 +58,7 @@ export default function AuctionHistoryPage() {
   }
 
   async function loadAuctions() {
+    if (!myTeamId) return;
     setLoading(true);
     let query = supabase
       .from("auctions")
@@ -54,7 +67,21 @@ export default function AuctionHistoryPage() {
         seller:seller_team_id(id, name),
         winner:current_bidder_id(id, name)`,
         { count: "exact" })
-      .eq("status", "completed")
+      .eq("status", "completed");
+
+    // #246: filter på server-siden så pagination + count matcher den valgte fane.
+    // Tidligere blev filteret applied client-side EFTER pagination, så "Købt" kunne
+    // vise 0-1 rytter selvom manageren havde vundet flere — afhængigt af om de
+    // tilfældigt lå på den side SQL'en hentede.
+    if (filter === "won") {
+      query = query.eq("current_bidder_id", myTeamId);
+    } else if (filter === "sold") {
+      query = query.eq("seller_team_id", myTeamId);
+    } else if (filter === "lost") {
+      query = query.neq("current_bidder_id", myTeamId).neq("seller_team_id", myTeamId);
+    }
+
+    query = query
       .order("actual_end", { ascending: false })
       .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
@@ -64,24 +91,47 @@ export default function AuctionHistoryPage() {
     setLoading(false);
   }
 
+  // #246: aggregat-stats korrekt på tværs af alle ikke-kun-aktuel-side
+  // afsluttede auktioner. Henter prisrækker for vundne + solgte og summerer
+  // klient-side (Supabase REST har ikke SUM aggregate uden RPC).
+  // #244: self-purchases (sælger=køber) tæller som Win OG Sale i counters
+  // (begge dele er sande), men ekskluderes fra Brugt/Tjent — der er intet
+  // reelt nettoflow når manageren køber sin egen rytter tilbage.
+  async function loadStats() {
+    if (!myTeamId) return;
+    const [wonRes, soldRes] = await Promise.all([
+      supabase
+        .from("auctions")
+        .select("current_price, seller_team_id", { count: "exact" })
+        .eq("status", "completed")
+        .eq("current_bidder_id", myTeamId),
+      supabase
+        .from("auctions")
+        .select("current_price, current_bidder_id", { count: "exact" })
+        .eq("status", "completed")
+        .eq("seller_team_id", myTeamId)
+        .not("current_bidder_id", "is", null),
+    ]);
+    const wins = wonRes.count || 0;
+    const sales = soldRes.count || 0;
+    const spent = (wonRes.data || [])
+      .filter(a => a.seller_team_id !== myTeamId)
+      .reduce((s, a) => s + (a.current_price || 0), 0);
+    const earned = (soldRes.data || [])
+      .filter(a => a.current_bidder_id !== myTeamId)
+      .reduce((s, a) => s + (a.current_price || 0), 0);
+    setStats({ wins, sales, spent, earned });
+  }
+
   useEffect(() => { loadMyTeam(); }, []);
-  useEffect(() => { loadAuctions(); }, [filter, page]);
+  useEffect(() => { loadAuctions(); loadStats(); }, [filter, page, myTeamId]);
 
-  const filtered = auctions.filter(a => {
-    if (filter === "won") return getAuctionLeaderId(a) === myTeamId;
-    if (filter === "sold") return isAuctionSeller(a, myTeamId);
-    if (filter === "lost") return getAuctionLeaderId(a) !== myTeamId && !isAuctionSeller(a, myTeamId);
-    return true;
-  });
+  // #246: hold pagination-state synkron med filter — uden dette kunne man stå
+  // på side 5 i "Alle" og skifte til "Købt" som kun har 1 side, og lande på
+  // tom side 5.
+  useEffect(() => { setPage(1); }, [filter]);
 
-  const myWins = auctions.filter(a => getAuctionLeaderId(a) === myTeamId).length;
-  const mySales = auctions.filter(a => isAuctionSeller(a, myTeamId)).length;
-  const totalSpent = auctions
-    .filter(a => a.current_bidder_id === myTeamId)
-    .reduce((s, a) => s + (a.current_price || 0), 0);
-  const totalEarned = auctions
-    .filter(a => isAuctionSeller(a, myTeamId) && a.current_bidder_id)
-    .reduce((s, a) => s + (a.current_price || 0), 0);
+  const { wins: myWins, sales: mySales, spent: totalSpent, earned: totalEarned } = stats;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -143,10 +193,15 @@ export default function AuctionHistoryPage() {
         <div className="flex justify-center py-16">
           <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
         </div>
-      ) : filtered.length === 0 ? (
+      ) : auctions.length === 0 ? (
         <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">◈</p>
-          <p>Ingen afsluttede auktioner endnu</p>
+          <p>
+            {filter === "won" ? "Du har ikke vundet nogen auktioner endnu"
+              : filter === "sold" ? "Du har ikke solgt nogen ryttere endnu"
+              : filter === "lost" ? "Ingen tabte auktioner i historikken"
+              : "Ingen afsluttede auktioner endnu"}
+          </p>
         </div>
       ) : (
         <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
@@ -161,14 +216,15 @@ export default function AuctionHistoryPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(a => {
+              {auctions.map(a => {
                 const iWon = getAuctionLeaderId(a) === myTeamId;
                 const iSold = isAuctionSeller(a, myTeamId);
                 const noSale = !a.current_bidder_id;
+                const iSelf = isSelfPurchase(a, myTeamId);
                 return (
                   <tr key={a.id}
                     className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer
-                      ${iWon ? "bg-cz-success-bg0/3" : iSold && !noSale ? "bg-cz-info-bg0/3" : ""}`}
+                      ${iSelf ? "bg-cz-subtle/40" : iWon ? "bg-cz-success-bg0/3" : iSold && !noSale ? "bg-cz-info-bg0/3" : ""}`}
                     onClick={() => a.rider?.id && navigate(`/riders/${a.rider.id}`)}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -180,8 +236,14 @@ export default function AuctionHistoryPage() {
                         {a.rider?.is_u25 && (
                           <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
                         )}
-                        {iWon && <span className="text-[9px] uppercase bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded">Købt</span>}
-                        {iSold && !noSale && <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">Solgt</span>}
+                        {iSelf ? (
+                          <span className="text-[9px] uppercase bg-cz-subtle text-cz-2 border border-cz-border px-1.5 py-0.5 rounded">Selv</span>
+                        ) : (
+                          <>
+                            {iWon && <span className="text-[9px] uppercase bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded">Købt</span>}
+                            {iSold && !noSale && <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">Solgt</span>}
+                          </>
+                        )}
                       </div>
                       <p className="text-cz-3 text-xs mt-0.5">UCI: {a.rider?.uci_points?.toLocaleString("da-DK")} pt — Løn: {a.rider?.salary ? `${a.rider.salary.toLocaleString("da-DK")} CZ$` : "—"}</p>
                     </td>
@@ -198,6 +260,12 @@ export default function AuctionHistoryPage() {
                     <td className="px-4 py-3 text-right">
                       {noSale ? (
                         <span className="text-cz-3 text-xs">—</span>
+                      ) : iSelf ? (
+                        // #244: self-purchase = ingen netto-flow (selv→selv).
+                        // Vis neutral pris uden +/- prefix og uden danger/success-farve.
+                        <span className="font-mono font-bold text-cz-2">
+                          {a.current_price?.toLocaleString("da-DK")} CZ$
+                        </span>
                       ) : (
                         <span className={`font-mono font-bold
                           ${iWon ? "text-cz-danger" : iSold ? "text-cz-success" : "text-cz-accent-t"}`}>

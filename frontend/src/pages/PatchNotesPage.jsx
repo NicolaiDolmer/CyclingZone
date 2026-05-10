@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.08",
+    date: "2026-05-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Auktionshistorik — 'Købt'-fane viser alle (#246) + selv-køb tydeliggjort (#244)",
+        items: [
+          "Manager · 'Købt' og 'Solgt'-fanerne under Auktioner → Historik viser nu alle dine vundne/solgte auktioner uanset hvor mange sider historikken er på. Tidligere blev fanerne filtreret klient-side EFTER pagination, så hvis dine 5 vundne auktioner lå spredt over 10 historik-sider, kunne 'Købt'-fanen vise 0-1 rytter på den side du var på, og 'Næste'-knappen hoppede ofte til en tom side.",
+          "Manager · Stats-tællerne (Købt/Solgt/Brugt/Tjent) er nu korrekte for hele din historik, ikke kun den side du står på.",
+          "Manager · Når du selv vinder en auktion på din egen rytter (kan ske ved garanteret salg + afslutter du selv som leder), markeres rækken nu med en 'Selv'-badge og prisen vises neutralt uden minus/plus-prefix. Tidligere viste rækken 'Købt'+'Solgt'-badges med rødt minus-tegn på prisen, hvilket fejlagtigt antydede at du havde tabt penge — i virkeligheden er der intet nettoflow ved et selv-køb. Stats ekskluderer også selv-køb fra Brugt/Tjent.",
+          "Backend · `AuctionHistoryPage.jsx` filtrerer nu på server-siden (`current_bidder_id`/`seller_team_id`) i stedet for klient-side, og kører separat aggregat-query for stats. Self-purchase detekteres i ny pure-helper `isSelfPurchase`. Pagination resettes til side 1 ved fane-skift så man ikke lander på tom side.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.07",
     date: "2026-05-10",
     label: "Beta",
