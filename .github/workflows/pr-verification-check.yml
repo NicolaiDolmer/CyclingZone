@@ -1,0 +1,59 @@
+name: PR user-verification check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, labeled, unlabeled, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  check-verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Validate Brugerverifikation section
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            const labels = (pr.labels || []).map(l => l.name);
+
+            const SKIP_LABELS = ['docs-only', 'backend-only'];
+            const skip = labels.find(l => SKIP_LABELS.includes(l));
+            if (skip) {
+              core.info(`Skipping check — label "${skip}" present.`);
+              return;
+            }
+
+            const HEADER = /^##\s+Brugerverifikation/m;
+            if (!HEADER.test(body)) {
+              core.setFailed(
+                'PR-body mangler "## Brugerverifikation"-sektionen fra ' +
+                '.github/PULL_REQUEST_TEMPLATE.md. Tilføj sektionen, eller ' +
+                'sæt label `docs-only` / `backend-only` hvis det er en ren ' +
+                'docs- eller backend-PR uden UI-impact.'
+              );
+              return;
+            }
+
+            // Slice body fra Brugerverifikation-headeren til næste H2 (eller EOF).
+            const startIdx = body.search(HEADER);
+            const rest = body.slice(startIdx);
+            const nextHeader = rest.slice(1).search(/^##\s+/m);
+            const section = nextHeader === -1 ? rest : rest.slice(0, nextHeader + 1);
+
+            const checked = (section.match(/^\s*-\s+\[[xX]\]/gm) || []).length;
+            if (checked === 0) {
+              core.setFailed(
+                'Brugerverifikation-sektionen har ingen afkrydsede checkboxes. ' +
+                'Sæt mindst én `- [x]` (eller forklar i 3. checkbox hvorfor end-to-end-test ' +
+                'ikke gav mening). Alternativt: sæt label `docs-only` eller `backend-only`.'
+              );
+              return;
+            }
+
+            core.info(`Brugerverifikation-sektion OK (${checked} checkbox(es) afkrydset).`);
