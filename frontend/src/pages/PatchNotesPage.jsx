@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "3.09",
+    date: "2026-05-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Rytter kan ikke længere sættes til salg flere gange (#247)",
+        items: [
+          "Manager · Du kan nu kun have ÉN aktiv 'til salg'-listing pr. rytter ad gangen. Tidligere kunne du fejlbruge 'Sæt til salg' flere gange og oprette parallelle listings med forskellige priser, hvilket gav forvirrende dobbelt-visning i markedet og åbnede for at flere købere kunne lægge tilbud på samme rytter via forskellige listings.",
+          "Manager · Hvis du prøver at oprette en ny listing på en rytter du allerede har til salg, får du nu en venlig fejl ('Rytteren er allerede til salg på transfermarkedet'). Vil du ændre prisen, fjern den eksisterende listing først via '🗑️ Fjern fra transferlisten' i markedsoversigten.",
+          "Backend · `POST /api/transfers` har nu både SELECT-pre-check og DB-niveau partial unique index (`uniq_transfer_listings_one_active_per_rider WHERE status IN ('open','negotiating')`). Race-vinduer ved dobbeltklik fanges af unique-constraint og mappes til 409 — samme mønster som auctions har haft siden 2026-05-06 (#69).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.08",
     date: "2026-05-10",
     label: "Beta",

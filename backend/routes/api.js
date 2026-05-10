@@ -1389,11 +1389,32 @@ router.post("/transfers", requireAuth, async (req, res) => {
     .from("riders").select("id, team_id, firstname, lastname").eq("id", rider_id).single();
   if (!rider || rider.team_id !== req.team.id)
     return res.status(403).json({ error: "Du ejer ikke denne rytter" });
+
+  // #247: maks én aktiv listing pr. rytter. Tjekkes først her, og DB-niveau
+  // partial unique index (uniq_transfer_listings_one_active_per_rider) fanger
+  // race-vinduer.
+  const { data: existingListing } = await supabase
+    .from("transfer_listings")
+    .select("id")
+    .eq("rider_id", rider_id)
+    .in("status", ["open", "negotiating"])
+    .maybeSingle();
+  if (existingListing) {
+    return res.status(409).json({ error: "Rytteren er allerede til salg på transfermarkedet" });
+  }
+
   const { data, error } = await supabase
     .from("transfer_listings")
     .insert({ rider_id, seller_team_id: req.team.id, asking_price })
     .select().single();
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    // 23505 = unique_violation fra uniq_transfer_listings_one_active_per_rider
+    // ved race mellem SELECT-tjek og INSERT (typisk dobbeltklik).
+    if (error.code === "23505") {
+      return res.status(409).json({ error: "Rytteren er allerede til salg på transfermarkedet" });
+    }
+    return res.status(500).json({ error: error.message });
+  }
 
   // Notify watchlist users that this rider is listed for transfer
   const riderFullName = `${rider.firstname} ${rider.lastname}`;
