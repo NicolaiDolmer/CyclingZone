@@ -122,6 +122,37 @@ if ($issues.Ok) {
   Add-Check "issue-label-schema" ($(if ($missing.Count -eq 0) { "OK" } else { "WARN" })) ($(if ($missing.Count) { "missing: $($missing -join ', ')" } else { "all open issues have priority/type/claude labels" }))
 }
 
+# RLS coverage audit — fanger slice 14 / #279 bug-mønstret lokalt før push.
+# Springes hvis SUPABASE_URL eller SUPABASE_SERVICE_KEY ikke er sat.
+$envPath = Join-Path $root "backend/.env"
+if ((Test-Path $envPath) -and -not $env:SUPABASE_URL) {
+  Get-Content $envPath | ForEach-Object {
+    if ($_ -match "^\s*([^=#\s]+)\s*=\s*(.*)$") {
+      $name = $Matches[1]; $value = $Matches[2].Trim()
+      if ($name -in @("SUPABASE_URL", "SUPABASE_SERVICE_KEY") -and -not (Get-Item "env:$name" -ErrorAction SilentlyContinue)) {
+        Set-Item "env:$name" $value
+      }
+    }
+  }
+}
+if ($env:SUPABASE_URL -and $env:SUPABASE_SERVICE_KEY) {
+  $rlsResult = Try-Run @("node", "backend/scripts/audit-rls-coverage.js", "--json")
+  if ($rlsResult.Ok) {
+    try {
+      $rlsData = $rlsResult.Text | ConvertFrom-Json
+      $crit = [int]$rlsData.critical_count
+      $detail = if ($crit -eq 0) { "no frontend-blocked tables" } else { "critical: $(($rlsData.critical | ForEach-Object { $_.table }) -join ', ')" }
+      Add-Check "rls-coverage" ($(if ($crit -eq 0) { "OK" } else { "FAIL" })) $detail
+    } catch {
+      Add-Check "rls-coverage" "WARN" "audit ran but JSON parse failed"
+    }
+  } else {
+    Add-Check "rls-coverage" "WARN" "audit script failed (RPC missing? apply database/2026-05-10-audit-rls-helper.sql)"
+  }
+} else {
+  Add-Check "rls-coverage" "WARN" "skipped (SUPABASE_URL/SERVICE_KEY missing)"
+}
+
 Write-Host ""
 Write-Host "CyclingZone agent doctor"
 Write-Host "========================"
