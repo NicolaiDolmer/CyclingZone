@@ -22,6 +22,11 @@ jobs:
             const body = pr.body || '';
             const labels = (pr.labels || []).map(l => l.name);
 
+            if (pr.user?.login === 'dependabot[bot]') {
+              core.info('Skipping Brugerverifikation check for Dependabot dependency PR.');
+              return;
+            }
+
             const SKIP_LABELS = ['docs-only', 'backend-only'];
             const skip = labels.find(l => SKIP_LABELS.includes(l));
             if (skip) {

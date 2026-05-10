@@ -91,6 +91,11 @@ if [ -f "$repo_root/docs/NOW.md" ]; then
   fi
 fi
 
+if command -v pwsh >/dev/null 2>&1 && [ -f "$repo_root/scripts/check-agent-token-hygiene.ps1" ]; then
+  echo "-> Pre-push: checking agent token hygiene (warning-only)..."
+  (cd "$repo_root" && pwsh -NoProfile -File scripts/check-agent-token-hygiene.ps1) || true
+fi
+
 if [ "$exit_code" -ne 0 ]; then
   echo ""
   echo "❌ Pre-push quality gate fejlede. Fix fundene før push (eller --no-verify hvis bevidst break-glass)."

@@ -13,9 +13,11 @@ Dette repo har to lag af Claude Code hooks:
 
 ### `SessionStart` → `bash scripts/session-prefetch-issue.sh`
 
-**Hvad:** Læser `docs/NOW.md`, finder første `#N`-reference (med Discord-tag-filter), henter issue + seneste 3 comments via `gh`, og skriver et struktureret resumé til `.codex.local/SESSION_CONTEXT.md`.
+**Hvad:** Læser `docs/NOW.md`, finder første `#N`-reference (med Discord-tag-filter), henter issue + comments via `gh`, og skriver et bounded struktureret resumé til `.codex.local/SESSION_CONTEXT.md`.
 
-**Hvorfor:** Sparer 300-500 tokens pr. session start. CLAUDE.md step `0b` auto-loader filen — uden hook skulle Claude/Codex selv kalde `gh issue view` i samtalen, hvilket koster turn-roundtrip.
+**Hvorfor:** Sparer en manuel `gh issue view` round-trip uden at lække hele issue-historikken ind i hver ny session. `CLAUDE.md` auto-loader filen, så outputtet skal være kort.
+
+**Bounds:** Default `SESSION_CONTEXT_BODY_LIMIT=900`, `SESSION_CONTEXT_COMMENT_LIMIT=450`, `SESSION_CONTEXT_MAX_COMMENTS=1`. Kan overrides i shell-env ved manuel debug.
 
 **Fail-safe:** Exit altid 0. Filen overskrives KUN hvis et gyldigt issue blev hentet — fejl-tilfælde bevarer evt. eksisterende `SESSION_CONTEXT.md`.
 
@@ -69,11 +71,14 @@ Kører før push og blokerer:
 
 Advarer, men blokerer ikke, hvis `docs/NOW.md` er over 60 linjer.
 
+Kører også `scripts/check-agent-token-hygiene.ps1` som warning-only. Den måler standard start-context, `MEMORY.md`, bounded issue-prefetch og seneste Claude transcript, så token-drift bliver synlig før push uden at blokere en vigtig release.
+
 Manuel verifikation:
 
 ```bash
 node scripts/check-patch-notes-version.js
 pwsh -File scripts/agent-doctor.ps1
+pwsh -File scripts/check-agent-token-hygiene.ps1
 ```
 
 ---

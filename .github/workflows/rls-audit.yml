@@ -32,10 +32,16 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
+      - name: Skip secret-backed audit for Dependabot PRs
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+        run: echo "Skipping RLS audit for Dependabot PR because repository secrets are unavailable to Dependabot-triggered pull_request workflows."
+
       - name: Check out repository
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
         uses: actions/checkout@v6
 
       - name: Set up Node.js
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
         uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -43,10 +49,12 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install backend dependencies
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
         run: npm ci
         working-directory: backend
 
       - name: Run RLS audit
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
         id: audit
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -60,6 +68,7 @@ jobs:
           echo "critical=$critical" >> "$GITHUB_OUTPUT"
 
       - name: Upload report
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
         uses: actions/upload-artifact@v7
         with:
           name: rls-audit-report

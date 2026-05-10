@@ -122,6 +122,13 @@ if ($issues.Ok) {
   Add-Check "issue-label-schema" ($(if ($missing.Count -eq 0) { "OK" } else { "WARN" })) ($(if ($missing.Count) { "missing: $($missing -join ', ')" } else { "all open issues have priority/type/claude labels" }))
 }
 
+$tokenHygiene = Try-Run @("pwsh", "-NoProfile", "-File", "scripts/check-agent-token-hygiene.ps1")
+if ($tokenHygiene.Ok) {
+  Add-Check "token-hygiene" "OK" "startup context within configured limits"
+} else {
+  Add-Check "token-hygiene" "WARN" "run scripts/check-agent-token-hygiene.ps1"
+}
+
 # RLS coverage audit — fanger slice 14 / #279 bug-mønstret lokalt før push.
 # Springes hvis SUPABASE_URL eller SUPABASE_SERVICE_KEY ikke er sat.
 $envPath = Join-Path $root "backend/.env"

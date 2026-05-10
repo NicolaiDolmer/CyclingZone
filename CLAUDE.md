@@ -7,7 +7,7 @@
 
 Disse loader sig selv ved session-start — undgå at re-læse manuelt:
 - `~/.claude/.../memory/MEMORY.md` — auto-memory (~250 tok). Sync'er cross-PC via OneDrive (junction til `~/OneDrive/CyclingZone-context/memory/`). Hvis junction mangler: `pwsh -File scripts/link-onedrive-context.ps1`.
-- `.codex.local/SESSION_CONTEXT.md` — pre-fetched aktivt issue (titel, body, labels, seneste 3 comments) genereret af `scripts/session-prefetch-issue.sh` SessionStart hook (~400 tok). Dokumenteret i [`docs/HOOKS.md`](docs/HOOKS.md).
+- `.codex.local/SESSION_CONTEXT.md` — bounded pre-fetch af aktivt issue (titel, labels, URL, kort body + seneste comment) genereret af `scripts/session-prefetch-issue.sh` SessionStart hook (~500-800 tok). Dokumenteret i [`docs/HOOKS.md`](docs/HOOKS.md).
 
 ## Start (eksplicit, ~150-300 tok)
 
@@ -43,6 +43,8 @@ Ingen `docs/PRODUCT_BACKLOG.md` mere — task-laget bor i GitHub issues siden 20
 4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv eksplicit hvorfor ikke). Pre-push hook kan håndhæve det.
 5. **Postmortem:** ved bugfix → entry i `.claude/learnings/<dato>-<slug>.md`.
 
+6. **Token-hygiejne:** hvis sessionen har haft mange tool-kald eller lang analyse, kør `pwsh -File scripts/check-agent-token-hygiene.ps1` og kompaktér `NOW.md`/`SESSION_CONTEXT.md` før næste cold start.
+
 ## Session-rytme
 
 - Signalér 🟢/🟡/🔴/🆕 ved naturlige break-points — bruger behøver ikke selv huske at lukke
@@ -54,7 +56,7 @@ Ingen `docs/PRODUCT_BACKLOG.md` mere — task-laget bor i GitHub issues siden 20
 
 | Trin | Tokens | Hvornår |
 |---|---|---|
-| Auto-load (MEMORY + SESSION_CONTEXT) | ~650 | Hver session |
-| Læs NOW.md | ~150 | Hver session |
+| Auto-load (MEMORY + SESSION_CONTEXT) | ~900-1200 | Hver session; hold memory og issue-prefetch bounded |
+| Læs NOW.md | ~400-700 | Hver session; målet er under 30 linjer |
 | Læs GUARDRAILS_CORE.md | ~700 | KUN hvis label kræver det (~20% af sessioner) |
 | **Cold-start total** | **~800** typisk · **~1500** ved kontrakt-arbejde | |
