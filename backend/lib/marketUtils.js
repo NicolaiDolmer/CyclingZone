@@ -4,6 +4,14 @@ export const MARKET_SQUAD_LIMITS = {
   3: { min: 8, max: 10 },
 };
 
+// #267: under et åbent transfervindue må manageren overskride division-cap
+// midlertidigt med dette buffer (D1 → 32, D2 → 22, D3 → 12). Når vinduet
+// lukker auto-sælger squadEnforcement-cron ned til hard-cap og fakturer
+// SQUAD_FINE_AMOUNT + SQUAD_PENALTY_POINTS pr. afvigende rytter — så
+// soft-cap koster spilleren bagud, men auktion-vindere bliver ikke
+// længere afvist i døren.
+export const TRANSFER_WINDOW_SOFT_CAP_BUFFER = 2;
+
 export const MIN_RIDERS_FOR_RACE = 8;
 export const RIDER_VALUE_FACTOR = 4000;
 export const MIN_RIDER_UCI_POINTS = 5;
@@ -105,12 +113,22 @@ export async function getTeamMarketState(supabase, teamId) {
   };
 }
 
-export function getIncomingSquadViolation(teamState, incomingCount = 1) {
+// #267: softCapBuffer = ekstra ryttere over hard-cap'en der tillades MIDT i et
+// åbent transfervindue. Defaulter til 0 (= hard-cap) for bagudkompat på
+// callsites der ikke kender vindue-state. Brug TRANSFER_WINDOW_SOFT_CAP_BUFFER
+// (2) når windowOpen er bekræftet — squadEnforcement-cron straffer
+// over-cap-ryttere ved vindue-luk.
+export function getIncomingSquadViolation(
+  teamState,
+  { incomingCount = 1, softCapBuffer = 0 } = {}
+) {
   const totalAfter = (teamState?.total_count || 0) + incomingCount;
   const maxRiders = teamState?.squad_limits?.max || getSquadLimits(teamState?.division).max;
+  const buffer = Number(softCapBuffer) || 0;
+  const effectiveCap = maxRiders + buffer;
 
-  if (totalAfter > maxRiders) {
-    return { totalAfter, maxRiders };
+  if (totalAfter > effectiveCap) {
+    return { totalAfter, maxRiders, effectiveCap, softCapBuffer: buffer };
   }
 
   return null;

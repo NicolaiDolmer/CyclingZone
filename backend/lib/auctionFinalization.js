@@ -7,6 +7,7 @@ import {
   getTeamMarketState,
   getTransferWindowOpen,
   MARKET_SQUAD_LIMITS,
+  TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import {
@@ -247,7 +248,15 @@ async function finalizeAuctionRecord({
       };
     }
 
-    const squadViolation = getIncomingSquadViolation(buyer);
+    // #267: under åbent transfervindue må køber gå +2 over division-cap (D3
+    // → 12, D2 → 22, D1 → 32). squadEnforcement-cron auto-sælger ned til
+    // hard-cap når vinduet lukker og fakturerer fine + penalty per afvigende
+    // rytter. Når vinduet allerede er lukket (post-cutoff) er hard-cap igen
+    // gældende og finalize sender rytteren til pending_team_id.
+    const windowOpen = await getTransferWindowOpen(supabase);
+    const squadViolation = getIncomingSquadViolation(buyer, {
+      softCapBuffer: windowOpen ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
+    });
     if (squadViolation) {
       await closeAuction({
         supabase,
@@ -257,11 +266,15 @@ async function finalizeAuctionRecord({
         sellerOwned,
       });
 
+      const buyerMessage = windowOpen
+        ? `Dit hold er fyldt (${squadViolation.effectiveCap} ryttere — Div ${buyer.division || 3} cap ${squadViolation.maxRiders} + ${squadViolation.softCapBuffer} buffer i transfervinduet). ${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages.`
+        : `Dit hold (Div ${buyer.division || 3}) kan max have ${squadViolation.maxRiders} ryttere uden for transfervinduet. ${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages.`;
+
       await notifyTeamOwner(
         effectiveBidderId,
         "auction_lost",
         "Auktion annulleret — hold fuldt",
-        `Dit hold (Div ${buyer.division || 3}) kan max have ${squadViolation.maxRiders} ryttere. ${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages.`,
+        buyerMessage,
         auction.id
       );
 
@@ -281,8 +294,6 @@ async function finalizeAuctionRecord({
         auction_id: auction.id,
       };
     }
-
-    const windowOpen = await getTransferWindowOpen(supabase);
 
     await expectMutation(
       supabase

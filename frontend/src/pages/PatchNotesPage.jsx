@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.00",
+    date: "2026-05-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Auktion-vindere afvist i døren ved division-cap (#267)",
+        items: [
+          "Manager · Du må nu gå +2 over division-cap MIDT i et åbent transfervindue (D1 → 32, D2 → 22, D3 → 12). Squad-cap'en bliver først hard-håndhævet når transfervinduet lukker (squad-enforcement-cron auto-sælger ned til cap og fakturerer 100K CZ$ + 200 fradragspoint pr. afvigende rytter). Tidligere blev auktion-vindere afvist i døren hvis køberen var nået division-cap, selvom buddet var afgivet i god tro — nu lander rytteren på holdet og du kan sælge ned til cap inden sæsonstart.",
+          "Manager · Samme regel gælder også på transfertilbud, byttehandler og lejeaftaler. UI-fejlbesked opdateret til 'Dit hold er fyldt (12 ryttere — Div 3 cap 10 + 2 buffer i transfervinduet)' så det er tydeligt hvor langt du må gå.",
+          "Retroaktivt fix · Roman Ermakov og Harrison Wood blev fejlafvist på Vega - Vitalcare - Dynateks holdkonto 2026-05-09 grundet den her bug. Begge ryttere er nu blevet overdraget (60.000 CZ$ trukket fra balance, finance-audit + win-notifikation skrevet med samme rytternavne+priser som de oprindelige bud).",
+          "Backend · Ny `softCapBuffer`-option på `getIncomingSquadViolation` + ny `TRANSFER_WINDOW_SOFT_CAP_BUFFER`-konstant (=2). `auctionFinalization.js` slår transfer-window-state op før squad-checket og sætter buffer=2 når vinduet er åbent. 5 user-initiated callsites (transfer-offer accept × 2, loan-proposal, loan-accept, transfer-execution) har soft-cap aktivt fordi endpointet allerede har gated på open-window. 545/545 backend-tests grønne (+5 nye for soft-cap, hard-cap og divisions-skalering).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.99",
     date: "2026-05-09",
     label: "Beta",

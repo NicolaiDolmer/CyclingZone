@@ -307,7 +307,11 @@ function createFinalizeAuctionSupabase({
   };
 }
 
-test("finalizeAuctionById blocks a winner whose borrowed riders already fill the squad", async () => {
+// #267: i et åbent transfervindue må køber gå +TRANSFER_WINDOW_SOFT_CAP_BUFFER
+// over division-cap. Hard-blokade rammer kun hvis køber allerede er på
+// effective cap (D3 → 12, D2 → 22, D1 → 32). Auctioneer-cron og admin-finalize
+// matcher samme regel.
+test("finalizeAuctionById blocks a winner whose squad already exceeds soft-cap (windowOpen=true)", async () => {
   const auctionUpdates = [];
   const riderUpdates = [];
   const notifications = [];
@@ -337,7 +341,7 @@ test("finalizeAuctionById blocks a winner whose borrowed riders already fill the
       },
       teamMarketCounts: {
         "buyer-team": {
-          riderCount: 8,
+          riderCount: 10,
           pendingCount: 1,
           activeLoanCount: 1,
         },
@@ -363,7 +367,141 @@ test("finalizeAuctionById blocks a winner whose borrowed riders already fill the
   assert.equal(notifications.length, 2);
   assert.deepEqual(riderUpdates, []);
   assert.equal(notifications[0].teamId, "buyer-team");
-  assert.match(notifications[0].message, /kan max have 10 ryttere/);
+  assert.match(notifications[0].message, /12 ryttere/);
+  assert.match(notifications[0].message, /buffer i transfervinduet/);
+});
+
+// #267: når transfervinduet er lukket (post-cutoff) er hard-cap igen gældende
+// — totalAfter > maxRiders blokker, selv hvis køber er +1 over cap.
+test("finalizeAuctionById hard-caps when transfer window is closed", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+  const notifications = [];
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-closed-window",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 75,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-cw",
+          firstname: "Hard",
+          lastname: "Cap",
+          team_id: "seller-team",
+        },
+      },
+      teams: {
+        "buyer-team": {
+          id: "buyer-team",
+          name: "Buyer",
+          balance: 500,
+          division: 3,
+          user_id: "user-1",
+        },
+      },
+      teamMarketCounts: {
+        "buyer-team": {
+          riderCount: 8,
+          pendingCount: 1,
+          activeLoanCount: 1,
+        },
+      },
+      transferWindowStatus: "closed",
+      auctionUpdates,
+      riderUpdates,
+    }),
+    auctionId: "auction-closed-window",
+    notifyTeamOwner: async (teamId, type, title, message, entityId) => {
+      notifications.push({ teamId, type, title, message, entityId });
+    },
+    now: new Date("2026-04-21T10:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "squad_full");
+  assert.equal(notifications.length, 2);
+  assert.match(notifications[0].message, /max have 10 ryttere/);
+  assert.match(notifications[0].message, /uden for transfervinduet/);
+  assert.deepEqual(riderUpdates, []);
+});
+
+// #267: køber +1 over hard-cap (D3 har 11) i åbent vindue må gerne vinde
+// auktion. Rytteren transfereres til team_id (windowOpen) og finance/audit
+// skrives som normalt.
+test("finalizeAuctionById allows winner +1 over hard-cap during open window", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+  const notifications = [];
+  const xpAwards = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-soft-cap-allow",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 30000,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-soft-cap",
+          firstname: "Soft",
+          lastname: "Cap",
+          team_id: "seller-team",
+        },
+      },
+      teams: {
+        "buyer-team": {
+          id: "buyer-team",
+          name: "Buyer",
+          balance: 500000,
+          division: 3,
+          user_id: "user-buyer",
+        },
+        "seller-team": {
+          id: "seller-team",
+          name: "Seller",
+          balance: 100000,
+          division: 3,
+          user_id: "user-seller",
+          is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "buyer-team": {
+          riderCount: 10, // ved hard-cap, men under soft-cap (10+2=12)
+          pendingCount: 0,
+          activeLoanCount: 0,
+        },
+      },
+      auctionUpdates,
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-soft-cap-allow",
+    notifyTeamOwner: async (teamId, type, title, message, entityId) => {
+      notifications.push({ teamId, type, title, message, entityId });
+    },
+    awardXP: async (teamId, action) => {
+      xpAwards.push({ teamId, action });
+    },
+    now: new Date("2026-05-09T17:20:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.deepEqual(riderUpdates, [{
+    team_id: "buyer-team",
+    pending_team_id: null,
+    acquired_at: "2026-05-09T17:20:00.000Z",
+  }]);
+  assert.equal(financeInserts.length, 2);
+  assert.equal(financeInserts[0].team_id, "buyer-team");
+  assert.equal(financeInserts[0].amount, -30000);
 });
 
 test("finalizeAuctionById pays the actual AI owner instead of the initiator", async () => {

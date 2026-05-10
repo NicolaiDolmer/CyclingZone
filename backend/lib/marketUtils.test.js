@@ -5,6 +5,7 @@ import {
   getIncomingSquadViolation,
   getOutgoingSquadViolation,
   getTeamMarketState,
+  TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "./marketUtils.js";
 
 test("getIncomingSquadViolation includes pending riders in the max check", () => {
@@ -16,6 +17,82 @@ test("getIncomingSquadViolation includes pending riders in the max check", () =>
 
   assert.equal(issue?.maxRiders, 10);
   assert.equal(issue?.totalAfter, 11);
+  assert.equal(issue?.effectiveCap, 10);
+  assert.equal(issue?.softCapBuffer, 0);
+});
+
+// #267: under åbent transfervindue må køber gå +TRANSFER_WINDOW_SOFT_CAP_BUFFER
+// over hard-cap. Hard-cap'en bliver håndhævet af squadEnforcement-cron ved
+// vindue-luk (auto-salg + bøde + penalty).
+test("getIncomingSquadViolation tillader soft-cap buffer i åbent vindue", () => {
+  const issue = getIncomingSquadViolation(
+    {
+      division: 3,
+      total_count: 10,
+      squad_limits: { min: 8, max: 10 },
+    },
+    { softCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER }
+  );
+
+  assert.equal(issue, null);
+});
+
+test("getIncomingSquadViolation blokerer over soft-cap selv i åbent vindue", () => {
+  const issue = getIncomingSquadViolation(
+    {
+      division: 3,
+      total_count: 12,
+      squad_limits: { min: 8, max: 10 },
+    },
+    { softCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER }
+  );
+
+  assert.equal(issue?.maxRiders, 10);
+  assert.equal(issue?.totalAfter, 13);
+  assert.equal(issue?.effectiveCap, 12);
+  assert.equal(issue?.softCapBuffer, 2);
+});
+
+test("getIncomingSquadViolation hard-cap'er når softCapBuffer er 0 (closed window)", () => {
+  const issue = getIncomingSquadViolation(
+    {
+      division: 1,
+      total_count: 30,
+      squad_limits: { min: 20, max: 30 },
+    },
+    { softCapBuffer: 0 }
+  );
+
+  assert.equal(issue?.maxRiders, 30);
+  assert.equal(issue?.totalAfter, 31);
+  assert.equal(issue?.effectiveCap, 30);
+});
+
+test("getIncomingSquadViolation skalerer soft-cap til alle divisioner", () => {
+  // D1: max 30 + 2 = 32
+  assert.equal(
+    getIncomingSquadViolation(
+      { division: 1, total_count: 31, squad_limits: { min: 20, max: 30 } },
+      { softCapBuffer: 2 }
+    ),
+    null
+  );
+  // D2: max 20 + 2 = 22
+  assert.equal(
+    getIncomingSquadViolation(
+      { division: 2, total_count: 21, squad_limits: { min: 14, max: 20 } },
+      { softCapBuffer: 2 }
+    ),
+    null
+  );
+  // D3: max 10 + 2 = 12
+  assert.equal(
+    getIncomingSquadViolation(
+      { division: 3, total_count: 11, squad_limits: { min: 8, max: 10 } },
+      { softCapBuffer: 2 }
+    ),
+    null
+  );
 });
 
 test("getOutgoingSquadViolation blocks teams from dropping below the division minimum", () => {

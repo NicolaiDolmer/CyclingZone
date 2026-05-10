@@ -146,6 +146,7 @@ import {
   getIncomingSquadViolation,
   getTeamMarketState,
   MIN_RIDERS_FOR_RACE,
+  TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "../lib/marketUtils.js";
 import {
   applyRaceResults,
@@ -1401,10 +1402,14 @@ router.post("/transfers/offer", requireAuth, async (req, res) => {
   if (offer_amount > buyerState.balance)
     return res.status(400).json({ error: "Du har ikke råd til dette tilbud" });
 
-  // Check squad size limits for buyer
-  const squadViolation = getIncomingSquadViolation(buyerState);
+  // Check squad size limits for buyer.
+  // #267: under åbent transfervindue må køber gå +2 over division-cap.
+  // Endpoint har allerede gated på `open === true` ovenfor.
+  const squadViolation = getIncomingSquadViolation(buyerState, {
+    softCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER,
+  });
   if (squadViolation)
-    return res.status(400).json({ error: `Dit hold kan max have ${squadViolation.maxRiders} ryttere i Division ${buyerState.division || 3}` });
+    return res.status(400).json({ error: `Dit hold er fyldt (${squadViolation.effectiveCap} ryttere — Div ${buyerState.division || 3} cap ${squadViolation.maxRiders} + ${squadViolation.softCapBuffer} buffer i transfervinduet)` });
 
   // S-02e · Hard-block ved aktivt lag 2 (salary cap) eller lag 3 (signing-restriktion).
   const signingBlock = await assertSigningAllowed({
@@ -1732,9 +1737,12 @@ router.post("/transfers/:id/offer", requireAuth, async (req, res) => {
   const listingBuyerState = await getTeamMarketState(supabase, req.team.id);
   if (offer_amount > listingBuyerState.balance)
     return res.status(400).json({ error: "Du har ikke råd til dette tilbud" });
-  const listingSquadViolation = getIncomingSquadViolation(listingBuyerState);
+  // #267: soft-cap buffer i åbent vindue (endpoint har gated på open ovenfor).
+  const listingSquadViolation = getIncomingSquadViolation(listingBuyerState, {
+    softCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER,
+  });
   if (listingSquadViolation)
-    return res.status(400).json({ error: `Dit hold kan max have ${listingSquadViolation.maxRiders} ryttere i Division ${listingBuyerState.division || 3}` });
+    return res.status(400).json({ error: `Dit hold er fyldt (${listingSquadViolation.effectiveCap} ryttere — Div ${listingBuyerState.division || 3} cap ${listingSquadViolation.maxRiders} + ${listingSquadViolation.softCapBuffer} buffer i transfervinduet)` });
   const { data, error } = await supabase.from("transfer_offers")
     .insert({
       listing_id: listing.id,
@@ -2031,9 +2039,12 @@ router.post("/loans", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Rytteren er allerede udlejet eller har et afventende lejeforslag" });
 
   const borrowerState = await getTeamMarketState(supabase, req.team.id);
-  const proposalSquadViolation = getIncomingSquadViolation(borrowerState);
+  // #267: soft-cap buffer i åbent vindue.
+  const proposalSquadViolation = getIncomingSquadViolation(borrowerState, {
+    softCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER,
+  });
   if (proposalSquadViolation)
-    return res.status(400).json({ error: `Dit hold kan max have ${proposalSquadViolation.maxRiders} ryttere i Division ${borrowerState.division || 3}. Lejeaftalen kan ikke oprettes.` });
+    return res.status(400).json({ error: `Dit hold er fyldt (${proposalSquadViolation.effectiveCap} ryttere — Div ${borrowerState.division || 3} cap ${proposalSquadViolation.maxRiders} + ${proposalSquadViolation.softCapBuffer} buffer i transfervinduet). Lejeaftalen kan ikke oprettes.` });
 
   const { data, error } = await supabase.from("loan_agreements").insert({
     rider_id,
@@ -2085,9 +2096,12 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
   // ACCEPT — lending team accepts
   if (action === "accept" && isLender && loan.status === "pending") {
     const borrowerState = await getTeamMarketState(supabase, loan.to_team_id);
-    const activationSquadViolation = getIncomingSquadViolation(borrowerState);
+    // #267: soft-cap buffer i åbent vindue (endpoint har gated på open ovenfor).
+    const activationSquadViolation = getIncomingSquadViolation(borrowerState, {
+      softCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER,
+    });
     if (activationSquadViolation)
-      return res.status(400).json({ error: `Lejerens hold kan max have ${activationSquadViolation.maxRiders} ryttere i Division ${borrowerState.division || 3}. Lejeaftalen kan ikke aktiveres.` });
+      return res.status(400).json({ error: `Lejerens hold er fyldt (${activationSquadViolation.effectiveCap} ryttere — Div ${borrowerState.division || 3} cap ${activationSquadViolation.maxRiders} + ${activationSquadViolation.softCapBuffer} buffer i transfervinduet). Lejeaftalen kan ikke aktiveres.` });
 
     // Deduct first season's loan fee from borrower if > 0
     if (loan.loan_fee > 0) {

@@ -7,6 +7,7 @@ import {
   getOutgoingSquadViolation,
   getTeamMarketState,
   getTransferWindowOpen,
+  TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import {
@@ -75,12 +76,17 @@ function getSwapCash(swap) {
 // #44: buyerCommitment / proposingCommitment / receivingCommitment ekskluderer
 // auktions-låste midler fra balance-checks. Default 0 = bagudkompat for ældre
 // callere/tests der ikke skal håndhæve auction-låsning.
+// #267: buyerSoftCapBuffer = ekstra ryttere over division-cap der tillades MIDT
+// i et åbent transfervindue. Kalderen sætter typisk
+// TRANSFER_WINDOW_SOFT_CAP_BUFFER (2) når endpoint har gated på open-vindue;
+// 0 = hard-cap (closed-window-stil).
 export function getTransferExecutionIssue({
   rider,
   sellerState,
   buyerState,
   price,
   buyerCommitment = 0,
+  buyerSoftCapBuffer = 0,
 }) {
   if (!rider || rider.team_id !== sellerState.id) {
     return { code: "seller_no_longer_owns_rider" };
@@ -91,7 +97,9 @@ export function getTransferExecutionIssue({
     return { code: "seller_squad_too_small", ...sellerViolation };
   }
 
-  const buyerViolation = getIncomingSquadViolation(buyerState);
+  const buyerViolation = getIncomingSquadViolation(buyerState, {
+    softCapBuffer: buyerSoftCapBuffer,
+  });
   if (buyerViolation) {
     return { code: "buyer_squad_full", ...buyerViolation };
   }
@@ -294,7 +302,15 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     fetchTeamAuctionCommitment(supabase, offer.buyer_team_id),
   ]);
 
-  const issue = getTransferExecutionIssue({ rider, sellerState, buyerState, price, buyerCommitment });
+  // #267: window er åbent (gated af caller), så soft-cap buffer er aktivt.
+  const issue = getTransferExecutionIssue({
+    rider,
+    sellerState,
+    buyerState,
+    price,
+    buyerCommitment,
+    buyerSoftCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER,
+  });
 
   if (issue) {
     const message = describeTransferIssue(issue, { rider, buyerState, sellerState });
