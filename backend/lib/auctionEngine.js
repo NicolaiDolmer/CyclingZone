@@ -170,6 +170,75 @@ export function isAuctionExpired(auctionEnd) {
 }
 
 /**
+ * Apply auction-extension if and only if the leader actually changed (#257).
+ *
+ * Called AFTER the manual bid + proxy cascade have settled. Compares the
+ * current leader to `previousLeader` (captured before the bid event started).
+ * If unchanged, the auction is NOT extended even if the bid landed inside the
+ * extension window — this kills the "spam +1 CZ$ to drag the auction out"
+ * exploit and matches the expected mental model: "auctions only extend on
+ * actual overbids, not on bids the proxy auto-counters from the same leader".
+ *
+ * If the leader did change AND the bid lands inside the extension window,
+ * applies the extension to the auctions row and tags the latest bid row's
+ * triggered_extension flag for historical accuracy.
+ *
+ * @returns {Promise<{extensionApplied: boolean, newEnd: Date|null}>}
+ */
+export async function applyLeaderShiftExtension({
+  supabase,
+  auctionId,
+  previousLeader,
+  bidTime,
+  bidCfg,
+}) {
+  const { data: current } = await supabase
+    .from("auctions")
+    .select("current_bidder_id, calculated_end, extension_count, status")
+    .eq("id", auctionId)
+    .single();
+
+  if (!current) return { extensionApplied: false, newEnd: null };
+
+  // Rule: extension requires the leader to have actually changed during the
+  // bid+cascade event. Same leader → no extension, regardless of bid timing.
+  if (current.current_bidder_id === previousLeader) {
+    return { extensionApplied: false, newEnd: null };
+  }
+
+  const { shouldExtend, newEnd } = checkBidExtension(bidTime, current.calculated_end, bidCfg);
+  if (!shouldExtend) return { extensionApplied: false, newEnd: null };
+
+  await supabase
+    .from("auctions")
+    .update({
+      calculated_end: newEnd.toISOString(),
+      status: "extended",
+      extension_count: (current.extension_count || 0) + 1,
+    })
+    .eq("id", auctionId);
+
+  // Tag the latest bid row so bid-history reflects which bid triggered the
+  // extension. Best-effort — flag is not surfaced in UI today, so a missing
+  // tag is acceptable.
+  const { data: lastBid } = await supabase
+    .from("auction_bids")
+    .select("id")
+    .eq("auction_id", auctionId)
+    .order("bid_time", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (lastBid?.id) {
+    await supabase
+      .from("auction_bids")
+      .update({ triggered_extension: true })
+      .eq("id", lastBid.id);
+  }
+
+  return { extensionApplied: true, newEnd };
+}
+
+/**
  * Format remaining time for display.
  */
 export function formatAuctionEnd(endTime) {

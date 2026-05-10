@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { checkBidExtension, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
+import { applyLeaderShiftExtension, checkBidExtension, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
 
 // Alle test-tidspunkter er i CEST-perioden (maj) hvor Copenhagen = UTC+2.
 // Hverdag close=22:00 CEST → 20:00 UTC. Hard cap = close + 60 min grace = 23:00 CEST.
@@ -101,4 +101,223 @@ test("checkBidExtension: bud i grace-zonen ud over close — næste forlængelse
   const result = checkBidExtension(bid, end, CFG);
   assert.equal(result.shouldExtend, true);
   assert.equal(result.newEnd.toISOString(), "2026-05-08T20:35:00.000Z"); // Fri 22:35 CEST
+});
+
+// =============================================================================
+// applyLeaderShiftExtension — leader-shift gated extension (#257)
+// =============================================================================
+
+// Mock Supabase med præcis de queries applyLeaderShiftExtension udfører:
+// - SELECT current_bidder_id/calculated_end/extension_count/status FROM auctions WHERE id=
+// - UPDATE auctions SET ... WHERE id= (kun hvis extension anvendes)
+// - SELECT id FROM auction_bids WHERE auction_id= ORDER bid_time DESC LIMIT 1 (kun hvis extension)
+// - UPDATE auction_bids SET triggered_extension=true WHERE id= (kun hvis extension)
+function createExtensionMock({ auction, lastBidId = "bid-1" }) {
+  const auctionState = { ...auction };
+  const auctionUpdates = [];
+  const bidUpdates = [];
+  return {
+    state: { auction: auctionState, auctionUpdates, bidUpdates },
+    from(table) {
+      if (table === "auctions") {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  single: () => Promise.resolve({ data: { ...auctionState }, error: null }),
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq() {
+                Object.assign(auctionState, payload);
+                auctionUpdates.push({ ...payload });
+                return Promise.resolve({ data: null, error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "auction_bids") {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  order() {
+                    return {
+                      limit() {
+                        return {
+                          maybeSingle: () =>
+                            Promise.resolve({ data: { id: lastBidId }, error: null }),
+                        };
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(_col, id) {
+                bidUpdates.push({ id, ...payload });
+                return Promise.resolve({ data: null, error: null });
+              },
+            };
+          },
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+}
+
+// Bud-tidspunkt langt ude i fremtiden så vi kontrollerer extension-window
+// uden at ramme real Date.now() i edge cases. Lørdag 12:00 CEST 2030.
+const SAT_NOON = new Date("2030-05-04T10:00:00.000Z");
+
+test("applyLeaderShiftExtension: leader uændret efter cascade → ingen forlængelse (#257 kerne)", async () => {
+  // Scenarie: A leder, B byder, A's proxy counter til A → leader = A (uændret).
+  // Bid er inde i extension-vinduet (30s tilbage, 60s extension), men da leader
+  // ikke skiftede, må auktionen IKKE forlænges.
+  const auction = {
+    id: "auc-1",
+    current_bidder_id: "team-a",
+    calculated_end: new Date(SAT_NOON.getTime() + 30_000).toISOString(),
+    extension_count: 0,
+    status: "active",
+  };
+  const supabase = createExtensionMock({ auction });
+  const result = await applyLeaderShiftExtension({
+    supabase,
+    auctionId: "auc-1",
+    previousLeader: "team-a",
+    bidTime: SAT_NOON,
+    bidCfg: { ...CFG, extension_minutes: 1 },
+  });
+  assert.equal(result.extensionApplied, false);
+  assert.equal(result.newEnd, null);
+  assert.equal(supabase.state.auctionUpdates.length, 0, "auctions må ikke opdateres");
+  assert.equal(supabase.state.bidUpdates.length, 0, "bid-row må ikke flagges");
+});
+
+test("applyLeaderShiftExtension: leder skifter A→B i extension-vindue → forlæng + flag sidste bid", async () => {
+  // Bid 60s før end, extension_minutes=1 → newEnd = bid + 60s.
+  const auction = {
+    id: "auc-2",
+    current_bidder_id: "team-b",
+    calculated_end: new Date(SAT_NOON.getTime() + 30_000).toISOString(),
+    extension_count: 0,
+    status: "active",
+  };
+  const supabase = createExtensionMock({ auction, lastBidId: "bid-last" });
+  const result = await applyLeaderShiftExtension({
+    supabase,
+    auctionId: "auc-2",
+    previousLeader: "team-a",
+    bidTime: SAT_NOON,
+    bidCfg: { ...CFG, extension_minutes: 1 },
+  });
+  assert.equal(result.extensionApplied, true);
+  const expectedEnd = new Date(SAT_NOON.getTime() + 60_000);
+  assert.equal(result.newEnd.toISOString(), expectedEnd.toISOString());
+  assert.equal(supabase.state.auctionUpdates.length, 1);
+  assert.equal(supabase.state.auctionUpdates[0].status, "extended");
+  assert.equal(supabase.state.auctionUpdates[0].extension_count, 1);
+  assert.equal(supabase.state.auctionUpdates[0].calculated_end, expectedEnd.toISOString());
+  assert.equal(supabase.state.bidUpdates.length, 1);
+  assert.equal(supabase.state.bidUpdates[0].id, "bid-last");
+  assert.equal(supabase.state.bidUpdates[0].triggered_extension, true);
+});
+
+test("applyLeaderShiftExtension: leder skifter MEN bid udenfor extension-vindue → ingen forlængelse", async () => {
+  // 10 min tilbage, extension=1 min → checkBidExtension returnerer shouldExtend:false.
+  const auction = {
+    id: "auc-3",
+    current_bidder_id: "team-b",
+    calculated_end: new Date(SAT_NOON.getTime() + 600_000).toISOString(),
+    extension_count: 0,
+    status: "active",
+  };
+  const supabase = createExtensionMock({ auction });
+  const result = await applyLeaderShiftExtension({
+    supabase,
+    auctionId: "auc-3",
+    previousLeader: "team-a",
+    bidTime: SAT_NOON,
+    bidCfg: { ...CFG, extension_minutes: 1 },
+  });
+  assert.equal(result.extensionApplied, false);
+  assert.equal(supabase.state.auctionUpdates.length, 0);
+});
+
+test("applyLeaderShiftExtension: previousLeader=null (ingen ledede før) → enhver ny leder tæller som skift", async () => {
+  // Auction opening uden bidder, B byder først → leader skifter null→B → extend.
+  const auction = {
+    id: "auc-4",
+    current_bidder_id: "team-b",
+    calculated_end: new Date(SAT_NOON.getTime() + 30_000).toISOString(),
+    extension_count: 0,
+    status: "active",
+  };
+  const supabase = createExtensionMock({ auction });
+  const result = await applyLeaderShiftExtension({
+    supabase,
+    auctionId: "auc-4",
+    previousLeader: null,
+    bidTime: SAT_NOON,
+    bidCfg: { ...CFG, extension_minutes: 1 },
+  });
+  assert.equal(result.extensionApplied, true);
+  assert.equal(supabase.state.auctionUpdates[0].extension_count, 1);
+});
+
+test("applyLeaderShiftExtension: extension_count øges fra eksisterende værdi", async () => {
+  // Already extended twice → extension_count: 2 → 3.
+  const auction = {
+    id: "auc-5",
+    current_bidder_id: "team-b",
+    calculated_end: new Date(SAT_NOON.getTime() + 30_000).toISOString(),
+    extension_count: 2,
+    status: "extended",
+  };
+  const supabase = createExtensionMock({ auction });
+  const result = await applyLeaderShiftExtension({
+    supabase,
+    auctionId: "auc-5",
+    previousLeader: "team-a",
+    bidTime: SAT_NOON,
+    bidCfg: { ...CFG, extension_minutes: 1 },
+  });
+  assert.equal(result.extensionApplied, true);
+  assert.equal(supabase.state.auctionUpdates[0].extension_count, 3);
+  assert.equal(supabase.state.auctionUpdates[0].status, "extended");
+});
+
+test("applyLeaderShiftExtension: spam 1 CZ$ bud fra non-leader når proxy holder lead → ingen forlængelse", async () => {
+  // Eksempel fra #257-issue: A leder via proxy, B troller med 1 CZ$ over current.
+  // Cascade vil skubbe A's proxy op og A holder lead. previousLeader=A, current=A.
+  // Selv hvis bid er i extension-vindue, må vi IKKE forlænge — ellers kan B
+  // strække auktionen i det uendelige med 1 CZ$ ad gangen.
+  const auction = {
+    id: "auc-spam",
+    current_bidder_id: "team-a", // A still leads after cascade
+    calculated_end: new Date(SAT_NOON.getTime() + 60_000).toISOString(),
+    extension_count: 0,
+    status: "active",
+  };
+  const supabase = createExtensionMock({ auction });
+  const result = await applyLeaderShiftExtension({
+    supabase,
+    auctionId: "auc-spam",
+    previousLeader: "team-a",
+    bidTime: SAT_NOON,
+    bidCfg: { ...CFG, extension_minutes: 5 }, // 5 min vindue, kun 60s tilbage
+  });
+  assert.equal(result.extensionApplied, false, "spam-bud må ikke forlænge når proxy holder lead");
+  assert.equal(supabase.state.auctionUpdates.length, 0);
 });

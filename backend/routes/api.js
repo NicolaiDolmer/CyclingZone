@@ -17,8 +17,8 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import {
   calculateAuctionEnd,
-  checkBidExtension,
   isAuctionExpired,
+  applyLeaderShiftExtension,
   DEFAULT_AUCTION_CONFIG,
 } from "../lib/auctionEngine.js";
 import {
@@ -989,31 +989,28 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
     return res.status(403).json({ error: signingBlock.reason, code: signingBlock.code, layer: signingBlock.layer });
   }
 
+  // #257: capture leader BEFORE the bid so we can later check whether the
+  // bid+cascade actually changed who's leading. Extension is applied once
+  // after cascade settles, only if leader changed.
+  const previousLeader = auction.current_bidder_id;
   const bidTime = new Date();
   const bidCfg = await getAuctionConfig();
-  const { shouldExtend, newEnd } = checkBidExtension(bidTime, auction.calculated_end, bidCfg);
 
-  // Record bid
+  // Record bid (triggered_extension flag may be set later by
+  // applyLeaderShiftExtension if this bid ends up causing the extension).
   await supabase.from("auction_bids").insert({
     auction_id: auction.id,
     team_id: req.team.id,
     amount,
     bid_time: bidTime.toISOString(),
-    triggered_extension: shouldExtend,
+    triggered_extension: false,
   });
 
-  // Update auction
-  const updates = {
+  // Update auction (price + leader only — no extension yet).
+  await supabase.from("auctions").update({
     current_price: amount,
     current_bidder_id: req.team.id,
-  };
-  if (shouldExtend) {
-    updates.calculated_end = newEnd.toISOString();
-    updates.status = "extended";
-    updates.extension_count = (auction.extension_count || 0) + 1;
-  }
-
-  await supabase.from("auctions").update(updates).eq("id", auction.id);
+  }).eq("id", auction.id);
 
   // Store proxy max-loft if provided with the bid
   const numericProxyMax = Number(proxy_max);
@@ -1071,11 +1068,38 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
     console.error("[resolveProxyBids] failed for auction", auction.id, e);
   }
 
+  // #257: extend only if the cascade left someone OTHER than previousLeader
+  // in the lead. If A had a proxy that counter-beats B's manual bid,
+  // current_bidder_id is back to A == previousLeader → no extension.
+  let extensionApplied = false;
+  let extensionEnd = null;
+  try {
+    const result = await applyLeaderShiftExtension({
+      supabase,
+      auctionId: auction.id,
+      previousLeader,
+      bidTime,
+      bidCfg,
+    });
+    extensionApplied = result.extensionApplied;
+    extensionEnd = result.newEnd;
+  } catch (e) {
+    console.error("[applyLeaderShiftExtension] failed for auction", auction.id, e);
+  }
+
+  // Re-fetch final price so response reflects post-cascade state (relevant
+  // when cascade pushed price above the manual bid).
+  const { data: finalAuction } = await supabase
+    .from("auctions")
+    .select("current_price")
+    .eq("id", auction.id)
+    .single();
+
   res.json({
     success: true,
-    new_price: amount,
-    extended: shouldExtend,
-    new_end: shouldExtend ? newEnd?.toISOString() : undefined,
+    new_price: finalAuction?.current_price ?? amount,
+    extended: extensionApplied,
+    new_end: extensionApplied && extensionEnd ? extensionEnd.toISOString() : undefined,
     warnings: bidWarnings,
   });
 });
@@ -1185,9 +1209,11 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
 
   const proxyBidTime = new Date();
   const proxyBidCfg = await getAuctionConfig();
+  // #257: capture leader before opening bid so post-cascade extension check
+  // can detect whether this proxy actually disrupted the standing leader.
+  const previousLeader = auction.current_bidder_id;
   let bidWarnings = [];
   if (openingBidAmount !== null) {
-    const { shouldExtend, newEnd } = checkBidExtension(proxyBidTime, auction.calculated_end, proxyBidCfg);
     bidWarnings = getAuctionBidWarnings({
       teamState,
       activeLeadingCount: leadingAuctions.filter((row) => row.id !== req.params.id).length,
@@ -1199,25 +1225,19 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
       team_id: req.team.id,
       amount: openingBidAmount,
       bid_time: proxyBidTime.toISOString(),
-      triggered_extension: shouldExtend,
+      triggered_extension: false,
       is_proxy: true,
     });
     if (bidInsertError) {
       return res.status(500).json({ error: "Autobud kunne ikke placeres" });
     }
 
-    const updates = {
-      current_price: openingBidAmount,
-      current_bidder_id: req.team.id,
-    };
-    if (shouldExtend) {
-      updates.calculated_end = newEnd.toISOString();
-      updates.status = "extended";
-      updates.extension_count = (auction.extension_count || 0) + 1;
-    }
     const { error: auctionUpdateError } = await supabase
       .from("auctions")
-      .update(updates)
+      .update({
+        current_price: openingBidAmount,
+        current_bidder_id: req.team.id,
+      })
       .eq("id", auction.id);
     if (auctionUpdateError) {
       return res.status(500).json({ error: "Autobud kunne ikke opdatere auktionen" });
@@ -1255,6 +1275,21 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", req.params.id, e);
+  }
+
+  // #257: only extend if cascade left a different leader than before.
+  if (openingBidAmount !== null) {
+    try {
+      await applyLeaderShiftExtension({
+        supabase,
+        auctionId: req.params.id,
+        previousLeader,
+        bidTime: proxyBidTime,
+        bidCfg: proxyBidCfg,
+      });
+    } catch (e) {
+      console.error("[applyLeaderShiftExtension] failed for auction", req.params.id, e);
+    }
   }
 
   res.json({

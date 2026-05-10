@@ -556,10 +556,11 @@ test("bidderName: falder tilbage til \"Autobud\" når team-rækken mangler", asy
 // Tier 2 — edge-cases (extended-status + extension_count, runaway-guard, clamp-branch)
 // =============================================================================
 
-test("resolver: status \"extended\" auktion håndteres som active + extension_count øges når shouldExtend trigger", async () => {
-  // Auction allerede forlænget 2 gange. Et nyt bid inden for extension-vinduet skal
+test("resolver: status \"extended\" auktion håndteres som active — cascade extender IKKE selv (#257)", async () => {
+  // Auction allerede forlænget 2 gange. Et nyt bid inden for extension-vinduet skal:
   // a) fortsat behandles (extended er i [active, extended]-whitelist)
-  // b) trigger ny forlængelse → extension_count 2 → 3 og status forbliver "extended"
+  // b) IKKE trigge ny forlængelse fra cascaden — extension er nu callerens ansvar
+  //    via applyLeaderShiftExtension efter cascade settles (#257).
   const calculatedEnd = new Date(SAT_NOON_UTC.getTime() + 30_000); // bidTime + 30s
   const auction = {
     id: "auc-ext",
@@ -582,16 +583,18 @@ test("resolver: status \"extended\" auktion håndteres som active + extension_co
     notifyTeamOwner: async () => {},
   });
 
+  // Cascade placerer counter-bid og ændrer leder, men extender IKKE selv.
   assert.equal(supabase.state.bids.length, 1);
   assert.equal(supabase.state.bids[0].team_id, "team-a");
   assert.equal(supabase.state.bids[0].amount, 50001);
   assert.equal(supabase.state.bids[0].is_proxy, true);
-  assert.equal(supabase.state.bids[0].triggered_extension, true);
+  assert.equal(supabase.state.bids[0].triggered_extension, false, "cascade-bid skal ikke flagge triggered_extension; callerens applyLeaderShiftExtension gør det");
+  // Status + extension_count + calculated_end skal være uændret af cascaden selv.
   assert.equal(supabase.state.auction.status, "extended");
-  assert.equal(supabase.state.auction.extension_count, 3);
-  // newEnd = bidTime + 60s
-  const expectedNewEnd = new Date(SAT_NOON_UTC.getTime() + 60_000).toISOString();
-  assert.equal(supabase.state.auction.calculated_end, expectedNewEnd);
+  assert.equal(supabase.state.auction.extension_count, 2, "cascade må ikke øge extension_count");
+  assert.equal(supabase.state.auction.calculated_end, calculatedEnd.toISOString(), "cascade må ikke skubbe calculated_end");
+  // Men leader skal være skiftet — det er signalet til caller om at extension skal anvendes.
+  assert.equal(supabase.state.auction.current_bidder_id, "team-a");
 });
 
 test("resolver: MAX_PROXY_ITERATIONS guard kapper runaway-loop ved 30 iterationer", async () => {

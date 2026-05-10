@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.03",
+    date: "2026-05-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Auktioner forlænges kun ved reelt overbud (#257)",
+        items: [
+          "Manager · En auktion bliver nu KUN forlænget hvis bud reelt skifter hvem der fører. Tidligere udløste ethvert bud i de sidste 10 minutter en forlængelse — også når et autobud-loft straks bød op igen og holdt den oprindelige leder. Det betød at et 1-CZ$-bud kunne strække auktioner i det uendelige.",
+          "Manager · Eksempel: Auktionen står på 20.000 CZ$ og du leder med autobud-loft 25.000. En anden manager byder 21.000. Dit autobud counter automatisk til 21.001 og du fortsætter som leder. Auktionen bliver IKKE forlænget — buddet flyttede ikke føringen.",
+          "Manager · Hvis nogen byder OVER dit autobud-loft og overtager føringen, bliver auktionen stadig forlænget med 10 minutter (eller skubbet ud i grace-zonen / rullet over til næste døgn efter de eksisterende regler fra v2.87).",
+          "Backend · Ny `applyLeaderShiftExtension`-helper i `auctionEngine.js` kaldes efter cascade af proxy-counter-bud er resolved; den sammenligner final leder med leder-før-bud og anvender kun forlængelsen ved skift. Cascaden selv extender ikke længere. 555/555 backend-tests grønne (+6 nye dækker spam-1-CZ-scenarie, leader-skift A→B, previousLeader=null, extension_count-bump fra eksisterende værdi, bid udenfor extension-vindue).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.02",
     date: "2026-05-10",
     label: "Beta",

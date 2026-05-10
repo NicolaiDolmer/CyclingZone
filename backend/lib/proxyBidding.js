@@ -2,7 +2,7 @@ import {
   computeWorstCaseCommitment,
   getMinimumAuctionBid,
 } from "./auctionRules.js";
-import { checkBidExtension, isAuctionExpired } from "./auctionEngine.js";
+import { isAuctionExpired } from "./auctionEngine.js";
 
 const MAX_PROXY_ITERATIONS = 30;
 
@@ -45,6 +45,11 @@ async function canAffordAutoBid(supabase, teamId, autoBidAmount, currentAuctionI
 // Runs after each bid. Finds competing proxy bids and places automatic
 // counter-bids until no proxy can challenge or the auction expires.
 //
+// #257: Cascade does NOT apply auction extensions. The caller (POST /bid,
+// PATCH /proxy) inspects the FINAL leader after the cascade has settled and
+// applies extension via applyLeaderShiftExtension only when leader actually
+// changed. Cascade bids therefore land with triggered_extension: false.
+//
 // Algorithm:
 //   Each iteration finds challengers (proxies from non-winning teams that can bid).
 //   Stale winner-proxy (max < currentPrice efter eget manuelt bid) behandles som
@@ -55,10 +60,15 @@ async function canAffordAutoBid(supabase, teamId, autoBidAmount, currentAuctionI
 //   If challenger's max beats winner's proxy → challenger takes over at
 //     max(winnerProxy.max + 1, minBid); previous winner gets "auction_proxy_outbid".
 //   If winner has no proxy → challenger bids at minimum; loop continues for more challengers.
+//
+// Note: bidCfg is no longer used inside the cascade (extension lives in the
+// caller per #257), but we keep the parameter so callers don't need to change
+// signature.
 export async function resolveProxyBids({
   supabase,
   auctionId,
   bidTime,
+  // eslint-disable-next-line no-unused-vars -- kept for caller compat (#257)
   bidCfg,
   notifyTeamOwner,
   notifyOutbidDM,
@@ -178,27 +188,21 @@ export async function resolveProxyBids({
       continue;
     }
 
-    const { shouldExtend, newEnd } = checkBidExtension(bidTime, auction.calculated_end, bidCfg);
-
+    // #257: cascade bids land with triggered_extension: false. The caller
+    // applies extension once after cascade settles, only if leader changed.
     await supabase.from("auction_bids").insert({
       auction_id: auctionId,
       team_id: autoBidder,
       amount: autoBidAmount,
       bid_time: bidTime.toISOString(),
-      triggered_extension: shouldExtend,
+      triggered_extension: false,
       is_proxy: true,
     });
 
-    const updates = {
+    await supabase.from("auctions").update({
       current_price: autoBidAmount,
       current_bidder_id: autoBidder,
-    };
-    if (shouldExtend) {
-      updates.calculated_end = newEnd.toISOString();
-      updates.status = "extended";
-      updates.extension_count = (auction.extension_count || 0) + 1;
-    }
-    await supabase.from("auctions").update(updates).eq("id", auctionId);
+    }).eq("id", auctionId);
 
     const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
 
