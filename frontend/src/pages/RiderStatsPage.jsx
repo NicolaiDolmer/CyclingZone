@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { getCountryName } from "../lib/countryUtils";
@@ -6,6 +6,17 @@ import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
 import { BidConfirmModal } from "../components/BidConfirmModal";
+import { RacePriceModal } from "../components/RacePriceModal";
+import { ConfettiModal } from "../components/ConfettiModal";
+import OverbidToast from "../components/OverbidToast";
+import {
+  isManagerSeller,
+  getAuctionLeaderId,
+  getAuctionLeaderName,
+  getAuctionSellerLabel,
+} from "../lib/auctionLogic";
+import { useAuctionBidding } from "../lib/useAuctionBidding";
+import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazy(() => import("../components/RiderDevelopmentTab"));
@@ -302,6 +313,187 @@ function DirectOfferButton({ rider }) {
   );
 }
 
+// #254: Bid-panel på rytter-profil — Apple HIG sizing (≥44px), comfortable density
+// matching AuctionCard. Bruger samme useAuctionBidding-hook som AuctionRow + AuctionCard
+// så bid-flowet er identisk: balance-gate → confirm-modal → race-confirm ved 409.
+function AuctionCountdown({ end, status }) {
+  const [text, setText] = useState("");
+  const [urgent, setUrgent] = useState(false);
+  useEffect(() => {
+    if (status === "completed") { setText("Afsluttet"); return; }
+    function update() {
+      const diff = new Date(end) - new Date();
+      if (diff <= 0) { setText("Udløbet"); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setUrgent(diff < 600000);
+      setText(h > 0 ? `${h}t ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`);
+    }
+    update();
+    const t = setInterval(update, 1000);
+    return () => clearInterval(t);
+  }, [end, status]);
+  return (
+    <span className={`font-mono font-bold text-base tabular-nums ${urgent ? "text-cz-danger animate-pulse" : "text-cz-2"}`}>
+      {text}
+    </span>
+  );
+}
+
+function RiderBidPanel({ auction, myTeamId, myAvailableBalance, riderName, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFlashing }) {
+  const r = auction?.rider;
+  const isMyRider = r?.team_id === myTeamId;
+  const isSeller  = isManagerSeller(auction, myTeamId);
+  const imWinning = getAuctionLeaderId(auction) === myTeamId;
+  const canBid    = !isMyRider && auction.status !== "completed";
+  const wasOverbid = !imWinning && !isSeller && auction.myHighestBid != null && auction.current_bidder_id != null;
+
+  const {
+    minBid, myProxy,
+    bidAmount, setBidAmount, bidStatus, errorText, warningText,
+    proxyExpanded, setProxyExpanded, proxyInput, setProxyInput,
+    proxyStatus, proxyErrorText,
+    handleBid, handleSaveProxy, handleRemoveProxy,
+  } = useAuctionBidding({
+    auction, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, requestBidConfirm,
+    riderName: riderName || "rytter",
+  });
+
+  return (
+    <div className={`rounded-xl border p-4 ${imWinning ? "border-cz-accent/40 bg-cz-accent/[0.04]" : "border-cz-border bg-cz-subtle"}`}>
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <p className="text-cz-3 text-xs uppercase tracking-widest">⚡ Aktiv auktion</p>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {imWinning && <span className="text-[10px] uppercase bg-cz-accent/15 text-cz-accent-t px-2 py-0.5 rounded font-semibold">Du leder</span>}
+          {isSeller && <span className="text-[10px] uppercase bg-cz-info-bg text-cz-info px-2 py-0.5 rounded font-semibold">Du sælger</span>}
+          {wasOverbid && <span className="text-[10px] uppercase bg-cz-danger-bg text-cz-danger px-2 py-0.5 rounded font-semibold">Du er overbudt</span>}
+          {auction.status === "extended" && <span className="text-[10px] uppercase bg-cz-warning-bg text-cz-warning px-2 py-0.5 rounded">⚡ Forlænget</span>}
+          {auction.is_flash && <span className="text-[10px] uppercase bg-cz-danger-bg text-cz-danger px-2 py-0.5 rounded">⚡ Flash</span>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className={`bg-cz-card rounded-lg px-3 py-2 ${isFlashing ? "cz-pulse-flash" : ""}`}>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Højeste bud</p>
+          <p className="text-cz-1 font-mono font-bold text-base">
+            {auction.current_price?.toLocaleString("da-DK")} CZ$
+          </p>
+          {getAuctionLeaderName(auction) && !imWinning && (
+            <p className="text-cz-3 text-[10px] truncate">{getAuctionLeaderName(auction)}</p>
+          )}
+        </div>
+        <div className="bg-cz-card rounded-lg px-3 py-2">
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Tid tilbage</p>
+          <AuctionCountdown end={auction.calculated_end} status={auction.status} />
+          <p className="text-cz-3 text-[10px] truncate">Sælger: {getAuctionSellerLabel(auction)}</p>
+        </div>
+      </div>
+
+      {!canBid ? (
+        <p className="text-cz-3 text-xs text-center py-2">
+          {isSeller ? "Du sælger denne auktion — kan ikke byde på egen rytter" : "—"}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <input
+              type="number"
+              value={bidAmount}
+              min={minBid}
+              onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
+              aria-label="Dit bud i CZ$"
+              className="min-w-0 min-h-[44px] bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+            />
+            <button
+              onClick={handleBid}
+              disabled={bidStatus === "loading" || bidAmount < minBid}
+              aria-label={imWinning ? "Hæv dit bud" : "Afgiv bud"}
+              className={`min-h-[44px] px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
+                ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
+                  bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
+                  imWinning ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
+                disabled:opacity-50`}>
+              {bidStatus === "loading" ? "..." : bidStatus === "error" ? "Fejl" : bidStatus === "success" ? "✓" : imWinning ? "Hæv" : "Byd"}
+            </button>
+          </div>
+          <p className="text-[10px] text-cz-3">Min. bud: {minBid.toLocaleString("da-DK")} CZ$</p>
+          {bidStatus === "error" && errorText && <p className="text-[11px] text-cz-danger">{errorText}</p>}
+          {warningText && <p className="text-[11px] text-cz-warning leading-snug">{warningText}</p>}
+
+          {/* Autobud-loft */}
+          <div className="mt-1">
+            {myProxy && !proxyExpanded ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] bg-cz-success-bg text-cz-success px-2 py-1 rounded-lg">
+                  Autobud: max {myProxy.toLocaleString("da-DK")} CZ$
+                </span>
+                <button
+                  onClick={() => setProxyExpanded(true)}
+                  aria-label="Ændr autobud-loft"
+                  className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-2"
+                >
+                  Ændr
+                </button>
+                <button
+                  onClick={handleRemoveProxy}
+                  aria-label="Fjern autobud"
+                  className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-danger"
+                >
+                  Fjern
+                </button>
+              </div>
+            ) : !proxyExpanded ? (
+              <button
+                onClick={() => setProxyExpanded(true)}
+                aria-label="Sæt autobud-loft"
+                className="min-h-[44px] rounded-lg border border-cz-accent/50 bg-cz-accent/10 px-3 text-xs font-bold text-cz-accent-t hover:bg-cz-accent/20"
+              >
+                + Sæt autobud loft
+              </button>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={proxyInput}
+                    min={minBid}
+                    onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
+                    placeholder="Max-loft"
+                    aria-label="Autobud-loft i CZ$"
+                    className="min-w-0 w-32 min-h-[44px] bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+                  />
+                  <button
+                    onClick={handleSaveProxy}
+                    disabled={proxyStatus === "loading" || proxyInput < minBid}
+                    aria-label="Gem autobud-loft"
+                    className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap
+                      ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
+                        proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
+                        "bg-cz-card border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
+                      disabled:opacity-50`}>
+                    {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
+                  </button>
+                  <button
+                    onClick={() => setProxyExpanded(false)}
+                    aria-label="Annullér autobud-redigering"
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-cz-3 hover:text-cz-2"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {proxyStatus === "error" && proxyErrorText && (
+                  <p className="text-[11px] text-cz-danger leading-tight">{proxyErrorText}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
   const riderValue      = getRiderMarketValue(rider);
   const [guaranteed, setGuaranteed] = useState(false);
@@ -381,6 +573,7 @@ export default function RiderStatsPage() {
   const [loading, setLoading]               = useState(true);
   const [tab, setTab]                       = useState("stats");
   const [myTeamId, setMyTeamId]             = useState(null);
+  const [myBalance, setMyBalance]           = useState(0);
   const [activeAuction, setActiveAuction]   = useState(null);
   const [auctionError, setAuctionError]     = useState(null);
   const [history, setHistory]               = useState([]);
@@ -390,6 +583,19 @@ export default function RiderStatsPage() {
   // #195: live bud-timeline for seneste auktion (aktiv eller completed).
   // Privacy-låst: backend lækker aldrig proxy_max — frontend respekterer samme kontrakt.
   const [bidTimeline, setBidTimeline]       = useState(null);
+  // #254: bid-confirm + race-confirm + confetti + overbid-toast + price-flash
+  // mirror'er AuctionsPage så ryttersiden har samme UX som auktion-listen.
+  const [bidConfirm, setBidConfirm]         = useState(null);
+  const [bidConfirmBusy, setBidConfirmBusy] = useState(false);
+  const [raceConfirm, setRaceConfirm]       = useState(null);
+  const [celebration, setCelebration]       = useState(null);
+  const [priceFlash, setPriceFlash]         = useState(false);
+  const [toasts, setToasts]                 = useState([]);
+  // Refs så channel-callback kan se nyeste state uden at re-subscribe
+  const activeAuctionRef = useRef(null);
+  const myTeamIdRef      = useRef(null);
+  useEffect(() => { activeAuctionRef.current = activeAuction; }, [activeAuction]);
+  useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
 
   async function loadWatchlistStatus() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -465,22 +671,55 @@ export default function RiderStatsPage() {
   async function loadMyTeam() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: t } = await supabase.from("teams").select("id, balance, division, name").eq("user_id", user.id).single();
-    if (t) { setMyTeamId(t.id); }
+    if (t) { setMyTeamId(t.id); setMyBalance(t.balance || 0); }
+  }
+
+  // #254: Henter aktiv auktion på rytteren med ALLE felter bid-panelet skal bruge
+  // (current_bidder, seller, min_increment, is_flash) + manager's eget proxy_max
+  // og højeste bud. Kaldes initialt fra loadRider og igen fra realtime-channel
+  // når et nyt bud lander eller auktionen opdateres.
+  async function loadActiveAuctionFull(riderObj) {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: auctionData } = await supabase.from("auctions")
+      .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash,
+        seller_team_id, current_bidder_id,
+        seller:seller_team_id(id, name),
+        current_bidder:current_bidder_id(id, name)`)
+      .eq("rider_id", id).in("status", ["active", "extended"]).maybeSingle();
+
+    if (!auctionData) { setActiveAuction(null); return null; }
+
+    // Embedded "rider" lader getAuctionLeaderId/isManagerSeller arbejde uden ekstra subquery
+    auctionData.rider = riderObj ? { id: riderObj.id, team_id: riderObj.team_id } : null;
+
+    if (user?.id) {
+      const { data: team } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
+      if (team?.id) {
+        const [proxyRes, myBidRes] = await Promise.all([
+          supabase.from("auction_proxy_bids").select("max_amount")
+            .eq("auction_id", auctionData.id).eq("team_id", team.id).maybeSingle(),
+          supabase.from("auction_bids").select("amount")
+            .eq("auction_id", auctionData.id).eq("team_id", team.id)
+            .order("amount", { ascending: false }).limit(1).maybeSingle(),
+        ]);
+        auctionData.myProxyMax = proxyRes.data?.max_amount || null;
+        auctionData.myHighestBid = myBidRes.data?.amount || null;
+      }
+    }
+    setActiveAuction(auctionData);
+    return auctionData;
   }
 
   async function loadRider() {
-    const [riderRes, resultsRes, auctionRes] = await Promise.all([
+    const [riderRes, resultsRes] = await Promise.all([
       supabase.from("riders").select(`*, team:team_id(id, name, is_ai, is_bank)`).eq("id", id).single(),
       supabase.from("race_results")
         .select(`*, race:race_id(name, race_type, start_date)`)
         .eq("rider_id", id).order("imported_at", { ascending: false }).limit(20),
-      supabase.from("auctions")
-        .select("id, status, calculated_end, current_price, is_guaranteed_sale")
-        .eq("rider_id", id).in("status", ["active", "extended"]).maybeSingle(),
     ]);
     setRider(riderRes.data);
     setResults(resultsRes.data || []);
-    setActiveAuction(auctionRes.data || null);
+    await loadActiveAuctionFull(riderRes.data);
     setLoading(false);
     loadWatchlistCount();
 
@@ -503,10 +742,23 @@ export default function RiderStatsPage() {
 
   useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); loadBidTimeline(); }, [id]);
 
-  // #195: Supabase realtime — kun aktive auktioner. Når et nyt bud lander
-  // (auction_bids INSERT scoped til seneste auctionId), refetch'er vi timelinen
-  // så UI opdaterer < 1s uden manual refresh. Egen kanalnavn pr. auction
-  // undgår kollision med AuctionsPage's "auctions-live" channel.
+  function pushOverbidToast({ riderName, amount }) {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setToasts(prev => [...prev, { id, riderName, amount }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  }
+
+  function dismissToast(id) {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }
+
+  // #195 + #254: Supabase realtime — kun aktive auktioner. INSERT på auction_bids
+  // refetcher bid-timeline OG activeAuction (ny pris/bidder). UPDATE på auctions
+  // trigger pris-flash + overbid-toast + confetti på win, og kollapser timeline
+  // når status='completed'. Egen kanalnavn pr. auction undgår kollision med
+  // AuctionsPage's "auctions-live" channel.
   useEffect(() => {
     const auctionId = bidTimeline?.auction_id;
     const isLive = bidTimeline?.status === "active" || bidTimeline?.status === "extended";
@@ -517,19 +769,137 @@ export default function RiderStatsPage() {
         schema: "public",
         table: "auction_bids",
         filter: `auction_id=eq.${auctionId}`,
-      }, () => { loadBidTimeline(); })
+      }, () => {
+        loadBidTimeline();
+        loadActiveAuctionFull(rider);
+      })
       .on("postgres_changes", {
         event: "UPDATE",
         schema: "public",
         table: "auctions",
         filter: `id=eq.${auctionId}`,
       }, payload => {
-        // Når auktionen finaliserer → refetch så timeline kollapser til final-only shape
-        if (payload.new?.status === "completed") loadBidTimeline();
+        const updated = payload.new;
+        const prev = activeAuctionRef.current;
+        const myTeam = myTeamIdRef.current;
+        if (prev && updated) {
+          if (shouldFlashPrice(prev, updated)) {
+            setPriceFlash(true);
+            setTimeout(() => setPriceFlash(false), 1500);
+          }
+          if (isOverbidEvent(prev, updated, myTeam)) {
+            const r = rider;
+            pushOverbidToast({
+              riderName: r ? `${r.firstname} ${r.lastname}` : "rytter",
+              amount: updated.current_price,
+            });
+          }
+        }
+        if (updated.status === "completed") {
+          loadBidTimeline();
+          // Confetti hvis manager vandt
+          const mergedForLeader = { ...(prev || {}), ...updated, rider: prev?.rider };
+          if (myTeam && getAuctionLeaderId(mergedForLeader) === myTeam) {
+            setCelebration({
+              title: "Du vandt auktionen! 🏆",
+              subtitle: "Rytteren er nu på dit hold",
+              amount: updated.current_price,
+            });
+          }
+          loadActiveAuctionFull(rider);
+        } else {
+          loadActiveAuctionFull(rider);
+        }
       })
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [bidTimeline?.auction_id, bidTimeline?.status]);
+  }, [bidTimeline?.auction_id, bidTimeline?.status, rider]);
+
+  // #254: bid-handlers — POST /bid, PATCH /proxy, DELETE /proxy.
+  // Re-bruger samme endpoints som AuctionsPage; #194 race-confirm modtages
+  // som 409 og overbringes til top-level RacePriceModal.
+  async function handleAuctionBid(auctionId, amount, { skipExpectedPrice = false } = {}) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const cur = activeAuctionRef.current;
+    const body = { amount };
+    if (!skipExpectedPrice && cur) body.expected_current_price = cur.current_price;
+    const res = await fetch(`${API}/api/auctions/${auctionId}/bid`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 409) {
+      let raceData = {};
+      try { raceData = await res.json(); } catch { /* ignore */ }
+      if (raceData.error === "price_changed") {
+        setRaceConfirm({
+          auctionId,
+          newPrice: raceData.currentPrice,
+          newMinBid: raceData.minimumBid,
+        });
+        loadActiveAuctionFull(rider);
+        return { ok: false, race: true };
+      }
+    }
+    if (res.ok) {
+      fetch(`${API}/api/achievements/check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ context: "auction_bid", data: { amount } }),
+      }).catch(() => {});
+      loadActiveAuctionFull(rider);
+      let okData = {};
+      try { okData = await res.json(); } catch { /* ignore */ }
+      return { ok: true, warnings: okData.warnings || [] };
+    }
+    let data = {};
+    try { data = await res.json(); } catch { /* ignore */ }
+    return { ok: false, error: data.error || "Buddet kunne ikke placeres" };
+  }
+
+  async function handleConfirmRaceBid() {
+    if (!raceConfirm) return;
+    const { auctionId, newMinBid } = raceConfirm;
+    setRaceConfirm(null);
+    await handleAuctionBid(auctionId, newMinBid, { skipExpectedPrice: true });
+  }
+
+  async function handleSetProxy(auctionId, maxAmount) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ max_amount: maxAmount }),
+    });
+    if (res.ok) { loadActiveAuctionFull(rider); return { ok: true }; }
+    let data = {};
+    try { data = await res.json(); } catch { /* ignore */ }
+    return { ok: false, error: data.error || "Fejl ved sæt autobud" };
+  }
+
+  async function handleRemoveProxy(auctionId) {
+    const { data: { session } } = await supabase.auth.getSession();
+    await fetch(`${API}/api/auctions/${auctionId}/proxy`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    loadActiveAuctionFull(rider);
+  }
+
+  function requestBidConfirm(payload) {
+    setBidConfirm(payload);
+  }
+
+  async function handleBidConfirm() {
+    if (!bidConfirm?.onConfirm) { setBidConfirm(null); return; }
+    setBidConfirmBusy(true);
+    try {
+      await bidConfirm.onConfirm();
+    } finally {
+      setBidConfirmBusy(false);
+      setBidConfirm(null);
+    }
+  }
 
   async function startAuction(startPrice, isGuaranteedSale = false, isFlash = false) {
     setAuctionError(null);
@@ -601,6 +971,33 @@ export default function RiderStatsPage() {
 
   return (
     <div className="max-w-2xl mx-auto min-w-0">
+      {/* #254: Bid-modaler — confirm før bud, race-confirm ved 409 stale price, confetti på win, overbid-toast */}
+      <BidConfirmModal
+        show={!!bidConfirm}
+        mode={bidConfirm?.mode}
+        riderName={bidConfirm?.riderName}
+        amount={bidConfirm?.amount}
+        busy={bidConfirmBusy}
+        onCancel={() => { if (!bidConfirmBusy) setBidConfirm(null); }}
+        onConfirm={handleBidConfirm}
+      />
+      <RacePriceModal
+        show={!!raceConfirm}
+        newPrice={raceConfirm?.newPrice ?? 0}
+        newMinBid={raceConfirm?.newMinBid ?? 0}
+        onCancel={() => setRaceConfirm(null)}
+        onConfirm={handleConfirmRaceBid}
+      />
+      <ConfettiModal
+        show={!!celebration}
+        onClose={() => setCelebration(null)}
+        title={celebration?.title || ""}
+        subtitle={celebration?.subtitle}
+        amount={celebration?.amount}
+        icon="🏆"
+      />
+      <OverbidToast toasts={toasts} onDismiss={dismissToast} />
+
       <button onClick={() => navigate(-1)} className="text-cz-3 hover:text-cz-1 text-sm mb-4 flex items-center gap-1">← Tilbage</button>
 
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
@@ -664,8 +1061,18 @@ export default function RiderStatsPage() {
             </p>
           )}
           {canAuction && !activeAuction && <AuctionButton rider={rider} isMyRider={isMyRider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} />}
-          {activeAuction && canAuction && (
-            <p className="text-cz-3 text-xs text-center py-1">Rytteren er allerede i en aktiv auktion</p>
+          {activeAuction && (
+            <RiderBidPanel
+              auction={activeAuction}
+              myTeamId={myTeamId}
+              myAvailableBalance={myBalance}
+              riderName={`${rider.firstname} ${rider.lastname}`}
+              onBid={handleAuctionBid}
+              onSetProxy={handleSetProxy}
+              onRemoveProxy={handleRemoveProxy}
+              requestBidConfirm={requestBidConfirm}
+              isFlashing={priceFlash}
+            />
           )}
           {canDirectOffer && <DirectOfferButton rider={rider} />}
           {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}

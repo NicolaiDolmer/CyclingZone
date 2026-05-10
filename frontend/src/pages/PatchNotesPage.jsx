@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.01",
+    date: "2026-05-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Feature · Byd direkte fra rytter-profilen (#254)",
+        items: [
+          "Manager · Når en rytter har en igangværende auktion, kan du nu byde på den direkte fra rytter-profilen — uden at gå omvejen via Auktioner-listen. Bud-panelet ligger lige under rytter-headeren og viser højeste bud, tid tilbage, sælger og status-badges (Du leder · Du er overbudt · Du sælger · ⚡ Forlænget · ⚡ Flash).",
+          "Manager · Fuld feature-parity med /auktioner — du kan både afgive almindelige bud, sætte/ændre/fjerne autobud-loft og bekræfte via samme bud-confirm-modal. Race-confirm-modal vises hvis prisen er ændret mens du forberedte dit bud (#194), og confetti popper når du vinder.",
+          "Manager · Live-opdatering på rytter-profilen — pris-cellen blinker når andre overbyder dig, og en toast siger 'Du er overbudt på X' så du kan reagere uden at refresh'e siden. Samme realtime-channel som /auktioner.",
+          "Refactor · Bid + autobud-state-machinen er trukket ud i en delt `useAuctionBidding`-hook + `auctionLogic`-modul, så AuctionsPage's tabel-row, mobile card og rytter-profilens bid-panel deler ÉN kilde til sandhed. Når der fixes en bug i bud-flowet fremover, bliver alle tre steder rettet på én gang.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.00",
     date: "2026-05-10",
     label: "Beta",

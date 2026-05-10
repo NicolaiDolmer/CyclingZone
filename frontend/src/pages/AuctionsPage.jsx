@@ -8,7 +8,7 @@ import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { RacePriceModal } from "../components/RacePriceModal";
 import { Flag } from "../components/Flag";
-import { formatCz, getMinimumAuctionBid } from "../lib/marketValues";
+import { formatCz } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
 import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
 import OnboardingTour from "../components/OnboardingTour";
@@ -26,6 +26,13 @@ import {
   getMyParticipatingAuctionIds,
   pruneStaleBidEvents,
 } from "../lib/auctionsRealtime";
+import {
+  isManagerSeller,
+  getAuctionLeaderId,
+  getAuctionLeaderName,
+  getAuctionSellerLabel,
+} from "../lib/auctionLogic";
+import { useAuctionBidding } from "../lib/useAuctionBidding";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -50,43 +57,6 @@ const AUCTIONS_TOUR_STEPS = [
     body: "Hvis du byder i de sidste 10 minutter, forlænges auktionen automatisk. Du kan altid svare igen, hvis nogen overbyder dig på falderebet.",
   },
 ];
-
-// Bug #29 — squad-cap er warning, ikke block. Manager må gå over max under transfer-vinduet;
-// squadEnforcement-cron auto-sælger + bøder først ved vindue-luk hvis stadig over max.
-function formatBidWarning(warning) {
-  if (warning?.code === "squad_capacity_exceeded") {
-    const fine = warning.finePerRider * warning.exceedBy;
-    const points = warning.penaltyPointsPerRider * warning.exceedBy;
-    return `OBS: leder nu auktioner svarende til ${warning.totalAfter} ryttere (max ${warning.maxRiders}). ` +
-      `Hvis du stadig er ${warning.exceedBy} over ved vindue-luk: auto-salg + ${fine.toLocaleString("da-DK")} CZ$ bøde + ${points} fradrag-points.`;
-  }
-  return null;
-}
-
-function isManagerSeller(auction, teamId) {
-  return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
-}
-
-function getAuctionLeaderId(auction) {
-  if (auction?.current_bidder_id) return auction.current_bidder_id;
-  if (!auction?.is_guaranteed_sale && auction?.seller_team_id && auction?.rider?.team_id !== auction.seller_team_id) {
-    return auction.seller_team_id;
-  }
-  return null;
-}
-
-function getAuctionLeaderName(auction) {
-  if (auction?.current_bidder?.name) return auction.current_bidder.name;
-  if (getAuctionLeaderId(auction) === auction?.seller_team_id) return auction?.seller?.name;
-  return null;
-}
-
-function getAuctionSellerLabel(auction) {
-  if (auction?.seller_team_id && auction?.rider?.team_id === auction.seller_team_id) {
-    return auction?.seller?.name || "Manager";
-  }
-  return "AI";
-}
 
 function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   const active = sort === sortKey;
@@ -143,95 +113,24 @@ function Countdown({ end, status }) {
 
 // ── Auction table row ─────────────────────────────────────────────────────────
 function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats }) {
-  const minBid = getMinimumAuctionBid(auction.current_price || 0, {
-    hasActiveBid: Boolean(auction.current_bidder_id),
-  });
-  const [bidAmount, setBidAmount] = useState(minBid);
-  const [bidStatus, setBidStatus] = useState(null);
-  const [errorText, setErrorText] = useState("");
-  const [warningText, setWarningText] = useState("");
-  const [proxyExpanded, setProxyExpanded] = useState(false);
-  const [proxyInput, setProxyInput] = useState(0);
-  const [proxyStatus, setProxyStatus] = useState(null);
-  const [proxyErrorText, setProxyErrorText] = useState("");
-
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller  = isManagerSeller(auction, myTeamId);
   const imWinning = getAuctionLeaderId(auction) === myTeamId;
   const canBid    = !isMyRider && auction.status !== "completed";
-  const myProxy   = auction.myProxyMax || null;
   const onWatchlist = r?.id ? watchlist?.has(r.id) : false;
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   const riderName = r ? `${r.firstname} ${r.lastname}` : "rytter";
 
-  useEffect(() => {
-    setBidAmount(minBid);
-    setErrorText("");
-  }, [minBid]);
-
-  useEffect(() => {
-    if (proxyExpanded) setProxyInput(myProxy || bidAmount || minBid);
-  }, [proxyExpanded]);
-
-  function handleBid() {
-    if (bidAmount > myAvailableBalance) {
-      setBidStatus("error");
-      setErrorText("Buddet overstiger din tilgængelige balance (efter eksisterende bud)");
-      setTimeout(() => setBidStatus(null), 3000);
-      return;
-    }
-    requestBidConfirm({
-      mode: "bid",
-      riderName,
-      amount: bidAmount,
-      onConfirm: async () => {
-        setBidStatus("loading");
-        const result = await onBid(auction.id, bidAmount);
-        if (result.ok) {
-          setBidStatus("success");
-          const warningMsg = (result.warnings || []).map(formatBidWarning).filter(Boolean).join(" ");
-          if (warningMsg) {
-            setWarningText(warningMsg);
-            setTimeout(() => setWarningText(""), 10000);
-          }
-          setTimeout(() => setBidStatus(null), 2500);
-        } else if (result.race) {
-          // #194: top-level RacePriceModal håndterer — ryd loading-state, ingen row-error
-          setBidStatus(null);
-        } else {
-          setBidStatus("error");
-          setErrorText(result.error || "Buddet kunne ikke placeres");
-          setTimeout(() => setBidStatus(null), 3000);
-        }
-      },
-    });
-  }
-
-  function handleSaveProxy() {
-    requestBidConfirm({
-      mode: "proxy",
-      riderName,
-      amount: proxyInput,
-      onConfirm: async () => {
-        setProxyStatus("loading");
-        setProxyErrorText("");
-        const result = await onSetProxy(auction.id, proxyInput);
-        setProxyStatus(result.ok ? "saved" : "error");
-        if (result.ok) {
-          setProxyExpanded(false);
-        } else {
-          // #174: vis dansk fejlbesked fra backend (egen rytter, max-loft, balance, ...)
-          setProxyErrorText(result.error || "Fejl ved sæt autobud");
-        }
-        setTimeout(() => setProxyStatus(null), result.ok ? 2000 : 3000);
-      },
-    });
-  }
-
-  async function handleRemoveProxy() {
-    await onRemoveProxy(auction.id);
-  }
+  const {
+    minBid, myProxy,
+    bidAmount, setBidAmount, bidStatus, errorText, warningText,
+    proxyExpanded, setProxyExpanded, proxyInput, setProxyInput,
+    proxyStatus, proxyErrorText,
+    handleBid, handleSaveProxy, handleRemoveProxy,
+  } = useAuctionBidding({
+    auction, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName,
+  });
 
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
 
@@ -436,94 +335,25 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
 }
 
 function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats }) {
-  const minBid = getMinimumAuctionBid(auction.current_price || 0, {
-    hasActiveBid: Boolean(auction.current_bidder_id),
-  });
-  const [bidAmount, setBidAmount] = useState(minBid);
-  const [bidStatus, setBidStatus] = useState(null);
-  const [errorText, setErrorText] = useState("");
-  const [warningText, setWarningText] = useState("");
-  const [proxyExpanded, setProxyExpanded] = useState(false);
-  const [proxyInput, setProxyInput] = useState(0);
-  const [proxyStatus, setProxyStatus] = useState(null);
-  const [proxyErrorText, setProxyErrorText] = useState("");
-
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller = isManagerSeller(auction, myTeamId);
   const imWinning = getAuctionLeaderId(auction) === myTeamId;
   const canBid = !isMyRider && auction.status !== "completed";
-  const myProxy = auction.myProxyMax || null;
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
   const onWatchlist = r?.id ? watchlist?.has(r.id) : false;
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   const riderName = r ? `${r.firstname} ${r.lastname}` : "rytter";
 
-  useEffect(() => {
-    setBidAmount(minBid);
-  }, [minBid]);
-
-  useEffect(() => {
-    if (proxyExpanded) setProxyInput(myProxy || bidAmount || minBid);
-  }, [proxyExpanded]);
-
-  function handleBid() {
-    if (bidAmount > myAvailableBalance) {
-      setBidStatus("error");
-      setErrorText("Buddet overstiger din tilgængelige balance (efter eksisterende bud)");
-      setTimeout(() => setBidStatus(null), 3000);
-      return;
-    }
-    requestBidConfirm({
-      mode: "bid",
-      riderName,
-      amount: bidAmount,
-      onConfirm: async () => {
-        setBidStatus("loading");
-        const result = await onBid(auction.id, bidAmount);
-        if (result.race) {
-          // #194: top-level RacePriceModal håndterer — ryd loading-state, ingen card-error
-          setBidStatus(null);
-          return;
-        }
-        setBidStatus(result.ok ? "success" : "error");
-        setErrorText(result.error || "");
-        if (result.ok) {
-          const warningMsg = (result.warnings || []).map(formatBidWarning).filter(Boolean).join(" ");
-          if (warningMsg) {
-            setWarningText(warningMsg);
-            setTimeout(() => setWarningText(""), 10000);
-          }
-        }
-        setTimeout(() => setBidStatus(null), result.ok ? 2500 : 3000);
-      },
-    });
-  }
-
-  function handleSaveProxy() {
-    requestBidConfirm({
-      mode: "proxy",
-      riderName,
-      amount: proxyInput,
-      onConfirm: async () => {
-        setProxyStatus("loading");
-        setProxyErrorText("");
-        const result = await onSetProxy(auction.id, proxyInput);
-        setProxyStatus(result.ok ? "saved" : "error");
-        if (result.ok) {
-          setProxyExpanded(false);
-        } else {
-          // #174: vis dansk fejlbesked fra backend (egen rytter, max-loft, balance, ...)
-          setProxyErrorText(result.error || "Fejl ved sæt autobud");
-        }
-        setTimeout(() => setProxyStatus(null), result.ok ? 2000 : 3000);
-      },
-    });
-  }
-
-  async function handleRemoveProxy() {
-    await onRemoveProxy(auction.id);
-  }
+  const {
+    minBid, myProxy,
+    bidAmount, setBidAmount, bidStatus, errorText, warningText,
+    proxyExpanded, setProxyExpanded, proxyInput, setProxyInput,
+    proxyStatus, proxyErrorText,
+    handleBid, handleSaveProxy, handleRemoveProxy,
+  } = useAuctionBidding({
+    auction, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName,
+  });
 
   return (
     <div className={`bg-cz-card border rounded-xl p-4 transition-all ${imWinning ? "border-cz-accent/40 bg-cz-accent/10/40" : "border-cz-border"}`}>
