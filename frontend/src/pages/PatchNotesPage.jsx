@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "3.10",
+    date: "2026-05-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Quality · Backwards-audit fanger 'deployed kode + 0 data / 0 brugere'-mønstret (#287)",
+        items: [
+          "Internt · Nyt audit-script `backend/scripts/audit-feature-liveness.js` med 4 detector-klasser kører ugentligt cron + på alle PRs der rører schema/routes/frontend: (A) tabeller hvor backend skriver men der er 0 rows, (B) backend-endpoints uden frontend-caller, (C) migration committed men ikke applied, (D) prod-tabel uden CREATE TABLE i repo. Generaliserer slice 14 / #279-mønstret til flere drift-klasser.",
+          "Internt · Workflow `feature-liveness-audit.yml` blokerer PR-merge ved nye findings og opretter auto-tracking-issue (label `quality-drift`) ved cron-drift. Helper-RPCs i ny migration. Agent-doctor.ps1 kører samme check lokalt før push.",
+          "Internt · Første run mod main bekræftede #284: 3 board-tabeller (board_consequences/board_request_log/team_board_members) er milestone-gated tomme — ikke broken — som dokumenteret i b53d831. Detector D afslører desuden 15 Studio-oprettede legacy-tabeller fra før migration-workflow (separat backfill-issue følger).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.09",
     date: "2026-05-10",
     label: "Beta",

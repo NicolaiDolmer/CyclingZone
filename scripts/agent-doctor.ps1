@@ -149,8 +149,24 @@ if ($env:SUPABASE_URL -and $env:SUPABASE_SERVICE_KEY) {
   } else {
     Add-Check "rls-coverage" "WARN" "audit script failed (RPC missing? apply database/2026-05-10-audit-rls-helper.sql)"
   }
+
+  $livenessResult = Try-Run @("node", "backend/scripts/audit-feature-liveness.js", "--json")
+  if ($livenessResult.Ok) {
+    try {
+      $livenessData = $livenessResult.Text | ConvertFrom-Json
+      $total = [int]$livenessData.total_findings
+      $by = $livenessData.by_detector
+      $detail = if ($total -eq 0) { "no drift findings" } else { "$total finding(s): A=$($by.A) B=$($by.B) C=$($by.C) D=$($by.D)" }
+      Add-Check "feature-liveness" ($(if ($total -eq 0) { "OK" } else { "FAIL" })) $detail
+    } catch {
+      Add-Check "feature-liveness" "WARN" "audit ran but JSON parse failed"
+    }
+  } else {
+    Add-Check "feature-liveness" "WARN" "audit script failed (RPCs missing? apply database/2026-05-10-feature-liveness-helper.sql)"
+  }
 } else {
   Add-Check "rls-coverage" "WARN" "skipped (SUPABASE_URL/SERVICE_KEY missing)"
+  Add-Check "feature-liveness" "WARN" "skipped (SUPABASE_URL/SERVICE_KEY missing)"
 }
 
 Write-Host ""
