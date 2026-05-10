@@ -38,4 +38,18 @@ Verifikations-trin der afslørede bug'en:
 - [x] Migration anvendt + verificeret
 - [x] Issue #279 filed + closed med audit-trail
 - [x] Memory `project_slice14_uci_history.md` opdateret tidligere — bør nu inkludere note om RLS-verifikation
-- [ ] Overvej at audit alle nye tabeller siden 2026-04-15 for samme pattern (RLS enabled, 0 policies, auth-rolle-blind)
+- [x] **Audit alle eksisterende tabeller for samme mønster** → 1 ny bug fundet (`auction_timing_config`, læst af AdminPage.jsx:209 siden 2026-05-02). Fixet i samme PR.
+- [x] **Automation:** `backend/scripts/audit-rls-coverage.js` + `.github/workflows/rls-audit.yml` + `agent-doctor.ps1`-integration → fanger fremtidige forekomster automatisk (PR-gate + ugentligt cron + lokal pre-push). Se PR #285.
+- [x] **Investigation #284 filed:** 3 board-tabeller (`board_consequences`, `board_request_log`, `team_board_members`) har 0 rows i prod selv om backend skriver dem. Kan være samme klasse af "deployed kode + 0 data = potentielt broken feature" eller legitimt tomme. Investigation, ikke immediate fix.
+
+## Systemisk root cause (udvidet 2026-05-10)
+
+Det var ikke kun "vi glemte en policy". Kombinationen af:
+
+1. **Tabeller oprettet via Supabase Studio UI** (Studio auto-aktiverer RLS uden tvinge policies). Slice 14-tabeller findes ikke i `database/*.sql` — så repo og prod var i drift.
+2. **Migrations der kun delvis dækker DDL.** `auction_timing_config`-migrationen aktiverer ikke RLS — RLS blev sat via Studio efterfølgende.
+3. **service_role bypass = falsk grøn signal.** Backend-tests og scrapers skriver fint, hvilket maskerer at frontend-rolle er blokeret.
+4. **Empty-state UX maskerer data-pipeline-bugs.** "Ingen data endnu" lyder identisk med både "ingen data har eksisteret" og "data er der men kan ikke læses".
+5. **Ingen automatisk guard.** Hverken CI eller agent-doctor checkede RLS-coverage før 2026-05-10.
+
+Alle 5 håndteret nu: audit fanger #1 (Studio-drift), #2 (incomplete migrations), #3 (eksplicit authenticated-perspektiv), #5 (CI + cron + agent-doctor). #4 er UX-design og forbliver et risiko-mønster — overvej eventuelt at logge "rendered empty-state" til en table for senere analytics.
