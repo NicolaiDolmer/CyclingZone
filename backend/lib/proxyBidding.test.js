@@ -744,3 +744,175 @@ test("#44: alle challengers afvist på balance → cascade stopper uden counter-
   assert.equal(supabase.state.auction.current_bidder_id, "team-a");
   assert.equal(supabase.state.auction.current_price, 50000);
 });
+
+// #269: hvis reject_late_auction_bid-triggeren afviser cascade-INSERT (auction blev
+// expired/inaktiv mellem caller'ens fetch og cascade-iteration), skal cascade
+// breake gracefully — ingen yderligere iterationer, ingen auction-update.
+test("resolver: cascade breaker når INSERT afvises af late-bid trigger (#269)", async () => {
+  const auction = {
+    id: "auc-late",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 50000,
+    current_bidder_id: "team-a",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { team_id: "team-b", max_amount: 80000 }, // B challenger med proxy
+  ];
+  const auctionState = { ...auction };
+  const proxiesState = [...proxies];
+  const bidAttempts = [];
+  const auctionUpdates = [];
+
+  const supabase = {
+    from(table) {
+      if (table === "auctions") {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({ data: { ...auctionState }, error: null }),
+            }),
+          }),
+          update(payload) {
+            return {
+              eq: () => {
+                Object.assign(auctionState, payload);
+                auctionUpdates.push({ ...payload });
+                return Promise.resolve({ data: null, error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "auction_proxy_bids") {
+        return {
+          select: () => ({
+            eq: () => Promise.resolve({ data: proxiesState, error: null }),
+          }),
+          delete: () => ({
+            eq() { return this; },
+            then(onFulfilled) { return Promise.resolve({ data: null, error: null }).then(onFulfilled); },
+          }),
+        };
+      }
+      if (table === "auction_bids") {
+        return {
+          insert(payload) {
+            bidAttempts.push({ ...payload });
+            // Simuler trigger-fejl — auctionen blev expired mellem caller'ens fetch
+            // og denne cascade-INSERT.
+            return Promise.resolve({
+              data: null,
+              error: {
+                code: "P0001",
+                message: "auction_expired_at_insert (bid_time=... calculated_end=...)",
+              },
+            });
+          },
+        };
+      }
+      if (table === "teams") {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({ data: null, error: null }),
+              maybeSingle: () => Promise.resolve({ data: null, error: null }),
+            }),
+          }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  // Vigtigt: brug raw resolver så vi tester ægte canAffordAutoBidFn-default-flow
+  // hvis nødvendigt — her stuber vi alligevel for at undgå teams/proxy DB-roundtrip.
+  await resolveProxyBidsRaw({
+    supabase,
+    auctionId: "auc-late",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+    canAffordAutoBidFn: async () => true,
+  });
+
+  // Præcist 1 INSERT-forsøg (cascade prøvede én gang, så break'ede)
+  assert.equal(bidAttempts.length, 1, "cascade må ikke fortsætte efter trigger-rejection");
+  // Ingen auction-update (UPDATE skipper når INSERT fejler)
+  assert.equal(auctionUpdates.length, 0, "auction current_price må ikke opdateres når bid afvistes");
+});
+
+test("resolver: ikke-trigger INSERT-fejl propageres som exception (#269)", async () => {
+  const auction = {
+    id: "auc-other-err",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 50000,
+    current_bidder_id: "team-a",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [{ team_id: "team-b", max_amount: 80000 }];
+  const auctionState = { ...auction };
+
+  const supabase = {
+    from(table) {
+      if (table === "auctions") {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({ data: { ...auctionState }, error: null }),
+            }),
+          }),
+          update: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }),
+        };
+      }
+      if (table === "auction_proxy_bids") {
+        return {
+          select: () => ({ eq: () => Promise.resolve({ data: proxies, error: null }) }),
+          delete: () => ({
+            eq() { return this; },
+            then(onFulfilled) { return Promise.resolve({ data: null, error: null }).then(onFulfilled); },
+          }),
+        };
+      }
+      if (table === "auction_bids") {
+        return {
+          insert() {
+            return Promise.resolve({
+              data: null,
+              error: { code: "23505", message: "unique violation" },
+            });
+          },
+        };
+      }
+      if (table === "teams") {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({ data: null, error: null }),
+              maybeSingle: () => Promise.resolve({ data: null, error: null }),
+            }),
+          }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  await assert.rejects(
+    () => resolveProxyBidsRaw({
+      supabase,
+      auctionId: "auc-other-err",
+      bidTime: BID_TIME,
+      bidCfg: { extension_minutes: 10 },
+      notifyTeamOwner: async () => {},
+      canAffordAutoBidFn: async () => true,
+    }),
+    (err) => err?.code === "23505",
+  );
+});

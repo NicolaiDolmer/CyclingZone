@@ -2,7 +2,7 @@ import {
   computeWorstCaseCommitment,
   getMinimumAuctionBid,
 } from "./auctionRules.js";
-import { isAuctionExpired } from "./auctionEngine.js";
+import { isAuctionExpired, isLateBidTriggerError } from "./auctionEngine.js";
 
 const MAX_PROXY_ITERATIONS = 30;
 
@@ -190,7 +190,10 @@ export async function resolveProxyBids({
 
     // #257: cascade bids land with triggered_extension: false. The caller
     // applies extension once after cascade settles, only if leader changed.
-    await supabase.from("auction_bids").insert({
+    // #269: hvis reject_late_auction_bid-triggeren afviser cascade-buddet
+    // (auction'en er expired/inaktiv siden caller'ens fetch), break loop'et —
+    // ingen yderligere cascade-iterationer er meningsfulde.
+    const { error: cascadeInsertError } = await supabase.from("auction_bids").insert({
       auction_id: auctionId,
       team_id: autoBidder,
       amount: autoBidAmount,
@@ -198,6 +201,10 @@ export async function resolveProxyBids({
       triggered_extension: false,
       is_proxy: true,
     });
+    if (cascadeInsertError) {
+      if (isLateBidTriggerError(cascadeInsertError)) break;
+      throw cascadeInsertError;
+    }
 
     await supabase.from("auctions").update({
       current_price: autoBidAmount,

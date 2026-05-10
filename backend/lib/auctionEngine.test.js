@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { applyLeaderShiftExtension, checkBidExtension, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
+import {
+  applyLeaderShiftExtension,
+  checkBidExtension,
+  DEFAULT_AUCTION_CONFIG,
+  isLateBidTriggerError,
+} from "./auctionEngine.js";
 
 // Alle test-tidspunkter er i CEST-perioden (maj) hvor Copenhagen = UTC+2.
 // Hverdag close=22:00 CEST → 20:00 UTC. Hard cap = close + 60 min grace = 23:00 CEST.
@@ -320,4 +325,41 @@ test("applyLeaderShiftExtension: spam 1 CZ$ bud fra non-leader når proxy holder
   });
   assert.equal(result.extensionApplied, false, "spam-bud må ikke forlænge når proxy holder lead");
   assert.equal(supabase.state.auctionUpdates.length, 0);
+});
+
+// #269: isLateBidTriggerError matcher exception fra reject_late_auction_bid trigger.
+// Trigger raiser P0001 med besked startende med "auction_expired_at_insert" eller
+// "auction_not_active". App-kode bruger denne matcher til at returnere 400 (i stedet
+// for 500) når race-vinduet fanges af DB-laget.
+
+test("isLateBidTriggerError: P0001 + auction_expired_at_insert → true", () => {
+  const err = {
+    code: "P0001",
+    message: "auction_expired_at_insert (bid_time=2026-05-10 12:08:27.944+00 calculated_end=2026-05-10 12:08:27.636+00)",
+  };
+  assert.equal(isLateBidTriggerError(err), true);
+});
+
+test("isLateBidTriggerError: P0001 + auction_not_active → true", () => {
+  const err = { code: "P0001", message: "auction_not_active (status=completed)" };
+  assert.equal(isLateBidTriggerError(err), true);
+});
+
+test("isLateBidTriggerError: ikke-P0001 (fx 23505 unique-violation) → false", () => {
+  const err = { code: "23505", message: "duplicate key value" };
+  assert.equal(isLateBidTriggerError(err), false);
+});
+
+test("isLateBidTriggerError: P0001 men anden besked → false", () => {
+  const err = { code: "P0001", message: "some_other_business_rule_violation" };
+  assert.equal(isLateBidTriggerError(err), false);
+});
+
+test("isLateBidTriggerError: null/undefined → false", () => {
+  assert.equal(isLateBidTriggerError(null), false);
+  assert.equal(isLateBidTriggerError(undefined), false);
+});
+
+test("isLateBidTriggerError: error uden message-felt → false", () => {
+  assert.equal(isLateBidTriggerError({ code: "P0001" }), false);
 });

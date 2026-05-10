@@ -18,6 +18,7 @@ import { dirname, join } from "path";
 import {
   calculateAuctionEnd,
   isAuctionExpired,
+  isLateBidTriggerError,
   applyLeaderShiftExtension,
   DEFAULT_AUCTION_CONFIG,
 } from "../lib/auctionEngine.js";
@@ -998,13 +999,22 @@ router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
 
   // Record bid (triggered_extension flag may be set later by
   // applyLeaderShiftExtension if this bid ends up causing the extension).
-  await supabase.from("auction_bids").insert({
+  // #269: BEFORE INSERT trigger reject_late_auction_bid afviser bids hvor
+  // bid_time >= auctions.calculated_end (race-vinduet mellem fetch-expiry-check
+  // og INSERT). Oversæt P0001-fejlen til 400 "Auktionen er udløbet".
+  const { error: bidInsertError } = await supabase.from("auction_bids").insert({
     auction_id: auction.id,
     team_id: req.team.id,
     amount,
     bid_time: bidTime.toISOString(),
     triggered_extension: false,
   });
+  if (bidInsertError) {
+    if (isLateBidTriggerError(bidInsertError)) {
+      return res.status(400).json({ error: "Auktionen er udløbet" });
+    }
+    return res.status(500).json({ error: "Bud kunne ikke gemmes" });
+  }
 
   // Update auction (price + leader only — no extension yet).
   await supabase.from("auctions").update({
@@ -1220,6 +1230,7 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
       alreadyLeadingThisAuction: false,
     });
 
+    // #269: oversæt reject_late_auction_bid trigger-fejl til 400 i stedet for 500.
     const { error: bidInsertError } = await supabase.from("auction_bids").insert({
       auction_id: auction.id,
       team_id: req.team.id,
@@ -1229,6 +1240,9 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
       is_proxy: true,
     });
     if (bidInsertError) {
+      if (isLateBidTriggerError(bidInsertError)) {
+        return res.status(400).json({ error: "Auktionen er udløbet" });
+      }
       return res.status(500).json({ error: "Autobud kunne ikke placeres" });
     }
 

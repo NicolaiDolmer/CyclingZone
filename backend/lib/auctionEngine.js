@@ -170,6 +170,22 @@ export function isAuctionExpired(auctionEnd) {
 }
 
 /**
+ * Detect Supabase errors raised by the `reject_late_auction_bid` BEFORE INSERT
+ * trigger (#269). The trigger uses ERRCODE='P0001' (raise_exception) with a
+ * message starting with `auction_expired_at_insert` or `auction_not_active`.
+ *
+ * Used by POST /bid, PATCH /proxy openingBid, and the cascade in
+ * resolveProxyBids to translate the DB-level rejection into a user-visible
+ * 400 "Auktionen er udløbet" instead of bubbling up as a 500.
+ */
+export function isLateBidTriggerError(error) {
+  if (!error) return false;
+  if (error.code !== "P0001") return false;
+  const msg = error.message || "";
+  return msg.includes("auction_expired_at_insert") || msg.includes("auction_not_active");
+}
+
+/**
  * Apply auction-extension if and only if the leader actually changed (#257).
  *
  * Called AFTER the manual bid + proxy cascade have settled. Compares the

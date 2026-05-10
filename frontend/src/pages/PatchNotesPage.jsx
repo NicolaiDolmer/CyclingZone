@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "3.04",
+    date: "2026-05-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Bud kan ikke længere sniges igennem efter auktionen er udløbet (#269)",
+        items: [
+          "Manager · Bud der lander efter auktionens sluttidspunkt afvises nu konsekvent med 'Auktionen er udløbet'. Tidligere var der et race-vindue på 100-500 ms mellem at serveren tjekkede 'er auktionen udløbet?' og at buddet blev gemt — i den korridor kunne et bud klikket meget tæt på (eller lige efter) sluttidspunktet stadig blive accepteret og forlænge auktionen yderligere.",
+          "Manager · Konkret eksempel fra Axel Zingle's auktion 2026-05-10: et bud landede 308 ms EFTER calculated_end og udløste forlængelse #4, som muliggjorde forlængelse #5. Auktionen levede 11+ minutter ekstra. Med fixet kunne ingen af de to forlængelser være sket.",
+          "Backend · DB-håndhævet via `BEFORE INSERT` trigger på `auction_bids` (migration `2026-05-10-reject-late-auction-bid-trigger.sql`). Triggeren afviser inserts hvor `bid_time >= auctions.calculated_end` eller status ≠ 'active'/'extended', uanset om buddet kommer fra POST /bid, PATCH /proxy openingBid eller cascade-proxy-counter. App-laget oversætter Postgres-fejlen (`P0001 auction_expired_at_insert`) til en venlig 400 i stedet for 500. 569/569 backend-tests grønne (+8 nye dækker trigger-error matcher + cascade-break ved late-bid + andre INSERT-fejl propageres).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.03",
     date: "2026-05-10",
     label: "Beta",
