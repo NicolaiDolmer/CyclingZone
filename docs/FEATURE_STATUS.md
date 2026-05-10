@@ -120,6 +120,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Afledt holdprofil (specialisering, U25, national kerne + landenavn/flag, stjerneprofil)
 - **S7-B verificeret (2026-05-02):** `budget_modifier` opdateres korrekt ved season-end i `processTeamSeasonEnd()` for både afsluttede og kørende planer. Live DB: 0 inkonsistente rækker. Alle 10 economyEngine-tests grønne.
 - Nationale identitetsmål i balancerede planer; focus-switch lander som gradvis tradeoff
+- **Milestone-gated tabeller (verificeret 2026-05-10, [#284](https://github.com/NicolaiDolmer/CyclingZone/issues/284)):** `team_board_members`, `board_consequences` og `board_request_log` har 0 rows i prod by design indtil sæson 1 afslutter første gang. Skrive-paths fyrer korrekt — de er bare gated på milestones der ikke er nået endnu: (a) `team_board_members` populates af `assignBoardMembersForTeam` kaldt fra `startSequentialNegotiation` ved sæson-1-end, (b) `board_consequences` populates af `evaluateAndApplyConsequences` ved enhver sæson-end, (c) `board_request_log` populates når en manager submitter via `POST /api/board/.../request` — gated på `board.negotiation_status='completed'` AND non-baseline. Sæson 1 forventet ~2026-05-15 (Slice 09). Når feature-liveness-audit ([#287](https://github.com/NicolaiDolmer/CyclingZone/issues/287)) bygges, skal disse 3 tabeller whitelistes som "milestone-gated, trigger=after_season_1_end".
 
 ### Admin
 - Import af ryttere (Python-script `scripts/import_riders.py`) — se CONVENTIONS.md for navnematch-algoritme
