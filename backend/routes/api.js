@@ -1455,7 +1455,7 @@ router.post("/transfers/offer", requireAuth, async (req, res) => {
     .eq("id", rider.team_id)
     .single();
   if (sellerTeam?.is_bank) {
-    return res.status(400).json({ error: "Bankryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet." });
+    return res.status(400).json({ error: "AI-ryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet." });
   }
 
   // Check buyer balance
@@ -1794,7 +1794,7 @@ router.post("/transfers/:id/offer", requireAuth, async (req, res) => {
     .eq("id", listing.seller_team_id)
     .single();
   if (listingSeller?.is_bank)
-    return res.status(400).json({ error: "Bankryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet." });
+    return res.status(400).json({ error: "AI-ryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet." });
   const listingBuyerState = await getTeamMarketState(supabase, req.team.id);
   if (offer_amount > listingBuyerState.balance)
     return res.status(400).json({ error: "Du har ikke råd til dette tilbud" });
@@ -1876,7 +1876,7 @@ router.post("/transfers/swaps", requireAuth, async (req, res) => {
     .eq("id", requested.team_id)
     .single();
   if (requestedTeam?.is_bank)
-    return res.status(400).json({ error: "Bankryttere kan ikke indgå i direkte byttehandler. Brug auktioner i stedet." });
+    return res.status(400).json({ error: "AI-ryttere kan ikke indgå i direkte byttehandler. Brug auktioner i stedet." });
 
   if (cash_adjustment > 0) {
     const proposingState = await getTeamMarketState(supabase, req.team.id);

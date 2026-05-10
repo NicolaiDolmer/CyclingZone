@@ -946,7 +946,7 @@ export default function RiderStatsPage() {
   const auctionLabel = isMyRider
     ? "Sæt til auktion"
     : isBankRider
-      ? "Start auktion (bankrytter)"
+      ? "Start auktion (AI-rytter)"
       : isAiRider
         ? "Start auktion (AI-rytter)"
         : "Start auktion (fri rytter)";

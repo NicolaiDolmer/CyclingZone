@@ -9,7 +9,7 @@
 - Sælger modtager korrekt beløb
 - Fri/AI-rytter giver ikke provenu til auktions-initiatoren
 - Auktion annulleres sikkert hvis rytteren ved afslutning ejes af en anden menneskelig manager end initiatoren
-- Guaranteed sale på ejet rytter sender rytteren til banken og krediterer korrekt pris ved ingen bud
+- Guaranteed sale på ejet rytter sender rytteren til AI og krediterer korrekt pris ved ingen bud
 - Guaranteed sale på ikke-ejet rytter må ikke skabe payout eller falsk salgs-historik
 - Lukket transfervindue giver `pending_team_id` i stedet for direkte holdskifte
 - Fuldt vinderhold annullerer overdragelsen uden forkert payout
@@ -22,7 +22,7 @@
 - Begge parter skal bekræfte før transfer eller byttehandel lukkes
 - Begge parter accepteret + lukket vindue parkerer handlen som `window_pending` uden at markere listing som `sold`
 - `window_pending` direkte handler og swaps kan ikke annulleres af manager
-- Bankryttere kan ikke modtage direkte transfer- eller swaptilbud; de skal gå via auktion
+- AI-ryttere kan ikke modtage direkte transfer- eller swaptilbud; de skal gå via auktion
 - Endelig bekræftelse annullerer handlen hvis sælger ikke længere ejer rytteren
 - Endelig bekræftelse annullerer handlen hvis køber mangler saldo eller rammer squad limit
 - Gennemført transfer rydder relaterede listings, transferbud og bytteforslag op for rytteren
@@ -130,7 +130,7 @@ Alle bugfixes skal testes her eller have en begrundet test-note
 ### Auktion: no-bid og guaranteed sale
 - Opret guaranteed sale på en rytter du ejer
 - Lad auktionen udløbe uden bud
-- Bekræft: banken overtager rytteren og sælger får `guaranteed_price`
+- Bekræft: AI overtager rytteren og sælger får `guaranteed_price`
 - Opret derefter guaranteed sale på fri/AI-rytter
 - Lad den udløbe uden bud
 - Bekræft: ingen payout, ingen falsk salgs-historik, ingen forkert owner-state

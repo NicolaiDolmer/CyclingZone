@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.06",
+    date: "2026-05-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "UX · Banken hedder nu AI (#14)",
+        items: [
+          "Manager · Holdet 'Banken' er omdøbt til 'AI' i hele spillet — det var hele tiden samme hold som AI-/free-agent-poolen (samme team-record med både `is_ai=true` og `is_bank=true`), men de to navne forvirrede. Nu er det ét konsistent navn alle steder: rytter-profiler, hjælpetekster, auktionshistorik og finance-beskrivelser.",
+          "Manager · Garanteret salg fungerer præcis som før — startpris 50% af Værdi, AI køber rytteren hvis ingen manager byder højere. Kun ordlyden er ændret: 'Sælg til bank' → 'Garanteret salg', 'Bankryttere kan ikke modtage tilbud' → 'AI-ryttere kan ikke modtage tilbud'.",
+          "Backend · Team-rækken med `is_bank=true` har fået `name='AI'` i prod. `is_bank`-flaget bevares som intern routing-markør for guaranteed-sale-flowet (uændret kode-path i `auctionFinalization.js`). Ingen funktionel ændring — kun strenge i `api.js`, `auctionFinalization.js`, `HelpPage`, `TeamPage`, `RiderStatsPage`, `AdminPage` og docs.",
+          "Cleanup · Bug #245 (rytter fjernes fra hold ved auktion på pending-incoming) blev allerede fikset 2026-05-09 i commit `814b5dc` via `getAuctionStartIssue`-gate der returnerer 409 hvis `pending_team_id` er sat. Verificeret: 0 ryttere i prod har pending_team_id sat, og POST /api/auctions afviser tilstanden ved kilden.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.05",
     date: "2026-05-10",
     label: "Beta",

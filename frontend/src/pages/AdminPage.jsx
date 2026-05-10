@@ -1488,7 +1488,7 @@ export default function AdminPage() {
           <div className="flex flex-col gap-2">
             {activeAuctions.map(a => {
               const riderName = `${a.rider?.firstname || ""} ${a.rider?.lastname || ""}`.trim() || "—";
-              const sellerName = a.seller?.name || (a.seller_team_id ? "(ukendt sælger)" : "Banken/AI");
+              const sellerName = a.seller?.name || (a.seller_team_id ? "(ukendt sælger)" : "AI");
               const endTxt = a.calculated_end
                 ? new Date(a.calculated_end).toLocaleString("da-DK", { timeZoneName: "short" })
                 : "—";

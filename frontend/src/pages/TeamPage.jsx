@@ -107,7 +107,7 @@ function RiderActionModal({ rider, onClose, onAction }) {
               <button key={t} onClick={() => setTab(t)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
                   ${tab === t ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1"}`}>
-                {t === "auction" ? "⚡ Auktion" : t === "transfer" ? "↔ Transferliste" : "🏦 Sælg til bank"}
+                {t === "auction" ? "⚡ Auktion" : t === "transfer" ? "↔ Transferliste" : "🏦 Garanteret salg"}
               </button>
             ))}
           </div>
@@ -141,11 +141,11 @@ function RiderActionModal({ rider, onClose, onAction }) {
             <div>
               <p className="text-cz-2 text-xs mb-3">
                 Starter en auktion til <span className="text-cz-accent-t font-mono">{guaranteedPrice.toLocaleString("da-DK")} CZ$</span> (50% af værdien).
-                Hvis ingen manager byder højere, køber banken rytteren til denne pris — du er altid garanteret beløbet.
+                Hvis ingen manager byder højere, køber AI rytteren til denne pris — du er altid garanteret beløbet.
               </p>
               <button onClick={sellToBank} disabled={loading}
                 className="w-full px-4 py-2 bg-cz-info/20 text-cz-info border border-cz-info/30 font-bold rounded-lg text-sm hover:bg-cz-info/30 disabled:opacity-50">
-                {loading ? "..." : `Sælg til bank — ${guaranteedPrice.toLocaleString("da-DK")} CZ$ garanteret`}
+                {loading ? "..." : `Garanteret salg — ${guaranteedPrice.toLocaleString("da-DK")} CZ$`}
               </button>
             </div>
           )}

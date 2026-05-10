@@ -94,10 +94,10 @@ const SECTIONS = [
       {
         title: "Sådan starter du en auktion",
         steps: [
-          "Gå til Ryttere og find en fri, AI- eller bankrytter.",
+          "Gå til Ryttere og find en fri eller AI-rytter.",
           "Klik på rytterens navn for at åbne statistiksiden.",
           "Klik 'Start auktion' og sæt en startpris — minimum svarer til rytterens Værdi.",
-          "På fri, AI- og bankryttere er startprisen dit første bud, så du fører auktionen med det samme.",
+          "På fri og AI-ryttere er startprisen dit første bud, så du fører auktionen med det samme.",
           "Auktionen er nu synlig for alle under Auktioner.",
         ],
       },
@@ -147,7 +147,7 @@ const SECTIONS = [
           "Klik '↔ Send transfertilbud' nederst på siden.",
           "Indtast dit tilbud i CZ$ og en valgfri besked.",
           "Klik 'Send tilbud' — sælger modtager en notifikation.",
-          "Bankryttere kan ikke modtage direkte tilbud; de skal købes via auktion.",
+          "AI-ryttere kan ikke modtage direkte tilbud; de skal købes via auktion.",
         ],
       },
       {
@@ -540,8 +540,8 @@ const FAQ = [
     a: "Nej. Når begge parter har accepteret, er handlen låst. Systemet kan stadig annullere den ved vindueåbning, hvis ejerskab, saldo eller holdgrænser ikke længere holder.",
   },
   {
-    q: "Kan jeg købe bankryttere med direkte tilbud?",
-    a: "Nej. Bankryttere kan ikke modtage direkte transfer- eller byttetilbud. De skal købes via auktion.",
+    q: "Kan jeg købe AI-ryttere med direkte tilbud?",
+    a: "Nej. AI-ryttere kan ikke modtage direkte transfer- eller byttetilbud. De skal købes via auktion.",
   },
   {
     q: "Hvornår udløber en auktion?",

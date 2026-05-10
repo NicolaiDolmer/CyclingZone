@@ -52,7 +52,7 @@
 - Auktionsvarighed: **4 timer** (eller vinduesluk — hvad der sker først)
 - Bud inden for de sidste **10 minutter** → forlænger med 10 min fra budtidspunkt
 - Forlænget slut kan **ikke** overskride vinduesluk samme dag
-- **Guaranteed sale**: Startpris = 50% af rytterens markedsværdi (`market_value`). Banksalg ved ingen bud gælder kun, hvis rytteren faktisk var på sælgerens hold.
+- **Guaranteed sale**: Startpris = 50% af rytterens markedsværdi (`market_value`). Garanteret salg til AI ved ingen bud gælder kun, hvis rytteren faktisk var på sælgerens hold.
 
 ### Minimumsforøgelse
 - `min_increment` felt på auktionen (hardcoded i API ved oprettelse)
@@ -68,7 +68,7 @@
 - Vinderens saldo trækkes altid ved gyldig afslutning
 - Sælger krediteres kun, hvis rytteren faktisk var på sælgerens hold
 - Hvis rytteren ved afslutning ejes af et andet menneskeligt hold end initiatoren, annulleres auktionen som stale i stedet for at gennemføre med forkert payout
-- Guaranteed sale til banken sker kun for en ejet rytter med `is_guaranteed_sale = true` og ingen menneskelige bud
+- Guaranteed sale til AI sker kun for en ejet rytter med `is_guaranteed_sale = true` og ingen menneskelige bud (intern routing fortsat via `is_bank=true`-flaget)
 - Hvis transfervinduet er lukket ved auktionsafslutning, sættes rytteren på `pending_team_id` i stedet for at skifte hold med det samme
 - Squad limit kontrolleres ved auktionsafslutning, ikke kun ved budgivning
 - Squad-limit vurderes ud fra current riders + `pending_team_id` + aktive indlån (`loan_agreements` hvor holdet er låner)

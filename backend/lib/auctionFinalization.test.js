@@ -859,7 +859,7 @@ test("finalizeAuctionById keeps guaranteed sale on non-owned riders payout-free 
         },
         bank: {
           id: "bank",
-          name: "Banken",
+          name: "AI",
           balance: 999999,
           division: 1,
           user_id: null,

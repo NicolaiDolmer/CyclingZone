@@ -440,7 +440,7 @@ async function finalizeAuctionRecord({
       payload: {
         type: "transfer_in",
         amount: salePrice,
-        description: `Garanteret banksalg: ${auction.rider.firstname} ${auction.rider.lastname}`,
+        description: `Garanteret AI-salg: ${auction.rider.firstname} ${auction.rider.lastname}`,
         season_id: activeSeasonId,
         actor_type: FINANCE_ACTOR_TYPE.CRON,
         actor_id: null,
@@ -455,8 +455,8 @@ async function finalizeAuctionRecord({
     await notifyTeamOwner(
       auction.seller_team_id,
       "auction_won",
-      "Rytter solgt til banken",
-      `${auction.rider.firstname} ${auction.rider.lastname} er solgt til Banken for ${salePrice} CZ$ (garanteret pris)`,
+      "Rytter solgt til AI",
+      `${auction.rider.firstname} ${auction.rider.lastname} er solgt til AI for ${salePrice} CZ$ (garanteret pris)`,
       auction.id
     );
   } else if (auction.seller_team_id) {

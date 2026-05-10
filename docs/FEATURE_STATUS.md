@@ -48,7 +48,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Swap-forslag med kontantjustering + modtilbud
 - Delt backend confirm-path (ejerskab, saldo, squad-limit + oprydning ved gennemførelse)
 - Parkerede `window_pending` transfers/swaps kan ikke manager-annulleres efter begge parter har accepteret
-- Bank/AI-ryttere skjules fra direkte tilbud på rytterprofilen; bankryttere blokeres også server-side fra direkte transfer/bytte
+- AI-ryttere skjules fra direkte tilbud på rytterprofilen og blokeres server-side fra direkte transfer/bytte
 - Tilbagetræk tilbud (withdraw, inkl. modtilbud)
 - Sendte og modtagne afsluttede tilbud kan arkiveres per manager-side uden at slette den anden parts historik; dashboardet viser nu konkrete tilbud der kræver handling (v1.77)
 - Notifikationer til sælger ved nyt tilbud
