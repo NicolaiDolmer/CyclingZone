@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.17",
+    date: "2026-05-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Økonomi-panel taler dansk nu",
+        items: [
+          "Admin · Felterne `Reason code`, `Actor type`, `Source path` og `Action type` vises som danske labels (fx \"Sponsorindtægt (sæsonstart)\" i stedet for `season_start_sponsor`, \"Automatisk job\" i stedet for `cron`, \"Auktion — udbetaling til sælger\" i stedet for `auctionFinalization.finalizeAuctionRecord.seller`).",
+          "Admin · Detalje-modalen er omdøbt: `Reason code` → Begivenhed, `Actor type` → Hvem udløste, `Source path` → Kilde i koden, `Idempotency key` → Sikrings-nøgle. Den tekniske enum-værdi vises stadig i parentes så devs kan korrelere med kode/logs.",
+          "Admin · Kolonneoverskrifter (`Reason`, `Actor`, `Source path`, `Action`) er omdøbt til Begivenhed, Udløst af, Kilde i koden, Handling.",
+          "Ingen DB- eller API-ændringer — kun visning.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.16",
     date: "2026-05-11",
     label: "Beta",
