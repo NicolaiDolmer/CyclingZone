@@ -10,6 +10,7 @@ import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import EconomyAdminSection from "../components/admin/EconomyAdminSection";
 import SeasonCycleSection from "../components/admin/SeasonCycleSection";
 import RacePoolSection from "../components/admin/RacePoolSection";
+import { logEvent } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -272,6 +273,7 @@ export default function AdminPage() {
   }
 
   useEffect(() => { loadAll(); }, []);
+  useEffect(() => { logEvent("feature_admin_auction_config_opened"); }, []);
 
   async function handleCancelAuction(auction) {
     const riderName = `${auction.rider?.firstname || ""} ${auction.rider?.lastname || ""}`.trim() || "rytter";

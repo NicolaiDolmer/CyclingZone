@@ -5,6 +5,7 @@ import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
 import FinanceForecastCard from "../components/FinanceForecastCard";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
+import { logEvent } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -66,6 +67,9 @@ export default function FinancePage() {
   const [reservedBalance, setReservedBalance] = useState(0);
   const [forecast, setForecast] = useState(null);
   const [forecastLoading, setForecastLoading] = useState(true);
+  useEffect(() => {
+    if (!forecastLoading && forecast) logEvent("feature_finance_forecast_card_viewed");
+  }, [forecastLoading, forecast]);
   const [activeSeasonId, setActiveSeasonId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ text: "", type: "" });

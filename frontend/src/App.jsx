@@ -4,6 +4,7 @@ import { supabase } from "./lib/supabase";
 import Layout from "./components/Layout";
 import CookieBanner from "./components/CookieBanner.jsx";
 import ClarityIntegration from "./lib/clarityIntegration.jsx";
+import { logEvent } from "./lib/logEvent";
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
@@ -66,8 +67,14 @@ export default function App() {
   const [session, setSession] = useState(undefined);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => setSession(session));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) logEvent("session_started");
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      if (event === "SIGNED_IN") logEvent("session_started");
+    });
     return () => subscription.unsubscribe();
   }, []);
 

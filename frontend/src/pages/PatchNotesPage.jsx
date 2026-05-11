@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.20",
+    date: "2026-05-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "Observabilitet · Event-logging baseline (#137)",
+        items: [
+          "Manager · Hvis du har accepteret Analyse-kategorien, registreres nu 10 anonyme handlinger pr. spiller: log-ins, auktionsvisninger, bud, transfertilbud, notifikations-klik samt 5 \"feature-impressions\" (Udvikling-fanen, Hall of Fame, Finance forecast, Board-konsekvenser, Admin-auktionsregler). Vi ser kun aggregeret data — RLS sikrer at du kun kan se dine egne events.",
+          "Manager · Hvis du har afslået Analyse, logges intet — samme gate som Microsoft Clarity (#297).",
+          "DB · Ny `player_events`-tabel (team_id, user_id, event_name, event_data, created_at) med RLS-policies så managers kun ser egne rækker.",
+          "Backwards-audit · Ny Detector E i `audit-feature-liveness` finder \"deployed feature med 0 impressions sidste 30 dage\" — generaliserer slice 14 / #279-mønstret til frontend-only features hvor Detector A (backend-write) ikke kan se noget. Workflow kører ugentligt mandage 04:00 UTC og åbner tracking-issue ved fund.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.19",
     date: "2026-05-11",
     label: "Beta",

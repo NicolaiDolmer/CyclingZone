@@ -19,6 +19,7 @@ import WatchlistStar from "../components/WatchlistStar";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
+import { logEvent } from "../lib/logEvent";
 import {
   isOverbidEvent,
   shouldFlashPrice,
@@ -581,6 +582,8 @@ export default function AuctionsPage() {
   const myTeamIdRef = useRef(null);
   useEffect(() => { auctionsRef.current = auctions; }, [auctions]);
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
+
+  useEffect(() => { logEvent("auction_view"); }, []);
 
   // 1s tick: opdater "now" så ticker+sidebar relative-tid bevæger sig,
   // og prune events ældre end 30s ud af bufferen.

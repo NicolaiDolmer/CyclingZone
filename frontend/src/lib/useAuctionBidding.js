@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getMinimumAuctionBid } from "./marketValues";
 import { formatBidWarning } from "./auctionLogic";
+import { logEvent } from "./logEvent";
 
 // Delt bid + autobud-loft state-machine. Bruges af AuctionRow (desktop tabel),
 // AuctionCard (mobil card) og RiderStatsPage (rytter-profil) — så vi har ÉN kilde
@@ -65,6 +66,7 @@ export function useAuctionBidding({
         setBidStatus(result.ok ? "success" : "error");
         setErrorText(result.error || "");
         if (result.ok) {
+          logEvent("auction_bid_placed", { auction_id: auction.id, amount: bidAmount });
           const warningMsg = (result.warnings || []).map(formatBidWarning).filter(Boolean).join(" ");
           if (warningMsg) {
             setWarningText(warningMsg);

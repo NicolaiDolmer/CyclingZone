@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import BoardEmptyState from "../components/BoardEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
+import { logEvent } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
 const PLAN_LABELS = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" };
@@ -783,6 +784,9 @@ function formatCash(value) {
 
 function BoardConsequencesPanel({ consequences = [] }) {
   const visible = consequences.filter((c) => CONSEQUENCE_LAYER_META[c.layer]);
+  useEffect(() => {
+    if (visible.length > 0) logEvent("feature_board_consequences_panel_viewed", { count: visible.length });
+  }, [visible.length]);
   if (visible.length === 0) return null;
 
   return (
