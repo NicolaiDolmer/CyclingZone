@@ -3,8 +3,11 @@ import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
 
+const PUBLIC_APP_URL =
+  import.meta.env.VITE_PUBLIC_APP_URL || "https://cycling-zone.vercel.app";
+
 function getPasswordResetRedirectUrl() {
-  return new URL("/reset-password", window.location.origin).toString();
+  return new URL("/reset-password", PUBLIC_APP_URL).toString();
 }
 
 export default function LoginPage() {
