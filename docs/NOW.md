@@ -16,6 +16,7 @@ Historik før 2026-05-10 ligger i [`NOW_HISTORIK_2026-05-09-PRECOMPACT.md`](arch
 - 2026-05-11: **Signup-økonomi fix klar som v3.15** — live-probe fandt 2 manager-placeholder-hold (Chris Machines + Equipo Kern Pharma, 0 finance rows). `teamProfileEngine` reparerer placeholder-path, migration retter DB-default/signup-trigger + berørte rows. Backend 583/583 grøn, frontend build grøn.
 - 2026-05-11: **Pensionerede ryttere klar som v3.16** — `riders.is_retired`, admin-toggle på `/admin`, skjult fra rytter-/handelssøgninger, og backend-block på nye auktioner/transfers/swaps/lejeaftaler. Backend 584/584 grøn, frontend build grøn.
 - 2026-05-11: **#83 Slice 07e soak-gate BESTÅET** — post_phase_b_null=0, post_phase_b_populated=61. Issue lukket.
+- 2026-05-11: **#297 Consent management framework LIVE som v3.18** — cookie-banner med 4 kategorier (Nødvendig/Analyse/Marketing/E-mail), `useConsent()` hook, `/privatlivspolitik` side, ProfilePage > Privatliv-sektion. Microsoft Clarity gates på Analyse-consent; custom tags `manager_id`/`division`/`season_number`; `data-clarity-mask` på email + Discord-ID. DB-migration `users.consent_preferences JSONB` applied. #52-restscope (Clarity AC) leveret som del af samme PR. `docs/clarity/README.md` weekly review template klar. Squash `9aea6de`.
 
 ## Næste session (prioriteret)
 1. **Sæson 1 race-udvælgelse på /admin** ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242)) — vælg sæson 1, race-dage 60, behold WT-eksklusion, generér forslag, gem. Bruger klikker selv sæson-cyklus senere. **Deadline ~2026-05-15.**
