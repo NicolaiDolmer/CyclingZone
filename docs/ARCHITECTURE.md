@@ -203,6 +203,7 @@ Season flow notes:
 - De admin-entrypoints ejes nu kun af `backend/routes/api.js`, så season-flowets guardrails ikke kan drive mellem router og bootstrap-server
 - Den kanoniske season engine ligger i `backend/lib/economyEngine.js`
 - `race_results` er persisted sandhed for standings; `season_standings` recalculeres derfra og persisterer også `rank_in_division`
+- `backend/lib/sponsorEngine.js` er delt sponsor-kontrakt: sæson 1 bruger fast intro-sponsor, sæson 2+ beregner 200K base + 0-150K variabel sponsor fra forrige sæsons `season_standings.total_points`/`rank_in_division`; `processSeasonStart`, `buildTransitionPlan` og `/api/me/finance-forecast` skal bruge samme helper
 - `backend/lib/raceResultsEngine.js` er shared execution path for result-finalisering, prize-write og standings-recalculation
 - `backend/lib/adminImportResultsHandler.js` binder den direkte xlsx-import til samme shared result-engine som pending-approval flowet
 - Transfer-window-state er del af season-flowets runtime-kontrakt

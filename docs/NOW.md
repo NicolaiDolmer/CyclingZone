@@ -10,6 +10,7 @@ Historik før 2026-05-10 ligger i [`NOW_HISTORIK_2026-05-09-PRECOMPACT.md`](arch
 - 2026-05-10: **#286 Brugerverifikation-gate i PR-template LIVE** — PR-template + workflow `pr-verification-check.yml`, PR #290 merged.
 - 2026-05-10: **GitHub Projects/cleanup + transfer/auction fixes v3.01-v3.09 LIVE** — detaljer i arkivet nævnt ovenfor.
 - 2026-05-10: **Token-audit session** — fandt at `NOW.md`, `SESSION_CONTEXT.md`, Claude memory/transcripts og unbounded issue-prefetch var største context-drivere; bounded prefetch indført.
+- 2026-05-11: **#84 Slice 07f variabel sponsor implementeret som v3.12** — `sponsorEngine` deles af season-start payout, admin transition-preview og finance forecast. Sæson 1 fast 240K; sæson 2+ 200K base + 0-150K resultatvariabel før board/pullout-modifier. Backend 577/577 grøn, frontend build grøn.
 
 ## Næste session (prioriteret)
 1. **Sæson 1 race-udvælgelse på /admin** ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242)) — vælg sæson 1, race-dage 60, behold WT-eksklusion, generér forslag, gem. Bruger klikker selv sæson-cyklus senere.

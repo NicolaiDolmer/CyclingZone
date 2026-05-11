@@ -2686,7 +2686,7 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
         .eq("status", "active"),
       supabase
         .from("seasons")
-        .select("number")
+        .select("id, number")
         .eq("status", "active")
         .maybeSingle(),
       supabase.from("loan_config").select("debt_ceiling").eq("division", req.team.division),
@@ -2726,6 +2726,15 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
     );
     const debtCeiling = configsRes.data?.[0]?.debt_ceiling ?? null;
     const currentSeasonNumber = activeSeasonRes.data?.number ?? null;
+    let lastSeasonStandings = [];
+    if (activeSeasonRes.data?.id) {
+      const { data: standingsData, error: standingsError } = await supabase
+        .from("season_standings")
+        .select("team_id, division, rank_in_division, total_points")
+        .eq("season_id", activeSeasonRes.data.id);
+      if (standingsError) throw standingsError;
+      lastSeasonStandings = standingsData || [];
+    }
 
     const forecast = computeFinanceForecast({
       team,
@@ -2738,6 +2747,10 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       totalDebt,
       debtCeiling,
       currentSeasonNumber,
+      targetSeasonNumber: Number.isInteger(currentSeasonNumber)
+        ? currentSeasonNumber + 1
+        : null,
+      lastSeasonStandings,
     });
 
     res.json(forecast);

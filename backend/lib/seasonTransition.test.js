@@ -39,6 +39,7 @@ function createMockSupabase(initialState = {}) {
     seasons: initialState.seasons ? [...initialState.seasons] : [],
     transfer_windows: initialState.transfer_windows ? [...initialState.transfer_windows] : [],
     teams: initialState.teams ? [...initialState.teams] : [],
+    season_standings: initialState.season_standings ? [...initialState.season_standings] : [],
     admin_log: initialState.admin_log ? [...initialState.admin_log] : [],
   };
   const calls = { inserts: [], updates: [] };
@@ -166,6 +167,34 @@ test("buildTransitionPlan — sæson 0 → 1 plan med 22 humans, sponsor 240K hv
   assert.equal(plan.teams_affected, 22);
   assert.equal(plan.sponsor_base_total, 22 * 240000);
   assert.equal(plan.already_transitioned, false);
+});
+
+test("buildTransitionPlan — sæson 1 → 2 preview viser variabel sponsor", async () => {
+  const supabase = createMockSupabase({
+    seasons: [{ id: "season-1", number: 1, status: "active", start_date: "2026-05-15", end_date: null }],
+    teams: [
+      { id: "team-1", name: "Top Team", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false },
+      { id: "team-2", name: "Mid Team", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false },
+      { id: "team-3", name: "Bottom Team", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false },
+    ],
+    season_standings: [
+      { season_id: "season-1", team_id: "team-1", division: 3, total_points: 180, rank_in_division: 1 },
+      { season_id: "season-1", team_id: "team-2", division: 3, total_points: 120, rank_in_division: 2 },
+      { season_id: "season-1", team_id: "team-3", division: 3, total_points: 60, rank_in_division: 3 },
+    ],
+  });
+
+  const plan = await buildTransitionPlan({
+    supabase,
+    fromSeasonId: "season-1",
+  });
+
+  assert.equal(plan.to_season.number, 2);
+  assert.equal(plan.sponsor_breakdown[0].sponsor_base, 350000);
+  assert.equal(plan.sponsor_breakdown[0].sponsor_mode, "variable");
+  assert.equal(plan.sponsor_breakdown[1].sponsor_base, 275000);
+  assert.equal(plan.sponsor_breakdown[2].sponsor_base, 200000);
+  assert.equal(plan.sponsor_base_total, 825000);
 });
 
 test("buildTransitionPlan — already_transitioned=true når sæson 1 allerede eksisterer", async () => {

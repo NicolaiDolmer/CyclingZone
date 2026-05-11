@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "3.12",
+    date: "2026-05-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "Feature · Sponsor følger resultater fra sæson 2 (#84)",
+        items: [
+          "Manager · Sponsor er nu sportsligt fra sæson 2: 200.000 CZ$ fast base + 0-150.000 CZ$ variabel del baseret på forrige sæsons point og placering i divisionen. Sæson 1 forbliver fast 240.000 CZ$ som introsæson.",
+          "Manager · Finanser-prognosen viser nu sponsor-breakdown, så du kan se om næste sæsons sponsor er intro, fallback eller variabel baseret på sidste sæsons rang/point. Board-modifier og sponsor-pullout lægges stadig ovenpå den samme base.",
+          "Backend · Ny delt `sponsorEngine` bruges af sæsonstart, season-transition preview og finance forecast, så admin-preview, faktisk payout og manager-UI beregner sponsor fra samme kontrakt. Variabel sponsor har hårdt loft på 350.000 CZ$ før modifier og gulv på 200.000 CZ$ før modifier.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.11",
     date: "2026-05-10",
     label: "Beta",

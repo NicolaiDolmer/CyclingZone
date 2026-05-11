@@ -17,7 +17,7 @@
 | 07c | Atomic balance updates (Postgres-RPC) | P1 safety | M (~1-2 sessioner) | — | ✅ Leveret v2.91 (2026-05-09) |
 | 07d | Komplet finance audit-log + admin_log | P1 audit | M (~2 sessioner) | — | ✅ Fase A + B leveret 2026-05-09 (v2.90 + v2.92, [#82](https://github.com/NicolaiDolmer/CyclingZone/issues/82) + [#235](https://github.com/NicolaiDolmer/CyclingZone/issues/235)) |
 | 07e | Admin økonomi super-dashboard | Feature | M (~2 sessioner) | 07d | 🟡 Fase A leveret 2026-05-09 (v2.93 — Sundhed + Overblik + Transaktioner + drill-down). Fase B (admin_log-feed + korrelering + CSV-export) afventer ([#83](https://github.com/NicolaiDolmer/CyclingZone/issues/83)) |
-| 07f | Sponsor variabel ift. resultater | Feature | M (~1-2 sessioner) | — | 🆕 Ready ([#84](https://github.com/NicolaiDolmer/CyclingZone/issues/84)) |
+| 07f | Sponsor variabel ift. resultater | Feature | M (~1-2 sessioner) | — | ✅ Leveret v3.12 (2026-05-11, [#84](https://github.com/NicolaiDolmer/CyclingZone/issues/84)) |
 | 07g | Manager finance-forecast + risk-tier | Feature | M (~2 sessioner) | 07d (delvist) | ✅ Leveret v2.96 (2026-05-09, [#85](https://github.com/NicolaiDolmer/CyclingZone/issues/85)) |
 | 07h | Season financial close-out report | Feature | S-M (~1 session) | 07d (delvist) | ✅ LIVE v2.97 ([#86](https://github.com/NicolaiDolmer/CyclingZone/issues/86)) |
 
@@ -301,7 +301,9 @@ Refaktor `auctionCancellation.js` + 5 admin-routes til at skrive til admin_log u
 
 ---
 
-# 07f · Sponsor variabel ift. resultater
+# 07f · Sponsor variabel ift. resultater ✅ Leveret v3.12 (2026-05-11)
+
+**Status:** Leveret med delt `backend/lib/sponsorEngine.js`, så `processSeasonStart`, `buildTransitionPlan` og `/api/me/finance-forecast` bruger samme sponsor-kontrakt. Sæson 1 forbliver fast 240K; sæson 2+ bruger 200K base + 0-150K variabel del fra forrige sæsons point/rang, før board/pullout-modifier.
 
 **1. Mål.** Fra sæson 2+: skift sponsor fra flat 240K + board-modifier til base 200K + variabel 0–150K skaleret efter forrige sæsons points/division-rank. Implementér comeback-mekanik (lille hold der overpresterer får boost) og sportsligt-fokus-incentive. Sæson 1 er i open beta (live nu) er allerede flat 240K; den behandles uændret.
 

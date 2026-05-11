@@ -38,6 +38,11 @@ import {
   SPONSOR_INCOME_BASE,
 } from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import {
+  buildSponsorStandingsContext,
+  computeSponsorForSeason,
+  FIRST_VARIABLE_SPONSOR_SEASON,
+} from "./sponsorEngine.js";
 
 let defaultSupabaseClientPromise;
 
@@ -160,6 +165,10 @@ export async function processSeasonStart(seasonId, deps = {}) {
     .eq("id", seasonId)
     .single();
   const seasonNumber = season?.number ?? null;
+  const sponsorStandingsContext = await loadSponsorStandingsContextForSeason(
+    supabaseClient,
+    seasonNumber
+  );
 
   const { data: teams } = await supabaseClient
     .from("teams")
@@ -192,12 +201,20 @@ export async function processSeasonStart(seasonId, deps = {}) {
     // Lag 5 stacker MULTIPLIKATIVT med lag 1 (budget_modifier).
     const pulloutFactor = pulloutFactorByTeamId.get(team.id) ?? 1.0;
     const modifier = baseModifier * pulloutFactor;
-    const sponsorBase = team.sponsor_income || DEFAULT_SPONSOR_INCOME;
-    const sponsorPayout = Math.round(sponsorBase * modifier);
+    const lastSeasonStanding = sponsorStandingsContext.standingByTeamId.get(team.id) || null;
+    const sponsorBreakdown = computeSponsorForSeason({
+      seasonNumber,
+      team,
+      lastSeasonStanding,
+      divisionStandings: lastSeasonStanding
+        ? sponsorStandingsContext.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
+        : [],
+    });
+    const sponsorPayout = Math.round(sponsorBreakdown.gross_sponsor * modifier);
 
     const description = pulloutFactor < 1.0
-      ? `Sponsorindtægt — Sæson start (×${modifier.toFixed(2)} · sponsor-pullout aktiv)`
-      : `Sponsorindtægt — Sæson start (×${modifier.toFixed(2)})`;
+      ? `Sponsorindtægt — Sæson start (${formatSponsorBreakdown(sponsorBreakdown)} ×${modifier.toFixed(2)} · sponsor-pullout aktiv)`
+      : `Sponsorindtægt — Sæson start (${formatSponsorBreakdown(sponsorBreakdown)} ×${modifier.toFixed(2)})`;
 
     // Pay sponsor income (idempotent: cron-retry må ikke double-pay)
     await creditTeam(
@@ -246,6 +263,7 @@ export async function processSeasonStart(seasonId, deps = {}) {
     results.push({
       team: team.name,
       sponsor: sponsorPayout,
+      sponsor_breakdown: sponsorBreakdown,
       recurring_loan_fees: totalLoanFees,
       pullout_applied: pulloutFactor < 1.0,
     });
@@ -268,6 +286,38 @@ export async function processSeasonStart(seasonId, deps = {}) {
   }
 
   return results;
+}
+
+async function loadSponsorStandingsContextForSeason(supabaseClient, seasonNumber) {
+  if (!Number.isInteger(seasonNumber) || seasonNumber < FIRST_VARIABLE_SPONSOR_SEASON) {
+    return buildSponsorStandingsContext([]);
+  }
+
+  const { data: previousSeason, error: previousSeasonError } = await supabaseClient
+    .from("seasons")
+    .select("id")
+    .eq("number", seasonNumber - 1)
+    .maybeSingle();
+  throwIfSupabaseError(previousSeasonError, "Could not load previous season for sponsor calculation");
+  if (!previousSeason?.id) return buildSponsorStandingsContext([]);
+
+  const { data: standings, error: standingsError } = await supabaseClient
+    .from("season_standings")
+    .select("team_id, division, rank_in_division, total_points")
+    .eq("season_id", previousSeason.id);
+  throwIfSupabaseError(standingsError, "Could not load previous standings for sponsor calculation");
+
+  return buildSponsorStandingsContext(standings || []);
+}
+
+function formatSponsorBreakdown(breakdown) {
+  if (breakdown.mode === "variable") {
+    return `base ${breakdown.base.toLocaleString("da-DK")} + variabel ${breakdown.variable.toLocaleString("da-DK")}`;
+  }
+  if (breakdown.mode === "fallback") {
+    return `fallback ${breakdown.gross_sponsor.toLocaleString("da-DK")}`;
+  }
+  return `intro ${breakdown.gross_sponsor.toLocaleString("da-DK")}`;
 }
 
 // ─── Division Bonuses ────────────────────────────────────────────────────────

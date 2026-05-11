@@ -30,10 +30,13 @@ function formatSigned(value) {
   return `${sign}${value.toLocaleString("da-DK")} CZ$`;
 }
 
-function Row({ label, value, accent }) {
+function Row({ label, value, accent, detail }) {
   return (
     <div className="flex items-center justify-between py-1.5 border-b border-cz-border last:border-0">
-      <p className="text-cz-2 text-xs">{label}</p>
+      <div className="min-w-0 pr-3">
+        <p className="text-cz-2 text-xs">{label}</p>
+        {detail && <p className="text-cz-3 text-[11px] mt-0.5 truncate">{detail}</p>}
+      </div>
       <p className={`font-mono text-sm font-bold ${accent}`}>
         {formatSigned(value)}
       </p>
@@ -57,6 +60,12 @@ export default function FinanceForecastCard({ forecast, loading }) {
   const tier = TIER_META[forecast.risk_tier] || TIER_META.yellow;
   const netAccent =
     forecast.projected_net >= 0 ? "text-cz-success" : "text-cz-danger";
+  const sponsorBreakdown = forecast.inputs?.sponsor_breakdown;
+  const sponsorDetail = sponsorBreakdown?.mode === "variable"
+    ? `Base ${sponsorBreakdown.base.toLocaleString("da-DK")} + variabel ${sponsorBreakdown.variable.toLocaleString("da-DK")} fra sidste sæsons rang/point`
+    : sponsorBreakdown?.mode === "intro"
+      ? "Introsæson: variabel sponsor starter fra sæson 2"
+      : "Fallback: mangler standings for forrige sæson";
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
@@ -96,6 +105,7 @@ export default function FinanceForecastCard({ forecast, loading }) {
           label="Sponsor"
           value={forecast.projected_sponsor}
           accent="text-cz-success"
+          detail={sponsorDetail}
         />
         <Row
           label="Præmiepenge (estimat)"

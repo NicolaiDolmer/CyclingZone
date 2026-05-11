@@ -516,3 +516,124 @@ test("processSeasonStart fanger unique_violation på sponsor (team, season)", as
   const sponsorRows = supabase.state.insertedFinanceRows.filter((r) => r.type === "sponsor");
   assert.equal(sponsorRows.length, 0, "ingen sponsor-row inserted ved unique_violation");
 });
+
+test("processSeasonStart bruger variabel sponsor fra forrige sæsons standings fra sæson 2", async () => {
+  const financeRows = [];
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({
+        team_id: params.p_team_id,
+        delta: params.p_delta,
+        ...params.p_finance_payload,
+      });
+      return Promise.resolve({ data: params.p_delta, error: null });
+    },
+    from(table) {
+      if (table === "seasons") {
+        return {
+          select(columns) {
+            return {
+              eq(column, value) {
+                if (columns === "number") {
+                  assert.equal(column, "id");
+                  assert.equal(value, "season-2");
+                  return {
+                    single: () => Promise.resolve({ data: { number: 2 }, error: null }),
+                  };
+                }
+                assert.equal(columns, "id");
+                assert.equal(column, "number");
+                assert.equal(value, 1);
+                return {
+                  maybeSingle: () => Promise.resolve({ data: { id: "season-1" }, error: null }),
+                };
+              },
+            };
+          },
+        };
+      }
+      if (table === "season_standings") {
+        return {
+          select(columns) {
+            assert.equal(columns, "team_id, division, rank_in_division, total_points");
+            return {
+              eq(column, value) {
+                assert.equal(column, "season_id");
+                assert.equal(value, "season-1");
+                return Promise.resolve({
+                  data: [
+                    { team_id: "team-1", division: 3, total_points: 120, rank_in_division: 2 },
+                    { team_id: "team-top", division: 3, total_points: 180, rank_in_division: 1 },
+                    { team_id: "team-low", division: 3, total_points: 60, rank_in_division: 3 },
+                  ],
+                  error: null,
+                });
+              },
+            };
+          },
+        };
+      }
+      if (table === "teams") {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  eq() {
+                    return Promise.resolve({
+                      data: [{
+                        id: "team-1",
+                        name: "Variable Test",
+                        balance: 0,
+                        sponsor_income: 240_000,
+                        board_profiles: [],
+                        is_frozen: false,
+                      }],
+                      error: null,
+                    });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+      if (table === "board_consequences") {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  eq() {
+                    return Promise.resolve({ data: [], error: null });
+                  },
+                };
+              },
+            };
+          },
+          update() {
+            return { eq() { return { eq() { return Promise.resolve({ error: null }); } }; } };
+          },
+        };
+      }
+      if (table === "board_profiles") {
+        return {
+          insert() { return Promise.resolve({ error: null }); },
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  const result = await processSeasonStart("season-2", {
+    supabase,
+    processLoanAgreementSeasonFees: async () => [],
+  });
+
+  assert.equal(financeRows.length, 1);
+  assert.equal(financeRows[0].delta, 275_000);
+  assert.match(financeRows[0].description, /base 200\.000 \+ variabel 75\.000/);
+  assert.equal(result[0].sponsor, 275_000);
+  assert.equal(result[0].sponsor_breakdown.mode, "variable");
+});

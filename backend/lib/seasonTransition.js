@@ -26,6 +26,11 @@
  */
 
 import { ADMIN_ACTION_TYPE } from "./economyConstants.js";
+import {
+  buildSponsorStandingsContext,
+  computeSponsorForSeason,
+  FIRST_VARIABLE_SPONSOR_SEASON,
+} from "./sponsorEngine.js";
 
 let processSeasonStartImpl;
 async function getProcessSeasonStart() {
@@ -92,15 +97,19 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
     .eq("is_ai", false)
     .eq("is_frozen", false);
   if (teamsError) throw new Error(`Could not load teams: ${teamsError.message}`);
+  const sponsorStandingsContext = await loadSponsorPreviewStandings({
+    supabase,
+    fromSeasonId: fromSeason.id,
+    toSeasonNumber,
+  });
 
-  // Sponsor-preview: sæson 1 er fredet (modifier=1.0). Fra sæson 2+ kan
-  // baseline-rows være slettet og 1yr-completed → modifier kan afvige.
-  // Vi viser raw sponsor_income; faktisk modifier beregnes i processSeasonStart.
+  // Sponsor-preview viser base før board/pullout-modifier. Den samme sponsor-engine
+  // bruges i processSeasonStart, så admin-preview og faktisk payout ikke driver.
   const sponsorPreview = (humanTeams || []).map((team) => ({
     team_id: team.id,
     team_name: team.name,
     division: team.division,
-    sponsor_base: team.sponsor_income || 240000,
+    ...buildSponsorPreviewRow(team, toSeasonNumber, sponsorStandingsContext),
   }));
 
   return {
@@ -118,6 +127,37 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
     teams_affected: sponsorPreview.length,
     sponsor_base_total: sponsorPreview.reduce((s, p) => s + p.sponsor_base, 0),
     sponsor_breakdown: sponsorPreview,
+  };
+}
+
+async function loadSponsorPreviewStandings({ supabase, fromSeasonId, toSeasonNumber }) {
+  if (toSeasonNumber < FIRST_VARIABLE_SPONSOR_SEASON) {
+    return buildSponsorStandingsContext([]);
+  }
+  const { data, error } = await supabase
+    .from("season_standings")
+    .select("team_id, division, rank_in_division, total_points")
+    .eq("season_id", fromSeasonId);
+  if (error) throw new Error(`Could not load sponsor preview standings: ${error.message}`);
+  return buildSponsorStandingsContext(data || []);
+}
+
+function buildSponsorPreviewRow(team, toSeasonNumber, sponsorStandingsContext) {
+  const lastSeasonStanding = sponsorStandingsContext.standingByTeamId.get(team.id) || null;
+  const breakdown = computeSponsorForSeason({
+    seasonNumber: toSeasonNumber,
+    team,
+    lastSeasonStanding,
+    divisionStandings: lastSeasonStanding
+      ? sponsorStandingsContext.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
+      : [],
+  });
+  return {
+    sponsor_base: breakdown.gross_sponsor,
+    sponsor_mode: breakdown.mode,
+    sponsor_variable: breakdown.variable,
+    sponsor_formula_base: breakdown.base,
+    sponsor_breakdown: breakdown,
   };
 }
 

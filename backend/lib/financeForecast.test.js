@@ -187,6 +187,25 @@ test("computeFinanceForecast: pullout-factor reducerer sponsor", () => {
   assert.equal(result.projected_sponsor, 216_000);
 });
 
+test("computeFinanceForecast: sæson 2 forecast bruger variabel sponsor fra standings", () => {
+  const result = computeFinanceForecast({
+    team: { id: "team-2", sponsor_income: 240_000 },
+    currentSeasonNumber: 1,
+    lastSeasonStandings: [
+      { team_id: "team-1", division: 3, total_points: 180, rank_in_division: 1 },
+      { team_id: "team-2", division: 3, total_points: 120, rank_in_division: 2 },
+      { team_id: "team-3", division: 3, total_points: 60, rank_in_division: 3 },
+    ],
+    riders: [],
+    debtCeiling: 900_000,
+  });
+
+  assert.equal(result.projected_sponsor, 275_000);
+  assert.equal(result.inputs.sponsor_mode, "variable");
+  assert.equal(result.inputs.sponsor_variable, 75_000);
+  assert.equal(result.inputs.sponsor_breakdown.last_season_rank, 2);
+});
+
 test("computeFinanceForecast: lønbyrde > sponsor giver advarsel", () => {
   const result = computeFinanceForecast({
     team: { sponsor_income: 240_000 },

@@ -621,7 +621,7 @@ const FAQ = [
   },
   {
     q: "Hvornår udbetales sponsorpenge?",
-    a: "Sponsorpenge udbetales ved sæsonstart. Beløbet afhænger af bestyrelsens tilfredshed: 80%+ giver 120%, 60-79 giver 110%, 40-59 giver 100%, 20-39 giver 90%, og under 20 giver 80% af basissponsoratet.",
+    a: "Sponsorpenge udbetales ved sæsonstart. Sæson 1 er en introsæson med fast 240.000 CZ$ før eventuelle bestyrelses-/pullout-effekter. Fra sæson 2 beregnes basissponsoren sportsligt: 200.000 CZ$ fast base + 0-150.000 CZ$ variabel del ud fra forrige sæsons point og placering i din division. Derefter ganges beløbet med bestyrelsens budget-modifier og eventuel sponsor-pullout. Det betyder at stærke resultater kan løfte sponsoratet, mens bundplacering stadig har et sikkert gulv på 200.000 CZ$ før modifier.",
   },
   {
     q: "Hvad viser sæson-finansrapporten, og hvor finder jeg den?",
@@ -629,7 +629,7 @@ const FAQ = [
   },
   {
     q: "Hvordan beregnes prognosen for næste sæson på Finanser-siden?",
-    a: "Prognosen viser forventet cashflow for hele næste sæson som sum af: (1) sponsor = basissponsor × bestyrelsens budget-modifier × evt. aktiv sponsor-pullout-faktor, (2) præmiepenge = sum af dine rytteres prize_earnings_bonus (rolling avg af de sidste 1-3 afsluttede sæsoner — så det er rytternes faktiske track record, ikke et gæt), (3) løn = sum af riders.salary (DB-genereret af value + prize_earnings_bonus × 0.10), (4) lånerenter = sum(amount_remaining × interest_rate) på alle aktive lån, og (5) lejegebyr for lejede ryttere som løber ind i næste sæson (modregnet med eventuelle gebyrer du modtager som udlåner). Risk-tier-badgen er 🟢 grøn hvis netto ≥ +50K og gæld < 50% af loftet, 🟡 gul hvis netto er mellem -50K og +50K eller gæld er mellem 50-80% af loftet, og 🔴 rød hvis netto < -50K, gæld > 80% af loftet, eller hvis dit underskud rammer gældsloftet inden for 2 sæsoner. Spændet (±20% på præmie-estimatet) afspejler at præmiepenge er den mest variable input — sponsor, løn og rente er deterministiske. Prognose er ikke kontrakt; tal kan ændre sig hvis du sælger ryttere, optager lån eller forhandler ny bestyrelsesplan.",
+    a: "Prognosen viser forventet cashflow for hele næste sæson som sum af: (1) sponsor = sæsonens sponsorbase × bestyrelsens budget-modifier × evt. aktiv sponsor-pullout-faktor. Sæson 1 bruger fast 240.000 CZ$, mens sæson 2+ bruger 200.000 CZ$ base + op til 150.000 CZ$ variabel sponsor fra forrige sæsons point/rang. (2) præmiepenge = sum af dine rytteres prize_earnings_bonus (rolling avg af de sidste 1-3 afsluttede sæsoner), (3) løn = sum af riders.salary, (4) lånerenter = sum(amount_remaining × interest_rate) på alle aktive lån, og (5) lejegebyr for lejede ryttere som løber ind i næste sæson (modregnet med eventuelle gebyrer du modtager som udlåner). Risk-tier-badgen er 🟢 grøn hvis netto ≥ +50K og gæld < 50% af loftet, 🟡 gul hvis netto er mellem -50K og +50K eller gæld er mellem 50-80% af loftet, og 🔴 rød hvis netto < -50K, gæld > 80% af loftet, eller hvis dit underskud rammer gældsloftet inden for 2 sæsoner. Spændet (±20% på præmie-estimatet) afspejler at præmiepenge er den mest variable input. Prognose er ikke kontrakt; tal kan ændre sig hvis du sælger ryttere, optager lån, scorer flere point eller forhandler ny bestyrelsesplan.",
   },
   {
     q: "Hvornår opdateres sæsonstillingen?",

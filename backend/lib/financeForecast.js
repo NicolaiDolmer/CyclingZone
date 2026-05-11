@@ -9,7 +9,10 @@
  * funktionen testbar uden Supabase-mock og giver os deterministiske unit-tests.
  */
 
-import { SPONSOR_INCOME_BASE } from "./economyConstants.js";
+import {
+  buildSponsorStandingsContext,
+  computeSponsorForSeason,
+} from "./sponsorEngine.js";
 
 const RISK_NET_GREEN_THRESHOLD = 50_000;
 const RISK_NET_RED_THRESHOLD = -50_000;
@@ -28,9 +31,29 @@ export function computeFinanceForecast({
   totalDebt = 0,
   debtCeiling = null,
   currentSeasonNumber = null,
+  targetSeasonNumber = null,
+  lastSeasonStanding = null,
+  lastSeasonStandings = [],
 } = {}) {
-  const sponsorBase = team?.sponsor_income ?? SPONSOR_INCOME_BASE;
-  const projectedSponsor = Math.round(sponsorBase * boardModifier * pulloutFactor);
+  const seasonNumber = Number.isInteger(targetSeasonNumber)
+    ? targetSeasonNumber
+    : Number.isInteger(currentSeasonNumber)
+      ? currentSeasonNumber + 1
+      : null;
+  const sponsorContext = buildSponsorStandingsContext(lastSeasonStandings);
+  const resolvedLastStanding = lastSeasonStanding
+    ?? (team?.id ? sponsorContext.standingByTeamId.get(team.id) : null)
+    ?? null;
+  const divisionStandings = resolvedLastStanding
+    ? sponsorContext.divisionStandingsByDivision.get(resolvedLastStanding.division) || []
+    : [];
+  const sponsorBreakdown = computeSponsorForSeason({
+    seasonNumber,
+    team,
+    lastSeasonStanding: resolvedLastStanding,
+    divisionStandings,
+  });
+  const projectedSponsor = Math.round(sponsorBreakdown.gross_sponsor * boardModifier * pulloutFactor);
 
   // Præmie-estimat = sum af riders.prize_earnings_bonus, som DB allerede beregner
   // som rolling avg over sidste 1-3 afsluttede sæsoner. Roster'ets "track record"
@@ -114,7 +137,11 @@ export function computeFinanceForecast({
     risk_tier: riskTier,
     warnings,
     inputs: {
-      sponsor_base: sponsorBase,
+      sponsor_base: sponsorBreakdown.base,
+      sponsor_variable: sponsorBreakdown.variable,
+      sponsor_mode: sponsorBreakdown.mode,
+      sponsor_gross: sponsorBreakdown.gross_sponsor,
+      sponsor_breakdown: sponsorBreakdown,
       board_modifier: boardModifier,
       pullout_factor: pulloutFactor,
       total_salary: totalSalary,
@@ -126,6 +153,7 @@ export function computeFinanceForecast({
       inbound_agreement_count: (inboundLoanAgreements || []).length,
       outbound_agreement_count: (outboundLoanAgreements || []).length,
       current_season_number: currentSeasonNumber,
+      target_season_number: seasonNumber,
     },
   };
 }
