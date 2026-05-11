@@ -11,71 +11,114 @@ const SUB_TABS = [
   { key: "correlation", label: "Korrelering" },
 ];
 
+// Visnings-labels for raw enum-værdier fra DB. Raw value bevares i API + filtre — kun UI vises på dansk.
+const ACTOR_TYPE_LABELS = {
+  cron: "Automatisk job",
+  api: "Manager-handling",
+  admin: "Admin-handling",
+  system: "System",
+  migration: "Engangs-backfill",
+};
 const ACTOR_TYPES = ["", "cron", "api", "admin", "system", "migration"];
+
+const TX_TYPE_LABELS = { income: "Indtægt", expense: "Udgift" };
 const TX_TYPES = ["", "income", "expense"];
 
 // Spejl af FINANCE_REASON i backend/lib/economyConstants.js — bruges som dropdown-options.
-const REASON_CODES = [
-  "",
-  "season_start_sponsor",
-  "season_end_salary",
-  "season_end_division_bonus",
-  "season_end_negative_interest",
-  "season_end_loan_interest",
-  "starting_budget",
-  "race_prize_payout",
-  "auction_winner_payment",
-  "auction_seller_payout",
-  "auction_guaranteed_bank_sale",
-  "transfer_purchase",
-  "transfer_sale",
-  "swap_cash_delta",
-  "loan_fee_paid",
-  "loan_fee_received",
-  "loan_fee_refunded",
-  "loan_principal_received",
-  "loan_repayment",
-  "loan_buyout",
-  "loan_origination_fee",
-  "emergency_loan_received",
-  "squad_auto_purchase",
-  "squad_auto_sale",
-  "squad_violation_fine",
-  "board_bonus_accepted",
-  "admin_balance_adjustment",
-  "admin_force_prize",
-  "admin_beta_reset",
-];
+const REASON_CODE_LABELS = {
+  season_start_sponsor: "Sponsorindtægt (sæsonstart)",
+  season_end_salary: "Lønudbetaling (sæsonslut)",
+  season_end_division_bonus: "Division-bonus (sæsonslut)",
+  season_end_negative_interest: "Rente på negativ saldo",
+  season_end_loan_interest: "Renteudgift på lån",
+  starting_budget: "Startbudget",
+  race_prize_payout: "Præmiepenge fra løb",
+  auction_winner_payment: "Betaling for vundet auktion",
+  auction_seller_payout: "Udbetaling fra solgt auktion",
+  auction_guaranteed_bank_sale: "Garanteret banksalg",
+  transfer_purchase: "Køb (transferaftale)",
+  transfer_sale: "Salg (transferaftale)",
+  swap_cash_delta: "Kontantforskel ved bytte",
+  loan_fee_paid: "Lejegebyr betalt",
+  loan_fee_received: "Lejegebyr modtaget",
+  loan_fee_refunded: "Lejegebyr refunderet",
+  loan_principal_received: "Lån modtaget",
+  loan_repayment: "Lån tilbagebetalt",
+  loan_buyout: "Lån-buyout",
+  loan_origination_fee: "Oprettelsesgebyr (lån)",
+  emergency_loan_received: "Krise-lån modtaget",
+  squad_auto_purchase: "Tvungent køb (truppe-regel)",
+  squad_auto_sale: "Tvungent salg (truppe-regel)",
+  squad_violation_fine: "Bøde (truppe-regel)",
+  board_bonus_accepted: "Bestyrelses-bonus modtaget",
+  admin_balance_adjustment: "Admin-justering af saldo",
+  admin_force_prize: "Admin-tvunget præmie",
+  admin_beta_reset: "Beta-reset (admin)",
+};
+const REASON_CODES = ["", ...Object.keys(REASON_CODE_LABELS)];
 
 // Spejl af ADMIN_ACTION_TYPE i backend/lib/economyConstants.js (24 godkendte action_types).
-const ADMIN_ACTION_TYPES = [
-  "",
-  "auction_cancel",
-  "transfer_offer_admin_cancel",
-  "swap_offer_admin_cancel",
-  "loan_agreement_admin_cancel",
-  "auction_config_update",
-  "market_pause",
-  "market_resume",
-  "balance_adjustment",
-  "user_deleted",
-  "role_changed",
-  "race_deleted",
-  "race_results_imported",
-  "race_results_approved",
-  "beta_reset",
-  "prize_force_paid",
-  "season_repaired",
-  "season_started",
-  "season_ended",
-  "discord_webhook_added",
-  "discord_webhook_removed",
-  "manual_override",
-  "economy_export",
-  "team_data_edited",
-  "rider_data_edited",
-  "season_transition",
-];
+const ADMIN_ACTION_LABELS = {
+  auction_cancel: "Auktion annulleret",
+  transfer_offer_admin_cancel: "Transfer-tilbud annulleret",
+  swap_offer_admin_cancel: "Bytte-tilbud annulleret",
+  loan_agreement_admin_cancel: "Lejeaftale annulleret",
+  auction_config_update: "Auktions-indstillinger opdateret",
+  market_pause: "Marked pauset",
+  market_resume: "Marked genåbnet",
+  balance_adjustment: "Saldo justeret",
+  user_deleted: "Bruger slettet",
+  role_changed: "Rolle ændret",
+  race_deleted: "Løb slettet",
+  race_results_imported: "Løbsresultater importeret",
+  race_results_approved: "Løbsresultater godkendt",
+  beta_reset: "Beta-reset",
+  prize_force_paid: "Præmie tvangsudbetalt",
+  season_repaired: "Sæson repareret",
+  season_started: "Sæson startet",
+  season_ended: "Sæson afsluttet",
+  discord_webhook_added: "Discord-webhook tilføjet",
+  discord_webhook_removed: "Discord-webhook fjernet",
+  manual_override: "Manuel override",
+  economy_export: "Økonomi-eksport",
+  team_data_edited: "Hold-data redigeret",
+  rider_data_edited: "Rytter-data redigeret",
+  season_transition: "Sæson-overgang",
+};
+const ADMIN_ACTION_TYPES = ["", ...Object.keys(ADMIN_ACTION_LABELS)];
+
+// Source-path er en kode-funktion ("auctionFinalization.finalizeAuctionRecord.buyer"). Vis dansk
+// beskrivelse til admins, men bevar raw-string i tooltip + filter, så devs stadig kan søge på den.
+function describeSourcePath(path) {
+  if (!path) return "—";
+  if (path.startsWith("economyEngine.processSeasonStart")) return "Sæsonstart (automatisk)";
+  if (path.startsWith("economyEngine.processSeasonEnd")) return "Sæsonslut (automatisk)";
+  if (path.startsWith("auctionFinalization")) {
+    if (path.endsWith(".buyer")) return "Auktion — betaling fra køber";
+    if (path.endsWith(".seller")) return "Auktion — udbetaling til sælger";
+    return "Auktion-afregning";
+  }
+  if (path.startsWith("prizePayoutEngine")) return "Præmie-udbetaling";
+  if (path.startsWith("loanEngine.createLoan")) return "Lån oprettet";
+  if (path.startsWith("loanEngine.createEmergencyLoan")) return "Krise-lån oprettet";
+  if (path.startsWith("loanEngine.repayLoan")) return "Lån tilbagebetalt";
+  if (path.startsWith("loanEngine.processLoanInterest")) return "Renteberegning på lån";
+  if (path.startsWith("loanEngine")) return "Lånehåndtering";
+  if (path.startsWith("transferExecution.executeSwap")) return "Bytteaftale udført";
+  if (path.startsWith("transferExecution")) return "Transfer-aftale udført";
+  if (path.startsWith("squadEnforcement")) return "Truppe-regel-håndhævelse";
+  if (path.startsWith("admin.bug267")) return "Admin (bug-rettelse #267)";
+  if (path.startsWith("admin")) return "Admin-handling";
+  if (path.startsWith("api")) return "Manager-API";
+  if (path.startsWith("betaResetService")) return "Beta-reset";
+  return path;
+}
+
+const labelFor = (map, key) => (key ? (map[key] || key) : "");
+const reasonLabel = (code) => labelFor(REASON_CODE_LABELS, code);
+const actorLabel = (type) => labelFor(ACTOR_TYPE_LABELS, type);
+const adminActionLabel = (type) => labelFor(ADMIN_ACTION_LABELS, type);
+const txTypeLabel = (type) => labelFor(TX_TYPE_LABELS, type);
 
 const SUSTAINABILITY_LABEL = {
   green: { label: "🟢 Sund", className: "text-cz-success" },
@@ -319,36 +362,40 @@ function OverviewView({ getAuth, onMsg }) {
 
 function TransactionDetailModal({ tx, onClose }) {
   if (!tx) return null;
+  const invariantOk = tx.before_balance != null && tx.after_balance != null
+    && tx.after_balance - tx.before_balance === tx.amount;
+  const invariantText = tx.before_balance != null && tx.after_balance != null
+    ? (invariantOk
+        ? "✅ Saldo før + beløb = saldo efter"
+        : `⚠️ Saldo-forskel ${(tx.after_balance - tx.before_balance).toLocaleString("da-DK")} ≠ beløb ${tx.amount.toLocaleString("da-DK")}`)
+    : "—";
   const fields = [
-    ["ID", tx.id],
-    ["Type", tx.type],
-    ["Beløb", formatCz(tx.amount)],
-    ["Hold", tx.team?.name ? `${tx.team.name} (D${tx.team.division})` : tx.team_id],
-    ["Sæson", tx.season?.number ?? "—"],
-    ["Tidspunkt", fmtDate(tx.created_at)],
-    ["Beskrivelse", tx.description || "—"],
-    ["—", "—"],
-    ["Actor type", tx.actor_type || "(NULL — legacy)"],
-    ["Actor ID", tx.actor_id || "—"],
-    ["Source path", tx.source_path || "—"],
-    ["Reason code", tx.reason_code || "—"],
-    ["Idempotency key", tx.idempotency_key || "—"],
-    ["—", "—"],
-    ["Before balance", tx.before_balance != null ? formatCz(tx.before_balance) : "—"],
-    ["After balance", tx.after_balance != null ? formatCz(tx.after_balance) : "—"],
-    [
-      "Audit-invariant",
-      tx.before_balance != null && tx.after_balance != null
-        ? (tx.after_balance - tx.before_balance === tx.amount
-            ? "✅ after − before = amount"
-            : `⚠️ after − before = ${(tx.after_balance - tx.before_balance).toLocaleString("da-DK")} ≠ ${tx.amount.toLocaleString("da-DK")}`)
-        : "—",
-    ],
-    ["—", "—"],
-    ["Related entity type", tx.related_entity_type || "—"],
-    ["Related entity ID", tx.related_entity_id || "—"],
-    ["Related loan ID", tx.related_loan_id || "—"],
-    ["Race ID", tx.race_id || "—"],
+    ["Begivenhed", tx.reason_code ? reasonLabel(tx.reason_code) : "—", tx.reason_code],
+    ["Retning", tx.type ? txTypeLabel(tx.type) : "—", tx.type],
+    ["Beløb", formatCz(tx.amount), null],
+    ["Hold", tx.team?.name ? `${tx.team.name} (D${tx.team.division})` : tx.team_id, null],
+    ["Sæson", tx.season?.number ?? "—", null],
+    ["Tidspunkt", fmtDate(tx.created_at), null],
+    ["Beskrivelse", tx.description || "—", null],
+    ["—", "—", null],
+    ["Hvem udløste", tx.actor_type ? actorLabel(tx.actor_type) : "(ukendt — legacy)", tx.actor_type],
+    ["Bruger-ID (hvis manager/admin)", tx.actor_id || "—", null],
+    ["Kilde i koden", describeSourcePath(tx.source_path), tx.source_path],
+    ["Sikrings-nøgle (cron-dedup)", tx.idempotency_key || "—", null],
+    ["—", "—", null],
+    ["Saldo før", tx.before_balance != null ? formatCz(tx.before_balance) : "—", null],
+    ["Saldo efter", tx.after_balance != null ? formatCz(tx.after_balance) : "—", null],
+    ["Sumtjek", invariantText, null],
+    ["—", "—", null],
+    ["Relateret til", tx.related_entity_type ? labelFor({
+      auction: "Auktion", loan: "Lån", transfer: "Transferaftale",
+      swap: "Bytteaftale", race: "Løb", season: "Sæson", manual: "Manuel",
+    }, tx.related_entity_type) : "—", tx.related_entity_type],
+    ["Relateret ID", tx.related_entity_id || "—", null],
+    ["Lån-ID (ved lån)", tx.related_loan_id || "—", null],
+    ["Løb-ID (ved præmie)", tx.race_id || "—", null],
+    ["—", "—", null],
+    ["Transaktions-ID", tx.id, null],
   ];
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4 py-6 overflow-y-auto"
@@ -360,14 +407,21 @@ function TransactionDetailModal({ tx, onClose }) {
           <button onClick={onClose} aria-label="Luk"
             className="text-cz-3 hover:text-cz-1 text-xl leading-none">✕</button>
         </div>
-        <dl className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-x-3 gap-y-1 text-xs font-mono">
-          {fields.map(([label, value], i) => (
+        <dl className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-x-3 gap-y-1 text-xs">
+          {fields.map(([label, value, rawValue], i) => (
             label === "—" ? (
               <div key={`sep-${i}`} className="col-span-full border-t border-cz-border my-1" />
             ) : (
               <div key={i} className="contents">
                 <dt className="text-cz-3 sm:text-right">{label}</dt>
-                <dd className="text-cz-1 break-all">{value}</dd>
+                <dd className="text-cz-1 break-all">
+                  {value}
+                  {rawValue && rawValue !== value && (
+                    <span className="ml-2 text-cz-3 text-[10px] font-mono" title="Teknisk værdi i databasen">
+                      ({rawValue})
+                    </span>
+                  )}
+                </dd>
               </div>
             )
           ))}
@@ -432,28 +486,30 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div>
-          <label className="block text-cz-3 text-xs mb-1">Actor type</label>
+          <label className="block text-cz-3 text-xs mb-1">Hvem udløste</label>
           <select value={filters.actor_type} onChange={(e) => setFilters((f) => ({ ...f, actor_type: e.target.value }))}
             className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
-            {ACTOR_TYPES.map((a) => <option key={a} value={a}>{a || "Alle"}</option>)}
+            {ACTOR_TYPES.map((a) => <option key={a} value={a}>{a ? actorLabel(a) : "Alle"}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-cz-3 text-xs mb-1">Reason code</label>
+          <label className="block text-cz-3 text-xs mb-1">Begivenhed</label>
           <select value={filters.reason_code} onChange={(e) => setFilters((f) => ({ ...f, reason_code: e.target.value }))}
             className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
-            {REASON_CODES.map((r) => <option key={r} value={r}>{r || "Alle"}</option>)}
+            {REASON_CODES.map((r) => <option key={r} value={r}>{r ? reasonLabel(r) : "Alle"}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-cz-3 text-xs mb-1">Type</label>
+          <label className="block text-cz-3 text-xs mb-1">Retning</label>
           <select value={filters.type} onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
             className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
-            {TX_TYPES.map((t) => <option key={t} value={t}>{t || "Alle"}</option>)}
+            {TX_TYPES.map((t) => <option key={t} value={t}>{t ? txTypeLabel(t) : "Alle"}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-cz-3 text-xs mb-1">Source path (substring)</label>
+          <label className="block text-cz-3 text-xs mb-1" title="Søg i den tekniske kode-funktion bag transaktionen (substring-match)">
+            Kilde i koden (avanceret)
+          </label>
           <input type="text" value={filters.source_path}
             onChange={(e) => setFilters((f) => ({ ...f, source_path: e.target.value }))}
             placeholder="fx auctionFinalization"
@@ -525,10 +581,10 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
               <th className="px-3 py-2 text-left text-cz-3 font-medium">Tid</th>
               <th className="px-3 py-2 text-left text-cz-3 font-medium">Hold</th>
               <th className="px-3 py-2 text-right text-cz-3 font-medium">Beløb</th>
-              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden sm:table-cell">Reason</th>
-              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden md:table-cell">Actor</th>
-              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden lg:table-cell">Source path</th>
-              <th className="px-3 py-2 text-right text-cz-3 font-medium hidden xl:table-cell">After bal</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden sm:table-cell">Begivenhed</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden md:table-cell">Udløst af</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden lg:table-cell">Kilde i koden</th>
+              <th className="px-3 py-2 text-right text-cz-3 font-medium hidden xl:table-cell">Saldo efter</th>
             </tr>
           </thead>
           <tbody>
@@ -543,9 +599,15 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
                 <td className={`px-3 py-2 text-right font-mono ${tx.amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
                   {tx.amount >= 0 ? "+" : ""}{tx.amount.toLocaleString("da-DK")}
                 </td>
-                <td className="px-3 py-2 text-cz-2 hidden sm:table-cell font-mono text-[11px]">{tx.reason_code || "—"}</td>
-                <td className="px-3 py-2 text-cz-3 hidden md:table-cell">{tx.actor_type || "—"}</td>
-                <td className="px-3 py-2 text-cz-3 hidden lg:table-cell font-mono text-[11px] truncate max-w-[260px]">{tx.source_path || "—"}</td>
+                <td className="px-3 py-2 text-cz-2 hidden sm:table-cell" title={tx.reason_code || ""}>
+                  {tx.reason_code ? reasonLabel(tx.reason_code) : "—"}
+                </td>
+                <td className="px-3 py-2 text-cz-3 hidden md:table-cell" title={tx.actor_type || ""}>
+                  {tx.actor_type ? actorLabel(tx.actor_type) : "—"}
+                </td>
+                <td className="px-3 py-2 text-cz-3 hidden lg:table-cell truncate max-w-[260px]" title={tx.source_path || ""}>
+                  {describeSourcePath(tx.source_path)}
+                </td>
                 <td className="px-3 py-2 text-right text-cz-3 hidden xl:table-cell font-mono">{tx.after_balance != null ? tx.after_balance.toLocaleString("da-DK") : "—"}</td>
               </tr>
             ))}
@@ -592,19 +654,22 @@ function AdminLogDetailModal({ entry, onClose }) {
           <dd className="text-cz-1 break-all">{entry.id}</dd>
           <dt className="text-cz-3 sm:text-right">Tidspunkt</dt>
           <dd className="text-cz-1">{fmtDateTimeSec(entry.created_at)}</dd>
-          <dt className="text-cz-3 sm:text-right">Action type</dt>
-          <dd className="text-cz-1">{entry.action_type}</dd>
-          <dt className="text-cz-3 sm:text-right">Admin user ID</dt>
+          <dt className="text-cz-3 sm:text-right">Handling</dt>
+          <dd className="text-cz-1">
+            {adminActionLabel(entry.action_type)}
+            <span className="ml-2 text-cz-3 text-[10px]" title="Teknisk værdi">({entry.action_type})</span>
+          </dd>
+          <dt className="text-cz-3 sm:text-right">Admin (bruger-ID)</dt>
           <dd className="text-cz-1 break-all">{entry.admin_user_id}</dd>
-          <dt className="text-cz-3 sm:text-right">Target team ID</dt>
+          <dt className="text-cz-3 sm:text-right">Berørt hold (ID)</dt>
           <dd className="text-cz-1 break-all">{entry.target_team_id || "—"}</dd>
-          <dt className="text-cz-3 sm:text-right">Target rider ID</dt>
+          <dt className="text-cz-3 sm:text-right">Berørt rytter (ID)</dt>
           <dd className="text-cz-1 break-all">{entry.target_rider_id || "—"}</dd>
           <dt className="text-cz-3 sm:text-right">Beskrivelse</dt>
           <dd className="text-cz-1 whitespace-pre-wrap">{entry.description}</dd>
         </dl>
         <div className="border-t border-cz-border pt-3">
-          <p className="text-cz-3 text-xs mb-1">meta (JSON)</p>
+          <p className="text-cz-3 text-xs mb-1">Tekniske detaljer (JSON)</p>
           <pre className="bg-cz-subtle border border-cz-border rounded-lg p-3 text-[11px] text-cz-1 font-mono overflow-x-auto">
 {entry.meta ? JSON.stringify(entry.meta, null, 2) : "(tom)"}
           </pre>
@@ -664,14 +729,14 @@ function AdminLogView({ getAuth, onMsg }) {
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         <div>
-          <label className="block text-cz-3 text-xs mb-1">Action type</label>
+          <label className="block text-cz-3 text-xs mb-1">Handling</label>
           <select value={filters.action_type} onChange={(e) => setFilters((f) => ({ ...f, action_type: e.target.value }))}
             className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
-            {ADMIN_ACTION_TYPES.map((a) => <option key={a} value={a}>{a || "Alle"}</option>)}
+            {ADMIN_ACTION_TYPES.map((a) => <option key={a} value={a}>{a ? adminActionLabel(a) : "Alle"}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-cz-3 text-xs mb-1">Admin user ID</label>
+          <label className="block text-cz-3 text-xs mb-1">Admin (bruger-ID)</label>
           <input type="text" value={filters.admin_user_id}
             onChange={(e) => setFilters((f) => ({ ...f, admin_user_id: e.target.value }))}
             placeholder="UUID"
@@ -679,7 +744,7 @@ function AdminLogView({ getAuth, onMsg }) {
             className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm font-mono" />
         </div>
         <div>
-          <label className="block text-cz-3 text-xs mb-1">Hold-ID (target)</label>
+          <label className="block text-cz-3 text-xs mb-1">Berørt hold (ID)</label>
           <input type="text" value={filters.target_team_id}
             onChange={(e) => setFilters((f) => ({ ...f, target_team_id: e.target.value }))}
             placeholder="UUID"
@@ -687,7 +752,7 @@ function AdminLogView({ getAuth, onMsg }) {
             className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm font-mono" />
         </div>
         <div>
-          <label className="block text-cz-3 text-xs mb-1">Rytter-ID (target)</label>
+          <label className="block text-cz-3 text-xs mb-1">Berørt rytter (ID)</label>
           <input type="text" value={filters.target_rider_id}
             onChange={(e) => setFilters((f) => ({ ...f, target_rider_id: e.target.value }))}
             placeholder="UUID"
@@ -727,10 +792,10 @@ function AdminLogView({ getAuth, onMsg }) {
           <thead>
             <tr className="border-b border-cz-border bg-cz-subtle">
               <th className="px-3 py-2 text-left text-cz-3 font-medium">Tid</th>
-              <th className="px-3 py-2 text-left text-cz-3 font-medium">Action</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium">Handling</th>
               <th className="px-3 py-2 text-left text-cz-3 font-medium">Beskrivelse</th>
-              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden md:table-cell">Target hold</th>
-              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden lg:table-cell">Target rytter</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden md:table-cell">Berørt hold</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden lg:table-cell">Berørt rytter</th>
             </tr>
           </thead>
           <tbody>
@@ -741,7 +806,7 @@ function AdminLogView({ getAuth, onMsg }) {
               <tr key={entry.id} onClick={() => setSelected(entry)}
                 className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/50 cursor-pointer">
                 <td className="px-3 py-2 text-cz-2 whitespace-nowrap">{fmtDate(entry.created_at)}</td>
-                <td className="px-3 py-2 text-cz-1 font-mono text-[11px]">{entry.action_type}</td>
+                <td className="px-3 py-2 text-cz-1" title={entry.action_type}>{adminActionLabel(entry.action_type)}</td>
                 <td className="px-3 py-2 text-cz-2 truncate max-w-[460px]">{entry.description}</td>
                 <td className="px-3 py-2 text-cz-3 hidden md:table-cell font-mono text-[11px]">{entry.target_team_id?.slice(0, 8) || "—"}</td>
                 <td className="px-3 py-2 text-cz-3 hidden lg:table-cell font-mono text-[11px]">{entry.target_rider_id?.slice(0, 8) || "—"}</td>
@@ -818,15 +883,17 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div>
-          <label className="block text-cz-3 text-xs mb-1">Actor type</label>
+          <label className="block text-cz-3 text-xs mb-1">Hvem udløste</label>
           <select value={filters.actor_type}
             onChange={(e) => setFilters((f) => ({ ...f, actor_type: e.target.value }))}
             className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
-            {ACTOR_TYPES.map((a) => <option key={a} value={a}>{a || "Alle"}</option>)}
+            {ACTOR_TYPES.map((a) => <option key={a} value={a}>{a ? actorLabel(a) : "Alle"}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-cz-3 text-xs mb-1">Source path (substring)</label>
+          <label className="block text-cz-3 text-xs mb-1" title="Søg i den tekniske kode-funktion (substring)">
+            Kilde i koden (avanceret)
+          </label>
           <input type="text" value={filters.source_path}
             onChange={(e) => setFilters((f) => ({ ...f, source_path: e.target.value }))}
             placeholder="fx sponsorPayout"
@@ -864,7 +931,7 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
       </div>
 
       <p className="text-cz-3 text-[11px]">
-        Klik en row for at drille ned i Transaktioner-view med samme actor + source_path + tidsvindue.
+        Klik en række for at drille ned i Transaktioner-fanen med samme udløser + kilde + tidsvindue.
       </p>
 
       <div className="overflow-x-auto rounded-lg border border-cz-border">
@@ -873,11 +940,11 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
             <tr className="border-b border-cz-border bg-cz-subtle">
               <th className="px-3 py-2 text-left text-cz-3 font-medium">Start</th>
               <th className="px-3 py-2 text-left text-cz-3 font-medium hidden sm:table-cell">Slut</th>
-              <th className="px-3 py-2 text-left text-cz-3 font-medium">Source path</th>
-              <th className="px-3 py-2 text-right text-cz-3 font-medium">Tx</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium">Kilde i koden</th>
+              <th className="px-3 py-2 text-right text-cz-3 font-medium">Antal</th>
               <th className="px-3 py-2 text-right text-cz-3 font-medium">Σ beløb</th>
               <th className="px-3 py-2 text-right text-cz-3 font-medium hidden md:table-cell">Hold</th>
-              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden lg:table-cell">Reasons</th>
+              <th className="px-3 py-2 text-left text-cz-3 font-medium hidden lg:table-cell">Begivenheder</th>
             </tr>
           </thead>
           <tbody>
@@ -892,14 +959,16 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
                 className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/50 cursor-pointer">
                 <td className="px-3 py-2 text-cz-2 whitespace-nowrap">{fmtDateTimeSec(run.started_at)}</td>
                 <td className="px-3 py-2 text-cz-3 whitespace-nowrap hidden sm:table-cell">{fmtDateTimeSec(run.ended_at)}</td>
-                <td className="px-3 py-2 text-cz-1 font-mono text-[11px] truncate max-w-[260px]">{run.source_path}</td>
+                <td className="px-3 py-2 text-cz-1 truncate max-w-[260px]" title={run.source_path}>
+                  {describeSourcePath(run.source_path)}
+                </td>
                 <td className="px-3 py-2 text-right font-mono text-cz-2">{run.tx_count}</td>
                 <td className={`px-3 py-2 text-right font-mono ${run.total_amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
                   {run.total_amount >= 0 ? "+" : ""}{run.total_amount.toLocaleString("da-DK")}
                 </td>
                 <td className="px-3 py-2 text-right font-mono text-cz-3 hidden md:table-cell">{run.affected_teams.length}</td>
-                <td className="px-3 py-2 text-cz-3 hidden lg:table-cell font-mono text-[11px]">
-                  {run.reason_codes.join(", ") || "—"}
+                <td className="px-3 py-2 text-cz-3 hidden lg:table-cell">
+                  {run.reason_codes.length > 0 ? run.reason_codes.map(reasonLabel).join(", ") : "—"}
                 </td>
               </tr>
             ))}
