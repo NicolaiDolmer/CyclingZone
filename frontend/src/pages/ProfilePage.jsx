@@ -1,6 +1,8 @@
 ﻿import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "../lib/theme.jsx";
+import { useConsent } from "../lib/consent.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -24,6 +26,7 @@ export default function ProfilePage() {
   const [savingTeam, setSavingTeam] = useState(false);
   const [msg, setMsg] = useState({ text: "", type: "" });
   const { theme, setTheme } = useTheme();
+  const { consent, openBanner } = useConsent();
 
   useEffect(() => { loadProfile(); }, []);
 
@@ -184,7 +187,7 @@ export default function ProfilePage() {
         <div className="space-y-3">
           <div>
             <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Email</p>
-            <p className="text-cz-1 text-sm">{user?.email}</p>
+            <p className="text-cz-1 text-sm" data-clarity-mask="True">{user?.email}</p>
           </div>
           <div>
             <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Brugernavn</p>
@@ -223,6 +226,53 @@ export default function ProfilePage() {
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Privatliv */}
+      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+        <h2 className="text-cz-1 font-semibold text-sm mb-1">Privatliv</h2>
+        <p className="text-cz-3 text-xs mb-4">
+          Du bestemmer hvad vi må måle. Ændringer træder i kraft næste gang du åbner spillet.
+        </p>
+        <ul className="text-cz-2 text-sm space-y-1 mb-4">
+          <li className="flex items-center justify-between">
+            <span>Nødvendige</span>
+            <span className="text-cz-3 text-xs">Altid på</span>
+          </li>
+          <li className="flex items-center justify-between">
+            <span>Analyse</span>
+            <span className={consent.analytics ? "text-cz-success text-xs font-semibold" : "text-cz-3 text-xs"}>
+              {consent.analytics ? "Accepteret" : "Afvist"}
+            </span>
+          </li>
+          <li className="flex items-center justify-between">
+            <span>Marketing</span>
+            <span className={consent.marketing ? "text-cz-success text-xs font-semibold" : "text-cz-3 text-xs"}>
+              {consent.marketing ? "Accepteret" : "Afvist"}
+            </span>
+          </li>
+          <li className="flex items-center justify-between">
+            <span>E-mail</span>
+            <span className={consent.email_marketing ? "text-cz-success text-xs font-semibold" : "text-cz-3 text-xs"}>
+              {consent.email_marketing ? "Accepteret" : "Afvist"}
+            </span>
+          </li>
+        </ul>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            type="button"
+            onClick={openBanner}
+            className="flex-1 py-2.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 transition-all"
+          >
+            Skift mine valg
+          </button>
+          <Link
+            to="/privatlivspolitik"
+            className="flex-1 py-2.5 border border-cz-border bg-cz-subtle text-cz-1 font-semibold rounded-lg text-sm text-center hover:border-cz-accent/40 transition-all"
+          >
+            Læs privatlivspolitik
+          </Link>
         </div>
       </div>
 
@@ -350,6 +400,7 @@ export default function ProfilePage() {
             value={discordId}
             onChange={e => setDiscordId(e.target.value)}
             placeholder="f.eks. 123456789012345678"
+            data-clarity-mask="True"
             className="w-full bg-cz-subtle border border-cz-border rounded-lg px-4 py-2.5
               text-cz-1 text-sm placeholder-cz-3 font-mono
               focus:outline-none focus:border-[#5865F2]/50"
