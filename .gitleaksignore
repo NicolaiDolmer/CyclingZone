@@ -1,0 +1,16 @@
+# gitleaks allowlist — én linje pr. fingerprint, med kommentar om hvorfor
+# Format: <commit-sha>:<file>:<rule-id>:<line>
+#
+# Find fingerprint ved at køre lokalt:
+#   gitleaks detect --source . --no-banner --redact
+# Eller se gitleaks-action workflow output på en fejlet PR.
+#
+# Historiske leaks der ER rotated (legacy JWT keys disabled 2026-05-11 via #296):
+# - bc9204d:setup.py — legacy anon + service_role JWTs (revoked, see .claude/learnings/2026-05-11-supabase-key-rotation.md)
+# - bc9204d:backend/.env — same legacy keys
+#
+# Disse er rotated og legacy-systemet er disabled i Supabase, men gitleaks
+# vil stadig finde mønstrene i historikken. Allowlist:
+bc9204d620ee1ce448d96a98b64bbbf0464e7ca8:setup.py:jwt:27
+bc9204d620ee1ce448d96a98b64bbbf0464e7ca8:setup.py:jwt:26
+bc9204d620ee1ce448d96a98b64bbbf0464e7ca8:backend/.env:jwt:2
