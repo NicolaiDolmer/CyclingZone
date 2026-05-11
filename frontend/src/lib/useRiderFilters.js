@@ -22,7 +22,7 @@ export function useClientRiderFilters(riders = []) {
   }
 
   const filtered = useMemo(() => {
-    let result = [...riders];
+    let result = riders.filter(r => !r.is_retired);
 
     if (filters.q) {
       const q = filters.q.toLowerCase();
@@ -105,6 +105,7 @@ export function useClientRiderFilters(riders = []) {
 }
 
 export function buildSupabaseQuery(query, filters) {
+  query = query.eq("is_retired", false);
   if (filters.q) query = query.or(`firstname.ilike.%${filters.q}%,lastname.ilike.%${filters.q}%`);
   if (filters.min_uci) query = query.gte("market_value", parseInt(filters.min_uci));
   if (filters.max_uci) query = query.lte("market_value", parseInt(filters.max_uci));

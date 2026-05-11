@@ -553,6 +553,7 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
       .from("riders")
         .select("id, firstname, lastname, uci_points, prize_earnings_bonus, team_id, team:team_id(name)")
       .ilike("lastname", `%${q}%`)
+      .eq("is_retired", false)
       .not("team_id", "is", null)
       .limit(20);
     setSearchResults((data || []).filter(r => !myRiders.find(m => m.id === r.id)));
@@ -758,6 +759,7 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
       .from("riders")
         .select("id, firstname, lastname, uci_points, prize_earnings_bonus, team_id, team:team_id(id, name)")
       .ilike("lastname", `%${q}%`)
+      .eq("is_retired", false)
       .not("team_id", "is", null)
       .limit(20);
     setSearchResults((data || []).filter(r => r.team_id !== myTeamId));
@@ -995,7 +997,7 @@ export default function TransfersPage() {
       fetch(`${API}/api/transfers/my-offers`, { headers }).then(r => r.json()),
       fetch(`${API}/api/transfers/swaps`, { headers }).then(r => r.json()),
       fetch(`${API}/api/loans`, { headers }).then(r => r.json()),
-      supabase.from("riders").select("id, firstname, lastname, uci_points, prize_earnings_bonus").eq("team_id", team.id).order("lastname"),
+      supabase.from("riders").select("id, firstname, lastname, uci_points, prize_earnings_bonus").eq("team_id", team.id).eq("is_retired", false).order("lastname"),
       fetch(`${API}/api/transfer-window`, { headers }).then(r => r.json()),
     ]);
 

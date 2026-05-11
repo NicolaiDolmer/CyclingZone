@@ -166,7 +166,7 @@ export default function RidersPage() {
   }, []);
 
   useEffect(() => {
-    supabase.from("riders").select("nationality_code").neq("nationality_code", null)
+    supabase.from("riders").select("nationality_code").eq("is_retired", false).neq("nationality_code", null)
       .then(({ data }) => {
         if (!data) return;
         const codes = [...new Set(data.map(r => r.nationality_code))].sort();

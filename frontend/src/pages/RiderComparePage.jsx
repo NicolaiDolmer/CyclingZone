@@ -35,6 +35,7 @@ function RiderSearch({ onSelect, excluded }) {
         .from("riders")
         .select("id, firstname, lastname, uci_points, market_value, prize_earnings_bonus, team:team_id(name)")
         .or(`firstname.ilike.%${q}%,lastname.ilike.%${q}%`)
+        .eq("is_retired", false)
         .order("uci_points", { ascending: false })
         .limit(8);
       setResults((data || []).filter(r => !excluded.includes(r.id)));

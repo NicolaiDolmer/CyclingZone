@@ -45,14 +45,14 @@ export default function RiderRankingsPage() {
     const raceIds = racesData.map(r => r.id);
     const { data: results } = await supabase
       .from("race_results")
-      .select("rider_id, result_type, rank, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, is_u25, team:team_id(id, name, is_ai))")
+      .select("rider_id, result_type, rank, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, is_u25, is_retired, team:team_id(id, name, is_ai))")
       .in("race_id", raceIds)
       .not("rider_id", "is", null)
       .range(0, 9999);
 
     const agg = {};
     (results || []).forEach(r => {
-      if (!r.rider_id || !r.rider) return;
+      if (!r.rider_id || !r.rider || r.rider.is_retired) return;
       if (!agg[r.rider_id]) {
         agg[r.rider_id] = {
           ...r.rider,

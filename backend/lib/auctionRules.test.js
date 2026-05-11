@@ -29,13 +29,20 @@ test("getAuctionStartIssue blocks rider with pending_team_id (awaiting transfer)
   assert.deepEqual(issue, { code: "rider_pending_transfer" });
 });
 
+test("getAuctionStartIssue blocks retired rider", () => {
+  const issue = getAuctionStartIssue({
+    rider: { id: "r1", team_id: null, pending_team_id: null, is_retired: true },
+  });
+  assert.deepEqual(issue, { code: "rider_retired" });
+});
+
 test("getAuctionStartIssue allows rider without pending transfer", () => {
   assert.equal(
-    getAuctionStartIssue({ rider: { id: "r1", team_id: "ai-team", pending_team_id: null } }),
+    getAuctionStartIssue({ rider: { id: "r1", team_id: "ai-team", pending_team_id: null, is_retired: false } }),
     null,
   );
   assert.equal(
-    getAuctionStartIssue({ rider: { id: "r1", team_id: null, pending_team_id: null } }),
+    getAuctionStartIssue({ rider: { id: "r1", team_id: null, pending_team_id: null, is_retired: false } }),
     null,
   );
   assert.equal(getAuctionStartIssue({}), null);

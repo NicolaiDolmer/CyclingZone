@@ -38,7 +38,7 @@ function ManualOverride({ onMsg, onRefresh, teams }) {
     setQuery(q);
     if (q.length < 2) { setRiderResults([]); return; }
     const { data } = await supabase.from("riders")
-      .select("id, firstname, lastname, uci_points, market_value, prize_earnings_bonus, team:team_id(name)")
+      .select("id, firstname, lastname, uci_points, market_value, prize_earnings_bonus, is_retired, team:team_id(name)")
       .or(`firstname.ilike.%${q}%,lastname.ilike.%${q}%`)
       .limit(5);
     setRiderResults(data || []);
@@ -59,6 +59,26 @@ function ManualOverride({ onMsg, onRefresh, teams }) {
     setLoading(false);
   }
 
+  async function setRetirement(isRetired) {
+    if (!selectedRider) return;
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${API}/api/admin/riders/${selectedRider.id}/retirement`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ is_retired: isRetired }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      onMsg(`✅ ${data.message}`);
+      setSelectedRider(r => r ? { ...r, is_retired: isRetired } : r);
+      onRefresh();
+    } else {
+      onMsg(`❌ ${data.error}`, "error");
+    }
+    setLoading(false);
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div className="relative">
@@ -72,7 +92,10 @@ function ManualOverride({ onMsg, onRefresh, teams }) {
               <div key={r.id} className="px-3 py-2 cursor-pointer hover:bg-cz-subtle border-b border-cz-border last:border-0"
                 onClick={() => { setSelectedRider(r); setQuery(`${r.firstname} ${r.lastname}`); setRiderResults([]); }}>
                 <p className="text-cz-1 text-sm">{r.firstname} {r.lastname}</p>
-                <p className="text-cz-3 text-xs">{r.team?.name || "Fri agent"} — {formatCz(getRiderMarketValue(r))}</p>
+                <p className="text-cz-3 text-xs">
+                  {r.team?.name || "Fri agent"} — {formatCz(getRiderMarketValue(r))}
+                  {r.is_retired && <span className="ml-2 text-cz-danger">Pensioneret</span>}
+                </p>
               </div>
             ))}
           </div>
@@ -90,11 +113,25 @@ function ManualOverride({ onMsg, onRefresh, teams }) {
         </select>
       </div>
       <div className="flex items-end">
-        <button onClick={moveRider} disabled={loading || !selectedRider}
-          className="w-full px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm
-            hover:brightness-110 disabled:opacity-50 transition-all">
-          {loading ? "Flytter..." : "Flyt rytter"}
-        </button>
+        <div className="w-full grid grid-cols-1 gap-2">
+          <button onClick={moveRider} disabled={loading || !selectedRider}
+            className="w-full px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm
+              hover:brightness-110 disabled:opacity-50 transition-all">
+            {loading ? "Arbejder..." : "Flyt rytter"}
+          </button>
+          {selectedRider && (
+            <button
+              onClick={() => setRetirement(!selectedRider.is_retired)}
+              disabled={loading}
+              className={`w-full px-4 py-2 font-bold rounded-lg text-sm border transition-all disabled:opacity-50
+                ${selectedRider.is_retired
+                  ? "bg-cz-success-bg0/20 text-cz-success border-cz-success/30"
+                  : "bg-cz-danger-bg0/20 text-cz-danger border-cz-danger/30"}`}
+            >
+              {selectedRider.is_retired ? "Aktivér rytter" : "Pensionér rytter"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -941,8 +941,9 @@ export default function RiderStatsPage() {
   const isBankRider = Boolean(rider.team?.is_bank);
   const isAiRider = Boolean(rider.team?.is_ai);
   const isPendingTransfer = Boolean(rider.pending_team_id);
-  const canAuction  = (isFreeAgent || isMyRider || isBankRider || isAiRider) && !isPendingTransfer;
-  const canDirectOffer = rider.team_id && rider.team_id !== myTeamId && !isBankRider && !isAiRider && !isPendingTransfer;
+  const isRetired = Boolean(rider.is_retired);
+  const canAuction  = (isFreeAgent || isMyRider || isBankRider || isAiRider) && !isPendingTransfer && !isRetired;
+  const canDirectOffer = rider.team_id && rider.team_id !== myTeamId && !isBankRider && !isAiRider && !isPendingTransfer && !isRetired;
   const auctionLabel = isMyRider
     ? "Sæt til auktion"
     : isBankRider
@@ -1015,6 +1016,7 @@ export default function RiderStatsPage() {
             )}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {rider.is_u25 && <span className="text-xs uppercase bg-cz-info-bg0/20 text-cz-info px-2 py-0.5 rounded">U25</span>}
+              {isRetired && <span className="text-xs uppercase bg-cz-danger-bg0/20 text-cz-danger px-2 py-0.5 rounded">Pensioneret</span>}
               <span className="text-xs uppercase bg-cz-subtle text-cz-2 px-2 py-0.5 rounded font-medium">{typeLabel}</span>
               {rider.nationality_code && (
                 <span className="text-cz-2 text-sm inline-flex items-center gap-1">
@@ -1058,6 +1060,11 @@ export default function RiderStatsPage() {
           {isPendingTransfer && (
             <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
               🔒 Rytteren er vundet på auktion og afventer overførsel til det nye hold — kan ikke handles før overførslen er gennemført.
+            </p>
+          )}
+          {isRetired && (
+            <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
+              Rytteren er pensioneret og kan ikke handles.
             </p>
           )}
           {canAuction && !activeAuction && <AuctionButton rider={rider} isMyRider={isMyRider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} />}

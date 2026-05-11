@@ -60,7 +60,7 @@
 
 ### Riders
 ```
-GET  /api/riders                  q, team_id, free_agent, u25, min_uci, max_uci, sort, order, page
+GET  /api/riders                  q, team_id, free_agent, u25, min_uci, max_uci, sort, order, page (skjuler is_retired)
 GET  /api/riders/:id
 GET  /api/riders/:id/watchlist-count
 POST /api/riders/:id/view
@@ -304,6 +304,7 @@ teams            id, user_id, name, is_ai, division(1-3), balance, sponsor_incom
 riders           id, pcm_id, firstname, lastname, full_name(gen), birthdate,
                  nationality_code, height, weight, popularity, uci_points,
                  price(gen), salary, team_id, pending_team_id, ai_team_id, is_u25,
+                 is_retired,
                  stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
                  stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,
                  stat_res, stat_ftr

@@ -588,7 +588,8 @@ router.get("/riders", requireAuth, async (req, res) => {
       stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,
       stat_res, stat_ftr,
       team:team_id(id, name)
-    `, { count: "exact" });
+    `, { count: "exact" })
+    .eq("is_retired", false);
 
   if (q) {
     query = query.or(
@@ -703,14 +704,18 @@ router.post("/auctions", requireAuth, async (req, res) => {
   // Verify rider belongs to this team
   const { data: rider } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, pending_team_id, uci_points, prize_earnings_bonus")
+    .select("id, firstname, lastname, team_id, pending_team_id, is_retired, uci_points, prize_earnings_bonus")
     .eq("id", rider_id)
     .single();
 
   if (!rider) return res.status(404).json({ error: "Rider not found" });
 
   // Block: rider awaits transfer to a previous auction winner.
-  if (getAuctionStartIssue({ rider })) {
+  const auctionStartIssue = getAuctionStartIssue({ rider });
+  if (auctionStartIssue) {
+    if (auctionStartIssue.code === "rider_retired") {
+      return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke sættes på auktion" });
+    }
     return res.status(409).json({ error: "Rytteren er vundet på en auktion og afventer overførsel til det nye hold" });
   }
 
@@ -1377,9 +1382,11 @@ router.post("/transfers", requireAuth, async (req, res) => {
 
   const { rider_id, asking_price } = req.body;
   const { data: rider } = await supabase
-    .from("riders").select("id, team_id, firstname, lastname").eq("id", rider_id).single();
+    .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
   if (!rider || rider.team_id !== req.team.id)
     return res.status(403).json({ error: "Du ejer ikke denne rytter" });
+  if (rider.is_retired)
+    return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke sættes til salg" });
 
   // #247: maks én aktiv listing pr. rytter. Tjekkes først her, og DB-niveau
   // partial unique index (uniq_transfer_listings_one_active_per_rider) fanger
@@ -1464,8 +1471,9 @@ router.post("/transfers/offer", requireAuth, async (req, res) => {
   if (!rider_id || !offer_amount) return res.status(400).json({ error: "rider_id og offer_amount kræves" });
 
   const { data: rider } = await supabase
-    .from("riders").select("id, team_id, firstname, lastname").eq("id", rider_id).single();
+    .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
   if (!rider || !rider.team_id) return res.status(404).json({ error: "Rytter ikke fundet eller har intet hold" });
+  if (rider.is_retired) return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke handles" });
   if (rider.team_id === req.team.id) return res.status(400).json({ error: "Du kan ikke byde på din egen rytter" });
 
   const { data: sellerTeam } = await supabase
@@ -1877,16 +1885,20 @@ router.post("/transfers/swaps", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "offered_rider_id og requested_rider_id kræves" });
 
   const [offeredRes, requestedRes] = await Promise.all([
-    supabase.from("riders").select("id, team_id, firstname, lastname").eq("id", offered_rider_id).single(),
-    supabase.from("riders").select("id, team_id, firstname, lastname").eq("id", requested_rider_id).single(),
+    supabase.from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", offered_rider_id).single(),
+    supabase.from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", requested_rider_id).single(),
   ]);
   const offered = offeredRes.data;
   const requested = requestedRes.data;
 
   if (!offered || offered.team_id !== req.team.id)
     return res.status(400).json({ error: "Din tilbudte rytter tilhører ikke dit hold" });
+  if (offered.is_retired)
+    return res.status(409).json({ error: "Din tilbudte rytter er pensioneret og kan ikke handles" });
   if (!requested || !requested.team_id)
     return res.status(404).json({ error: "Målrytter ikke fundet eller har intet hold" });
+  if (requested.is_retired)
+    return res.status(409).json({ error: "Målrytteren er pensioneret og kan ikke handles" });
   if (requested.team_id === req.team.id)
     return res.status(400).json({ error: "Du kan ikke bytte med dig selv" });
   const { data: requestedTeam } = await supabase
@@ -2106,9 +2118,11 @@ router.post("/loans", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Lejeaftale kan max dække 1 sæson — sæt start og slut til samme sæsonnummer" });
 
   const { data: rider } = await supabase
-    .from("riders").select("id, team_id, firstname, lastname").eq("id", rider_id).single();
+    .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
   if (!rider || !rider.team_id)
     return res.status(404).json({ error: "Rytter ikke fundet eller har intet hold" });
+  if (rider.is_retired)
+    return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke lejes" });
   if (rider.team_id === req.team.id)
     return res.status(400).json({ error: "Du kan ikke leje din egen rytter" });
 
@@ -2352,6 +2366,32 @@ router.post("/admin/override-rider", requireAdmin, async (req, res) => {
   const teamRes = team_id ? await supabase.from("teams").select("name").eq("id", team_id).single() : null;
   const teamName = teamRes?.data?.name || "fri agent";
   res.json({ success: true, message: `${rider.firstname} ${rider.lastname} flyttet til ${teamName}` });
+});
+
+// POST /api/admin/riders/:id/retirement — mark rider retired/active
+router.post("/admin/riders/:id/retirement", requireAdmin, async (req, res) => {
+  const isRetired = req.body?.is_retired === true;
+  const { data: rider } = await supabase
+    .from("riders")
+    .select("id, firstname, lastname")
+    .eq("id", req.params.id)
+    .single();
+  if (!rider) return res.status(404).json({ error: "Rytter ikke fundet" });
+
+  const updatePayload = { is_retired: isRetired };
+  if (isRetired) {
+    updatePayload.pending_team_id = null;
+  }
+  const { error } = await supabase
+    .from("riders")
+    .update(updatePayload)
+    .eq("id", rider.id);
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({
+    success: true,
+    message: `${rider.firstname} ${rider.lastname} er ${isRetired ? "pensioneret" : "aktiveret igen"}`,
+  });
 });
 
 router.post(

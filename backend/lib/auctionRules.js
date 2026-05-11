@@ -10,6 +10,9 @@ import { SQUAD_FINE_AMOUNT, SQUAD_PENALTY_POINTS } from "./squadEnforcement.js";
 // Rammer alle managers (også winneren selv) — rytteren er ikke fysisk på noget
 // hold endnu og kan ikke sælges videre før transfervinduet flusher pending → team_id.
 export function getAuctionStartIssue({ rider } = {}) {
+  if (rider?.is_retired) {
+    return { code: "rider_retired" };
+  }
   if (rider?.pending_team_id) {
     return { code: "rider_pending_transfer" };
   }

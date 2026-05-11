@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "3.16",
+    date: "2026-05-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Pensionerede ryttere kan skjules og låses",
+        items: [
+          "Admin · Manuel override på `/admin` kan nu markere en rytter som pensioneret eller aktivere rytteren igen. Pensionerede ryttere bliver i databasen, så historik kan bygges på samme rytter-id senere.",
+          "Manager · Pensionerede ryttere skjules fra rytterdatabasen og handelssøgninger, og rytterprofilen viser en låst status i stedet for auktions-/transferknapper.",
+          "Backend · Nye auktioner, transferlistinger, direkte tilbud, byttehandler og lejeaftaler afvises server-side hvis en involveret rytter er pensioneret.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.15",
     date: "2026-05-11",
     label: "Beta",

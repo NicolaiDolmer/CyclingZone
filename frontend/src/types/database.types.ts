@@ -1395,6 +1395,7 @@ export type Database = {
           firstname: string
           height: number | null
           id: string
+          is_retired: boolean
           is_u25: boolean | null
           lastname: string
           market_value: number | null
@@ -1432,6 +1433,7 @@ export type Database = {
           firstname: string
           height?: number | null
           id?: string
+          is_retired?: boolean
           is_u25?: boolean | null
           lastname: string
           market_value?: number | null
@@ -1469,6 +1471,7 @@ export type Database = {
           firstname?: string
           height?: number | null
           id?: string
+          is_retired?: boolean
           is_u25?: boolean | null
           lastname?: string
           market_value?: number | null

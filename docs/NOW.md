@@ -14,6 +14,7 @@ Historik før 2026-05-10 ligger i [`NOW_HISTORIK_2026-05-09-PRECOMPACT.md`](arch
 - 2026-05-11: **#295 multer security-fix LIVE som v3.13** — `multer@2.1.1`, testbart `adminImportUpload`-modul og multipart regressionstest for Excel-upload. Commit `a65ba51`; GitHub CI, Deploy verify, CodeQL og Dependabot Updates grønne. #295 lukket, PR #114 lukket som superseded.
 - 2026-05-11: **#295 upload edge-hardening som v3.14** — upload-limit giver kontrolleret JSON-fejl (`upload_file_too_large`); multipart regressionstest dækker nu også >10 MB fil. Backend 581/581 grøn, frontend build grøn.
 - 2026-05-11: **Signup-økonomi fix klar som v3.15** — live-probe fandt 2 manager-placeholder-hold (Chris Machines + Equipo Kern Pharma, 0 finance rows). `teamProfileEngine` reparerer placeholder-path, migration retter DB-default/signup-trigger + berørte rows. Backend 583/583 grøn, frontend build grøn.
+- 2026-05-11: **Pensionerede ryttere klar som v3.16** — `riders.is_retired`, admin-toggle på `/admin`, skjult fra rytter-/handelssøgninger, og backend-block på nye auktioner/transfers/swaps/lejeaftaler. Backend 584/584 grøn, frontend build grøn.
 
 ## Næste session (prioriteret)
 1. **Sæson 1 race-udvælgelse på /admin** ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242)) — vælg sæson 1, race-dage 60, behold WT-eksklusion, generér forslag, gem. Bruger klikker selv sæson-cyklus senere.

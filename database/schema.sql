@@ -83,6 +83,7 @@ CREATE TABLE riders (
   potentiale DECIMAL(3,1),           -- fra dyn_cyclist.value_f_potentiel (1.0–6.0, 0.5-trin)
   -- Flags
   is_u25 BOOLEAN DEFAULT FALSE,
+  is_retired BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
