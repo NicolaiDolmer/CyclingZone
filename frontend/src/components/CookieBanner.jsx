@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useConsent } from "../lib/consent.jsx";
 
@@ -34,6 +34,16 @@ export default function CookieBanner() {
     marketing: consent.marketing,
     email_marketing: consent.email_marketing,
   }));
+
+  useEffect(() => {
+    if (!bannerOpen) return;
+    setDraft({
+      analytics: consent.analytics,
+      marketing: consent.marketing,
+      email_marketing: consent.email_marketing,
+    });
+    setExpanded(false);
+  }, [bannerOpen, consent.analytics, consent.marketing, consent.email_marketing]);
 
   if (!bannerOpen) return null;
 
