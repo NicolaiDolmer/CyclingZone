@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "3.21",
+    date: "2026-05-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auth · Password-reset og uventede logouts (#35)",
+        items: [
+          "Manager · \"Glemt password\"-reset-mailen kunne lande på en intern Vercel-login-side i stedet for spillet, fordi reset-linket fulgte den URL du startede fra — herunder Vercel's auto-genererede preview/team-domæner som var SSO-beskyttede. Reset-link peger nu altid på `https://cycling-zone.vercel.app/reset-password`, uanset hvilken vercel-URL du tilgår spillet fra.",
+          "Manager · De to ekstra `*.vercel.app`-domæner som Vercel auto-genererede til projektet er nu offentligt tilgængelige (Vercel Authentication slået fra). Hvis du bookmarkede et af dem, virker det fra nu af også — du behøver ikke logge ind med en Vercel-konto.",
+          "Manager · Hvis du blev logget ud i går aftes/i morges efter sikkerhedsopdateringen (#296 Supabase key-rotation), så log bare ind igen — det er en engangs-effekt.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.20",
     date: "2026-05-11",
     label: "Beta",
