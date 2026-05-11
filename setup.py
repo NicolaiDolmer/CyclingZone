@@ -21,10 +21,17 @@ import os
 import time
 
 # ── Konfiguration ─────────────────────────────────────────────────────────────
+# Nøgler hentes fra miljøvariabler — aldrig hardcoded.
+# Sæt SUPABASE_URL, SUPABASE_ANON_KEY og SUPABASE_SERVICE_KEY i din shell før kørsel.
 
-SUPABASE_URL = "https://ghwvkxzhsbbltzfnuhhz.supabase.co"
-SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdod3ZreHpoc2JibHR6Zm51aGh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNTk0NDQsImV4cCI6MjA5MTgzNTQ0NH0.J4D8QVPsI0VzV8ct-RY2IiwblWPVOhwcZwBHvnREa14"
-SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdod3ZreHpoc2JibHR6Zm51aGh6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjI1OTQ0NCwiZXhwIjoyMDkxODM1NDQ0fQ.HGeYCXLHOfHHK0fa4wDt2EzdbfDWRcUTFB_4Pl6lICs"
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
+
+if not (SUPABASE_URL and SUPABASE_ANON_KEY and SUPABASE_SERVICE_KEY):
+    print("\033[91m❌ Mangler env vars. Sæt SUPABASE_URL, SUPABASE_ANON_KEY og SUPABASE_SERVICE_KEY før kørsel.\033[0m")
+    print("   Find nøgler i Supabase Dashboard → Project Settings → API")
+    sys.exit(1)
 
 # ── Farver til terminal output ─────────────────────────────────────────────────
 

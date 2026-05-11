@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.19",
+    date: "2026-05-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sikkerhed · Supabase service-nøgle roteret (#296)",
+        items: [
+          "Backend · Den service_role API-nøgle der gav fuld adgang til databasen er udskiftet til Supabase's nye `sb_secret_...` system. Per-nøgle revokering betyder at hvis en nøgle eksponeres i fremtiden, behøver vi ikke længere rotere fælles JWT-secret.",
+          "Backend · Den gamle nøgle (commiteret offentligt i `setup.py` i Initial commit 2026-04-17) er nu deaktiveret. Ingen kendt misbrug før rotation.",
+          "Repo · `setup.py` læser nu nøgler fra miljøvariabler i stedet for hardcoded værdier — fremtidige clones skal selv sætte env vars.",
+          "Drift · Ingen brugerrettet ændring; backend redeployet uden mærkbar nedetid.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.18",
     date: "2026-05-11",
     label: "Beta",
