@@ -23,7 +23,8 @@ Historik før 2026-05-10 ligger i [`NOW_HISTORIK_2026-05-09-PRECOMPACT.md`](arch
 - 2026-05-11: **#137 Event-logging baseline klar som v3.20** — `player_events` tabel + RLS, `logEvent.js` helper (analytics-consent-gated), 10 events instrumenteret (5 game + 5 feature-impressions). Detector E (zero-impression-features) tilføjet til feature-liveness-audit; skipper PR-runs, kører ugentligt mandage 04:00 UTC. Beslutning: egen Supabase-tabel frem for PostHog så Detector E er én SQL-query og data kan joines med teams/seasons.
 
 ## Næste session (prioriteret)
-1. **Sæson 1 race-udvælgelse på /admin** ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242)) — vælg sæson 1, race-dage 60, generér forslag, gem. **Deadline ~2026-05-15.**
+1. **Bekræft #35 reset-flow** — affected bruger tester onsdag aften 2026-05-11. Bed om: (a) modtog mail (inkl. spam-folder)? (b) lander på `/reset-password` med form? (c) virker login efter? Hvis spam-folder-issue: separat custom SMTP-opgave (kræver afsender-domæne).
+2. **Sæson 1 race-udvælgelse på /admin** ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242)) — vælg sæson 1, race-dage 60, generér forslag, gem. **Deadline ~2026-05-15.**
 2. **Manuel prod-verifikation af Slice 09** — `/races?tab=world` viser 97 løb; preview returnerer 30-60 ProSeries-løb.
 3. **Sæson 1 LIVE-handling ca. 2026-05-15** — efter race-kalender er gemt: `/admin` → `Sæson-cyklus` → `Udfør sæsonskifte`.
 4. **[#303](https://github.com/NicolaiDolmer/CyclingZone/issues/303)** (lav prio, ~10 min) — promote `gitleaks` til required check når 5 grønne PRs er kørt.
