@@ -125,7 +125,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ### Admin
 - Import af ryttere (Python-script `scripts/import_riders.py`) — se CONVENTIONS.md for navnematch-algoritme
-- Import af løbsresultater (xlsx upload)
+- Import af løbsresultater (`.xlsx`/`.xls` upload) via `POST /api/admin/import-results`; upload-parseren er `multer@2.1.1` med memoryStorage, 10 MB loft og regressionstest for multipart `file` + `race_id` + `stage_number` (v3.13, #295)
 - UCI points sync (Google Sheets CSV — autoritativ kilde med 3000 ryttere)
 - Override rider (team/stats)
 - Sæsonopcioner (create/start/end/result import) via kanoniske admin-routes

@@ -10,7 +10,6 @@
  */
 
 import express from "express";
-import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
@@ -156,6 +155,7 @@ import {
   buildRaceResultsFromPending,
 } from "../lib/raceResultsEngine.js";
 import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
+import { adminImportUpload } from "../lib/adminImportUpload.js";
 import { checkAchievements } from "../lib/achievementEngine.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { parseRacePoolCsv, summarizePool, WORLD_TOUR_CLASSES } from "../lib/racePoolImport.js";
@@ -186,15 +186,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env") });
 
 const router = express.Router();
-const adminImportUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (_, file, cb) => {
-    const ok = file.mimetype.includes("spreadsheet") || file.originalname.endsWith(".xlsx");
-    cb(null, ok);
-  },
-});
-
 
 // Log to public activity feed
 async function logActivity(type, data = {}) {
