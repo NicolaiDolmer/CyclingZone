@@ -17,6 +17,7 @@ import {
 } from "../lib/auctionLogic";
 import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
+import { logEvent } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazy(() => import("../components/RiderDevelopmentTab"));
@@ -258,7 +259,10 @@ function DirectOfferButton({ rider }) {
       body: JSON.stringify({ rider_id: rider.id, offer_amount: amount, message }),
     });
     const data = await res.json();
-    if (res.ok) { setResult({ ok: true, msg: "✅ Tilbud sendt!" }); setShow(false); }
+    if (res.ok) {
+      logEvent("transfer_offer_sent", { rider_id: rider.id, amount });
+      setResult({ ok: true, msg: "✅ Tilbud sendt!" }); setShow(false);
+    }
     else        { setResult({ ok: false, msg: `❌ ${data.error}` }); }
     setLoading(false);
     setConfirmOpen(false);
@@ -1089,7 +1093,10 @@ export default function RiderStatsPage() {
 
       <div className="flex gap-2 mb-4 flex-wrap">
         {[{ key: "stats", label: "Evner" }, { key: "season", label: "Sæsonhistorik" }, { key: "results", label: "Løbsresultater" }, { key: "bids", label: "Bud-historik" }, { key: "history", label: "Historik" }, { key: "development", label: "Udvikling" }].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          <button key={t.key} onClick={() => {
+            setTab(t.key);
+            if (t.key === "development") logEvent("feature_rider_development_tab_opened", { rider_id: rider.id });
+          }}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
               ${tab === t.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1 hover:border-cz-border"}`}>
             {t.label}

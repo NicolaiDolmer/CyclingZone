@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { logEvent } from "../lib/logEvent";
 
 const CATEGORIES = [
   { key: "most_points_season", label: "Flest point i én sæson", icon: "🏆", unit: "point", color: "#e8c547" },
@@ -63,7 +64,7 @@ export default function HallOfFamePage() {
     setLoading(false);
   }
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); logEvent("feature_hall_of_fame_opened"); }, []);
 
   // Calculate all-time stats from standings if no HoF records yet
   function getBestFromStandings(category) {

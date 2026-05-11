@@ -1,11 +1,12 @@
 name: Feature-liveness audit
 
 # Backwards-audit der finder "deployed kode + 0 data / 0 brugere"-mønstret.
-# Generaliserer slice 14 / #279 lærepenge til 4 detector-klasser:
+# Generaliserer slice 14 / #279 lærepenge til 5 detector-klasser:
 #   A — write-but-no-data
 #   B — orphaned-endpoints
 #   C — migration-drift
 #   D — schema-drift
+#   E — zero-impression-features (player_events; PR-runs skipper, kun cron)
 #
 # Triggers:
 #   - PR der rører schema, backend-routes, frontend supabase/fetch eller scriptet selv
@@ -67,8 +68,14 @@ jobs:
         run: |
           export SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
           export SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
-          node backend/scripts/audit-feature-liveness.js --json > feature-liveness.json
-          node backend/scripts/audit-feature-liveness.js | tee feature-liveness.txt
+          # Detector E (zero-impression-features) skippes på PR-runs fordi events
+          # tager dage/uger at akkumulere efter rollout — kun cron-runs evaluerer E.
+          SKIP_FLAG=""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            SKIP_FLAG="--skip=E"
+          fi
+          node backend/scripts/audit-feature-liveness.js $SKIP_FLAG --json > feature-liveness.json
+          node backend/scripts/audit-feature-liveness.js $SKIP_FLAG | tee feature-liveness.txt
           total=$(node -e "const d=require('./feature-liveness.json');console.log(d.total_findings)")
           echo "total=$total" >> "$GITHUB_OUTPUT"
 

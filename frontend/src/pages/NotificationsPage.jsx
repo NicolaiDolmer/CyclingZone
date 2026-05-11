@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
+import { logEvent } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -423,7 +424,7 @@ export default function NotificationsPage() {
                 .map(item => (
                   <div key={`${item.kind}-${item.id}`}
                     className="flex items-start gap-3 p-3 sm:p-4 rounded-xl border border-cz-accent/30 bg-cz-accent/5 hover:bg-cz-accent/10 transition-all cursor-pointer"
-                    onClick={() => navigate(item.link)}>
+                    onClick={() => { logEvent("notification_clicked", { kind: item.kind }); navigate(item.link); }}>
                     <div className="w-9 h-9 rounded-lg bg-cz-subtle flex items-center justify-center text-base flex-shrink-0 mt-0.5">
                       {PENDING_KIND_ICON[item.kind] || "●"}
                     </div>

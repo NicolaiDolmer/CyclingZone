@@ -21,6 +21,11 @@
 //       Prod-tabeller uden tilsvarende `CREATE TABLE` i `database/*.sql`.
 //       Slice 14-mønstret: Studio-oprettet tabel uden migration.
 //
+//   E — zero-impression-features
+//       Event listet i frontend/src/lib/logEvent.js KNOWN_EVENTS men 0 events
+//       i public.player_events sidste 30 dage. Fanger slice 14-mønstret for
+//       frontend-only features (hvor Detector A ikke kan se en backend-insert).
+//
 // Usage:
 //   node backend/scripts/audit-feature-liveness.js              # human-readable
 //   node backend/scripts/audit-feature-liveness.js --json       # JSON for CI
@@ -43,6 +48,8 @@ const BACKEND_DIR = join(REPO_ROOT, "backend");
 const DATABASE_DIR = join(REPO_ROOT, "database");
 const ROUTES_FILE = join(REPO_ROOT, "backend", "routes", "api.js");
 const SERVER_FILE = join(REPO_ROOT, "backend", "server.js");
+const LOG_EVENT_FILE = join(REPO_ROOT, "frontend", "src", "lib", "logEvent.js");
+const IMPRESSION_WINDOW_DAYS = 30;
 
 dotenv.config({ path: join(REPO_ROOT, "backend", ".env") });
 
@@ -51,7 +58,10 @@ const JSON_OUT = args.includes("--json");
 const STRICT = args.includes("--strict");
 const onlyArg = args.find((a) => a.startsWith("--only="));
 const ONLY = onlyArg ? new Set(onlyArg.slice("--only=".length).toUpperCase().split(",")) : null;
+const skipArg = args.find((a) => a.startsWith("--skip="));
+const SKIP = skipArg ? new Set(skipArg.slice("--skip=".length).toUpperCase().split(",")) : new Set();
 function detectorEnabled(letter) {
+  if (SKIP.has(letter)) return false;
   return !ONLY || ONLY.has(letter);
 }
 
@@ -126,6 +136,14 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
 const WHITELIST_NON_MIGRATION_SQL = new Set([
   "database/schema.sql",
   "database/supabase_setup.sql",
+]);
+
+// Detector E: events listet i KNOWN_EVENTS men som vi p.t. accepterer 0 impressions for
+// (fx nye events tilføjet uden at være shipped endnu, eller events på milestone-gated
+// features). Tilføj entry når en finding er bekræftet "intentional zero".
+const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
+  // Tom whitelist ved opstart — fyldes ind når Detector E rapporterer en
+  // bekræftet "vi har ikke nået at rulle ud endnu"-finding.
 ]);
 
 // Detector D: prod-tabeller vi accepterer uden CREATE TABLE i repo
@@ -419,6 +437,69 @@ async function detectorD() {
 }
 
 // ---------------------------------------------------------------------------
+// Detector E — zero-impression-features
+// ---------------------------------------------------------------------------
+
+async function listKnownEvents() {
+  // Parse KNOWN_EVENTS-arrayet ud af logEvent.js — undgår at duplikere listen.
+  // Mønster: export const KNOWN_EVENTS = Object.freeze([ ... ]) — eller bare
+  // [ ... ] hvis Object.freeze fjernes senere.
+  let text;
+  try {
+    text = await readFile(LOG_EVENT_FILE, "utf8");
+  } catch {
+    return [];
+  }
+  const match = text.match(/KNOWN_EVENTS\s*=\s*Object\.freeze\s*\(\s*\[([\s\S]*?)\]\s*\)|KNOWN_EVENTS\s*=\s*\[([\s\S]*?)\]/);
+  if (!match) return [];
+  const body = match[1] || match[2] || "";
+  const events = [];
+  const re = /["'`]([a-z_][a-z0-9_]*)["'`]/g;
+  let m;
+  while ((m = re.exec(body)) !== null) events.push(m[1]);
+  return events;
+}
+
+async function fetchEventCounts() {
+  const { data, error } = await supabase.rpc("feature_liveness_event_counts", {
+    window_days: IMPRESSION_WINDOW_DAYS,
+  });
+  if (error) {
+    // RPC eller tabel mangler endnu (PR-run før auto-migrate har kørt) — Detector E
+    // skipper gracefully så det ikke blokerer den PR der LANDER selve player_events.
+    if (/does not exist|relation .* does not exist|function .* does not exist/i.test(error.message)) {
+      return null;
+    }
+    throw new Error(`feature_liveness_event_counts RPC failed: ${error.message}`);
+  }
+  return data || [];
+}
+
+async function detectorE() {
+  const [known, counts] = await Promise.all([
+    listKnownEvents(),
+    fetchEventCounts(),
+  ]);
+  if (known.length === 0) return [];
+  if (counts === null) return []; // helper RPC/table mangler — skip uden at fejle
+  const seen = new Map();
+  for (const row of counts) seen.set(row.event_name, row);
+  const findings = [];
+  for (const eventName of known) {
+    if (WHITELIST_ZERO_IMPRESSION_EVENTS.has(eventName)) continue;
+    const row = seen.get(eventName);
+    if (row && row.event_count > 0) continue;
+    findings.push({
+      detector: "E",
+      severity: "warning",
+      event_name: eventName,
+      reason: `Event listet i KNOWN_EVENTS men 0 impressions sidste ${IMPRESSION_WINDOW_DAYS} dage`,
+    });
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -427,19 +508,21 @@ const detectors = [
   detectorEnabled("B") ? detectorB() : Promise.resolve([]),
   detectorEnabled("C") ? detectorC() : Promise.resolve([]),
   detectorEnabled("D") ? detectorD() : Promise.resolve([]),
+  detectorEnabled("E") ? detectorE() : Promise.resolve([]),
 ];
-const [findingsA, findingsB, findingsC, findingsD] = await Promise.all(detectors);
-const allFindings = [...findingsA, ...findingsB, ...findingsC, ...findingsD];
+const [findingsA, findingsB, findingsC, findingsD, findingsE] = await Promise.all(detectors);
+const allFindings = [...findingsA, ...findingsB, ...findingsC, ...findingsD, ...findingsE];
 
 const summary = {
   generated_at: new Date().toISOString(),
-  detectors_run: ["A", "B", "C", "D"].filter(detectorEnabled),
+  detectors_run: ["A", "B", "C", "D", "E"].filter(detectorEnabled),
   total_findings: allFindings.length,
   by_detector: {
     A: findingsA.length,
     B: findingsB.length,
     C: findingsC.length,
     D: findingsD.length,
+    E: findingsE.length,
   },
   findings: allFindings,
 };
@@ -449,7 +532,7 @@ if (JSON_OUT) {
 } else {
   console.log(`Feature-liveness audit — ${summary.generated_at}`);
   console.log(`Detectors: ${summary.detectors_run.join(", ")}`);
-  console.log(`Total findings: ${summary.total_findings} (A=${summary.by_detector.A} B=${summary.by_detector.B} C=${summary.by_detector.C} D=${summary.by_detector.D})\n`);
+  console.log(`Total findings: ${summary.total_findings} (A=${summary.by_detector.A} B=${summary.by_detector.B} C=${summary.by_detector.C} D=${summary.by_detector.D} E=${summary.by_detector.E})\n`);
 
   if (findingsA.length > 0) {
     console.log(`Detector A — write-but-no-data (${findingsA.length}):`);
@@ -479,6 +562,14 @@ if (JSON_OUT) {
     console.log(`Detector D — schema-drift (${findingsD.length}):`);
     for (const f of findingsD) {
       console.log(`  ${f.table}`);
+      console.log(`    ${f.reason}`);
+    }
+    console.log();
+  }
+  if (findingsE.length > 0) {
+    console.log(`Detector E — zero-impression-features (${findingsE.length}):`);
+    for (const f of findingsE) {
+      console.log(`  ${f.event_name}`);
       console.log(`    ${f.reason}`);
     }
     console.log();
