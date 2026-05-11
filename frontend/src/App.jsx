@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import Layout from "./components/Layout";
+import CookieBanner from "./components/CookieBanner.jsx";
+import ClarityIntegration from "./lib/clarityIntegration.jsx";
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
@@ -26,6 +28,7 @@ const HallOfFamePage = lazy(() => import("./pages/HallOfFamePage"));
 const SeasonPreviewPage = lazy(() => import("./pages/SeasonPreviewPage"));
 const HeadToHeadPage = lazy(() => import("./pages/HeadToHeadPage"));
 const PatchNotesPage = lazy(() => import("./pages/PatchNotesPage"));
+const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const RacesPage = lazy(() => import("./pages/RacesPage"));
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
@@ -74,10 +77,12 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ClarityIntegration />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage session={session} />} />
+          <Route path="/privatlivspolitik" element={<PrivacyPolicyPage />} />
           <Route path="/" element={
             <ProtectedRoute session={session}><Layout /></ProtectedRoute>
           }>
@@ -126,6 +131,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
+      <CookieBanner />
     </BrowserRouter>
   );
 }

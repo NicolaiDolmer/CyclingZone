@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "3.18",
+    date: "2026-05-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "Privatliv · Samtykke-banner og privatlivspolitik (#297, #52)",
+        items: [
+          "Alle besøgende · Første gang du åbner spillet, vælger du nu om vi må indsamle Analyse-, Marketing- og E-mail-data. Nødvendige cookies (login, tema, samtykke) er altid på. Du kan altid skifte valg under Profil → Privatliv.",
+          "Manager · Microsoft Clarity-analytics indlæses kun hvis du har accepteret Analyse-kategorien. Vi gætter ikke længere på UX-problemer; med samtykke kan vi se hvor brugere klikker forgæves og rette det.",
+          "Manager · Ny side `/privatlivspolitik` med fuld disclosure af hvilke data vi behandler, hvor de opbevares (Supabase EU, Vercel, Railway, Clarity) og dine rettigheder under GDPR.",
+          "Backend · `users.consent_preferences` JSONB-kolonne gemmer dine valg på tværs af enheder; pre-login valg gemmes i localStorage og migreres til kontoen ved login.",
+          "Hver eksisterende manager ser banneret én gang ved næste besøg.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.17",
     date: "2026-05-11",
     label: "Beta",
