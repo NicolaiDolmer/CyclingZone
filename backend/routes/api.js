@@ -155,7 +155,7 @@ import {
   buildRaceResultsFromPending,
 } from "../lib/raceResultsEngine.js";
 import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
-import { adminImportUpload } from "../lib/adminImportUpload.js";
+import { adminImportUploadSingleFile } from "../lib/adminImportUpload.js";
 import { checkAchievements } from "../lib/achievementEngine.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { parseRacePoolCsv, summarizePool, WORLD_TOUR_CLASSES } from "../lib/racePoolImport.js";
@@ -2357,7 +2357,7 @@ router.post("/admin/override-rider", requireAdmin, async (req, res) => {
 router.post(
   "/admin/import-results",
   requireAdmin,
-  adminImportUpload.single("file"),
+  adminImportUploadSingleFile,
   createAdminImportResultsHandler({
     supabase,
     buildRacePointsLookup,

@@ -5,13 +5,21 @@ import test from "node:test";
 
 import express from "express";
 
-import { createAdminImportUpload, isAllowedAdminImportFile } from "./adminImportUpload.js";
+import {
+  ADMIN_IMPORT_MAX_FILE_SIZE_BYTES,
+  adminImportUploadSingleFile,
+  createAdminImportUpload,
+  isAllowedAdminImportFile,
+} from "./adminImportUpload.js";
 
-async function withUploadServer(fn) {
+async function withUploadServer(fn, { useSingleFileWrapper = false } = {}) {
   const app = express();
   const upload = createAdminImportUpload();
+  const uploadMiddleware = useSingleFileWrapper
+    ? adminImportUploadSingleFile
+    : upload.single("file");
 
-  app.post("/upload", upload.single("file"), (req, res) => {
+  app.post("/upload", uploadMiddleware, (req, res) => {
     res.json({
       file: req.file
         ? {
@@ -94,4 +102,30 @@ test("admin import upload ignores non-Excel files before the handler runs", asyn
     assert.equal(body.file, null);
     assert.deepEqual(body.body, { race_id: "race-1" });
   });
+});
+
+test("admin import upload returns controlled JSON when file exceeds the 10 MB limit", async () => {
+  await withUploadServer(async (baseUrl) => {
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new Blob([new Uint8Array(ADMIN_IMPORT_MAX_FILE_SIZE_BYTES + 1)], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      "too-large.xlsx",
+    );
+
+    const response = await fetch(`${baseUrl}/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(body, {
+      error: "File too large",
+      code: "upload_file_too_large",
+      max_file_size_bytes: ADMIN_IMPORT_MAX_FILE_SIZE_BYTES,
+    });
+  }, { useSingleFileWrapper: true });
 });

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.14",
+    date: "2026-05-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "Hardening · Upload-fejl håndteres kontrolleret (#295 follow-up)",
+        items: [
+          "Admin · Hvis en resultatfil er over 10 MB, svarer backend nu med kontrolleret JSON-fejl (`upload_file_too_large`) i stedet for at lade multer/Express sende en generisk parser-fejl. Det gør fejlen lettere at vise og debugge i admin-flowet.",
+          "Backend · Multipart-regressionstesten dækker nu også upload-limit edge casen oven på `file`, `race_id`, `stage_number`, `.xls` accept og non-Excel rejection. Backend-testpakken er nu 581/581 grøn.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.13",
     date: "2026-05-11",
     label: "Beta",
@@ -11,7 +25,7 @@ const PATCHES = [
         items: [
           "Admin · Excel-upload til løbsresultater er opgraderet til `multer@2.1.1`, som lukker de åbne high Dependabot-alerts på upload-parseren uden at ændre admin-flowet: vælg løb, etape og upload fil som før.",
           "Admin · Backend accepterer nu eksplicit både `.xlsx` og legacy `.xls` fra admin-UI'et og holder fortsat filen i memory med 10 MB upload-loft, før resultaterne parses og sendes gennem den eksisterende raceResultsEngine.",
-          "Backend · Upload-konfigurationen er flyttet til et testbart `adminImportUpload`-modul med multipart regressionstest, der verificerer `file`, `race_id` og `stage_number` gennem rigtig Express/multer middleware på multer 2.x.",
+          "Backend · Upload-konfigurationen er flyttet til et testbart `adminImportUpload`-modul med multipart regressionstest, der verificerer `file`, `race_id`, `stage_number`, MIME-filter og kontrolleret JSON-fejl ved for stor fil gennem rigtig Express/multer middleware på multer 2.x.",
         ],
       },
     ],
