@@ -15,12 +15,12 @@ Historik før 2026-05-10 ligger i [`NOW_HISTORIK_2026-05-09-PRECOMPACT.md`](arch
 - 2026-05-11: **#295 upload edge-hardening som v3.14** — upload-limit giver kontrolleret JSON-fejl (`upload_file_too_large`); multipart regressionstest dækker nu også >10 MB fil. Backend 581/581 grøn, frontend build grøn.
 - 2026-05-11: **Signup-økonomi fix klar som v3.15** — live-probe fandt 2 manager-placeholder-hold (Chris Machines + Equipo Kern Pharma, 0 finance rows). `teamProfileEngine` reparerer placeholder-path, migration retter DB-default/signup-trigger + berørte rows. Backend 583/583 grøn, frontend build grøn.
 - 2026-05-11: **Pensionerede ryttere klar som v3.16** — `riders.is_retired`, admin-toggle på `/admin`, skjult fra rytter-/handelssøgninger, og backend-block på nye auktioner/transfers/swaps/lejeaftaler. Backend 584/584 grøn, frontend build grøn.
+- 2026-05-11: **#83 Slice 07e soak-gate BESTÅET** — post_phase_b_null=0, post_phase_b_populated=61. Issue lukket.
 
 ## Næste session (prioriteret)
-1. **Sæson 1 race-udvælgelse på /admin** ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242)) — vælg sæson 1, race-dage 60, behold WT-eksklusion, generér forslag, gem. Bruger klikker selv sæson-cyklus senere.
+1. **Sæson 1 race-udvælgelse på /admin** ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242)) — vælg sæson 1, race-dage 60, behold WT-eksklusion, generér forslag, gem. Bruger klikker selv sæson-cyklus senere. **Deadline ~2026-05-15.**
 2. **Manuel prod-verifikation af Slice 09** — `/races?tab=world` viser 97 løb m. klassefilter; preview returnerer 30-60 ProSeries-løb til sæson 1.
 3. **Sæson 1 LIVE-handling ca. 2026-05-15** — efter race-kalender er gemt og datoen rammer: `/admin` -> `Sæson-cyklus` -> `Udfør sæsonskifte`.
-4. **Slice 07e soak-gate** ([#83](https://github.com/NicolaiDolmer/CyclingZone/issues/83)) — genkør NULL-counter når der har været prod-finance-trafik siden 2026-05-09 17:00 cutoff.
 
 ## Kritiske invarianter
 - Verificér runtime før claims; runtime > docs.
