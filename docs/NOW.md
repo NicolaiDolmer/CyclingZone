@@ -16,12 +16,15 @@ Historik før 2026-05-10 ligger i [`NOW_HISTORIK_2026-05-09-PRECOMPACT.md`](arch
 - 2026-05-11: **Signup-økonomi fix klar som v3.15** — live-probe fandt 2 manager-placeholder-hold (Chris Machines + Equipo Kern Pharma, 0 finance rows). `teamProfileEngine` reparerer placeholder-path, migration retter DB-default/signup-trigger + berørte rows. Backend 583/583 grøn, frontend build grøn.
 - 2026-05-11: **Pensionerede ryttere klar som v3.16** — `riders.is_retired`, admin-toggle på `/admin`, skjult fra rytter-/handelssøgninger, og backend-block på nye auktioner/transfers/swaps/lejeaftaler. Backend 584/584 grøn, frontend build grøn.
 - 2026-05-11: **#83 Slice 07e soak-gate BESTÅET** — post_phase_b_null=0, post_phase_b_populated=61. Issue lukket.
-- 2026-05-11: **#297 Consent management framework LIVE som v3.18** — cookie-banner med 4 kategorier (Nødvendig/Analyse/Marketing/E-mail), `useConsent()` hook, `/privatlivspolitik` side, ProfilePage > Privatliv-sektion. Microsoft Clarity gates på Analyse-consent; custom tags `manager_id`/`division`/`season_number`; `data-clarity-mask` på email + Discord-ID. DB-migration `users.consent_preferences JSONB` applied. #52-restscope (Clarity AC) leveret som del af samme PR. `docs/clarity/README.md` weekly review template klar. Squash `9aea6de`.
+- 2026-05-11: **#296 Supabase service_role rotation LIVE som v3.19** — migreret fra legacy JWT-keys til Supabase's nye `sb_secret_/sb_publishable_`-system; backend (Railway), GitHub Actions secret og frontend (Vercel) opdateret. Legacy JWT-based API keys disabled i Supabase Dashboard 18:18 UTC. Verificeret: lækket nøgle returnerer nu `401 "Legacy API keys are disabled"`. GitHub secret-scanning alert #1 lukket som revoked. Postmortem: [`2026-05-11-supabase-key-rotation.md`](../.claude/learnings/2026-05-11-supabase-key-rotation.md). Vercel CLI installeret + projekt linket.
+- 2026-05-11: **#301 gitleaks forward-guard LIVE** — `.github/workflows/secret-scan.yml` scanner alle PRs, push til main, og weekly. `.gitleaksignore` allowlister rotated historiske leaks. Merged `e261017` ([PR #302](https://github.com/NicolaiDolmer/CyclingZone/pull/302)). Endnu ikke required check — se [#303](https://github.com/NicolaiDolmer/CyclingZone/issues/303) for promotion efter 5 grønne PRs.
+- 2026-05-11: **#297 Consent framework LIVE som v3.18** — cookie-banner m. 4 kategorier, `/privatlivspolitik`, Clarity gating. Squash `9aea6de`.
 
 ## Næste session (prioriteret)
-1. **Sæson 1 race-udvælgelse på /admin** ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242)) — vælg sæson 1, race-dage 60, behold WT-eksklusion, generér forslag, gem. Bruger klikker selv sæson-cyklus senere. **Deadline ~2026-05-15.**
-2. **Manuel prod-verifikation af Slice 09** — `/races?tab=world` viser 97 løb m. klassefilter; preview returnerer 30-60 ProSeries-løb til sæson 1.
-3. **Sæson 1 LIVE-handling ca. 2026-05-15** — efter race-kalender er gemt og datoen rammer: `/admin` -> `Sæson-cyklus` -> `Udfør sæsonskifte`.
+1. **Sæson 1 race-udvælgelse på /admin** ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242)) — vælg sæson 1, race-dage 60, generér forslag, gem. **Deadline ~2026-05-15.**
+2. **Manuel prod-verifikation af Slice 09** — `/races?tab=world` viser 97 løb; preview returnerer 30-60 ProSeries-løb.
+3. **Sæson 1 LIVE-handling ca. 2026-05-15** — efter race-kalender er gemt: `/admin` → `Sæson-cyklus` → `Udfør sæsonskifte`.
+4. **[#303](https://github.com/NicolaiDolmer/CyclingZone/issues/303)** (lav prio, ~10 min) — promote `gitleaks` til required check når 5 grønne PRs er kørt.
 
 ## Kritiske invarianter
 - Verificér runtime før claims; runtime > docs.
