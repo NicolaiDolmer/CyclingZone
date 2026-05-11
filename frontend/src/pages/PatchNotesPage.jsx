@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "3.15",
+    date: "2026-05-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Nye hold får korrekt startøkonomi",
+        items: [
+          "Manager · Nye hold får nu 800.000 CZ$ i startbalance og 240.000 CZ$ i årlig intro-sponsor. Et live-signup edge case kunne oprette et placeholder-hold med testøkonomi (`balance=500`, `sponsor_income=100/500`) før backend-setup kørte.",
+          "Manager · De berørte live-hold uden finance-transaktioner bliver normaliseret til de korrekte værdier. Fremtidige signup-placeholder-rækker repareres også automatisk, når holdsetup gemmes.",
+          "Backend · Signup-trigger/defaults låses igen til den kanoniske økonomikontrakt, og `teamProfileEngine` reparerer kun kendte placeholder-værdier uden at overskrive reelle eksisterende balances/sponsorbeløb.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.14",
     date: "2026-05-11",
     label: "Beta",

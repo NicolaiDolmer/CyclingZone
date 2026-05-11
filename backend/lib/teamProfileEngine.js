@@ -7,6 +7,11 @@ const DEFAULT_TEAM_VALUES = {
   sponsor_income: SPONSOR_INCOME_BASE,
 };
 
+const LEGACY_SIGNUP_PLACEHOLDER_VALUES = {
+  balance: new Set([500]),
+  sponsor_income: new Set([100, 500]),
+};
+
 function createHttpError(statusCode, message) {
   const error = new Error(message);
   error.statusCode = statusCode;
@@ -15,6 +20,20 @@ function createHttpError(statusCode, message) {
 
 function normalizeValue(value) {
   return String(value ?? "").trim();
+}
+
+function getEconomyRepairValues(team) {
+  const repair = {};
+
+  if (team?.balance == null || LEGACY_SIGNUP_PLACEHOLDER_VALUES.balance.has(Number(team.balance))) {
+    repair.balance = INITIAL_BALANCE;
+  }
+
+  if (team?.sponsor_income == null || LEGACY_SIGNUP_PLACEHOLDER_VALUES.sponsor_income.has(Number(team.sponsor_income))) {
+    repair.sponsor_income = SPONSOR_INCOME_BASE;
+  }
+
+  return repair;
 }
 
 async function ensureUniqueTeamName({ supabase, normalizedName, existingTeamId = null }) {
@@ -104,6 +123,7 @@ export async function upsertOwnTeamProfile({
       .update({
         name: normalizedName,
         manager_name: normalizedManagerName,
+        ...getEconomyRepairValues(existingTeam),
       })
       .eq("id", existingTeam.id)
       .select("*")

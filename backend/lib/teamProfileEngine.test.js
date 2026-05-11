@@ -233,6 +233,66 @@ test("upsertOwnTeamProfile updates the existing team without duplicating the boa
   assert.equal(supabase.state.board_profiles.length, 1);
 });
 
+test("upsertOwnTeamProfile repairs legacy signup placeholder economy values", async () => {
+  const supabase = createSupabaseDouble({
+    teams: [
+      {
+        id: "team-1",
+        user_id: "user-1",
+        name: "Placeholder",
+        manager_name: null,
+        balance: 500,
+        sponsor_income: 100,
+      },
+    ],
+  });
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    existingTeam: clone(supabase.state.teams[0]),
+    name: "Chris Machines",
+    managerName: "Chris",
+  });
+
+  assert.equal(result.created, false);
+  assert.equal(result.team.balance, INITIAL_BALANCE);
+  assert.equal(result.team.sponsor_income, SPONSOR_INCOME_BASE);
+  assert.equal(result.boardProfileCreated, true);
+  assert.equal(supabase.state.board_profiles[0].plan_start_balance, INITIAL_BALANCE);
+  assert.equal(supabase.state.board_profiles[0].plan_start_sponsor_income, SPONSOR_INCOME_BASE);
+});
+
+test("upsertOwnTeamProfile does not overwrite real existing economy values", async () => {
+  const supabase = createSupabaseDouble({
+    teams: [
+      {
+        id: "team-1",
+        user_id: "user-1",
+        name: "Existing",
+        manager_name: "Manager",
+        balance: 750000,
+        sponsor_income: 216000,
+      },
+    ],
+    boardProfiles: [
+      { id: "board-1", team_id: "team-1" },
+    ],
+  });
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    existingTeam: clone(supabase.state.teams[0]),
+    name: "Existing Renamed",
+    managerName: "Manager",
+  });
+
+  assert.equal(result.team.balance, 750000);
+  assert.equal(result.team.sponsor_income, 216000);
+  assert.equal(result.boardProfileCreated, false);
+});
+
 test("upsertOwnTeamProfile rejects duplicate team names case-insensitively", async () => {
   const supabase = createSupabaseDouble({
     teams: [
