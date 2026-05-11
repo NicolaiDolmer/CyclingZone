@@ -68,11 +68,15 @@ jobs:
         run: |
           export SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
           export SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
-          # Detector E (zero-impression-features) skippes på PR-runs fordi events
-          # tager dage/uger at akkumulere efter rollout — kun cron-runs evaluerer E.
+          # PR-runs skipper Detector C og E:
+          # - C (migration-drift) ville falsk-positivt flage hver ny migration
+          #   som "committed men ikke applied" fordi auto-migrate først kører
+          #   efter merge til main. Cron + workflow_dispatch fanger ægte drift.
+          # - E (zero-impression-features) tager dage/uger at akkumulere events
+          #   efter rollout — kun cron-runs evaluerer E.
           SKIP_FLAG=""
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            SKIP_FLAG="--skip=E"
+            SKIP_FLAG="--skip=C,E"
           fi
           node backend/scripts/audit-feature-liveness.js $SKIP_FLAG --json > feature-liveness.json
           node backend/scripts/audit-feature-liveness.js $SKIP_FLAG | tee feature-liveness.txt
@@ -98,7 +102,7 @@ jobs:
             const body = [
               '## ❌ Feature-liveness audit fandt nye findings',
               '',
-              'Audit'en fanger "deployed kode + 0 data / 0 brugere"-mønstret (slice 14 / [#279](https://github.com/${{ github.repository }}/issues/279) generaliseret per [#287](https://github.com/${{ github.repository }}/issues/287)).',
+              'Auditen fanger "deployed kode + 0 data / 0 brugere"-mønstret (slice 14 / [#279](https://github.com/${{ github.repository }}/issues/279) generaliseret per [#287](https://github.com/${{ github.repository }}/issues/287)).',
               '',
               '```',
               report.trim(),
