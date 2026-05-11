@@ -1,0 +1,7 @@
+fix(137): rename audit-helper migration til 05-12 så player_events oprettes først
+
+Auto-migrate sorterer migrations lex; '2026-05-11-player-events-audit-helper.sql' sorterer FØR '2026-05-11-player-events.sql' fordi '-' (0x2D) < '.' (0x2E) efter 'player-events'. Resultat: helper-RPC'en forsøgte at CREATE FUNCTION der refererer public.player_events før tabellen eksisterede → run #25691365815 fejlede.
+
+Fix: rename helper til '2026-05-12-...' så den sorterer efter tabel-migrationen. Ingen DB-state at rette — auto-migrate stoppede på første fejl, intet i schema_migrations endnu.
+
+Refs #137
