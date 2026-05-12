@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.23",
+    date: "2026-05-12",
+    label: "Beta",
+    changes: [
+      {
+        category: "UI · Klikbare holdnavne overalt (#316)",
+        items: [
+          "Manager · Holdnavne er nu klikbare links på alle sider: Rangliste, Auktionshistorik, Rytterstatistik (holdnavn, bud-historik, handelshistorik), Indbakke/Ligaen-feed, Hall of Fame, Rytterrangliste, Løbshistorik (vinderhold) og Transfermarked (sælger + Fra/Til-mønstrene). Klik på et holdnavn navigerer direkte til holdets side.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.22",
     date: "2026-05-12",
     label: "Beta",

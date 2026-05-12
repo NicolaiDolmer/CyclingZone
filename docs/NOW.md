@@ -4,6 +4,8 @@
 **Slice 09 — Race-pool katalog LIVE som v2.99 ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242))**. 97 løb er seedet i prod. Admin skal stadig vælge sæson 1-kalenderen via `Race-katalog` på `/admin`; klik ikke `Sæson-cyklus` før sæsonstart omkring 2026-05-15.
 
 ## Senest leveret
+- 2026-05-12: **#316 TeamLink-rollout LIVE som v3.23** — `TeamLink`-komponenten (fra #315) rullet ud på alle 8 sider: StandingsPage, AuctionHistoryPage, RiderStatsPage (rider.team + BidTimeline + HistoryEvent), NotificationsPage, HallOfFamePage, RiderRankingsPage, RaceHistoryPage (+ query-fix for team.id), TransfersPage (Fra/Til + listing.seller, nested-link-fix). Holdnavne er nu klikbare links til holdets side overalt i appen.
+
 Historik 2026-05-08 til 2026-05-11 er arkiveret — se [`NOW_HISTORIK_2026-05-11.md`](archive/NOW_HISTORIK_2026-05-11.md), [`NOW_HISTORIK_2026-05-10-TOKEN-AUDIT.md`](archive/NOW_HISTORIK_2026-05-10-TOKEN-AUDIT.md), [`NOW_HISTORIK_2026-05-09-PRECOMPACT.md`](archive/NOW_HISTORIK_2026-05-09-PRECOMPACT.md), og [`NOW_HISTORIK_2026-05-08-DX-PRECOMPACT.md`](archive/NOW_HISTORIK_2026-05-08-DX-PRECOMPACT.md).
 
 - 2026-05-12: **PR-triage efter gitleaks-promotion (#303 follow-up)** — 4 åbne PRs merged (#292 gha-deps, #318/#319/#212 group-deps), 2 stale lukket (#213 duplikat, #277 ref-issue lukket), 1 holdt (#127 `post-launch`). Lærepenge gemt som memory: `@dependabot rebase` kan lukke + erstatte group-PRs hvis group-medlemskab er ændret. DX-only — ingen patch notes.

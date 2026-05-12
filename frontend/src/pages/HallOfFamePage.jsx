@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
+import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 
 const CATEGORIES = [
@@ -27,7 +27,6 @@ export function getLevelInfo(level) {
 }
 
 export default function HallOfFamePage() {
-  const navigate = useNavigate();
   const [records, setRecords] = useState({});
   const [standings, setStandings] = useState([]);
   const [managers, setManagers] = useState([]);
@@ -160,10 +159,9 @@ export default function HallOfFamePage() {
                             </span>
                           </td>
                           <td className="px-3 py-3">
-                            <p className="text-cz-1 font-medium cursor-pointer hover:text-cz-accent-t"
-                              onClick={() => e.team?.id && navigate(`/teams/${e.team.id}`)}>
+                            <TeamLink id={e.team?.id} className="text-cz-1 font-medium hover:text-cz-accent-t">
                               {e.team_name || e.team?.name || "—"}
-                            </p>
+                            </TeamLink>
                             {e.season_number && (
                               <p className="text-cz-3 text-xs">Sæson {e.season_number}</p>
                             )}
@@ -261,10 +259,9 @@ export default function HallOfFamePage() {
                             </span>
                           </td>
                           <td className="px-3 py-2.5">
-                            <span className="text-cz-1 font-medium cursor-pointer hover:text-cz-accent-t"
-                              onClick={() => s.team?.id && navigate(`/teams/${s.team.id}`)}>
+                            <TeamLink id={s.team?.id} className="text-cz-1 font-medium hover:text-cz-accent-t">
                               {s.team?.name}
-                            </span>
+                            </TeamLink>
                           </td>
                           <td className="px-5 py-2.5 text-right text-cz-accent-t font-mono font-bold">
                             {s.total_points?.toLocaleString("da-DK")} pt

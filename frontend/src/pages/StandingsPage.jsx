@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, Fragment } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import TeamLink from "../components/TeamLink";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
 
@@ -200,7 +201,7 @@ export default function StandingsPage() {
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`font-medium ${isMe ? "text-cz-accent-t" : "text-cz-1"}`}>{s.team?.name}</span>
+                            <TeamLink id={s.team_id} stopPropagation className={`font-medium ${isMe ? "text-cz-accent-t" : "text-cz-1"}`}>{s.team?.name}</TeamLink>
                             {isMe && <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-1.5 py-0.5 rounded-full">Dig</span>}
                             {isPromotion && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">↑ Op</span>}
                             {isRelegation && <span className="text-[9px] bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded font-medium">↓ Ned</span>}
