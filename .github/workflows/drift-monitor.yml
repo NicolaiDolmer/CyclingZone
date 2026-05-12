@@ -1,0 +1,41 @@
+name: Loop A · Drift Monitor
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # Dagligt kl. 03:00 UTC
+  workflow_dispatch: # Tillad manuel kørsel
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'backend/pnpm-lock.yaml'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pnpm install --no-frozen-lockfile
+
+      - name: Run Drift Monitor
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          cd backend
+          node scripts/driftMonitor.js
+
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+            -d '{"content": "⚠️ **Drift Detected in CyclingZone!**\nSystemet har fundet uregelmæssigheder i data eller økonomi. Tjek GitHub Action logs for detaljer: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+            $DISCORD_WEBHOOK

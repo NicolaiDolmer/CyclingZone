@@ -62,28 +62,33 @@ Supabase-inspektion: start med målrettede `npm run db:ai:*` frem for brede dump
 
 ---
 
-## Rolle-fordeling mellem AI-assistenter
+## Rolle-fordeling mellem AI-assistenter (Verdensklasse AI-Standard)
 
-### Claude (Anthropic CLI / IDE-extension)
-**Primær brug:** Features, arkitektur-beslutninger, refactors, multi-fil-changes, planlægning, audit-sessioner med subagents.
-
-**Stærk i:**
-- Kompleks feature-redesign (kvalificerer sig som AskUserQuestion-session pr. GUARDRAILS_CORE)
-- Multi-tabel migrations
-- Subagent-orkestrering (Explore, Plan, general-purpose)
-- Læse-tunge audits (kan smide kontekst i subagent og få kompakt rapport tilbage)
-
-**Output:** Slice-briefs i `docs/slices/`, AI_LOOPS-implementeringer, redesign-dokumenter.
-
-### Codex (OpenAI / lokal CLI)
-**Primær brug:** Bug-fixes, små polish, lokale ændringer, tests.
+### Manus (The Architect & Coordinator)
+**Primær brug:** Strategisk planlægning, orkestrering af komplekse workflows, og cross-domain koordinering. Manus er "ejeren" af den overordnede projekt-konfiguration.
 
 **Stærk i:**
-- Hurtige bugfixes med klar lokal scope
-- Single-file edits
-- Test-skrivning
+- Udarbejdelse af køreplaner og skalerings-strategier.
+- Håndtering af projekt-niveau indstillinger og connectors.
+- Sikre at alle agents følger `AGENTS.md` og `GUARDRAILS_CORE.md`.
 
-**Output:** Commit-baserede rettelser; opdaterer `.codex.local/SESSION_CONTEXT.md` ved session-end.
+### Claude (The Lead Developer)
+**Primær brug:** Kernearkitektur, komplekse features, refactors, og dybdegående research. Claude er "ejeren" af kontrakt-sikkerhed.
+
+**Stærk i:**
+- Kompleks feature-redesign (AskUserQuestion-sessioner).
+- Multi-tabel migrations og backend-logik.
+- Udarbejdelse af `docs/slices/` kontrakter.
+
+### Codex (The Speed Runner)
+**Primær brug:** Hurtige bugfixes, UI-polish, og automatiserede tests. Codex sikrer høj hastighed uden at gå på kompromis med kvaliteten.
+
+**Stærk i:**
+- Single-file bugfixes og små UI-rettelser.
+- Skrivning af unit- og integrationstests.
+- Hurtig eksekvering af repetitive opgaver.
+
+**AI-First Workflow:** Start altid komplekse opgaver hos Manus (Plan), lad Claude bygge (Build), og lad Codex validere/teste (Test).
 
 **Kontekst-fil:** `.codex.local/` (gitignored). `SUPABASE_CONTEXT.md` + `supabase-readonly.env` er hardlinkede via OneDrive-context (sync mellem PC'er); `SESSION_CONTEXT.md` er per-PC og auto-genereres af project-hook ved Claude-sessions, eller skrives manuelt af Codex ved session-end.
 
