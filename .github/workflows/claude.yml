@@ -76,8 +76,15 @@ jobs:
             Hvis ingen ship-keyword: gør INGENTING ekstra (default = manuel merge, det eksisterende safety-net for natlige autonome runs).
 
             Hvis du støder på blocker (mangler kontekst, fagligt valg, scope-uklarhed): comment på issuet med `claude:blocked` + spørgsmålet, og lav IKKE PR. Bedre at stoppe end at gætte.
+
+            SCOPE-GUARD (kritisk — fejlmønster fra run 25699672154 / #260):
+            Før du begynder at editere: lav en hurtig scope-vurdering af acceptkriteriet.
+            - Hvis acceptkriteriet siger "audit alle steder X" / "i hele app'en" / "konsistent overalt", ELLER hvis din egen plan kræver edits i >8 filer: STOP.
+            - Comment på issuet med `claude:blocked` + foreslå en split (fx scaffolding-issue + rollout-issue, eller én sub-issue per side/komponent), og lav IKKE PR.
+            - Begrundelse: max-turns (120) dækker ~25-30 filer realistisk; større refactors fejler halvvejs og taber alt arbejde (ingen WIP-commit). Bedre at stoppe efter 5 turns end at brænde 50.
+            - Undtagelse: trivielle find/replace på tværs af mange filer (fx import-rewrite) — det er stadig ét logisk edit og ok.
           claude_args: |
-            --max-turns 50
+            --max-turns 120
             --model claude-sonnet-4-6
             --allowed-tools Bash(gh pr *),Bash(gh issue *),Bash(gh label *),Bash(gh api *),Bash(git *),Bash(npm *),Bash(node *),Bash(bash *),Bash(pwsh *),Edit,Read,Write,Glob,Grep
 
