@@ -12,9 +12,8 @@
 ## Næste session (prioriteret)
 1. **Sæson 1 race-udvælgelse på /admin** ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242)) — vælg sæson 1, race-dage 60, generér forslag, gem. **Deadline ~2026-05-15.**
 2. **Sæson 1 LIVE-handling ca. 2026-05-15** — efter race-kalender er gemt: `/admin` → `Sæson-cyklus` → `Udfør sæsonskifte`.
-3. **[#316](https://github.com/NicolaiDolmer/CyclingZone/issues/316) TeamLink-rollout** — brug `TeamLink`-komponent på 8 sider.
-4. **[#127](https://github.com/NicolaiDolmer/CyclingZone/pull/127) dotenv-bump genoptages efter launch** — `post-launch` label, åbnes ~2026-05-14+.
-5. **Skalerings-Fase 2: AI-Autopilot** — Automatiserede tests ved hvert push og fjernelse af OneDrive-afhængighed til secrets.
+3. **[#127](https://github.com/NicolaiDolmer/CyclingZone/pull/127) dotenv-bump genoptages efter launch** — `post-launch` label, åbnes ~2026-05-14+.
+4. **Skalerings-Fase 3: Professional Secret Management** — Flyt fra OneDrive hardlinks til Infisical eller Supabase Vault.
 
 ## Skalerings-Roadmap (Mod 100+ brugere)
 - [x] **Fase 1: Bulletproof Baseline** — Loop A (Drift-monitor) aktiv. Ingen trial-risici (Vercel/Supabase monitorering).

@@ -98,6 +98,30 @@ Add-Hook -Event "Stop" `
   -MatchPattern "*cross-pc-stop-check*" `
   -DisplayName "cross-pc stop check"
 
+# --- enabledPlugins ---
+if (-not ($settings.PSObject.Properties.Name -contains "enabledPlugins")) {
+  $settings | Add-Member -NotePropertyName "enabledPlugins" -NotePropertyValue ([PSCustomObject]@{}) -Force
+}
+$pluginsToEnable = @(
+  "claude-code-setup@claude-plugins-official",
+  "code-modernization@claude-plugins-official"
+)
+foreach ($plugin in $pluginsToEnable) {
+  $existing = $settings.enabledPlugins.PSObject.Properties[$plugin]
+  if ($existing -and $existing.Value -eq $true) {
+    Write-Host "[skip] Plugin allerede aktiveret: $plugin"
+  } else {
+    $settings.enabledPlugins | Add-Member -NotePropertyName $plugin -NotePropertyValue $true -Force
+    Write-Host "Aktiveret plugin: $plugin"
+  }
+}
+
+# --- theme ---
+if (-not ($settings.PSObject.Properties.Name -contains "theme")) {
+  $settings | Add-Member -NotePropertyName "theme" -NotePropertyValue "auto" -Force
+  Write-Host "Sat theme: auto"
+}
+
 # Skriv tilbage
 $json = $settings | ConvertTo-Json -Depth 10
 $json | Out-File -FilePath $settingsPath -Encoding utf8
