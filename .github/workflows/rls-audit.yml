@@ -78,7 +78,7 @@ jobs:
 
       - name: Comment on PR if findings (PR runs only)
         if: github.event_name == 'pull_request' && steps.audit.outputs.critical != '0'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -105,7 +105,7 @@ jobs:
 
       - name: Open or update tracking issue (scheduled runs only)
         if: github.event_name == 'schedule' && steps.audit.outputs.critical != '0'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
