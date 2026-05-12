@@ -6,6 +6,7 @@
 ## Senest leveret
 Historik 2026-05-08 til 2026-05-11 er arkiveret — se [`NOW_HISTORIK_2026-05-11.md`](archive/NOW_HISTORIK_2026-05-11.md), [`NOW_HISTORIK_2026-05-10-TOKEN-AUDIT.md`](archive/NOW_HISTORIK_2026-05-10-TOKEN-AUDIT.md), [`NOW_HISTORIK_2026-05-09-PRECOMPACT.md`](archive/NOW_HISTORIK_2026-05-09-PRECOMPACT.md), og [`NOW_HISTORIK_2026-05-08-DX-PRECOMPACT.md`](archive/NOW_HISTORIK_2026-05-08-DX-PRECOMPACT.md).
 
+- 2026-05-12: **PR-triage efter gitleaks-promotion (#303 follow-up)** — 4 åbne PRs merged (#292 gha-deps, #318/#319/#212 group-deps), 2 stale lukket (#213 duplikat, #277 ref-issue lukket), 1 holdt (#127 `post-launch`). Lærepenge gemt som memory: `@dependabot rebase` kan lukke + erstatte group-PRs hvis group-medlemskab er ændret. DX-only — ingen patch notes.
 - 2026-05-12: **#303 Gitleaks promoted til required check LIVE som v3.22** — `gh api PATCH` på `branches/main/protection/required_status_checks` efter 6 grønne PR-runs af `secret-scan.yml`. Required checks nu: `backend-tests` + `frontend-build` + `dependency-review` + `gitleaks`. Memory `reference_main_branch_protection.md` opdateret. Commit `bf23de5`.
 - 2026-05-12: **#35 lukket** — affected bruger bekræftede reset-flow virker (mail → form → login). Postmortem bevaret i [`2026-05-11-password-reset-vercel-sso.md`](../.claude/learnings/2026-05-11-password-reset-vercel-sso.md).
 - 2026-05-12: **claude-action max-turns 50→120 + scope-guard** — natlig #260-run fejlede med `error_max_turns` (audit-style refactor, 12 sub-tasks, $1.51 spildt, branch aldrig pushet). [.github/workflows/claude.yml](../.github/workflows/claude.yml) bumpet + SCOPE-GUARD-instruktion tilføjet så agenten blokerer up-front ved >8-fil scopes. #260 splittet til #315 (scaffolding) + #316 (rollout, blokeret indtil #315 merged). Postmortem: [`2026-05-12-claude-action-max-turns-large-refactor.md`](../.claude/learnings/2026-05-12-claude-action-max-turns-large-refactor.md).
@@ -15,7 +16,7 @@ Historik 2026-05-08 til 2026-05-11 er arkiveret — se [`NOW_HISTORIK_2026-05-11
 ## Næste session (prioriteret)
 1. **Sæson 1 race-udvælgelse på /admin** ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242)) — vælg sæson 1, race-dage 60, generér forslag, gem. **Deadline ~2026-05-15.**
 2. **Sæson 1 LIVE-handling ca. 2026-05-15** — efter race-kalender er gemt: `/admin` → `Sæson-cyklus` → `Udfør sæsonskifte`.
-3. **Aabne PRs kan kraeve gitleaks re-run** — #292, #277, #215, #213, #212, #211, #127 oprettet før gitleaks blev required. `gh pr checks` viser om job mangler; re-trigger via empty commit eller `gh workflow run secret-scan.yml --ref <branch>`.
+3. **[#127](https://github.com/NicolaiDolmer/CyclingZone/pull/127) dotenv-bump genoptages efter launch** — `post-launch` label, åbnes ~2026-05-14+. Sidste tilbageværende dependabot-PR fra gitleaks-promotion-bølgen.
 
 ## Kritiske invarianter
 - Verificér runtime før claims; runtime > docs.
