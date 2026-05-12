@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.22",
+    date: "2026-05-12",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sikkerhed · Gitleaks som required check (#303)",
+        items: [
+          "Infra · `gitleaks` secret-scanner er nu en *required* status check på `main` (efter 6 grønne PR-runs siden 2026-05-11). En PR kan ikke længere merges hvis gitleaks finder en hardcoded API-nøgle eller token. Ingen synlig ændring for managers — det er et ekstra net under enhver kode-ændring.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.21",
     date: "2026-05-11",
     label: "Beta",
