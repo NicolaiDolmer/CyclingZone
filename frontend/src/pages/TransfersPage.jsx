@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink";
+import TeamLink from "../components/TeamLink";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { statBg } from "../lib/statBg";
@@ -63,7 +64,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
             className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors block">
             {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
           </RiderLink>
-          <p className="text-cz-3 text-xs">Fra: {offer.buyer?.name} · Runde {offer.round || 1} · {timeAgo(offer.created_at)}</p>
+          <p className="text-cz-3 text-xs">Fra: <TeamLink id={offer.buyer?.id} className="hover:text-cz-accent-t transition-colors">{offer.buyer?.name || "Ukendt"}</TeamLink> · Runde {offer.round || 1} · {timeAgo(offer.created_at)}</p>
         </div>
         <div className="flex flex-col gap-1 items-end flex-shrink-0">
           <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
@@ -218,7 +219,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
             className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors block">
             {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
           </RiderLink>
-          <p className="text-cz-3 text-xs">Til: {offer.seller?.name} · Runde {offer.round || 1} · {timeAgo(offer.updated_at)}</p>
+          <p className="text-cz-3 text-xs">Til: <TeamLink id={offer.seller?.id} className="hover:text-cz-accent-t transition-colors">{offer.seller?.name || "Ukendt"}</TeamLink> · Runde {offer.round || 1} · {timeAgo(offer.updated_at)}</p>
         </div>
         <div className="flex flex-col gap-1 items-end flex-shrink-0">
           <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
@@ -873,17 +874,21 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
   return (
     <div className="bg-cz-card border border-cz-border hover:border-cz-border rounded-xl p-4 transition-all">
       <div className="flex items-start justify-between mb-3">
-        <RiderLink id={listing.rider?.id} className="cursor-pointer block">
-          <p className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors">
-            {listing.rider?.nationality_code && <Flag code={listing.rider.nationality_code} className="mr-1" />}{listing.rider?.firstname} {listing.rider?.lastname}
+        <div>
+          <RiderLink id={listing.rider?.id} className="cursor-pointer block">
+            <p className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors">
+              {listing.rider?.nationality_code && <Flag code={listing.rider.nationality_code} className="mr-1" />}{listing.rider?.firstname} {listing.rider?.lastname}
+            </p>
+          </RiderLink>
+          <p className="text-cz-3 text-xs mt-0.5">
+            <TeamLink id={listing.seller?.id} className="hover:text-cz-accent-t transition-colors">{listing.seller?.name || "—"}</TeamLink>
           </p>
-          <p className="text-cz-3 text-xs mt-0.5">{listing.seller?.name}</p>
           {listing.created_at && (
             <p className="text-cz-3 text-xs mt-0.5">
               Til salg siden {new Date(listing.created_at).toLocaleDateString("da-DK", { day: "numeric", month: "short" })}
             </p>
           )}
-        </RiderLink>
+        </div>
         <div className="text-right">
           <p className="text-cz-accent-t font-mono font-bold text-lg">{listing.asking_price?.toLocaleString("da-DK")} CZ$</p>
       <p className="text-cz-3 text-xs">Værdi: {formatCz(getRiderMarketValue(listing.rider))}</p>

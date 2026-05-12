@@ -4,6 +4,8 @@
 **Slice 09 — Race-pool katalog LIVE som v2.99 ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242))**. 97 løb er seedet i prod. Admin skal stadig vælge sæson 1-kalenderen via `Race-katalog` på `/admin`; klik ikke `Sæson-cyklus` før sæsonstart omkring 2026-05-15.
 
 ## Senest leveret
+- 2026-05-12: **#316 TeamLink-rollout LIVE som v3.23** — `TeamLink`-komponenten (fra #315) rullet ud på alle 8 sider: StandingsPage, AuctionHistoryPage, RiderStatsPage (rider.team + BidTimeline + HistoryEvent), NotificationsPage, HallOfFamePage, RiderRankingsPage, RaceHistoryPage (+ query-fix for team.id), TransfersPage (Fra/Til + listing.seller, nested-link-fix). Holdnavne er nu klikbare links til holdets side overalt i appen.
+
 Historik 2026-05-08 til 2026-05-11 er arkiveret — se [`NOW_HISTORIK_2026-05-11.md`](archive/NOW_HISTORIK_2026-05-11.md), [`NOW_HISTORIK_2026-05-10-TOKEN-AUDIT.md`](archive/NOW_HISTORIK_2026-05-10-TOKEN-AUDIT.md), [`NOW_HISTORIK_2026-05-09-PRECOMPACT.md`](archive/NOW_HISTORIK_2026-05-09-PRECOMPACT.md), og [`NOW_HISTORIK_2026-05-08-DX-PRECOMPACT.md`](archive/NOW_HISTORIK_2026-05-08-DX-PRECOMPACT.md).
 
 - 2026-05-12: **#315 TeamLink-scaffolding LIVE** — `frontend/src/components/TeamLink.jsx` (matches `RiderLink`-konvention, ikke verbose teamId/teamName-API) + `backend/lib/riderBidTimeline.js` udvidet med `team_id` på bid-entries og `winner_team_id`/`seller_team_id` på completed-payload (privacy-whitelist #195 udvidet, proxy_max-invariant uændret). Backend 584/584 grøn. Squash `3478278` ([PR #320](https://github.com/NicolaiDolmer/CyclingZone/pull/320)). Internal/DX — ingen patch notes. #316 unblocked, klar til rollout.

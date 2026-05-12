@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
+import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
 
 const SORT_COLS = [
@@ -208,8 +209,8 @@ export default function RiderRankingsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-cz-2 text-xs hidden md:table-cell">
-                      {rider.team?.name || "Fri agent"}
+                    <td className="px-3 py-3 text-xs hidden md:table-cell">
+                      <TeamLink id={rider.team?.id} stopPropagation className="text-cz-2 hover:text-cz-accent-t transition-colors">{rider.team?.name || "Fri agent"}</TeamLink>
                     </td>
                     {/* Point — bold, sorted col highlighted */}
                     <td className={`px-3 py-3 text-right font-mono font-bold

@@ -2,6 +2,7 @@
 import { supabase } from "../lib/supabase";
 import { Link, useParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
+import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
 
 export default function RaceHistoryPage() {
@@ -27,7 +28,7 @@ export default function RaceHistoryPage() {
 
     const { data: results } = await supabase
       .from("race_results")
-      .select("race_id, result_type, rank, rider_id, rider_name, team_name, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(name))")
+      .select("race_id, result_type, rank, rider_id, rider_name, team_name, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
       .in("race_id", raceIds)
       .order("rank");
 
@@ -146,7 +147,9 @@ export default function RaceHistoryPage() {
                           : ed.winner.rider_name}
                       </RiderLink>
                       <p className="text-cz-3 text-[10px]">
-                        {ed.winner.rider?.team?.name || ed.winner.team_name || "—"}
+                        <TeamLink id={ed.winner.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
+                          {ed.winner.rider?.team?.name || ed.winner.team_name || "—"}
+                        </TeamLink>
                       </p>
                     </div>
                   ) : (

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
+import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
@@ -498,7 +499,9 @@ export default function NotificationsPage() {
                         </p>
                       )}
                       {event.team_name && event.type !== "season_started" && event.type !== "season_ended" && (
-                        <p className="text-cz-3 text-xs mt-0.5">{event.team_name}</p>
+                        <p className="text-cz-3 text-xs mt-0.5">
+                          <TeamLink id={event.team_id} className="hover:text-cz-accent-t transition-colors">{event.team_name}</TeamLink>
+                        </p>
                       )}
                     </div>
                     <span className="text-cz-3 text-xs flex-shrink-0 mt-0.5 whitespace-nowrap">{timeAgo(event.created_at)}</span>

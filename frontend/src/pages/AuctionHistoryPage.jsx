@@ -2,6 +2,7 @@
 import { supabase } from "../lib/supabase";
 import { useNavigate, NavLink } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
+import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
 
 function timeAgo(dateStr) {
@@ -247,14 +248,14 @@ export default function AuctionHistoryPage() {
                       </div>
                       <p className="text-cz-3 text-xs mt-0.5">UCI: {a.rider?.uci_points?.toLocaleString("da-DK")} pt — Løn: {a.rider?.salary ? `${a.rider.salary.toLocaleString("da-DK")} CZ$` : "—"}</p>
                     </td>
-                    <td className="px-4 py-3 text-cz-2 hidden sm:table-cell">
-                      {a.seller?.name || "—"}
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <TeamLink id={a.seller?.id} stopPropagation className="text-cz-2">{a.seller?.name || "—"}</TeamLink>
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       {noSale ? (
                         <span className="text-cz-3 text-xs">Ingen bud</span>
                       ) : (
-                        <span className="text-cz-2">{a.winner?.name || "—"}</span>
+                        <TeamLink id={a.winner?.id} stopPropagation className="text-cz-2">{a.winner?.name || "—"}</TeamLink>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">

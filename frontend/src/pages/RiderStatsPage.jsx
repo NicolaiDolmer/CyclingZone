@@ -18,6 +18,7 @@ import {
 import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent } from "../lib/logEvent";
+import TeamLink from "../components/TeamLink";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazy(() => import("../components/RiderDevelopmentTab"));
@@ -1037,7 +1038,11 @@ export default function RiderStatsPage() {
                 <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} large showValue />
               </div>
             )}
-            <p className="text-cz-2 text-sm mt-2">{rider.team ? `Hold: ${rider.team.name}` : "Fri agent"}</p>
+            <p className="text-cz-2 text-sm mt-2">
+              {rider.team
+                ? <span>Hold: <TeamLink id={rider.team.id} className="hover:text-cz-accent-t transition-colors">{rider.team.name}</TeamLink></span>
+                : "Fri agent"}
+            </p>
             {activeAuction && (
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-xs bg-cz-accent/100/15 text-cz-accent-t px-2 py-0.5 rounded font-medium">
@@ -1229,7 +1234,7 @@ function BidTimelineTab({ timeline }) {
           <div className="flex-1 min-w-0">
             <p className="text-xs uppercase tracking-wider text-cz-accent-t font-medium mb-1">Solgt</p>
             <p className="text-cz-1 text-base">
-              <span className="font-semibold">{timeline.winner_name || "Ukendt køber"}</span>
+              <TeamLink id={timeline.winner_team_id} className="font-semibold hover:text-cz-accent-t transition-colors">{timeline.winner_name || "Ukendt køber"}</TeamLink>
               <span className="text-cz-3"> for </span>
               <span className="font-mono font-bold text-cz-accent-t">
                 {timeline.final_bid?.toLocaleString("da-DK")} CZ$
@@ -1237,7 +1242,8 @@ function BidTimelineTab({ timeline }) {
             </p>
             {timeline.seller_name && (
               <p className="text-cz-2 text-sm mt-1">
-                <span className="text-cz-3">Sælger: </span>{timeline.seller_name}
+                <span className="text-cz-3">Sælger: </span>
+                <TeamLink id={timeline.seller_team_id} className="hover:text-cz-accent-t transition-colors">{timeline.seller_name}</TeamLink>
               </p>
             )}
             <p className="text-cz-3 text-xs mt-1">{completedDate}</p>
@@ -1284,7 +1290,7 @@ function BidTimelineRow({ bid, isLatest }) {
     <li className={`px-5 py-3 flex items-center justify-between gap-3 ${isLatest ? "bg-cz-accent/[0.04]" : ""}`}>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-cz-1 text-sm font-medium truncate">{bid.team_name || "Ukendt"}</span>
+          <TeamLink id={bid.team_id} stopPropagation className="text-cz-1 text-sm font-medium truncate hover:text-cz-accent-t transition-colors">{bid.team_name || "Ukendt"}</TeamLink>
           {bid.is_proxy && (
             <span className="text-[10px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">
               Autobud
@@ -1321,9 +1327,9 @@ function HistoryEvent({ event }) {
             <span className="text-cz-3 text-xs">{date}</span>
           </div>
           <p className="text-cz-2 text-sm mt-0.5">
-            <span className="font-medium">{event.buyer?.name || "Ukendt"}</span>
+            <TeamLink id={event.buyer?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.buyer?.name || "Ukendt"}</TeamLink>
             <span className="text-cz-3"> vandt af </span>
-            <span className="font-medium">{event.seller?.name || (event.is_ai_sale ? "AI-hold" : "Ukendt")}</span>
+            <TeamLink id={event.seller?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.seller?.name || (event.is_ai_sale ? "AI-hold" : "Ukendt")}</TeamLink>
           </p>
           {event.price != null && (
             <p className="text-cz-accent-t font-mono text-xs mt-0.5">{event.price.toLocaleString("da-DK")} CZ$</p>
@@ -1343,9 +1349,9 @@ function HistoryEvent({ event }) {
             <span className="text-cz-3 text-xs">{date}</span>
           </div>
           <p className="text-cz-2 text-sm mt-0.5">
-            <span className="font-medium">{event.buyer?.name || "Ukendt"}</span>
+            <TeamLink id={event.buyer?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.buyer?.name || "Ukendt"}</TeamLink>
             <span className="text-cz-3"> køber af </span>
-            <span className="font-medium">{event.seller?.name || "Ukendt"}</span>
+            <TeamLink id={event.seller?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.seller?.name || "Ukendt"}</TeamLink>
           </p>
           {event.price != null && (
             <p className="text-cz-accent-t font-mono text-xs mt-0.5">{event.price.toLocaleString("da-DK")} CZ$</p>
@@ -1365,9 +1371,9 @@ function HistoryEvent({ event }) {
             <span className="text-cz-3 text-xs">{date}</span>
           </div>
           <p className="text-cz-2 text-sm mt-0.5">
-            <span className="font-medium">{event.proposing_team?.name || "Ukendt"}</span>
+            <TeamLink id={event.proposing_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.proposing_team?.name || "Ukendt"}</TeamLink>
             <span className="text-cz-3"> ↔ </span>
-            <span className="font-medium">{event.receiving_team?.name || "Ukendt"}</span>
+            <TeamLink id={event.receiving_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.receiving_team?.name || "Ukendt"}</TeamLink>
           </p>
           {event.cash_adjustment !== 0 && event.cash_adjustment != null && (
             <p className="text-cz-2 font-mono text-xs mt-0.5">
@@ -1398,9 +1404,9 @@ function HistoryEvent({ event }) {
             <span className="text-cz-3 text-xs">{date}</span>
           </div>
           <p className="text-cz-2 text-sm mt-0.5">
-            <span className="font-medium">{event.to_team?.name || "Ukendt"}</span>
+            <TeamLink id={event.to_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.to_team?.name || "Ukendt"}</TeamLink>
             <span className="text-cz-3"> lejer af </span>
-            <span className="font-medium">{event.from_team?.name || "Ukendt"}</span>
+            <TeamLink id={event.from_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.from_team?.name || "Ukendt"}</TeamLink>
           </p>
           <p className="text-cz-3 text-xs mt-0.5">
             Sæson {event.start_season}–{event.end_season}
