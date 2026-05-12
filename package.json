@@ -9,10 +9,10 @@
     "test:token": "node scripts/get-test-token.mjs"
   },
   "devDependencies": {
-    "lint-staged": "^17.0.2"
+    "lint-staged": "^17.0.4"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.105.3",
+    "@supabase/supabase-js": "^2.105.4",
     "dotenv": "^16.4.5"
   }
 }
