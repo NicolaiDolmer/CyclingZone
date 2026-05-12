@@ -361,7 +361,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 📋 Planlagt (backlog)
 
 - Aktiv feature- og forbedringsbacklog vedligeholdes som GitHub issues (`gh issue list --label "claude:todo" --state open`); backlog-fil arkiveret 2026-05-06 per [#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68).
-- **#325 audit-helpers LIVE (2026-05-12):** RLS audit workflow grønt + feature-liveness workflow uden RPC-missing fejl. 3 follow-ups filed: #335 (Detector E whitelist for `feature_board_consequences_panel_viewed`), #336 (audit-script auth-fail vs RPC-missing diagnostik), #337 (manuel rotation af lokal `backend/.env` til `sb_secret_*`). Næste technical slice er #326 eller #327 efter brugerbeslutning.
+- **Aktiv teknisk hardening efter #325/#326-close-out (2026-05-12):** #325 runtime-status er kendt: RLS audit workflow grønt + feature-liveness workflow uden RPC-missing fejl, men med én kendt Detector E-finding (`feature_board_consequences_panel_viewed`). #326 er docs-only afstemning. Aktiv prioritet er #327 (secret management ADR) → #328 (backend rate limiting) → #329 (Playwright smoke/light visual regression). Lavere #325-follow-ups: #335, #336, #337.
 - **#242 race-import er parkeret til ca. 2026-05-14/15:** kode og race-pool er live som v2.99 (`RacePoolSection` → `/api/admin/seasons/:seasonId/race-selection/preview` + `/race-selection`, `race_pool` migration/seed), men resterende arbejde er manuel admin-handling: vælg sæson 1-kalender i `/admin` før `Sæson-cyklus` køres omkring sæsonstart.
 - Economy baseline & simulation gennemført (v1.76 tune applied); næste spor er iteration baseret på live beta-data.
 - Team ID-mapping fra PCM

@@ -1,7 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Mellem-tilstand efter #325-close-out.** Næste technical slice er [#326](https://github.com/NicolaiDolmer/CyclingZone/issues/326) (docs-afstem) eller [#327](https://github.com/NicolaiDolmer/CyclingZone/issues/327) (secret management ADR) — afventer brugerbeslutning. #325 lukket som `claude:done`: RPCs deployed (5/5), RLS audit grøn ([run 25754209635](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/25754209635)), feature-liveness fejler kun på Detector E whitelist-gap ([run 25754211228](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/25754211228)).
+**Teknisk hardening efter #325/#326-close-out.** #325 runtime-status er kendt: RPCs deployed (5/5), RLS audit grøn ([run 25754209635](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/25754209635)), feature-liveness fejler kun på Detector E whitelist-gap ([run 25754211228](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/25754211228)). Aktiv prioritet er [#327](https://github.com/NicolaiDolmer/CyclingZone/issues/327) secret management ADR → [#328](https://github.com/NicolaiDolmer/CyclingZone/issues/328) rate limiting → [#329](https://github.com/NicolaiDolmer/CyclingZone/issues/329) Playwright smoke/visual regression.
 
 ## Senest leveret
 - 2026-05-12: **#325 runtime-audits verificeret + lukket** — 3 helper-SQL applied, 5 RPCs i `pg_proc`, RLS workflow grøn. 3 follow-ups filed: #335 (Detector E whitelist), #336 (audit-script diagnostik), #337 (lokal `backend/.env` rotation post-#296). Lokal `agent-doctor`-warning er konsekvens af legacy JWT i lokal env, ikke missing RPCs.
@@ -10,7 +10,7 @@
 - 2026-05-12: **#63 /compare opdagelig som v3.24** + **#316 TeamLink-rollout LIVE som v3.23**.
 
 ## Næste session (prioriteret)
-1. **Brugerbeslutning: [#326](https://github.com/NicolaiDolmer/CyclingZone/issues/326) (docs-afstem) eller [#327](https://github.com/NicolaiDolmer/CyclingZone/issues/327) (secret management ADR)** — én af de to er aktiv næste slice.
+1. **[#327](https://github.com/NicolaiDolmer/CyclingZone/issues/327) Professional Secret Management ADR** — Manus/platformbeslutning først; implementering starter ikke før ADR er committet.
 2. **[#328](https://github.com/NicolaiDolmer/CyclingZone/issues/328) Backend rate limiting** — efter #327-beslutning.
 3. **[#329](https://github.com/NicolaiDolmer/CyclingZone/issues/329) Playwright smoke + light visual regression** — Codex-egnet efter security-spor afklaret.
 4. **#325 follow-ups (lav prioritet):** #335 (Codex-fix, 5-liners whitelist), #336 (diagnostik-refactor), #337 (manuel env-rotation, blokerer kun lokal agent-doctor).
