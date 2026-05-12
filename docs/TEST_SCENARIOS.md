@@ -38,6 +38,7 @@
 - Login-siden kan sende password-reset mail via Supabase recovery-flow
 - Recovery-link lander på `/reset-password` og viser formular til ny adgangskode
 - Ny adgangskode kan gemmes og bruges til efterfølgende login
+- Playwright smoke: mocket login sender manager til `/dashboard` og fanger blank-screen regressioner uden live Supabase secrets
 
 ### Season Flow
 - Live smoke: `POST /api/admin/seasons` virker på deployed backend
@@ -141,6 +142,12 @@ Alle bugfixes skal testes her eller have en begrundet test-note
 - Kald backend `GET /health`
 - Kald backend `GET /api/auctions` uden token og forvent `401`
 - Kør ét lille sanity-check på det berørte flow mod live miljø
+
+### Playwright smoke / visual regression
+- Kør `npm run test:e2e` i `frontend/`
+- Bekræft desktop+mobile Chromium passerer for login, Dashboard, Rytterdatabase, Auktioner, Mit Hold, Finanser, Bestyrelse, Sæson-snapshot og Indbakke
+- Intentional UI-ændring: kør `npm run test:e2e:update`, review screenshot-diff visuelt, commit kun relevante baselines
+- PR-checken `Playwright Smoke` bruger mockede Supabase/backend-svar og kræver ingen live secrets
 
 ### Manager signup/profile smoke
 - Opret en managerkonto med holdnavn og managernavn

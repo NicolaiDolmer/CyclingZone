@@ -35,6 +35,14 @@ export default [
       "react-hooks/set-state-in-effect": "off",
     },
   },
+  {
+    files: ["playwright.config.js", "tests/e2e/**/*.js"],
+    languageOptions: {
+      globals: { ...globals.node },
+      ecmaVersion: 2022,
+      sourceType: "module",
+    },
+  },
   // Dark mode S3 color-guard: forhindrer regression af S2-token-migrering ved at fejle
   // hvis nogen introducerer Tailwind slate-*/gray-* i stedet for cz-tokens. Scoped til
   // .jsx + .js (statBg.js returnerer className-strings).
@@ -72,5 +80,5 @@ export default [
       ],
     },
   },
-  { ignores: ["node_modules/", "dist/"] },
+  { ignores: ["node_modules/", "dist/", "playwright-report/", "test-results/"] },
 ];

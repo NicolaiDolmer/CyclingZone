@@ -339,6 +339,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **Prettier** — 2 spaces, double quotes, semikolon, `trailingComma: es5`; `npm run format` i begge
 - **Supabase TypeScript types** — 63KB genereret fra live DB-schema til `frontend/src/types/database.types.ts`; koblet til `createClient<Database>` i `frontend/src/lib/supabase.ts` (v2.00)
 - **verify-invariants** — `pwsh -File scripts/verify-invariants.ps1` kører 6 domæne-tjek mod live Supabase (zero npm-deps); exit code 1 ved brud
+- **Playwright smoke + light visual regression (v3.27, #329)** — `frontend/tests/e2e/` kører login + 8 manager-kerneflader (`/dashboard`, `/riders`, `/auctions`, `/team`, `/finance`, `/board`, `/seasons`, `/notifications`) i desktop og mobile Chromium. Supabase/backend er mocket i browser-testen, så PR-checken ikke kræver live secrets og ikke skriver til prod. Screenshots er committede baselines under `core-smoke.spec.js-snapshots/`; opdateres bevidst med `npm run test:e2e:update`.
 - **backend/node_modules** — nu installeret; `npm run test`, `lint`, `format` virker lokalt
 
 ### Observabilitet & Analytics (v3.20, 2026-05-11, #137)
@@ -361,7 +362,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 📋 Planlagt (backlog)
 
 - Aktiv feature- og forbedringsbacklog vedligeholdes som GitHub issues (`gh issue list --label "claude:todo" --state open`); backlog-fil arkiveret 2026-05-06 per [#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68).
-- **Aktiv teknisk hardening efter #325/#326-close-out (2026-05-12):** #325 runtime-status er kendt: RLS audit workflow grønt + feature-liveness workflow uden RPC-missing fejl, men med én kendt Detector E-finding (`feature_board_consequences_panel_viewed`). #326 er docs-only afstemning. Aktiv prioritet er #327 (secret management ADR) → #328 (backend rate limiting) → #329 (Playwright smoke/light visual regression). Lavere #325-follow-ups: #335, #336, #337.
+- **Aktiv teknisk hardening efter #325/#326-close-out (2026-05-12):** #325 runtime-status er kendt: RLS audit workflow grønt + feature-liveness workflow uden RPC-missing fejl, men med én kendt Detector E-finding (`feature_board_consequences_panel_viewed`). #326 er docs-only afstemning. #327 (secret management ADR), #328 (backend rate limiting) og #329 (Playwright smoke/light visual regression) er implementeret/klar til merge. Lavere #325-follow-ups: #335, #336, #337.
 - **#242 race-import er parkeret til ca. 2026-05-14/15:** kode og race-pool er live som v2.99 (`RacePoolSection` → `/api/admin/seasons/:seasonId/race-selection/preview` + `/race-selection`, `race_pool` migration/seed), men resterende arbejde er manuel admin-handling: vælg sæson 1-kalender i `/admin` før `Sæson-cyklus` køres omkring sæsonstart.
 - Economy baseline & simulation gennemført (v1.76 tune applied); næste spor er iteration baseret på live beta-data.
 - Team ID-mapping fra PCM

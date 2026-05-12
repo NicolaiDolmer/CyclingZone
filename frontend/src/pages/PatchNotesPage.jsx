@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.27",
+    date: "2026-05-13",
+    label: "Beta",
+    changes: [
+      {
+        category: "QA · Playwright smoke og visuel regression (#329)",
+        items: [
+          "Infra · Login, Dashboard, Ryttere, Auktioner, Mit Hold, Finanser, Bestyrelse, Sæson-snapshot og Indbakke har nu en Playwright-smoke med mockede Supabase/backend-svar og desktop/mobile screenshots som let visuel regression. PR-checken kræver ingen live secrets og skriver ikke til produktion.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.26",
     date: "2026-05-13",
     label: "Beta",
