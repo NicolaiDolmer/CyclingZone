@@ -93,14 +93,16 @@ Installeret via `pwsh -File scripts/install-user-hooks.ps1`. Idempotent — beva
 
 ### `SessionStart` → `pwsh -File scripts/link-onedrive-context.ps1 ... | Where-Object { ... }`
 
-**Hvad:** Genskaber memory-junction + secret-hardlinks fra OneDrive-context hvis de mangler eller peger forkert. Idempotent — første hardlink-tjek afslutter med [skip] når alt er på plads.
+**Hvad:** Genskaber memory-junction + codex-local AI-context hardlinks fra OneDrive-context hvis de mangler eller peger forkert. Idempotent — første hardlink-tjek afslutter med [skip] når alt er på plads.
+
+**Scope (#327):** Dette script håndterer **kun** memory og AI-context (codex-local). Produktionskritiske secrets (backend/.env, frontend/.env, .mcp.json) administreres via Infisical — se `docs/decisions/secret-management-adr.md`.
 
 **Output-filtrering:** Pipen `| Where-Object { $_ -match 'STOP|err|Exception' }` undertrykker [ok]/[skip]-spam og lader kun konflikter + exceptions slippe igennem til hook-output.
 
 **Edge cases:**
 - `env:OneDrive` ikke sat → exit 0 stille (ny PC uden OneDrive blokerer ikke session-start)
 - `OneDrive\CyclingZone-context` ikke synket endnu → exit 0 stille
-- `memory/` eller `secrets/` mappe mangler → exit 0 stille
+- `memory/` mappe mangler → exit 0 stille
 - Lokal fil afviger fra OneDrive (hash mismatch) → throw STOP — Where-Object slipper det igennem som synlig advarsel
 - Fil endnu placeholder (cloud-only) → [skip] (ikke fanget af filteret)
 

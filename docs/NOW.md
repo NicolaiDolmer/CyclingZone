@@ -4,6 +4,7 @@
 **Teknisk hardening efter #325/#326-close-out.** Ny koordineringsmodel: brug korte kommandoer som `Prepare #327`, `Dispatch #327` og `Review agent queue`; Manus skriver handoff/labels i GitHub jf. `docs/AGENT_DISPATCH.md`. Aktiv prioritet er [#327](https://github.com/NicolaiDolmer/CyclingZone/issues/327) secret management ADR → [#328](https://github.com/NicolaiDolmer/CyclingZone/issues/328) rate limiting → [#329](https://github.com/NicolaiDolmer/CyclingZone/issues/329) Playwright smoke/visual regression.
 
 ## Senest leveret
+- 2026-05-12: **#327 Infisical migration implementeret** — `link-onedrive-context.ps1` håndterer kun memory+AI-context nu; `setup-new-pc.ps1` + `CROSS_PC_SETUP.md` + `HOOKS.md` opdateret med Infisical bootstrap-flow; `agent-doctor.ps1` tjekker Infisical CLI. Prod-secrets (.env, .mcp.json) er fjernet fra OneDrive-linking.
 - 2026-05-12: **#327 secret-management ADR prepared** — `docs/decisions/secret-management-adr.md` vælger Infisical-first model; implementering afventer Nicolai approval i GitHub-issue.
 - 2026-05-12: **Agent Dispatch Playbook LIVE** — `docs/AGENT_DISPATCH.md`, `docs/GITHUB_WORKFLOW.md` og GitHub-labels `agent:*`, `manual:user`, `needs-dispatch` indført, så brugeren ikke copy-paster prompts mellem agenter.
 - 2026-05-12: **#325 runtime-audits verificeret + lukket** — RPCs deployed, RLS workflow grøn; follow-ups #335/#336/#337 filed. Lokal `agent-doctor`-warning skyldes legacy JWT, ikke missing RPCs.
