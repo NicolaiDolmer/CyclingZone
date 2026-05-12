@@ -1,9 +1,10 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Teknisk hardening efter #325/#326-close-out.** Koordinering via `docs/AGENT_DISPATCH.md`. Aktiv prioritet er [#328](https://github.com/NicolaiDolmer/CyclingZone/issues/328) backend rate limiting → [#329](https://github.com/NicolaiDolmer/CyclingZone/issues/329) Playwright smoke. [#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 dashboard-setup er parkeret til Nicolai har tid (manuel, ikke blokerende).
+**Teknisk hardening efter #325/#326-close-out.** Koordinering via `docs/AGENT_DISPATCH.md`. Aktiv prioritet er [#329](https://github.com/NicolaiDolmer/CyclingZone/issues/329) Playwright smoke. [#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 dashboard-setup er parkeret til Nicolai har tid (manuel, ikke blokerende).
 
 ## Senest leveret
+- 2026-05-13: **#328 Backend rate limiting LIVE som v3.26** — `express-rate-limit` v7 i-process memory store + 5 navngivne limiters (bid 60/min, market-write 30/min, board-write 15/min, admin-write 120/min, presence-pulse 120/min). Mount AFTER auth så bucket er per-bruger. `trust proxy=1` for Railway. Break-glass: `RATE_LIMIT_DISABLED=1`. Multi-instance scaling kræver shared store — opret follow-up når der startes 2. backend-instans. Tærskler + tabel i `docs/ARCHITECTURE.md` "Backend rate limiting (#328)".
 - 2026-05-12: **#327 Phase 6 LIVE som [PR #338](https://github.com/NicolaiDolmer/CyclingZone/pull/338) merged** — Infisical-first bootstrap-stien dokumenteret i `link-onedrive-context.ps1`/`setup-new-pc.ps1`/`CROSS_PC_SETUP.md`/`HOOKS.md`/`agent-doctor.ps1`/`AGENTS.md`. ADR `docs/decisions/secret-management-adr.md` godkendt af Nicolai. Phase 1 (manuel dashboard-setup) parkeret som #339.
 - 2026-05-12: **Agent Dispatch Playbook LIVE** — `docs/AGENT_DISPATCH.md`, `docs/GITHUB_WORKFLOW.md` og GitHub-labels `agent:*`, `manual:user`, `needs-dispatch` indført, så brugeren ikke copy-paster prompts mellem agenter.
 - 2026-05-12: **#325 runtime-audits verificeret + lukket** — RPCs deployed, RLS workflow grøn; follow-ups #335/#336/#337 filed. Lokal `agent-doctor`-warning skyldes legacy JWT, ikke missing RPCs.
@@ -12,16 +13,15 @@
 - 2026-05-12: **#63 /compare opdagelig som v3.24** + **#316 TeamLink-rollout LIVE som v3.23**.
 
 ## Næste session (prioriteret)
-1. **[#328](https://github.com/NicolaiDolmer/CyclingZone/issues/328) Backend rate limiting** — næste sikkerhedsslice, dispatch via Manus.
-2. **[#329](https://github.com/NicolaiDolmer/CyclingZone/issues/329) Playwright smoke + light visual regression** — Codex-egnet.
-3. **[#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 manuel** — Nicolai opretter dashboard + indtaster secrets når der er tid; ikke blokerende.
-4. **#325 follow-ups (lav prioritet):** #335, #336, #337.
-5. **[#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242) parkeret til ca. 2026-05-14/15** — admin vælger sæson 1-kalender via `Race-katalog` før `Sæson-cyklus`.
+1. **[#329](https://github.com/NicolaiDolmer/CyclingZone/issues/329) Playwright smoke + light visual regression** — Codex-egnet, næste sikkerhedsslice.
+2. **[#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 manuel** — Nicolai opretter dashboard + indtaster secrets når der er tid; ikke blokerende.
+3. **#325 follow-ups (lav prioritet):** #335, #336, #337.
+4. **[#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242) parkeret til ca. 2026-05-14/15** — admin vælger sæson 1-kalender via `Race-katalog` før `Sæson-cyklus`.
 
 ## Skalerings-Roadmap (Mod 100+ brugere)
 - [x] **Fase 1: Bulletproof Baseline** — Loop A (Drift-monitor) aktiv. Ingen trial-risici (Vercel/Supabase monitorering).
 - [x] **Fase 2: AI-Autopilot** — Automatiserede tests ved hvert push. Manus-orkestreret workflow.
-- [ ] **Fase 2 hardening follow-ups** — #328/#329 aktiv prioritet; #327 Phase 6 done.
+- [ ] **Fase 2 hardening follow-ups** — #329 aktiv prioritet; #328 (rate limiting) og #327 Phase 6 done.
 - [ ] **Fase 3: Professional Secret Management** — Phase 6 (bootstrap) LIVE; Phase 1 (#339) + Phase 3-5,7 udestående.
 - [ ] **Fase 4: UX-Insight** — Loop I (Clarity) aktiv for at fange 100-bruger feedback.
 

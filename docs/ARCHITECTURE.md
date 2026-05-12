@@ -247,6 +247,26 @@ Season flow notes:
 - Supabase-write skal logge safety report med `matched`, `not_found`, `updates`, `restored_from_minimum` og `minimum_downgrades`.
 - Mass-nedskrivning til `MIN_UCI_POINTS` kræver manuel audit og må ikke accepteres som normal sync.
 
+### Backend rate limiting (#328)
+- Implementering: `backend/lib/rateLimiters.js` bygger på `express-rate-limit` v7 med **in-process memory store** (day-1, single-instance Railway). Multi-instance scaling kræver shared store (Redis eller Supabase-backed) — opret follow-up issue inden anden backend-instans starter.
+- Mount-rækkefølge: `requireAuth/requireAdmin` FØR limiter, så `req.user.id` er sat og bucket'en er per-bruger (én bad actor evicterer ikke andre på samme egress-IP).
+- `req.user?.id` har forrang over `req.ip` — server.js sætter `app.set("trust proxy", 1)` så `req.ip` reflekterer Railway-clientens første hop ved fallback.
+- Tærskler (alle 60s windows):
+
+  | Limiter | Limit | Routes |
+  |---------|-------|--------|
+  | `bidLimiter` | 60/min | `POST /api/auctions/:id/bid`, `PATCH /api/auctions/:id/proxy` |
+  | `marketWriteLimiter` | 30/min | auctions create, transfers (create/cancel/offer/swaps), loans, finance/loans, team profile, discord-DM-toggle |
+  | `boardWriteLimiter` | 15/min | board proposal/sign/request/renew/dna-choose, bonus accept/decline |
+  | `adminWriteLimiter` | 120/min | alle `/api/admin/*` writes inkl. season-start/end, beta-reset, sync-uci |
+  | `presencePulseLimiter` | 120/min | presence, login-streak, achievements/check, rider/:id/view, notifications read/read-all |
+
+- 429-response: JSON `{ error, code:"rate_limited", limiter, retry_after_seconds }` + `Retry-After` header. Frontend skal vise `error`-strengen som toast.
+- Cron/internal flows kalder lib-funktioner direkte (`auctionFinalization.js`, `prizePayoutEngine.js`, etc.) — de rammer IKKE HTTP-routes og blokeres derfor IKKE af limiters.
+- Proxy auto-bidding resolveres in-process via `resolveProxyBids` — også uden for limiter-pathen.
+- **Break-glass:** sæt env var `RATE_LIMIT_DISABLED=1` på Railway og redeploy. Slår alle limiters fra ved katastrofescenarier (false-positive flood, legitim spike, debug). Skal være OFF i normal drift.
+- Tests: `backend/lib/rateLimiters.test.js` — happy-path, limit-path, user-scoping og kontrakt-asserts mod api.js/server.js.
+
 ---
 
 ## Backend Lib-moduler

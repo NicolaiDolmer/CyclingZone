@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.26",
+    date: "2026-05-13",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sikkerhed · Backend rate limiting (#328)",
+        items: [
+          "Infra · Bud-, transfer-, board- og admin-endpoints er nu beskyttet mod misbrug og trafikspikes via per-bruger throttling på backend. Ingen synlig ændring for managers i normal brug — du kan i sjældne tilfælde se en `For mange handlinger på kort tid`-besked hvis et script eller hurtige klik overstiger grænserne. Cron- og baggrunds-flows er ikke påvirket.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.25",
     date: "2026-05-12",
     label: "Beta",
