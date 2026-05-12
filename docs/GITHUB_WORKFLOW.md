@@ -36,6 +36,8 @@ Mål: Nicolai rører tastatur 2 gange (åbn issue, skriv `@claude`). Resten kør
 | 6 | **Pre-commit/pre-push hooks lokalt** (`.githooks`) | Repo + `setup-local.ps1` | ✅ LIVE | Lint, secret-safety og PatchNotes-versioner fanges før push |
 | 7 | **Dependabot + CodeQL + dependency review** | GitHub Actions | ✅ LIVE | Dep-PRs, code scanning og PR dependency gate |
 | 8 | **MCP write-fix** (claude.ai GitHub-connector) | Nicolai (disconnect/reconnect) | 🔜 Pending | Min terminal-session skriver MCP direkte i stedet for `gh` CLI fallback |
+| 9 | **Agent Dispatch Playbook** | Manus + GitHub issues | ✅ LIVE 2026-05-12 | `docs/AGENT_DISPATCH.md` gør GitHub issues til koordineringsbus, så brugeren ikke copy-paster prompts mellem Manus, Claude og Codex |
+
 
 **Foundation (Lag 0) ✅ done**:
 - Issue templates: `claude-task`, `claude-investigate`, `bug` + `config.yml` (disable blank issues)
@@ -86,7 +88,19 @@ Typisk label-valg:
 
 ## Sådan samarbejder vi via issues
 
+### Manus-dispatch uden copy-paste
+
+Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DISPATCH.md). Kort fortalt skriver brugeren korte kommandoer som `Prepare #327`, `Dispatch #327`, `Review agent queue` eller `Block #328 pending #327`. Manus omsætter derefter beslutningen til GitHub issue-comments, labels og handoff, så Claude/Codex læser GitHub i stedet for lange videresendte chatbeskeder.
+
+| Kommando | Effekt |
+|---|---|
+| `Prepare #N` | Manus skriver handoff-kommentar og labels, men trigger ikke agent. |
+| `Dispatch #N` | Manus poster dispatch-kommentar. For Claude betyder det en `@claude` issue-comment, som trigger GitHub Action. |
+| `Dispatch #N and ship` | Kun for lavrisiko-scope; Manus kan inkludere ship-keyword, så PR auto-merger når checks er grønne. |
+| `Review agent queue` | Manus læser åbne issues/labels og anbefaler næste handling uden at brugeren skal samle status manuelt. |
+
 ### Du → Claude (du opretter issue)
+
 1. Åbn https://github.com/NicolaiDolmer/CyclingZone/issues/new/choose
 2. Vælg template: **Claude task**, **Claude investigation**, eller **Bug report**
 3. Udfyld required-felter — issuet får automatisk `claude:todo` + `priority:*`
@@ -120,6 +134,7 @@ Per `CLAUDE.md` step 0d: Claude tjekker `gh issue list --label "claude:todo" --s
 ## Cheatsheet
 ```bash
 # Liste åbne todo-issues
+
 gh issue list --label "claude:todo" --state open
 
 # Læs et specifikt issue + comments
