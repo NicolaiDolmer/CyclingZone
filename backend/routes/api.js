@@ -180,6 +180,13 @@ import {
   resetBetaTransferArchive,
   runFullBetaReset,
 } from "../lib/betaResetService.js";
+import {
+  adminWriteLimiter,
+  bidLimiter,
+  boardWriteLimiter,
+  marketWriteLimiter,
+  presencePulseLimiter,
+} from "../lib/rateLimiters.js";
 
 // Load .env from backend root
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -677,7 +684,7 @@ router.get("/auctions", requireAuth, async (req, res) => {
 });
 
 // POST /api/auctions — start new auction
-router.post("/auctions", requireAuth, async (req, res) => {
+router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   if (!(await assertMarketOpen(req, res, "auction"))) return;
 
@@ -883,7 +890,7 @@ router.post("/auctions", requireAuth, async (req, res) => {
 });
 
 // POST /api/auctions/:id/bid — place a bid
-router.post("/auctions/:id/bid", requireAuth, async (req, res) => {
+router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   if (!(await assertMarketOpen(req, res, "auction"))) return;
 
@@ -1124,7 +1131,7 @@ router.get("/auctions/:id/proxy", requireAuth, async (req, res) => {
 });
 
 // PATCH /api/auctions/:id/proxy — set or update my proxy max-loft
-router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
+router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   if (!(await assertMarketOpen(req, res, "auction"))) return;
 
@@ -1313,7 +1320,7 @@ router.patch("/auctions/:id/proxy", requireAuth, async (req, res) => {
 });
 
 // DELETE /api/auctions/:id/proxy — remove my proxy bid
-router.delete("/auctions/:id/proxy", requireAuth, async (req, res) => {
+router.delete("/auctions/:id/proxy", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   await supabase
     .from("auction_proxy_bids")
@@ -1324,7 +1331,7 @@ router.delete("/auctions/:id/proxy", requireAuth, async (req, res) => {
 });
 
 // POST /api/auctions/:id/finalize — complete one auction via shared finalizer
-router.post("/auctions/:id/finalize", requireAdmin, async (req, res) => {
+router.post("/auctions/:id/finalize", requireAdmin, adminWriteLimiter, async (req, res) => {
   const result = await finalizeAuctionById({
     supabase,
     auctionId: req.params.id,
@@ -1376,7 +1383,7 @@ router.get("/transfers", requireAuth, async (req, res) => {
 });
 
 // POST /api/transfers — list own rider for sale
-router.post("/transfers", requireAuth, async (req, res) => {
+router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
   const { open } = await getTransferWindowStatus();
   if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke oprette salgslistinger i denne periode." });
 
@@ -1434,7 +1441,7 @@ router.post("/transfers", requireAuth, async (req, res) => {
 });
 
 // DELETE /api/transfers/:id — remove own listing
-router.delete("/transfers/:id", requireAuth, async (req, res) => {
+router.delete("/transfers/:id", requireAuth, marketWriteLimiter, async (req, res) => {
   const { data: listing } = await supabase
     .from("transfer_listings")
     .select("seller_team_id, status")
@@ -1462,7 +1469,7 @@ router.delete("/transfers/:id", requireAuth, async (req, res) => {
 });
 
 // POST /api/transfers/offer — direct offer on any rider (no listing needed)
-router.post("/transfers/offer", requireAuth, async (req, res) => {
+router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
   const { open } = await getTransferWindowStatus();
   if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke sende tilbud i denne periode." });
@@ -1602,7 +1609,7 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
 });
 
 // PATCH /api/transfers/offers/:id — accept, reject, counter, confirm, cancel, or withdraw
-router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
+router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (req, res) => {
   const { action, counter_amount, message } = req.body;
 
   // Market pause: allow only cleanup actions (withdraw/reject/cancel/archive) when paused.
@@ -1801,7 +1808,7 @@ router.patch("/transfers/offers/:id", requireAuth, async (req, res) => {
 });
 
 // POST /api/transfers/:id/offer — legacy route (listing-based offer)
-router.post("/transfers/:id/offer", requireAuth, async (req, res) => {
+router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
   const { open } = await getTransferWindowStatus();
   if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke sende tilbud i denne periode." });
@@ -1875,7 +1882,7 @@ router.get("/transfers/swaps", requireAuth, async (req, res) => {
 });
 
 // POST /api/transfers/swaps — propose a swap
-router.post("/transfers/swaps", requireAuth, async (req, res) => {
+router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
   const { open } = await getTransferWindowStatus();
   if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke foreslå byttehandler i denne periode." });
@@ -1938,7 +1945,7 @@ router.post("/transfers/swaps", requireAuth, async (req, res) => {
 });
 
 // PATCH /api/transfers/swaps/:id — accept, reject, counter, confirm, cancel, withdraw
-router.patch("/transfers/swaps/:id", requireAuth, async (req, res) => {
+router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req, res) => {
   const { action, counter_cash, message } = req.body;
 
   // Market pause: allow only cleanup actions (withdraw/reject/cancel/archive) when paused.
@@ -2104,7 +2111,7 @@ router.get("/loans", requireAuth, async (req, res) => {
 });
 
 // POST /api/loans — propose a loan (borrowing team initiates)
-router.post("/loans", requireAuth, async (req, res) => {
+router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
   const { open } = await getTransferWindowStatus();
   if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke foreslå lejeaftaler i denne periode." });
@@ -2163,7 +2170,7 @@ router.post("/loans", requireAuth, async (req, res) => {
 });
 
 // PATCH /api/loans/:id — accept, reject, cancel, or buyout
-router.patch("/loans/:id", requireAuth, async (req, res) => {
+router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => {
   const { action } = req.body;
 
   // Market pause: allow only cleanup actions (reject/cancel) when paused.
@@ -2355,7 +2362,7 @@ router.patch("/loans/:id", requireAuth, async (req, res) => {
 });
 
 // POST /api/admin/override-rider — manually move a rider to a team
-router.post("/admin/override-rider", requireAdmin, async (req, res) => {
+router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req, res) => {
   const { rider_id, team_id } = req.body;
   if (!rider_id) return res.status(400).json({ error: "rider_id required" });
   const { data: rider } = await supabase.from("riders").select("firstname, lastname").eq("id", rider_id).single();
@@ -2369,7 +2376,7 @@ router.post("/admin/override-rider", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/riders/:id/retirement — mark rider retired/active
-router.post("/admin/riders/:id/retirement", requireAdmin, async (req, res) => {
+router.post("/admin/riders/:id/retirement", requireAdmin, adminWriteLimiter, async (req, res) => {
   const isRetired = req.body?.is_retired === true;
   const { data: rider } = await supabase
     .from("riders")
@@ -2397,6 +2404,7 @@ router.post("/admin/riders/:id/retirement", requireAdmin, async (req, res) => {
 router.post(
   "/admin/import-results",
   requireAdmin,
+  adminWriteLimiter,
   adminImportUploadSingleFile,
   createAdminImportResultsHandler({
     supabase,
@@ -2409,7 +2417,7 @@ router.post(
 );
 
 // POST /api/admin/approve-results — approve pending race result submission
-router.post("/admin/approve-results", requireAdmin, async (req, res) => {
+router.post("/admin/approve-results", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { pending_id } = req.body;
     if (!pending_id) return res.status(400).json({ error: "pending_id required" });
@@ -2509,7 +2517,7 @@ router.get("/notifications", requireAuth, async (req, res) => {
 });
 
 // PATCH /api/notifications/:id/read
-router.patch("/notifications/:id/read", requireAuth, async (req, res) => {
+router.patch("/notifications/:id/read", requireAuth, presencePulseLimiter, async (req, res) => {
   await supabase.from("notifications")
     .update({ is_read: true })
     .eq("id", req.params.id)
@@ -2518,7 +2526,7 @@ router.patch("/notifications/:id/read", requireAuth, async (req, res) => {
 });
 
 // PATCH /api/notifications/read-all
-router.patch("/notifications/read-all", requireAuth, async (req, res) => {
+router.patch("/notifications/read-all", requireAuth, presencePulseLimiter, async (req, res) => {
   await supabase.from("notifications")
     .update({ is_read: true })
     .eq("user_id", req.user.id);
@@ -2570,7 +2578,7 @@ router.get("/teams/my", requireAuth, async (req, res) => {
 });
 
 // PUT /api/teams/my — create or update the current user's team profile
-router.put("/teams/my", requireAuth, async (req, res) => {
+router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
   try {
     const result = await upsertOwnTeamProfile({
       supabase,
@@ -2603,7 +2611,7 @@ router.get("/me/discord-status", requireAuth, async (req, res) => {
   });
 });
 
-router.post("/me/discord-dm-test", requireAuth, async (req, res) => {
+router.post("/me/discord-dm-test", requireAuth, marketWriteLimiter, async (req, res) => {
   const { data: user } = await supabase
     .from("users")
     .select("discord_id")
@@ -2618,7 +2626,7 @@ router.post("/me/discord-dm-test", requireAuth, async (req, res) => {
   }
 });
 
-router.patch("/me/discord-dm-enabled", requireAuth, async (req, res) => {
+router.patch("/me/discord-dm-enabled", requireAuth, marketWriteLimiter, async (req, res) => {
   const { enabled } = req.body || {};
   if (typeof enabled !== "boolean") return res.status(400).json({ error: "enabled skal være boolean" });
   const { error } = await supabase
@@ -2870,7 +2878,7 @@ router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
 // ── Admin: Seasons & Races ────────────────────────────────────────────────────
 
 // POST /api/admin/finalize-expired-auctions — admin bulk finalizer via shared logic
-router.post("/admin/finalize-expired-auctions", requireAdmin, async (req, res) => {
+router.post("/admin/finalize-expired-auctions", requireAdmin, adminWriteLimiter, async (req, res) => {
   const results = await finalizeExpiredAuctionsShared({
     supabase,
     notifyTeamOwner,
@@ -2923,7 +2931,7 @@ router.get("/admin/auctions/active", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/auctions/:id/cancel — annuller aktiv auktion
-router.post("/admin/auctions/:id/cancel", requireAdmin, async (req, res) => {
+router.post("/admin/auctions/:id/cancel", requireAdmin, adminWriteLimiter, async (req, res) => {
   const result = await cancelAuctionByAdmin({
     supabase,
     auctionId: req.params.id,
@@ -2953,7 +2961,7 @@ router.post("/admin/auctions/:id/cancel", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/transfers/offers/:id/cancel — admin annullerer en indgået transfer-handel (window_pending)
-router.post("/admin/transfers/offers/:id/cancel", requireAdmin, async (req, res) => {
+router.post("/admin/transfers/offers/:id/cancel", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -2998,7 +3006,7 @@ router.post("/admin/transfers/offers/:id/cancel", requireAdmin, async (req, res)
 });
 
 // POST /api/admin/transfers/swaps/:id/cancel — admin annullerer en indgået byttehandel (window_pending)
-router.post("/admin/transfers/swaps/:id/cancel", requireAdmin, async (req, res) => {
+router.post("/admin/transfers/swaps/:id/cancel", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -3044,7 +3052,7 @@ router.post("/admin/transfers/swaps/:id/cancel", requireAdmin, async (req, res) 
 
 // POST /api/admin/loans/:id/cancel — admin annullerer en aktiv lejeaftale (#156)
 // Refunderer betalt loan_fee til lejer og trækker fra udlejer (2A).
-router.post("/admin/loans/:id/cancel", requireAdmin, async (req, res) => {
+router.post("/admin/loans/:id/cancel", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -3146,7 +3154,7 @@ router.post("/admin/loans/:id/cancel", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/admin/seasons", requireAdmin, async (req, res) => {
+router.post("/admin/seasons", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const number = Number.parseInt(req.body.number, 10);
     const raceDaysTotal = Number.parseInt(req.body.race_days_total ?? 60, 10);
@@ -3184,7 +3192,7 @@ router.post("/admin/seasons", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/admin/seasons/:id/start", requireAdmin, async (req, res) => {
+router.post("/admin/seasons/:id/start", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const seasonId = req.params.id;
     const today = new Date().toISOString().slice(0, 10);
@@ -3248,7 +3256,7 @@ router.post("/admin/seasons/:id/start", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/admin/seasons/:id/end", requireAdmin, async (req, res) => {
+router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const seasonId = req.params.id;
     const today = new Date().toISOString().slice(0, 10);
@@ -3314,7 +3322,7 @@ router.post("/admin/seasons/:id/end", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/admin/seasons/:id/repair-finance-board", requireAdmin, async (req, res) => {
+router.post("/admin/seasons/:id/repair-finance-board", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const seasonId = req.params.id;
     const force = req.body?.force === true;
@@ -3334,7 +3342,7 @@ router.post("/admin/seasons/:id/repair-finance-board", requireAdmin, async (req,
   }
 });
 
-router.post("/admin/seasons/:id/rebuild-standings", requireAdmin, async (req, res) => {
+router.post("/admin/seasons/:id/rebuild-standings", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const seasonId = req.params.id;
 
@@ -3373,7 +3381,7 @@ router.post("/admin/seasons/:id/rebuild-standings", requireAdmin, async (req, re
   }
 });
 
-router.post("/admin/races", requireAdmin, async (req, res) => {
+router.post("/admin/races", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const {
       season_id,
@@ -3464,7 +3472,7 @@ router.get("/admin/race-pool", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/race-pool/import-csv — upsert pool fra CSV-tekst (idempotent via external_id)
-router.post("/admin/race-pool/import-csv", requireAdmin, async (req, res) => {
+router.post("/admin/race-pool/import-csv", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { csv_text } = req.body || {};
     if (!csv_text || typeof csv_text !== "string") {
@@ -3494,7 +3502,7 @@ router.post("/admin/race-pool/import-csv", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/seasons/:seasonId/race-selection/preview — generér forslag (ingen writes)
-router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, async (req, res) => {
+router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const {
       include_classes = null,
@@ -3527,7 +3535,7 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, asy
 });
 
 // POST /api/admin/seasons/:seasonId/race-selection — gem udvalg som races-rows
-router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, async (req, res) => {
+router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { seasonId } = req.params;
     const { pool_race_ids } = req.body || {};
@@ -3676,7 +3684,7 @@ router.get("/finance/loans", requireAuth, async (req, res) => {
 });
 
 // POST /api/finance/loans — optag nyt finanslån
-router.post("/finance/loans", requireAuth, async (req, res) => {
+router.post("/finance/loans", requireAuth, marketWriteLimiter, async (req, res) => {
   try {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     if (!(await assertMarketOpen(req, res, "market"))) return;
@@ -3694,7 +3702,7 @@ router.post("/finance/loans", requireAuth, async (req, res) => {
 });
 
 // POST /api/finance/loans/:id/repay — betal rate på finanslån
-router.post("/finance/loans/:id/repay", requireAuth, async (req, res) => {
+router.post("/finance/loans/:id/repay", requireAuth, marketWriteLimiter, async (req, res) => {
   try {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     const { amount } = req.body;
@@ -3708,7 +3716,7 @@ router.post("/finance/loans/:id/repay", requireAuth, async (req, res) => {
 });
 
 // PATCH /api/admin/loan-config — opdater lånekonfiguration
-router.patch("/admin/loan-config", requireAdmin, async (req, res) => {
+router.patch("/admin/loan-config", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { division, loan_type, origination_fee_pct, interest_rate_pct, seasons, debt_ceiling } = req.body;
     const { data, error } = await supabase.from("loan_config")
@@ -3730,7 +3738,7 @@ router.get("/admin/auction-config", requireAdmin, async (req, res) => {
 });
 
 // PUT /api/admin/auction-config — opdater auktionskonfiguration
-router.put("/admin/auction-config", requireAdmin, async (req, res) => {
+router.put("/admin/auction-config", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { duration_hours, weekday_open_hour, weekday_close_hour, weekend_open_hour, weekend_close_hour, extension_minutes } = req.body;
     const { data, error } = await supabase.from("auction_timing_config")
@@ -3766,7 +3774,7 @@ router.get("/admin/market/pause", requireAdmin, async (req, res) => {
 
 // POST /api/admin/market/pause — pause auktioner eller hele markedet
 // body: { level: 'auctions' | 'all', reason?: string }
-router.post("/admin/market/pause", requireAdmin, async (req, res) => {
+router.post("/admin/market/pause", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { level, reason } = req.body || {};
     if (!PAUSE_LEVELS.includes(level) || level === "none") {
@@ -3796,7 +3804,7 @@ router.post("/admin/market/pause", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/market/resume — genoptag marked og skub auktioners calculated_end frem
-router.post("/admin/market/resume", requireAdmin, async (req, res) => {
+router.post("/admin/market/resume", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const state = await getMarketPauseState(supabase);
     if (state.level === "none") {
@@ -3885,7 +3893,7 @@ router.get("/admin/season-transition/preview", requireAdmin, async (req, res) =>
 
 // POST /api/admin/season-transition — udfør sæson-skifte
 // Body: { fromSeasonId? (default = aktiv sæson), transitionAt? (default = nu) }
-router.post("/admin/season-transition", requireAdmin, async (req, res) => {
+router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { fromSeasonId: bodyFromSeasonId, transitionAt } = req.body || {};
     let fromSeasonId = bodyFromSeasonId;
@@ -3916,7 +3924,7 @@ router.post("/admin/season-transition", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/adjust-balance — juster holdbalance manuelt
-router.post("/admin/adjust-balance", requireAdmin, async (req, res) => {
+router.post("/admin/adjust-balance", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { team_id, amount, reason } = req.body;
     if (!team_id || amount === undefined) return res.status(400).json({ error: "team_id og amount kræves" });
@@ -3954,7 +3962,7 @@ router.post("/admin/adjust-balance", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/transfer-window/open — åbn transfervinduet for aktiv sæson
-router.post("/admin/transfer-window/open", requireAdmin, async (req, res) => {
+router.post("/admin/transfer-window/open", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { season_id } = req.body;
     if (!season_id) return res.status(400).json({ error: "season_id kræves" });
@@ -4005,7 +4013,7 @@ router.post("/admin/transfer-window/open", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/transfer-window/close — luk transfervinduet
-router.post("/admin/transfer-window/close", requireAdmin, async (req, res) => {
+router.post("/admin/transfer-window/close", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { data: tw } = await supabase.from("transfer_windows")
       .select("id").order("created_at", { ascending: false }).limit(1).single();
@@ -4016,7 +4024,7 @@ router.post("/admin/transfer-window/close", requireAdmin, async (req, res) => {
 });
 
 // PUT /api/admin/deadline-day/override — skift override-tilstand (auto/on/off)
-router.put("/admin/deadline-day/override", requireAdmin, async (req, res) => {
+router.put("/admin/deadline-day/override", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { override } = req.body;
     if (!["auto", "on", "off"].includes(override)) {
@@ -4031,7 +4039,7 @@ router.put("/admin/deadline-day/override", requireAdmin, async (req, res) => {
 });
 
 // PUT /api/admin/transfer-window/closes-at — opdater lukketidspunkt på seneste vindue
-router.put("/admin/transfer-window/closes-at", requireAdmin, async (req, res) => {
+router.put("/admin/transfer-window/closes-at", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { closes_at } = req.body;
     if (!closes_at) return res.status(400).json({ error: "closes_at kræves" });
@@ -4068,7 +4076,7 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
 
 // POST /api/admin/discord/test — send testbesked til en webhook-URL
 // Returnerer struktureret status så frontend kan vise konkret diagnose pr. webhook.
-router.post("/admin/discord/test", requireAdmin, async (req, res) => {
+router.post("/admin/discord/test", requireAdmin, adminWriteLimiter, async (req, res) => {
   const { webhook_url } = req.body;
   if (!webhook_url) return res.status(400).json({ error: "webhook_url påkrævet" });
   const result = await sendTestEmbed(webhook_url);
@@ -4076,10 +4084,10 @@ router.post("/admin/discord/test", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/sync-dyn-cyclist — sync PCM stats fra Google Sheets
-router.post("/admin/sync-dyn-cyclist", requireAdmin, handleDynCyclistSyncRequest);
+router.post("/admin/sync-dyn-cyclist", requireAdmin, adminWriteLimiter, handleDynCyclistSyncRequest);
 
 // POST /api/admin/import-results-sheets — importer løbsresultater fra Google Sheets (dry_run for preview)
-router.post("/admin/import-results-sheets", requireAdmin, async (req, res) => {
+router.post("/admin/import-results-sheets", requireAdmin, adminWriteLimiter, async (req, res) => {
   const { spreadsheet_url, dry_run } = req.body;
   if (!spreadsheet_url) {
     return res.status(400).json({ error: "spreadsheet_url påkrævet" });
@@ -4112,7 +4120,7 @@ router.get("/admin/prize-payout-preview", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/pay-prizes-to-date — udbetal alle udestående præmier for en sæson
-router.post("/admin/pay-prizes-to-date", requireAdmin, async (req, res) => {
+router.post("/admin/pay-prizes-to-date", requireAdmin, adminWriteLimiter, async (req, res) => {
   const { season_id } = req.body;
   if (!season_id) return res.status(400).json({ error: "season_id påkrævet" });
   try {
@@ -4136,7 +4144,7 @@ router.get("/admin/users", requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/admin/users/:userId — slet bruger permanent
-router.delete("/admin/users/:userId", requireAdmin, async (req, res) => {
+router.delete("/admin/users/:userId", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { userId } = req.params;
     if (userId === req.user.id) return res.status(400).json({ error: "Kan ikke slette dig selv" });
@@ -4170,7 +4178,7 @@ router.delete("/admin/users/:userId", requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/admin/users/:userId/role — skift brugerrolle
-router.patch("/admin/users/:userId/role", requireAdmin, async (req, res) => {
+router.patch("/admin/users/:userId/role", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { userId } = req.params;
     const { role } = req.body;
@@ -4466,7 +4474,7 @@ router.get("/admin/cron-runs", requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/admin/races/:raceId — slet løb (cascader til race_results)
-router.delete("/admin/races/:raceId", requireAdmin, async (req, res) => {
+router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { raceId } = req.params;
     const { data: race } = await supabase
@@ -4492,7 +4500,7 @@ router.delete("/admin/races/:raceId", requireAdmin, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // POST /api/presence — heartbeat, opdater last_seen
-router.post("/presence", requireAuth, async (req, res) => {
+router.post("/presence", requireAuth, presencePulseLimiter, async (req, res) => {
   const { error } = await supabase.from("users")
     .update({ last_seen: new Date().toISOString() })
     .eq("id", req.user.id);
@@ -4501,7 +4509,7 @@ router.post("/presence", requireAuth, async (req, res) => {
 });
 
 // POST /api/login-streak — beregn og opdater daglig login-streak
-router.post("/login-streak", requireAuth, async (req, res) => {
+router.post("/login-streak", requireAuth, presencePulseLimiter, async (req, res) => {
   const { data: user, error: selectErr } = await supabase.from("users")
     .select("last_login_date, login_streak").eq("id", req.user.id).single();
   if (selectErr) console.error("[login-streak] select failed:", selectErr.message);
@@ -4547,7 +4555,7 @@ router.get("/achievements", requireAuth, async (req, res) => {
 });
 
 // POST /api/achievements/check — synk achievements mod live runtime-data
-router.post("/achievements/check", requireAuth, async (req, res) => {
+router.post("/achievements/check", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     const newlyUnlocked = await checkAchievements({
       supabase,
@@ -4626,7 +4634,7 @@ router.get("/riders/:id/watchlist-count", requireAuth, async (req, res) => {
 });
 
 // POST /api/riders/:id/view — vis rytter-profil, trigger evt. transferrygte
-router.post("/riders/:id/view", requireAuth, async (req, res) => {
+router.post("/riders/:id/view", requireAuth, presencePulseLimiter, async (req, res) => {
   const { data: rider } = await supabase.from("riders")
     .select("id, firstname, lastname, team_id").eq("id", req.params.id).single();
   if (rider?.team_id && rider.team_id !== req.team?.id && Math.random() < 0.3) {
@@ -5010,7 +5018,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
 // S-02e · Bonus-offer accept/decline (lag 6).
 // Accept: krediterer 200K + tilføjer ekstra-mål til 1yr-board's current_goals.
 // Decline: markerer row 'declined' uden side-effects.
-router.post("/board/bonus-offer/accept", requireAuth, async (req, res) => {
+router.post("/board/bonus-offer/accept", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const { offer_id } = req.body || {};
@@ -5083,7 +5091,7 @@ router.post("/board/bonus-offer/accept", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/board/bonus-offer/decline", requireAuth, async (req, res) => {
+router.post("/board/bonus-offer/decline", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const { offer_id } = req.body || {};
@@ -5144,7 +5152,7 @@ router.get("/board/dna-suggestions", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/board/dna-choose", requireAuth, async (req, res) => {
+router.post("/board/dna-choose", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
@@ -5196,7 +5204,7 @@ router.post("/board/dna-choose", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/board/proposal", requireAuth, async (req, res) => {
+router.post("/board/proposal", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
@@ -5232,7 +5240,7 @@ router.post("/board/proposal", requireAuth, async (req, res) => {
 });
 
 // POST /api/board/sign — sign a new board plan contract
-router.post("/board/sign", requireAuth, async (req, res) => {
+router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
@@ -5329,7 +5337,7 @@ router.post("/board/sign", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/board/request", requireAuth, async (req, res) => {
+router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
@@ -5515,7 +5523,7 @@ router.post("/board/request", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/board/renew", requireAuth, async (req, res) => {
+router.post("/board/renew", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
@@ -5546,7 +5554,7 @@ router.post("/board/renew", requireAuth, async (req, res) => {
 // ── Beta-testværktøjer ────────────────────────────────────────────────────────
 
 // POST /api/admin/beta/cancel-market — annuller alle åbne markedsaktiviteter
-router.post("/admin/beta/cancel-market", requireAdmin, async (req, res) => {
+router.post("/admin/beta/cancel-market", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, cancelled: await cancelBetaMarket(supabase) });
   } catch (e) {
@@ -5555,7 +5563,7 @@ router.post("/admin/beta/cancel-market", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/beta/reset-rosters — returner manager-ryttere til AI-hold
-router.post("/admin/beta/reset-rosters", requireAdmin, async (req, res) => {
+router.post("/admin/beta/reset-rosters", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, ...(await resetBetaRosters(supabase)) });
   } catch (e) {
@@ -5564,7 +5572,7 @@ router.post("/admin/beta/reset-rosters", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/beta/reset-balances — sæt balance = 800.000 på manager-holds
-router.post("/admin/beta/reset-balances", requireAdmin, async (req, res) => {
+router.post("/admin/beta/reset-balances", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { clear_transactions = false } = req.body || {};
     res.json({ ok: true, ...(await resetBetaBalances(supabase, { clearTransactions: clear_transactions })) });
@@ -5574,7 +5582,7 @@ router.post("/admin/beta/reset-balances", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/beta/reset-divisions — sæt alle aktive managerhold tilbage til 3. division
-router.post("/admin/beta/reset-divisions", requireAdmin, async (req, res) => {
+router.post("/admin/beta/reset-divisions", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, divisions: await resetBetaDivisions(supabase) });
   } catch (e) {
@@ -5583,7 +5591,7 @@ router.post("/admin/beta/reset-divisions", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/beta/reset-board — nulstil bestyrelsesprofiler til baseline
-router.post("/admin/beta/reset-board", requireAdmin, async (req, res) => {
+router.post("/admin/beta/reset-board", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, board_profiles: await resetBetaBoardProfiles(supabase) });
   } catch (e) {
@@ -5592,7 +5600,7 @@ router.post("/admin/beta/reset-board", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/beta/reset-calendar — ryd løbskalender, resultater og standings
-router.post("/admin/beta/reset-calendar", requireAdmin, async (req, res) => {
+router.post("/admin/beta/reset-calendar", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, race_calendar: await resetBetaRaceCalendar(supabase) });
   } catch (e) {
@@ -5603,7 +5611,7 @@ router.post("/admin/beta/reset-calendar", requireAdmin, async (req, res) => {
 // POST /api/admin/beta/reset-rider-history — slet rytter-handelshistorik (#104)
 // Wipe'er auctions/transfers/swaps/leje-aftaler så ryttere starter fra ren tavle.
 // Bevarer rider_watchlist, riders, teams, balancer m.m.
-router.post("/admin/beta/reset-rider-history", requireAdmin, async (req, res) => {
+router.post("/admin/beta/reset-rider-history", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, rider_history: await resetBetaRiderHistory(supabase) });
   } catch (e) {
@@ -5612,7 +5620,7 @@ router.post("/admin/beta/reset-rider-history", requireAdmin, async (req, res) =>
 });
 
 // POST /api/admin/beta/reset-transfer-archive — slet alt transfer-historik
-router.post("/admin/beta/reset-transfer-archive", requireAdmin, async (req, res) => {
+router.post("/admin/beta/reset-transfer-archive", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, transfer_archive: await resetBetaTransferArchive(supabase) });
   } catch (e) {
@@ -5621,7 +5629,7 @@ router.post("/admin/beta/reset-transfer-archive", requireAdmin, async (req, res)
 });
 
 // POST /api/admin/beta/reset-loans — slet aktive finanslån
-router.post("/admin/beta/reset-loans", requireAdmin, async (req, res) => {
+router.post("/admin/beta/reset-loans", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, loans: await resetBetaLoans(supabase) });
   } catch (e) {
@@ -5630,7 +5638,7 @@ router.post("/admin/beta/reset-loans", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/beta/reset-notifications — ryd indbakke for alle managers
-router.post("/admin/beta/reset-notifications", requireAdmin, async (req, res) => {
+router.post("/admin/beta/reset-notifications", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, notifications: await resetBetaNotifications(supabase) });
   } catch (e) {
@@ -5639,7 +5647,7 @@ router.post("/admin/beta/reset-notifications", requireAdmin, async (req, res) =>
 });
 
 // POST /api/admin/beta/reset-seasons — ryd sæsoner
-router.post("/admin/beta/reset-seasons", requireAdmin, async (req, res) => {
+router.post("/admin/beta/reset-seasons", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, seasons: await resetBetaSeasons(supabase) });
   } catch (e) {
@@ -5648,7 +5656,7 @@ router.post("/admin/beta/reset-seasons", requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/beta/reset-manager-progress — nulstil XP og level
-router.post("/admin/beta/reset-manager-progress", requireAdmin, async (req, res) => {
+router.post("/admin/beta/reset-manager-progress", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, manager_progress: await resetBetaManagerProgress(supabase) });
   } catch (e) {
@@ -5657,7 +5665,7 @@ router.post("/admin/beta/reset-manager-progress", requireAdmin, async (req, res)
 });
 
 // POST /api/admin/beta/reset-achievements — ryd manager-achievement unlocks
-router.post("/admin/beta/reset-achievements", requireAdmin, async (req, res) => {
+router.post("/admin/beta/reset-achievements", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, achievements: await resetBetaAchievements(supabase) });
   } catch (e) {
@@ -5666,7 +5674,7 @@ router.post("/admin/beta/reset-achievements", requireAdmin, async (req, res) => 
 });
 
 // POST /api/admin/beta/full-reset — komplet beta-reset-suite
-router.post("/admin/beta/full-reset", requireAdmin, async (req, res) => {
+router.post("/admin/beta/full-reset", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { clear_transactions = false, reset_mode = "test" } = req.body || {};
     res.json({

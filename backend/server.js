@@ -14,9 +14,14 @@ import { createClient } from "@supabase/supabase-js";
 import apiRoutes from "./routes/api.js";
 import { startCron } from "./cron.js";
 import { handleSyncRequest } from "./lib/sheetsSync.js";
+import { adminWriteLimiter } from "./lib/rateLimiters.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Railway/Vercel terminate TLS upstream; trust the first proxy hop so req.ip
+// reflects the real client (X-Forwarded-For) for rate-limit key fallback.
+app.set("trust proxy", 1);
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -42,7 +47,7 @@ async function requireAdmin(req, res, next) {
 }
 
 app.use("/api", apiRoutes);
-app.post("/api/admin/sync-uci", requireAdmin, handleSyncRequest);
+app.post("/api/admin/sync-uci", requireAdmin, adminWriteLimiter, handleSyncRequest);
 
 app.get("/health", (_,res) => res.json({status:"ok",timestamp:new Date().toISOString()}));
 
