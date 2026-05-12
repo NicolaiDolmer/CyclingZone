@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
+
+const MAX_COMPARE = 3;
 
 const STATS = [
   { key: "stat_fl",  label: "Flad",             icon: "═" },
@@ -82,10 +85,41 @@ function RiderSearch({ onSelect, excluded }) {
 }
 
 export default function RiderComparePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [fullRiders, setFullRiders] = useState([]);
+  const initialIdsRef = useRef(searchParams.get("ids") || "");
+
+  // Deep-link: load ?ids=uuid1,uuid2 on mount (snapshot — does not refetch when URL changes).
+  useEffect(() => {
+    const raw = initialIdsRef.current;
+    if (!raw) return;
+    const ids = raw.split(",").map(s => s.trim()).filter(Boolean).slice(0, MAX_COMPARE);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("riders")
+        .select(`*, team:team_id(name)`)
+        .in("id", ids);
+      if (cancelled || !data) return;
+      const ordered = ids.map(id => data.find(r => r.id === id)).filter(Boolean);
+      setFullRiders(ordered);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Sync URL whenever the selected riders change so the view is shareable/back-navigable.
+  useEffect(() => {
+    const ids = fullRiders.map(r => r.id).join(",");
+    const current = searchParams.get("ids") || "";
+    if (ids === current) return;
+    const next = new URLSearchParams(searchParams);
+    if (ids) next.set("ids", ids); else next.delete("ids");
+    setSearchParams(next, { replace: true });
+  }, [fullRiders, searchParams, setSearchParams]);
 
   async function addRider(rider) {
-    if (fullRiders.length >= 3) return;
+    if (fullRiders.length >= MAX_COMPARE) return;
     if (fullRiders.find(r => r.id === rider.id)) return;
 
     const { data } = await supabase
@@ -117,7 +151,7 @@ export default function RiderComparePage() {
       </div>
 
       {/* Search */}
-      {fullRiders.length < 3 && (
+      {fullRiders.length < MAX_COMPARE && (
         <div className="mb-5">
           <RiderSearch onSelect={addRider} excluded={fullRiders.map(r => r.id)} />
         </div>

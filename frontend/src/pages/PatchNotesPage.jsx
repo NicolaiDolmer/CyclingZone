@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.24",
+    date: "2026-05-12",
+    label: "Beta",
+    changes: [
+      {
+        category: "UI · Ryttersammenligning er nu opdagelig (#63)",
+        items: [
+          "Manager · Værktøjet til at sammenligne op til 3 ryttere side-by-side (`/compare`) bor nu der hvor du tager rytterbeslutningen: en `⇄ Sammenlign`-knap på rytterprofilen åbner sammenligning med rytteren forudvalgt, og i rytterdatabasen + på ønskelisten kan du markere 2-3 ryttere via en ny ⇄-kolonne og åbne dem alle i sammenligningen via den flydende bjælke i bunden. URL'en `/compare?ids=...` er nu deep-link-bar og kan deles.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.23",
     date: "2026-05-12",
     label: "Beta",

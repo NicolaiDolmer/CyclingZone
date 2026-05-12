@@ -11,6 +11,7 @@ import PotentialeStars from "../components/PotentialeStars";
 import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
 import WatchlistStar from "../components/WatchlistStar";
+import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSelection";
 import { startTour } from "../lib/onboardingTour";
 
 const API = import.meta.env.VITE_API_URL;
@@ -68,9 +69,9 @@ function StatBar({ value }) {
   );
 }
 
-function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }) {
+function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, compareActive, compareDisabled, onToggleCompare }) {
   return (
-    <tr className="border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors">
+    <tr className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors ${compareActive ? "bg-cz-accent/[0.04]" : ""}`}>
       <td className="px-3 py-2.5" onClick={() => onSelect(rider)}>
         <div>
           <RiderLink id={rider.id} stopPropagation
@@ -88,6 +89,9 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction }
             <span className="text-cz-3 text-xs">{rider.team?.name || "Fri"}</span>
           </div>
         </div>
+      </td>
+      <td className="px-1 py-2.5 w-8">
+        <CompareToggle active={compareActive} disabled={compareDisabled} onToggle={() => onToggleCompare(rider.id)} />
       </td>
       <td className="px-2 py-2.5 w-8">
         <WatchlistStar active={watchlist.has(rider.id)} onToggle={() => onToggleWatchlist(rider.id)} />
@@ -126,6 +130,15 @@ export default function RidersPage() {
   const [nationalities, setNationalities] = useState([]);
   const [myTeam, setMyTeam] = useState(null);
   const [showEmptyState, setShowEmptyState] = useState(false);
+  const [compareIds, setCompareIds] = useState([]);
+
+  function toggleCompare(riderId) {
+    setCompareIds(prev => {
+      if (prev.includes(riderId)) return prev.filter(id => id !== riderId);
+      if (prev.length >= MAX_COMPARE) return prev;
+      return [...prev, riderId];
+    });
+  }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -261,6 +274,7 @@ export default function RidersPage() {
                 <tr className="border-b border-cz-border">
                   <SortTh sortKey="firstname" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider w-48">Rytter</SortTh>
+                  <th className="px-1 py-3 w-8" title="Vælg til sammenligning">⇄</th>
                   <th className="px-2 py-3 w-8" />
                   <SortTh sortKey="uci_points" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">Værdi</SortTh>
@@ -280,7 +294,10 @@ export default function RidersPage() {
                     onSelect={r => navigate(`/riders/${r.id}`)}
                     watchlist={watchlist}
                     onToggleWatchlist={toggleWatchlist}
-                    isInAuction={activeAuctionRiders.has(r.id)} />
+                    isInAuction={activeAuctionRiders.has(r.id)}
+                    compareActive={compareIds.includes(r.id)}
+                    compareDisabled={compareIds.length >= MAX_COMPARE}
+                    onToggleCompare={toggleCompare} />
                 ))}
               </tbody>
             </table>
@@ -308,6 +325,8 @@ export default function RidersPage() {
           </button>
         </div>
       </div>
+
+      <CompareBar ids={compareIds} onClear={() => setCompareIds([])} />
     </div>
   );
 }

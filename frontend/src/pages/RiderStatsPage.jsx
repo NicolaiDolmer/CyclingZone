@@ -1015,6 +1015,10 @@ export default function RiderStatsPage() {
                 className={`text-2xl flex-shrink-0 transition-all hover:scale-110 ${onWatchlist ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"}`}>
                 {onWatchlist ? "★" : "☆"}
               </button>
+              <button onClick={() => navigate(`/compare?ids=${rider.id}`)} title="Sammenlign med andre ryttere"
+                className="flex-shrink-0 px-2 py-1 rounded-lg text-xs font-medium border border-cz-border text-cz-2 hover:text-cz-1 hover:border-cz-accent/40 transition-all">
+                ⇄ Sammenlign
+              </button>
             </div>
             {watchlistCount > 0 && (
               <p className="text-cz-3 text-xs mt-1">👁 {watchlistCount} manager{watchlistCount !== 1 ? "s" : ""} følger denne rytter</p>

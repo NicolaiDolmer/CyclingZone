@@ -9,6 +9,7 @@ import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
 import WatchlistStar from "../components/WatchlistStar";
+import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSelection";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -34,6 +35,15 @@ export default function WatchlistPage() {
   const [editingNote, setEditingNote] = useState(null);
   const [noteText, setNoteText] = useState("");
   const [page, setPage] = useState(1);
+  const [compareIds, setCompareIds] = useState([]);
+
+  function toggleCompare(riderId) {
+    setCompareIds(prev => {
+      if (prev.includes(riderId)) return prev.filter(id => id !== riderId);
+      if (prev.length >= MAX_COMPARE) return prev;
+      return [...prev, riderId];
+    });
+  }
 
   async function loadWatchlist() {
     setLoading(true);
@@ -154,6 +164,7 @@ export default function WatchlistPage() {
                   <tr className="border-b border-cz-border">
                     <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-left font-medium uppercase tracking-wider">Rytter</SortTh>
+                    <th className="px-1 py-3 w-8" title="Vælg til sammenligning">⇄</th>
                     <th className="px-2 py-3 w-8" />
                     <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">Hold</th>
                     <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
@@ -174,8 +185,9 @@ export default function WatchlistPage() {
                   {visible.map(entry => {
                     const r = entry.rider;
                     const isFree = !r.team_id;
+                    const compareActive = compareIds.includes(r.id);
                     return (
-                      <tr key={entry.id} className="border-b border-cz-border hover:bg-cz-subtle">
+                      <tr key={entry.id} className={`border-b border-cz-border hover:bg-cz-subtle ${compareActive ? "bg-cz-accent/[0.04]" : ""}`}>
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
                             {r.nationality_code && <Flag code={r.nationality_code} className="flex-shrink-0" />}
@@ -187,6 +199,11 @@ export default function WatchlistPage() {
                               <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
                             )}
                           </div>
+                        </td>
+                        <td className="px-1 py-2.5 w-8">
+                          <CompareToggle active={compareActive}
+                            disabled={compareIds.length >= MAX_COMPARE}
+                            onToggle={() => toggleCompare(r.id)} />
                         </td>
                         <td className="px-2 py-2.5 w-8">
                           <WatchlistStar active onToggle={() => removeFromWatchlist(r.id)} />
@@ -273,6 +290,8 @@ export default function WatchlistPage() {
           </div>
         </>
       )}
+
+      <CompareBar ids={compareIds} onClear={() => setCompareIds([])} />
     </div>
   );
 }
