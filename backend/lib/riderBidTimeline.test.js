@@ -109,6 +109,7 @@ test("riderBidTimeline — aktiv auktion returnerer bud-timeline med korrekt sha
 
   const first = result.bid_timeline[0];
   assert.deepEqual(Object.keys(first).sort(), [...TIMELINE_BID_KEYS].sort());
+  assert.equal(first.team_id, "team-buyer");
   assert.equal(first.team_name, "Køber Team");
   assert.equal(first.amount, 100000);
   assert.equal(first.bid_time, "2026-05-08T10:05:00Z");
@@ -143,7 +144,9 @@ test("riderBidTimeline — completed auktion returnerer KUN final + vinder + sæ
 
   assert.equal(result.status, "completed");
   assert.equal(result.final_bid, 200000);
+  assert.equal(result.winner_team_id, "team-buyer");
   assert.equal(result.winner_name, "Køber Team");
+  assert.equal(result.seller_team_id, "team-seller");
   assert.equal(result.seller_name, "Sælger Team");
   assert.equal(result.completed_at, "2026-05-08T18:03:00Z");
 

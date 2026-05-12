@@ -2,16 +2,24 @@
 // GET /api/riders/:id/bid-timeline. Bruges på rytter-profil til at vise
 // auktionens bud-historik mens den kører, og kun final-bud når den er afsluttet.
 //
-// Privacy-kontrakt (vision-låst 2026-05-08, issue #195):
+// Privacy-kontrakt (vision-låst 2026-05-08, issue #195; udvidet 2026-05-12, issue #315):
 //   - proxy_max / max_amount må ALDRIG eksponeres (poker-vision: skjul strategi)
-//   - Aktiv/extended auktion: { team_name, amount, bid_time, is_proxy } per bud
-//   - Afsluttet auktion: KUN { final_bid, winner_name, seller_name, completed_at }
+//   - Aktiv/extended auktion: { team_id, team_name, amount, bid_time, is_proxy } per bud
+//   - Afsluttet auktion: KUN { final_bid, winner_team_id, winner_name, seller_team_id, seller_name, completed_at }
+//   - team_id-felter er public (samme synlighed som team_name) — bruges af frontend til at linke holdnavn → /teams/:id
 //
 // Privacy-invariant håndhæves via PUBLIC_KEYS-whitelist + runtime-assertion på
 // returnerede objekter. Fremtidig kode kan ikke uforvarende lække proxy-loft.
 
-export const TIMELINE_BID_KEYS = ["team_name", "amount", "bid_time", "is_proxy"];
-export const COMPLETED_KEYS = ["final_bid", "winner_name", "seller_name", "completed_at"];
+export const TIMELINE_BID_KEYS = ["team_id", "team_name", "amount", "bid_time", "is_proxy"];
+export const COMPLETED_KEYS = [
+  "final_bid",
+  "winner_team_id",
+  "winner_name",
+  "seller_team_id",
+  "seller_name",
+  "completed_at",
+];
 const FORBIDDEN_KEYS = ["proxy_max", "max_amount", "max_bid", "auto_bid_max"];
 
 function assertNoForbiddenKeys(obj, label) {
@@ -24,6 +32,7 @@ function assertNoForbiddenKeys(obj, label) {
 
 function pickTimelineBid(bid) {
   return {
+    team_id: bid.team?.id ?? null,
     team_name: bid.team?.name ?? null,
     amount: bid.amount,
     bid_time: bid.bid_time,
@@ -65,7 +74,9 @@ export async function buildRiderBidTimeline(supabase, riderId) {
       auction_id: auction.id,
       status: "completed",
       final_bid: auction.current_price,
+      winner_team_id: auction.winner?.id ?? null,
       winner_name: auction.winner?.name ?? null,
+      seller_team_id: auction.seller?.id ?? null,
       seller_name: auction.seller?.name ?? null,
       completed_at: auction.actual_end,
     };
