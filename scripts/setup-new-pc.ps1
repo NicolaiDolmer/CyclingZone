@@ -158,8 +158,10 @@ if (Test-Path $installHooks) {
   Write-Host "  [skip] install-user-hooks.ps1 ikke fundet i target"
 }
 
-# --- 8. OneDrive-context links (memory + secrets) ---
-Write-Section "OneDrive-context links"
+# --- 8. OneDrive-context links (memory + AI-context) ---
+# SCOPE (#327): kun memory-junction og AI-context (codex-local).
+# Produktionskritiske secrets (.env, .mcp.json) haandteres nu via Infisical — se trin nedenfor.
+Write-Section "OneDrive-context links (memory + AI-context)"
 
 $linkScript = Join-Path $Target "scripts\link-onedrive-context.ps1"
 $contextRoot = if ($env:OneDrive) { Join-Path $env:OneDrive "CyclingZone-context" } else { $null }
@@ -186,7 +188,7 @@ Write-Section "Discord MCP setup"
 $discordSetup = Join-Path $Target "scripts\setup-discord-mcp.ps1"
 $mcpAlreadyLinked = Test-Path (Join-Path $Target ".mcp.json")
 if ($mcpAlreadyLinked) {
-  Write-Host "  [ok] .mcp.json findes (hardlinkede via OneDrive-context). Springer Discord-setup over."
+  Write-Host "  [ok] .mcp.json findes allerede. Springer Discord-setup over."
 } elseif (Test-Path $discordSetup) {
   $railwayCmd = Get-Command railway -ErrorAction SilentlyContinue
   if ($railwayCmd) {
@@ -212,10 +214,17 @@ Write-Section "Setup faerdig"
 Write-Host "  Repo placeret: $Target" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Tjek folgende efter setup:" -ForegroundColor Yellow
-Write-Host "    1. Memory + secrets sync'es nu via OneDrive (CyclingZone-context\memory og \secrets)"
+Write-Host "    1. Memory + AI-context sync'es via OneDrive (CyclingZone-context\memory)"
 Write-Host "       Hvis OneDrive ikke var synket endnu: kor 'pwsh -File scripts/link-onedrive-context.ps1' senere"
-Write-Host "    2. Aabn mappen i Claude Code og verificer at MCP-servere er tilgaengelige"
-Write-Host "    3. Aabn mappen i Codex og verificer at AGENTS.md er auto-loaded"
+Write-Host ""
+Write-Host "    2. PRODUKTIONSSECRETS via Infisical (se docs/CROSS_PC_SETUP.md):" -ForegroundColor Yellow
+Write-Host "         a. infisical login"
+Write-Host "         b. infisical export --env=dev > backend/.env"
+Write-Host "         c. infisical export --env=dev > frontend/.env"
+Write-Host "         d. pwsh -File scripts/setup-discord-mcp.ps1  # genererer .mcp.json"
+Write-Host ""
+Write-Host "    3. Aabn mappen i Claude Code og verificer at MCP-servere er tilgaengelige"
+Write-Host "    4. Aabn mappen i Codex og verificer at AGENTS.md er auto-loaded"
 Write-Host ""
 Write-Host "  Working directory:" -ForegroundColor Cyan
 Write-Host "    cd $Target"

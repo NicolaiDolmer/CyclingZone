@@ -147,10 +147,16 @@ pwsh -File scripts/setup-new-pc.ps1
 
 ### Manuelle skridt der ikke kan automatiseres
 
-1. **Kopier `.env.local`-filer** fra anden PC eller password manager:
-   - `backend/.env` — Supabase keys, Railway tokens
-2. **`.mcp.json`** kan auto-genereres af `setup-discord-mcp.ps1` hvis Railway CLI er logget ind
-3. **`.codex.local/`** mappe — opretter Codex selv ved første session
+**Produktionssecrets via Infisical** (erstatter OneDrive-hardlinks efter #327):
+
+1. **Infisical CLI installeret?** `winget install Infisical.infisical` (eller `npm i -g @infisical/cli`)
+2. **Log ind:** `infisical login`
+3. **Generer backend/.env:** `infisical export --env=dev > backend/.env`
+4. **Generer frontend/.env:** `infisical export --env=dev > frontend/.env`
+5. **`.mcp.json`** auto-genereres af `setup-discord-mcp.ps1` hvis Railway CLI er logget ind
+6. **`.codex.local/`** mappe — opretter Codex selv ved første session
+
+> **Nicolai:** Secrets skal være indtastet i Infisical-dashboardet (infisical.com) for at ovenstående fungerer. Se [secret-management-adr.md](decisions/secret-management-adr.md) for migrationstrinnene.
 
 ---
 
@@ -218,7 +224,7 @@ $newEncoded = "C--dev-CyclingZone"
 Copy-Item -Path "<gammel-memory-sti>" -Destination "$env:USERPROFILE\.claude\projects\$newEncoded\memory" -Recurse
 ```
 
-Hvis det ikke lykkes: kør `pwsh -File scripts/link-onedrive-context.ps1` — memory + secrets sync'er nu via OneDrive (`~/OneDrive/CyclingZone-context/`) frem for manuel kopi.
+Hvis det ikke lykkes: kør `pwsh -File scripts/link-onedrive-context.ps1` — memory + AI-context (codex-local) sync'es via OneDrive (`~/OneDrive/CyclingZone-context/`). Secrets bootstrap via Infisical — se "Scenarie 2 — Frisk PC" ovenfor.
 
 ### "Codex åbner stadig i den gamle Codex-mappe"
 
@@ -237,19 +243,20 @@ Trust-entryen i `~/.codex/config.toml` betyder Codex ikke spørger om tilladelse
 |---|---|---|
 | Kode | Git | `git push` / `git pull` |
 | Docs i repo (NOW.md, AGENTS.md, etc.) | Git | Same |
-| `backend/.env`, `frontend/.env*`, `.mcp.json` | Lokal, gitignored | **OneDrive-context hardlink** — `~/OneDrive/CyclingZone-context/secrets/` |
-| `.codex.local/SUPABASE_CONTEXT.md`, `.codex.local/supabase-readonly.env` | Lokal, gitignored | **OneDrive-context hardlink** — `~/OneDrive/CyclingZone-context/codex-local/` |
+| `backend/.env`, `frontend/.env*` | Lokal, gitignored | **Infisical** → `infisical export --env=dev > <fil>` (erstatter OneDrive-hardlinks, #327) |
+| `.mcp.json` | Lokal, gitignored | Auto-genereres af `setup-discord-mcp.ps1` (token fra Railway) |
+| `.codex.local/SUPABASE_CONTEXT.md`, `.codex.local/supabase-readonly.env` | Lokal, gitignored | **OneDrive-context hardlink** — `~/OneDrive/CyclingZone-context/codex-local/` (midlertidig hybrid — readonly AI-context) |
 | Claude auto-memory | `~/.claude/projects/<encoded>/memory/` | **OneDrive-context junction** — `~/OneDrive/CyclingZone-context/memory/` |
 | Codex memories | `~/.codex/memories/` | Per-PC, ingen sync |
 | Worktrees i `.claude/worktrees/` | Per-PC | Cleanes up per-session |
 
-Re-skab links efter clone på ny PC (idempotent):
+Re-skab memory + AI-context links efter clone på ny PC (idempotent):
 
 ```powershell
 pwsh -File scripts/link-onedrive-context.ps1
 ```
 
-Kaldes også automatisk af `scripts/setup-new-pc.ps1`. Detaljer: [auto-memory `reference_onedrive_context.md`].
+Kaldet automatisk af `scripts/setup-new-pc.ps1`. Bemærk: dette script linker **ikke** produktionssecrets — brug Infisical til det (se "Scenarie 2" ovenfor). Detaljer: [auto-memory `reference_onedrive_context.md`].
 
 ## Hvad der KAN synces via OneDrive (separat mappe, ikke i repo)
 

@@ -122,6 +122,9 @@ if ($issues.Ok) {
   Add-Check "issue-label-schema" ($(if ($missing.Count -eq 0) { "OK" } else { "WARN" })) ($(if ($missing.Count) { "missing: $($missing -join ', ')" } else { "all open issues have priority/type/claude labels" }))
 }
 
+$infisicalCmd = Get-Command infisical -ErrorAction SilentlyContinue
+Add-Check "infisical-cli" ($(if ($infisicalCmd) { "OK" } else { "WARN" })) ($(if ($infisicalCmd) { $infisicalCmd.Source } else { "not found — install: winget install Infisical.infisical (see docs/CROSS_PC_SETUP.md)" }))
+
 $tokenHygiene = Try-Run @("pwsh", "-NoProfile", "-File", "scripts/check-agent-token-hygiene.ps1")
 if ($tokenHygiene.Ok) {
   Add-Check "token-hygiene" "OK" "startup context within configured limits"

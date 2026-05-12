@@ -1,6 +1,8 @@
 # link-onedrive-context.ps1
 #
 # Skaber junction + hardlinks fra repo + Claude memory til OneDrive-context.
+# SCOPE (efter #327 Infisical-migration): kun memory-junction og AI-context filer.
+# Produktionskritiske secrets (.env, .mcp.json) styres nu via Infisical — se docs/decisions/secret-management-adr.md.
 # Idempotent: skip hvis allerede linkede; advarer hvis OneDrive-context mangler filer.
 #
 # Sikkerhedsnet:
@@ -141,7 +143,7 @@ if (-not $env:OneDrive) {
 }
 $contextRoot = Join-Path $env:OneDrive "CyclingZone-context"
 $memSource = Join-Path $contextRoot "memory"
-$secSource = Join-Path $contextRoot "secrets"
+# $secSource (secrets/) brugt ikke længere — produktionskritiske secrets styres via Infisical (#327)
 $clSource = Join-Path $contextRoot "codex-local"
 
 if (-not (Test-Path $contextRoot)) {
@@ -152,16 +154,13 @@ if (-not (Test-Path $memSource)) {
   Write-Host "  [info] Mangler memory-mappe i OneDrive: $memSource. Skipper." -ForegroundColor Yellow
   exit 0
 }
-if (-not (Test-Path $secSource)) {
-  Write-Host "  [info] Mangler secrets-mappe i OneDrive: $secSource. Skipper." -ForegroundColor Yellow
-  exit 0
-}
+# secrets-mappe kræves ikke længere — produktionskritiske secrets styres via Infisical (#327)
 
 $memCount = (Get-ChildItem $memSource -File -ErrorAction SilentlyContinue).Count
-$secCount = (Get-ChildItem $secSource -File -ErrorAction SilentlyContinue).Count
 $clCount = if (Test-Path $clSource) { (Get-ChildItem $clSource -File -ErrorAction SilentlyContinue).Count } else { 0 }
 $mode = if ($DryRun) { " [DRY-RUN]" } else { "" }
-Write-Host "  [ok]$mode $contextRoot ($memCount memory-filer, $secCount secret-filer, $clCount codex-local-filer)"
+Write-Host "  [ok]$mode $contextRoot ($memCount memory-filer, $clCount codex-local-filer)"
+Write-Host "  [info] Secrets-mappe haandteres ikke af dette script — produktionskritiske secrets styres via Infisical." -ForegroundColor Cyan
 
 # --- 2. Memory-junction ---
 Write-Section "Memory junction"
@@ -262,21 +261,13 @@ if ($needLink) {
   }
 }
 
-# --- 3. Secret hardlinks ---
-Write-Section "Secret hardlinks"
+# --- DEPRECATED: Secret hardlinks (#327) ---
+# backend/.env, frontend/.env, frontend/.env.production og .mcp.json haandteres IKKE laengere
+# af dette script. Produktionskritiske secrets styres nu via Infisical.
+# Lokal .env-filer genereres ved: infisical export --env=dev > backend/.env
+# Se docs/decisions/secret-management-adr.md og docs/CROSS_PC_SETUP.md for bootstrap-vejledning.
 
-$secretPairs = @(
-  @{ Path = "backend\.env";              Source = "backend.env" },
-  @{ Path = "frontend\.env";             Source = "frontend.env" },
-  @{ Path = "frontend\.env.production";  Source = "frontend.env.production" },
-  @{ Path = ".mcp.json";                 Source = "mcp.json" }
-)
-
-foreach ($p in $secretPairs) {
-  Sync-HardLink -Original (Join-Path $RepoRoot $p.Path) -SourceFile (Join-Path $secSource $p.Source) -DisplayName $p.Path
-}
-
-# --- 4. Codex-local hardlinks ---
+# --- 3. Codex-local hardlinks ---
 Write-Section "Codex-local hardlinks"
 
 if (Test-Path $clSource) {
@@ -291,7 +282,7 @@ if (Test-Path $clSource) {
   Write-Host "  [skip] codex-local ikke i OneDrive endnu (valgfri)"
 }
 
-# --- 5. Slut-rapport ---
+# --- 4. Slut-rapport ---
 Write-Host ""
 if ($DryRun) {
   if ($Script:Conflicts.Count -gt 0) {
@@ -303,5 +294,5 @@ if ($DryRun) {
   }
   Write-Host "Dry-run faerdig - ingen konflikter. Koer uden -DryRun for at anvende aendringer." -ForegroundColor Green
 } else {
-  Write-Host "Faerdig. Memory + secrets + codex-local synces nu via OneDrive begge veje." -ForegroundColor Green
+  Write-Host "Faerdig. Memory + codex-local AI-context synces via OneDrive. Produktionssecrets: brug Infisical." -ForegroundColor Green
 }
