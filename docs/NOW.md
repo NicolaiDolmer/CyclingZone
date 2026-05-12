@@ -4,6 +4,8 @@
 **Slice 09 — Race-pool katalog LIVE som v2.99 ([#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242))**. 97 løb er seedet i prod. Admin skal stadig vælge sæson 1-kalenderen via `Race-katalog` på `/admin`; klik ikke `Sæson-cyklus` før sæsonstart omkring 2026-05-15.
 
 ## Senest leveret
+- 2026-05-12: **#260 scope-split + postmortem** — run 25699672154 ramte max-turns (50) med 12 sub-tasks; delt i #315 (scaffolding) og #316 (rollout); max-turns bumped 50→120; postmortem i `.claude/learnings/2026-05-12-claude-action-max-turns-large-refactor.md`.
+
 Historik før 2026-05-10 ligger i [`NOW_HISTORIK_2026-05-09-PRECOMPACT.md`](archive/NOW_HISTORIK_2026-05-09-PRECOMPACT.md) og [`NOW_HISTORIK_2026-05-08-DX-PRECOMPACT.md`](archive/NOW_HISTORIK_2026-05-08-DX-PRECOMPACT.md). Leveringer fra 2026-05-10 v3.01-v3.10 er kompakteret i [`NOW_HISTORIK_2026-05-10-TOKEN-AUDIT.md`](archive/NOW_HISTORIK_2026-05-10-TOKEN-AUDIT.md).
 
 - 2026-05-10: **#287 Backwards-audit 'deployed kode + 0 data' LIVE som v3.10** — `audit-feature-liveness.js`, PR #291 merged, deploy SHA `4d24c4d`.
