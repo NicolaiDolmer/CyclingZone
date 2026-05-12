@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "3.25",
+    date: "2026-05-12",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · AI-Autopilot Fase 2 (#Scaling)",
+        items: [
+          "AI · CI-workflows opdateret med spec-reportere for bedre AI-læsbarhed og fejlfinding.",
+          "AI · Manus formaliseret som orkestrator for Auto-PR-review (Loop D) og subagent-loops (Loop F).",
+          "AI · Etablering af world-class AI-standard for projekt-skalering og automatiseret test-disciplin.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.24",
     date: "2026-05-12",
     label: "Beta",

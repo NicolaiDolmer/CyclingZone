@@ -65,11 +65,12 @@ Supabase-inspektion: start med målrettede `npm run db:ai:*` frem for brede dump
 ## Rolle-fordeling mellem AI-assistenter (Verdensklasse AI-Standard)
 
 ### Manus (The Architect & Coordinator)
-**Primær brug:** Strategisk planlægning, orkestrering af komplekse workflows, og cross-domain koordinering. Manus er "ejeren" af den overordnede projekt-konfiguration.
+**Primær brug:** Strategisk planlægning, orkestrering af komplekse workflows, og cross-domain koordinering. Manus er "ejeren" af den overordnede projekt-konfiguration og AI-Autopilot (Fase 2).
 
 **Stærk i:**
 - Udarbejdelse af køreplaner og skalerings-strategier.
 - Håndtering af projekt-niveau indstillinger og connectors.
+- **Orkestrering:** Ansvarlig for Loop D (Auto-PR-review) og Loop F (Subagent-orkestrering).
 - Sikre at alle agents følger `AGENTS.md` og `GUARDRAILS_CORE.md`.
 
 ### Claude (The Lead Developer)

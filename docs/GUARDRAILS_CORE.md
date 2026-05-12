@@ -45,6 +45,9 @@ Før kodning på systemer der kræver kravafklaring (flow-redesign, ny automatis
 
 ## Cadence-regler (efter høj-velocity sessioner)
 
+### AI-Autopilot (Fase 2)
+**Krav:** Alle PR'er skal have et gennemført Auto-PR-review (Loop D) og passere alle CI-tests før merge. Manus orkestrerer komplekse features ved at splitte dem i sub-tasks (Loop F).
+
 ### Soak-gate
 **Trigger:** Forrige session shippede ≥3 user-facing slices (ikke patches, ikke docs).  
 **Krav:** Næste session starter med 60-min e2e manual smoke gennem nye flows i alle relevante temaer/modes FØR ny kode-slice startes. Smoke-fund noteres i `NOW.md` "Senest leveret".  
