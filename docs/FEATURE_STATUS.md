@@ -341,6 +341,16 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **verify-invariants** — `pwsh -File scripts/verify-invariants.ps1` kører 6 domæne-tjek mod live Supabase (zero npm-deps); exit code 1 ved brud
 - **backend/node_modules** — nu installeret; `npm run test`, `lint`, `format` virker lokalt
 
+### Observabilitet & Analytics (v3.20, 2026-05-11, #137)
+- **Microsoft Clarity** — UI-heatmaps, session-replays, drop-off-rapporter; konsent-gated via `analytics`-kategori (#297). Tags `manager_id`/`division`/`season_number` stamped per session.
+- **player_events** — Supabase-tabel (`team_id, user_id, event_name, event_data jsonb, created_at`) m. RLS-policies så managers kun ser egne rows. 3 indices (pkey + `event_name+created_at` + `team_id+created_at`).
+- **logEvent helper** — `frontend/src/lib/logEvent.js`. Consent-gated (samme `analytics`-flag som Clarity), fire-and-forget, swallow-errors så instrumentation aldrig bryder user flow. `KNOWN_EVENTS`-frozen-array er single source of truth for hvilke events der bør være impressions for.
+- **10 events instrumenteret:**
+  - Game: `session_started`, `auction_view`, `auction_bid_placed`, `transfer_offer_sent`, `notification_clicked`
+  - Feature-impressions (slice 14 / #279-canary-mønstret): `feature_rider_development_tab_opened`, `feature_admin_auction_config_opened`, `feature_board_consequences_panel_viewed`, `feature_finance_forecast_card_viewed`, `feature_hall_of_fame_opened`
+  - Resterende ~10 events fra #137-scope-udvidelsen er flyttet til [#306](https://github.com/NicolaiDolmer/CyclingZone/issues/306).
+- **Detector E** — `audit-feature-liveness.js` queryer `feature_liveness_event_counts(window_days)` RPC; flagger events i `KNOWN_EVENTS` med 0 impressions sidste 30 dage. Skipper PR-runs (events tager dage at akkumulere), kører ugentligt cron mandage 04:00 UTC + workflow_dispatch. Tracking-issue åbnes ved findings (label `quality-drift`).
+
 ---
 
 ## 🔴 Broken / Kendte bugs
