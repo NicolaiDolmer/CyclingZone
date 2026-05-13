@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.28",
+    date: "2026-05-13",
+    label: "Beta",
+    changes: [
+      {
+        category: "Drift · UCI Rankings Sync hardening",
+        items: [
+          "Infra · Den ugentlige UCI-sync flyttes fra minut 00 til 06:17 UTC onsdag morgen, så GitHub Actions ikke rammer top-of-hour load hvor scheduled jobs kan blive forsinket eller droppet.",
+          "Infra · Efterberegningen af rytterlønninger efter UCI-sync bruger nu eksplicit WebSocket-transport i Supabase-klienten, så workflowet kan gennemføre på Node 20 efter scraperen har opdateret Google Sheets og Supabase.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.27",
     date: "2026-05-13",
     label: "Beta",
