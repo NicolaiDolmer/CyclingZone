@@ -23,9 +23,11 @@ GitHub Actions runtime is not the same as the local Windows shell:
 - Supabase realtime in Node 20 still needs explicit `ws` transport in standalone scripts that create a Supabase client.
 - Deploy verification must distinguish missing provider status from a broken product. A commit can have green live endpoints while the gate is waiting on a deployment status that never arrives.
 - Quality Inbox should not blindly count runner-context differences as product warnings. It needs a CI baseline or `INFO` category for expected differences like repo path, hooksPath, and missing local developer tools.
+- A green workflow can still carry a dated deprecation warning. The `gitleaks/gitleaks-action@v2` Node 20 warning was green today but should be handled before it becomes a forced runner failure.
 
 ## Follow-up issues
 - #347: make deploy-verify robust for script/doc-only commits and missing Railway status.
 - #348: set Sentry secrets and verify real frontend/backend events with release/source maps.
 - #346: reduce Quality Inbox warning debt and calibrate CI-only warnings.
 - #337/#339: finish local Supabase service-key rotation and Infisical dashboard setup.
+- #349: upgrade gitleaks action before Node 20 runner deprecation becomes operational risk.
