@@ -190,7 +190,7 @@ import {
 
 // Load .env from backend root
 const __dirname = dirname(fileURLToPath(import.meta.url));
-config({ path: join(__dirname, "../.env") });
+config({ path: join(__dirname, "../.env"), quiet: true });
 
 const router = express.Router();
 

@@ -25,7 +25,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
 const FRONTEND_SRC = join(REPO_ROOT, "frontend", "src");
 
-dotenv.config({ path: join(REPO_ROOT, "backend", ".env") });
+dotenv.config({ path: join(REPO_ROOT, "backend", ".env"), quiet: true });
 
 const args = new Set(process.argv.slice(2));
 const JSON_OUT = args.has("--json");

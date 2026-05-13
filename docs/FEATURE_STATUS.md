@@ -350,7 +350,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
   - Game: `session_started`, `auction_view`, `auction_bid_placed`, `transfer_offer_sent`, `notification_clicked`
   - Feature-impressions (slice 14 / #279-canary-mønstret): `feature_rider_development_tab_opened`, `feature_admin_auction_config_opened`, `feature_board_consequences_panel_viewed`, `feature_finance_forecast_card_viewed`, `feature_hall_of_fame_opened`
   - Resterende ~10 events fra #137-scope-udvidelsen er flyttet til [#306](https://github.com/NicolaiDolmer/CyclingZone/issues/306).
-- **Detector E** — `audit-feature-liveness.js` queryer `feature_liveness_event_counts(window_days)` RPC; flagger events i `KNOWN_EVENTS` med 0 impressions sidste 30 dage. Skipper PR-runs (events tager dage at akkumulere), kører ugentligt cron mandage 04:00 UTC + workflow_dispatch. Tracking-issue åbnes ved findings (label `quality-drift`).
+- **Detector E** — `audit-feature-liveness.js` queryer `feature_liveness_event_counts(window_days)` RPC; flagger events i `KNOWN_EVENTS` med 0 impressions sidste 30 dage. Skipper PR-runs (events tager dage at akkumulere), kører ugentligt cron mandage 04:00 UTC + workflow_dispatch. Tracking-issue åbnes ved findings (label `quality-drift`). `feature_board_consequences_panel_viewed` er midlertidigt whitelistet, fordi board consequences er milestone-gated indtil sæson 1-flowet producerer naturlige impressions (#284/#335).
 
 ---
 
@@ -362,7 +362,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ## 📋 Planlagt (backlog)
 
 - Aktiv feature- og forbedringsbacklog vedligeholdes som GitHub issues (`gh issue list --label "claude:todo" --state open`); backlog-fil arkiveret 2026-05-06 per [#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68).
-- **Aktiv teknisk hardening efter #325/#326-close-out (2026-05-12):** #325 runtime-status er kendt: RLS audit workflow grønt + feature-liveness workflow uden RPC-missing fejl, men med én kendt Detector E-finding (`feature_board_consequences_panel_viewed`). #326 er docs-only afstemning. #327 (secret management ADR), #328 (backend rate limiting) og #329 (Playwright smoke/light visual regression) er implementeret/klar til merge. Lavere #325-follow-ups: #335, #336, #337.
+- **Aktiv teknisk hardening efter #325/#326-close-out (2026-05-13):** #325 runtime-status er kendt: RLS audit workflow grønt + feature-liveness workflow uden RPC-missing fejl. Den kendte Detector E-finding (`feature_board_consequences_panel_viewed`) håndteres i #335 med en midlertidig milestone-gated whitelist. #327 (secret management ADR), #328 (backend rate limiting) og #329 (Playwright smoke/light visual regression) er shipped/lukket; resterende #325-follow-ups: #336, #337.
 - **#242 race-import er parkeret til ca. 2026-05-14/15:** kode og race-pool er live som v2.99 (`RacePoolSection` → `/api/admin/seasons/:seasonId/race-selection/preview` + `/race-selection`, `race_pool` migration/seed), men resterende arbejde er manuel admin-handling: vælg sæson 1-kalender i `/admin` før `Sæson-cyklus` køres omkring sæsonstart.
 - Economy baseline & simulation gennemført (v1.76 tune applied); næste spor er iteration baseret på live beta-data.
 - Team ID-mapping fra PCM

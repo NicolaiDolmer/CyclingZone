@@ -1,17 +1,16 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Teknisk hardening efter #325/#326-close-out.** Koordinering via `docs/AGENT_DISPATCH.md`. [#329](https://github.com/NicolaiDolmer/CyclingZone/issues/329) Playwright smoke er implementeret på branch `codex/issue-329-playwright-smoke` og klar til PR/review. [#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 dashboard-setup er parkeret til Nicolai har tid (manuel, ikke blokerende).
+**Teknisk hardening efter #325/#326-close-out.** Koordinering via `docs/AGENT_DISPATCH.md`. [#127](https://github.com/NicolaiDolmer/CyclingZone/pull/127) dotenv major-bump har grøn CI efter branch-update; Codex-fix-PR tilføjer `quiet:true` på runtime-loaders før merge-beslutning. [#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 dashboard-setup er parkeret til Nicolai har tid (manuel, ikke blokerende).
 
 ## Senest leveret
-- 2026-05-13: **#329 Playwright smoke + light visual regression klar til review som v3.27** — mocket Supabase/backend-fixture uden live secrets, desktop+mobile screenshots for 8 kerneflader, ny Windows PR-check `.github/workflows/playwright-smoke.yml`. Lokal verifikation: `npm run test:e2e`, `npm test -- --test-reporter=spec`, `npm run lint`, `npm run build`.
+- 2026-05-13: **#329 Playwright smoke + light visual regression lukket som v3.27** — PR #341 merged, CI grøn, product-verifikation gennemført: centrale sider loader som forventet.
 - 2026-05-13: **#328 Backend rate limiting LIVE som v3.26** — 5 navngivne limiters, per-user buckets efter auth, `trust proxy=1`, break-glass `RATE_LIMIT_DISABLED=1`.
-- 2026-05-12: **Agent Dispatch + AI-Autopilot Fase 2 LIVE** — dispatch-playbook, GitHub issue task-lag, spec-reportere og Manus Loop D/F-regler.
 
 ## Næste session (prioriteret)
-1. **Review/merge #329 PR** — bekræft GitHub Playwright Smoke + eksisterende CI, derefter luk issue #329.
-2. **[#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 manuel** — Nicolai opretter dashboard + indtaster secrets når der er tid; ikke blokerende.
-3. **#325 follow-ups (lav prioritet):** #335, #336, #337.
+1. **Merge-gate #127 dotenv 17.4.2** — merge først efter `quiet:true`-fixet er landet og #127 stadig er grøn.
+2. **#325 follow-ups:** #336 først (auth-fail vs RPC-missing), derefter #337 (roter lokal service-key til `sb_secret_*`).
+3. **[#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 manuel** — Nicolai opretter dashboard + indtaster secrets når der er tid; ikke blokerende.
 4. **[#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242) parkeret til ca. 2026-05-14/15** — admin vælger sæson 1-kalender via `Race-katalog` før `Sæson-cyklus`.
 
 ## Skalerings-Roadmap (Mod 100+ brugere)

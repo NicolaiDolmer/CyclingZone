@@ -51,7 +51,7 @@ const SERVER_FILE = join(REPO_ROOT, "backend", "server.js");
 const LOG_EVENT_FILE = join(REPO_ROOT, "frontend", "src", "lib", "logEvent.js");
 const IMPRESSION_WINDOW_DAYS = 30;
 
-dotenv.config({ path: join(REPO_ROOT, "backend", ".env") });
+dotenv.config({ path: join(REPO_ROOT, "backend", ".env"), quiet: true });
 
 const args = process.argv.slice(2);
 const JSON_OUT = args.includes("--json");
@@ -142,8 +142,10 @@ const WHITELIST_NON_MIGRATION_SQL = new Set([
 // (fx nye events tilføjet uden at være shipped endnu, eller events på milestone-gated
 // features). Tilføj entry når en finding er bekræftet "intentional zero".
 const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
-  // Tom whitelist ved opstart — fyldes ind når Detector E rapporterer en
-  // bekræftet "vi har ikke nået at rulle ud endnu"-finding.
+  // Board consequences er milestone-gated (#284): eventet fyrer først når
+  // season-end consequences findes. Forventet naturlige impressions efter
+  // sæson 1-start omkring 2026-05-15.
+  "feature_board_consequences_panel_viewed",
 ]);
 
 // Detector D: prod-tabeller vi accepterer uden CREATE TABLE i repo
