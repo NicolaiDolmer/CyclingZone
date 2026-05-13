@@ -1,21 +1,20 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**UCI Rankings Sync full-DB pagination fix.** Første UCI-fix gjorde workflowet grønt, men afslørede at scraperen kun hentede Supabase REST-defaulten på 1000 `riders` rows. Lokal fix paginerer nu alle DB-ryttere før match/write. Næste: commit + push + manuel UCI workflow-run og verificér at loggen matcher ~8699 DB-ryttere.
+**Teknisk hardening efter UCI-fix.** UCI Rankings Sync full-DB pagination fix er shipped og live-verificeret. Derefter fortsætter #325-follow-ups og #344.
 
 ## Senest leveret
-- 2026-05-13: **UCI 1000-row cap root cause fundet** — `scripts/uci_scraper.py` hentede DB-ryttere uden `Range`, så kun første 1000 blev syncet. Regressionstest tilføjet med 2501 fake-ryttere over 3 pages; `python -m unittest scripts.uci_scraper_test` grøn 22/22.
+- 2026-05-13: **UCI full-DB sync LIVE** — commit `27d0d22` paginerer `riders` via Supabase Range headers. Manuel workflow-run [#25786818406](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/25786818406) grøn: `Matcher 2999 UCI-ryttere mod 8699 DB-ryttere`, `matched=2509`, `updates=688`, `minimum_downgrades=40/869`, `high_value_protected=7`, 8699 historikrækker og 8699 rider values recalculated.
 - 2026-05-13: **UCI Rankings Sync fix LIVE** — commit `6feab1f` flyttede schedule til onsdag 06:17 UTC og tilføjede `ws` transport til salary-recalc. Manuel workflow-run [#25785025763](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/25785025763) grøn: 3000 Google Sheets-rækker, Supabase safety report OK, 1000 historikrækker, 8699 rider values recalculated.
 - 2026-05-13: **#127 dotenv 17.4.2 merged efter quiet-loader gate** — PR #343 landede først med `quiet:true` på explicit dotenv loaders; #127 blev derefter opdateret mod main og merged med grøn CI.
 - 2026-05-13: **#329 Playwright smoke + light visual regression lukket som v3.27** — PR #341 merged, CI grøn, product-verifikation gennemført: centrale sider loader som forventet.
 - 2026-05-13: **#328 Backend rate limiting LIVE som v3.26** — 5 navngivne limiters, per-user buckets efter auth, `trust proxy=1`, break-glass `RATE_LIMIT_DISABLED=1`.
 
 ## Næste session (prioriteret)
-1. **Ship UCI full-DB pagination fix** — commit + push, kør `gh workflow run uci_sync.yml --ref main`, verificér workflow success eller safety-gate output.
-2. **#325 follow-ups:** #336 først (auth-fail vs RPC-missing), derefter #337 (roter lokal service-key til `sb_secret_*`).
-3. **#344 achievements/check production-log bug** — separat bugfix-session hvis prioriteret.
-4. **[#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 manuel** — Nicolai opretter dashboard + indtaster secrets når der er tid; ikke blokerende.
-5. **[#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242) parkeret til ca. 2026-05-14/15** — admin vælger sæson 1-kalender via `Race-katalog` før `Sæson-cyklus`.
+1. **#325 follow-ups:** #336 først (auth-fail vs RPC-missing), derefter #337 (roter lokal service-key til `sb_secret_*`).
+2. **#344 achievements/check production-log bug** — separat bugfix-session hvis prioriteret.
+3. **[#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 manuel** — Nicolai opretter dashboard + indtaster secrets når der er tid; ikke blokerende.
+4. **[#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242) parkeret til ca. 2026-05-14/15** — admin vælger sæson 1-kalender via `Race-katalog` før `Sæson-cyklus`.
 
 ## Skalerings-Roadmap (Mod 100+ brugere)
 - [x] **Fase 1: Bulletproof Baseline** — Loop A (Drift-monitor) aktiv. Ingen trial-risici (Vercel/Supabase monitorering).
