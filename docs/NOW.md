@@ -1,10 +1,10 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Zero-known-error AI/Ops hardening.** Drift Monitor, audit-diagnoser, Sentry, Quality Inbox og achievements/check bugfix implementeres på `codex/zero-known-error-ai-ops`.
+**Zero-known-error AI/Ops hardening er live.** Næste aktive ops-slice er manuel secret/Sentry-færdiggørelse (#337/#339).
 
 ## Senest leveret
-- 2026-05-13: **Zero-known-error hardening in progress** — Drift Monitor workflow flyttet til npm/package-lock, audit-scripts skelner auth-fail vs RPC-missing, `agent-doctor.ps1 -Json` er Quality Cockpit, Sentry wired til backend/frontend, Quality Inbox workflow tilføjet, lint warning-budget gate tilføjet, og #344 root cause fik regressionstest (`users` 0-row → `.maybeSingle()`).
+- 2026-05-13: **Zero-known-error hardening LIVE** — PR #345 merged; Drift Monitor, Quality Inbox, CI, CodeQL, Secret Scan og Deploy verify er grønne på main efter hotfix commits `03cd64f`, `3456c79`, `2b43a07`. `agent-doctor.ps1 -Json` viser `0 fail`, #336 og #344 er lukket, og prod smoke er grøn (`/health` 200, `/api/auctions` uden token 401, frontend 200).
 - 2026-05-13: **UCI approved overrides LIVE** — commit `35f1492` tilføjede sikre overrides for Benjamí Prades, Bjoern Koerdt, Joe Blackmore og Natnael Tesfazion samt force-minimum for Shu Chen og Frederik Wandahl. Manuel workflow-run [#25788991678](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/25788991678) grøn: `matched=2513`, `updates=6`, `minimum_downgrades=2/869`, `high_value_protected=1` (kun Andrey André), 8699 historikrækker og 8699 rider values recalculated.
 - 2026-05-13: **UCI full-DB sync LIVE** — commit `27d0d22` paginerer `riders` via Supabase Range headers. Manuel workflow-run [#25786818406](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/25786818406) grøn: `Matcher 2999 UCI-ryttere mod 8699 DB-ryttere`, `matched=2509`, `updates=688`, `minimum_downgrades=40/869`, `high_value_protected=7`, 8699 historikrækker og 8699 rider values recalculated.
 - 2026-05-13: **UCI Rankings Sync fix LIVE** — commit `6feab1f` flyttede schedule til onsdag 06:17 UTC og tilføjede `ws` transport til salary-recalc. Manuel workflow-run [#25785025763](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/25785025763) grøn: 3000 Google Sheets-rækker, Supabase safety report OK, 1000 historikrækker, 8699 rider values recalculated.
@@ -13,10 +13,9 @@
 - 2026-05-13: **#328 Backend rate limiting LIVE som v3.26** — 5 navngivne limiters, per-user buckets efter auth, `trust proxy=1`, break-glass `RATE_LIMIT_DISABLED=1`.
 
 ## Næste session (prioriteret)
-1. Verificér og ship `codex/zero-known-error-ai-ops`; bagefter kør workflow-dispatch for Drift Monitor + Quality Inbox.
-2. Rotér lokal `backend/.env` service-key til `sb_secret_*` (#337) og sæt Sentry secrets på Railway/Vercel/GitHub.
-3. **[#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 manuel** — Nicolai opretter dashboard + indtaster secrets når der er tid.
-4. **[#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242) parkeret til ca. 2026-05-14/15** — admin vælger sæson 1-kalender via `Race-katalog` før `Sæson-cyklus`.
+1. Rotér lokal `backend/.env` service-key til `sb_secret_*` (#337) og sæt Sentry secrets på Railway/Vercel/GitHub.
+2. **[#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 manuel** — Nicolai opretter dashboard + indtaster secrets når der er tid.
+3. **[#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242) parkeret til ca. 2026-05-14/15** — admin vælger sæson 1-kalender via `Race-katalog` før `Sæson-cyklus`.
 
 ## Skalerings-Roadmap (Mod 100+ brugere)
 - [x] **Fase 1: Bulletproof Baseline** — Loop A (Drift-monitor) aktiv. Ingen trial-risici (Vercel/Supabase monitorering).
