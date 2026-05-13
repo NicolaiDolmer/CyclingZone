@@ -172,7 +172,11 @@ if ($qualityIssues.Ok) {
 }
 
 $infisicalCmd = Get-Command infisical -ErrorAction SilentlyContinue
-$infisicalWinget = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages") -Recurse -Filter "infisical.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+$infisicalWinget = $null
+if ($env:LOCALAPPDATA) {
+  $wingetPackages = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages"
+  $infisicalWinget = Get-ChildItem -Path $wingetPackages -Recurse -Filter "infisical.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+}
 if ($infisicalCmd) {
   Add-Check "infisical-cli" "OK" $infisicalCmd.Source
 } elseif ($infisicalWinget) {
