@@ -86,6 +86,27 @@ class UciScraperValidationTests(unittest.TestCase):
             with self.assertRaisesRegex(uci_scraper.ScraperValidationError, "Safety-gate"):
                 uci_scraper.sync_supabase([], "2026-04-28T00:00:00Z", False, True)
 
+    def test_sync_supabase_fetches_all_db_rider_pages(self):
+        fake_riders = [
+            {
+                "id": index,
+                "firstname": "Rider",
+                "lastname": str(index),
+                "uci_points": 5,
+                "popularity": 0,
+            }
+            for index in range(2501)
+        ]
+        with _supabase_fake(fake_riders) as fake:
+            uci_scraper.sync_supabase(
+                [{"rider_name": "RIDER 1", "points": 100}],
+                "2026-05-13T00:00:00Z",
+                dry_run=True,
+                complete_ranking=True,
+            )
+            self.assertEqual(len(fake.get_ranges), 3)
+            self.assertEqual(fake.get_ranges, [(0, 999), (1000, 1999), (2000, 2999)])
+
 
 class NormalizeNameTests(unittest.TestCase):
     """Sikrer at normalisering håndterer kendte mismatch-kilder ensartet."""
@@ -239,11 +260,20 @@ class _FakeResponse:
 class _FakeRequests:
     def __init__(self, db_riders):
         self.db_riders = db_riders
+        self.get_ranges: list[tuple[int, int] | None] = []
         self.patches: list[dict] = []
         self.posts: list[dict] = []
 
-    def get(self, *_args, **_kwargs):
-        return _FakeResponse(list(self.db_riders))
+    def get(self, *_args, headers=None, **_kwargs):
+        range_header = (headers or {}).get("Range")
+        if not range_header:
+            self.get_ranges.append(None)
+            return _FakeResponse(list(self.db_riders))
+        start_s, end_s = range_header.split("-", 1)
+        start = int(start_s)
+        end = int(end_s)
+        self.get_ranges.append((start, end))
+        return _FakeResponse(list(self.db_riders[start:end + 1]))
 
     def patch(self, _url, json=None, **_kwargs):
         if json:

@@ -5,7 +5,7 @@ CyclingZone UCI Scraper
 Henter UCI individuel world ranking (top N ryttere) fra ProCyclingStats,
 skriver til Google Sheets og synkroniserer direkte til Supabase.
 
-Kører automatisk via GitHub Actions hver onsdag kl. 06:00 UTC.
+Kører automatisk via GitHub Actions hver onsdag kl. 06:17 UTC.
 Kan også køres manuelt:
   python uci_scraper.py              # fuld kørsel
   python uci_scraper.py --dry-run    # hent + skriv Sheets, spring Supabase over
@@ -26,6 +26,7 @@ import requests
 
 RANKING_PATH = "rankings.php?p=me&s=uci-individual"
 PAGE_SIZE = 100
+DB_RIDER_PAGE_SIZE = 1000
 MIN_UCI_POINTS = 5
 REQUEST_DELAY_SEC = 1.5  # respektér PCS-serverne
 DEFAULT_MIN_EXPECTED_RIDERS = 2400
@@ -272,6 +273,27 @@ def _sb_headers() -> dict:
 def _sb_url(path: str) -> str:
     return f"{_clean_env('SUPABASE_URL')}/rest/v1/{path}"
 
+
+def fetch_db_riders(headers: dict, page_size: int = DB_RIDER_PAGE_SIZE) -> list[dict]:
+    """Fetch all DB riders; PostgREST/Supabase returns 1000 rows by default."""
+    riders: list[dict] = []
+    offset = 0
+    while True:
+        end = offset + page_size - 1
+        resp = requests.get(
+            _sb_url("riders?select=id,firstname,lastname,uci_points,popularity&order=id.asc"),
+            headers={**headers, "Range-Unit": "items", "Range": f"{offset}-{end}"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        page = resp.json()
+        riders.extend(page)
+        if len(page) < page_size:
+            break
+        offset += page_size
+    return riders
+
+
 def _is_high_value_rider(rider: dict) -> bool:
     popularity = rider.get("popularity") or 0
     points = rider.get("uci_points") or 0
@@ -326,13 +348,7 @@ def sync_supabase(riders: list[dict], synced_at: str, dry_run: bool, complete_ra
             uci_token_map[tokens] = pts
 
     # Hent alle ryttere fra DB (popularity bruges af high-value safety-gate)
-    resp = requests.get(
-        _sb_url("riders?select=id,firstname,lastname,uci_points,popularity"),
-        headers=headers,
-        timeout=30,
-    )
-    resp.raise_for_status()
-    db_riders = resp.json()
+    db_riders = fetch_db_riders(headers)
     print(f"  Matcher {len(uci_token_map)} UCI-ryttere mod {len(db_riders)} DB-ryttere")
 
     rider_updates: list[dict] = []

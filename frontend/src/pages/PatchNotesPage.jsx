@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.29",
+    date: "2026-05-13",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · UCI-sync opdaterer hele rytterdatabasen",
+        items: [
+          "Infra · UCI-syncen henter nu alle ryttere fra databasen i paginerede batches i stedet for kun Supabase REST-defaulten på 1000 rækker. Det betyder at hele rytterdatabasen får korrekt UCI-point, værdi og løn ved den ugentlige sync.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.28",
     date: "2026-05-13",
     label: "Beta",

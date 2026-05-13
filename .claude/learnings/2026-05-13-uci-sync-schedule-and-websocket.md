@@ -13,3 +13,6 @@
 
 ## Prevention
 Planlæg GitHub Actions cron jobs væk fra minut `0`, især for drift-jobs hvor en droppet schedule er dyrere end 10-20 minutters offset.
+
+## Follow-up same day
+Workflowet blev grønt efter `ws`-fixet, men loggen viste kun `Matcher 2999 UCI-ryttere mod 1000 DB-ryttere`. Det var en anden bug: Supabase/PostgREST returnerer 1000 rows som default, og scraperen paginerede ikke `riders`. Fix: hent DB-ryttere med `Range-Unit: items` + `Range` i batches, og regressionstest med 2501 fake-ryttere.
