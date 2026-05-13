@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { buildGoogleSheetCsvUrl, parseGoogleSheetUrl } from "./urlSafety.js";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { config } from "dotenv";
@@ -30,11 +31,6 @@ const STAT_MAP = {
   value_f_potentiel:        "potentiale",
 };
 
-function extractSheetId(url) {
-  const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-  if (!match) throw new Error("Kan ikke udtrække sheet ID fra URL");
-  return match[1];
-}
 
 function parseCsvLine(line) {
   const result = [];
@@ -54,16 +50,18 @@ function parseCsvLine(line) {
   return result;
 }
 
-async function fetchCsv(sheetId) {
-  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+async function fetchCsv(spreadsheetUrl) {
+  const url = buildGoogleSheetCsvUrl(spreadsheetUrl);
   const res = await fetch(url);
+
   if (!res.ok) throw new Error(`Google Sheets fejl ${res.status}`);
   return res.text();
 }
 
 export async function syncDynCyclist(spreadsheetUrl, adminUserId) {
-  const sheetId = extractSheetId(spreadsheetUrl);
-  const csv = await fetchCsv(sheetId);
+  parseGoogleSheetUrl(spreadsheetUrl);
+  const csv = await fetchCsv(spreadsheetUrl);
+
 
   const lines = csv.split("\n").filter(l => l.trim());
   if (lines.length < 2) throw new Error("CSV er tom eller har ingen datarækker");

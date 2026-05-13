@@ -9,6 +9,7 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { config } from "dotenv";
 import { resolveDmTargetFromInput } from "./discordDmTarget.js";
+import { assertDiscordWebhookUrl } from "./urlSafety.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env"), quiet: true });
@@ -73,7 +74,8 @@ async function getWebhookByType(type) {
 export async function sendWebhook(webhookUrl, payload) {
   if (!webhookUrl) return;
   try {
-    const res = await fetch(webhookUrl, {
+    const safeWebhookUrl = assertDiscordWebhookUrl(webhookUrl);
+    const res = await fetch(safeWebhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -372,7 +374,8 @@ export async function sendTestEmbed(webhookUrl) {
     [{ name: "Tidspunkt", value: new Date().toLocaleString("da-DK") }]
   );
   try {
-    const res = await fetch(webhookUrl, {
+    const safeWebhookUrl = assertDiscordWebhookUrl(webhookUrl);
+    const res = await fetch(safeWebhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

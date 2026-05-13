@@ -1,4 +1,6 @@
 import { applyRaceResults as applyRaceResultsShared } from "./raceResultsEngine.js";
+import { buildGoogleSheetCsvUrl, parseGoogleSheetUrl } from "./urlSafety.js";
+
 
 // Maps Google Sheet "Benævnelse" → race_results.result_type
 const BENÆVNELSE_TO_TYPE = {
@@ -31,16 +33,6 @@ const RACE_NAME_ALIASES = {
   "volta a la comunitat valenciana": "volta comunitat valenciana",
 };
 
-function extractSheetId(url) {
-  const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-  if (!match) throw new Error("Kan ikke udtrække sheet ID fra URL");
-  return match[1];
-}
-
-function extractGid(url) {
-  const match = url.match(/[?&#]gid=(\d+)/);
-  return match ? match[1] : "0";
-}
 
 function parseCsvLine(line) {
   const result = [];
@@ -96,9 +88,10 @@ function resolveTeamResultName(row, teamIdByName) {
   return row.team || null;
 }
 
-async function fetchCsv(sheetId, gid) {
-  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
+async function fetchCsv(spreadsheetUrl) {
+  const url = buildGoogleSheetCsvUrl(spreadsheetUrl, { includeGid: true });
   const res = await fetch(url);
+
   if (!res.ok) throw new Error(`Google Sheets fejl ${res.status}`);
   return res.text();
 }
@@ -113,10 +106,10 @@ export async function syncRaceResultsFromSheets({
   fetchCsvFn = fetchCsv,
   dryRun = false,
 }) {
-  const sheetId = extractSheetId(spreadsheetUrl);
-  const gid = extractGid(spreadsheetUrl);
+  parseGoogleSheetUrl(spreadsheetUrl);
 
-  const csv = await fetchCsvFn(sheetId, gid);
+  const csv = await fetchCsvFn(spreadsheetUrl);
+
   const lines = csv.split("\n").filter(l => l.trim());
   if (lines.length < 2) throw new Error("CSV er tom eller mangler datarækker");
 
