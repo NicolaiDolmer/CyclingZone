@@ -28,7 +28,7 @@ import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: join(__envdir, '../.env') });
+dotenv.config({ path: join(__envdir, '../.env'), quiet: true });
 
 const supabase = createClient(
   process.env.SUPABASE_URL,

@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 // Load .env FIRST before any other imports use process.env
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-dotenv.config({ path: join(__dirname, ".env") });
+dotenv.config({ path: join(__dirname, ".env"), quiet: true });
 
 import express from "express";
 import cors from "cors";

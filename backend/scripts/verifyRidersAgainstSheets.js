@@ -21,7 +21,7 @@ import { readFileSync } from "node:fs";
 import { config } from "dotenv";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-config({ path: join(__dirname, "../.env") });
+config({ path: join(__dirname, "../.env"), quiet: true });
 
 const DEFAULT_DYN_SHEET_ID = "1Fm56gvH7IZ4Tks9I_tJfP7xP_7PgUjPxBbZgWJGCIf4";
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);

@@ -51,7 +51,7 @@ const SERVER_FILE = join(REPO_ROOT, "backend", "server.js");
 const LOG_EVENT_FILE = join(REPO_ROOT, "frontend", "src", "lib", "logEvent.js");
 const IMPRESSION_WINDOW_DAYS = 30;
 
-dotenv.config({ path: join(REPO_ROOT, "backend", ".env") });
+dotenv.config({ path: join(REPO_ROOT, "backend", ".env"), quiet: true });
 
 const args = process.argv.slice(2);
 const JSON_OUT = args.includes("--json");
