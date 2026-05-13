@@ -140,6 +140,15 @@ PCM_UCI_OVERRIDE = {
     7372: "TESFATSION NATNAEL",    # PCM: "Tesfazion"; UCI: "Tesfatsion"
 }
 ```
+
+### UCI_NAME_OVERRIDE / UCI_FORCE_MINIMUM (scraper-runtime)
+
+`scripts/uci_scraper.py` har runtime-overrides for live UCI-sync:
+
+- `UCI_NAME_OVERRIDE`: kendte DB-navne der matcher et andet PCS-navn, fx `Joe Blackmore` → `BLACKMORE Joseph`, `Natnael Tesfazion` → `TESFATSION Natnael`.
+- `UCI_FORCE_MINIMUM`: manuelt godkendte ryttere der ikke findes i aktuel PCS top-3000 og derfor må sættes til `MIN_UCI_POINTS=5`, selvom high-value safety-gaten ellers ville beskytte dem.
+
+Listen skal holdes lille og audit-godkendt; ukendte navne må ikke gættes.
 **Tilføj her** ved nye mismatch der ikke løses af de 5 strategier eller normalize_name.
 
 ### Hvornår opdateres DB-værdier?

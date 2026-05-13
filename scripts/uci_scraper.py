@@ -92,6 +92,23 @@ def name_tokens(name: str) -> frozenset[str]:
     return frozenset(normalize_name(name).split())
 
 
+# Runtime overrides for known DB ↔ PCS name variants.
+# Key: normalized DB name (firstname lastname). Value: normalized PCS/UCI name.
+UCI_NAME_OVERRIDE: dict[str, str] = {
+    normalize_name("Benjamí Prades"): normalize_name("PRADES Benjamín"),
+    normalize_name("Bjoern Koerdt"): normalize_name("KOERDT Bjorn"),
+    normalize_name("Joe Blackmore"): normalize_name("BLACKMORE Joseph"),
+    normalize_name("Natnael Tesfazion"): normalize_name("TESFATSION Natnael"),
+}
+
+# Explicitly approved as not found in current PCS top-3000; allow minimum downgrade
+# despite high-value safety thresholds. Keep this list tiny and audited.
+UCI_FORCE_MINIMUM: set[str] = {
+    normalize_name("Shu Chen"),
+    normalize_name("Frederik Wandahl"),
+}
+
+
 # ── Hent rankings fra ProCyclingStats ───────────────────────────────────────
 
 def parse_rank(value) -> int:
@@ -314,6 +331,10 @@ def find_uci_match(
     if not db_tokens:
         return None
 
+    override_name = UCI_NAME_OVERRIDE.get(normalize_name(f"{fn} {ln}"))
+    if override_name:
+        return uci_token_map.get(name_tokens(override_name))
+
     # 1. Eksakt token-set match (fanger ordrækkefølge-permutationer)
     if db_tokens in uci_token_map:
         return uci_token_map[db_tokens]
@@ -368,9 +389,16 @@ def sync_supabase(riders: list[dict], synced_at: str, dry_run: bool, complete_ra
             if not complete_ranking:
                 # Ufuldstændige scrapes må aldrig nedskrive eksisterende data.
                 continue
+            force_minimum = normalize_name(
+                f"{rider.get('firstname','')} {rider.get('lastname','')}"
+            ) in UCI_FORCE_MINIMUM
             # High-value safety-gate: aldrig auto-downgrade kendte/værdifulde ryttere
             # til MIN udelukkende pga. name-mismatch. Bevar nuværende værdi og log.
-            if _is_high_value_rider(rider) and rider["uci_points"] > MIN_UCI_POINTS:
+            if (
+                not force_minimum
+                and _is_high_value_rider(rider)
+                and rider["uci_points"] > MIN_UCI_POINTS
+            ):
                 high_value_protected.append({
                     "id": rider["id"],
                     "name": f"{rider.get('firstname','')} {rider.get('lastname','')}".strip(),

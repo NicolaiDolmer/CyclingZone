@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.30",
+    date: "2026-05-13",
+    label: "Beta",
+    changes: [
+      {
+        category: "Data · UCI-navneoverrides",
+        items: [
+          "Infra · Fire godkendte UCI-navnevarianter matches nu eksplicit i scraperen (Benjamí Prades, Bjoern Koerdt, Joe Blackmore, Natnael Tesfazion), og to godkendte ikke-fundne ryttere kan nu sættes til minimum i stedet for at blive high-value-beskyttet. Ukendte navne bliver fortsat ikke gættet.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.29",
     date: "2026-05-13",
     label: "Beta",

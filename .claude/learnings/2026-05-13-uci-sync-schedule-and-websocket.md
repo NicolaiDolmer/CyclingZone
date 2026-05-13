@@ -16,3 +16,6 @@ Planlæg GitHub Actions cron jobs væk fra minut `0`, især for drift-jobs hvor 
 
 ## Follow-up same day
 Workflowet blev grønt efter `ws`-fixet, men loggen viste kun `Matcher 2999 UCI-ryttere mod 1000 DB-ryttere`. Det var en anden bug: Supabase/PostgREST returnerer 1000 rows som default, og scraperen paginerede ikke `riders`. Fix: hent DB-ryttere med `Range-Unit: items` + `Range` i batches, og regressionstest med 2501 fake-ryttere.
+
+## Manual audit follow-up
+Efter full-DB sync var 7 high-value ryttere protected. Godkendt 2026-05-13: læg sikre navnevarianter ind som explicit overrides, og brug explicit force-minimum kun for manuelt godkendte ikke-fundne ryttere. Ukendte navne (fx Andrey André) må ikke nedskrives eller matches ved gæt.

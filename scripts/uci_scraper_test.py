@@ -183,6 +183,11 @@ class FindUciMatchTests(unittest.TestCase):
         uci_map = self._map_for(("POGACAR Tadej", 10000))
         self.assertIsNone(uci_scraper.find_uci_match(rider, uci_map))
 
+    def test_name_override_matches_known_db_variant(self):
+        rider = {"firstname": "Natnael", "lastname": "Tesfazion"}
+        uci_map = self._map_for(("TESFATSION Natnael", 848))
+        self.assertEqual(uci_scraper.find_uci_match(rider, uci_map), 848)
+
 
 class HighValueProtectionTests(unittest.TestCase):
     """High-value safety-gate: aldrig auto-downgrade kendte ryttere til MIN ved name-mismatch."""
@@ -237,6 +242,24 @@ class HighValueProtectionTests(unittest.TestCase):
             uci_scraper.sync_supabase(
                 [{"rider_name": "POGACAR Tadej", "points": 10000}],
                 "2026-05-04T00:00:00Z",
+                dry_run=False,
+                complete_ranking=True,
+            )
+            self.assertEqual(len(fake.patches), 1)
+            self.assertEqual(fake.patches[0]["uci_points"], uci_scraper.MIN_UCI_POINTS)
+
+    def test_force_minimum_allows_approved_high_value_downgrade(self):
+        fake_riders = [{
+            "id": 4,
+            "firstname": "Frederik",
+            "lastname": "Wandahl",
+            "uci_points": 120,
+            "popularity": 37,
+        }]
+        with _supabase_fake(fake_riders) as fake:
+            uci_scraper.sync_supabase(
+                [{"rider_name": "POGACAR Tadej", "points": 10000}],
+                "2026-05-13T00:00:00Z",
                 dry_run=False,
                 complete_ranking=True,
             )
