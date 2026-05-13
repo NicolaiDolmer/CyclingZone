@@ -13,9 +13,10 @@
 - 2026-05-13: **#328 Backend rate limiting LIVE som v3.26** — 5 navngivne limiters, per-user buckets efter auth, `trust proxy=1`, break-glass `RATE_LIMIT_DISABLED=1`.
 
 ## Næste session (prioriteret)
-1. Rotér lokal `backend/.env` service-key til `sb_secret_*` (#337) og sæt Sentry secrets på Railway/Vercel/GitHub.
+1. Rotér lokal `backend/.env` service-key til `sb_secret_*` ([#337](https://github.com/NicolaiDolmer/CyclingZone/issues/337)) og aktivér Sentry secrets/test-events ([#348](https://github.com/NicolaiDolmer/CyclingZone/issues/348)).
 2. **[#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 manuel** — Nicolai opretter dashboard + indtaster secrets når der er tid.
-3. **[#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242) parkeret til ca. 2026-05-14/15** — admin vælger sæson 1-kalender via `Race-katalog` før `Sæson-cyklus`.
+3. Ryd quality-net follow-ups: Deploy verify runner/provider-status ([#347](https://github.com/NicolaiDolmer/CyclingZone/issues/347)) + Quality Inbox warning calibration ([#346](https://github.com/NicolaiDolmer/CyclingZone/issues/346)).
+4. **[#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242) parkeret til ca. 2026-05-14/15** — admin vælger sæson 1-kalender via `Race-katalog` før `Sæson-cyklus`.
 
 ## Skalerings-Roadmap (Mod 100+ brugere)
 - [x] **Fase 1: Bulletproof Baseline** — Loop A (Drift-monitor) aktiv. Ingen trial-risici (Vercel/Supabase monitorering).
