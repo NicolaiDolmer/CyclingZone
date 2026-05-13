@@ -1,9 +1,10 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Teknisk hardening efter UCI-fix.** UCI Rankings Sync full-DB pagination fix er shipped og live-verificeret. Derefter fortsætter #325-follow-ups og #344.
+**Teknisk hardening efter UCI-fix.** UCI Rankings Sync full-DB pagination + approved override fix er shipped og live-verificeret. Derefter fortsætter #325-follow-ups og #344.
 
 ## Senest leveret
+- 2026-05-13: **UCI approved overrides LIVE** — commit `35f1492` tilføjede sikre overrides for Benjamí Prades, Bjoern Koerdt, Joe Blackmore og Natnael Tesfazion samt force-minimum for Shu Chen og Frederik Wandahl. Manuel workflow-run [#25788991678](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/25788991678) grøn: `matched=2513`, `updates=6`, `minimum_downgrades=2/869`, `high_value_protected=1` (kun Andrey André), 8699 historikrækker og 8699 rider values recalculated.
 - 2026-05-13: **UCI full-DB sync LIVE** — commit `27d0d22` paginerer `riders` via Supabase Range headers. Manuel workflow-run [#25786818406](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/25786818406) grøn: `Matcher 2999 UCI-ryttere mod 8699 DB-ryttere`, `matched=2509`, `updates=688`, `minimum_downgrades=40/869`, `high_value_protected=7`, 8699 historikrækker og 8699 rider values recalculated.
 - 2026-05-13: **UCI Rankings Sync fix LIVE** — commit `6feab1f` flyttede schedule til onsdag 06:17 UTC og tilføjede `ws` transport til salary-recalc. Manuel workflow-run [#25785025763](https://github.com/NicolaiDolmer/CyclingZone/actions/runs/25785025763) grøn: 3000 Google Sheets-rækker, Supabase safety report OK, 1000 historikrækker, 8699 rider values recalculated.
 - 2026-05-13: **#127 dotenv 17.4.2 merged efter quiet-loader gate** — PR #343 landede først med `quiet:true` på explicit dotenv loaders; #127 blev derefter opdateret mod main og merged med grøn CI.
