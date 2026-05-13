@@ -35,6 +35,12 @@ function createAchievementSupabase(initialState) {
         return Promise.resolve({ data: filtered[0] || null, error: null });
       },
       single() {
+        if (filtered.length !== 1) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "JSON object requested, multiple (or no) rows returned" },
+          });
+        }
         return Promise.resolve({ data: filtered[0] || null, error: null });
       },
       then(resolve, reject) {
@@ -192,6 +198,33 @@ test("checkAchievements unlocks team and board achievements and cascades team_5_
       "team_star",
       "team_youth",
     ]
+  );
+});
+
+test("checkAchievements tolerates missing public user row for login streak", async () => {
+  const supabase = createAchievementSupabase({
+    achievements: [
+      { id: "auction_first_bid" },
+      { id: "secret_streak_7" },
+    ],
+    teams: [{ id: "team-1", user_id: "auth-user-without-public-row" }],
+    users: [],
+    rider_watchlist: [],
+    riders: [],
+    auction_bids: [{ id: "bid-1", team_id: "team-1", amount: 100 }],
+    auctions: [],
+    transfer_offers: [],
+    board_profiles: [],
+  });
+
+  const unlocked = await checkAchievements({
+    supabase,
+    userId: "auth-user-without-public-row",
+  });
+
+  assert.deepEqual(
+    unlocked.map(achievement => achievement.id),
+    ["auction_first_bid"]
   );
 });
 

@@ -1,6 +1,7 @@
 param(
   [string]$Repo = "NicolaiDolmer/CyclingZone",
-  [switch]$FailOnWarning
+  [switch]$FailOnWarning,
+  [switch]$Json
 )
 
 Set-StrictMode -Version Latest
@@ -37,6 +38,24 @@ function Gh-Json {
   if (-not $result.Ok) { return $null }
   if ($result.Text.Trim() -eq "[]") { return @() }
   return $result.Text | ConvertFrom-Json
+}
+
+function Get-AuditFailureDetail {
+  param(
+    [string]$Text,
+    [string]$MigrationHint
+  )
+  if ($Text -match "auth-failure|Legacy API keys are disabled|Invalid API key|JWT expired|Invalid JWT|401|403") {
+    return "auth-failure: rotate local backend/.env SUPABASE_SERVICE_KEY to sb_secret_* (#337)"
+  }
+  if ($Text -match "rpc-missing|function .* does not exist|Could not find the function|relation .* does not exist|schema cache|404") {
+    return "rpc-missing: $MigrationHint"
+  }
+  if ([string]::IsNullOrWhiteSpace($Text)) {
+    return "other: audit script failed without stderr/stdout"
+  }
+  $firstLine = (($Text -split "`n") | Where-Object { $_.Trim() } | Select-Object -First 1)
+  return "other: $firstLine"
 }
 
 $rootResult = Try-Run @("git", "rev-parse", "--show-toplevel")
@@ -104,7 +123,12 @@ $runs = Try-Run @("gh", "run", "list", "--repo", $Repo, "--limit", "20", "--json
 if ($runs.Ok) {
   $parsedRuns = $runs.Text | ConvertFrom-Json
   $failedRuns = @($parsedRuns | Where-Object { $_.conclusion -eq "failure" })
-  Add-Check "recent-actions" ($(if ($failedRuns.Count -eq 0) { "OK" } else { "WARN" })) "$($failedRuns.Count) failures in last 20 runs"
+  $detail = if ($failedRuns.Count -eq 0) {
+    "0 failures in last 20 runs"
+  } else {
+    ($failedRuns | Select-Object -First 3 | ForEach-Object { "$($_.workflowName) <$($_.url)>" }) -join "; "
+  }
+  Add-Check "recent-actions" ($(if ($failedRuns.Count -eq 0) { "OK" } else { "WARN" })) $detail
 }
 
 $issues = Try-Run @("gh", "issue", "list", "--repo", $Repo, "--state", "open", "--limit", "300", "--json", "number,title,labels")
@@ -122,8 +146,43 @@ if ($issues.Ok) {
   Add-Check "issue-label-schema" ($(if ($missing.Count -eq 0) { "OK" } else { "WARN" })) ($(if ($missing.Count) { "missing: $($missing -join ', ')" } else { "all open issues have priority/type/claude labels" }))
 }
 
+$qualityIssues = Try-Run @("gh", "issue", "list", "--repo", $Repo, "--state", "open", "--label", "claude:todo", "--limit", "100", "--json", "number,title,labels,url")
+if ($qualityIssues.Ok) {
+  $parsedQualityIssues = $qualityIssues.Text | ConvertFrom-Json
+  $urgent = @($parsedQualityIssues | Where-Object {
+    $labelNames = @($_.labels | ForEach-Object { $_.name })
+    ($labelNames -contains "priority:high" -or $labelNames -contains "priority:med") -and
+      ($labelNames -contains "type:bug" -or $labelNames -contains "epic:quality-hardening" -or $labelNames -contains "security")
+  })
+  $detail = if ($urgent.Count -eq 0) {
+    "no open high/med quality bugs/security issues"
+  } else {
+    ($urgent | Select-Object -First 5 | ForEach-Object { "#$($_.number) $($_.title)" }) -join " | "
+  }
+  Add-Check "quality-inbox" ($(if ($urgent.Count -eq 0) { "OK" } else { "WARN" })) $detail
+}
+
 $infisicalCmd = Get-Command infisical -ErrorAction SilentlyContinue
-Add-Check "infisical-cli" ($(if ($infisicalCmd) { "OK" } else { "WARN" })) ($(if ($infisicalCmd) { $infisicalCmd.Source } else { "not found — install: winget install Infisical.infisical (see docs/CROSS_PC_SETUP.md)" }))
+$infisicalWinget = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages") -Recurse -Filter "infisical.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($infisicalCmd) {
+  Add-Check "infisical-cli" "OK" $infisicalCmd.Source
+} elseif ($infisicalWinget) {
+  Add-Check "infisical-cli" "OK" "$($infisicalWinget.FullName) (restart shell to refresh PATH)"
+} else {
+  Add-Check "infisical-cli" "WARN" "not found — install: winget install Infisical.infisical (see docs/CROSS_PC_SETUP.md)"
+}
+
+$sentrySignals = @()
+if ($env:SENTRY_DSN -or $env:VITE_SENTRY_DSN -or $env:SENTRY_AUTH_TOKEN) {
+  $sentrySignals += "env-present"
+}
+if ((Test-Path "backend/package.json") -and ((Get-Content -Raw "backend/package.json") -match "@sentry/node")) {
+  $sentrySignals += "backend-package"
+}
+if ((Test-Path "frontend/package.json") -and ((Get-Content -Raw "frontend/package.json") -match "@sentry/react")) {
+  $sentrySignals += "frontend-package"
+}
+Add-Check "sentry-config" ($(if ($sentrySignals -contains "backend-package" -and $sentrySignals -contains "frontend-package") { "OK" } else { "WARN" })) ($(if ($sentrySignals.Count) { $sentrySignals -join ", " } else { "not configured" }))
 
 $tokenHygiene = Try-Run @("pwsh", "-NoProfile", "-File", "scripts/check-agent-token-hygiene.ps1")
 if ($tokenHygiene.Ok) {
@@ -157,7 +216,7 @@ if ($env:SUPABASE_URL -and $env:SUPABASE_SERVICE_KEY) {
       Add-Check "rls-coverage" "WARN" "audit ran but JSON parse failed"
     }
   } else {
-    Add-Check "rls-coverage" "WARN" "audit script failed (RPC missing? apply database/2026-05-10-audit-rls-helper.sql)"
+    Add-Check "rls-coverage" "WARN" (Get-AuditFailureDetail $rlsResult.Text "apply database/2026-05-10-audit-rls-helper.sql")
   }
 
   $livenessResult = Try-Run @("node", "backend/scripts/audit-feature-liveness.js", "--json")
@@ -172,22 +231,36 @@ if ($env:SUPABASE_URL -and $env:SUPABASE_SERVICE_KEY) {
       Add-Check "feature-liveness" "WARN" "audit ran but JSON parse failed"
     }
   } else {
-    Add-Check "feature-liveness" "WARN" "audit script failed (RPCs missing? apply database/2026-05-10-feature-liveness-helper.sql)"
+    Add-Check "feature-liveness" "WARN" (Get-AuditFailureDetail $livenessResult.Text "apply database/2026-05-10-feature-liveness-helper.sql")
   }
 } else {
   Add-Check "rls-coverage" "WARN" "skipped (SUPABASE_URL/SERVICE_KEY missing)"
   Add-Check "feature-liveness" "WARN" "skipped (SUPABASE_URL/SERVICE_KEY missing)"
 }
 
-Write-Host ""
-Write-Host "CyclingZone agent doctor"
-Write-Host "========================"
-$results | Format-Table -AutoSize
-
 $failures = @($results | Where-Object { $_.Status -eq "FAIL" })
 $warnings = @($results | Where-Object { $_.Status -eq "WARN" })
-Write-Host ""
-Write-Host "Summary: $($failures.Count) fail, $($warnings.Count) warn, $(@($results | Where-Object { $_.Status -eq 'OK' }).Count) ok"
+$okCount = @($results | Where-Object { $_.Status -eq 'OK' }).Count
+
+if ($Json.IsPresent) {
+  [PSCustomObject]@{
+    generated_at = (Get-Date).ToUniversalTime().ToString("o")
+    summary = [PSCustomObject]@{
+      fail = $failures.Count
+      warn = $warnings.Count
+      ok = $okCount
+    }
+    checks = $results
+  } | ConvertTo-Json -Depth 5
+} else {
+  Write-Host ""
+  Write-Host "CyclingZone agent doctor"
+  Write-Host "========================"
+  $results | Format-Table -AutoSize
+
+  Write-Host ""
+  Write-Host "Summary: $($failures.Count) fail, $($warnings.Count) warn, $okCount ok"
+}
 if ($FailOnWarning.IsPresent -and ($failures.Count -gt 0 -or $warnings.Count -gt 0)) {
   exit 1
 }

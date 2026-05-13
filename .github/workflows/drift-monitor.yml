@@ -12,30 +12,32 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: 'backend/pnpm-lock.yaml'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        run: |
-          cd backend
-          pnpm install --no-frozen-lockfile
+        run: npm ci
+        working-directory: backend
 
       - name: Run Drift Monitor
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: |
-          cd backend
-          node scripts/driftMonitor.js
+        run: node scripts/driftMonitor.js
+        working-directory: backend
 
       - name: Notify Discord on failure
         if: failure()
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK is not configured; skipped failure notification."
+            exit 0
+          fi
           curl -X POST -H "Content-Type: application/json" \
-            -d '{"content": "⚠️ **Drift Detected in CyclingZone!**\nSystemet har fundet uregelmæssigheder i data eller økonomi. Tjek GitHub Action logs for detaljer: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+            -d '{"content": "⚠️ **Drift Monitor failed in CyclingZone**\nDet kan være reel data-drift ELLER monitor-infra. Tjek GitHub Action logs først: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
             $DISCORD_WEBHOOK

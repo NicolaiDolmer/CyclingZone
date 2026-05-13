@@ -26,6 +26,20 @@ Hvis Vercel-projekt, Railway-service eller domæner ændres, skal denne fil opda
 
 ---
 
+## Observability env vars
+
+Sentry er canonical error-tracking for browser- og Node-runtime errors. GitHub Actions er canonical for CI/deploy/audit-status, og Supabase audits er canonical for DB/RLS/liveness drift.
+
+| Platform | Env vars |
+|---|---|
+| Railway backend | `SENTRY_DSN`, `SENTRY_ENVIRONMENT=production`, `SENTRY_RELEASE` eller Railway commit SHA, `SENTRY_TRACES_SAMPLE_RATE` |
+| Vercel frontend runtime | `VITE_SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT=production`, `VITE_SENTRY_RELEASE`, `VITE_SENTRY_TRACES_SAMPLE_RATE`, `VITE_SENTRY_REPLAY_SAMPLE_RATE`, `VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE` |
+| Vercel build/source maps | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, optional `SENTRY_RELEASE` |
+
+Source maps uploades kun når alle tre build-secrets (`SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`) er sat. Ellers bygges frontend uden sourcemaps-upload.
+
+---
+
 ## Forventet release-path
 
 1. Kør `pwsh -File scripts/verify-local.ps1` fra repo-root
@@ -45,6 +59,8 @@ Denne fil beskriver den nuværende praksis. Hvis release-flowet flyttes væk fra
 ## Lokal verifikation
 
 - `pwsh -File scripts/verify-local.ps1`
+- `pwsh -File scripts/agent-doctor.ps1`
+- `npm run check:warnings`
 - Scriptet stopper hvis mappen ikke er en rigtig git-worktree
 - Scriptet kører backend-tests via `node --test`
 - Scriptet bygger frontend hvis `frontend/node_modules` findes lokalt

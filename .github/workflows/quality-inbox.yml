@@ -1,0 +1,90 @@
+name: Quality Inbox
+
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+jobs:
+  doctor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Run agent doctor
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          pwsh -NoProfile -File scripts/agent-doctor.ps1 -Json | Out-File -Encoding utf8 agent-doctor.json
+          Get-Content agent-doctor.json
+
+      - name: Open or update Quality Inbox issue
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const doctor = JSON.parse(fs.readFileSync('agent-doctor.json', 'utf8'));
+            const summary = doctor.summary || { fail: 0, warn: 0, ok: 0 };
+            const marker = '<!-- quality-inbox:agent-doctor -->';
+            const title = `[bot] Quality Inbox: ${summary.fail} fail, ${summary.warn} warn`;
+            const lines = [
+              marker,
+              '',
+              '## Agent Doctor',
+              '',
+              `Generated: \`${doctor.generated_at}\``,
+              '',
+              `Summary: **${summary.fail} fail**, **${summary.warn} warn**, **${summary.ok} ok**`,
+              '',
+              '| Check | Status | Detail |',
+              '|---|---:|---|',
+              ...doctor.checks.map(c => `| \`${c.Check}\` | ${c.Status} | ${String(c.Detail || '').replace(/\|/g, '\\|')} |`),
+              '',
+              `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            ];
+            const body = lines.join('\n');
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'epic:quality-hardening',
+              per_page: 50,
+            });
+            const existing = issues.find(issue => issue.body && issue.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                title,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['claude:todo', 'priority:high', 'type:bug', 'epic:quality-hardening'],
+              });
+            }

@@ -157,6 +157,7 @@ import {
 import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
 import { adminImportUploadSingleFile } from "../lib/adminImportUpload.js";
 import { checkAchievements } from "../lib/achievementEngine.js";
+import { captureException } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { parseRacePoolCsv, summarizePool, WORLD_TOUR_CLASSES } from "../lib/racePoolImport.js";
 import {
@@ -4564,6 +4565,10 @@ router.post("/achievements/check", requireAuth, presencePulseLimiter, async (req
 
     res.json({ unlocked: newlyUnlocked });
   } catch (error) {
+    captureException(error, {
+      route: "POST /api/achievements/check",
+      user_id: req.user.id,
+    });
     console.error("[achievements/check] sync failed:", error.message);
     res.status(500).json({ error: "Kunne ikke opdatere achievements" });
   }

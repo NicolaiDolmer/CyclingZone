@@ -340,6 +340,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **Supabase TypeScript types** — 63KB genereret fra live DB-schema til `frontend/src/types/database.types.ts`; koblet til `createClient<Database>` i `frontend/src/lib/supabase.ts` (v2.00)
 - **verify-invariants** — `pwsh -File scripts/verify-invariants.ps1` kører 6 domæne-tjek mod live Supabase (zero npm-deps); exit code 1 ved brud
 - **Playwright smoke + light visual regression (v3.27, #329)** — `frontend/tests/e2e/` kører login + 8 manager-kerneflader (`/dashboard`, `/riders`, `/auctions`, `/team`, `/finance`, `/board`, `/seasons`, `/notifications`) i desktop og mobile Chromium. Supabase/backend er mocket i browser-testen, så PR-checken ikke kræver live secrets og ikke skriver til prod. Screenshots er committede baselines under `core-smoke.spec.js-snapshots/`; opdateres bevidst med `npm run test:e2e:update`.
+- **Zero-known-error hardening (v3.31, 2026-05-13):** Drift Monitor workflow bruger nu npm/package-lock i stedet for pnpm, Discord-notification skipper sikkert hvis webhook-secret mangler, audit-scripts klassificerer `auth-failure` vs `rpc-missing`, `agent-doctor.ps1 -Json` er maskinlæsbar Quality Cockpit, Quality Inbox workflow opdaterer ét tracking-issue, lint warning-budget gate blokerer nye warnings over baseline, og Sentry er wired til backend/frontend runtime errors med source-map upload når Sentry build-secrets er sat.
 - **backend/node_modules** — nu installeret; `npm run test`, `lint`, `format` virker lokalt
 
 ### Observabilitet & Analytics (v3.20, 2026-05-11, #137)
