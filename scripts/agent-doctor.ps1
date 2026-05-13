@@ -97,7 +97,12 @@ if ($repoInfo) {
   } else {
     Add-Check "github-security" "WARN" "security_and_analysis unavailable to this token"
   }
-  Add-Check "auto-merge-setting" ($(if ($repoInfo.allow_auto_merge -eq $true) { "OK" } else { "WARN" })) "allow_auto_merge=$($repoInfo.allow_auto_merge), delete_branch_on_merge=$($repoInfo.delete_branch_on_merge)"
+  if ($repoInfo.PSObject.Properties.Name -contains "allow_auto_merge") {
+    $deleteBranchOnMerge = if ($repoInfo.PSObject.Properties.Name -contains "delete_branch_on_merge") { $repoInfo.delete_branch_on_merge } else { "unavailable" }
+    Add-Check "auto-merge-setting" ($(if ($repoInfo.allow_auto_merge -eq $true) { "OK" } else { "WARN" })) "allow_auto_merge=$($repoInfo.allow_auto_merge), delete_branch_on_merge=$deleteBranchOnMerge"
+  } else {
+    Add-Check "auto-merge-setting" "WARN" "allow_auto_merge unavailable to this token"
+  }
 } else {
   Add-Check "github-security" "WARN" "gh api unavailable"
 }
