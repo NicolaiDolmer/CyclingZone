@@ -1,19 +1,15 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-**Teknisk hardening efter #325/#326-close-out.** Koordinering via `docs/AGENT_DISPATCH.md`. Aktiv prioritet er [#329](https://github.com/NicolaiDolmer/CyclingZone/issues/329) Playwright smoke. [#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 dashboard-setup er parkeret til Nicolai har tid (manuel, ikke blokerende).
+**Teknisk hardening efter #325/#326-close-out.** Koordinering via `docs/AGENT_DISPATCH.md`. [#329](https://github.com/NicolaiDolmer/CyclingZone/issues/329) Playwright smoke er implementeret på branch `codex/issue-329-playwright-smoke` og klar til PR/review. [#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 dashboard-setup er parkeret til Nicolai har tid (manuel, ikke blokerende).
 
 ## Senest leveret
-- 2026-05-13: **#328 Backend rate limiting LIVE som v3.26** — `express-rate-limit` v7 i-process memory store + 5 navngivne limiters (bid 60/min, market-write 30/min, board-write 15/min, admin-write 120/min, presence-pulse 120/min). Mount AFTER auth så bucket er per-bruger. `trust proxy=1` for Railway. Break-glass: `RATE_LIMIT_DISABLED=1`. Multi-instance scaling kræver shared store — opret follow-up når der startes 2. backend-instans. Tærskler + tabel i `docs/ARCHITECTURE.md` "Backend rate limiting (#328)".
-- 2026-05-12: **#327 Phase 6 LIVE som [PR #338](https://github.com/NicolaiDolmer/CyclingZone/pull/338) merged** — Infisical-first bootstrap-stien dokumenteret i `link-onedrive-context.ps1`/`setup-new-pc.ps1`/`CROSS_PC_SETUP.md`/`HOOKS.md`/`agent-doctor.ps1`/`AGENTS.md`. ADR `docs/decisions/secret-management-adr.md` godkendt af Nicolai. Phase 1 (manuel dashboard-setup) parkeret som #339.
-- 2026-05-12: **Agent Dispatch Playbook LIVE** — `docs/AGENT_DISPATCH.md`, `docs/GITHUB_WORKFLOW.md` og GitHub-labels `agent:*`, `manual:user`, `needs-dispatch` indført, så brugeren ikke copy-paster prompts mellem agenter.
-- 2026-05-12: **#325 runtime-audits verificeret + lukket** — RPCs deployed, RLS workflow grøn; follow-ups #335/#336/#337 filed. Lokal `agent-doctor`-warning skyldes legacy JWT, ikke missing RPCs.
-- 2026-05-12: **Scaling Session 2: AI-Autopilot Fase 2 LIVE** — `ci.yml` opdateret med spec-reportere. `AGENTS.md` og `GUARDRAILS_CORE.md` opdateret med Manus-orkestrerings-regler (Loop D/F).
-- 2026-05-12: **Scaling Session 1: Bulletproof Baseline LIVE** — Loop A (Drift-monitor) implementeret i `backend/scripts/driftMonitor.js`. Daglig cron 03:00 UTC.
-- 2026-05-12: **#63 /compare opdagelig som v3.24** + **#316 TeamLink-rollout LIVE som v3.23**.
+- 2026-05-13: **#329 Playwright smoke + light visual regression klar til review som v3.27** — mocket Supabase/backend-fixture uden live secrets, desktop+mobile screenshots for 8 kerneflader, ny Windows PR-check `.github/workflows/playwright-smoke.yml`. Lokal verifikation: `npm run test:e2e`, `npm test -- --test-reporter=spec`, `npm run lint`, `npm run build`.
+- 2026-05-13: **#328 Backend rate limiting LIVE som v3.26** — 5 navngivne limiters, per-user buckets efter auth, `trust proxy=1`, break-glass `RATE_LIMIT_DISABLED=1`.
+- 2026-05-12: **Agent Dispatch + AI-Autopilot Fase 2 LIVE** — dispatch-playbook, GitHub issue task-lag, spec-reportere og Manus Loop D/F-regler.
 
 ## Næste session (prioriteret)
-1. **[#329](https://github.com/NicolaiDolmer/CyclingZone/issues/329) Playwright smoke + light visual regression** — Codex-egnet, næste sikkerhedsslice.
+1. **Review/merge #329 PR** — bekræft GitHub Playwright Smoke + eksisterende CI, derefter luk issue #329.
 2. **[#339](https://github.com/NicolaiDolmer/CyclingZone/issues/339) Infisical Phase 1 manuel** — Nicolai opretter dashboard + indtaster secrets når der er tid; ikke blokerende.
 3. **#325 follow-ups (lav prioritet):** #335, #336, #337.
 4. **[#242](https://github.com/NicolaiDolmer/CyclingZone/issues/242) parkeret til ca. 2026-05-14/15** — admin vælger sæson 1-kalender via `Race-katalog` før `Sæson-cyklus`.
@@ -21,7 +17,7 @@
 ## Skalerings-Roadmap (Mod 100+ brugere)
 - [x] **Fase 1: Bulletproof Baseline** — Loop A (Drift-monitor) aktiv. Ingen trial-risici (Vercel/Supabase monitorering).
 - [x] **Fase 2: AI-Autopilot** — Automatiserede tests ved hvert push. Manus-orkestreret workflow.
-- [ ] **Fase 2 hardening follow-ups** — #329 aktiv prioritet; #328 (rate limiting) og #327 Phase 6 done.
+- [x] **Fase 2 hardening follow-ups** — #327 Phase 6, #328 rate limiting og #329 Playwright smoke er implementeret/klar til merge; lavere #325-follow-ups kan tages senere.
 - [ ] **Fase 3: Professional Secret Management** — Phase 6 (bootstrap) LIVE; Phase 1 (#339) + Phase 3-5,7 udestående.
 - [ ] **Fase 4: UX-Insight** — Loop I (Clarity) aktiv for at fange 100-bruger feedback.
 

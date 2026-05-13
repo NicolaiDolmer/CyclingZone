@@ -179,6 +179,7 @@ gh issue close 42 --reason completed
 - `.github/workflows/auto-merge.yml` — lytter på `pull_request: labeled` for `auto-merge`-label, stopper high-risk labels, venter på required checks + advisory AI-review, squash-merger og trigger deploy-verify
 - `.github/workflows/dependabot-auto-merge.yml` — auto-mærker lav-risiko dep-PRs som auto-merge
 - `.github/workflows/dependency-review.yml` — blokerer PRs der introducerer high+ dependency vulnerabilities
+- `.github/workflows/playwright-smoke.yml` — PR-check for frontendændringer; kører mocket Playwright smoke + desktop/mobile screenshot-baselines uden live secrets
 - `.github/workflows/deploy-verify.yml` — efter merge til main, venter på Vercel + Railway deploy, smoke-tester prod, upserter én ✅/❌ comment på merged PR
 
 ### Sikkerheds-net
