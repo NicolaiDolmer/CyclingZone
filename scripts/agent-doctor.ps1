@@ -86,13 +86,17 @@ Add-Check "tracked-secrets" ($(if ([string]::IsNullOrWhiteSpace($trackedSecrets.
 
 $repoInfo = Gh-Json "repos/$Repo"
 if ($repoInfo) {
-  $security = $repoInfo.security_and_analysis
-  $secret = $security.secret_scanning.status
-  $push = $security.secret_scanning_push_protection.status
-  $validity = $security.secret_scanning_validity_checks.status
-  $dependabot = $security.dependabot_security_updates.status
-  $securityStatus = if ($secret -eq "enabled" -and $push -eq "enabled" -and $dependabot -eq "enabled") { "OK" } else { "WARN" }
-  Add-Check "github-security" $securityStatus "secret=$secret, push=$push, validity=$validity, dependabot=$dependabot"
+  if ($repoInfo.PSObject.Properties.Name -contains "security_and_analysis" -and $repoInfo.security_and_analysis) {
+    $security = $repoInfo.security_and_analysis
+    $secret = $security.secret_scanning.status
+    $push = $security.secret_scanning_push_protection.status
+    $validity = $security.secret_scanning_validity_checks.status
+    $dependabot = $security.dependabot_security_updates.status
+    $securityStatus = if ($secret -eq "enabled" -and $push -eq "enabled" -and $dependabot -eq "enabled") { "OK" } else { "WARN" }
+    Add-Check "github-security" $securityStatus "secret=$secret, push=$push, validity=$validity, dependabot=$dependabot"
+  } else {
+    Add-Check "github-security" "WARN" "security_and_analysis unavailable to this token"
+  }
   Add-Check "auto-merge-setting" ($(if ($repoInfo.allow_auto_merge -eq $true) { "OK" } else { "WARN" })) "allow_auto_merge=$($repoInfo.allow_auto_merge), delete_branch_on_merge=$($repoInfo.delete_branch_on_merge)"
 } else {
   Add-Check "github-security" "WARN" "gh api unavailable"
