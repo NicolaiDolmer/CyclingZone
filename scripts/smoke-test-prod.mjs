@@ -24,7 +24,7 @@ import { fileURLToPath } from "url";
 import process from "node:process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-config({ path: join(__dirname, "../backend/.env") });
+config({ path: join(__dirname, "../backend/.env"), quiet: true });
 
 const BACKEND_URL = process.env.SMOKE_BACKEND_URL || "https://cyclingzone-production.up.railway.app";
 

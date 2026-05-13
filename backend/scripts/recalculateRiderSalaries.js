@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { updateRiderValues } from "../lib/economyEngine.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: join(__dirname, "../.env") });
+dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 
