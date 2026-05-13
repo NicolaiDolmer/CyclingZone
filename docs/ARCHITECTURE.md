@@ -7,6 +7,7 @@
 | Frontend | React 18 + Vite + Tailwind CSS | Vercel |
 | Backend | Node.js + Express (ES modules) | Railway |
 | Database / Auth | Supabase (PostgreSQL + RLS) | Supabase cloud |
+| Error tracking | Sentry (`@sentry/node`, `@sentry/react`) | Railway + Vercel |
 | Realtime sync | Cron (backend/cron.js, 60s interval) | Railway (via backend-processen) |
 | UCI sync (automatisk) | GitHub Actions cron (onsdag 06:17 UTC) → scripts/uci_scraper.py → ProCyclingStats → Google Sheets + Supabase | GitHub Actions |
 | UCI sync (manuel) | Admin: POST /api/admin/sync-uci → sheetsSync.js → Google Sheets CSV | — |
@@ -239,6 +240,8 @@ Season flow notes:
 
 ### Deploy og live-verifikation
 - Se `docs/DEPLOYMENT.md` for aktuelle live-URLs, release-path og standard smoke checks
+- Sentry initialiseres i `backend/lib/sentry.js` og `frontend/src/lib/sentry.jsx`. Backend captures unhandled runtime exceptions og route-context for known catch blocks; frontend wraps appen i `Sentry.ErrorBoundary`.
+- `scripts/agent-doctor.ps1 -Json` er canonical machine-readable quality cockpit for AI-start og Quality Inbox workflow.
 
 ### UCI scraper safety
 - `scripts/uci_scraper.py` skal bruge PCS form-route `rankings.php?p=me&s=uci-individual&offset=...`; pretty URL med `?offset=...` returnerer top 1-100 igen.

@@ -73,3 +73,25 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+  warning-budget:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Check lint warning budgets
+        run: node scripts/check-eslint-warning-budget.mjs

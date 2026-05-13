@@ -36,7 +36,7 @@ export default [
     },
   },
   {
-    files: ["playwright.config.js", "tests/e2e/**/*.js"],
+    files: ["playwright.config.js", "vite.config.js", "tests/e2e/**/*.js"],
     languageOptions: {
       globals: { ...globals.node },
       ecmaVersion: 2022,

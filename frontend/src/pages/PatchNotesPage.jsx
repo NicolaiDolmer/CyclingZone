@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.31",
+    date: "2026-05-13",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · Zero-known-error hardening",
+        items: [
+          "Infra · Drift Monitor, audit-diagnoser, Quality Inbox, lint warning-budget og Sentry error tracking er nu koblet sammen, så kendte errors/warnings bliver synlige og nye warnings ikke kan snige sig ind over baseline.",
+          "Bugfix · Achievements-syncen tåler nu manglende public user-row ved login-streak check, så `/api/achievements/check` ikke fejler med Supabase `multiple (or no) rows returned` i den situation.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.30",
     date: "2026-05-13",
     label: "Beta",

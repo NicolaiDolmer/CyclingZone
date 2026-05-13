@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, ".env"), quiet: true });
 
+import { initSentry, setupSentryExpressErrorHandler } from "./lib/sentry.js";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -15,6 +16,8 @@ import apiRoutes from "./routes/api.js";
 import { startCron } from "./cron.js";
 import { handleSyncRequest } from "./lib/sheetsSync.js";
 import { adminWriteLimiter } from "./lib/rateLimiters.js";
+
+initSentry();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -50,5 +53,11 @@ app.use("/api", apiRoutes);
 app.post("/api/admin/sync-uci", requireAdmin, adminWriteLimiter, handleSyncRequest);
 
 app.get("/health", (_,res) => res.json({status:"ok",timestamp:new Date().toISOString()}));
+
+setupSentryExpressErrorHandler(app);
+app.use((err, _req, res, _next) => {
+  console.error("[express] unhandled error:", err?.message || err);
+  res.status(500).json({ error: "Internal server error" });
+});
 
 app.listen(PORT, () => { console.log(`🚴 Cycling Zone Manager API — port ${PORT}`); startCron(); });

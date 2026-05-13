@@ -20,6 +20,7 @@ import dotenv from "dotenv";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { formatSupabaseAuditError } from "./audit-error-classifier.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
@@ -70,10 +71,11 @@ async function findFrontendTableRefs() {
 async function fetchRlsState() {
   const { data, error } = await supabase.rpc("audit_rls_coverage");
   if (error) {
-    throw new Error(
-      `audit_rls_coverage RPC failed: ${error.message}. ` +
+    throw new Error(formatSupabaseAuditError(
+      "audit_rls_coverage RPC",
+      error,
       "Apply database/2026-05-10-audit-rls-helper.sql first."
-    );
+    ));
   }
   return data || [];
 }

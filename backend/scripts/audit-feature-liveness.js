@@ -40,6 +40,7 @@ import dotenv from "dotenv";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { formatSupabaseAuditError } from "./audit-error-classifier.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
@@ -203,10 +204,11 @@ function relPath(p) {
 async function fetchTableCounts() {
   const { data, error } = await supabase.rpc("feature_liveness_table_counts");
   if (error) {
-    throw new Error(
-      `feature_liveness_table_counts RPC failed: ${error.message}. ` +
+    throw new Error(formatSupabaseAuditError(
+      "feature_liveness_table_counts RPC",
+      error,
       "Apply database/2026-05-10-feature-liveness-helper.sql first."
-    );
+    ));
   }
   return data || [];
 }
@@ -358,7 +360,13 @@ async function listCommittedMigrations() {
 
 async function listAppliedMigrations() {
   const { data, error } = await supabase.rpc("feature_liveness_applied_migrations");
-  if (error) throw new Error(`feature_liveness_applied_migrations failed: ${error.message}`);
+  if (error) {
+    throw new Error(formatSupabaseAuditError(
+      "feature_liveness_applied_migrations RPC",
+      error,
+      "Apply database/2026-05-10-feature-liveness-helper.sql first."
+    ));
+  }
   return (data || []).map((r) => r.filename).sort();
 }
 
@@ -400,7 +408,13 @@ async function detectorC() {
 
 async function listProdTables() {
   const { data, error } = await supabase.rpc("feature_liveness_prod_tables");
-  if (error) throw new Error(`feature_liveness_prod_tables failed: ${error.message}`);
+  if (error) {
+    throw new Error(formatSupabaseAuditError(
+      "feature_liveness_prod_tables RPC",
+      error,
+      "Apply database/2026-05-10-feature-liveness-helper.sql first."
+    ));
+  }
   return (data || []).map((r) => r.table_name);
 }
 
@@ -472,7 +486,11 @@ async function fetchEventCounts() {
     if (/does not exist|relation .* does not exist|function .* does not exist/i.test(error.message)) {
       return null;
     }
-    throw new Error(`feature_liveness_event_counts RPC failed: ${error.message}`);
+    throw new Error(formatSupabaseAuditError(
+      "feature_liveness_event_counts RPC",
+      error,
+      "Apply database/2026-05-12-player-events-audit-helper.sql first."
+    ));
   }
   return data || [];
 }

@@ -123,7 +123,7 @@ async function loadWatchlistCount({ supabase, userId }) {
 
 async function loadLoginStreak({ supabase, userId }) {
   const user = await readMaybeSingle(
-    supabase.from("users").select("login_streak").eq("id", userId).single()
+    supabase.from("users").select("login_streak").eq("id", userId).maybeSingle()
   );
   return toNumber(user?.login_streak);
 }
