@@ -5,6 +5,7 @@ import Layout from "./components/Layout";
 import CookieBanner from "./components/CookieBanner.jsx";
 import ClarityIntegration from "./lib/clarityIntegration.jsx";
 import { logEvent } from "./lib/logEvent";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
@@ -85,6 +86,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ClarityIntegration />
+      <SpeedInsights />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
