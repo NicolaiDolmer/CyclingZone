@@ -13,6 +13,23 @@ if [ -f "docs/NOW.md" ]; then
   fi
 fi
 
+# (1b) CLAUDE.md storrelse (HOT auto-load)
+if [ -f "CLAUDE.md" ]; then
+  L=$(wc -l < "CLAUDE.md")
+  if [ "$L" -gt 80 ]; then
+    WARNINGS+=("CLAUDE.md er $L linjer (maal: <60, fail >80) - flyt reference-indhold til docs/META_DOCS_INDEX.md")
+  fi
+fi
+
+# (1c) MEMORY.md HOT-tier storrelse
+MEM_PATH="$HOME/.claude/projects/C--dev-CyclingZone/memory/MEMORY.md"
+if [ -f "$MEM_PATH" ]; then
+  L=$(wc -l < "$MEM_PATH")
+  if [ "$L" -gt 50 ]; then
+    WARNINGS+=("MEMORY.md HOT er $L linjer (maal: <40, fail >50) - demotér entries til MEMORY_REFERENCE.md per docs/AI_OPS_TOKEN_BUDGET.md")
+  fi
+fi
+
 # (2) Close-out-detektion: er origin/main blevet opdateret nyere end NOW.md?
 #     Heuristik: nyeste main-commit <30min gammelt OG >5min nyere end NOW.md -> mind om close-out.
 if [ -d ".git" ]; then

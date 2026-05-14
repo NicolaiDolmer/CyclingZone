@@ -1,62 +1,48 @@
 # CLAUDE.md
 
-> **GitHub-first start-rutine** (indført 2026-05-06 per [#70](https://github.com/NicolaiDolmer/CyclingZone/issues/70)).
-> Cold-start token-budget: ~700 (ned fra ~800-1500). Tidligere version: [`docs/archive/CLAUDE-2026-05-06.md`](docs/archive/CLAUDE-2026-05-06.md).
+> **GitHub-first start-rutine** (indført 2026-05-06 per [#70](https://github.com/NicolaiDolmer/CyclingZone/issues/70)). Token-baseline 2026-05-14: see `.codex.local/token-baseline-before.json`.
 
 ## Auto-loaded (intet at gøre)
 
-Disse loader sig selv ved session-start — undgå at re-læse manuelt:
-- `~/.claude/.../memory/MEMORY.md` — auto-memory (~250 tok). Sync'er cross-PC via OneDrive (junction til `~/OneDrive/CyclingZone-context/memory/`). Hvis junction mangler: `pwsh -File scripts/link-onedrive-context.ps1`.
-- `.codex.local/SESSION_CONTEXT.md` — bounded pre-fetch af aktivt issue (titel, labels, URL, kort body + seneste comment) genereret af `scripts/session-prefetch-issue.sh` SessionStart hook (~500-800 tok). Dokumenteret i [`docs/HOOKS.md`](docs/HOOKS.md).
+- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (~1,100 tok efter Phase 1 reduktion). Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).
+- `.codex.local/SESSION_CONTEXT.md` — bounded pre-fetch af aktivt issue (~500 tok) via `scripts/session-prefetch-issue.sh`.
 
-## Start (eksplicit, ~150-300 tok)
+## Start (eksplicit)
 
-1. Læs `docs/NOW.md` — kort status-snapshot (aktiv slice + næste session-noter).
-2. **Aktivt issue** kommer fra `SESSION_CONTEXT.md` (auto-loaded). Hvis filen mangler eller er stale, hent manuelt:
-   ```
-   gh issue list --label "claude:todo" --state open --limit 10
-   ```
-3. **Læs `docs/GUARDRAILS_CORE.md` KUN hvis** issue-labels indeholder `needs-contract` eller `shared-refactor` (~0 tok i 80% af tilfælde). For trivielle bugfix og isolerede features springes dette over.
+1. Læs `docs/NOW.md` — kort status (aktiv slice + næste session-noter).
+2. **Aktivt issue:** kommer fra `SESSION_CONTEXT.md`. Stale eller mangler? `gh issue list --label "claude:todo" --state open --limit 10`
+3. `docs/GUARDRAILS_CORE.md` læses KUN hvis issue-labels indeholder `needs-contract` eller `shared-refactor` (~80% af sessioner skipper).
 
-## Reference på behov (on-demand)
+## On-demand docs
 
-| Doc | Læs hvornår |
-|---|---|
-| `docs/GUARDRAILS_CORE.md` | Issue har `needs-contract` eller `shared-refactor` label |
-| `docs/GUARDRAILS.md` (fuld) | Nye datakontrakter · IA/naming-valg · shared runtime-refactors · features med flere plausible produktmodeller |
-| `docs/HOOKS.md` | Hooks-konfiguration ændres |
-| `docs/ARCHITECTURE.md` | Cross-domain refactor |
-| `docs/DOMAIN_REFERENCE.md` | Domænegrænse-spørgsmål |
-| `docs/FEATURE_STATUS.md` | Runtime-state usikker |
-| `docs/CONVENTIONS.md` | Naming/style-spørgsmål |
-| `docs/GITHUB_WORKFLOW.md` | GitHub-workflow eller agent-loop spørgsmål |
-| `docs/slices/<slug>.md` | Slice har dedikeret brief |
-| `gh issue view N --comments` | Behov for sessionshistorik på issue |
+Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-3 hits:
+- `docs/GAME_INVARIANTS.md` — Economy-konstanter, finalization-paths, upload-grænser
+- `docs/AI_OPS_DISABLE_PLAYBOOK.md` — MCP/skills disable-handlinger
+- `docs/GITHUB_WORKFLOW.md` — Workflow, agent-loops, close-protocol
 
 ## Close-out (per session)
 
-Ingen `docs/PRODUCT_BACKLOG.md` mere — task-laget bor i GitHub issues siden 2026-05-06 ([#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68)).
-
-1. **Issue-status:** `gh issue comment N --body "..."` med opsummering, eller `gh issue close N --reason completed` hvis done og verificeret. Brugeren lukker selv issues efter manuel verifikation per label-state-maskinen i `docs/GITHUB_WORKFLOW.md`.
-2. **NOW.md:** kort opdatering hvis aktiv slice ændrer sig — maks 30 linjer, historik flyttes til `docs/archive/` i samme session.
+1. **Issue:** `gh issue comment N --body "..."` eller `gh issue close N --reason completed` hvis verificeret. Bruger lukker selv per label-state-maskine i `GITHUB_WORKFLOW.md`.
+2. **NOW.md:** opdatér hvis aktiv slice ændrer sig — maks 30 linjer, historik til `docs/archive/`.
 3. **FEATURE_STATUS.md:** opdatér hvis kontrakter eller features ændret.
-4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv eksplicit hvorfor ikke). Pre-push hook kan håndhæve det.
-5. **Postmortem:** ved bugfix → entry i `.claude/learnings/<dato>-<slug>.md`.
-
-6. **Token-hygiejne:** hvis sessionen har haft mange tool-kald eller lang analyse, kør `pwsh -File scripts/check-agent-token-hygiene.ps1` og kompaktér `NOW.md`/`SESSION_CONTEXT.md` før næste cold start.
+4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke).
+5. **Postmortem:** ved bugfix → `.claude/learnings/<dato>-<slug>.md`.
+6. **Token-hygiejne:** kør `pwsh -File scripts/check-agent-token-hygiene.ps1` ved lange sessioner.
 
 ## Session-rytme
 
-- Signalér 🟢/🟡/🔴/🆕 ved naturlige break-points — bruger behøver ikke selv huske at lukke
-- Kør close-out-tjekliste før commit
+- Signalér 🟢/🟡/🔴/🆕 ved naturlige break-points
+- Tjekliste før commit; ÉN issue pr. session
 - Foreslå "Næste session starter med #N..." ved close-out
-- Tommelfingerregel: ÉN issue pr. session
 
-## Token-budget snapshot
+## Token-budget (efter Phase 1-4, 2026-05-14)
 
-| Trin | Tokens | Hvornår |
+| Komponent | Tokens | Note |
 |---|---|---|
-| Auto-load (MEMORY + SESSION_CONTEXT) | ~900-1200 | Hver session; hold memory og issue-prefetch bounded |
-| Læs NOW.md | ~400-700 | Hver session; målet er under 30 linjer |
-| Læs GUARDRAILS_CORE.md | ~700 | KUN hvis label kræver det (~20% af sessioner) |
-| **Cold-start total** | **~800** typisk · **~1500** ved kontrakt-arbejde | |
+| MEMORY.md (HOT auto) | ~1,100 | Skåret fra 4,400 (Phase 1) |
+| SESSION_CONTEXT.md | ~500 | Bounded prefetch |
+| CLAUDE.md (denne) | ~600 | Skåret fra ~1,000 (Phase 4) |
+| NOW.md | ~600 | Maks 30 linjer |
+| GUARDRAILS_CORE.md | ~1,100 (kun ~20% sess.) | Trigget af label |
+| MCP+skills harness-blob | ~3,000-5,500 | Beror på Phase 2+3 disables |
+| **Cold-start total** | **~6,000-9,000** | Down fra ~17,000 baseline |

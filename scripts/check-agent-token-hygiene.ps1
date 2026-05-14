@@ -2,7 +2,9 @@ param(
   [int]$WarnTokens = 7500,
   [int]$FailTokens = 12000,
   [int]$MaxTranscriptBytes = 900000,
-  [switch]$FailOnWarning
+  [int]$HarnessTokensEstimate = 5700,
+  [switch]$FailOnWarning,
+  [string]$BaselineOut = ""
 )
 
 Set-StrictMode -Version Latest
@@ -64,11 +66,13 @@ $memoryCandidates = @(
   (Join-Path $env:USERPROFILE ".claude\projects\C--dev-CyclingZone\memory\MEMORY.md"),
   (Join-Path $env:OneDrive "CyclingZone-context\memory\MEMORY.md")
 ) | Where-Object { $_ -and (Test-Path $_) }
+$memoryTokens = 0
 if ($memoryCandidates.Count -gt 0) {
   $memoryPath = $memoryCandidates[0]
   $memoryTokens = Get-ApproxTokens $memoryPath
-  $memoryStatus = if ($memoryTokens -gt 5000) { "FAIL" } elseif ($memoryTokens -gt 2500) { "WARN" } else { "OK" }
-  Add-Result $results "claude-memory" $memoryStatus "$memoryTokens approx tokens in MEMORY.md"
+  $memoryStatus = if ($memoryTokens -gt 2000) { "FAIL" } elseif ($memoryTokens -gt 1500) { "WARN" } else { "OK" }
+  Add-Result $results "claude-memory" $memoryStatus "$memoryTokens approx tokens in MEMORY.md (HOT auto-load)"
+  $total += $memoryTokens
 } else {
   Add-Result $results "claude-memory" "WARN" "MEMORY.md not found"
 }
@@ -102,6 +106,39 @@ if (Test-Path $prefetchPath) {
   Add-Result $results "issue-prefetch-bounds" ($(if ($bounded) { "OK" } else { "FAIL" })) ($(if ($bounded) { "bounded" } else { "missing bounds" }))
 }
 
+$memoryDirTokens = 0
+if ($memoryCandidates.Count -gt 0) {
+  $memoryDir = Split-Path $memoryCandidates[0] -Parent
+  $memoryFiles = Get-ChildItem $memoryDir -Filter "*.md" -ErrorAction SilentlyContinue
+  foreach ($f in $memoryFiles) {
+    $memoryDirTokens += [math]::Ceiling($f.Length / 4)
+  }
+  Add-Result $results "memory-dir-total" "INFO" "$memoryDirTokens approx tokens across $($memoryFiles.Count) memory files (on-demand)"
+
+  $memoryPath = $memoryCandidates[0]
+  $memoryLines = (Get-Content $memoryPath | Measure-Object -Line).Lines
+  $memoryLineStatus = if ($memoryLines -gt 50) { "FAIL" } elseif ($memoryLines -gt 40) { "WARN" } else { "OK" }
+  Add-Result $results "memory-hot-budget" $memoryLineStatus "MEMORY.md $memoryLines lines (target <40, fail >50)"
+}
+
+$hotFiles = @(
+  @{ Name = "claude-md-budget"; Path = "CLAUDE.md"; WarnLines = 60; FailLines = 80 },
+  @{ Name = "now-md-budget"; Path = "docs/NOW.md"; WarnLines = 30; FailLines = 40 }
+)
+foreach ($hot in $hotFiles) {
+  if (Test-Path $hot.Path) {
+    $hotLines = (Get-Content $hot.Path | Measure-Object -Line).Lines
+    $hotStatus = if ($hotLines -gt $hot.FailLines) { "FAIL" } elseif ($hotLines -gt $hot.WarnLines) { "WARN" } else { "OK" }
+    Add-Result $results $hot.Name $hotStatus "$($hot.Path) $hotLines lines (target <$($hot.WarnLines), fail >$($hot.FailLines))"
+  }
+}
+
+Add-Result $results "harness-blob-estimate" "INFO" "$HarnessTokensEstimate approx tokens (MCP tool list + skills list; manual estimate)"
+
+$coldStartTotal = $total + $HarnessTokensEstimate
+$coldStartStatus = if ($coldStartTotal -gt 12000) { "FAIL" } elseif ($coldStartTotal -gt 8000) { "WARN" } else { "OK" }
+Add-Result $results "cold-start-total-est" $coldStartStatus "$coldStartTotal approx tokens (files + harness blob)"
+
 Write-Host ""
 Write-Host "Agent token hygiene"
 Write-Host "==================="
@@ -111,6 +148,24 @@ $failures = @($results | Where-Object { $_.Status -eq "FAIL" })
 $warnings = @($results | Where-Object { $_.Status -eq "WARN" })
 Write-Host ""
 Write-Host "Summary: $($failures.Count) fail, $($warnings.Count) warn, $(@($results | Where-Object { $_.Status -eq 'OK' }).Count) ok"
+
+if ($BaselineOut) {
+  $baseline = [PSCustomObject]@{
+    timestamp = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssK")
+    cold_start_total_est = $coldStartTotal
+    file_context_total = $total
+    harness_blob_estimate = $HarnessTokensEstimate
+    memory_dir_total = $memoryDirTokens
+    checks = $results
+  }
+  $baselineDir = Split-Path $BaselineOut -Parent
+  if ($baselineDir -and -not (Test-Path $baselineDir)) {
+    New-Item -ItemType Directory -Path $baselineDir -Force | Out-Null
+  }
+  $baseline | ConvertTo-Json -Depth 6 | Out-File -FilePath $BaselineOut -Encoding UTF8
+  Write-Host ""
+  Write-Host "Baseline written: $BaselineOut"
+}
 
 if ($failures.Count -gt 0) { exit 1 }
 if ($FailOnWarning.IsPresent -and $warnings.Count -gt 0) { exit 1 }
