@@ -3,7 +3,7 @@
 > **Sprint:** Monetization Validation Sprint
 > **Periode:** 2026-05-18 → 2026-06-17 (30 dage)
 > **I dag:** 2026-05-14 (T-4 før sprint-start)
-> **Sidste opdatering:** 2026-05-14
+> **Sidste opdatering:** 2026-05-14 (issues #359-#367 oprettet + uge 1 calendar live)
 >
 > **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md).
 
@@ -112,9 +112,9 @@
 | [#364](https://github.com/NicolaiDolmer/CyclingZone/issues/364) | ⏳ | Survey-CTA-banner i app | — |
 | [#365](https://github.com/NicolaiDolmer/CyclingZone/issues/365) | ⏳ | Sprint-metrics dashboard i app | — |
 | [#366](https://github.com/NicolaiDolmer/CyclingZone/issues/366) | ⏳ | PatchNotes-entry om fair freemium-eksperiment | — |
-| TBD | ⏳ | Mobile UX-verification af key pages før Discord-launch | — |
+| [#367](https://github.com/NicolaiDolmer/CyclingZone/issues/367) | ⏳ | Mobile UX-verification af key pages før Discord-launch (T-1 søn 17 maj) | — |
 
-(Filtrér i GitHub: [`label:sprint-validation`](https://github.com/NicolaiDolmer/CyclingZone/issues?q=is%3Aissue+is%3Aopen+label%3Asprint-validation). Mobile UX-verification-rækken kom ind efter min issue-creation — flag hvis jeg også skal oprette den.)
+(Filtrér i GitHub: [`label:sprint-validation`](https://github.com/NicolaiDolmer/CyclingZone/issues?q=is%3Aissue+is%3Aopen+label%3Asprint-validation))
 
 ## 🏛️ Founder Track (samlet jura/finansiering/IP-checklist)
 
