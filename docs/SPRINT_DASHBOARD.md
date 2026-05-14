@@ -2,10 +2,10 @@
 
 > **Sprint:** Monetization Validation Sprint
 > **Periode:** 2026-05-18 → 2026-06-17 (30 dage)
-> **I dag:** 2026-05-14 (T-4 før sprint-start)
-> **Sidste opdatering:** 2026-05-14 (issues #359-#367 oprettet + uge 1 calendar live)
+> **I dag:** 2026-05-15 (T-3 før sprint-start)
+> **Sidste opdatering:** 2026-05-15 (samlet backlog-prioritering tilføjet — [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md))
 >
-> **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md).
+> **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). **Prioriteret backlog (alle 150 åbne issues) → [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md).**
 
 ## 📊 Metrics at a glance
 
