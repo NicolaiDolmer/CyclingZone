@@ -104,17 +104,17 @@
 
 | # | Status | Issue | Codex assigned |
 |---|---|---|---|
-| TBD | ⏳ | Landing page for Founder Supporter waitlist | — |
-| TBD | ⏳ | Supabase tabel `founder_supporter_waitlist` + RLS | — |
-| TBD | ⏳ | Waitlist-form + UTM source-tracking | — |
-| TBD | ⏳ | Admin dashboard for waitlist intent-scoring | — |
-| TBD | ⏳ | Survey-CTA-banner i app | — |
-| TBD | ⏳ | PatchNotes-entry om fair freemium-eksperiment | — |
-| TBD | ⏳ | Sprint-metrics dashboard i app | — |
-| TBD | ⏳ | GDPR privatlivspolitik + samtykke-flow | — |
+| [#359](https://github.com/NicolaiDolmer/CyclingZone/issues/359) | ⏳ | Supabase tabel `founder_supporter_waitlist` + RLS | — |
+| [#360](https://github.com/NicolaiDolmer/CyclingZone/issues/360) | ⏳ | GDPR privatlivspolitik + samtykke-flow | — |
+| [#361](https://github.com/NicolaiDolmer/CyclingZone/issues/361) | ⏳ | Landing page for Founder Supporter waitlist | — |
+| [#362](https://github.com/NicolaiDolmer/CyclingZone/issues/362) | ⏳ | Waitlist-form + UTM source-tracking | — |
+| [#363](https://github.com/NicolaiDolmer/CyclingZone/issues/363) | ⏳ | Admin dashboard for waitlist intent-scoring | — |
+| [#364](https://github.com/NicolaiDolmer/CyclingZone/issues/364) | ⏳ | Survey-CTA-banner i app | — |
+| [#365](https://github.com/NicolaiDolmer/CyclingZone/issues/365) | ⏳ | Sprint-metrics dashboard i app | — |
+| [#366](https://github.com/NicolaiDolmer/CyclingZone/issues/366) | ⏳ | PatchNotes-entry om fair freemium-eksperiment | — |
 | TBD | ⏳ | Mobile UX-verification af key pages før Discord-launch | — |
 
-(Issue-numre indsættes når de er oprettet på GitHub.)
+(Filtrér i GitHub: [`label:sprint-validation`](https://github.com/NicolaiDolmer/CyclingZone/issues?q=is%3Aissue+is%3Aopen+label%3Asprint-validation). Mobile UX-verification-rækken kom ind efter min issue-creation — flag hvis jeg også skal oprette den.)
 
 ## 🏛️ Founder Track (samlet jura/finansiering/IP-checklist)
 
