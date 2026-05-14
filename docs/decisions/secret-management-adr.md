@@ -1,10 +1,24 @@
 # ADR: Professional secret management for CyclingZone
 
-**Status:** Proposed — requires Nicolai approval before implementation  
+**Status:** Proposed technical direction — Infisical selected; manual dashboard setup still pending
 **Date:** 2026-05-12  
+**Last verified:** 2026-05-14
 **Owner:** Manus AI  
 **Issue:** [#327](https://github.com/NicolaiDolmer/CyclingZone/issues/327)  
 **Parent:** [#323](https://github.com/NicolaiDolmer/CyclingZone/issues/323)
+
+---
+
+## 2026-05-14 state verification
+
+Claude feedback correctly noted that this ADR already made the platform choice. The next action is **not** another vendor-research task. GitHub issue verification on 2026-05-14 showed that #327 remains open, #339 remains open for manual Infisical project/dashboard setup, and `docs/NOW.md` records Phase 6 local bootstrap as live. The implementation path should therefore continue from the existing Infisical decision: approve or amend this ADR, complete #339, then migrate CI/runtime/local secrets according to the phased plan below.
+
+| Item | Verified state | Consequence |
+|---|---|---|
+| Secret-management platform decision | Infisical is already selected in this ADR. | Do not reopen Doppler/native-only evaluation unless Nicolai rejects the decision. |
+| #327 | Open. | Continue phased migration and close only after source-of-truth and downstream delivery are reconciled. |
+| #339 | Open. | Manual dashboard/project setup is the current blocker. |
+| Local bootstrap Phase 6 | Documented live in `docs/NOW.md`. | Keep local bootstrap changes aligned with the Infisical direction instead of OneDrive production-secret hardlinks. |
 
 ---
 
