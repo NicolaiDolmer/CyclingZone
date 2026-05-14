@@ -13,6 +13,8 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/CONVENTIONS.md` | Naming/style-spørgsmål |
 | `docs/GITHUB_WORKFLOW.md` | GitHub-workflow eller agent-loop spørgsmål |
 | `docs/GAME_INVARIANTS.md` | Game-balance konstanter (sponsor/balance/gældsloft/upload-grænser) |
+| `docs/BUSINESS_STRATEGY.md` | Monetization-spørgsmål · tier-struktur · validation sprint · UCI/IP-risiko · dansk finansiering · fact-check krav |
+| `docs/SPRINT_DASHBOARD.md` | Live status på 30-dages validation sprint · metrics-snapshot · uge-checkbox-tasks · founder-track · decision log |
 | `docs/AI_OPS_DISABLE_PLAYBOOK.md` | MCP/skills audit + disable-handlinger |
 | `docs/AI_OPS_QUALITY_CANARIES.md` | Regression-tjek efter token-reduktion |
 | `docs/AI_OPS_TOKEN_BUDGET.md` | Token-budget regler + tier-system |
