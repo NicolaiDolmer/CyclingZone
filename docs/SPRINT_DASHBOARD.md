@@ -2,10 +2,10 @@
 
 > **Sprint:** Monetization Validation Sprint
 > **Periode:** 2026-05-18 → 2026-06-17 (30 dage)
-> **I dag:** 2026-05-14 (T-4 før sprint-start)
-> **Sidste opdatering:** 2026-05-14 (issues #359-#367 oprettet + uge 1 calendar live)
+> **I dag:** 2026-05-15 (T-3 før sprint-start)
+> **Sidste opdatering:** 2026-05-15 (samlet backlog-prioritering tilføjet — [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md))
 >
-> **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md).
+> **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). **Prioriteret backlog (alle 150 åbne issues) → [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md).**
 
 ## 📊 Metrics at a glance
 
@@ -118,7 +118,7 @@
 
 ## 🏛️ Founder Track (samlet jura/finansiering/IP-checklist)
 
-**Status:** Alle åbne pr. 2026-05-14.
+**Status:** Alle åbne pr. 2026-05-14. **Eksterne møder (revisor/advokat) udskudt — bruger laver selv-research først** (jf. Decision log 2026-05-14). Deadlines herunder antyder ideel timing; faktisk booking sker når selv-research afdækker konkrete spørgsmål der kræver ekstern rådgivning.
 
 | Område | Action | Deadline | Status |
 |---|---|---|---|
@@ -145,6 +145,9 @@
 | 2026-05-14 | Sprint starter 2026-05-18 (mandag) | Ren ugestruktur |
 | 2026-05-14 | Codex får tekniske implementerings-issues; bruger beholder strategi | Cross-PC AI-workflow |
 | 2026-05-14 | Dashboard = SPRINT_DASHBOARD.md + GitHub Project board + Calendar events | 3 lag uden overlap |
+| 2026-05-14 | **Selv-research-track før eksterne møder:** Bruger udskyder møder med revisor + advokat — laver først selv-research og inddrager andre ved konkret yderligere behov. Founder Track-rækker for "møde afholdt" forbliver i tabellen som senere milestones, men deadlines er nu "efter self-research". | Sparer fee + ejerskab af problem-formuleringen før ekstern rådgivning |
+| 2026-05-14 | Revisor-book Fre 22 maj behold 10:00 30 min (ikke 13:00 per appendix) — repurpose til revisor self-research forberedelse | 13:00 kolliderer med eksisterende "Ugentlig reset"; 30 min mere realistisk end 15 |
+| 2026-05-14 | `frontend-only` label oprettes IKKE — frontend-changes skal have user-verification (manuel UI-test). Kun `backend-only` + `docs-only` bypasser PR user-verification check. | Bevarer guard-rail mod blind merge af UI-ændringer |
 
 ## 🚨 Risk snapshot (top 3)
 
