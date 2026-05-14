@@ -43,6 +43,7 @@
 
 ### Uge 1 (18-24 maj) — Foundation
 **Manus-track:**
+- [ ] **Søn 17 (T-1):** Mobile UX-verification af key pages (auctions/board/dashboard/finance/riders/seasons/team) FØR Discord-launch så ny trafik ikke bouncer på broken mobile. Brug eksisterende Playwright mobile-snapshots.
 - [ ] **Man 18:** Discord launch post + poll #1 pinned
 - [ ] **Man 18:** Pull beta-data baseline (DAU/WAU/D7-retention/session-længde/top-features)
 - [ ] **Man 18:** Identificér top 10-15 mest aktive spillere
@@ -111,6 +112,7 @@
 | TBD | ⏳ | PatchNotes-entry om fair freemium-eksperiment | — |
 | TBD | ⏳ | Sprint-metrics dashboard i app | — |
 | TBD | ⏳ | GDPR privatlivspolitik + samtykke-flow | — |
+| TBD | ⏳ | Mobile UX-verification af key pages før Discord-launch | — |
 
 (Issue-numre indsættes når de er oprettet på GitHub.)
 
@@ -127,7 +129,7 @@
 | GDPR | Samtykke-flow på waitlist | Uge 2-3 (Codex) | ⏳ |
 | IP | Advokat-konsultation booket | Uge 2 | ⏳ |
 | IP | Advokat-konsultation afholdt | Uge 3 | ⏳ |
-| IP | Race-name licens-pris undersøgt (ASO/RCS/UCI) | Uge 3 | ⏳ |
+| IP | Race-name licens-pris undersøgt — kontakt ASO (TdF/Vuelta/Paris-Roubaix/LBL/Paris-Nice), RCS Sport (Giro/Milano-Sanremo/Tirreno/Lombardia/Strade), Flanders Classics (Ronde/Omloop/E3/Gent-Wevelgem). Brug "kontakt"/"licensing"-formularer på deres websites; advokat kan rådgive om sprogtone. | Uge 3 | ⏳ |
 | IP | Team/rider migration til fiktivt univers (planlagt komplet inden day 30) | Uge 4 | ⏳ |
 | Finansiering | InnoBooster eligibility-tjek | Uge 1 | ⏳ |
 | Finansiering | DFI's spilordning status verificeret | Uge 1 | ⏳ |
@@ -163,3 +165,98 @@
 - **Tasks:** Bare ret `[ ]` til `[x]`
 - **Beslutninger:** Append til Decision log
 - **Live game-metrics:** Når Codex-issue #7 er live, kan du klikke ind på `/admin/sprint-metrics` og se tallene direkte
+
+---
+
+## 📦 Appendix: Codex Issue Specs (til oprettelse næste session)
+
+Disse specs bruges af næste Claude-session til at oprette GitHub-issues med `gh issue create --body-file`. Hver issue skal have label `sprint-validation` + `claude:todo` + relevant scope-label (`frontend-only`/`backend-only`/`docs-only`).
+
+> **Reference på OneDrive:** Alle Manus-detaljer ligger i `C:\Users\emmas\OneDrive\CyclingZone-context\CyclingZone-Manus noter\`. Cite indhold direkte i issue-body (Codex har ikke adgang til OneDrive).
+
+### Issue #1: Landing page for Founder Supporter waitlist
+- **Labels:** `sprint-validation`, `claude:todo`, `frontend-only`
+- **Acceptance:** Ny route `/founder` (eller `/founder-supporter`) deployed til prod. Indeholder hero, fairness-promise, primary CTA "Join Founder Supporter waitlist", FAQ, sekundær CTA "Take 3-min survey". Mobile-first responsive.
+- **Copy:** Kopiér 1:1 fra `Cycling Zone — Landing Page Copy and Founder Supporter Offer.md` (hero/subhead/CTA/FAQ/3 sociale versioner)
+- **Dependencies:** Ingen
+- **Skip:** Stripe-integration (kommer først efter day-30 Go-beslutning)
+- **Estimat:** 1-2 dage
+
+### Issue #2: Supabase tabel `founder_supporter_waitlist` + RLS
+- **Labels:** `sprint-validation`, `claude:todo`, `backend-only`
+- **Acceptance:** Migration `YYYY-MM-DD-founder-supporter-waitlist.sql` opretter tabel med felter: `id uuid pk`, `email text`, `discord_handle text`, `interest_level text`, `preferred_tier text`, `main_reason text`, `valued_benefits text[]`, `fairness_red_line text`, `follow_up_consent boolean`, `source text` (UTM/utm_source), `created_at timestamptz`, `intent_score int` (computed). RLS: anon kan INSERT, kun authenticated admin kan SELECT.
+- **Schema-detalje:** Se `Cycling Zone — Founder Supporter Waitlist Setup.md` (9-felts form-spec)
+- **Husk per memory:** `CREATE POLICY` skal wraps i `DROP POLICY IF EXISTS` (idempotent migration); multi-file migrations samme dag kræver lex-ordering
+- **Dependencies:** Ingen
+- **Estimat:** ½ dag
+
+### Issue #3: Waitlist-form med Supabase-integration + UTM tracking
+- **Labels:** `sprint-validation`, `claude:todo`, `frontend-only`
+- **Acceptance:** Form på `/founder` (issue #1) submitter til `founder_supporter_waitlist` (issue #2). UTM-params fra URL (`?utm_source=discord_launch`) gemmes i `source`-felt som hidden field. Success-confirmation efter submit. Validering på client + server.
+- **Mulige source-værdier:** `discord_launch`, `survey`, `direct_dm`, `reddit_pcm`, `reddit_peloton`, `other` (Manus' spec)
+- **Dependencies:** #1 + #2
+- **Estimat:** 1 dag
+
+### Issue #4: Admin dashboard for waitlist intent-scoring
+- **Labels:** `sprint-validation`, `claude:todo`, `frontend-only`
+- **Acceptance:** Beskyttet admin-route der lister waitlist-signups med auto-beregnet intent-score (base 1-4 fra `interest_level` + bonusser for `discord_handle`, `valued_benefits ≥3`, `follow_up_consent=true`). Sortér efter score desc. Eksportér til CSV. Brug eksisterende admin-auth.
+- **Scoring-regler:** Se `Cycling Zone — Founder Supporter Waitlist Setup.md` ("Manual scoring for go/no-go")
+- **Dependencies:** #2
+- **Estimat:** 1 dag
+
+### Issue #5: Survey-CTA-banner i app
+- **Labels:** `sprint-validation`, `claude:todo`, `frontend-only`
+- **Acceptance:** Dismissable banner i logged-in app (på dashboard eller globalt). Linker til Tally-survey-URL. Vis 1x per bruger (track i localStorage eller user_preferences-tabel). Dismiss = ingen visning igen.
+- **Survey-URL:** Indsættes når Tally-form er live (uge 1 onsdag/torsdag); brug placeholder `SURVEY_URL` indtil
+- **Dependencies:** Ingen
+- **Estimat:** ½ dag
+
+### Issue #6: PatchNotes-entry om fair freemium-eksperiment
+- **Labels:** `sprint-validation`, `claude:todo`, `docs-only`
+- **Acceptance:** Ny version-entry i `frontend/src/pages/PatchNotesPage.jsx` (bump til main+1). Brugerrettet sprog: forklar at vi tester en fair non-pay-to-win premium-model, link til Discord + survey, understreg at intet ændres for free-spillere.
+- **Husk per memory:** Tjek main's øverste version før merge; bump til max+1 ved kollision
+- **Dependencies:** Ingen
+- **Estimat:** 15 min
+
+### Issue #7: Sprint-metrics dashboard i app
+- **Labels:** `sprint-validation`, `claude:todo`, `frontend-only`, `backend-only`
+- **Acceptance:** Admin-route `/admin/sprint-metrics` viser de 12 metrics fra Go/No-Go framework (Discord/survey/waitlist/interview tællere + DAU/WAU/MAU game-metrics). Som start: manuel input via form for "external" tællere (Discord, survey, interviews); auto-query for game-metrics fra Supabase. Senere iteration: full automation.
+- **Metrics-spec:** Se `Metrics and Go/No-Go Framework.md` (13 tracking-felter)
+- **Dependencies:** #2 (har brug for waitlist-tælling)
+- **Estimat:** 1-2 dage
+
+### Issue #8: GDPR privatlivspolitik + samtykke-flow
+- **Labels:** `sprint-validation`, `claude:todo`, `frontend-only`, `docs-only`
+- **Acceptance:** Privatlivspolitik-side på `/privacy` med info om hvilke data der indsamles (email, discord_handle, survey-svar, optional follow-up consent), retention-periode, slette-procedure. Samtykke-checkbox på waitlist-form med link til policy. Footer-link til policy fra landing page.
+- **Compliance-noter:** Dansk GDPR-praksis = ikke-pre-tjekket checkbox; EU 14-day refund GÆLDER IKKE for digitale services hvor bruger har samtykket til straks-levering (skal formuleres præcist)
+- **Dependencies:** #3
+- **Estimat:** 1 dag
+
+### Issue #9: Mobile UX-verification af key pages før Discord-launch
+- **Labels:** `sprint-validation`, `claude:todo`, `frontend-only`
+- **Acceptance:** Mobile Playwright-snapshots passerer for `/`, `/dashboard`, `/auctions`, `/board`, `/riders`, `/team`, `/finance`, `/seasons` på iPhone-størrelse. Eventuelle regression-fix. Rapport i issue-body med screenshots eller link til snapshot-output.
+- **Tidskritisk:** Skal være klar søndag 2026-05-17 så ny trafik fra Discord-launch mandag ikke møder broken mobile UX
+- **Reference:** `mobile_access_notes.md` (Manus)
+- **Dependencies:** Ingen
+- **Estimat:** ½-1 dag
+
+---
+
+### Google Calendar events der skal oprettes næste session
+
+| Event | Dato | Type | Note |
+|---|---|---|---|
+| **Sprint Day 1 — Discord launch** | Man 18 maj 2026 | All-day | Inkl. data baseline + identify top 10-15 |
+| **Sprint Day 2** | Tir 19 maj 2026 | All-day | Discord channel + interview-DMs |
+| **Sprint Day 3** | Ons 20 maj 2026 | All-day | Feature poll + survey-draft |
+| **Sprint Day 4** | Tor 21 maj 2026 | All-day | Survey live-prep + objection poll + GDPR |
+| **Sprint Day 5** | Fre 22 maj 2026 | All-day | Interview-invites + community update |
+| **Sprint weekend** | Lør-søn 23-24 maj | Block | 2-3 interviews + pitch deck v0 |
+| **ApS research** | Man 18 maj 14:00 | 30 min | virk.dk |
+| **MoR research** | Tir 19 maj 14:00 | 30 min | Paddle/Lemon Squeezy vs Stripe+MOSS |
+| **InnoBooster research** | Ons 20 maj 14:00 | 30 min | innovationsfonden.dk |
+| **DFI research** | Tor 21 maj 14:00 | 30 min | Ring DFI hvis hjemmeside er uklar |
+| **Book revisor til uge 2** | Fre 22 maj 13:00 | 15 min | Ring/email |
+| **Mobile UX-verification** | Søn 17 maj | 1-2 timer | Pre-launch sanity check |
+| **Advokat-research (find IP/sports-jurist)** | Uge 2 (man 25 maj) | 30 min | Cykel-relateret IP-erfaring |
+| **Advokat-konsultation** | Uge 3 | 1 time | Booket separat; 5-15k DKK |

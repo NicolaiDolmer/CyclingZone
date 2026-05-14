@@ -3,6 +3,8 @@
 ## Aktiv slice
 **AI/Ops token-reduktion (scalable-wobbling-blossom)** — Phase 1-4 leveret 2026-05-14. Phase 2+3 venter brugerens manuelle disable-handlinger per [`AI_OPS_DISABLE_PLAYBOOK.md`](AI_OPS_DISABLE_PLAYBOOK.md).
 
+> **Parallelt forretningsspor (ikke aktiv slice):** Monetization Validation Sprint starter 2026-05-18. Live status i [`SPRINT_DASHBOARD.md`](SPRINT_DASHBOARD.md); strategi i [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). Codex får tekniske implementerings-issues.
+
 ## Senest leveret
 - 2026-05-14: **Token-reduktion Phase 1-4** — MEMORY.md skåret 109→40 linjer (~3,150 tok); CLAUDE.md slanket + reference-tabel flyttet til `META_DOCS_INDEX.md`; game-invariants flyttet til `GAME_INVARIANTS.md`; quality-canaries + disable-playbook + tier-system docs oprettet; `check-agent-token-hygiene.ps1` udvidet med JSON-baseline.
 - 2026-05-14: **Audit-feedback follow-up** — `docs/decisions/cache-adr.md` vælger Upstash Redis for #334; `docs/AI_OPS_COST_MODEL.md` giver 5k/10k baseline for #332; `docs/AI_OPS_BLIND_SPOTS.md` samler restore-cadence/SLO/risici; `docs/decisions/secret-management-adr.md` bekræfter Infisical for #327/#339.
