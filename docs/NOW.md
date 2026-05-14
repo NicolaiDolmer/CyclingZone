@@ -4,6 +4,7 @@
 **AI/Ops audit follow-up er dokumenteret.** Claude-feedbacken er omsat til konkrete ADR-/ops-leverancer i stedet for en ny bred audit.
 
 ## Senest leveret
+- 2026-05-14: **AI Ops Phase 3 — plugin disable** (#356) — `enabledPlugins` tilføjet til `.claude/settings.json`: disabled code-modernization, product-management, marketing, design, productivity (~35 skills). Estimeret besparelse ~1,500-3,300 tok/cold-start.
 - 2026-05-14: **Audit-feedback follow-up** — `docs/decisions/cache-adr.md` vælger Upstash Redis som første shared cache/rate-limit store for #334; `docs/AI_OPS_COST_MODEL.md` giver 5k/10k cost baseline for #332; `docs/AI_OPS_BLIND_SPOTS.md` samler restore-cadence, P95-SLO, fail-open/fail-closed og cache/realtime-risici; `docs/decisions/secret-management-adr.md` er verificeret mod #327/#339 og præciserer at Infisical allerede er valgt.
 - 2026-05-14: Live-kvalitetsaudit bekræftede PR #350 Speed Insights og PR #351 GSC verification; CI/CodeQL/gitleaks/deploy-verify grønne på main, prod smoke OK, `agent-doctor.ps1 -Json` viste `0 fail`, og #353 blev oprettet for manuel Speed Insights aktivering + vitals/consent verifikation.
 - 2026-05-13: **Zero-known-error hardening LIVE** — PR #345 merged; Drift Monitor, Quality Inbox, CI, CodeQL, Secret Scan og Deploy verify er grønne på main efter hotfix commits `03cd64f`, `3456c79`, `2b43a07`.
