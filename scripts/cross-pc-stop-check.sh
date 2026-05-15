@@ -39,6 +39,27 @@ if [ "$stash_count" -gt 0 ]; then
   issues+=("$stash_count stash-entry/-ies eksisterer (ikke synced)")
 fi
 
+# 4. Lokal-only AI-state i .codex.local/ (whitelist match — alt andet er lokal-only persistent)
+# Whitelist: SESSION_CONTEXT.md, SUPABASE_CONTEXT.md, supabase-readonly.env, preflight-state.json
+# + ephemeral patterns: commit-msg*.txt, commit-N.txt, commitmsg-*.txt, pr*-body.md, pr-body-*.md
+if [ -d ".codex.local" ]; then
+  local_only=$(find .codex.local -type f \
+    ! -name "SESSION_CONTEXT.md" \
+    ! -name "SUPABASE_CONTEXT.md" \
+    ! -name "supabase-readonly.env" \
+    ! -name "preflight-state.json" \
+    ! -name "commit-msg*.txt" \
+    ! -name "commit-*.txt" \
+    ! -name "commitmsg-*.txt" \
+    ! -name "pr*-body.md" \
+    ! -name "pr-body-*.md" \
+    2>/dev/null)
+  if [ -n "$local_only" ]; then
+    count=$(echo "$local_only" | wc -l)
+    issues+=("$count fil(er) i .codex.local/ udenfor whitelist (kør 'pwsh -File scripts/cross-pc-forensic-audit.ps1' for detaljer)")
+  fi
+fi
+
 if [ ${#issues[@]} -eq 0 ]; then
   exit 0
 fi

@@ -267,6 +267,69 @@ if ($needLink) {
 # Lokal .env-filer genereres ved: infisical export --env=dev > backend/.env
 # Se docs/decisions/secret-management-adr.md og docs/CROSS_PC_SETUP.md for bootstrap-vejledning.
 
+# --- 3a. Codex global memories junction ---
+Write-Section "Codex global memories junction (~/.codex/memories/)"
+
+$codexMemSource = Join-Path $contextRoot "codex-memories"
+$codexMemTarget = Join-Path $env:USERPROFILE ".codex\memories"
+
+if (Test-Path $codexMemSource) {
+  $needCodexLink = $true
+  if (Test-Path $codexMemTarget) {
+    $cmItem = Get-Item $codexMemTarget -Force
+    $isJunction = ($cmItem.LinkType -eq "Junction")
+    $targetMatches = $false
+    if ($isJunction -and $cmItem.Target) {
+      foreach ($t in @($cmItem.Target)) {
+        if ($t -eq $codexMemSource) { $targetMatches = $true; break }
+      }
+    }
+    if ($isJunction -and $targetMatches) {
+      Write-Host "  [skip] Junction allerede paa plads -> $codexMemSource"
+      $needCodexLink = $false
+    } elseif ($isJunction) {
+      if ($DryRun) {
+        Write-Host ("  [would-relink] Junction peger forkert ({0}); ville genskabe" -f ($cmItem.Target -join ', ')) -ForegroundColor Cyan
+        $needCodexLink = $false
+      } else {
+        Write-Host "  [warn] Junction peger forkert. Genskaber..."
+        Remove-Junction $codexMemTarget
+      }
+    } else {
+      $existing = @(Get-ChildItem $codexMemTarget -Recurse -File -ErrorAction SilentlyContinue)
+      if ($existing.Count -eq 0) {
+        if ($DryRun) {
+          Write-Host "  [would-rmdir] Tom codex-memories; ville slette og lave junction" -ForegroundColor Cyan
+          $needCodexLink = $false
+        } else {
+          Remove-Item $codexMemTarget -Recurse -Force
+          Write-Host "  Tom codex-memories slettet"
+        }
+      } else {
+        $details = "~/.codex/memories/ har {0} lokal(e) fil(er) der maa flyttes manuelt til {1} foer junction" -f $existing.Count, $codexMemSource
+        if ($DryRun) {
+          Write-Host ("  [STOP-conflict] {0}" -f $details) -ForegroundColor Red
+          Add-Conflict "codex-memories-junction" $details
+          $needCodexLink = $false
+        } else {
+          Write-Host ("  [STOP] {0}" -f $details) -ForegroundColor Red
+          throw "Manuel kontrol kraevet for at undgaa data-tab"
+        }
+      }
+    }
+  }
+  if ($needCodexLink) {
+    if ($DryRun) {
+      Write-Host "  [would-link] Junction: $codexMemTarget -> $codexMemSource" -ForegroundColor Cyan
+    } else {
+      New-Item -ItemType Junction -Path $codexMemTarget -Target $codexMemSource | Out-Null
+      Write-Host "  [ok] Junction: $codexMemTarget -> $codexMemSource"
+    }
+  }
+} else {
+  Write-Host "  [skip] codex-memories ikke i OneDrive endnu (forventet ved foerste setup)"
+}
+
 # --- 3. Codex-local hardlinks ---
 Write-Section "Codex-local hardlinks"
 
