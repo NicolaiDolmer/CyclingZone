@@ -186,16 +186,52 @@ if ($infisicalCmd) {
 }
 
 $sentrySignals = @()
-if ($env:SENTRY_DSN -or $env:VITE_SENTRY_DSN -or $env:SENTRY_AUTH_TOKEN) {
-  $sentrySignals += "env-present"
+$sentryHasBackendPkg = (Test-Path "backend/package.json") -and ((Get-Content -Raw "backend/package.json") -match "@sentry/node")
+$sentryHasFrontendPkg = (Test-Path "frontend/package.json") -and ((Get-Content -Raw "frontend/package.json") -match "@sentry/react")
+if ($sentryHasBackendPkg) { $sentrySignals += "backend-package" }
+if ($sentryHasFrontendPkg) { $sentrySignals += "frontend-package" }
+
+# DSN-signal: faktisk konfiguration, ikke kun pakke-installation.
+# Tjekker proces-env, backend/.env, og frontend/.env* (alle filer Vite læser ved build).
+$sentryHasBackendDsn = [bool]$env:SENTRY_DSN
+$sentryHasFrontendDsn = [bool]$env:VITE_SENTRY_DSN
+foreach ($envFile in @("backend/.env")) {
+  if (Test-Path $envFile) {
+    $content = Get-Content -Raw $envFile
+    if ($content -match "(?m)^\s*SENTRY_DSN\s*=\s*\S") { $sentryHasBackendDsn = $true }
+  }
 }
-if ((Test-Path "backend/package.json") -and ((Get-Content -Raw "backend/package.json") -match "@sentry/node")) {
-  $sentrySignals += "backend-package"
+foreach ($envFile in @("frontend/.env", "frontend/.env.local", "frontend/.env.production")) {
+  if (Test-Path $envFile) {
+    $content = Get-Content -Raw $envFile
+    if ($content -match "(?m)^\s*VITE_SENTRY_DSN\s*=\s*\S") { $sentryHasFrontendDsn = $true }
+  }
 }
-if ((Test-Path "frontend/package.json") -and ((Get-Content -Raw "frontend/package.json") -match "@sentry/react")) {
-  $sentrySignals += "frontend-package"
+if ($sentryHasBackendDsn) { $sentrySignals += "backend-dsn" }
+if ($sentryHasFrontendDsn) { $sentrySignals += "frontend-dsn" }
+
+# OK kræver BÅDE pakke OG DSN på begge sider — pakke alene betyder kun "wired", ikke "aktiv".
+# Bemærk: kan ikke verificere Railway/Vercel runtime-env herfra; manglende DSN her er kun et
+# lokalt signal. Prod-verifikation kræver Sentry-dashboard eller bundle-inspektion.
+$sentryStatus = if ($sentryHasBackendPkg -and $sentryHasFrontendPkg -and $sentryHasBackendDsn -and $sentryHasFrontendDsn) {
+  "OK"
+} elseif (($sentryHasBackendPkg -or $sentryHasFrontendPkg) -and -not ($sentryHasBackendDsn -or $sentryHasFrontendDsn)) {
+  "WARN"
+} elseif ($sentryHasBackendPkg -or $sentryHasFrontendPkg) {
+  "WARN"
+} else {
+  "WARN"
 }
-Add-Check "sentry-config" ($(if ($sentrySignals -contains "backend-package" -and $sentrySignals -contains "frontend-package") { "OK" } else { "WARN" })) ($(if ($sentrySignals.Count) { $sentrySignals -join ", " } else { "not configured" }))
+$sentryDetail = if ($sentrySignals.Count -eq 0) {
+  "not configured"
+} elseif (-not ($sentryHasBackendDsn -or $sentryHasFrontendDsn)) {
+  "wired but no DSN — set SENTRY_DSN (Railway) + VITE_SENTRY_DSN (Vercel) (#348)"
+} elseif (-not ($sentryHasBackendDsn -and $sentryHasFrontendDsn)) {
+  "partial DSN — missing $(if (-not $sentryHasBackendDsn) { 'backend SENTRY_DSN' } else { 'frontend VITE_SENTRY_DSN' }) (#348); have: $($sentrySignals -join ', ')"
+} else {
+  $sentrySignals -join ", "
+}
+Add-Check "sentry-config" $sentryStatus $sentryDetail
 
 $tokenHygiene = Try-Run @("pwsh", "-NoProfile", "-File", "scripts/check-agent-token-hygiene.ps1")
 if ($tokenHygiene.Ok) {
