@@ -6,6 +6,7 @@ import { statBg } from "../lib/statBg";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
+import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -544,6 +545,7 @@ export function TeamPage() {
         {[
           { key: "squad", label: `Trup (${currentRiders.length})` },
           { key: "economy", label: "Økonomi" },
+          { key: "transfers", label: "Transferhistorik" },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
@@ -558,6 +560,9 @@ export function TeamPage() {
       )}
       {tab === "economy" && (
         <EconomyTab team={team} riders={riders} transactions={transactions} />
+      )}
+      {tab === "transfers" && team?.id && (
+        <TeamTransferHistoryTab teamId={team.id} />
       )}
 
       {selectedRider && (

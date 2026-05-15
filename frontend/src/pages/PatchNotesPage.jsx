@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "3.40",
+    date: "2026-05-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Feature · Transferhistorik på holdbasis (#25)",
+        items: [
+          "Feature · Hold-profilen (`/teams/:id`) og dit eget hold (`/team`) har nu en `Transferhistorik`-tab der viser alle køb og salg for holdet: auktioner, direct transfers, swap-handler og lejeaftaler i én samlet, kronologisk tabel.",
+          "Feature · Tabellen er filtrerbar på sæson (default: denne sæson) og sortérbar på dato eller beløb. Swap-handler vises med begge involverede ryttere og evt. cash-justering; lejeaftaler markeres med `(lån)`.",
+          "Feature · AI-hold-modparter inkluderes så det fulde finansielle billede er synligt; private statuses (pending/rejected/cancelled) ekskluderes ifølge eksisterende privacy-kontrakt (#105).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.39",
     date: "2026-05-15",
     label: "Beta",

@@ -78,6 +78,7 @@ import {
 } from "../lib/discordNotifier.js";
 import { getPendingInboxItems } from "../lib/inboxPending.js";
 import { buildRiderHistory } from "../lib/riderHistory.js";
+import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import {
@@ -657,6 +658,16 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
 router.get("/riders/:id/history", requireAuth, async (req, res) => {
   try {
     const events = await buildRiderHistory(supabase, req.params.id);
+    res.json(events);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/teams/:id/transfer-history — komplet handelshistorik for ét hold (#25)
+router.get("/teams/:id/transfer-history", requireAuth, async (req, res) => {
+  try {
+    const events = await buildTeamTransferHistory(supabase, req.params.id);
     res.json(events);
   } catch (err) {
     res.status(500).json({ error: err.message });
