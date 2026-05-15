@@ -27,7 +27,7 @@ export default function TeamsPage() {
 
     const [teamsRes, ridersRes, standingsRes] = await Promise.all([
       supabase.from("teams")
-        .select("id, name, division, balance, sponsor_income, user:user_id(last_seen)")
+        .select("id, name, division, balance, sponsor_income, manager_name, user:user_id(last_seen)")
         .eq("is_ai", false)
         .eq("is_test_account", false)
         .order("division").order("name"),
@@ -137,6 +137,9 @@ export default function TeamsPage() {
                               px-1.5 py-0.5 rounded-full border border-cz-accent/30">Dig</span>
                           )}
                         </div>
+                        {team.manager_name && (
+                          <p className="text-cz-2 text-xs mt-0.5">{team.manager_name}</p>
+                        )}
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOnline ? "bg-green-400 shadow-[0_0_4px_rgba(74,222,128,0.8)]" : "bg-cz-subtle"}`} />
                           <p className="text-cz-3 text-xs">{riderCount} ryttere</p>
