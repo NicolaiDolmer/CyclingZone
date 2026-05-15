@@ -16,9 +16,10 @@
 
 ## Næste session (prioriteret)
 1. **TIDSKRITISK [#367](https://github.com/NicolaiDolmer/CyclingZone/issues/367) Mobile UX-verify** — deadline søn 17/5 (T-1 før Discord-launch mandag). 8 ruter via Playwright mobile-snapshots.
-2. **Brug AI_OPS_DISABLE_PLAYBOOK** — disconnect ubrugte MCP-connectors via claude.ai/settings/connectors; disable ubrugte plugin-skills via `/plugin`. Mål: cold-start <8K tok.
-3. **#334 implementering** (Phase 0-1: P95 baseline + Redis-backed rate-limit) ELLER **#332 ops-hardening** (restore-drill runbook).
-4. Rotér lokal `backend/.env` service-key til `sb_secret_*` ([#337](https://github.com/NicolaiDolmer/CyclingZone/issues/337)); aktivér Sentry secrets ([#348](https://github.com/NicolaiDolmer/CyclingZone/issues/348)).
+2. **[#373](https://github.com/NicolaiDolmer/CyclingZone/issues/373) Vite/plugin-react dependency hygiene** — køres efter #367 er grøn, før nye sprint-features (#359-#365) eller dybere scaling (#334). Langsigtet værdi: clean Vite 8 dependency tree + stabil CI/build før mere frontend-arbejde.
+3. **Brug AI_OPS_DISABLE_PLAYBOOK** — disconnect ubrugte MCP-connectors via claude.ai/settings/connectors; disable ubrugte plugin-skills via `/plugin`. Mål: cold-start <8K tok.
+4. **#334 implementering** (Phase 0-1: P95 baseline + Redis-backed rate-limit) ELLER **#332 ops-hardening** (restore-drill runbook).
+5. Rotér lokal `backend/.env` service-key til `sb_secret_*` ([#337](https://github.com/NicolaiDolmer/CyclingZone/issues/337)); aktivér Sentry secrets ([#348](https://github.com/NicolaiDolmer/CyclingZone/issues/348)).
 
 ## Skalerings-roadmap
 - [x] **Fase 1: Bulletproof Baseline** — zero-known-error hardening live.

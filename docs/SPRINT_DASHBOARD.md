@@ -101,6 +101,7 @@
 ## 🔧 Tekniske opgaver (GitHub-issues)
 
 > Auto-synk: `gh issue list --label sprint-validation --state open`
+> **Pre-feature tech hygiene:** [#373](https://github.com/NicolaiDolmer/CyclingZone/issues/373) Vite/plugin-react dependency alignment køres efter #367 Mobile UX-verification og før nye sprint-feature issues. Formål: holde Vite 8 build-kæden ren før mere frontend-arbejde.
 
 | # | Status | Issue | Codex assigned |
 |---|---|---|---|
