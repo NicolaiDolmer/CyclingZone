@@ -228,7 +228,8 @@ CREATE TABLE IF NOT EXISTS public.board_plan_snapshots (
   satisfaction_delta INTEGER,
   goals_met INTEGER NOT NULL DEFAULT 0,
   goals_total INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT board_plan_snapshots_board_season_unique UNIQUE (board_id, season_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_plan_snapshots_team
