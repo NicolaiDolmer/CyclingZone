@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.35",
+    date: "2026-05-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Hall of Fame (#223)",
+        items: [
+          "Managers-fanen i Hall of Fame viser nu manager-/holdnavnet i stedet for det login-username, som man oprettede sig med. Hvis manager-navn og holdnavn er forskellige, vises holdnavnet under som undertekst, og rækken linker til holdets profil.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.34",
     date: "2026-05-15",
     label: "Beta",

@@ -41,7 +41,7 @@ export default function HallOfFamePage() {
         .select("*, team:team_id(id, name, is_ai), season:season_id(number)")
         .order("total_points", { ascending: false }),
       supabase.from("teams")
-        .select("id, name, division, user:user_id(id, username, level, xp, role)")
+        .select("id, name, division, manager_name, user:user_id(id, username, level, xp, role)")
         .eq("is_ai", false)
         .eq("is_test_account", false)
         .order("name"),
@@ -57,8 +57,8 @@ export default function HallOfFamePage() {
     setStandings(standingsRes.data || []);
     // Flatten team + user data for managers tab
     setManagers((managersRes.data || [])
-      .map(t => ({ ...t.user, team_name: t.name, team_division: t.division }))
-      .filter(m => m.username)
+      .map(t => ({ ...t.user, team_id: t.id, team_name: t.name, team_division: t.division, manager_name: t.manager_name }))
+      .filter(m => m.id && (m.manager_name || m.team_name))
       .sort((a, b) => (b.level || 1) - (a.level || 1) || (b.xp || 0) - (a.xp || 0)));
     setLoading(false);
   }
@@ -203,7 +203,14 @@ export default function HallOfFamePage() {
                 return (
                   <tr key={m.id} className="border-b border-cz-border hover:bg-cz-subtle">
                     <td className="px-4 py-3 text-cz-2 font-mono text-sm">#{i + 1}</td>
-                    <td className="px-4 py-3 text-cz-1 font-medium">{m.username || "—"}</td>
+                    <td className="px-4 py-3">
+                      <TeamLink id={m.team_id} className="text-cz-1 font-medium hover:text-cz-accent-t">
+                        {m.manager_name || m.team_name || "—"}
+                      </TeamLink>
+                      {m.manager_name && m.team_name && m.manager_name !== m.team_name && (
+                        <p className="text-cz-3 text-xs">{m.team_name}</p>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-cz-subtle"
                         style={{ color: levelInfo.color }}>
