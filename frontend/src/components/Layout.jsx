@@ -9,6 +9,7 @@ import MobileQuickNav from "./MobileQuickNav";
 const API = import.meta.env.VITE_API_URL;
 
 const BOTTOM_ITEMS = [
+  { to: "/profile",     label: "Indstillinger" },
   { to: "/help",        label: "Hjælp & Regler" },
   { to: "/patch-notes", label: "Patch Notes" },
 ];
@@ -24,7 +25,6 @@ function buildNavGroups(team) {
         { to: "/finance",        label: "Økonomi" },
         { to: "/notifications",  label: "Indbakke", badge: true },
         ...(team?.id ? [{ to: `/managers/${team.id}`, label: "Min Managerprofil" }] : []),
-        { to: "/profile",        label: "Indstillinger" },
       ],
     },
     {

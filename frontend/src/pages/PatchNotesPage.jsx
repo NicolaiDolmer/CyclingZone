@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.34",
+    date: "2026-05-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "UX · Indstillinger flyttet til bunden af sidebaren (#308)",
+        items: [
+          "UX · Indstillinger ligger nu nederst i sidebaren sammen med Hjælp & Regler og Patch Notes, så Klubhus-gruppen kun indeholder de daglige klubhus-funktioner. Indholdet på selve siden er uændret.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.33",
     date: "2026-05-15",
     label: "Beta",
