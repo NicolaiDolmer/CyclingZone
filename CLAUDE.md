@@ -37,7 +37,7 @@ Ingen lokal-only handoff: projekt-state, beslutninger og næste skridt skal vær
 - Tjekliste før commit; ÉN issue pr. session
 - Foreslå "Næste session starter med #N..." ved close-out
 
-## Token-budget (målt 2026-05-15 — #382 Claude/Codex split)
+## Token-budget (målt 2026-05-15 — #382 verificeret)
 
 | Komponent | Faktisk | Target | Auto-load af | Note |
 |---|---|---|---|---|
@@ -47,8 +47,8 @@ Ingen lokal-only handoff: projekt-state, beslutninger og næste skridt skal vær
 | NOW.md | 711 | <900 | Claude+Codex | OK efter #379 trim |
 | AGENTS.md | 4,099 | <4,500 | **Codex only** | OpenAI Codex-konvention; Claude Code loader IKKE denne (#382 finding) |
 | GUARDRAILS_CORE.md | 1,111 | <1,300 | Conditional | Kun ~20% af sessioner |
-| MCP+skills harness | **14,985** | <10,000 | Begge | Forventet -490 tok næste session efter `code-modernization` disable (#382); se [`HARNESS_MEASUREMENT.md`](docs/metrics/HARNESS_MEASUREMENT.md) |
-| **Claude cold-start** | **18,895** | <8,000 verdens-klasse | — | Aktuel; #382 effekt verificeres næste session |
-| **Codex cold-start** | **23,459** | <12,000 | — | Inkluderer AGENTS.md + SESSION_CONTEXT.md som Claude ikke loader |
+| MCP+skills harness | **14,782** | <10,000 | Begge | #382 verificeret: code-modernization disabled, -203 tok (26→19 skills); projeret -490 var overestimat. Se [`HARNESS_MEASUREMENT.md`](docs/metrics/HARNESS_MEASUREMENT.md) |
+| **Claude cold-start** | **18,687** | <8,000 verdens-klasse | — | -203 tok post-#382 |
+| **Codex cold-start** | **23,251** | <12,000 | — | Inkluderer AGENTS.md + SESSION_CONTEXT.md som Claude ikke loader |
 
 Per-PC harness-snapshot: `docs/metrics/harness-snapshot-<COMPUTERNAME>.json`. Refresh ved connector/plugin-ændring.

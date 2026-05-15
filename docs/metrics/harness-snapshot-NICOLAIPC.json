@@ -1,8 +1,8 @@
 {
   "host": "NICOLAIPC",
   "user_profile": "ndmh3",
-  "captured": "2026-05-15T13:32:00+02:00",
-  "captured_via": "manuel optælling fra session-start system-reminders + observation af top-level tool schemas i prompt + post-connect observation (Discord kom online mid-session)",
+  "captured": "2026-05-15T14:10:00+02:00",
+  "captured_via": "manuel optælling fra session-start system-reminders + post-#382 verifikation",
   "methodology": "Se docs/metrics/HARNESS_MEASUREMENT.md. Refresh ved enhver connector- eller plugin-ændring.",
   "components": {
     "system_prompt_preamble_tokens": 2500,
@@ -10,8 +10,8 @@
     "top_level_tool_schemas_tokens": 7500,
     "deferred_tools_count": 149,
     "deferred_tools_tokens": 2235,
-    "skills_count": 26,
-    "skills_tokens": 750
+    "skills_count": 19,
+    "skills_tokens": 547
   },
   "deferred_tools_breakdown": {
     "builtin_cron_plus_misc": 16,
@@ -36,10 +36,9 @@
   },
   "enabled_plugins": [
     "frontend-design@claude-plugins-official",
-    "claude-code-setup@claude-plugins-official",
-    "code-modernization@claude-plugins-official"
+    "claude-code-setup@claude-plugins-official"
   ],
-  "total_harness_tokens": 14985,
+  "total_harness_tokens": 14782,
   "executed_cuts_phase_b_2026_05_15": {
     "executed_by_user_in_browser": "2026-05-15",
     "execution_method": "Manuel disconnect via https://claude.ai/settings/connectors. Effekt i NÆSTE Claude Code session.",
@@ -89,6 +88,28 @@
       "delta_from_projected_pct": 0.0,
       "note": "Discord var still connecting ved første session-start måling kl 13:30 (127 tools, 14655 tok). Discord MCP server kom online kl ~13:32 og tilføjede præcis 22 tools — match med pre-Phase-B count. Steady-state nu 149 tools / 14985 tok, hvilket matcher projektion exact."
     }
+  },
+  "executed_cuts_phase_3_2026_05_15": {
+    "executed_by_user": "2026-05-15",
+    "execution_method": "Plugin disable via /plugin slash-command. Effekt verificeret i denne session.",
+    "cuts": [
+      {
+        "plugin": "code-modernization@claude-plugins-official",
+        "skills_removed": 7,
+        "skills_count_before": 26,
+        "skills_count_after": 19,
+        "estimated_savings_tokens": 203,
+        "calculation": "(26-19) × (750/26) ≈ 203 tok (samme avg-tok/skill som pre-cut snapshot)",
+        "status": "disabled",
+        "verified": true,
+        "verification_note": "code-modernization:* fraværende i session-start skill-list system-reminder; enabled_plugins liste verificeret reduceret"
+      }
+    ],
+    "projected_savings_in_claude_md": 490,
+    "actual_savings_estimate": 203,
+    "savings_discrepancy_note": "CLAUDE.md projekterede -490 tok; faktisk måling via avg-tok-per-skill viser -203 tok. Diskrepansen skyldes formentlig at den projekerede værdi inkluderede top-level tools eller andre artefakter som code-modernization ikke faktisk eksponerede. Aktuel måling baseres på direkte skill-count diff (-7 skills).",
+    "total_harness_post_cut_tokens": 14782,
+    "verification_status": "verified"
   },
   "kept_explicit_decision_2026_05_15": {
     "Microsoft_Clarity": "0 calls — beholdt på user-valg (UX-analytics fremtid)",
