@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.39",
+    date: "2026-05-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Bestyrelsen — dublet-snapshots i Sæsonhistorik (#30)",
+        items: [
+          "Bugfix · Sæsonhistorik på Bestyrelse-siden kunne i sjældne tilfælde vise to rækker for samme sæson med forskellige rangs og tilfredshed-deltas (sket hvis sæson-slut-cron'en blev kørt mere end én gang for samme sæson). Database-constraint sikrer nu at hver plan kun kan have ét snapshot pr. sæson, og cron'en er gjort idempotent.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.38",
     date: "2026-05-15",
     label: "Beta",
