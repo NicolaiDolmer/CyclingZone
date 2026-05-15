@@ -1,0 +1,86 @@
+{
+  "timestamp": "2026-05-15T13:30:26+02:00",
+  "host": "NICOLAIPC",
+  "cold_start_total_est": 24113.0,
+  "file_context_total": 9128.0,
+  "harness_blob_value": 14985,
+  "harness_blob_source": "measured-snapshot (docs/metrics/harness-snapshot-NICOLAIPC.json)",
+  "memory_dir_total": 46871.0,
+  "checks": [
+    {
+      "Check": "CLAUDE.md",
+      "Status": "OK",
+      "Detail": "850 approx tokens, 38 lines"
+    },
+    {
+      "Check": "AGENTS.md",
+      "Status": "WARN",
+      "Detail": "4532 approx tokens, 225 lines"
+    },
+    {
+      "Check": "NOW.md",
+      "Status": "WARN",
+      "Detail": "999 approx tokens, 23 lines"
+    },
+    {
+      "Check": "GUARDRAILS_CORE.md",
+      "Status": "OK",
+      "Detail": "1111 approx tokens, 54 lines"
+    },
+    {
+      "Check": "SESSION_CONTEXT.md",
+      "Status": "OK",
+      "Detail": "465 approx tokens, 23 lines"
+    },
+    {
+      "Check": "cold-start-context",
+      "Status": "WARN",
+      "Detail": "7957 approx tokens across standard startup files"
+    },
+    {
+      "Check": "claude-memory",
+      "Status": "OK",
+      "Detail": "1171 approx tokens in MEMORY.md (HOT auto-load)"
+    },
+    {
+      "Check": "latest-transcript",
+      "Status": "OK",
+      "Detail": "177.9 KB, 823e2fa2-47e3-421d-a4ec-80ea0b8387b5.jsonl"
+    },
+    {
+      "Check": "issue-prefetch-bounds",
+      "Status": "OK",
+      "Detail": "bounded"
+    },
+    {
+      "Check": "memory-dir-total",
+      "Status": "INFO",
+      "Detail": "46871 approx tokens across 100 memory files (on-demand)"
+    },
+    {
+      "Check": "memory-hot-budget",
+      "Status": "OK",
+      "Detail": "MEMORY.md 34 lines (target <40, fail >50)"
+    },
+    {
+      "Check": "claude-md-budget",
+      "Status": "OK",
+      "Detail": "CLAUDE.md 38 lines (target <60, fail >80)"
+    },
+    {
+      "Check": "now-md-budget",
+      "Status": "OK",
+      "Detail": "docs/NOW.md 23 lines (target <30, fail >40)"
+    },
+    {
+      "Check": "harness-blob-estimate",
+      "Status": "INFO",
+      "Detail": "14985 approx tokens (source: measured-snapshot (docs/metrics/harness-snapshot-NICOLAIPC.json))"
+    },
+    {
+      "Check": "cold-start-total-est",
+      "Status": "FAIL",
+      "Detail": "24113 approx tokens (files + harness blob)"
+    }
+  ]
+}

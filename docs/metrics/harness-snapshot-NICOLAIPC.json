@@ -1,24 +1,23 @@
 {
   "host": "NICOLAIPC",
   "user_profile": "ndmh3",
-  "captured": "2026-05-15T10:50:00+02:00",
-  "captured_via": "manuel optælling fra session-start system-reminders + observation af top-level tool schemas i prompt",
+  "captured": "2026-05-15T13:32:00+02:00",
+  "captured_via": "manuel optælling fra session-start system-reminders + observation af top-level tool schemas i prompt + post-connect observation (Discord kom online mid-session)",
   "methodology": "Se docs/metrics/HARNESS_MEASUREMENT.md. Refresh ved enhver connector- eller plugin-ændring.",
   "components": {
     "system_prompt_preamble_tokens": 2500,
     "auto_memory_block_tokens": 2000,
     "top_level_tool_schemas_tokens": 7500,
-    "deferred_tools_count": 202,
-    "deferred_tools_tokens": 3030,
-    "skills_count": 20,
+    "deferred_tools_count": 149,
+    "deferred_tools_tokens": 2235,
+    "skills_count": 26,
     "skills_tokens": 750
   },
   "deferred_tools_breakdown": {
     "builtin_cron_plus_misc": 16,
     "supabase_mcp": 29,
-    "github_mcp": 41,
     "google_calendar": 8,
-    "gmail": 12,
+    "gmail": 0,
     "google_drive": 8,
     "claude_preview": 13,
     "claude_in_chrome": 22,
@@ -30,12 +29,17 @@
     "scheduled_tasks": 3,
     "discord": 22
   },
+  "deferred_tools_breakdown_notes": {
+    "github_mcp": "removed 2026-05-15 (Phase B cut, var 41)",
+    "gmail": "removed 2026-05-15 (Phase B cut, var 12)",
+    "discord": "Connected mid-session 13:32; 22 tools matcher steady-state estimate exact"
+  },
   "enabled_plugins": [
     "frontend-design@claude-plugins-official",
     "claude-code-setup@claude-plugins-official",
     "code-modernization@claude-plugins-official"
   ],
-  "total_harness_tokens": 15780,
+  "total_harness_tokens": 14985,
   "executed_cuts_phase_b_2026_05_15": {
     "executed_by_user_in_browser": "2026-05-15",
     "execution_method": "Manuel disconnect via https://claude.ai/settings/connectors. Effekt i NÆSTE Claude Code session.",
@@ -45,14 +49,18 @@
         "uuid": "749f70dd-c503-4879-94a1-35b0c0754720",
         "tools_removed": 12,
         "projected_savings_tokens": 180,
-        "status": "disconnected"
+        "actual_savings_tokens": 180,
+        "status": "disconnected",
+        "verified": true
       },
       {
         "connector": "GitHub MCP (CUSTOM)",
         "uuid": "392d630e-5e88-4afd-9c53-0a45062c42af",
         "tools_removed": 41,
         "projected_savings_tokens": 615,
+        "actual_savings_tokens": 615,
         "status": "disconnected",
+        "verified": true,
         "note": "Den CUSTOM-tagged GitHub; 'GitHub Integration' connector forblev urørt"
       }
     ],
@@ -66,10 +74,21 @@
     ],
     "total_tools_removed": 53,
     "projected_harness_savings_tokens": 795,
+    "actual_harness_savings_tokens": 795,
     "projected_harness_post_cuts_tokens": 14985,
     "projected_cold_start_post_cuts_tokens": 24015,
-    "verification_status": "pending — næste session måler faktisk",
-    "verification_step": "Start ny Claude Code session, paste verifikations-prompt fra docs/NOW.md eller commit-message"
+    "verification_status": "verified",
+    "verification_session": "2026-05-15T13:32:00+02:00",
+    "verification_observations": {
+      "deferred_tools_count_pre_phase_b": 202,
+      "deferred_tools_count_post_phase_b": 149,
+      "diff_from_projected": 0,
+      "harness_actual_tokens": 14985,
+      "harness_projected_tokens": 14985,
+      "match_within_5pct_threshold": true,
+      "delta_from_projected_pct": 0.0,
+      "note": "Discord var still connecting ved første session-start måling kl 13:30 (127 tools, 14655 tok). Discord MCP server kom online kl ~13:32 og tilføjede præcis 22 tools — match med pre-Phase-B count. Steady-state nu 149 tools / 14985 tok, hvilket matcher projektion exact."
+    }
   },
   "kept_explicit_decision_2026_05_15": {
     "Microsoft_Clarity": "0 calls — beholdt på user-valg (UX-analytics fremtid)",
