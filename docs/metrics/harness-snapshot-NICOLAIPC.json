@@ -36,8 +36,8 @@
     "code-modernization@claude-plugins-official"
   ],
   "total_harness_tokens": 15780,
-  "planned_cuts_phase_b_2026_05_15": {
-    "approved_by_user": "2026-05-15",
+  "executed_cuts_phase_b_2026_05_15": {
+    "executed_by_user_in_browser": "2026-05-15",
     "execution_method": "Manuel disconnect via https://claude.ai/settings/connectors. Effekt i NÆSTE Claude Code session.",
     "cuts": [
       {
@@ -45,30 +45,31 @@
         "uuid": "749f70dd-c503-4879-94a1-35b0c0754720",
         "tools_removed": 12,
         "projected_savings_tokens": 180,
-        "rationale": "0 tool-calls i 75 sessioner",
-        "actual_usage_calls_75_sess": 0
+        "status": "disconnected"
       },
       {
-        "connector": "mcp-registry",
-        "tools_removed": 3,
-        "projected_savings_tokens": 45,
-        "rationale": "Discovery-tool, ingen aktiv discovery-behov",
-        "actual_usage_calls_75_sess": 0
-      },
-      {
-        "connector": "GitHub MCP",
+        "connector": "GitHub MCP (CUSTOM)",
         "uuid": "392d630e-5e88-4afd-9c53-0a45062c42af",
         "tools_removed": 41,
         "projected_savings_tokens": 615,
-        "rationale": "3 calls ever. Bruger gh CLI per feedback_github_mcp_issue_write_403 memory. Største enkelt-cut.",
-        "actual_usage_calls_75_sess": 3
+        "status": "disconnected",
+        "note": "Den CUSTOM-tagged GitHub; 'GitHub Integration' connector forblev urørt"
       }
     ],
-    "total_tools_removed": 56,
-    "projected_harness_savings_tokens": 840,
-    "projected_harness_post_cuts_tokens": 14940,
-    "projected_cold_start_post_cuts_tokens": 23970,
-    "verification_step": "Efter manuel disconnect: start ny Claude Code session, opdater denne fil med nye counts, kør 'pwsh -File scripts/check-agent-token-hygiene.ps1 -BaselineOut docs/metrics/token-baseline-post-phase-b.json'"
+    "skipped_cuts": [
+      {
+        "connector": "mcp-registry",
+        "reason": "Ikke synlig i claude.ai/settings/connectors UI — sandsynligvis system-managed eller bag /plugin slash-command",
+        "tools_kept": 3,
+        "tokens_kept": 45
+      }
+    ],
+    "total_tools_removed": 53,
+    "projected_harness_savings_tokens": 795,
+    "projected_harness_post_cuts_tokens": 14985,
+    "projected_cold_start_post_cuts_tokens": 24015,
+    "verification_status": "pending — næste session måler faktisk",
+    "verification_step": "Start ny Claude Code session, paste verifikations-prompt fra docs/NOW.md eller commit-message"
   },
   "kept_explicit_decision_2026_05_15": {
     "Microsoft_Clarity": "0 calls — beholdt på user-valg (UX-analytics fremtid)",
