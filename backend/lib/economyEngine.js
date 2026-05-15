@@ -751,7 +751,11 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
     const u25StatSum = computeU25StatSum(team.riders);
     const u25Count = (team.riders || []).filter((r) => r.is_u25).length;
 
-    const { error: snapshotError } = await supabaseClient.from("board_plan_snapshots").insert({
+    // #30 · Upsert med onConflict: re-runs af processSeasonEnd for samme
+    // (board, season) overskriver i stedet for at indsaette dubletter.
+    // DB-constraint board_plan_snapshots_board_season_unique haandhaever
+    // det samme paa lavere niveau (migration 2026-05-15).
+    const { error: snapshotError } = await supabaseClient.from("board_plan_snapshots").upsert({
       team_id: team.id,
       board_id: board.id,
       season_id: seasonId,
@@ -765,8 +769,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       goals_total: goals.length,
       u25_stat_sum: u25StatSum,
       u25_count: u25Count,
-    });
-    throwIfSupabaseError(snapshotError, `Could not insert board snapshot for ${team.name}`);
+    }, { onConflict: "board_id,season_id" });
+    throwIfSupabaseError(snapshotError, `Could not upsert board snapshot for ${team.name}`);
 
     let replacementInfo = null;
     if (planIsComplete) {

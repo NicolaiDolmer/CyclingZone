@@ -329,6 +329,21 @@ function createSeasonEndSupabase({
             state.inserts.board_plan_snapshots.push(payload);
             return Promise.resolve({ error: null });
           },
+          // #30 · Spejler DB-constraint board_plan_snapshots_board_season_unique
+          // ved at overskrive eksisterende row med samme (board_id, season_id)
+          // i stedet for at tilfoeje en dublet.
+          upsert(payload, options) {
+            assert.deepEqual(options, { onConflict: "board_id,season_id" });
+            const existingIdx = state.inserts.board_plan_snapshots.findIndex(
+              (row) => row.board_id === payload.board_id && row.season_id === payload.season_id
+            );
+            if (existingIdx >= 0) {
+              state.inserts.board_plan_snapshots[existingIdx] = payload;
+            } else {
+              state.inserts.board_plan_snapshots.push(payload);
+            }
+            return Promise.resolve({ error: null });
+          },
         };
       }
 
@@ -812,6 +827,79 @@ test("processSeasonEnd keeps the board flow on the shared runtime path", async (
   assert.equal(supabase.state.inserts.notifications.length, 1);
   assert.equal(supabase.state.inserts.board_plan_snapshots[0].goals_met, 1);
   assert.equal(supabase.state.inserts.board_plan_snapshots[0].goals_total, 1);
+});
+
+// #30 · Re-run af processSeasonEnd for samme saeson maa ikke producere
+// to snapshot-rows. Spejler DB-constraint board_plan_snapshots_board_season_unique.
+test("processSeasonEnd is idempotent for board snapshots — re-run upserts instead of duplicating", async () => {
+  const buildScenario = () => ({
+    season: { id: "season-1", number: 5, status: "active" },
+    team: {
+      id: "team-1",
+      name: "Idempotency Test",
+      is_ai: false,
+      user_id: "user-1",
+      balance: 500,
+      sponsor_income: 200,
+      riders: [],
+    },
+    board: {
+      id: "board-1",
+      team_id: "team-1",
+      plan_type: "1yr",
+      focus: "balanced",
+      satisfaction: 50,
+      budget_modifier: 1.0,
+      current_goals: [
+        {
+          type: "top_n_finish",
+          target: 2,
+          label: "Top 2 i divisionen",
+          satisfaction_bonus: 10,
+          satisfaction_penalty: 5,
+        },
+      ],
+      seasons_completed: 0,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      plan_start_sponsor_income: 200,
+    },
+    standings: [
+      {
+        season_id: "season-1",
+        team_id: "team-1",
+        division: 3,
+        total_points: 150,
+        rank_in_division: 1,
+        stage_wins: 2,
+        gc_wins: 1,
+        team: { id: "team-1", is_ai: false },
+      },
+    ],
+  });
+
+  const supabase = createSeasonEndSupabase(buildScenario());
+
+  const deps = {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+  };
+
+  await processSeasonEnd("season-1", deps);
+  assert.equal(supabase.state.inserts.board_plan_snapshots.length, 1);
+
+  // Reset season-status saa cron'en kan koeres igen (simulerer manuel re-run).
+  supabase.state.season.status = "active";
+  await processSeasonEnd("season-1", deps);
+
+  assert.equal(
+    supabase.state.inserts.board_plan_snapshots.length,
+    1,
+    "Anden processSeasonEnd-kald maa ikke skabe en dublet snapshot for (board-1, season-1)"
+  );
 });
 
 test("processSeasonEnd skips writing a duplicate board notification when the same recent update already exists", async () => {
