@@ -2,6 +2,21 @@
 
 const PATCHES = [
   {
+    version: "3.32",
+    date: "2026-05-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · Scaling Fase 3 — in-process response cache (#334)",
+        items: [
+          "Infra · `/api/riders` (60s TTL), `/api/races`, `/api/race-pool` og `/api/race-points` (10 min TTL) cacher nu responsen i backend-processen og rammer Supabase langt sjældnere ved gentagne reads. Ingen ekstra infra eller cost — Upstash Redis defer'es til når en anden backend-instans bliver relevant (#330).",
+          "Infra · Cache invalideres automatisk når en handling ændrer state (auction-finalize, transfer-bekræftelse, swap-bekræftelse, lejeaftalens buyout, race-resultat-godkendelse, admin override/retirement/race-creation/race-pool-import). Aggressivt kort TTL på ryttere holder evt. resterende stale-vindue under 60 sekunder.",
+          "Infra · Sentry breadcrumbs i `endpoint-timing`-kategorien giver P50/P95-baseline pr. endpoint så cache-effekten kan måles. Admin-endpoint `GET /api/admin/cache-stats` viser hit/miss/invalidations pr. namespace. `RESPONSE_CACHE_DISABLED=1` er break-glass.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.31",
     date: "2026-05-13",
     label: "Beta",

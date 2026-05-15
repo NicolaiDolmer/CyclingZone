@@ -188,6 +188,22 @@ import {
   marketWriteLimiter,
   presencePulseLimiter,
 } from "../lib/rateLimiters.js";
+import {
+  cached,
+  invalidateNamespace,
+  getCacheStats,
+} from "../lib/responseCache.js";
+
+// Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
+// Riders: 60s — ownership changes propagate within one polling cycle; explicit
+// invalidation on auction-finalize and transfer execution covers the high-
+// visibility cases. Races / race-pool / race-points: 10 min — admin-only writes.
+const CACHE_TTL = {
+  riders: 60_000,
+  races: 600_000,
+  racePool: 600_000,
+  racePoints: 600_000,
+};
 
 // Load .env from backend root
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -580,7 +596,9 @@ router.get("/deadline-day/squads", requireAuth, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // GET /api/riders — search and filter riders
-router.get("/riders", requireAuth, async (req, res) => {
+// Cached per (sorted-query). 60s TTL; auction-finalize, transfer/swap execute,
+// loan, retirement, and admin override-rider invalidate the namespace.
+router.get("/riders", requireAuth, cached({ namespace: "riders", ttlMs: CACHE_TTL.riders }, async (req, res) => {
   const {
     q, team_id, free_agent, u25, min_uci, max_uci,
     sort = "uci_points", order = "desc",
@@ -621,7 +639,7 @@ router.get("/riders", requireAuth, async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
 
   res.json({ riders: data, total: count, page: parseInt(page), limit: parseInt(limit) });
-});
+}));
 
 // GET /api/riders/:id — single rider detail
 router.get("/riders/:id", requireAuth, async (req, res) => {
@@ -1356,6 +1374,8 @@ router.post("/auctions/:id/finalize", requireAdmin, adminWriteLimiter, async (re
     return res.json({ success: false, reason: "squad_full" });
   }
 
+  // Rider ownership changed; drop cached /api/riders responses immediately.
+  invalidateNamespace("riders");
   res.json({ success: true, result });
 });
 
@@ -1755,6 +1775,14 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       return res.status(result.status).json({ error: result.error });
     }
 
+    // Executed transfer changes rider ownership; drop /api/riders cache.
+    // "accepted" is returned by executeTransferOffer when both sides confirmed
+    // AND the transfer window was open. "confirmed_partial" / "window_pending"
+    // do not yet move the rider, so cache stays.
+    if (result.action === "accepted") {
+      invalidateNamespace("riders");
+    }
+
     return res.json({
       success: true,
       action: result.action,
@@ -2061,6 +2089,11 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
       return res.status(result.status).json({ error: result.error });
     }
 
+    // Executed swap moves two riders between teams; drop /api/riders cache.
+    if (result.action === "accepted") {
+      invalidateNamespace("riders");
+    }
+
     return res.json({ success: true, action: result.action });
   }
 
@@ -2356,6 +2389,8 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     await notifyTeamOwner(loan.from_team_id, "transfer_offer_accepted",
       "Købsoption udnyttet",
       `${req.team.name} har udnyttet købsoptionen på ${loan.rider.firstname} ${loan.rider.lastname} for ${price.toLocaleString()} CZ$`, loan.id);
+    // Buyout moves rider permanently; drop /api/riders cache.
+    invalidateNamespace("riders");
     return res.json({ success: true, action: "buyout", price });
   }
 
@@ -2373,6 +2408,7 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
   if (error) return res.status(500).json({ error: error.message });
   const teamRes = team_id ? await supabase.from("teams").select("name").eq("id", team_id).single() : null;
   const teamName = teamRes?.data?.name || "fri agent";
+  invalidateNamespace("riders");
   res.json({ success: true, message: `${rider.firstname} ${rider.lastname} flyttet til ${teamName}` });
 });
 
@@ -2396,6 +2432,8 @@ router.post("/admin/riders/:id/retirement", requireAdmin, adminWriteLimiter, asy
     .eq("id", rider.id);
   if (error) return res.status(500).json({ error: error.message });
 
+  // /api/riders filters on is_retired=false; retirement flips visibility.
+  invalidateNamespace("riders");
   res.json({
     success: true,
     message: `${rider.firstname} ${rider.lastname} er ${isRetired ? "pensioneret" : "aktiveret igen"}`,
@@ -2493,6 +2531,9 @@ router.post("/admin/approve-results", requireAdmin, adminWriteLimiter, async (re
       },
     });
 
+    // Race approval updates UCI points on riders + race status; drop both caches.
+    invalidateNamespace("riders");
+    invalidateNamespace("races");
     res.json({
       success: true,
       rows_imported: result.rowsImported,
@@ -3430,6 +3471,7 @@ router.post("/admin/races", requireAdmin, adminWriteLimiter, async (req, res) =>
     const { data: createdRace, error: createError } = await createRaceRecord(payload);
     if (createError) return res.status(500).json({ error: createError.message });
 
+    invalidateNamespace("races");
     res.status(201).json(createdRace);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -3437,7 +3479,8 @@ router.post("/admin/races", requireAdmin, adminWriteLimiter, async (req, res) =>
 });
 
 // GET /api/race-pool — public katalog af alle tilgængelige løb (Slice 09)
-router.get("/race-pool", async (req, res) => {
+// Cached 10 min; admin race-pool import-csv invalidates the namespace.
+router.get("/race-pool", cached({ namespace: "race-pool", ttlMs: CACHE_TTL.racePool }, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("race_pool")
@@ -3449,7 +3492,7 @@ router.get("/race-pool", async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-});
+}));
 
 // GET /api/admin/race-pool — admin overblik (samme data, men som admin)
 router.get("/admin/race-pool", requireAdmin, async (req, res) => {
@@ -3491,6 +3534,7 @@ router.post("/admin/race-pool/import-csv", requireAdmin, adminWriteLimiter, asyn
       )
       .select("id, external_id, name");
     if (error) return res.status(500).json({ error: error.message });
+    invalidateNamespace("race-pool");
     res.json({
       success: true,
       processed: rows.length,
@@ -3596,6 +3640,7 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
       .select("id, pool_race_id, name");
     if (createError) return res.status(500).json({ error: createError.message });
 
+    invalidateNamespace("races");
     res.json({
       success: true,
       inserted: created?.length || 0,
@@ -3608,7 +3653,9 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
 
 
 // GET /api/race-points — UCI-pointtabel for alle løbsklasser
-router.get("/race-points", requireAuth, async (req, res) => {
+// Cached 10 min; race_points seeds change only via migration/seed scripts so a
+// long TTL is safe. Manually invalidate via RESPONSE_CACHE_DISABLED=1 if needed.
+router.get("/race-points", requireAuth, cached({ namespace: "race-points", ttlMs: CACHE_TTL.racePoints }, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("race_points")
@@ -3619,11 +3666,13 @@ router.get("/race-points", requireAuth, async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-});
+}));
 
 // GET /api/races — søgbar liste over alle løb på tværs af sæsoner
 // Query: season (id eller number), class (race_class), status, q (substring i navn)
-router.get("/races", requireAuth, async (req, res) => {
+// Cached 10 min; admin race creation, season race-selection, and race-pool
+// import invalidate the namespace.
+router.get("/races", requireAuth, cached({ namespace: "races", ttlMs: CACHE_TTL.races }, async (req, res) => {
   try {
     const { season, class: raceClass, q, status } = req.query;
 
@@ -3660,6 +3709,12 @@ router.get("/races", requireAuth, async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+}));
+
+// GET /api/cache-stats — operational hit/miss counters per namespace
+// Admin-only; used during baseline measurement and incident triage.
+router.get("/admin/cache-stats", requireAdmin, async (req, res) => {
+  res.json(getCacheStats());
 });
 
 // ── Finance Loan Routes ───────────────────────────────────────────────────────

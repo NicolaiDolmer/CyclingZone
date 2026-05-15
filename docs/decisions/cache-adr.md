@@ -1,14 +1,34 @@
 # ADR: Cache and shared-store platform for CyclingZone
 
-**Status:** Proposed — ready for Nicolai approval before implementation  
-**Date:** 2026-05-14  
-**Owner:** Manus AI  
-**Issue:** [#334](https://github.com/NicolaiDolmer/CyclingZone/issues/334)  
+**Status:** Accepted — Phase 1 implemented as in-process LRU (2026-05-15). Upstash deferred to #330.
+**Date:** 2026-05-14 (proposed), 2026-05-15 (accepted with amendment)
+**Owner:** Manus AI (proposal), Nicolai Dolmer (approval), Claude (implementation)
+**Issue:** [#334](https://github.com/NicolaiDolmer/CyclingZone/issues/334)
 **Parent:** [#323](https://github.com/NicolaiDolmer/CyclingZone/issues/323)
 
 ---
 
-## Decision
+## Amendment 2026-05-15 — Phase 1 via in-process LRU first
+
+Approved by Nicolai with the constraint **"do the optimal thing that costs zero money right now."** Implementation proceeds as:
+
+| Phase | Original ADR proposal | Actual implementation |
+|---|---|---|
+| 0. Baseline | Add P50/P95 timing logs before caching. | ✅ `backend/lib/responseCache.js` emits Sentry breadcrumbs (`endpoint-timing` category) with route, namespace, hit/miss, duration_ms on every wrapped request. |
+| 1. Shared limiter store (Redis-backed) | Swap `express-rate-limit` to Upstash Redis. | ⏸ **Deferred to #330** (multi-instance trigger). In-process MemoryStore stays. |
+| 2. Read-through cache | Cache 1-2 endpoints via Upstash. | ✅ **In-process LRU**: `/api/riders` (60s TTL), `/api/races` (10 min), `/api/race-pool` (10 min), `/api/race-points` (10 min). Zero external deps, zero cost, max 200 entries/namespace. |
+| 3. Realtime/cache alignment | Verify under fresh bid/notification events. | ✅ Aggressive 60s TTL on riders + explicit invalidation on auction-finalize, transfer-execute, swap-execute, loan-buyout, race-results-approve, admin override-rider / retirement / race-creation / race-pool import / race-selection apply. `/api/auctions` deliberately **not** cached (Realtime updates rapidly). |
+| 4. Scale decision | Pick Upstash plan based on volume. | ⏸ Re-evaluate when #330 triggers (second Railway instance). |
+
+**Cost outcome:** $0/month additional. Upstash sign-up and `REDIS_URL` secret-provisioning are deferred to the same milestone that introduces a second backend instance.
+
+**Break-glass:** `RESPONSE_CACHE_DISABLED=1` env-flag bypasses all in-process caches without code change (parallel to existing `RATE_LIMIT_DISABLED=1`).
+
+**Operational visibility:** `GET /api/admin/cache-stats` returns per-namespace size + hit/miss/invalidation counters for admin operators. Sentry breadcrumbs aggregate to P50/P95 across endpoints.
+
+---
+
+## Decision (original proposal — superseded by amendment above for Phase 1)
 
 CyclingZone should adopt **Upstash Redis as the first shared cache and rate-limit store** when the project moves beyond the current single Railway backend instance. The implementation should begin with a narrow production slice: shared storage for backend rate limiting and a small read-through cache for high-frequency, low-risk read endpoints. The existing in-process memory store remains acceptable only while the backend runs as a single instance.
 
