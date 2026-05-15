@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.38",
+    date: "2026-05-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "UX · Indbakke aggregerer overbud-notifikationer (#312)",
+        items: [
+          "Feature · Flere `Du er blevet overbudt!`-notifikationer på samme auktion stables nu til én boble med tæller (`Du er blevet overbudt! (×17)`) i stedet for at fylde indbakken med 17 separate rækker. Boblen viser både første og seneste tidspunkt, bumpes til toppen ved nyt overbud, og forbliver ulæst indtil mindst ét klik.",
+          "Feature · Klik på aggregat-boblen folder historikken ud (kronologisk liste af alle bud) og markerer alle som læst. `Vis auktion →`-knap dyb-linker til auktionssiden.",
+          "Feature · Når auktionen afsluttes (`auction_won`/`auction_lost`) skjules outbid-aggregatet automatisk i UI'et, så kun afslutnings-notifikationen står tilbage. Underliggende rækker bevares i databasen.",
+          "Infra · Aggregering sker client-side i [`groupNotifications.js`](frontend/src/lib/groupNotifications.js) med 12 unit-tests. Ingen DB-migration eller backend-ændringer — eksisterende 24-timers dedup-vindue i `notificationService.js` påvirkes ikke.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.37",
     date: "2026-05-15",
     label: "Beta",

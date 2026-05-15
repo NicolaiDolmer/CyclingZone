@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
+import { groupNotifications } from "../lib/groupNotifications";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -112,6 +113,7 @@ export default function NotificationsPage() {
   const [notifLoading, setNotifLoading] = useState(true);
   const [mineFilter, setMineFilter] = useState("all");
   const [markingAll, setMarkingAll] = useState(false);
+  const [expandedAggregates, setExpandedAggregates] = useState(() => new Set());
   const userIdRef = useRef(null);
 
   // Ligaen tab
@@ -214,6 +216,29 @@ export default function NotificationsPage() {
   async function markRead(id) {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+  }
+
+  async function markManyRead(ids) {
+    if (!ids?.length) return;
+    const idSet = new Set(ids);
+    setNotifications(prev => prev.map(n => idSet.has(n.id) ? { ...n, is_read: true } : n));
+    await supabase.from("notifications").update({ is_read: true }).in("id", ids);
+  }
+
+  async function deleteMany(ids) {
+    if (!ids?.length) return;
+    const idSet = new Set(ids);
+    setNotifications(prev => prev.filter(n => !idSet.has(n.id)));
+    await supabase.from("notifications").delete().in("id", ids);
+    window.dispatchEvent(new Event("cz:notif-deleted"));
+  }
+
+  function toggleAggregate(key) {
+    setExpandedAggregates(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
   }
 
   async function markAllRead() {
@@ -351,39 +376,112 @@ export default function NotificationsPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {filteredNotifs.map(n => {
-                const config = getNotificationConfig(n);
+              {groupNotifications(filteredNotifs).map(entry => {
+                if (entry.kind === "single") {
+                  const n = entry.notification;
+                  const config = getNotificationConfig(n);
+                  return (
+                    <div key={n.id}
+                      className={`flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition-all cursor-pointer
+                        ${n.is_read
+                          ? "bg-cz-card border-cz-border opacity-60 hover:opacity-80"
+                          : config.bg}`}
+                      onClick={() => {
+                        if (!n.is_read) markRead(n.id);
+                        if (config.link) navigate(config.link);
+                      }}>
+                      <div className="w-9 h-9 rounded-lg bg-cz-subtle flex items-center justify-center
+                        text-base flex-shrink-0 mt-0.5">
+                        {config.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${n.is_read ? "text-cz-2" : "text-cz-1"}`}>
+                          {n.title}
+                        </p>
+                        <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{n.message}</p>
+                        <p className="text-cz-3 text-xs mt-1.5">{timeAgo(n.created_at)}</p>
+                      </div>
+                      <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
+                        {!n.is_read && (
+                          <span className="w-2 h-2 rounded-full bg-cz-accent flex-shrink-0" />
+                        )}
+                        <button
+                          onClick={e => { e.stopPropagation(); deleteNotif(n.id); }}
+                          className="text-cz-3 hover:text-cz-2 text-lg transition-colors p-1 rounded">
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+                // Aggregate
+                const config = TYPE_CONFIG[entry.type] || DEFAULT_TYPE_CONFIG;
+                const isExpanded = expandedAggregates.has(entry.key);
+                const allRead = !entry.any_unread;
+                const ids = entry.items.map(i => i.id);
                 return (
-                  <div key={n.id}
-                    className={`flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition-all cursor-pointer
-                      ${n.is_read
+                  <div key={entry.key}
+                    className={`rounded-xl border transition-all
+                      ${allRead
                         ? "bg-cz-card border-cz-border opacity-60 hover:opacity-80"
-                        : config.bg}`}
-                    onClick={() => {
-                      if (!n.is_read) markRead(n.id);
-                      if (config.link) navigate(config.link);
-                    }}>
-                    <div className="w-9 h-9 rounded-lg bg-cz-subtle flex items-center justify-center
-                      text-base flex-shrink-0 mt-0.5">
-                      {config.icon}
+                        : config.bg}`}>
+                    <div className="flex items-start gap-3 p-3 sm:p-4 cursor-pointer"
+                      onClick={() => {
+                        if (entry.any_unread) markManyRead(ids);
+                        toggleAggregate(entry.key);
+                      }}>
+                      <div className="w-9 h-9 rounded-lg bg-cz-subtle flex items-center justify-center
+                        text-base flex-shrink-0 mt-0.5 relative">
+                        {config.icon}
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full
+                          bg-cz-accent text-cz-1 text-[10px] font-bold flex items-center justify-center leading-none">
+                          {entry.count > 99 ? "99+" : entry.count}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${allRead ? "text-cz-2" : "text-cz-1"}`}>
+                          {entry.sample_title} <span className="text-cz-3 font-normal">(×{entry.count})</span>
+                        </p>
+                        <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{entry.sample_message}</p>
+                        <p className="text-cz-3 text-xs mt-1.5">
+                          Først {timeAgo(entry.earliest_at)} · Senest {timeAgo(entry.latest_at)}
+                        </p>
+                      </div>
+                      <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
+                        {entry.any_unread && (
+                          <span className="w-2 h-2 rounded-full bg-cz-accent flex-shrink-0" />
+                        )}
+                        <span className="text-cz-3 text-xs select-none" aria-hidden>
+                          {isExpanded ? "▾" : "▸"}
+                        </span>
+                        <button
+                          onClick={e => { e.stopPropagation(); deleteMany(ids); }}
+                          className="text-cz-3 hover:text-cz-2 text-lg transition-colors p-1 rounded"
+                          aria-label="Slet alle">
+                          ×
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${n.is_read ? "text-cz-2" : "text-cz-1"}`}>
-                        {n.title}
-                      </p>
-                      <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{n.message}</p>
-                      <p className="text-cz-3 text-xs mt-1.5">{timeAgo(n.created_at)}</p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
-                      {!n.is_read && (
-                        <span className="w-2 h-2 rounded-full bg-cz-accent flex-shrink-0" />
-                      )}
-                      <button
-                        onClick={e => { e.stopPropagation(); deleteNotif(n.id); }}
-                        className="text-cz-3 hover:text-cz-2 text-lg transition-colors p-1 rounded">
-                        ×
-                      </button>
-                    </div>
+                    {isExpanded && (
+                      <div className="border-t border-cz-border px-3 sm:px-4 py-3 flex flex-col gap-2">
+                        <ul className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
+                          {entry.items.map(item => (
+                            <li key={item.id} className="flex items-start gap-2 text-xs">
+                              <span className="text-cz-3 whitespace-nowrap min-w-[5rem]">{timeAgo(item.created_at)}</span>
+                              <span className="text-cz-2 flex-1">{item.message}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {config.link && (
+                          <button
+                            onClick={e => { e.stopPropagation(); navigate(config.link); }}
+                            className="self-end px-3 py-1.5 text-xs text-cz-1 bg-cz-accent/20
+                              hover:bg-cz-accent/30 rounded-lg border border-cz-accent/30 transition-all">
+                            Vis auktion →
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
