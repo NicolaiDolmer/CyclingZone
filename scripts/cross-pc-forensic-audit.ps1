@@ -26,6 +26,18 @@ $ErrorActionPreference = "Stop"
 
 $findings = @()
 
+# Cross-PS-version hardlink check: pwsh 7 returnerer tom LinkType for hardlinks paa Windows.
+# fsutil hardlink list giver alle paths der peger paa samme inode (>1 path = hardlinkede).
+# Samme problem haandteres i link-onedrive-context.ps1 via fsutil file queryfileid.
+function Test-IsHardlink($path) {
+  try {
+    $links = @(& fsutil hardlink list $path 2>$null)
+    return $links.Count -gt 1
+  } catch {
+    return $false
+  }
+}
+
 function Add-Finding {
   param(
     [Parameter(Mandatory)] [ValidateSet("error","warn")] [string] $Severity,
@@ -96,11 +108,13 @@ if (Test-Path $codexAgents) {
   $size = (Get-Item $codexAgents).Length
   if ($size -gt 0) {
     $item = Get-Item $codexAgents -Force
-    $isLink = $item.LinkType -eq "HardLink" -or $item.LinkType -eq "SymbolicLink"
-    if (-not $isLink) {
+    # LinkType er upaalidelig i pwsh 7 (returnerer tom for hardlinks) - brug fsutil-fallback.
+    $isHardlink = Test-IsHardlink $codexAgents
+    $isSymlink = $item.LinkType -eq "SymbolicLink"
+    if (-not ($isHardlink -or $isSymlink)) {
       Add-Finding -Severity "error" -Category "codex-global-config" -Path $codexAgents `
         -Message "~/.codex/AGENTS.md har indhold ($size bytes) men er ikke linket til OneDrive" `
-        -Fix "Flyt indhold til repo-root AGENTS.md (delt) eller hardlink til ~/OneDrive/CyclingZone-context/codex-local/AGENTS.md"
+        -Fix "Flyt indhold til repo-root AGENTS.md (delt) eller hardlink til ~/OneDrive/CyclingZone-context/codex-memories/AGENTS.md eller codex-local/AGENTS.md"
     }
   }
 }
