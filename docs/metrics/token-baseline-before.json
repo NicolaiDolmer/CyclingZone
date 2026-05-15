@@ -1,0 +1,69 @@
+{
+  "timestamp": "2026-05-14T19:45:27+02:00",
+  "cold_start_total_est": 12775.0,
+  "file_context_total": 7075.0,
+  "harness_blob_estimate": 5700,
+  "memory_dir_total": 40802.0,
+  "checks": [
+    {
+      "Check": "CLAUDE.md",
+      "Status": "OK",
+      "Detail": "973 approx tokens, 47 lines"
+    },
+    {
+      "Check": "AGENTS.md",
+      "Status": "OK",
+      "Detail": "3720 approx tokens, 195 lines"
+    },
+    {
+      "Check": "NOW.md",
+      "Status": "OK",
+      "Detail": "819 approx tokens, 23 lines"
+    },
+    {
+      "Check": "GUARDRAILS_CORE.md",
+      "Status": "OK",
+      "Detail": "1109 approx tokens, 54 lines"
+    },
+    {
+      "Check": "SESSION_CONTEXT.md",
+      "Status": "OK",
+      "Detail": "454 approx tokens, 27 lines"
+    },
+    {
+      "Check": "cold-start-context",
+      "Status": "OK",
+      "Detail": "7075 approx tokens across standard startup files"
+    },
+    {
+      "Check": "claude-memory",
+      "Status": "WARN",
+      "Detail": "4271 approx tokens in MEMORY.md"
+    },
+    {
+      "Check": "latest-transcript",
+      "Status": "OK",
+      "Detail": "352.7 KB, 6f2cf47d-964b-4a56-930d-c679be2e04c8.jsonl"
+    },
+    {
+      "Check": "issue-prefetch-bounds",
+      "Status": "OK",
+      "Detail": "bounded"
+    },
+    {
+      "Check": "memory-dir-total",
+      "Status": "INFO",
+      "Detail": "40802 approx tokens across 89 memory files (on-demand)"
+    },
+    {
+      "Check": "harness-blob-estimate",
+      "Status": "INFO",
+      "Detail": "5700 approx tokens (MCP tool list + skills list; manual estimate)"
+    },
+    {
+      "Check": "cold-start-total-est",
+      "Status": "FAIL",
+      "Detail": "12775 approx tokens (files + harness blob)"
+    }
+  ]
+}

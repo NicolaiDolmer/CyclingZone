@@ -1,0 +1,84 @@
+{
+  "timestamp": "2026-05-14T20:02:03+02:00",
+  "cold_start_total_est": 13298.0,
+  "file_context_total": 7598.0,
+  "harness_blob_estimate": 5700,
+  "memory_dir_total": 42604.0,
+  "checks": [
+    {
+      "Check": "CLAUDE.md",
+      "Status": "OK",
+      "Detail": "641 approx tokens, 35 lines"
+    },
+    {
+      "Check": "AGENTS.md",
+      "Status": "OK",
+      "Detail": "3720 approx tokens, 195 lines"
+    },
+    {
+      "Check": "NOW.md",
+      "Status": "OK",
+      "Detail": "600 approx tokens, 18 lines"
+    },
+    {
+      "Check": "GUARDRAILS_CORE.md",
+      "Status": "OK",
+      "Detail": "1109 approx tokens, 54 lines"
+    },
+    {
+      "Check": "SESSION_CONTEXT.md",
+      "Status": "OK",
+      "Detail": "454 approx tokens, 27 lines"
+    },
+    {
+      "Check": "cold-start-context",
+      "Status": "OK",
+      "Detail": "6524 approx tokens across standard startup files"
+    },
+    {
+      "Check": "claude-memory",
+      "Status": "OK",
+      "Detail": "1074 approx tokens in MEMORY.md (HOT auto-load)"
+    },
+    {
+      "Check": "latest-transcript",
+      "Status": "OK",
+      "Detail": "814.9 KB, 6f2cf47d-964b-4a56-930d-c679be2e04c8.jsonl"
+    },
+    {
+      "Check": "issue-prefetch-bounds",
+      "Status": "OK",
+      "Detail": "bounded"
+    },
+    {
+      "Check": "memory-dir-total",
+      "Status": "INFO",
+      "Detail": "42604 approx tokens across 92 memory files (on-demand)"
+    },
+    {
+      "Check": "memory-hot-budget",
+      "Status": "OK",
+      "Detail": "MEMORY.md 32 lines (target <40, fail >50)"
+    },
+    {
+      "Check": "claude-md-budget",
+      "Status": "OK",
+      "Detail": "CLAUDE.md 35 lines (target <60, fail >80)"
+    },
+    {
+      "Check": "now-md-budget",
+      "Status": "OK",
+      "Detail": "docs/NOW.md 18 lines (target <30, fail >40)"
+    },
+    {
+      "Check": "harness-blob-estimate",
+      "Status": "INFO",
+      "Detail": "5700 approx tokens (MCP tool list + skills list; manual estimate)"
+    },
+    {
+      "Check": "cold-start-total-est",
+      "Status": "FAIL",
+      "Detail": "13298 approx tokens (files + harness blob)"
+    }
+  ]
+}
