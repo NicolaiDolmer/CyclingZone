@@ -198,7 +198,7 @@ _AI'en skal proaktivt signalere session-tilstand. Brugeren behøver ikke selv hu
 Alle skal være ✅ før commit + push:
 1. Verification-path fra `docs/slices/<slug>.md` gennemført (tests grønne, manuel smoke kørt)
 2. `frontend/src/pages/PatchNotesPage.jsx` opdateret med ny version (eller eksplicit hvorfor ikke)
-3. `docs/NOW.md` opdateret + under 30 linjer
+3. `docs/NOW.md` opdateret: max 30 linjer, "Senest leveret" cappet til 5 entries à ≤2 sætninger, og token-count <900 (kør `pwsh -File scripts/check-agent-token-hygiene.ps1` ved tvivl — over 900 → trim før commit, detaljer hører til issue-kommentar)
 4. `docs/FEATURE_STATUS.md` opdateret hvis kontrakter/features ændret
 5. Relevante GitHub-issues lukket eller opdateret med kommentar (task-lag — backlog-fil arkiveret 2026-05-06)
 6. Hvis bug-fix: postmortem-entry i `.claude/learnings/<dato>-<slug>.md`
