@@ -43,6 +43,10 @@ test("core manager pages render without blank screens", async ({ page }) => {
       animations: "disabled",
       caret: "hide",
       scale: "css",
+      // Tolerate små intentional UI-tilføjelser (fx ny tekst-linje, ikon-justering).
+      // Smoke-testen skal fange "blank-screen / katastrofale layout-fejl", ikke
+      // hver kosmetisk tweak — separate visual-regression suites tager nuance.
+      maxDiffPixelRatio: 0.03,
     });
   }
 

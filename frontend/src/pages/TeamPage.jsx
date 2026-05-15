@@ -526,6 +526,9 @@ export function TeamPage() {
             {windowOpen ? "🟢 Transfervindue åbent" : "🔒 Transfervindue lukket"}
           </span>
         </div>
+        {team?.manager_name && (
+          <p className="text-cz-2 text-sm mt-0.5">Manager: {team.manager_name}</p>
+        )}
         <div className="flex gap-4 mt-1 flex-wrap text-sm">
           <span className="text-cz-accent-t font-mono font-bold">{team?.balance?.toLocaleString("da-DK")} CZ$</span>
           <span className="text-cz-3">Division {team?.division}</span>

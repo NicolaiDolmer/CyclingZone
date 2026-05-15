@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.37",
+    date: "2026-05-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Hold · Manager-navn synligt på holdsiden (#255)",
+        items: [
+          "Feature · Holdoversigten og Mit Hold viser nu manager-navnet som undertekst under holdnavnet, så det er nemt at se hvem der manager hvert hold.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.36",
     date: "2026-05-15",
     label: "Beta",
