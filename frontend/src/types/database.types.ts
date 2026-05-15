@@ -156,6 +156,7 @@ export type Database = {
           auction_id: string
           bid_time: string | null
           id: string
+          is_proxy: boolean
           team_id: string
           triggered_extension: boolean | null
         }
@@ -164,6 +165,7 @@ export type Database = {
           auction_id: string
           bid_time?: string | null
           id?: string
+          is_proxy?: boolean
           team_id: string
           triggered_extension?: boolean | null
         }
@@ -172,6 +174,7 @@ export type Database = {
           auction_id?: string
           bid_time?: string | null
           id?: string
+          is_proxy?: boolean
           team_id?: string
           triggered_extension?: boolean | null
         }
@@ -192,11 +195,54 @@ export type Database = {
           },
         ]
       }
+      auction_proxy_bids: {
+        Row: {
+          auction_id: string
+          created_at: string | null
+          id: string
+          max_amount: number
+          team_id: string
+        }
+        Insert: {
+          auction_id: string
+          created_at?: string | null
+          id?: string
+          max_amount: number
+          team_id: string
+        }
+        Update: {
+          auction_id?: string
+          created_at?: string | null
+          id?: string
+          max_amount?: number
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_proxy_bids_auction_id_fkey"
+            columns: ["auction_id"]
+            isOneToOne: false
+            referencedRelation: "auctions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auction_proxy_bids_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auction_timing_config: {
         Row: {
+          deadline_day_override: string
           duration_hours: number
           extension_minutes: number
           id: number
+          market_pause_level: string
+          market_paused_at: string | null
+          market_paused_reason: string | null
           updated_at: string | null
           weekday_close_hour: number
           weekday_open_hour: number
@@ -204,9 +250,13 @@ export type Database = {
           weekend_open_hour: number
         }
         Insert: {
+          deadline_day_override?: string
           duration_hours?: number
           extension_minutes?: number
           id?: number
+          market_pause_level?: string
+          market_paused_at?: string | null
+          market_paused_reason?: string | null
           updated_at?: string | null
           weekday_close_hour?: number
           weekday_open_hour?: number
@@ -214,9 +264,13 @@ export type Database = {
           weekend_open_hour?: number
         }
         Update: {
+          deadline_day_override?: string
           duration_hours?: number
           extension_minutes?: number
           id?: number
+          market_pause_level?: string
+          market_paused_at?: string | null
+          market_paused_reason?: string | null
           updated_at?: string | null
           weekday_close_hour?: number
           weekday_open_hour?: number
@@ -229,12 +283,15 @@ export type Database = {
         Row: {
           actual_end: string | null
           calculated_end: string
+          cancelled_at: string | null
+          cancelled_by_user_id: string | null
           created_at: string | null
           current_bidder_id: string | null
           current_price: number
           extension_count: number | null
           guaranteed_price: number | null
           id: string
+          is_flash: boolean
           is_guaranteed_sale: boolean | null
           min_increment: number | null
           requested_start: string
@@ -246,12 +303,15 @@ export type Database = {
         Insert: {
           actual_end?: string | null
           calculated_end: string
+          cancelled_at?: string | null
+          cancelled_by_user_id?: string | null
           created_at?: string | null
           current_bidder_id?: string | null
           current_price?: number
           extension_count?: number | null
           guaranteed_price?: number | null
           id?: string
+          is_flash?: boolean
           is_guaranteed_sale?: boolean | null
           min_increment?: number | null
           requested_start?: string
@@ -263,12 +323,15 @@ export type Database = {
         Update: {
           actual_end?: string | null
           calculated_end?: string
+          cancelled_at?: string | null
+          cancelled_by_user_id?: string | null
           created_at?: string | null
           current_bidder_id?: string | null
           current_price?: number
           extension_count?: number | null
           guaranteed_price?: number | null
           id?: string
+          is_flash?: boolean
           is_guaranteed_sale?: boolean | null
           min_increment?: number | null
           requested_start?: string
@@ -278,6 +341,13 @@ export type Database = {
           status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "auctions_cancelled_by_user_id_fkey"
+            columns: ["cancelled_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "auctions_current_bidder_id_fkey"
             columns: ["current_bidder_id"]
@@ -301,6 +371,74 @@ export type Database = {
           },
         ]
       }
+      board_consequences: {
+        Row: {
+          created_at: string
+          expires_at_season_id: string | null
+          id: string
+          layer: number
+          payload: Json
+          resolved_at: string | null
+          severity: number
+          source_board_id: string | null
+          status: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at_season_id?: string | null
+          id?: string
+          layer: number
+          payload?: Json
+          resolved_at?: string | null
+          severity: number
+          source_board_id?: string | null
+          status?: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at_season_id?: string | null
+          id?: string
+          layer?: number
+          payload?: Json
+          resolved_at?: string | null
+          severity?: number
+          source_board_id?: string | null
+          status?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_consequences_expires_at_season_id_fkey"
+            columns: ["expires_at_season_id"]
+            isOneToOne: false
+            referencedRelation: "ai_active_season_status"
+            referencedColumns: ["season_id"]
+          },
+          {
+            foreignKeyName: "board_consequences_expires_at_season_id_fkey"
+            columns: ["expires_at_season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_consequences_source_board_id_fkey"
+            columns: ["source_board_id"]
+            isOneToOne: false
+            referencedRelation: "board_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_consequences_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       board_plan_snapshots: {
         Row: {
           board_id: string
@@ -316,6 +454,8 @@ export type Database = {
           season_within_plan: number
           stage_wins: number
           team_id: string
+          u25_count: number
+          u25_stat_sum: number
         }
         Insert: {
           board_id: string
@@ -331,6 +471,8 @@ export type Database = {
           season_within_plan: number
           stage_wins?: number
           team_id: string
+          u25_count?: number
+          u25_stat_sum?: number
         }
         Update: {
           board_id?: string
@@ -346,6 +488,8 @@ export type Database = {
           season_within_plan?: number
           stage_wins?: number
           team_id?: string
+          u25_count?: number
+          u25_stat_sum?: number
         }
         Relationships: [
           {
@@ -387,6 +531,8 @@ export type Database = {
           current_goals: Json | null
           focus: string | null
           id: string
+          is_baseline: boolean
+          major_pivot_used_at: string | null
           negotiated_at: string | null
           negotiation_rounds: number | null
           negotiation_status: string | null
@@ -400,6 +546,8 @@ export type Database = {
           season_id: string | null
           seasons_completed: number
           team_id: string
+          tradeoff_active_until_season_id: string | null
+          tradeoff_payload: Json | null
           updated_at: string | null
         }
         Insert: {
@@ -410,6 +558,8 @@ export type Database = {
           current_goals?: Json | null
           focus?: string | null
           id?: string
+          is_baseline?: boolean
+          major_pivot_used_at?: string | null
           negotiated_at?: string | null
           negotiation_rounds?: number | null
           negotiation_status?: string | null
@@ -423,6 +573,8 @@ export type Database = {
           season_id?: string | null
           seasons_completed?: number
           team_id: string
+          tradeoff_active_until_season_id?: string | null
+          tradeoff_payload?: Json | null
           updated_at?: string | null
         }
         Update: {
@@ -433,6 +585,8 @@ export type Database = {
           current_goals?: Json | null
           focus?: string | null
           id?: string
+          is_baseline?: boolean
+          major_pivot_used_at?: string | null
           negotiated_at?: string | null
           negotiation_rounds?: number | null
           negotiation_status?: string | null
@@ -446,6 +600,8 @@ export type Database = {
           season_id?: string | null
           seasons_completed?: number
           team_id?: string
+          tradeoff_active_until_season_id?: string | null
+          tradeoff_payload?: Json | null
           updated_at?: string | null
         }
         Relationships: [
@@ -468,6 +624,20 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_profiles_tradeoff_active_until_season_id_fkey"
+            columns: ["tradeoff_active_until_season_id"]
+            isOneToOne: false
+            referencedRelation: "ai_active_season_status"
+            referencedColumns: ["season_id"]
+          },
+          {
+            foreignKeyName: "board_profiles_tradeoff_active_until_season_id_fkey"
+            columns: ["tradeoff_active_until_season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
             referencedColumns: ["id"]
           },
         ]
@@ -578,32 +748,62 @@ export type Database = {
       }
       finance_transactions: {
         Row: {
+          actor_id: string | null
+          actor_type: string | null
+          after_balance: number | null
           amount: number
+          before_balance: number | null
           created_at: string | null
           description: string | null
           id: string
+          idempotency_key: string | null
           race_id: string | null
+          reason_code: string | null
+          related_entity_id: string | null
+          related_entity_type: string | null
+          related_loan_id: string | null
           season_id: string | null
+          source_path: string | null
           team_id: string
           type: string
         }
         Insert: {
+          actor_id?: string | null
+          actor_type?: string | null
+          after_balance?: number | null
           amount: number
+          before_balance?: number | null
           created_at?: string | null
           description?: string | null
           id?: string
+          idempotency_key?: string | null
           race_id?: string | null
+          reason_code?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          related_loan_id?: string | null
           season_id?: string | null
+          source_path?: string | null
           team_id: string
           type: string
         }
         Update: {
+          actor_id?: string | null
+          actor_type?: string | null
+          after_balance?: number | null
           amount?: number
+          before_balance?: number | null
           created_at?: string | null
           description?: string | null
           id?: string
+          idempotency_key?: string | null
           race_id?: string | null
+          reason_code?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          related_loan_id?: string | null
           season_id?: string | null
+          source_path?: string | null
           team_id?: string
           type?: string
         }
@@ -613,6 +813,13 @@ export type Database = {
             columns: ["race_id"]
             isOneToOne: false
             referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_transactions_related_loan_id_fkey"
+            columns: ["related_loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
             referencedColumns: ["id"]
           },
           {
@@ -637,6 +844,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      founder_supporter_waitlist: {
+        Row: {
+          consent_given_at: string
+          contact_type: string | null
+          created_at: string
+          discord_handle: string | null
+          email: string | null
+          fairness_red_line: string | null
+          follow_up_consent: boolean
+          id: string
+          intent_score: number | null
+          interest_level: string
+          main_reason: string | null
+          notes: string | null
+          preferred_tier: string
+          source: string | null
+          status: string
+          valued_benefits: string[] | null
+        }
+        Insert: {
+          consent_given_at: string
+          contact_type?: string | null
+          created_at?: string
+          discord_handle?: string | null
+          email?: string | null
+          fairness_red_line?: string | null
+          follow_up_consent?: boolean
+          id?: string
+          intent_score?: number | null
+          interest_level: string
+          main_reason?: string | null
+          notes?: string | null
+          preferred_tier: string
+          source?: string | null
+          status?: string
+          valued_benefits?: string[] | null
+        }
+        Update: {
+          consent_given_at?: string
+          contact_type?: string | null
+          created_at?: string
+          discord_handle?: string | null
+          email?: string | null
+          fairness_red_line?: string | null
+          follow_up_consent?: boolean
+          id?: string
+          intent_score?: number | null
+          interest_level?: string
+          main_reason?: string | null
+          notes?: string | null
+          preferred_tier?: string
+          source?: string | null
+          status?: string
+          valued_benefits?: string[] | null
+        }
+        Relationships: []
       }
       hall_of_fame: {
         Row: {
@@ -1047,6 +1311,41 @@ export type Database = {
           },
         ]
       }
+      player_events: {
+        Row: {
+          created_at: string
+          event_data: Json
+          event_name: string
+          id: number
+          team_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json
+          event_name: string
+          id?: number
+          team_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json
+          event_name?: string
+          id?: number
+          team_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_events_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prize_tables: {
         Row: {
           id: string
@@ -1119,6 +1418,45 @@ export type Database = {
           rank?: number
           result_type?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      race_pool: {
+        Row: {
+          country: string | null
+          created_at: string
+          date_text: string | null
+          external_id: string
+          id: string
+          name: string
+          race_class: string
+          race_type: string
+          stages: number
+          updated_at: string
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          date_text?: string | null
+          external_id: string
+          id?: string
+          name: string
+          race_class: string
+          race_type: string
+          stages: number
+          updated_at?: string
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          date_text?: string | null
+          external_id?: string
+          id?: string
+          name?: string
+          race_class?: string
+          race_type?: string
+          stages?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1197,6 +1535,7 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          pool_race_id: string | null
           prize_paid_at: string | null
           prize_pool: number | null
           race_class: string | null
@@ -1210,6 +1549,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name: string
+          pool_race_id?: string | null
           prize_paid_at?: string | null
           prize_pool?: number | null
           race_class?: string | null
@@ -1223,6 +1563,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+          pool_race_id?: string | null
           prize_paid_at?: string | null
           prize_pool?: number | null
           race_class?: string | null
@@ -1233,6 +1574,13 @@ export type Database = {
           status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "races_pool_race_id_fkey"
+            columns: ["pool_race_id"]
+            isOneToOne: false
+            referencedRelation: "race_pool"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "races_season_id_fkey"
             columns: ["season_id"]
@@ -1389,6 +1737,7 @@ export type Database = {
       }
       riders: {
         Row: {
+          acquired_at: string | null
           ai_team_id: string | null
           birthdate: string | null
           created_at: string | null
@@ -1427,6 +1776,7 @@ export type Database = {
           weight: number | null
         }
         Insert: {
+          acquired_at?: string | null
           ai_team_id?: string | null
           birthdate?: string | null
           created_at?: string | null
@@ -1465,6 +1815,7 @@ export type Database = {
           weight?: number | null
         }
         Update: {
+          acquired_at?: string | null
           ai_team_id?: string | null
           birthdate?: string | null
           created_at?: string | null
@@ -1526,11 +1877,27 @@ export type Database = {
           },
         ]
       }
+      schema_migrations: {
+        Row: {
+          applied_at: string
+          filename: string
+        }
+        Insert: {
+          applied_at?: string
+          filename: string
+        }
+        Update: {
+          applied_at?: string
+          filename?: string
+        }
+        Relationships: []
+      }
       season_standings: {
         Row: {
           division: number
           gc_wins: number | null
           id: string
+          penalty_points: number
           races_completed: number | null
           rank_in_division: number | null
           season_id: string
@@ -1543,6 +1910,7 @@ export type Database = {
           division: number
           gc_wins?: number | null
           id?: string
+          penalty_points?: number
           races_completed?: number | null
           rank_in_division?: number | null
           season_id: string
@@ -1555,6 +1923,7 @@ export type Database = {
           division?: number
           gc_wins?: number | null
           id?: string
+          penalty_points?: number
           races_completed?: number | null
           rank_in_division?: number | null
           season_id?: string
@@ -1697,50 +2066,155 @@ export type Database = {
           },
         ]
       }
+      team_board_members: {
+        Row: {
+          alignment_score: number
+          archetype_key: string
+          assigned_at: string
+          id: string
+          is_chairman: boolean
+          selection_kind: string
+          team_id: string
+        }
+        Insert: {
+          alignment_score?: number
+          archetype_key: string
+          assigned_at?: string
+          id?: string
+          is_chairman?: boolean
+          selection_kind: string
+          team_id: string
+        }
+        Update: {
+          alignment_score?: number
+          archetype_key?: string
+          assigned_at?: string
+          id?: string
+          is_chairman?: boolean
+          selection_kind?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_board_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_dna: {
+        Row: {
+          created_at: string
+          emoji: string
+          goal_weighting: Json
+          key: string
+          label: string
+          long_description: string
+          member_alignment_bonus: Json
+          national_affinity: string[]
+          policy_axes: Json
+          short_description: string
+          specialization_affinity: string[]
+          tradition_goal: Json | null
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          goal_weighting?: Json
+          key: string
+          label: string
+          long_description: string
+          member_alignment_bonus?: Json
+          national_affinity?: string[]
+          policy_axes: Json
+          short_description: string
+          specialization_affinity?: string[]
+          tradition_goal?: Json | null
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          goal_weighting?: Json
+          key?: string
+          label?: string
+          long_description?: string
+          member_alignment_bonus?: Json
+          national_affinity?: string[]
+          policy_axes?: Json
+          short_description?: string
+          specialization_affinity?: string[]
+          tradition_goal?: Json | null
+        }
+        Relationships: []
+      }
       teams: {
         Row: {
           ai_source_id: number | null
           balance: number | null
+          consecutive_low_satisfaction_expirations: number
           created_at: string | null
           division: number | null
           id: string
           is_ai: boolean | null
           is_bank: boolean | null
           is_frozen: boolean | null
+          is_test_account: boolean
           manager_name: string | null
           name: string
+          season_1_identity_basis: Json | null
           sponsor_income: number | null
+          team_dna_chosen_at: string | null
+          team_dna_key: string | null
           user_id: string | null
         }
         Insert: {
           ai_source_id?: number | null
           balance?: number | null
+          consecutive_low_satisfaction_expirations?: number
           created_at?: string | null
           division?: number | null
           id?: string
           is_ai?: boolean | null
           is_bank?: boolean | null
           is_frozen?: boolean | null
+          is_test_account?: boolean
           manager_name?: string | null
           name: string
+          season_1_identity_basis?: Json | null
           sponsor_income?: number | null
+          team_dna_chosen_at?: string | null
+          team_dna_key?: string | null
           user_id?: string | null
         }
         Update: {
           ai_source_id?: number | null
           balance?: number | null
+          consecutive_low_satisfaction_expirations?: number
           created_at?: string | null
           division?: number | null
           id?: string
           is_ai?: boolean | null
           is_bank?: boolean | null
           is_frozen?: boolean | null
+          is_test_account?: boolean
           manager_name?: string | null
           name?: string
+          season_1_identity_basis?: Json | null
           sponsor_income?: number | null
+          team_dna_chosen_at?: string | null
+          team_dna_key?: string | null
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "teams_team_dna_key_fkey"
+            columns: ["team_dna_key"]
+            isOneToOne: false
+            referencedRelation: "team_dna"
+            referencedColumns: ["key"]
+          },
           {
             foreignKeyName: "teams_user_id_fkey"
             columns: ["user_id"]
@@ -1886,27 +2360,39 @@ export type Database = {
       }
       transfer_windows: {
         Row: {
+          board_negotiation_state: string
           closed_at: string | null
+          closes_at: string | null
           created_at: string | null
+          final_whistle_sent_at: string | null
           id: string
           opened_at: string | null
           season_id: string | null
+          squad_enforcement_completed_at: string | null
           status: string | null
         }
         Insert: {
+          board_negotiation_state?: string
           closed_at?: string | null
+          closes_at?: string | null
           created_at?: string | null
+          final_whistle_sent_at?: string | null
           id?: string
           opened_at?: string | null
           season_id?: string | null
+          squad_enforcement_completed_at?: string | null
           status?: string | null
         }
         Update: {
+          board_negotiation_state?: string
           closed_at?: string | null
+          closes_at?: string | null
           created_at?: string | null
+          final_whistle_sent_at?: string | null
           id?: string
           opened_at?: string | null
           season_id?: string | null
+          squad_enforcement_completed_at?: string | null
           status?: string | null
         }
         Relationships: [
@@ -1928,7 +2414,9 @@ export type Database = {
       }
       users: {
         Row: {
+          consent_preferences: Json | null
           created_at: string | null
+          discord_dm_enabled: boolean
           discord_id: string | null
           email: string
           id: string
@@ -1941,7 +2429,9 @@ export type Database = {
           xp: number | null
         }
         Insert: {
+          consent_preferences?: Json | null
           created_at?: string | null
+          discord_dm_enabled?: boolean
           discord_id?: string | null
           email: string
           id?: string
@@ -1954,7 +2444,9 @@ export type Database = {
           xp?: number | null
         }
         Update: {
+          consent_preferences?: Json | null
           created_at?: string | null
+          discord_dm_enabled?: boolean
           discord_id?: string | null
           email?: string
           id?: string
@@ -2034,10 +2526,86 @@ export type Database = {
       }
     }
     Functions: {
+      audit_rls_coverage: {
+        Args: never
+        Returns: {
+          has_authenticated_select: boolean
+          policy_count: number
+          policy_names: string[]
+          rls_enabled: boolean
+          select_policy_count: number
+          table_name: string
+        }[]
+      }
+      create_loan_atomic: {
+        Args: {
+          p_debt_ceiling: number
+          p_interest_rate: number
+          p_loan_type: string
+          p_origination_fee: number
+          p_principal: number
+          p_seasons: number
+          p_team_id: string
+        }
+        Returns: {
+          amount_remaining: number
+          created_at: string | null
+          id: string
+          interest_rate: number
+          loan_type: string
+          origination_fee: number
+          principal: number
+          seasons_remaining: number
+          seasons_total: number
+          status: string
+          team_id: string
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "loans"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      feature_liveness_applied_migrations: {
+        Args: never
+        Returns: {
+          applied_at: string
+          filename: string
+        }[]
+      }
+      feature_liveness_event_counts: {
+        Args: { window_days?: number }
+        Returns: {
+          event_count: number
+          event_name: string
+          last_seen: string
+        }[]
+      }
+      feature_liveness_prod_tables: {
+        Args: never
+        Returns: {
+          table_name: string
+        }[]
+      }
+      feature_liveness_table_counts: {
+        Args: never
+        Returns: {
+          rls_enabled: boolean
+          row_count: number
+          table_name: string
+        }[]
+      }
       increment_balance: {
         Args: { amount: number; team_id: string }
         Returns: undefined
       }
+      increment_balance_with_audit: {
+        Args: { p_delta: number; p_finance_payload: Json; p_team_id: string }
+        Returns: number
+      }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

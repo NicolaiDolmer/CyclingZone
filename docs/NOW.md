@@ -1,11 +1,12 @@
 # NOW — Aktuel arbejdsstatus
 
 ## Aktiv slice
-Ingen aktiv kode-slice efter #373 close-out.
+Sprint-validation foundation: tabel `founder_supporter_waitlist` + RLS live ([#359](https://github.com/NicolaiDolmer/CyclingZone/issues/359)). Unblocker [#361](https://github.com/NicolaiDolmer/CyclingZone/issues/361) landing page, [#362](https://github.com/NicolaiDolmer/CyclingZone/issues/362) form og [#363](https://github.com/NicolaiDolmer/CyclingZone/issues/363) admin-dashboard til uge 3 (1-7 juni).
 
 > **Parallelt forretningsspor:** Monetization Validation Sprint starter 2026-05-18. Live status i [`SPRINT_DASHBOARD.md`](SPRINT_DASHBOARD.md); strategi i [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md).
 
 ## Senest leveret
+- 2026-05-15: **[#359](https://github.com/NicolaiDolmer/CyclingZone/issues/359) Founder Supporter waitlist-tabel + RLS.** `founder_supporter_waitlist` med Manus' 9-felts intent-schema (interest_level + preferred_tier + valued_benefits + fairness_red_line + follow_up_consent), GDPR `consent_given_at NOT NULL`, generated `intent_score` (1-5 efter Manus-formel), workflow-status og genbrugelig `is_admin()`-helper. RLS: anon/authenticated INSERT med consent-check, admin-only SELECT, service_role for mutation. 10/10 intent_score-matrix + 7/7 constraint-tests grønne via prod `BEGIN/ROLLBACK`. TS-types regenereret; ingen ERROR-level advisors. Migration markeret applied i `schema_migrations` (auto-migrate skipper). Backend-only — ingen PatchNotes-entry (foundation, ingen UI endnu).
 - 2026-05-15: **[#312](https://github.com/NicolaiDolmer/CyclingZone/issues/312) Indbakke aggregerer overbud-notifikationer.** Gentagne `auction_outbid` på samme auktion stables nu til én boble med tæller, første+seneste timestamp og expanderbar historik. Aggregat skjules når auktionen afsluttes (`auction_won`/`auction_lost`). Client-side i `frontend/src/lib/groupNotifications.js` (12 unit-tests grønne), ingen DB-migration. Bobby2106's Discord-feedback adresseret (PatchNotes v3.38).
 - 2026-05-15: **[#255](https://github.com/NicolaiDolmer/CyclingZone/issues/255) Manager-navn under holdnavn.** /team og /teams viser nu manager-navn som undertekst. Frontend-smoke maxDiffPixelRatio: 0.03 tolerance så små intentional UI-tilføjelser ikke fejler (PatchNotes v3.37).
 - 2026-05-15: **[#8](https://github.com/NicolaiDolmer/CyclingZone/issues/8) Ryttere-filtre persisterer.** Filtre encodes i URL via `useSearchParams` + `sessionStorage` fallback. Pure helper `ridersUrlState.js` med 11 unit-tests (PatchNotes v3.36).
