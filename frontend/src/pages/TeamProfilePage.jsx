@@ -6,6 +6,7 @@ import { statBg } from "../lib/statBg";
 import { Flag } from "../components/Flag";
 import OnlineBadge from "../components/OnlineBadge";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -33,6 +34,7 @@ export default function TeamProfilePage() {
   const [loading, setLoading] = useState(true);
   const [myTeamId, setMyTeamId] = useState(null);
   const [tableSort, setTableSort] = useState({ key: "uci_points", dir: "desc" });
+  const [activeTab, setActiveTab] = useState("squad");
 
   function handleSort(key) {
     setTableSort(s => ({ key, dir: s.key === key ? (s.dir === "desc" ? "asc" : "desc") : "desc" }));
@@ -165,7 +167,26 @@ export default function TeamProfilePage() {
         </div>
       )}
 
+      {/* Tabs */}
+      <div className="flex gap-2 mb-4">
+        {[
+          { key: "squad", label: `Trup (${currentRiders.length})` },
+          { key: "transfers", label: "Transferhistorik" },
+        ].map(t => (
+          <button key={t.key} onClick={() => setActiveTab(t.key)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+              ${activeTab === t.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "transfers" && (
+        <TeamTransferHistoryTab teamId={id} />
+      )}
+
       {/* Squad with FM toggle */}
+      {activeTab === "squad" && (
       <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
         <div className="px-5 py-4 border-b border-cz-border flex items-center justify-between flex-wrap gap-3">
           <h2 className="text-cz-1 font-semibold text-sm">Trup ({currentRiders.length} ryttere)</h2>
@@ -244,6 +265,7 @@ export default function TeamProfilePage() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
