@@ -116,6 +116,8 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   "POST /admin/transfers/swaps/:id/cancel",
   "POST /admin/loans/:id/cancel",
   "POST /admin/race-pool/import-csv",
+  // Admin-only operational tooling — baseline-måling og incident-triage for in-process response cache (#334)
+  "GET /admin/cache-stats",
   // Frontend læser direkte via Supabase (RLS-gated read-paths) — endpoint er en parallel
   // backend-route der p.t. ikke bruges. Cleanup-kandidat (separat issue).
   "GET /riders",
