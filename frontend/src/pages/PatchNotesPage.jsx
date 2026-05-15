@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.36",
+    date: "2026-05-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "UX · Ryttere-filtre huskes ved navigation (#8)",
+        items: [
+          "UX · Filtrene på /ryttere nulstilles ikke længere når man klikker ind på en rytter og tilbage. Filtrene gemmes i URL'en (delbar) og i sessionStorage som fallback, så tilbage-navigation via topmenuen også genskaber dine valg.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.35",
     date: "2026-05-15",
     label: "Beta",
