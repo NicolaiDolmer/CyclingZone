@@ -1,9 +1,14 @@
 ﻿import { useState, useEffect } from "react";
 import RiderFilters, { DEFAULT_FILTERS } from "../components/RiderFilters";
 import { buildSupabaseQuery } from "../lib/useRiderFilters";
+import {
+  filtersToSearchParams,
+  initialFiltersFromUrlOrSession,
+  saveFiltersToSession,
+} from "../lib/ridersUrlState";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import { getRiderMarketValue } from "../lib/marketValues";
@@ -15,6 +20,10 @@ import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSel
 import { startTour } from "../lib/onboardingTour";
 
 const API = import.meta.env.VITE_API_URL;
+
+// #8 — filtre persisteres i URL (primær) + sessionStorage (fallback) så de
+// overlever navigation til rytter-detalje og tilbage.
+const FILTER_DEFAULTS = { ...DEFAULT_FILTERS, page: 1 };
 
 // Onboarding v2 Slice 1b — tour-trin på /riders (aktiveres fra Dashboard "Vis mig hvordan").
 const RIDERS_TOUR_STEPS = [
@@ -120,13 +129,16 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, 
 
 export default function RidersPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [riders, setRiders] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [watchlist, setWatchlist] = useState(new Set());
   const [activeAuctionRiders, setActiveAuctionRiders] = useState(new Set());
   const [userId, setUserId] = useState(null);
-  const [filters, setFilters] = useState({ ...DEFAULT_FILTERS, page: 1 });
+  const [filters, setFilters] = useState(() =>
+    initialFiltersFromUrlOrSession(searchParams, FILTER_DEFAULTS),
+  );
   const [nationalities, setNationalities] = useState([]);
   const [myTeam, setMyTeam] = useState(null);
   const [showEmptyState, setShowEmptyState] = useState(false);
@@ -221,12 +233,20 @@ export default function RidersPage() {
 
   useEffect(() => { loadRiders(); }, [filters]);
 
+  // #8 — sync filters → URL + sessionStorage så de persisterer på tværs af
+  // navigation (klik på rytter → tilbage).
+  useEffect(() => {
+    const params = filtersToSearchParams(filters, FILTER_DEFAULTS);
+    setSearchParams(params, { replace: true });
+    saveFiltersToSession(filters);
+  }, [filters, setSearchParams]);
+
   function setFilter(key, value) {
     setFilters(f => ({ ...f, [key]: value, page: 1 }));
   }
 
   function onReset() {
-    setFilters({ ...DEFAULT_FILTERS, page: 1 });
+    setFilters({ ...FILTER_DEFAULTS });
   }
 
   function handleSort(key) {
