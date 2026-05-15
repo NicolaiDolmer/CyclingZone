@@ -345,6 +345,19 @@ if (Test-Path $clSource) {
   Write-Host "  [skip] codex-local ikke i OneDrive endnu (valgfri)"
 }
 
+# --- 3b. Claude settings.json hardlink (#382) ---
+# Plugin-disables (fx code-modernization) skal aktiveres paa BEGGE PC'er. Hardlink fra
+# ~/.claude/settings.json -> OneDrive sikrer enableDPlugins synces cross-PC.
+Write-Section "Claude settings.json hardlink (~/.claude/settings.json)"
+
+$claudeSettingsSource = Join-Path $contextRoot "claude-settings\settings.json"
+$claudeSettingsTarget = Join-Path $env:USERPROFILE ".claude\settings.json"
+if (Test-Path $claudeSettingsSource) {
+  Sync-HardLink -Original $claudeSettingsTarget -SourceFile $claudeSettingsSource -DisplayName "~/.claude/settings.json"
+} else {
+  Write-Host "  [skip] claude-settings ikke i OneDrive endnu - skip indtil etableret paa primary PC"
+}
+
 # --- 4. Slut-rapport ---
 Write-Host ""
 if ($DryRun) {

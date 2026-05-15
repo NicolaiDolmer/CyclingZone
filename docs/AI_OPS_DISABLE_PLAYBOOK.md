@@ -43,52 +43,36 @@ Skills auto-listes ved session-start (~2,000 tok). Mange er aldrig invokeret.
 - `/schedule` (4), `/pre-merge-review` (4)
 - Marginale: `/spec` (3), `/season-preview` (2), `/init` (2), `/analyze` (2)
 
-### Skills aldrig invokeret (kandidater til disable)
-Alle skills fra disse plugin-namespaces:
-- `product-management:*` (9 skills) — brainstorm, competitive-brief, product-brainstorming, metrics-review, sprint-planning, write-spec, stakeholder-update, roadmap-update, synthesize-research
-- `marketing:*` (8 skills) — campaign-plan, seo-audit, email-sequence, performance-report, brand-review, competitive-brief, content-creation, draft-content
-- `design:*` (7 skills) — accessibility-review, design-critique, design-system, research-synthesis, user-research, ux-copy, design-handoff
-- `productivity:*` (4 skills) — update, task-management, start, memory-management
-- `code-modernization:*` (7 skills) — modernize-assess/brief/extract-rules/harden/map/reimagine/transform
-- `anthropic-skills:pdf/docx/pptx/xlsx` (4 skills) — file format converters, aldrig brugt på CyclingZone
-- `data:*` minus analyze/write-query (8 skills) — create-viz, data-context-extractor, data-visualization, explore-data, build-dashboard, statistical-analysis, validate-data, sql-queries (eventuelt behold)
+### Skills aldrig invokeret — kandidater til disable
 
-**Total: ~47 skills × ~70 tok = ~3,300 tok besparelse hvis alle disables.**
+| Plugin / skill-gruppe | Skills | Disable-mekanisme | Status |
+|---|---|---|---|
+| `code-modernization:*` | 7 (modernize-assess/brief/extract-rules/harden/map/reimagine/transform) | `~/.claude/settings.json enabledPlugins` → `false` | ✅ Disabled 2026-05-15 (#382, -490 tok) |
+| `anthropic-skills:pdf/docx/pptx/xlsx` | 4 (file format converters) | ❌ **Built-in i Claude Code-binæren** — ingen native disable. Per-session `/skills menu` disable er midlertidig. | Permanent ~280 tok overhead (research-bekræftet #382) |
+| `product-management:*`, `marketing:*`, `design:*`, `productivity:*`, `data:*` | ~36 skills | N/A — disse plugins er ikke enabled på denne PC | Allerede inaktive |
+
+**Realistisk Phase 3-besparelse: ~490 tok** (kun `code-modernization`). Den oprindelige 3,300-tok-projektion antog at alle ovenstående plugins var enabled — verificeret 2026-05-15 at de fleste aldrig var installeret.
 
 ### Sådan disabler du
 
-I Claude Code, kør:
-```
-/plugin
-```
-Det åbner plugin-management. Disable plugins du ikke vil have.
-
-Alternativt — rediger `C:\Users\emmas\.claude\settings.json` `enabledPlugins`-map. I dag har du kun:
+Rediger `~/.claude/settings.json` `enabledPlugins`-map (cross-PC sync via OneDrive-hardlink siden #382):
 ```json
 "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "code-modernization@claude-plugins-official": true
+    "code-modernization@claude-plugins-official": false
 }
 ```
 
-Hvis skills kommer fra et auto-marketplace (sandsynligvis), tilføj `false` for ubrugte:
-```json
-"enabledPlugins": {
-    "claude-code-setup@claude-plugins-official": true,
-    "code-modernization@claude-plugins-official": false,
-    "product-management@<marketplace>": false,
-    "marketing@<marketplace>": false,
-    "design@<marketplace>": false,
-    "productivity@<marketplace>": false,
-    "anthropic-skills@<marketplace>": true
-}
-```
+Alternativt: `/plugin` slash-command åbner plugin-management UI'en (kun synlige plugins fra lokal marketplace — built-in skills som `anthropic-skills:*` vises ikke her).
+
+**Cross-PC:** Efter edit, kør `pwsh -File scripts/link-onedrive-context.ps1` på anden PC for at synce hardlinket. Plugin-state synces automatisk fremover.
 
 **Behold disse plugins / skills (aktiv brug):**
-- ✅ `engineering:*` — `/review`, `/dependency-review`, `/claude-review`, `/agent-loop`, `/auto-merge-loop` aktivt brugt
 - ✅ `claude-code-setup:*` — `/loop`, `/schedule`, `/init`, `update-config`, `keybindings-help`, `simplify`, `fewer-permission-prompts`, `claude-api`
-- ✅ `anthropic-skills:skill-creator`, `consolidate-memory`, `setup-cowork` (brugt aktivt)
-- ⚠️ `code-modernization:*` — overvej disable (greenfield projekt, 0 brug)
+- ✅ `frontend-design` — distinctive UI-komponenter (1 skill)
+- ✅ `anthropic-skills:skill-creator`, `consolidate-memory`, `setup-cowork` (built-in, brugt aktivt)
+- ❌ `code-modernization:*` — disabled 2026-05-15 (#382)
 
 ---
 

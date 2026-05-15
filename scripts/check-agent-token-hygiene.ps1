@@ -38,15 +38,19 @@ Set-Location $repoRoot
 
 $results = New-Object System.Collections.Generic.List[object]
 
+# CodexOnly = true betyder filen kun auto-loades af Codex CLI (AGENTS.md-konvention), ikke Claude Code.
+# Begge regnes til Codex cold-start; kun !CodexOnly regnes til Claude cold-start.
+# Ref: #382 maalings-fix. Codex auto-loader AGENTS.md (OpenAI Codex-konvention); Claude Code loader CLAUDE.md.
 $contextFiles = @(
   @{ Name = "CLAUDE.md"; Path = "CLAUDE.md"; Warn = 1200; Fail = 2000 },
-  @{ Name = "AGENTS.md"; Path = "AGENTS.md"; Warn = 4500; Fail = 6500 },
+  @{ Name = "AGENTS.md"; Path = "AGENTS.md"; Warn = 4500; Fail = 6500; CodexOnly = $true },
   @{ Name = "NOW.md"; Path = "docs/NOW.md"; Warn = 900; Fail = 1500 },
   @{ Name = "GUARDRAILS_CORE.md"; Path = "docs/GUARDRAILS_CORE.md"; Warn = 1300; Fail = 2200 },
-  @{ Name = "SESSION_CONTEXT.md"; Path = ".codex.local/SESSION_CONTEXT.md"; Warn = 800; Fail = 1200; OptionalCache = $true }
+  @{ Name = "SESSION_CONTEXT.md"; Path = ".codex.local/SESSION_CONTEXT.md"; Warn = 800; Fail = 1200; OptionalCache = $true; CodexOnly = $true }
 )
 
-$total = 0
+$claudeFileTotal = 0
+$codexFileTotal = 0
 foreach ($item in $contextFiles) {
   if (-not (Test-Path $item.Path)) {
     $optionalCache = $item.ContainsKey("OptionalCache") -and $item.OptionalCache
@@ -56,14 +60,21 @@ foreach ($item in $contextFiles) {
     continue
   }
   $tokens = Get-ApproxTokens $item.Path
-  $total += $tokens
+  $isCodexOnly = $item.ContainsKey("CodexOnly") -and $item.CodexOnly
+  $codexFileTotal += $tokens
+  if (-not $isCodexOnly) { $claudeFileTotal += $tokens }
   $lines = (Get-Content $item.Path | Measure-Object -Line).Lines
   $status = if ($tokens -gt $item.Fail) { "FAIL" } elseif ($tokens -gt $item.Warn) { "WARN" } else { "OK" }
-  Add-Result $results $item.Name $status "$tokens approx tokens, $lines lines"
+  $scope = if ($isCodexOnly) { " [Codex-only]" } else { "" }
+  Add-Result $results $item.Name $status "$tokens approx tokens, $lines lines$scope"
 }
 
-$totalStatus = if ($total -gt $FailTokens) { "FAIL" } elseif ($total -gt $WarnTokens) { "WARN" } else { "OK" }
-Add-Result $results "cold-start-context" $totalStatus "$total approx tokens across standard startup files"
+# Legacy alias for backward compat - matcher Codex cold-start (alle filer)
+$total = $codexFileTotal
+$claudeStatus = if ($claudeFileTotal -gt $FailTokens) { "FAIL" } elseif ($claudeFileTotal -gt $WarnTokens) { "WARN" } else { "OK" }
+$codexStatus = if ($codexFileTotal -gt $FailTokens) { "FAIL" } elseif ($codexFileTotal -gt $WarnTokens) { "WARN" } else { "OK" }
+Add-Result $results "claude-context-files" $claudeStatus "$claudeFileTotal approx tokens (Claude Code auto-load: CLAUDE.md + NOW.md + GUARDRAILS_CORE.md)"
+Add-Result $results "codex-context-files" $codexStatus "$codexFileTotal approx tokens (Codex auto-load: ovenstaaende + AGENTS.md + SESSION_CONTEXT.md)"
 
 $memoryCandidates = @(
   (Join-Path $env:USERPROFILE ".claude\projects\C--dev-CyclingZone\memory\MEMORY.md"),
@@ -156,9 +167,18 @@ if (Test-Path $snapshotPath) {
 
 Add-Result $results "harness-blob-estimate" "INFO" "$harnessValue approx tokens (source: $harnessSource)"
 
-$coldStartTotal = $total + $harnessValue
-$coldStartStatus = if ($coldStartTotal -gt 12000) { "FAIL" } elseif ($coldStartTotal -gt 8000) { "WARN" } else { "OK" }
-Add-Result $results "cold-start-total-est" $coldStartStatus "$coldStartTotal approx tokens (files + harness blob)"
+# Cold-start split: Claude Code vs Codex CLI auto-loader forskellige filer (#382).
+$claudeColdStart = $claudeFileTotal + $memoryTokens + $harnessValue
+$codexColdStart = $codexFileTotal + $memoryTokens + $harnessValue
+$claudeColdStatus = if ($claudeColdStart -gt 12000) { "FAIL" } elseif ($claudeColdStart -gt 8000) { "WARN" } else { "OK" }
+$codexColdStatus = if ($codexColdStart -gt 16000) { "FAIL" } elseif ($codexColdStart -gt 12000) { "WARN" } else { "OK" }
+Add-Result $results "claude-cold-start-est" $claudeColdStatus "$claudeColdStart approx tokens (Claude files + memory + harness)"
+Add-Result $results "codex-cold-start-est" $codexColdStatus "$codexColdStart approx tokens (Codex files + memory + harness)"
+
+# Legacy alias - matcher codex (worst case) for backward compat med eksisterende baselines.
+$coldStartTotal = $codexColdStart
+$coldStartStatus = $codexColdStatus
+Add-Result $results "cold-start-total-est" $coldStartStatus "$coldStartTotal approx tokens (legacy alias = codex cold-start)"
 
 Write-Host ""
 Write-Host "Agent token hygiene"
@@ -175,7 +195,11 @@ if ($BaselineOut) {
     timestamp = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssK")
     host = $hostname
     cold_start_total_est = $coldStartTotal
+    claude_cold_start_est = $claudeColdStart
+    codex_cold_start_est = $codexColdStart
     file_context_total = $total
+    claude_file_total = $claudeFileTotal
+    codex_file_total = $codexFileTotal
     harness_blob_value = $harnessValue
     harness_blob_source = $harnessSource
     memory_dir_total = $memoryDirTokens
