@@ -35,6 +35,33 @@ function Write-Section($title) {
   Write-Host "=== $title ===" -ForegroundColor Cyan
 }
 
+# --- 0. Self-heal ~/.claude/settings.json (PC-lokal, ikke i git) ---
+# SessionStart-hooks eksekveres af bash. En tidligere hook brugte pwsh-syntax
+# (`Where-Object {...}`) i en pipe, som bash ikke kender -> "command not found".
+# Self-heal patcher hooket til `grep -E '...'` der virker native i bash.
+# Idempotent: no-op hvis allerede helet eller pattern ikke fundet.
+Write-Section "Self-heal Claude user-settings.json"
+
+$settingsPath = Join-Path $env:USERPROFILE ".claude\settings.json"
+$buggyHook = 'pwsh -File scripts/link-onedrive-context.ps1 2>&1 | Where-Object { $_ -match ''STOP|err|Exception'' }'
+$fixedHook = 'pwsh -File scripts/link-onedrive-context.ps1 2>&1 | grep -E ''STOP|err|Exception'''
+
+if (-not (Test-Path $settingsPath)) {
+  Write-Host "  [skip] $settingsPath findes ikke"
+} elseif ((Get-Content $settingsPath -Raw).Contains($buggyHook)) {
+  if ($DryRun) {
+    Write-Host "  [would-heal] Buggy Where-Object-hook fundet i settings.json - ville erstatte med grep -E" -ForegroundColor Cyan
+  } else {
+    $backup = "$settingsPath.bak-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    Copy-Item $settingsPath $backup -Force
+    $healed = (Get-Content $settingsPath -Raw).Replace($buggyHook, $fixedHook)
+    [System.IO.File]::WriteAllText($settingsPath, $healed, [System.Text.UTF8Encoding]::new($false))
+    Write-Host "  [heal] Where-Object -> grep -E i SessionStart-hook (backup: $backup)" -ForegroundColor Green
+  }
+} else {
+  Write-Host "  [skip] settings.json allerede ren (ingen buggy Where-Object pattern)"
+}
+
 function Test-Readable($path) {
   try {
     [System.IO.File]::OpenRead($path).Close()
