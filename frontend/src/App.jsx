@@ -31,6 +31,7 @@ const SeasonPreviewPage = lazy(() => import("./pages/SeasonPreviewPage"));
 const HeadToHeadPage = lazy(() => import("./pages/HeadToHeadPage"));
 const PatchNotesPage = lazy(() => import("./pages/PatchNotesPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
+const PrivacyPolicyPageEn = lazy(() => import("./pages/PrivacyPolicyPageEn"));
 const RacesPage = lazy(() => import("./pages/RacesPage"));
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
@@ -92,6 +93,7 @@ export default function App() {
           <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage session={session} />} />
           <Route path="/privatlivspolitik" element={<PrivacyPolicyPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPageEn />} />
           <Route path="/" element={
             <ProtectedRoute session={session}><Layout /></ProtectedRoute>
           }>

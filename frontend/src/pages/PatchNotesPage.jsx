@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.41",
+    date: "2026-05-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Privatlivspolitik · GDPR + Founder Supporter-waitlist (#360)",
+        items: [
+          "Docs · Privatlivspolitikken er udvidet med dedikeret sektion om Founder Supporter-waitlisten: hvilke data der gemmes (e-mail/Discord-handle, interesseniveau, foretrukken tier, opfølgnings-samtykke, attribution, samtykke-tidsstempel), formål, opbevaring (24 mdr. inaktivitet), tredjeparter, og at en tilmelding er uforpligtende.",
+          "Feature · Engelsk version af privatlivspolitikken tilgængelig på `/privacy-policy`. Sprog-switcher i toppen af begge sider; footer-link på Login + Reset-password til både DK og EN.",
+          "Docs · Dataansvarlig opdateret til `Cycling Zone v/ Nicolai Dolmer Mikkelsen` (enkeltmandsvirksomhed under registrering). Rettigheds-listen er nu eksplicit (indsigt, berigtigelse, sletning, dataportabilitet, indsigelse, tilbagetrækning, Datatilsynet-klage).",
+          "Infra · `WaitlistConsentText`-komponent klar til embed i waitlist-form (#362) — IKKE pre-tjekket checkbox, link til privatlivspolitik åbner i ny fane.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.40",
     date: "2026-05-15",
     label: "Beta",

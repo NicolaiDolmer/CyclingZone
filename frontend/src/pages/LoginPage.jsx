@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
@@ -372,6 +373,11 @@ export default function LoginPage() {
 
         <p className="text-center text-cz-3 text-xs mt-6">
           Cycling Zone — Multiplayer Edition
+        </p>
+        <p className="text-center text-cz-3 text-xs mt-2 flex items-center justify-center gap-2">
+          <Link to="/privatlivspolitik" className="hover:text-cz-1 underline">Privatlivspolitik</Link>
+          <span aria-hidden="true">·</span>
+          <Link to="/privacy-policy" className="hover:text-cz-1 underline">Privacy policy</Link>
         </p>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 export default function ResetPasswordPage({ session }) {
@@ -217,6 +217,11 @@ export default function ResetPasswordPage({ session }) {
 
         <p className="text-center text-cz-3 text-xs mt-6">
           Cycling Zone — Multiplayer Edition
+        </p>
+        <p className="text-center text-cz-3 text-xs mt-2 flex items-center justify-center gap-2">
+          <Link to="/privatlivspolitik" className="hover:text-cz-1 underline">Privatlivspolitik</Link>
+          <span aria-hidden="true">·</span>
+          <Link to="/privacy-policy" className="hover:text-cz-1 underline">Privacy policy</Link>
         </p>
       </div>
     </div>
