@@ -36,9 +36,44 @@
     "code-modernization@claude-plugins-official"
   ],
   "total_harness_tokens": 15780,
-  "phase23_disable_target": {
-    "estimated_savings_tokens": 5500,
-    "post_cut_estimate_tokens": 10280,
-    "based_on": "AI_OPS_DISABLE_PLAYBOOK.md (Clarity/Drive/Gmail/Calendar/mcp-registry connectors + ~47 ubrugte skills)"
+  "planned_cuts_phase_b_2026_05_15": {
+    "approved_by_user": "2026-05-15",
+    "execution_method": "Manuel disconnect via https://claude.ai/settings/connectors. Effekt i NÆSTE Claude Code session.",
+    "cuts": [
+      {
+        "connector": "Gmail",
+        "uuid": "749f70dd-c503-4879-94a1-35b0c0754720",
+        "tools_removed": 12,
+        "projected_savings_tokens": 180,
+        "rationale": "0 tool-calls i 75 sessioner",
+        "actual_usage_calls_75_sess": 0
+      },
+      {
+        "connector": "mcp-registry",
+        "tools_removed": 3,
+        "projected_savings_tokens": 45,
+        "rationale": "Discovery-tool, ingen aktiv discovery-behov",
+        "actual_usage_calls_75_sess": 0
+      },
+      {
+        "connector": "GitHub MCP",
+        "uuid": "392d630e-5e88-4afd-9c53-0a45062c42af",
+        "tools_removed": 41,
+        "projected_savings_tokens": 615,
+        "rationale": "3 calls ever. Bruger gh CLI per feedback_github_mcp_issue_write_403 memory. Største enkelt-cut.",
+        "actual_usage_calls_75_sess": 3
+      }
+    ],
+    "total_tools_removed": 56,
+    "projected_harness_savings_tokens": 840,
+    "projected_harness_post_cuts_tokens": 14940,
+    "projected_cold_start_post_cuts_tokens": 23970,
+    "verification_step": "Efter manuel disconnect: start ny Claude Code session, opdater denne fil med nye counts, kør 'pwsh -File scripts/check-agent-token-hygiene.ps1 -BaselineOut docs/metrics/token-baseline-post-phase-b.json'"
+  },
+  "kept_explicit_decision_2026_05_15": {
+    "Microsoft_Clarity": "0 calls — beholdt på user-valg (UX-analytics fremtid)",
+    "Google_Drive": "1 call ever — beholdt på user-valg",
+    "Google_Calendar": "0 calls — beholdt på user-valg",
+    "Claude_Preview": "0 direct calls — beholdt da /preview slash command muligvis bruger det internt"
   }
 }
