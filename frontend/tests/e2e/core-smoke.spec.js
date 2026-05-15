@@ -22,6 +22,12 @@ test("login redirects authenticated manager to dashboard", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "E2E Racing" })).toBeVisible();
 });
 
+test("root path redirects to dashboard", async ({ page }) => {
+  await login(page);
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/dashboard$/);
+});
+
 test("core manager pages render without blank screens", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
