@@ -6,7 +6,7 @@ Ingen aktiv kode-slice efter #373 close-out.
 > **Parallelt forretningsspor:** Monetization Validation Sprint starter 2026-05-18. Live status i [`SPRINT_DASHBOARD.md`](SPRINT_DASHBOARD.md); strategi i [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md).
 
 ## Senest leveret
-- 2026-05-15: **[#382](https://github.com/NicolaiDolmer/CyclingZone/issues/382) Phase 3 token-cut + Claude/Codex målings-split.** `code-modernization` plugin disabled (-490 tok). Hygiene-script splittet til separate Claude/Codex cold-start metrics — AGENTS.md auto-loades kun af Codex, ikke Claude. `~/.claude/settings.json` nu OneDrive-hardlinked for cross-PC plugin-sync.
+- 2026-05-15: **[#382](https://github.com/NicolaiDolmer/CyclingZone/issues/382) Phase 3 token-cut + Claude/Codex målings-split — verificeret NICOLAIPC.** `code-modernization` plugin disabled, målt -203 tok (projekteret -490 var overestimat). Hygiene-script splittet til separate Claude/Codex cold-start metrics — AGENTS.md auto-loades kun af Codex, ikke Claude. `~/.claude/settings.json` OneDrive-hardlinked for cross-PC plugin-sync. Anden PC mangler stadig link-script-run.
 - 2026-05-15: **`cross-pc-forensic-audit.ps1` hardlink-detektion fixet (`4067c92`).** `pwsh` 7's tomme `LinkType` for hardlinks flag'ede korrekt-linkede filer som orphan; fix bruger `fsutil hardlink list`.
 - 2026-05-15: **`.codex.local/` ryddet — forensic audit GRØN.** 26 lokal-only filer verificeret som duplikater og slettet; token-baselines flyttet til `docs/metrics/`.
 - 2026-05-15: **[#334](https://github.com/NicolaiDolmer/CyclingZone/issues/334) Phase 0+1 cache verified + hardened.** Codex fiksede query-key collision + in-flight invalidation race, backend `npm test` 619/619 grønne.
