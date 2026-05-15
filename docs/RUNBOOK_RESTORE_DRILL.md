@@ -3,7 +3,7 @@
 **Issue:** [#332](https://github.com/NicolaiDolmer/CyclingZone/issues/332)
 **Parent:** [#323](https://github.com/NicolaiDolmer/CyclingZone/issues/323)
 **Owner:** Nicolai (executor) · Claude/Manus (drill-assist)
-**Sidste drill:** _(opdatér efter første kørsel)_
+**Sidste drill:** 2026-05-15 — **AFBRUDT i pre-req-stage** (Drill 1, attempt 1). 9 runbook-bugs fundet og rettet inline. Næste forsøg: efter pre-req-tools installeret + PITR-status afklaret. Rapport: [#332 comment](https://github.com/NicolaiDolmer/CyclingZone/issues/332).
 
 > Formålet er at bevise at vi kan restore production til en kendt-god tilstand HURTIGT og UDEN at korrumpere spil-state. En backup der aldrig er restored er en antagelse, ikke resiliens.
 
@@ -25,15 +25,29 @@ Hvis en drill **fejler** (smoke-tests røde, restore tager >2t, eller PITR-windo
 
 På production-projektet (`ghwvkxzhsbbltzfnuhhz`):
 
-- [ ] Verificér PITR aktiv: Supabase dashboard → Database → Backups → "Point in time" tab viser retention ≥ 7 dage
-- [ ] Tag note af seneste daily backup-timestamp (UTC) — det er vores restore-target
-- [ ] Verificér ingen aktiv auktion-finalization kører (`scripts/check-active-auctions.ps1` eller manuel check på `/admin/system-status`)
+- [ ] **Verificér PITR-status** (kritisk — afgør Path A vs B):
+  - Dashboard → Project (Cycling Zone) → **Settings → Add-ons** → tjek om "Point in Time Recovery" er enabled (Pro tier feature)
+  - **Alternativt**: Database → Backups — hvis der findes en "Point in time" tab med retention-slider er PITR aktiv. Hvis kun "Daily backups" tab vises er PITR IKKE aktiv (kør Path B i stedet, eller opgrader til Pro før drill).
+  - PITR retention skal være ≥ 7 dage for at matche post-incident RTO-mål
+- [ ] Tag note af seneste daily backup-timestamp (UTC) — fallback restore-target hvis PITR ikke kan målrettes
+- [ ] **Verificér ingen aktiv auktion-finalization kører** via SQL:
+  ```sql
+  SELECT count(*) FROM public.auctions WHERE status IN ('active','finalizing');
+  ```
+  Skal være 0 (eller minimum ingen i `finalizing`). Alternativt: manuel check på `/admin/system-status`.
 - [ ] Sørg for at den restore-targetede non-prod kopi IKKE har samme service-key som prod (forhindrer crossover-skrivninger)
 
-Forudsætninger:
-- Supabase CLI installeret (`supabase --version` ≥ 1.180)
-- Adgang til Supabase organization som ejer/admin
-- `psql` + `pg_dump`/`pg_restore` lokalt (PostgreSQL ≥ 15 client)
+Forudsætninger (Windows / PowerShell host):
+
+| Tool | Hvornår nødvendigt | Installation |
+|---|---|---|
+| Supabase MCP (denne harness) | Path A, SQL-smoke-tests | Indbygget — bekræft med `mcp__supabase__list_projects` |
+| `psql` (PostgreSQL ≥ 15 client) | Path B + lokal SQL hvis MCP ikke kan målrette target | `winget install PostgreSQL.PostgreSQL.15` eller `scoop install postgresql` |
+| `pg_restore` (kommer med PostgreSQL client) | Path B (dump-restore) | Som ovenfor — del af PostgreSQL client-pakken |
+| Supabase CLI (`supabase --version` ≥ 1.180) | Magic-link auth i smoke-test A, kun valgfrit | `npm i -g supabase` eller `scoop install supabase` |
+| Adgang til Supabase organization | Begge paths | Verificér via dashboard at du er ejer/admin |
+
+> **Note:** Hvis Path A bruges udelukkende via MCP (intet pg_restore-trin), er `psql`/`pg_restore` ikke nødvendige. Drill 1 (2026-05-15) afbrudt fordi disse pre-reqs ikke var dokumenteret som conditionally-needed.
 
 ---
 
@@ -89,41 +103,47 @@ Kør mod restore-target-projektet. Alle skal være grønne før drill markeres c
 ### B. Key tables loader og er internt konsistente
 
 ```sql
--- Forventede non-null counts
+-- Forventede non-null counts (skal sammenlignes mod prod-snapshot taget i pre-drill)
 SELECT
-  (SELECT count(*) FROM teams)                                    AS teams,
-  (SELECT count(*) FROM riders)                                   AS riders,
-  (SELECT count(*) FROM auctions WHERE status = 'active')         AS active_auctions,
-  (SELECT count(*) FROM transfers WHERE created_at > now()-'7 days'::interval) AS recent_transfers,
-  (SELECT count(*) FROM player_events WHERE created_at > now()-'1 day'::interval) AS recent_events;
+  (SELECT count(*) FROM public.teams)                                                            AS teams,
+  (SELECT count(*) FROM public.riders)                                                           AS riders,
+  (SELECT count(*) FROM public.auctions WHERE status = 'active')                                 AS active_auctions,
+  (SELECT count(*) FROM public.auctions WHERE status = 'finalizing')                             AS finalizing_auctions,
+  (SELECT count(*) FROM public.transfer_offers WHERE created_at > now()-interval '7 days')       AS recent_transfer_offers,
+  (SELECT count(*) FROM public.finance_transactions WHERE created_at > now()-interval '7 days')  AS recent_finance_tx,
+  (SELECT count(*) FROM public.player_events WHERE created_at > now()-interval '1 day')          AS recent_events_1d;
 ```
 
-- [ ] Ingen tal er 0 medmindre production faktisk har 0
+- [ ] Ingen tal er 0 medmindre production faktisk har 0 (jævnfør prod-baseline taget i pre-drill)
 - [ ] `riders.team_id` FK-violation count = 0:
-  `SELECT count(*) FROM riders r WHERE r.team_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM teams t WHERE t.id = r.team_id);`
+  `SELECT count(*) FROM public.riders r WHERE r.team_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.teams t WHERE t.id = r.team_id);`
 - [ ] `auctions.rider_id` FK-violation count = 0:
-  `SELECT count(*) FROM auctions a WHERE NOT EXISTS (SELECT 1 FROM riders r WHERE r.id = a.rider_id);`
+  `SELECT count(*) FROM public.auctions a WHERE NOT EXISTS (SELECT 1 FROM public.riders r WHERE r.id = a.rider_id);`
 
 ### C. Spil-invarianter (per `docs/GAME_INVARIANTS.md`)
 
-- [ ] Squad-limit: ingen team har > maks rytter-count
-  `SELECT team_id, count(*) FROM riders WHERE team_id IS NOT NULL GROUP BY team_id HAVING count(*) > 30;` → 0 rows
-- [ ] Auktion-finalization-state konsistent: ingen `status = 'finalized'` uden `winner_team_id`
-  `SELECT count(*) FROM auctions WHERE status = 'finalized' AND winner_team_id IS NULL;` → 0
-- [ ] Salary GENERATED column virker: `SELECT count(*) FROM riders WHERE salary IS NULL AND market_value IS NOT NULL;` → 0
+> **Status-enum** for `auctions.status`: `active`, `finalizing`, `completed`, `cancelled`. Der findes IKKE en `finalized`-status. Vinder af afsluttet auktion er `current_bidder_id` (auctions har ikke en `winner_team_id`-kolonne).
+
+- [ ] **Squad-limit** (coarse upper-bound — division 1 cap er 30; div 2 = 20; div 3 = 10. Denne query fanger kun grove violations, ikke division-specifikke. For division-aware check, joinet via `teams.division` kræves):
+  `SELECT team_id, count(*) FROM public.riders WHERE team_id IS NOT NULL GROUP BY team_id HAVING count(*) > 30;` → 0 rows
+- [ ] **Auktion-finalization-state konsistent**: ingen `status = 'completed'` uden `current_bidder_id` (vinder)
+  `SELECT count(*) FROM public.auctions WHERE status = 'completed' AND current_bidder_id IS NULL;` → 0
+- [ ] **Salary GENERATED column virker**: salary er `GENERATED ALWAYS` som `floor(market_value * 0.10)`. Validér ved sampling at formel holder:
+  `SELECT count(*) FROM public.riders WHERE salary IS NOT NULL AND salary <> GREATEST(1, round(market_value * 0.10));` → 0
+  (Den gamle check `WHERE salary IS NULL AND market_value IS NOT NULL` er tautologisk siden salary er GENERATED ALWAYS — kan aldrig være NULL.)
 
 ### D. Backend smoke (mod restore-DSN)
 
-Kør backend lokalt med restore-projekt env vars:
+Kør backend lokalt med restore-projekt env vars. **Backend lytter på port 3001** (`backend/server.js:23`), ikke 4000.
 
 ```pwsh
 $env:SUPABASE_URL = "https://<restore-ref>.supabase.co"
-$env:SUPABASE_SERVICE_KEY = "<restore-service-key>"
+$env:SUPABASE_SERVICE_KEY = "<restore-service-key>"  # NB: service-key, ikke service-role-key
 cd backend; npm start
 # i anden terminal:
-curl http://localhost:4000/health                    # forvent 200
-curl http://localhost:4000/api/auctions              # forvent 401 (auth-gate)
-curl http://localhost:4000/api/admin/system-status   # forvent 401 uden token
+curl http://localhost:3001/health                    # forvent 200
+curl http://localhost:3001/api/auctions              # forvent 401 (auth-gate)
+curl http://localhost:3001/api/admin/system-status   # forvent 401 uden token
 ```
 
 - [ ] Backend starter uden DB-errors i log
@@ -175,3 +195,11 @@ Når restore reelt udløses pga. outage (ikke drill), gælder følgende politik.
 - [`docs/GAME_INVARIANTS.md`](GAME_INVARIANTS.md) — spil-konsistens-regler brugt i smoke-test C
 - [`docs/RUNBOOK_S01_DEPLOY.md`](RUNBOOK_S01_DEPLOY.md) — PITR-verification mønster genbrugt her
 - [Supabase Backups docs](https://supabase.com/docs/guides/platform/backups)
+
+---
+
+## Drill-historik
+
+| Dato | Resultat | Restore-tid | Smoke-tests | Note |
+|---|---|---|---|---|
+| 2026-05-15 | **Afbrudt (pre-req)** | n/a | n/a | Drill 1 attempt 1. PITR-status ikke afklaret, CLI-tools ikke installeret, 9 runbook-bugs fundet og rettet inline. Næste forsøg blocked på [#374](https://github.com/NicolaiDolmer/CyclingZone/issues/374). |
