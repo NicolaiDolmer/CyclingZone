@@ -15,7 +15,8 @@ Den anden PC kan tage over når som helst — så intet vigtigt må ende kun lok
 Før du gør noget andet:
 
 1. Læs AGENTS.md i repo-roden — den er sandheden for hvordan vi arbejder cross-PC.
-   Særligt §LOKAL: whitelist for .codex.local/ + decision tree for ad-hoc indhold.
+   Læs også docs/CROSS_PC_LOCAL_STATE.md (§LOKAL): whitelist for .codex.local/
+   + decision tree for ad-hoc indhold.
 
 2. Kør session-start sekvensen:
    git fetch --prune origin
@@ -54,7 +55,8 @@ Den anden PC kan tage over når som helst — så intet vigtigt må ende kun lok
 Før du gør noget andet:
 
 1. Læs AGENTS.md (repo-root) UDOVER din auto-loadede CLAUDE.md.
-   §LOKAL definerer whitelist for .codex.local/ og decision tree for ad-hoc indhold.
+   docs/CROSS_PC_LOCAL_STATE.md (§LOKAL) definerer whitelist for .codex.local/
+   og decision tree for ad-hoc indhold.
 
 2. Kør session-start (Bash-tool):
    git fetch --prune origin
@@ -93,7 +95,8 @@ Før du gør noget andet:
 
 1. Åbn og læs:
    https://github.com/NicolaiDolmer/CyclingZone/blob/main/AGENTS.md
-   Særligt §LOKAL (whitelist + decision tree) og §6 (din specifikke rolle).
+   Læs også https://github.com/NicolaiDolmer/CyclingZone/blob/main/docs/CROSS_PC_LOCAL_STATE.md
+   (§LOKAL whitelist + decision tree) og AGENTS.md §6 (din specifikke rolle).
 
 2. Bekræft til mig: "AGENTS.md læst — jeg er The Architect & Coordinator,
    leverancer går til OneDrive 'CyclingZone-Manus noter' og beslutninger
@@ -121,7 +124,7 @@ Codex efterlod 19 lokal-only filer på denne PC (7 Discord-issue-drafts, token-b
 vite-logs, sub-issue-260-bodies, migration-rapporter) — alle usynlige fra den anden PC.
 Reglerne i AGENTS.md var rigtige men for abstrakte. Nu er der:
 
-1. **Konkret whitelist** i AGENTS.md §LOKAL — alt udenfor er en fejl
+1. **Konkret whitelist** i `docs/CROSS_PC_LOCAL_STATE.md` (§LOKAL) — alt udenfor er en fejl
 2. **Forensisk audit-script** der kører automatisk session-start og fejler exit 1 ved fund
 3. **Stop-hook udvidelse** der advarer ved session-slut hvis nyt lokal-only state er opstået
 4. **Denne prompt** der ankrer alle 3 AI'er til samme proces

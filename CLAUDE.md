@@ -45,9 +45,9 @@ Ingen lokal-only handoff: projekt-state, beslutninger og næste skridt skal vær
 | SESSION_CONTEXT.md | 465 | <500 | Bounded prefetch |
 | CLAUDE.md (denne) | 752 | <800 | OK |
 | NOW.md | 999 ⚠️ | <900 | Trim ved næste close-out |
-| AGENTS.md | 4,532 ⚠️ | <4,500 | §LOKAL whitelist gør den tung |
+| AGENTS.md | 4,048 | <4,500 | OK efter Fase D — §LOKAL flyttet til [`docs/CROSS_PC_LOCAL_STATE.md`](docs/CROSS_PC_LOCAL_STATE.md) per #378 |
 | GUARDRAILS_CORE.md | 1,111 | <1,300 | Kun ~20% af sessioner |
 | MCP+skills harness | **15,780** | <10,000 post Phase 2+3 | Hardkodet 5,700-estimate var 3x for lavt — se [`HARNESS_MEASUREMENT.md`](docs/metrics/HARNESS_MEASUREMENT.md) |
-| **Cold-start total** | **24,810 ❌** | <8,000 verdens-klasse | Phase 2+3 cuts mangler — [`AI_OPS_DISABLE_PLAYBOOK.md`](docs/AI_OPS_DISABLE_PLAYBOOK.md) |
+| **Cold-start total** | **23,629 ❌** | <8,000 verdens-klasse | Fase B+D: -1,181 tok faktisk; Phase 2+3 cuts mangler — [`AI_OPS_DISABLE_PLAYBOOK.md`](docs/AI_OPS_DISABLE_PLAYBOOK.md) |
 
 Per-PC harness-snapshot: `docs/metrics/harness-snapshot-<COMPUTERNAME>.json`. Refresh ved connector/plugin-ændring.
