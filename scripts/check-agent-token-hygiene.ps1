@@ -136,9 +136,27 @@ foreach ($hot in $hotFiles) {
   }
 }
 
-Add-Result $results "harness-blob-estimate" "INFO" "$HarnessTokensEstimate approx tokens (MCP tool list + skills list; manual estimate)"
+$hostname = $env:COMPUTERNAME
+$snapshotPath = "docs/metrics/harness-snapshot-$hostname.json"
+$harnessSource = "estimate"
+$harnessValue = $HarnessTokensEstimate
+if (Test-Path $snapshotPath) {
+  try {
+    $snap = Get-Content $snapshotPath -Raw | ConvertFrom-Json
+    if ($snap.total_harness_tokens -and ($snap.total_harness_tokens -gt 0)) {
+      $harnessValue = [int]$snap.total_harness_tokens
+      $harnessSource = "measured-snapshot ($snapshotPath)"
+    }
+  } catch {
+    Add-Result $results "harness-snapshot-parse" "WARN" "Kunne ikke parse $snapshotPath, bruger default estimate $HarnessTokensEstimate"
+  }
+} else {
+  Add-Result $results "harness-snapshot-missing" "WARN" "Ingen $snapshotPath for denne PC - fall-back til hardkodet estimate. Se docs/metrics/HARNESS_MEASUREMENT.md for hvordan du tager en maaling."
+}
 
-$coldStartTotal = $total + $HarnessTokensEstimate
+Add-Result $results "harness-blob-estimate" "INFO" "$harnessValue approx tokens (source: $harnessSource)"
+
+$coldStartTotal = $total + $harnessValue
 $coldStartStatus = if ($coldStartTotal -gt 12000) { "FAIL" } elseif ($coldStartTotal -gt 8000) { "WARN" } else { "OK" }
 Add-Result $results "cold-start-total-est" $coldStartStatus "$coldStartTotal approx tokens (files + harness blob)"
 
@@ -155,9 +173,11 @@ Write-Host "Summary: $($failures.Count) fail, $($warnings.Count) warn, $(@($resu
 if ($BaselineOut) {
   $baseline = [PSCustomObject]@{
     timestamp = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssK")
+    host = $hostname
     cold_start_total_est = $coldStartTotal
     file_context_total = $total
-    harness_blob_estimate = $HarnessTokensEstimate
+    harness_blob_value = $harnessValue
+    harness_blob_source = $harnessSource
     memory_dir_total = $memoryDirTokens
     checks = $results
   }

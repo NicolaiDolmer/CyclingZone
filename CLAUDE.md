@@ -37,14 +37,17 @@ Ingen lokal-only handoff: projekt-state, beslutninger og næste skridt skal vær
 - Tjekliste før commit; ÉN issue pr. session
 - Foreslå "Næste session starter med #N..." ved close-out
 
-## Token-budget (efter Phase 1-4, 2026-05-14)
+## Token-budget (målt 2026-05-15 Fase A — ærlig måling)
 
-| Komponent | Tokens | Note |
-|---|---|---|
-| MEMORY.md (HOT auto) | ~1,100 | Skåret fra 4,400 (Phase 1) |
-| SESSION_CONTEXT.md | ~500 | Bounded prefetch |
-| CLAUDE.md (denne) | ~600 | Skåret fra ~1,000 (Phase 4) |
-| NOW.md | ~600 | Maks 30 linjer |
-| GUARDRAILS_CORE.md | ~1,100 (kun ~20% sess.) | Trigget af label |
-| MCP+skills harness-blob | ~3,000-5,500 | Beror på Phase 2+3 disables |
-| **Cold-start total** | **~6,000-9,000** | Down fra ~17,000 baseline |
+| Komponent | Faktisk | Target | Note |
+|---|---|---|---|
+| MEMORY.md (HOT auto) | 1,171 | <1,200 | OK efter Phase 1 |
+| SESSION_CONTEXT.md | 465 | <500 | Bounded prefetch |
+| CLAUDE.md (denne) | 752 | <800 | OK |
+| NOW.md | 999 ⚠️ | <900 | Trim ved næste close-out |
+| AGENTS.md | 4,532 ⚠️ | <4,500 | §LOKAL whitelist gør den tung |
+| GUARDRAILS_CORE.md | 1,111 | <1,300 | Kun ~20% af sessioner |
+| MCP+skills harness | **15,780** | <10,000 post Phase 2+3 | Hardkodet 5,700-estimate var 3x for lavt — se [`HARNESS_MEASUREMENT.md`](docs/metrics/HARNESS_MEASUREMENT.md) |
+| **Cold-start total** | **24,810 ❌** | <8,000 verdens-klasse | Phase 2+3 cuts mangler — [`AI_OPS_DISABLE_PLAYBOOK.md`](docs/AI_OPS_DISABLE_PLAYBOOK.md) |
+
+Per-PC harness-snapshot: `docs/metrics/harness-snapshot-<COMPUTERNAME>.json`. Refresh ved connector/plugin-ændring.

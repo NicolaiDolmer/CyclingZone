@@ -1,0 +1,44 @@
+{
+  "host": "NICOLAIPC",
+  "user_profile": "ndmh3",
+  "captured": "2026-05-15T10:50:00+02:00",
+  "captured_via": "manuel optælling fra session-start system-reminders + observation af top-level tool schemas i prompt",
+  "methodology": "Se docs/metrics/HARNESS_MEASUREMENT.md. Refresh ved enhver connector- eller plugin-ændring.",
+  "components": {
+    "system_prompt_preamble_tokens": 2500,
+    "auto_memory_block_tokens": 2000,
+    "top_level_tool_schemas_tokens": 7500,
+    "deferred_tools_count": 202,
+    "deferred_tools_tokens": 3030,
+    "skills_count": 20,
+    "skills_tokens": 750
+  },
+  "deferred_tools_breakdown": {
+    "builtin_cron_plus_misc": 16,
+    "supabase_mcp": 29,
+    "github_mcp": 41,
+    "google_calendar": 8,
+    "gmail": 12,
+    "google_drive": 8,
+    "claude_preview": 13,
+    "claude_in_chrome": 22,
+    "microsoft_clarity": 3,
+    "ccd_directory": 1,
+    "ccd_session_mgmt": 3,
+    "vercel": 18,
+    "mcp_registry": 3,
+    "scheduled_tasks": 3,
+    "discord": 22
+  },
+  "enabled_plugins": [
+    "frontend-design@claude-plugins-official",
+    "claude-code-setup@claude-plugins-official",
+    "code-modernization@claude-plugins-official"
+  ],
+  "total_harness_tokens": 15780,
+  "phase23_disable_target": {
+    "estimated_savings_tokens": 5500,
+    "post_cut_estimate_tokens": 10280,
+    "based_on": "AI_OPS_DISABLE_PLAYBOOK.md (Clarity/Drive/Gmail/Calendar/mcp-registry connectors + ~47 ubrugte skills)"
+  }
+}
