@@ -32,8 +32,20 @@ WHERE id IN (
 );
 
 -- 2. Haandhaev en snapshot pr. (board, season)
-ALTER TABLE board_plan_snapshots
-  ADD CONSTRAINT board_plan_snapshots_board_season_unique
-  UNIQUE (board_id, season_id);
+-- Idempotent: skip hvis constraint allerede er paasat (kan ske hvis schema.sql/
+-- supabase_setup.sql blev kort i et tidligere init-load).
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'board_plan_snapshots_board_season_unique'
+      AND conrelid = 'board_plan_snapshots'::regclass
+  ) THEN
+    ALTER TABLE board_plan_snapshots
+      ADD CONSTRAINT board_plan_snapshots_board_season_unique
+      UNIQUE (board_id, season_id);
+  END IF;
+END $$;
 
 COMMIT;
