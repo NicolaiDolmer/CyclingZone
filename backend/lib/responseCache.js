@@ -39,18 +39,29 @@ function now() {
 
 function sortedQueryString(query) {
   if (!query) return "";
-  const entries = Object.entries(query)
-    .filter(([, v]) => v !== undefined && v !== null && v !== "")
-    .map(([k, v]) => [k, String(v)])
-    .sort(([a], [b]) => a.localeCompare(b));
+  const entries = [];
+  for (const [key, value] of Object.entries(query)) {
+    const values = Array.isArray(value) ? value : [value];
+    for (const v of values) {
+      if (v !== undefined && v !== null && v !== "") {
+        entries.push([String(key), String(v)]);
+      }
+    }
+  }
+  entries.sort(([aKey, aValue], [bKey, bValue]) => {
+    const keyOrder = aKey.localeCompare(bKey);
+    return keyOrder === 0 ? aValue.localeCompare(bValue) : keyOrder;
+  });
   if (entries.length === 0) return "";
-  return entries.map(([k, v]) => `${k}=${v}`).join("&");
+  return entries
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join("&");
 }
 
 function getBucket(namespace) {
   let bucket = namespaces.get(namespace);
   if (!bucket) {
-    bucket = { store: new Map(), maxEntries: 200 };
+    bucket = { store: new Map(), inFlight: new Map(), maxEntries: 200, version: 0 };
     namespaces.set(namespace, bucket);
   }
   return bucket;
@@ -94,8 +105,39 @@ export function invalidateNamespace(namespace) {
   if (!bucket) return 0;
   const size = bucket.store.size;
   bucket.store.clear();
+  bucket.version += 1;
   stats.invalidations += 1;
   return size;
+}
+
+function cacheableHeaders(res) {
+  const headers = res.getHeaders();
+  if (headers["set-cookie"]) {
+    return { cacheable: false, headers: {} };
+  }
+  const copied = {};
+  for (const [name, value] of Object.entries(headers)) {
+    const lower = name.toLowerCase();
+    if (lower === "x-cache" || lower === "content-length" || lower === "set-cookie") continue;
+    copied[name] = value;
+  }
+  return { cacheable: true, headers: copied };
+}
+
+function applyCachedHeaders(res, entry) {
+  for (const [name, value] of Object.entries(entry.headers || {})) {
+    res.set(name, value);
+  }
+}
+
+function createInFlight() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
 }
 
 /**
@@ -124,15 +166,20 @@ export function cached({ namespace, ttlMs, keyExtras }, handler) {
 
   return async function cachedHandler(req, res, next) {
     const startedAt = process.hrtime.bigint();
-    const route = req.baseUrl + req.route?.path || req.path;
+    const routePath = req.route?.path ?? req.path ?? req.originalUrl?.split("?")[0] ?? "";
+    const route = `${req.baseUrl || ""}${String(routePath)}`;
     const qs = sortedQueryString(req.query);
     const extras = typeof keyExtras === "function" ? String(keyExtras(req) || "") : "";
     const cacheKey = `${route}|${qs}|${extras}`;
 
     let hit = false;
+    let inFlight = null;
+    let bucket = null;
+    let bucketVersion = 0;
 
     if (!DISABLED) {
-      const bucket = getBucket(namespace);
+      bucket = getBucket(namespace);
+      bucketVersion = bucket.version;
       const entry = bucket.store.get(cacheKey);
       if (entry && entry.expiresAt > now()) {
         hit = true;
@@ -141,31 +188,59 @@ export function cached({ namespace, ttlMs, keyExtras }, handler) {
         bucket.store.delete(cacheKey);
         bucket.store.set(cacheKey, entry);
         emitTiming({ route, namespace, hit, startedAt, status: 200 });
+        applyCachedHeaders(res, entry);
         res.set("X-Cache", "HIT");
-        return res.status(200).json(entry.payload);
+        return res.status(entry.statusCode || 200).json(entry.payload);
       }
       if (entry) bucket.store.delete(cacheKey);
+
+      const pending = bucket.inFlight.get(cacheKey);
+      if (pending) {
+        const pendingEntry = await pending.promise.catch(() => null);
+        if (pendingEntry && pendingEntry.expiresAt > now()) {
+          hit = true;
+          stats.hits += 1;
+          bucket.store.delete(cacheKey);
+          bucket.store.set(cacheKey, pendingEntry);
+          emitTiming({ route, namespace, hit, startedAt, status: pendingEntry.statusCode || 200 });
+          applyCachedHeaders(res, pendingEntry);
+          res.set("X-Cache", "HIT");
+          return res.status(pendingEntry.statusCode || 200).json(pendingEntry.payload);
+        }
+      }
+
       stats.misses += 1;
+      inFlight = createInFlight();
+      bucket.inFlight.set(cacheKey, inFlight);
     }
 
     // Wrap res.json to capture the payload for storage on success.
     const originalJson = res.json.bind(res);
     res.json = (payload) => {
+      let storedEntry = null;
       try {
         if (!DISABLED && res.statusCode >= 200 && res.statusCode < 300) {
-          const bucket = getBucket(namespace);
-          pruneExpired(bucket);
-          bucket.store.set(cacheKey, {
-            payload,
-            expiresAt: now() + ttlMs,
-          });
-          evictIfNeeded(bucket);
+          const headerResult = cacheableHeaders(res);
+          if (headerResult.cacheable && bucket.version === bucketVersion) {
+            pruneExpired(bucket);
+            storedEntry = {
+              payload,
+              headers: headerResult.headers,
+              statusCode: res.statusCode,
+              expiresAt: now() + ttlMs,
+            };
+            bucket.store.set(cacheKey, storedEntry);
+            evictIfNeeded(bucket);
+          }
         }
       } catch (err) {
         // Cache write failures must never break the response.
-        Sentry.captureException(err, {
-          tags: { component: "responseCache", phase: "store" },
-        });
+        captureCacheException(err, "store");
+      } finally {
+        if (inFlight && bucket?.inFlight.get(cacheKey) === inFlight) {
+          bucket.inFlight.delete(cacheKey);
+          inFlight.resolve(storedEntry);
+        }
       }
       res.set("X-Cache", "MISS");
       emitTiming({ route, namespace, hit, startedAt, status: res.statusCode });
@@ -174,31 +249,59 @@ export function cached({ namespace, ttlMs, keyExtras }, handler) {
 
     try {
       await handler(req, res, next);
+      if (inFlight && bucket?.inFlight.get(cacheKey) === inFlight) {
+        bucket.inFlight.delete(cacheKey);
+        inFlight.resolve(null);
+      }
     } catch (err) {
+      if (inFlight && bucket?.inFlight.get(cacheKey) === inFlight) {
+        bucket.inFlight.delete(cacheKey);
+        inFlight.reject(err);
+      }
       emitTiming({ route, namespace, hit, startedAt, status: 500 });
       throw err;
     }
   };
 }
 
+function captureCacheException(err, phase) {
+  try {
+    Sentry.captureException(err, {
+      tags: { component: "responseCache", phase },
+    });
+  } catch {
+    // Sentry failures must never break the response path.
+  }
+}
+
+let timingSink = null;
+
 function emitTiming({ route, namespace, hit, startedAt, status }) {
   const durationNs = process.hrtime.bigint() - startedAt;
   const durationMs = Number(durationNs) / 1_000_000;
+  const data = {
+    route,
+    namespace,
+    hit,
+    duration_ms: Math.round(durationMs),
+    status,
+  };
   try {
     Sentry.addBreadcrumb({
       category: "endpoint-timing",
       level: "info",
       message: `${route} ${hit ? "HIT" : "MISS"} ${durationMs.toFixed(1)}ms`,
-      data: {
-        route,
-        namespace,
-        hit,
-        duration_ms: Math.round(durationMs),
-        status,
-      },
+      data,
     });
   } catch {
     // Sentry not initialised in tests — silent fallback.
+  }
+  if (timingSink) {
+    try {
+      timingSink(data);
+    } catch {
+      // Test sink only; keep production timing fail-open.
+    }
   }
 }
 
@@ -209,11 +312,15 @@ export const __testing__ = {
     stats.hits = 0;
     stats.misses = 0;
     stats.invalidations = 0;
+    timingSink = null;
   },
   setMaxEntries(namespace, n) {
     getBucket(namespace).maxEntries = n;
   },
   inspect(namespace) {
     return getBucket(namespace).store;
+  },
+  setTimingSink(fn) {
+    timingSink = typeof fn === "function" ? fn : null;
   },
 };

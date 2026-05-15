@@ -29,13 +29,19 @@ function request(port, path) {
       (res) => {
         let body = "";
         res.on("data", (chunk) => (body += chunk));
-        res.on("end", () =>
+        res.on("end", () => {
+          let parsed = body || null;
+          try {
+            parsed = body ? JSON.parse(body) : null;
+          } catch {
+            // Some edge-case tests intentionally use res.send(text).
+          }
           resolve({
             status: res.statusCode,
             headers: res.headers,
-            body: body ? JSON.parse(body) : null,
-          }),
-        );
+            body: parsed,
+          });
+        });
       },
     );
     req.on("error", reject);
@@ -115,6 +121,60 @@ test("cached: distinct queries get distinct cache entries", async () => {
   }
 });
 
+test("cached: encoded query values cannot collide with separate params", async () => {
+  __testing__.reset();
+  const app = express();
+  let invocations = 0;
+  app.get(
+    "/r",
+    cached({ namespace: "query-encoding", ttlMs: 60_000 }, async (req, res) => {
+      invocations += 1;
+      res.json({
+        invocation: invocations,
+        q: req.query.q || null,
+        team_id: req.query.team_id || null,
+      });
+    }),
+  );
+  const { server, port } = await startApp(app);
+  try {
+    const crafted = await request(port, "/r?q=a%26team_id%3D1");
+    const normal = await request(port, "/r?q=a&team_id=1");
+    assert.equal(crafted.headers["x-cache"], "MISS");
+    assert.equal(normal.headers["x-cache"], "MISS");
+    assert.equal(invocations, 2, "crafted value and real param must not share a cache key");
+    assert.deepEqual(crafted.body, { invocation: 1, q: "a&team_id=1", team_id: null });
+    assert.deepEqual(normal.body, { invocation: 2, q: "a", team_id: "1" });
+  } finally {
+    await close(server);
+  }
+});
+
+test("cached: middleware fallback uses req.path when req.route is undefined", async () => {
+  __testing__.reset();
+  const app = express();
+  let invocations = 0;
+  app.use(
+    cached({ namespace: "route-fallback", ttlMs: 60_000 }, async (req, res) => {
+      invocations += 1;
+      res.json({ path: req.path, invocation: invocations });
+    }),
+  );
+  const { server, port } = await startApp(app);
+  try {
+    const a = await request(port, "/a?x=1");
+    const b = await request(port, "/b?x=1");
+    const aAgain = await request(port, "/a?x=1");
+    assert.equal(a.headers["x-cache"], "MISS");
+    assert.equal(b.headers["x-cache"], "MISS");
+    assert.equal(aAgain.headers["x-cache"], "HIT");
+    assert.deepEqual(aAgain.body, a.body);
+    assert.equal(invocations, 2, "different middleware paths must not collide");
+  } finally {
+    await close(server);
+  }
+});
+
 test("cached: TTL expiry triggers re-fetch", async () => {
   __testing__.reset();
   const app = express();
@@ -186,6 +246,78 @@ test("cached: non-2xx responses are NOT cached", async () => {
   }
 });
 
+test("cached: res.send() responses are not captured", async () => {
+  __testing__.reset();
+  const app = express();
+  let invocations = 0;
+  app.get(
+    "/r",
+    cached({ namespace: "send", ttlMs: 60_000 }, async (req, res) => {
+      invocations += 1;
+      res.type("text/plain").send(`count:${invocations}`);
+    }),
+  );
+  const { server, port } = await startApp(app);
+  try {
+    const a = await request(port, "/r");
+    const b = await request(port, "/r");
+    assert.equal(a.headers["x-cache"], undefined);
+    assert.equal(b.headers["x-cache"], undefined);
+    assert.equal(invocations, 2, "res.send routes must always invoke handler");
+  } finally {
+    await close(server);
+  }
+});
+
+test("cached: non-cookie headers are preserved on HIT", async () => {
+  __testing__.reset();
+  const app = express();
+  let invocations = 0;
+  app.get(
+    "/r",
+    cached({ namespace: "headers", ttlMs: 60_000 }, async (req, res) => {
+      invocations += 1;
+      res.set("X-Source-Version", `v${invocations}`);
+      res.json({ ok: true });
+    }),
+  );
+  const { server, port } = await startApp(app);
+  try {
+    const a = await request(port, "/r");
+    const b = await request(port, "/r");
+    assert.equal(a.headers["x-source-version"], "v1");
+    assert.equal(b.headers["x-cache"], "HIT");
+    assert.equal(b.headers["x-source-version"], "v1");
+    assert.equal(invocations, 1);
+  } finally {
+    await close(server);
+  }
+});
+
+test("cached: Set-Cookie responses are not cached to avoid cookie replay", async () => {
+  __testing__.reset();
+  const app = express();
+  let invocations = 0;
+  app.get(
+    "/r",
+    cached({ namespace: "cookies", ttlMs: 60_000 }, async (req, res) => {
+      invocations += 1;
+      res.cookie("session_probe", `value-${invocations}`);
+      res.json({ invocation: invocations });
+    }),
+  );
+  const { server, port } = await startApp(app);
+  try {
+    const a = await request(port, "/r");
+    const b = await request(port, "/r");
+    assert.equal(a.headers["x-cache"], "MISS");
+    assert.equal(b.headers["x-cache"], "MISS");
+    assert.equal(invocations, 2, "cookie-setting responses must not become shared cache entries");
+  } finally {
+    await close(server);
+  }
+});
+
 test("cached: RESPONSE_CACHE_DISABLED=1 bypasses cache", async () => {
   // The env flag is read at module import, so we test the runtime path via
   // ensuring DISABLED is false here and trust the implementation; a separate
@@ -215,6 +347,88 @@ test("cached: LRU eviction beyond maxEntries removes oldest", async () => {
     // b might or might not still be present depending on LRU touches above;
     // this is mainly a smoke test that eviction does not crash.
     assert.ok(["HIT", "MISS"].includes(bAfter.headers["x-cache"]));
+  } finally {
+    await close(server);
+  }
+});
+
+test("cached: many distinct queries are bounded by maxEntries", async () => {
+  __testing__.reset();
+  const app = express();
+  app.get(
+    "/r",
+    cached({ namespace: "bounded", ttlMs: 60_000 }, async (req, res) => {
+      res.json({ q: req.query.q });
+    }),
+  );
+  const { server, port } = await startApp(app);
+  try {
+    for (let i = 0; i < 10_000; i += 1) {
+      await request(port, `/r?q=${i}`);
+    }
+    assert.equal(__testing__.inspect("bounded").size, 200);
+  } finally {
+    await close(server);
+  }
+});
+
+test("cached: concurrent first miss is coalesced for same key", async () => {
+  __testing__.reset();
+  const app = express();
+  let invocations = 0;
+  app.get(
+    "/r",
+    cached({ namespace: "single-flight", ttlMs: 60_000 }, async (req, res) => {
+      invocations += 1;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      res.json({ count: invocations });
+    }),
+  );
+  const { server, port } = await startApp(app);
+  try {
+    const responses = await Promise.all(
+      Array.from({ length: 20 }, () => request(port, "/r?same=1")),
+    );
+    assert.equal(invocations, 1);
+    assert.equal(responses.filter((r) => r.headers["x-cache"] === "MISS").length, 1);
+    assert.equal(responses.filter((r) => r.headers["x-cache"] === "HIT").length, 19);
+    assert.ok(responses.every((r) => r.body.count === 1));
+  } finally {
+    await close(server);
+  }
+});
+
+test("cached: invalidation during in-flight miss prevents stale re-store", async () => {
+  __testing__.reset();
+  const app = express();
+  let generation = 0;
+  let entered;
+  let release;
+  const enteredPromise = new Promise((resolve) => { entered = resolve; });
+  const releasePromise = new Promise((resolve) => { release = resolve; });
+  app.get(
+    "/r",
+    cached({ namespace: "invalidation-race", ttlMs: 60_000 }, async (req, res) => {
+      const snapshot = generation;
+      if (snapshot === 0) {
+        entered();
+        await releasePromise;
+      }
+      res.json({ generation: snapshot });
+    }),
+  );
+  const { server, port } = await startApp(app);
+  try {
+    const first = request(port, "/r");
+    await enteredPromise;
+    generation = 1;
+    invalidateNamespace("invalidation-race");
+    release();
+    const firstResponse = await first;
+    const afterInvalidation = await request(port, "/r");
+    assert.equal(firstResponse.body.generation, 0);
+    assert.equal(afterInvalidation.headers["x-cache"], "MISS");
+    assert.equal(afterInvalidation.body.generation, 1);
   } finally {
     await close(server);
   }
