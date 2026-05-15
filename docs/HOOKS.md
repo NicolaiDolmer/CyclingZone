@@ -17,9 +17,11 @@ Dette repo har to lag af Claude Code hooks:
 
 **Hvorfor:** Sparer en manuel `gh issue view` round-trip uden at lække hele issue-historikken ind i hver ny session. `CLAUDE.md` auto-loader filen, så outputtet skal være kort.
 
+**Source of truth:** Filen er en lokal, regenererbar cache af GitHub-data — ikke handoff og ikke projekt-sandhed. Varig context skal ligge i GitHub (`docs/NOW.md`, issues, slice-docs) eller OneDrive-context. Codex må ikke skrive unikke session-noter her ved close-out.
+
 **Bounds:** Default `SESSION_CONTEXT_BODY_LIMIT=900`, `SESSION_CONTEXT_COMMENT_LIMIT=450`, `SESSION_CONTEXT_MAX_COMMENTS=1`. Kan overrides i shell-env ved manuel debug.
 
-**Fail-safe:** Exit altid 0. Filen overskrives KUN hvis et gyldigt issue blev hentet — fejl-tilfælde bevarer evt. eksisterende `SESSION_CONTEXT.md`.
+**Fail-safe:** Exit altid 0. Filen overskrives KUN hvis et gyldigt issue blev hentet — fejl-tilfælde bevarer evt. eksisterende `SESSION_CONTEXT.md`, men den må stadig ikke behandles som canonical state.
 
 **Edge cases håndteret:**
 - `gh` ikke installeret eller ikke autentificeret → exit 0, ingen ændring

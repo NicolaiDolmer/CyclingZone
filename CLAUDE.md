@@ -5,12 +5,12 @@
 ## Auto-loaded (intet at gøre)
 
 - `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (~1,100 tok efter Phase 1 reduktion). Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).
-- `.codex.local/SESSION_CONTEXT.md` — bounded pre-fetch af aktivt issue (~500 tok) via `scripts/session-prefetch-issue.sh`.
+- `.codex.local/SESSION_CONTEXT.md` — bounded, regenererbar cache af aktivt GitHub-issue (~500 tok) via `scripts/session-prefetch-issue.sh`. Ikke source of truth.
 
 ## Start (eksplicit)
 
 1. Læs `docs/NOW.md` — kort status (aktiv slice + næste session-noter).
-2. **Aktivt issue:** kommer fra `SESSION_CONTEXT.md`. Stale eller mangler? `gh issue list --label "claude:todo" --state open --limit 10`
+2. **Aktivt issue:** kan læses fra `SESSION_CONTEXT.md`, men sandheden er GitHub + `docs/NOW.md`. Stale eller mangler? `gh issue list --label "claude:todo" --state open --limit 10`
 3. `docs/GUARDRAILS_CORE.md` læses KUN hvis issue-labels indeholder `needs-contract` eller `shared-refactor` (~80% af sessioner skipper).
 
 ## On-demand docs
@@ -28,6 +28,8 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-3 hits
 4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke).
 5. **Postmortem:** ved bugfix → `.claude/learnings/<dato>-<slug>.md`.
 6. **Token-hygiejne:** kør `pwsh -File scripts/check-agent-token-hygiene.ps1` ved lange sessioner.
+
+Ingen lokal-only handoff: projekt-state, beslutninger og næste skridt skal være i GitHub (`docs/NOW.md`, issues, slice-docs) eller OneDrive-context. Lokale transcripts, Codex memories og `.codex.local/SESSION_CONTEXT.md` er caches/pointers.
 
 ## Session-rytme
 

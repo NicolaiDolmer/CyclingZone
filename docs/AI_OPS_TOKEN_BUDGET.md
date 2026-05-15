@@ -11,7 +11,7 @@ Disciplin der holder cold-start under kontrol over tid. Baselinet 2026-05-14 eft
 | `memory/*.md` detail-filer | On-demand | COLD | n/a | n/a |
 | `CLAUDE.md` | Auto-load | HOT | <50 linjer / ~700 tok | >70 linjer eller >1,000 tok |
 | `docs/NOW.md` | Eksplicit start-read | HOT | <30 linjer / ~700 tok | >40 linjer eller >1,000 tok |
-| `.codex.local/SESSION_CONTEXT.md` | Auto-load (hook) | HOT | <30 linjer / ~500 tok | hook-bounds checked |
+| `.codex.local/SESSION_CONTEXT.md` | Optional auto-load cache (hook) | HOT | <30 linjer / ~500 tok | hook-bounds checked; missing is OK; no unique handoff |
 | `docs/GUARDRAILS_CORE.md` | Conditional auto-load | HOT-conditional | <70 linjer / ~1,200 tok | >100 linjer |
 
 **Cold-start total mål:** <8,000 tok. Baseline før Phase 1-5: 17,000 tok. Efter alle faser inkl. user-disable: forventet 6,000-8,000 tok.
@@ -19,7 +19,7 @@ Disciplin der holder cold-start under kontrol over tid. Baselinet 2026-05-14 eft
 ## Tier-system
 
 ```
-HOT  →  Auto-loader på HVER session. Budget knapt.
+HOT  →  Auto-loader på HVER session. Budget knapt. Lokale HOT-caches må kun indeholde regenererbar GitHub/OneDrive-context.
         Lokation: MEMORY.md, CLAUDE.md, NOW.md, SESSION_CONTEXT.md, GUARDRAILS_CORE.md (conditional)
 
 WARM →  On-demand. Læses når HOT ikke er nok.

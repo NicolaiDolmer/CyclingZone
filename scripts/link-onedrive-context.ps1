@@ -2,7 +2,7 @@
 #
 # Skaber junction + hardlinks fra repo + Claude memory til OneDrive-context.
 # SCOPE (efter #327 Infisical-migration): kun memory-junction og AI-context filer.
-# Produktionskritiske secrets (.env, .mcp.json) styres nu via Infisical — se docs/decisions/secret-management-adr.md.
+# Produktionskritiske secrets (.env, .mcp.json) styres nu via Infisical - se docs/decisions/secret-management-adr.md.
 # Idempotent: skip hvis allerede linkede; advarer hvis OneDrive-context mangler filer.
 #
 # Sikkerhedsnet:
@@ -143,7 +143,7 @@ if (-not $env:OneDrive) {
 }
 $contextRoot = Join-Path $env:OneDrive "CyclingZone-context"
 $memSource = Join-Path $contextRoot "memory"
-# $secSource (secrets/) brugt ikke længere — produktionskritiske secrets styres via Infisical (#327)
+# $secSource (secrets/) bruges ikke laengere - produktionskritiske secrets styres via Infisical (#327)
 $clSource = Join-Path $contextRoot "codex-local"
 
 if (-not (Test-Path $contextRoot)) {
@@ -154,13 +154,13 @@ if (-not (Test-Path $memSource)) {
   Write-Host "  [info] Mangler memory-mappe i OneDrive: $memSource. Skipper." -ForegroundColor Yellow
   exit 0
 }
-# secrets-mappe kræves ikke længere — produktionskritiske secrets styres via Infisical (#327)
+# secrets-mappe kraeves ikke laengere - produktionskritiske secrets styres via Infisical (#327)
 
 $memCount = (Get-ChildItem $memSource -File -ErrorAction SilentlyContinue).Count
 $clCount = if (Test-Path $clSource) { (Get-ChildItem $clSource -File -ErrorAction SilentlyContinue).Count } else { 0 }
 $mode = if ($DryRun) { " [DRY-RUN]" } else { "" }
 Write-Host "  [ok]$mode $contextRoot ($memCount memory-filer, $clCount codex-local-filer)"
-Write-Host "  [info] Secrets-mappe haandteres ikke af dette script — produktionskritiske secrets styres via Infisical." -ForegroundColor Cyan
+Write-Host "  [info] Secrets-mappe haandteres ikke af dette script - produktionskritiske secrets styres via Infisical." -ForegroundColor Cyan
 
 # --- 2. Memory-junction ---
 Write-Section "Memory junction"

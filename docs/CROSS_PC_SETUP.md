@@ -11,6 +11,7 @@ GitHub er synkroniseringsmekanismen — intet andet.
 - **Kanonisk repo-placering på alle PC'er:** `C:\dev\CyclingZone`
 - **Aldrig** under `OneDrive/`, `Dropbox/`, `iCloud/` eller lignende
 - **Sync-mekanisme:** `git fetch && git pull` ved session-start, `git push` efter commit
+- **Delt agent-context:** varig state ligger i GitHub (`docs/NOW.md`, issues, slice-docs) eller OneDrive-context. Lokale agent-filer er caches/pointers.
 - **User-level hooks** advarer hvis du forlader en session med uncommitted/unpushed work
 
 ---
@@ -183,6 +184,8 @@ User-level Stop hook advarer hvis:
 
 Advarslen er **ikke-blokerende** — den minder dig blot om at den anden PC ikke kan fortsætte uden disse ændringer.
 
+Før du skifter PC, telefon eller agent: sørg for at alle beslutninger, næste skridt og status står i GitHub (`docs/NOW.md`, GitHub issue-kommentarer eller slice-docs) eller i OneDrive-context. `.codex.local/SESSION_CONTEXT.md`, Claude transcripts og Codex memories er lokale caches og tæller ikke som handoff.
+
 ### Auto-push efter commit
 
 Allerede etableret regel (`AGENTS.md` punkt 6 + `feedback_push_after_commit.md`): commit → push uden at spørge.
@@ -247,7 +250,8 @@ Trust-entryen i `~/.codex/config.toml` betyder Codex ikke spørger om tilladelse
 | `.mcp.json` | Lokal, gitignored | Auto-genereres af `setup-discord-mcp.ps1` (token fra Railway) |
 | `.codex.local/SUPABASE_CONTEXT.md`, `.codex.local/supabase-readonly.env` | Lokal, gitignored | **OneDrive-context hardlink** — `~/OneDrive/CyclingZone-context/codex-local/` (midlertidig hybrid — readonly AI-context) |
 | Claude auto-memory | `~/.claude/projects/<encoded>/memory/` | **OneDrive-context junction** — `~/OneDrive/CyclingZone-context/memory/` |
-| Codex memories | `~/.codex/memories/` | Per-PC, ingen sync |
+| `.codex.local/SESSION_CONTEXT.md` | Lokal, gitignored | Regenererbar cache fra GitHub issue via hook. Må slettes; må ikke indeholde unikt handoff |
+| Codex memories | `~/.codex/memories/` | Per-PC cache/personalisering. Projekt-facts skal flyttes til GitHub/OneDrive |
 | Worktrees i `.claude/worktrees/` | Per-PC | Cleanes up per-session |
 
 Re-skab memory + AI-context links efter clone på ny PC (idempotent):

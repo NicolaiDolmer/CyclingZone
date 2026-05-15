@@ -9,8 +9,11 @@
 # Hvorfor: Sparer tokens ved at undgå manuel `gh issue view` round-trip i
 # samtalen, men output skal være bounded fordi filen auto-loades ved start.
 #
+# Source of truth: Dette er kun en regenererbar cache af GitHub-data.
+# Varigt handoff skal ligge i GitHub/OneDrive, ikke her.
+#
 # Fail-safe: Exit altid 0. Skriver ikke til SESSION_CONTEXT.md hvis
-# noget fejler (bevarer evt. eksisterende manuel fil).
+# noget fejler.
 #
 # Brug: konfigureret som SessionStart hook i .claude/settings.json.
 
@@ -240,6 +243,7 @@ cat > "$OUTPUT_FILE" <<EOF
 
 > Genereret af \`scripts/session-prefetch-issue.sh\` (SessionStart hook).
 > Issue # udtrukket fra første \`#N\` i \`docs/NOW.md\`.
+> Lokal cache only: varig context skal ligge i GitHub/OneDrive.
 
 $FORMATTED
 EOF

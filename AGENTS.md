@@ -8,22 +8,24 @@ _Koordinerings-fil for AI-assistenter der arbejder i cycling-manager-repo'et. Si
 
 1. **Repo-root verification:** Brug kun den aktuelle bekræftede repo-root fra `git rev-parse --show-toplevel`. Aldrig andre lokale kopier, sync-kopier eller zip-udpakninger. Hvis repo-root ikke matcher den workspace-mappe brugeren aktuelt har angivet → stop og bed om realignment.
 
-2. **Verificér runtime FØR du listet noget som TODO/bug/mangler.** Dokumenter (Noter-til-spiller.txt, gamle session-notater, brugerens hukommelse) kan være måneder forældede mens koden er rettet. Grep mindst én relevant fil eller tjek `git log --grep=<keyword>` før du committer påstanden til en plan. Markér eksplicit "❓ ikke runtime-verificeret" på antagede status-stempler. Etableret 2026-05-04 efter Noter-fil-stale-incidenten.
+2. **Delt context er GitHub/OneDrive — aldrig lokal-only.** Varig projekt-state, handoff, beslutninger, næste skridt og læringer skal ligge i GitHub (issues, `docs/NOW.md`, `docs/slices/`, repo-docs) eller i OneDrive-context-hardlinks. Lokale agent-filer (`.codex.local/SESSION_CONTEXT.md`, Claude transcripts, Codex memories, tool caches) er kun regenererbare caches/pointers og må aldrig være eneste sted et fremskridt findes. Hvis du opdager lokal-only context, migrér den til GitHub/OneDrive før session-slut.
 
-3. **Bliv ved med at stille spørgsmål når i tvivl.** 70-95% sikkerhed → spørg, antag ikke. Også for proaktive forbedringsforslag. AskUserQuestion-tool foretrækkes til strukturerede valg.
+3. **Verificér runtime FØR du listet noget som TODO/bug/mangler.** Dokumenter (Noter-til-spiller.txt, gamle session-notater, brugerens hukommelse) kan være måneder forældede mens koden er rettet. Grep mindst én relevant fil eller tjek `git log --grep=<keyword>` før du committer påstanden til en plan. Markér eksplicit "❓ ikke runtime-verificeret" på antagede status-stempler. Etableret 2026-05-04 efter Noter-fil-stale-incidenten.
 
-4. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Pre-push hook (loop B i AI_LOOPS.md) håndhæver dette.
+4. **Bliv ved med at stille spørgsmål når i tvivl.** 70-95% sikkerhed → spørg, antag ikke. Også for proaktive forbedringsforslag. AskUserQuestion-tool foretrækkes til strukturerede valg.
 
-5. **Slice close-out kræver:**
+5. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Pre-push hook (loop B i AI_LOOPS.md) håndhæver dette.
+
+6. **Slice close-out kræver:**
    - `docs/NOW.md` opdateret + relevante GitHub-issues lukket eller opdateret med status (`gh issue comment N --body "..."` / `gh issue close N --reason completed`)
    - `docs/FEATURE_STATUS.md` afstemt
    - PatchNotesPage opdateret
    - Postmortem-entry i `.claude/learnings/` hvis slice fiksede en bug (loop C)
    - Doc-drift sweep: grep for nye env vars, deploy-targets, route-navne, tabel-navne mod `ARCHITECTURE.md` og åbne issues
 
-6. **Auto-push efter commit:** Push til GitHub automatisk efter hvert commit (Vercel deployer kun ved push).
+7. **Auto-push efter commit:** Push til GitHub automatisk efter hvert commit (Vercel deployer kun ved push).
 
-7. **OneDrive-context hardlinks (siden 2026-05-07, scope reduceret 2026-05-12 per #327):** Memory og `.codex.local/SUPABASE_CONTEXT.md` + `supabase-readonly.env` er HARDLINKEDE til `~/OneDrive/CyclingZone-context/`, ikke kopier. Edit-tool BRYDER hardlinket → drift på næste PC. Efter manuel edit af disse filer: kør `pwsh -File scripts/link-onedrive-context.ps1` for at re-etablere. Ved drift-konflikt: læs INDHOLDET af begge versioner — antag ikke "nyeste timestamp vinder". Pure additive → tag den længere; sletning → STOP og spørg bruger. Default: OneDrive vinder. **Produktionssecrets (`*.env`, `.mcp.json`) er IKKE længere OneDrive-hardlinked** — bootstrappes nu via Infisical (`infisical export --env=dev > backend/.env`); se `docs/decisions/secret-management-adr.md`. Detaljer: `docs/CROSS_PC_SETUP.md` + `docs/HOOKS.md`.
+8. **OneDrive-context hardlinks (siden 2026-05-07, scope reduceret 2026-05-12 per #327):** Memory og `.codex.local/SUPABASE_CONTEXT.md` + `supabase-readonly.env` er HARDLINKEDE til `~/OneDrive/CyclingZone-context/`, ikke kopier. Edit-tool BRYDER hardlinket → drift på næste PC. Efter manuel edit af disse filer: kør `pwsh -File scripts/link-onedrive-context.ps1` for at re-etablere. Ved drift-konflikt: læs INDHOLDET af begge versioner — antag ikke "nyeste timestamp vinder". Pure additive → tag den længere; sletning → STOP og spørg bruger. Default: OneDrive vinder. **Produktionssecrets (`*.env`, `.mcp.json`) er IKKE længere OneDrive-hardlinked** — bootstrappes nu via Infisical (`infisical export --env=dev > backend/.env`); se `docs/decisions/secret-management-adr.md`. Detaljer: `docs/CROSS_PC_SETUP.md` + `docs/HOOKS.md`.
 
 ---
 
@@ -31,7 +33,7 @@ _Koordinerings-fil for AI-assistenter der arbejder i cycling-manager-repo'et. Si
 
 1. Kør `git rev-parse --show-toplevel` — bekræft repo-root
 2. Kør `git fetch --prune origin && git status -sb` — hvis `[behind N]`, kør `git pull --ff-only` før edit (user-level SessionStart-hook gør dette automatisk hvis installeret)
-3. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes (auto-genereret pre-fetched issue-kontekst — produceres af project-hook `scripts/session-prefetch-issue.sh` for Claude, og opdateres af Codex ved session-end)
+3. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes, men behandl den som regenererbar cache fra GitHub-issues — ikke som source of truth. Hvis den er stale/mangler, brug `docs/NOW.md` + `gh issue list/view`.
 4. Læs `docs/GUARDRAILS_CORE.md`
 5. Læs `docs/NOW.md`
 6. Aktivt issue: `gh issue list --label "claude:todo" --state open --limit 10` — første `#N` i NOW.md er typisk det aktive
@@ -91,7 +93,7 @@ Supabase-inspektion: start med målrettede `npm run db:ai:*` frem for brede dump
 
 **AI-First Workflow:** Start altid komplekse opgaver hos Manus (Plan), lad Claude bygge (Build), og lad Codex validere/teste (Test).
 
-**Kontekst-fil:** `.codex.local/` (gitignored). `SUPABASE_CONTEXT.md` + `supabase-readonly.env` er hardlinkede via OneDrive-context (sync mellem PC'er); `SESSION_CONTEXT.md` er per-PC og auto-genereres af project-hook ved Claude-sessions, eller skrives manuelt af Codex ved session-end.
+**Kontekst-disciplin:** GitHub (`docs/NOW.md`, issues, slice-docs) er canonical handoff for alle agents/enheder. `.codex.local/SUPABASE_CONTEXT.md` + `supabase-readonly.env` er hardlinkede via OneDrive-context. `.codex.local/SESSION_CONTEXT.md` er kun auto-genereret cache og må ikke skrives manuelt af Codex som varigt handoff.
 
 ### Microsoft Clarity (UX analytics, IKKE en AI)
 **Primær brug:** Runtime user-behavior data → input til Claude/Codex via loop I i AI_LOOPS.md.
@@ -117,9 +119,9 @@ Supabase-inspektion: start med målrettede `npm run db:ai:*` frem for brede dump
 
 ---
 
-## SESSION_CONTEXT.md format (Codex-specifikt)
+## Delt handoff-format (alle agents)
 
-Fil: `.codex.local/SESSION_CONTEXT.md` — opdatér ved session-slut, maks 15 linjer.
+Varigt handoff skrives i GitHub/OneDrive, ikke lokal-only. Brug denne form i `docs/NOW.md`, en GitHub issue-kommentar eller en slice-doc ved session-slut, maks 15 linjer.
 
 ```
 # Session context — [dato]
@@ -146,8 +148,8 @@ Kritiske facts:
 
 **Synk-arkitektur (siden 2026-05-07):**
 - Kode + repo-docs sync'er via Git (`git push` / `git pull`)
-- Memory, secrets, og `.codex.local/SUPABASE_CONTEXT.md` + `supabase-readonly.env` sync'er via **OneDrive-context hardlinks** mod `~/OneDrive/CyclingZone-context/`
-- `.codex.local/SESSION_CONTEXT.md` er per-PC (auto-genereres af session-prefetch-hook eller skrives af Codex)
+- Memory og `.codex.local/SUPABASE_CONTEXT.md` + `supabase-readonly.env` sync'er via **OneDrive-context hardlinks** mod `~/OneDrive/CyclingZone-context/`
+- Varigt handoff sync'er via GitHub (`docs/NOW.md`, issues, slice-docs). `.codex.local/SESSION_CONTEXT.md` er per-PC cache af GitHub-data og må gerne slettes/regenereres.
 
 **Daglig flow:**
 - Session-start: `git fetch --prune origin && git status -sb` (user-hook gør det automatisk). Hvis `[behind N]` → `git pull --ff-only`
@@ -162,7 +164,7 @@ Kritiske facts:
 
 **Ny PC (engangs-setup):** følg `docs/CROSS_PC_SETUP.md` — preflight + migrate-script + `install-user-hooks.ps1` + `link-onedrive-context.ps1`.
 
-**Ikke-rør for Codex:** `~/.claude/settings.json` (Claude's user-hooks), `.claude/settings.json` (project-hooks ændres kun via PR), Claude's auto-memory (`~/.claude/projects/<encoded>/memory/`).
+**Ikke-rør for Codex:** `~/.claude/settings.json` (Claude's user-hooks), `.claude/settings.json` (project-hooks ændres kun via PR), Claude's auto-memory (`~/.claude/projects/<encoded>/memory/`). Codex memories er per-PC og må ikke bruges til projekt-sandhed; flyt relevante facts til GitHub/OneDrive.
 
 ---
 
@@ -269,4 +271,4 @@ Quick reference:
 
 ---
 
-_Sidst opdateret: 2026-05-07 — cross-PC OneDrive-context + drift-protokol + GitHub-issue task-lag indarbejdet._
+_Sidst opdateret: 2026-05-15 — delt context-disciplin præciseret: GitHub/OneDrive er sandhed, lokale agent-filer er kun caches._

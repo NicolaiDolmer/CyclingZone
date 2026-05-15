@@ -43,13 +43,16 @@ $contextFiles = @(
   @{ Name = "AGENTS.md"; Path = "AGENTS.md"; Warn = 4500; Fail = 6500 },
   @{ Name = "NOW.md"; Path = "docs/NOW.md"; Warn = 900; Fail = 1500 },
   @{ Name = "GUARDRAILS_CORE.md"; Path = "docs/GUARDRAILS_CORE.md"; Warn = 1300; Fail = 2200 },
-  @{ Name = "SESSION_CONTEXT.md"; Path = ".codex.local/SESSION_CONTEXT.md"; Warn = 800; Fail = 1200 }
+  @{ Name = "SESSION_CONTEXT.md"; Path = ".codex.local/SESSION_CONTEXT.md"; Warn = 800; Fail = 1200; OptionalCache = $true }
 )
 
 $total = 0
 foreach ($item in $contextFiles) {
   if (-not (Test-Path $item.Path)) {
-    Add-Result $results $item.Name "WARN" "missing"
+    $optionalCache = $item.ContainsKey("OptionalCache") -and $item.OptionalCache
+    $missingStatus = if ($optionalCache) { "OK" } else { "WARN" }
+    $missingDetail = if ($optionalCache) { "missing optional cache" } else { "missing" }
+    Add-Result $results $item.Name $missingStatus $missingDetail
     continue
   }
   $tokens = Get-ApproxTokens $item.Path
