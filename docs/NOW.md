@@ -25,8 +25,9 @@ Sprint-validation foundation: tabel `founder_supporter_waitlist` + RLS live ([#3
 ## Næste session (prioriteret)
 1. **Sprint-validation foundation unblockers** — [#361](https://github.com/NicolaiDolmer/CyclingZone/issues/361) landing page, [#362](https://github.com/NicolaiDolmer/CyclingZone/issues/362) form, [#363](https://github.com/NicolaiDolmer/CyclingZone/issues/363) admin-dashboard. Deadline uge 3 (1-7 juni).
 2. **[#415](https://github.com/NicolaiDolmer/CyclingZone/issues/415) Discord community-opsætning.** Epic + 16 sub-issues (#416-431) dækker fase 1 foundation → fase 5 skalering. Blokeret på bot-invite til server `1504615050831466669` (Cycling Zone#8784 bot mangler join). Fase 1: #416-420 (struktur+roller+regler+bots+onboarding).
-3. **[#382](https://github.com/NicolaiDolmer/CyclingZone/issues/382) close-out** — Anden PC: kør `pwsh -File scripts/link-onedrive-context.ps1` så `~/.claude/settings.json` hardlinkes til OneDrive-versionen. Verificér via session-start: ingen `code-modernization:*` skills i listen.
-4. Rotér lokal `backend/.env` service-key til `sb_secret_*` ([#337](https://github.com/NicolaiDolmer/CyclingZone/issues/337)); aktivér Sentry secrets ([#348](https://github.com/NicolaiDolmer/CyclingZone/issues/348)).
+3. **[#409](https://github.com/NicolaiDolmer/CyclingZone/issues/409) i18n EN-default + DK-version.** Epic + 5 sub-issues (#410-414): fundament klar til 3-7 sprog. Start med [#410](https://github.com/NicolaiDolmer/CyclingZone/issues/410) Foundation (`risk:high` — DB-migration + auth-meta sync).
+4. **[#382](https://github.com/NicolaiDolmer/CyclingZone/issues/382) close-out** — Anden PC: kør `pwsh -File scripts/link-onedrive-context.ps1` så `~/.claude/settings.json` hardlinkes til OneDrive-versionen. Verificér via session-start: ingen `code-modernization:*` skills i listen.
+5. Rotér lokal `backend/.env` service-key til `sb_secret_*` ([#337](https://github.com/NicolaiDolmer/CyclingZone/issues/337)); aktivér Sentry secrets ([#348](https://github.com/NicolaiDolmer/CyclingZone/issues/348)).
 
 ## Skalerings-roadmap
 - [x] **Fase 1: Bulletproof Baseline** — zero-known-error hardening live.
