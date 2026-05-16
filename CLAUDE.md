@@ -19,6 +19,7 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-3 hits
 - `docs/GAME_INVARIANTS.md` — Economy-konstanter, finalization-paths, upload-grænser
 - `docs/AI_OPS_DISABLE_PLAYBOOK.md` — MCP/skills disable-handlinger
 - `docs/GITHUB_WORKFLOW.md` — Workflow, agent-loops, close-protocol
+- `docs/AGENT_ARCHITECTURE.md` — Parallel-session safety, cross-agent failure-modes (auto-gen)
 
 ## Close-out (per session)
 
