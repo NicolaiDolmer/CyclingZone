@@ -82,7 +82,7 @@ npm install
 Opret `frontend/.env`:
 ```
 VITE_SUPABASE_URL=https://XXXXX.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGci...anon_key
+VITE_SUPABASE_ANON_KEY=sb_publishable_...
 VITE_API_URL=http://localhost:3001
 ```
 
