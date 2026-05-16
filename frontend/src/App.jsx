@@ -17,6 +17,7 @@ const AuctionHistoryPage = lazy(() => import("./pages/AuctionHistoryPage"));
 const TransfersPage = lazy(() => import("./pages/TransfersPage"));
 const TeamPage = lazy(() => import("./pages/TeamPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
+const AdminWaitlistPage = lazy(() => import("./pages/AdminWaitlistPage"));
 const StandingsPage = lazy(() => import("./pages/StandingsPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
 const RiderStatsPage = lazy(() => import("./pages/RiderStatsPage"));
@@ -33,6 +34,7 @@ const HeadToHeadPage = lazy(() => import("./pages/HeadToHeadPage"));
 const PatchNotesPage = lazy(() => import("./pages/PatchNotesPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const PrivacyPolicyPageEn = lazy(() => import("./pages/PrivacyPolicyPageEn"));
+const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
 const RacesPage = lazy(() => import("./pages/RacesPage"));
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
@@ -96,6 +98,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPasswordPage session={session} />} />
           <Route path="/privatlivspolitik" element={<PrivacyPolicyPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPageEn />} />
+          <Route path="/founder-supporter" element={<FounderSupporterPage />} />
           <Route path="/" element={
             <ProtectedRoute session={session}><Layout /></ProtectedRoute>
           }>
@@ -136,6 +139,7 @@ export default function App() {
             <Route path="race-points" element={<RacePointsPage />} />
             <Route path="managers/:teamId" element={<ManagerProfilePage />} />
             <Route path="admin" element={<AdminPage />} />
+            <Route path="admin/waitlist" element={<AdminWaitlistPage />} />
             <Route path="deadline-day" element={<DeadlineDayBoard />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

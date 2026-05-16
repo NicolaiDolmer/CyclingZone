@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0c0e12"/>
+      <stop offset="100%" stop-color="#1a1d24"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#e8c547"/>
+      <stop offset="100%" stop-color="#f4d76a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e8c547" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#e8c547" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="900" cy="200" r="320" fill="url(#glow)"/>
+  <circle cx="200" cy="500" r="280" fill="url(#glow)"/>
+
+  <!-- Logo block -->
+  <g transform="translate(80, 80)">
+    <rect width="84" height="84" rx="18" fill="url(#accent)"/>
+    <text x="42" y="62" font-family="DM Sans, system-ui, sans-serif" font-weight="900" font-size="52" fill="#0c0e12" text-anchor="middle">C</text>
+  </g>
+  <text x="190" y="135" font-family="DM Sans, system-ui, sans-serif" font-weight="700" font-size="32" fill="#f5f5f7">Cycling Zone</text>
+
+  <!-- Eyebrow -->
+  <text x="80" y="280" font-family="DM Sans, system-ui, sans-serif" font-weight="700" font-size="20" fill="#e8c547" letter-spacing="4">FAIR CYCLING MANAGER MMO</text>
+
+  <!-- Main headline -->
+  <text x="80" y="350" font-family="DM Sans, system-ui, sans-serif" font-weight="900" font-size="64" fill="#f5f5f7">Build your team.</text>
+  <text x="80" y="425" font-family="DM Sans, system-ui, sans-serif" font-weight="900" font-size="64" fill="#f5f5f7">Race the world.</text>
+
+  <!-- Promise strip -->
+  <rect x="80" y="475" width="1040" height="80" rx="14" fill="#1a1d24" stroke="#e8c547" stroke-width="2" stroke-opacity="0.4"/>
+  <text x="110" y="515" font-family="DM Sans, system-ui, sans-serif" font-weight="700" font-size="22" fill="#e8c547">✓</text>
+  <text x="145" y="515" font-family="DM Sans, system-ui, sans-serif" font-weight="600" font-size="22" fill="#f5f5f7">Premium will never buy stronger riders or competitive advantages.</text>
+  <text x="145" y="540" font-family="DM Sans, system-ui, sans-serif" font-weight="400" font-size="16" fill="#8b8d93">No pay-to-win. Ever.</text>
+</svg>

@@ -849,6 +849,7 @@ export type Database = {
         Row: {
           consent_given_at: string
           contact_type: string | null
+          country: string | null
           created_at: string
           discord_handle: string | null
           email: string | null
@@ -862,11 +863,14 @@ export type Database = {
           preferred_tier: string
           source: string | null
           status: string
+          utm_campaign: string | null
+          utm_medium: string | null
           valued_benefits: string[] | null
         }
         Insert: {
           consent_given_at: string
           contact_type?: string | null
+          country?: string | null
           created_at?: string
           discord_handle?: string | null
           email?: string | null
@@ -880,11 +884,14 @@ export type Database = {
           preferred_tier: string
           source?: string | null
           status?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
           valued_benefits?: string[] | null
         }
         Update: {
           consent_given_at?: string
           contact_type?: string | null
+          country?: string | null
           created_at?: string
           discord_handle?: string | null
           email?: string | null
@@ -898,6 +905,8 @@ export type Database = {
           preferred_tier?: string
           source?: string | null
           status?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
           valued_benefits?: string[] | null
         }
         Relationships: []

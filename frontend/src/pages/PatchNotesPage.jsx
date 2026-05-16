@@ -2,6 +2,81 @@
 
 const PATCHES = [
   {
+    version: "3.46",
+    date: "2026-05-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · i18n foundation — EN/DA sprog-switcher (#410)",
+        items: [
+          "Feature · Ny 🇩🇰/🇬🇧 sprog-dropdown i sidebar-bunden (desktop) + mobile topbar. Lever-skift uden reload — vælg sprog én gang og det huskes både i din profil (DB) og lokalt i browseren.",
+          "Feature · Eksisterende brugere er backfilled til dansk (du ser ingen ændring). Nye signups starter på engelsk som default.",
+          "Infra · `users.language`-kolonne tilføjet med EN/DA-validering + sync-trigger til Supabase auth-metadata (klar til at email-templates og Edge Functions kan læse sproget).",
+          "Infra · `react-i18next` + `ICU MessageFormat` (plural-håndtering) + HTTP backend (lazy-loaded namespaces). Common-strings (NavBar + switcher) bundles inline → ingen flash ved første sidevisning.",
+          "Infra · `Intl.NumberFormat` / `DateTimeFormat`-wrappers i `lib/intl.js` så valuta og datoer formateres efter brugerens sprog (fx \"1.500,00 kr.\" på dansk, \"DKK 1,500.00\" på engelsk).",
+          "Dev · Pseudo-locale `en-XA` aktiveres med `?pseudo=1` i URL'en — alle tekster wrappes i `[...]` så hardcoded strings (der endnu ikke er oversat) bliver synlige under udvikling.",
+          "Docs · `docs/i18n/GLOSSARY.md` med 20+ domæne-termer (Squad, Bid, Manager, Patch Notes, CZ$, ...). CI-check fejler PR'er hvis en/da har forskellige nøgler.",
+          "Næste · Fase 2 (#411) oversætter Login + onboarding-tekster, så hele appen ikke kun NavBar er flersproget.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "3.45",
+    date: "2026-05-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sprint-validation · Founder Supporter landing page (#361)",
+        items: [
+          "Feature · `/founder-supporter` er nu en fuld landing page i stedet for kun en form-side. Hero med tagline + non-pay-to-win-løfte øverst, fair-premium-løftet i fremhævet boks, 4-tier pris-sammenligning (Free/Supporter/Pro Analyst/Patron) og separat \"hvad må sælges vs IKKE sælges\"-tabel direkte fra brand-løftet.",
+          "Feature · Founder Supporter benefits-sektion (badge, Discord-rolle, profil-tema, Founder Wall, dev-opdateringer, roadmap-stemmer på non-balance) + FAQ med 6 spørgsmål (pay-to-win, free-konkurrence, betaling-live osv.).",
+          "Feature · Sprog-toggle øverst (DA/EN) — synkroniseres med `?lang=en` i URL'en så delte links bevarer sproget. Hele siden + waitlist-formen oversættes inkl. radio-options, country-dropdown, fejlbeskeder og success-state.",
+          "Feature · `?variant=A|B|C` (kombineret med `utm_campaign=launch_29dkk|49dkk|69dkk`) ændrer Supporter-prisen direkte i pris-sammenligningen — så 3 landing-varianter kan dele samme URL men vise forskellige priser. Annual-pris (490 DKK/år) udregnes nu dynamisk fra månedlig × 10 i stedet for hardcoded.",
+          "SEO · OpenGraph + Twitter Card-metadata tilføjet i `index.html` (title, description, og:image på 1200×630 SVG, canonical URL). Discord/Slack/Twitter viser nu pænt preview-kort når landing-URL'en deles.",
+          "Tests · 2 nye unit-tests for `validateForm(state, lang)` + `mapInsertError(error, lang)` — verificerer at engelske brugere får engelske fejlbeskeder. Backwards-compat: default `lang=\"da\"` så eksisterende kald uden lang-param fortsætter på dansk. 35/35 grønne.",
+          "Sprint-validation unblocker #3 af 3 — #361 lukker sammen med #362 (form) + #363 (admin-dashboard), så Monetization Validation Sprint kan starte 2026-05-18 med fuld stack.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "3.44",
+    date: "2026-05-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sprint-validation · Founder Supporter waitlist-form (#362)",
+        items: [
+          "Feature · Ny offentlig side `/founder-supporter` med waitlist-form: kontakt (email og/eller Discord-handle), interesseniveau, foretrukken tier (49/89/490 DKK eller kun gratis), valgfri benefits-prioritering, fritekst-grunde og land. GDPR-consent IKKE pre-tjekket; link til privatlivspolitik åbner i ny fane.",
+          "Feature · UTM-tracking auto-capturer `utm_source`, `utm_campaign` og `utm_medium` fra URL — driver Option B price-variant-test (3 landing-varianter sender forskellige campaign-tags så vi kan måle hvilken pris der konverterer bedst).",
+          "Feature · Honeypot-felt mod bot-spam; submit-button disables under indsendelse; dubletter behandles som soft-success (\"Du står allerede på listen\") så bots ikke kan recon hvilke emails der findes.",
+          "Feature · Success-state takker brugeren og peger på Discord-invite (kommer med #415) + email-opfølgning. Fejl-state mapper Supabase RLS/network/unknown til danske beskeder.",
+          "Infra · DB-migration tilføjer `country` (ISO-2 m. CHECK-constraint), `utm_campaign` og `utm_medium` til `founder_supporter_waitlist`. Indsending bruger `Prefer: return=minimal` (UDEN `.select()`) så anon-RLS ikke fejler på RETURNING.",
+          "Admin · CSV-eksport på `/admin/waitlist` udvidet med de 3 nye kolonner (country/utm_campaign/utm_medium) — eksisterende dashboard og filtre uændrede.",
+          "Tests · 24 nye unit-tests for form-helpers (UTM-parsing, validering, error-mapping, payload-builder); #359 RLS-regression (7/7) verificeret efter migration.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "3.43",
+    date: "2026-05-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Founder Supporter waitlist-dashboard (#363)",
+        items: [
+          "Admin · Ny rute `/admin/waitlist` (kun admin) viser alle waitlist-signups med sortering, filtrering på interesseniveau, tier, kilde, score-bucket og status.",
+          "Admin · KPI-kort øverst: total signups, high-intent (intent_score ≥ 4), % der vil betale, % Pro Analyst-interesse (89+ DKK) og top 3 kilder.",
+          "Admin · CSV-eksport af filtreret data (alle 16 kolonner inkl. PII) til lead-prioritering uden for app'en. Filnavn dato-stemplet.",
+          "Admin · Intent-score-formel synlig som tooltip på score-kolonnen (Manus' 1-5-skala: interesse × tier-vægt + follow-up-bonus).",
+          "Infra · Manuel refresh-knap; non-admin redirectes til `/dashboard` (klient-side gate + RLS-håndhævelse i DB).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.42",
     date: "2026-05-16",
     label: "Beta",

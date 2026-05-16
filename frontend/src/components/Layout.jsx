@@ -1,52 +1,56 @@
 import { useState, useEffect, useRef } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import SetupWizardModal from "./SetupWizardModal";
 import DeadlineDayBanner from "./DeadlineDayBanner";
 import DeadlineDayTicker from "./DeadlineDayTicker";
 import MobileQuickNav from "./MobileQuickNav";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 const API = import.meta.env.VITE_API_URL;
 
-const BOTTOM_ITEMS = [
-  { to: "/profile",     label: "Indstillinger" },
-  { to: "/help",        label: "Hjælp & Regler" },
-  { to: "/patch-notes", label: "Patch Notes" },
-];
+function buildBottomItems(t) {
+  return [
+    { to: "/profile",     label: t("nav.item.profile") },
+    { to: "/help",        label: t("nav.item.help") },
+    { to: "/patch-notes", label: t("nav.item.patchNotes") },
+  ];
+}
 
-function buildNavGroups(team) {
+function buildNavGroups(team, t) {
   return [
     {
-      key: "klubhus", label: "Klubhus",
+      key: "klubhus", label: t("nav.group.klubhus"),
       items: [
-        { to: "/dashboard",      label: "Dashboard" },
-        { to: "/team",           label: "Mit Hold" },
-        { to: "/board",          label: "Bestyrelse" },
-        { to: "/finance",        label: "Økonomi" },
-        { to: "/notifications",  label: "Indbakke", badge: true },
-        ...(team?.id ? [{ to: `/managers/${team.id}`, label: "Min Managerprofil" }] : []),
+        { to: "/dashboard",      label: t("nav.item.dashboard") },
+        { to: "/team",           label: t("nav.item.team") },
+        { to: "/board",          label: t("nav.item.board") },
+        { to: "/finance",        label: t("nav.item.finance") },
+        { to: "/notifications",  label: t("nav.item.notifications"), badge: true },
+        ...(team?.id ? [{ to: `/managers/${team.id}`, label: t("nav.item.managerProfile") }] : []),
       ],
     },
     {
-      key: "marked", label: "Marked",
+      key: "marked", label: t("nav.group.marked"),
       items: [
-        { to: "/riders",       label: "Ryttere" },
-        { to: "/auctions",     label: "Auktioner" },
-        { to: "/transfers",    label: "Transfers" },
-        { to: "/deadline-day", label: "Deadline Day" },
-        { to: "/watchlist",    label: "Ønskeliste" },
-        { to: "/activity",     label: "Min Aktivitet" },
+        { to: "/riders",       label: t("nav.item.riders") },
+        { to: "/auctions",     label: t("nav.item.auctions") },
+        { to: "/transfers",    label: t("nav.item.transfers") },
+        { to: "/deadline-day", label: t("nav.item.deadlineDay") },
+        { to: "/watchlist",    label: t("nav.item.watchlist") },
+        { to: "/activity",     label: t("nav.item.activity") },
       ],
     },
     {
-      key: "saeson-resultater", label: "Sæson & Resultater",
+      key: "saeson-resultater", label: t("nav.group.saeson"),
       items: [
-        { to: "/resultater",     label: "Overblik" },
-        { to: "/standings",      label: "Ranglisten" },
-        { to: "/rider-rankings", label: "Rytterrangliste" },
-        { to: "/races",          label: "Løb" },
-        { to: "/seasons",        label: "Sæson-snapshot" },
-        { to: "/hall-of-fame",   label: "Hall of Fame" },
+        { to: "/resultater",     label: t("nav.item.results") },
+        { to: "/standings",      label: t("nav.item.standings") },
+        { to: "/rider-rankings", label: t("nav.item.riderRankings") },
+        { to: "/races",          label: t("nav.item.races") },
+        { to: "/seasons",        label: t("nav.item.seasons") },
+        { to: "/hall-of-fame",   label: t("nav.item.hallOfFame") },
       ],
     },
     {
@@ -65,12 +69,13 @@ async function authHeaders() {
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
 
-function pathMatchesNavItem(pathname, to) {
+function pathMatchesNavItem(pathname, to, exact = false) {
+  if (exact) return pathname === to;
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 
-function NavItem({ to, label, badge, onClick, location, unread }) {
-  const isActive = pathMatchesNavItem(location.pathname, to);
+function NavItem({ to, label, badge, onClick, location, unread, exact }) {
+  const isActive = pathMatchesNavItem(location.pathname, to, exact);
   const showBadge = badge && unread > 0;
   return (
     <NavLink to={to} onClick={onClick}
@@ -88,7 +93,7 @@ function NavItem({ to, label, badge, onClick, location, unread }) {
   );
 }
 
-function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, openGroups, toggleGroup, signOut, location, unread }) {
+function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, unread, logoutLabel }) {
   return (
     <div className="flex flex-col h-full">
       {/* Logo + team */}
@@ -156,24 +161,26 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
 
         {/* Bottom nav items */}
         <div className="h-px bg-cz-sidebar-border my-3 mx-4" />
-        {BOTTOM_ITEMS.map(item => (
+        {bottomItems.map(item => (
           <NavItem key={item.to} {...item} onClick={onNav} location={location} unread={unread} />
         ))}
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-cz-sidebar-border px-4 py-3">
+      <div className="border-t border-cz-sidebar-border px-4 py-3 flex items-center justify-between gap-2">
         <button
           onClick={signOut}
           className="text-[11px] text-cz-sidebar-3 hover:text-cz-sidebar-2 transition-colors">
-          ← Log ud
+          ← {logoutLabel}
         </button>
+        <LanguageSwitcher />
       </div>
     </div>
   );
 }
 
 export default function Layout() {
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const location = useLocation();
   const [session, setSession]             = useState(null);
@@ -201,13 +208,16 @@ export default function Layout() {
 
   useEffect(() => {
     const path = location.pathname;
-    const groups = buildNavGroups(teamId ? { id: teamId } : null);
-    if (isAdmin) groups.push({ key: "admin", label: "Admin", items: [{ to: "/admin", label: "Admin" }] });
-    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(path, i.to)))
+    const groups = buildNavGroups(teamId ? { id: teamId } : null, t);
+    if (isAdmin) groups.push({ key: "admin", label: "Admin", items: [
+      { to: "/admin", label: "Admin", exact: true },
+      { to: "/admin/waitlist", label: "Waitlist" },
+    ] });
+    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(path, i.to, i.exact)))
       || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location.pathname, teamId, isAdmin]);
+  }, [location.pathname, teamId, isAdmin, t]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -287,13 +297,17 @@ export default function Layout() {
   }
 
   const unread = notifications.length;
-  const baseGroups = buildNavGroups(team);
+  const baseGroups = buildNavGroups(team, t);
   const navGroups = isAdmin
-    ? [...baseGroups, { key: "admin", label: "Admin", items: [{ to: "/admin", label: "Admin" }] }]
+    ? [...baseGroups, { key: "admin", label: "Admin", items: [
+        { to: "/admin", label: "Admin" },
+        { to: "/admin/waitlist", label: "Waitlist" },
+      ] }]
     : baseGroups;
+  const bottomItems = buildBottomItems(t);
 
   const needsSetup = teamLoaded && !team?.manager_name;
-  const sidebarProps = { navigate, team, balance, onlineCount, navGroups, openGroups, toggleGroup, signOut, location, unread };
+  const sidebarProps = { navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, unread, logoutLabel: t("nav.item.logout") };
 
   return (
     <div className="min-h-screen bg-cz-body flex">
@@ -321,14 +335,17 @@ export default function Layout() {
             <div className="w-6 h-6 bg-cz-accent rounded flex items-center justify-center text-[9px] font-black text-cz-on-accent">CZ</div>
             <span className="text-cz-sidebar-1 text-sm font-bold">Cycling Zone</span>
           </div>
-          <NavLink to="/notifications" className="relative">
-            <span className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-lg">🔔</span>
-            {unread > 0 && (
-              <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
-                {unread > 9 ? "9" : unread}
-              </span>
-            )}
-          </NavLink>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <NavLink to="/notifications" className="relative">
+              <span className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-lg">🔔</span>
+              {unread > 0 && (
+                <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
+                  {unread > 9 ? "9" : unread}
+                </span>
+              )}
+            </NavLink>
+          </div>
         </div>
 
         <DeadlineDayBanner />
