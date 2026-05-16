@@ -5,7 +5,8 @@
 //   • HTTP backend lazy-loader namespaces fra /locales/{lng}/{ns}.json
 //     (filer i frontend/public/locales/ — served af Vite på begge
 //      dev og prod via samme URL)
-//   • common.json bundles inline (FOUC-fri first paint på NavBar)
+//   • common.json + auth.json + errors.json bundles inline (FOUC-fri
+//     first paint på NavBar + Login/Signup/Onboarding/Errors — Refs #411)
 //   • supportedLngs: ['en','da','en-XA'] — pseudo-locale aktiveres
 //     ved at sætte ?pseudo=1 i URL (kun dev/preview, ikke production-safe)
 //
@@ -24,6 +25,10 @@ import ICU from "i18next-icu";
 
 import commonDa from "../../public/locales/da/common.json";
 import commonEn from "../../public/locales/en/common.json";
+import authDa from "../../public/locales/da/auth.json";
+import authEn from "../../public/locales/en/auth.json";
+import errorsDa from "../../public/locales/da/errors.json";
+import errorsEn from "../../public/locales/en/errors.json";
 
 const PSEUDO_ENABLED = (() => {
   if (typeof window === "undefined") return false;
@@ -49,8 +54,8 @@ i18n
     ns: ["common", "auth", "dashboard", "auctions", "admin", "errors", "patchnotes"],
     defaultNS: "common",
     resources: {
-      da: { common: commonDa },
-      en: { common: commonEn },
+      da: { common: commonDa, auth: authDa, errors: errorsDa },
+      en: { common: commonEn, auth: authEn, errors: errorsEn },
     },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],

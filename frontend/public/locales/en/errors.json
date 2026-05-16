@@ -1,1 +1,19 @@
-{}
+{
+  "supabase": {
+    "invalidCredentials": "Wrong email or password",
+    "emailNotConfirmed": "Email not confirmed — check your inbox (and spam folder)",
+    "userAlreadyRegistered": "An account with this email already exists",
+    "passwordTooShort": "Password must be at least 6 characters",
+    "rateLimited": "Too many attempts — wait a moment and try again",
+    "invalidEmail": "That email address doesn't look valid",
+    "sessionMissing": "Your session has expired — log in again",
+    "tokenExpired": "The link has expired — request a new one",
+    "passwordSameAsOld": "The new password must differ from the current one",
+    "unknown": "Something went wrong — try again"
+  },
+  "generic": {
+    "networkError": "Couldn't reach the server — check your connection",
+    "serverError": "The server returned an error — try again shortly",
+    "unknown": "Unexpected error — try again"
+  }
+}

@@ -32,6 +32,18 @@
 | Sponsor Income | Sponsorindkomst | Halvårlig CZ$-injektion fra sponsorater | nej |
 | Loan | Lån (rytter) / Lån (finans) | TVETYDIG — `loan_agreements` = rytter-leje. `loans` = finans-lån. Brug context-specifik form. | nej |
 | Rookie | Rookie | Ung rytter under udvikling (samme term — cykling-jargon) | ja |
+| Team name | Holdnavn | 3-30 tegn — bliver in-game team-navn (signup-felt) | nej |
+| Manager name | Managernavn | Brugerens viste navn på holdprofil | nej |
+| Password | Adgangskode | Auth-feltet (ikke "kodeord" — for at matche Apple/Google-konvention på dansk) | nej |
+| Log in | Log ind | Imperativ — separate ord på dansk ("log ind"), ikke "logind" | nej |
+| Sign up | Opret konto / Sign up | Dansk = "Opret konto" (matcher eksisterende UI). Engelsk = "Sign up" eller "Create account" | nej |
+| Reset link | Reset-link | Hybrid term — "reset" forbliver engelsk på dansk (ingen god match) | nej |
+| Onboarding | Onboarding | Beholder engelsk i begge sprog (ingen direkte dansk term) | ja |
+| Tour (onboarding) | Tour | Guided walkthrough på Riders/Auctions/Board/Finance | ja |
+| Division | Division | Liga-niveau (samme term — sportsjargon) | ja |
+| League | Liga | Konkurrence-format på tværs af managers | nej |
+| Inbox | Indbakke | Notifikations-feed (samme metafor i begge sprog) | nej |
+| Settings | Indstillinger | Profil-konfiguration | nej |
 
 ## Genvejstaster + emoji-status
 

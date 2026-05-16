@@ -4,7 +4,9 @@
       "klubhus": "Klubhus",
       "marked": "Marked",
       "saeson": "Sæson & Resultater",
-      "min": "Min"
+      "min": "Min",
+      "liga": "Liga",
+      "admin": "Admin"
     },
     "item": {
       "dashboard": "Dashboard",
@@ -28,8 +30,18 @@
       "profile": "Indstillinger",
       "help": "Hjælp & Regler",
       "patchNotes": "Patch Notes",
-      "logout": "Log ud"
+      "logout": "Log ud",
+      "teams": "Hold",
+      "headToHead": "Head-to-Head",
+      "seasonPreview": "Sæson Preview",
+      "admin": "Admin",
+      "waitlist": "Waitlist"
     }
+  },
+  "sidebar": {
+    "balance": "Balance",
+    "division": "Division {division}",
+    "onlineNow": "{count} online nu"
   },
   "language": {
     "label": "Sprog",
