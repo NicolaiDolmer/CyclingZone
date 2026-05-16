@@ -56,6 +56,20 @@ export default function LoginPage() {
     };
   }
 
+  // #446: signup-bootstrap fejlede stille på langsomt netværk fordi fixed 1s
+  // setTimeout ikke var nok til at Supabase-session blev tilgængelig.
+  // Vi venter nu op til 5s med 250ms polling og logger udfaldet.
+  async function waitForAuthHeaders(maxMs = 5000) {
+    const intervalMs = 250;
+    const deadline = Date.now() + maxMs;
+    while (Date.now() < deadline) {
+      const headers = await getAuthHeaders();
+      if (headers) return headers;
+      await new Promise(resolve => setTimeout(resolve, intervalMs));
+    }
+    return null;
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     resetMessages();
@@ -126,10 +140,9 @@ export default function LoginPage() {
 
       if (!data?.user) return;
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const headers = await getAuthHeaders();
+      const headers = await waitForAuthHeaders(5000);
       if (!headers) {
+        console.warn("[signup] session ikke ready efter 5s — viser signupPartial");
         setSuccess({
           kind: "signup",
           message: t("auth:success.signupPartial"),
@@ -145,16 +158,22 @@ export default function LoginPage() {
           manager_name: managerName.trim(),
         }),
       });
-      const bootstrapData = await bootstrapRes.json();
+      let bootstrapData = {};
+      try {
+        bootstrapData = await bootstrapRes.json();
+      } catch {
+        // Backend kan returnere tomt body på 502/503; behold tomt object.
+      }
 
       if (!bootstrapRes.ok) {
-        setError(t("auth:error.bootstrapFailed", { detail: bootstrapData.error }));
+        console.error("[signup] bootstrap fejlede", bootstrapRes.status, bootstrapData);
+        setError(t("auth:error.bootstrapFailed", { detail: bootstrapData.error || `HTTP ${bootstrapRes.status}` }));
         return;
       }
 
       setSuccess({
         kind: "signup",
-        message: t("auth:success.signupComplete", { teamName: bootstrapData.team.name }),
+        message: t("auth:success.signupComplete", { teamName: bootstrapData.team?.name || teamName.trim() }),
       });
     } finally {
       setLoading(false);
@@ -386,10 +405,10 @@ export default function LoginPage() {
         <p className="text-center text-cz-3 text-xs mt-6">
           {t("auth:page.tagline")}
         </p>
-        <p className="text-center text-cz-3 text-xs mt-2 flex items-center justify-center gap-2">
-          <Link to="/privatlivspolitik" className="hover:text-cz-1 underline">{t("auth:footer.privacyDa")}</Link>
-          <span aria-hidden="true">·</span>
-          <Link to="/privacy-policy" className="hover:text-cz-1 underline">{t("auth:footer.privacyEn")}</Link>
+        <p className="text-center text-cz-3 text-xs mt-2">
+          <Link to={language === "en" ? "/privacy-policy" : "/privatlivspolitik"} className="hover:text-cz-1 underline">
+            {t("auth:footer.privacyPolicy")}
+          </Link>
         </p>
       </div>
     </div>

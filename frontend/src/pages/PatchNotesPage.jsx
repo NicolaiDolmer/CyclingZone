@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "3.50",
+    date: "2026-05-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bug-bash · Tier 1-batch (#252, #258, #268, #446, #447)",
+        items: [
+          "Signup · Bootstrap fejler ikke længere stille på langsomt netværk. Vi venter nu op til 5 sek på Supabase-session (mod tidligere 1 sek) og logger fejl synligt; sidebar viser ikke længere 'Division undefined' / 'undefined CZ$' under den korte race-window før wizard popper op (#446).",
+          "Mobil auktioner · Live bud-feed for dine egne auktioner vises nu under auktion-listen på mobil (tidligere kun desktop-sidebar). Du kan nu se modbud-aktivitet uden at åbne rytter-profilen (#258).",
+          "Rytter-data · 'João Luis Almeida' (pcm_id 18428, fake duplikat med kopieret UCI-score) er pensioneret. Den ægte João Almeida (UAE Team Emirates, født 1998) er uberørt (#252, reported af friisisch på Discord).",
+          "Auth · 'Privatlivspolitik / Privacy policy'-footer på login- og reset-password-siderne følger nu valgt sprog (én lokaliseret link i stedet for to hardcodede). EN-locale viser nu korrekt 'Privacy policy' (#447).",
+          "Backend · `getTeamMarketState` returnerer nu et `future_count`-felt der trækker pending-out-ryttere fra capacity-baselinen, så squad-cap-checks bruger samme 'fremtidens hold-størrelse' som dashboard-tælleren. `total_count` bevaret som legacy felt; alle squadCapDiscipline-tests grønne (#268, follow-up til #250).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.49",
     date: "2026-05-17",
     label: "Beta",

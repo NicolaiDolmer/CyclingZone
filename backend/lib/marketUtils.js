@@ -79,7 +79,7 @@ export async function getTeamMarketState(supabase, teamId) {
       .eq("id", teamId)
   );
 
-  const [riderCount, pendingCount, activeLoanCount] = await Promise.all([
+  const [riderCount, pendingCount, outgoingCount, activeLoanCount] = await Promise.all([
     expectCount(
       supabase
         .from("riders")
@@ -92,6 +92,17 @@ export async function getTeamMarketState(supabase, teamId) {
         .select("id", { count: "exact", head: true })
         .eq("pending_team_id", teamId)
     ),
+    // #268: ryttere på vej VÆK fra holdet — ejet (team_id = mit) men med
+    // pending_team_id sat til et andet hold (eller bank/AI). Disse skal
+    // trækkes fra current-count for at få "fremtidens hold-størrelse".
+    expectCount(
+      supabase
+        .from("riders")
+        .select("id", { count: "exact", head: true })
+        .eq("team_id", teamId)
+        .not("pending_team_id", "is", null)
+        .neq("pending_team_id", teamId)
+    ),
     expectCount(
       supabase
         .from("loan_agreements")
@@ -102,13 +113,22 @@ export async function getTeamMarketState(supabase, teamId) {
   ]);
 
   const squadLimits = getSquadLimits(team.division);
+  // #268: future_count = ejede nu - på-vej-væk + på-vej-ind + aktive lån.
+  // Matcher frontend's computeDashboardSquadStats (jf. #250) så squad-cap
+  // checks bruger samme baseline som dashboard-tælleren manageren ser.
+  const futureCount = riderCount - outgoingCount + pendingCount + activeLoanCount;
 
   return {
     ...team,
     rider_count: riderCount,
     pending_count: pendingCount,
+    outgoing_count: outgoingCount,
     active_loan_count: activeLoanCount,
+    // total_count beholdes som legacy felt (current + pending + loans, uden
+    // outgoing-subtraktion) for at undgå at bryde kalde-sites der måtte
+    // læse det direkte. Nye checks skal bruge future_count.
     total_count: riderCount + pendingCount + activeLoanCount,
+    future_count: futureCount,
     squad_limits: squadLimits,
   };
 }
@@ -122,7 +142,12 @@ export function getIncomingSquadViolation(
   teamState,
   { incomingCount = 1, softCapBuffer = 0 } = {}
 ) {
-  const totalAfter = (teamState?.total_count || 0) + incomingCount;
+  // #268: future_count trækker outgoing-pending ryttere fra inden vi tjekker
+  // capacity, så pending-out (rytter solgt men ikke afregnet endnu) ikke
+  // dobbelt-tæller mod cap. Falder tilbage til total_count for unit tests
+  // og legacy-callsites der ikke har future_count.
+  const baseCount = teamState?.future_count ?? teamState?.total_count ?? 0;
+  const totalAfter = baseCount + incomingCount;
   const maxRiders = teamState?.squad_limits?.max || getSquadLimits(teamState?.division).max;
   const buffer = Number(softCapBuffer) || 0;
   const effectiveCap = maxRiders + buffer;
@@ -135,7 +160,8 @@ export function getIncomingSquadViolation(
 }
 
 export function getOutgoingSquadViolation(teamState, outgoingCount = 1) {
-  const totalAfter = (teamState?.total_count || 0) - outgoingCount;
+  const baseCount = teamState?.future_count ?? teamState?.total_count ?? 0;
+  const totalAfter = baseCount - outgoingCount;
   const minRiders = teamState?.squad_limits?.min || getSquadLimits(teamState?.division).min;
 
   if (totalAfter < minRiders) {

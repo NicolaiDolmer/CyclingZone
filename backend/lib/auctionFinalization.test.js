@@ -195,12 +195,31 @@ function createFinalizeAuctionSupabase({
             assert.equal(columns, "id");
             assert.deepEqual(options, { count: "exact", head: true });
 
+            // #268: getTeamMarketState's outgoing-query chains .eq().not().neq()
+            // — match med en chainable builder der dispatcher counts efter filtre.
             return {
               eq(column, value) {
                 const counts = teamMarketCounts[value] || {};
 
                 if (column === "team_id") {
-                  return Promise.resolve({ count: counts.riderCount || 0, error: null });
+                  const teamId = value;
+                  return {
+                    not(col, op, val) {
+                      assert.equal(col, "pending_team_id");
+                      assert.equal(op, "is");
+                      assert.equal(val, null);
+                      return {
+                        neq(neqCol, neqVal) {
+                          assert.equal(neqCol, "pending_team_id");
+                          assert.equal(neqVal, teamId);
+                          return Promise.resolve({ count: counts.outgoingCount || 0, error: null });
+                        },
+                      };
+                    },
+                    then(resolve, reject) {
+                      return Promise.resolve({ count: counts.riderCount || 0, error: null }).then(resolve, reject);
+                    },
+                  };
                 }
 
                 if (column === "pending_team_id") {

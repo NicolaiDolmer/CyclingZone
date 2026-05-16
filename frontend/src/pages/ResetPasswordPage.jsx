@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { useLanguage } from "../lib/language";
 import { mapSupabaseAuthError } from "../lib/authErrors";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 
 export default function ResetPasswordPage({ session }) {
   const navigate = useNavigate();
   const { t } = useTranslation(["auth", "errors"]);
+  const { language } = useLanguage();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -224,10 +226,10 @@ export default function ResetPasswordPage({ session }) {
         <p className="text-center text-cz-3 text-xs mt-6">
           {t("auth:page.tagline")}
         </p>
-        <p className="text-center text-cz-3 text-xs mt-2 flex items-center justify-center gap-2">
-          <Link to="/privatlivspolitik" className="hover:text-cz-1 underline">{t("auth:footer.privacyDa")}</Link>
-          <span aria-hidden="true">·</span>
-          <Link to="/privacy-policy" className="hover:text-cz-1 underline">{t("auth:footer.privacyEn")}</Link>
+        <p className="text-center text-cz-3 text-xs mt-2">
+          <Link to={language === "en" ? "/privacy-policy" : "/privatlivspolitik"} className="hover:text-cz-1 underline">
+            {t("auth:footer.privacyPolicy")}
+          </Link>
         </p>
       </div>
     </div>

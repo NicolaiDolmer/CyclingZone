@@ -111,14 +111,16 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         </div>
       </button>
 
-      {/* Balance */}
-      {balance !== null && (
+      {/* Balance — guard mod undefined (jf. #446 bootstrap-race) */}
+      {balance != null && (
         <div className="px-4 py-3 border-b border-cz-sidebar-border">
           <p className="text-[9px] text-cz-sidebar-3 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
           <p className="text-cz-accent font-mono font-bold text-sm leading-tight">
             {formatNumber(balance)} CZ$
           </p>
-          {team && <p className="text-cz-sidebar-3 text-[10px] mt-0.5">{t("sidebar.division", { division: team.division })}</p>}
+          {team?.division != null && (
+            <p className="text-cz-sidebar-3 text-[10px] mt-0.5">{t("sidebar.division", { division: team.division })}</p>
+          )}
         </div>
       )}
 

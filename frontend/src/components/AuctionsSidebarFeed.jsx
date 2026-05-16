@@ -1,6 +1,6 @@
 // #196: Live bud-feed for auktioner manageren deltager i (manuel bid eller proxy).
-// Desktop-only first (md:block). Mobile får ticker + toast i stedet — sidebar
-// ville æde for meget af 360px-viewporten.
+// Mobile (#258): rendres nederst under auktion-listen som en almindelig sektion;
+// desktop beholder 280px-sidebar via parent-grid layout.
 
 function formatRelativeTime(ts, now) {
   const diff = Math.max(0, Math.floor((now - ts) / 1000));
@@ -17,14 +17,14 @@ export default function AuctionsSidebarFeed({ events, auctionsById, myTeamId, no
   return (
     <aside
       data-testid="auctions-sidebar-feed"
-      className="hidden md:flex md:flex-col bg-cz-card border border-cz-border rounded-xl overflow-hidden"
+      className="flex flex-col bg-cz-card border border-cz-border rounded-xl overflow-hidden mt-4 md:mt-0"
     >
       <div className="px-4 py-3 border-b border-cz-border bg-cz-subtle">
         <h3 className="text-[11px] uppercase tracking-widest text-cz-3 font-medium">
           Live bud · dine auktioner
         </h3>
       </div>
-      <div className="overflow-auto max-h-[calc(100vh-260px)]">
+      <div className="overflow-auto max-h-[60vh] md:max-h-[calc(100vh-260px)]">
         {visible.length === 0 ? (
           <p className="px-4 py-6 text-cz-3 text-xs text-center">
             Ingen aktivitet endnu på dine auktioner.

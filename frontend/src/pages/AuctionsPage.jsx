@@ -1363,7 +1363,7 @@ function AuctionsContent(props) {
           <AuctionList auctions={filtered} sectionId="main" sharedProps={sharedProps} />
         )}
       </div>
-      <div className="hidden md:block">
+      <div>
         <AuctionsSidebarFeed
           events={feedEvents}
           auctionsById={auctionsById}
