@@ -44,9 +44,67 @@ cat .codex.local/SESSION_CONTEXT.md
 
 ### `Stop` → `bash scripts/check-now-md.sh`
 
-**Hvad:** Advarer hvis `docs/NOW.md` er over 40 linjer (mål er max 30).
+**Hvad:** Close-out-reminder + NOW.md auto-archive ved session-stop. Funktioner:
 
-**Hvorfor:** Token-disciplin per CLAUDE.md.
+1. **Auto-arkivér NOW.md** hvis filen er >30 linjer — flytter linjer efter sidste `## `-header (eller linje 30, hvis ingen) til `docs/archive/NOW-YYYY-MM-DD.md` (append-mode). Bevarer markdown-struktur.
+2. **CLAUDE.md / MEMORY.md budget**-warning hvis over linje-target.
+3. **Close-out-detektion** hvis `origin/main` har commits nyere end `docs/NOW.md` indenfor 30 min.
+4. **Refs #N reminder** (issue [#75](https://github.com/NicolaiDolmer/CyclingZone/issues/75)) — hvis seneste main-commit har `Refs #N` men det refererede issue ikke har en kommentar med commit-SHA, mind brugeren om manuel close-out.
+
+**Hvorfor:** Token-disciplin + sikrer at session-historik bevares som issue-comments (cross-tool tilgængelig).
+
+**Verifikation:** `bash scripts/hooks/__tests__/test-stop-hook.sh` (selv-cleaner; bevarer NOW.md uændret efter test).
+
+### `PreToolUse` → `bash scripts/hooks/lint-gh-issue.sh` (matcher: `Bash`) — [#73](https://github.com/NicolaiDolmer/CyclingZone/issues/73)
+
+**Hvad:** Scanner `gh issue ...` Bash-kommandoer for token-spildende mønstre. **Warning-only** (exit 0 + `systemMessage`).
+
+Flagger:
+- `gh issue view N` uden `--json` → foreslår `--json title,body,labels,state`
+- `gh issue list` uden `--label` eller `--limit` → kan hente hele backloggen
+- `gh issue view N --comments` uden `--jq` → foreslår `--jq ".comments[-3:]"`
+
+**Opgradering til block-mode:** mulig efter 1-2 ugers brug — skift exit 0 til exit 2 og rute besked til stderr.
+
+### `PreToolUse` → `bash scripts/hooks/check-now-md-edit.sh` (matcher: `Edit|Write`) — [#76](https://github.com/NicolaiDolmer/CyclingZone/issues/76)
+
+**Hvad:** Hard-blokerer `Edit`/`Write` på `docs/NOW.md` hvis resulterende linjeantal >30.
+
+**Hvordan:** Læser tool-input via stdin-JSON, beregner delta (`new_string.count('\n') - old_string.count('\n')` for Edit; `content.count('\n')` for Write) og sammenligner med nuværende `wc -l`. Block-mode: exit 2 + stderr.
+
+**Fail-safe:** Hvis `python3` ikke er tilgængeligt eller JSON er korrupt → exit 0 (ingen blokering).
+
+### `PreToolUse` → `bash scripts/hooks/block-archived-edit.sh` (matcher: `Edit|Write|NotebookEdit`) — [#77](https://github.com/NicolaiDolmer/CyclingZone/issues/77)
+
+**Hvad:** Hard-blokerer skriv til paths matchende glob-mønstre i `scripts/hooks/archived-paths.txt`. Default-liste: `docs/archive/**`.
+
+**Tilføj path:** redigér `scripts/hooks/archived-paths.txt` (én glob per linje, `#` for kommentar). Understøtter `*` (path-segment) og `**` (recursive). Absolutte Windows-paths normaliseres til repo-relativ form før match.
+
+**Verifikation:** `bash scripts/hooks/__tests__/test-hooks.sh` dækker alle 3 PreToolUse-hooks.
+
+---
+
+## Memory audit (scheduled-tasks, ikke project-hook)
+
+### `node scripts/audit-memory-dir.mjs` — [#380](https://github.com/NicolaiDolmer/CyclingZone/issues/380)
+
+**Hvad:** Scanner `~/.claude/projects/C--dev-CyclingZone/memory/*.md` for:
+- Stale entries (>=30 dage uændret)
+- Duplikater (frontmatter `description` Levenshtein ≥0.82)
+- Frontmatter-rot (manglende felter, ukendt `type`)
+
+**Output:** Markdown-rapport til stdout. JSON-form: `--json`. Rolling baseline: `--baseline-out docs/metrics/memory-baseline.json` (gemmer previous-snapshot til growth-diff).
+
+**Growth-WARN:** `scripts/check-agent-token-hygiene.ps1` indlæser `memory-baseline.json` og advarer hvis week-over-week growth >10%.
+
+**Scheduling:** scheduled-tasks MCP er **user-scoped**, ikke repo-scoped. Konfigurér manuelt per PC:
+```
+mcp__scheduled-tasks__create_scheduled_task
+  schedule: "0 9 * * MON"
+  prompt: |
+    Kør `node scripts/audit-memory-dir.mjs --baseline-out docs/metrics/memory-baseline.json`
+    fra C:/dev/CyclingZone. Post resultatet som kommentar på GitHub issue #380.
+```
 
 ---
 
