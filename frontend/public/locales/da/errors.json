@@ -1,1 +1,19 @@
-{}
+{
+  "supabase": {
+    "invalidCredentials": "Forkert email eller adgangskode",
+    "emailNotConfirmed": "Email ikke bekræftet — tjek din indbakke (også spam)",
+    "userAlreadyRegistered": "Der findes allerede en konto med denne email",
+    "passwordTooShort": "Adgangskoden skal være mindst 6 tegn",
+    "rateLimited": "For mange forsøg — vent et øjeblik og prøv igen",
+    "invalidEmail": "Email-adressen ser ikke gyldig ud",
+    "sessionMissing": "Din session er udløbet — log ind igen",
+    "tokenExpired": "Linket er udløbet — bed om et nyt",
+    "passwordSameAsOld": "Den nye adgangskode skal være forskellig fra den nuværende",
+    "unknown": "Noget gik galt — prøv igen"
+  },
+  "generic": {
+    "networkError": "Kunne ikke nå serveren — tjek din forbindelse",
+    "serverError": "Serveren returnerede en fejl — prøv igen om lidt",
+    "unknown": "Uventet fejl — prøv igen"
+  }
+}

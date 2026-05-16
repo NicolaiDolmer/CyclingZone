@@ -4,7 +4,9 @@
       "klubhus": "Clubhouse",
       "marked": "Market",
       "saeson": "Season & Results",
-      "min": "My"
+      "min": "My",
+      "liga": "League",
+      "admin": "Admin"
     },
     "item": {
       "dashboard": "Dashboard",
@@ -28,8 +30,18 @@
       "profile": "Settings",
       "help": "Help & Rules",
       "patchNotes": "Patch Notes",
-      "logout": "Log out"
+      "logout": "Log out",
+      "teams": "Teams",
+      "headToHead": "Head-to-Head",
+      "seasonPreview": "Season Preview",
+      "admin": "Admin",
+      "waitlist": "Waitlist"
     }
+  },
+  "sidebar": {
+    "balance": "Balance",
+    "division": "Division {division}",
+    "onlineNow": "{count} online now"
   },
   "language": {
     "label": "Language",

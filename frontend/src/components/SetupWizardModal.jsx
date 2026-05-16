@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function SetupWizardModal({ onComplete }) {
+  const { t } = useTranslation("auth");
   const [teamName, setTeamName] = useState("");
   const [managerName, setManagerName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -12,11 +14,11 @@ export default function SetupWizardModal({ onComplete }) {
   async function handleSave() {
     if (saving) return;
     if (!teamName.trim() || teamName.trim().length < 3) {
-      setError("Holdnavn skal være mindst 3 tegn");
+      setError(t("error.teamNameTooShort"));
       return;
     }
     if (!managerName.trim() || managerName.trim().length < 2) {
-      setError("Managernavn skal være mindst 2 tegn");
+      setError(t("error.managerNameTooShort"));
       return;
     }
     setSaving(true);
@@ -24,7 +26,7 @@ export default function SetupWizardModal({ onComplete }) {
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      setError("Session udløbet — genindlæs siden og prøv igen");
+      setError(t("error.sessionExpired"));
       setSaving(false);
       return;
     }
@@ -40,7 +42,7 @@ export default function SetupWizardModal({ onComplete }) {
     setSaving(false);
 
     if (!res.ok) {
-      setError(data.error || "Noget gik galt — prøv igen");
+      setError(data.error || t("error.unknown"));
     } else {
       onComplete(data.team);
     }
@@ -54,33 +56,33 @@ export default function SetupWizardModal({ onComplete }) {
             CZ
           </div>
           <div>
-            <h2 className="text-cz-1 font-bold text-lg leading-tight">Velkommen til Cycling Zone</h2>
-            <p className="text-cz-3 text-sm">Navngiv dit hold for at komme i gang</p>
+            <h2 className="text-cz-1 font-bold text-lg leading-tight">{t("setupWizard.title")}</h2>
+            <p className="text-cz-3 text-sm">{t("setupWizard.subtitle")}</p>
           </div>
         </div>
 
         <div className="space-y-4 mb-5">
           <div>
-            <label className="block text-sm font-medium text-cz-2 mb-1.5">Holdnavn</label>
+            <label className="block text-sm font-medium text-cz-2 mb-1.5">{t("field.teamName.label")}</label>
             <input
               type="text"
               value={teamName}
               onChange={e => setTeamName(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleSave()}
-              placeholder="f.eks. Team Nordic"
+              placeholder={t("setupWizard.teamNamePlaceholder")}
               maxLength={40}
               className="w-full px-3 py-2.5 border border-cz-border rounded-lg text-sm
                 focus:outline-none focus:ring-2 focus:ring-cz-accent focus:border-transparent"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-cz-2 mb-1.5">Managernavn</label>
+            <label className="block text-sm font-medium text-cz-2 mb-1.5">{t("field.managerName.label")}</label>
             <input
               type="text"
               value={managerName}
               onChange={e => setManagerName(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleSave()}
-              placeholder="f.eks. Lars Hansen"
+              placeholder={t("setupWizard.managerNamePlaceholder")}
               maxLength={40}
               className="w-full px-3 py-2.5 border border-cz-border rounded-lg text-sm
                 focus:outline-none focus:ring-2 focus:ring-cz-accent focus:border-transparent"
@@ -100,11 +102,11 @@ export default function SetupWizardModal({ onComplete }) {
           className="w-full py-2.5 bg-cz-accent hover:brightness-110 text-white font-bold rounded-lg
             text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {saving ? "Gemmer…" : "Opret hold og start →"}
+          {saving ? t("setupWizard.submitLoading") : t("setupWizard.submitIdle")}
         </button>
 
         <p className="text-center text-xs text-cz-3 mt-3">
-          Du kan ændre navnene senere under Profil &amp; Indstillinger
+          {t("setupWizard.footnote")}
         </p>
       </div>
     </div>

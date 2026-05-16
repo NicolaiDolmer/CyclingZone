@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { useLanguage } from "../lib/language";
+import { mapSupabaseAuthError } from "../lib/authErrors";
+import LanguageSwitcher from "../components/LanguageSwitcher";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -12,6 +16,8 @@ function getPasswordResetRedirectUrl() {
 }
 
 export default function LoginPage() {
+  const { t } = useTranslation(["auth", "errors"]);
+  const { language } = useLanguage();
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,7 +68,7 @@ export default function LoginPage() {
           password,
         });
 
-        if (error) setError("Forkert email eller adgangskode");
+        if (error) setError(t("auth:error.invalidCredentials"));
         return;
       }
 
@@ -72,25 +78,25 @@ export default function LoginPage() {
         });
 
         if (error) {
-          setError(error.message);
+          setError(mapSupabaseAuthError(error, t));
           return;
         }
 
         setSuccess({
           kind: "forgot",
-          message: "Vi har sendt et reset-link til din email.",
+          message: t("auth:success.forgotTitle"),
         });
         setPassword("");
         return;
       }
 
       if (!teamName.trim() || teamName.trim().length < 3) {
-        setError("Holdnavn skal være mindst 3 tegn");
+        setError(t("auth:error.teamNameTooShort"));
         return;
       }
 
       if (!managerName.trim() || managerName.trim().length < 2) {
-        setError("Managernavn skal være mindst 2 tegn");
+        setError(t("auth:error.managerNameTooShort"));
         return;
       }
 
@@ -101,7 +107,7 @@ export default function LoginPage() {
         .single();
 
       if (existing) {
-        setError("Dette holdnavn er allerede taget — vælg et andet");
+        setError(t("auth:error.teamNameTaken"));
         return;
       }
 
@@ -109,12 +115,12 @@ export default function LoginPage() {
         email: email.trim(),
         password,
         options: {
-          data: { team_name: teamName.trim() },
+          data: { team_name: teamName.trim(), language },
         },
       });
 
       if (signUpError) {
-        setError(signUpError.message);
+        setError(mapSupabaseAuthError(signUpError, t));
         return;
       }
 
@@ -126,7 +132,7 @@ export default function LoginPage() {
       if (!headers) {
         setSuccess({
           kind: "signup",
-          message: "Konto oprettet. Log ind for at færdiggøre holdopsætning.",
+          message: t("auth:success.signupPartial"),
         });
         return;
       }
@@ -142,13 +148,13 @@ export default function LoginPage() {
       const bootstrapData = await bootstrapRes.json();
 
       if (!bootstrapRes.ok) {
-        setError(`Konto oprettet, men holdet kunne ikke initialiseres: ${bootstrapData.error}`);
+        setError(t("auth:error.bootstrapFailed", { detail: bootstrapData.error }));
         return;
       }
 
       setSuccess({
         kind: "signup",
-        message: `Velkommen, ${bootstrapData.team.name}! Dit hold er klar.`,
+        message: t("auth:success.signupComplete", { teamName: bootstrapData.team.name }),
       });
     } finally {
       setLoading(false);
@@ -159,6 +165,24 @@ export default function LoginPage() {
     "w-full bg-cz-subtle border border-cz-border rounded-lg " +
     "px-4 py-2.5 text-cz-1 text-sm placeholder-cz-3 " +
     "focus:outline-none focus:border-cz-accent transition-all";
+
+  const subtitle = isLoginMode
+    ? t("auth:page.subtitle.login")
+    : isSignupMode
+      ? t("auth:page.subtitle.signup")
+      : t("auth:page.subtitle.forgot");
+
+  const submitLabel = loading
+    ? isSignupMode
+      ? t("auth:submit.signup.loading")
+      : isForgotMode
+        ? t("auth:submit.forgot.loading")
+        : t("auth:submit.login.loading")
+    : isSignupMode
+      ? t("auth:submit.signup.idle")
+      : isForgotMode
+        ? t("auth:submit.forgot.idle")
+        : t("auth:submit.login.idle");
 
   return (
     <div className="min-h-screen bg-cz-body flex items-center justify-center p-4 relative overflow-hidden">
@@ -175,6 +199,10 @@ export default function LoginPage() {
           w-[500px] h-[500px] rounded-full opacity-10 blur-[120px] bg-cz-accent pointer-events-none"
       />
 
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSwitcher />
+      </div>
+
       <div className="relative z-10 w-full max-w-sm">
         <div className="text-center mb-10">
           <div
@@ -184,15 +212,9 @@ export default function LoginPage() {
             <span className="text-cz-on-accent font-black text-3xl">C</span>
           </div>
           <h1 className="text-2xl font-bold text-cz-1 tracking-tight">
-            Cycling Zone
+            {t("auth:page.title")}
           </h1>
-          <p className="text-cz-2 text-sm mt-1">
-            {isLoginMode
-              ? "Log ind for at fortsætte"
-              : isSignupMode
-                ? "Opret din managerkonto"
-                : "Få et link til at nulstille din adgangskode"}
-          </p>
+          <p className="text-cz-2 text-sm mt-1">{subtitle}</p>
         </div>
 
         <div className="bg-cz-card border border-cz-border rounded-2xl p-6">
@@ -202,8 +224,8 @@ export default function LoginPage() {
               <p className="text-cz-success text-sm font-medium">{success.message}</p>
               <p className="text-cz-3 text-xs mt-3">
                 {success.kind === "signup"
-                  ? "Tjek din email for at bekræfte din konto, og log derefter ind."
-                  : "Åbn mailen og følg reset-linket for at vælge en ny adgangskode."}
+                  ? t("auth:success.signupBody")
+                  : t("auth:success.forgotBody")}
               </p>
               <button
                 type="button"
@@ -217,7 +239,7 @@ export default function LoginPage() {
                 className="mt-4 w-full bg-cz-accent text-cz-on-accent font-bold rounded-lg
                   py-2.5 text-sm hover:brightness-110 transition-all"
               >
-                Gå til login
+                {t("auth:success.signupCta")}
               </button>
             </div>
           ) : (
@@ -226,54 +248,54 @@ export default function LoginPage() {
                 <>
                   <div>
                     <label className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
-                      Holdnavn
+                      {t("auth:field.teamName.label")}
                     </label>
                     <input
                       type="text"
                       value={teamName}
                       onChange={e => setTeamName(e.target.value)}
-                      placeholder="f.eks. Dolmer Racing"
+                      placeholder={t("auth:field.teamName.placeholder")}
                       required
                       minLength={3}
                       maxLength={30}
                       className={inputClass}
                     />
-                    <p className="text-cz-3 text-xs mt-1">3-30 tegn — dette bliver dit holdnavn i spillet</p>
+                    <p className="text-cz-3 text-xs mt-1">{t("auth:field.teamName.help")}</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
-                      Managernavn
+                      {t("auth:field.managerName.label")}
                     </label>
                     <input
                       type="text"
                       value={managerName}
                       onChange={e => setManagerName(e.target.value)}
-                      placeholder="f.eks. Nicolai Hansen"
+                      placeholder={t("auth:field.managerName.placeholder")}
                       required
                       minLength={2}
                       maxLength={50}
                       className={inputClass}
                     />
-                    <p className="text-cz-3 text-xs mt-1">Dit navn som manager — vises på holdprofilen</p>
+                    <p className="text-cz-3 text-xs mt-1">{t("auth:field.managerName.help")}</p>
                   </div>
                 </>
               )}
 
               <div>
                 <label className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
-                  Email
+                  {t("auth:field.email.label")}
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="din@email.dk"
+                  placeholder={t("auth:field.email.placeholder")}
                   required
                   className={inputClass}
                 />
                 {isForgotMode && (
                   <p className="text-cz-3 text-xs mt-1">
-                    Vi sender et sikkert reset-link til denne email.
+                    {t("auth:field.email.forgotHelp")}
                   </p>
                 )}
               </div>
@@ -281,7 +303,7 @@ export default function LoginPage() {
               {!isForgotMode && (
                 <div>
                   <label className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
-                    Adgangskode
+                    {t("auth:field.password.label")}
                   </label>
                   <input
                     type="password"
@@ -293,7 +315,7 @@ export default function LoginPage() {
                     className={inputClass}
                   />
                   {isSignupMode && (
-                    <p className="text-cz-3 text-xs mt-1">Minimum 6 tegn</p>
+                    <p className="text-cz-3 text-xs mt-1">{t("auth:field.password.help")}</p>
                   )}
                 </div>
               )}
@@ -312,17 +334,7 @@ export default function LoginPage() {
                   disabled:opacity-50 disabled:cursor-not-allowed
                   shadow-[0_4px_20px_rgba(232,197,71,0.2)]"
               >
-                {loading
-                  ? isSignupMode
-                    ? "Opretter konto og hold..."
-                    : isForgotMode
-                      ? "Sender reset-link..."
-                      : "Logger ind..."
-                  : isSignupMode
-                    ? "Opret konto og hold"
-                    : isForgotMode
-                      ? "Send reset-link"
-                      : "Log ind"}
+                {submitLabel}
               </button>
             </form>
           )}
@@ -336,14 +348,14 @@ export default function LoginPage() {
                     onClick={() => switchMode("forgot")}
                     className="text-sm text-cz-2 hover:text-cz-1 transition-colors"
                   >
-                    Glemt password?
+                    {t("auth:switch.forgot")}
                   </button>
                   <button
                     type="button"
                     onClick={() => switchMode("signup")}
                     className="text-sm text-cz-2 hover:text-cz-1 transition-colors"
                   >
-                    Ingen konto? Opret her
+                    {t("auth:switch.signup")}
                   </button>
                 </>
               )}
@@ -354,7 +366,7 @@ export default function LoginPage() {
                   onClick={() => switchMode("login")}
                   className="text-sm text-cz-2 hover:text-cz-1 transition-colors"
                 >
-                  Har allerede konto? Log ind
+                  {t("auth:switch.login")}
                 </button>
               )}
 
@@ -364,7 +376,7 @@ export default function LoginPage() {
                   onClick={() => switchMode("login")}
                   className="text-sm text-cz-2 hover:text-cz-1 transition-colors"
                 >
-                  Tilbage til login
+                  {t("auth:switch.backToLogin")}
                 </button>
               )}
             </div>
@@ -372,12 +384,12 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-cz-3 text-xs mt-6">
-          Cycling Zone — Multiplayer Edition
+          {t("auth:page.tagline")}
         </p>
         <p className="text-center text-cz-3 text-xs mt-2 flex items-center justify-center gap-2">
-          <Link to="/privatlivspolitik" className="hover:text-cz-1 underline">Privatlivspolitik</Link>
+          <Link to="/privatlivspolitik" className="hover:text-cz-1 underline">{t("auth:footer.privacyDa")}</Link>
           <span aria-hidden="true">·</span>
-          <Link to="/privacy-policy" className="hover:text-cz-1 underline">Privacy policy</Link>
+          <Link to="/privacy-policy" className="hover:text-cz-1 underline">{t("auth:footer.privacyEn")}</Link>
         </p>
       </div>
     </div>

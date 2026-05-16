@@ -2,6 +2,27 @@
 
 const PATCHES = [
   {
+    version: "3.47",
+    date: "2026-05-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · i18n Fase 2 — Login + onboarding på EN/DA (#411)",
+        items: [
+          "Feature · Login + signup + glemt-password er nu fuldt oversat på både engelsk og dansk. Skift sprog live med 🇩🇰/🇬🇧-knappen øverst til højre på login-siden — også før du logger ind.",
+          "Feature · Reset-password-siden, setup-wizarden (\"navngiv dit hold\") og første-gang-velkomst-modalet er ligeledes oversat.",
+          "Feature · Onboarding-tour-knapper (\"Næste\", \"Spring over\", \"Færdig\") tilpasser sig sproget.",
+          "Feature · Sidebar viser nu \"Balance\" + division + online-tæller på dit valgte sprog. Sidebar-tal formateres efter sprog (dansk \"1.234\" / engelsk \"1,234\").",
+          "Feature · Nye signups gemmer dit valgte sprog automatisk — du behøver ikke skifte igen efter første login.",
+          "Infra · Fejlbeskeder fra Supabase auth (forkert password, allerede registreret email, rate-limit m.fl.) oversættes via ny `mapSupabaseAuthError`-helper.",
+          "Infra · `auth.json` + `errors.json` bundles inline ligesom `common.json` — ingen flash af raw key-strings ved første sidevisning på login.",
+          "Docs · Glossary udvidet med 13 nye termer (Team name, Manager name, Password, Reset link, Division, League m.fl.).",
+          "Næste · Fase 3 oversætter Dashboard, riders/auctions-sider og rolige toasts (#411 fortsætter mod Dashboard scope).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.46",
     date: "2026-05-16",
     label: "Beta",

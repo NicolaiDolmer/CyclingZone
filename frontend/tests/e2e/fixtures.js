@@ -317,6 +317,12 @@ export async function login(page) {
 
 export async function stabilizePage(page) {
   await page.addInitScript(() => {
+    // Lock Playwright til DA-locale så fixturens hardcoded danske
+    // placeholders/button-navne matcher. Uden dette ville i18n-detection
+    // falde tilbage til navigator.language → EN (fallbackLng) → fixture
+    // ville lede efter "din@email.dk" mens UI rendered "you@email.com".
+    window.localStorage.setItem("cz_lang", "da");
+
     window.localStorage.setItem("cz_consent_v1", JSON.stringify({
       version: 1,
       necessary: true,

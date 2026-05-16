@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { mapSupabaseAuthError } from "../lib/authErrors";
+import LanguageSwitcher from "../components/LanguageSwitcher";
 
 export default function ResetPasswordPage({ session }) {
   const navigate = useNavigate();
+  const { t } = useTranslation(["auth", "errors"]);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,12 +40,10 @@ export default function ResetPasswordPage({ session }) {
       }
     });
 
-    // Fast path for implicit flow: session may already be ready
     supabase.auth.getSession().then(({ data: { session: nextSession } }) => {
       if (nextSession) resolve(true);
     });
 
-    // Fallback: if no auth event fires within 2s, declare no recovery session
     const timeout = setTimeout(() => resolve(false), 2000);
 
     return () => {
@@ -57,17 +59,17 @@ export default function ResetPasswordPage({ session }) {
     setSuccess("");
 
     if (!hasRecoverySession) {
-      setError("Reset-linket er udløbet eller ugyldigt. Bed om et nyt fra login-siden.");
+      setError(t("auth:error.resetLinkExpired"));
       return;
     }
 
     if (password.length < 6) {
-      setError("Adgangskoden skal være mindst 6 tegn");
+      setError(t("auth:error.passwordTooShort"));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Adgangskoderne matcher ikke");
+      setError(t("auth:error.passwordMismatch"));
       return;
     }
 
@@ -77,11 +79,11 @@ export default function ResetPasswordPage({ session }) {
       const { error } = await supabase.auth.updateUser({ password });
 
       if (error) {
-        setError(error.message);
+        setError(mapSupabaseAuthError(error, t));
         return;
       }
 
-      setSuccess("Din adgangskode er opdateret.");
+      setSuccess(t("auth:success.passwordUpdatedTitle"));
       setPassword("");
       setConfirmPassword("");
     } finally {
@@ -112,6 +114,10 @@ export default function ResetPasswordPage({ session }) {
           w-[500px] h-[500px] rounded-full opacity-10 blur-[120px] bg-cz-accent pointer-events-none"
       />
 
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSwitcher />
+      </div>
+
       <div className="relative z-10 w-full max-w-sm">
         <div className="text-center mb-10">
           <div
@@ -121,10 +127,10 @@ export default function ResetPasswordPage({ session }) {
             <span className="text-cz-on-accent font-black text-3xl">C</span>
           </div>
           <h1 className="text-2xl font-bold text-cz-1 tracking-tight">
-            Nulstil adgangskode
+            {t("auth:resetPassword.title")}
           </h1>
           <p className="text-cz-2 text-sm mt-1">
-            Vælg en ny adgangskode til din managerkonto
+            {t("auth:resetPassword.subtitle")}
           </p>
         </div>
 
@@ -138,21 +144,21 @@ export default function ResetPasswordPage({ session }) {
               <div className="text-4xl mb-4">✅</div>
               <p className="text-cz-success text-sm font-medium">{success}</p>
               <p className="text-cz-3 text-xs mt-3">
-                Du kan fortsætte direkte ind i spillet med din nye adgangskode.
+                {t("auth:success.passwordUpdatedBody")}
               </p>
               <button
                 type="button"
                 onClick={() => navigate("/dashboard", { replace: true })}
                 className={`mt-4 ${primaryBtnClass}`}
               >
-                Gå til dashboard
+                {t("auth:success.passwordUpdatedCta")}
               </button>
             </div>
           ) : hasRecoverySession ? (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
                 <label className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
-                  Ny adgangskode
+                  {t("auth:field.newPassword.label")}
                 </label>
                 <input
                   type="password"
@@ -163,12 +169,12 @@ export default function ResetPasswordPage({ session }) {
                   minLength={6}
                   className={inputClass}
                 />
-                <p className="text-cz-3 text-xs mt-1">Minimum 6 tegn</p>
+                <p className="text-cz-3 text-xs mt-1">{t("auth:field.newPassword.help")}</p>
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
-                  Gentag ny adgangskode
+                  {t("auth:field.confirmPassword.label")}
                 </label>
                 <input
                   type="password"
@@ -192,36 +198,36 @@ export default function ResetPasswordPage({ session }) {
                 disabled={loading}
                 className={`${primaryBtnClass} tracking-wide disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_20px_rgba(232,197,71,0.2)]`}
               >
-                {loading ? "Gemmer ny adgangskode..." : "Gem ny adgangskode"}
+                {loading ? t("auth:submit.savePassword.loading") : t("auth:submit.savePassword.idle")}
               </button>
             </form>
           ) : (
             <div className="text-center py-4">
               <div className="text-4xl mb-4">⚠️</div>
               <p className="text-cz-danger text-sm font-medium">
-                Reset-linket er ikke aktivt længere.
+                {t("auth:error.resetLinkInactive")}
               </p>
               <p className="text-cz-3 text-xs mt-3">
-                Bed om et nyt reset-link fra login-siden og åbn mailen igen.
+                {t("auth:resetPassword.linkExpiredHelp")}
               </p>
               <button
                 type="button"
                 onClick={() => navigate("/login", { replace: true })}
                 className={`mt-4 ${primaryBtnClass}`}
               >
-                Tilbage til login
+                {t("auth:switch.backToLogin")}
               </button>
             </div>
           )}
         </div>
 
         <p className="text-center text-cz-3 text-xs mt-6">
-          Cycling Zone — Multiplayer Edition
+          {t("auth:page.tagline")}
         </p>
         <p className="text-center text-cz-3 text-xs mt-2 flex items-center justify-center gap-2">
-          <Link to="/privatlivspolitik" className="hover:text-cz-1 underline">Privatlivspolitik</Link>
+          <Link to="/privatlivspolitik" className="hover:text-cz-1 underline">{t("auth:footer.privacyDa")}</Link>
           <span aria-hidden="true">·</span>
-          <Link to="/privacy-policy" className="hover:text-cz-1 underline">Privacy policy</Link>
+          <Link to="/privacy-policy" className="hover:text-cz-1 underline">{t("auth:footer.privacyEn")}</Link>
         </p>
       </div>
     </div>

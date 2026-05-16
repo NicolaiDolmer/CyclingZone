@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { readTour, advanceTour, endTour } from "../lib/onboardingTour";
 
 // Onboarding v2 Slice 1b — peg-pil-tooltip overlay.
@@ -9,6 +10,7 @@ import { readTour, advanceTour, endTour } from "../lib/onboardingTour";
 //   pageKey: "riders" | "auctions"
 //   steps: [{ target: cssSelector, title, body }]
 export default function OnboardingTour({ pageKey, steps }) {
+  const { t } = useTranslation("auth");
   const [tour, setTour] = useState(() => readTour());
   const [rect, setRect] = useState(null);
 
@@ -71,13 +73,13 @@ export default function OnboardingTour({ pageKey, steps }) {
     return (
       <div className="fixed bottom-4 right-4 z-50 bg-cz-card border border-cz-accent/40 rounded-xl shadow-xl p-3 max-w-xs">
         <p className="text-cz-2 text-xs mb-2">
-          Tour aktiv — kunne ikke finde tour-mål på denne side.
+          {t("onboardingTour.fallback")}
         </p>
         <button
           onClick={handleSkip}
           className="text-cz-accent-t text-xs hover:underline font-medium"
         >
-          Afslut tour
+          {t("onboardingTour.end")}
         </button>
       </div>
     );
@@ -132,7 +134,7 @@ export default function OnboardingTour({ pageKey, steps }) {
       {/* Tooltip */}
       <div
         role="dialog"
-        aria-label="Onboarding tour"
+        aria-label={t("onboardingTour.ariaLabel")}
         className="fixed z-50 bg-cz-card border border-cz-accent/40 rounded-xl shadow-xl p-4 pointer-events-auto"
         style={{ top: tooltipTop, left: tooltipLeft, width: tooltipWidth }}
       >
@@ -151,13 +153,13 @@ export default function OnboardingTour({ pageKey, steps }) {
             onClick={handleSkip}
             className="text-cz-3 hover:text-cz-1 text-xs px-2 py-1 transition-colors"
           >
-            Spring over
+            {t("onboardingTour.skip")}
           </button>
           <button
             onClick={handleNext}
             className="bg-cz-accent text-cz-on-accent px-3 py-1.5 rounded-lg text-xs font-bold hover:brightness-110 transition-all"
           >
-            {isLast ? "Færdig" : "Næste →"}
+            {isLast ? t("onboardingTour.done") : t("onboardingTour.next")}
           </button>
         </div>
       </div>

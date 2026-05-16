@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { formatNumber } from "../lib/intl";
 import SetupWizardModal from "./SetupWizardModal";
 import DeadlineDayBanner from "./DeadlineDayBanner";
 import DeadlineDayTicker from "./DeadlineDayTicker";
@@ -54,11 +55,11 @@ function buildNavGroups(team, t) {
       ],
     },
     {
-      key: "liga", label: "Liga",
+      key: "liga", label: t("nav.group.liga"),
       items: [
-        { to: "/teams",          label: "Hold" },
-        { to: "/head-to-head",   label: "Head-to-Head" },
-        { to: "/season-preview", label: "Sæson Preview" },
+        { to: "/teams",          label: t("nav.item.teams") },
+        { to: "/head-to-head",   label: t("nav.item.headToHead") },
+        { to: "/season-preview", label: t("nav.item.seasonPreview") },
       ],
     },
   ];
@@ -94,6 +95,7 @@ function NavItem({ to, label, badge, onClick, location, unread, exact }) {
 }
 
 function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, unread, logoutLabel }) {
+  const { t } = useTranslation("common");
   return (
     <div className="flex flex-col h-full">
       {/* Logo + team */}
@@ -112,11 +114,11 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       {/* Balance */}
       {balance !== null && (
         <div className="px-4 py-3 border-b border-cz-sidebar-border">
-          <p className="text-[9px] text-cz-sidebar-3 uppercase tracking-widest mb-0.5">Balance</p>
+          <p className="text-[9px] text-cz-sidebar-3 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
           <p className="text-cz-accent font-mono font-bold text-sm leading-tight">
-            {balance.toLocaleString("da-DK")} CZ$
+            {formatNumber(balance)} CZ$
           </p>
-          {team && <p className="text-cz-sidebar-3 text-[10px] mt-0.5">Division {team.division}</p>}
+          {team && <p className="text-cz-sidebar-3 text-[10px] mt-0.5">{t("sidebar.division", { division: team.division })}</p>}
         </div>
       )}
 
@@ -125,7 +127,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         <div className="px-4 py-2 border-b border-cz-sidebar-border">
           <span className="inline-flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-            <span className="text-cz-sidebar-3 text-[10px]">{onlineCount} online nu</span>
+            <span className="text-cz-sidebar-3 text-[10px]">{t("sidebar.onlineNow", { count: onlineCount })}</span>
           </span>
         </div>
       )}
@@ -209,9 +211,9 @@ export default function Layout() {
   useEffect(() => {
     const path = location.pathname;
     const groups = buildNavGroups(teamId ? { id: teamId } : null, t);
-    if (isAdmin) groups.push({ key: "admin", label: "Admin", items: [
-      { to: "/admin", label: "Admin", exact: true },
-      { to: "/admin/waitlist", label: "Waitlist" },
+    if (isAdmin) groups.push({ key: "admin", label: t("nav.group.admin"), items: [
+      { to: "/admin", label: t("nav.item.admin"), exact: true },
+      { to: "/admin/waitlist", label: t("nav.item.waitlist") },
     ] });
     const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(path, i.to, i.exact)))
       || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
@@ -299,9 +301,9 @@ export default function Layout() {
   const unread = notifications.length;
   const baseGroups = buildNavGroups(team, t);
   const navGroups = isAdmin
-    ? [...baseGroups, { key: "admin", label: "Admin", items: [
-        { to: "/admin", label: "Admin" },
-        { to: "/admin/waitlist", label: "Waitlist" },
+    ? [...baseGroups, { key: "admin", label: t("nav.group.admin"), items: [
+        { to: "/admin", label: t("nav.item.admin") },
+        { to: "/admin/waitlist", label: t("nav.item.waitlist") },
       ] }]
     : baseGroups;
   const bottomItems = buildBottomItems(t);
