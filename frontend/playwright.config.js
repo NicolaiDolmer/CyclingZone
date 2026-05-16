@@ -34,6 +34,12 @@ export default defineConfig({
         viewport: { width: 393, height: 852 },
       },
     },
+    {
+      name: "mobile-webkit",
+      use: {
+        ...devices["iPhone 13"],
+      },
+    },
   ],
   webServer: {
     command: `npm run dev -- --host 127.0.0.1 --port ${PORT}`,

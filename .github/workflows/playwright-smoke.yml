@@ -27,8 +27,8 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Install Playwright browser
-        run: npx playwright install chromium
+      - name: Install Playwright browsers
+        run: npx playwright install chromium webkit
 
       - name: Run Playwright smoke
         run: npm run test:e2e

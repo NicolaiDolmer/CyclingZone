@@ -28,9 +28,21 @@ test("root path redirects to dashboard", async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard$/);
 });
 
-test("core manager pages render without blank screens", async ({ page }) => {
+// WebKit + Vite HMR + Playwright route-mocks producerer dev-only-noise (dynamic
+// module imports, mock-CORS-quirks) der ikke reproducerer på prod iOS Safari.
+// Filtrér dem fra page-errors så vi stadig fanger ægte JS-exceptions.
+const WEBKIT_DEV_NOISE = [
+  /Importing a module script failed/i,
+  /due to access control checks/i,
+];
+
+test("core manager pages render without blank screens", async ({ page }, testInfo) => {
+  const isWebkit = testInfo.project.name.includes("webkit");
   const pageErrors = [];
-  page.on("pageerror", error => pageErrors.push(error.message));
+  page.on("pageerror", error => {
+    if (isWebkit && WEBKIT_DEV_NOISE.some(p => p.test(error.message))) return;
+    pageErrors.push(error.message);
+  });
 
   await login(page);
 
