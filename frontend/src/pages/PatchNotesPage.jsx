@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "3.46",
+    date: "2026-05-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · i18n foundation — EN/DA sprog-switcher (#410)",
+        items: [
+          "Feature · Ny 🇩🇰/🇬🇧 sprog-dropdown i sidebar-bunden (desktop) + mobile topbar. Lever-skift uden reload — vælg sprog én gang og det huskes både i din profil (DB) og lokalt i browseren.",
+          "Feature · Eksisterende brugere er backfilled til dansk (du ser ingen ændring). Nye signups starter på engelsk som default.",
+          "Infra · `users.language`-kolonne tilføjet med EN/DA-validering + sync-trigger til Supabase auth-metadata (klar til at email-templates og Edge Functions kan læse sproget).",
+          "Infra · `react-i18next` + `ICU MessageFormat` (plural-håndtering) + HTTP backend (lazy-loaded namespaces). Common-strings (NavBar + switcher) bundles inline → ingen flash ved første sidevisning.",
+          "Infra · `Intl.NumberFormat` / `DateTimeFormat`-wrappers i `lib/intl.js` så valuta og datoer formateres efter brugerens sprog (fx \"1.500,00 kr.\" på dansk, \"DKK 1,500.00\" på engelsk).",
+          "Dev · Pseudo-locale `en-XA` aktiveres med `?pseudo=1` i URL'en — alle tekster wrappes i `[...]` så hardcoded strings (der endnu ikke er oversat) bliver synlige under udvikling.",
+          "Docs · `docs/i18n/GLOSSARY.md` med 20+ domæne-termer (Squad, Bid, Manager, Patch Notes, CZ$, ...). CI-check fejler PR'er hvis en/da har forskellige nøgler.",
+          "Næste · Fase 2 (#411) oversætter Login + onboarding-tekster, så hele appen ikke kun NavBar er flersproget.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.45",
     date: "2026-05-16",
     label: "Beta",
