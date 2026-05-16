@@ -72,6 +72,34 @@
             "type": "command",
             "command": "bash scripts/session-prefetch-issue.sh",
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/ensure-scheduled-tasks.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/lint-gh-issue.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/check-now-md-edit.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/block-archived-edit.sh"
           }
         ]
       }

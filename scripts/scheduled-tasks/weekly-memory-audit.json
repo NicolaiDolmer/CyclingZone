@@ -1,0 +1,6 @@
+{
+  "taskId": "weekly-memory-audit",
+  "description": "Ugentlig audit af ~/.claude/projects/C--dev-CyclingZone/memory/ (issue #380)",
+  "cronExpression": "0 9 * * 1",
+  "promptFile": "scripts/scheduled-tasks/weekly-memory-audit-prompt.md"
+}
