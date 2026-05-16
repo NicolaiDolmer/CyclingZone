@@ -106,6 +106,10 @@ test("getOutgoingSquadViolation blocks teams from dropping below the division mi
   assert.equal(issue?.totalAfter, 19);
 });
 
+// #268: outgoingCount-query bruger chained .eq + .not + .neq for at finde
+// "pending-out"-ryttere (ejet nu, men på vej til andet hold). Mocken er en
+// chainable builder der collecter alle filtre og dispatcher tæller efter
+// hvilken kombination der matches.
 function createTeamMarketStateSupabase({
   team = {
     id: "team-1",
@@ -116,8 +120,44 @@ function createTeamMarketStateSupabase({
   },
   riderCount = 0,
   pendingCount = 0,
+  outgoingCount = 0,
   activeLoanCount = 0,
 } = {}) {
+  function ridersQuery() {
+    const filters = { eq: {}, notIsNull: new Set(), neq: {} };
+    const builder = {
+      eq(col, val) { filters.eq[col] = val; return promiseOrBuilder(); },
+      not(col, op, val) {
+        if (op === "is" && val === null) filters.notIsNull.add(col);
+        return promiseOrBuilder();
+      },
+      neq(col, val) { filters.neq[col] = val; return promiseOrBuilder(); },
+      then(resolve, reject) { return resolveCount().then(resolve, reject); },
+    };
+    function promiseOrBuilder() {
+      return new Proxy(builder, {
+        get(target, prop) {
+          if (prop === "then") return (res, rej) => resolveCount().then(res, rej);
+          return target[prop];
+        },
+      });
+    }
+    function resolveCount() {
+      const hasOutgoingFilters = filters.notIsNull.has("pending_team_id") && "pending_team_id" in filters.neq;
+      if (hasOutgoingFilters && filters.eq.team_id === team.id) {
+        return Promise.resolve({ count: outgoingCount, error: null });
+      }
+      if (filters.eq.team_id === team.id) {
+        return Promise.resolve({ count: riderCount, error: null });
+      }
+      if (filters.eq.pending_team_id === team.id) {
+        return Promise.resolve({ count: pendingCount, error: null });
+      }
+      throw new Error(`Unexpected riders filter combo: ${JSON.stringify({ eq: filters.eq, notIsNull: [...filters.notIsNull], neq: filters.neq })}`);
+    }
+    return builder;
+  }
+
   return {
     from(table) {
       if (table === "teams") {
@@ -146,22 +186,7 @@ function createTeamMarketStateSupabase({
           select(columns, options) {
             assert.equal(columns, "id");
             assert.deepEqual(options, { count: "exact", head: true });
-
-            return {
-              eq(column, value) {
-                assert.equal(value, team.id);
-
-                if (column === "team_id") {
-                  return Promise.resolve({ count: riderCount, error: null });
-                }
-
-                if (column === "pending_team_id") {
-                  return Promise.resolve({ count: pendingCount, error: null });
-                }
-
-                throw new Error(`Unexpected riders column: ${column}`);
-              },
-            };
+            return ridersQuery();
           },
         };
       }
@@ -207,7 +232,63 @@ test("getTeamMarketState includes active loan agreements in the total squad coun
 
   assert.equal(teamState.rider_count, 14);
   assert.equal(teamState.pending_count, 1);
+  assert.equal(teamState.outgoing_count, 0);
   assert.equal(teamState.active_loan_count, 2);
   assert.equal(teamState.total_count, 17);
+  assert.equal(teamState.future_count, 17);
   assert.deepEqual(teamState.squad_limits, { min: 14, max: 20 });
+});
+
+// #268: future_count skal trække outgoing-pending ryttere (team_id=mit,
+// pending_team_id=andet) fra rider_count, så squad-cap checks ikke ser dem
+// som "stadig ejede". total_count beholdes som legacy felt og indeholder
+// stadig den gamle (buggy) sum.
+test("getTeamMarketState subtracts outgoing-pending riders from future_count (#268)", async () => {
+  const teamState = await getTeamMarketState(
+    createTeamMarketStateSupabase({
+      riderCount: 10,
+      pendingCount: 2,
+      outgoingCount: 3,
+      activeLoanCount: 1,
+    }),
+    "team-1"
+  );
+
+  assert.equal(teamState.rider_count, 10);
+  assert.equal(teamState.pending_count, 2);
+  assert.equal(teamState.outgoing_count, 3);
+  assert.equal(teamState.active_loan_count, 1);
+  // total_count (legacy, includes outgoing): 10 + 2 + 1 = 13
+  assert.equal(teamState.total_count, 13);
+  // future_count (correct): 10 - 3 + 2 + 1 = 10
+  assert.equal(teamState.future_count, 10);
+});
+
+test("getIncomingSquadViolation prefers future_count over total_count (#268)", () => {
+  // total_count viser 11 (over D3-cap=10) men future_count = 9 efter outgoing.
+  // Manageren skal IKKE blokeres — der er reelt plads til 1 mere.
+  const issue = getIncomingSquadViolation(
+    {
+      division: 3,
+      total_count: 11,
+      future_count: 9,
+      squad_limits: { min: 8, max: 10 },
+    },
+    { softCapBuffer: 0 }
+  );
+
+  assert.equal(issue, null);
+});
+
+test("getOutgoingSquadViolation prefers future_count over total_count (#268)", () => {
+  // future_count = 8 (matches min). En outgoing til ville bryde min-cap.
+  const issue = getOutgoingSquadViolation({
+    division: 3,
+    total_count: 12,
+    future_count: 8,
+    squad_limits: { min: 8, max: 10 },
+  });
+
+  assert.equal(issue?.minRiders, 8);
+  assert.equal(issue?.totalAfter, 7);
 });
