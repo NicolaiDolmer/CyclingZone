@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.42",
+    date: "2026-05-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Privatliv · Vercel Web Analytics consent-gated (#372)",
+        items: [
+          "Privatliv · Vercel Web Analytics aktiveres nu kun hvis du har givet samtykke til `analytics` i cookie-banneret. Vælger du \"Kun nødvendige\", indlæses analytics-scriptet ikke — på linje med Microsoft Clarity og Vercel Speed Insights.",
+          "Bugfix · Tidligere kørte analytics-scriptet ubetinget før consent-banneret nåede at resolve (regression fra auto-genereret Vercel-bot-PR #371). Default-deny respekteres nu fra første render.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.41",
     date: "2026-05-15",
     label: "Beta",
