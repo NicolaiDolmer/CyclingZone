@@ -129,6 +129,23 @@ if ($memoryCandidates.Count -gt 0) {
   }
   Add-Result $results "memory-dir-total" "INFO" "$memoryDirTokens approx tokens across $($memoryFiles.Count) memory files (on-demand)"
 
+  # Memory-dir growth check vs rolling baseline (#380)
+  $memBaselinePath = "docs/metrics/memory-baseline.json"
+  if (Test-Path $memBaselinePath) {
+    try {
+      $memBaseline = Get-Content $memBaselinePath -Raw | ConvertFrom-Json
+      if ($memBaseline.previous -and $memBaseline.previous.approxTokens -gt 0) {
+        $prevTokens = [int]$memBaseline.previous.approxTokens
+        $delta = $memoryDirTokens - $prevTokens
+        $pct = if ($prevTokens -gt 0) { [math]::Round(($delta / $prevTokens) * 100, 1) } else { 0 }
+        $growthStatus = if ($pct -gt 10) { "WARN" } elseif ($pct -gt 5) { "INFO" } else { "OK" }
+        Add-Result $results "memory-dir-growth" $growthStatus "+$delta tok ($pct% vs previous baseline $($memBaseline.previous.timestamp))"
+      }
+    } catch {
+      Add-Result $results "memory-baseline-parse" "WARN" "Kunne ikke parse $memBaselinePath"
+    }
+  }
+
   $memoryPath = $memoryCandidates[0]
   $memoryLines = (Get-Content $memoryPath | Measure-Object -Line).Lines
   $memoryLineStatus = if ($memoryLines -gt 50) { "FAIL" } elseif ($memoryLines -gt 40) { "WARN" } else { "OK" }

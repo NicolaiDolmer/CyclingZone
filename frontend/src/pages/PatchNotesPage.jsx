@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "3.48",
+    date: "2026-05-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · AI-workflow hooks + memory audit (#73, #75, #76, #77, #154, #380)",
+        items: [
+          "Infra · Nye PreToolUse-hooks beskytter mod token-spild og drift: `gh issue`-kommandoer uden filtre giver nu en warning, edits der ville sprænge `docs/NOW.md`'s 30-linjers grænse blokeres, og skriv til `docs/archive/**` blokeres med forklaring.",
+          "Infra · Stop-hook auto-arkiverer overflødige linjer i `docs/NOW.md` til `docs/archive/NOW-YYYY-MM-DD.md` ved session-slut og minder om manglende `Refs #N`-issue-kommentar når seneste main-commit refererer et issue uden close-out.",
+          "Infra · Ny `node scripts/audit-memory-dir.mjs` scanner WARM-tier memory for stale entries, frontmatter-rot og duplikater; planlægges som ugentligt scheduled-task. `check-agent-token-hygiene.ps1` advarer nu hvis memory-dir vokser >10 % siden sidste baseline.",
+          "Infra · PatchNotes version-collision-checken (`scripts/check-patch-notes-version.js`) er nu LIVE som blokerende CI-step — verificeret efter #154 close-out.",
+          "Note · Ingen brugerrettet UI-ændring i denne version; alle ændringer er på dev-workflow-laget.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.47",
     date: "2026-05-16",
     label: "Beta",

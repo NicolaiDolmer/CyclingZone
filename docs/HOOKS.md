@@ -44,9 +44,73 @@ cat .codex.local/SESSION_CONTEXT.md
 
 ### `Stop` → `bash scripts/check-now-md.sh`
 
-**Hvad:** Advarer hvis `docs/NOW.md` er over 40 linjer (mål er max 30).
+**Hvad:** Close-out-reminder + NOW.md auto-archive ved session-stop. Funktioner:
 
-**Hvorfor:** Token-disciplin per CLAUDE.md.
+1. **Auto-arkivér NOW.md** hvis filen er >30 linjer — flytter linjer efter sidste `## `-header (eller linje 30, hvis ingen) til `docs/archive/NOW-YYYY-MM-DD.md` (append-mode). Bevarer markdown-struktur.
+2. **CLAUDE.md / MEMORY.md budget**-warning hvis over linje-target.
+3. **Close-out-detektion** hvis `origin/main` har commits nyere end `docs/NOW.md` indenfor 30 min.
+4. **Refs #N reminder** (issue [#75](https://github.com/NicolaiDolmer/CyclingZone/issues/75)) — hvis seneste main-commit har `Refs #N` men det refererede issue ikke har en kommentar med commit-SHA, mind brugeren om manuel close-out.
+
+**Hvorfor:** Token-disciplin + sikrer at session-historik bevares som issue-comments (cross-tool tilgængelig).
+
+**Verifikation:** `bash scripts/hooks/__tests__/test-stop-hook.sh` (selv-cleaner; bevarer NOW.md uændret efter test).
+
+### `PreToolUse` → `bash scripts/hooks/lint-gh-issue.sh` (matcher: `Bash`) — [#73](https://github.com/NicolaiDolmer/CyclingZone/issues/73)
+
+**Hvad:** Scanner `gh issue ...` Bash-kommandoer for token-spildende mønstre. **Warning-only** (exit 0 + `systemMessage`).
+
+Flagger:
+- `gh issue view N` uden `--json` → foreslår `--json title,body,labels,state`
+- `gh issue list` uden `--label` eller `--limit` → kan hente hele backloggen
+- `gh issue view N --comments` uden `--jq` → foreslår `--jq ".comments[-3:]"`
+
+**Opgradering til block-mode:** mulig efter 1-2 ugers brug — skift exit 0 til exit 2 og rute besked til stderr.
+
+### `PreToolUse` → `bash scripts/hooks/check-now-md-edit.sh` (matcher: `Edit|Write`) — [#76](https://github.com/NicolaiDolmer/CyclingZone/issues/76)
+
+**Hvad:** Hard-blokerer `Edit`/`Write` på `docs/NOW.md` hvis resulterende linjeantal >30.
+
+**Hvordan:** Læser tool-input via stdin-JSON, beregner delta (`new_string.count('\n') - old_string.count('\n')` for Edit; `content.count('\n')` for Write) og sammenligner med nuværende `wc -l`. Block-mode: exit 2 + stderr.
+
+**Fail-safe:** Hvis `python3` ikke er tilgængeligt eller JSON er korrupt → exit 0 (ingen blokering).
+
+### `PreToolUse` → `bash scripts/hooks/block-archived-edit.sh` (matcher: `Edit|Write|NotebookEdit`) — [#77](https://github.com/NicolaiDolmer/CyclingZone/issues/77)
+
+**Hvad:** Hard-blokerer skriv til paths matchende glob-mønstre i `scripts/hooks/archived-paths.txt`. Default-liste: `docs/archive/**`.
+
+**Tilføj path:** redigér `scripts/hooks/archived-paths.txt` (én glob per linje, `#` for kommentar). Understøtter `*` (path-segment) og `**` (recursive). Absolutte Windows-paths normaliseres til repo-relativ form før match.
+
+**Verifikation:** `bash scripts/hooks/__tests__/test-hooks.sh` dækker alle 3 PreToolUse-hooks + ensure-scheduled-tasks (16 cases).
+
+### `SessionStart` → `bash scripts/hooks/ensure-scheduled-tasks.sh`
+
+**Hvad:** Sikrer at scheduled-tasks defineret i `scripts/scheduled-tasks/*.json` er registreret på den aktuelle PC. Hvis en SKILL.md mangler under `~/.claude/scheduled-tasks/<taskId>/`, emit'er hook'en en `systemMessage` med præcise MCP-parametre — Claude registrerer dem så via `mcp__scheduled-tasks__create_scheduled_task` i sessionen.
+
+**Hvorfor:** scheduled-tasks MCP er user-scoped (per-PC); MCP-serveren har egen state der ikke kan synces via filsystemet alene. Derfor det indirekte mønster: canonical config i repo + hook der nudge'r Claude til at registrere via MCP-tool-call. Idempotent — stille når alt er på plads.
+
+---
+
+## Memory audit (scheduled-tasks, ikke project-hook)
+
+### `node scripts/audit-memory-dir.mjs` — [#380](https://github.com/NicolaiDolmer/CyclingZone/issues/380)
+
+**Hvad:** Scanner `~/.claude/projects/C--dev-CyclingZone/memory/*.md` for:
+- Stale entries (>=30 dage uændret)
+- Duplikater (frontmatter `description` Levenshtein ≥0.82)
+- Frontmatter-rot (manglende felter, ukendt `type`)
+
+**Output:** Markdown-rapport til stdout. JSON-form: `--json`. Rolling baseline: `--baseline-out docs/metrics/memory-baseline.json` (gemmer previous-snapshot til growth-diff).
+
+**Growth-WARN:** `scripts/check-agent-token-hygiene.ps1` indlæser `memory-baseline.json` og advarer hvis week-over-week growth >10%.
+
+**Scheduling — auto-install cross-PC:** scheduled-tasks MCP er user-scoped (per-PC), og MCP-serveren har egen state for cron-firing. For at gøre nye PCs plug-and-play:
+
+- Canonical task-config bor i `scripts/scheduled-tasks/<taskId>.json` + `scripts/scheduled-tasks/<taskId>-prompt.md`.
+- SessionStart-hook'en `scripts/hooks/ensure-scheduled-tasks.sh` (registreret i `.claude/settings.json`) tjekker hver session om `~/.claude/scheduled-tasks/<taskId>/SKILL.md` eksisterer. Hvis nogen mangler, emit'er den en systemMessage med præcise MCP-parametre, så Claude registrerer dem via `mcp__scheduled-tasks__create_scheduled_task`.
+- Idempotent: når task'en er live på PC'en, er hook'en stille.
+- Tilføj ny task: drop en `.json`-fil + tilhørende prompt-fil i `scripts/scheduled-tasks/`, commit, push. På næste session-start på enhver PC bliver Claude bedt om at registrere den.
+
+Se [`scripts/scheduled-tasks/README.md`](../scripts/scheduled-tasks/README.md) for schema.
 
 ---
 

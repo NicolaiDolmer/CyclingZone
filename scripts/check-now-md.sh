@@ -1,15 +1,45 @@
 #!/bin/bash
-# Stop-hook: close-out-reminder ved session-stop.
-#  1) Advarer hvis NOW.md > 40 linjer (mål: 30)
-#  2) Advarer hvis main har commits nyere end NOW.md (close-out glemt)
+# Stop-hook: close-out-reminder + NOW.md auto-archive ved session-stop.
+#  1) Auto-arkivér NOW.md hvis >30 linjer (ældste linjer ned i docs/archive/NOW-YYYY-MM-DD.md)
+#  2) Advarer hvis CLAUDE.md eller MEMORY.md over budget
+#  3) Advarer hvis main har commits nyere end NOW.md (close-out glemt)
+#  4) Reminder hvis seneste main-commit har "Refs #N" men issue ikke har comment fra denne session
+#
+# Refs: GitHub issues #75, #76.
 
 WARNINGS=()
 
-# (1) NOW.md storrelse
+# (1) NOW.md auto-archive ved >30 linjer
 if [ -f "docs/NOW.md" ]; then
   L=$(wc -l < "docs/NOW.md")
-  if [ "$L" -gt 40 ]; then
-    WARNINGS+=("NOW.md er $L linjer (maal: maks 30) - flyt historik til docs/archive/")
+  if [ "$L" -gt 30 ]; then
+    # Find første "## " header — alt FØR den (efter første header) er stale aktiv-noter,
+    # alt EFTER fjernes når der er for mange linjer.
+    # Strategi: bevar første 30 linjer, append rest til archive.
+    ARCHIVE_DIR="docs/archive"
+    mkdir -p "$ARCHIVE_DIR" 2>/dev/null
+    DATE_TAG=$(date +%F)
+    ARCHIVE_FILE="$ARCHIVE_DIR/NOW-$DATE_TAG.md"
+
+    # Find sidste sektions-header indenfor de første 30 linjer for at klippe pænt.
+    # Fallback: bare klip ved linje 30.
+    CUT_LINE=$(head -30 "docs/NOW.md" | grep -n '^## ' | tail -1 | cut -d: -f1)
+    if [ -z "$CUT_LINE" ] || [ "$CUT_LINE" -lt 5 ]; then
+      CUT_LINE=30
+    fi
+
+    # Append overskydende (linjer efter CUT_LINE) til arkivet med header.
+    {
+      echo ""
+      echo "## Auto-archived $(date -Iseconds)"
+      echo ""
+      tail -n +$((CUT_LINE + 1)) "docs/NOW.md"
+    } >> "$ARCHIVE_FILE"
+
+    # Trim NOW.md til CUT_LINE linjer.
+    head -n "$CUT_LINE" "docs/NOW.md" > "docs/NOW.md.tmp" && mv "docs/NOW.md.tmp" "docs/NOW.md"
+
+    WARNINGS+=("NOW.md var $L linjer - auto-arkiverede linjer >${CUT_LINE} til $ARCHIVE_FILE")
   fi
 fi
 
@@ -31,7 +61,6 @@ if [ -f "$MEM_PATH" ]; then
 fi
 
 # (2) Close-out-detektion: er origin/main blevet opdateret nyere end NOW.md?
-#     Heuristik: nyeste main-commit <30min gammelt OG >5min nyere end NOW.md -> mind om close-out.
 if [ -d ".git" ]; then
   LAST_MAIN_TS=$(git log origin/main -1 --format=%ct 2>/dev/null || echo 0)
   LAST_NOW_TS=$(git log -1 --format=%ct -- docs/NOW.md 2>/dev/null || echo 0)
@@ -43,6 +72,20 @@ if [ -d ".git" ]; then
     if [ "$MAIN_AGE" -lt 1800 ] && [ "$GAP" -gt 300 ]; then
       LATEST_MAIN_MSG=$(git log origin/main -1 --format=%s 2>/dev/null | head -c 80)
       WARNINGS+=("main blev opdateret \\\"$LATEST_MAIN_MSG\\\" - har du koert close-out? (NOW.md entry, FEATURE_STATUS.md hvis kontrakt-aendring, learnings hvis bugfix, claude:done label paa issue)")
+    fi
+
+    # (3) Refs #N reminder: seneste commit på main har Refs #N men issue mangler en
+    # session-comment med matching SHA (heuristik for "AI lukkede ikke loopen").
+    if [ "$MAIN_AGE" -lt 1800 ] && command -v gh >/dev/null 2>&1; then
+      LATEST_MSG=$(git log origin/main -1 --format=%B 2>/dev/null | head -c 2000)
+      REFS=$(printf '%s' "$LATEST_MSG" | grep -Eoi 'Refs #[0-9]+' | grep -Eo '[0-9]+' | sort -u)
+      LATEST_SHA=$(git log origin/main -1 --format=%H 2>/dev/null | head -c 7)
+      for N in $REFS; do
+        COMMENT_HIT=$(gh issue view "$N" --json comments --jq ".comments[].body" 2>/dev/null | grep -c "$LATEST_SHA" || true)
+        if [ "${COMMENT_HIT:-0}" -eq 0 ]; then
+          WARNINGS+=("Seneste main-commit refererer #$N men issuet har ingen kommentar med SHA $LATEST_SHA - husk close-out: gh issue comment $N --body \"...$LATEST_SHA...\"")
+        fi
+      done
     fi
   fi
 fi

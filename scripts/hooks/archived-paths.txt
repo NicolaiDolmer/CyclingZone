@@ -1,0 +1,5 @@
+# PreToolUse block-list for archived/read-only docs (issue #77).
+# One glob per line. Lines starting with # are comments.
+# Globs are matched against the normalised forward-slash file_path.
+docs/archive/**
+docs/archive/*
