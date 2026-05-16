@@ -24,12 +24,102 @@ import {
 //   2. Duplicate-check via error.code === '23505' (ikke pre-SELECT).
 //   3. Honeypot er client-side; ingen edge-function rate-limit i denne PR.
 
+const FORM_COPY = {
+  da: {
+    contactLegend: "Sådan kontakter vi dig",
+    contactHelp: "Mindst én af felterne skal udfyldes.",
+    emailLabel: "Email",
+    emailPlaceholder: "din@email.dk",
+    discordLabel: "Discord-handle (valgfri)",
+    discordPlaceholder: "f.eks. nicolai.dolmer",
+    interestLegend: "Hvor interesseret er du?",
+    tierLegend: "Hvilken tier ville passe dig?",
+    tierHelp: "Vi tester forskellige pris-punkter — dit svar er ikke bindende.",
+    benefitsLegend: "Hvad ville være vigtigt for dig? (valgfri)",
+    benefitsHelp: "Vælg så mange som relevant.",
+    mainReasonLabel: "Hvad er den vigtigste grund til at du overvejer at støtte? (valgfri)",
+    mainReasonPlaceholder: "Skriv et par sætninger...",
+    fairnessLabel: "Noget der ville få dig til at sige nej? (valgfri)",
+    fairnessPlaceholder: "F.eks. pay-to-win mekanikker, dårlig fairness...",
+    countryLabel: "Hvor bor du?",
+    followUpConsent:
+      "Det er OK at jeg bliver kontaktet med op til 2 follow-up spørgsmål (interview / kort survey). Dette er valgfrit.",
+    gdprBefore: "Jeg har læst og accepterer ",
+    gdprLink: "privatlivspolitikken",
+    gdprAfter: " og indvilliger i at min email + Discord-handle gemmes til formålet ovenfor.",
+    privacyPath: "/privatlivspolitik",
+    submit: "Tilmeld mig waitlisten",
+    submitLoading: "Sender...",
+    submitDisclaimer:
+      "Vi sender ikke spam og deler aldrig din info. Du kan altid skrive til os for at blive slettet.",
+    priceVariantPrefix: "Pris-variant:",
+    honeypotLabel: "Lad dette felt være tomt",
+    successTitle: "Du er på listen!",
+    successBody:
+      "Tak fordi du vil være med fra start. Vi sender en mail når Founder Supporter rulles ud — og inden da hvis vi har spørgsmål til hvad du synes.",
+    successNextTitle: "Næste skridt:",
+    successNext: [
+      { text: "Tilmeld dig vores Discord når invite-link er klar (se ", link: { href: "https://github.com/NicolaiDolmer/CyclingZone/issues/415", text: "#415" }, suffix: ")" },
+      { text: "Følg patch notes for fremgang" },
+      { text: "Tjek din inbox de næste dage" },
+    ],
+    successFooterRefs: "Refs sprint-validation #362. Du kan altid skrive til ",
+  },
+  en: {
+    contactLegend: "How we contact you",
+    contactHelp: "At least one of the fields below must be filled.",
+    emailLabel: "Email",
+    emailPlaceholder: "you@email.com",
+    discordLabel: "Discord handle (optional)",
+    discordPlaceholder: "e.g. nicolai.dolmer",
+    interestLegend: "How interested are you?",
+    tierLegend: "Which tier would suit you?",
+    tierHelp: "We're testing different price points — your answer is not binding.",
+    benefitsLegend: "What would matter to you? (optional)",
+    benefitsHelp: "Pick as many as apply.",
+    mainReasonLabel: "What's the main reason you're considering supporting? (optional)",
+    mainReasonPlaceholder: "Write a few sentences...",
+    fairnessLabel: "Anything that would make you say no? (optional)",
+    fairnessPlaceholder: "e.g. pay-to-win mechanics, unfair systems...",
+    countryLabel: "Where do you live?",
+    followUpConsent:
+      "It's OK to contact me with up to 2 follow-up questions (interview / short survey). This is optional.",
+    gdprBefore: "I have read and accept the ",
+    gdprLink: "privacy policy",
+    gdprAfter: " and consent to storing my email + Discord handle for the purpose stated above.",
+    privacyPath: "/privacy-policy",
+    submit: "Join the waitlist",
+    submitLoading: "Sending...",
+    submitDisclaimer:
+      "We don't spam and never share your info. You can always email us to be removed.",
+    priceVariantPrefix: "Price variant:",
+    honeypotLabel: "Leave this field empty",
+    successTitle: "You're on the list!",
+    successBody:
+      "Thanks for joining early. We'll email when Founder Supporter launches — and before that if we have questions about what you think.",
+    successNextTitle: "Next steps:",
+    successNext: [
+      { text: "Join our Discord when the invite link is ready (see ", link: { href: "https://github.com/NicolaiDolmer/CyclingZone/issues/415", text: "#415" }, suffix: ")" },
+      { text: "Follow patch notes for progress" },
+      { text: "Check your inbox the next few days" },
+    ],
+    successFooterRefs: "Refs sprint-validation #362. You can always email ",
+  },
+};
+
 const fieldLabel = "block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5";
 const inputBase =
   "w-full bg-cz-subtle border border-cz-border rounded-lg " +
   "px-4 py-2.5 text-cz-1 text-sm placeholder-cz-3 " +
   "focus:outline-none focus:border-cz-accent transition-all";
 const inputErr = "border-cz-danger/50 focus:border-cz-danger";
+
+function pickLabel(opt, lang) {
+  return lang === "en" && opt.label_en ? opt.label_en : opt.label;
+}
+function pickSub(opt, lang) {
+  return lang === "en" && opt.sub_en ? opt.sub_en : opt.sub;
+}
 
 function RadioCard({ name, value, checked, onChange, label, sub, disabled }) {
   return (
@@ -90,9 +180,10 @@ function FieldError({ id, message }) {
   );
 }
 
-export default function FounderSupporterWaitlistForm({ priceVariantLabel = null }) {
+export default function FounderSupporterWaitlistForm({ priceVariantLabel = null, lang = "da" }) {
   const [searchParams] = useSearchParams();
   const utm = useMemo(() => parseUtm(searchParams.toString()), [searchParams]);
+  const t = FORM_COPY[lang] || FORM_COPY.da;
 
   const [state, setState] = useState(INITIAL_STATE);
   const [touched, setTouched] = useState(false);
@@ -107,7 +198,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
     }
   }, [utm]);
 
-  const { errors } = useMemo(() => validateForm(state), [state]);
+  const { errors } = useMemo(() => validateForm(state, lang), [state, lang]);
 
   function setField(name, value) {
     setState(prev => ({ ...prev, [name]: value }));
@@ -133,7 +224,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
       return;
     }
 
-    const { ok } = validateForm(state);
+    const { ok } = validateForm(state, lang);
     if (!ok) return;
 
     setSubmitting(true);
@@ -147,7 +238,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
         .insert(payload);
 
       if (error) {
-        const mapped = mapInsertError(error);
+        const mapped = mapInsertError(error, lang);
         // Duplicate behandles som soft-success (de står allerede på listen).
         if (mapped.kind === "duplicate") {
           setSuccess(true);
@@ -168,7 +259,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
         });
       }
     } catch (err) {
-      setSubmitErr(mapInsertError(err) ?? { kind: "unknown", message: "Uventet fejl. Prøv igen." });
+      setSubmitErr(mapInsertError(err, lang) ?? { kind: "unknown", message: lang === "en" ? "Unexpected error. Try again." : "Uventet fejl. Prøv igen." });
     } finally {
       setSubmitting(false);
     }
@@ -178,25 +269,28 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
     return (
       <div className="bg-cz-card border border-cz-border rounded-2xl p-6 text-center">
         <div className="text-4xl mb-3">🎉</div>
-        <h2 className="text-cz-1 text-xl font-bold mb-2">Du er på listen!</h2>
-        <p className="text-cz-2 text-sm mb-4">
-          Tak fordi du vil være med fra start. Vi sender en mail når Founder Supporter
-          rulles ud — og inden da hvis vi har spørgsmål til hvad du synes.
-        </p>
+        <h2 className="text-cz-1 text-xl font-bold mb-2">{t.successTitle}</h2>
+        <p className="text-cz-2 text-sm mb-4">{t.successBody}</p>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 text-left text-cz-2 text-sm">
-          <p className="font-medium mb-1">Næste skridt:</p>
+          <p className="font-medium mb-1">{t.successNextTitle}</p>
           <ul className="list-disc list-inside space-y-1 text-cz-3">
-            <li>Tilmeld dig vores Discord når invite-link er klar (se{" "}
-              <a href="https://github.com/NicolaiDolmer/CyclingZone/issues/415" target="_blank" rel="noopener noreferrer" className="text-cz-accent hover:underline">
-                #415
-              </a>)
-            </li>
-            <li>Følg patch notes for fremgang</li>
-            <li>Tjek din inbox de næste dage</li>
+            {t.successNext.map((item, i) => (
+              <li key={i}>
+                {item.text}
+                {item.link && (
+                  <>
+                    <a href={item.link.href} target="_blank" rel="noopener noreferrer" className="text-cz-accent hover:underline">
+                      {item.link.text}
+                    </a>
+                    {item.suffix}
+                  </>
+                )}
+              </li>
+            ))}
           </ul>
         </div>
         <p className="text-cz-3 text-xs mt-4">
-          Refs sprint-validation #362. Du kan altid skrive til{" "}
+          {t.successFooterRefs}
           <a href="mailto:nicolai.dolmer.mikkelsen@gmail.com" className="text-cz-accent hover:underline">
             nicolai.dolmer.mikkelsen@gmail.com
           </a>
@@ -212,18 +306,18 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
     <form onSubmit={handleSubmit} className="bg-cz-card border border-cz-border rounded-2xl p-5 sm:p-6 flex flex-col gap-6" noValidate>
       {priceVariantLabel && (
         <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-lg px-3 py-2 text-cz-1 text-sm">
-          <span className="text-cz-3 text-xs">Pris-variant:</span>{" "}
+          <span className="text-cz-3 text-xs">{t.priceVariantPrefix}</span>{" "}
           <span className="font-semibold">{priceVariantLabel}</span>
         </div>
       )}
 
       {/* ----- Kontakt ----- */}
       <fieldset className="flex flex-col gap-3">
-        <legend className="text-cz-1 text-base font-semibold mb-1">Sådan kontakter vi dig</legend>
-        <p className="text-cz-3 text-xs -mt-1">Mindst én af felterne skal udfyldes.</p>
+        <legend className="text-cz-1 text-base font-semibold mb-1">{t.contactLegend}</legend>
+        <p className="text-cz-3 text-xs -mt-1">{t.contactHelp}</p>
 
         <div>
-          <label htmlFor="waitlist-email" className={fieldLabel}>Email</label>
+          <label htmlFor="waitlist-email" className={fieldLabel}>{t.emailLabel}</label>
           <input
             id="waitlist-email"
             type="email"
@@ -231,7 +325,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
             autoComplete="email"
             value={state.email}
             onChange={e => setField("email", e.target.value)}
-            placeholder="din@email.dk"
+            placeholder={t.emailPlaceholder}
             className={`${inputBase} ${showErr("email") ? inputErr : ""}`}
             aria-invalid={Boolean(showErr("email"))}
             aria-describedby={showErr("email") ? "err-email" : undefined}
@@ -240,14 +334,14 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
         </div>
 
         <div>
-          <label htmlFor="waitlist-discord" className={fieldLabel}>Discord-handle (valgfri)</label>
+          <label htmlFor="waitlist-discord" className={fieldLabel}>{t.discordLabel}</label>
           <input
             id="waitlist-discord"
             type="text"
             autoComplete="off"
             value={state.discord_handle}
             onChange={e => setField("discord_handle", e.target.value)}
-            placeholder="f.eks. nicolai.dolmer"
+            placeholder={t.discordPlaceholder}
             className={`${inputBase} ${showErr("discord_handle") ? inputErr : ""}`}
             aria-invalid={Boolean(showErr("discord_handle"))}
             aria-describedby={showErr("discord_handle") ? "err-discord" : undefined}
@@ -262,7 +356,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
 
       {/* ----- Interesse-niveau ----- */}
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-cz-1 text-base font-semibold mb-1">Hvor interesseret er du?</legend>
+        <legend className="text-cz-1 text-base font-semibold mb-1">{t.interestLegend}</legend>
         {INTEREST_OPTIONS.map(opt => (
           <RadioCard
             key={opt.value}
@@ -270,7 +364,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
             value={opt.value}
             checked={state.interest_level === opt.value}
             onChange={() => setField("interest_level", opt.value)}
-            label={opt.label}
+            label={pickLabel(opt, lang)}
           />
         ))}
         <FieldError id="err-interest" message={showErr("interest_level")} />
@@ -278,10 +372,8 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
 
       {/* ----- Tier ----- */}
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-cz-1 text-base font-semibold mb-1">Hvilken tier ville passe dig?</legend>
-        <p className="text-cz-3 text-xs -mt-1 mb-1">
-          Vi tester forskellige pris-punkter — dit svar er ikke bindende.
-        </p>
+        <legend className="text-cz-1 text-base font-semibold mb-1">{t.tierLegend}</legend>
+        <p className="text-cz-3 text-xs -mt-1 mb-1">{t.tierHelp}</p>
         {TIER_OPTIONS.map(opt => (
           <RadioCard
             key={opt.value}
@@ -289,8 +381,8 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
             value={opt.value}
             checked={state.preferred_tier === opt.value}
             onChange={() => setField("preferred_tier", opt.value)}
-            label={opt.label}
-            sub={opt.sub}
+            label={pickLabel(opt, lang)}
+            sub={pickSub(opt, lang)}
           />
         ))}
         <FieldError id="err-tier" message={showErr("preferred_tier")} />
@@ -298,8 +390,8 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
 
       {/* ----- Valued benefits ----- */}
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-cz-1 text-base font-semibold mb-1">Hvad ville være vigtigt for dig? (valgfri)</legend>
-        <p className="text-cz-3 text-xs -mt-1 mb-1">Vælg så mange som relevant.</p>
+        <legend className="text-cz-1 text-base font-semibold mb-1">{t.benefitsLegend}</legend>
+        <p className="text-cz-3 text-xs -mt-1 mb-1">{t.benefitsHelp}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {VALUED_BENEFITS.map(opt => (
             <CheckboxCard
@@ -307,7 +399,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
               value={opt.value}
               checked={state.valued_benefits.includes(opt.value)}
               onChange={() => toggleBenefit(opt.value)}
-              label={opt.label}
+              label={pickLabel(opt, lang)}
             />
           ))}
         </div>
@@ -317,27 +409,27 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
       {/* ----- Fri tekst (optional) ----- */}
       <fieldset className="flex flex-col gap-3">
         <div>
-          <label htmlFor="waitlist-main-reason" className={fieldLabel}>Hvad er den vigtigste grund til at du overvejer at støtte? (valgfri)</label>
+          <label htmlFor="waitlist-main-reason" className={fieldLabel}>{t.mainReasonLabel}</label>
           <textarea
             id="waitlist-main-reason"
             value={state.main_reason}
             onChange={e => setField("main_reason", e.target.value)}
             rows={2}
             maxLength={500}
-            placeholder="Skriv et par sætninger..."
+            placeholder={t.mainReasonPlaceholder}
             className={`${inputBase} resize-y`}
           />
         </div>
 
         <div>
-          <label htmlFor="waitlist-fairness" className={fieldLabel}>Noget der ville få dig til at sige nej? (valgfri)</label>
+          <label htmlFor="waitlist-fairness" className={fieldLabel}>{t.fairnessLabel}</label>
           <textarea
             id="waitlist-fairness"
             value={state.fairness_red_line}
             onChange={e => setField("fairness_red_line", e.target.value)}
             rows={2}
             maxLength={500}
-            placeholder="F.eks. pay-to-win mekanikker, dårlig fairness..."
+            placeholder={t.fairnessPlaceholder}
             className={`${inputBase} resize-y`}
           />
         </div>
@@ -345,7 +437,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
 
       {/* ----- Country ----- */}
       <div>
-        <label htmlFor="waitlist-country" className={fieldLabel}>Hvor bor du?</label>
+        <label htmlFor="waitlist-country" className={fieldLabel}>{t.countryLabel}</label>
         <select
           id="waitlist-country"
           value={state.country}
@@ -353,7 +445,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
           className={`${inputBase} ${showErr("country") ? inputErr : ""}`}
         >
           {COUNTRY_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
+            <option key={opt.value} value={opt.value}>{pickLabel(opt, lang)}</option>
           ))}
         </select>
         <FieldError id="err-country" message={showErr("country")} />
@@ -368,10 +460,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
             onChange={e => setField("follow_up_consent", e.target.checked)}
             className="mt-0.5 accent-cz-accent"
           />
-          <span>
-            Det er OK at jeg bliver kontaktet med op til 2 follow-up spørgsmål (interview / kort survey).
-            Dette er valgfrit.
-          </span>
+          <span>{t.followUpConsent}</span>
         </label>
 
         <label className="flex items-start gap-2.5 cursor-pointer text-sm text-cz-2">
@@ -383,11 +472,11 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
             aria-invalid={Boolean(showErr("gdpr_consent"))}
           />
           <span>
-            Jeg har læst og accepterer{" "}
-            <Link to="/privatlivspolitik" target="_blank" className="text-cz-accent hover:underline">
-              privatlivspolitikken
-            </Link>{" "}
-            og indvilliger i at min email + Discord-handle gemmes til formålet ovenfor.
+            {t.gdprBefore}
+            <Link to={t.privacyPath} target="_blank" className="text-cz-accent hover:underline">
+              {t.gdprLink}
+            </Link>
+            {t.gdprAfter}
           </span>
         </label>
         <FieldError id="err-gdpr" message={showErr("gdpr_consent")} />
@@ -396,7 +485,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
       {/* Honeypot — skjult for sighted users + screen-readers (aria-hidden + tabIndex=-1). */}
       <div aria-hidden="true" className="absolute opacity-0 pointer-events-none" style={{ left: "-9999px", height: 0, overflow: "hidden" }}>
         <label>
-          Lad dette felt være tomt
+          {t.honeypotLabel}
           <input
             type="text"
             tabIndex={-1}
@@ -421,12 +510,10 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
           disabled:opacity-50 disabled:cursor-not-allowed
           shadow-[0_4px_20px_rgba(232,197,71,0.2)]"
       >
-        {submitting ? "Sender..." : "Tilmeld mig waitlisten"}
+        {submitting ? t.submitLoading : t.submit}
       </button>
 
-      <p className="text-cz-3 text-xs text-center">
-        Vi sender ikke spam og deler aldrig din info. Du kan altid skrive til os for at blive slettet.
-      </p>
+      <p className="text-cz-3 text-xs text-center">{t.submitDisclaimer}</p>
     </form>
   );
 }

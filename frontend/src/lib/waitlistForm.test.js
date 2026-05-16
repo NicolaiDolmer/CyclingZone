@@ -133,6 +133,22 @@ test("validateForm — ugyldig email vises selv hvis Discord også sat", () => {
   assert.equal(result.errors._contact, undefined); // contact requirement opfyldt via discord
 });
 
+test("validateForm — lang=en returnerer engelske fejl-beskeder", () => {
+  const state = { ...INITIAL_STATE };
+  const result = validateForm(state, "en");
+  assert.equal(result.ok, false);
+  assert.match(result.errors._contact, /email or Discord/i);
+  assert.match(result.errors.interest_level, /interest level/i);
+  assert.match(result.errors.gdpr_consent, /privacy policy/i);
+});
+
+test("validateForm — default lang er da (backwards-compat)", () => {
+  const state = { ...INITIAL_STATE };
+  const result = validateForm(state);
+  assert.equal(result.ok, false);
+  assert.match(result.errors._contact, /email eller Discord/i);
+});
+
 test("validateForm — manglende GDPR-consent blokerer", () => {
   const state = {
     ...INITIAL_STATE,
@@ -229,6 +245,18 @@ test("mapInsertError — duplicate detektion via message hvis code mangler", () 
 test("mapInsertError — RLS violation", () => {
   const r = mapInsertError({ code: "42501", message: "new row violates row-level security policy" });
   assert.equal(r.kind, "rls");
+});
+
+test("mapInsertError — lang=en returnerer engelske beskeder", () => {
+  const dup = mapInsertError({ code: "23505" }, "en");
+  assert.equal(dup.kind, "duplicate");
+  assert.match(dup.message, /already on the list/i);
+
+  const rls = mapInsertError({ code: "42501" }, "en");
+  assert.match(rls.message, /access denied/i);
+
+  const net = mapInsertError({ message: "Failed to fetch" }, "en");
+  assert.match(net.message, /couldn't reach/i);
 });
 
 test("mapInsertError — network fejl", () => {

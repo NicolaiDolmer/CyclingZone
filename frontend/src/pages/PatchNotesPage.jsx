@@ -2,6 +2,25 @@
 
 const PATCHES = [
   {
+    version: "3.45",
+    date: "2026-05-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sprint-validation · Founder Supporter landing page (#361)",
+        items: [
+          "Feature · `/founder-supporter` er nu en fuld landing page i stedet for kun en form-side. Hero med tagline + non-pay-to-win-løfte øverst, fair-premium-løftet i fremhævet boks, 4-tier pris-sammenligning (Free/Supporter/Pro Analyst/Patron) og separat \"hvad må sælges vs IKKE sælges\"-tabel direkte fra brand-løftet.",
+          "Feature · Founder Supporter benefits-sektion (badge, Discord-rolle, profil-tema, Founder Wall, dev-opdateringer, roadmap-stemmer på non-balance) + FAQ med 6 spørgsmål (pay-to-win, free-konkurrence, betaling-live osv.).",
+          "Feature · Sprog-toggle øverst (DA/EN) — synkroniseres med `?lang=en` i URL'en så delte links bevarer sproget. Hele siden + waitlist-formen oversættes inkl. radio-options, country-dropdown, fejlbeskeder og success-state.",
+          "Feature · `?variant=A|B|C` (kombineret med `utm_campaign=launch_29dkk|49dkk|69dkk`) ændrer Supporter-prisen direkte i pris-sammenligningen — så 3 landing-varianter kan dele samme URL men vise forskellige priser. Annual-pris (490 DKK/år) udregnes nu dynamisk fra månedlig × 10 i stedet for hardcoded.",
+          "SEO · OpenGraph + Twitter Card-metadata tilføjet i `index.html` (title, description, og:image på 1200×630 SVG, canonical URL). Discord/Slack/Twitter viser nu pænt preview-kort når landing-URL'en deles.",
+          "Tests · 2 nye unit-tests for `validateForm(state, lang)` + `mapInsertError(error, lang)` — verificerer at engelske brugere får engelske fejlbeskeder. Backwards-compat: default `lang=\"da\"` så eksisterende kald uden lang-param fortsætter på dansk. 35/35 grønne.",
+          "Sprint-validation unblocker #3 af 3 — #361 lukker sammen med #362 (form) + #363 (admin-dashboard), så Monetization Validation Sprint kan starte 2026-05-18 med fuld stack.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.44",
     date: "2026-05-16",
     label: "Beta",
