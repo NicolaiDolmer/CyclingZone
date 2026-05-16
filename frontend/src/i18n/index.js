@@ -51,7 +51,7 @@ i18n
     supportedLngs: SUPPORTED,
     nonExplicitSupportedLngs: true,
     load: "languageOnly",
-    ns: ["common", "auth", "dashboard", "auctions", "admin", "errors", "patchnotes"],
+    ns: ["common", "auth", "dashboard", "auctions", "admin", "errors", "patchnotes", "banners"],
     defaultNS: "common",
     resources: {
       da: { common: commonDa, auth: authDa, errors: errorsDa },
