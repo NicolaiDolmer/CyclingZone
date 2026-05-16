@@ -90,7 +90,8 @@ function buildCsv(rows) {
     "id", "email", "discord_handle", "contact_type",
     "interest_level", "preferred_tier", "main_reason",
     "valued_benefits", "fairness_red_line", "follow_up_consent",
-    "source", "consent_given_at", "status", "notes",
+    "country", "source", "utm_campaign", "utm_medium",
+    "consent_given_at", "status", "notes",
     "intent_score", "created_at",
   ];
   const lines = [headers.join(",")];

@@ -2,6 +2,25 @@
 
 const PATCHES = [
   {
+    version: "3.44",
+    date: "2026-05-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sprint-validation · Founder Supporter waitlist-form (#362)",
+        items: [
+          "Feature · Ny offentlig side `/founder-supporter` med waitlist-form: kontakt (email og/eller Discord-handle), interesseniveau, foretrukken tier (49/89/490 DKK eller kun gratis), valgfri benefits-prioritering, fritekst-grunde og land. GDPR-consent IKKE pre-tjekket; link til privatlivspolitik åbner i ny fane.",
+          "Feature · UTM-tracking auto-capturer `utm_source`, `utm_campaign` og `utm_medium` fra URL — driver Option B price-variant-test (3 landing-varianter sender forskellige campaign-tags så vi kan måle hvilken pris der konverterer bedst).",
+          "Feature · Honeypot-felt mod bot-spam; submit-button disables under indsendelse; dubletter behandles som soft-success (\"Du står allerede på listen\") så bots ikke kan recon hvilke emails der findes.",
+          "Feature · Success-state takker brugeren og peger på Discord-invite (kommer med #415) + email-opfølgning. Fejl-state mapper Supabase RLS/network/unknown til danske beskeder.",
+          "Infra · DB-migration tilføjer `country` (ISO-2 m. CHECK-constraint), `utm_campaign` og `utm_medium` til `founder_supporter_waitlist`. Indsending bruger `Prefer: return=minimal` (UDEN `.select()`) så anon-RLS ikke fejler på RETURNING.",
+          "Admin · CSV-eksport på `/admin/waitlist` udvidet med de 3 nye kolonner (country/utm_campaign/utm_medium) — eksisterende dashboard og filtre uændrede.",
+          "Tests · 24 nye unit-tests for form-helpers (UTM-parsing, validering, error-mapping, payload-builder); #359 RLS-regression (7/7) verificeret efter migration.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.43",
     date: "2026-05-16",
     label: "Beta",
