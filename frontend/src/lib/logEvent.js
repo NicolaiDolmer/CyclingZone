@@ -65,6 +65,10 @@ export const KNOWN_EVENTS = Object.freeze([
   "feature_board_consequences_panel_viewed",
   "feature_finance_forecast_card_viewed",
   "feature_hall_of_fame_opened",
+  // Sprint validation — survey-CTA-banner (#364)
+  "survey_banner_shown",
+  "survey_banner_clicked",
+  "survey_banner_dismissed",
 ]);
 
 async function _logEvent(name, data) {

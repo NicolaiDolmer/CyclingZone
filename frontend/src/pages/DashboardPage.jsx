@@ -6,6 +6,7 @@ import OnboardingModal from "../components/OnboardingModal";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
+import SurveyBanner from "../components/SurveyBanner";
 import { computeDashboardSquadStats } from "../lib/dashboardSquadStats";
 
 const API = import.meta.env.VITE_API_URL;
@@ -283,6 +284,7 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
+      <SurveyBanner />
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
