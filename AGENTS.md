@@ -263,6 +263,7 @@ I rækkefølge før jeg foreslår commit:
 - Worktrees i `.claude/worktrees/<navn>/` cleanes efter ship via SessionStart-hook
 - Manuel fallback hvis hook fejler: `git worktree remove <path>` + `git branch -D <branch>` på PC'en der oprettede worktreen
 - Per-PC handling — gentages på den anden PC ved næste session der
+- **Parallel-sessions samme PC:** se [`docs/AGENT_ARCHITECTURE.md §Parallel-session-safety`](docs/AGENT_ARCHITECTURE.md#parallel-session-safety-samme-pc-flere-claude-sessions-samtidigt) for kollisions-matrix + worktree-recipe
 
 ---
 
