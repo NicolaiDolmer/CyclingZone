@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "3.43",
+    date: "2026-05-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Founder Supporter waitlist-dashboard (#363)",
+        items: [
+          "Admin · Ny rute `/admin/waitlist` (kun admin) viser alle waitlist-signups med sortering, filtrering på interesseniveau, tier, kilde, score-bucket og status.",
+          "Admin · KPI-kort øverst: total signups, high-intent (intent_score ≥ 4), % der vil betale, % Pro Analyst-interesse (89+ DKK) og top 3 kilder.",
+          "Admin · CSV-eksport af filtreret data (alle 16 kolonner inkl. PII) til lead-prioritering uden for app'en. Filnavn dato-stemplet.",
+          "Admin · Intent-score-formel synlig som tooltip på score-kolonnen (Manus' 1-5-skala: interesse × tier-vægt + follow-up-bonus).",
+          "Infra · Manuel refresh-knap; non-admin redirectes til `/dashboard` (klient-side gate + RLS-håndhævelse i DB).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.42",
     date: "2026-05-16",
     label: "Beta",

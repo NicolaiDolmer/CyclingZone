@@ -17,6 +17,7 @@ const AuctionHistoryPage = lazy(() => import("./pages/AuctionHistoryPage"));
 const TransfersPage = lazy(() => import("./pages/TransfersPage"));
 const TeamPage = lazy(() => import("./pages/TeamPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
+const AdminWaitlistPage = lazy(() => import("./pages/AdminWaitlistPage"));
 const StandingsPage = lazy(() => import("./pages/StandingsPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
 const RiderStatsPage = lazy(() => import("./pages/RiderStatsPage"));
@@ -136,6 +137,7 @@ export default function App() {
             <Route path="race-points" element={<RacePointsPage />} />
             <Route path="managers/:teamId" element={<ManagerProfilePage />} />
             <Route path="admin" element={<AdminPage />} />
+            <Route path="admin/waitlist" element={<AdminWaitlistPage />} />
             <Route path="deadline-day" element={<DeadlineDayBoard />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

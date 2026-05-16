@@ -65,12 +65,13 @@ async function authHeaders() {
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
 
-function pathMatchesNavItem(pathname, to) {
+function pathMatchesNavItem(pathname, to, exact = false) {
+  if (exact) return pathname === to;
   return pathname === to || pathname.startsWith(`${to}/`);
 }
 
-function NavItem({ to, label, badge, onClick, location, unread }) {
-  const isActive = pathMatchesNavItem(location.pathname, to);
+function NavItem({ to, label, badge, onClick, location, unread, exact }) {
+  const isActive = pathMatchesNavItem(location.pathname, to, exact);
   const showBadge = badge && unread > 0;
   return (
     <NavLink to={to} onClick={onClick}
@@ -202,8 +203,11 @@ export default function Layout() {
   useEffect(() => {
     const path = location.pathname;
     const groups = buildNavGroups(teamId ? { id: teamId } : null);
-    if (isAdmin) groups.push({ key: "admin", label: "Admin", items: [{ to: "/admin", label: "Admin" }] });
-    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(path, i.to)))
+    if (isAdmin) groups.push({ key: "admin", label: "Admin", items: [
+      { to: "/admin", label: "Admin", exact: true },
+      { to: "/admin/waitlist", label: "Waitlist" },
+    ] });
+    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(path, i.to, i.exact)))
       || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
@@ -289,7 +293,10 @@ export default function Layout() {
   const unread = notifications.length;
   const baseGroups = buildNavGroups(team);
   const navGroups = isAdmin
-    ? [...baseGroups, { key: "admin", label: "Admin", items: [{ to: "/admin", label: "Admin" }] }]
+    ? [...baseGroups, { key: "admin", label: "Admin", items: [
+        { to: "/admin", label: "Admin" },
+        { to: "/admin/waitlist", label: "Waitlist" },
+      ] }]
     : baseGroups;
 
   const needsSetup = teamLoaded && !team?.manager_name;
