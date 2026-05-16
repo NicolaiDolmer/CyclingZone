@@ -214,6 +214,7 @@ export default function Layout() {
     if (isAdmin) groups.push({ key: "admin", label: t("nav.group.admin"), items: [
       { to: "/admin", label: t("nav.item.admin"), exact: true },
       { to: "/admin/waitlist", label: t("nav.item.waitlist") },
+      { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
     ] });
     const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(path, i.to, i.exact)))
       || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
@@ -304,6 +305,7 @@ export default function Layout() {
     ? [...baseGroups, { key: "admin", label: t("nav.group.admin"), items: [
         { to: "/admin", label: t("nav.item.admin") },
         { to: "/admin/waitlist", label: t("nav.item.waitlist") },
+        { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
       ] }]
     : baseGroups;
   const bottomItems = buildBottomItems(t);

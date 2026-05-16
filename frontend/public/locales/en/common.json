@@ -35,7 +35,8 @@
       "headToHead": "Head-to-Head",
       "seasonPreview": "Season Preview",
       "admin": "Admin",
-      "waitlist": "Waitlist"
+      "waitlist": "Waitlist",
+      "sprintMetrics": "Sprint metrics"
     }
   },
   "sidebar": {

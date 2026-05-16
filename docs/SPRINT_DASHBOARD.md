@@ -37,7 +37,7 @@
 | Paying users | 0 | 0 | Først relevant efter day 30 Go-beslutning |
 | Avg session length | — | — | Fra analytics |
 
-> Codex-issue #7 (sprint-metrics dashboard i app) automatiserer disse tal når den er bygget.
+> **Live siden 2026-05-17** ([#365](https://github.com/NicolaiDolmer/CyclingZone/issues/365)): admin kan trække DAU/WAU/MAU/D7/avg-session/top-features fra [`/admin/sprint-metrics`](https://cycling-zone.vercel.app/admin/sprint-metrics) — klik **⬇ CSV** og paste ind her.
 
 ## 📅 Uge-status (interaktive checkbox-tasks)
 
@@ -111,7 +111,7 @@
 | [#362](https://github.com/NicolaiDolmer/CyclingZone/issues/362) | ⏳ | Waitlist-form + UTM source-tracking | — |
 | [#363](https://github.com/NicolaiDolmer/CyclingZone/issues/363) | ⏳ | Admin dashboard for waitlist intent-scoring | — |
 | [#364](https://github.com/NicolaiDolmer/CyclingZone/issues/364) | ⏳ | Survey-CTA-banner i app | — |
-| [#365](https://github.com/NicolaiDolmer/CyclingZone/issues/365) | ⏳ | Sprint-metrics dashboard i app | — |
+| [#365](https://github.com/NicolaiDolmer/CyclingZone/issues/365) | ✅ | Sprint-metrics dashboard i app | Claude |
 | [#366](https://github.com/NicolaiDolmer/CyclingZone/issues/366) | ⏳ | PatchNotes-entry om fair freemium-eksperiment | — |
 | [#367](https://github.com/NicolaiDolmer/CyclingZone/issues/367) | ⏳ | Mobile UX-verification af key pages før Discord-launch (T-1 søn 17 maj) | — |
 

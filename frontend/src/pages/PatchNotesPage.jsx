@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "3.49",
+    date: "2026-05-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Sprint-metrics dashboard (#365)",
+        items: [
+          "Admin · Ny rute `/admin/sprint-metrics` viser DAU/WAU/MAU/D7-retention/avg-session-length + top 5 features live mod Supabase. Erstatter den manuelle SQL-træk-rutine i sprint-dashboardet.",
+          "Admin · Trend-pile pr. KPI sammenligner med samme vindue 7 dage tilbage; tids-vælger (24t/7d/30d/sprint-periode) styrer top-features og 'aktive i vindue'-kort.",
+          "Admin · CSV-eksport formatterer rækkerne så de kan kopieres direkte ind i `docs/SPRINT_DASHBOARD.md` 'Game-metrics'-tabellen. Auto-refresh hver 5 min for at undgå over-polling.",
+          "Backend · RPC `get_sprint_metrics(p_window)` er admin-only via `is_admin()`-gate og returnerer alle KPI'er i én jsonb-payload. Ikke-admin får 403.",
+          "Note · Tilgængelig fra sidebar under Admin-gruppen kun for users med `role='admin'`.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.48",
     date: "2026-05-16",
     label: "Beta",
