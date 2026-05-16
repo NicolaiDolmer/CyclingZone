@@ -108,12 +108,29 @@ const AUCTIONS = [
   },
 ];
 
+// WebKit håndhæver CORS strikst — echo origin + allow credentials, så Supabase-js
+// fetch (credentials: "include") accepterer mock-responses. Chromium er mere lempelig
+// og kører grønt selv uden disse headers, men WebKit blokerer.
+function corsHeaders(request) {
+  const origin = request.headers().origin || "*";
+  return {
+    "access-control-allow-origin": origin,
+    "access-control-allow-credentials": "true",
+    "access-control-allow-headers": "authorization, apikey, content-type, x-client-info, prefer, range, accept-profile, content-profile",
+    "access-control-allow-methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+    "access-control-expose-headers": "Content-Range",
+  };
+}
+
 function json(route, data, status = 200) {
   const count = Array.isArray(data) ? data.length : data ? 1 : 0;
   return route.fulfill({
     status,
     contentType: "application/json",
-    headers: { "Content-Range": `0-${Math.max(count - 1, 0)}/${count}` },
+    headers: {
+      ...corsHeaders(route.request()),
+      "Content-Range": `0-${Math.max(count - 1, 0)}/${count}`,
+    },
     body: JSON.stringify(data),
   });
 }
@@ -270,7 +287,7 @@ export async function installNetworkMocks(page) {
     const request = route.request();
     const table = parseTable(request.url());
 
-    if (request.method() === "OPTIONS") return route.fulfill({ status: 204 });
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
     if (["POST", "PATCH", "PUT", "DELETE"].includes(request.method())) {
       return json(route, wantsObject(request) ? {} : []);
     }
@@ -282,7 +299,7 @@ export async function installNetworkMocks(page) {
     const request = route.request();
     const url = new URL(request.url());
 
-    if (request.method() === "OPTIONS") return route.fulfill({ status: 204 });
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
     if (request.method() !== "GET") return json(route, { ok: true });
 
     return json(route, apiResponse(url.pathname));
