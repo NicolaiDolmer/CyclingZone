@@ -349,6 +349,17 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **Admin dashboard** (#363, v3.43): `/admin/waitlist` (admin-gated, RLS-bagside) med sortérbar tabel, 5 filtre, 5 KPI-kort (total, high-intent ≥4, % vil betale, % Pro Analyst, top 3 kilder) og CSV-eksport af filtreret data (16 kolonner inkl. PII).
 - **Landing page** (#361, v3.45): `/founder-supporter` upgraded fra form-side til fuld marketing-side — hero med non-pay-to-win-løfte, fair-premium-løftet, 4-tier pris-sammenligning (Free/Supporter/Pro Analyst/Patron), "må sælges vs IKKE sælges"-tabel direkte fra BUSINESS_STRATEGY §3, Founder benefits, 6-spørgsmåls FAQ, embedded form, FAQ-accordion. **DA/EN sprog-toggle** synkroniseret med `?lang=en` — hele siden + formen (radio-options, country, fejlbeskeder, success-state) oversættes. `?variant=A|B|C` + `utm_campaign=launch_29dkk|49dkk|69dkk` ændrer Supporter-pris i pris-sammenligningen (annual = monthly × 10 dynamisk). OpenGraph + Twitter Card-metadata + 1200×630 SVG OG-image (`og-cycling-zone.svg`). `validateForm`/`mapInsertError` lang-aware med default `"da"` for backwards-compat.
 
+### i18n foundation — EN/DA sprog-switcher (v3.46, 2026-05-16, #410)
+- **`public.users.language`** (NOT NULL DEFAULT 'en', CHECK en/da) + `sync_user_language_to_auth_meta`-trigger (SECURITY DEFINER) der propagerer skift til `auth.users.raw_user_meta_data.language` for Edge Functions + email-templates. 23 backfilled brugere → 'da'.
+- **`handle_new_user`-trigger** opdateret: læser `raw_user_meta_data->>'language'` ved signup (default 'en'). Frontend skal sende `language` i `supabase.auth.signUp({ options: { data: { language } } })` — wireup gøres i Fase 2 (#411).
+- **react-i18next + i18next-icu + intl-messageformat + HTTP-backend** — ICU plurals fra dag 1, lazy-loaded namespaces fra `/locales/{lng}/{ns}.json`, `common.json` bundlet inline → FOUC-fri first paint på NavBar.
+- **LanguageProvider + useLanguage hook** (`frontend/src/lib/language.jsx`) — DB → localStorage → browser → 'en'. `setLanguage(lng)` skriver DB + localStorage + skifter live.
+- **Intl-wrappers** (`frontend/src/lib/intl.js`) — `formatCurrency('da', 1500, 'DKK')` → `"1.500,00 kr."`; `('en')` → `"DKK 1,500.00"`. Også `formatDate/DateTime/Number/RelativeTime`.
+- **LanguageSwitcher** — 🇩🇰/🇬🇧 dropdown i sidebar-footer (desktop) + mobile topbar. ARIA, escape-close, cz-tokens.
+- **Pseudo-locale `en-XA`** — aktiveres med `?pseudo=1`; wrapper alle `t(...)`-output i `[...]` for at fange hardcoded strings i dev.
+- **CI key-coverage guard** (`scripts/i18n-check-keys.mjs` + `.github/workflows/i18n-check.yml`) — fail PR hvis en/da har divergerende nøgler. Advisory i Fase 1 (continue-on-error), promotes til required i Fase 5 (#414).
+- **Glossary** (`docs/i18n/GLOSSARY.md`) — 20+ domæne-termer + pluraliseringsregler. **Deferred til Fase 5 (#414):** lint-guard mod hardcoded strings + `ml-*`/`mr-*` → `ms-*`/`me-*` migration prereq [#438](https://github.com/NicolaiDolmer/CyclingZone/issues/438).
+
 ### Observabilitet & Analytics (v3.20, 2026-05-11, #137)
 - **Microsoft Clarity** — UI-heatmaps, session-replays, drop-off-rapporter; konsent-gated via `analytics`-kategori (#297). Tags `manager_id`/`division`/`season_number` stamped per session.
 - **player_events** — Supabase-tabel (`team_id, user_id, event_name, event_data jsonb, created_at`) m. RLS-policies så managers kun ser egne rows. 3 indices (pkey + `event_name+created_at` + `team_id+created_at`).
