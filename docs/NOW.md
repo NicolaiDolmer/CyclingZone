@@ -19,8 +19,7 @@
 2. **Brugerverifikation af #410 på prod** — log ind, klik 🇬🇧 i sidebar → NavBar skal skifte; test `?pseudo=1` → `[Dashboard·••]`. SQL-check: `SELECT id, language FROM users WHERE id = auth.uid();` matcher dit valg.
 3. **[#415](https://github.com/NicolaiDolmer/CyclingZone/issues/415) Discord community-opsætning.** Epic + 16 sub-issues (#416-431). Blokeret på bot-invite til server `1504615050831466669`. Fase 1: #416-420.
 4. **Landing page user-verifikation** — kør Lighthouse på prod `/founder-supporter` (target Performance ≥ 90, Accessibility ≥ 95, SEO ≥ 90), test OG-preview i Discord-test-kanal, mobil-touch. Luk [#361](https://github.com/NicolaiDolmer/CyclingZone/issues/361) ved grønt lys (label allerede `claude:done`).
-5. **[#382](https://github.com/NicolaiDolmer/CyclingZone/issues/382) close-out** — Anden PC: kør `pwsh -File scripts/link-onedrive-context.ps1` så `~/.claude/settings.json` hardlinkes til OneDrive-versionen.
-6. Rotér lokal `backend/.env` service-key til `sb_secret_*` ([#337](https://github.com/NicolaiDolmer/CyclingZone/issues/337)); aktivér Sentry secrets ([#348](https://github.com/NicolaiDolmer/CyclingZone/issues/348)).
+5. Rotér lokal `backend/.env` service-key til `sb_secret_*` ([#337](https://github.com/NicolaiDolmer/CyclingZone/issues/337)); aktivér Sentry secrets ([#348](https://github.com/NicolaiDolmer/CyclingZone/issues/348)).
 
 ## Skalerings-roadmap
 - [x] **Fase 1: Bulletproof Baseline** — zero-known-error hardening live.
