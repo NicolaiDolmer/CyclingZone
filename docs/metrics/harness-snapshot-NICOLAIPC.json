@@ -116,5 +116,19 @@
     "Google_Drive": "1 call ever — beholdt på user-valg",
     "Google_Calendar": "0 calls — beholdt på user-valg",
     "Claude_Preview": "0 direct calls — beholdt da /preview slash command muligvis bruger det internt"
+  },
+  "project_level_disable_2026_05_16": {
+    "applied_in": ".claude/settings.json (project-level)",
+    "issue_ref": "#356",
+    "plugins_disabled": [
+      "product-management@claude-plugins-official",
+      "marketing@claude-plugins-official",
+      "design@claude-plugins-official",
+      "productivity@claude-plugins-official"
+    ],
+    "local_effect_on_this_pc": "none — 4 plugins ikke installeret lokalt (kun frontend-design, claude-code-setup, code-modernization findes i installed_plugins.json)",
+    "purpose": "Cross-PC policy: forhindrer at de 4 plugins loader på andre PCs der måtte have dem installeret. #382 disabled code-modernization via user-level settings (OneDrive-hardlinked); denne ændring er project-level og gælder ALLE PCs der klones repo'et.",
+    "expected_savings_per_pc_with_plugins": "~2,100 tok (28 skills × 75 tok/skill avg) hvis alle 4 plugins fuldt installeret",
+    "verification_method": "Næste session-start på en PC med disse plugins installeret skal vise fraværende product-management:*, marketing:*, design:*, productivity:* i skill-list."
   }
 }

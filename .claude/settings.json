@@ -1,4 +1,10 @@
 {
+  "enabledPlugins": {
+    "product-management@claude-plugins-official": false,
+    "marketing@claude-plugins-official": false,
+    "design@claude-plugins-official": false,
+    "productivity@claude-plugins-official": false
+  },
   "permissions": {
     "allow": [
       "Bash(git *)",
