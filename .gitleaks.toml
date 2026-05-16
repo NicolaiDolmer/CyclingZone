@@ -1,0 +1,15 @@
+# gitleaks projekt-config — udvider default-rules, tilføjer allowlist.
+#
+# Allowlist-strategi: `sb_publishable_*` Supabase-keys er public-by-design
+# (se postmortem .claude/learnings/2026-05-11-supabase-key-rotation.md).
+# Default gitleaks "generic-api-key"-regel flagger dem som høj-entropi-secrets,
+# men de er rotation-safe og bevidst exponeret i frontend-bundles.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Supabase publishable keys er public-by-design (Refs #296)"
+regexes = [
+  '''sb_publishable_[A-Za-z0-9_-]+''',
+]
