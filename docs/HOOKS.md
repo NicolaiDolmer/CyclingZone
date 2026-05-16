@@ -80,7 +80,13 @@ Flagger:
 
 **Tilføj path:** redigér `scripts/hooks/archived-paths.txt` (én glob per linje, `#` for kommentar). Understøtter `*` (path-segment) og `**` (recursive). Absolutte Windows-paths normaliseres til repo-relativ form før match.
 
-**Verifikation:** `bash scripts/hooks/__tests__/test-hooks.sh` dækker alle 3 PreToolUse-hooks.
+**Verifikation:** `bash scripts/hooks/__tests__/test-hooks.sh` dækker alle 3 PreToolUse-hooks + ensure-scheduled-tasks (16 cases).
+
+### `SessionStart` → `bash scripts/hooks/ensure-scheduled-tasks.sh`
+
+**Hvad:** Sikrer at scheduled-tasks defineret i `scripts/scheduled-tasks/*.json` er registreret på den aktuelle PC. Hvis en SKILL.md mangler under `~/.claude/scheduled-tasks/<taskId>/`, emit'er hook'en en `systemMessage` med præcise MCP-parametre — Claude registrerer dem så via `mcp__scheduled-tasks__create_scheduled_task` i sessionen.
+
+**Hvorfor:** scheduled-tasks MCP er user-scoped (per-PC); MCP-serveren har egen state der ikke kan synces via filsystemet alene. Derfor det indirekte mønster: canonical config i repo + hook der nudge'r Claude til at registrere via MCP-tool-call. Idempotent — stille når alt er på plads.
 
 ---
 
@@ -97,14 +103,14 @@ Flagger:
 
 **Growth-WARN:** `scripts/check-agent-token-hygiene.ps1` indlæser `memory-baseline.json` og advarer hvis week-over-week growth >10%.
 
-**Scheduling:** scheduled-tasks MCP er **user-scoped**, ikke repo-scoped. Konfigurér manuelt per PC:
-```
-mcp__scheduled-tasks__create_scheduled_task
-  schedule: "0 9 * * MON"
-  prompt: |
-    Kør `node scripts/audit-memory-dir.mjs --baseline-out docs/metrics/memory-baseline.json`
-    fra C:/dev/CyclingZone. Post resultatet som kommentar på GitHub issue #380.
-```
+**Scheduling — auto-install cross-PC:** scheduled-tasks MCP er user-scoped (per-PC), og MCP-serveren har egen state for cron-firing. For at gøre nye PCs plug-and-play:
+
+- Canonical task-config bor i `scripts/scheduled-tasks/<taskId>.json` + `scripts/scheduled-tasks/<taskId>-prompt.md`.
+- SessionStart-hook'en `scripts/hooks/ensure-scheduled-tasks.sh` (registreret i `.claude/settings.json`) tjekker hver session om `~/.claude/scheduled-tasks/<taskId>/SKILL.md` eksisterer. Hvis nogen mangler, emit'er den en systemMessage med præcise MCP-parametre, så Claude registrerer dem via `mcp__scheduled-tasks__create_scheduled_task`.
+- Idempotent: når task'en er live på PC'en, er hook'en stille.
+- Tilføj ny task: drop en `.json`-fil + tilhørende prompt-fil i `scripts/scheduled-tasks/`, commit, push. På næste session-start på enhver PC bliver Claude bedt om at registrere den.
+
+Se [`scripts/scheduled-tasks/README.md`](../scripts/scheduled-tasks/README.md) for schema.
 
 ---
 

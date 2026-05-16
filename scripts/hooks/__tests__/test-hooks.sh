@@ -117,6 +117,32 @@ run "block-archived: absolute path under docs/archive blocked" \
   "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$(pwd)/docs/archive/foo.md\",\"old_string\":\"a\",\"new_string\":\"b\"}}" \
   2 "" "BLOCKED"
 
+# ---- ensure-scheduled-tasks.sh (auto-install on new PC) ----
+
+SCHED_DIR="$HOME/.claude/scheduled-tasks/weekly-memory-audit"
+
+# Case A: existing task → silent.
+if [ -f "$SCHED_DIR/SKILL.md" ]; then
+  out=$(bash scripts/hooks/ensure-scheduled-tasks.sh </dev/null)
+  if [ -z "$out" ]; then
+    PASS=$((PASS+1)); echo "PASS  ensure-scheduled-tasks: existing task silent"
+  else
+    FAIL=$((FAIL+1)); echo "FAIL  ensure-scheduled-tasks: should be silent, got: $out"
+  fi
+fi
+
+# Case B: simulate missing.
+if [ -f "$SCHED_DIR/SKILL.md" ]; then
+  mv "$SCHED_DIR/SKILL.md" "$SCHED_DIR/SKILL.md.testbak"
+  out=$(bash scripts/hooks/ensure-scheduled-tasks.sh </dev/null)
+  mv "$SCHED_DIR/SKILL.md.testbak" "$SCHED_DIR/SKILL.md"
+  if printf '%s' "$out" | grep -q "weekly-memory-audit"; then
+    PASS=$((PASS+1)); echo "PASS  ensure-scheduled-tasks: missing task emits systemMessage"
+  else
+    FAIL=$((FAIL+1)); echo "FAIL  ensure-scheduled-tasks: missing task did not emit task id"
+  fi
+fi
+
 echo ""
 echo "Results: $PASS pass, $FAIL fail"
 [ "$FAIL" = "0" ] && exit 0 || exit 1

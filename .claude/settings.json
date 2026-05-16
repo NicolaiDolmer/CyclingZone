@@ -72,6 +72,10 @@
             "type": "command",
             "command": "bash scripts/session-prefetch-issue.sh",
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/ensure-scheduled-tasks.sh"
           }
         ]
       }
