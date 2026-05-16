@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "group": {
+      "klubhus": "Clubhouse",
+      "marked": "Market",
+      "saeson": "Season & Results",
+      "min": "My"
+    },
+    "item": {
+      "dashboard": "Dashboard",
+      "team": "My Team",
+      "board": "Board",
+      "finance": "Finance",
+      "notifications": "Inbox",
+      "managerProfile": "My Manager Profile",
+      "riders": "Riders",
+      "auctions": "Auctions",
+      "transfers": "Transfers",
+      "deadlineDay": "Deadline Day",
+      "watchlist": "Watchlist",
+      "activity": "My Activity",
+      "results": "Overview",
+      "standings": "Standings",
+      "riderRankings": "Rider Rankings",
+      "races": "Races",
+      "seasons": "Season Snapshot",
+      "hallOfFame": "Hall of Fame",
+      "profile": "Settings",
+      "help": "Help & Rules",
+      "patchNotes": "Patch Notes",
+      "logout": "Log out"
+    }
+  },
+  "language": {
+    "label": "Language",
+    "danish": "Dansk",
+    "english": "English",
+    "switchTooltip": "Change language"
+  }
+}

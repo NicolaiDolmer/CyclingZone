@@ -59,6 +59,9 @@ export default [
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
     rules: {
+      // TODO i18n Fase 5 (#414): aktivér ml-*/mr-* → ms-*/me-* warn-regel når de
+      // ~59 eksisterende sites er migreret. Tailwind 3.4 har ms-*/me-* default
+      // siden v3.3. Refs #410, #414.
       "no-restricted-syntax": [
         "error",
         {

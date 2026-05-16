@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "group": {
+      "klubhus": "Klubhus",
+      "marked": "Marked",
+      "saeson": "Sæson & Resultater",
+      "min": "Min"
+    },
+    "item": {
+      "dashboard": "Dashboard",
+      "team": "Mit Hold",
+      "board": "Bestyrelse",
+      "finance": "Økonomi",
+      "notifications": "Indbakke",
+      "managerProfile": "Min Managerprofil",
+      "riders": "Ryttere",
+      "auctions": "Auktioner",
+      "transfers": "Transfers",
+      "deadlineDay": "Deadline Day",
+      "watchlist": "Ønskeliste",
+      "activity": "Min Aktivitet",
+      "results": "Overblik",
+      "standings": "Ranglisten",
+      "riderRankings": "Rytterrangliste",
+      "races": "Løb",
+      "seasons": "Sæson-snapshot",
+      "hallOfFame": "Hall of Fame",
+      "profile": "Indstillinger",
+      "help": "Hjælp & Regler",
+      "patchNotes": "Patch Notes",
+      "logout": "Log ud"
+    }
+  },
+  "language": {
+    "label": "Sprog",
+    "danish": "Dansk",
+    "english": "English",
+    "switchTooltip": "Skift sprog"
+  }
+}
