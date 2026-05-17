@@ -4,17 +4,21 @@ on:
   pull_request:
     paths:
       - 'frontend/public/locales/**'
+      - 'frontend/src/**'
       - 'scripts/i18n-check-keys.mjs'
+      - 'scripts/i18n-check-namespace-inline.mjs'
       - '.github/workflows/i18n-check.yml'
   push:
     branches: [main]
     paths:
       - 'frontend/public/locales/**'
+      - 'frontend/src/**'
       - 'scripts/i18n-check-keys.mjs'
+      - 'scripts/i18n-check-namespace-inline.mjs'
   workflow_dispatch:
 
 jobs:
-  check:
+  key-coverage:
     runs-on: ubuntu-latest
     # Advisory i Fase 1 (Refs #410). Promotes til required via branch
     # protection ved Fase 5 (#414) — eller når en/da har overlappende
@@ -30,3 +34,20 @@ jobs:
 
       - name: Run i18n key-coverage check
         run: node scripts/i18n-check-keys.mjs
+
+  namespace-inline:
+    runs-on: ubuntu-latest
+    # REQUIRED — fanger den bug-klasse hvor t() returnerer raw key på first
+    # paint fordi namespace er useTranslation'et men ikke inlinet i resources
+    # (Refs #470, postmortem 2026-05-17). Med useSuspense: false er dette en
+    # USER-VISIBLE regression, ikke en advisory.
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Run i18n namespace-inline guard
+        run: node scripts/i18n-check-namespace-inline.mjs

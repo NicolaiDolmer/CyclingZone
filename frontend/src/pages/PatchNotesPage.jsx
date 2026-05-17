@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.54",
+    date: "2026-05-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fix · Dashboard rå i18n-keys (#470)",
+        items: [
+          "Fix · Dashboard viste ~20 rå i18n-keys i UI'et på både DA og EN (`STATS.BALANCE`, `cards.transfers.empty`, `forecast.tier.yellow.label`, ...). Manglende inline-bundling af `dashboard` + `banners`-namespaces i `i18n/index.js` betød at HttpBackend lazy-loade'd disse efter første render — med `useSuspense: false` returnerede `t()` raw key indtil fetch landede.",
+          "Fix · Bundle-ændring: `dashboard.json` + `banners.json` (begge sprog) importeret direkte og tilføjet til `resources`-blokken. Samme pattern som `auctions` (#466) og `transfers` (#468). Bundle-overhead ~3KB gzipped per sprog.",
+          "Infra · NY CI-guard `scripts/i18n-check-namespace-inline.mjs` (REQUIRED i `.github/workflows/i18n-check.yml`) parser `useTranslation(...)`-kald og `t(\"ns:key\")` på tværs af `frontend/src/**` og fejler hvis et brugt namespace ikke er inlinet i `i18n/index.js`. Forhindrer at samme bug-klasse rammer i fremtidige i18n-faser. Postmortem: `.claude/learnings/2026-05-17-i18n-namespace-inline-missing.md`.",
+          "Dev · `window.__i18n` eksponeret i dev-bundle (kun `import.meta.env.DEV`) så fremtidig i18n-debugging kan ske direkte fra DevTools uden fuld login-flow.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.53",
     date: "2026-05-17",
     label: "Beta",
