@@ -25,7 +25,3 @@
 4. Rotér lokal `backend/.env` service-key til `sb_secret_*` ([#337](https://github.com/NicolaiDolmer/CyclingZone/issues/337)); aktivér Sentry secrets ([#348](https://github.com/NicolaiDolmer/CyclingZone/issues/348)).
 
 ## Skalerings-roadmap
-- [x] **Fase 1: Bulletproof Baseline** — zero-known-error hardening live.
-- [x] **Fase 2: AI-Autopilot** — automated tests + audit-feedback omsat til ADRs.
-- [ ] **Fase 3: Secret mgmt + Cache scaling** — #339 Infisical · #334 cache-ADR · #333 Realtime.
-- [ ] **Fase 4: Ops maturity** — #332 restore-drills, incident playbook.
