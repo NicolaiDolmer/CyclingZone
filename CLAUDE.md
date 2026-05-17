@@ -20,6 +20,7 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-3 hits
 - `docs/AI_OPS_DISABLE_PLAYBOOK.md` — MCP/skills disable-handlinger
 - `docs/GITHUB_WORKFLOW.md` — Workflow, agent-loops, close-protocol
 - `docs/AGENT_ARCHITECTURE.md` — Parallel-session safety, cross-agent failure-modes (auto-gen)
+- `docs/WORKTREE_WORKFLOW.md` — Parallelle Claude Code-sessioner via git worktrees (`scripts/new-worktree.ps1`)
 
 ## Close-out (per session)
 
