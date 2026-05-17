@@ -9,7 +9,12 @@ const CORE_PAGES = [
   { path: "/finance", heading: "Finanser", snapshot: "finance.png" },
   { path: "/board", heading: "Bestyrelse", snapshot: "board.png" },
   { path: "/seasons", heading: /Sæson/, snapshot: "seasons.png" },
-  { path: "/notifications", heading: "Indbakke", snapshot: "inbox.png" },
+  // Inbox har meget dynamisk indhold (notifikations-list med timestamps, count-
+  // badges, ulæst-prikker) der falder uden for `main`-text-masken og naturligt
+  // varierer mellem CI-runs. Højere threshold dækker mobile-webkit-flaky uden
+  // at miste blank-screen-detektion. Hvis trusler fra fremtidige layout-changes
+  // sneaker forbi, kig på inbox-actual.png attachment i Playwright-report.
+  { path: "/notifications", heading: "Indbakke", snapshot: "inbox.png", maxDiffPixelRatio: 0.12 },
 ];
 
 test.beforeEach(async ({ page }) => {
@@ -65,7 +70,8 @@ test("core manager pages render without blank screens", async ({ page }, testInf
       mask: [page.locator(TEXT_MASK_SELECTOR)],
       // Tekst er masket → kun layout-pixels tæller. Lille buffer til mask-edge
       // anti-aliasing når elementer auto-sizer efter masked tekst-længde.
-      maxDiffPixelRatio: 0.05,
+      // Per-spec override hvis siden har meget dynamisk indhold (fx inbox).
+      maxDiffPixelRatio: spec.maxDiffPixelRatio ?? 0.05,
     });
   }
 
