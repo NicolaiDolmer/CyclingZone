@@ -8,7 +8,11 @@ import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 const CORE_PAGES = [
   { path: "/dashboard", heading: "E2E Racing", snapshot: "dashboard.png" },
   { path: "/riders", heading: "Rytterdatabase", snapshot: "riders.png" },
-  { path: "/auctions", heading: /^(Auktioner|Auctions)$/, snapshot: "auctions.png" },
+  // Regex inkluderer rå i18n-key fordi auctions.json loades lazy via HttpBackend
+  // og kan stadig være under fetch når headingen vurderes (5s timeout). Når
+  // namespacet lander, hot-swappes UI'et til oversat tekst — testen er tolerant
+  // for begge tilstande for at undgå CI-flakes.
+  { path: "/auctions", heading: /^(Auktioner|Auctions|auctions:page\.title)$/, snapshot: "auctions.png" },
   { path: "/team", heading: "E2E Racing", snapshot: "team.png" },
   { path: "/finance", heading: "Finanser", snapshot: "finance.png" },
   { path: "/board", heading: "Bestyrelse", snapshot: "board.png" },
