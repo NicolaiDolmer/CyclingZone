@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "3.51",
+    date: "2026-05-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · i18n Fase 3a — Dashboard på EN/DA (#412)",
+        items: [
+          "Feature · Dashboard er nu fuldt oversat på begge sprog: header (Division + rytter-count + ind/ud/leje-deltas), squad-warning, Discord-DM-nudge, Deadline Day-banner, Sæson-banner, alle 4 stat-cards og alle 5 indholds-kort (Aktive Auktioner, Transfers & Tilbud, Kommende Løb, Division-Stilling, Bestyrelsens Status).",
+          "Feature · Finance-forecast-kortet (\"Næste sæson — prognose\") og dets badge er oversat — inkl. de tre tier-labels (Grøn/Gul/Rød / Green/Yellow/Red) og hele cashflow-tabellen.",
+          "Feature · Onboarding-progress-kortet (\"Kom i gang\") og completion-kortet (\"Du er klar\") med deres step-labels og CTA-links følger nu sproget.",
+          "Feature · Tal og datoer på Dashboard formateres locale-aware (dansk \"1.234\" / engelsk \"1,234\"; løbsdatoer \"3. jul\" / \"Jul 3\") via `Intl.NumberFormat`/`DateTimeFormat`-wrappers i `lib/intl.js`.",
+          "Infra · `dashboardSquadStats.warning` returnerer nu pure data (`{type, count, limit, division}`) i stedet for en hardcoded DK-streng — UI'et bygger beskeden via ICU plurals så \"Sælg 1 rytter\" og \"Sell 2 riders\" begge er korrekte.",
+          "Infra · `formatDate(date, null, {day,month})` understøtter nu fine-grained Intl-options uden at klashe med `dateStyle`.",
+          "Note · Bestyrelses-feedback-blokken (headline/summary/score-categories) kommer fra `/api/board/status` og er stadig DK-only — backend-i18n følger i en separat fase.",
+          "Næste · Fase 3b: Auctions + bid-modal + Transfers (#412 fortsætter).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.50",
     date: "2026-05-16",
     label: "Beta",

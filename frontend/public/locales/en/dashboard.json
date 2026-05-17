@@ -1,1 +1,178 @@
-{}
+{
+  "header": {
+    "subtitle": "Division {division} · {count, plural, one {1 rider} other {# riders}}",
+    "incoming": "+{count} in",
+    "outgoing": "−{count} out",
+    "loans": "+{count} loan"
+  },
+  "squadWarning": {
+    "over": "Squad too large — max {limit} in Division {division}. Sell {count, plural, one {1 rider} other {# riders}}.",
+    "under": "Squad too small — min {limit} in Division {division}. Buy {count, plural, one {1 more rider} other {# more riders}}.",
+    "ctaMyTeam": "My Team →"
+  },
+  "discordNudge": {
+    "title": "Get DMs for overbids, transfer offers, and board signals",
+    "subtitle": "Add your Discord ID under Profile — you'll stay in the loop even when the app isn't open.",
+    "cta": "Add",
+    "dismissAria": "Hide"
+  },
+  "deadlineDay": {
+    "title": "DEADLINE DAY",
+    "closesIn": "Transfer window closes in {h}h {m}m",
+    "cta": "Go to transfers →"
+  },
+  "seasonBanner": {
+    "title": "Season {number}",
+    "status": {
+      "active": "Active",
+      "upcoming": "Upcoming",
+      "completed": "Completed"
+    },
+    "ended": "Season has ended",
+    "daysLeftSuffix": "days until season ends",
+    "raceDays": "{completed}/{total} race days",
+    "transferWindow": {
+      "open": "✓ Transfer window open",
+      "closed": "✗ Transfer window closed"
+    }
+  },
+  "stats": {
+    "balance": "Balance",
+    "riders": "Riders",
+    "activeAuctions": "Active auctions",
+    "boardSatisfaction": "Board satisfaction",
+    "winning": "{count} winning",
+    "salaryOnly": "Salary: {amount} CZ$/season",
+    "nowAndSalary": "{now} now · Salary {amount} CZ$/season",
+    "noData": "No data"
+  },
+  "cards": {
+    "auctions": {
+      "title": "Active Auctions",
+      "linkAll": "See all →",
+      "empty": "No active auctions",
+      "expired": "Expired",
+      "winning": "Winning",
+      "selling": "Selling",
+      "timeLeftHm": "{h}h {m}m",
+      "timeLeftM": "{m}m"
+    },
+    "transfers": {
+      "title": "Transfers & Offers",
+      "linkAll": "See all →",
+      "empty": "No pending transfers",
+      "incomingCount": "{count, plural, one {1 incoming transfer} other {# incoming transfers}}",
+      "awaitingWindow": "Awaiting window",
+      "from": "From: {name}",
+      "to": "To: {name}",
+      "needsAction": "Needs action",
+      "active": "Active"
+    },
+    "races": {
+      "title": "Upcoming Races",
+      "linkAll": "Calendar →",
+      "empty": "No scheduled races",
+      "stages": "{count, plural, one {1 stage} other {# stages}}",
+      "oneDay": "One-day race",
+      "dateTbd": "Date TBD"
+    },
+    "standings": {
+      "title": "Division {division} — Standings",
+      "linkAll": "Full standings →",
+      "empty": "No season data yet"
+    },
+    "board": {
+      "title": "Board Status",
+      "linkAll": "Details →",
+      "empty": "No board data",
+      "satisfaction": "Satisfaction",
+      "focus": "Focus",
+      "budgetMultiplier": "Budget multiplier"
+    }
+  },
+  "board": {
+    "focus": {
+      "balanced": "Balanced",
+      "youth_development": "Youth development",
+      "star_signing": "Star signing"
+    }
+  },
+  "forecast": {
+    "loading": "Calculating forecast…",
+    "title": "Next season — forecast",
+    "subtitle": "Expected cashflow based on roster + loans + sponsor",
+    "tier": {
+      "green": {
+        "label": "Green",
+        "headline": "Healthy finances",
+        "summary": "Expected surplus and debt under control — you can play offensive."
+      },
+      "yellow": {
+        "label": "Yellow",
+        "headline": "Under pressure",
+        "summary": "Deficit or rising debt — consider selling or lowering salary."
+      },
+      "red": {
+        "label": "Red",
+        "headline": "Bankruptcy risk",
+        "summary": "Heavy deficit or debt near the cap — act now."
+      }
+    },
+    "projectedLabel": "Expected net next season",
+    "rangeLine": "Range: {low} to {high} (±20% on prize estimate)",
+    "row": {
+      "sponsor": "Sponsor",
+      "prize": "Prize money (estimate)",
+      "salary": "Salary",
+      "loanInterest": "Loan interest",
+      "loanFees": "Loan fee (renter)",
+      "loanFeesReceived": "Loan fee received"
+    },
+    "sponsorDetail": {
+      "variable": "Base {base} + variable {variable} from last season's rank/points",
+      "intro": "Intro season: variable sponsor starts from season 2",
+      "fallback": "Fallback: missing standings for the previous season"
+    },
+    "footnote": "Forecast, not a contract. Numbers may change due to sales, loans, or a new board plan.",
+    "footnoteLink": "How is the forecast calculated?",
+    "badge": {
+      "label": "Forecast next season"
+    }
+  },
+  "onboardingProgress": {
+    "header": "Get started — {completed}/{total} steps complete",
+    "steps": {
+      "team_named": "Name your team and manager",
+      "first_rider_owned": "Buy your first rider",
+      "first_bid_placed": "Place your first bid",
+      "board_plan_set": "Choose a board plan"
+    },
+    "ctas": {
+      "team_named": "Profile →",
+      "first_rider_owned": "Go to Market →",
+      "first_bid_placed": "See Auctions →",
+      "board_plan_set": "Meet the board →"
+    },
+    "tour": "💡 Show me how",
+    "dismissAria": "Hide"
+  },
+  "onboardingComplete": {
+    "title": "You're ready — the basics are done",
+    "body": "All four getting-started steps are checked off. Next phase is building your team across multiple seasons — follow Deadline Day, deliver on the board's targets, and fight for promotion.",
+    "nextLinks": {
+      "deadlineDay": {
+        "label": "Deadline Day",
+        "desc": "Follow the transfer window when it closes"
+      },
+      "board": {
+        "label": "Board",
+        "desc": "Negotiate 1yr/3yr/5yr plans in parallel"
+      },
+      "help": {
+        "label": "Help & rules",
+        "desc": "Dive into economy, racing, and tactics"
+      }
+    },
+    "dismissAria": "Hide"
+  }
+}

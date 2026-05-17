@@ -71,7 +71,9 @@ test("computeDashboardSquadStats — pending-outgoing trækkes fra (#250 sæson 
   assert.equal(stats.outgoingCount, 2);
   assert.equal(stats.futureRiderCount, 7, "9 - 2 udgående = 7");
   assert.equal(stats.warning?.type, "under", "7 i D3 < min 8 = warning");
-  assert.match(stats.warning.msg, /Køb 1 ryttere mere/);
+  assert.equal(stats.warning.count, 1, "skal købe 1 rytter mere");
+  assert.equal(stats.warning.limit, 8);
+  assert.equal(stats.warning.division, 3);
 });
 
 test("computeDashboardSquadStats — pending-out som peger på MIT eget hold tæller IKKE som outgoing", () => {
@@ -125,7 +127,8 @@ test("computeDashboardSquadStats — over-cap warning ved D3 cap=10", () => {
   });
   assert.equal(stats.futureRiderCount, 11);
   assert.equal(stats.warning?.type, "over");
-  assert.match(stats.warning.msg, /Sælg 1 ryttere/);
+  assert.equal(stats.warning.count, 1, "skal sælge 1 rytter");
+  assert.equal(stats.warning.limit, 10);
 });
 
 test("computeDashboardSquadStats — falsk over-warning fjernes når pending-out tager holdet ned i cap", () => {
@@ -172,7 +175,8 @@ test("computeDashboardSquadStats — division 1 cap=30 + warning under 20", () =
   });
   assert.equal(stats.futureRiderCount, 19);
   assert.equal(stats.warning?.type, "under");
-  assert.match(stats.warning.msg, /min 20 i Division 1/);
+  assert.equal(stats.warning.limit, 20);
+  assert.equal(stats.warning.division, 1);
 });
 
 test("computeDashboardSquadStats — tom riders-array (nyt hold)", () => {
