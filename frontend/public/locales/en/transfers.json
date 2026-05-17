@@ -1,0 +1,259 @@
+{
+  "page": {
+    "title": "Transfers",
+    "subtitle": "Negotiate directly with other managers",
+    "balance": "Balance",
+    "loadingAria": "Loading transfers"
+  },
+  "window": {
+    "open": "Transfer window is open — you can send and accept offers",
+    "closed": "Transfer window is closed — you cannot create or accept deals. Negotiations can still be rejected or withdrawn.",
+    "closedShort": "Transfer window closed",
+    "windowClosed": "Window closed"
+  },
+  "tabs": {
+    "received": "Received offers",
+    "sent": "Sent offers",
+    "archive": "History ({count})",
+    "swaps": "Swaps",
+    "loans": "Loans",
+    "market": "Market ({count})"
+  },
+  "status": {
+    "pending": "Awaiting response",
+    "countered": "Counter sent",
+    "awaitingConfirmation": "Awaiting confirmation",
+    "windowPending": "Agreed — awaiting window",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "withdrawn": "Withdrawn"
+  },
+  "loanStatus": {
+    "pending": "Awaiting response",
+    "active": "Active",
+    "buyout": "Bought",
+    "cancelled": "Cancelled",
+    "rejected": "Rejected"
+  },
+  "type": {
+    "auction": "Auction",
+    "transfer": "Transfer",
+    "swap": "Swap",
+    "loan": "Loan"
+  },
+  "direction": {
+    "in": "Buy",
+    "out": "Sell",
+    "swap": "Swap"
+  },
+  "relativeTime": {
+    "justNow": "Just now",
+    "minutes": "{m}m ago",
+    "hours": "{h}h ago",
+    "days": "{day}d ago",
+    "dash": "—"
+  },
+  "offerCard": {
+    "from": "From",
+    "to": "To",
+    "round": "Round {round}",
+    "squadCriticalReceived": "🚨 Below minimum",
+    "squadCriticalSent": "🚨 Seller below min.",
+    "offerLabel": "Offer",
+    "counterLabel": "Your counter",
+    "yourBidLabel": "Your bid",
+    "value": "Value",
+    "buttons": {
+      "accept": "✓ Accept",
+      "counter": "↔ Counter",
+      "reject": "✕ Reject",
+      "send": "Send",
+      "acceptCounter": "✓ Accept ({amount} CZ$)",
+      "newOffer": "New offer",
+      "withdraw": "Withdraw",
+      "withdrawOffer": "Withdraw offer",
+      "confirmDeal": "✓ Confirm deal ({amount} CZ$)",
+      "cancelDeal": "Cancel deal",
+      "archive": "Archive"
+    },
+    "form": {
+      "counterLabel": "Your counter (CZ$)",
+      "newOfferLabel": "New offer (CZ$)",
+      "messageBuyer": "Optional message to buyer...",
+      "messagePlaceholder": "Optional message..."
+    },
+    "awaiting": {
+      "sellerAccepted": "You accepted — awaiting buyer's confirmation",
+      "buyerConfirmed": "You confirmed — awaiting seller's confirmation",
+      "windowPending": "Deal agreed — completes when transfer window opens"
+    }
+  },
+  "swapCard": {
+    "youOffer": "You offer",
+    "theyOffer": "They offer",
+    "youWant": "You want",
+    "theyWant": "They want",
+    "pureSwap": "Pure swap",
+    "cashFrom": "+{amount} CZ$ from {team}",
+    "counterTag": "(counter)",
+    "buttons": {
+      "accept": "✓ Accept",
+      "counter": "↔ Counter",
+      "reject": "✕ Reject",
+      "acceptCounter": "✓ Accept counter",
+      "send": "Send",
+      "withdraw": "Withdraw proposal",
+      "rejectShort": "Reject",
+      "confirmSwap": "✓ Confirm swap",
+      "cancelSwap": "Cancel deal"
+    },
+    "form": {
+      "cashReceiveLabel": "Cash payment (CZ$) · positive = you receive, negative = you pay",
+      "cashPayLabel": "Cash payment (CZ$) · positive = you pay, negative = you receive"
+    },
+    "awaiting": {
+      "selfConfirmed": "You confirmed — awaiting the other party",
+      "windowPending": "Swap agreed — completes when transfer window opens"
+    }
+  },
+  "loanCard": {
+    "to": "To",
+    "from": "From",
+    "seasonsSingle": "Season {start}",
+    "seasonsRange": "Seasons {start}–{end}",
+    "feeLabel": "Loan fee/season",
+    "valueLabel": "Value",
+    "buyOptionLabel": "Buy option",
+    "noBuyOption": "—",
+    "buttons": {
+      "accept": "✓ Accept",
+      "reject": "✕ Reject",
+      "withdraw": "Withdraw proposal",
+      "exerciseBuyout": "Exercise buy option ({amount} CZ$)"
+    },
+    "bindingNote": "Active loans are binding and can only be cancelled by an admin."
+  },
+  "transferCard": {
+    "listedSince": "Listed since {date}",
+    "valueLabel": "Value: {value}",
+    "sendOffer": "Send offer",
+    "hide": "Hide",
+    "send": "Send",
+    "messagePlaceholder": "Message (optional)...",
+    "removeListing": "🗑️ Remove from transfer list",
+    "removing": "Removing...",
+    "removeAria": "Remove {riderName} from transfer list",
+    "removeConfirm": "Remove {riderName} from transfer list?",
+    "ridersForSale": "rider"
+  },
+  "newSwap": {
+    "title": "Propose swap",
+    "offeredLabel": "Your rider to offer",
+    "selectRider": "— Select rider —",
+    "requestedLabel": "Rider you want (search by lastname)",
+    "lastnamePlaceholder": "Lastname...",
+    "selectedRider": "Selected: {firstname} {lastname} ({team})",
+    "cashLabel": "Cash payment from you (CZ$) · 0 = pure swap · negative = you receive",
+    "messageLabel": "Message (optional)",
+    "messagePlaceholder": "E.g. reason or comment...",
+    "sending": "Sending...",
+    "submit": "Send proposal",
+    "cancel": "Cancel",
+    "newButton": "+ Propose new swap"
+  },
+  "newLoan": {
+    "title": "Propose loan",
+    "riderLabel": "Rider to loan (search by lastname)",
+    "lastnamePlaceholder": "Lastname...",
+    "selectedRider": "Selected: {firstname} {lastname} ({team})",
+    "seasonLabel": "Season (max 1 season)",
+    "seasonPlaceholder": "e.g. 3",
+    "feeLabel": "Loan fee per season (CZ$)",
+    "buyOptionLabel": "Buy option (CZ$) — optional",
+    "buyOptionPlaceholder": "Leave blank for no option",
+    "sending": "Sending...",
+    "submit": "Send proposal",
+    "cancel": "Cancel",
+    "newButton": "+ Propose new loan"
+  },
+  "history": {
+    "title": "Transfer history",
+    "seasonFilterAll": "All seasons",
+    "seasonFilterCurrent": "Season {n} (this)",
+    "seasonOption": "Season {n}",
+    "emptyAll": "The team has no transfer history yet.",
+    "emptyFiltered": "No transfers found for the selected season.",
+    "header": {
+      "date": "Date",
+      "type": "Type",
+      "direction": "Direction",
+      "rider": "Rider",
+      "counterparty": "Counterparty",
+      "amount": "Amount"
+    },
+    "aiTag": "(AI)",
+    "loanTag": "(loan)",
+    "swapZero": "0 CZ$",
+    "loadError": "Could not load transfer history"
+  },
+  "sections": {
+    "archivedReceived": "Archived received offers",
+    "archivedSent": "Archived sent offers",
+    "receivedProposals": "Received proposals",
+    "sentProposals": "Sent proposals",
+    "yourLending": "Your lending",
+    "yourBorrowing": "Your loans"
+  },
+  "empty": {
+    "received": "No received offers",
+    "receivedHint": "Other managers can send offers on your riders from the rider's page",
+    "sent": "You haven't sent any offers yet",
+    "sentHint": "Find a rider and click \"Send transfer offer\" on their page",
+    "archive": "No archived offers",
+    "swaps": "No active swaps",
+    "swapsHint": "Propose a swap by clicking the button above",
+    "loans": "No active loans",
+    "loansHint": "Propose a loan by clicking the button above",
+    "marketNoListings": "No riders for sale",
+    "marketNoMatches": "No riders match the filter"
+  },
+  "toast": {
+    "offerSent": "✅ Offer sent!",
+    "listingRemoved": "✅ Rider removed from transfer list",
+    "listingRemoveFailed": "Could not remove listing",
+    "offerAcceptedBuyer": "✅ Accepted — buyer must now confirm the deal",
+    "offerAcceptedSeller": "✅ Accepted — seller must now confirm the deal",
+    "confirmedAwaiting": "✅ Confirmed — awaiting the other party's confirmation",
+    "dealCancelled": "Deal cancelled",
+    "transferRejected": "Transfer rejected",
+    "counterSent": "↔ Counter sent",
+    "newOfferSent": "↔ New offer sent",
+    "offerWithdrawn": "Offer withdrawn",
+    "offerArchived": "Offer archived",
+    "updated": "✅ Updated",
+    "swapAccepted": "✅ Accepted — awaiting confirmation",
+    "swapConfirmedAwaiting": "✅ Confirmed — awaiting the other party",
+    "swapCancelled": "Swap cancelled",
+    "swapRejected": "Swap rejected",
+    "proposalWithdrawn": "Proposal withdrawn",
+    "swapProposalSent": "✅ Swap proposal sent!",
+    "loanActivated": "✅ Loan activated",
+    "loanRejected": "Loan proposal rejected",
+    "loanCancelled": "Loan cancelled",
+    "loanProposalSent": "✅ Loan proposal sent!"
+  },
+  "celebration": {
+    "transferDone": {
+      "title": "Transfer complete! 🎉",
+      "subtitle": "The rider is now on your team"
+    },
+    "swapDone": {
+      "title": "Swap complete! 🎉",
+      "subtitle": "Riders have been exchanged"
+    },
+    "buyoutDone": {
+      "title": "Rider bought! 🎉",
+      "subtitle": "The buy option has been exercised"
+    }
+  }
+}

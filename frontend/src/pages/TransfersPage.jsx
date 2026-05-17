@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
@@ -9,33 +10,55 @@ import { ConfettiModal } from "../components/ConfettiModal";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import { formatNumber, formatDate } from "../lib/intl";
 
 const API = import.meta.env.VITE_API_URL;
 
-function timeAgo(d) {
-  if (!d) return "—";
-  const diff = new Date() - new Date(d);
-  const m = Math.floor(diff / 60000);
-  const h = Math.floor(diff / 3600000);
-  const day = Math.floor(diff / 86400000);
-  if (m < 1) return "Lige nu";
-  if (m < 60) return `${m}m siden`;
-  if (h < 24) return `${h}t siden`;
-  return `${day}d siden`;
+function useTimeAgo() {
+  const { t } = useTranslation("transfers");
+  return (d) => {
+    if (!d) return t("relativeTime.dash");
+    const diff = new Date() - new Date(d);
+    const m = Math.floor(diff / 60000);
+    const h = Math.floor(diff / 3600000);
+    const day = Math.floor(diff / 86400000);
+    if (m < 1) return t("relativeTime.justNow");
+    if (m < 60) return t("relativeTime.minutes", { m });
+    if (h < 24) return t("relativeTime.hours", { h });
+    return t("relativeTime.days", { day });
+  };
 }
 
-const STATUS_CONFIG = {
-  pending:                { label: "Afventer svar",              color: "text-cz-accent-t",   bg: "bg-cz-accent/10 border-cz-accent/30" },
-  countered:              { label: "Modbud sendt",               color: "text-cz-warning",  bg: "bg-cz-warning-bg border-cz-warning/30" },
-  awaiting_confirmation:  { label: "Afventer bekræftelse",       color: "text-cz-info",    bg: "bg-cz-info/20 border-cz-info/30" },
-  window_pending:         { label: "Aftalt — afventer vindue",   color: "text-violet-700",  bg: "bg-violet-50 border-violet-200" },
-  accepted:               { label: "Accepteret",                 color: "text-cz-success",   bg: "bg-cz-success-bg border-cz-success/30" },
-  rejected:               { label: "Afvist",                     color: "text-cz-danger",     bg: "bg-cz-danger-bg border-cz-danger/30" },
-  withdrawn:              { label: "Trukket tilbage",            color: "text-cz-3",   bg: "bg-cz-subtle border-cz-border" },
+const STATUS_STYLE = {
+  pending:                { color: "text-cz-accent-t",   bg: "bg-cz-accent/10 border-cz-accent/30" },
+  countered:              { color: "text-cz-warning",  bg: "bg-cz-warning-bg border-cz-warning/30" },
+  awaiting_confirmation:  { color: "text-cz-info",    bg: "bg-cz-info/20 border-cz-info/30" },
+  window_pending:         { color: "text-violet-700",  bg: "bg-violet-50 border-violet-200" },
+  accepted:               { color: "text-cz-success",   bg: "bg-cz-success-bg border-cz-success/30" },
+  rejected:               { color: "text-cz-danger",     bg: "bg-cz-danger-bg border-cz-danger/30" },
+  withdrawn:              { color: "text-cz-3",   bg: "bg-cz-subtle border-cz-border" },
 };
+
+const STATUS_LABEL_KEY = {
+  pending: "status.pending",
+  countered: "status.countered",
+  awaiting_confirmation: "status.awaitingConfirmation",
+  window_pending: "status.windowPending",
+  accepted: "status.accepted",
+  rejected: "status.rejected",
+  withdrawn: "status.withdrawn",
+};
+
+function statusCfg(t, status) {
+  const style = STATUS_STYLE[status] || STATUS_STYLE.pending;
+  const labelKey = STATUS_LABEL_KEY[status] || STATUS_LABEL_KEY.pending;
+  return { ...style, label: t(labelKey) };
+}
 
 // ── Modtaget tilbud ──────────────────────────────────────────────────────────
 function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
+  const { t } = useTranslation("transfers");
+  const timeAgo = useTimeAgo();
   const [counterAmt, setCounterAmt] = useState(offer.offer_amount || 0);
   const [msg, setMsg] = useState("");
   const [mode, setMode] = useState(null);
@@ -45,8 +68,9 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
   const isAwaiting = offer.status === "awaiting_confirmation";
   const isWindowPending = offer.status === "window_pending";
   const canArchive = showArchive && ["accepted", "rejected", "withdrawn"].includes(offer.status);
-  const cfg = STATUS_CONFIG[offer.status] || STATUS_CONFIG.pending;
-  const price = (offer.counter_amount || offer.offer_amount)?.toLocaleString("da-DK");
+  const cfg = statusCfg(t, offer.status);
+  const priceNum = offer.counter_amount || offer.offer_amount;
+  const price = priceNum != null ? formatNumber(priceNum) : "";
 
   async function doAction(action, extra = {}) {
     setLoading(true);
@@ -64,7 +88,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
             className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors block">
             {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
           </RiderLink>
-          <p className="text-cz-3 text-xs">Fra: <TeamLink id={offer.buyer?.id} className="hover:text-cz-accent-t transition-colors">{offer.buyer?.name || "Ukendt"}</TeamLink> · Runde {offer.round || 1} · {timeAgo(offer.created_at)}</p>
+          <p className="text-cz-3 text-xs">{t("offerCard.from")}: <TeamLink id={offer.buyer?.id} className="hover:text-cz-accent-t transition-colors">{offer.buyer?.name || "—"}</TeamLink> · {t("offerCard.round", { round: offer.round || 1 })} · {timeAgo(offer.created_at)}</p>
         </div>
         <div className="flex flex-col gap-1 items-end flex-shrink-0">
           <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
@@ -72,7 +96,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
           </span>
           {offer.seller_squad_critical && (
             <span className="text-[10px] px-2 py-1 rounded-full border font-medium bg-cz-danger-bg text-cz-danger border-cz-danger/30 whitespace-nowrap">
-              🚨 Under minimum
+              {t("offerCard.squadCriticalReceived")}
             </span>
           )}
         </div>
@@ -81,14 +105,14 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
       <div className="bg-cz-subtle rounded-lg px-4 py-3 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-0.5">
-            {offer.status === "countered" ? "Dit modbud" : "Tilbud"}
+            {offer.status === "countered" ? t("offerCard.counterLabel") : t("offerCard.offerLabel")}
           </p>
           <p className="text-cz-accent-t font-mono font-bold text-xl">
-            {(offer.status === "countered" ? offer.counter_amount : offer.offer_amount)?.toLocaleString("da-DK")} CZ$
+            {formatNumber(offer.status === "countered" ? offer.counter_amount : offer.offer_amount)} CZ$
           </p>
         </div>
         <div className="sm:text-right">
-          <p className="text-cz-3 text-xs">Værdi</p>
+          <p className="text-cz-3 text-xs">{t("offerCard.value")}</p>
           <p className="text-cz-2 font-mono text-sm">{formatCz(getRiderMarketValue(offer.rider))}</p>
         </div>
       </div>
@@ -104,24 +128,24 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
               className="flex-1 py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 transition-all disabled:opacity-50">
-              ✓ Accepter
+              {t("offerCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all
                 ${mode === "counter"
                   ? "bg-cz-warning-bg0/20 text-cz-warning border-orange-500/30"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
-              ↔ Modbud
+              {t("offerCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
               className="flex-1 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:bg-cz-danger-bg transition-all disabled:opacity-50">
-              ✕ Afvis
+              {t("offerCard.buttons.reject")}
             </button>
           </div>
 
           {mode === "counter" && (
             <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
-              <label className="text-cz-3 text-xs uppercase tracking-wider">Dit modbud (CZ$)</label>
+              <label className="text-cz-3 text-xs uppercase tracking-wider">{t("offerCard.form.counterLabel")}</label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input type="number" value={counterAmt}
                   onChange={e => setCounterAmt(parseInt(e.target.value) || 0)}
@@ -129,11 +153,11 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
                 <button onClick={() => doAction("counter", { counter_amount: counterAmt, message: msg })}
                   disabled={loading || counterAmt <= 0}
                   className="w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
-                  Send
+                  {t("offerCard.buttons.send")}
                 </button>
               </div>
               <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
-                placeholder="Valgfri besked til køber..."
+                placeholder={t("offerCard.form.messageBuyer")}
                 className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
             </div>
           )}
@@ -144,21 +168,21 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           {offer.seller_confirmed ? (
             <div className="bg-cz-info-bg0/10 border border-blue-500/20 rounded-lg px-4 py-3 text-center">
-              <p className="text-blue-300 text-sm font-medium">Du har accepteret — afventer købers bekræftelse</p>
+              <p className="text-blue-300 text-sm font-medium">{t("offerCard.awaiting.sellerAccepted")}</p>
               <p className="text-cz-3 text-xs mt-1">{price} CZ$ · {offer.buyer?.name}</p>
             </div>
           ) : (
             <div className="flex gap-2">
               <button onClick={() => doAction("confirm")} disabled={loading}
                 className="flex-1 py-2 bg-cz-info-bg text-cz-info border border-blue-500/25 rounded-lg text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
-                ✓ Bekræft handel ({price} CZ$)
+                {t("offerCard.buttons.confirmDeal", { amount: price })}
               </button>
             </div>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
             className="w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-            Annuller handel
+            {t("offerCard.buttons.cancelDeal")}
           </button>
         </div>
       )}
@@ -166,13 +190,13 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
       {isWindowPending && (
         <div className="flex flex-col gap-2">
           <div className="bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 text-center">
-            <p className="text-violet-700 text-sm font-medium">Handel aftalt — gennemføres ved transfervinduets åbning</p>
+            <p className="text-violet-700 text-sm font-medium">{t("offerCard.awaiting.windowPending")}</p>
             <p className="text-cz-3 text-xs mt-1">{price} CZ$</p>
           </div>
           <button onClick={() => doAction("cancel")} disabled={loading}
             className="w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-            Annuller handel
+            {t("offerCard.buttons.cancelDeal")}
           </button>
         </div>
       )}
@@ -180,7 +204,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
       {canArchive && (
         <button onClick={() => doAction("archive")} disabled={loading}
           className="mt-3 w-full py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-border transition-all disabled:opacity-50">
-          Arkivér
+          {t("offerCard.buttons.archive")}
         </button>
       )}
     </div>
@@ -189,6 +213,8 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
 
 // ── Sendt tilbud ─────────────────────────────────────────────────────────────
 function SentOfferCard({ offer, onAction, showArchive = true }) {
+  const { t } = useTranslation("transfers");
+  const timeAgo = useTimeAgo();
   const [newAmt, setNewAmt] = useState(offer.counter_amount || offer.offer_amount || 0);
   const [msg, setMsg] = useState("");
   const [mode, setMode] = useState(null);
@@ -200,8 +226,9 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
   const isWindowPending = offer.status === "window_pending";
   const isActive = isCountered || isPending || isAwaiting;
   const canArchive = showArchive && ["accepted", "rejected", "withdrawn"].includes(offer.status);
-  const cfg = STATUS_CONFIG[offer.status] || STATUS_CONFIG.pending;
-  const price = (offer.counter_amount || offer.offer_amount)?.toLocaleString("da-DK");
+  const cfg = statusCfg(t, offer.status);
+  const priceNum = offer.counter_amount || offer.offer_amount;
+  const price = priceNum != null ? formatNumber(priceNum) : "";
 
   async function doAction(action, extra = {}) {
     setLoading(true);
@@ -219,7 +246,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
             className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors block">
             {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
           </RiderLink>
-          <p className="text-cz-3 text-xs">Til: <TeamLink id={offer.seller?.id} className="hover:text-cz-accent-t transition-colors">{offer.seller?.name || "Ukendt"}</TeamLink> · Runde {offer.round || 1} · {timeAgo(offer.updated_at)}</p>
+          <p className="text-cz-3 text-xs">{t("offerCard.to")}: <TeamLink id={offer.seller?.id} className="hover:text-cz-accent-t transition-colors">{offer.seller?.name || "—"}</TeamLink> · {t("offerCard.round", { round: offer.round || 1 })} · {timeAgo(offer.updated_at)}</p>
         </div>
         <div className="flex flex-col gap-1 items-end flex-shrink-0">
           <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
@@ -227,7 +254,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
           </span>
           {offer.seller_squad_critical && (
             <span className="text-[10px] px-2 py-1 rounded-full border font-medium bg-cz-danger-bg text-cz-danger border-cz-danger/30 whitespace-nowrap">
-              🚨 Sælger under min.
+              {t("offerCard.squadCriticalSent")}
             </span>
           )}
         </div>
@@ -236,13 +263,13 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
       <div className="bg-cz-subtle rounded-lg px-4 py-3 mb-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <p className="text-cz-3 text-xs uppercase tracking-wider mb-0.5">Dit bud</p>
-            <p className="text-cz-1 font-mono font-bold text-lg">{offer.offer_amount?.toLocaleString("da-DK")} CZ$</p>
+            <p className="text-cz-3 text-xs uppercase tracking-wider mb-0.5">{t("offerCard.yourBidLabel")}</p>
+            <p className="text-cz-1 font-mono font-bold text-lg">{formatNumber(offer.offer_amount)} CZ$</p>
           </div>
           {isCountered && offer.counter_amount && (
             <div className="sm:text-right">
-              <p className="text-cz-3 text-xs uppercase tracking-wider mb-0.5">Modbud</p>
-              <p className="text-cz-warning font-mono font-bold text-lg">{offer.counter_amount?.toLocaleString("da-DK")} CZ$</p>
+              <p className="text-cz-3 text-xs uppercase tracking-wider mb-0.5">{t("offerCard.counterLabel")}</p>
+              <p className="text-cz-warning font-mono font-bold text-lg">{formatNumber(offer.counter_amount)} CZ$</p>
             </div>
           )}
         </div>
@@ -259,24 +286,24 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
               className="flex-1 py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
-              ✓ Accepter ({offer.counter_amount?.toLocaleString("da-DK")} CZ$)
+              {t("offerCard.buttons.acceptCounter", { amount: formatNumber(offer.counter_amount) })}
             </button>
             <button onClick={() => setMode(mode === "new_offer" ? null : "new_offer")}
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all
                 ${mode === "new_offer"
                   ? "bg-cz-info-bg0/20 text-cz-info border-blue-500/30"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
-              Nyt bud
+              {t("offerCard.buttons.newOffer")}
             </button>
             <button onClick={() => doAction("withdraw")} disabled={loading}
               className="px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50">
-              Træk tilbage
+              {t("offerCard.buttons.withdraw")}
             </button>
           </div>
 
           {mode === "new_offer" && (
             <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
-              <label className="text-cz-3 text-xs uppercase tracking-wider">Nyt tilbud (CZ$)</label>
+              <label className="text-cz-3 text-xs uppercase tracking-wider">{t("offerCard.form.newOfferLabel")}</label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input type="number" value={newAmt}
                   onChange={e => setNewAmt(parseInt(e.target.value) || 0)}
@@ -284,11 +311,11 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
                 <button onClick={() => doAction("new_offer", { counter_amount: newAmt, message: msg })}
                   disabled={loading || newAmt <= 0}
                   className="w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
-                  Send
+                  {t("offerCard.buttons.send")}
                 </button>
               </div>
               <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
-                placeholder="Valgfri besked..."
+                placeholder={t("offerCard.form.messagePlaceholder")}
                 className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
             </div>
           )}
@@ -299,7 +326,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
         <button onClick={() => doAction("withdraw")} disabled={loading}
           className="w-full py-2 bg-cz-subtle text-cz-3 border border-cz-border rounded-lg text-sm
             hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-          Træk tilbud tilbage
+          {t("offerCard.buttons.withdrawOffer")}
         </button>
       )}
 
@@ -307,19 +334,19 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           {offer.buyer_confirmed ? (
             <div className="bg-cz-info-bg0/10 border border-blue-500/20 rounded-lg px-4 py-3 text-center">
-              <p className="text-blue-300 text-sm font-medium">Du har bekræftet — afventer sælgers bekræftelse</p>
+              <p className="text-blue-300 text-sm font-medium">{t("offerCard.awaiting.buyerConfirmed")}</p>
               <p className="text-cz-3 text-xs mt-1">{price} CZ$ · {offer.seller?.name}</p>
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
               className="w-full py-2 bg-cz-info-bg text-cz-info border border-blue-500/25 rounded-lg text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
-              ✓ Bekræft handel ({price} CZ$)
+              {t("offerCard.buttons.confirmDeal", { amount: price })}
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
             className="w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-            Annuller handel
+            {t("offerCard.buttons.cancelDeal")}
           </button>
         </div>
       )}
@@ -327,13 +354,13 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
       {isWindowPending && (
         <div className="flex flex-col gap-2">
           <div className="bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 text-center">
-            <p className="text-violet-700 text-sm font-medium">Handel aftalt — gennemføres ved transfervinduets åbning</p>
+            <p className="text-violet-700 text-sm font-medium">{t("offerCard.awaiting.windowPending")}</p>
             <p className="text-cz-3 text-xs mt-1">{price} CZ$</p>
           </div>
           <button onClick={() => doAction("cancel")} disabled={loading}
             className="w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-            Annuller handel
+            {t("offerCard.buttons.cancelDeal")}
           </button>
         </div>
       )}
@@ -341,7 +368,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
       {canArchive && (
         <button onClick={() => doAction("archive")} disabled={loading}
           className="mt-3 w-full py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-border transition-all disabled:opacity-50">
-          Arkivér
+          {t("offerCard.buttons.archive")}
         </button>
       )}
     </div>
@@ -350,6 +377,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
 
 // ── Swap offer card ──────────────────────────────────────────────────────────
 function SwapCard({ swap, myTeamId, onAction }) {
+  const { t } = useTranslation("transfers");
   const [counterCash, setCounterCash] = useState(swap.counter_cash ?? swap.cash_adjustment ?? 0);
   const [mode, setMode] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -360,12 +388,12 @@ function SwapCard({ swap, myTeamId, onAction }) {
   const isCountered     = swap.status === "countered";
   const isAwaiting      = swap.status === "awaiting_confirmation";
   const isWindowPending = swap.status === "window_pending";
-  const cfg = STATUS_CONFIG[swap.status] || STATUS_CONFIG.pending;
+  const cfg = statusCfg(t, swap.status);
 
   const effectiveCash = isCountered ? swap.counter_cash : swap.cash_adjustment;
-  const cashLabel = effectiveCash === 0 ? "Ren bytte"
-    : effectiveCash > 0 ? `+${effectiveCash.toLocaleString("da-DK")} CZ$ fra ${swap.proposing?.name}`
-    : `+${Math.abs(effectiveCash).toLocaleString("da-DK")} CZ$ fra ${swap.receiving?.name}`;
+  const cashLabel = effectiveCash === 0 ? t("swapCard.pureSwap")
+    : effectiveCash > 0 ? t("swapCard.cashFrom", { amount: formatNumber(effectiveCash), team: swap.proposing?.name })
+    : t("swapCard.cashFrom", { amount: formatNumber(Math.abs(effectiveCash)), team: swap.receiving?.name });
 
   async function doAction(action, extra = {}) {
     setLoading(true);
@@ -381,7 +409,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-cz-3 text-xs">
-            {isProposing ? `Til: ${swap.receiving?.name}` : `Fra: ${swap.proposing?.name}`}
+            {isProposing ? `${t("offerCard.to")}: ${swap.receiving?.name}` : `${t("offerCard.from")}: ${swap.proposing?.name}`}
           </p>
         </div>
         <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
@@ -391,8 +419,8 @@ function SwapCard({ swap, myTeamId, onAction }) {
 
       <div className="grid grid-cols-2 gap-2 mb-3">
         {[
-          { label: isProposing ? "Du tilbyder" : "De tilbyder", rider: swap.offered },
-          { label: isProposing ? "Du ønsker"  : "De ønsker",   rider: swap.requested },
+          { label: isProposing ? t("swapCard.youOffer") : t("swapCard.theyOffer"), rider: swap.offered },
+          { label: isProposing ? t("swapCard.youWant")  : t("swapCard.theyWant"),  rider: swap.requested },
         ].map(({ label, rider }) => (
           <div key={rider?.id} className="bg-cz-subtle rounded-lg px-3 py-2">
             <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{label}</p>
@@ -412,7 +440,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
       <div className={`rounded-lg px-3 py-2 mb-3 text-xs text-center font-medium
         ${effectiveCash === 0 ? "bg-cz-subtle text-cz-2" : "bg-cz-accent/10 text-cz-accent-t/80"}`}>
         {cashLabel}
-        {isCountered && <span className="text-cz-warning ml-2">(modbud)</span>}
+        {isCountered && <span className="text-cz-warning ml-2">{t("swapCard.counterTag")}</span>}
       </div>
 
       {swap.message && (
@@ -426,21 +454,21 @@ function SwapCard({ swap, myTeamId, onAction }) {
           <div className="flex gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
               className="flex-1 py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
-              ✓ Accepter
+              {t("swapCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all
                 ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-orange-500/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
-              ↔ Modbud
+              {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
               className="flex-1 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50">
-              ✕ Afvis
+              {t("swapCard.buttons.reject")}
             </button>
           </div>
           {mode === "counter" && (
             <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
-              <label className="text-cz-3 text-xs uppercase tracking-wider">Kontantbetaling (CZ$) · positiv = du modtager, negativ = du betaler</label>
+              <label className="text-cz-3 text-xs uppercase tracking-wider">{t("swapCard.form.cashReceiveLabel")}</label>
               <div className="flex gap-2">
                 <input type="number" value={counterCash}
                   onChange={e => setCounterCash(parseInt(e.target.value) || 0)}
@@ -448,7 +476,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
                 <button onClick={() => doAction("counter", { counter_cash: -counterCash })}
                   disabled={loading}
                   className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
-                  Send
+                  {t("swapCard.buttons.send")}
                 </button>
               </div>
             </div>
@@ -460,7 +488,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
         <button onClick={() => doAction("withdraw")} disabled={loading}
           className="w-full py-2 bg-cz-subtle text-cz-3 border border-cz-border rounded-lg text-sm
             hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-          Træk forslag tilbage
+          {t("swapCard.buttons.withdraw")}
         </button>
       )}
 
@@ -469,21 +497,21 @@ function SwapCard({ swap, myTeamId, onAction }) {
           <div className="flex gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
               className="flex-1 py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
-              ✓ Accepter modbud
+              {t("swapCard.buttons.acceptCounter")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all
                 ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-orange-500/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
-              ↔ Modbud
+              {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("withdraw")} disabled={loading}
               className="px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm hover:bg-cz-danger-bg disabled:opacity-50">
-              Afvis
+              {t("swapCard.buttons.rejectShort")}
             </button>
           </div>
           {mode === "counter" && (
             <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
-              <label className="text-cz-3 text-xs uppercase tracking-wider">Kontantbetaling (CZ$) · positiv = du betaler, negativ = du modtager</label>
+              <label className="text-cz-3 text-xs uppercase tracking-wider">{t("swapCard.form.cashPayLabel")}</label>
               <div className="flex gap-2">
                 <input type="number" value={counterCash}
                   onChange={e => setCounterCash(parseInt(e.target.value) || 0)}
@@ -491,7 +519,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
                 <button onClick={() => doAction("counter", { counter_cash: counterCash })}
                   disabled={loading}
                   className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
-                  Send
+                  {t("swapCard.buttons.send")}
                 </button>
               </div>
             </div>
@@ -503,18 +531,18 @@ function SwapCard({ swap, myTeamId, onAction }) {
         <div className="flex flex-col gap-2">
           {(isProposing ? swap.proposing_confirmed : swap.receiving_confirmed) ? (
             <div className="bg-cz-info-bg0/10 border border-blue-500/20 rounded-lg px-4 py-3 text-center">
-              <p className="text-blue-300 text-sm font-medium">Du har bekræftet — afventer den anden part</p>
+              <p className="text-blue-300 text-sm font-medium">{t("swapCard.awaiting.selfConfirmed")}</p>
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
               className="w-full py-2 bg-cz-info-bg text-cz-info border border-blue-500/25 rounded-lg text-sm font-medium hover:bg-cz-info-bg0/25 disabled:opacity-50">
-              ✓ Bekræft byttehandel
+              {t("swapCard.buttons.confirmSwap")}
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
             className="w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-            Annuller handel
+            {t("swapCard.buttons.cancelSwap")}
           </button>
         </div>
       )}
@@ -522,12 +550,12 @@ function SwapCard({ swap, myTeamId, onAction }) {
       {isWindowPending && (
         <div className="flex flex-col gap-2">
           <div className="bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 text-center">
-            <p className="text-violet-700 text-sm font-medium">Byttehandel aftalt — gennemføres ved transfervinduets åbning</p>
+            <p className="text-violet-700 text-sm font-medium">{t("swapCard.awaiting.windowPending")}</p>
           </div>
           <button onClick={() => doAction("cancel")} disabled={loading}
             className="w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-            Annuller handel
+            {t("swapCard.buttons.cancelSwap")}
           </button>
         </div>
       )}
@@ -537,6 +565,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
 
 // ── New swap form ─────────────────────────────────────────────────────────────
 function NewSwapForm({ myRiders, onSubmit, onCancel }) {
+  const { t } = useTranslation("transfers");
   const [offeredId, setOfferedId]   = useState("");
   const [requestedId, setRequestedId] = useState("");
   const [cash, setCash]             = useState(0);
@@ -577,13 +606,13 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5 flex flex-col gap-4">
-      <h3 className="text-cz-1 font-semibold">Foreslå byttehandel</h3>
+      <h3 className="text-cz-1 font-semibold">{t("newSwap.title")}</h3>
 
       <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">Din rytter du tilbyder</label>
+        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newSwap.offeredLabel")}</label>
         <select value={offeredId} onChange={e => setOfferedId(e.target.value)}
           className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
-          <option value="">— Vælg rytter —</option>
+          <option value="">{t("newSwap.selectRider")}</option>
           {myRiders.map(r => (
               <option key={r.id} value={r.id}>{r.firstname} {r.lastname} ({formatCz(getRiderMarketValue(r))})</option>
           ))}
@@ -591,11 +620,11 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
       </div>
 
       <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">Rytter du ønsker (søg på efternavn)</label>
+        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newSwap.requestedLabel")}</label>
         <div className="relative">
           <input type="text" value={search}
             onChange={e => { setSearch(e.target.value); runSearch(e.target.value); }}
-            placeholder="Efternavn..."
+            placeholder={t("newSwap.lastnamePlaceholder")}
             className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent" />
           {searching && <span className="absolute right-3 top-2.5 text-cz-3 text-xs">...</span>}
           {searchResults.length > 0 && (
@@ -611,33 +640,33 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
           )}
         </div>
         {selectedRequested && (
-          <p className="text-cz-accent-t/70 text-xs mt-1">Valgt: {selectedRequested.firstname} {selectedRequested.lastname} ({selectedRequested.team?.name})</p>
+          <p className="text-cz-accent-t/70 text-xs mt-1">{t("newSwap.selectedRider", { firstname: selectedRequested.firstname, lastname: selectedRequested.lastname, team: selectedRequested.team?.name })}</p>
         )}
       </div>
 
       <div>
         <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">
-          Kontantbetaling fra dig (CZ$) · 0 = ren bytte · negativt = du modtager
+          {t("newSwap.cashLabel")}
         </label>
         <input type="number" value={cash} onChange={e => setCash(parseInt(e.target.value) || 0)}
           className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
       </div>
 
       <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">Besked (valgfri)</label>
+        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newSwap.messageLabel")}</label>
         <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
-          placeholder="Fx. begrundelse eller kommentar..."
+          placeholder={t("newSwap.messagePlaceholder")}
           className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
       </div>
 
       <div className="flex gap-2">
         <button onClick={handleSubmit} disabled={loading || !offeredId || !requestedId}
           className="flex-1 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-40">
-          {loading ? "Sender..." : "Send forslag"}
+          {loading ? t("newSwap.sending") : t("newSwap.submit")}
         </button>
         <button onClick={onCancel}
           className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle">
-          Annuller
+          {t("newSwap.cancel")}
         </button>
       </div>
     </div>
@@ -645,19 +674,34 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
 }
 
 // ── Loan agreement card ───────────────────────────────────────────────────────
-const LOAN_STATUS_CONFIG = {
-  pending:   { label: "Afventer svar",  color: "text-cz-accent-t",   bg: "bg-cz-accent/10 border-cz-accent/30" },
-  active:    { label: "Aktiv",          color: "text-purple-400",  bg: "bg-purple-500/10 border-purple-500/20" },
-  buyout:    { label: "Købt",           color: "text-cz-success",   bg: "bg-cz-success-bg border-cz-success/30" },
-  cancelled: { label: "Annulleret",     color: "text-cz-3",    bg: "bg-cz-subtle border-cz-border" },
-  rejected:  { label: "Afvist",         color: "text-cz-danger",     bg: "bg-cz-danger-bg border-cz-danger/30" },
+const LOAN_STATUS_STYLE = {
+  pending:   { color: "text-cz-accent-t",   bg: "bg-cz-accent/10 border-cz-accent/30" },
+  active:    { color: "text-purple-400",  bg: "bg-purple-500/10 border-purple-500/20" },
+  buyout:    { color: "text-cz-success",   bg: "bg-cz-success-bg border-cz-success/30" },
+  cancelled: { color: "text-cz-3",    bg: "bg-cz-subtle border-cz-border" },
+  rejected:  { color: "text-cz-danger",     bg: "bg-cz-danger-bg border-cz-danger/30" },
 };
 
+const LOAN_STATUS_LABEL_KEY = {
+  pending: "loanStatus.pending",
+  active: "loanStatus.active",
+  buyout: "loanStatus.buyout",
+  cancelled: "loanStatus.cancelled",
+  rejected: "loanStatus.rejected",
+};
+
+function loanCfg(t, status) {
+  const style = LOAN_STATUS_STYLE[status] || LOAN_STATUS_STYLE.pending;
+  const labelKey = LOAN_STATUS_LABEL_KEY[status] || LOAN_STATUS_LABEL_KEY.pending;
+  return { ...style, label: t(labelKey) };
+}
+
 function LoanCard({ loan, myTeamId, onAction }) {
+  const { t } = useTranslation("transfers");
   const [loading, setLoading] = useState(false);
   const isLender   = loan.from_team?.id === myTeamId;
   const isBorrower = loan.to_team?.id   === myTeamId;
-  const cfg = LOAN_STATUS_CONFIG[loan.status] || LOAN_STATUS_CONFIG.pending;
+  const cfg = loanCfg(t, loan.status);
 
   async function doAction(action) {
     setLoading(true);
@@ -666,8 +710,8 @@ function LoanCard({ loan, myTeamId, onAction }) {
   }
 
   const seasons = loan.start_season === loan.end_season
-    ? `Sæson ${loan.start_season}`
-    : `Sæson ${loan.start_season}–${loan.end_season}`;
+    ? t("loanCard.seasonsSingle", { start: loan.start_season })
+    : t("loanCard.seasonsRange", { start: loan.start_season, end: loan.end_season });
 
   return (
     <div className={`bg-cz-card border rounded-xl p-5 transition-all
@@ -680,7 +724,7 @@ function LoanCard({ loan, myTeamId, onAction }) {
             {loan.rider?.firstname} {loan.rider?.lastname}
           </RiderLink>
           <p className="text-cz-3 text-xs">
-            {isLender ? `Til: ${loan.to_team?.name}` : `Fra: ${loan.from_team?.name}`} · {seasons}
+            {isLender ? `${t("loanCard.to")}: ${loan.to_team?.name}` : `${t("loanCard.from")}: ${loan.from_team?.name}`} · {seasons}
           </p>
         </div>
         <span className={`text-[10px] uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
@@ -690,17 +734,17 @@ function LoanCard({ loan, myTeamId, onAction }) {
 
       <div className="grid grid-cols-3 gap-2 mb-3">
         <div className="bg-cz-subtle rounded-lg px-3 py-2 text-center">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-0.5">Lejegebyr/sæson</p>
-          <p className="text-cz-1 font-mono text-sm font-bold">{loan.loan_fee?.toLocaleString("da-DK")} CZ$</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-0.5">{t("loanCard.feeLabel")}</p>
+          <p className="text-cz-1 font-mono text-sm font-bold">{formatNumber(loan.loan_fee)} CZ$</p>
         </div>
         <div className="bg-cz-subtle rounded-lg px-3 py-2 text-center">
-            <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-0.5">Værdi</p>
+            <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-0.5">{t("loanCard.valueLabel")}</p>
             <p className="text-cz-accent-t font-mono text-sm font-bold">{formatCz(getRiderMarketValue(loan.rider))}</p>
         </div>
         <div className="bg-cz-subtle rounded-lg px-3 py-2 text-center">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-0.5">Købsoption</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-0.5">{t("loanCard.buyOptionLabel")}</p>
           <p className="text-cz-2 font-mono text-sm">
-            {loan.buy_option_price ? `${loan.buy_option_price.toLocaleString("da-DK")} CZ$` : "—"}
+            {loan.buy_option_price ? `${formatNumber(loan.buy_option_price)} CZ$` : t("loanCard.noBuyOption")}
           </p>
         </div>
       </div>
@@ -709,11 +753,11 @@ function LoanCard({ loan, myTeamId, onAction }) {
         <div className="flex gap-2">
           <button onClick={() => doAction("accept")} disabled={loading}
             className="flex-1 py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
-            ✓ Accepter
+            {t("loanCard.buttons.accept")}
           </button>
           <button onClick={() => doAction("reject")} disabled={loading}
             className="flex-1 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50">
-            ✕ Afvis
+            {t("loanCard.buttons.reject")}
           </button>
         </div>
       )}
@@ -721,7 +765,7 @@ function LoanCard({ loan, myTeamId, onAction }) {
         <button onClick={() => doAction("cancel")} disabled={loading}
           className="w-full py-2 bg-cz-subtle text-cz-3 border border-cz-border rounded-lg text-sm
             hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-          Træk forslag tilbage
+          {t("loanCard.buttons.withdraw")}
         </button>
       )}
       {loan.status === "active" && (
@@ -729,12 +773,12 @@ function LoanCard({ loan, myTeamId, onAction }) {
           {isBorrower && loan.buy_option_price && (
             <button onClick={() => doAction("buyout")} disabled={loading}
               className="w-full py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
-              Udnyt købsoption ({loan.buy_option_price?.toLocaleString("da-DK")} CZ$)
+              {t("loanCard.buttons.exerciseBuyout", { amount: formatNumber(loan.buy_option_price) })}
             </button>
           )}
           {/* #156: aktive lejeaftaler er bindende — kun admin kan annullere. */}
           <p className="text-cz-3 text-xs italic">
-            Aktive lejeaftaler er bindende og kan kun annulleres af en admin.
+            {t("loanCard.bindingNote")}
           </p>
         </div>
       )}
@@ -744,6 +788,7 @@ function LoanCard({ loan, myTeamId, onAction }) {
 
 // ── New loan form ─────────────────────────────────────────────────────────────
 function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
+  const { t } = useTranslation("transfers");
   const [search, setSearch]           = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [selectedRider, setSelectedRider] = useState(null);
@@ -782,14 +827,14 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5 flex flex-col gap-4">
-      <h3 className="text-cz-1 font-semibold">Foreslå lejeaftale</h3>
+      <h3 className="text-cz-1 font-semibold">{t("newLoan.title")}</h3>
 
       <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">Rytter du ønsker at leje (søg på efternavn)</label>
+        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newLoan.riderLabel")}</label>
         <div className="relative">
           <input type="text" value={search}
             onChange={e => { setSearch(e.target.value); runSearch(e.target.value); }}
-            placeholder="Efternavn..."
+            placeholder={t("newLoan.lastnamePlaceholder")}
             className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent" />
           {searching && <span className="absolute right-3 top-2.5 text-cz-3 text-xs">...</span>}
           {searchResults.length > 0 && (
@@ -805,38 +850,38 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
           )}
         </div>
         {selectedRider && (
-          <p className="text-purple-400/70 text-xs mt-1">Valgt: {selectedRider.firstname} {selectedRider.lastname} ({selectedRider.team?.name})</p>
+          <p className="text-purple-400/70 text-xs mt-1">{t("newLoan.selectedRider", { firstname: selectedRider.firstname, lastname: selectedRider.lastname, team: selectedRider.team?.name })}</p>
         )}
       </div>
 
       <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">Sæson (max 1 sæson)</label>
+        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newLoan.seasonLabel")}</label>
         <input type="number" value={startSeason} onChange={e => setStartSeason(e.target.value)}
-          placeholder="fx. 3"
+          placeholder={t("newLoan.seasonPlaceholder")}
           className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
       </div>
 
       <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">Lejegebyr per sæson (CZ$)</label>
+        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newLoan.feeLabel")}</label>
         <input type="number" value={loanFee} onChange={e => setLoanFee(parseInt(e.target.value) || 0)}
           className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
       </div>
 
       <div>
-        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">Købsoption (CZ$) — valgfri</label>
+        <label className="text-cz-3 text-xs uppercase tracking-wider mb-1 block">{t("newLoan.buyOptionLabel")}</label>
         <input type="number" value={buyOption} onChange={e => setBuyOption(e.target.value)}
-          placeholder="Efterlad tom for ingen option"
+          placeholder={t("newLoan.buyOptionPlaceholder")}
           className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
       </div>
 
       <div className="flex gap-2">
         <button onClick={handleSubmit} disabled={loading || !selectedRider || !startSeason}
           className="flex-1 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-40">
-          {loading ? "Sender..." : "Send forslag"}
+          {loading ? t("newLoan.sending") : t("newLoan.submit")}
         </button>
         <button onClick={onCancel}
           className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle">
-          Annuller
+          {t("newLoan.cancel")}
         </button>
       </div>
     </div>
@@ -845,6 +890,7 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
 
 // ── Transfer market listing card ─────────────────────────────────────────────
 function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true }) {
+  const { t } = useTranslation("transfers");
   const [offerAmt, setOfferAmt] = useState(listing.asking_price || 0);
   const [msg, setMsg] = useState("");
   const [showOffer, setShowOffer] = useState(false);
@@ -853,7 +899,7 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
   const [removing, setRemoving] = useState(false);
 
   const isOwn = listing.seller?.id === myTeamId;
-  const riderName = listing.rider ? `${listing.rider.firstname} ${listing.rider.lastname}` : "rytter";
+  const riderName = listing.rider ? `${listing.rider.firstname} ${listing.rider.lastname}` : t("transferCard.ridersForSale");
 
   async function performSendOffer() {
     setLoading(true);
@@ -865,7 +911,7 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
 
   async function performRemove() {
     if (!onRemove) return;
-    if (!window.confirm(`Fjern ${riderName} fra transferlisten?`)) return;
+    if (!window.confirm(t("transferCard.removeConfirm", { riderName }))) return;
     setRemoving(true);
     await onRemove(listing.id, riderName);
     setRemoving(false);
@@ -885,13 +931,13 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
           </p>
           {listing.created_at && (
             <p className="text-cz-3 text-xs mt-0.5">
-              Til salg siden {new Date(listing.created_at).toLocaleDateString("da-DK", { day: "numeric", month: "short" })}
+              {t("transferCard.listedSince", { date: formatDate(listing.created_at, null, { day: "numeric", month: "short" }) })}
             </p>
           )}
         </div>
         <div className="text-right">
-          <p className="text-cz-accent-t font-mono font-bold text-lg">{listing.asking_price?.toLocaleString("da-DK")} CZ$</p>
-      <p className="text-cz-3 text-xs">Værdi: {formatCz(getRiderMarketValue(listing.rider))}</p>
+          <p className="text-cz-accent-t font-mono font-bold text-lg">{formatNumber(listing.asking_price)} CZ$</p>
+      <p className="text-cz-3 text-xs">{t("transferCard.valueLabel", { value: formatCz(getRiderMarketValue(listing.rider)) })}</p>
         </div>
       </div>
 
@@ -915,7 +961,7 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
                 : showOffer
                   ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
-            {!windowOpen ? "Vindue lukket" : showOffer ? "Skjul" : "Send tilbud"}
+            {!windowOpen ? t("window.windowClosed") : showOffer ? t("transferCard.hide") : t("transferCard.sendOffer")}
           </button>
 
           {showOffer && (
@@ -928,11 +974,11 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
                   onClick={() => { if (offerAmt > 0) setConfirmOpen(true); }}
                   disabled={loading || offerAmt <= 0}
                   className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
-                  {loading ? "..." : "Send"}
+                  {loading ? "..." : t("transferCard.send")}
                 </button>
               </div>
               <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
-                placeholder="Besked (valgfri)..."
+                placeholder={t("transferCard.messagePlaceholder")}
                 className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-xs focus:outline-none" />
             </div>
           )}
@@ -942,11 +988,11 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
         <button
           onClick={performRemove}
           disabled={removing}
-          aria-label={`Fjern ${riderName} fra transferlisten`}
+          aria-label={t("transferCard.removeAria", { riderName })}
           className="w-full min-h-[44px] py-2 rounded-lg text-sm font-medium transition-all border
             bg-cz-subtle text-cz-2 border-cz-border
             hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 disabled:opacity-50">
-          {removing ? "Fjerner..." : "🗑️ Fjern fra transferlisten"}
+          {removing ? t("transferCard.removing") : t("transferCard.removeListing")}
         </button>
       )}
       <BidConfirmModal
@@ -964,6 +1010,7 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
 
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function TransfersPage() {
+  const { t } = useTranslation("transfers");
   const [tab, setTab] = useState("received");
   const [listings, setListings] = useState([]);
   const [sentOffers, setSentOffers] = useState([]);
@@ -1037,7 +1084,7 @@ export default function TransfersPage() {
       body: JSON.stringify({ rider_id: riderId, offer_amount: amount, message }),
     });
     const data = await res.json();
-    if (res.ok) { showMsg("✅ Tilbud sendt!"); loadAll(); setTab("sent"); }
+    if (res.ok) { showMsg(t("toast.offerSent")); loadAll(); setTab("sent"); }
     else showMsg(`❌ ${data.error}`, "error");
   }
 
@@ -1048,10 +1095,10 @@ export default function TransfersPage() {
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      showMsg("✅ Rytter fjernet fra transferlisten");
+      showMsg(t("toast.listingRemoved"));
       loadAll();
     } else {
-      showMsg(`❌ ${data.error || "Kunne ikke fjerne listingen"}`, "error");
+      showMsg(`❌ ${data.error || t("toast.listingRemoveFailed")}`, "error");
     }
   }
 
@@ -1065,8 +1112,8 @@ export default function TransfersPage() {
     if (res.ok) {
       if (action === "confirm" && data.action === "accepted") {
         setCelebration({
-          title: "Transfer gennemført! 🎉",
-          subtitle: "Rytteren er nu på dit hold",
+          title: t("celebration.transferDone.title"),
+          subtitle: t("celebration.transferDone.subtitle"),
           amount: data.price || 0,
           icon: "↔",
         });
@@ -1077,17 +1124,17 @@ export default function TransfersPage() {
         }).catch(() => {});
       } else {
         const msgs = {
-          accept:          "✅ Accepteret — køber skal nu bekræfte handlen",
-          accept_counter:  "✅ Accepteret — sælger skal nu bekræfte handlen",
-          confirm:         "✅ Bekræftet — afventer den anden parts bekræftelse",
-          cancel:          "Handel annulleret",
-          reject:          "Transfer afvist",
-          counter:         "↔ Modbud sendt",
-          new_offer:       "↔ Nyt bud sendt",
-          withdraw:        "Tilbud trukket tilbage",
-          archive:         "Tilbud arkiveret",
+          accept:          t("toast.offerAcceptedBuyer"),
+          accept_counter:  t("toast.offerAcceptedSeller"),
+          confirm:         t("toast.confirmedAwaiting"),
+          cancel:          t("toast.dealCancelled"),
+          reject:          t("toast.transferRejected"),
+          counter:         t("toast.counterSent"),
+          new_offer:       t("toast.newOfferSent"),
+          withdraw:        t("toast.offerWithdrawn"),
+          archive:         t("toast.offerArchived"),
         };
-        showMsg(msgs[action] || "✅ Opdateret");
+        showMsg(msgs[action] || t("toast.updated"));
       }
       loadAll();
     } else {
@@ -1105,22 +1152,22 @@ export default function TransfersPage() {
     if (res.ok) {
       if (action === "confirm" && data.action === "accepted") {
         setCelebration({
-          title: "Byttehandel gennemført! 🎉",
-          subtitle: "Ryttere er nu skiftet",
+          title: t("celebration.swapDone.title"),
+          subtitle: t("celebration.swapDone.subtitle"),
           amount: 0,
           icon: "↔",
         });
       } else {
         const msgs = {
-          accept:         "✅ Accepteret — afventer bekræftelse",
-          accept_counter: "✅ Accepteret — afventer bekræftelse",
-          confirm:        "✅ Bekræftet — afventer den anden part",
-          cancel:         "Byttehandel annulleret",
-          reject:         "Byttehandel afvist",
-          counter:        "↔ Modbud sendt",
-          withdraw:       "Forslag trukket tilbage",
+          accept:         t("toast.swapAccepted"),
+          accept_counter: t("toast.swapAccepted"),
+          confirm:        t("toast.swapConfirmedAwaiting"),
+          cancel:         t("toast.swapCancelled"),
+          reject:         t("toast.swapRejected"),
+          counter:        t("toast.counterSent"),
+          withdraw:       t("toast.proposalWithdrawn"),
         };
-        showMsg(msgs[action] || "✅ Opdateret");
+        showMsg(msgs[action] || t("toast.updated"));
       }
       loadAll();
     } else {
@@ -1136,7 +1183,7 @@ export default function TransfersPage() {
     });
     const data = await res.json();
     if (res.ok) {
-      showMsg("✅ Bytteforslag sendt!");
+      showMsg(t("toast.swapProposalSent"));
       setShowNewSwap(false);
       loadAll();
     } else {
@@ -1153,10 +1200,10 @@ export default function TransfersPage() {
     const data = await res.json();
     if (res.ok) {
       if (action === "buyout") {
-        setCelebration({ title: "Rytter købt! 🎉", subtitle: "Købsoptionen er udnyttet", amount: data.price || 0, icon: "📋" });
+        setCelebration({ title: t("celebration.buyoutDone.title"), subtitle: t("celebration.buyoutDone.subtitle"), amount: data.price || 0, icon: "📋" });
       } else {
-        const msgs = { accept: "✅ Lejeaftale aktiveret", reject: "Lejeforslag afvist", cancel: "Lejeaftale annulleret" };
-        showMsg(msgs[action] || "✅ Opdateret");
+        const msgs = { accept: t("toast.loanActivated"), reject: t("toast.loanRejected"), cancel: t("toast.loanCancelled") };
+        showMsg(msgs[action] || t("toast.updated"));
       }
       loadAll();
     } else {
@@ -1171,7 +1218,7 @@ export default function TransfersPage() {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (res.ok) { showMsg("✅ Lejeforslag sendt!"); setShowNewLoan(false); loadAll(); }
+    if (res.ok) { showMsg(t("toast.loanProposalSent")); setShowNewLoan(false); loadAll(); }
     else showMsg(`❌ ${data.error}`, "error");
   }
 
@@ -1204,12 +1251,12 @@ export default function TransfersPage() {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-xl font-bold text-cz-1">Transfers</h1>
-          <p className="text-cz-3 text-sm">Forhandle direkte med andre managers</p>
+          <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
+          <p className="text-cz-3 text-sm">{t("page.subtitle")}</p>
         </div>
         <div className="bg-cz-card border border-cz-border rounded-lg px-4 py-2 sm:text-right">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Balance</p>
-          <p className="text-cz-accent-t font-mono font-bold text-sm">{myBalance?.toLocaleString("da-DK")} CZ$</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("page.balance")}</p>
+          <p className="text-cz-accent-t font-mono font-bold text-sm">{formatNumber(myBalance)} CZ$</p>
         </div>
       </div>
 
@@ -1218,9 +1265,7 @@ export default function TransfersPage() {
           ? "bg-cz-success-bg0/8 text-cz-success border-cz-success/30"
           : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${transferWindow.open ? "bg-green-400" : "bg-red-400"}`} />
-        {transferWindow.open
-          ? "Transfervinduet er åbent — du kan sende og acceptere tilbud"
-          : "Transfervinduet er lukket — du kan ikke oprette eller acceptere handler. Forhandlinger kan fortsat afvises eller trækkes tilbage."}
+        {transferWindow.open ? t("window.open") : t("window.closed")}
       </div>
 
       {msg.text && (
@@ -1234,22 +1279,22 @@ export default function TransfersPage() {
 
       <div className="flex gap-2 mb-5 flex-wrap">
         {[
-          { key: "received", label: "Modtagne tilbud", badge: pendingReceived },
-          { key: "sent",     label: "Sendte tilbud",   badge: pendingSent },
-          { key: "archive",  label: `Historik (${archivedReceivedOffers.length + archivedSentOffers.length})` },
-          { key: "swaps",    label: "Byttehandler",  badge: pendingSwaps },
-          { key: "loans",    label: "Lejeaftaler",   badge: pendingLoans },
-          { key: "market",   label: `Marked (${listings.length})` },
-        ].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          { key: "received", label: t("tabs.received"), badge: pendingReceived },
+          { key: "sent",     label: t("tabs.sent"),     badge: pendingSent },
+          { key: "archive",  label: t("tabs.archive",  { count: archivedReceivedOffers.length + archivedSentOffers.length }) },
+          { key: "swaps",    label: t("tabs.swaps"),    badge: pendingSwaps },
+          { key: "loans",    label: t("tabs.loans"),    badge: pendingLoans },
+          { key: "market",   label: t("tabs.market",   { count: listings.length }) },
+        ].map(tt => (
+          <button key={tt.key} onClick={() => setTab(tt.key)}
             className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all border
-              ${tab === t.key
+              ${tab === tt.key
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {t.label}
-            {t.badge > 0 && (
+            {tt.label}
+            {tt.badge > 0 && (
               <span className="ml-2 bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                {t.badge}
+                {tt.badge}
               </span>
             )}
           </button>
@@ -1267,8 +1312,8 @@ export default function TransfersPage() {
               {receivedOffers.length === 0 ? (
                 <div className="text-center py-16 text-cz-3">
                   <p className="text-4xl mb-3">↔</p>
-                  <p>Ingen modtagne tilbud</p>
-                  <p className="text-xs mt-2">Andre managers kan sende tilbud på dine ryttere fra rytterens side</p>
+                  <p>{t("empty.received")}</p>
+                  <p className="text-xs mt-2">{t("empty.receivedHint")}</p>
                 </div>
               ) : (
                 receivedOffers.map(o => (
@@ -1283,8 +1328,8 @@ export default function TransfersPage() {
               {sentOffers.length === 0 ? (
                 <div className="text-center py-16 text-cz-3">
                   <p className="text-4xl mb-3">↔</p>
-                  <p>Du har ikke sendt nogen tilbud endnu</p>
-                  <p className="text-xs mt-2">Find en rytter og klik &quot;Send transfertilbud&quot; på deres side</p>
+                  <p>{t("empty.sent")}</p>
+                  <p className="text-xs mt-2">{t("empty.sentHint")}</p>
                 </div>
               ) : (
                 sentOffers.map(o => (
@@ -1299,13 +1344,13 @@ export default function TransfersPage() {
               {archivedReceivedOffers.length + archivedSentOffers.length === 0 ? (
                 <div className="text-center py-16 text-cz-3">
                   <p className="text-4xl mb-3">◎</p>
-                  <p>Ingen arkiverede tilbud</p>
+                  <p>{t("empty.archive")}</p>
                 </div>
               ) : (
                 <>
                   {archivedReceivedOffers.length > 0 && (
                     <div>
-                      <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">Arkiverede modtagne tilbud</p>
+                      <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("sections.archivedReceived")}</p>
                       <div className="flex flex-col gap-3">
                         {archivedReceivedOffers.map(o => (
                           <ReceivedOfferCard key={o.id} offer={o} onAction={handleOfferAction} showArchive={false} />
@@ -1315,7 +1360,7 @@ export default function TransfersPage() {
                   )}
                   {archivedSentOffers.length > 0 && (
                     <div>
-                      <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">Arkiverede sendte tilbud</p>
+                      <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("sections.archivedSent")}</p>
                       <div className="flex flex-col gap-3">
                         {archivedSentOffers.map(o => (
                           <SentOfferCard key={o.id} offer={o} onAction={handleOfferAction} showArchive={false} />
@@ -1340,13 +1385,13 @@ export default function TransfersPage() {
                 <button onClick={() => setShowNewSwap(true)} disabled={!transferWindow.open}
                   className="w-full py-2.5 bg-cz-accent/10 text-cz-accent-t/80 border border-[#e8c547]/15 rounded-xl text-sm font-medium
                     hover:bg-cz-accent/10 hover:text-cz-accent-t transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                  {transferWindow.open ? "+ Foreslå ny byttehandel" : "Transfervindue lukket"}
+                  {transferWindow.open ? t("newSwap.newButton") : t("window.closedShort")}
                 </button>
               )}
 
               {receivedSwaps.length > 0 && (
                 <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">Modtagne forslag</p>
+                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("sections.receivedProposals")}</p>
                   <div className="flex flex-col gap-3">
                     {receivedSwaps.map(s => (
                       <SwapCard key={s.id} swap={s} myTeamId={myTeamId} onAction={handleSwapAction} />
@@ -1357,7 +1402,7 @@ export default function TransfersPage() {
 
               {sentSwaps.length > 0 && (
                 <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">Sendte forslag</p>
+                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("sections.sentProposals")}</p>
                   <div className="flex flex-col gap-3">
                     {sentSwaps.map(s => (
                       <SwapCard key={s.id} swap={s} myTeamId={myTeamId} onAction={handleSwapAction} />
@@ -1369,8 +1414,8 @@ export default function TransfersPage() {
               {receivedSwaps.length === 0 && sentSwaps.length === 0 && !showNewSwap && (
                 <div className="text-center py-16 text-cz-3">
                   <p className="text-4xl mb-3">↔</p>
-                  <p>Ingen aktive byttehandler</p>
-                  <p className="text-xs mt-2">Foreslå en byttehandel ved at klikke knappen ovenfor</p>
+                  <p>{t("empty.swaps")}</p>
+                  <p className="text-xs mt-2">{t("empty.swapsHint")}</p>
                 </div>
               )}
             </div>
@@ -1388,13 +1433,13 @@ export default function TransfersPage() {
                 <button onClick={() => setShowNewLoan(true)} disabled={!transferWindow.open}
                   className="w-full py-2.5 bg-purple-500/8 text-purple-400/80 border border-purple-500/15 rounded-xl text-sm font-medium
                     hover:bg-purple-500/15 hover:text-purple-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                  {transferWindow.open ? "+ Foreslå ny lejeaftale" : "Transfervindue lukket"}
+                  {transferWindow.open ? t("newLoan.newButton") : t("window.closedShort")}
                 </button>
               )}
 
               {lendingLoans.length > 0 && (
                 <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">Dine udlejninger</p>
+                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("sections.yourLending")}</p>
                   <div className="flex flex-col gap-3">
                     {lendingLoans.map(l => (
                       <LoanCard key={l.id} loan={l} myTeamId={myTeamId} onAction={handleLoanAction} />
@@ -1405,7 +1450,7 @@ export default function TransfersPage() {
 
               {borrowingLoans.length > 0 && (
                 <div>
-                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">Dine lejeaftaler</p>
+                  <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("sections.yourBorrowing")}</p>
                   <div className="flex flex-col gap-3">
                     {borrowingLoans.map(l => (
                       <LoanCard key={l.id} loan={l} myTeamId={myTeamId} onAction={handleLoanAction} />
@@ -1417,8 +1462,8 @@ export default function TransfersPage() {
               {lendingLoans.length === 0 && borrowingLoans.length === 0 && !showNewLoan && (
                 <div className="text-center py-16 text-cz-3">
                   <p className="text-4xl mb-3">📋</p>
-                  <p>Ingen aktive lejeaftaler</p>
-                  <p className="text-xs mt-2">Foreslå en lejeaftale ved at klikke knappen ovenfor</p>
+                  <p>{t("empty.loans")}</p>
+                  <p className="text-xs mt-2">{t("empty.loansHint")}</p>
                 </div>
               )}
             </div>
@@ -1436,7 +1481,7 @@ export default function TransfersPage() {
               {filteredListings.length === 0 ? (
                 <div className="text-center py-16 text-cz-3">
                   <p className="text-4xl mb-3">↔</p>
-                  <p>{listings.length === 0 ? "Ingen ryttere til salg" : "Ingen ryttere matcher filteret"}</p>
+                  <p>{listings.length === 0 ? t("empty.marketNoListings") : t("empty.marketNoMatches")}</p>
                 </div>
               ) : (
                 <div className="grid sm:grid-cols-2 gap-3">

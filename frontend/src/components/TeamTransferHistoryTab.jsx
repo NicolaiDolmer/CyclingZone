@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "./RiderLink";
 import TeamLink from "./TeamLink";
+import { formatNumber, formatDate } from "../lib/intl";
 
-const TYPE_LABEL = { auction: "Auktion", transfer: "Transfer", swap: "Swap", loan: "Lån" };
+const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", loan: "type.loan" };
 
 function SortTh({ children, sortKey, current, dir, onSort, align = "left" }) {
   const active = current === sortKey;
@@ -16,9 +18,10 @@ function SortTh({ children, sortKey, current, dir, onSort, align = "left" }) {
 }
 
 function DirectionBadge({ direction }) {
-  if (direction === "in") return <span className="text-cz-success text-xs font-medium">Køb</span>;
-  if (direction === "out") return <span className="text-cz-danger text-xs font-medium">Salg</span>;
-  return <span className="text-cz-info text-xs font-medium">Bytte</span>;
+  const { t } = useTranslation("transfers");
+  if (direction === "in") return <span className="text-cz-success text-xs font-medium">{t("direction.in")}</span>;
+  if (direction === "out") return <span className="text-cz-danger text-xs font-medium">{t("direction.out")}</span>;
+  return <span className="text-cz-info text-xs font-medium">{t("direction.swap")}</span>;
 }
 
 function RiderCell({ event }) {
@@ -44,6 +47,7 @@ function RiderCell({ event }) {
 }
 
 export default function TeamTransferHistoryTab({ teamId }) {
+  const { t } = useTranslation("transfers");
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,7 +69,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
           }),
           supabase.from("seasons").select("number").eq("status", "active").maybeSingle(),
         ]);
-        if (!historyRes.ok) throw new Error("Kunne ikke hente transferhistorik");
+        if (!historyRes.ok) throw new Error(t("history.loadError"));
         const data = await historyRes.json();
         if (cancelled) return;
         setEvents(data);
@@ -78,7 +82,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
     }
     load();
     return () => { cancelled = true; };
-  }, [teamId]);
+  }, [teamId, t]);
 
   const availableSeasons = useMemo(() => {
     const set = new Set(events.map((e) => e.season_number).filter((n) => n != null));
@@ -124,25 +128,25 @@ export default function TeamTransferHistoryTab({ teamId }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <h2 className="text-cz-1 font-semibold text-sm">Transferhistorik</h2>
+        <h2 className="text-cz-1 font-semibold text-sm">{t("history.title")}</h2>
         <select value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)}
           className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-1.5 text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
-          <option value="all">Alle sæsoner</option>
+          <option value="all">{t("history.seasonFilterAll")}</option>
           {currentSeason != null && (
-            <option value="current">Sæson {currentSeason} (denne)</option>
+            <option value="current">{t("history.seasonFilterCurrent", { n: currentSeason })}</option>
           )}
           {availableSeasons.filter((n) => n !== currentSeason).map((n) => (
-            <option key={n} value={n}>Sæson {n}</option>
+            <option key={n} value={n}>{t("history.seasonOption", { n })}</option>
           ))}
         </select>
       </div>
 
       {noResults && (
-        <p className="text-cz-3 text-sm py-4">Holdet har ingen transferhistorik endnu.</p>
+        <p className="text-cz-3 text-sm py-4">{t("history.emptyAll")}</p>
       )}
 
       {noFilteredResults && (
-        <p className="text-cz-3 text-sm py-4">Ingen transfers fundet i den valgte sæson.</p>
+        <p className="text-cz-3 text-sm py-4">{t("history.emptyFiltered")}</p>
       )}
 
       {filtered.length > 0 && (
@@ -150,38 +154,38 @@ export default function TeamTransferHistoryTab({ teamId }) {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-cz-border">
-                <SortTh sortKey="date" current={sortKey} dir={sortDir} onSort={handleSort}>Dato</SortTh>
-                <th className="text-left py-2 text-cz-3">Type</th>
-                <th className="text-left py-2 text-cz-3">Retning</th>
-                <th className="text-left py-2 text-cz-3">Rytter</th>
-                <th className="text-left py-2 text-cz-3">Modpart</th>
-                <SortTh sortKey="amount" current={sortKey} dir={sortDir} onSort={handleSort} align="right">Beløb</SortTh>
+                <SortTh sortKey="date" current={sortKey} dir={sortDir} onSort={handleSort}>{t("history.header.date")}</SortTh>
+                <th className="text-left py-2 text-cz-3">{t("history.header.type")}</th>
+                <th className="text-left py-2 text-cz-3">{t("history.header.direction")}</th>
+                <th className="text-left py-2 text-cz-3">{t("history.header.rider")}</th>
+                <th className="text-left py-2 text-cz-3">{t("history.header.counterparty")}</th>
+                <SortTh sortKey="amount" current={sortKey} dir={sortDir} onSort={handleSort} align="right">{t("history.header.amount")}</SortTh>
               </tr>
             </thead>
             <tbody>
               {filtered.map((ev) => (
                 <tr key={ev.id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/40">
                   <td className="py-2 text-cz-2 whitespace-nowrap">
-                    {ev.date ? new Date(ev.date).toLocaleDateString("da-DK") : "—"}
+                    {ev.date ? formatDate(ev.date, "short") : "—"}
                   </td>
-                  <td className="py-2 text-cz-2">{TYPE_LABEL[ev.type] ?? ev.type}</td>
+                  <td className="py-2 text-cz-2">{TYPE_LABEL_KEY[ev.type] ? t(TYPE_LABEL_KEY[ev.type]) : ev.type}</td>
                   <td className="py-2"><DirectionBadge direction={ev.direction} /></td>
                   <td className="py-2"><RiderCell event={ev} /></td>
                   <td className="py-2">
                     {ev.counterparty?.id ? (
                       <TeamLink id={ev.counterparty.id} className="text-cz-1 hover:text-cz-accent-t">
                         {ev.counterparty.name}
-                        {ev.counterparty.is_ai && <span className="ml-1 text-cz-3 text-[10px]">(AI)</span>}
+                        {ev.counterparty.is_ai && <span className="ml-1 text-cz-3 text-[10px]">{t("history.aiTag")}</span>}
                       </TeamLink>
                     ) : <span className="text-cz-3">—</span>}
                   </td>
                   <td className="py-2 text-right font-mono whitespace-nowrap">
                     {ev.amount > 0
                       ? <span className={ev.direction === "in" ? "text-cz-success" : ev.direction === "out" ? "text-cz-danger" : "text-cz-2"}>
-                          {ev.direction === "out" ? "-" : ev.direction === "in" ? "+" : ""}{ev.amount.toLocaleString("da-DK")} CZ$
+                          {ev.direction === "out" ? "-" : ev.direction === "in" ? "+" : ""}{formatNumber(ev.amount)} CZ$
                         </span>
-                      : <span className="text-cz-3">{ev.type === "swap" ? "0 CZ$" : "—"}</span>}
-                    {ev.type === "loan" && <span className="text-cz-3 ml-1">(lån)</span>}
+                      : <span className="text-cz-3">{ev.type === "swap" ? t("history.swapZero") : "—"}</span>}
+                    {ev.type === "loan" && <span className="text-cz-3 ml-1">{t("history.loanTag")}</span>}
                   </td>
                 </tr>
               ))}

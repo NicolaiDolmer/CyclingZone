@@ -1,0 +1,259 @@
+{
+  "page": {
+    "title": "Transfers",
+    "subtitle": "Forhandle direkte med andre managers",
+    "balance": "Balance",
+    "loadingAria": "Indlæser transfers"
+  },
+  "window": {
+    "open": "Transfervinduet er åbent — du kan sende og acceptere tilbud",
+    "closed": "Transfervinduet er lukket — du kan ikke oprette eller acceptere handler. Forhandlinger kan fortsat afvises eller trækkes tilbage.",
+    "closedShort": "Transfervindue lukket",
+    "windowClosed": "Vindue lukket"
+  },
+  "tabs": {
+    "received": "Modtagne tilbud",
+    "sent": "Sendte tilbud",
+    "archive": "Historik ({count})",
+    "swaps": "Byttehandler",
+    "loans": "Lejeaftaler",
+    "market": "Marked ({count})"
+  },
+  "status": {
+    "pending": "Afventer svar",
+    "countered": "Modbud sendt",
+    "awaitingConfirmation": "Afventer bekræftelse",
+    "windowPending": "Aftalt — afventer vindue",
+    "accepted": "Accepteret",
+    "rejected": "Afvist",
+    "withdrawn": "Trukket tilbage"
+  },
+  "loanStatus": {
+    "pending": "Afventer svar",
+    "active": "Aktiv",
+    "buyout": "Købt",
+    "cancelled": "Annulleret",
+    "rejected": "Afvist"
+  },
+  "type": {
+    "auction": "Auktion",
+    "transfer": "Transfer",
+    "swap": "Swap",
+    "loan": "Lån"
+  },
+  "direction": {
+    "in": "Køb",
+    "out": "Salg",
+    "swap": "Bytte"
+  },
+  "relativeTime": {
+    "justNow": "Lige nu",
+    "minutes": "{m}m siden",
+    "hours": "{h}t siden",
+    "days": "{day}d siden",
+    "dash": "—"
+  },
+  "offerCard": {
+    "from": "Fra",
+    "to": "Til",
+    "round": "Runde {round}",
+    "squadCriticalReceived": "🚨 Under minimum",
+    "squadCriticalSent": "🚨 Sælger under min.",
+    "offerLabel": "Tilbud",
+    "counterLabel": "Dit modbud",
+    "yourBidLabel": "Dit bud",
+    "value": "Værdi",
+    "buttons": {
+      "accept": "✓ Accepter",
+      "counter": "↔ Modbud",
+      "reject": "✕ Afvis",
+      "send": "Send",
+      "acceptCounter": "✓ Accepter ({amount} CZ$)",
+      "newOffer": "Nyt bud",
+      "withdraw": "Træk tilbage",
+      "withdrawOffer": "Træk tilbud tilbage",
+      "confirmDeal": "✓ Bekræft handel ({amount} CZ$)",
+      "cancelDeal": "Annuller handel",
+      "archive": "Arkivér"
+    },
+    "form": {
+      "counterLabel": "Dit modbud (CZ$)",
+      "newOfferLabel": "Nyt tilbud (CZ$)",
+      "messageBuyer": "Valgfri besked til køber...",
+      "messagePlaceholder": "Valgfri besked..."
+    },
+    "awaiting": {
+      "sellerAccepted": "Du har accepteret — afventer købers bekræftelse",
+      "buyerConfirmed": "Du har bekræftet — afventer sælgers bekræftelse",
+      "windowPending": "Handel aftalt — gennemføres ved transfervinduets åbning"
+    }
+  },
+  "swapCard": {
+    "youOffer": "Du tilbyder",
+    "theyOffer": "De tilbyder",
+    "youWant": "Du ønsker",
+    "theyWant": "De ønsker",
+    "pureSwap": "Ren bytte",
+    "cashFrom": "+{amount} CZ$ fra {team}",
+    "counterTag": "(modbud)",
+    "buttons": {
+      "accept": "✓ Accepter",
+      "counter": "↔ Modbud",
+      "reject": "✕ Afvis",
+      "acceptCounter": "✓ Accepter modbud",
+      "send": "Send",
+      "withdraw": "Træk forslag tilbage",
+      "rejectShort": "Afvis",
+      "confirmSwap": "✓ Bekræft byttehandel",
+      "cancelSwap": "Annuller handel"
+    },
+    "form": {
+      "cashReceiveLabel": "Kontantbetaling (CZ$) · positiv = du modtager, negativ = du betaler",
+      "cashPayLabel": "Kontantbetaling (CZ$) · positiv = du betaler, negativ = du modtager"
+    },
+    "awaiting": {
+      "selfConfirmed": "Du har bekræftet — afventer den anden part",
+      "windowPending": "Byttehandel aftalt — gennemføres ved transfervinduets åbning"
+    }
+  },
+  "loanCard": {
+    "to": "Til",
+    "from": "Fra",
+    "seasonsSingle": "Sæson {start}",
+    "seasonsRange": "Sæson {start}–{end}",
+    "feeLabel": "Lejegebyr/sæson",
+    "valueLabel": "Værdi",
+    "buyOptionLabel": "Købsoption",
+    "noBuyOption": "—",
+    "buttons": {
+      "accept": "✓ Accepter",
+      "reject": "✕ Afvis",
+      "withdraw": "Træk forslag tilbage",
+      "exerciseBuyout": "Udnyt købsoption ({amount} CZ$)"
+    },
+    "bindingNote": "Aktive lejeaftaler er bindende og kan kun annulleres af en admin."
+  },
+  "transferCard": {
+    "listedSince": "Til salg siden {date}",
+    "valueLabel": "Værdi: {value}",
+    "sendOffer": "Send tilbud",
+    "hide": "Skjul",
+    "send": "Send",
+    "messagePlaceholder": "Besked (valgfri)...",
+    "removeListing": "🗑️ Fjern fra transferlisten",
+    "removing": "Fjerner...",
+    "removeAria": "Fjern {riderName} fra transferlisten",
+    "removeConfirm": "Fjern {riderName} fra transferlisten?",
+    "ridersForSale": "rytter"
+  },
+  "newSwap": {
+    "title": "Foreslå byttehandel",
+    "offeredLabel": "Din rytter du tilbyder",
+    "selectRider": "— Vælg rytter —",
+    "requestedLabel": "Rytter du ønsker (søg på efternavn)",
+    "lastnamePlaceholder": "Efternavn...",
+    "selectedRider": "Valgt: {firstname} {lastname} ({team})",
+    "cashLabel": "Kontantbetaling fra dig (CZ$) · 0 = ren bytte · negativt = du modtager",
+    "messageLabel": "Besked (valgfri)",
+    "messagePlaceholder": "Fx. begrundelse eller kommentar...",
+    "sending": "Sender...",
+    "submit": "Send forslag",
+    "cancel": "Annuller",
+    "newButton": "+ Foreslå ny byttehandel"
+  },
+  "newLoan": {
+    "title": "Foreslå lejeaftale",
+    "riderLabel": "Rytter du ønsker at leje (søg på efternavn)",
+    "lastnamePlaceholder": "Efternavn...",
+    "selectedRider": "Valgt: {firstname} {lastname} ({team})",
+    "seasonLabel": "Sæson (max 1 sæson)",
+    "seasonPlaceholder": "fx. 3",
+    "feeLabel": "Lejegebyr per sæson (CZ$)",
+    "buyOptionLabel": "Købsoption (CZ$) — valgfri",
+    "buyOptionPlaceholder": "Efterlad tom for ingen option",
+    "sending": "Sender...",
+    "submit": "Send forslag",
+    "cancel": "Annuller",
+    "newButton": "+ Foreslå ny lejeaftale"
+  },
+  "history": {
+    "title": "Transferhistorik",
+    "seasonFilterAll": "Alle sæsoner",
+    "seasonFilterCurrent": "Sæson {n} (denne)",
+    "seasonOption": "Sæson {n}",
+    "emptyAll": "Holdet har ingen transferhistorik endnu.",
+    "emptyFiltered": "Ingen transfers fundet i den valgte sæson.",
+    "header": {
+      "date": "Dato",
+      "type": "Type",
+      "direction": "Retning",
+      "rider": "Rytter",
+      "counterparty": "Modpart",
+      "amount": "Beløb"
+    },
+    "aiTag": "(AI)",
+    "loanTag": "(lån)",
+    "swapZero": "0 CZ$",
+    "loadError": "Kunne ikke hente transferhistorik"
+  },
+  "sections": {
+    "archivedReceived": "Arkiverede modtagne tilbud",
+    "archivedSent": "Arkiverede sendte tilbud",
+    "receivedProposals": "Modtagne forslag",
+    "sentProposals": "Sendte forslag",
+    "yourLending": "Dine udlejninger",
+    "yourBorrowing": "Dine lejeaftaler"
+  },
+  "empty": {
+    "received": "Ingen modtagne tilbud",
+    "receivedHint": "Andre managers kan sende tilbud på dine ryttere fra rytterens side",
+    "sent": "Du har ikke sendt nogen tilbud endnu",
+    "sentHint": "Find en rytter og klik \"Send transfertilbud\" på deres side",
+    "archive": "Ingen arkiverede tilbud",
+    "swaps": "Ingen aktive byttehandler",
+    "swapsHint": "Foreslå en byttehandel ved at klikke knappen ovenfor",
+    "loans": "Ingen aktive lejeaftaler",
+    "loansHint": "Foreslå en lejeaftale ved at klikke knappen ovenfor",
+    "marketNoListings": "Ingen ryttere til salg",
+    "marketNoMatches": "Ingen ryttere matcher filteret"
+  },
+  "toast": {
+    "offerSent": "✅ Tilbud sendt!",
+    "listingRemoved": "✅ Rytter fjernet fra transferlisten",
+    "listingRemoveFailed": "Kunne ikke fjerne listingen",
+    "offerAcceptedBuyer": "✅ Accepteret — køber skal nu bekræfte handlen",
+    "offerAcceptedSeller": "✅ Accepteret — sælger skal nu bekræfte handlen",
+    "confirmedAwaiting": "✅ Bekræftet — afventer den anden parts bekræftelse",
+    "dealCancelled": "Handel annulleret",
+    "transferRejected": "Transfer afvist",
+    "counterSent": "↔ Modbud sendt",
+    "newOfferSent": "↔ Nyt bud sendt",
+    "offerWithdrawn": "Tilbud trukket tilbage",
+    "offerArchived": "Tilbud arkiveret",
+    "updated": "✅ Opdateret",
+    "swapAccepted": "✅ Accepteret — afventer bekræftelse",
+    "swapConfirmedAwaiting": "✅ Bekræftet — afventer den anden part",
+    "swapCancelled": "Byttehandel annulleret",
+    "swapRejected": "Byttehandel afvist",
+    "proposalWithdrawn": "Forslag trukket tilbage",
+    "swapProposalSent": "✅ Bytteforslag sendt!",
+    "loanActivated": "✅ Lejeaftale aktiveret",
+    "loanRejected": "Lejeforslag afvist",
+    "loanCancelled": "Lejeaftale annulleret",
+    "loanProposalSent": "✅ Lejeforslag sendt!"
+  },
+  "celebration": {
+    "transferDone": {
+      "title": "Transfer gennemført! 🎉",
+      "subtitle": "Rytteren er nu på dit hold"
+    },
+    "swapDone": {
+      "title": "Byttehandel gennemført! 🎉",
+      "subtitle": "Ryttere er nu skiftet"
+    },
+    "buyoutDone": {
+      "title": "Rytter købt! 🎉",
+      "subtitle": "Købsoptionen er udnyttet"
+    }
+  }
+}
