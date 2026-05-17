@@ -56,7 +56,8 @@
 - [ ] **Tor 21:** Draft GDPR privatlivspolitik
 - [ ] **Fre 22:** Inviter 5 testere til interview
 - [ ] **Fre 22:** Community update i Discord ("hvad vi har lært")
-- [ ] **Søn 24:** Pitch deck v0 (én side)
+- [ ] **Søn 24 maj 10-12:** Pitch deck v0 (én side) — til fremtidige DFI/InnoBooster/angel-samtaler
+- [ ] **Søn 24 maj 14-18:** Recruitment research + 3 Reddit-post drafts ([#472](https://github.com/NicolaiDolmer/CyclingZone/issues/472)) — klar til paste man-tir 25-26 maj
 
 **Founder Track:**
 - [ ] **Man 18:** 30 min ApS vs enkeltmandsvirksomhed (virk.dk)
@@ -67,13 +68,16 @@
 
 **Uge 1 exit-tærskler:** Discord 30+, survey 0 (live i uge 2), feedback contributors 5+.
 
-### Uge 2 (25-31 maj) — Survey live + pricing
+### Uge 2 (25-31 maj) — Survey live + pricing + Reddit-aktion
 - [ ] Survey publiceret offentligt
 - [ ] Price sensitivity poll
 - [ ] 2-3 interviews
 - [ ] Founder Supporter waitlist-spørgsmål i survey
 - [ ] Pro Analyst feature poll
 - [ ] Mid-survey review (dag 14)
+- [ ] **Man 25 / Tir 26 maj:** Post 3 Reddit-drafts live ([#472](https://github.com/NicolaiDolmer/CyclingZone/issues/472) — fremrykket fra uge 3 per founder-brainstorm 2026-05-17)
+- [ ] **Uge 2:** DM 3-5 PCM YouTubere/streamere (fra [#472](https://github.com/NicolaiDolmer/CyclingZone/issues/472) liste)
+- [ ] **Uge 2:** Cycling Zones mockup `/preview/skills` deployed til prod ([#473](https://github.com/NicolaiDolmer/CyclingZone/issues/473)) — bruges som "kommer snart"-asset i recruitment-posts
 - [ ] **Founder Track:** Revisor-møde afholdt
 - [ ] **Founder Track:** Skriv InnoBooster-ansøgning (hvis kvalificeret)
 
@@ -114,6 +118,8 @@
 | [#365](https://github.com/NicolaiDolmer/CyclingZone/issues/365) | ✅ | Sprint-metrics dashboard i app | Claude |
 | [#366](https://github.com/NicolaiDolmer/CyclingZone/issues/366) | ⏳ | PatchNotes-entry om fair freemium-eksperiment | — |
 | [#367](https://github.com/NicolaiDolmer/CyclingZone/issues/367) | ⏳ | Mobile UX-verification af key pages før Discord-launch (T-1 søn 17 maj) | — |
+| [#472](https://github.com/NicolaiDolmer/CyclingZone/issues/472) | ⏳ | Discord/Reddit recruitment research + post drafts (uge 2 fremrykket) | Bruger |
+| [#473](https://github.com/NicolaiDolmer/CyclingZone/issues/473) | ⏳ | Cycling Zones skill system mockup `/preview/skills` ("kommer snart"-asset) | Codex |
 
 (Filtrér i GitHub: [`label:sprint-validation`](https://github.com/NicolaiDolmer/CyclingZone/issues?q=is%3Aissue+is%3Aopen+label%3Asprint-validation))
 
