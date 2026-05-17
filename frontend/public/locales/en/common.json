@@ -49,5 +49,15 @@
     "danish": "Dansk",
     "english": "English",
     "switchTooltip": "Change language"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close",
+    "hide": "Hide",
+    "loading": "Loading…",
+    "loadingShort": "…",
+    "success": "✓",
+    "error": "Error"
   }
 }

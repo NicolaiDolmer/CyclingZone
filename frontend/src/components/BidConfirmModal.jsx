@@ -1,15 +1,20 @@
 // Generisk bekræftelses-dialog for bud — bruges på auktioner (normalt bud + autobud-loft) og transfers.
-// Mode styrer ordvalg + ikonet.
+// Mode styrer ordvalg + ikonet. i18n: Fase 3b — Refs #412.
+import { useTranslation } from "react-i18next";
+import { formatNumber } from "../lib/intl";
+
 export function BidConfirmModal({ show, mode = "bid", riderName, amount, onCancel, onConfirm, busy = false }) {
+  const { t } = useTranslation(["auctions", "common"]);
   if (!show) return null;
 
-  const labels = {
-    bid:      { icon: "🏷️", title: "Bekræft bud",        verb: "byde", action: "Byd" },
-    proxy:    { icon: "🤖", title: "Bekræft autobud",    verb: "sætte autobud-loft til", action: "Gem autobud" },
-    transfer: { icon: "💼", title: "Bekræft transferbud", verb: "sende et transferbud på", action: "Send bud" },
+  const modeKey = ["bid", "proxy", "transfer"].includes(mode) ? mode : "bid";
+  const l = {
+    icon:   t(`auctions:modal.${modeKey}Icon`),
+    title:  t(`auctions:modal.${modeKey}Title`),
+    verb:   t(`auctions:modal.${modeKey}Verb`),
+    action: t(`auctions:modal.${modeKey}Action`),
   };
-  const l = labels[mode] || labels.bid;
-  const amountText = (amount ?? 0).toLocaleString("da-DK");
+  const amountText = formatNumber(amount ?? 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onCancel}>
@@ -25,9 +30,11 @@ export function BidConfirmModal({ show, mode = "bid", riderName, amount, onCance
         <div className="text-4xl mb-3" aria-hidden="true">{l.icon}</div>
         <h2 id="bid-confirm-title" className="text-cz-1 font-bold text-lg mb-2">{l.title}</h2>
         <p className="text-cz-2 text-sm mb-5">
-          Er du sikker på at du vil {l.verb}{" "}
+          {t("auctions:modal.questionPrefix")} {l.verb}{" "}
           <span className="font-mono font-bold text-cz-1">{amountText} CZ$</span>
-          {riderName ? <> på <span className="font-bold text-cz-1">{riderName}</span></> : null}?
+          {riderName ? (
+            <> {t("auctions:modal.onLabel")} <span className="font-bold text-cz-1">{riderName}</span></>
+          ) : null}?
         </p>
         <div className="flex gap-2">
           <button
@@ -36,7 +43,7 @@ export function BidConfirmModal({ show, mode = "bid", riderName, amount, onCance
             className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold
               bg-cz-subtle text-cz-2 border border-cz-border hover:text-cz-1 transition-colors disabled:opacity-50"
           >
-            Annullér
+            {t("common:actions.cancel")}
           </button>
           <button
             onClick={onConfirm}
@@ -44,7 +51,7 @@ export function BidConfirmModal({ show, mode = "bid", riderName, amount, onCance
             className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold
               bg-cz-accent text-cz-on-accent hover:brightness-110 transition-all disabled:opacity-60"
           >
-            {busy ? "..." : l.action}
+            {busy ? t("common:actions.loadingShort") : l.action}
           </button>
         </div>
         <style>{`

@@ -5,8 +5,9 @@
 //   • HTTP backend lazy-loader namespaces fra /locales/{lng}/{ns}.json
 //     (filer i frontend/public/locales/ — served af Vite på begge
 //      dev og prod via samme URL)
-//   • common.json + auth.json + errors.json bundles inline (FOUC-fri
-//     first paint på NavBar + Login/Signup/Onboarding/Errors — Refs #411)
+//   • common.json + auth.json + errors.json + auctions.json bundles inline
+//     (FOUC-fri first paint på NavBar + Login/Signup/Onboarding/Errors +
+//     AuctionsPage — Refs #411, #412)
 //   • supportedLngs: ['en','da','en-XA'] — pseudo-locale aktiveres
 //     ved at sætte ?pseudo=1 i URL (kun dev/preview, ikke production-safe)
 //
@@ -29,6 +30,8 @@ import authDa from "../../public/locales/da/auth.json";
 import authEn from "../../public/locales/en/auth.json";
 import errorsDa from "../../public/locales/da/errors.json";
 import errorsEn from "../../public/locales/en/errors.json";
+import auctionsDa from "../../public/locales/da/auctions.json";
+import auctionsEn from "../../public/locales/en/auctions.json";
 
 const PSEUDO_ENABLED = (() => {
   if (typeof window === "undefined") return false;
@@ -54,8 +57,8 @@ i18n
     ns: ["common", "auth", "dashboard", "auctions", "admin", "errors", "patchnotes", "banners"],
     defaultNS: "common",
     resources: {
-      da: { common: commonDa, auth: authDa, errors: errorsDa },
-      en: { common: commonEn, auth: authEn, errors: errorsEn },
+      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa },
+      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn },
     },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],

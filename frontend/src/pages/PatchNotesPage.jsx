@@ -2,6 +2,28 @@
 
 const PATCHES = [
   {
+    version: "3.52",
+    date: "2026-05-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · i18n Fase 3b — Auctions på EN/DA (#412)",
+        items: [
+          "Feature · Hele auktions-flowet kører nu på begge sprog: sidetitlen \"Auktioner / Auctions\", 3 filter-tabs (Min situation / My situation, Alle / All, Andre managers / Other managers), Ønskeliste-toggle og Aktive / Historik-navigation.",
+          "Feature · Alle stat-cards (Balance, Reserveret i bud / Reserved in bids, Ryttere nu / Riders now, Projektion / Projection) bruger nu locale-aware tal-formatering — \"1.500 CZ$\" på dansk, \"1,500 CZ$\" på engelsk.",
+          "Feature · Auktions-tabel + mobil-kort: alle kolonne-headers (Rytter/Højeste bud/Tid tilbage/Alder/Løn/Potentiale/Sælger/Byd), badges (Vinder, Sælger, Din, Ext, Flash), countdown-timer (\"2t 15m\" / \"2h 15m\") og bid-knapperne (Byd/Hæv/Fejl) følger nu sproget.",
+          "Feature · Autobud-loft (proxy): hele UX-flowet — opsætning, redigering, fjernelse, fejlbeskeder — oversat på begge sprog inkl. \"Autobud: max 15.000 CZ$\" / \"Auto-bid: max 15,000 CZ$\".",
+          "Feature · BidConfirmModal: bekræftelses-dialogen for bud, autobud og transferbud viser nu titel, action-verb og knap-tekst på det valgte sprog.",
+          "Feature · Live-elementer er oversat: aktivitets-tickeren (\"3 nye bud i sidste 30s\" med ICU plural), sidebar-feed (\"Du bød / You bid\", \"Modbud / Counter bid\", relative tidsstempler), overbid-toasts og first-bid hint-banneret.",
+          "Feature · Empty-states og My situation-sektioner (🟢 Du leder / You're leading, 🔴 Du er overbudt / You've been outbid, 🔵 Du sælger / You're selling) er fuldt oversat med kontekstuelle hjælpe-tekster.",
+          "Infra · ~16 hardcoded `toLocaleString(\"da-DK\")`-kald i AuctionsPage og 3 components erstattet med `formatNumber(...)` fra `lib/intl.js` — tal følger nu user's sprog-præference.",
+          "Infra · `AUCTIONS_TOUR_STEPS` konverteret fra modul-konstant til `getAuctionsTourSteps(t)`-funktion så onboarding-tour rendres med korrekt sprog.",
+          "Næste · Fase 3c: Transfers + transfer-historik (#412 fortsætter).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.51",
     date: "2026-05-17",
     label: "Beta",

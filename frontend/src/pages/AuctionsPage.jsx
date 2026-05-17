@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { Link, NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -8,7 +9,6 @@ import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { RacePriceModal } from "../components/RacePriceModal";
 import { Flag } from "../components/Flag";
-import { formatCz } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
 import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
 import OnboardingTour from "../components/OnboardingTour";
@@ -34,6 +34,7 @@ import {
   getAuctionSellerLabel,
 } from "../lib/auctionLogic";
 import { useAuctionBidding } from "../lib/useAuctionBidding";
+import { formatNumber } from "../lib/intl";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -46,18 +47,21 @@ const STAT_LABEL_BY_KEY = {
 };
 
 // Onboarding v2 Slice 1b — tour-trin på /auctions (aktiveres fra Dashboard "Vis mig hvordan").
-const AUCTIONS_TOUR_STEPS = [
-  {
-    target: "[data-tour='auctions-bid-input']",
-    title: "Afgiv et bud",
-    body: "Indtast dit bud og tryk 'Byd'. Min-bud er forudfyldt — du skal byde mindst 1 CZ$ over det aktuelle bud.",
-  },
-  {
-    target: "[data-tour='auctions-countdown']",
-    title: "Tid tilbage og auto-forlængelse",
-    body: "Hvis du byder i de sidste 10 minutter, forlænges auktionen automatisk. Du kan altid svare igen, hvis nogen overbyder dig på falderebet.",
-  },
-];
+// i18n Fase 3b: konstrueres via t() ved render-tid så sproget følger user's locale.
+function getAuctionsTourSteps(t) {
+  return [
+    {
+      target: "[data-tour='auctions-bid-input']",
+      title: t("auctions:tour.placeBid.title"),
+      body: t("auctions:tour.placeBid.body"),
+    },
+    {
+      target: "[data-tour='auctions-countdown']",
+      title: t("auctions:tour.countdown.title"),
+      body: t("auctions:tour.countdown.body"),
+    },
+  ];
+}
 
 function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   const active = sort === sortKey;
@@ -71,34 +75,39 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
 
 // ── Countdown timer ───────────────────────────────────────────────────────────
 function Countdown({ end, status }) {
+  const { t, i18n } = useTranslation("auctions");
   const [text, setText] = useState("");
   const [urgent, setUrgent] = useState(false);
 
   // Absolute end time in user's local timezone with explicit TZ label (e.g. "21:00 CEST")
   const endLabel = useMemo(() => {
     if (!end || status === "completed") return null;
-    return new Date(end).toLocaleTimeString("da-DK", {
+    return new Date(end).toLocaleTimeString(i18n.language || "en", {
       hour: "2-digit",
       minute: "2-digit",
       timeZoneName: "short",
     });
-  }, [end, status]);
+  }, [end, status, i18n.language]);
 
   useEffect(() => {
-    if (status === "completed") { setText("Afsluttet"); return; }
+    if (status === "completed") { setText(t("timer.completed")); return; }
     function update() {
       const diff = new Date(end) - new Date();
-      if (diff <= 0) { setText("Udløbet"); return; }
+      if (diff <= 0) { setText(t("timer.expired")); return; }
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
       const s = Math.floor((diff % 60000) / 1000);
       setUrgent(diff < 600000);
-      setText(h > 0 ? `${h}t ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`);
+      setText(
+        h > 0 ? t("timer.hoursMinutes", { h, m })
+        : m > 0 ? t("timer.minutesSeconds", { m, s })
+        : t("timer.seconds", { s })
+      );
     }
     update();
-    const t = setInterval(update, 1000);
-    return () => clearInterval(t);
-  }, [end, status]);
+    const tick = setInterval(update, 1000);
+    return () => clearInterval(tick);
+  }, [end, status, t]);
 
   return (
     <span className="inline-flex flex-col items-center gap-0.5">
@@ -114,6 +123,7 @@ function Countdown({ end, status }) {
 
 // ── Auction table row ─────────────────────────────────────────────────────────
 function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats }) {
+  const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller  = isManagerSeller(auction, myTeamId);
@@ -121,7 +131,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
   const canBid    = !isMyRider && auction.status !== "completed";
   const onWatchlist = r?.id ? watchlist?.has(r.id) : false;
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
-  const riderName = r ? `${r.firstname} ${r.lastname}` : "rytter";
+  const riderName = r ? `${r.firstname} ${r.lastname}` : t("auctions:fallback.rider");
 
   const {
     minBid, myProxy,
@@ -158,31 +168,31 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
             <div className="flex items-center gap-1 flex-wrap">
               {imWinning && (
                 <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t px-1.5 py-0.5 rounded">
-                  Vinder
+                  {t("auctions:badge.winning")}
                 </span>
               )}
               {isSeller && (
                 <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">
-                  Sælger
+                  {t("auctions:badge.seller")}
                 </span>
               )}
               {isMyRider && !isSeller && (
                 <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">
-                  Din
+                  {t("auctions:badge.mine")}
                 </span>
               )}
               {auction.status === "extended" && (
                 <span className="text-[9px] uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded">
-                  ⚡ Ext
+                  {t("auctions:badge.extended")}
                 </span>
               )}
               {auction.is_flash && (
                 <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">
-                  ⚡ Flash
+                  {t("auctions:badge.flash")}
                 </span>
               )}
               {r?.is_u25 && (
-                <span className="text-[9px] uppercase bg-cz-subtle text-cz-3 px-1.5 py-0.5 rounded">U25</span>
+                <span className="text-[9px] uppercase bg-cz-subtle text-cz-3 px-1.5 py-0.5 rounded">{t("auctions:badge.u25")}</span>
               )}
             </div>
           </div>
@@ -193,7 +203,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
       <td className="px-3 py-1.5 text-right whitespace-nowrap">
         <span className={`inline-block px-1.5 ${isFlashing ? "cz-pulse-flash" : ""}`}>
           <span className="text-cz-1 font-mono font-bold text-sm">
-            {auction.current_price?.toLocaleString("da-DK")}
+            {formatNumber(auction.current_price ?? 0)}
           </span>
           <span className="text-cz-3 text-xs ml-1">CZ$</span>
         </span>
@@ -216,7 +226,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
 
       {/* Løn */}
       <td className="px-2 py-1.5 text-right text-cz-2 font-mono text-xs whitespace-nowrap">
-        {r?.salary ? r.salary.toLocaleString("da-DK") : "—"}
+        {r?.salary ? formatNumber(r.salary) : "—"}
       </td>
 
       {/* Potentiale */}
@@ -249,14 +259,14 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
                 min={minBid}
                 onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
                 data-tour={isFirst ? "auctions-bid-input" : undefined}
-                aria-label="Dit bud i CZ$"
+                aria-label={t("auctions:bid.inputAria")}
                 className="w-24 bg-cz-subtle border border-cz-border rounded px-2 py-1.5
                   text-cz-1 font-mono text-xs focus:outline-none focus:border-cz-accent"
               />
               <button
                 onClick={handleBid}
                 disabled={bidStatus === "loading" || bidAmount < minBid}
-                aria-label={imWinning ? "Hæv dit bud" : "Afgiv bud"}
+                aria-label={imWinning ? t("auctions:bid.buttonRaiseAria") : t("auctions:bid.buttonPlaceAria")}
                 className={`px-3 py-1.5 rounded text-xs font-bold transition-all whitespace-nowrap
                   ${bidStatus === "error"   ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                     bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
@@ -264,32 +274,32 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
                       ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25"
                       : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
                   disabled:opacity-50`}>
-                {bidStatus === "loading" ? "..." :
-                 bidStatus === "error"   ? "Fejl" :
-                 bidStatus === "success" ? "✓" :
-                 imWinning ? "Hæv" : "Byd"}
+                {bidStatus === "loading" ? t("common:actions.loadingShort") :
+                 bidStatus === "error"   ? t("auctions:bid.buttonError") :
+                 bidStatus === "success" ? t("common:actions.success") :
+                 imWinning ? t("auctions:bid.buttonRaise") : t("auctions:bid.buttonPlace")}
               </button>
               {bidStatus === "error" && errorText && (
                 <p className="text-[10px] text-cz-danger max-w-[90px] leading-tight">{errorText}</p>
               )}
             </div>
-            <p className="text-[9px] text-cz-3 leading-none">Min. {minBid.toLocaleString("da-DK")} CZ$</p>
+            <p className="text-[9px] text-cz-3 leading-none">{t("auctions:bid.minBid", { amount: formatNumber(minBid) })}</p>
             {/* Proxy bid section */}
             {myProxy && !proxyExpanded ? (
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded whitespace-nowrap">
-                  Autobud: max {myProxy.toLocaleString("da-DK")} CZ$
+                  {t("auctions:bid.proxy.display", { amount: formatNumber(myProxy) })}
                 </span>
-                <button onClick={() => setProxyExpanded(true)} aria-label="Ændr autobud-loft" className="text-[9px] text-cz-3 hover:text-cz-2">Ændr</button>
-                <button onClick={handleRemoveProxy} aria-label="Fjern autobud" className="text-[9px] text-cz-3 hover:text-cz-danger">✕</button>
+                <button onClick={() => setProxyExpanded(true)} aria-label={t("auctions:bid.proxy.edit")} className="text-[9px] text-cz-3 hover:text-cz-2">{t("auctions:bid.proxy.editButton")}</button>
+                <button onClick={handleRemoveProxy} aria-label={t("auctions:bid.proxy.remove")} className="text-[9px] text-cz-3 hover:text-cz-danger">✕</button>
               </div>
             ) : !proxyExpanded ? (
               <button
                 onClick={() => setProxyExpanded(true)}
-                aria-label="Sæt autobud-loft"
+                aria-label={t("auctions:bid.proxy.set")}
                 className="mt-1 inline-flex min-h-[28px] items-center justify-center rounded border border-cz-accent/50 bg-cz-accent/10 px-2 py-1 text-[10px] font-bold text-cz-accent-t hover:bg-cz-accent/20"
               >
-                + Autobud loft
+                {t("auctions:bid.proxy.buttonAdd")}
               </button>
             ) : (
               <div className="flex flex-col gap-0.5 mt-0.5">
@@ -299,22 +309,22 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
                     value={proxyInput}
                     min={minBid}
                     onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
-                    placeholder="Max-loft"
-                    aria-label="Autobud-loft i CZ$"
+                    placeholder={t("auctions:bid.proxy.placeholder")}
+                    aria-label={t("auctions:bid.proxy.inputAria")}
                     className="w-20 bg-cz-subtle border border-cz-border rounded px-1.5 py-1 text-cz-1 font-mono text-[10px] focus:outline-none focus:border-cz-accent"
                   />
                   <button
                     onClick={handleSaveProxy}
                     disabled={proxyStatus === "loading" || proxyInput < minBid}
-                    aria-label="Gem autobud-loft"
+                    aria-label={t("auctions:bid.proxy.save")}
                     className={`px-2 py-1 rounded text-[10px] font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                         "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
                       disabled:opacity-50`}>
-                    {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
+                    {proxyStatus === "loading" ? t("common:actions.loadingShort") : proxyStatus === "error" ? t("auctions:bid.buttonError") : proxyStatus === "saved" ? t("common:actions.success") : t("auctions:bid.proxy.saveButton")}
                   </button>
-                  <button onClick={() => setProxyExpanded(false)} aria-label="Annullér autobud-redigering" className="text-[9px] text-cz-3 hover:text-cz-2">✕</button>
+                  <button onClick={() => setProxyExpanded(false)} aria-label={t("auctions:bid.proxy.cancel")} className="text-[9px] text-cz-3 hover:text-cz-2">✕</button>
                 </div>
                 {proxyStatus === "error" && proxyErrorText && (
                   <p className="text-[10px] text-cz-danger max-w-[160px] leading-tight">{proxyErrorText}</p>
@@ -323,7 +333,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
             )}
           </div>
         ) : isSeller ? (
-          <span className="text-cz-3 text-xs">Du sælger</span>
+          <span className="text-cz-3 text-xs">{t("auctions:bid.sellerLabel")}</span>
         ) : (
           <span className="text-cz-3 text-xs">—</span>
         )}
@@ -336,6 +346,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
 }
 
 function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats }) {
+  const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller = isManagerSeller(auction, myTeamId);
@@ -344,7 +355,7 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggl
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
   const onWatchlist = r?.id ? watchlist?.has(r.id) : false;
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
-  const riderName = r ? `${r.firstname} ${r.lastname}` : "rytter";
+  const riderName = r ? `${r.firstname} ${r.lastname}` : t("auctions:fallback.rider");
 
   const {
     minBid, myProxy,
@@ -374,46 +385,46 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggl
               {r?.firstname} {r?.lastname}
             </RiderLink>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              {imWinning && <span className="text-[9px] uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded">Vinder</span>}
-              {isSeller && <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">Sælger</span>}
-              {auction.status === "extended" && <span className="text-[9px] uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded">Ext</span>}
-              {auction.is_flash && <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">⚡ Flash</span>}
-              {r?.is_u25 && <span className="text-[9px] uppercase bg-cz-subtle text-cz-2 px-1.5 py-0.5 rounded">U25</span>}
-              {age && <span className="text-cz-3 text-xs">{age} år</span>}
+              {imWinning && <span className="text-[9px] uppercase bg-cz-accent/20 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.winning")}</span>}
+              {isSeller && <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">{t("auctions:badge.seller")}</span>}
+              {auction.status === "extended" && <span className="text-[9px] uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded">{t("auctions:badge.extended")}</span>}
+              {auction.is_flash && <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">{t("auctions:badge.flash")}</span>}
+              {r?.is_u25 && <span className="text-[9px] uppercase bg-cz-subtle text-cz-2 px-1.5 py-0.5 rounded">{t("auctions:badge.u25")}</span>}
+              {age && <span className="text-cz-3 text-xs">{t("auctions:card.ageYears", { age })}</span>}
             </div>
           </div>
         </div>
         <div className="text-right flex-shrink-0" data-tour={isFirst ? "auctions-countdown" : undefined}>
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Tid</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctions:card.time")}</p>
           <Countdown end={auction.calculated_end} status={auction.status} />
         </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div className={`bg-cz-subtle rounded-lg px-3 py-2 ${isFlashing ? "cz-pulse-flash" : ""}`}>
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Højeste bud</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctions:card.highestBid")}</p>
           <p className="text-cz-1 font-mono font-bold text-sm">
-            {auction.current_price?.toLocaleString("da-DK")} CZ$
+            {formatNumber(auction.current_price ?? 0)} CZ$
           </p>
           {getAuctionLeaderName(auction) && !imWinning && (
             <p className="text-cz-3 text-[10px] truncate">{getAuctionLeaderName(auction)}</p>
           )}
         </div>
         <div className="bg-cz-subtle rounded-lg px-3 py-2">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Løn</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctions:card.salary")}</p>
           <p className="text-cz-2 font-mono text-sm font-medium">
-            {r?.salary ? `${r.salary.toLocaleString("da-DK")} CZ$` : "—"}
+            {r?.salary ? `${formatNumber(r.salary)} CZ$` : "—"}
           </p>
         </div>
         <div className="bg-cz-subtle rounded-lg px-3 py-2">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Sælger</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctions:card.seller")}</p>
           <p className="text-cz-2 text-sm font-medium truncate">{getAuctionSellerLabel(auction)}</p>
         </div>
       </div>
 
       {r?.potentiale != null && (
         <div className="mt-2 flex items-center gap-1.5">
-          <span className="text-cz-3 text-[9px] uppercase tracking-wider">Potentiale</span>
+          <span className="text-cz-3 text-[9px] uppercase tracking-wider">{t("auctions:card.potential")}</span>
           <PotentialeStars value={r.potentiale} birthdate={r.birthdate} showValue />
         </div>
       )}
@@ -439,21 +450,21 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggl
               min={minBid}
               onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
               data-tour={isFirst ? "auctions-bid-input" : undefined}
-              aria-label="Dit bud i CZ$"
+              aria-label={t("auctions:bid.inputAria")}
               className="min-w-0 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
             />
-            <p className="col-span-2 text-[10px] text-cz-3">Min. bud: {minBid.toLocaleString("da-DK")} CZ$</p>
+            <p className="col-span-2 text-[10px] text-cz-3">{t("auctions:bid.minBidCard", { amount: formatNumber(minBid) })}</p>
             {bidStatus === "error" && errorText && <p className="col-span-2 text-[11px] text-cz-danger">{errorText}</p>}
             <button
               onClick={handleBid}
               disabled={bidStatus === "loading" || bidAmount < minBid}
-              aria-label={imWinning ? "Hæv dit bud" : "Afgiv bud"}
+              aria-label={imWinning ? t("auctions:bid.buttonRaiseAria") : t("auctions:bid.buttonPlaceAria")}
               className={`min-h-[44px] px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
                 ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                   bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                   imWinning ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40" : "bg-cz-accent text-cz-on-accent"}
                 disabled:opacity-50`}>
-              {bidStatus === "loading" ? "..." : bidStatus === "error" ? "Fejl" : bidStatus === "success" ? "✓" : imWinning ? "Hæv" : "Byd"}
+              {bidStatus === "loading" ? t("common:actions.loadingShort") : bidStatus === "error" ? t("auctions:bid.buttonError") : bidStatus === "success" ? t("common:actions.success") : imWinning ? t("auctions:bid.buttonRaise") : t("auctions:bid.buttonPlace")}
             </button>
             {warningText && (
               <p className="col-span-2 text-[11px] text-cz-warning leading-snug">{warningText}</p>
@@ -463,30 +474,30 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggl
               {myProxy && !proxyExpanded ? (
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] bg-cz-success-bg text-cz-success px-2 py-1 rounded-lg">
-                    Autobud: max {myProxy.toLocaleString("da-DK")} CZ$
+                    {t("auctions:bid.proxy.display", { amount: formatNumber(myProxy) })}
                   </span>
                   <button
                     onClick={() => setProxyExpanded(true)}
-                    aria-label="Ændr autobud-loft"
+                    aria-label={t("auctions:bid.proxy.edit")}
                     className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-2"
                   >
-                    Ændr
+                    {t("auctions:bid.proxy.editButton")}
                   </button>
                   <button
                     onClick={handleRemoveProxy}
-                    aria-label="Fjern autobud"
+                    aria-label={t("auctions:bid.proxy.remove")}
                     className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-danger"
                   >
-                    Fjern
+                    {t("auctions:bid.proxy.removeButton")}
                   </button>
                 </div>
               ) : !proxyExpanded ? (
                 <button
                   onClick={() => setProxyExpanded(true)}
-                  aria-label="Sæt autobud-loft"
+                  aria-label={t("auctions:bid.proxy.set")}
                   className="min-h-[44px] rounded-lg border border-cz-accent/50 bg-cz-accent/10 px-3 text-xs font-bold text-cz-accent-t hover:bg-cz-accent/20"
                 >
-                  + Sæt autobud loft
+                  {t("auctions:bid.proxy.buttonAddCard")}
                 </button>
               ) : (
                 <div className="flex flex-col gap-1">
@@ -496,24 +507,24 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggl
                       value={proxyInput}
                       min={minBid}
                       onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
-                      placeholder="Max-loft"
-                      aria-label="Autobud-loft i CZ$"
+                      placeholder={t("auctions:bid.proxy.placeholder")}
+                      aria-label={t("auctions:bid.proxy.inputAria")}
                       className="min-w-0 w-32 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
                     />
                     <button
                       onClick={handleSaveProxy}
                       disabled={proxyStatus === "loading" || proxyInput < minBid}
-                      aria-label="Gem autobud-loft"
+                      aria-label={t("auctions:bid.proxy.save")}
                       className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap
                         ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                           proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                           "bg-cz-subtle border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
                         disabled:opacity-50`}>
-                      {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
+                      {proxyStatus === "loading" ? t("common:actions.loadingShort") : proxyStatus === "error" ? t("auctions:bid.buttonError") : proxyStatus === "saved" ? t("common:actions.success") : t("auctions:bid.proxy.saveButton")}
                     </button>
                     <button
                       onClick={() => setProxyExpanded(false)}
-                      aria-label="Annullér autobud-redigering"
+                      aria-label={t("auctions:bid.proxy.cancel")}
                       className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-cz-3 hover:text-cz-2"
                     >
                       ✕
@@ -527,7 +538,7 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggl
             </div>
           </div>
         ) : (
-          <p className="text-cz-3 text-xs text-center py-1">{isSeller ? "Du sælger" : "—"}</p>
+          <p className="text-cz-3 text-xs text-center py-1">{isSeller ? t("auctions:bid.sellerLabel") : "—"}</p>
         )}
       </div>
     </div>
@@ -536,6 +547,8 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggl
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AuctionsPage() {
+  const { t } = useTranslation(["auctions", "common"]);
+  const auctionsTourSteps = useMemo(() => getAuctionsTourSteps(t), [t]);
   const [auctions, setAuctions] = useState([]);
   const [myTeamId, setMyTeamId] = useState(null);
   const [userId, setUserId] = useState(null);
@@ -577,11 +590,15 @@ export default function AuctionsPage() {
   const [toasts, setToasts] = useState([]);
   const [now, setNow] = useState(() => Date.now());
 
-  // Refs så channel-callback kan se nyeste auctions/myTeamId uden at re-subscribe
+  // Refs så channel-callback kan se nyeste auctions/myTeamId uden at re-subscribe.
+  // tRef tilføjet i Fase 3b så i18n-strings inde i channel-callback opdateres
+  // uden at tear-down + recreate supabase-subscription ved language-skift.
   const auctionsRef = useRef([]);
   const myTeamIdRef = useRef(null);
+  const tRef = useRef(t);
   useEffect(() => { auctionsRef.current = auctions; }, [auctions]);
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
+  useEffect(() => { tRef.current = t; }, [t]);
 
   useEffect(() => { logEvent("auction_view"); }, []);
 
@@ -743,7 +760,7 @@ export default function AuctionsPage() {
             if (isOverbidEvent(prevFromRef, updated, myTeam)) {
               const r = prevFromRef.rider;
               pushOverbidToast({
-                riderName: r ? `${r.firstname} ${r.lastname}` : "rytter",
+                riderName: r ? `${r.firstname} ${r.lastname}` : tRef.current("auctions:fallback.rider"),
                 amount: updated.current_price,
               });
             }
@@ -754,8 +771,8 @@ export default function AuctionsPage() {
               setMyTeamId(tid => {
                 if (getAuctionLeaderId({ ...prevAuction, ...updated }) === tid) {
                   setCelebration({
-                    title: "Du vandt auktionen! 🏆",
-                    subtitle: `Rytteren er nu på dit hold`,
+                    title: tRef.current("auctions:celebration.title"),
+                    subtitle: tRef.current("auctions:celebration.subtitle"),
                     amount: updated.current_price,
                   });
                 }
@@ -827,7 +844,7 @@ export default function AuctionsPage() {
     }
     let data = {};
     try { data = await res.json(); } catch { /* non-JSON error response — fall back to default error message below */ }
-    return { ok: false, error: data.error || "Buddet kunne ikke placeres" };
+    return { ok: false, error: data.error || t("auctions:error.bidFailed") };
   }
 
   async function handleConfirmRaceBid() {
@@ -848,7 +865,7 @@ export default function AuctionsPage() {
     if (res.ok) { loadAll(); return { ok: true }; }
     let data = {};
     try { data = await res.json(); } catch { /* ignore */ }
-    return { ok: false, error: data.error || "Fejl ved sæt autobud" };
+    return { ok: false, error: data.error || t("auctions:error.proxyFailed") };
   }
 
   async function handleRemoveProxy(auctionId) {
@@ -970,9 +987,9 @@ export default function AuctionsPage() {
     });
 
   const FILTER_TABS = [
-    { key: "my-situation", label: `Min situation (${mySituationCount})` },
-    { key: "all",          label: `Alle (${auctions.length})` },
-    { key: "other",        label: `Andre managers (${otherManagerCount})` },
+    { key: "my-situation", label: t("auctions:filter.mySituation", { count: mySituationCount }) },
+    { key: "all",          label: t("auctions:filter.all", { count: auctions.length }) },
+    { key: "other",        label: t("auctions:filter.otherManagers", { count: otherManagerCount }) },
   ];
 
   // #196: feed-events filtreres til auktioner manageren deltager i, og
@@ -984,7 +1001,7 @@ export default function AuctionsPage() {
 
   return (
     <div className="max-w-[1400px] mx-auto">
-      <OnboardingTour pageKey="auctions" steps={AUCTIONS_TOUR_STEPS} />
+      <OnboardingTour pageKey="auctions" steps={auctionsTourSteps} />
       <ConfettiModal
         show={!!celebration}
         onClose={() => setCelebration(null)}
@@ -1015,14 +1032,14 @@ export default function AuctionsPage() {
 
       <div className="mb-5">
         <div className="flex items-baseline justify-between gap-4 mb-3">
-          <h1 className="text-xl font-bold text-cz-1">Auktioner</h1>
+          <h1 className="text-xl font-bold text-cz-1">{t("auctions:page.title")}</h1>
           {/* #196: aggregat-ticker — 30s rolling vindue, opdateres live via channel + 1s tick */}
           <span
             data-testid="auctions-ticker"
             className="text-cz-3 text-[11px] font-mono tabular-nums whitespace-nowrap"
             aria-live="polite"
           >
-            {tickerCount} {tickerCount === 1 ? "nyt bud" : "nye bud"} i sidste 30s
+            {t("auctions:ticker.bidCount", { count: tickerCount })}
           </span>
         </div>
         <div className="flex gap-2">
@@ -1032,7 +1049,7 @@ export default function AuctionsPage() {
                 isActive
                   ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                   : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            Aktive ({auctions.length})
+            {t("auctions:nav.active", { count: auctions.length })}
           </NavLink>
           <NavLink to="/auctions/history"
             className={({ isActive }) =>
@@ -1040,7 +1057,7 @@ export default function AuctionsPage() {
                 isActive
                   ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                   : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            Historik
+            {t("auctions:nav.history")}
           </NavLink>
         </div>
       </div>
@@ -1048,33 +1065,33 @@ export default function AuctionsPage() {
       {!loading && myTeamId && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
           <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
-            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">Balance</p>
+            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.balance")}</p>
             <p className="text-cz-accent-t font-mono font-bold text-sm leading-tight">
-              {myBalance.toLocaleString("da-DK")} CZ$
+              {formatNumber(myBalance)} CZ$
             </p>
             {reservedBalance > 0 && (
               <p className="text-cz-3 text-[10px] mt-0.5">
-                {availableBalance.toLocaleString("da-DK")} CZ$ tilgængelig
+                {t("auctions:stats.balanceAvailable", { amount: formatNumber(availableBalance) })}
               </p>
             )}
           </div>
           <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
-            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">Reserveret i bud</p>
+            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.reserved")}</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
-              {reservedBalance.toLocaleString("da-DK")} CZ$
+              {formatNumber(reservedBalance)} CZ$
             </p>
             {winningAuctions.length > 0 && (
-              <p className="text-cz-3 text-[10px] mt-0.5">{winningAuctions.length} auktion{winningAuctions.length !== 1 ? "er" : ""} du leder</p>
+              <p className="text-cz-3 text-[10px] mt-0.5">{t("auctions:stats.auctionsLeading", { count: winningAuctions.length })}</p>
             )}
           </div>
           <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
-            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">Ryttere nu</p>
+            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.ridersNow")}</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
               {currentRiderCount ?? "—"}
             </p>
           </div>
           <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
-            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">Projektion</p>
+            <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.projection")}</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
               {projectedRiderCount ?? "—"}
               {projectedRiderCount !== null && projectedRiderCount !== currentRiderCount && (
@@ -1085,9 +1102,9 @@ export default function AuctionsPage() {
             </p>
             {(incomingCount > 0 || outgoingCount > 0) && (
               <p className="text-cz-3 text-[10px] mt-0.5">
-                {incomingCount > 0 && `+${incomingCount} ind`}
+                {incomingCount > 0 && t("auctions:stats.incoming", { count: incomingCount })}
                 {incomingCount > 0 && outgoingCount > 0 && " · "}
-                {outgoingCount > 0 && `-${outgoingCount} ud`}
+                {outgoingCount > 0 && t("auctions:stats.outgoing", { count: outgoingCount })}
               </p>
             )}
           </div>
@@ -1104,25 +1121,25 @@ export default function AuctionsPage() {
       {/* Filter tabs + Wishlist-toggle + StatsToggle */}
       <div className="flex gap-2 mb-4 flex-wrap items-center justify-between">
         <div className="flex gap-2 flex-wrap items-center">
-          {FILTER_TABS.map(t => (
-            <button key={t.key} onClick={() => setFilter(t.key)}
+          {FILTER_TABS.map(tab => (
+            <button key={tab.key} onClick={() => setFilter(tab.key)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-                ${filter === t.key
+                ${filter === tab.key
                   ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                   : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-              {t.label}
+              {tab.label}
             </button>
           ))}
           <button
             onClick={() => setWishlistOnly(v => !v)}
             aria-pressed={wishlistOnly}
-            title={wishlistOnly ? "Vis alle ryttere" : "Vis kun ryttere på din ønskeliste"}
+            title={wishlistOnly ? t("auctions:filter.wishlistTitleOn") : t("auctions:filter.wishlistTitleOff")}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
               ${wishlistOnly
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
             <span className={wishlistOnly ? "text-cz-accent-t" : "text-cz-3"}>{wishlistOnly ? "★" : "☆"}</span>
-            Kun ønskeliste
+            {t("auctions:filter.wishlistButton")}
           </button>
         </div>
         <StatsToggle
@@ -1143,7 +1160,7 @@ export default function AuctionsPage() {
       />
 
       {loading ? (
-        <div className="flex justify-center py-16" role="status" aria-label="Indlæser auktioner">
+        <div className="flex justify-center py-16" role="status" aria-label={t("auctions:page.loadingAria")}>
           <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
         </div>
       ) : (
@@ -1194,39 +1211,40 @@ function applyAuctionSort(list, auctionSort) {
 }
 
 function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort, riderFiltersSort, auctionSort }) {
+  const { t } = useTranslation("auctions");
   const visibleStatsArr = STATS.filter(k => visibleStats?.has(k));
   return (
     <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
       <tr className="border-b border-cz-border">
         <SortTh sortKey="firstname" sort={activeSort("firstname") ? "firstname" : riderFiltersSort}
           sortDir={activeSortDir("firstname")} onSort={handleSort}
-          className="px-3 py-3 text-left font-medium uppercase tracking-wider sticky left-0 z-30 bg-cz-card border-r border-cz-border">Rytter</SortTh>
+          className="px-3 py-3 text-left font-medium uppercase tracking-wider sticky left-0 z-30 bg-cz-card border-r border-cz-border">{t("table.rider")}</SortTh>
         <SortTh sortKey="current_price"
           sort={auctionSort.key} sortDir={auctionSort.dir} onSort={handleSort}
           className="px-3 py-3 text-right font-medium uppercase tracking-wider whitespace-nowrap">
-          Højeste bud
+          {t("table.highestBid")}
         </SortTh>
         <SortTh sortKey="calculated_end"
           sort={auctionSort.key} sortDir={auctionSort.dir} onSort={handleSort}
           className="px-3 py-3 text-center font-medium uppercase tracking-wider whitespace-nowrap">
-          Tid tilbage
+          {t("table.timeLeft")}
         </SortTh>
-        <th className="px-2 py-3 text-center text-cz-3 font-medium hidden xl:table-cell">Alder</th>
+        <th className="px-2 py-3 text-center text-cz-3 font-medium hidden xl:table-cell">{t("table.age")}</th>
         <SortTh sortKey="salary" sort={activeSort("salary") ? "salary" : riderFiltersSort}
           sortDir={activeSortDir("salary")} onSort={handleSort}
-          className="px-2 py-3 text-right font-medium">Løn</SortTh>
+          className="px-2 py-3 text-right font-medium">{t("table.salary")}</SortTh>
         <SortTh sortKey="potentiale"
           sort={activeSort("potentiale") ? "potentiale" : riderFiltersSort}
           sortDir={activeSortDir("potentiale")} onSort={handleSort}
-          className="px-3 py-3 text-left font-medium uppercase tracking-wider whitespace-nowrap">Potentiale</SortTh>
-        <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden xl:table-cell">Sælger</th>
+          className="px-3 py-3 text-left font-medium uppercase tracking-wider whitespace-nowrap">{t("table.potential")}</SortTh>
+        <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden xl:table-cell">{t("table.seller")}</th>
         {visibleStatsArr.map(key => (
           <SortTh key={key} sortKey={key}
             sort={activeSort(key) ? key : riderFiltersSort}
             sortDir={activeSortDir(key)} onSort={handleSort}
             className="px-1 py-3 text-center font-medium w-9">{STAT_LABEL_BY_KEY[key]}</SortTh>
         ))}
-        <th className="auction-bid-cell px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider sticky right-0 z-30 border-l border-cz-border shadow-[-10px_0_16px_-16px_rgba(0,0,0,0.5)]">Byd</th>
+        <th className="auction-bid-cell px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider sticky right-0 z-30 border-l border-cz-border shadow-[-10px_0_16px_-16px_rgba(0,0,0,0.5)]">{t("table.bid")}</th>
       </tr>
     </thead>
   );
@@ -1306,6 +1324,7 @@ function MySituationSection({ title, badgeClass, auctions, sectionId, sharedProp
 }
 
 function AuctionsContent(props) {
+  const { t } = useTranslation("auctions");
   const {
     filter, filtered, wishlistOnly, mySituationBuckets,
     feedEvents, auctionsById, myTeamId, now,
@@ -1326,33 +1345,33 @@ function AuctionsContent(props) {
             <p className="text-4xl mb-3">{wishlistOnly ? "★" : "⚡"}</p>
             <p>
               {wishlistOnly
-                ? "Ingen aktive auktioner på dine ønskelistede ryttere"
-                : (filter === "my-situation" ? "Du er ikke involveret i nogen aktive auktioner" : "Ingen auktioner i denne kategori")}
+                ? t("empty.wishlistNoResults")
+                : (filter === "my-situation" ? t("empty.noInvolvementMySituation") : t("empty.noResults"))}
             </p>
             <p className="text-sm mt-2">
               {wishlistOnly
-                ? "Slå 'Kun ønskeliste' fra eller tilføj ryttere fra rytter-oversigten"
-                : (filter === "my-situation" ? "Skift til 'Alle' for at browse markedet" : "Gå til Ryttere og start en auktion")}
+                ? t("empty.wishlistHelp")
+                : (filter === "my-situation" ? t("empty.browseSuggestion") : t("empty.startAuctionSuggestion"))}
             </p>
           </div>
         ) : filter === "my-situation" ? (
           <>
             <MySituationSection
-              title="🟢 Du leder"
+              title={t("section.leading")}
               badgeClass="text-cz-success"
               auctions={mySituationBuckets.leading}
               sectionId="leading"
               sharedProps={sharedProps}
             />
             <MySituationSection
-              title="🔴 Du er overbudt"
+              title={t("section.overbid")}
               badgeClass="text-cz-danger"
               auctions={mySituationBuckets.overbid}
               sectionId="overbid"
               sharedProps={sharedProps}
             />
             <MySituationSection
-              title="🔵 Du sælger"
+              title={t("section.selling")}
               badgeClass="text-cz-info"
               auctions={mySituationBuckets.selling}
               sectionId="selling"
