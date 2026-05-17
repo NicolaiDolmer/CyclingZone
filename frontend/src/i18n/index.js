@@ -5,9 +5,9 @@
 //   • HTTP backend lazy-loader namespaces fra /locales/{lng}/{ns}.json
 //     (filer i frontend/public/locales/ — served af Vite på begge
 //      dev og prod via samme URL)
-//   • common.json + auth.json + errors.json + auctions.json bundles inline
-//     (FOUC-fri first paint på NavBar + Login/Signup/Onboarding/Errors +
-//     AuctionsPage — Refs #411, #412)
+//   • common.json + auth.json + errors.json + auctions.json + transfers.json
+//     bundles inline (FOUC-fri first paint på NavBar + Login/Signup/Onboarding +
+//     Errors + AuctionsPage + TransfersPage — Refs #411, #412)
 //   • supportedLngs: ['en','da','en-XA'] — pseudo-locale aktiveres
 //     ved at sætte ?pseudo=1 i URL (kun dev/preview, ikke production-safe)
 //
@@ -32,6 +32,8 @@ import errorsDa from "../../public/locales/da/errors.json";
 import errorsEn from "../../public/locales/en/errors.json";
 import auctionsDa from "../../public/locales/da/auctions.json";
 import auctionsEn from "../../public/locales/en/auctions.json";
+import transfersDa from "../../public/locales/da/transfers.json";
+import transfersEn from "../../public/locales/en/transfers.json";
 
 const PSEUDO_ENABLED = (() => {
   if (typeof window === "undefined") return false;
@@ -54,11 +56,11 @@ i18n
     supportedLngs: SUPPORTED,
     nonExplicitSupportedLngs: true,
     load: "languageOnly",
-    ns: ["common", "auth", "dashboard", "auctions", "admin", "errors", "patchnotes", "banners"],
+    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners"],
     defaultNS: "common",
     resources: {
-      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa },
-      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn },
+      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa },
+      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn },
     },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],

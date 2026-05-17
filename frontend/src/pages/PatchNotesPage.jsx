@@ -2,6 +2,29 @@
 
 const PATCHES = [
   {
+    version: "3.53",
+    date: "2026-05-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · i18n Fase 3c — Transfers på EN/DA (#412)",
+        items: [
+          "Feature · Hele Transfers-siden kører nu på begge sprog: sidetitlen (Transfers), balance-card, transfervindue-banner (åbent/lukket), de 6 tabs (Modtagne / Received offers, Sendte / Sent offers, Historik / History, Byttehandler / Swaps, Lejeaftaler / Loans, Marked / Market).",
+          "Feature · ReceivedOfferCard + SentOfferCard: alle status-badges (Afventer svar / Awaiting response, Modbud sendt / Counter sent, Aftalt — afventer vindue / Agreed — awaiting window, Accepteret / Accepted, Afvist / Rejected, Trukket tilbage / Withdrawn) plus alle handlings-knapper (Accepter, Modbud, Afvis, Bekræft handel, Annuller handel, Arkivér) oversat.",
+          "Feature · SwapCard + NewSwapForm: bytte-handler oversat fuldt ud inkl. \"Du tilbyder / De tilbyder\" / \"You offer / They offer\", kontantbetaling-labels, ren-bytte-badge og bytteforslag-formular.",
+          "Feature · LoanCard + NewLoanForm: lejeaftaler oversat inkl. status (Aktiv / Active, Købt / Bought, Annulleret / Cancelled), sæson-formattering (Sæson 3 / Season 3), lejegebyr/sæson, købsoption og udnyt-knap. Den bindende note (\"Aktive lejeaftaler er bindende\" / \"Active loans are binding\") følger sproget.",
+          "Feature · TransferCard (marked): \"Til salg siden 3. jul\" / \"Listed since Jul 3\" bruger locale-aware dato. Send tilbud-knap, fjern-listing-bekræftelse og BidConfirmModal (mode=transfer) viser alle korrekt sprog.",
+          "Feature · TeamTransferHistoryTab: transferhistorik på begge sprog — kolonne-headers (Dato/Type/Retning/Rytter/Modpart/Beløb), type-labels (Auktion/Transfer/Swap/Lån → Auction/Transfer/Swap/Loan), retning (Køb/Salg/Bytte → Buy/Sell/Swap), sæson-filter og (AI)/(lån)-tags.",
+          "Feature · Toast-beskeder oversat for hele flow: tilbud sendt, accepteret af køber/sælger, bekræftet, annulleret, modbud sendt, nyt bud, trukket tilbage, arkiveret — separate tekster for transfers, swaps og loans. Confetti-celebrations (Transfer gennemført / Transfer complete, Byttehandel gennemført / Swap complete, Rytter købt / Rider bought) følger sproget.",
+          "Feature · timeAgo-helper konverteret til hook `useTimeAgo()` der renderer \"Lige nu / Just now\", \"15m siden / 15m ago\" osv. på korrekt sprog.",
+          "Infra · ~30 hardcoded `toLocaleString(\"da-DK\")`-kald i TransfersPage + TeamTransferHistoryTab erstattet med `formatNumber(...)` fra `lib/intl.js`. Datoer bruger `formatDate(...)`.",
+          "Infra · `transfers`-namespace tilføjet (~150 keys/sprog) og inline-bundlet i `i18n/index.js` (matcher common/auth/errors/auctions-pattern) for FOUC-fri first paint.",
+          "Næste · Fase 3d: HelpPage + AdminPage publik-facing dele (#412 fortsætter).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.52",
     date: "2026-05-17",
     label: "Beta",
