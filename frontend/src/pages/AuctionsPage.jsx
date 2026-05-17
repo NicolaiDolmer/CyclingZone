@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { Link, NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -9,7 +9,6 @@ import { statBg } from "../lib/statBg";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { RacePriceModal } from "../components/RacePriceModal";
 import { Flag } from "../components/Flag";
-import { formatCz } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
 import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
 import OnboardingTour from "../components/OnboardingTour";
@@ -591,11 +590,15 @@ export default function AuctionsPage() {
   const [toasts, setToasts] = useState([]);
   const [now, setNow] = useState(() => Date.now());
 
-  // Refs så channel-callback kan se nyeste auctions/myTeamId uden at re-subscribe
+  // Refs så channel-callback kan se nyeste auctions/myTeamId uden at re-subscribe.
+  // tRef tilføjet i Fase 3b så i18n-strings inde i channel-callback opdateres
+  // uden at tear-down + recreate supabase-subscription ved language-skift.
   const auctionsRef = useRef([]);
   const myTeamIdRef = useRef(null);
+  const tRef = useRef(t);
   useEffect(() => { auctionsRef.current = auctions; }, [auctions]);
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
+  useEffect(() => { tRef.current = t; }, [t]);
 
   useEffect(() => { logEvent("auction_view"); }, []);
 
@@ -757,7 +760,7 @@ export default function AuctionsPage() {
             if (isOverbidEvent(prevFromRef, updated, myTeam)) {
               const r = prevFromRef.rider;
               pushOverbidToast({
-                riderName: r ? `${r.firstname} ${r.lastname}` : t("auctions:fallback.rider"),
+                riderName: r ? `${r.firstname} ${r.lastname}` : tRef.current("auctions:fallback.rider"),
                 amount: updated.current_price,
               });
             }
@@ -768,8 +771,8 @@ export default function AuctionsPage() {
               setMyTeamId(tid => {
                 if (getAuctionLeaderId({ ...prevAuction, ...updated }) === tid) {
                   setCelebration({
-                    title: t("auctions:celebration.title"),
-                    subtitle: t("auctions:celebration.subtitle"),
+                    title: tRef.current("auctions:celebration.title"),
+                    subtitle: tRef.current("auctions:celebration.subtitle"),
                     amount: updated.current_price,
                   });
                 }
