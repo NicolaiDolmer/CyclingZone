@@ -1,1 +1,162 @@
-{}
+{
+  "page": {
+    "title": "Auctions",
+    "loadingAria": "Loading auctions"
+  },
+  "tour": {
+    "placeBid": {
+      "title": "Place a bid",
+      "body": "Enter your bid and press 'Bid'. Min bid is pre-filled — you must bid at least 1 CZ$ above the current bid."
+    },
+    "countdown": {
+      "title": "Time left and auto-extension",
+      "body": "If you bid in the last 10 minutes, the auction is automatically extended. You can always respond if someone outbids you at the very end."
+    }
+  },
+  "hint": {
+    "title": "How auctions work",
+    "minBidLabel": "Min bid:",
+    "minBidBody": "A new bid must be at least 1 CZ$ above the current bid. Min bid is pre-filled in the input field.",
+    "autoExtendLabel": "10-min auto-extension:",
+    "autoExtendBody": "Bids in the last 10 minutes extend the auction — so you can always respond if someone outbids you at the very end.",
+    "startTour": "💡 Show me around"
+  },
+  "ticker": {
+    "bidCount": "{count, plural, one {1 new bid} other {# new bids}} in last 30s"
+  },
+  "stats": {
+    "balance": "Balance",
+    "balanceAvailable": "{amount} CZ$ available",
+    "reserved": "Reserved in bids",
+    "auctionsLeading": "{count, plural, one {1 auction} other {# auctions}} you lead",
+    "ridersNow": "Riders now",
+    "projection": "Projection",
+    "incoming": "+{count} in",
+    "outgoing": "−{count} out"
+  },
+  "filter": {
+    "mySituation": "My situation ({count})",
+    "all": "All ({count})",
+    "otherManagers": "Other managers ({count})",
+    "wishlistButton": "Wishlist only",
+    "wishlistTitleOn": "Show all riders",
+    "wishlistTitleOff": "Show only wishlisted riders"
+  },
+  "nav": {
+    "active": "Active ({count})",
+    "history": "History"
+  },
+  "table": {
+    "rider": "Rider",
+    "highestBid": "Highest bid",
+    "timeLeft": "Time left",
+    "age": "Age",
+    "salary": "Salary",
+    "potential": "Potential",
+    "seller": "Seller",
+    "bid": "Bid"
+  },
+  "card": {
+    "time": "Time",
+    "highestBid": "Highest bid",
+    "salary": "Salary",
+    "seller": "Seller",
+    "potential": "Potential",
+    "ageYears": "{age} yrs"
+  },
+  "timer": {
+    "completed": "Completed",
+    "expired": "Expired",
+    "hoursMinutes": "{h}h {m}m",
+    "minutesSeconds": "{m}m {s}s",
+    "seconds": "{s}s"
+  },
+  "badge": {
+    "winning": "Winning",
+    "seller": "Seller",
+    "mine": "Mine",
+    "extended": "⚡ Ext",
+    "flash": "⚡ Flash",
+    "u25": "U25"
+  },
+  "bid": {
+    "minBid": "Min. {amount} CZ$",
+    "minBidCard": "Min. bid: {amount} CZ$",
+    "inputAria": "Your bid in CZ$",
+    "buttonPlace": "Bid",
+    "buttonRaise": "Raise",
+    "buttonError": "Error",
+    "buttonPlaceAria": "Place bid",
+    "buttonRaiseAria": "Raise your bid",
+    "sellerLabel": "You're selling",
+    "proxy": {
+      "display": "Auto-bid: max {amount} CZ$",
+      "set": "Set auto-bid limit",
+      "edit": "Change auto-bid limit",
+      "remove": "Remove auto-bid",
+      "save": "Save auto-bid limit",
+      "saveButton": "Save",
+      "cancel": "Cancel auto-bid editing",
+      "placeholder": "Max limit",
+      "inputAria": "Auto-bid limit in CZ$",
+      "buttonAdd": "+ Auto-bid limit",
+      "buttonAddCard": "+ Set auto-bid limit",
+      "editButton": "Change",
+      "removeButton": "Remove"
+    }
+  },
+  "section": {
+    "leading": "🟢 You're leading",
+    "overbid": "🔴 You've been outbid",
+    "selling": "🔵 You're selling"
+  },
+  "empty": {
+    "wishlistNoResults": "No active auctions on your wishlisted riders",
+    "noInvolvementMySituation": "You're not involved in any active auctions",
+    "noResults": "No auctions in this category",
+    "wishlistHelp": "Turn off 'Wishlist only' or add riders from the rider overview",
+    "browseSuggestion": "Switch to 'All' to browse the market",
+    "startAuctionSuggestion": "Go to Riders and start an auction"
+  },
+  "feed": {
+    "title": "Live bids · your auctions",
+    "empty": "No activity yet on your auctions.",
+    "yourBid": "You bid",
+    "counterBid": "Counter bid",
+    "fallbackRider": "Rider",
+    "relativeSec": "{n}s ago",
+    "relativeMin": "{n}m ago",
+    "relativeHour": "{n}h ago"
+  },
+  "toast": {
+    "overbidMessage": "You've been outbid on {riderName}",
+    "overbidNewPrice": "New price: {amount} CZ$"
+  },
+  "modal": {
+    "bidTitle": "Confirm bid",
+    "bidVerb": "bid",
+    "bidAction": "Bid",
+    "bidIcon": "🏷️",
+    "proxyTitle": "Confirm auto-bid",
+    "proxyVerb": "set auto-bid limit to",
+    "proxyAction": "Save auto-bid",
+    "proxyIcon": "🤖",
+    "transferTitle": "Confirm transfer bid",
+    "transferVerb": "send a transfer bid of",
+    "transferAction": "Send bid",
+    "transferIcon": "💼",
+    "questionPrefix": "Are you sure you want to",
+    "onLabel": "on"
+  },
+  "fallback": {
+    "rider": "rider"
+  },
+  "celebration": {
+    "title": "You won the auction! 🏆",
+    "subtitle": "The rider is now on your team"
+  },
+  "error": {
+    "bidFailed": "The bid could not be placed",
+    "proxyFailed": "Failed to set auto-bid"
+  }
+}

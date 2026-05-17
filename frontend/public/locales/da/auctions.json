@@ -1,1 +1,162 @@
-{}
+{
+  "page": {
+    "title": "Auktioner",
+    "loadingAria": "Indlæser auktioner"
+  },
+  "tour": {
+    "placeBid": {
+      "title": "Afgiv et bud",
+      "body": "Indtast dit bud og tryk 'Byd'. Min-bud er forudfyldt — du skal byde mindst 1 CZ$ over det aktuelle bud."
+    },
+    "countdown": {
+      "title": "Tid tilbage og auto-forlængelse",
+      "body": "Hvis du byder i de sidste 10 minutter, forlænges auktionen automatisk. Du kan altid svare igen, hvis nogen overbyder dig på falderebet."
+    }
+  },
+  "hint": {
+    "title": "Sådan virker auktioner",
+    "minBidLabel": "Min-bud:",
+    "minBidBody": "Et nyt bud skal mindst være 1 CZ$ over det aktuelle bud. Min-bud er forudfyldt i input-feltet.",
+    "autoExtendLabel": "10-min auto-forlængelse:",
+    "autoExtendBody": "Bud i de sidste 10 minutter forlænger auktionen — så du kan altid svare igen, hvis nogen overbyder dig på falderebet.",
+    "startTour": "💡 Vis mig rundt"
+  },
+  "ticker": {
+    "bidCount": "{count, plural, one {1 nyt bud} other {# nye bud}} i sidste 30s"
+  },
+  "stats": {
+    "balance": "Balance",
+    "balanceAvailable": "{amount} CZ$ tilgængelig",
+    "reserved": "Reserveret i bud",
+    "auctionsLeading": "{count, plural, one {1 auktion} other {# auktioner}} du leder",
+    "ridersNow": "Ryttere nu",
+    "projection": "Projektion",
+    "incoming": "+{count} ind",
+    "outgoing": "−{count} ud"
+  },
+  "filter": {
+    "mySituation": "Min situation ({count})",
+    "all": "Alle ({count})",
+    "otherManagers": "Andre managers ({count})",
+    "wishlistButton": "Kun ønskeliste",
+    "wishlistTitleOn": "Vis alle ryttere",
+    "wishlistTitleOff": "Vis kun ryttere på din ønskeliste"
+  },
+  "nav": {
+    "active": "Aktive ({count})",
+    "history": "Historik"
+  },
+  "table": {
+    "rider": "Rytter",
+    "highestBid": "Højeste bud",
+    "timeLeft": "Tid tilbage",
+    "age": "Alder",
+    "salary": "Løn",
+    "potential": "Potentiale",
+    "seller": "Sælger",
+    "bid": "Byd"
+  },
+  "card": {
+    "time": "Tid",
+    "highestBid": "Højeste bud",
+    "salary": "Løn",
+    "seller": "Sælger",
+    "potential": "Potentiale",
+    "ageYears": "{age} år"
+  },
+  "timer": {
+    "completed": "Afsluttet",
+    "expired": "Udløbet",
+    "hoursMinutes": "{h}t {m}m",
+    "minutesSeconds": "{m}m {s}s",
+    "seconds": "{s}s"
+  },
+  "badge": {
+    "winning": "Vinder",
+    "seller": "Sælger",
+    "mine": "Din",
+    "extended": "⚡ Ext",
+    "flash": "⚡ Flash",
+    "u25": "U25"
+  },
+  "bid": {
+    "minBid": "Min. {amount} CZ$",
+    "minBidCard": "Min. bud: {amount} CZ$",
+    "inputAria": "Dit bud i CZ$",
+    "buttonPlace": "Byd",
+    "buttonRaise": "Hæv",
+    "buttonError": "Fejl",
+    "buttonPlaceAria": "Afgiv bud",
+    "buttonRaiseAria": "Hæv dit bud",
+    "sellerLabel": "Du sælger",
+    "proxy": {
+      "display": "Autobud: max {amount} CZ$",
+      "set": "Sæt autobud-loft",
+      "edit": "Ændr autobud-loft",
+      "remove": "Fjern autobud",
+      "save": "Gem autobud-loft",
+      "saveButton": "Gem",
+      "cancel": "Annullér autobud-redigering",
+      "placeholder": "Max-loft",
+      "inputAria": "Autobud-loft i CZ$",
+      "buttonAdd": "+ Autobud loft",
+      "buttonAddCard": "+ Sæt autobud loft",
+      "editButton": "Ændr",
+      "removeButton": "Fjern"
+    }
+  },
+  "section": {
+    "leading": "🟢 Du leder",
+    "overbid": "🔴 Du er overbudt",
+    "selling": "🔵 Du sælger"
+  },
+  "empty": {
+    "wishlistNoResults": "Ingen aktive auktioner på dine ønskelistede ryttere",
+    "noInvolvementMySituation": "Du er ikke involveret i nogen aktive auktioner",
+    "noResults": "Ingen auktioner i denne kategori",
+    "wishlistHelp": "Slå 'Kun ønskeliste' fra eller tilføj ryttere fra rytter-oversigten",
+    "browseSuggestion": "Skift til 'Alle' for at browse markedet",
+    "startAuctionSuggestion": "Gå til Ryttere og start en auktion"
+  },
+  "feed": {
+    "title": "Live bud · dine auktioner",
+    "empty": "Ingen aktivitet endnu på dine auktioner.",
+    "yourBid": "Du bød",
+    "counterBid": "Modbud",
+    "fallbackRider": "Rytter",
+    "relativeSec": "{n}s siden",
+    "relativeMin": "{n}m siden",
+    "relativeHour": "{n}t siden"
+  },
+  "toast": {
+    "overbidMessage": "Du er overbudt på {riderName}",
+    "overbidNewPrice": "Ny pris: {amount} CZ$"
+  },
+  "modal": {
+    "bidTitle": "Bekræft bud",
+    "bidVerb": "byde",
+    "bidAction": "Byd",
+    "bidIcon": "🏷️",
+    "proxyTitle": "Bekræft autobud",
+    "proxyVerb": "sætte autobud-loft til",
+    "proxyAction": "Gem autobud",
+    "proxyIcon": "🤖",
+    "transferTitle": "Bekræft transferbud",
+    "transferVerb": "sende et transferbud på",
+    "transferAction": "Send bud",
+    "transferIcon": "💼",
+    "questionPrefix": "Er du sikker på at du vil",
+    "onLabel": "på"
+  },
+  "fallback": {
+    "rider": "rytter"
+  },
+  "celebration": {
+    "title": "Du vandt auktionen! 🏆",
+    "subtitle": "Rytteren er nu på dit hold"
+  },
+  "error": {
+    "bidFailed": "Buddet kunne ikke placeres",
+    "proxyFailed": "Fejl ved sæt autobud"
+  }
+}
