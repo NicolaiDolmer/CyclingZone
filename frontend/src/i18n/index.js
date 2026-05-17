@@ -5,9 +5,11 @@
 //   • HTTP backend lazy-loader namespaces fra /locales/{lng}/{ns}.json
 //     (filer i frontend/public/locales/ — served af Vite på begge
 //      dev og prod via samme URL)
-//   • common.json + auth.json + errors.json + auctions.json + transfers.json
-//     bundles inline (FOUC-fri first paint på NavBar + Login/Signup/Onboarding +
-//     Errors + AuctionsPage + TransfersPage — Refs #411, #412)
+//   • Alle namespaces der bruges på authenticated-pages bundles INLINE
+//     (FOUC-fri first paint — Refs #411, #412, #470).
+//     React renderer med `useSuspense: false`, så ikke-inlinet namespace =
+//     t() returnerer raw key på first paint ("dashboard:stats.balance" i UI).
+//     Forward-guard: `scripts/check-i18n-namespace-inline.mjs` (kører pre-build).
 //   • supportedLngs: ['en','da','en-XA'] — pseudo-locale aktiveres
 //     ved at sætte ?pseudo=1 i URL (kun dev/preview, ikke production-safe)
 //
@@ -34,6 +36,10 @@ import auctionsDa from "../../public/locales/da/auctions.json";
 import auctionsEn from "../../public/locales/en/auctions.json";
 import transfersDa from "../../public/locales/da/transfers.json";
 import transfersEn from "../../public/locales/en/transfers.json";
+import dashboardDa from "../../public/locales/da/dashboard.json";
+import dashboardEn from "../../public/locales/en/dashboard.json";
+import bannersDa from "../../public/locales/da/banners.json";
+import bannersEn from "../../public/locales/en/banners.json";
 
 const PSEUDO_ENABLED = (() => {
   if (typeof window === "undefined") return false;
@@ -59,8 +65,8 @@ i18n
     ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners"],
     defaultNS: "common",
     resources: {
-      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa },
-      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn },
+      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa },
+      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn },
     },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],
@@ -81,6 +87,13 @@ i18n
 if (PSEUDO_ENABLED) {
   i18n.changeLanguage("en-XA");
   applyPseudoTransform(i18n);
+}
+
+// Dev-only debug-handle — gør i18next inspectable fra DevTools så
+// `window.__i18n.t("dashboard:stats.balance")` kan verificere namespace-loading
+// uden at skulle gennem fuld login-flow. Eksisterer ikke i prod-bundle (import.meta.env.DEV).
+if (typeof window !== "undefined" && import.meta.env.DEV) {
+  window.__i18n = i18n;
 }
 
 function applyPseudoTransform(instance) {
