@@ -46,12 +46,27 @@ function walk(dir, files = []) {
 }
 
 function extractUsedNamespaces(srcFiles) {
-  // Match både useTranslation("x"), useTranslation('x'), useTranslation(["x", "y"])
-  // og inline t("ns:key") kald hvor ns ikke kommer fra useTranslation.
+  // Patterns vi fanger:
+  //   1. useTranslation("x")             — string literal, single ns
+  //   2. useTranslation(["x", "y"])      — array of literals (multi-ns)
+  //   3. t("ns:key") / t(`ns:${k}`)      — direkte namespace-prefix i kald
+  //   4. <Trans i18nKey="ns:key">        — komponent-form (ikke brugt p.t. men fremtidssikring)
+  //   5. i18next.t("ns:key")             — direkte instance-kald (ikke brugt p.t.)
+  //
+  // Patterns vi IKKE fanger (med vilje):
+  //   • useTranslation(dynamicVar)       — dynamisk namespace fra prop/state.
+  //     Hvis vi tilføjer dette i fremtiden: log warning så guarden ikke tier stille.
+  //   • t("noNs") med default-ns fallback — bug-klassen kræver eksplicit ns:prefix
+  //     ELLER useTranslation-deklaration, så denne sti er allerede dækket.
   const singleRe = /useTranslation\(\s*["']([\w-]+)["']\s*[,)]/g;
   const arrayRe = /useTranslation\(\s*\[([^\]]+)\]/g;
+  const dynamicRe = /useTranslation\(\s*[a-zA-Z_$][\w$]*\s*[,)]/g;
   const tNsKeyRe = /\bt\(\s*[`"']([\w-]+):[^`"']+[`"']/g;
+  const transRe = /<Trans\s[^>]*\bi18nKey\s*=\s*["'`]([\w-]+):/g;
+  const i18nextTRe = /\b(?:i18next|i18n)\.t\(\s*[`"']([\w-]+):/g;
+
   const used = new Map(); // namespace -> Set of files
+  const dynamicWarnings = [];
 
   for (const file of srcFiles) {
     const src = readFileSync(file, "utf8");
@@ -69,8 +84,17 @@ function extractUsedNamespaces(srcFiles) {
     while ((m = tNsKeyRe.exec(src))) {
       addUsage(used, m[1], rel);
     }
+    while ((m = transRe.exec(src))) {
+      addUsage(used, m[1], rel);
+    }
+    while ((m = i18nextTRe.exec(src))) {
+      addUsage(used, m[1], rel);
+    }
+    while ((m = dynamicRe.exec(src))) {
+      dynamicWarnings.push(rel);
+    }
   }
-  return used;
+  return { used, dynamicWarnings };
 }
 
 function addUsage(map, ns, file) {
@@ -105,7 +129,7 @@ function extractInlinedNamespaces() {
 }
 
 const srcFiles = walk(SRC_DIR);
-const used = extractUsedNamespaces(srcFiles);
+const { used, dynamicWarnings } = extractUsedNamespaces(srcFiles);
 const inlined = extractInlinedNamespaces();
 
 let errorCount = 0;
@@ -117,6 +141,14 @@ for (const [ns, files] of used) {
     errorCount += 1;
     missing.push({ ns, files: [...files].slice(0, 5), total: files.size });
   }
+}
+
+// Dynamic namespace = guarden kan ikke se den. Log warning så det er
+// synligt at filer slipper gennem statisk analyse. Failer ikke buildet —
+// runtime-fejl vil stadig manifestere som raw key i UI.
+if (dynamicWarnings.length > 0) {
+  console.warn(`⚠ ${dynamicWarnings.length} fil(er) bruger dynamic useTranslation(var) — guarden kan ikke verificere namespace-inline statisk:`);
+  for (const f of dynamicWarnings) console.warn(`    - ${f}`);
 }
 
 if (errorCount === 0) {
