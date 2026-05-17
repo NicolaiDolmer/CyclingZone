@@ -12,6 +12,7 @@
 1. Læs `docs/NOW.md` — kort status (aktiv slice + næste session-noter).
 2. **Aktivt issue:** kan læses fra `SESSION_CONTEXT.md`, men sandheden er GitHub + `docs/NOW.md`. Stale eller mangler? `gh issue list --label "claude:todo" --state open --limit 10`
 3. `docs/GUARDRAILS_CORE.md` læses KUN hvis issue-labels indeholder `needs-contract` eller `shared-refactor` (~80% af sessioner skipper).
+4. **Frontend/i18n-PR pre-flight:** build + warning-budget + i18n-keys + `npx playwright test core-smoke.spec.js --project=desktop-chromium` lokalt FØR push. Loop-guard: 2 CI-fails på samme symptom → STOP + spørg. Se `.claude/learnings/2026-05-17-symptom-patching-loop-vs-root-cause.md`.
 
 ## On-demand docs
 

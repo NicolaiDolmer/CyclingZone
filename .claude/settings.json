@@ -87,6 +87,10 @@
           {
             "type": "command",
             "command": "bash scripts/hooks/lint-gh-issue.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/check-ci-before-push.sh"
           }
         ]
       },
