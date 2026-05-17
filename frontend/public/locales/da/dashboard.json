@@ -1,1 +1,178 @@
-{}
+{
+  "header": {
+    "subtitle": "Division {division} · {count, plural, one {1 rytter} other {# ryttere}}",
+    "incoming": "+{count} ind",
+    "outgoing": "−{count} ud",
+    "loans": "+{count} leje"
+  },
+  "squadWarning": {
+    "over": "Hold er for stort — max {limit} i Division {division}. Sælg {count, plural, one {1 rytter} other {# ryttere}}.",
+    "under": "Hold er for lille — min {limit} i Division {division}. Køb {count, plural, one {1 rytter} other {# ryttere}} mere.",
+    "ctaMyTeam": "Mit Hold →"
+  },
+  "discordNudge": {
+    "title": "Få DMs ved overbud, transfertilbud og bestyrelses-signaler",
+    "subtitle": "Tilføj dit Discord-ID under Profil — så er du på, selv når du ikke har app'en åben.",
+    "cta": "Tilføj",
+    "dismissAria": "Skjul"
+  },
+  "deadlineDay": {
+    "title": "DEADLINE DAY",
+    "closesIn": "Transfervinduet lukker om {h}t {m}m",
+    "cta": "Gå til transfers →"
+  },
+  "seasonBanner": {
+    "title": "Sæson {number}",
+    "status": {
+      "active": "Aktiv",
+      "upcoming": "Kommende",
+      "completed": "Afsluttet"
+    },
+    "ended": "Sæsonslut passeret",
+    "daysLeftSuffix": "dage til sæsonslut",
+    "raceDays": "{completed}/{total} løbsdage",
+    "transferWindow": {
+      "open": "✓ Transfervindue åbent",
+      "closed": "✗ Transfervindue lukket"
+    }
+  },
+  "stats": {
+    "balance": "Balance",
+    "riders": "Ryttere",
+    "activeAuctions": "Aktive auktioner",
+    "boardSatisfaction": "Bestyrelsestilfredshed",
+    "winning": "{count} vinder jeg",
+    "salaryOnly": "Løn: {amount} CZ$/sæson",
+    "nowAndSalary": "{now} nu · Løn {amount} CZ$/sæson",
+    "noData": "Ingen data"
+  },
+  "cards": {
+    "auctions": {
+      "title": "Aktive Auktioner",
+      "linkAll": "Se alle →",
+      "empty": "Ingen aktive auktioner",
+      "expired": "Udløbet",
+      "winning": "Vinder",
+      "selling": "Sælger",
+      "timeLeftHm": "{h}t {m}m",
+      "timeLeftM": "{m}m"
+    },
+    "transfers": {
+      "title": "Transfers & Tilbud",
+      "linkAll": "Se alle →",
+      "empty": "Ingen ventende transfers",
+      "incomingCount": "{count, plural, one {1 indgående transfer} other {# indgående transfers}}",
+      "awaitingWindow": "Afventer vindue",
+      "from": "Fra: {name}",
+      "to": "Til: {name}",
+      "needsAction": "Kræver handling",
+      "active": "Aktiv"
+    },
+    "races": {
+      "title": "Kommende Løb",
+      "linkAll": "Kalender →",
+      "empty": "Ingen planlagte løb",
+      "stages": "{count, plural, one {1 etape} other {# etaper}}",
+      "oneDay": "Enkeltdagsløb",
+      "dateTbd": "Dato TBD"
+    },
+    "standings": {
+      "title": "Division {division} — Stilling",
+      "linkAll": "Fuld rangliste →",
+      "empty": "Ingen sæsondata endnu"
+    },
+    "board": {
+      "title": "Bestyrelsens Status",
+      "linkAll": "Detaljer →",
+      "empty": "Ingen bestyrelsesdata",
+      "satisfaction": "Tilfredshed",
+      "focus": "Fokus",
+      "budgetMultiplier": "Budget multiplikator"
+    }
+  },
+  "board": {
+    "focus": {
+      "balanced": "Balanceret",
+      "youth_development": "Ungdomsudvikling",
+      "star_signing": "Stjernesignering"
+    }
+  },
+  "forecast": {
+    "loading": "Beregner forecast…",
+    "title": "Næste sæson — prognose",
+    "subtitle": "Forventet cashflow baseret på roster + lån + sponsor",
+    "tier": {
+      "green": {
+        "label": "Grøn",
+        "headline": "Sund økonomi",
+        "summary": "Forventet overskud og gæld under kontrol — du kan satse offensivt."
+      },
+      "yellow": {
+        "label": "Gul",
+        "headline": "Pres på",
+        "summary": "Underskud eller stigende gæld — overvej salg eller lavere løn."
+      },
+      "red": {
+        "label": "Rød",
+        "headline": "Konkurs-risiko",
+        "summary": "Kraftigt underskud eller gæld nær loftet — handl nu."
+      }
+    },
+    "projectedLabel": "Forventet net næste sæson",
+    "rangeLine": "Spænd: {low} til {high} (±20% på præmie-estimat)",
+    "row": {
+      "sponsor": "Sponsor",
+      "prize": "Præmiepenge (estimat)",
+      "salary": "Løn",
+      "loanInterest": "Lånerenter",
+      "loanFees": "Lejegebyr (lejer)",
+      "loanFeesReceived": "Lejegebyr modtaget"
+    },
+    "sponsorDetail": {
+      "variable": "Base {base} + variabel {variable} fra sidste sæsons rang/point",
+      "intro": "Introsæson: variabel sponsor starter fra sæson 2",
+      "fallback": "Fallback: mangler standings for forrige sæson"
+    },
+    "footnote": "Prognose, ikke kontrakt. Tal kan ændre sig pga. salg, lån eller bestyrelsens nye plan.",
+    "footnoteLink": "Hvordan beregnes prognosen?",
+    "badge": {
+      "label": "Forecast næste sæson"
+    }
+  },
+  "onboardingProgress": {
+    "header": "Kom i gang — {completed}/{total} trin fuldført",
+    "steps": {
+      "team_named": "Navngiv hold og manager",
+      "first_rider_owned": "Køb din første rytter",
+      "first_bid_placed": "Afgiv dit første bud",
+      "board_plan_set": "Vælg en bestyrelsesplan"
+    },
+    "ctas": {
+      "team_named": "Profil →",
+      "first_rider_owned": "Gå til Marked →",
+      "first_bid_placed": "Se Auktioner →",
+      "board_plan_set": "Mød bestyrelsen →"
+    },
+    "tour": "💡 Vis mig hvordan",
+    "dismissAria": "Skjul"
+  },
+  "onboardingComplete": {
+    "title": "Du er klar — grundforløbet er gennemført",
+    "body": "Alle fire kom-i-gang-trin er afkrydset. Næste fase er at bygge dit hold over flere sæsoner — følg Deadline Day, lever på bestyrelsens mål, og kæmp for oprykning.",
+    "nextLinks": {
+      "deadlineDay": {
+        "label": "Deadline Day",
+        "desc": "Følg transfervinduet når det lukker"
+      },
+      "board": {
+        "label": "Bestyrelse",
+        "desc": "Forhandl 1yr/3yr/5yr-planer parallelt"
+      },
+      "help": {
+        "label": "Hjælp & regler",
+        "desc": "Dyk ned i økonomi, racing og taktik"
+      }
+    },
+    "dismissAria": "Skjul"
+  }
+}

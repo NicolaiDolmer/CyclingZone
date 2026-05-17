@@ -1,33 +1,23 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { startTour, TOUR_PAGE_BY_STEP } from "../lib/onboardingTour";
 
-const STEP_META = {
-  team_named: {
-    label: "Navngiv hold og manager",
-    cta: { to: "/profile", text: "Profil →" },
-  },
-  first_rider_owned: {
-    label: "Køb din første rytter",
-    cta: { to: "/riders", text: "Gå til Marked →" },
-  },
-  first_bid_placed: {
-    label: "Afgiv dit første bud",
-    cta: { to: "/auctions", text: "Se Auktioner →" },
-  },
-  board_plan_set: {
-    label: "Vælg en bestyrelsesplan",
-    cta: { to: "/board", text: "Mød bestyrelsen →" },
-  },
+const STEP_TARGETS = {
+  team_named: "/profile",
+  first_rider_owned: "/riders",
+  first_bid_placed: "/auctions",
+  board_plan_set: "/board",
 };
 
 export default function OnboardingProgressCard({ progress, onDismiss }) {
   const navigate = useNavigate();
+  const { t } = useTranslation("dashboard");
   if (!progress) return null;
   const { steps, completed_count, total_count } = progress;
   const pct = Math.round((completed_count / Math.max(total_count, 1)) * 100);
   const nextStep = steps.find(s => !s.done);
   const tourPage = nextStep ? TOUR_PAGE_BY_STEP[nextStep.key] : null;
-  const tourTarget = nextStep ? STEP_META[nextStep.key]?.cta?.to : null;
+  const tourTarget = nextStep ? STEP_TARGETS[nextStep.key] : null;
 
   function handleStartTour() {
     if (!tourPage || !tourTarget) return;
@@ -42,7 +32,7 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
           <div className="flex items-center gap-2 mb-2">
             <span className="text-cz-accent-t text-base">🚴</span>
             <p className="text-cz-1 text-sm font-semibold">
-              Kom i gang — {completed_count}/{total_count} trin fuldført
+              {t("onboardingProgress.header", { completed: completed_count, total: total_count })}
             </p>
           </div>
           <div className="bg-cz-subtle rounded-full h-1.5 mb-3">
@@ -53,8 +43,8 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
           </div>
           <ul className="space-y-1.5">
             {steps.map(step => {
-              const meta = STEP_META[step.key];
-              if (!meta) return null;
+              const target = STEP_TARGETS[step.key];
+              if (!target) return null;
               const isNext = !step.done && step === nextStep;
               return (
                 <li key={step.key} className="flex items-center gap-2 text-xs">
@@ -70,14 +60,14 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
                         ? "text-cz-1 font-medium"
                         : "text-cz-2"
                   }>
-                    {meta.label}
+                    {t(`onboardingProgress.steps.${step.key}`, { defaultValue: step.key })}
                   </span>
-                  {isNext && meta.cta && (
+                  {isNext && (
                     <Link
-                      to={meta.cta.to}
+                      to={target}
                       className="ml-auto text-cz-accent-t text-xs hover:underline font-medium"
                     >
-                      {meta.cta.text}
+                      {t(`onboardingProgress.ctas.${step.key}`, { defaultValue: "→" })}
                     </Link>
                   )}
                 </li>
@@ -90,7 +80,7 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
                 onClick={handleStartTour}
                 className="text-cz-accent-t text-xs hover:underline font-medium"
               >
-                💡 Vis mig hvordan
+                {t("onboardingProgress.tour")}
               </button>
             </div>
           )}
@@ -98,7 +88,7 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
         <button
           onClick={onDismiss}
           className="text-cz-3 hover:text-cz-1 text-lg leading-none px-1 flex-shrink-0"
-          aria-label="Skjul"
+          aria-label={t("onboardingProgress.dismissAria")}
         >
           ×
         </button>

@@ -4,31 +4,31 @@
 // fase. Dismiss persisteres i localStorage cz-dashboard-onboarding-completion-dismissed.
 
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 const NEXT_LINKS = [
-  { to: "/deadline-day", icon: "🔔", label: "Deadline Day", desc: "Følg transfervinduet når det lukker" },
-  { to: "/board", icon: "🏛️", label: "Bestyrelse", desc: "Forhandl 1yr/3yr/5yr-planer parallelt" },
-  { to: "/help", icon: "📖", label: "Hjælp & regler", desc: "Dyk ned i økonomi, racing og taktik" },
+  { to: "/deadline-day", icon: "🔔", key: "deadlineDay" },
+  { to: "/board", icon: "🏛️", key: "board" },
+  { to: "/help", icon: "📖", key: "help" },
 ];
 
 export default function OnboardingCompletionCard({ onDismiss }) {
+  const { t } = useTranslation("dashboard");
+
   return (
     <div className="mb-4 px-5 py-4 bg-cz-card border border-cz-success/30 rounded-xl">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <span className="text-2xl flex-shrink-0">🎉</span>
           <div className="min-w-0">
-            <p className="text-cz-1 text-base font-semibold">Du er klar — grundforløbet er gennemført</p>
-            <p className="text-cz-2 text-xs mt-0.5">
-              Alle fire kom-i-gang-trin er afkrydset. Næste fase er at bygge dit hold over flere
-              sæsoner — følg Deadline Day, lever på bestyrelsens mål, og kæmp for oprykning.
-            </p>
+            <p className="text-cz-1 text-base font-semibold">{t("onboardingComplete.title")}</p>
+            <p className="text-cz-2 text-xs mt-0.5">{t("onboardingComplete.body")}</p>
           </div>
         </div>
         <button
           onClick={onDismiss}
           className="text-cz-3 hover:text-cz-1 text-lg leading-none px-1 flex-shrink-0"
-          aria-label="Skjul"
+          aria-label={t("onboardingComplete.dismissAria")}
         >
           ×
         </button>
@@ -43,9 +43,9 @@ export default function OnboardingCompletionCard({ onDismiss }) {
           >
             <div className="flex items-center gap-2 mb-1">
               <span className="text-base">{link.icon}</span>
-              <p className="text-cz-1 text-sm font-semibold">{link.label}</p>
+              <p className="text-cz-1 text-sm font-semibold">{t(`onboardingComplete.nextLinks.${link.key}.label`)}</p>
             </div>
-            <p className="text-cz-3 text-xs">{link.desc}</p>
+            <p className="text-cz-3 text-xs">{t(`onboardingComplete.nextLinks.${link.key}.desc`)}</p>
           </Link>
         ))}
       </div>

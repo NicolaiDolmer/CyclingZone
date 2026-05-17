@@ -34,17 +34,23 @@ export function computeDashboardSquadStats({
 
   const limits = getSquadLimits(division);
 
+  // Warning er pure data; strengbygning sker i UI'et (i18n). `count` er antal
+  // ryttere brugeren skal købe/sælge for at lande inden for cap.
   let warning = null;
   if (futureRiderCount > limits.max) {
     warning = {
       type: "over",
-      msg: `Hold er for stort — max ${limits.max} i Division ${division}. Sælg ${futureRiderCount - limits.max} ryttere.`,
+      count: futureRiderCount - limits.max,
+      limit: limits.max,
+      division,
       color: "red",
     };
   } else if (futureRiderCount < limits.min) {
     warning = {
       type: "under",
-      msg: `Hold er for lille — min ${limits.min} i Division ${division}. Køb ${limits.min - futureRiderCount} ryttere mere.`,
+      count: limits.min - futureRiderCount,
+      limit: limits.min,
+      division,
       color: "orange",
     };
   }

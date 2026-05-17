@@ -34,11 +34,11 @@ export function formatDate(date, style = "medium", options = {}) {
   if (!date) return "";
   const d = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(d.getTime())) return "";
+  // Intl.DateTimeFormat forbyder dateStyle sammen med day/month/year/etc.
+  // Pass style=null for at bruge custom-options uden dateStyle.
+  const opts = style == null ? { ...options } : { dateStyle: style, ...options };
   try {
-    return new Intl.DateTimeFormat(currentLocale(), {
-      dateStyle: style,
-      ...options,
-    }).format(d);
+    return new Intl.DateTimeFormat(currentLocale(), opts).format(d);
   } catch {
     return d.toLocaleDateString();
   }
