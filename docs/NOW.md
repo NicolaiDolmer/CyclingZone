@@ -3,7 +3,7 @@
 ## Aktiv slice
 **i18n Fase 3a+3b+3c LIVE (#412)** — Dashboard ([PR #461](https://github.com/NicolaiDolmer/CyclingZone/pull/461)) + Auctions ([PR #466](https://github.com/NicolaiDolmer/CyclingZone/pull/466)) + Transfers ([PR #468](https://github.com/NicolaiDolmer/CyclingZone/pull/468) → `99a9339`) deployet til cycling-zone.vercel.app. Næste: Fase 3d Help/Admin.
 
-> **Parallelt forretningsspor:** Monetization Validation Sprint starter 2026-05-18. Live status i [`SPRINT_DASHBOARD.md`](SPRINT_DASHBOARD.md); strategi i [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md).
+> **Parallelt forretningsspor:** Monetization Validation Sprint starter 2026-05-18. Live status i [`SPRINT_DASHBOARD.md`](SPRINT_DASHBOARD.md); strategi i [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). **Næste:** [#472](https://github.com/NicolaiDolmer/CyclingZone/issues/472) Reddit-research (søn 24/5 kal.) + [#473](https://github.com/NicolaiDolmer/CyclingZone/issues/473) Cycling Zones mockup (Codex).
 
 ## Senest leveret
 - 2026-05-17: **GitHub housekeeping skill MERGET ([PR #469](https://github.com/NicolaiDolmer/CyclingZone/pull/469) → `f69ebd6`).** Audit-skill m. self-improvement retro (Trin 9) — næste `github audit` trigger via skillen. Også ryddet: 5 orphan-grene slettet, `claude:todo` fjernet på #470/#411/#356 (state-konflikt med `claude:done`).
