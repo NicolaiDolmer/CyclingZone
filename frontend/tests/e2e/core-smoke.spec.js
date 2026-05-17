@@ -1,10 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 
+// i18n Fase 3+: oversatte sider skal bruge regex der matcher BÅDE DA + EN,
+// så testen ikke break'er afhængigt af LanguageDetector's valg (localStorage/
+// navigator.language varierer mellem CI-runs). Ikke-oversatte sider beholder
+// hardcoded DK-tekst indtil deres i18n-fase lander.
 const CORE_PAGES = [
   { path: "/dashboard", heading: "E2E Racing", snapshot: "dashboard.png" },
   { path: "/riders", heading: "Rytterdatabase", snapshot: "riders.png" },
-  { path: "/auctions", heading: "Auktioner", snapshot: "auctions.png" },
+  { path: "/auctions", heading: /^(Auktioner|Auctions)$/, snapshot: "auctions.png" },
   { path: "/team", heading: "E2E Racing", snapshot: "team.png" },
   { path: "/finance", heading: "Finanser", snapshot: "finance.png" },
   { path: "/board", heading: "Bestyrelse", snapshot: "board.png" },
