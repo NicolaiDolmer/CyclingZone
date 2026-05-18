@@ -1,0 +1,146 @@
+name: Sprint metrics snapshot
+
+# Auto-opdaterer Game-metrics-tabellen i docs/SPRINT_DASHBOARD.md med live tal
+# fra get_sprint_metrics('sprint') RPC (#365 + #476).
+#
+# Kører Mon/Wed/Fri 06:00 UTC + manuelt via workflow_dispatch. Åbner PR med
+# labels `metrics-snapshot` + `docs-only` hvis filen er ændret. Skipper alt
+# hvis ingen diff.
+#
+# Anti-loop note (jf. auto-merge.yml): PR'er oprettet via GITHUB_TOKEN trigger
+# IKKE downstream workflows (push, pull_request, labeled). Det betyder:
+#   * `ci.yml` (backend-tests + frontend-build) kører ikke automatisk på
+#     auto-snapshot-PR'er.
+#   * `auto-merge.yml` reagerer ikke på `auto-merge`-label tilføjet af denne
+#     workflow.
+# Resultat: bruger skal merge manuelt (eller tilføje `auto-merge`-label
+# manuelt fra mobilen for at trigge auto-merge.yml — den manuelle handling
+# tæller som event-trigger).
+# v2-follow-up: tilføj `METRICS_BOT_PAT` secret for fuld hands-off automation.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1,3,5'  # Mon/Wed/Fri 06:00 UTC (~08:00 CET)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sprint-metrics-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Run sprint-metrics snapshot
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node scripts/snapshot-sprint-metrics.mjs
+        working-directory: backend
+
+      - name: Check for diff
+        id: diff
+        run: |
+          if git diff --quiet docs/SPRINT_DASHBOARD.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No metric changes — skipping PR."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Metric changes detected:"
+            git diff docs/SPRINT_DASHBOARD.md | head -40
+          fi
+
+      - name: Open PR with snapshot
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          DATE=$(date -u +%Y-%m-%d)
+          BRANCH="metrics/sprint-snapshot-$DATE"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Re-create branch hvis den findes (genkørsel samme dag)
+          git branch -D "$BRANCH" 2>/dev/null || true
+          git checkout -b "$BRANCH"
+
+          git add docs/SPRINT_DASHBOARD.md
+          git commit -m "chore(metrics): sprint-dashboard auto-snapshot $DATE
+
+Auto-genereret via sprint-metrics-snapshot.yml fra get_sprint_metrics('sprint') RPC.
+
+Refs #476"
+
+          # --force fordi snapshot-branchen er bot-owned (kun denne workflow skriver)
+          git push -u origin "$BRANCH" --force
+
+          # Hvis PR allerede findes for samme branch (genkørsel samme dag): skip create
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json url --jq '.[0].url // ""')
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR already exists for $BRANCH: $EXISTING_PR — branch updated, skipping create."
+            gh pr comment "$EXISTING_PR" --body "🔄 Re-runnet snapshot. Workflow-run: $RUN_URL"
+            exit 0
+          fi
+
+          gh pr create \
+            --title "chore(metrics): sprint-dashboard auto-snapshot $DATE" \
+            --body "## Summary
+
+Auto-genereret snapshot af Game-metrics-tabellen i \`docs/SPRINT_DASHBOARD.md\` fra \`get_sprint_metrics('sprint')\` RPC.
+
+Refs [#476](https://github.com/${{ github.repository }}/issues/476) (automation tracker) + [#365](https://github.com/${{ github.repository }}/issues/365) (RPC).
+
+## Verifikation (docs-only — gate skipped)
+
+- Pure data-refresh i Game-metrics-tabel (kun cell-content + 'Sidste opdatering'-timestamp)
+- Workflow-run: $RUN_URL
+- Diff er $(git diff origin/main -- docs/SPRINT_DASHBOARD.md | wc -l) linjer
+
+## Merge-instruktion
+
+GITHUB_TOKEN-opretede PR'er trigger ikke CI automatisk (anti-loop). Vælg en:
+- **Manuel merge** (anbefalet): klik 'Merge pull request' efter spot-check af tallene
+- **Auto-merge via label**: tilføj \`auto-merge\` label manuelt → \`auto-merge.yml\` venter på checks og merger når grøn (men checks kører ikke uden manuel push, så samme problem)
+- **Bypass-PAT**: se [#476](https://github.com/${{ github.repository }}/issues/476) v2-follow-up
+
+🤖 Auto-snapshot via [\`sprint-metrics-snapshot.yml\`](.github/workflows/sprint-metrics-snapshot.yml)" \
+            --label "metrics-snapshot" \
+            --label "docs-only" \
+            --label "sprint-validation"
+
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          if [ -z "${DISCORD_WEBHOOK:-}" ]; then
+            echo "::warning::DISCORD_WEBHOOK is not configured; skipped failure notification."
+            exit 0
+          fi
+          curl -X POST -H "Content-Type: application/json" \
+            -d '{"content": "⚠️ **Sprint metrics snapshot failed**\nTjek workflow-log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+            "$DISCORD_WEBHOOK"
