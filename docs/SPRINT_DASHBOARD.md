@@ -2,8 +2,8 @@
 
 > **Sprint:** Monetization Validation Sprint
 > **Periode:** 2026-05-18 → 2026-06-17 (30 dage)
-> **I dag:** 2026-05-15 (T-3 før sprint-start)
-> **Sidste opdatering:** 2026-05-15 (samlet backlog-prioritering tilføjet — [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md))
+> **I dag:** 2026-05-18 (**Sprint Day 1** 🚀)
+> **Sidste opdatering:** 2026-05-18 13:11 UTC (baseline-metrics + top-spiller-liste trukket via Claude/Supabase MCP)
 >
 > **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). **Prioriteret backlog (alle 150 åbne issues) → [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md).**
 
@@ -27,17 +27,27 @@
 
 ### Game-metrics (live spillerbase)
 
-| Metric | Nu | Trend (7d) | Note |
-|---|---:|---:|---|
-| Total registered players | — | — | Træk fra Supabase: `select count(*) from auth.users` |
-| Daily active players (DAU) | — | — | Definér "active": login eller race-action senest i dag |
-| Weekly active players (WAU) | — | — | Login senest 7 dage |
-| Monthly active players (MAU) | — | — | Login senest 30 dage |
-| Returning testers (D7) | — | — | % af users der returner efter dag 7 |
-| Paying users | 0 | 0 | Først relevant efter day 30 Go-beslutning |
-| Avg session length | — | — | Fra analytics |
+**Baseline trukket 2026-05-18 13:11 UTC (Sprint Day 1)** via `get_sprint_metrics('7d')`-RPC. Trend-deltas er 0 fordi `player_events`-tracking blev rullet ud nyligt — meningsfulde deltas tilgængelige fra ~uge 2.
 
-> **Live siden 2026-05-17** ([#365](https://github.com/NicolaiDolmer/CyclingZone/issues/365)): admin kan trække DAU/WAU/MAU/D7/avg-session/top-features fra [`/admin/sprint-metrics`](https://cycling-zone.vercel.app/admin/sprint-metrics) — klik **⬇ CSV** og paste ind her.
+| Metric | Nu (baseline) | Trend (7d) | Note |
+|---|---:|---:|---|
+| Total registered players | **23** | — | `auth.users` count |
+| Daily active players (DAU) | **11** | — | Sidste 24 timer (last_seen ∪ player_events) |
+| Weekly active players (WAU) | **19** | — | Sidste 7 dage |
+| Monthly active players (MAU) | **20** | — | Sidste 30 dage |
+| Returning testers (D7) | **82.6%** (19/23) | — | % af users registreret 7+ dage siden som var aktive sidste 7 dage |
+| Paying users | 0 | 0 | Først relevant efter day 30 Go-beslutning |
+| Avg "active span" per user-day | **~8h 33m** | — | NB: ikke session-length. Max-min event-timestamp per user per UTC-dag (kræver 2+ events). Spillere har events spredt over ~8.5 timer/dag = stærk engagement-indikator. |
+
+**Top features (sidste 7 dage, event-tæller):**
+1. `feature_finance_forecast_card_viewed` — 55
+2. `feature_rider_development_tab_opened` — 39
+3. `feature_admin_auction_config_opened` — 18
+4. `feature_hall_of_fame_opened` — 5
+
+**Top 15 mest aktive spillere** (interview-DM-target-liste): `~/OneDrive/CyclingZone-context/sprint-validation/top-active-players-2026-05-18.md` — privat fil, indeholder emails. Tier 1 (top 5 m. Discord): Swatt Team / Visma / Chris Machines / Soudal Quick-Step / Decathlon CMA CGM.
+
+> **Live siden 2026-05-17** ([#365](https://github.com/NicolaiDolmer/CyclingZone/issues/365)): admin kan trække DAU/WAU/MAU/D7/avg-session/top-features fra [`/admin/sprint-metrics`](https://cycling-zone.vercel.app/admin/sprint-metrics) — klik **⬇ CSV** og paste ind her. Eller bed Claude opdatere via Supabase MCP.
 
 ## 📅 Uge-status (interaktive checkbox-tasks)
 
@@ -45,8 +55,8 @@
 **Manus-track:**
 - [ ] **Søn 17 (T-1):** Mobile UX-verification af key pages (auctions/board/dashboard/finance/riders/seasons/team) FØR Discord-launch så ny trafik ikke bouncer på broken mobile. Brug eksisterende Playwright mobile-snapshots.
 - [ ] **Man 18:** Discord launch post + poll #1 pinned
-- [ ] **Man 18:** Pull beta-data baseline (DAU/WAU/D7-retention/session-længde/top-features)
-- [ ] **Man 18:** Identificér top 10-15 mest aktive spillere
+- [x] **Man 18:** Pull beta-data baseline (DAU/WAU/D7-retention/session-længde/top-features) — se Game-metrics tabel ovenfor
+- [x] **Man 18:** Identificér top 10-15 mest aktive spillere — `~/OneDrive/CyclingZone-context/sprint-validation/top-active-players-2026-05-18.md`
 - [ ] **Tir 19:** Opret `#fair-premium-feedback` Discord-kanal
 - [ ] **Tir 19:** DM 5 top-spillere med interview-invitation
 - [ ] **Ons 20:** Premium feature poll (#3 i Manus' poll-sekvens)
