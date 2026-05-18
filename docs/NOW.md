@@ -1,5 +1,8 @@
 # NOW — Aktuel arbejdsstatus
 
+## 🔴 BLOCKER (2026-05-18 20:06 UTC)
+**GitHub Actions billing failure — alle CI-runs fejler ([#495](https://github.com/NicolaiDolmer/CyclingZone/issues/495)).** Check-run annotation siger eksplicit "recent account payments have failed or your spending limit needs to be increased". Affecter ALLE events (pull_request + push til main), ALLE workflows. Pattern: jobs completer 2-3 sek med 0 steps, `runner_name=""`. **Brand identity D1 ([#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481)) er IKKE blokeret** (lokalt design-arbejde). **Fix:** [github.com/settings/billing](https://github.com/settings/billing) → opdater payment-method ELLER hæv spending limit. **Efter fix:** `gh pr comment 494 --body "@dependabot rebase"` re-trigger checks på dependabot-PR.
+
 ## Aktiv slice
 **Brand identity overhaul ([#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481))** — Phase 1 Decision 1 (Overall Personality) AWAITING USER PICK A/B/C/D i [`docs/brand/logo-explorations.html`](brand/logo-explorations.html). **Cross-PC handoff:** start næste session ved at paste [`docs/brand/HANDOFF_PROMPT.md`](brand/HANDOFF_PROMPT.md)-indhold verbatim som første message. Forrige slice: i18n Fase 3a+3b+3c+3d alle leveret (3d PR åben, [#482](https://github.com/NicolaiDolmer/CyclingZone/pull/482)) under [#412](https://github.com/NicolaiDolmer/CyclingZone/issues/412).
 
