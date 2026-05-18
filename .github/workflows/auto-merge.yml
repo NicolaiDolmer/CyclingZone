@@ -19,7 +19,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  actions: write  # workflow_dispatch på deploy-verify
+  actions: write   # workflow_dispatch på deploy-verify
+  checks: read     # gh pr checks + gh api .../check-runs (statusCheckRollup → check-runs)
+  statuses: read   # gh pr checks (statusCheckRollup → commit statuses); fjernes IKKE — GitHub strammede 2026-05-18, se .claude/learnings/2026-05-18-auto-merge-graphql-permissions.md
 
 concurrency:
   group: auto-merge-${{ github.event.pull_request.number }}
