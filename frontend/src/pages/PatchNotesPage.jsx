@@ -2,6 +2,19 @@
 
 const PATCHES = [
   {
+    version: "3.56",
+    date: "2026-05-18",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · Revert: Google Fonts async loading (negativ effekt på Performance)",
+        items: [
+          "Reverteret commit f166f87 (font-async eksperiment). Loadcss-pattern (`rel=\"preload\" as=\"style\" onload=\"this.rel='stylesheet'\"`) reducerede ikke FCP som forventet og introducerede CLS 0 → 0.092 fra FOUT-swap. Mobile Performance: 78 → 74-75 (-3 til -4 point). Tilbage til render-blocking `<link rel=\"stylesheet\">` indtil bundle-perf battle gribes med bedre pattern (font-display: optional + size-adjust fallback). Learning dokumenteret i #479 follow-up.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.55",
     date: "2026-05-18",
     label: "Beta",
@@ -14,7 +27,6 @@ const PATCHES = [
           "Fix · Hero-badges (Open beta / Fair freemium / GDPR-compliant) brugte `text-cz-3` (#9896b0 mod #f0ede6 baggrund = 3.4:1 kontrast) — under WCAG AA's 4.5:1 minimum for normal text. Skiftet til `text-cz-2` (#66637a = ~6:1). Score: A11y color-contrast audit 0 → 100.",
           "Fix · Privatlivspolitik-link i samtykke-checkbox + andre `text-cz-accent`-links i waitlist-formularen brugte `hover:underline` (kun synlig underline ved hover). Lighthouse `link-in-text-block` fanger dette som 'links rely on color to be distinguishable'. Skiftet til altid-`underline`. Score: A11y link-in-text-block audit 0 → 100.",
           "Verifikation · Desktop Lighthouse: Performance 94 / A11y 96 / SEO 100 / Best Practices 100 (alle over #361's acceptance criteria 90+/95+/90+). Mobile-Performance 78 er ikke i acceptance criteria — bundle-optimization tages som separat polish-batch (#479).",
-          "Perf · Google Fonts (DM Sans) skiftet fra render-blocking `<link rel=\"stylesheet\">` til preload + async-promote pattern (`rel=\"preload\" as=\"style\" onload=\"this.rel='stylesheet'\"`). Reducerer mobile FCP fra 3.9s og loefter mobile Performance — del af #479 mobile-perf optim.",
         ],
       },
     ],
