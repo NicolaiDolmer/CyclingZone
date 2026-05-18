@@ -1,0 +1,688 @@
+{
+  "page": {
+    "title": "Help & Rules",
+    "subtitle": "Everything you need to know about Cycling Zone Manager",
+    "searchPlaceholder": "Search help and FAQ...",
+    "searchResults": {
+      "sectionsHeading": "Sections",
+      "faqHeading": "FAQ"
+    },
+    "faqLabel": "FAQ",
+    "faqHeading": "Frequently asked questions"
+  },
+  "sections": {
+    "start": {
+      "label": "Getting started",
+      "intro": {
+        "title": "What is Cycling Zone Manager?",
+        "text": "Cycling Zone Manager is a fantasy cycling manager game where you build and lead a cycling team. You buy riders at auction, negotiate transfers with other managers, meet the board's targets and compete to climb through the divisions."
+      },
+      "firstSteps": {
+        "title": "First steps",
+        "steps": [
+          "Create an account and log in.",
+          "Pick a team name and a manager name in the welcome wizard. Both fields are required before you can continue.",
+          "The welcome modal opens automatically the first time and walks you through the three core features: Market, Auctions and Board. It links directly to Help & Rules.",
+          "You start in Division 3 with a starting budget of 800,000 CZ$.",
+          "Go to Riders and find free riders you want to bid on.",
+          "Start an auction on a rider. If you win the auction, the rider is yours.",
+          "Build a squad of at least 8 riders to compete in races."
+        ]
+      }
+    },
+    "board": {
+      "label": "Board",
+      "whatBoard": {
+        "title": "What does the board do?",
+        "text": "The board sets targets for your team and evaluates you at the end of each season. Satisfaction determines your sponsor modifier, i.e. how much of the sponsor income gets paid out. You cannot be fired; consequences are graduated and always predictable."
+      },
+      "season1Baseline": {
+        "title": "Season 1: Baseline, no demands",
+        "text": "Your first season is a pure observation season. The board sets no targets, does not evaluate satisfaction and keeps the sponsor modifier at 1.0×. Instead it reads your team (national core, U25 share, specialisation and star profile) and saves a permanent identity snapshot used as the foundation for season 2's 5-year plan suggestions."
+      },
+      "season2Onboarding": {
+        "title": "Sequential onboarding in season 2",
+        "steps": [
+          "When season 1 ends, the board opens sequentially: 5-year plan, 3-year plan, 1-year plan.",
+          "Pick a focus direction (Balanced, Youth Development, Star Signing) and negotiate each target once in the wizard.",
+          "In season 2 you also pick your Club DNA, one of 5 archetypes that colour target suggestions and the board composition.",
+          "If you forget to negotiate before race day 5, the board takes over and picks a plan with default focus derived from your identity snapshot.",
+          "After that the 1-year plan renews every year, the 3-year plan every 3rd year and the 5-year plan every 5th year. Never all three at once again."
+        ]
+      },
+      "strategicDashboard": {
+        "title": "The strategic dashboard",
+        "text": "The Board page shows the three plans side by side (desktop) or stacked (mobile). Each panel shows satisfaction %, sponsor× modifier, progress per target and status icons (✓ met · ! at risk · ~ close · ○ neutral). Click a target to open a mini dialog with full details, a cumulative progress bar and a reaction from the board member who owns that category."
+      },
+      "namedMembers": {
+        "title": "Named board members",
+        "text": "Your team has 5 named board members from a pool of 9 archetypes: The Sponsor Pleaser 💰, The Traditionalist 🎩, The Talent Scout 🔭, The Result Hunter 🏆, The Pragmatist ⚖️, The Youth Idealist 🌱, The Nationalist Purist 🏳️, The Classics Purist 🪨 and The GC Lover ⛰️. Three are matched to your team's season 1 identity, two are wildcards that bring contrast. The member with the highest alignment is chairman (★) and speaks when in doubt. Two consecutive plan expirations below 30% satisfaction replace the chairman."
+      },
+      "clubDna": {
+        "title": "Club DNA",
+        "text": "In season 2 you pick one of 5 club DNA archetypes: 🌲 Scandinavian development team, 🪨 Italian classics traditionalist, ⚡ Sprint-focused commercial, ⛰️ French climber heritage, 🎯 British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. monuments for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) future chairman swaps tip the alignment score towards matching archetypes."
+      },
+      "consequenceTiers": {
+        "title": "Consequence tiers (6 layers)",
+        "rows": [
+          ["Layer", "Trigger", "Effect"],
+          ["1", "Satisfaction-based", "Sponsor modifier ±20% (passive)"],
+          ["2", "Satisfaction <40%", "Salary cap: total salary frozen, no growth"],
+          ["3", "Satisfaction <30%", "Signing restriction: buys >300K blocked"],
+          ["4", "Satisfaction <15%", "Forced sale: one rider auto-listed (pop≥70 and uci≥100 protected)"],
+          ["5", "<10% or 2× plan expiry below 30%", "Sponsor pullout: −10% sponsor for one season"],
+          ["6 (positive)", ">75% satisfaction + ≥75% targets met", "Bonus offer: +200K for one extra target"]
+        ]
+      },
+      "requestsAndLocks": {
+        "title": "Board requests and pivot locks",
+        "text": "Once per season you can send a board request to pivot your plan (e.g. 'more star focus'). The reply is approved, partial, rejected or approved with a tradeoff. MAJOR pivots (youth ↔ star) are only allowed once per plan lifecycle. 5-year and 3-year plans cannot be pivoted in the first 50% of their runtime unless satisfaction has changed by more than 30 points. In the last 5 race days of a season all requests are blocked."
+      },
+      "midSeasonCheck": {
+        "title": "Mid-season check",
+        "text": "Midway through the season (half of race days completed) the board automatically checks your plan status. If satisfaction is below 50% or at least half of measurable targets are 'behind', you get an 'Action required' notification in your inbox. The notification is informational. The board does not act automatically, but you should respond via a board request or the existing economy flows."
+      }
+    },
+    "auctions": {
+      "label": "Auctions",
+      "whatAuctions": {
+        "title": "What are auctions?",
+        "text": "Auctions are primarily used to buy free riders (riders without a team). You list a rider for auction, all managers can bid, and the highest bid wins. You can also list your own riders for auction. If you start an auction on a free or AI-owned rider, you are only the auction initiator. You don't receive the sale proceeds unless the rider was actually on your team."
+      },
+      "howToStart": {
+        "title": "How to start an auction",
+        "steps": [
+          "Go to Riders and find a free or AI rider.",
+          "Click the rider's name to open the stats page.",
+          "Click 'Start auction' and set a starting price. Minimum equals the rider's Value.",
+          "On free and AI riders the starting price is your first bid, so you lead the auction immediately.",
+          "The auction is now visible to everyone under Auctions."
+        ]
+      },
+      "guaranteedSale": {
+        "title": "Guaranteed sale",
+        "text": "Guaranteed sale is a special auction type you can only use on your own riders. The starting price is automatically set to 50% of Value, and the auction then works like a normal auction. Guaranteed sale is the only exception to the minimum starting price."
+      },
+      "bidding": {
+        "title": "Bidding on auctions",
+        "text": "Go to Auctions and find an auction you want to bid on. Enter your bid and click 'Bid'. You can see whether you're winning (🏆 Winning) or whether you've bid but been outbid (⚡ You bid). The minimum bid is 1 CZ$ above the current price (or matching the asking price if no one has bid yet)."
+      },
+      "autoBidCap": {
+        "title": "Auto-bid cap",
+        "text": "Auto-bid cap lets you set your private maximum. If you're not already leading the auction, the auto-bid places the minimum bid for you at the same time, so you can take the lead without bidding manually first. The system then keeps bidding automatically up to your cap if other managers outbid you."
+      },
+      "whenExpires": {
+        "title": "When does an auction expire?",
+        "text": "An auction runs for 6 active hours. Night hours don't count. The active window is weekdays (Mon to Fri) 16:00 to 22:00 and weekends (Sat to Sun) 08:00 to 23:00. If you bid at 19:40 on a Tuesday, the auction ends Wednesday at 19:40 (2h20m Tuesday + 3h40m Wednesday). If you bid at 19:40 on a Saturday, it ends Sunday at 10:40 (3h20m Saturday + 2h40m Sunday)."
+      },
+      "flashAuction": {
+        "title": "Flash Auction (Deadline Day)",
+        "text": "During Deadline Day you can choose Flash Auction when starting an auction. A Flash Auction lasts exactly 30 minutes from the start time, regardless of active windows. The option only shows up on the rider's stats page when Deadline Day is active."
+      },
+      "tenMinExtend": {
+        "title": "10-minute extension",
+        "text": "If a bid is placed within the last 10 minutes of an auction, the auction is automatically extended by 10 minutes from the bid time. This continues until no bid is placed in the final 10 minutes. The extension may exceed that day's window close by up to 1 hour, so e.g. a weekday (close 22:00) auction can be extended all the way to 23:00. If a bid in the extra hour would push the end further, the remaining minutes roll over to the next window opening (e.g. a Friday bid at 22:55, the auction ends Saturday at 08:05)."
+      },
+      "squadAndAuctions": {
+        "title": "Squad size and auctions",
+        "text": "Squad limits still apply per division. Active auctions where you lead reserve both balance and a potential squad slot, so you can't lead more auctions than your squad can hold. If the transfer window is closed at completion, the rider is queued for the next window opening instead of switching immediately."
+      }
+    },
+    "transfers": {
+      "label": "Transfers",
+      "whatTransfers": {
+        "title": "What is the transfer system?",
+        "text": "The transfer system lets you negotiate directly with other managers to buy or sell riders, like in Football Manager. You can send an offer on any rider, whether listed for sale or not."
+      },
+      "sendOffer": {
+        "title": "Send an offer",
+        "steps": [
+          "Find the rider you want to buy under Riders and click his name.",
+          "Click '↔ Send transfer offer' at the bottom of the page.",
+          "Enter your offer in CZ$ and an optional message.",
+          "Click 'Send offer'. The seller gets a notification.",
+          "AI riders cannot receive direct offers; they must be bought via auction."
+        ]
+      },
+      "receiveAndReply": {
+        "title": "Receive and reply to offers",
+        "text": "Go to Transfers, Received offers. Here you see all offers on your riders. You can accept (✓), reject (✕) or send a counter-offer (↔) with your own price."
+      },
+      "finalConfirmation": {
+        "title": "Final confirmation",
+        "text": "When an offer or counter-offer is accepted, the deal enters a short confirmation phase. Both managers must confirm the final agreement, and the system re-checks ownership, balance and squad limits just before the deal goes through."
+      },
+      "negotiation": {
+        "title": "Back-and-forth negotiation",
+        "text": "Negotiation can continue indefinitely. The seller sends a counter, the buyer can accept the counter, send a new offer or withdraw. The round counter shows how far along you are in the negotiation."
+      },
+      "privacy": {
+        "title": "Privacy",
+        "text": "Offers are private. Only you and the seller can see your negotiation. Other managers cannot see who has bid on the same rider."
+      },
+      "transferWindow": {
+        "title": "Transfer window",
+        "text": "You can negotiate and confirm direct transfers and swap deals even when the transfer window is closed. Once both parties accept, the deal is parked as 'Agreed, awaiting window' and runs automatically when admin opens the transfer window. A parked deal cannot be cancelled by either manager, but the system still re-checks ownership, balance and squad limits before it goes through."
+      },
+      "loansAndSquad": {
+        "title": "Loan deals and squad limits",
+        "text": "Loaned riders count towards your squad size the same way as your own riders and incoming deals. The system therefore checks, both when you propose a loan deal, when the lender activates it, and when other deals complete, that your squad still stays within the division's min/max bounds. The first season's loan fee is paid when the deal activates, and if the deal covers multiple seasons the following seasons' fees are charged automatically at season start."
+      },
+      "archiveCompleted": {
+        "title": "Archive completed offers",
+        "text": "Offers that are rejected, withdrawn or otherwise completed can be archived from the Transfers page. Archiving removes them from active lists, so ongoing negotiations are always easy to find."
+      }
+    },
+    "managers": {
+      "label": "Manager & Profile",
+      "profile": {
+        "title": "Manager profile",
+        "text": "Every manager has a public profile page. Click a team name in the leaderboard, team list or transfers to view their profile. The profile shows team and riders, season history, achievements and transfer activity."
+      },
+      "namesAndInit": {
+        "title": "Team name and manager name",
+        "text": "On My Profile you can save or edit both team name and manager name. If your account was previously created without a real team, you can also initialise the team from here by saving the team info."
+      },
+      "theme": {
+        "title": "Theme (light / dark)",
+        "text": "Under Settings, Appearance you can pick between 'Follow system' (auto based on your device), 'Light' and 'Dark'. The choice is saved locally in your browser. The sidebar stays dark in both themes for consistency."
+      },
+      "forgotPassword": {
+        "title": "Forgot password",
+        "text": "If you can't log in, you can pick 'Forgot password?' from the login page. The system sends a reset link to your email, and the link opens a dedicated page where you can pick a new password."
+      },
+      "inbox": {
+        "title": "Inbox",
+        "text": "The inbox (under Clubhouse) collects all system events: bids, auctions, transfer offers, season start, economy and achievements. Click a message to jump directly to the relevant page. Unread messages show as a yellow count next to the 🔔 icon."
+      },
+      "onlineStatus": {
+        "title": "Online status",
+        "text": "A green dot next to a manager's name means they are active right now (last seen within 5 minutes). A grey dot with text shows when they were last online, e.g. '3h ago'. You can see this on manager profiles and in the team list."
+      },
+      "managersOnline": {
+        "title": "Managers online count",
+        "text": "On the Dashboard you can see how many managers are active in the game right now. This updates automatically."
+      },
+      "loginStreak": {
+        "title": "Login streak",
+        "text": "Your 🔥 streak counts how many consecutive days you've logged in. The streak resets if you skip a day. High streaks unlock secret achievements. You can see your streak on your manager profile."
+      },
+      "xpAndLevel": {
+        "title": "XP and level",
+        "text": "You earn XP for activity in the game: bidding on auctions, winning auctions, completing transfers and so on. When you accumulate enough XP you level up from Rookie to Legend. Your level is shown in the Hall of Fame."
+      },
+      "headToHead": {
+        "title": "Head-to-Head",
+        "text": "Under League, Head-to-Head you can compare two teams' history directly: season points, stage and GC wins, transfer history between the teams and both teams' current top-5 riders. Team A is automatically your own team. Click the Team B field to see suggestions immediately. No typing required."
+      }
+    },
+    "discord": {
+      "label": "Discord DMs",
+      "whyDms": {
+        "title": "Why Discord DMs?",
+        "text": "Cycling Zone sends notifications (outbids, won auctions, transfer offers and replies) as private messages directly to you on Discord, so you don't need the app open to catch a time-sensitive situation. It doesn't replace in-app notifications; it complements them."
+      },
+      "howToGetDms": {
+        "title": "How to get DMs",
+        "steps": [
+          "In Discord: Settings, Advanced, enable Developer Mode.",
+          "Right-click your own name anywhere in Discord and pick 'Copy User ID'.",
+          "In Cycling Zone: go to Profile, Discord Integration and paste your ID in the field. Click 'Save Discord ID'.",
+          "Make sure you share a server with the Cycling Zone bot, and that 'Allow direct messages from server members' is enabled on that server.",
+          "Click 'Send test DM' to verify it works."
+        ]
+      },
+      "optOut": {
+        "title": "Turn DMs off (opt-out)",
+        "text": "If you don't want private messages from the bot, you can turn off 'Receive DMs for personal events' under Profile, Discord Integration. In-app notifications keep working. Personal info (outbids, won auctions, transfer offers and replies) is not posted to the shared channel; that channel is reserved for broadcasts."
+      },
+      "whenDmsSent": {
+        "title": "When are DMs sent?",
+        "rows": [
+          ["Event", "DM"],
+          ["You're outbid on an auction", "Yes"],
+          ["You win an auction", "Yes"],
+          ["You receive a transfer offer", "Yes"],
+          ["Your transfer offer is accepted / rejected / countered", "Yes"],
+          ["A new auction is created (all managers)", "No, channel only"],
+          ["Transfer completed (all managers)", "No, channel only"],
+          ["Season start / season end", "No, channel only"]
+        ]
+      }
+    },
+    "achievements": {
+      "label": "Achievements",
+      "whatAchievements": {
+        "title": "What are achievements?",
+        "text": "Achievements are rewards you unlock by reaching specific milestones in the game. There are 45 achievements across 5 categories: Auctions, Transfers, Team, Season and Secret."
+      },
+      "categories": {
+        "title": "Categories",
+        "rows": [
+          ["Category", "Examples"],
+          ["⚡ Auctions", "First bid, Sniper, High Roller, 50 won auctions"],
+          ["↔ Transfers", "First deal, Negotiator, Stolen, 30 transfers"],
+          ["◈ Team", "Full squad, Youth team, Star team, Promoted!"],
+          ["🏁 Season", "Division winner, Podium, Board favourite, Veteran"],
+          ["🔒 Secret", "Unlocked by unexpected events, not described upfront"]
+        ]
+      },
+      "secretAchievements": {
+        "title": "Secret achievements",
+        "text": "Secret achievements show as 🔒 with the title '???' until you unlock them. The description is only revealed afterwards. They unlock when you do unexpected or fun things in the game."
+      },
+      "notifications": {
+        "title": "Achievement notifications",
+        "text": "When you unlock an achievement, you get a message in the inbox with the achievement icon and title. Your unlocked achievements show on your manager profile."
+      }
+    },
+    "watchlist": {
+      "label": "Watchlist",
+      "whatWatchlist": {
+        "title": "What is the Watchlist?",
+        "text": "The Watchlist is your private list of riders you're tracking. The list is only visible to you."
+      },
+      "howToAdd": {
+        "title": "How to add a rider",
+        "steps": [
+          "Find a rider in the Rider Database or on a rider's stats page.",
+          "Click the ☆ star next to the rider's name.",
+          "The star turns yellow (★) and the rider is now on your list.",
+          "Go to Watchlist in the menu to see your full list."
+        ]
+      },
+      "saleNotification": {
+        "title": "Sale notification",
+        "text": "If a rider on your watchlist is listed for sale via the transfer list or put up for auction, you automatically get a notification in your inbox. You stay updated on your favourites without actively checking the market."
+      },
+      "watchlistCounter": {
+        "title": "Watchlist counter",
+        "text": "On a rider's stats page you can see '👁 X managers are tracking this rider'. This shows the total number of managers who have the rider on their watchlist, without revealing who. Use this as a demand signal."
+      },
+      "features": {
+        "title": "Watchlist features",
+        "text": "You can sort and filter your saved riders on all stats, Value, salary, age, U25/U23 and free agent. You can add private notes to each rider. On free agents you can start an auction directly from the watchlist."
+      }
+    },
+    "activity": {
+      "label": "My Activity",
+      "whatActivity": {
+        "title": "What is My Activity?",
+        "text": "My Activity is your personal market workspace under Market. It gathers all your market actions (auctions, transfers, loans and watchlist) in one place, separate from the global inbox."
+      },
+      "tabs": {
+        "title": "The tabs",
+        "steps": [
+          "Action required: Offers awaiting your reply, counters you've received, deals awaiting your confirmation, loan proposals and auctions ending within 1 hour. Opens by default.",
+          "Auctions: All active auctions where you're seller or bidder.",
+          "Transfers: Offers you've received and offers you've sent that are still active.",
+          "Loans: Active and pending loan deals. Riders you lend out and riders you borrow.",
+          "Watchlist: Compact view of your saved riders with market status. Click → for the full watchlist.",
+          "History: Completed auctions, closed transfers and finished loan deals."
+        ]
+      },
+      "deepLinks": {
+        "title": "Deep links",
+        "text": "Clicking a row in My Activity takes you directly to the relevant page: auctions, transfers or the rider's stats page. Clicking the rider name within a row opens the rider's stats page."
+      }
+    },
+    "season": {
+      "label": "Season",
+      "seasonFlow": {
+        "title": "Season flow",
+        "steps": [
+          "Admin closes the transfer window and starts a new season.",
+          "At season start: pending transfers are processed, salaries follow the current market value, and sponsor money is paid out.",
+          "Races are run in Pro Cycling Manager and results are reported by a manager and approved by admin.",
+          "At season end: division bonus is paid out, points are tallied, promotion/relegation is decided, salaries are deducted, debt interest is added."
+        ]
+      },
+      "racesAndResults": {
+        "title": "Races and results",
+        "text": "All managers can report race results from PCM via Season & Results, Races, Submit results. Upload an Excel file, match names and submit for admin approval. Prize money is computed automatically when admin finalises the results, and the season standings update through the same backend path whether admin approves a pending submission or imports results directly."
+      },
+      "prizeMoney": {
+        "title": "Prize money from races",
+        "text": "Each result for a rider on your team generates prize money: UCI points for the placing × 1,500 CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: UCI points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
+      },
+      "divisionBonus": {
+        "title": "Division bonus at season end",
+        "rows": [
+          ["Division", "Place 1", "Place 2", "Place 3", "Place 4-5"],
+          ["Division 1", "300,000 CZ$", "200,000 CZ$", "100,000 CZ$", "50,000 CZ$"],
+          ["Division 2", "150,000 CZ$", "100,000 CZ$", "50,000 CZ$", "25,000 CZ$"],
+          ["Division 3", "75,000 CZ$", "50,000 CZ$", "25,000 CZ$", "—"]
+        ]
+      },
+      "raceLibrary": {
+        "title": "Race library",
+        "text": "Under Season & Results, Races, Library you can search and filter all races across seasons (season, class, status, name). Click a race to open its history page with previous editions, the winner of each season and a cumulative overview of the riders who have historically performed best in that race."
+      },
+      "promotionRelegation": {
+        "title": "Promotion and relegation",
+        "text": "Top 2 in Division 2 and 3 are promoted. Bottom 2 in Division 1 and 2 are relegated. Decided automatically at season end based on season points."
+      },
+      "whenSeasonEnds": {
+        "title": "When can a season be ended?",
+        "text": "Admin can only end a season once all pending race results for the season's races have been processed. As long as submissions are waiting for approval or rejection, season completion is blocked."
+      },
+      "adminRecomputeStandings": {
+        "title": "Admin: recompute standings on drift",
+        "text": "If an active or completed season is missing standings due to older data drift, admin can use the '↻ Standings' button on the Admin page. It recomputes the table from the stored `race_results`, creates the missing standings rows and updates the division's internal rank that the board uses at season end."
+      },
+      "adminBetaReset": {
+        "title": "Admin: beta reset",
+        "text": "Under Admin, Beta test tools admin can run a partial reset or a full test reset. The suite can cancel open market activity, return manager riders to the AI/free pool, reset balances, divisions, boards, race calendar, seasons, XP/level and achievement unlocks. AI teams, bank teams and frozen teams are not affected by the manager resets."
+      }
+    },
+    "prizes": {
+      "label": "Prizes",
+      "formula": {
+        "title": "The prize formula",
+        "text": "Prize money is computed directly from UCI points: 1 UCI point = 1,500 CZ$. Only races with a race class (Tour de France, Giro/Vuelta, Monuments, WorldTour, ProSeries, Class 1, Class 2) generate prize money. Races without a class give 0 CZ$."
+      },
+      "examples": {
+        "title": "Prize amount examples",
+        "rows": [
+          ["Win", "UCI points", "Prize"],
+          ["Tour de France win", "1,300", "1,950,000 CZ$"],
+          ["Monument win", "800", "1,200,000 CZ$"],
+          ["Stage win (Tour de France)", "210", "315,000 CZ$"],
+          ["ProSeries win", "200", "300,000 CZ$"],
+          ["Class 1 win", "125", "187,500 CZ$"],
+          ["Class 2 win", "40", "60,000 CZ$"]
+        ]
+      },
+      "payout": {
+        "title": "Payout",
+        "text": "Prize money is paid automatically to your balance when admin finalises race results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: UCI points decide the leaderboard, while the CZ$ prize only affects your balance."
+      },
+      "fullTable": {
+        "title": "The full points table",
+        "text": "Under Season & Results, Races, Points & prizes you'll find every race class's complete points and prize scale with all places.",
+        "ctaLabel": "Open Points & prizes →",
+        "ctaTo": "/races?tab=points",
+        "disclaimer": "Prize amounts may be adjusted until season 1 finishes."
+      }
+    },
+    "divisions": {
+      "label": "Divisions",
+      "overview": {
+        "title": "Division overview",
+        "text": "The game has 3 divisions. Division 1 is the highest. Everyone starts in Division 3."
+      },
+      "sizePerDivision": {
+        "title": "Squad size per division",
+        "rows": [
+          ["Division", "Minimum riders", "Maximum riders"],
+          ["Division 1", "20", "30"],
+          ["Division 2", "14", "20"],
+          ["Division 3", "8", "10"]
+        ]
+      },
+      "promotionRelegation": {
+        "title": "Promotion and relegation",
+        "text": "Top 2 are promoted, bottom 2 are relegated in each division. Decided automatically at season end."
+      }
+    },
+    "riders": {
+      "label": "Riders",
+      "valueAndPrice": {
+        "title": "Value and price",
+        "text": "A rider's market value is the base value (minimum 5 UCI points × 4,000 CZ$) plus the average of the rider's prize money over the last up to 3 completed seasons. The starting price on an auction must at minimum equal the rider's Value. The only exception is Guaranteed sale, which locks the starting price to 50% of Value."
+      },
+      "salary": {
+        "title": "Salary",
+        "text": "Each rider's annual salary is about 10% of market value and is set at purchase or at the scheduled salary recalculation. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at season end. If your balance can't cover the salaries, the system automatically takes an emergency loan."
+      },
+      "stats": {
+        "title": "Rider stats",
+        "text": "Each rider has 14 stats: FL (Flat), BJ (Mountain), KB (Mid-mountain), BK (Hill), TT (Time trial), PRL (Prologue), BRO (Cobbles), SP (Sprint), ACC (Acceleration), NED (Descent), UDH (Stamina), MOD (Resistance), RES (Recovery), FTR (Fighter)."
+      },
+      "development": {
+        "title": "Development over time",
+        "text": "On a rider's stats page there's a 'Development' tab. Here you can see UCI points over time, pick one of the 14 stats and follow its development as a graph, plus see recent historical data points. If the tab is empty, no history from the weekly syncs has been gathered yet."
+      },
+      "u25u23": {
+        "title": "U25 and U23 riders",
+        "text": "Riders under 25 and 23 years old are tagged. You can filter on U25/U23 in the rider database and watchlist."
+      }
+    },
+    "activityfeed": {
+      "label": "Activity feed",
+      "whatActivityFeed": {
+        "title": "What is the Activity feed?",
+        "text": "The Activity feed is a public stream of what's happening in the game. You can see who's winning auctions, completing transfers and when seasons start and end. The feed updates in real time."
+      },
+      "whatShown": {
+        "title": "What appears in the feed?",
+        "rows": [
+          ["Event", "Description"],
+          ["🏆 Auction won", "Team won an auction (shows rider and price)"],
+          ["⚡ Auction started", "A team has listed a rider for auction"],
+          ["↔ Transfer completed", "A transfer between two managers was accepted"],
+          ["🚀 Season started", "Admin has started a new season"],
+          ["🏅 Results approved", "Admin has approved race results"]
+        ]
+      },
+      "transferRumors": {
+        "title": "Transfer rumours",
+        "text": "If a manager views one of your riders, you get an anonymous notification: 'A manager is watching your rider X'. You get at most one notification per rider per hour to avoid spam."
+      }
+    }
+  },
+  "faq": {
+    "balanceVisibility": {
+      "q": "Can others see my balance?",
+      "a": "No. Your balance is only visible to you."
+    },
+    "ridersOffline": {
+      "q": "What happens to my riders if I don't log in?",
+      "a": "Your riders stay on your team. You will lose your login streak if you skip a day, though."
+    },
+    "passwordReset": {
+      "q": "How do I reset my password?",
+      "a": "From the login page you can click 'Forgot password?', enter your email and follow the reset link in the email. The link opens a dedicated reset page where you pick a new password."
+    },
+    "riderTransferTiming": {
+      "q": "When does a rider switch teams after a transfer?",
+      "a": "If the transfer window is open, the deal goes through immediately after both parties confirm. If the window is closed, the deal is parked and runs automatically at the next window opening."
+    },
+    "cancelParkedTransfer": {
+      "q": "Can I cancel a parked transfer?",
+      "a": "No. Once both parties have accepted, the deal is locked. The system can still cancel it at window opening if ownership, balance or squad limits no longer hold."
+    },
+    "aiDirectOffers": {
+      "q": "Can I buy AI riders with a direct offer?",
+      "a": "No. AI riders cannot receive direct transfer or swap offers. They must be bought via auction."
+    },
+    "auctionExpiry": {
+      "q": "When does an auction expire?",
+      "a": "An auction runs for 6 active hours. Night hours don't count: weekdays (Mon to Fri) have active time 16:00 to 22:00, weekends (Sat to Sun) 08:00 to 23:00. Example: an auction started Tuesday 19:40 ends Wednesday 19:40. An auction started Saturday 19:40 ends Sunday 10:40."
+    },
+    "flashAuction": {
+      "q": "What is a Flash Auction?",
+      "a": "Flash Auctions are a special auction type that's only available during Deadline Day. They run for exactly 30 minutes from the start time, regardless of active window. You find the option on the rider's stats page when Deadline Day is active."
+    },
+    "transferWindowNotifications": {
+      "q": "Do I get notified before the transfer window closes?",
+      "a": "Yes. When Deadline Day is active, the system sends automatic notifications 24 hours, 2 hours and 30 minutes before the window closes. When the window closes, a Final Whistle report is sent to Discord with the day's biggest deal, most active manager and the count of panic moves."
+    },
+    "minBidAmount": {
+      "q": "How much do I need to bid above the current price?",
+      "a": "Your bid must be at least 1 CZ$ above the current price. If no one has bid yet (e.g. on a guaranteed sale), you can match the asking price. Active auctions where you lead count as reserved balance and potential squad slot at the same time."
+    },
+    "loansInSquadLimit": {
+      "q": "Do loaned riders count towards the squad limit?",
+      "a": "Yes. Active loan deals count towards your squad size, so you can be rejected on loans, auctions or other incoming deals if your squad is already full."
+    },
+    "loanFeeTiming": {
+      "q": "When is the loan fee charged on a loan deal?",
+      "a": "The first covered season is paid when the loan deal activates. If the deal runs over multiple seasons, the following seasons' loan fees are charged automatically at season start and booked in the finance log for both teams."
+    },
+    "bidVisibility": {
+      "q": "Can I see who has bid on my rider?",
+      "a": "No. Transfer negotiations are private: only buyer and seller can see them. You get an anonymous notification when someone views your rider."
+    },
+    "secretAchievementsFaq": {
+      "q": "What are secret achievements?",
+      "a": "Secret achievements show as 🔒 and are only revealed when you unlock them. They are triggered by unexpected actions in the game."
+    },
+    "onlineStatusFaq": {
+      "q": "What is online status?",
+      "a": "A green dot next to a manager's name means they've been active within the last 5 minutes. You can see this everywhere in the game."
+    },
+    "loginStreakFaq": {
+      "q": "What is the login streak?",
+      "a": "Your 🔥 streak counts how many consecutive days you've logged in. It resets if you skip a day."
+    },
+    "watchlistCounterFaq": {
+      "q": "What does the watchlist counter on a rider page mean?",
+      "a": "It shows how many managers have that rider on their watchlist. You can't see who, only the total count."
+    },
+    "watchlistSaleNotificationFaq": {
+      "q": "Do I get notified when a rider on my watchlist is listed for sale?",
+      "a": "Yes. If a rider you're tracking is listed on the transfer list or put up for auction, you automatically get a notification in the inbox with price and type. You don't need to actively check the market for your favourites."
+    },
+    "guaranteedSaleFaq": {
+      "q": "What is Guaranteed sale, and when can I use it?",
+      "a": "Guaranteed sale is a special auction form that can only be used on your own riders. The starting price is locked to 50% of the rider's Value, and the auction then runs normally. It's the only exception to the rule that the starting price must at minimum equal the rider's full Value."
+    },
+    "riderSalaryView": {
+      "q": "How do I see a rider's salary?",
+      "a": "Salary is a visible column in the Rider Database and watchlist, and can be sorted and filtered on. You can filter on a salary range under 'Salary CZ$ (min-max)' in the filter panel. The size of the salary depends on the rider's market value, which also includes the average of the rider's recent season prize money."
+    },
+    "riderDevelopment": {
+      "q": "Where can I see whether a rider is developing?",
+      "a": "Open the rider's stats page and pick the 'Development' tab. It shows historical UCI points, a selectable graph for each stat, and the latest data points from the sync history."
+    },
+    "salaryShortfall": {
+      "q": "What happens if I can't pay the salaries?",
+      "a": "If your balance is negative at season end, you automatically take an emergency loan. Interest is added at the next season end."
+    },
+    "debtCeiling": {
+      "q": "What is the debt ceiling, and when does it apply?",
+      "a": "Each division has a maximum debt amount: Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$. The system rejects emergency loans that would exceed the ceiling. Debt interest is added at season end on top of existing debt."
+    },
+    "prizeMoneyFaq": {
+      "q": "What is prize money, and when is it paid out?",
+      "a": "Prize money is a direct CZ$ reward for results your riders achieve in races. The formula is: UCI points for the placing × 1,500 CZ$. The money is paid automatically to your balance when admin finalises results and shows as 'prize' in your finance log. Only races with a race class (Tour de France, WorldTour, ProSeries etc.) generate prize money. Races without a race class give 0."
+    },
+    "divisionBonusFaq": {
+      "q": "What is the division bonus, and when is it paid out?",
+      "a": "The division bonus is a one-time bonus paid at season end based on your team's final placing in your division. Division 1: 300,000 / 200,000 / 100,000 / 50,000 CZ$ for places 1-4. Division 2: 150,000 / 100,000 / 50,000 / 25,000 CZ$ for places 1-4. Division 3: 75,000 / 50,000 / 25,000 CZ$ for places 1-3. The bonus is booked as 'bonus' in your finance log."
+    },
+    "sponsorPayoutTiming": {
+      "q": "When is sponsor money paid out?",
+      "a": "Sponsor money is paid at season start. Season 1 is an intro season with a fixed 240,000 CZ$ before any board or pullout effects. From season 2 the base sponsor is computed competitively: 200,000 CZ$ fixed base + 0-150,000 CZ$ variable share based on the previous season's points and placing in your division. The amount is then multiplied by the board's budget modifier and any sponsor pullout. This means strong results can lift the sponsorship, while a bottom placing still has a safe floor of 200,000 CZ$ before modifier."
+    },
+    "seasonFinanceReport": {
+      "q": "What does the season finance report show, and where do I find it?",
+      "a": "The season finance report is a dedicated page per season that shows your cashflow for the chosen season: the hero card at the top sums total income + spend + net result, two donut charts split income and spending by reason_code (sponsor, prize money, auction buys, salary etc.), the top-3 lists highlight your biggest transactions in each direction, and the loan portfolio table shows active loans with remaining debt + next season's expected interest. The report is private: you only see your own, and admins see one team at a time via a team dropdown. You open the report via the 📊 Season report button at the top of the Finances page or via the 📊 Finance report button on the season snapshot page (/seasons). The sponsor modifier curve and direct comparison with the previous season are first available from season 2, once there's at least one closed season to compare against."
+    },
+    "forecastCalculation": {
+      "q": "How is the forecast for next season on the Finances page computed?",
+      "a": "The forecast shows expected cashflow for the entire next season as the sum of: (1) sponsor = season's sponsor base × board's budget modifier × any active sponsor pullout factor. Season 1 uses a fixed 240,000 CZ$, while season 2+ uses a 200,000 CZ$ base + up to 150,000 CZ$ variable sponsor from the previous season's points/rank. (2) prize money = sum of your riders' prize_earnings_bonus (rolling avg of the last 1-3 completed seasons), (3) salary = sum of riders.salary, (4) loan interest = sum(amount_remaining × interest_rate) on all active loans, and (5) loan fees for loaned riders extending into next season (offset by any fees you receive as lender). The risk tier badge is 🟢 green if net ≥ +50K and debt < 50% of ceiling, 🟡 yellow if net is between -50K and +50K or debt is between 50-80% of ceiling, and 🔴 red if net < -50K, debt > 80% of ceiling, or if your deficit hits the debt ceiling within 2 seasons. The range (±20% on the prize estimate) reflects that prize money is the most variable input. The forecast is not a contract; numbers can change if you sell riders, take loans, score more points or negotiate a new board plan."
+    },
+    "standingsUpdate": {
+      "q": "When are the season standings updated?",
+      "a": "Season standings update when admin finalises race results. For manager-submitted files this happens at approval, while admin-imported results update standings immediately through the same backend path."
+    },
+    "adminFinishWithPending": {
+      "q": "Can admin finish the season while there are pending race approvals?",
+      "a": "No. Pending race results must first be approved or rejected before season completion can run."
+    },
+    "boardSatisfaction": {
+      "q": "What is board satisfaction?",
+      "a": "The board evaluates you on the agreed targets with a gradual model where results weigh the most, but economy, identity and ranking also count. New plans get scaled by your division, your squad depth and the team's derived sporting profile, so the demands fit reality better. A near-miss or strong progress can therefore still give an acceptable overall rating. A clear national core also adds a bit of identity value to the board's read of the team, while big-profile riders add some sponsor/prestige but also raise expectations. High satisfaction gives bonus sponsorship, while low satisfaction reduces the sponsor payout and can lead to stricter demands in the next plan. You cannot be fired by the board in Cycling Zone."
+    },
+    "boardNegotiation": {
+      "q": "Can I negotiate the board's demands?",
+      "a": "Yes. When you open a new board negotiation the system generates the demands on the server based on division, squad size, U25 share, national core, star profile and the team's current sporting profile, and you can negotiate each target once. An approved compromise lowers the demand slightly and typically halves the penalty for missing it. Balanced teams with a clear national core can also get a national identity target as part of the plan. Once the plan is active, you can also send one board request per season from the Board page to ask for a strategic adjustment. The reply can be approved, partial, rejected or approved with a tradeoff, and direct switches between youth and star focus are often done gradually via a balanced intermediate station instead of an immediate hard switch. The Board page now also shows the concrete focus and target changes from the latest request, so you can see exactly what the board changed."
+    },
+    "directYouthToStarSwitch": {
+      "q": "Can I switch directly between youth focus and star focus?",
+      "a": "Usually only partially. The board can accept a new direction, but if the team's current identity points clearly towards youth or big-profile riders, the switch is often made as a tradeoff via a more balanced plan first. This makes requests more predictable and adds friction to identity shifts, so the team's DNA doesn't flip overnight."
+    },
+    "boardCurrentAssessment": {
+      "q": "Where do I see the board's current assessment?",
+      "a": "The Dashboard shows a short board outlook with status and category scores, while the Board page shows the more detailed assessment. The Board page also shows the board's read of the team with specialisation, U25 share, national core, star profile and squad status, now with country name and flag on the national core. The Board page now also explains more clearly why the board reacts, by showing which categories drive the assessment, what's holding it back, and which signals from history, identity or profiles play in. The two places read the same board data from the backend, so they share the same truth."
+    },
+    "season1BaselineFaq": {
+      "q": "What is the season 1 baseline, and why doesn't the board set demands?",
+      "a": "Season 1 is an observation season. The board sets no targets, doesn't evaluate satisfaction, and the sponsor modifier stays at 1.0×. Instead it *reads* your team: which nation dominates, how large the U25 share is, which specialisation the team points towards, and how visible your stars are. When the season ends, this 'identity snapshot' is saved on your team permanently and used as the basis for season 2's 5-year plan suggestions. So you have a full season to find your direction before negotiations start in earnest."
+    },
+    "buildOnCoreBadge": {
+      "q": "What does the 'Builds on your core' badge mean on 5-year targets?",
+      "a": "It's identity feeding. When the board proposes 5-year targets in season 2, relevant targets are annotated with a small badge explaining why that target exists. Example: 'Builds on your FR core (5/8 riders)' when your season 1 team had five French riders out of eight. Click the badge for the full explanation. The badge shows the frozen season 1 observation, i.e. even if you later switch riders out, the board remembers which signal originally drove the target."
+    },
+    "forgotToNegotiatePlan": {
+      "q": "What happens if I forget to negotiate my plan?",
+      "a": "The board takes over. If you haven't signed a new plan before race day 5 is passed, a cron job automatically signs a plan with default focus derived from your team's identity (U25-heavy → youth development, star profile → star signing, otherwise balanced) and standard targets. You first get an info reminder at race day 2 ('The board is waiting for your N-year plan'), then an 'Action required' notification at race day 4 ('Last chance'), and after that it's the board's pick. You can still request changes via a board request once the plan is running. If you check the Board page often, you'll also see a live countdown banner with race days remaining."
+    },
+    "boardMembersFaq": {
+      "q": "Who are the members of my board?",
+      "a": "The board has 5 named members from a pool of 9 archetypes: The Sponsor Pleaser 💰 (guards sponsor relationships), The Traditionalist 🎩 (the club's heritage), The Talent Scout 🔭 (long-term youth), The Result Hunter 🏆 (wants to win now), The Pragmatist ⚖️ (balance), The Youth Idealist 🌱 (future over now), The Nationalist Purist 🏳️ (home colours), The Classics Purist 🪨 (monuments), The GC Lover ⛰️ (Tour). Three members are matched to the team's identity at end of season 1, two are chosen as wildcards that bring contrast, but never direct contradiction (a debt-aversion purist isn't paired with a risk taker). The avatar grid on the Board page shows who's who; the one with ★ is the chairman."
+    },
+    "boardChairman": {
+      "q": "What does the board chairman do?",
+      "a": "The chairman is the member with the highest alignment to your team. He speaks when in doubt: if the board's assessment doesn't have a clear dominant category, it's the chairman's voice you hear. He's also the one who gets replaced if the board loses patience: 2× consecutive plan expiry below 30% satisfaction → a new chairman is picked from the 4 unassigned archetypes. You get a 'The board has picked a new chairman' notification when it happens."
+    },
+    "memberReactions": {
+      "q": "Why do different board members react to different targets?",
+      "a": "Each archetype 'owns' certain categories: The Sponsor Pleaser owns economy targets, The Result Hunter owns results, The Traditionalist/Nationalist Purist owns identity, The Pragmatist owns ranking. When you click the 'X reacts' button on a target, a quote shows from the member whose category the target falls under. The quotes are hand-written per archetype and per situation (proposal, met, missed), so The Sponsor Pleaser sounds worried about a softening debt target, and The Result Hunter sounds excited about a win."
+    },
+    "starSigningGoal": {
+      "q": "What does the new 'star rider' target in star_signing plans mean?",
+      "a": "Star_signing focus now gets a 5th target: 'At least 1 star rider (popularity ≥75)'. The board expects that a plan to chase results also manifests as at least one rider with a high profile, whether you buy an existing star on the market or develop one internally. Checked at evaluation time, so it's your current squad that counts. You can negotiate the target, but it's already the minimum (target=1)."
+    },
+    "u25StatGain": {
+      "q": "What is 'U25 stat gain' in youth plans?",
+      "a": "Youth_development focus now gets a 5th target: 'Average U25 stat gain ≥3 stat points/season'. It measures whether your U25 riders actually develop, not just that they're on the team. Plan-start baseline is snapshotted automatically at season end, and the board compares against the current average. A development programme that just moves young riders in but doesn't develop them doesn't meet the target. The board expects to see actual growth."
+    },
+    "balancedRelativeRank": {
+      "q": "What is 'finish ahead of X other managers' in balanced plans?",
+      "a": "Balanced focus now gets a 5th target: 'Finish ahead of at least 3 other managers in the division'. It's not about absolute ranking, but relative: you need to beat over half in your division. Scales automatically when more managers join: if there are 5 human managers in your division and you're rank 1, you've beaten 4. If you're rank 4, you've only beaten 1 → target not met. Computed from `season_standings.rank_in_division` against the number of human managers in your division."
+    },
+    "boardUnsatisfiedConsequences": {
+      "q": "What happens when the board is very unhappy, can I be fired?",
+      "a": "You cannot be fired. Instead the board reacts gradually through 6 layers the lower satisfaction goes: at <40% it imposes a salary cap (you can't grow the team's total salary, sell a rider first). At <30% comes a signing restriction: buys above 300K CZ$ are blocked. At <15% a rider is force-listed on the market (lowest market_value, stars with pop≥70 or uci≥100 are protected). At <10% a main sponsor pulls out: sponsor income is reduced by 10% for the next season. All active consequences show in the 'Active consequences' panel on the Board page, and layers 4-5 also send 'Action required' notifications. Satisfaction that rises again automatically expires layers 2-3."
+    },
+    "bonusOffer": {
+      "q": "What is the bonus offer I just got from the board?",
+      "a": "When satisfaction is above 75% AND at least 75% of your plan targets are met, the board can offer you +200K CZ$ to the balance against one extra target. If your focus is star_signing, the target will be 'Sign 1 star (popularity ≥75)'; otherwise it will be 'Top-3 in at least 1 monument'. You can accept or decline. Accept and the budget is credited immediately via a bonus finance tx, and the target is added to your 1-year plan and evaluated at season end. The board only offers one bonus per season, so if you decline, the chance comes again next season only if the criteria are still met."
+    },
+    "clubDnaFaq": {
+      "q": "What is club DNA and when do I pick it?",
+      "a": "Club DNA is your club's identity, one of 5 hand-crafted archetypes: 🌲 Scandinavian development team, 🪨 Italian classics traditionalist, ⚡ Sprint-focused commercial, ⛰️ French climber heritage or 🎯 British all-rounder. You pick it in season 2, after season 1's identity has been observed. The board analyses your team's national core and primary specialisation and suggests 3 options: one national match, one specialisation match and one wildcard. You can pick freely among the three. The DNA is final until the drift mechanic arrives (gradual evolution over 5 seasons, delivered in a follow-up slice)."
+    },
+    "clubDnaEffects": {
+      "q": "What does club DNA do exactly?",
+      "a": "DNA affects three things: (1) Your 5-year plans get an extra DNA tradition target (e.g. 'at least one Monument podium' for italian_classics or 'min. 2 stage jerseys/season' for sprint_commercial) as a bonus target on top of the focus-based ones. (2) Targets that match the DNA's priorities get boosted satisfaction bonus + penalty (italian_classics × 1.6 on monument_podium targets, if you win, the board cheers extra; if you miss, the penalty is larger). (3) When the chairman is replaced (after 2× plan expiry below 30% satisfaction), DNA bonus tips the alignment score towards archetypes that match the club's identity (italian_classics gives +4 to classics_purist and -2 to gc_lover, so the chairman reflects the DNA over time)."
+    },
+    "midSeasonCheckFaq": {
+      "q": "What is the mid-season check, and why am I getting an 'Action required' notification mid-season?",
+      "a": "When half of the season's race days are over, the board checks your plan status. If satisfaction is under 50% OR at least half of your plan targets are 'behind' after half-time → you get a 'Mid-season check' notification in the inbox 'Action required'. The notification is informational: the board is worried but doesn't act automatically. You can respond by sending a board request (pivot plan targets), requesting a budget loan on the Economy page, or simply sharpening focus for the rest of the season. The banner only fires once per season per board."
+    },
+    "majorPivotCooldown": {
+      "q": "What is pivot cooldown and 'MAJOR pivot'?",
+      "a": "A MAJOR pivot is a focus shift between extremes: from youth development to star signing or vice versa. These are allowed only once per plan lifecycle. When you e.g. accept 'more stars now' from a youth track, a MAJOR pivot stamp is recorded on your plan, and the next similar request is rejected with 'The board has already accepted a MAJOR pivot'. The stamp resets when the plan is renewed (fresh plan = fresh cooldown). Pivots to/from balanced are not MAJOR: you can still pivot gradually via a balanced intermediate station."
+    },
+    "endOfSeasonBlock": {
+      "q": "Why can't I send board requests in the season end phase?",
+      "a": "In the last 5 race days of a season, all requests are blocked. The board doesn't want to risk the plan being pivoted right before the evaluation, that would lose the link between your choices and the outcome. When there are fewer than 6 race days remaining, you see a 'The season end phase has begun' message on all request buttons. The window opens again at season start. Use the phase to score the last points instead."
+    },
+    "multiYearPlanLock": {
+      "q": "Why can't I pivot my 5-year plan before it's halfway done?",
+      "a": "5-year and 3-year plans are locked for the first half of their runtime. Specifically: the board doesn't accept requests on a multi-year plan before at least 50% of the plan is completed OR your satisfaction has changed by more than 30 points since plan start. This prevents impulsive flip-flops on long-term plans and gives the board time to see whether the strategy is working. 1-year plans have no equivalent lock."
+    },
+    "tightenedBadge": {
+      "q": "What does the '🔒 Tightened' badge mean on a target in my new plan?",
+      "a": "The badge shows when a target has been raised due to a tradeoff lock from a previous request. If you e.g. got 'Lower the result pressure' approved last season, your new plan's U25 or national target gets +1 in demand (or sponsor_growth +5pp under 'Ease the identity demand'). It's the deferred consequence of easing something: the board expects to see more of something else in return. The tightening goes away again after ONE season."
+    },
+    "relativeRankLive": {
+      "q": "How does the 'finish ahead of X other managers' target work live?",
+      "a": "On the Board page the balanced plan's relative_rank target now shows live status: 'You're #4 of 8 managers in the division, beating 4 (target: 3 ✓)'. The number updates after each race day when season_standings is updated. It measures relatively to the number of human managers in your division, so it scales naturally from ~19 now to 100+ managers after open beta without cross-division noise."
+    }
+  }
+}

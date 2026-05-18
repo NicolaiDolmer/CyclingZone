@@ -40,6 +40,8 @@ import dashboardDa from "../../public/locales/da/dashboard.json";
 import dashboardEn from "../../public/locales/en/dashboard.json";
 import bannersDa from "../../public/locales/da/banners.json";
 import bannersEn from "../../public/locales/en/banners.json";
+import helpDa from "../../public/locales/da/help.json";
+import helpEn from "../../public/locales/en/help.json";
 
 const PSEUDO_ENABLED = (() => {
   if (typeof window === "undefined") return false;
@@ -62,11 +64,11 @@ i18n
     supportedLngs: SUPPORTED,
     nonExplicitSupportedLngs: true,
     load: "languageOnly",
-    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners"],
+    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help"],
     defaultNS: "common",
     resources: {
-      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa },
-      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn },
+      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, help: helpDa },
+      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, help: helpEn },
     },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],
