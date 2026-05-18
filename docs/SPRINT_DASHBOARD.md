@@ -2,8 +2,8 @@
 
 > **Sprint:** Monetization Validation Sprint
 > **Periode:** 2026-05-18 → 2026-06-17 (30 dage)
-> **I dag:** 2026-05-15 (T-3 før sprint-start)
-> **Sidste opdatering:** 2026-05-15 (samlet backlog-prioritering tilføjet — [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md))
+> **I dag:** 2026-05-18 (Sprint Day 1 — Discord launch + data baseline)
+> **Sidste opdatering:** 2026-05-18 (Sprint Day 1 kickoff — T-1 mobile UX-verification leveret via [#367](https://github.com/NicolaiDolmer/CyclingZone/issues/367))
 >
 > **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). **Prioriteret backlog (alle 150 åbne issues) → [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md).**
 
@@ -43,7 +43,7 @@
 
 ### Uge 1 (18-24 maj) — Foundation
 **Manus-track:**
-- [ ] **Søn 17 (T-1):** Mobile UX-verification af key pages (auctions/board/dashboard/finance/riders/seasons/team) FØR Discord-launch så ny trafik ikke bouncer på broken mobile. Brug eksisterende Playwright mobile-snapshots.
+- [x] **Søn 17 (T-1):** Mobile UX-verification af key pages (auctions/board/dashboard/finance/riders/seasons/team) FØR Discord-launch så ny trafik ikke bouncer på broken mobile. Brug eksisterende Playwright mobile-snapshots. → **Leveret 2026-05-17 ([#367](https://github.com/NicolaiDolmer/CyclingZone/issues/367) closed).**
 - [ ] **Man 18:** Discord launch post + poll #1 pinned
 - [ ] **Man 18:** Pull beta-data baseline (DAU/WAU/D7-retention/session-længde/top-features)
 - [ ] **Man 18:** Identificér top 10-15 mest aktive spillere

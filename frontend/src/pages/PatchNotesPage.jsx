@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "3.55",
+    date: "2026-05-18",
+    label: "Beta",
+    changes: [
+      {
+        category: "Annonce · Vi tester en fair freemium-model (#366)",
+        items: [
+          "Hej · Nicolai går fuldtid på CyclingZone 1. juni 2026 (30 ugers runway). De næste 30 dage tester vi om en fair freemium-model kan finansiere udviklingen — uden at ændre noget for free-spillere. Sprinten kører 18. maj → 17. juni.",
+          "Løfte · Premium kommer ALDRIG til at give bedre løbsresultater, hurtigere træning, stærkere ryttere, transfer-fordele eller bedre scout-odds. Premium kan låse identitet, bekvemmelighed og analytics op — aldrig spil-styrke. Det løfte er ufravigeligt og vil stå synligt overalt i appen.",
+          "Hvad sker der · Vi åbner en Discord-server (link kommer som banner her i appen), sender en kort survey ud, og åbner en waitlist for de første 100 'Founder Supporters' med permanent badge. Ingen betaling i denne sprint — kun feedback og interesse-tilkendegivelse.",
+          "Hvad ændres IKKE · Free-tier får ingen restriktioner, ingen power-features bag betaling, ingen reklamer. Stripe-integration kommer kun hvis vi går i Go-fasen efter 17. juni — og selv da gælder non-pay-to-win-løftet 100%.",
+          "Feedback · Hold øje med banner-meddelelser her i appen når Discord-link og survey går live. Vi vil hellere bygge det rigtige for jer end at gætte — så meld endelig tilbage når muligheden kommer.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.54",
     date: "2026-05-17",
     label: "Beta",
