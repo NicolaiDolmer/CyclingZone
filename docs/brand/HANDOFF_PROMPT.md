@@ -43,7 +43,7 @@ Lave Cycling Zones komplette brand identity "once and for all" — logo, favicon
 3. `docs/brand/BRAND_BRIEF.md` — DNA-fundamental (audience, personlighed, principper)
 4. `docs/TONE_OF_VOICE.md` — voice guide (load-bearing — kan ikke brydes)
 5. `docs/brand/MOODBOARD.md` — ~35 reference brands
-6. `docs/brand/logo-explorations.html` — åbn i preview, det er den aktive arbejdsfil
+6. `docs/brand/logo-explorations.html` — åbn i preview, det er den aktive arbejdsfil. Preview er wired i `.claude/launch.json` som `brand` (port 4173): start via `mcp__Claude_Preview__preview_start name=brand` og naviger til `/logo-explorations.html`.
 
 ## Arbejdspattern (HARDCODED — afvig ikke)
 
