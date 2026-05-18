@@ -23,7 +23,7 @@
 ## Næste session (prioriteret)
 1. **Brand identity D1 ([#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481))** — paste [`docs/brand/HANDOFF_PROMPT.md`](brand/HANDOFF_PROMPT.md) verbatim, åbn `logo-explorations.html` i preview, svar A/B/C/D på Overall Personality. Cross-PC flow er hardcoded — afvig ikke fra HANDOFF_PROMPT-instruktionerne.
 2. **Naming-brainstorm (15-30 min)** — tier-navne (Founder/Supporter/Premium/Pro Analyst/Patron). Blokerer #366 PatchNotes-entry, Discord launch-post draft, landing-page revision.
-3. **[PR #482](https://github.com/NicolaiDolmer/CyclingZone/pull/482) Brugerverifikation** — sprog-skift på /help, sektion-navigation, step-lister, tabeller, CTA-blok, FAQ-accordion, søgning, em-dash-check, konsol-fri. 9-punkts checklist i PR-body. Når verificeret + Vercel deploy grøn, luk #412.
+3. **i18n Fase 3.5 ([epic #483](https://github.com/NicolaiDolmer/CyclingZone/issues/483))** — 10 sub-issues for resterende authenticated pages. Pri-rækkefølge: high #484 BoardPage · #485 RiderStatsPage · #486 NotificationsPage → med #487-490 → low #491-493. Pattern: følg #482 (Fase 3d Help).
 4. **[#448](https://github.com/NicolaiDolmer/CyclingZone/issues/448) Vercel Preview env** — bruger-handling i Vercel-dashboard. Lukker #296 follow-up.
 
 ## Skalerings-roadmap
