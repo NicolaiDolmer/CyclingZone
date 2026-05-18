@@ -279,7 +279,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
                 {item.text}
                 {item.link && (
                   <>
-                    <a href={item.link.href} target="_blank" rel="noopener noreferrer" className="text-cz-accent hover:underline">
+                    <a href={item.link.href} target="_blank" rel="noopener noreferrer" className="text-cz-accent underline">
                       {item.link.text}
                     </a>
                     {item.suffix}
@@ -291,7 +291,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
         </div>
         <p className="text-cz-3 text-xs mt-4">
           {t.successFooterRefs}
-          <a href="mailto:nicolai.dolmer.mikkelsen@gmail.com" className="text-cz-accent hover:underline">
+          <a href="mailto:nicolai.dolmer.mikkelsen@gmail.com" className="text-cz-accent underline">
             nicolai.dolmer.mikkelsen@gmail.com
           </a>
           .
@@ -473,7 +473,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
           />
           <span>
             {t.gdprBefore}
-            <Link to={t.privacyPath} target="_blank" className="text-cz-accent hover:underline">
+            <Link to={t.privacyPath} target="_blank" className="text-cz-accent underline">
               {t.gdprLink}
             </Link>
             {t.gdprAfter}

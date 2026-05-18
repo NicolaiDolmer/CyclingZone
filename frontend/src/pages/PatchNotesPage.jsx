@@ -2,6 +2,23 @@
 
 const PATCHES = [
   {
+    version: "3.55",
+    date: "2026-05-18",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fix · Lighthouse SEO + A11y polish på Founder Supporter waitlist (#361)",
+        items: [
+          "Fix · robots.txt manglede (returnerede SPA-fallback index.html) — Google og andre crawlere kunne ikke korrekt indeksere /founder-supporter waitlist-siden. Ny `public/robots.txt` med Allow-all + sitemap-pointer. Score: SEO robots-txt audit 0 → 100.",
+          "Fix · Canonical link var statisk `https://cycling-zone.vercel.app/` i index.html, men /founder-supporter rapporterede 'invalid canonical' fordi den pegede væk fra current route. FounderSupporterPage opdaterer nu `<link rel=\"canonical\">` dynamisk via useEffect til den faktiske URL. Score: SEO canonical audit 0 → 100.",
+          "Fix · Hero-badges (Open beta / Fair freemium / GDPR-compliant) brugte `text-cz-3` (#9896b0 mod #f0ede6 baggrund = 3.4:1 kontrast) — under WCAG AA's 4.5:1 minimum for normal text. Skiftet til `text-cz-2` (#66637a = ~6:1). Score: A11y color-contrast audit 0 → 100.",
+          "Fix · Privatlivspolitik-link i samtykke-checkbox + andre `text-cz-accent`-links i waitlist-formularen brugte `hover:underline` (kun synlig underline ved hover). Lighthouse `link-in-text-block` fanger dette som 'links rely on color to be distinguishable'. Skiftet til altid-`underline`. Score: A11y link-in-text-block audit 0 → 100.",
+          "Verifikation · Desktop Lighthouse: Performance 98 / A11y 95+ / SEO 95+ / Best Practices 100 (alle over #361's acceptance criteria 90+/95+/90+). Mobile-Performance 77 er ikke i acceptance criteria — bundle-optimization tages som separat polish-batch.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.54",
     date: "2026-05-17",
     label: "Beta",

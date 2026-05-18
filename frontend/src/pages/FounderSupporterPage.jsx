@@ -411,10 +411,17 @@ export default function FounderSupporterPage() {
     setSearchParams(params, { replace: true });
   }
 
-  // Opdater <html lang=...> + <title> dynamisk for accessibility + SEO.
+  // Opdater <html lang=...> + <title> + canonical dynamisk for accessibility + SEO.
   useEffect(() => {
     document.documentElement.lang = t.htmlLang;
     document.title = t.metaTitle;
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.rel = "canonical";
+      document.head.appendChild(canonical);
+    }
+    canonical.href = "https://cycling-zone.vercel.app/founder-supporter";
   }, [t.htmlLang, t.metaTitle]);
 
   // Bevar useMemo så vi ikke regenererer ved hver render.
@@ -478,7 +485,7 @@ export default function FounderSupporterPage() {
               </a>
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-cz-3 text-xs">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-cz-2 text-xs">
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-cz-accent" />
                 {t.badgeBeta}
