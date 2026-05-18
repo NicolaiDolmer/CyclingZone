@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cycling Zone — Visual Decision Sprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800;900&family=Manrope:wght@500;600;700;800&family=DM+Sans:wght@500;700;800;900&family=Bebas+Neue&family=Anton&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-body: #0a0b10;
+    --bg-card: #14161e;
+    --bg-card-2: #1a1d28;
+    --bg-cream: #f0ede6;
+    --text-1: #f5f5f5;
+    --text-2: #9aa0aa;
+    --text-3: #6b7280;
+    --text-muted: #4b5160;
+    --accent: #e8c547;
+    --accent-soft: #f2cb52;
+    --accent-bright: #ffd966;
+    --border: #232732;
+    --border-soft: #1c1f29;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg-body);
+    color: var(--text-1);
+    font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+    padding: 56px 32px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1320px; margin: 0 auto; }
+
+  /* HEADER */
+  header { margin-bottom: 56px; }
+  .eyebrow {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  h1 {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin-bottom: 12px;
+  }
+  h1 .light { color: var(--text-3); font-weight: 600; }
+  .deck {
+    font-size: 17px;
+    color: var(--text-2);
+    max-width: 720px;
+    line-height: 1.55;
+  }
+  .meta-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .meta-row span { padding-right: 12px; border-right: 1px solid var(--border); }
+  .meta-row span:last-child { border-right: none; }
+
+  /* DECISIONS SO FAR */
+  .progress {
+    margin-top: 40px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px;
+  }
+  .progress-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .progress-head h2 {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .progress-step { color: var(--text-3); font-size: 12px; letter-spacing: 0.06em; }
+  .progress-step strong { color: var(--accent); }
+
+  .decision-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .decision-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    font-size: 14px;
+    color: var(--text-2);
+  }
+  .decision-list li .mark {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .decision-list li.done .mark { background: var(--accent); color: var(--bg-body); }
+  .decision-list li.done .mark::before { content: "✓"; }
+  .decision-list li.active .mark { background: transparent; border: 2px solid var(--accent); color: var(--accent); }
+  .decision-list li.active .mark::before { content: "•"; font-size: 18px; line-height: 0.6; }
+  .decision-list li.pending .mark { background: transparent; border: 1.5px solid var(--text-muted); }
+  .decision-list li.done { color: var(--text-1); }
+  .decision-list li.active { color: var(--accent); font-weight: 600; }
+  .decision-list li .why { color: var(--text-muted); font-size: 12px; display: block; margin-top: 2px; }
+
+  /* QUESTION BLOCK */
+  .question-block { margin-top: 64px; }
+  .question-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: var(--bg-body);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .question-tag .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--bg-body);
+  }
+  .question-block h2 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    margin-bottom: 12px;
+  }
+  .question-deck {
+    color: var(--text-2);
+    font-size: 16px;
+    max-width: 760px;
+    margin-bottom: 32px;
+    line-height: 1.55;
+  }
+  .question-deck strong { color: var(--text-1); }
+
+  /* OPTION GRID — 4 cards side-by-side */
+  .options-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-bottom: 40px;
+  }
+  @media (max-width: 1180px) {
+    .options-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .options-grid { grid-template-columns: 1fr; }
+  }
+
+  .option-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .option-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .option-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card-2);
+  }
+  .option-letter {
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    background: var(--accent);
+    color: var(--bg-body);
+    font-weight: 800;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .option-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-1);
+    letter-spacing: -0.005em;
+  }
+  .option-subtitle {
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 2px;
+  }
+
+  .hero-stage {
+    padding: 32px 20px;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hero-stage svg { max-width: 100%; height: auto; display: block; }
+
+  .system-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--border-soft);
+  }
+  .system-cell {
+    padding: 18px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid var(--border-soft);
+    min-height: 96px;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .system-cell:last-child { border-right: none; }
+  .system-cell .size-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .option-footer {
+    padding: 16px 18px;
+    border-top: 1px solid var(--border);
+    background: rgba(255,255,255,0.015);
+  }
+  .keywords {
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  .option-desc {
+    color: var(--text-2);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(232, 197, 71, 0.1);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .tag.muted { background: rgba(255,255,255,0.05); color: var(--text-3); }
+
+  /* RECOMMENDATION */
+  .recommendation {
+    background: linear-gradient(135deg, rgba(232,197,71,0.08), rgba(232,197,71,0.02));
+    border: 1px solid rgba(232,197,71,0.3);
+    border-radius: 14px;
+    padding: 24px 28px;
+    margin-top: 8px;
+  }
+  .recommendation h3 {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .recommendation p {
+    color: var(--text-1);
+    font-size: 15px;
+    line-height: 1.55;
+    margin-bottom: 8px;
+  }
+  .recommendation p:last-child { margin-bottom: 0; }
+  .recommendation strong { color: var(--accent); font-weight: 700; }
+
+  /* INSTRUCTIONS / NEXT */
+  .instructions {
+    margin-top: 40px;
+    padding: 28px 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .instructions h3 {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-2);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .instructions p {
+    color: var(--text-1);
+    font-size: 16px;
+    line-height: 1.55;
+    margin-bottom: 12px;
+  }
+  .instructions p:last-child { margin-bottom: 0; }
+  .instructions code {
+    background: var(--bg-card-2);
+    padding: 3px 8px;
+    border-radius: 5px;
+    color: var(--accent);
+    font-family: 'Space Grotesk', monospace;
+    font-size: 14px;
+    border: 1px solid var(--border);
+  }
+
+  /* QUEUED DECISIONS */
+  .queued {
+    margin-top: 40px;
+    padding: 24px 28px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+  }
+  .queued h3 {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-3);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .queued ol {
+    list-style: none;
+    counter-reset: queue;
+  }
+  .queued ol li {
+    counter-increment: queue;
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 8px 0;
+    padding-left: 36px;
+    position: relative;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .queued ol li:last-child { border-bottom: none; }
+  .queued ol li::before {
+    content: counter(queue);
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+  .queued ol li strong { color: var(--text-2); font-weight: 600; }
+
+  /* BASELINE small ref */
+  .baseline-strip {
+    margin-top: 36px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .baseline-strip .baseline-label {
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+  }
+  .baseline-strip .baseline-note {
+    color: var(--text-2);
+    font-size: 13px;
+    flex: 1;
+    min-width: 200px;
+  }
+  .baseline-strip svg { display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="eyebrow">Brand Identity · Working Session</div>
+    <h1>Cycling Zone <span class="light">— Visual Decision Sprint</span></h1>
+    <p class="deck">One choice at a time. You look, you point, we move on. No abstract questions, no blind documents. Each decision narrows the next — by the end we have one logo direction, perfectly tuned to your taste.</p>
+    <div class="meta-row">
+      <span>2026-05-18</span>
+      <span>Owner: Nicolai</span>
+      <span>Status: In progress · Step 1 of ~5</span>
+    </div>
+  </header>
+
+  <!-- BASELINE STRIP -->
+  <div class="baseline-strip">
+    <svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100" height="100" rx="14" fill="#0a0a0f"/>
+      <text x="50" y="68" font-family="'Anton', sans-serif" font-style="italic" font-size="62" fill="#e8c547" text-anchor="middle" font-weight="900">CZ</text>
+      <ellipse cx="50" cy="72" rx="40" ry="1" fill="#ffd966" opacity="0.7"/>
+    </svg>
+    <span class="baseline-label">Current logo</span>
+    <p class="baseline-note">Your AI-generated CZ-mark from earlier today. Use it as the comparison anchor — does each option below feel like a clear upgrade?</p>
+  </div>
+
+  <!-- PROGRESS / DECISIONS SO FAR -->
+  <div class="progress">
+    <div class="progress-head">
+      <h2>Decisions so far</h2>
+      <span class="progress-step">Step <strong>1</strong> of ~5</span>
+    </div>
+    <ul class="decision-list">
+      <li class="done"><span class="mark"></span>
+        <div>Wordmark-first identity <span class="why">Confirmed earlier — wordmark is primary, monogram is derived</span></div>
+      </li>
+      <li class="done"><span class="mark"></span>
+        <div>Subtle cycling-DNA <span class="why">Confirmed — no literal cyclist, only hidden references</span></div>
+      </li>
+      <li class="done"><span class="mark"></span>
+        <div>Whoop as taste anchor <span class="why">Confirmed — premium athletic minimalism as inspiration</span></div>
+      </li>
+      <li class="active"><span class="mark"></span>
+        <div>Personality direction <span class="why">Active decision — 4 visual options below</span></div>
+      </li>
+      <li class="pending"><span class="mark"></span>
+        <div>Type personality refinement <span class="why">Queued — narrows within chosen personality</span></div>
+      </li>
+      <li class="pending"><span class="mark"></span>
+        <div>Palette nuance <span class="why">Queued</span></div>
+      </li>
+      <li class="pending"><span class="mark"></span>
+        <div>Symbol or no symbol <span class="why">Queued</span></div>
+      </li>
+      <li class="pending"><span class="mark"></span>
+        <div>Final polish + application mockups <span class="why">Queued</span></div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- QUESTION BLOCK -->
+  <section class="question-block">
+    <span class="question-tag"><span class="dot"></span>Decision 1 of 5</span>
+    <h2>Which overall personality?</h2>
+    <p class="question-deck">Each card below is a <strong>complete personality package</strong> — type, spacing, palette, mood — not just a font swap. Look at all four, squint a little, notice which one your eyes return to. That's your gut signal. Once you pick, we narrow within that direction in the next step.</p>
+
+    <!-- 4 PERSONALITY OPTIONS -->
+    <div class="options-grid">
+
+      <!-- OPTION A: Refined Minimal (Whoop-pure) -->
+      <div class="option-card">
+        <div class="option-header">
+          <div class="option-letter">A</div>
+          <div>
+            <div class="option-title">Refined Minimal</div>
+            <div class="option-subtitle">Whoop-pure</div>
+          </div>
+        </div>
+        <div class="hero-stage" style="background: #0a0a0f;">
+          <svg viewBox="0 0 480 120" xmlns="http://www.w3.org/2000/svg">
+            <text x="240" y="74" font-family="'Inter Tight', sans-serif" font-weight="700" font-size="52" fill="#e8c547" text-anchor="middle" letter-spacing="-2.5">cyclingzone</text>
+          </svg>
+        </div>
+        <div class="system-row">
+          <div class="system-cell" style="background: #0a0a0f;">
+            <svg viewBox="0 0 64 64" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="10" fill="#e8c547"/>
+              <text x="32" y="44" font-family="'Inter Tight', sans-serif" font-weight="800" font-size="32" fill="#0a0a0f" text-anchor="middle" letter-spacing="-2">cz</text>
+            </svg>
+            <span class="size-label">Favicon 48</span>
+          </div>
+          <div class="system-cell" style="background: #0a0a0f;">
+            <svg viewBox="0 0 64 64" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="10" fill="#e8c547"/>
+              <text x="32" y="44" font-family="'Inter Tight', sans-serif" font-weight="800" font-size="32" fill="#0a0a0f" text-anchor="middle" letter-spacing="-2">cz</text>
+            </svg>
+            <span class="size-label">24px</span>
+          </div>
+        </div>
+        <div class="option-footer">
+          <div class="keywords">Restrained · Precise · Premium-tech</div>
+          <p class="option-desc">Whoop-pure. Single-word lowercase. Sharp geometric sans. Yellow on warm-black. No symbol — the wordmark IS the brand. Maximum confidence through restraint.</p>
+          <div class="tags">
+            <span class="tag">Inter Tight 700</span>
+            <span class="tag">Lowercase</span>
+            <span class="tag muted">No symbol</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPTION B: Warm Crafted (Founder-feeling) -->
+      <div class="option-card">
+        <div class="option-header">
+          <div class="option-letter">B</div>
+          <div>
+            <div class="option-title">Warm Crafted</div>
+            <div class="option-subtitle">Founder-feeling</div>
+          </div>
+        </div>
+        <div class="hero-stage" style="background: #181820;">
+          <svg viewBox="0 0 480 120" xmlns="http://www.w3.org/2000/svg">
+            <text x="240" y="70" font-family="'Manrope', sans-serif" font-weight="700" font-size="46" fill="#f2cb52" text-anchor="middle" letter-spacing="-0.8">Cycling Zone</text>
+            <line x1="195" y1="88" x2="285" y2="88" stroke="#f2cb52" stroke-width="1.2" opacity="0.55"/>
+          </svg>
+        </div>
+        <div class="system-row">
+          <div class="system-cell" style="background: #181820;">
+            <svg viewBox="0 0 64 64" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="14" fill="#f2cb52"/>
+              <text x="32" y="42" font-family="'Manrope', sans-serif" font-weight="700" font-size="28" fill="#181820" text-anchor="middle" letter-spacing="-0.5">cz</text>
+            </svg>
+            <span class="size-label">Favicon 48</span>
+          </div>
+          <div class="system-cell" style="background: #181820;">
+            <svg viewBox="0 0 64 64" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="14" fill="#f2cb52"/>
+              <text x="32" y="42" font-family="'Manrope', sans-serif" font-weight="700" font-size="28" fill="#181820" text-anchor="middle" letter-spacing="-0.5">cz</text>
+            </svg>
+            <span class="size-label">24px</span>
+          </div>
+        </div>
+        <div class="option-footer">
+          <div class="keywords">Warm · Honest · Considered</div>
+          <p class="option-desc">Humanist sans with soft curves. Title case. Warmer black background, slightly creamy yellow. Thin underline as a quiet flourish. Feels personal, like one person made it with care.</p>
+          <div class="tags">
+            <span class="tag">Manrope 700</span>
+            <span class="tag">Title case</span>
+            <span class="tag muted">Subtle accent</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPTION C: Sport Athletic (Race-broadcast) -->
+      <div class="option-card">
+        <div class="option-header">
+          <div class="option-letter">C</div>
+          <div>
+            <div class="option-title">Sport Athletic</div>
+            <div class="option-subtitle">Race-broadcast</div>
+          </div>
+        </div>
+        <div class="hero-stage" style="background: #0e0f15;">
+          <svg viewBox="0 0 480 120" xmlns="http://www.w3.org/2000/svg">
+            <text x="240" y="68" font-family="'Bebas Neue', sans-serif" font-size="62" fill="#ffd966" text-anchor="middle" letter-spacing="6">CYCLING ZONE</text>
+            <line x1="60" y1="86" x2="420" y2="86" stroke="#ffd966" stroke-width="1.8"/>
+            <line x1="210" y1="96" x2="270" y2="96" stroke="#ffd966" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="system-row">
+          <div class="system-cell" style="background: #0e0f15;">
+            <svg viewBox="0 0 64 64" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="6" fill="#ffd966"/>
+              <text x="32" y="32" font-family="'Bebas Neue', sans-serif" font-size="18" fill="#0e0f15" text-anchor="middle" letter-spacing="1.2">CYCLING</text>
+              <line x1="14" y1="38" x2="50" y2="38" stroke="#0e0f15" stroke-width="1"/>
+              <text x="32" y="54" font-family="'Bebas Neue', sans-serif" font-size="18" fill="#0e0f15" text-anchor="middle" letter-spacing="2.5">ZONE</text>
+            </svg>
+            <span class="size-label">Favicon 48</span>
+          </div>
+          <div class="system-cell" style="background: #0e0f15;">
+            <svg viewBox="0 0 64 64" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="6" fill="#ffd966"/>
+              <text x="32" y="46" font-family="'Bebas Neue', sans-serif" font-size="46" fill="#0e0f15" text-anchor="middle" letter-spacing="3">CZ</text>
+            </svg>
+            <span class="size-label">24px</span>
+          </div>
+        </div>
+        <div class="option-footer">
+          <div class="keywords">Energetic · Race-day · Official</div>
+          <p class="option-desc">Condensed display type, all caps, wide tracking. Bright yellow on deep navy. Thin underline + accent mark suggest race-poster rhythm. Strong "sport happening here" signal.</p>
+          <div class="tags">
+            <span class="tag">Bebas Neue</span>
+            <span class="tag">All caps</span>
+            <span class="tag muted">Underline accent</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPTION D: Tech Smart (Linear/Stripe) -->
+      <div class="option-card">
+        <div class="option-header">
+          <div class="option-letter">D</div>
+          <div>
+            <div class="option-title">Tech Smart</div>
+            <div class="option-subtitle">Linear / Stripe</div>
+          </div>
+        </div>
+        <div class="hero-stage" style="background: #0e0f15;">
+          <svg viewBox="0 0 480 120" xmlns="http://www.w3.org/2000/svg">
+            <text x="240" y="74" font-family="'DM Sans', sans-serif" font-weight="900" font-size="48" fill="#e8c547" text-anchor="middle" letter-spacing="-1.5">CyclingZone</text>
+            <circle cx="392" cy="50" r="2.8" fill="#e8c547"/>
+          </svg>
+        </div>
+        <div class="system-row">
+          <div class="system-cell" style="background: #0e0f15;">
+            <svg viewBox="0 0 64 64" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="8" fill="#e8c547"/>
+              <text x="32" y="44" font-family="'DM Sans', sans-serif" font-weight="900" font-size="30" fill="#0e0f15" text-anchor="middle" letter-spacing="-1.5">CZ</text>
+              <circle cx="49" cy="18" r="1.8" fill="#0e0f15"/>
+            </svg>
+            <span class="size-label">Favicon 48</span>
+          </div>
+          <div class="system-cell" style="background: #0e0f15;">
+            <svg viewBox="0 0 64 64" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="8" fill="#e8c547"/>
+              <text x="32" y="44" font-family="'DM Sans', sans-serif" font-weight="900" font-size="30" fill="#0e0f15" text-anchor="middle" letter-spacing="-1.5">CZ</text>
+            </svg>
+            <span class="size-label">24px</span>
+          </div>
+        </div>
+        <div class="option-footer">
+          <div class="keywords">Sharp · Modern · Intelligent</div>
+          <p class="option-desc">camelCase wordmark, ultra-tight letter-spacing, heaviest weight. Tiny dot as geometric flourish — references precision/data. Feels like a smart modern product, less like a sports brand.</p>
+          <div class="tags">
+            <span class="tag">DM Sans 900</span>
+            <span class="tag">camelCase</span>
+            <span class="tag muted">Geometric dot</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECOMMENDATION -->
+    <div class="recommendation">
+      <h3>My read of your taste so far</h3>
+      <p>Based on Whoop being your anchor + the founder-led build-in-public tone in TONE_OF_VOICE.md, my best guess is <strong>Option B (Warm Crafted)</strong> or <strong>Option A (Refined Minimal)</strong>.</p>
+      <p><strong>B</strong> if you want the brand to feel like Nicolai's voice — personal, considered, with a small flourish of soul. <strong>A</strong> if you want maximum premium-confidence and aren't worried about feeling slightly impersonal. <strong>C</strong> and <strong>D</strong> are valid but pull in stronger directions (sport-loud or tech-cool) that may conflict with the reflective tone you've established.</p>
+      <p>But trust your eyes over my analysis. If C or D feels right, that means something I don't see — tell me what.</p>
+    </div>
+
+    <!-- INSTRUCTIONS -->
+    <div class="instructions">
+      <h3>What to do next</h3>
+      <p>Look at all 4. Pick the one that pulls you most — even if just by 5%. Reply with <code>A</code>, <code>B</code>, <code>C</code>, or <code>D</code>.</p>
+      <p>Variants welcome: <code>"B but with A's tightness"</code>, <code>"closer to A but warmer"</code>, <code>"none — too restrained, want more X"</code>. Use your own words.</p>
+      <p>I won't move on until you tell me. After your pick, I rebuild this page to show 4 refinements <em>within</em> your direction (different type weights, spacing, palette nuances). We keep narrowing until you say "yes, that one".</p>
+    </div>
+
+    <!-- QUEUED DECISIONS PREVIEW -->
+    <div class="queued">
+      <h3>Coming up after this decision</h3>
+      <ol>
+        <li><strong>Type refinement</strong> — within chosen personality, fine-tune font weight, spacing, and any custom letterform details.</li>
+        <li><strong>Palette nuance</strong> — exact shade of yellow, exact black/navy, contrast levels for accessibility.</li>
+        <li><strong>Symbol decision</strong> — wordmark-only? abstract symbol? custom letterform with hidden cycling-DNA?</li>
+        <li><strong>Application mockups</strong> — Discord avatar, browser favicon, social post, t-shirt context. Final sanity check.</li>
+        <li><strong>Asset production</strong> — SVG master file, all PNG sizes, favicon-set, brand-guidelines mini-doc.</li>
+      </ol>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
