@@ -29,17 +29,18 @@ Limits: 300 åbne (repo har 150+; margin). 100 PRs (14 dage = ~30-50 typisk).
 
 ## Trin 2 — Cross-reference (systematisk)
 
-**Per merged PR sidste 14 dage:**
-- Regex titel + body: `(?:Refs|Closes|Fixes|Resolves)?\s*#(\d+)` → ALLE refs
-- Match mod åbne issues
+**Per merged PR sidste 14 dage — TO separate regex:**
+- `CLOSE_RE = (?:Closes|Fixes|Resolves)\s*#(\d+)` → close-intent (GitHub auto-close keywords)
+- `REF_RE = (?:Refs|Updates|Implements|See)\s*#(\d+)` → informativ kun (epic-tracker eller context)
+- Match mod åbne issues. **Kun CLOSE-refs flagger Kategori A** (mangler claude:done). REF-refs ignoreres for done-label-check fordi de er informative (typisk sub-PR mod epic).
 - Parse PR-body checkbox: `- \[(x| )\]\s*Brugerverifikation` → udfyldt/ej
-- Flag PRs UDEN `Refs #N` (Kategori J: orphan)
+- Flag PRs UDEN nogen `#N`-ref (heller ikke parentes-shorthand `(#N)`) som Kategori J: orphan. Filtrer dependabot/chore-PRs fra orphan-rapporten.
 
-**Per `claude:done`-issue:** find seneste comment EFTER claude:done-label, score per Trin 3.
+**Per `claude:done`-issue:** find seneste comment EFTER claude:done-label, score per Trin 3. _(Note: `claude:done` blev deprecated 2026-05-18 per audit-housekeeping → fremtidige audits ser sandsynligvis 0 done-issues. Trin 2's done-scan kan med tiden fjernes hvis label er retired.)_
 
 **Per `claude:blocked`-issue:** `gh issue view <blocker-N> --json state` — hvis blocker lukket → Kategori I.
 
-**Per lukket issue sidste 14 dage:** havde den `claude:done` før close? Hvis ej → Kategori G (state-brud).
+**Per lukket issue sidste 14 dage:** havde den `claude:done` før close? Hvis ej → Kategori G (state-brud). _(Note: Per workflow 2026-05-18 er direct-close fra todo/in-progress nu kanonisk → Kategori G bør re-defineres som "lukkede uden nogen `claude:*` label nogensinde", ikke "uden done". Behold som info-pattern, ikke action.)_
 
 ## Trin 3 — Verifikations-score (EKSPLICITTE regler)
 
@@ -51,6 +52,14 @@ Limits: 300 åbne (repo har 150+; margin). 100 PRs (14 dage = ~30-50 typisk).
 | **BLOCKED** | Kommentar nævner åben sub-issue / manuel handling / "venter på X" | Lad være. Verificér blocker stadig åben |
 
 **STRONG-test:** ✅-emoji alene = ikke STRONG. Skal nævne PROD eller deploy-script eller commit-hash.
+
+**STRONG negative-keyword exclusion (lektion 2026-05-18 fra #361):** Hvis kommentaren matcher prod-evidens MEN også indeholder en af følgende → nedgrad til MEDIUM:
+- `klar til din verifikation`, `awaiting verification`, `please verify`, `bør tage ~XX min`
+- `🟡` emoji (= "yellow / pending"-konvention)
+- Issue har `needs-user-action` label
+- Tjekliste-pattern: `- [ ]` checkbox i kommentar (= ting brugeren mangler at gøre)
+
+Begrundelse: "verificeret prod" kan referere til _deploy-verification_ ("HTTP 200 OK på prod-URL") snarere end _feature-verification_ ("feature virker for brugeren"). Negative-keyword exclusion fanger forskellen.
 
 ## Trin 4 — Kategorisér (10 dimensioner)
 
@@ -158,9 +167,11 @@ Output efter retro: 1 linje per accepted/rejected. Hvis ingen ændringer foresl�
 - Brug `--limit 300` på open issues (repo har 150+, 100 er for snævert) — Lektion 2026-05-17
 - STRONG kræver prod-evidens, ikke ✅-emoji alene — Lektion 2026-05-17
 - Skriv artifact selv ved 0 handlinger — næste audit har brug for diff-baseline
-- Bruger lukker normalt selv (`feedback_github_close_protocol.md`), MEN: STRONG + ≥24h = auto-close OK
+- Bruger lukker normalt selv (`feedback_github_close_protocol.md`), MEN: STRONG + ≥24h = auto-close OK _(post-2026-05-18: `claude:done` deprecated → ingen kandidater forventes)_
 - Multi-step `AskUserQuestion` per kategori beats én stor (færre fejlklik)
 - Stop ikke ved label-cleanup — backlog-stale, dep-graph, epic-rollup giver mest værdi
+- **JSON-parsing:** `jq` er installeret (winget jqlang.jq 2026-05-18). Brug `jq` for kompakte filtre; fallback Python json+re for komplekse joins (epic-rollup, score-logic). Hvis `jq` ikke på PATH: `winget install jqlang.jq --silent`
+- **Refs vs Closes (lektion 2026-05-18):** `Refs #N` er informativt (typisk sub-PR mod epic), `Closes/Fixes/Resolves #N` er close-intent. Hold dem adskilt i regex.
 
 ## Changelog
 
@@ -170,6 +181,12 @@ Output efter retro: 1 linje per accepted/rejected. Hvis ingen ændringer foresl�
   - Manglede stale-todo, state-brud, orphan-PR, dep-unblock, epic-rollup dimensioner
   - Manglede artifact-output → kan ikke diffe forfaldne over tid
   - Én stor multiSelect-AskUserQuestion vs per-kategori → mindre fejlklik
+
+- **2026-05-18 — Audit-housekeeping retro.** Lessons fra 2. kørsel:
+  - **Trin 2:** Splittet `REF_RE` og `CLOSE_RE`. Citat: "Kategori A producerede 8 false positives (epics med Refs-sub-PRs)". Kun close-intent flagger Kategori A.
+  - **Trin 3:** Tilføjet STRONG negative-keyword exclusion. Citat fra #361: "'verificeret prod' matchede regex, men kommentar var '🟡 Klar til din verifikation' — false positive."
+  - **Trin 2/4/Baked-in:** Noted at `claude:done` blev deprecated denne audit. Skill skal med tiden re-tænke Kategori B/E/G — direct-close er nu kanonisk flow.
+  - **Baked-in lessons:** `jq` installeret (winget jqlang.jq). Defaultér til jq for simple filtre, Python for komplekse joins.
 
 ## Rejected suggestions
 

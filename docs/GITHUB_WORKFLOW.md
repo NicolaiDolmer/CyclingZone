@@ -42,7 +42,7 @@ Mål: Nicolai rører tastatur 2 gange (åbn issue, skriv `@claude`). Resten kør
 **Foundation (Lag 0) ✅ done**:
 - Issue templates: `claude-task`, `claude-investigate`, `bug` + `config.yml` (disable blank issues)
 - `PULL_REQUEST_TEMPLATE.md` med `Refs #X`, test plan og risk/auto-merge check
-- 12 labels: `claude:{todo,in-progress,blocked,done}`, `priority:{high,med,low}`, `type:{bug,feature,refactor,docs,investigation}`
+- 11 labels: `claude:{todo,in-progress,blocked}`, `priority:{high,med,low}`, `type:{bug,feature,refactor,docs,investigation}` _(`claude:done` deprecated 2026-05-18 — bruger lukker direkte)_
 - `.claude/settings.json`: GitHub MCP read+write perms + `gh` CLI perms
 - `CLAUDE.md` step 0d: tjek `claude:todo` issues ved session-start
 - Demo-issue #3 oprettet (verificerer skriv-vej via `gh`)
@@ -117,11 +117,12 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 | `claude:todo` | Bruger (auto via template) eller Claude | Klar til Claude pick-up |
 | `claude:in-progress` | Claude | Aktiv arbejdssession |
 | `claude:blocked` | Claude | Venter på input fra bruger (se nyeste comment) |
-| `claude:done` | Claude (på PR-merge) | PR merged, afventer brugerens verifikation før close |
 | `priority:high\|med\|low` | Bruger | Pick-rækkefølge |
 | `type:bug\|feature\|refactor\|docs\|investigation` | Auto via template | Filtrering |
 
-**Brugeren** lukker issuet efter verifikation (`completed` reason). Claude lukker kun sine egne `not_planned`-issues (fx duplikater, scope-ændringer).
+**Brugeren** lukker issuet med `completed` reason når PR er merged og verificeret. Ingen mellem-state nødvendigt — labels bevæger sig kun til `in-progress` eller `blocked` under arbejde, og issuet lukkes direkte fra `claude:todo`/`claude:in-progress` ved verifikation.
+
+> **Note 2026-05-18:** `claude:done` blev brugt som "PR merged, afventer verifikation"-state, men 38 ud af 100 lukkede issues på 14d sprang det step over. Audit-housekeeping 2026-05-18 deprekerede staten — direct close er nu kanonisk. Eksisterende `claude:done`-issues må gerne re-labelles eller lukkes manuelt; ingen aktiv oprydning krævet. Claude lukker fortsat kun sine egne `not_planned`-issues (fx duplikater, scope-ændringer).
 
 ## Commit/PR-konvention
 - Commit-besked nævner issue: `Fix: gæld vises i Min aktivitet (#42)`
