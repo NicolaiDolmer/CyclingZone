@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "3.57",
+    date: "2026-05-18",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · i18n Fase 3d — Help på EN/DA (#412)",
+        items: [
+          "Feature · Hele Hjælp & Regler-siden kører nu på begge sprog: sidetitlen, søgeboks, sidebar med 14 sektioner (Kom i gang / Getting started, Bestyrelse / Board, Auktioner / Auctions, Transfers, Manager & Profil / Manager & Profile, Discord DMs, Achievements, Talentspejder / Watchlist, Min Aktivitet / My Activity, Sæson / Season, Præmier / Prizes, Divisioner / Divisions, Ryttere / Riders, Aktivitetsfeed / Activity feed) og FAQ med 53 spørgsmål-svar.",
+          "Feature · Alle ~80 indholds-blokke (titel + tekst, step-lister og tabeller) oversat fuldt ud. Tabeller bevarer struktur (Konsekvens-tier, Discord DMs, Achievement-kategorier, Divisionsbonus, Præmie-eksempler, Holdstørrelse, Aktivitetsfeed-events). Search filtrerer på tværs af sektion-labels, blok-titler, blok-tekst og FAQ Q/A på det aktive sprog.",
+          "Tone · Em-dash systematisk renset i begge sprog jf. tone-of-voice-guide (2026-05-18). Erstattet med komma, kolon, parentes eller punktum afhængigt af kontekst. Ingen player-facing em-dash tilbage i Hjælp & Regler.",
+          "Infra · Nyt `help`-namespace (~520 keys/sprog) inline-bundlet i `i18n/index.js` (matcher common/auth/errors/auctions/transfers/dashboard/banners-pattern) for FOUC-fri first paint. SECTIONS-array og FAQ-array refaktoreret fra hardcoded datastrukturer til `buildSections(t)` + `buildFaq(t)` hjælpefunktioner med stabile semantic keys (`sections.<area>.<block>.title|text|steps|rows`, `faq.<id>.q|a`).",
+          "Scope-justering · AdminPage forbliver dansk-only by design — alle 23 sektioner er internal admin-tools (race-katalog, økonomi, sæsoner, manuel override, discord webhooks, beta-reset osv.) bag admin-role gating. Ingen publik-facing flader. Issue #412 acceptance opdateret tilsvarende.",
+          "Næste · #412 lukkes når alle Fase-3-sider er live og verificeret.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.56",
     date: "2026-05-18",
     label: "Beta",
