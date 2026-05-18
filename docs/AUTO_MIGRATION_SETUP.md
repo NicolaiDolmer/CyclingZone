@@ -61,6 +61,12 @@ Hvis en migration er kørt manuelt via dashboard og du vil forhindre workflow i 
 INSERT INTO schema_migrations (filename) VALUES ('database/2026-05-04-yourfile.sql');
 ```
 
+**VIGTIGT — brug `database/`-prefix:** Auto-migrate skriver filename som `database/<file>.sql`
+(jf. `ls database/2026-*.sql` i workflow). Hvis du indsætter en record uden prefix
+(`'2026-05-04-yourfile.sql'`), vil auto-migrate ikke matche den og køre migrationen
+igen — resulterer i duplikat-record + Detector C-finding i feature-liveness auditen
+([#478](https://github.com/NicolaiDolmer/CyclingZone/issues/478) postmortem). Idempotente migrations er safe at re-køre, men bookkeeping forbliver beskidt indtil duplikat slettes manuelt.
+
 ## Manuel re-run (kør en applied migration igen)
 
 ```sql

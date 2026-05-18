@@ -149,6 +149,10 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   // season-end consequences findes. Forventet naturlige impressions efter
   // sæson 1-start omkring 2026-05-15.
   "feature_board_consequences_panel_viewed",
+  // Survey-CTA-banner (#364) er gated bag admin-preview via app_config-flag
+  // indtil Tally-URL flippes (sprint uge 1 ons/tor). Naturlige impressions
+  // begynder efter flag-flip — fjern denne entry når banner går live for alle.
+  "survey_banner_dismissed",
 ]);
 
 // Detector D: prod-tabeller vi accepterer uden CREATE TABLE i repo
