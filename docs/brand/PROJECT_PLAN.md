@@ -1,5 +1,6 @@
 # Brand Identity Project — Master Plan
 
+> **GitHub issue:** [#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481) (master tracker — reference in commits via `Refs #481`)
 > **Goal:** Complete Cycling Zone brand identity (logo, favicon, Discord, design manual, UI/UX-tokens) "once and for all".
 > **Owner:** Nicolai Dolmer Mikkelsen
 > **Started:** 2026-05-18

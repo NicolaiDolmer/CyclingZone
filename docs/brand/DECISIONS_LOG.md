@@ -1,5 +1,6 @@
 # Decisions Log
 
+> **Master issue:** [#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481)
 > **Purpose:** Single source of truth for what's been decided in the brand identity project.
 > **Rule:** Append-only. Confirmed decisions are immutable unless user explicitly revisits.
 > **Update protocol:** Immediately after each confirmed choice. Never let an undocumented decision sit.

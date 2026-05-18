@@ -105,18 +105,13 @@ The new AI should:
 
 If the AI tries to restart or asks abstract questions: copy this rule back at it — *"Stop. Read DECISIONS_LOG.md and resume. No restarts."*
 
-## Optional — create a GitHub master issue for tracking
+## GitHub master issue (created)
 
-If you want shared progress tracking across PCs (recommended), the AI can create a master issue:
+**Master tracking issue:** [#481 — Brand identity overhaul](https://github.com/NicolaiDolmer/CyclingZone/issues/481)
 
-```bash
-gh issue create \
-  --title "Brand identity overhaul — logo + design manual (once-and-for-all)" \
-  --body-file docs/brand/PROJECT_PLAN.md \
-  --label "claude:todo"
-```
+Reference in all brand-related commits via `Refs #481` per project convention. Sub-issues per phase can be created as needed and linked to #481.
 
-Then reference the issue number in commits via `Refs #N` per project convention.
+Check status anytime: `gh issue view 481`
 
 ## What lives where (continuity reference)
 
