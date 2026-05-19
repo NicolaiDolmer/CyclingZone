@@ -1,0 +1,6 @@
+{
+  "taskId": "time-tracker-weekly-report",
+  "description": "Ugentlig time-tracker rapport (#391, #499) — søndag 21:00",
+  "cronExpression": "0 21 * * 0",
+  "promptFile": "scripts/scheduled-tasks/time-tracker-weekly-report-prompt.md"
+}

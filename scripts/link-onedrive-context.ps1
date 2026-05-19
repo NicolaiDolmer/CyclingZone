@@ -385,6 +385,36 @@ if (Test-Path $claudeSettingsSource) {
   Write-Host "  [skip] claude-settings ikke i OneDrive endnu - skip indtil etableret paa primary PC"
 }
 
+# --- 3c. Cross-PC transcript sync (#391 Phase 2) ---
+# Triggers cross-pc-sync.sh i background ved hver SessionStart, så vi catcher
+# sessioner der døde uden clean Stop-hook. Stop-hook gør samme thing — dette er
+# safety-netter for crashes.
+#
+# Hvis scripts/cross-pc-sync.sh mangler (PC1 første session efter denne commit
+# men før git pull), emit warning så Claude-sessionen kan tilbyde at pulle.
+Write-Section "Cross-PC transcript sync (#391)"
+
+$syncScript = Join-Path $RepoRoot "scripts\cross-pc-sync.sh"
+if (Test-Path $syncScript) {
+  if ($DryRun) {
+    Write-Host "  [would-trigger] bash scripts/cross-pc-sync.sh (background)"
+  } else {
+    # Fire-and-forget: bash starter, vi venter ikke. Logger til ~/.claude/cross-pc-sync.log.
+    try {
+      Start-Process -FilePath "bash" -ArgumentList @($syncScript) -NoNewWindow -PassThru -ErrorAction Stop | Out-Null
+      Write-Host "  [triggered] bash cross-pc-sync.sh (background; log: ~/.claude/cross-pc-sync.log)" -ForegroundColor Green
+    } catch {
+      Write-Host ("  [warn] kunne ikke starte bash-sync: {0}" -f $_.Exception.Message) -ForegroundColor Yellow
+    }
+  }
+} else {
+  Write-Host "  [WARN] scripts/cross-pc-sync.sh mangler — kør 'git pull --ff-only' for at hente #391-setup" -ForegroundColor Yellow
+  # Emit systemMessage til Claude-sessionen så den selv tilbyder at pulle
+  $msg = "Cross-PC sync setup mangler paa denne PC ({0}). Koer 'git pull --ff-only' for at hente scripts/cross-pc-sync.sh fra origin/main, derefter naeste session aktiverer auto-sync." -f $env:COMPUTERNAME
+  # Write til STOP-detekterbar besked (matcher SessionStart-hook 3 filter 'STOP|err|Exception')
+  Write-Host ("STOP-MESSAGE: {0}" -f $msg)
+}
+
 # --- 4. Slut-rapport ---
 Write-Host ""
 if ($DryRun) {
