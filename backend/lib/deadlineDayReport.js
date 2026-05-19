@@ -214,6 +214,30 @@ async function loadFinalWhistleData({ supabase, window }) {
   return { auctionDeals, transferDeals, bids: bidsForReport, panicTeamIds };
 }
 
+// ── Auto-close: flip status open → closed når closes_at er passeret ─────────
+// Sikkerhedsnet så vinduet rammer deadline præcist selv hvis admin sover.
+// Atomic claim: kun UPDATE hvis row stadig er open (race-safe mod manuel close).
+export async function fireAutoCloseIfDue({ supabase, window, now }) {
+  if (!window) return { autoClosed: false };
+  if (window.status !== "open") return { autoClosed: false };
+  if (!window.closes_at) return { autoClosed: false };
+
+  const closesMs = new Date(window.closes_at).getTime();
+  if (closesMs > now.getTime()) return { autoClosed: false };
+
+  const nowIso = now.toISOString();
+  const { data: claimed, error } = await supabase
+    .from("transfer_windows")
+    .update({ status: "closed", closed_at: nowIso })
+    .eq("id", window.id)
+    .eq("status", "open")
+    .select("id");
+  if (error) throw error;
+  if (!claimed?.length) return { autoClosed: false };
+
+  return { autoClosed: true, windowId: window.id, closedAt: nowIso };
+}
+
 async function fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, now }) {
   const dueSteps = getDueWarningSteps(window.closes_at, now);
   if (!dueSteps.length) return { warnings: 0 };
@@ -292,10 +316,17 @@ export async function processDeadlineDayCron({
     .limit(1)
     .single();
 
-  if (!window) return { warnings: 0, whistleSent: false };
+  if (!window) return { warnings: 0, whistleSent: false, autoClosed: false };
 
   let warnings = 0;
   let whistleSent = false;
+
+  // 1. Auto-close hvis closes_at er passeret — sikrer Final Whistle kan fyre samme tick.
+  const autoCloseResult = await fireAutoCloseIfDue({ supabase, window, now });
+  if (autoCloseResult.autoClosed) {
+    window.status = "closed";
+    window.closed_at = autoCloseResult.closedAt;
+  }
 
   if (window.status === "open" && window.closes_at) {
     const result = await fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, now });
@@ -307,5 +338,5 @@ export async function processDeadlineDayCron({
     whistleSent = result.whistleSent;
   }
 
-  return { warnings, whistleSent };
+  return { warnings, whistleSent, autoClosed: autoCloseResult.autoClosed };
 }

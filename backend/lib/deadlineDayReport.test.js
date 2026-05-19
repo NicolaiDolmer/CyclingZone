@@ -5,6 +5,7 @@ import {
   WARNING_STEPS,
   buildWarningPayload,
   computeFinalWhistleReport,
+  fireAutoCloseIfDue,
   formatFinalWhistleEmbed,
   getDueWarningSteps,
   processDeadlineDayCron,
@@ -238,6 +239,131 @@ test("processDeadlineDayCron skips warnings when window is closed and fires Fina
   assert.equal(result.whistleSent, true);
   assert.equal(sentEmbeds.length, 1);
   assert.match(sentEmbeds[0].payload.embeds[0].title, /Final Whistle/);
+});
+
+// ── fireAutoCloseIfDue — pure auto-close tests ────────────────────────────────
+
+function autoCloseSupabase({ updateResult = { data: [{ id: "w1" }], error: null }, capturePayload }) {
+  return {
+    from(table) {
+      assert.equal(table, "transfer_windows");
+      return {
+        update(payload) {
+          if (capturePayload) capturePayload(payload);
+          return {
+            eq() { return this; },
+            select: () => Promise.resolve(updateResult),
+          };
+        },
+      };
+    },
+  };
+}
+
+test("fireAutoCloseIfDue: no-op when window status is not open", async () => {
+  const supabase = autoCloseSupabase({});
+  const result = await fireAutoCloseIfDue({
+    supabase,
+    window: { id: "w1", status: "closed", closes_at: new Date(Date.now() - HOUR).toISOString() },
+    now: new Date(),
+  });
+  assert.equal(result.autoClosed, false);
+});
+
+test("fireAutoCloseIfDue: no-op when closes_at is in the future", async () => {
+  const supabase = autoCloseSupabase({});
+  const result = await fireAutoCloseIfDue({
+    supabase,
+    window: { id: "w1", status: "open", closes_at: new Date(Date.now() + HOUR).toISOString() },
+    now: new Date(),
+  });
+  assert.equal(result.autoClosed, false);
+});
+
+test("fireAutoCloseIfDue: no-op when closes_at is null", async () => {
+  const supabase = autoCloseSupabase({});
+  const result = await fireAutoCloseIfDue({
+    supabase,
+    window: { id: "w1", status: "open", closes_at: null },
+    now: new Date(),
+  });
+  assert.equal(result.autoClosed, false);
+});
+
+test("fireAutoCloseIfDue: flips status to closed when closes_at has passed", async () => {
+  let captured = null;
+  const supabase = autoCloseSupabase({ capturePayload: (p) => { captured = p; } });
+  const now = new Date();
+  const result = await fireAutoCloseIfDue({
+    supabase,
+    window: { id: "w1", status: "open", closes_at: new Date(now.getTime() - HOUR).toISOString() },
+    now,
+  });
+  assert.equal(result.autoClosed, true);
+  assert.equal(result.windowId, "w1");
+  assert.equal(captured.status, "closed");
+  assert.equal(captured.closed_at, now.toISOString());
+});
+
+test("fireAutoCloseIfDue: returns autoClosed=false when atomic claim returns empty (race-safe)", async () => {
+  const supabase = autoCloseSupabase({ updateResult: { data: [], error: null } });
+  const result = await fireAutoCloseIfDue({
+    supabase,
+    window: { id: "w1", status: "open", closes_at: new Date(Date.now() - HOUR).toISOString() },
+    now: new Date(),
+  });
+  assert.equal(result.autoClosed, false);
+});
+
+test("processDeadlineDayCron: auto-closes window AND fires Final Whistle in same tick when closes_at passed", async () => {
+  const closesAt = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 min ago
+  let statusFlipped = false;
+  const supabase = {
+    from(table) {
+      if (table === "transfer_windows") {
+        return {
+          select() {
+            return {
+              order: () => ({
+                limit: () => ({
+                  single: () => Promise.resolve({
+                    data: { id: "w1", season_id: "s1", status: "open", closes_at: closesAt, created_at: new Date(Date.now() - 25 * HOUR).toISOString(), final_whistle_sent_at: null },
+                    error: null,
+                  }),
+                }),
+              }),
+            };
+          },
+          update(payload) {
+            if (payload.status === "closed") statusFlipped = true;
+            return {
+              eq() { return this; },
+              is() { return this; },
+              select: () => Promise.resolve({ data: [{ id: "w1", season_id: "s1" }], error: null }),
+            };
+          },
+        };
+      }
+      if (table === "seasons") {
+        return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { season_number: 0 }, error: null }) }) }) };
+      }
+      return emptyQueryBuilder();
+    },
+  };
+
+  const sentEmbeds = [];
+  const result = await processDeadlineDayCron({
+    supabase,
+    notifyTeamOwnerFn: async () => ({ delivered: true }),
+    sendDiscordWebhookFn: async (url, payload) => { sentEmbeds.push(payload); },
+    getDefaultWebhookFn: async () => "https://discord.test/webhook",
+    now: new Date(),
+  });
+
+  assert.equal(result.autoClosed, true);
+  assert.equal(result.whistleSent, true);
+  assert.equal(statusFlipped, true);
+  assert.equal(sentEmbeds.length, 1);
 });
 
 test("processDeadlineDayCron skips Final Whistle when already claimed", async () => {

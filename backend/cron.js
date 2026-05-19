@@ -24,6 +24,7 @@ import {
 import { notifyAuctionWon, getDefaultWebhook, sendWebhook } from "./lib/discordNotifier.js";
 import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
+import { processSeasonAutoTransitionCron } from "./lib/seasonAutoTransition.js";
 import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
@@ -215,6 +216,25 @@ async function runMidSeasonReviewCron() {
   }
 }
 
+// ─── Season Auto-Transition ──────────────────────────────────────────────────
+// Når et vindue er fuldt-wrapped (status=closed, final whistle sendt, squad
+// enforcement done), fyrer transitionToNextSeason automatisk. Sponsor lander
+// ~5-15 min efter window-close.
+
+async function runSeasonAutoTransitionCron() {
+  try {
+    const result = await processSeasonAutoTransitionCron({
+      supabase,
+      now: new Date(),
+    });
+    if (result.transitioned) {
+      console.log(`🌅 Sæson-transition: sæson ${result.fromSeason} → ${result.toSeason} udført automatisk`);
+    }
+  } catch (err) {
+    console.error("Cron error (season auto-transition):", err.message);
+  }
+}
+
 // ─── Squad Enforcement ───────────────────────────────────────────────────────
 
 async function runSquadEnforcementCron() {
@@ -263,6 +283,9 @@ export function startCron() {
       console.error("Cron error (squad enforcement):", err.message);
     }
   }, 5 * 60 * 1000);
+
+  // Every 5 minutes: season auto-transition (kun fyrer når window er fuldt-wrapped).
+  setInterval(runSeasonAutoTransitionCron, 5 * 60 * 1000);
 
   // Every 6 hours: check debt
   setInterval(async () => {
