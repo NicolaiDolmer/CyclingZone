@@ -15,6 +15,7 @@
 | C3 | Wordmark | **ALL CAPS Bebas Neue**, letter-spacing 2, yellow `#e8c547` on navy `#0e0f15`, size scales proportionally. **Twin lines below** (long thin ls=1.8 + short rounded accent dash ls=2.8, both `#ffd966`). **No subtitle when paired with lines.** | 2026-05-19 | Final head-to-head pick: user "Vi arbejder videre med B" |
 | F1 | Favicon (primary mark) | **Stacked CYCLING / ZONE** in Bebas Neue, yellow `#e8c547` rounded square (6px radius), navy `#0e0f15` text + thin separator line. Canonical across all platforms (browser, Discord, social). | 2026-05-19 | User reaction: "Jeg har meget godt kunne lide dette favicon du har lavet" |
 | C2 | Cycling-DNA visibility | **None on the wordmark itself.** Cycling-signal lives entirely in the twin lines + stacked favicon (which are already locked). No additional symbols, dots, rings, or letterform modifications. Premium-restrained. | 2026-05-19 | User "Jeg er lige nu mest glad for a" after seeing 4-card C2 comparison (A=none, B=wheel-ring, C=period-dot, D=both) |
+| **P1** | **Dark mode canvas** | **`#0e0f15` "locked navy"** — same value as C4 working navy, now elevated from "working" to "final canvas". Surface stack: card `#161824` · elevated `#1f2233`. RGB 14·15·21, HSL L 6.9%, neutral-cool. Closest peer: Whoop dark UI. | **2026-05-19** | A vs B head-to-head with landing + app + surface mocks. User: "a er den vi vælger" — picked incumbent over slightly-darker Tech coal #0a0b10. No re-verification needed; Phase 1 already validated on this exact navy. |
 
 ## 🔄 Reopened 2026-05-20
 
@@ -70,17 +71,20 @@ Per user request for "most professional approach, one thing at a time":
 
 ## 🟡 In progress
 
-_Phase 1 effectively complete — all foundational decisions locked (C2, C3, C4, F1a, F1b, C3-revisit). C1 sanity-check remains technically queued but is largely redundant: the dual-form favicon system has already been validated via F1b's dual-form preview card + C3-revisit's wordmark-vs-favicon proximity in option A. Recommend skipping C1 final pass and moving to **Phase 2 — Color palette (light + dark mode)** as a fresh sprint. User to confirm._
+**Phase 2 active.** P1 (dark canvas) locked 2026-05-19. **P2 — Light mode canvas** now active in `logo-explorations.html` — 4 candidates varying only the light surface, wordmark + accent locked.
 
 ## ⏳ Queued
 
 | # | Decision | Triggers after |
 |---|---|---|
-| D1 | Overall personality (was IN PROGRESS; demoted because depends on C1-C3 foundation) | C1+C2+C3 re-confirmed |
+| P2 | Light mode canvas (cream / off-white / pure white / cool gray) | P1 locked ✅ — ACTIVE NOW |
+| P3 | Accent yellow refinement — keep `#e8c547` or fine-tune (warmer/cooler/brighter) against both canvases | P2 locked |
+| **P3b** | **Brand-navy foreground refinement** — for light mode text/foreground/feature-sections, use `#0e0f15` (same as dark canvas) or `#0a1024` (D's race-night navy, reserved 2026-05-19). User flagged D's color as wanting to "be one of the options" in light mode. | P3 yellow locked |
+| P4 | Surface depth — flat single-surface vs layered elevation. Sets Phase 4 UI rhythm. | P3 locked |
+| P5 | Semantic colors — success / error / warning / info hues that don't fight brand yellow. WCAG AA on both canvases. | P4 locked |
+| D1 | Overall personality (legacy queue — likely subsumed by Phase 1+2 work) | Phase 2 complete |
 | D2 | Type refinement (weight, spacing, custom letterform details) | D1 confirmed |
-| D3 | Palette nuance (warm vs cool black, accent intensity, accessibility check) | D2 confirmed |
-| D4 | Symbol direction (wordmark-only / abstract mark / hidden cycling-DNA letterform) | D3 confirmed; may collapse into C2 if C2 picks the symbol direction |
-| D5 | Application mockups validation (Discord, browser, social, merchandise context) | D4 confirmed |
+| D5 | Application mockups validation (Discord, browser, social, merchandise context) | Phase 2 complete |
 
 ## 📝 User feedback (calibration rules — apply forward)
 
@@ -97,6 +101,7 @@ _Phase 1 effectively complete — all foundational decisions locked (C2, C3, C4,
 | 2026-05-20 | Mid C1 sanity-check at 16×16 browser tab: _"Når vi har noget der er lige så småt som det der, så skal det selvfølgelig være læsbart. Hvis ikke der kan stå CyclingZone, så skal der stå CZ eller noget ala det, sådan det er nemmere at genkende. Det skal være muligt at se hvad der står."_ | F1 was locked on large-size visual approval only; small-size legibility wasn't tested. C1 sanity-check (working rule pattern doing its job) surfaced this on the 16×16 browser-tab context. F1 expands to dual-form system: stacked CYCLING/ZONE for ≥48px (kept — user loved), readable monogram for ≤32px (F1b active decision). New rule: **every favicon must pass 16×16 legibility test — readable means a reader can identify what it says, not just recognize the shape.** Working rule #7 already required this; calibration is to actually run the test, not assume large-size approval extrapolates. |
 | 2026-05-20 | After picking F1b=B (Inter Tight Black): _"Men skal vi så ikke overveje at undersøge at bruge den skrifttype i alt vores branding, sådan det ikke er forskellige? Hvad synes du om det. Er det ikke best practice?"_ | Smart instinct, but the "one font everywhere" rule is a beginner-version of brand consistency. Mature brand systems (Spotify Circular+Mix, Whoop Helvetica Now Display+Text, Stripe Sans display+UI, Strava Maison Neue display+text) all use 2-3 carefully-chosen fonts where each does its specific job: display fonts optimize for memorability/personality, UI fonts optimize for legibility/density. Bebas Neue (display, condensed, distinctive) + Inter Tight (UI, geometric, workhorse) is a sibling-pair, not a clash. AI recommends keeping the dual-font sibling system. But sibling-check rendered visually in logo-explorations.html so user can see the alternative and decide. |
 | 2026-05-20 | After seeing wordmark head-to-head: _"Vi tager A"_ (keep Bebas wordmark + Inter Tight small favicon as sibling system). | C3-revisit locked = A. User confirmed sibling-font system after seeing direct comparison + peer-table from mature multi-font brand systems. Phase 1 effectively wrapped. Forward calibration: when introducing a new font, always show side-by-side comparison + peer reference, not just text-argument. The visual proof + peer-context combo unlocks confident decisions. |
+| 2026-05-19 | First P1 4-card render: user immediately knew C+D were wrong, wanted A vs B narrowed: _"a er den vi vælger"_ after seeing A vs B head-to-head with landing + app + surface mocks. Also: _"D vil jeg ikke have til dark mode, men vi kan godt overveje at bruge farven til det almindelige mode senere. Det skal i hvert fald være en af mulighederne."_ | When subtle-variant pairs survive a 4-card cull (here A vs B), render head-to-head with realistic UI context (landing + app + surfaces) — that's where the small differences become felt vs imagined. Also: a ruled-out canvas color may still have brand value elsewhere — track as "reserved" in queue, not killed in anti-decisions. P3b created to honor D's reservation. |
 
 ## 🎨 Confirmed micro-decisions (within C3)
 
@@ -115,6 +120,8 @@ _Phase 1 effectively complete — all foundational decisions locked (C2, C3, C4,
 | Literal cyclist illustration in logo | Ruled out by C2 (subtle DNA) |
 | Em-dash in any logo type | Ruled out by TONE_OF_VOICE.md punctuation rule |
 | Pro-designer route ($2k-15k) | User said "skal ikke være pro designer" — AI-driven iteration confirmed |
+| **Warm noir `#16110c` (C variant in P1)** | Too Rapha-luxury / leather-bag aesthetic. Drifts from manager-game category toward cycling-fashion brand. User: "C vil jeg ikke have under alle omstændigheder" (2026-05-19). |
+| **Race-night `#0a1024` as dark-mode canvas (D in P1)** | Saturated navy is too flavored for the foundational canvas — leans cinematic, would fight UI minimalism over 5-year horizon. **Reserved**, not killed: user flagged D's color for consideration in light mode / brand-foreground. Tracked as P3b in queue. |
 
 ## Notes
 
