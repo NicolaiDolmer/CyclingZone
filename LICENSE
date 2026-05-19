@@ -1,0 +1,38 @@
+Copyright (c) 2026 Nicolai Dolmer Mikkelsen. All rights reserved.
+
+The source code in this repository is made publicly viewable for
+transparency, learning, and collaboration purposes. It is **not** open-source
+software, and no rights are granted under any open-source license.
+
+You MAY:
+
+  * View and read the source code.
+  * Open issues to report bugs, ask questions, or suggest improvements.
+  * Submit pull requests. By submitting a contribution, you grant the
+    copyright holder a perpetual, worldwide, royalty-free, irrevocable
+    license to use, modify, sublicense, and incorporate your contribution
+    into the project under any terms the copyright holder chooses.
+
+You MAY NOT, without prior written permission from the copyright holder:
+
+  * Copy, fork, mirror, redistribute, or publicly host the source code or
+    any substantial portion of it.
+  * Use the code, in whole or in part, in any other software product,
+    commercial or non-commercial.
+  * Create derivative works based on the code.
+  * Run a publicly-accessible instance of the software or any derivative.
+  * Use the code or any portion thereof to train, fine-tune, evaluate, or
+    benchmark machine learning models.
+
+The game ("Cycling Zone" / "CyclingZone"), its name, logo, visual identity,
+and brand assets are the property of the copyright holder and may not be
+used, reproduced, or imitated without permission.
+
+For licensing inquiries, contact: nicolai.dolmer.mikkelsen@gmail.com
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY
+ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.

@@ -1,8 +1,5 @@
 # NOW — Aktuel arbejdsstatus
 
-## 🔴 BLOCKER (2026-05-18 20:06 UTC)
-**GitHub Actions billing failure — alle CI-runs fejler ([#495](https://github.com/NicolaiDolmer/CyclingZone/issues/495)).** Check-run annotation siger eksplicit "recent account payments have failed or your spending limit needs to be increased". Affecter ALLE events (pull_request + push til main), ALLE workflows. Pattern: jobs completer 2-3 sek med 0 steps, `runner_name=""`. **Brand identity D1 ([#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481)) er IKKE blokeret** (lokalt design-arbejde). **Fix:** [github.com/settings/billing](https://github.com/settings/billing) → opdater payment-method ELLER hæv spending limit. **Efter fix:** `gh pr comment 494 --body "@dependabot rebase"` re-trigger checks på dependabot-PR.
-
 ## Aktiv slice
 **Brand identity overhaul ([#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481))** — Phase 1 Decision 1 (Overall Personality) AWAITING USER PICK A/B/C/D i [`docs/brand/logo-explorations.html`](brand/logo-explorations.html). **Cross-PC handoff:** start næste session ved at paste [`docs/brand/HANDOFF_PROMPT.md`](brand/HANDOFF_PROMPT.md)-indhold verbatim som første message. Forrige slice: i18n Fase 3a+3b+3c+3d alle leveret (3d PR åben, [#482](https://github.com/NicolaiDolmer/CyclingZone/pull/482)) under [#412](https://github.com/NicolaiDolmer/CyclingZone/issues/412).
 
@@ -24,9 +21,3 @@
 Ældre 2026-05-16-entries (#361 landing page, #362/#363 waitlist, PR-batch, #334 cache, Tier-1 bug-batch, Survey-CTA-banner, DX/Automation sweep) arkiveret i [`archive/NOW_HISTORIK_2026-05-16-i18n-fase-2-live.md`](archive/NOW_HISTORIK_2026-05-16-i18n-fase-2-live.md). 2026-05-15: [`archive/NOW_HISTORIK_2026-05-16-sprint-validation-foundation.md`](archive/NOW_HISTORIK_2026-05-16-sprint-validation-foundation.md) + [`NOW_HISTORIK_2026-05-15-issue-373.md`](archive/NOW_HISTORIK_2026-05-15-issue-373.md).
 
 ## Næste session (prioriteret)
-1. **Brand identity D1 ([#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481))** — paste [`docs/brand/HANDOFF_PROMPT.md`](brand/HANDOFF_PROMPT.md) verbatim, start preview via `mcp__Claude_Preview__preview_start name=brand` (port 4173, wired i `.claude/launch.json`), svar A/B/C/D på Overall Personality. Cross-PC flow er hardcoded — afvig ikke fra HANDOFF_PROMPT-instruktionerne.
-2. **Naming-brainstorm (15-30 min)** — tier-navne (Founder/Supporter/Premium/Pro Analyst/Patron). Blokerer #366 PatchNotes-entry, Discord launch-post draft, landing-page revision.
-3. **i18n Fase 3.5 ([epic #483](https://github.com/NicolaiDolmer/CyclingZone/issues/483))** — 10 sub-issues for resterende authenticated pages. Pri-rækkefølge: high #484 BoardPage · #485 RiderStatsPage · #486 NotificationsPage → med #487-490 → low #491-493. Pattern: følg #482 (Fase 3d Help).
-4. **[#448](https://github.com/NicolaiDolmer/CyclingZone/issues/448) Vercel Preview env** — bruger-handling i Vercel-dashboard. Lukker #296 follow-up.
-
-## Skalerings-roadmap
