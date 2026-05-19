@@ -6,7 +6,7 @@
 <title>Cycling Zone — Visual Decision Sprint</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800;900&family=Manrope:wght@500;600;700;800&family=DM+Sans:wght@500;700;800;900&family=Bebas+Neue&family=Anton&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800;900&family=Manrope:wght@500;600;700;800&family=DM+Sans:wght@500;700;800;900&family=Bebas+Neue&family=Anton&family=Space+Grotesk:wght@500;700&family=Playfair+Display:wght@500;600;700;800&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg-body: #0a0b10;
@@ -69,6 +69,47 @@
   }
   .meta-row span { padding-right: 12px; border-right: 1px solid var(--border); }
   .meta-row span:last-child { border-right: none; }
+
+  /* ROLLBACK NOTICE */
+  .rollback-notice {
+    margin-top: 36px;
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    background: rgba(255, 180, 60, 0.05);
+    border: 1px solid rgba(255, 180, 60, 0.3);
+    border-radius: 14px;
+    padding: 20px 24px;
+  }
+  .rollback-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 180, 60, 0.15);
+    color: var(--accent-bright);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .rollback-body {
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .rollback-body strong { color: var(--accent-bright); font-weight: 700; }
+  .rollback-body em { color: var(--text-1); font-style: italic; font-weight: 500; }
+  .rollback-body code {
+    background: rgba(255,255,255,0.06);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: 'Space Grotesk', monospace;
+    font-size: 12px;
+    color: var(--accent);
+  }
 
   /* DECISIONS SO FAR */
   .progress {
@@ -434,11 +475,19 @@
     <h1>Cycling Zone <span class="light">— Visual Decision Sprint</span></h1>
     <p class="deck">One choice at a time. You look, you point, we move on. No abstract questions, no blind documents. Each decision narrows the next — by the end we have one logo direction, perfectly tuned to your taste.</p>
     <div class="meta-row">
-      <span>2026-05-18</span>
+      <span>2026-05-19</span>
       <span>Owner: Nicolai</span>
-      <span>Status: In progress · Step 1 of ~5</span>
+      <span>Status: Session closed · C3 + F1 + C2 locked · C1 + Phase 2 next session</span>
     </div>
   </header>
+
+  <!-- SESSION CLOSE-OUT NOTICE — 2026-05-19 -->
+  <div class="rollback-notice" style="border-color: rgba(110, 220, 120, 0.4); background: rgba(110, 220, 120, 0.04);">
+    <div class="rollback-mark" style="background: rgba(110, 220, 120, 0.15); color: #6edc78;">✓</div>
+    <div class="rollback-body">
+      <strong style="color: #6edc78;">Session closed 2026-05-19 — Phase 1 ~90% done.</strong> Locked this session: <strong>C3 Wordmark</strong> (ALL CAPS Bebas Neue ls 2 + twin lines + no subtitle), <strong>F1 Favicon</strong> (stacked CYCLING / ZONE in Bebas on yellow), <strong>C2 DNA visibility</strong> (none — lines + favicon do the work). The cards below preserve the C2 decision history; the option with the green border (A) is what was chosen. Brand-DNA ideas for Phase 2-6 captured in <code>BRAND_DNA_IDEAS.md</code>. <strong>Next session:</strong> paste <code>HANDOFF_PROMPT.md</code>, confirm C1 (likely auto-resolved), then start Phase 2 — color palette (light + dark mode).
+    </div>
+  </div>
 
   <!-- BASELINE STRIP -->
   <div class="baseline-strip">
@@ -454,243 +503,265 @@
   <!-- PROGRESS / DECISIONS SO FAR -->
   <div class="progress">
     <div class="progress-head">
-      <h2>Decisions so far</h2>
-      <span class="progress-step">Step <strong>1</strong> of ~5</span>
+      <h2>Where we are</h2>
+      <span class="progress-step">C3 ✓ locked · <strong>C2</strong> active</span>
     </div>
     <ul class="decision-list">
       <li class="done"><span class="mark"></span>
-        <div>Wordmark-first identity <span class="why">Confirmed earlier — wordmark is primary, monogram is derived</span></div>
+        <div>Working palette <span class="why">Yellow <code style="font-family:'Space Grotesk',monospace;font-size:12px;background:rgba(255,255,255,0.04);padding:1px 5px;border-radius:3px">#e8c547</code> + navy <code style="font-family:'Space Grotesk',monospace;font-size:12px;background:rgba(255,255,255,0.04);padding:1px 5px;border-radius:3px">#0e0f15</code> — inherited from existing UI &amp; favicon, may be tuned in palette phase</span></div>
       </li>
       <li class="done"><span class="mark"></span>
-        <div>Subtle cycling-DNA <span class="why">Confirmed — no literal cyclist, only hidden references</span></div>
+        <div><strong>C3 — Wordmark</strong> <span class="why">ALL CAPS Bebas Neue ls 2 · yellow on navy · twin lines (long + accent dash) · no subtitle</span></div>
       </li>
       <li class="done"><span class="mark"></span>
-        <div>Whoop as taste anchor <span class="why">Confirmed — premium athletic minimalism as inspiration</span></div>
+        <div><strong>F1 — Favicon</strong> <span class="why">Stacked CYCLING / ZONE on yellow rounded square · Bebas Neue · canonical across all platforms</span></div>
+      </li>
+      <li class="done"><span class="mark"></span>
+        <div><strong>C2 — Cycling-DNA visibility</strong> <span class="why">None on wordmark — lines + favicon do the cycling-signaling. Restraint over decoration.</span></div>
       </li>
       <li class="active"><span class="mark"></span>
-        <div>Personality direction <span class="why">Active decision — 4 visual options below</span></div>
+        <div>C1 — Identity-type <span class="why">Next session — likely auto-resolved as wordmark-first + favicon-derived monogram. Single-page confirmation only.</span></div>
       </li>
       <li class="pending"><span class="mark"></span>
-        <div>Type personality refinement <span class="why">Queued — narrows within chosen personality</span></div>
+        <div>Phase 2 — Color palette (light + dark) <span class="why">Next major phase — own sprint, after Phase 1 wraps</span></div>
       </li>
       <li class="pending"><span class="mark"></span>
-        <div>Palette nuance <span class="why">Queued</span></div>
+        <div>Phase 3 — Type system (heading / body / mono) <span class="why">Queued</span></div>
       </li>
       <li class="pending"><span class="mark"></span>
-        <div>Symbol or no symbol <span class="why">Queued</span></div>
-      </li>
-      <li class="pending"><span class="mark"></span>
-        <div>Final polish + application mockups <span class="why">Queued</span></div>
+        <div>Phase 4-6 — UI primitives · Applications · Implementation <span class="why">Site-wide UI redesign, social assets, codebase apply</span></div>
       </li>
     </ul>
   </div>
 
-  <!-- QUESTION BLOCK -->
+  <!-- QUESTION BLOCK — C2 Cycling-DNA visibility -->
   <section class="question-block">
-    <span class="question-tag"><span class="dot"></span>Decision 1 of 5</span>
-    <h2>Which overall personality?</h2>
-    <p class="question-deck">Each card below is a <strong>complete personality package</strong> — type, spacing, palette, mood — not just a font swap. Look at all four, squint a little, notice which one your eyes return to. That's your gut signal. Once you pick, we narrow within that direction in the next step.</p>
+    <span class="question-tag"><span class="dot"></span>Decision C2 · Cycling-DNA visibility</span>
+    <h2>Any extra cycling-DNA on top of the lines + favicon?</h2>
+    <p class="question-deck">C3 is locked: ALL CAPS Bebas + twin lines + stacked CYCLING/ZONE favicon. The lines and favicon already do a lot of cycling-signaling. C2 asks: do you want <strong>any additional cycling-DNA</strong> built into the wordmark itself — or is what we have enough? Four levels below, all using the locked B wordmark. Same color, same lines, same font. Only the DNA-cue varies.</p>
 
-    <!-- 4 PERSONALITY OPTIONS -->
+    <!-- 4 C2 VARIANTS — locked B wordmark + varying levels of cycling-DNA additions -->
     <div class="options-grid">
 
-      <!-- OPTION A: Refined Minimal (Whoop-pure) -->
-      <div class="option-card">
+      <!-- OPTION A: None — lines + favicon ARE the DNA (recommended, current locked state) -->
+      <div class="option-card" style="border-color: rgba(110, 220, 120, 0.4);">
         <div class="option-header">
           <div class="option-letter">A</div>
           <div>
-            <div class="option-title">Refined Minimal</div>
-            <div class="option-subtitle">Whoop-pure</div>
-          </div>
-        </div>
-        <div class="hero-stage" style="background: #0a0a0f;">
-          <svg viewBox="0 0 480 120" xmlns="http://www.w3.org/2000/svg">
-            <text x="240" y="74" font-family="'Inter Tight', sans-serif" font-weight="700" font-size="52" fill="#e8c547" text-anchor="middle" letter-spacing="-2.5">cyclingzone</text>
-          </svg>
-        </div>
-        <div class="system-row">
-          <div class="system-cell" style="background: #0a0a0f;">
-            <svg viewBox="0 0 64 64" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
-              <rect width="64" height="64" rx="10" fill="#e8c547"/>
-              <text x="32" y="44" font-family="'Inter Tight', sans-serif" font-weight="800" font-size="32" fill="#0a0a0f" text-anchor="middle" letter-spacing="-2">cz</text>
-            </svg>
-            <span class="size-label">Favicon 48</span>
-          </div>
-          <div class="system-cell" style="background: #0a0a0f;">
-            <svg viewBox="0 0 64 64" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-              <rect width="64" height="64" rx="10" fill="#e8c547"/>
-              <text x="32" y="44" font-family="'Inter Tight', sans-serif" font-weight="800" font-size="32" fill="#0a0a0f" text-anchor="middle" letter-spacing="-2">cz</text>
-            </svg>
-            <span class="size-label">24px</span>
-          </div>
-        </div>
-        <div class="option-footer">
-          <div class="keywords">Restrained · Precise · Premium-tech</div>
-          <p class="option-desc">Whoop-pure. Single-word lowercase. Sharp geometric sans. Yellow on warm-black. No symbol — the wordmark IS the brand. Maximum confidence through restraint.</p>
-          <div class="tags">
-            <span class="tag">Inter Tight 700</span>
-            <span class="tag">Lowercase</span>
-            <span class="tag muted">No symbol</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- OPTION B: Warm Crafted (Founder-feeling) -->
-      <div class="option-card">
-        <div class="option-header">
-          <div class="option-letter">B</div>
-          <div>
-            <div class="option-title">Warm Crafted</div>
-            <div class="option-subtitle">Founder-feeling</div>
-          </div>
-        </div>
-        <div class="hero-stage" style="background: #181820;">
-          <svg viewBox="0 0 480 120" xmlns="http://www.w3.org/2000/svg">
-            <text x="240" y="70" font-family="'Manrope', sans-serif" font-weight="700" font-size="46" fill="#f2cb52" text-anchor="middle" letter-spacing="-0.8">Cycling Zone</text>
-            <line x1="195" y1="88" x2="285" y2="88" stroke="#f2cb52" stroke-width="1.2" opacity="0.55"/>
-          </svg>
-        </div>
-        <div class="system-row">
-          <div class="system-cell" style="background: #181820;">
-            <svg viewBox="0 0 64 64" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
-              <rect width="64" height="64" rx="14" fill="#f2cb52"/>
-              <text x="32" y="42" font-family="'Manrope', sans-serif" font-weight="700" font-size="28" fill="#181820" text-anchor="middle" letter-spacing="-0.5">cz</text>
-            </svg>
-            <span class="size-label">Favicon 48</span>
-          </div>
-          <div class="system-cell" style="background: #181820;">
-            <svg viewBox="0 0 64 64" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-              <rect width="64" height="64" rx="14" fill="#f2cb52"/>
-              <text x="32" y="42" font-family="'Manrope', sans-serif" font-weight="700" font-size="28" fill="#181820" text-anchor="middle" letter-spacing="-0.5">cz</text>
-            </svg>
-            <span class="size-label">24px</span>
-          </div>
-        </div>
-        <div class="option-footer">
-          <div class="keywords">Warm · Honest · Considered</div>
-          <p class="option-desc">Humanist sans with soft curves. Title case. Warmer black background, slightly creamy yellow. Thin underline as a quiet flourish. Feels personal, like one person made it with care.</p>
-          <div class="tags">
-            <span class="tag">Manrope 700</span>
-            <span class="tag">Title case</span>
-            <span class="tag muted">Subtle accent</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- OPTION C: Sport Athletic (Race-broadcast) -->
-      <div class="option-card">
-        <div class="option-header">
-          <div class="option-letter">C</div>
-          <div>
-            <div class="option-title">Sport Athletic</div>
-            <div class="option-subtitle">Race-broadcast</div>
+            <div class="option-title">None — lines + favicon are it</div>
+            <div class="option-subtitle">Recommended · Current state</div>
           </div>
         </div>
         <div class="hero-stage" style="background: #0e0f15;">
-          <svg viewBox="0 0 480 120" xmlns="http://www.w3.org/2000/svg">
-            <text x="240" y="68" font-family="'Bebas Neue', sans-serif" font-size="62" fill="#ffd966" text-anchor="middle" letter-spacing="6">CYCLING ZONE</text>
-            <line x1="60" y1="86" x2="420" y2="86" stroke="#ffd966" stroke-width="1.8"/>
-            <line x1="210" y1="96" x2="270" y2="96" stroke="#ffd966" stroke-width="2.5" stroke-linecap="round"/>
+          <svg viewBox="0 0 480 130" xmlns="http://www.w3.org/2000/svg">
+            <text x="240" y="68" font-family="'Bebas Neue', sans-serif" font-size="62" fill="#e8c547" text-anchor="middle" letter-spacing="2">CYCLING ZONE</text>
+            <line x1="60" y1="90" x2="420" y2="90" stroke="#ffd966" stroke-width="1.8"/>
+            <line x1="218" y1="104" x2="262" y2="104" stroke="#ffd966" stroke-width="2.8" stroke-linecap="round"/>
           </svg>
         </div>
         <div class="system-row">
           <div class="system-cell" style="background: #0e0f15;">
+            <svg viewBox="0 0 280 90" width="220" height="70" xmlns="http://www.w3.org/2000/svg">
+              <text x="140" y="42" font-family="'Bebas Neue', sans-serif" font-size="38" fill="#e8c547" text-anchor="middle" letter-spacing="1.2">CYCLING ZONE</text>
+              <line x1="40" y1="56" x2="240" y2="56" stroke="#ffd966" stroke-width="1.2"/>
+              <line x1="125" y1="66" x2="155" y2="66" stroke="#ffd966" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <span class="size-label">Small scale</span>
+          </div>
+          <div class="system-cell" style="background: #0e0f15;">
             <svg viewBox="0 0 64 64" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
-              <rect width="64" height="64" rx="6" fill="#ffd966"/>
+              <rect width="64" height="64" rx="6" fill="#e8c547"/>
               <text x="32" y="32" font-family="'Bebas Neue', sans-serif" font-size="18" fill="#0e0f15" text-anchor="middle" letter-spacing="1.2">CYCLING</text>
               <line x1="14" y1="38" x2="50" y2="38" stroke="#0e0f15" stroke-width="1"/>
               <text x="32" y="54" font-family="'Bebas Neue', sans-serif" font-size="18" fill="#0e0f15" text-anchor="middle" letter-spacing="2.5">ZONE</text>
             </svg>
-            <span class="size-label">Favicon 48</span>
-          </div>
-          <div class="system-cell" style="background: #0e0f15;">
-            <svg viewBox="0 0 64 64" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-              <rect width="64" height="64" rx="6" fill="#ffd966"/>
-              <text x="32" y="46" font-family="'Bebas Neue', sans-serif" font-size="46" fill="#0e0f15" text-anchor="middle" letter-spacing="3">CZ</text>
-            </svg>
-            <span class="size-label">24px</span>
+            <span class="size-label">Favicon</span>
           </div>
         </div>
         <div class="option-footer">
-          <div class="keywords">Energetic · Race-day · Official</div>
-          <p class="option-desc">Condensed display type, all caps, wide tracking. Bright yellow on deep navy. Thin underline + accent mark suggest race-poster rhythm. Strong "sport happening here" signal.</p>
+          <div class="keywords">Pure · Restrained · Most premium</div>
+          <p class="option-desc">No additions. The twin lines + stacked favicon already do the cycling-signaling. Every visual element you add beyond this is redundant or risks amateur. Maximum confidence through saying just enough. Whoop / Rapha discipline.</p>
           <div class="tags">
-            <span class="tag">Bebas Neue</span>
-            <span class="tag">All caps</span>
-            <span class="tag muted">Underline accent</span>
+            <span class="tag">No additions</span>
+            <span class="tag">Pure type</span>
+            <span class="tag muted">Locked state</span>
           </div>
         </div>
       </div>
 
-      <!-- OPTION D: Tech Smart (Linear/Stripe) -->
+      <!-- OPTION B: Replace accent dash with wheel ring -->
       <div class="option-card">
         <div class="option-header">
-          <div class="option-letter">D</div>
+          <div class="option-letter">B</div>
           <div>
-            <div class="option-title">Tech Smart</div>
-            <div class="option-subtitle">Linear / Stripe</div>
+            <div class="option-title">Wheel-ring accent</div>
+            <div class="option-subtitle">Accent dash → open ring</div>
           </div>
         </div>
         <div class="hero-stage" style="background: #0e0f15;">
-          <svg viewBox="0 0 480 120" xmlns="http://www.w3.org/2000/svg">
-            <text x="240" y="74" font-family="'DM Sans', sans-serif" font-weight="900" font-size="48" fill="#e8c547" text-anchor="middle" letter-spacing="-1.5">CyclingZone</text>
-            <circle cx="392" cy="50" r="2.8" fill="#e8c547"/>
+          <svg viewBox="0 0 480 130" xmlns="http://www.w3.org/2000/svg">
+            <text x="240" y="68" font-family="'Bebas Neue', sans-serif" font-size="62" fill="#e8c547" text-anchor="middle" letter-spacing="2">CYCLING ZONE</text>
+            <line x1="60" y1="90" x2="420" y2="90" stroke="#ffd966" stroke-width="1.8"/>
+            <circle cx="240" cy="106" r="7" fill="none" stroke="#ffd966" stroke-width="2.4"/>
           </svg>
         </div>
         <div class="system-row">
           <div class="system-cell" style="background: #0e0f15;">
-            <svg viewBox="0 0 64 64" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
-              <rect width="64" height="64" rx="8" fill="#e8c547"/>
-              <text x="32" y="44" font-family="'DM Sans', sans-serif" font-weight="900" font-size="30" fill="#0e0f15" text-anchor="middle" letter-spacing="-1.5">CZ</text>
-              <circle cx="49" cy="18" r="1.8" fill="#0e0f15"/>
+            <svg viewBox="0 0 280 90" width="220" height="70" xmlns="http://www.w3.org/2000/svg">
+              <text x="140" y="42" font-family="'Bebas Neue', sans-serif" font-size="38" fill="#e8c547" text-anchor="middle" letter-spacing="1.2">CYCLING ZONE</text>
+              <line x1="40" y1="56" x2="240" y2="56" stroke="#ffd966" stroke-width="1.2"/>
+              <circle cx="140" cy="66" r="5" fill="none" stroke="#ffd966" stroke-width="1.6"/>
             </svg>
-            <span class="size-label">Favicon 48</span>
+            <span class="size-label">Small scale</span>
           </div>
           <div class="system-cell" style="background: #0e0f15;">
-            <svg viewBox="0 0 64 64" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-              <rect width="64" height="64" rx="8" fill="#e8c547"/>
-              <text x="32" y="44" font-family="'DM Sans', sans-serif" font-weight="900" font-size="30" fill="#0e0f15" text-anchor="middle" letter-spacing="-1.5">CZ</text>
+            <svg viewBox="0 0 64 64" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="6" fill="#e8c547"/>
+              <text x="32" y="32" font-family="'Bebas Neue', sans-serif" font-size="18" fill="#0e0f15" text-anchor="middle" letter-spacing="1.2">CYCLING</text>
+              <line x1="14" y1="38" x2="50" y2="38" stroke="#0e0f15" stroke-width="1"/>
+              <text x="32" y="54" font-family="'Bebas Neue', sans-serif" font-size="18" fill="#0e0f15" text-anchor="middle" letter-spacing="2.5">ZONE</text>
             </svg>
-            <span class="size-label">24px</span>
+            <span class="size-label">Favicon</span>
           </div>
         </div>
         <div class="option-footer">
-          <div class="keywords">Sharp · Modern · Intelligent</div>
-          <p class="option-desc">camelCase wordmark, ultra-tight letter-spacing, heaviest weight. Tiny dot as geometric flourish — references precision/data. Feels like a smart modern product, less like a sports brand.</p>
+          <div class="keywords">Subtle wheel · Hub-as-accent · Integrated</div>
+          <p class="option-desc">Short accent dash replaced with a small open ring — reads as a wheel hub, finish-line dot, or design flourish depending on the viewer. Subtle cycling-DNA built into the existing twin-lines system. No new visual elements introduced, just one substitution.</p>
           <div class="tags">
-            <span class="tag">DM Sans 900</span>
-            <span class="tag">camelCase</span>
-            <span class="tag muted">Geometric dot</span>
+            <span class="tag">Wheel ring</span>
+            <span class="tag">One cue</span>
+            <span class="tag muted">Integrated</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPTION C: Period dot after ZONE -->
+      <div class="option-card">
+        <div class="option-header">
+          <div class="option-letter">C</div>
+          <div>
+            <div class="option-title">Period dot anchor</div>
+            <div class="option-subtitle">Hub-dot after ZONE</div>
+          </div>
+        </div>
+        <div class="hero-stage" style="background: #0e0f15;">
+          <svg viewBox="0 0 480 130" xmlns="http://www.w3.org/2000/svg">
+            <text x="240" y="68" font-family="'Bebas Neue', sans-serif" font-size="62" fill="#e8c547" text-anchor="middle" letter-spacing="2">CYCLING ZONE</text>
+            <circle cx="416" cy="66" r="4" fill="#e8c547"/>
+            <line x1="60" y1="90" x2="420" y2="90" stroke="#ffd966" stroke-width="1.8"/>
+            <line x1="218" y1="104" x2="262" y2="104" stroke="#ffd966" stroke-width="2.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="system-row">
+          <div class="system-cell" style="background: #0e0f15;">
+            <svg viewBox="0 0 280 90" width="220" height="70" xmlns="http://www.w3.org/2000/svg">
+              <text x="140" y="42" font-family="'Bebas Neue', sans-serif" font-size="38" fill="#e8c547" text-anchor="middle" letter-spacing="1.2">CYCLING ZONE</text>
+              <circle cx="245" cy="40" r="2.6" fill="#e8c547"/>
+              <line x1="40" y1="56" x2="240" y2="56" stroke="#ffd966" stroke-width="1.2"/>
+              <line x1="125" y1="66" x2="155" y2="66" stroke="#ffd966" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <span class="size-label">Small scale</span>
+          </div>
+          <div class="system-cell" style="background: #0e0f15;">
+            <svg viewBox="0 0 64 64" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="6" fill="#e8c547"/>
+              <text x="32" y="32" font-family="'Bebas Neue', sans-serif" font-size="18" fill="#0e0f15" text-anchor="middle" letter-spacing="1.2">CYCLING</text>
+              <line x1="14" y1="38" x2="50" y2="38" stroke="#0e0f15" stroke-width="1"/>
+              <text x="32" y="54" font-family="'Bebas Neue', sans-serif" font-size="18" fill="#0e0f15" text-anchor="middle" letter-spacing="2.5">ZONE</text>
+            </svg>
+            <span class="size-label">Favicon</span>
+          </div>
+        </div>
+        <div class="option-footer">
+          <div class="keywords">Period · Punctuation flourish · Quiet</div>
+          <p class="option-desc">A small filled dot at the right edge of ZONE — reads as a period (full stop), a wheel hub, or a "you are here" anchor. Quieter than B because it's a smaller mark, but more directly cycling-coded if interpreted as a hub.</p>
+          <div class="tags">
+            <span class="tag">Period dot</span>
+            <span class="tag">One cue</span>
+            <span class="tag muted">Tiniest mark</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPTION D: Both — wheel-ring + period dot -->
+      <div class="option-card">
+        <div class="option-header">
+          <div class="option-letter">D</div>
+          <div>
+            <div class="option-title">Both cues — full DNA</div>
+            <div class="option-subtitle">Wheel-ring + period dot</div>
+          </div>
+        </div>
+        <div class="hero-stage" style="background: #0e0f15;">
+          <svg viewBox="0 0 480 130" xmlns="http://www.w3.org/2000/svg">
+            <text x="240" y="68" font-family="'Bebas Neue', sans-serif" font-size="62" fill="#e8c547" text-anchor="middle" letter-spacing="2">CYCLING ZONE</text>
+            <circle cx="416" cy="66" r="4" fill="#e8c547"/>
+            <line x1="60" y1="90" x2="420" y2="90" stroke="#ffd966" stroke-width="1.8"/>
+            <circle cx="240" cy="106" r="7" fill="none" stroke="#ffd966" stroke-width="2.4"/>
+          </svg>
+        </div>
+        <div class="system-row">
+          <div class="system-cell" style="background: #0e0f15;">
+            <svg viewBox="0 0 280 90" width="220" height="70" xmlns="http://www.w3.org/2000/svg">
+              <text x="140" y="42" font-family="'Bebas Neue', sans-serif" font-size="38" fill="#e8c547" text-anchor="middle" letter-spacing="1.2">CYCLING ZONE</text>
+              <circle cx="245" cy="40" r="2.6" fill="#e8c547"/>
+              <line x1="40" y1="56" x2="240" y2="56" stroke="#ffd966" stroke-width="1.2"/>
+              <circle cx="140" cy="66" r="5" fill="none" stroke="#ffd966" stroke-width="1.6"/>
+            </svg>
+            <span class="size-label">Small scale</span>
+          </div>
+          <div class="system-cell" style="background: #0e0f15;">
+            <svg viewBox="0 0 64 64" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" rx="6" fill="#e8c547"/>
+              <text x="32" y="32" font-family="'Bebas Neue', sans-serif" font-size="18" fill="#0e0f15" text-anchor="middle" letter-spacing="1.2">CYCLING</text>
+              <line x1="14" y1="38" x2="50" y2="38" stroke="#0e0f15" stroke-width="1"/>
+              <text x="32" y="54" font-family="'Bebas Neue', sans-serif" font-size="18" fill="#0e0f15" text-anchor="middle" letter-spacing="2.5">ZONE</text>
+            </svg>
+            <span class="size-label">Favicon</span>
+          </div>
+        </div>
+        <div class="option-footer">
+          <div class="keywords">Layered · Two cues · Densest</div>
+          <p class="option-desc">Both B and C combined: wheel-ring as accent dash + period dot after ZONE. Two cycling cues in one mark. Risk: visually busier, drifts toward "decorated logo" territory. Pick this only if A feels too quiet after seeing the alternatives.</p>
+          <div class="tags">
+            <span class="tag">Two cues</span>
+            <span class="tag">Most layered</span>
+            <span class="tag muted">Busiest</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- RECOMMENDATION -->
+    <!-- WHAT EACH C2 VARIANT LOCKS IN -->
     <div class="recommendation">
-      <h3>My read of your taste so far</h3>
-      <p>Based on Whoop being your anchor + the founder-led build-in-public tone in TONE_OF_VOICE.md, my best guess is <strong>Option B (Warm Crafted)</strong> or <strong>Option A (Refined Minimal)</strong>.</p>
-      <p><strong>B</strong> if you want the brand to feel like Nicolai's voice — personal, considered, with a small flourish of soul. <strong>A</strong> if you want maximum premium-confidence and aren't worried about feeling slightly impersonal. <strong>C</strong> and <strong>D</strong> are valid but pull in stronger directions (sport-loud or tech-cool) that may conflict with the reflective tone you've established.</p>
-      <p>But trust your eyes over my analysis. If C or D feels right, that means something I don't see — tell me what.</p>
+      <h3>What each variant locks in</h3>
+      <p><strong>Pick A (None)</strong> → most premium, most restrained. Trust the lines + favicon. Brand systems like Whoop and Rapha work this way — they say only what's needed and let scarcity do the talking. Future site UI can carry the lines as a system element across cards, sections, dividers. This is the recommended call.</p>
+      <p><strong>Pick B (Wheel-ring accent)</strong> → adds one cycling cue via substitution (not addition). Subtle but readable as a wheel/hub. Builds a small system: the ring can also be reused as a UI motif (toggle, status indicator, section anchor). Most integrated.</p>
+      <p><strong>Pick C (Period dot)</strong> → adds one cycling cue as a punctuation flourish. Even smaller mark than B. Works if you read it as a hub; can also be read as "you are here". Lowest visual cost but also lowest read-rate.</p>
+      <p><strong>Pick D (Both)</strong> → maximum DNA on top of the locked system. Risk: drifts from restrained-premium toward decorated-logo. Only pick if A feels noticeably too quiet next to B/C.</p>
+      <p style="margin-top: 14px; color: var(--text-2); font-size: 14px;"><em>My read: A. The locked system already over-delivers cycling-signal between the lines and the stacked favicon. Restraint here amplifies premium feel. But you set the bar — if B or C calls to you, that means the lines+favicon alone aren't enough for your taste, which is valid signal.</em></p>
     </div>
 
     <!-- INSTRUCTIONS -->
     <div class="instructions">
       <h3>What to do next</h3>
-      <p>Look at all 4. Pick the one that pulls you most — even if just by 5%. Reply with <code>A</code>, <code>B</code>, <code>C</code>, or <code>D</code>.</p>
-      <p>Variants welcome: <code>"B but with A's tightness"</code>, <code>"closer to A but warmer"</code>, <code>"none — too restrained, want more X"</code>. Use your own words.</p>
-      <p>I won't move on until you tell me. After your pick, I rebuild this page to show 4 refinements <em>within</em> your direction (different type weights, spacing, palette nuances). We keep narrowing until you say "yes, that one".</p>
+      <p>Look at all 4. Reply with <code>A</code>, <code>B</code>, <code>C</code>, or <code>D</code>.</p>
+      <p>Variants welcome: <code>"B but smaller ring"</code>, <code>"C but bigger dot"</code>, <code>"B but ring is filled not open"</code>, <code>"none of these — try chain link instead"</code>. I can iterate.</p>
+      <p>After C2 locks, we go to <strong>C1 (identity-type)</strong> — but it's likely already answered: with C3 wordmark + F1 favicon locked, the identity is <em>wordmark-first with favicon-derived monogram</em>. I'll confirm with a single page rather than 4-card comparison. Then we wrap Phase 1 and move to <strong>Phase 2 — Color palette (light + dark mode)</strong> as a fresh sprint.</p>
     </div>
 
     <!-- QUEUED DECISIONS PREVIEW -->
     <div class="queued">
-      <h3>Coming up after this decision</h3>
+      <h3>Coming up after C3 locks</h3>
       <ol>
-        <li><strong>Type refinement</strong> — within chosen personality, fine-tune font weight, spacing, and any custom letterform details.</li>
-        <li><strong>Palette nuance</strong> — exact shade of yellow, exact black/navy, contrast levels for accessibility.</li>
-        <li><strong>Symbol decision</strong> — wordmark-only? abstract symbol? custom letterform with hidden cycling-DNA?</li>
-        <li><strong>Application mockups</strong> — Discord avatar, browser favicon, social post, t-shirt context. Final sanity check.</li>
-        <li><strong>Asset production</strong> — SVG master file, all PNG sizes, favicon-set, brand-guidelines mini-doc.</li>
+        <li><strong>C2 — Cycling-DNA visibility</strong> — within the chosen wordmark, where (if anywhere) does the cycling reference live? None / hidden in custom letterform / abstract mark / literal symbol.</li>
+        <li><strong>C1 — Identity-type</strong> — wordmark-only / monogram-derived / lockup with subtitle.</li>
+        <li><strong>D1-D2 — Personality + type metrics refinement</strong> — narrow within C1-C3 foundation.</li>
+        <li><strong>Phase 2 — Color palette (light + dark mode)</strong> — own sprint. Primary, accent, surfaces, semantic colors. Both modes get parity treatment.</li>
+        <li><strong>Phase 3 — Type system</strong> — heading / body / mono fonts beyond the logo. Scale, line-height, weights.</li>
+        <li><strong>Phase 4 — UI primitives + tokens</strong> — buttons, cards, inputs, spacing, motion. The site-wide design system.</li>
+        <li><strong>Phase 5 — Brand applications</strong> — favicon set, Discord assets, social avatars, OG image.</li>
+        <li><strong>Phase 6 — Codebase implementation</strong> — apply new tokens to existing UI. Playwright smoke verification. Dark+light parity audit.</li>
       </ol>
     </div>
   </section>
