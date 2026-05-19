@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.60",
+    date: "2026-05-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · Bundle-split for public landing pages (Refs #479)",
+        items: [
+          "Layout-component + Microsoft Clarity SDK + Vercel Analytics + Vercel Speed Insights flyttet fra main bundle til lazy chunks. Public routes (/founder-supporter, /login, /privacy-*) loader nu ikke app-shell eller analytics-vendor-kode i den render-blocking entry-bundle.",
+          "Main bundle: 765.6 KB → 737.3 KB (-28 KB raw, -7.8 KB gzipped). Nye lazy chunks: Layout 19.6 KB, vercelAnalyticsIntegration 2.8 KB, speedInsightsIntegration 2.5 KB, clarityIntegration 1.1 KB, clarity SDK 0.7 KB.",
+          "Delvis fremskridt mod #479 mobile Lighthouse Performance ≥ 90 target (baseline 78). Fuld opnåelse kræver yderligere skridt (i18n provider lazy-load for public routes, standalone /founder-supporter entry-point) som tages i separat session.",
+          "Ingen brugersynlig UI-ændring. Brugerverifikation: Lighthouse mobile på prod /founder-supporter efter Vercel-deploy. Desktop Performance skal forblive 90+ uden regression.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.59",
     date: "2026-05-19",
     label: "Beta",

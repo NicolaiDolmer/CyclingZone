@@ -1,12 +1,17 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
-import Layout from "./components/Layout";
 import CookieBanner from "./components/CookieBanner.jsx";
-import ClarityIntegration from "./lib/clarityIntegration.jsx";
-import SpeedInsightsIntegration from "./lib/speedInsightsIntegration.jsx";
-import VercelAnalyticsIntegration from "./lib/vercelAnalyticsIntegration.jsx";
 import { logEvent } from "./lib/logEvent";
+
+// Layout + analytics integrations lazy-loaded for #479: public routes
+// (/founder-supporter, /login, /privacy-*) ikke betaler for app-shell + Clarity/Vercel
+// SDK'er i main-bundlen. Analytics-komponenterne er allerede consent-gated så ingen
+// netværkskald før samtykke; lazy-load tager dem også ud af cold-start payload.
+const Layout = lazy(() => import("./components/Layout"));
+const ClarityIntegration = lazy(() => import("./lib/clarityIntegration.jsx"));
+const SpeedInsightsIntegration = lazy(() => import("./lib/speedInsightsIntegration.jsx"));
+const VercelAnalyticsIntegration = lazy(() => import("./lib/vercelAnalyticsIntegration.jsx"));
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
@@ -90,9 +95,11 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <ClarityIntegration />
-      <SpeedInsightsIntegration />
-      <VercelAnalyticsIntegration />
+      <Suspense fallback={null}>
+        <ClarityIntegration />
+        <SpeedInsightsIntegration />
+        <VercelAnalyticsIntegration />
+      </Suspense>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <LoginPage />} />

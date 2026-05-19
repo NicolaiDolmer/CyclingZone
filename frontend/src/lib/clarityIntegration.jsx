@@ -1,16 +1,27 @@
 import { useEffect } from "react";
-import Clarity from "@microsoft/clarity";
 import { useConsent } from "./consent.jsx";
 import { supabase } from "./supabase";
 
 const PROJECT_ID = import.meta.env.VITE_CLARITY_PROJECT_ID;
 const ENABLED = import.meta.env.PROD && Boolean(PROJECT_ID);
 
+// #479: Clarity SDK dynamic-importeres så ~10 KB ikke ender i main bundle.
+// Cached i modul-scope efter første load; subsequent re-renders bruger samme ref.
+let clarityPromise = null;
 let clarityStarted = false;
 
-function startClarity() {
+function loadClarity() {
+  if (!clarityPromise) {
+    clarityPromise = import("@microsoft/clarity").then((m) => m.default);
+  }
+  return clarityPromise;
+}
+
+async function startClarity() {
   if (clarityStarted || !ENABLED) return;
   try {
+    const Clarity = await loadClarity();
+    if (clarityStarted) return; // re-entry guard
     Clarity.init(PROJECT_ID);
     clarityStarted = true;
   } catch (err) {
@@ -18,9 +29,12 @@ function startClarity() {
   }
 }
 
-function setClarityTag(key, value) {
+async function setClarityTag(key, value) {
   if (!clarityStarted || value == null) return;
-  try { Clarity.setTag(key, String(value)); } catch { /* tagging is best-effort */ }
+  try {
+    const Clarity = await loadClarity();
+    Clarity.setTag(key, String(value));
+  } catch { /* tagging is best-effort */ }
 }
 
 // Mounted inside ConsentProvider. Starts Clarity once analytics consent is granted
