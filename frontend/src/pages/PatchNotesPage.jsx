@@ -2,6 +2,28 @@
 
 const PATCHES = [
   {
+    version: "3.59",
+    date: "2026-05-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Update · A fair premium conversation / En fair premium-samtale (#366)",
+        items: [
+          "EN · CyclingZone has been free since the start, and the competitive game will stay free. I am now asking players whether there is a fair way to make the project sustainable long-term.",
+          "EN · The promise: the game must be fair for everyone. You cannot pay for better riders, faster training, or better results.",
+          "EN · If premium happens later, it would be for identity, convenience, analytics and ways to back development. It would not include stronger riders, transfer advantages, better scouting odds, hidden power or restricted core gameplay.",
+          "EN · Over the next few weeks, I will ask for feedback through Discord, a short survey and a non-binding Founder waitlist. No payment is live now, and I am not building Stripe or gating the free game before the community has helped shape the direction.",
+          "EN · Join the conversation in Discord: https://discord.gg/ykysBrWUyC",
+          "DA · CyclingZone har været gratis siden starten, og det konkurrencemæssige spil forbliver gratis. Jeg spørger nu spillerne, om der findes en fair måde at gøre projektet bæredygtigt på lang sigt.",
+          "DA · Løftet: spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater.",
+          "DA · Hvis premium kommer senere, skal det handle om identitet, bekvemmelighed, analyser og måder at bakke udviklingen op. Det skal ikke give stærkere ryttere, transfer-fordele, bedre scout-odds, skjult magt eller begrænse core-spillet for gratis spillere.",
+          "DA · I de næste uger beder jeg om feedback via Discord, en kort survey og en uforpligtende Founder-waitlist. Betaling er ikke live nu, og jeg bygger ikke Stripe eller lukker dele af det gratis spil, før communityet har været med til at forme retningen.",
+          "DA · Join samtalen i Discord: https://discord.gg/ykysBrWUyC",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.58",
     date: "2026-05-19",
     label: "Beta",
