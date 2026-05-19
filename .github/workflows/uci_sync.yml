@@ -5,6 +5,9 @@ on:
     - cron: '17 6 * * 3'  # Hver onsdag kl. 06:17 UTC (undgå GitHub Actions top-of-hour load)
   workflow_dispatch:        # Manuel kørsel fra GitHub Actions-siden
 
+permissions:
+  contents: read
+
 jobs:
   sync:
     runs-on: ubuntu-latest

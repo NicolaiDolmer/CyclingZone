@@ -15,6 +15,9 @@ concurrency:
   group: auto-migrate-prod
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   migrate:
     runs-on: ubuntu-latest
