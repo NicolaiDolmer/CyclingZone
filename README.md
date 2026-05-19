@@ -1,269 +1,109 @@
-# 🚴 Cycling Zone Manager — Setup Guide
+# Cycling Zone
 
-## Oversigt
+> _Browser-baseret multiplayer cykelmanager-spil. Bygget af én person, gratis at spille, åben for testere._
+>
+> **Spil her:** [cycling-zone.vercel.app](https://cycling-zone.vercel.app)
 
-Browser-baseret multiplayer cykelmanager-spil.
-Bygget med: React + Vite (frontend), Node.js + Express (backend), Supabase (database + auth).
+[![CI](https://github.com/NicolaiDolmer/CyclingZone/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolaiDolmer/CyclingZone/actions/workflows/ci.yml)
 
----
+## What is this?
 
-## Trin 1 — Supabase Projekt
+Cycling Zone is a small, browser-based multiplayer cycling manager game. You sign up, get a team, bid on riders in live auctions, set tactics, and compete against other managers across a season calendar. The game is free, has been free since launch, and will always remain free.
 
-1. Gå til [supabase.com](https://supabase.com) og opret et **gratis projekt**
-2. Gå til **SQL Editor** og kør hele filen: `database/schema.sql`
-3. Gem disse værdier fra **Settings → API**:
-   - `Project URL` → `SUPABASE_URL`
-   - `anon public` key → `SUPABASE_ANON_KEY`
-   - `service_role secret` key → `SUPABASE_SERVICE_KEY`
+I'm a solo founder building this in public. The game has been in **open beta since 2026-05-08**, with a small group of testers actively playing. I share the thinking and trade-offs as they happen, not after the fact.
 
----
+If you want to play, just sign up at [cycling-zone.vercel.app](https://cycling-zone.vercel.app).
 
-## Trin 2 — Opret Admin-bruger
+## Tech stack
 
-1. Gå til **Authentication → Users** i Supabase
-2. Klik "Add user" og opret din admin-email
-3. Kør denne SQL for at give admin-rolle:
+React + Vite (frontend), Node.js + Express (backend), Supabase (Postgres, Auth, RLS), Vercel + Railway (hosting).
 
-```sql
--- Indsæt efter bruger er oprettet i auth.users
-INSERT INTO public.users (id, email, username, role)
-VALUES (
-  'DIN-USER-UUID-HER',  -- Kopiér fra Authentication → Users
-  'din@email.dk',
-  'Admin',
-  'admin'
-);
-```
+## Status
+
+Live and being actively developed. Open beta, so breaking changes happen. Patch notes are visible inside the app on the Patch Notes page.
 
 ---
 
-## Trin 3 — Backend Opsætning
+## For contributors
+
+This repo is **closed-source, made publicly viewable** for transparency, learning, and collaboration. The full terms are in [LICENSE](LICENSE).
+
+- **Bug reports and ideas:** [open an issue](https://github.com/NicolaiDolmer/CyclingZone/issues/new/choose). Be specific and I'll get back to you.
+- **Pull requests:** welcome. By submitting one, you grant me the contributor license described in [LICENSE](LICENSE).
+- **Security issues:** please don't file public issues. See [SECURITY.md](SECURITY.md) for private reporting.
+
+You can read the code, learn from it, and contribute back. You cannot fork, mirror, redistribute, or run your own instance of the game. Full terms in [LICENSE](LICENSE).
+
+---
+
+## Running it locally
+
+You don't need to run this locally to play, just go to [cycling-zone.vercel.app](https://cycling-zone.vercel.app). The steps below are for contributors who want to work on the code.
+
+### 1. Supabase
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. In the SQL Editor, run `database/schema.sql`.
+3. From **Settings → API**, copy `Project URL`, `anon public` key, and `service_role` key.
+
+### 2. Backend
 
 ```bash
 cd backend
 npm install
-
-# Opret .env fil
 cp .env.example .env
 ```
 
-Udfyld `backend/.env`:
-```
-SUPABASE_URL=https://XXXXX.supabase.co
-SUPABASE_SERVICE_KEY=eyJhbGci...service_role_key
-FRONTEND_URL=http://localhost:5173
-PORT=3001
-
-# Google Sheets CSV URL (se nedenfor)
-GOOGLE_SHEETS_CSV_URL=https://docs.google.com/spreadsheets/d/SHEET_ID/export?format=csv
-```
-
-**Google Sheets CSV URL:**
-1. Åbn dit Google Sheet med UCI points
-2. Fil → Del og eksportér → Publicer til web
-3. Vælg: Regneark → CSV → Publicer
-4. Kopiér URL'en til `GOOGLE_SHEETS_CSV_URL`
+Fill in the Supabase keys you just copied, then:
 
 ```bash
-npm run dev   # Start backend på port 3001
+npm run dev
 ```
 
----
+Backend runs on `http://localhost:3001`.
 
-## Trin 4 — Frontend Opsætning
+### 3. Frontend
 
 ```bash
 cd frontend
 npm install
-
-# Opret .env fil
+cp .env.example .env
 ```
 
-Opret `frontend/.env`:
-```
-VITE_SUPABASE_URL=https://XXXXX.supabase.co
-VITE_SUPABASE_ANON_KEY=sb_publishable_...
-VITE_API_URL=http://localhost:3001
-```
+Fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, then:
 
 ```bash
-npm run dev   # Start frontend på port 5173
+npm run dev
 ```
 
----
+Frontend runs on `http://localhost:5173`.
 
-## Lokal Verifikation
+### 4. Verify the build
 
-Fra repo-root:
+From the repo root:
 
 ```powershell
 pwsh -File scripts/verify-local.ps1
 ```
 
-Scriptet:
-- verificerer at du star i den rigtige git-worktree
-- korer backend-tests via `node --test`
-- bygger frontend hvis `frontend/node_modules` findes lokalt
-
-Hvis frontend-dependencies ikke er installeret lokalt, bliver frontend-build sprunget over med en tydelig warning, og GitHub Actions er sa den kanoniske build-gate.
+Runs backend tests and (if `frontend/node_modules` is present) the frontend build.
 
 ---
 
-## Trin 5 — Importer Ryttere
+## Project docs
 
-```bash
-cd scripts
+Canonical docs live in `docs/`:
 
-# Installer Python dependencies
-pip install pandas openpyxl requests
+- [`docs/NOW.md`](docs/NOW.md): active work and current status.
+- [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md): index of all docs (read this if you're looking for something specific).
+- [`docs/GUARDRAILS_CORE.md`](docs/GUARDRAILS_CORE.md): invariants and stop conditions (read when changing shared contracts).
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md): production deployment, observability, env vars.
+- [`docs/PUBLIC_ROADMAP.md`](docs/PUBLIC_ROADMAP.md): what's planned, in player-facing language.
 
-# Eksportér Google Sheets til CSV (download manuelt eller brug URL)
-# Kør import
-python import_riders.py \
-  --worlddb /sti/til/WORLD_DB_2026_Dyn_Cyclist.xlsx \
-  --sheets-csv /sti/til/uci_top1000.csv \
-  --supabase-url https://XXXXX.supabase.co \
-  --supabase-key DIN_SERVICE_ROLE_KEY
-
-# Dry run (ingen skrivning til DB):
-python import_riders.py \
-  --worlddb WORLD_DB.xlsx \
-  --sheets-csv uci.csv \
-  --dry-run
-```
+If you're an AI coding agent: start with [`CLAUDE.md`](CLAUDE.md) (Claude Code) or [`AGENTS.md`](AGENTS.md) (OpenAI Codex).
 
 ---
 
-## Trin 6 — Opret første sæson (Admin Panel)
+## Contact
 
-1. Log ind med admin-kontoen på `http://localhost:5173`
-2. Gå til **Admin** i menuen
-3. Opret sæson nummer 1
-4. Tilføj løb til kalenderen
-5. Klik "Start sæson" for at udbetale sponsorpenge og åbne spillet
-
----
-
-## Trin 7 — Importer Løbsresultater
-
-1. Kør løbet i PCM
-2. Eksportér resultater som Excel (.xlsx) fra PCM
-3. Gå til **Admin → Importer løbsresultater**
-4. Upload filen og angiv race_id
-5. Systemet fordeler automatisk præmiepenge
-
----
-
-## Deployment (gratis)
-
-### Frontend → Vercel
-```bash
-cd frontend
-npm run build
-# Push til GitHub → connect repo på vercel.com
-# Sæt env vars i Vercel dashboard
-```
-
-### Backend → Railway
-1. Gå til [railway.app](https://railway.app)
-2. "New Project" → "Deploy from GitHub"
-3. Sæt environment variables
-4. Railway giver automatisk en URL
-
-### Opdatér frontend URL
-```
-VITE_API_URL=https://din-backend.railway.app
-```
-
----
-
-## Filstruktur
-
-```
-cycling-manager/
-├── database/
-│   └── schema.sql              ← Kør i Supabase SQL Editor
-├── scripts/
-│   ├── import_riders.py        ← Engangsimport af ryttere
-│   └── import_race_results.py  ← CLI-alternativ til admin upload
-├── backend/
-│   ├── server.js               ← Startpunkt
-│   ├── cron.js                 ← Auktionsfinalisering (kører automatisk)
-│   ├── package.json
-│   └── lib/
-│       ├── auctionEngine.js    ← Tidslogik for auktioner
-│       ├── economyEngine.js    ← Løn, renter, sæsonøkonomi
-│       └── sheetsSync.js       ← Google Sheets UCI sync
-│   └── routes/
-│       └── api.js              ← Alle API endpoints
-├── frontend/
-│   └── src/
-│       ├── App.jsx
-│       ├── lib/
-│       │   ├── supabase.js
-│       │   └── boardUtils.js
-│       ├── components/
-│       │   └── Layout.jsx
-│       └── pages/
-│           ├── LoginPage.jsx
-│           ├── DashboardPage.jsx
-│           ├── RidersPage.jsx
-│           ├── AuctionsPage.jsx
-│           ├── TransfersPage.jsx
-│           ├── TeamPage.jsx
-│           ├── StandingsPage.jsx
-│           ├── BoardPage.jsx
-│           └── AdminPage.jsx
-└── README.md
-```
-
----
-
-## Tilbageværende punkter (Fase 3+)
-
-- [ ] Landekode mapping (afventer din fil)
-- [ ] Team ID mapping fra PCM (afventer din fil)
-- [ ] Rider statistik-side (historik per rytter)
-- [ ] Sæson 3-sæsoners glidende gennemsnit for rangliste
-- [ ] Transfervindue UI (godkendelse ved sæsonskifte)
-- [ ] Division min-rider krav ved oprykningskontrol
-
----
-
-## Docs-vedligeholdelse
-
-Start altid i `AGENTS.md`. Den peger videre til de kanoniske runtime- og execution-docs.
-
-Kernefiler:
-- `docs/RUNTIME_GUARDRAILS.md` — guardrails, invariants og stop conditions
-- `docs/AI_EXECUTION_STANDARD.md` — task format og execution discipline
-- `docs/NOW.md` — aktuel status og drift/ops-noter
-
-Reference ved behov:
-- `docs/FEATURE_STATUS.md`
-- `docs/ARCHITECTURE.md`
-- `docs/DOMAIN_REFERENCE.md`
-- `docs/CONVENTIONS.md`
-- `docs/TEST_SCENARIOS.md`
-- `docs/DEPLOYMENT.md`
-
-Ved afslutning af en arbejdsgang:
-- opdater relevante current docs konservativt
-- kør `node scripts/sync-docs.js` eller `npm run sync-docs`
-
----
-
-## Nyttige Supabase Queries
-
-```sql
--- Se alle holds balance
-SELECT name, balance, division FROM teams WHERE is_ai = false ORDER BY balance DESC;
-
--- Se aktive auktioner
-SELECT r.firstname, r.lastname, a.current_price, a.calculated_end
-FROM auctions a JOIN riders r ON r.id = a.rider_id
-WHERE a.status IN ('active','extended') ORDER BY a.calculated_end;
-
--- Opdatér en bruger til admin
-UPDATE public.users SET role = 'admin' WHERE email = 'din@email.dk';
-```
+Questions, ideas, or licensing inquiries: `nicolai.dolmer.mikkelsen@gmail.com`.
