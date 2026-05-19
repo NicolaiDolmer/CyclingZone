@@ -23,19 +23,19 @@ Manus' dokumenter indeholdt 4 forskellige versioner. Følgende er **besluttet 20
 | Tier | Pris | Målgruppe | Værdi |
 |---|---|---|---|
 | **Free Manager** | 0 DKK | Nye/casual spillere | Fuld konkurrencemæssig adgang, intet skåret væk |
-| **Supporter** | 49 DKK/md eller 490 DKK/år | Engagerede spillere | Badge, profiltemaer, Discord-rolle, gemte filtre, udvidet historik |
+| **Premium** | 49 DKK/md eller 490 DKK/år | Engagerede spillere | Badge, profiltemaer, Discord-rolle, gemte filtre, udvidet historik |
 | **Pro Analyst** | 89 DKK/md | Hardcore managers | Analytics, rytter-sammenligning, scouting-dashboards, transfer-watchlists, eksport |
 | **Patron** | 149 DKK/md | Superfans / tidlige troende | Founder-badge, kosmetik, dev Q&A, roadmap-stemmer på non-balance topics, kreditering |
 
-**Årligt = 10 måneder (2 mdr. gratis).** Founder Supporter er **ikke en separat tier** — det er en waitlist-status. Først 100 waitlist-signups får permanent "Founder"-kosmetik når betaling åbner.
+**Årligt = 10 måneder (2 mdr. gratis).** Founder er **ikke en separat tier**, men en waitlist-status. Først 100 waitlist-signups får permanent "Founder"-kosmetik når betaling åbner.
 
-**Survey skal teste:** 29/49/69 DKK for Supporter, 49/89/119 DKK for Pro Analyst. Patron tier valideres separat senere.
+**Survey skal teste:** 29/49/69 DKK for Premium, 49/89/119 DKK for Pro Analyst. Patron tier valideres separat senere.
 
 ## 3. Non-pay-to-win politik (ufravigelig)
 
 | Må sælges | Må IKKE sælges |
 |---|---|
-| Supporter-badge | Hurtigere træning |
+| Premium-badge | Hurtigere træning |
 | Profiltemaer/kosmetik | Bedre løbsudfald |
 | Discord-rolle | Større transferbudget |
 | Gemte dashboards | Bedre scout-odds |
@@ -44,7 +44,7 @@ Manus' dokumenter indeholdt 4 forskellige versioner. Følgende er **besluttet 20
 | Dataeksport | "Power features" |
 | Roadmap-stemmer (non-balance) | Stemmer der ændrer balance/økonomi |
 
-**Brand-løfte (synligt overalt):** *"CyclingZone will stay fair. Premium can unlock identity, convenience, analytics and ways to support development. It will not unlock better race results, faster training, stronger riders, transfer advantages, improved scouting odds or hidden power."*
+**Brand-løfte (synligt overalt):** *"The game must be fair for everyone. You cannot pay for better riders, faster training, or better results."*
 
 ## 4. Required users — målsætning
 
@@ -167,7 +167,8 @@ Manus dækkede ikke dansk finansieringslandskab. Følgende skal verificeres af b
 
 | Dato | Beslutning | Beslutter |
 |---|---|---|
-| 2026-05-14 | Tier-struktur 49/89/149 + 490 årlig på Supporter. Founder Supporter = waitlist-status, ikke separat tier. | Bruger |
+| 2026-05-14 | Tier-struktur 49/89/149 + 490 årlig på 49-tier. Founder = waitlist-status, ikke separat tier. | Bruger |
+| 2026-05-19 | Session B låste player-facing tier-navne: Free Manager, Premium, Pro Analyst, Patron. Founder er tidlig waitlist-status, ikke en betalt tier. | Manus AI |
 | 2026-05-14 | UCI vej (suppleret): Behold ægte navne under sprint + team/rider migration til fiktivt univers inden day 30 + race-name licens-pris undersøges parallelt + advokat-blokker uge 3 | Bruger |
 | 2026-05-14 | 30-dages sprint starter 2026-05-18 (mandag) | Bruger |
 | 2026-05-14 | Codex får tekniske implementerings-issues; bruger beholder strategi | Bruger |

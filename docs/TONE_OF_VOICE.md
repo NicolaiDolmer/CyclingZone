@@ -47,8 +47,10 @@ This is the load-bearing sentence in everything we write about premium. Repeat i
 | premium | premium | OK på begge sprog. Don't avoid it. |
 | open beta | open beta | We're in open beta. Use it. |
 | tester / open beta tester | tester / open beta tester | Naming-framing for nuværende fase |
-| founder | founder | Early-adopter-tier-navn (working draft, brainstorm pending) |
-| supporter | supporter | Alternativ tier-navn (working draft) |
+| founder | founder | Early-adopter-status for de første waitlist-signups, ikke separat betalt tier. |
+| Premium | premium | 49 DKK-tier, player-facing tier-navn låst i Session B. |
+| Pro Analyst | Pro Analyst | 89 DKK-tier for analyser og dashboards, låst i Session B. |
+| Patron | Patron | 149 DKK-tier for high-trust community og identitet, låst i Session B. |
 
 ### Forbudte termer (begge sprog)
 
@@ -76,14 +78,16 @@ Per `feedback_player_facing_copy_rules.md` regel 2 + dagens session-tillæg:
 **Punktuation:**
 - ❌ Em-dash (—) NOGENSTEDS i player-facing tekst, kode, docs, commits, PR-bodies, chat. Brug komma, punktum, kolon eller parentes.
 
-### Ord der venter på naming-brainstorm
+### Session B naming-beslutning
 
-Lås IKKE tier-navne før founder har brainstormet:
-- "Founder" vs "Supporter" vs "Pioneer" vs "Charter Member" vs andet
-- "Pro Analyst" (Manus' navn for 89kr-tier) — beholde eller ændre?
-- "Patron" (Manus' navn for 149+kr-tier) — beholde eller ændre?
+Tier-navne er låst per `docs/decisions/session-b-naming-fair-premium-copy.md`:
+- `Free Manager` = gratis competitive core.
+- `Premium` = 49 DKK-tier.
+- `Pro Analyst` = 89 DKK-tier.
+- `Patron` = 149 DKK-tier.
+- `Founder` = tidlig waitlist-status for de første 100, ikke separat betalt tier.
 
-Indtil låst: brug working-draft "Founder"/"Supporter" konsistent men flag som ikke-final.
+Brug ikke `Founder Supporter` som samlet navn. Hvis et teknisk felt eller en eksisterende enum stadig hedder `supporter`, må værdien beholdes internt, men player-facing labels skal følge listen ovenfor.
 
 ## Eksempel — Discord launch-post (EN draft)
 
