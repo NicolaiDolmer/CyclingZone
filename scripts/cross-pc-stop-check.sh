@@ -6,12 +6,20 @@
 #   1. Uncommitted changes (git status --porcelain)
 #   2. Commits ahead af upstream (git log @{u}..HEAD)
 #   3. Stash-entries (git stash list)
+#   4. PUSH: trigger cross-PC transcript sync til OneDrive (background, non-blocking)
 #
 # Output: systemMessage til Claude Code via JSON paa stdout. Exit altid 0 (non-blocking).
 
 # Vaer tolerant overfor at vaere udenfor et git-repo
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 0
+fi
+
+# Trigger transcript-sync i background (#391 Phase 2). Log: ~/.claude/cross-pc-sync.log
+# Stiller hverken stdout-output op eller blokerer Stop-hook.
+if [ -x "$(git rev-parse --show-toplevel)/scripts/cross-pc-sync.sh" ]; then
+  nohup bash "$(git rev-parse --show-toplevel)/scripts/cross-pc-sync.sh" >/dev/null 2>&1 &
+  disown 2>/dev/null || true
 fi
 
 issues=()

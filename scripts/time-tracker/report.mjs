@@ -21,6 +21,8 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const CLAUDE_DIR = path.join(HOME, '.claude', 'projects', 'C--dev-CyclingZone');
 const CODEX_ROOT = path.join(HOME, '.codex', 'sessions');
 const MANUS_DIR = path.join(HOME, 'OneDrive', 'CyclingZone-context', 'CyclingZone-Manus noter');
+const ONEDRIVE_CTX = path.join(HOME, 'OneDrive', 'CyclingZone-context');
+const CURRENT_PC = process.env.COMPUTERNAME || os.hostname();
 
 const CATEGORIES = ['cat:user-feature', 'cat:bug', 'cat:infra', 'cat:community', 'cat:ai-ops', 'cat:founder'];
 const IN_BUSINESS = new Set(['cat:user-feature', 'cat:bug', 'cat:infra', 'cat:community']);
@@ -37,6 +39,7 @@ function parseArgs() {
     all: false,
     extraClaude: [],
     extraCodex: [],
+    noOnedrive: false,
     outDir: path.join(REPO_ROOT, 'docs', 'metrics'),
   };
   for (let i = 0; i < args.length; i++) {
@@ -44,10 +47,30 @@ function parseArgs() {
     else if (args[i] === '--all') opts.all = true;
     else if (args[i] === '--extra-claude') opts.extraClaude.push(args[++i]);
     else if (args[i] === '--extra-codex') opts.extraCodex.push(args[++i]);
+    else if (args[i] === '--no-onedrive') opts.noOnedrive = true;
     else if (args[i] === '--out') opts.outDir = args[++i];
   }
   if (!opts.week && !opts.all) opts.week = isoWeek(new Date());
   return opts;
+}
+
+function findSiblingPcDirs() {
+  if (!fs.existsSync(ONEDRIVE_CTX)) return { claude: [], codex: [] };
+  const entries = fs.readdirSync(ONEDRIVE_CTX, { withFileTypes: true });
+  const claude = [];
+  const codex = [];
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    const claudeMatch = e.name.match(/^claude-transcripts-(.+)$/);
+    if (claudeMatch && claudeMatch[1] !== CURRENT_PC) {
+      claude.push(path.join(ONEDRIVE_CTX, e.name));
+    }
+    const codexMatch = e.name.match(/^codex-sessions-(.+)$/);
+    if (codexMatch && codexMatch[1] !== CURRENT_PC) {
+      codex.push(path.join(ONEDRIVE_CTX, e.name));
+    }
+  }
+  return { claude, codex };
 }
 
 function isoWeek(date) {
@@ -351,6 +374,16 @@ function generateReport(label, sessions) {
 async function main() {
   const opts = parseArgs();
   console.error('Collecting sessions...');
+
+  // Auto-discover sibling-PC transcripts i OneDrive (skippes ved --no-onedrive)
+  if (!opts.noOnedrive) {
+    const sibling = findSiblingPcDirs();
+    if (sibling.claude.length || sibling.codex.length) {
+      console.error(`  OneDrive sibling PCs: claude=[${sibling.claude.map(p => path.basename(p)).join(', ')}] codex=[${sibling.codex.map(p => path.basename(p)).join(', ')}]`);
+      opts.extraClaude.push(...sibling.claude);
+      opts.extraCodex.push(...sibling.codex);
+    }
+  }
 
   const claudeLocal = await collectClaudeDir(CLAUDE_DIR, 'local');
   const claudeExtra = (await Promise.all(opts.extraClaude.map(p => collectClaudeDir(p, path.basename(p))))).flat();

@@ -14,10 +14,14 @@ node scripts/time-tracker/report.mjs --week 2026-W19
 # All-time
 node scripts/time-tracker/report.mjs --all
 
-# Inkludér transcripts fra anden PC (efter OneDrive-sync)
+# Andre PCs' transcripts auto-discovers fra OneDrive (default ON siden #391).
+# Override hvis du kun vil have lokal PC:
+node scripts/time-tracker/report.mjs --no-onedrive
+
+# Manuel ekstra-sti (sjældent nødvendigt — auto-discovery håndterer normale tilfælde)
 node scripts/time-tracker/report.mjs \
-  --extra-claude "$HOME/OneDrive/CyclingZone-context/claude-transcripts-NICOLAILAPTOP" \
-  --extra-codex  "$HOME/OneDrive/CyclingZone-context/codex-sessions-NICOLAILAPTOP"
+  --extra-claude "$HOME/OneDrive/CyclingZone-context/claude-transcripts-OTHERPC" \
+  --extra-codex  "$HOME/OneDrive/CyclingZone-context/codex-sessions-OTHERPC"
 ```
 
 ## Kategorier
@@ -42,13 +46,21 @@ node scripts/time-tracker/report.mjs \
 
 ## Cross-PC
 
-Claude/Codex transcripts synker IKKE automatisk via OneDrive (de ligger i `~/.claude/` og `~/.codex/`). Manuel option:
+Automatiseret per #391 Phase 2. Hver PC pusher sine transcripts til OneDrive ved Stop-hook; `report.mjs` auto-discovers sibling-PC dirs ved kørsel.
 
-1. På PC2: kopiér `~/.claude/projects/C--dev-CyclingZone/` → `$HOME/OneDrive/CyclingZone-context/claude-transcripts-<PC>/`
-2. På PC2: kopiér `~/.codex/sessions/` → `$HOME/OneDrive/CyclingZone-context/codex-sessions-<PC>/`
-3. Kør `report.mjs` med `--extra-claude` og `--extra-codex` flag.
+**Hvordan det virker:**
 
-Automatiseres senere — Phase 2 (#390 follow-up).
+1. `scripts/cross-pc-stop-check.sh` (Stop-hook) trigger `cross-pc-sync.sh` i background.
+2. `cross-pc-sync.sh` mirror'er `~/.claude/projects/C--dev-CyclingZone/` → `$HOME/OneDrive/CyclingZone-context/claude-transcripts-<COMPUTERNAME>/` og `~/.codex/sessions/` → `codex-sessions-<COMPUTERNAME>/`. Idempotent (`cp -ru`).
+3. OneDrive synker mellem PCs automatisk.
+4. `report.mjs` scanner `~/OneDrive/CyclingZone-context/` for `claude-transcripts-*` og `codex-sessions-*` der ikke matcher `$COMPUTERNAME` → inkluderes som ekstra-kilder. Override med `--no-onedrive`.
+
+**Log:** `~/.claude/cross-pc-sync.log` (roterer ved 1MB).
+
+**Manuel sync** (debugging / fresh setup):
+```bash
+bash scripts/cross-pc-sync.sh   # synkron, output i log
+```
 
 ## Begrænsninger (MVP)
 
@@ -59,6 +71,7 @@ Automatiseres senere — Phase 2 (#390 follow-up).
 
 ## Forbedringsidéer (Phase 2)
 
+- ✅ ~~Cross-PC merge via OneDrive-sync~~ (#391 — done 2026-05-19)
 - Google Calendar API for non-kode `cat:founder`-arbejde
 - HTML-dashboard med trend-graf
 - Auto-attribuér via `git log` i session-window (find commits, hent `Refs #N`)
