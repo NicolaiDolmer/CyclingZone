@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "3.62",
+    date: "2026-05-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Sæson 1 kalender-balancering (stage race quota)",
+        items: [
+          "EN · The race calendar generator now guarantees a minimum number of stage races so that GC riders (climbers, time-trialists, all-rounders) have meaningful action across a season. Previously the alphabetic sort pushed most stage races out — for season 1 only 6 of 26 available stage races were picked.",
+          "EN · A curated priority list ensures the prestigious Continental-Circuit stage races land first (Tour of Oman, Volta ao Algarve, Tour of the Alps, Vuelta a Burgos, Tour of Slovenia, Tour of Britain, etc.) before the algorithm fills the rest. Italian/Asian autumn one-day classics (Tre Valli Varesine, Trofeo Laigueglia, Veneto Classic, Japan Cup) also get a guaranteed boost.",
+          "EN · Admin · Race-katalog has a new input 'Min. etapeløb (garanteret)', default 8. Set 0 to fall back to the old alphabetic behaviour. Pure backend change to selectSeasonRaces() — fully backward compatible.",
+          "DA · Løbskalender-generatoren garanterer nu et minimum antal etapeløb, så GC-ryttere (bjergryttere, enkeltstart-folk, all-roundere) har relevant action gennem en sæson. Tidligere skubbede alfabetisk sortering de fleste etapeløb ud — sæson 1 fik kun 6 ud af 26 mulige.",
+          "DA · En kurateret prioritets-liste sikrer at de prestigious Continental-Circuit etapeløb lander først (Tour of Oman, Volta ao Algarve, Tour of the Alps, Vuelta a Burgos, Tour of Slovenia, Tour of Britain, m.fl.) før resten af kalenderen fyldes. Italienske/asiatiske efterårsklassikere (Tre Valli Varesine, Trofeo Laigueglia, Veneto Classic, Japan Cup) får også garanteret plads.",
+          "DA · Admin · Race-katalog har et nyt felt 'Min. etapeløb (garanteret)', default 8. Sæt 0 for at falde tilbage til den gamle alfabetiske adfærd. Ren backend-ændring i selectSeasonRaces() — fuldt backward kompatibel.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.61",
     date: "2026-05-19",
     label: "Beta",

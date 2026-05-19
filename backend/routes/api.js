@@ -3565,6 +3565,7 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
       exclude_classes = null,
       race_days_target = DEFAULT_RACE_DAYS_TARGET,
       use_first_season_default = false,
+      stage_race_quota,
     } = req.body || {};
 
     const { data: pool, error: poolError } = await supabase
@@ -3572,13 +3573,24 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
       .select("id, name, race_class, race_type, stages, date_text, country");
     if (poolError) return res.status(500).json({ error: poolError.message });
 
+    // stage_race_quota: undefined → brug default (8 for first-season, 0 ellers).
+    // Eksplicit 0 fra UI'et bevares som override.
+    const quotaOverride =
+      stage_race_quota === undefined || stage_race_quota === null
+        ? undefined
+        : { stageRaceQuota: Number(stage_race_quota) };
+
     const result = use_first_season_default
-      ? selectFirstSeasonRaces(pool || [], { raceDaysTarget: Number(race_days_target) })
+      ? selectFirstSeasonRaces(pool || [], {
+          raceDaysTarget: Number(race_days_target),
+          ...quotaOverride,
+        })
       : selectSeasonRaces({
           pool: pool || [],
           includeClasses: include_classes,
           excludeClasses: exclude_classes ?? [],
           raceDaysTarget: Number(race_days_target),
+          ...quotaOverride,
         });
 
     res.json({

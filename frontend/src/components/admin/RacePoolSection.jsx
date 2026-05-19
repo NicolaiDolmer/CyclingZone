@@ -31,6 +31,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
   const [excludeWt, setExcludeWt] = useState(true);
   const [includeClasses, setIncludeClasses] = useState({});
   const [raceDaysTarget, setRaceDaysTarget] = useState(60);
+  const [stageRaceQuota, setStageRaceQuota] = useState(8);
   const [preview, setPreview] = useState(null);
   const [unselectedFromPreview, setUnselectedFromPreview] = useState(new Set());
   const [extraSelected, setExtraSelected] = useState(new Set());
@@ -143,6 +144,9 @@ export default function RacePoolSection({ getAuth, onMsg }) {
         include_classes: includedClassKeys,
         exclude_classes: excludeWt ? [...WORLD_TOUR_KEYS] : [],
         race_days_target: Number(raceDaysTarget) || 60,
+        stage_race_quota: Number.isFinite(Number(stageRaceQuota))
+          ? Math.max(0, Math.min(20, Number(stageRaceQuota)))
+          : 0,
       };
       const res = await fetch(
         `${API}/api/admin/seasons/${selectedSeasonId}/race-selection/preview`,
@@ -367,7 +371,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           </label>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className="block text-cz-3 text-xs mb-1">Race-dage-mål</label>
             <input
@@ -376,6 +380,22 @@ export default function RacePoolSection({ getAuth, onMsg }) {
               max="200"
               value={raceDaysTarget}
               onChange={(e) => setRaceDaysTarget(e.target.value)}
+              className="w-full bg-cz-bg border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm"
+            />
+          </div>
+          <div>
+            <label
+              className="block text-cz-3 text-xs mb-1"
+              title="Garanterer at de første N stage races vælges fra prioritets-liste (Tour of Oman, Vuelta a Burgos, Tour of the Alps osv.) før resten fyldes alfabetisk. 0 = backward compatible (gammel adfærd)."
+            >
+              Min. etapeløb (garanteret)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="20"
+              value={stageRaceQuota}
+              onChange={(e) => setStageRaceQuota(e.target.value)}
               className="w-full bg-cz-bg border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm"
             />
           </div>
