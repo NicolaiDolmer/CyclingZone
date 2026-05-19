@@ -683,6 +683,22 @@
     "relativeRankLive": {
       "q": "How does the 'finish ahead of X other managers' target work live?",
       "a": "On the Board page the balanced plan's relative_rank target now shows live status: 'You're #4 of 8 managers in the division, beating 4 (target: 3 ✓)'. The number updates after each race day when season_standings is updated. It measures relatively to the number of human managers in your division, so it scales naturally from ~19 now to 100+ managers after open beta without cross-division noise."
+    },
+    "season0To1Special": {
+      "q": "What happens at the transition from season 0 to season 1?",
+      "a": "Season 0 is the opening phase with no races, points or salaries. When the transfer window closes, the system skips salary deduction and interest charges (there's no season 0 to settle). The only cash flow is: sponsor money of 240,000 CZ$ lands on your team when season 1 starts. From season 1 onwards the normal cycle runs: salaries are deducted at season end, interest on negative balance is added, sponsor pays out at next season start."
+    },
+    "deadlineTimelineFaq": {
+      "q": "What exactly happens when the transfer window closes?",
+      "a": "Expected timeline once the close time hits: (1) within 5 minutes the window is automatically locked and no more bids or accepted offers go through. (2) A Final Whistle report posts in Discord with the day's biggest deals, most active managers and panic moves. (3) Squad enforcement runs: teams outside their division's minimum/maximum get an auto-buy or auto-sell + fine. (4) About 10-15 minutes after the close time, season 1 starts and sponsor money lands on every team. You get an inbox notification when sponsor has been paid."
+    },
+    "squadEnforcementFaq": {
+      "q": "What happens if I'm under min or over max riders at deadline?",
+      "a": "When the transfer window closes, the system enforces that each team is within its division's limits (D1: 20-30 · D2: 14-20 · D3: 8-10). Under minimum: the system auto-buys the cheapest available rider at 150% of market value (an emergency loan is taken automatically if you can't pay). Over maximum: the system auto-sells your most recently acquired rider for full market value. In both cases a fine of 100,000 CZ$ per deviating rider is applied plus 200 penalty points in the season standings. Check the 'Deadline Day' board approaching the close time to see whether your team is in the green, yellow or red zone."
+    },
+    "season1RaceCalendarFaq": {
+      "q": "Which races run in season 1?",
+      "a": "Season 1's calendar is designed before the window closes and is published on the Races page (Season & Results → Races → Calendar). WorldTour races (Tour de France, Giro, Vuelta, monuments) are not run in season 1 by decision in the opening phase, so managers can find their footing in ProSeries and lower classes first. The full list shows up in the Races tab as soon as admin has approved the calendar."
     }
   }
 }

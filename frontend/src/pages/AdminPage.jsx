@@ -10,6 +10,7 @@ import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import EconomyAdminSection from "../components/admin/EconomyAdminSection";
 import SeasonCycleSection from "../components/admin/SeasonCycleSection";
 import RacePoolSection from "../components/admin/RacePoolSection";
+import DeadlineReadinessSection from "../components/admin/DeadlineReadinessSection";
 import { logEvent } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
@@ -818,6 +819,11 @@ export default function AdminPage() {
       {/* ── Økonomi (07e) ──────────────────────────────────────────────────── */}
       <Section title="Økonomi">
         <EconomyAdminSection getAuth={getAuth} onMsg={showMsg} />
+      </Section>
+
+      {/* ── Deadline-readiness (A2) ──────────────────────────────────────── */}
+      <Section title="🚦 Klar til deadline?">
+        <DeadlineReadinessSection getAuth={getAuth} onMsg={showMsg} />
       </Section>
 
       {/* ── Transfervindue ──────────────────────────────────────────────────── */}

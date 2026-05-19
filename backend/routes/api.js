@@ -3569,7 +3569,7 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
 
     const { data: pool, error: poolError } = await supabase
       .from("race_pool")
-      .select("id, name, race_class, race_type, stages, date_text");
+      .select("id, name, race_class, race_type, stages, date_text, country");
     if (poolError) return res.status(500).json({ error: poolError.message });
 
     const result = use_first_season_default
@@ -3591,10 +3591,13 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
 });
 
 // POST /api/admin/seasons/:seasonId/race-selection — gem udvalg som races-rows
+// Body: { pool_race_ids: string[], replace?: boolean }
+// replace=true: sletter eksisterende pool-bound races for sæsonen FØR insert
+// (kun races der ikke har race_results, ellers fejler vi for at undgå data-tab).
 router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { seasonId } = req.params;
-    const { pool_race_ids } = req.body || {};
+    const { pool_race_ids, replace = false } = req.body || {};
     if (!Array.isArray(pool_race_ids) || pool_race_ids.length === 0) {
       return res.status(400).json({ error: "pool_race_ids (array) kræves" });
     }
@@ -3615,6 +3618,39 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
       .select("id, name, race_class, race_type, stages")
       .in("id", pool_race_ids);
     if (poolError) return res.status(500).json({ error: poolError.message });
+
+    let replacedCount = 0;
+    if (replace) {
+      // Hent alle eksisterende pool-bound races for sæsonen + deres race_results-status.
+      const { data: existingRaces, error: existingRacesError } = await supabase
+        .from("races")
+        .select("id, name")
+        .eq("season_id", seasonId)
+        .not("pool_race_id", "is", null);
+      if (existingRacesError) return res.status(500).json({ error: existingRacesError.message });
+
+      const existingRaceIds = (existingRaces || []).map((r) => r.id);
+      if (existingRaceIds.length > 0) {
+        // Sikkerhedstjek: nægter at slette løb der allerede har resultater (data-tab).
+        const { count: resultsCount, error: resultsError } = await supabase
+          .from("race_results")
+          .select("id", { count: "exact", head: true })
+          .in("race_id", existingRaceIds);
+        if (resultsError) return res.status(500).json({ error: resultsError.message });
+        if ((resultsCount || 0) > 0) {
+          return res.status(409).json({
+            error: `Kan ikke erstatte: ${resultsCount} race_results findes på ${existingRaceIds.length} eksisterende løb. Slet resultaterne først eller brug 'tilføj' i stedet for 'erstat'.`,
+          });
+        }
+
+        const { error: deleteError } = await supabase
+          .from("races")
+          .delete()
+          .in("id", existingRaceIds);
+        if (deleteError) return res.status(500).json({ error: deleteError.message });
+        replacedCount = existingRaceIds.length;
+      }
+    }
 
     const { data: existing, error: existingError } = await supabase
       .from("races")
@@ -3641,6 +3677,7 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
       return res.json({
         success: true,
         inserted: 0,
+        replaced: replacedCount,
         skipped_already_present: poolRaces?.length || 0,
       });
     }
@@ -3655,6 +3692,7 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
     res.json({
       success: true,
       inserted: created?.length || 0,
+      replaced: replacedCount,
       skipped_already_present: (poolRaces?.length || 0) - (created?.length || 0),
     });
   } catch (e) {
@@ -3959,10 +3997,11 @@ router.get("/admin/season-transition/preview", requireAdmin, async (req, res) =>
 });
 
 // POST /api/admin/season-transition — udfør sæson-skifte
-// Body: { fromSeasonId? (default = aktiv sæson), transitionAt? (default = nu) }
+// Body: { fromSeasonId? (default = aktiv sæson), transitionAt? (default = nu), dryRun? }
+// dryRun=true: returnerer kun planen, ingen writes til DB.
 router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
-    const { fromSeasonId: bodyFromSeasonId, transitionAt } = req.body || {};
+    const { fromSeasonId: bodyFromSeasonId, transitionAt, dryRun = false } = req.body || {};
     let fromSeasonId = bodyFromSeasonId;
     if (!fromSeasonId) {
       const { data: activeSeason, error: seasonError } = await supabase
@@ -3983,6 +4022,7 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
       supabase,
       fromSeasonId,
       transitionAt: transitionAt ? new Date(transitionAt) : new Date(),
+      dryRun: Boolean(dryRun),
       adminUserId: req.user?.id ?? null,
     });
 
@@ -4102,6 +4142,126 @@ router.put("/admin/deadline-day/override", requireAdmin, adminWriteLimiter, asyn
       .eq("id", 1);
     if (error) return res.status(500).json({ error: error.message });
     res.json({ success: true, override });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/admin/deadline-readiness — "Klar til deadline?"-overblik
+// Returnerer alt admin har brug for at vurdere om systemet er klart til at
+// transfervinduet lukker: window-state, aktive auktioner, pending offers,
+// squad-violations, kalender-status.
+router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
+  try {
+    const LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
+
+    const [
+      { data: window },
+      { data: activeSeason },
+      { count: activeAuctionsCount },
+      { count: pendingTransfersCount },
+      { count: windowPendingTransfersCount },
+      { count: pendingSwapsCount },
+      { count: activeLoansCount },
+      { data: teams },
+      { data: riders },
+      { count: seasonRacesCount },
+      { data: nextSeason },
+    ] = await Promise.all([
+      supabase.from("transfer_windows")
+        .select("id, season_id, status, closes_at, opened_at, final_whistle_sent_at, squad_enforcement_completed_at")
+        .order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("seasons")
+        .select("id, number, status").eq("status", "active")
+        .order("number", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("auctions")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["active", "extended"]),
+      supabase.from("transfer_offers")
+        .select("id", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("transfer_offers")
+        .select("id", { count: "exact", head: true }).eq("status", "window_pending"),
+      supabase.from("swap_offers")
+        .select("id", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("loan_agreements")
+        .select("id", { count: "exact", head: true }).eq("status", "active"),
+      supabase.from("teams")
+        .select("id, name, division").eq("is_bank", false).eq("is_ai", false).not("user_id", "is", null),
+      supabase.from("riders").select("team_id").not("team_id", "is", null),
+      // Kalender-tjek tilføjes efter activeSeason er løst — placeholder her.
+      supabase.from("races").select("id", { count: "exact", head: true }).limit(0),
+      supabase.from("seasons")
+        .select("id, number, status").order("number", { ascending: false }).limit(2),
+    ]);
+
+    // Squad violations
+    const ridersByTeam = {};
+    for (const r of riders || []) {
+      ridersByTeam[r.team_id] = (ridersByTeam[r.team_id] || 0) + 1;
+    }
+    const squadViolations = (teams || [])
+      .map((t) => {
+        const count = ridersByTeam[t.id] || 0;
+        const limits = LIMITS[t.division] || { min: 8, max: 30 };
+        let status = "ok";
+        if (count < limits.min) status = "under_min";
+        else if (count > limits.max) status = "over_max";
+        return { team_id: t.id, team_name: t.name, division: t.division, count, ...limits, status };
+      })
+      .filter((s) => s.status !== "ok");
+
+    // Faktisk kalender-tjek mod aktiv sæson
+    let activeSeasonRacesCount = 0;
+    if (activeSeason?.id) {
+      const { count } = await supabase
+        .from("races").select("id", { count: "exact", head: true })
+        .eq("season_id", activeSeason.id);
+      activeSeasonRacesCount = count || 0;
+    }
+
+    // Næste sæsons kalender (hvis fundet)
+    const upcomingSeason = (nextSeason || []).find((s) => s.status !== "active" && s.status !== "completed");
+    let upcomingSeasonRacesCount = 0;
+    if (upcomingSeason?.id) {
+      const { count } = await supabase
+        .from("races").select("id", { count: "exact", head: true })
+        .eq("season_id", upcomingSeason.id);
+      upcomingSeasonRacesCount = count || 0;
+    }
+
+    const nowMs = Date.now();
+    const closesAtMs = window?.closes_at ? new Date(window.closes_at).getTime() : null;
+    const secondsRemaining = closesAtMs ? Math.max(0, Math.floor((closesAtMs - nowMs) / 1000)) : null;
+
+    res.json({
+      window: window ? {
+        id: window.id,
+        status: window.status,
+        closes_at: window.closes_at,
+        opened_at: window.opened_at,
+        final_whistle_sent_at: window.final_whistle_sent_at,
+        squad_enforcement_completed_at: window.squad_enforcement_completed_at,
+        seconds_remaining: secondsRemaining,
+        closes_at_set: Boolean(window.closes_at),
+      } : null,
+      active_season: activeSeason || null,
+      upcoming_season: upcomingSeason || null,
+      counts: {
+        active_auctions: activeAuctionsCount || 0,
+        pending_transfers: pendingTransfersCount || 0,
+        window_pending_transfers: windowPendingTransfersCount || 0,
+        pending_swaps: pendingSwapsCount || 0,
+        active_loans: activeLoansCount || 0,
+        active_season_races: activeSeasonRacesCount,
+        upcoming_season_races: upcomingSeasonRacesCount,
+      },
+      squad_violations: squadViolations,
+      checks: {
+        closes_at_set: { ok: Boolean(window?.closes_at), critical: true },
+        window_open: { ok: window?.status === "open", critical: true },
+        active_season_calendar_ready: { ok: activeSeasonRacesCount > 0, critical: false },
+        upcoming_season_calendar_ready: { ok: upcomingSeasonRacesCount > 0, critical: false },
+        no_squad_violations: { ok: squadViolations.length === 0, critical: false },
+      },
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

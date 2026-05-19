@@ -222,6 +222,10 @@ const FAQ_KEYS = [
   "multiYearPlanLock",
   "tightenedBadge",
   "relativeRankLive",
+  "season0To1Special",
+  "deadlineTimelineFaq",
+  "squadEnforcementFaq",
+  "season1RaceCalendarFaq",
 ];
 
 function buildSections(t) {

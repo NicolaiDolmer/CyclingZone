@@ -2,6 +2,28 @@
 
 const PATCHES = [
   {
+    version: "3.61",
+    date: "2026-05-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Feature · Deadline Day automation + admin readiness tools",
+        items: [
+          "EN · The transfer window now auto-closes when the close time hits (no admin needed in the middle of the night). Within 10-15 minutes after close: Final Whistle posts in Discord, squad enforcement runs (auto-buy/sell + fine if outside division min/max), season 1 starts and sponsor 240,000 CZ$ lands on every team.",
+          "EN · Season 0 → 1 is a special transition: no salary deduction and no interest charges (there's no season 0 to settle). Sponsor money is the only cash flow. Normal cycle resumes from season 1.",
+          "EN · New 'Klar til deadline?' panel on the admin page shows live: is closes_at set, who is outside min/max, how many active auctions/transfers/swaps/loans, and whether season 1's calendar is ready. Refresh button + dry-run preview of the season transition with sponsor breakdown per team.",
+          "EN · Race calendar generator extended with race-type filter (single/stage), an 'add back from omitted' panel and an opt-in 'replace existing races' mode for re-generating without leaving duplicates.",
+          "EN · Four new help articles: season 0 → 1 specials, deadline timeline, squad enforcement, season 1 race calendar.",
+          "DA · Transfervinduet lukker nu automatisk når lukketiden rammer (ingen admin behov om natten). Inden for 10-15 minutter efter lukning: Final Whistle poster i Discord, squad enforcement kører (auto-køb/-salg + bøde hvis udenfor divisions min/max), sæson 1 starter og sponsor 240.000 CZ$ lander på alle hold.",
+          "DA · Sæson 0 → 1 er en speciel overgang: ingen lønnedtræk og ingen renter (der er ingen sæson 0 at lave op for). Sponsor er det eneste pengeflow. Normal cyklus starter fra sæson 1.",
+          "DA · Nyt 'Klar til deadline?'-panel på admin-siden viser live: er closes_at sat, hvem er udenfor min/max, hvor mange aktive auktioner/transfers/byttehandler/lejeaftaler, og om sæson 1's kalender er klar. Refresh-knap + dry-run preview af sæson-skifte med sponsor-breakdown per hold.",
+          "DA · Løbskalender-generator udvidet med race-type-filter (endags/etape), 'tilføj fra sprungede løb'-panel og en opt-in 'erstat eksisterende løb'-tilstand til at re-generere uden duplikater.",
+          "DA · Fire nye hjælpe-artikler: sæson 0 → 1 specialer, deadline-tidslinje, squad enforcement, sæson 1 løbskalender.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.60",
     date: "2026-05-19",
     label: "Beta",

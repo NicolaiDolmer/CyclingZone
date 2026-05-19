@@ -33,6 +33,10 @@ export default function RacePoolSection({ getAuth, onMsg }) {
   const [raceDaysTarget, setRaceDaysTarget] = useState(60);
   const [preview, setPreview] = useState(null);
   const [unselectedFromPreview, setUnselectedFromPreview] = useState(new Set());
+  const [extraSelected, setExtraSelected] = useState(new Set());
+  const [showOmitted, setShowOmitted] = useState(false);
+  const [raceTypeFilter, setRaceTypeFilter] = useState("all"); // all | single | stage_race
+  const [replaceMode, setReplaceMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -132,6 +136,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
     setGenerating(true);
     setPreview(null);
     setUnselectedFromPreview(new Set());
+    setExtraSelected(new Set());
     try {
       const headers = await getAuth();
       const body = {
@@ -166,13 +171,46 @@ export default function RacePoolSection({ getAuth, onMsg }) {
     });
   }
 
+  function toggleExtraRace(raceId) {
+    setExtraSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(raceId)) next.delete(raceId);
+      else next.add(raceId);
+      return next;
+    });
+  }
+
   const finalSelected = useMemo(() => {
     if (!preview) return [];
-    return preview.selected.filter((r) => !unselectedFromPreview.has(r.id));
-  }, [preview, unselectedFromPreview]);
+    const fromSelected = preview.selected.filter((r) => !unselectedFromPreview.has(r.id));
+    const fromOmitted = (preview.omitted || []).filter((r) => extraSelected.has(r.id));
+    return [...fromSelected, ...fromOmitted];
+  }, [preview, unselectedFromPreview, extraSelected]);
+
+  const filteredSelected = useMemo(() => {
+    if (!preview) return [];
+    if (raceTypeFilter === "all") return preview.selected;
+    return preview.selected.filter((r) => r.race_type === raceTypeFilter);
+  }, [preview, raceTypeFilter]);
+
+  const filteredOmitted = useMemo(() => {
+    if (!preview) return [];
+    if (raceTypeFilter === "all") return preview.omitted || [];
+    return (preview.omitted || []).filter((r) => r.race_type === raceTypeFilter);
+  }, [preview, raceTypeFilter]);
 
   const finalRaceDays = useMemo(
     () => finalSelected.reduce((sum, r) => sum + (Number(r.stages) || 0), 0),
+    [finalSelected],
+  );
+
+  const selectedStageRaceCount = useMemo(
+    () => finalSelected.filter((r) => r.race_type === "stage_race").length,
+    [finalSelected],
+  );
+
+  const selectedSingleCount = useMemo(
+    () => finalSelected.filter((r) => r.race_type === "single").length,
     [finalSelected],
   );
 
@@ -181,9 +219,18 @@ export default function RacePoolSection({ getAuth, onMsg }) {
       onMsg("Ingen løb valgt", "error");
       return;
     }
-    const confirmText =
-      `Du er ved at oprette ${finalSelected.length} løb (${finalRaceDays} race-dage) ` +
-      `i sæsonen. Eksisterende løb i sæsonen påvirkes ikke.\n\nFortsæt?`;
+    let confirmText;
+    if (replaceMode && existingRaceCount > 0) {
+      confirmText =
+        `⚠ ERSTAT-tilstand: De ${existingRaceCount} eksisterende løb i sæsonen SLETTES, ` +
+        `og ${finalSelected.length} nye løb (${finalRaceDays} race-dage) oprettes.\n\n` +
+        `Hvis nogen af de eksisterende løb allerede har resultater, blokeres operationen.\n\n` +
+        `Fortsæt?`;
+    } else {
+      confirmText =
+        `Du er ved at oprette ${finalSelected.length} løb (${finalRaceDays} race-dage) ` +
+        `i sæsonen. Eksisterende løb i sæsonen påvirkes ikke.\n\nFortsæt?`;
+    }
     if (!window.confirm(confirmText)) return;
 
     setSaving(true);
@@ -194,16 +241,21 @@ export default function RacePoolSection({ getAuth, onMsg }) {
         {
           method: "POST",
           headers,
-          body: JSON.stringify({ pool_race_ids: finalSelected.map((r) => r.id) }),
+          body: JSON.stringify({
+            pool_race_ids: finalSelected.map((r) => r.id),
+            replace: replaceMode,
+          }),
         },
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gem fejlede");
+      const replacedMsg = data.replaced ? `, erstattede ${data.replaced} eksisterende` : "";
       onMsg(
-        `✅ Oprettet ${data.inserted} løb (sprunget over ${data.skipped_already_present} der allerede var i sæsonen)`,
+        `✅ Oprettet ${data.inserted} løb${replacedMsg} (sprunget over ${data.skipped_already_present})`,
       );
       setPreview(null);
       setUnselectedFromPreview(new Set());
+      setExtraSelected(new Set());
     } catch (e) {
       onMsg(`❌ ${e.message}`, "error");
     } finally {
@@ -347,20 +399,42 @@ export default function RacePoolSection({ getAuth, onMsg }) {
       {/* Preview + gem */}
       {preview && (
         <div className="bg-cz-subtle rounded-xl p-4 space-y-3">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-wrap justify-between items-center gap-2">
             <p className="text-cz-2 font-medium text-sm">
               Forslag: {finalSelected.length} løb · {finalRaceDays} race-dage (mål{" "}
               {preview.raceDaysTarget})
             </p>
-            {preview.omitted.length > 0 && (
-              <p className="text-cz-3 text-xs">
-                {preview.omitted.length} løb sprunget over (mål nået / overshoot)
-              </p>
-            )}
+            <p className="text-cz-3 text-xs">
+              {selectedSingleCount} endags · {selectedStageRaceCount} etape
+              {preview.omitted.length > 0 && ` · ${preview.omitted.length} sprunget over`}
+            </p>
           </div>
 
+          {/* Race-type filter */}
+          <div className="flex gap-2 text-xs">
+            <span className="text-cz-3 self-center">Filter:</span>
+            {[
+              { key: "all", label: "Alle" },
+              { key: "single", label: "Endags" },
+              { key: "stage_race", label: "Etape" },
+            ].map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setRaceTypeFilter(opt.key)}
+                className={`px-2.5 py-1 rounded border ${
+                  raceTypeFilter === opt.key
+                    ? "bg-cz-accent-bg text-cz-accent border-cz-accent/30"
+                    : "text-cz-3 border-cz-border hover:bg-cz-bg"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Valgte løb */}
           <div className="max-h-96 overflow-y-auto border border-cz-border rounded-lg divide-y divide-cz-border">
-            {preview.selected.map((r) => {
+            {filteredSelected.map((r) => {
               const isUnchecked = unselectedFromPreview.has(r.id);
               return (
                 <label
@@ -379,13 +453,91 @@ export default function RacePoolSection({ getAuth, onMsg }) {
                     <p className="text-cz-3 text-xs">
                       {getRaceClassLabel(r.race_class)} · {r.race_type === "single" ? "Endags" : "Etape"} ·{" "}
                       {r.stages} dag{r.stages !== 1 ? "e" : ""}
+                      {r.country ? ` · ${r.country}` : ""}
                       {r.date_text ? ` · ${r.date_text}` : ""}
                     </p>
                   </div>
                 </label>
               );
             })}
+            {filteredSelected.length === 0 && (
+              <p className="text-cz-3 text-xs px-3 py-2">Ingen løb matcher filteret.</p>
+            )}
           </div>
+
+          {/* Omitted (sprunget over af generatoren) — kan inkluderes manuelt */}
+          {preview.omitted && preview.omitted.length > 0 && (
+            <div className="border border-cz-border rounded-lg">
+              <button
+                onClick={() => setShowOmitted(!showOmitted)}
+                className="w-full px-3 py-2 text-left text-cz-2 text-sm hover:bg-cz-bg flex justify-between items-center"
+              >
+                <span>
+                  {showOmitted ? "▼" : "▶"} Sprunget over af generator ({filteredOmitted.length})
+                </span>
+                {extraSelected.size > 0 && (
+                  <span className="text-cz-accent text-xs">+{extraSelected.size} tilføjet manuelt</span>
+                )}
+              </button>
+              {showOmitted && (
+                <div className="max-h-64 overflow-y-auto border-t border-cz-border divide-y divide-cz-border">
+                  {filteredOmitted.map((r) => {
+                    const isExtra = extraSelected.has(r.id);
+                    return (
+                      <label
+                        key={r.id}
+                        className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-cz-bg ${
+                          !isExtra ? "opacity-60" : ""
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isExtra}
+                          onChange={() => toggleExtraRace(r.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-cz-1 text-sm truncate">{r.name}</p>
+                          <p className="text-cz-3 text-xs">
+                            {getRaceClassLabel(r.race_class)} · {r.race_type === "single" ? "Endags" : "Etape"} ·{" "}
+                            {r.stages} dag{r.stages !== 1 ? "e" : ""}
+                            {r.country ? ` · ${r.country}` : ""}
+                            {r.reason === "target_reached" ? " · (mål nået)" : ""}
+                            {r.reason === "would_overshoot" ? " · (ville overshoote)" : ""}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                  {filteredOmitted.length === 0 && (
+                    <p className="text-cz-3 text-xs px-3 py-2">Ingen sprungede løb matcher filteret.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Replace-toggle */}
+          {existingRaceCount > 0 && (
+            <div className="bg-cz-danger-bg/10 border border-cz-danger/20 rounded-lg p-3">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={replaceMode}
+                  onChange={(e) => setReplaceMode(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <div className="text-sm">
+                  <span className="text-cz-danger font-medium">
+                    Erstat eksisterende {existingRaceCount} løb
+                  </span>
+                  <p className="text-cz-3 text-xs mt-0.5">
+                    De gamle løb slettes før de nye oprettes. Operationen blokeres hvis nogen af de
+                    eksisterende løb har race_results.
+                  </p>
+                </div>
+              </label>
+            </div>
+          )}
 
           <button
             onClick={saveSelection}
@@ -394,6 +546,8 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           >
             {saving
               ? "Gemmer…"
+              : replaceMode && existingRaceCount > 0
+              ? `Erstat med ${finalSelected.length} løb`
               : `Gem som sæsonens kalender (${finalSelected.length} løb)`}
           </button>
         </div>

@@ -683,6 +683,22 @@
     "relativeRankLive": {
       "q": "Hvordan virker 'slut foran X andre managers'-mål live?",
       "a": "På Bestyrelse-siden viser balanced-planens relative_rank-mål nu live status: 'Du staar #4 af 8 managers i divisionen, slaar 4 (maal: 3 ✓)'. Tallet opdateres efter hver race-day når season_standings er opdateret. Måler relativt til antallet af humane managers i din division, så det skalerer naturligt fra ~19 nu til 100+ managers efter open beta uden cross-division-støj."
+    },
+    "season0To1Special": {
+      "q": "Hvad sker der ved overgangen fra sæson 0 til sæson 1?",
+      "a": "Sæson 0 er åbnings-fasen uden løb, point eller lønninger. Når transfervinduet lukker, springer systemet løn-træk og rente-træk over (der er ingen sæson 0 at lave op for). Det eneste pengeflow er: sponsor 240.000 CZ$ lander på dit hold når sæson 1 starter. Fra sæson 1 og frem kører den normale cyklus: lønninger trækkes ved sæsonafslutning, renter på negativ saldo tilskrives, sponsor udbetales ved næste sæsonstart."
+    },
+    "deadlineTimelineFaq": {
+      "q": "Hvad sker der præcist når transfervinduet lukker?",
+      "a": "Forventet tidslinje når lukketiden rammer: (1) inden for 5 minutter låses vinduet automatisk, og der kan ikke længere placeres bud eller accepteres tilbud. (2) En Final Whistle-rapport poster i Discord med dagens største handler, mest aktive managers og panik-handler. (3) Squad enforcement kører: hold der er udenfor minimum/maksimum for deres division får auto-køb eller auto-salg + bøde. (4) Cirka 10-15 minutter efter lukketiden går sæson 1 i gang, og sponsorpenge lander på alle holds konti. Du får besked i Indbakken når sponsor er udbetalt."
+    },
+    "squadEnforcementFaq": {
+      "q": "Hvad sker der hvis jeg er under min eller over max ryttere ved deadline?",
+      "a": "Når transfervinduet lukker, sikrer systemet at hvert hold ligger inden for divisionens grænser (D1: 20-30 · D2: 14-20 · D3: 8-10). Under minimum: systemet auto-køber den billigste ledige rytter til 150% af markedsværdi (et nødlån optages automatisk hvis du ikke kan betale). Over maksimum: systemet auto-sælger din senest erhvervede rytter til fuld markedsværdi. I begge tilfælde tilskrives en bøde på 100.000 CZ$ pr. afvigende rytter samt 200 fradragspoint i sæsonstillingen. Tjek 'Deadline Day'-tavlen op til lukketid for at se om dit hold er i grøn, gul eller rød zone."
+    },
+    "season1RaceCalendarFaq": {
+      "q": "Hvilke løb køres i sæson 1?",
+      "a": "Sæson 1's kalender designes inden vinduet lukker og publiseres på Løb-siden (Sæson & Resultater → Løb → Kalender). WorldTour-løb (Tour de France, Giro, Vuelta, monumenter) køres ikke i sæson 1 efter beslutning i opstartsfasen, så managere kan finde fodfæste på ProSeries og lavere klasser først. Den fulde liste vises i Løb-tabben så snart admin har godkendt kalenderen."
     }
   }
 }
