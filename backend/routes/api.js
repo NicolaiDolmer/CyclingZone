@@ -4163,7 +4163,6 @@ router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
       { count: activeLoansCount },
       { data: teams },
       { data: riders },
-      { count: seasonRacesCount },
       { data: nextSeason },
     ] = await Promise.all([
       supabase.from("transfer_windows")
@@ -4186,8 +4185,6 @@ router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
       supabase.from("teams")
         .select("id, name, division").eq("is_bank", false).eq("is_ai", false).not("user_id", "is", null),
       supabase.from("riders").select("team_id").not("team_id", "is", null),
-      // Kalender-tjek tilføjes efter activeSeason er løst — placeholder her.
-      supabase.from("races").select("id", { count: "exact", head: true }).limit(0),
       supabase.from("seasons")
         .select("id, number, status").order("number", { ascending: false }).limit(2),
     ]);
