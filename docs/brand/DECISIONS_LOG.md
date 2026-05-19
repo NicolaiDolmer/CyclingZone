@@ -16,13 +16,26 @@
 | F1 | Favicon (primary mark) | **Stacked CYCLING / ZONE** in Bebas Neue, yellow `#e8c547` rounded square (6px radius), navy `#0e0f15` text + thin separator line. Canonical across all platforms (browser, Discord, social). | 2026-05-19 | User reaction: "Jeg har meget godt kunne lide dette favicon du har lavet" |
 | C2 | Cycling-DNA visibility | **None on the wordmark itself.** Cycling-signal lives entirely in the twin lines + stacked favicon (which are already locked). No additional symbols, dots, rings, or letterform modifications. Premium-restrained. | 2026-05-19 | User "Jeg er lige nu mest glad for a" after seeing 4-card C2 comparison (A=none, B=wheel-ring, C=period-dot, D=both) |
 
+## 🔄 Reopened 2026-05-20
+
+F1 reopened during C1 sanity-check. C1's "browser tab @ 16×16" context surfaced that the stacked CYCLING/ZONE favicon is unreadable mush at 16px — the 7-letter CYCLING + 4-letter ZONE compress to ~2px per letter. Working rule #7 ("If unreadable at 32×32, reject") had been bypassed when F1 was locked on visual approval at large sizes. The C1 sanity-check pattern worked exactly as intended.
+
+User direction 2026-05-20: _"Det skal være muligt at se hvad der står"_ + _"Hvis ikke der kan stå CyclingZone, så skal der stå CZ eller noget ala det."_ → F1 expands to a **dual-form system**: stacked CYCLING/ZONE for ≥48px (preserved — user loved), readable monogram for ≤32px (TBD via F1b decision).
+
+| # | Decision | Prior assumed value | Status |
+|---|---|---|---|
+| F1 | Favicon (canonical, all sizes) | Stacked CYCLING/ZONE on yellow rounded square — same across all sizes | ✅ **Split-resolved 2026-05-20** — F1a (stacked, large-form) + F1b (CZ monogram, small-form) |
+| F1a | Favicon — large form (≥48px) | (split off) | ✅ **LOCKED 2026-05-20** — Stacked CYCLING/ZONE on yellow rounded square, Bebas Neue, navy text + thin separator. Used for Discord, social, OG-image, app icon. |
+| F1b | Favicon — small form (≤32px) | (split off) | ✅ **LOCKED 2026-05-20** — **Variant B: Inter Tight Black 900 "CZ", plain.** Yellow rounded square, navy CZ text. Used for browser tab, mobile address bar, OS chrome. User direction: "Det skal være muligt at se hvad der står" — Inter Black's thicker strokes survive 16×16 worst-case where Bebas Neue's condensed strokes thin out. |
+| C3-revisit | Wordmark font — single-font system or Bebas/Inter siblings? | (raised by user 2026-05-20 after F1b locked) | ✅ **LOCKED 2026-05-20 = A (sibling system)** — Bebas Neue stays for wordmark, Inter Tight Black for small favicon. User saw direct head-to-head (Bebas vs Inter Tight wordmark) + peer-table from Spotify/Whoop/Stripe/Strava/Rapha and picked A. C3 wordmark direction reaffirmed. Brand uses display-font + UI-font as siblings, function-matching not uniformity. |
+
 ## 🔄 Reopened 2026-05-19
 
 User flagged that C1/C2/C3 were never actually confirmed visually. Original "confirmed" entries claimed `AskUserQuestion answer in initial logo session` as source — text-only answers, which violates the project's own working rule (#2: visual + question simultaneously) and the calibration feedback already in this log (2026-05-18 entries). Rolled back to pending; must be re-decided with visual options before D1 can resume.
 
 | # | Decision | Prior assumed value | Status |
 |---|---|---|---|
-| C1 | Identity-type | (assumed) Wordmark-first | Queued for next session — likely auto-resolved by C3 + F1, needs single-page confirmation |
+| C1 | Identity-type | (assumed) Wordmark-first | Queued — sanity-check started 2026-05-20, paused mid-flight when F1 reopened. Resumes after F1b locks. |
 | C2 | Cycling-DNA visibility | (assumed) Subtle / hidden | ✅ **LOCKED 2026-05-19** — None on wordmark; lines + favicon do the cycling-signaling. See Confirmed table above. |
 | C3 | Wordmark direction (was: "Taste anchor") | (assumed) Whoop | ✅ **LOCKED 2026-05-19** — ALL CAPS Bebas Neue ls 2 + twin lines + stacked Bebas favicon. See Confirmed table above. |
 
@@ -57,7 +70,7 @@ Per user request for "most professional approach, one thing at a time":
 
 ## 🟡 In progress
 
-_None active. C1 (identity-type) queued for next session — likely auto-resolved by C3 + F1 already locked (wordmark-first with favicon-derived monogram), but needs user confirmation on a single visual sanity-check page._
+_Phase 1 effectively complete — all foundational decisions locked (C2, C3, C4, F1a, F1b, C3-revisit). C1 sanity-check remains technically queued but is largely redundant: the dual-form favicon system has already been validated via F1b's dual-form preview card + C3-revisit's wordmark-vs-favicon proximity in option A. Recommend skipping C1 final pass and moving to **Phase 2 — Color palette (light + dark mode)** as a fresh sprint. User to confirm._
 
 ## ⏳ Queued
 
@@ -81,6 +94,9 @@ _None active. C1 (identity-type) queued for next session — likely auto-resolve
 | 2026-05-19 | "Jeg vil i denne process også gerne have inputs til ui og design af hele hjemmesiden" | User wants brand work to flow through to full site UI redesign (not just logo). Honored in the locked 10-phase sequence above — wordmark first, then color, then type system, then UI primitives, then implementation. Site-wide UI redesign is Phase 4-6, not bundled into wordmark exploration. |
 | 2026-05-19 | First C3 pure-wordmark round: liked screenshot-A's `cyclingzone` lowercase text + screenshot-C's "streger der viser bevægelse" (race-broadcast underlines). Disliked all-caps compactness. Suggested blend of new B+C with screenshot-C's lines. | C3 direction locked at typographic level: **lowercase wordmark + race-broadcast movement-lines (long thin underline + short thick accent dash) + optional subtitle**. Next C3-refinement round shows 4 variants varying ONLY decoration density (lines none/some/all + subtitle yes/no). All-caps treatments and title-case neutral eliminated from forward consideration. |
 | 2026-05-19 | C3 refinement round: still torn between **new A (lowercase + twin lines)** AND **screenshot C (Bebas Neue ALL CAPS + twin lines)**, "those are the two I love most". Disliked subtitle when combined with lines; said subtitle is OK *only* without lines. Said Bebas-Neue letter spacing was a bit too wide. Also loved the stacked "CYCLING / ZONE" favicon from screenshot C. | Resurrected ALL CAPS Bebas Neue as a candidate (after eliminating in prior round) — user's actual preference is twin-lines aesthetic, which transcends casing. C3 final round: head-to-head lowercase vs all-caps with tightened tracking. **New rule: lines + subtitle never combined.** Stacked "CYCLING / ZONE" favicon adopted as canonical favicon design for all forward variants (regardless of which hero wordmark wins). |
+| 2026-05-20 | Mid C1 sanity-check at 16×16 browser tab: _"Når vi har noget der er lige så småt som det der, så skal det selvfølgelig være læsbart. Hvis ikke der kan stå CyclingZone, så skal der stå CZ eller noget ala det, sådan det er nemmere at genkende. Det skal være muligt at se hvad der står."_ | F1 was locked on large-size visual approval only; small-size legibility wasn't tested. C1 sanity-check (working rule pattern doing its job) surfaced this on the 16×16 browser-tab context. F1 expands to dual-form system: stacked CYCLING/ZONE for ≥48px (kept — user loved), readable monogram for ≤32px (F1b active decision). New rule: **every favicon must pass 16×16 legibility test — readable means a reader can identify what it says, not just recognize the shape.** Working rule #7 already required this; calibration is to actually run the test, not assume large-size approval extrapolates. |
+| 2026-05-20 | After picking F1b=B (Inter Tight Black): _"Men skal vi så ikke overveje at undersøge at bruge den skrifttype i alt vores branding, sådan det ikke er forskellige? Hvad synes du om det. Er det ikke best practice?"_ | Smart instinct, but the "one font everywhere" rule is a beginner-version of brand consistency. Mature brand systems (Spotify Circular+Mix, Whoop Helvetica Now Display+Text, Stripe Sans display+UI, Strava Maison Neue display+text) all use 2-3 carefully-chosen fonts where each does its specific job: display fonts optimize for memorability/personality, UI fonts optimize for legibility/density. Bebas Neue (display, condensed, distinctive) + Inter Tight (UI, geometric, workhorse) is a sibling-pair, not a clash. AI recommends keeping the dual-font sibling system. But sibling-check rendered visually in logo-explorations.html so user can see the alternative and decide. |
+| 2026-05-20 | After seeing wordmark head-to-head: _"Vi tager A"_ (keep Bebas wordmark + Inter Tight small favicon as sibling system). | C3-revisit locked = A. User confirmed sibling-font system after seeing direct comparison + peer-table from mature multi-font brand systems. Phase 1 effectively wrapped. Forward calibration: when introducing a new font, always show side-by-side comparison + peer reference, not just text-argument. The visual proof + peer-context combo unlocks confident decisions. |
 
 ## 🎨 Confirmed micro-decisions (within C3)
 

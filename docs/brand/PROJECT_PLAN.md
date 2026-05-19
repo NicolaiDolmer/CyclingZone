@@ -4,7 +4,7 @@
 > **Goal:** Complete Cycling Zone brand identity (logo, favicon, Discord, design manual, UI/UX-tokens) "once and for all".
 > **Owner:** Nicolai Dolmer Mikkelsen
 > **Started:** 2026-05-18
-> **Status:** Phase 1 in progress — Decision 1 of 5 awaiting choice
+> **Status:** **Phase 1 LOCKED 2026-05-20** — Bebas Neue wordmark + dual-form favicon system (stacked F1a ≥48px, Inter Tight Black CZ F1b ≤32px) + sibling-font system. Phase 2 — color palette (light + dark mode) starts next session.
 
 ---
 
