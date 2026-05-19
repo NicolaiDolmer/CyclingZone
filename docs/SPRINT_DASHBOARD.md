@@ -2,12 +2,12 @@
 
 > **Sprint:** Monetization Validation Sprint
 > **Periode:** 2026-05-18 → 2026-06-17 (30 dage)
-> **I dag:** 2026-05-18 (**Sprint Day 1** 🚀)
-> **Sidste opdatering:** 2026-05-19 (masterplan note tilføjet; metrics-baseline stadig fra 2026-05-18 13:11 UTC)
+> **I dag:** 2026-05-19 (**Sprint Day 2**)
+> **Sidste opdatering:** 2026-05-19 (Session A status-synk — issue-tabel + Uge 1 checkboxes afstemt mod faktisk GitHub-state; metrics-baseline stadig fra 2026-05-18 13:11 UTC)
 >
 > **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). **Overordnet styring og agentroller → [`MASTER_PLAN.md`](MASTER_PLAN.md).** Prioriteret backlog → [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md).
 >
-> **Status-note 2026-05-19:** `MASTER_PLAN.md` er nu styringskontrakt. Næste session skal køre en fuld status-synk af denne fil mod faktisk GitHub-state, fordi enkelte checkbox-/issue-statusser er ældre end de seneste lukkede sprint-issues.
+> **Status-note 2026-05-19 (Session A — [#497](https://github.com/NicolaiDolmer/CyclingZone/issues/497)):** Issue-tabel synkroniseret mod GitHub: 7 sprint-issues (#359-#364, #367) blev lukket 16-18 maj, men dashboard stod stadig ⏳ — nu rettet til ✅ med close-dato. #476/#479/#497 tilføjet til tabellen. Eneste åbne tekniske sprint-issues er nu #366 (PatchNotes fair freemium — venter på naming), #472 (recruitment drafts), #473 (skills mockup), #476 (metrics-snapshot automation), #479 (mobile perf), #497 (denne session).
 
 ## 📊 Metrics at a glance
 
@@ -55,7 +55,7 @@
 
 ### Uge 1 (18-24 maj) — Foundation
 **Manus-track:**
-- [ ] **Søn 17 (T-1):** Mobile UX-verification af key pages (auctions/board/dashboard/finance/riders/seasons/team) FØR Discord-launch så ny trafik ikke bouncer på broken mobile. Brug eksisterende Playwright mobile-snapshots.
+- [x] **Søn 17 (T-1):** Mobile UX-verification af key pages (auctions/board/dashboard/finance/riders/seasons/team) FØR Discord-launch så ny trafik ikke bouncer på broken mobile. Brug eksisterende Playwright mobile-snapshots. — [#367](https://github.com/NicolaiDolmer/CyclingZone/issues/367) closed 2026-05-17.
 - [ ] **Man 18:** Discord launch post + poll #1 pinned
 - [x] **Man 18:** Pull beta-data baseline (DAU/WAU/D7-retention/session-længde/top-features) — se Game-metrics tabel ovenfor
 - [x] **Man 18:** Identificér top 10-15 mest aktive spillere — `~/OneDrive/CyclingZone-context/sprint-validation/top-active-players-2026-05-18.md`
@@ -121,17 +121,20 @@
 
 | # | Status | Issue | Codex assigned |
 |---|---|---|---|
-| [#359](https://github.com/NicolaiDolmer/CyclingZone/issues/359) | ⏳ | Supabase tabel `founder_supporter_waitlist` + RLS | — |
-| [#360](https://github.com/NicolaiDolmer/CyclingZone/issues/360) | ⏳ | GDPR privatlivspolitik + samtykke-flow | — |
-| [#361](https://github.com/NicolaiDolmer/CyclingZone/issues/361) | ⏳ | Landing page for Founder Supporter waitlist | — |
-| [#362](https://github.com/NicolaiDolmer/CyclingZone/issues/362) | ⏳ | Waitlist-form + UTM source-tracking | — |
-| [#363](https://github.com/NicolaiDolmer/CyclingZone/issues/363) | ⏳ | Admin dashboard for waitlist intent-scoring | — |
-| [#364](https://github.com/NicolaiDolmer/CyclingZone/issues/364) | ⏳ | Survey-CTA-banner i app | — |
-| [#365](https://github.com/NicolaiDolmer/CyclingZone/issues/365) | ✅ | Sprint-metrics dashboard i app | Claude |
-| [#366](https://github.com/NicolaiDolmer/CyclingZone/issues/366) | ⏳ | PatchNotes-entry om fair freemium-eksperiment | — |
-| [#367](https://github.com/NicolaiDolmer/CyclingZone/issues/367) | ⏳ | Mobile UX-verification af key pages før Discord-launch (T-1 søn 17 maj) | — |
+| [#359](https://github.com/NicolaiDolmer/CyclingZone/issues/359) | ✅ closed 2026-05-16 | Supabase tabel `founder_supporter_waitlist` + RLS | — |
+| [#360](https://github.com/NicolaiDolmer/CyclingZone/issues/360) | ✅ closed 2026-05-16 | GDPR privatlivspolitik + samtykke-flow | — |
+| [#361](https://github.com/NicolaiDolmer/CyclingZone/issues/361) | ✅ closed 2026-05-18 | Landing page for Founder Supporter waitlist | — |
+| [#362](https://github.com/NicolaiDolmer/CyclingZone/issues/362) | ✅ closed 2026-05-16 | Waitlist-form + UTM source-tracking | — |
+| [#363](https://github.com/NicolaiDolmer/CyclingZone/issues/363) | ✅ closed 2026-05-16 | Admin dashboard for waitlist intent-scoring | — |
+| [#364](https://github.com/NicolaiDolmer/CyclingZone/issues/364) | ✅ closed 2026-05-16 | Survey-CTA-banner i app | — |
+| [#365](https://github.com/NicolaiDolmer/CyclingZone/issues/365) | ✅ closed 2026-05-16 | Sprint-metrics dashboard i app | Claude |
+| [#366](https://github.com/NicolaiDolmer/CyclingZone/issues/366) | ⏳ | PatchNotes-entry om fair freemium-eksperiment (afventer naming fra Session B) | — |
+| [#367](https://github.com/NicolaiDolmer/CyclingZone/issues/367) | ✅ closed 2026-05-17 | Mobile UX-verification af key pages før Discord-launch (T-1 søn 17 maj) | — |
 | [#472](https://github.com/NicolaiDolmer/CyclingZone/issues/472) | ⏳ | Discord/Reddit recruitment research + post drafts (uge 2 fremrykket) | Bruger |
 | [#473](https://github.com/NicolaiDolmer/CyclingZone/issues/473) | ⏳ | Cycling Zones skill system mockup `/preview/skills` ("kommer snart"-asset) | Codex |
+| [#476](https://github.com/NicolaiDolmer/CyclingZone/issues/476) | ⏳ | Automatiser Mon/Wed/Fre snapshot af `/admin/sprint-metrics` | — |
+| [#479](https://github.com/NicolaiDolmer/CyclingZone/issues/479) | ⏳ | Mobile Performance optim for `/founder-supporter` waitlist (follow-up #361) | — |
+| [#497](https://github.com/NicolaiDolmer/CyclingZone/issues/497) | 🔄 | Session A: Synk masterplan, sprint-dashboard og issues (denne session) | Claude |
 
 (Filtrér i GitHub: [`label:sprint-validation`](https://github.com/NicolaiDolmer/CyclingZone/issues?q=is%3Aissue+is%3Aopen+label%3Asprint-validation))
 
