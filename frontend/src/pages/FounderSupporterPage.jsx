@@ -2,15 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import FounderSupporterWaitlistForm from "../components/waitlist/FounderSupporterWaitlistForm.jsx";
 
-// Landing page for Founder Supporter waitlist (#361). Public route — ingen auth.
-// Embedder waitlist-form (#362) som sektion. Sprog-toggle DK/EN persisteres i ?lang=.
-// Pris-variant via ?variant=A|B|C styrer Option B price-test (utm_campaign er canonical
-// attribution; ?variant er menneskelig debug-hint).
+// Landing page for Founder waitlist (#361, Session B naming locked in #500).
+// Public route, no auth. Embedder waitlist-form (#362) som sektion.
+// Sprog-toggle DK/EN persisteres i ?lang=. Pris-variant via ?variant=A|B|C styrer
+// Option B price-test (utm_campaign er canonical attribution; ?variant er menneskelig debug-hint).
 
 const VARIANT_LABELS = {
-  A: "Supporter 29 / Pro 49 DKK",
-  B: "Supporter 49 / Pro 89 DKK",
-  C: "Supporter 69 / Pro 119 DKK",
+  A: "Premium 29 / Pro Analyst 49 DKK",
+  B: "Premium 49 / Pro Analyst 89 DKK",
+  C: "Premium 69 / Pro Analyst 119 DKK",
 };
 
 const VARIANT_PRICES = {
@@ -22,31 +22,31 @@ const VARIANT_PRICES = {
 const COPY = {
   da: {
     htmlLang: "da",
-    metaTitle: "Bliv Founder Supporter — Cycling Zone",
+    metaTitle: "Skriv dig på Founder-waitlisten · Cycling Zone",
     backToApp: "← Tilbage til Cycling Zone",
     languageLabel: "Sprog",
     badgeBeta: "Open beta",
-    badgeFair: "Fair freemium",
+    badgeFair: "Fair premium",
     badgeGdpr: "GDPR-compliant",
-    heroEyebrow: "30-dages validation-sprint",
-    heroHeadline: "Byg dit cykelhold. Vind verdens løb. Støt en fair manager MMO.",
+    heroEyebrow: "Open beta, fair premium-samtale",
+    heroHeadline: "Byg dit cykelhold. Kør mod verden. Bak et fair managerspil op.",
     heroSub:
-      "Cycling Zone er en browser-baseret cykel-manager MMO hvor taktik, langsigtet planlægning og community-rivalitet betyder noget. Vi tester en fair premium-model, men reglen er enkel: ",
+      "Cycling Zone er et browserbaseret cykelmanagerspil, hvor taktik, langsigtet planlægning og community-rivalitet betyder noget. Jeg undersøger premium, men reglen er enkel: ",
     heroSubStrong:
-      "premium køber ALDRIG stærkere ryttere, bedre løbsresultater eller konkurrencemæssige fordele.",
-    ctaPrimary: "Tilmeld dig waitlisten",
+      "spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater.",
+    ctaPrimary: "Skriv dig på Founder-waitlisten",
     ctaSecondary: "Læs hele løftet",
-    promiseTitle: "Cycling Zone forbliver fair",
+    promiseTitle: "Cycling Zone skal forblive fair",
     promiseBody:
-      "Premium kan låse identitet, bekvemmelighed, analyser og måder at støtte udviklingen. Den kan IKKE låse bedre løbsresultater, hurtigere træning, stærkere ryttere, transfer-fordele, bedre scout-odds eller skjult magt.",
+      "Premium kan låse op for identitet, bekvemmelighed, analyser og måder at bakke udviklingen op. Det kan IKKE låse op for bedre løbsresultater, hurtigere træning, stærkere ryttere, transfer-fordele, bedre scout-odds eller skjult magt.",
     promiseFootnote:
-      "Dette løfte vises både her og ved enhver fremtidig pris-info. Det er den vigtigste tillids-besked i hele monetariserings-testen.",
-    tiersTitle: "Hvad bliver fair premium?",
+      "Dette løfte vises både her og ved enhver fremtidig pris-info. Det er den vigtigste tillids-besked i hele samtalen om premium.",
+    tiersTitle: "Hvad kunne fair premium se ud som?",
     tiersSub:
-      "Beslutninger truffet 2026-05-14. Survey tester forskellige pris-punkter — derfor varierer Supporter mellem 29/49/69 DKK afhængig af hvor du klikker fra.",
-    founderNoteTitle: "Hvor passer Founder Supporter ind?",
+      "Beslutninger truffet 2026-05-14. Surveyen tester forskellige prispunkter, så Premium varierer mellem 29/49/69 DKK afhængig af, hvor du klikker fra.",
+    founderNoteTitle: "Hvor passer Founder-waitlisten ind?",
     founderNoteBody:
-      "Founder Supporter er IKKE en separat tier — det er en waitlist-status. De første 100 Founder Supporters får permanent founder-badge når betaling åbner. Tilmelding er uforpligtende.",
+      "Founder er ikke en separat betalt tier. Det er en early waitlist-status for de første 100 spillere, der vil overvejes, hvis betaling åbner senere. Tilmelding er uforpligtende, og du opkræves ingenting i dag.",
     tierFree: {
       name: "Free Manager",
       price: "0 DKK",
@@ -54,16 +54,16 @@ const COPY = {
       bullets: [
         "Fuld konkurrencemæssig adgang",
         "Intet skåret væk fra core-spillet",
-        "Free players forbliver konkurrencedygtige — for altid",
+        "Free players forbliver konkurrencedygtige, for altid",
       ],
     },
     tierSupporter: {
-      name: "Supporter",
+      name: "Premium",
       priceSuffix: "DKK/md",
       altYearTemplate: "{annual} DKK/år (= 10 måneder)",
       tagline: "Engagerede spillere",
       bullets: [
-        "Supporter-badge på profil",
+        "Premium-badge på profil",
         "Profiltemaer + kosmetik",
         "Discord-rolle",
         "Gemte filtre + udvidet historik",
@@ -91,12 +91,12 @@ const COPY = {
         "Kreditering i spillet",
       ],
     },
-    fairnessTitle: "Hvad må sælges — og hvad må aldrig sælges",
+    fairnessTitle: "Hvad må sælges, og hvad må aldrig sælges",
     fairnessSub: "Brand-løftet i konkrete regler. Klippe-fast.",
     soldCol: "Må sælges",
     notSoldCol: "Må IKKE sælges (pay-to-win)",
     sold: [
-      "Supporter-badge",
+      "Premium-badge",
       "Profiltemaer / kosmetik",
       "Discord-rolle",
       "Gemte dashboards",
@@ -115,25 +115,25 @@ const COPY = {
       "Power-features",
       "Stemmer der ændrer balance / økonomi",
     ],
-    benefitsTitle: "Hvad får Founder Supporters?",
+    benefitsTitle: "Hvad får Founder-waitlist-medlemmer?",
     benefitsBody:
-      "Founder-status er identitet og tak — aldrig konkurrencefordele. Endelig liste fastlægges sammen med community før betaling åbner.",
+      "Founder-status er identitet og en tak, aldrig konkurrencefordele. Den endelige liste fastlægges sammen med community før betaling åbner.",
     benefitsList: [
       { title: "Permanent founder-badge", desc: "Identitets-mærke der ikke kan købes senere." },
       { title: "Discord Founder-rolle", desc: "Stærkt community-signal." },
-      { title: "Profil-tema eller kosmetisk frame", desc: "Tidlig-supporter værdi." },
+      { title: "Profil-tema eller kosmetisk frame", desc: "Early-founder værdi." },
       { title: "Navn på Founder Wall", desc: "Til tidlige troende." },
       { title: "Månedlige dev-opdateringer", desc: "Bygger tillid + transparens." },
       { title: "Stemme på non-balance roadmap-emner", desc: "Aldrig om balance eller konkurrencefordele." },
     ],
-    formSectionTitle: "Tilmeld dig waitlisten",
+    formSectionTitle: "Skriv dig på Founder-waitlisten",
     formSectionSub:
-      "Det er IKKE bindende. Vi opkræver intet under validation-sprinten. Formålet er at se om der er nok cyklister der vil støtte projektet økonomisk inden vi bygger betaling.",
+      "Det er IKKE bindende. Du opkræves ingenting i dag. Formålet er at høre, om der er nok cyklister, der vil bakke projektet op økonomisk, inden jeg bygger betaling.",
     faqTitle: "Spørgsmål vi har hørt",
     faqItems: [
       {
         q: "Bliver Cycling Zone pay-to-win?",
-        a: "Nej. Den konkurrencemæssige kerne SKAL forblive fair. Premium handler om identitet, bekvemmelighed, analyser og at støtte udvikling.",
+        a: "Nej. Den konkurrencemæssige kerne skal forblive fair. Premium handler om identitet, bekvemmelighed, analyser og måder at bakke udviklingen op.",
       },
       {
         q: "Kan free players konkurrere?",
@@ -141,52 +141,52 @@ const COPY = {
       },
       {
         q: "Kan premium-brugere købe stærkere ryttere eller hurtigere træning?",
-        a: "Nej. De features må ikke sælges — punktum.",
+        a: "Nej. De features må ikke sælges. Punktum.",
       },
       {
-        q: "Hvorfor teste premium nu?",
-        a: "For at lære om Cycling Zone kan blive bæredygtigt FØR vi bygger det forkerte monetariserings-system. Bedre at validere før investering.",
+        q: "Hvorfor spørge om premium nu?",
+        a: "For at høre, om Cycling Zone kan blive bæredygtigt, før jeg bygger det forkerte. Bedre at lære før investering.",
       },
       {
         q: "Er betaling live nu?",
-        a: "Nej. Waitlist først, betaling senere — og kun hvis community-svaret er positivt. Du opkræves intet ved tilmelding.",
+        a: "Nej. Waitlist først, betaling senere, og kun hvis community-svaret er positivt. Du opkræves intet ved tilmelding.",
       },
       {
         q: "Hvad sker der hvis folk ikke vil have premium?",
-        a: "Så venter monetariseringen, og fokus går tilbage til retention, gameplay og community-vækst. Det er hele pointen med at teste først.",
+        a: "Så venter premium, og fokus går tilbage til retention, gameplay og community-vækst. Det er hele pointen med at spørge først.",
       },
     ],
     footerPrivacy: "Privatlivspolitik",
     footerBack: "← Tilbage til Cycling Zone",
-    footerSprintRef: "Refs sprint-validation #361/#362/#363. Foundation #359.",
+    footerSprintRef: "Refs #361/#362/#363. Foundation #359.",
   },
   en: {
     htmlLang: "en",
-    metaTitle: "Become a Founder Supporter — Cycling Zone",
+    metaTitle: "Join the Founder waitlist · Cycling Zone",
     backToApp: "← Back to Cycling Zone",
     languageLabel: "Language",
     badgeBeta: "Open beta",
-    badgeFair: "Fair freemium",
+    badgeFair: "Fair premium",
     badgeGdpr: "GDPR-compliant",
-    heroEyebrow: "30-day validation sprint",
-    heroHeadline: "Build your cycling team. Race the world. Support a fair manager MMO.",
+    heroEyebrow: "Open beta, fair premium discussion",
+    heroHeadline: "Build your cycling team. Race the world. Back a fair manager game.",
     heroSub:
-      "Cycling Zone is a browser-based cycling manager MMO where tactics, long-term planning and community rivalry matter. We're exploring a fair premium model, but the rule is simple: ",
+      "Cycling Zone is a browser-based cycling manager where tactics, long-term planning and community rivalry matter. I'm exploring premium, but the rule is simple: ",
     heroSubStrong:
-      "premium will NEVER buy stronger riders, better race results or competitive advantages.",
-    ctaPrimary: "Join the waitlist",
+      "the game must be fair for everyone. You cannot pay for better riders, faster training, or better results.",
+    ctaPrimary: "Join the Founder waitlist",
     ctaSecondary: "Read the full promise",
-    promiseTitle: "Cycling Zone will stay fair",
+    promiseTitle: "Cycling Zone must stay fair",
     promiseBody:
-      "Premium can unlock identity, convenience, analytics and ways to support development. It will NOT unlock better race results, faster training, stronger riders, transfer advantages, better scouting odds or hidden power.",
+      "Premium can unlock identity, convenience, analytics and ways to back development. It cannot unlock better race results, faster training, stronger riders, transfer advantages, improved scouting odds or hidden power.",
     promiseFootnote:
-      "This promise appears here and near any future pricing info. It's the most important trust message in the entire monetization test.",
+      "This promise appears here and near any future pricing info. It's the most important trust message in the whole premium conversation.",
     tiersTitle: "What might fair premium look like?",
     tiersSub:
-      "Decisions made 2026-05-14. The survey tests different price points — Supporter varies between 29/49/69 DKK depending on which link you clicked.",
-    founderNoteTitle: "Where does Founder Supporter fit?",
+      "Decisions made 2026-05-14. The survey tests different price points, so Premium varies between 29/49/69 DKK depending on which link you clicked.",
+    founderNoteTitle: "Where does the Founder waitlist fit?",
     founderNoteBody:
-      "Founder Supporter is NOT a separate tier — it's a waitlist status. The first 100 Founder Supporters get a permanent founder badge when payment opens. Signing up is non-binding.",
+      "Founder is not a separate paid tier. It's an early waitlist status for the first 100 players who want to be considered if payment opens later. Joining is non-binding, and you are charged nothing today.",
     tierFree: {
       name: "Free Manager",
       price: "0 DKK",
@@ -194,16 +194,16 @@ const COPY = {
       bullets: [
         "Full competitive access",
         "Nothing cut from the core game",
-        "Free players stay competitive — forever",
+        "Free players stay competitive, forever",
       ],
     },
     tierSupporter: {
-      name: "Supporter",
+      name: "Premium",
       priceSuffix: "DKK/mo",
       altYearTemplate: "{annual} DKK/yr (= 10 months)",
       tagline: "Engaged players",
       bullets: [
-        "Supporter badge on profile",
+        "Premium badge on profile",
         "Profile themes + cosmetics",
         "Discord role",
         "Saved filters + extended history",
@@ -231,12 +231,12 @@ const COPY = {
         "Credit in the game",
       ],
     },
-    fairnessTitle: "What may be sold — and what must never be sold",
+    fairnessTitle: "What may be sold, and what must never be sold",
     fairnessSub: "The brand promise as concrete rules. Rock-solid.",
     soldCol: "May be sold",
     notSoldCol: "May NOT be sold (pay-to-win)",
     sold: [
-      "Supporter badge",
+      "Premium badge",
       "Profile themes / cosmetics",
       "Discord role",
       "Saved dashboards",
@@ -255,25 +255,25 @@ const COPY = {
       "Power features",
       "Votes that change balance / economy",
     ],
-    benefitsTitle: "What do Founder Supporters get?",
+    benefitsTitle: "What do Founder waitlist members get?",
     benefitsBody:
-      "Founder status is identity and a thank-you — never competitive advantage. The final list is decided together with the community before payment opens.",
+      "Founder status is identity and a thank-you, never competitive advantage. The final list is decided together with the community before payment opens.",
     benefitsList: [
       { title: "Permanent founder badge", desc: "Identity mark that can't be bought later." },
       { title: "Discord Founder role", desc: "Strong community signal." },
-      { title: "Profile theme or cosmetic frame", desc: "Early-supporter value." },
+      { title: "Profile theme or cosmetic frame", desc: "Early-founder value." },
       { title: "Name on the Founder Wall", desc: "For early believers." },
       { title: "Monthly dev updates", desc: "Builds trust + transparency." },
       { title: "Vote on non-balance roadmap topics", desc: "Never about balance or competitive advantage." },
     ],
-    formSectionTitle: "Join the waitlist",
+    formSectionTitle: "Join the Founder waitlist",
     formSectionSub:
-      "It's NOT binding. We charge nothing during the validation sprint. The goal is to see whether enough cyclists want to support the project financially before we build payment.",
-    faqTitle: "Questions we've heard",
+      "It's NOT binding. You are charged nothing today. The goal is to hear whether enough cyclists want to back the project financially before I build payment.",
+    faqTitle: "Questions I've heard",
     faqItems: [
       {
         q: "Is Cycling Zone becoming pay-to-win?",
-        a: "No. The competitive core MUST stay fair. Premium is about identity, convenience, analytics and supporting development.",
+        a: "No. The competitive core must stay fair. Premium is about identity, convenience, analytics and ways to back development.",
       },
       {
         q: "Can free players compete?",
@@ -281,24 +281,24 @@ const COPY = {
       },
       {
         q: "Can premium users buy stronger riders or faster training?",
-        a: "No. Those features must not be sold — period.",
+        a: "No. Those features must not be sold. Period.",
       },
       {
-        q: "Why test premium now?",
-        a: "To learn whether Cycling Zone can become sustainable BEFORE we build the wrong monetization system. Better to validate before investing.",
+        q: "Why ask about premium now?",
+        a: "To hear whether Cycling Zone can become sustainable before I build the wrong thing. Better to learn before investing.",
       },
       {
         q: "Is payment live now?",
-        a: "No. Waitlist first, payment later — and only if the community response is positive. You're charged nothing when joining.",
+        a: "No. Waitlist first, payment later, and only if the community response is positive. You're charged nothing when joining.",
       },
       {
         q: "What happens if people don't want premium?",
-        a: "Then monetization waits, and focus returns to retention, gameplay and community growth. That's the whole point of testing first.",
+        a: "Then premium waits, and focus returns to retention, gameplay and community growth. That's the whole point of asking first.",
       },
     ],
     footerPrivacy: "Privacy policy",
     footerBack: "← Back to Cycling Zone",
-    footerSprintRef: "Refs sprint-validation #361/#362/#363. Foundation #359.",
+    footerSprintRef: "Refs #361/#362/#363. Foundation #359.",
   },
 };
 
@@ -589,7 +589,7 @@ export default function FounderSupporterPage() {
           </div>
         </section>
 
-        {/* ----- Founder Supporter benefits ----- */}
+        {/* ----- Founder waitlist benefits ----- */}
         <section className="px-4 sm:px-6 py-12 sm:py-16">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">

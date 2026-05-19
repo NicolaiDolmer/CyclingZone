@@ -2,39 +2,41 @@
 // så de kan unit-testes uden DOM. Lokal til waitlist-flowet — ikke generel utility.
 
 export const INTEREST_OPTIONS = [
-  { value: "very", label: "Meget interesseret — vil gerne være med fra start", label_en: "Very interested — want to be there from the start" },
-  { value: "maybe", label: "Måske — afhænger af pris og indhold", label_en: "Maybe — depends on price and content" },
-  { value: "unsure", label: "Usikker — vil vide mere først", label_en: "Unsure — want to know more first" },
+  { value: "very", label: "Meget interesseret, vil gerne være med fra start", label_en: "Very interested, want to be there from the start" },
+  { value: "maybe", label: "Måske, afhænger af pris og indhold", label_en: "Maybe, depends on price and content" },
+  { value: "unsure", label: "Usikker, vil vide mere først", label_en: "Unsure, want to know more first" },
 ];
 
+// Tier-enum values bevares (DB-felt forventer dem) selv om labels er omdøbt
+// til Session B-naming: supporter_* → Premium label, pro_analyst → Pro Analyst.
 export const TIER_OPTIONS = [
   {
     value: "supporter_monthly",
-    label: "Supporter månedligt",
-    label_en: "Supporter monthly",
-    sub: "49 DKK/md — vis støtte til projektet, lås founder-badge",
-    sub_en: "49 DKK/mo — show support, unlock founder badge",
+    label: "Premium månedligt",
+    label_en: "Premium monthly",
+    sub: "49 DKK/md, bak projektet op og lås founder-badge",
+    sub_en: "49 DKK/mo, back the project and unlock founder badge",
   },
   {
     value: "supporter_annual",
-    label: "Supporter årligt",
-    label_en: "Supporter annual",
-    sub: "490 DKK/år — samme som månedlig + 2 måneder gratis",
-    sub_en: "490 DKK/yr — same as monthly + 2 months free",
+    label: "Premium årligt",
+    label_en: "Premium annual",
+    sub: "490 DKK/år, samme som månedlig + 2 måneder gratis",
+    sub_en: "490 DKK/yr, same as monthly + 2 months free",
   },
   {
     value: "pro_analyst_monthly",
     label: "Pro Analyst månedligt",
     label_en: "Pro Analyst monthly",
-    sub: "89 DKK/md — supporter + avanceret tactical analysis",
-    sub_en: "89 DKK/mo — supporter + advanced tactical analysis",
+    sub: "89 DKK/md, Premium + avanceret tactical analysis",
+    sub_en: "89 DKK/mo, Premium + advanced tactical analysis",
   },
   {
     value: "free_only",
     label: "Kun gratis",
     label_en: "Free only",
-    sub: "Jeg vil bruge spillet gratis — ikke betale",
-    sub_en: "I will play for free — not pay",
+    sub: "Jeg vil spille gratis, ikke betale",
+    sub_en: "I will play for free, not pay",
   },
 ];
 
@@ -47,7 +49,7 @@ export const VALUED_BENEFITS = [
   { value: "tactical_analysis", label: "Avancerede tactical insights", label_en: "Advanced tactical insights" },
   { value: "income_breakdown", label: "Detaljeret indkomst-statistik", label_en: "Detailed income statistics" },
   { value: "ad_free", label: "Reklame-fri oplevelse", label_en: "Ad-free experience" },
-  { value: "support_project", label: "Bare for at støtte projektet", label_en: "Just to support the project" },
+  { value: "support_project", label: "Bare for at bakke projektet op", label_en: "Just to back the project" },
 ];
 
 // Top EU + nordic prefill. "OTHER" → bruger må indtaste i fairness_red_line-feltet

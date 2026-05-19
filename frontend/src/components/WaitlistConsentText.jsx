@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 
 /**
- * Samtykke-tekst der embeddes i Founder Supporter-waitlist-formularen (#360 / #362).
+ * Samtykke-tekst der embeddes i Founder-waitlist-formularen (#360 / #362,
+ * Session B naming locked in #500).
  *
  * Bruges sammen med en IKKE-pre-tjekket checkbox. Selve checkbox-state styres af parent.
  * Komponenten leverer KUN labelteksten + privatlivspolitik-link, ikke selve input-feltet,
@@ -14,7 +15,7 @@ export default function WaitlistConsentText({ lang = "da" }) {
     return (
       <span>
         I consent to Cycling Zone storing my contact info and waitlist responses to be contacted
-        about the Founder Supporter launch. I understand that this is{" "}
+        about the Founder waitlist and premium launch. I understand that this is{" "}
         <strong>non-binding</strong> and that I can be deleted at any time. See the{" "}
         <Link to="/privacy-policy" className="text-cz-accent-t underline" target="_blank" rel="noopener noreferrer">
           privacy policy
@@ -27,9 +28,9 @@ export default function WaitlistConsentText({ lang = "da" }) {
   return (
     <span>
       Jeg giver samtykke til at Cycling Zone opbevarer mine kontaktoplysninger og
-      waitlist-svar med henblik på at kontakte mig om Founder Supporter-lanceringen. Jeg
-      forstår at dette er <strong>uforpligtende</strong>, og at jeg til enhver tid kan
-      bede om at blive slettet. Se{" "}
+      waitlist-svar med henblik på at kontakte mig om Founder-waitlisten og en eventuel
+      premium-lancering. Jeg forstår at dette er <strong>uforpligtende</strong>, og at jeg
+      til enhver tid kan bede om at blive slettet. Se{" "}
       <Link to="/privatlivspolitik" className="text-cz-accent-t underline" target="_blank" rel="noopener noreferrer">
         privatlivspolitikken
       </Link>{" "}

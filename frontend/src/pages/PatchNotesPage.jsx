@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.64",
+    date: "2026-05-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Copy · Founder waitlist naming + fair premium tone (Refs #500)",
+        items: [
+          "EN · The /founder-supporter landing page, waitlist form and social meta tags now use the locked Session B naming. The 49 DKK tier is called Premium (not Supporter), the early-signup status is called Founder (not Founder Supporter), and the page tells you 'back the project' instead of 'support' it. The promise is the same: the game must be fair for everyone. You cannot pay for better riders, faster training, or better results.",
+          "EN · Submitted waitlist values are unchanged in the database, so anyone who already signed up keeps their record. Only the labels you see were renamed.",
+          "DA · Landing page /founder-supporter, waitlist-form og social meta-tags følger nu Session B-naming. 49 DKK-tieren hedder Premium (ikke Supporter), early-signup-status hedder Founder (ikke Founder Supporter), og siden skriver 'bak projektet op' i stedet for 'støt'. Løftet er det samme: spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater.",
+          "DA · Indsendte waitlist-værdier er uændrede i databasen, så alle der allerede har skrevet sig på, beholder deres tilmelding. Kun de labels du ser er omdøbt.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.63",
     date: "2026-05-19",
     label: "Beta",

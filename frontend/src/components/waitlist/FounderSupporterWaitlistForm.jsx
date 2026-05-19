@@ -15,8 +15,8 @@ import {
   buildInsertPayload,
 } from "../../lib/waitlistForm.js";
 
-// Form til Founder Supporter waitlist (#362). Embeddes i landing page (#361)
-// eller står alene på /founder-supporter til preview.
+// Form til Founder-waitlist (#362, Session B naming locked in #500). Embeddes i landing
+// page (#361) eller står alene på /founder-supporter til preview.
 //
 // Implementations-locks fra #359-verifikation (overhold):
 //   1. .insert() UDEN .select() → Supabase sender Prefer: return=minimal automatisk.
@@ -34,10 +34,10 @@ const FORM_COPY = {
     discordPlaceholder: "f.eks. nicolai.dolmer",
     interestLegend: "Hvor interesseret er du?",
     tierLegend: "Hvilken tier ville passe dig?",
-    tierHelp: "Vi tester forskellige pris-punkter — dit svar er ikke bindende.",
+    tierHelp: "Jeg tester forskellige prispunkter, dit svar er ikke bindende.",
     benefitsLegend: "Hvad ville være vigtigt for dig? (valgfri)",
     benefitsHelp: "Vælg så mange som relevant.",
-    mainReasonLabel: "Hvad er den vigtigste grund til at du overvejer at støtte? (valgfri)",
+    mainReasonLabel: "Hvad er den vigtigste grund til, at du overvejer at bakke projektet op? (valgfri)",
     mainReasonPlaceholder: "Skriv et par sætninger...",
     fairnessLabel: "Noget der ville få dig til at sige nej? (valgfri)",
     fairnessPlaceholder: "F.eks. pay-to-win mekanikker, dårlig fairness...",
@@ -48,7 +48,7 @@ const FORM_COPY = {
     gdprLink: "privatlivspolitikken",
     gdprAfter: " og indvilliger i at min email + Discord-handle gemmes til formålet ovenfor.",
     privacyPath: "/privatlivspolitik",
-    submit: "Tilmeld mig waitlisten",
+    submit: "Skriv mig på Founder-waitlisten",
     submitLoading: "Sender...",
     submitDisclaimer:
       "Vi sender ikke spam og deler aldrig din info. Du kan altid skrive til os for at blive slettet.",
@@ -56,14 +56,14 @@ const FORM_COPY = {
     honeypotLabel: "Lad dette felt være tomt",
     successTitle: "Du er på listen!",
     successBody:
-      "Tak fordi du vil være med fra start. Vi sender en mail når Founder Supporter rulles ud — og inden da hvis vi har spørgsmål til hvad du synes.",
+      "Tak fordi du vil være med fra start. Vi sender en mail når premium åbner, og inden da hvis vi har spørgsmål til hvad du synes.",
     successNextTitle: "Næste skridt:",
     successNext: [
       { text: "Tilmeld dig vores Discord når invite-link er klar (se ", link: { href: "https://github.com/NicolaiDolmer/CyclingZone/issues/415", text: "#415" }, suffix: ")" },
       { text: "Følg patch notes for fremgang" },
       { text: "Tjek din inbox de næste dage" },
     ],
-    successFooterRefs: "Refs sprint-validation #362. Du kan altid skrive til ",
+    successFooterRefs: "Refs #362. Du kan altid skrive til ",
   },
   en: {
     contactLegend: "How we contact you",
@@ -74,10 +74,10 @@ const FORM_COPY = {
     discordPlaceholder: "e.g. nicolai.dolmer",
     interestLegend: "How interested are you?",
     tierLegend: "Which tier would suit you?",
-    tierHelp: "We're testing different price points — your answer is not binding.",
+    tierHelp: "I'm testing different price points, your answer is not binding.",
     benefitsLegend: "What would matter to you? (optional)",
     benefitsHelp: "Pick as many as apply.",
-    mainReasonLabel: "What's the main reason you're considering supporting? (optional)",
+    mainReasonLabel: "What's the main reason you're considering backing the project? (optional)",
     mainReasonPlaceholder: "Write a few sentences...",
     fairnessLabel: "Anything that would make you say no? (optional)",
     fairnessPlaceholder: "e.g. pay-to-win mechanics, unfair systems...",
@@ -88,7 +88,7 @@ const FORM_COPY = {
     gdprLink: "privacy policy",
     gdprAfter: " and consent to storing my email + Discord handle for the purpose stated above.",
     privacyPath: "/privacy-policy",
-    submit: "Join the waitlist",
+    submit: "Join the Founder waitlist",
     submitLoading: "Sending...",
     submitDisclaimer:
       "We don't spam and never share your info. You can always email us to be removed.",
@@ -96,14 +96,14 @@ const FORM_COPY = {
     honeypotLabel: "Leave this field empty",
     successTitle: "You're on the list!",
     successBody:
-      "Thanks for joining early. We'll email when Founder Supporter launches — and before that if we have questions about what you think.",
+      "Thanks for joining early. We'll email when premium opens, and before that if we have questions about what you think.",
     successNextTitle: "Next steps:",
     successNext: [
       { text: "Join our Discord when the invite link is ready (see ", link: { href: "https://github.com/NicolaiDolmer/CyclingZone/issues/415", text: "#415" }, suffix: ")" },
       { text: "Follow patch notes for progress" },
       { text: "Check your inbox the next few days" },
     ],
-    successFooterRefs: "Refs sprint-validation #362. You can always email ",
+    successFooterRefs: "Refs #362. You can always email ",
   },
 };
 
