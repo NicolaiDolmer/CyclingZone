@@ -42,6 +42,13 @@ export default function RacePoolSection({ getAuth, onMsg }) {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingRaceCount, setExistingRaceCount] = useState(null);
+  // Per-sæson whitelist state (race_pool.id uuids, prioriteret rækkefølge)
+  const [stagePriorityIds, setStagePriorityIds] = useState([]);
+  const [singleBoostIds, setSingleBoostIds] = useState([]);
+  const [savingWhitelist, setSavingWhitelist] = useState(false);
+  const [whitelistDirty, setWhitelistDirty] = useState(false);
+  const [whitelistOpen, setWhitelistOpen] = useState(false);
+  const [dragDropState, setDragDropState] = useState({ source: null, type: null }); // { source: index, type: 'stage'|'single' }
 
   async function fetchPool() {
     setLoading(true);
@@ -101,6 +108,39 @@ export default function RacePoolSection({ getAuth, onMsg }) {
     };
   }, [selectedSeasonId, preview]);
 
+  // Hent gemt whitelist for valgt sæson
+  useEffect(() => {
+    if (!selectedSeasonId) {
+      setStagePriorityIds([]);
+      setSingleBoostIds([]);
+      setWhitelistDirty(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const headers = await getAuth();
+        const res = await fetch(
+          `${API}/api/admin/seasons/${selectedSeasonId}/race-priority`,
+          { headers },
+        );
+        const data = await res.json();
+        if (cancelled) return;
+        if (res.ok) {
+          setStagePriorityIds(data.stage_race_priority || []);
+          setSingleBoostIds(data.single_race_boost || []);
+          setWhitelistDirty(false);
+        }
+      } catch {
+        // Stille fejl — whitelist er optional
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSeasonId]);
+
   const totalPoolRaceDays = useMemo(
     () => Object.values(summary).reduce((sum, s) => sum + (s.raceDays || 0), 0),
     [summary],
@@ -129,6 +169,74 @@ export default function RacePoolSection({ getAuth, onMsg }) {
     setIncludeClasses((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
+  // ─── Whitelist editing helpers ─────────────────────────────────────────────
+
+  function addToWhitelist(raceId, type) {
+    if (type === "stage") {
+      setStagePriorityIds((prev) => (prev.includes(raceId) ? prev : [...prev, raceId]));
+    } else {
+      setSingleBoostIds((prev) => (prev.includes(raceId) ? prev : [...prev, raceId]));
+    }
+    setWhitelistDirty(true);
+  }
+
+  function removeFromWhitelist(raceId, type) {
+    if (type === "stage") {
+      setStagePriorityIds((prev) => prev.filter((id) => id !== raceId));
+    } else {
+      setSingleBoostIds((prev) => prev.filter((id) => id !== raceId));
+    }
+    setWhitelistDirty(true);
+  }
+
+  function reorderWhitelist(type, sourceIdx, targetIdx) {
+    if (sourceIdx === targetIdx) return;
+    const setter = type === "stage" ? setStagePriorityIds : setSingleBoostIds;
+    setter((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(sourceIdx, 1);
+      next.splice(targetIdx, 0, moved);
+      return next;
+    });
+    setWhitelistDirty(true);
+  }
+
+  function clearWhitelist(type) {
+    if (type === "stage") setStagePriorityIds([]);
+    else setSingleBoostIds([]);
+    setWhitelistDirty(true);
+  }
+
+  async function saveWhitelist() {
+    if (!selectedSeasonId) return;
+    setSavingWhitelist(true);
+    try {
+      const headers = await getAuth();
+      const res = await fetch(
+        `${API}/api/admin/seasons/${selectedSeasonId}/race-priority`,
+        {
+          method: "PUT",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            stage_race_priority: stagePriorityIds,
+            single_race_boost: singleBoostIds,
+          }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gem fejlede");
+      setWhitelistDirty(false);
+      onMsg(
+        `✅ Prioritets-lister gemt (${stagePriorityIds.length} etapeløb, ${singleBoostIds.length} singles)`,
+        "success",
+      );
+    } catch (e) {
+      onMsg(`❌ ${e.message}`, "error");
+    } finally {
+      setSavingWhitelist(false);
+    }
+  }
+
   async function generatePreview() {
     if (!selectedSeasonId) {
       onMsg("Vælg en sæson først", "error");
@@ -147,6 +255,12 @@ export default function RacePoolSection({ getAuth, onMsg }) {
         stage_race_quota: Number.isFinite(Number(stageRaceQuota))
           ? Math.max(0, Math.min(20, Number(stageRaceQuota)))
           : 0,
+        // Send unsaved whitelist hvis brugeren har redigeret — ellers læser
+        // backend gemt state fra seasons-tabellen.
+        ...(whitelistDirty && {
+          stage_race_priority: stagePriorityIds,
+          single_race_boost: singleBoostIds,
+        }),
       };
       const res = await fetch(
         `${API}/api/admin/seasons/${selectedSeasonId}/race-selection/preview`,
@@ -407,6 +521,27 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           </div>
         </div>
 
+        {/* Whitelist-editor (per sæson) */}
+        <WhitelistEditor
+          open={whitelistOpen}
+          onToggleOpen={() => setWhitelistOpen((v) => !v)}
+          pool={pool}
+          includedClassKeys={includedClassKeys}
+          excludeWt={excludeWt}
+          stagePriorityIds={stagePriorityIds}
+          singleBoostIds={singleBoostIds}
+          dirty={whitelistDirty}
+          saving={savingWhitelist}
+          disabled={!selectedSeasonId}
+          dragDropState={dragDropState}
+          setDragDropState={setDragDropState}
+          onAdd={addToWhitelist}
+          onRemove={removeFromWhitelist}
+          onReorder={reorderWhitelist}
+          onClear={clearWhitelist}
+          onSave={saveWhitelist}
+        />
+
         <button
           onClick={generatePreview}
           disabled={generating || !selectedSeasonId}
@@ -569,6 +704,258 @@ export default function RacePoolSection({ getAuth, onMsg }) {
               : replaceMode && existingRaceCount > 0
               ? `Erstat med ${finalSelected.length} løb`
               : `Gem som sæsonens kalender (${finalSelected.length} løb)`}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Whitelist editor ─────────────────────────────────────────────────────────
+// Per-sæson prioritets-lister: stage race quota whitelist + single race boost.
+// To-kolonne layout: available (tilgængelige løb i pool) + valgt (i prioritets-
+// rækkefølge med drag-drop op/ned).
+
+function WhitelistEditor({
+  open,
+  onToggleOpen,
+  pool,
+  includedClassKeys,
+  excludeWt,
+  stagePriorityIds,
+  singleBoostIds,
+  dirty,
+  saving,
+  disabled,
+  dragDropState,
+  setDragDropState,
+  onAdd,
+  onRemove,
+  onReorder,
+  onClear,
+  onSave,
+}) {
+  const filteredPool = useMemo(() => {
+    return pool.filter((r) => {
+      if (excludeWt && WORLD_TOUR_KEYS.has(r.race_class)) return false;
+      if (!includedClassKeys.includes(r.race_class)) return false;
+      return true;
+    });
+  }, [pool, includedClassKeys, excludeWt]);
+
+  const stageOptions = useMemo(
+    () =>
+      filteredPool
+        .filter((r) => r.race_type === "stage_race" && !stagePriorityIds.includes(r.id))
+        .sort((a, b) => (a.name || "").localeCompare(b.name || "")),
+    [filteredPool, stagePriorityIds],
+  );
+
+  const singleOptions = useMemo(
+    () =>
+      filteredPool
+        .filter((r) => r.race_type === "single" && !singleBoostIds.includes(r.id))
+        .sort((a, b) => (a.name || "").localeCompare(b.name || "")),
+    [filteredPool, singleBoostIds],
+  );
+
+  const poolById = useMemo(() => new Map(pool.map((r) => [r.id, r])), [pool]);
+
+  function handleDragStart(idx, type) {
+    setDragDropState({ source: idx, type });
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+  }
+
+  function handleDrop(targetIdx, type) {
+    if (dragDropState.type !== type || dragDropState.source === null) return;
+    onReorder(type, dragDropState.source, targetIdx);
+    setDragDropState({ source: null, type: null });
+  }
+
+  return (
+    <div className="bg-cz-bg border border-cz-border rounded-xl p-3 space-y-2">
+      <button
+        type="button"
+        onClick={onToggleOpen}
+        className="w-full flex items-center justify-between text-sm font-medium text-cz-2 hover:text-cz-1"
+      >
+        <span>
+          🎯 Prioritets-lister (per sæson)
+          {dirty && <span className="ml-2 text-cz-accent text-xs">● ugemte ændringer</span>}
+        </span>
+        <span className="text-cz-3 text-xs">
+          {stagePriorityIds.length} etape · {singleBoostIds.length} singles · {open ? "▾" : "▸"}
+        </span>
+      </button>
+
+      {open && (
+        <div className="space-y-4 pt-2">
+          <p className="text-cz-3 text-xs">
+            Whitelist styrer hvilke løb der vælges <strong>først</strong> i Phase 1 (etape-quota) og
+            Phase 2 (single-boost) når du genererer forslag. Tom liste = ren alfabetisk fallback.
+            Træk i listen for at justere prioritets-rækkefølgen.
+          </p>
+
+          <WhitelistColumn
+            label="Etapeløb-prioritet (quota fyldes herfra først)"
+            type="stage"
+            selectedIds={stagePriorityIds}
+            options={stageOptions}
+            poolById={poolById}
+            onAdd={onAdd}
+            onRemove={onRemove}
+            onClear={() => onClear("stage")}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            dragDropState={dragDropState}
+          />
+
+          <WhitelistColumn
+            label="Single race-boost (tilføjes efter quota hvis plads)"
+            type="single"
+            selectedIds={singleBoostIds}
+            options={singleOptions}
+            poolById={poolById}
+            onAdd={onAdd}
+            onRemove={onRemove}
+            onClear={() => onClear("single")}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            dragDropState={dragDropState}
+          />
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={!dirty || saving || disabled}
+              className="px-3 py-1.5 bg-cz-accent-bg text-cz-accent border border-cz-accent/30 rounded text-xs font-medium hover:brightness-110 disabled:opacity-50"
+            >
+              {saving ? "Gemmer…" : dirty ? "Gem prioritets-lister" : "Gemt"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WhitelistColumn({
+  label,
+  type,
+  selectedIds,
+  options,
+  poolById,
+  onAdd,
+  onRemove,
+  onClear,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  dragDropState,
+}) {
+  const [addPickerId, setAddPickerId] = useState("");
+
+  function handleAddClick() {
+    if (addPickerId) {
+      onAdd(addPickerId, type);
+      setAddPickerId("");
+    }
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-cz-2 text-xs font-medium">{label}</p>
+        {selectedIds.length > 0 && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-cz-3 hover:text-cz-1 text-xs"
+            title="Fjern alle løb fra listen"
+          >
+            Ryd alle
+          </button>
+        )}
+      </div>
+
+      {/* Valgte (drag-drop ordered list) */}
+      {selectedIds.length === 0 ? (
+        <p className="text-cz-3 text-xs italic px-2 py-3 bg-cz-subtle/30 rounded text-center">
+          Ingen løb i prioritets-listen — algoritmen falder tilbage til alfabetisk
+        </p>
+      ) : (
+        <ol className="space-y-1">
+          {selectedIds.map((id, idx) => {
+            const race = poolById.get(id);
+            const isDraggingThis =
+              dragDropState.type === type && dragDropState.source === idx;
+            return (
+              <li
+                key={id}
+                draggable
+                onDragStart={() => onDragStart(idx, type)}
+                onDragOver={onDragOver}
+                onDrop={() => onDrop(idx, type)}
+                className={`flex items-center gap-2 px-2 py-1.5 bg-cz-subtle border border-cz-border rounded text-xs cursor-move ${
+                  isDraggingThis ? "opacity-50" : ""
+                }`}
+                title="Træk for at omarrangere"
+              >
+                <span className="text-cz-3 font-mono w-6 text-right">{idx + 1}.</span>
+                <span className="text-cz-3">⋮⋮</span>
+                <span className="text-cz-1 flex-1 truncate">
+                  {race ? race.name : `(slettet løb: ${id.slice(0, 8)}…)`}
+                </span>
+                {race && (
+                  <span className="text-cz-3 text-xs">
+                    {race.race_class} · {race.stages}d
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onRemove(id, type)}
+                  className="text-cz-3 hover:text-red-400 px-1"
+                  title="Fjern fra listen"
+                >
+                  ✕
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+
+      {/* Add picker */}
+      {options.length > 0 && (
+        <div className="flex gap-1.5 pt-1">
+          <select
+            value={addPickerId}
+            onChange={(e) => setAddPickerId(e.target.value)}
+            className="flex-1 bg-cz-bg border border-cz-border rounded px-2 py-1 text-cz-1 text-xs"
+          >
+            <option value="">
+              Vælg løb at tilføje… ({options.length} tilgængelige)
+            </option>
+            {options.map((race) => (
+              <option key={race.id} value={race.id}>
+                {race.name} ({race.race_class}
+                {race.race_type === "stage_race" ? ` · ${race.stages}d` : ""})
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleAddClick}
+            disabled={!addPickerId}
+            className="px-3 py-1 bg-cz-accent-bg text-cz-accent border border-cz-accent/30 rounded text-xs hover:brightness-110 disabled:opacity-50"
+          >
+            Tilføj
           </button>
         </div>
       )}

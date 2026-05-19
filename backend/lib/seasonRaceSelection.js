@@ -1,20 +1,20 @@
 // Slice 09 — Sæson-race-udvælgelse (pure-funktion)
 //
-// Givet en pool af tilgængelige løb og et sæt filtre, returnér en kalender
-// der summerer til ~raceDaysTarget løbsdage. Primær brug: admin vælger klasser
-// (fx kun ProSeries i sæson 1) + race-dage-mål (60), funktionen vælger løb
-// indtil målet er nået.
+// Givet en pool af tilgængelige løb, filtre og per-sæson whitelists,
+// returnér en kalender der summerer til ~raceDaysTarget løbsdage.
 //
 // Strategi:
 // 1. Filtrer pool til kun løb i includeClasses + ikke i excludeClasses
-// 2. Phase 1 (quota): hvis stageRaceQuota > 0, vælg op til N stage races fra
-//    STAGE_RACE_PRIORITY i rækkefølge (suppleret alfabetisk hvis quota ikke fyldt)
-// 3. Phase 2 (boost): tilføj boost-singles fra SINGLE_RACE_BOOST hvis plads
+// 2. Phase 1 (quota): hvis stageRaceQuota > 0, vælg op til N stage races
+//    fra prioritizedStageRaceIds i rækkefølge (suppleret alfabetisk hvis
+//    quota ikke fyldt af whitelist-matches)
+// 3. Phase 2 (boost): tilføj boost-singles fra boostSingleRaceIds hvis plads
 // 4. Phase 3 (fill): resterende fyldes deterministisk (race_class → race_type → name)
 // 5. STOP når tilføjelse af næste løb ville overskyde med mere end overshootTolerance
 // 6. Returnér selected + omitted + totalRaceDays
 //
-// Determinisme er vigtig: samme pool + samme filtre → samme kalender.
+// Whitelists er pr-sæson UUID-arrays (race_pool.id) lagret på seasons-tabellen.
+// Tom array eller missing → ren alfabetisk fallback. Stale IDs ignoreres stille.
 
 import { WORLD_TOUR_CLASSES } from "./racePoolImport.js";
 
@@ -22,35 +22,6 @@ export const DEFAULT_RACE_DAYS_TARGET = 60;
 export const DEFAULT_OVERSHOOT_TOLERANCE = 5;
 export const DEFAULT_STAGE_RACE_QUOTA = 0;
 export const FIRST_SEASON_STAGE_RACE_QUOTA = 8;
-
-// Continental Circuit prestigious stage races, prioriteret rækkefølge.
-// Bruges når stageRaceQuota > 0 til at sikre GC-action i sæson 1 hvor alle
-// WT-løb (Tour de France, Vuelta, Giro, Monuments) er ekskluderet.
-// Navne skal matche race_pool.name nøjagtigt (case-sensitive).
-export const STAGE_RACE_PRIORITY = [
-  "Volta Comunitat Valenciana",
-  "Tour of Oman",
-  "Volta ao Algarve em Bicicleta",
-  "Vuelta a Andalucía Ruta Ciclista del Sol",
-  "Tour of the Alps",
-  "Tour de Hongrie",
-  "Tour of Slovenia",
-  "Vuelta a Burgos",
-  "PostNord Tour of Denmark",
-  "Lloyds Tour of Britain",
-  "Tour of Norway",
-  "Arctic Race of Norway",
-  "CRO Race",
-];
-
-// Singles der typisk skipper i alfabetisk valg (italienske/asiatiske
-// efterårsklassikere). Tilføjes som boost efter quota-fasen hvis plads.
-export const SINGLE_RACE_BOOST = [
-  "Tre Valli Varesine",
-  "Trofeo Laigueglia",
-  "Veneto Classic",
-  "Utsunomiya Japan Cup Road Race",
-];
 
 function deterministicSort(a, b) {
   if (a.race_class !== b.race_class) return a.race_class.localeCompare(b.race_class);
@@ -65,8 +36,8 @@ export function selectSeasonRaces({
   raceDaysTarget = DEFAULT_RACE_DAYS_TARGET,
   overshootTolerance = DEFAULT_OVERSHOOT_TOLERANCE,
   stageRaceQuota = DEFAULT_STAGE_RACE_QUOTA,
-  prioritizedStageRaces = STAGE_RACE_PRIORITY,
-  boostSingleRaces = SINGLE_RACE_BOOST,
+  prioritizedStageRaceIds = [],
+  boostSingleRaceIds = [],
 } = {}) {
   const includeSet = includeClasses ? new Set(includeClasses) : null;
   const excludeSet = new Set(excludeClasses);
@@ -89,16 +60,16 @@ export function selectSeasonRaces({
     totalRaceDays += Number(race.stages) || 1;
   };
 
-  // Phase 1 — Stage race quota fra prioriteret whitelist
+  // Phase 1 — Stage race quota fra prioriteret whitelist (race_pool.id uuids)
   if (stageRaceQuota > 0) {
     const stageCandidates = candidates.filter((r) => r.race_type === "stage_race");
-    const byName = new Map(stageCandidates.map((r) => [r.name, r]));
+    const byId = new Map(stageCandidates.map((r) => [r.id, r]));
     let quotaTaken = 0;
 
-    for (const priorityName of prioritizedStageRaces) {
+    for (const priorityId of prioritizedStageRaceIds) {
       if (quotaTaken >= stageRaceQuota) break;
       if (totalRaceDays >= raceDaysTarget) break;
-      const race = byName.get(priorityName);
+      const race = byId.get(priorityId);
       if (!race || usedKeys.has(keyFor(race))) continue;
       const stages = Number(race.stages) || 1;
       if (!fitsAtRoom(stages)) continue;
@@ -122,14 +93,14 @@ export function selectSeasonRaces({
     }
   }
 
-  // Phase 2 — Boost singles (italienske/asiatiske efterårsklassikere)
-  if (totalRaceDays < raceDaysTarget) {
-    const singleByName = new Map(
-      candidates.filter((r) => r.race_type === "single").map((r) => [r.name, r]),
+  // Phase 2 — Boost singles fra whitelist (race_pool.id uuids)
+  if (totalRaceDays < raceDaysTarget && boostSingleRaceIds.length > 0) {
+    const singleById = new Map(
+      candidates.filter((r) => r.race_type === "single").map((r) => [r.id, r]),
     );
-    for (const boostName of boostSingleRaces) {
+    for (const boostId of boostSingleRaceIds) {
       if (totalRaceDays >= raceDaysTarget) break;
-      const race = singleByName.get(boostName);
+      const race = singleById.get(boostId);
       if (!race || usedKeys.has(keyFor(race))) continue;
       const stages = Number(race.stages) || 1;
       if (!fitsAtRoom(stages)) continue;
@@ -166,6 +137,7 @@ export function selectSeasonRaces({
 // Hjælper til sæson 1: ekskluder alle WorldTour-klasser by-default per
 // brugerens beslutning 2026-05-09 ("vi kører ingen WT-løb i første sæson") +
 // stageRaceQuota=8 fra 2026-05-19 (Continental Circuit GC-action garanti).
+// Whitelists kommer fra seasons-tabellen via caller — ingen hardcoded default.
 export function selectFirstSeasonRaces(pool, options = {}) {
   return selectSeasonRaces({
     pool,

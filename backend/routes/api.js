@@ -3558,20 +3558,41 @@ router.post("/admin/race-pool/import-csv", requireAdmin, adminWriteLimiter, asyn
 });
 
 // POST /api/admin/seasons/:seasonId/race-selection/preview — generér forslag (ingen writes)
+// Body kan eksplicit override stage_race_priority/single_race_boost; hvis udeladt
+// hentes de fra seasons-tabellen (single source of truth). Det lader admin se
+// preview af unsaved whitelist-ændringer FØR de gemmer.
 router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
+    const { seasonId } = req.params;
     const {
       include_classes = null,
       exclude_classes = null,
       race_days_target = DEFAULT_RACE_DAYS_TARGET,
       use_first_season_default = false,
       stage_race_quota,
+      stage_race_priority,
+      single_race_boost,
     } = req.body || {};
 
     const { data: pool, error: poolError } = await supabase
       .from("race_pool")
       .select("id, name, race_class, race_type, stages, date_text, country");
     if (poolError) return res.status(500).json({ error: poolError.message });
+
+    // Hent gemt whitelist fra seasons-tabellen som fallback hvis body ikke override'er
+    const { data: season, error: seasonError } = await supabase
+      .from("seasons")
+      .select("stage_race_priority, single_race_boost")
+      .eq("id", seasonId)
+      .maybeSingle();
+    if (seasonError) return res.status(500).json({ error: seasonError.message });
+
+    const prioritizedStageRaceIds = Array.isArray(stage_race_priority)
+      ? stage_race_priority
+      : season?.stage_race_priority || [];
+    const boostSingleRaceIds = Array.isArray(single_race_boost)
+      ? single_race_boost
+      : season?.single_race_boost || [];
 
     // stage_race_quota: undefined → brug default (8 for first-season, 0 ellers).
     // Eksplicit 0 fra UI'et bevares som override.
@@ -3583,6 +3604,8 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
     const result = use_first_season_default
       ? selectFirstSeasonRaces(pool || [], {
           raceDaysTarget: Number(race_days_target),
+          prioritizedStageRaceIds,
+          boostSingleRaceIds,
           ...quotaOverride,
         })
       : selectSeasonRaces({
@@ -3590,12 +3613,111 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
           includeClasses: include_classes,
           excludeClasses: exclude_classes ?? [],
           raceDaysTarget: Number(race_days_target),
+          prioritizedStageRaceIds,
+          boostSingleRaceIds,
           ...quotaOverride,
         });
 
     res.json({
       ...result,
       world_tour_classes: WORLD_TOUR_CLASSES,
+      whitelist_source: Array.isArray(stage_race_priority) ? "request" : "season",
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT /api/admin/seasons/:seasonId/race-priority — opdatér gemte whitelists
+// Body: { stage_race_priority?: uuid[], single_race_boost?: uuid[] }
+// Validerer at IDs eksisterer i race_pool + race_type-konsistens.
+router.put("/admin/seasons/:seasonId/race-priority", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { seasonId } = req.params;
+    const { stage_race_priority, single_race_boost } = req.body || {};
+
+    if (stage_race_priority !== undefined && !Array.isArray(stage_race_priority)) {
+      return res.status(400).json({ error: "stage_race_priority skal være array eller null" });
+    }
+    if (single_race_boost !== undefined && !Array.isArray(single_race_boost)) {
+      return res.status(400).json({ error: "single_race_boost skal være array eller null" });
+    }
+
+    // Verificér sæson eksisterer
+    const { data: season, error: seasonError } = await supabase
+      .from("seasons")
+      .select("id, status")
+      .eq("id", seasonId)
+      .single();
+    if (seasonError) return res.status(500).json({ error: seasonError.message });
+    if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+
+    // Validér race-type-konsistens hvis arrays er sat (ignorér tomme arrays)
+    const allIds = [
+      ...(Array.isArray(stage_race_priority) ? stage_race_priority : []),
+      ...(Array.isArray(single_race_boost) ? single_race_boost : []),
+    ];
+    if (allIds.length > 0) {
+      const { data: poolRows, error: poolError } = await supabase
+        .from("race_pool")
+        .select("id, race_type")
+        .in("id", allIds);
+      if (poolError) return res.status(500).json({ error: poolError.message });
+      const poolMap = new Map((poolRows || []).map((r) => [r.id, r.race_type]));
+
+      const invalidStage = Array.isArray(stage_race_priority)
+        ? stage_race_priority.filter((id) => poolMap.get(id) && poolMap.get(id) !== "stage_race")
+        : [];
+      const invalidSingle = Array.isArray(single_race_boost)
+        ? single_race_boost.filter((id) => poolMap.get(id) && poolMap.get(id) !== "single")
+        : [];
+      if (invalidStage.length > 0) {
+        return res
+          .status(400)
+          .json({ error: `stage_race_priority indeholder ikke-stage_race ids: ${invalidStage.join(", ")}` });
+      }
+      if (invalidSingle.length > 0) {
+        return res
+          .status(400)
+          .json({ error: `single_race_boost indeholder ikke-single ids: ${invalidSingle.join(", ")}` });
+      }
+    }
+
+    const update = {};
+    if (stage_race_priority !== undefined) update.stage_race_priority = stage_race_priority;
+    if (single_race_boost !== undefined) update.single_race_boost = single_race_boost;
+
+    const { data: updated, error: updateError } = await supabase
+      .from("seasons")
+      .update(update)
+      .eq("id", seasonId)
+      .select("id, stage_race_priority, single_race_boost")
+      .single();
+    if (updateError) return res.status(500).json({ error: updateError.message });
+
+    res.json({ season: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/seasons/:seasonId/race-priority — hent gemt whitelist + race-pool-data
+// Returns: { stage_race_priority: uuid[], single_race_boost: uuid[], pool: [...] }
+router.get("/admin/seasons/:seasonId/race-priority", requireAdmin, async (req, res) => {
+  try {
+    const { seasonId } = req.params;
+
+    const { data: season, error: seasonError } = await supabase
+      .from("seasons")
+      .select("id, stage_race_priority, single_race_boost")
+      .eq("id", seasonId)
+      .single();
+    if (seasonError) return res.status(500).json({ error: seasonError.message });
+    if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+
+    res.json({
+      stage_race_priority: season.stage_race_priority || [],
+      single_race_boost: season.single_race_boost || [],
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

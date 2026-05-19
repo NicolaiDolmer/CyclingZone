@@ -5,8 +5,6 @@ import {
   selectFirstSeasonRaces,
   DEFAULT_RACE_DAYS_TARGET,
   FIRST_SEASON_STAGE_RACE_QUOTA,
-  STAGE_RACE_PRIORITY,
-  SINGLE_RACE_BOOST,
 } from "./seasonRaceSelection.js";
 
 function makeRace({ name, race_class, race_type = "single", stages = 1, id }) {
@@ -113,54 +111,107 @@ test("stageRaceQuota=0 → backward compatible (race_type ASC: single før stage
   assert.equal(result.selected[1].name, "Beta");
 });
 
-test("stageRaceQuota=2 fra whitelist → vælger prioriterede stage races først", () => {
+test("stageRaceQuota=2 fra whitelist IDs → vælger prioriterede stage races først", () => {
   const pool = [
-    makeRace({ name: "CRO Race", race_class: "ProSeries", race_type: "stage_race", stages: 6 }),
-    makeRace({ name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
-    makeRace({ name: "Volta ao Algarve em Bicicleta", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
-    makeRace({ name: "Filler Single", race_class: "ProSeries", stages: 1 }),
+    makeRace({ id: "cro", name: "CRO Race", race_class: "ProSeries", race_type: "stage_race", stages: 6 }),
+    makeRace({ id: "oman", name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "algarve", name: "Volta ao Algarve", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "filler", name: "Filler Single", race_class: "ProSeries", stages: 1 }),
   ];
-  const result = selectSeasonRaces({ pool, raceDaysTarget: 60, stageRaceQuota: 2 });
-  // Whitelist-rækkefølge: Volta Comunitat Valenciana → Tour of Oman → Volta ao Algarve …
-  // Pool indeholder Tour of Oman + Volta ao Algarve (begge i whitelist) + CRO Race (lavere prioritet i whitelist)
-  // Med quota=2 forventer vi Tour of Oman + Volta ao Algarve (CRO Race kommer senere i whitelist-rækkefølgen)
+  const result = selectSeasonRaces({
+    pool,
+    raceDaysTarget: 60,
+    stageRaceQuota: 2,
+    prioritizedStageRaceIds: ["oman", "algarve", "cro"],
+  });
   const stageNames = result.selected.filter((r) => r.race_type === "stage_race").map((r) => r.name);
-  assert.deepEqual(stageNames.slice(0, 2), ["Tour of Oman", "Volta ao Algarve em Bicicleta"]);
+  // Whitelist [oman, algarve, cro] med quota=2 → tag de første 2 (oman, algarve)
+  // CRO Race tilføjes senere i Phase 3 fill (selv om den ikke er i quota)
+  assert.equal(stageNames[0], "Tour of Oman");
+  assert.equal(stageNames[1], "Volta ao Algarve");
 });
 
-test("stageRaceQuota > whitelist-matches → supplér alfabetisk fra remaining (i quota-rækkefølgen)", () => {
-  // Whitelist har kun "Tour of Oman" i pool; quota=3 skal supplere med 2 ikke-whitelist stage races (alfabetisk)
-  // raceDaysTarget=15 stopper Phase 3 i at tilføje flere stage races (kun lige nok plads til quota).
+test("tom prioritizedStageRaceIds + quota>0 → quota fyldes alfabetisk i Phase 1", () => {
   const pool = [
-    makeRace({ name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
-    makeRace({ name: "Zeta Tour", race_class: "ProSeries", race_type: "stage_race", stages: 4 }),
-    makeRace({ name: "Beta Tour", race_class: "ProSeries", race_type: "stage_race", stages: 4 }),
-    makeRace({ name: "Alpha Tour", race_class: "ProSeries", race_type: "stage_race", stages: 4 }),
+    makeRace({ id: "z", name: "Zeta Tour", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "a", name: "Alpha Tour", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "b", name: "Beta Tour", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
   ];
-  // Med target=13 + tolerance=5 fitter quota-summen 5+4+4=13. Zeta Tour ville sprænge (13+4>13+5).
-  const result = selectSeasonRaces({ pool, raceDaysTarget: 13, overshootTolerance: 5, stageRaceQuota: 3 });
-  // De FØRSTE 3 (i selected-rækkefølgen) skal være quota-resultatet: Oman (whitelist), så alfabetisk Alpha, Beta.
+  const result = selectSeasonRaces({
+    pool,
+    raceDaysTarget: 15,
+    overshootTolerance: 5,
+    stageRaceQuota: 2,
+    prioritizedStageRaceIds: [],
+  });
+  // Tom whitelist → Phase 1 fylder quota alfabetisk: Alpha, Beta (i denne rækkefølge).
+  // Phase 3 supplerer evt. resten (Zeta passer i target+tolerance).
+  // Vi tester RÆKKEFØLGEN af de første 2 valg fra quota'en.
+  const firstTwo = result.selected.slice(0, 2).map((r) => r.name);
+  assert.deepEqual(firstTwo, ["Alpha Tour", "Beta Tour"]);
+});
+
+test("stale prioritizedStageRaceIds (ikke i pool) ignoreres stille", () => {
+  const pool = [
+    makeRace({ id: "oman", name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+  ];
+  const result = selectSeasonRaces({
+    pool,
+    raceDaysTarget: 60,
+    stageRaceQuota: 3,
+    prioritizedStageRaceIds: ["deleted-id-1", "oman", "deleted-id-2"],
+  });
+  // Kun "oman" findes; algoritmen ignorerer de 2 stale IDs uden crash
+  assert.equal(result.selected.length, 1);
+  assert.equal(result.selected[0].name, "Tour of Oman");
+});
+
+test("stageRaceQuota > whitelist-matches → supplér alfabetisk fra remaining", () => {
+  const pool = [
+    makeRace({ id: "oman", name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "z", name: "Zeta Tour", race_class: "ProSeries", race_type: "stage_race", stages: 4 }),
+    makeRace({ id: "b", name: "Beta Tour", race_class: "ProSeries", race_type: "stage_race", stages: 4 }),
+    makeRace({ id: "a", name: "Alpha Tour", race_class: "ProSeries", race_type: "stage_race", stages: 4 }),
+  ];
+  const result = selectSeasonRaces({
+    pool,
+    raceDaysTarget: 13,
+    overshootTolerance: 5,
+    stageRaceQuota: 3,
+    prioritizedStageRaceIds: ["oman"],
+  });
   const firstThree = result.selected.slice(0, 3).map((r) => r.name);
   assert.deepEqual(firstThree, ["Tour of Oman", "Alpha Tour", "Beta Tour"]);
 });
 
 test("stageRaceQuota > total stage races → tag alle uden crash", () => {
   const pool = [
-    makeRace({ name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
-    makeRace({ name: "Single A", race_class: "ProSeries", stages: 1 }),
+    makeRace({ id: "oman", name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "s1", name: "Single A", race_class: "ProSeries", stages: 1 }),
   ];
-  const result = selectSeasonRaces({ pool, raceDaysTarget: 60, stageRaceQuota: 8 });
+  const result = selectSeasonRaces({
+    pool,
+    raceDaysTarget: 60,
+    stageRaceQuota: 8,
+    prioritizedStageRaceIds: ["oman"],
+  });
   assert.equal(result.selected.length, 2);
   assert.equal(result.totalRaceDays, 6);
 });
 
-test("boost singles tilføjes efter quota hvis plads", () => {
+test("boostSingleRaceIds tilføjes efter quota hvis plads", () => {
   const pool = [
-    makeRace({ name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
-    makeRace({ name: "Tre Valli Varesine", race_class: "ProSeries", stages: 1 }),
-    makeRace({ name: "Trofeo Laigueglia", race_class: "ProSeries", stages: 1 }),
+    makeRace({ id: "oman", name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "tre", name: "Tre Valli Varesine", race_class: "ProSeries", stages: 1 }),
+    makeRace({ id: "trof", name: "Trofeo Laigueglia", race_class: "ProSeries", stages: 1 }),
   ];
-  const result = selectSeasonRaces({ pool, raceDaysTarget: 60, stageRaceQuota: 1 });
+  const result = selectSeasonRaces({
+    pool,
+    raceDaysTarget: 60,
+    stageRaceQuota: 1,
+    prioritizedStageRaceIds: ["oman"],
+    boostSingleRaceIds: ["tre", "trof"],
+  });
   const names = result.selected.map((r) => r.name);
   assert.ok(names.includes("Tour of Oman"));
   assert.ok(names.includes("Tre Valli Varesine"));
@@ -169,84 +220,113 @@ test("boost singles tilføjes efter quota hvis plads", () => {
 
 test("quota respekterer overshootTolerance — skipper stage race der ville sprænge", () => {
   const pool = [
-    makeRace({ name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
-    makeRace({ name: "Volta ao Algarve em Bicicleta", race_class: "ProSeries", race_type: "stage_race", stages: 21 }),
-    makeRace({ name: "Filler", race_class: "ProSeries", stages: 1 }),
+    makeRace({ id: "oman", name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "algarve", name: "Volta ao Algarve", race_class: "ProSeries", race_type: "stage_race", stages: 21 }),
+    makeRace({ id: "filler", name: "Filler", race_class: "ProSeries", stages: 1 }),
   ];
-  const result = selectSeasonRaces({ pool, raceDaysTarget: 5, overshootTolerance: 2, stageRaceQuota: 2 });
-  // Tour of Oman (5 stages) passer akkurat (5 ≤ 5+2=7). Volta Algarve (21) overskrider → skip.
+  const result = selectSeasonRaces({
+    pool,
+    raceDaysTarget: 5,
+    overshootTolerance: 2,
+    stageRaceQuota: 2,
+    prioritizedStageRaceIds: ["oman", "algarve"],
+  });
   const stageNames = result.selected.filter((r) => r.race_type === "stage_race").map((r) => r.name);
   assert.deepEqual(stageNames, ["Tour of Oman"]);
 });
 
 test("quota dedup'er — samme race vælges ikke to gange via whitelist + fill", () => {
   const pool = [
-    makeRace({ name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
-    makeRace({ name: "Single A", race_class: "ProSeries", stages: 1 }),
+    makeRace({ id: "oman", name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "s1", name: "Single A", race_class: "ProSeries", stages: 1 }),
   ];
-  const result = selectSeasonRaces({ pool, raceDaysTarget: 60, stageRaceQuota: 1 });
+  const result = selectSeasonRaces({
+    pool,
+    raceDaysTarget: 60,
+    stageRaceQuota: 1,
+    prioritizedStageRaceIds: ["oman"],
+  });
   const omanCount = result.selected.filter((r) => r.name === "Tour of Oman").length;
   assert.equal(omanCount, 1);
 });
 
-test("selectFirstSeasonRaces — default kører quota=8 (sæson 1 garanti)", () => {
-  const stageRaces = STAGE_RACE_PRIORITY.slice(0, 10).map((name) =>
-    makeRace({ name, race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+test("selectFirstSeasonRaces — default quota=8 men whitelist tom = alfabetisk fallback", () => {
+  const stageRaces = Array.from({ length: 10 }, (_, i) =>
+    makeRace({ id: `s${i}`, name: `StageRace${i}`, race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
   );
   const singles = Array.from({ length: 30 }, (_, i) =>
-    makeRace({ name: `Single${i}`, race_class: "ProSeries", stages: 1 }),
+    makeRace({ id: `sg${i}`, name: `Single${i}`, race_class: "ProSeries", stages: 1 }),
   );
+  // Ingen prioritizedStageRaceIds = tom default → algoritmen fylder quota=8 alfabetisk
   const result = selectFirstSeasonRaces([...stageRaces, ...singles], { raceDaysTarget: 60 });
   const selectedStage = result.selected.filter((r) => r.race_type === "stage_race").length;
-  // Med whitelist + quota=8 forventer vi præcis 8 stage races (de første 8 fra whitelist matchede pool)
+  // Quota=8 garantier 8 stage races (alfabetisk fra tom whitelist)
   assert.equal(selectedStage, 8);
   assert.equal(FIRST_SEASON_STAGE_RACE_QUOTA, 8);
 });
 
 test("selectFirstSeasonRaces — caller kan override quota til 0", () => {
-  const stageRaces = STAGE_RACE_PRIORITY.slice(0, 3).map((name) =>
-    makeRace({ name, race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+  const stageRaces = Array.from({ length: 3 }, (_, i) =>
+    makeRace({ id: `s${i}`, name: `StageRace${i}`, race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
   );
   const singles = Array.from({ length: 30 }, (_, i) =>
-    makeRace({ name: `Single${i}`, race_class: "ProSeries", stages: 1 }),
+    makeRace({ id: `sg${i}`, name: `Single${i}`, race_class: "ProSeries", stages: 1 }),
   );
-  // quota=0 → bag-til-bag alphabetic; stage_race kommer før single i race_type DESC
   const result = selectFirstSeasonRaces([...stageRaces, ...singles], {
     raceDaysTarget: 60,
     stageRaceQuota: 0,
   });
-  // Med quota=0 vælger algoritmen alle 3 stage_race (15 dage) + 45 single = 60 dage
   assert.equal(result.selected.filter((r) => r.race_type === "stage_race").length, 3);
 });
 
 test("WT-klasser ekskluderet selv med stageRaceQuota=8", () => {
   const pool = [
-    makeRace({ name: "Tour de France", race_class: "TourFrance", race_type: "stage_race", stages: 21 }),
-    makeRace({ name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "tdf", name: "Tour de France", race_class: "TourFrance", race_type: "stage_race", stages: 21 }),
+    makeRace({ id: "oman", name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
   ];
-  const result = selectFirstSeasonRaces(pool, { raceDaysTarget: 60 });
+  const result = selectFirstSeasonRaces(pool, {
+    raceDaysTarget: 60,
+    prioritizedStageRaceIds: ["tdf", "oman"],
+  });
+  // Selvom Tour de France er i whitelisten ekskluderes den via excludeClasses
   assert.ok(result.selected.every((r) => r.race_class === "ProSeries"));
   assert.ok(!result.selected.some((r) => r.name === "Tour de France"));
 });
 
-test("STAGE_RACE_PRIORITY og SINGLE_RACE_BOOST eksporteres", () => {
-  assert.ok(Array.isArray(STAGE_RACE_PRIORITY));
-  assert.ok(STAGE_RACE_PRIORITY.length >= 8, "skal indeholde mindst quota-default (8) løb");
-  assert.ok(STAGE_RACE_PRIORITY.includes("Tour of Oman"));
-  assert.ok(STAGE_RACE_PRIORITY.includes("Vuelta a Burgos"));
-  assert.ok(Array.isArray(SINGLE_RACE_BOOST));
-  assert.ok(SINGLE_RACE_BOOST.includes("Tre Valli Varesine"));
+test("stale boostSingleRaceIds ignoreres stille", () => {
+  const pool = [
+    makeRace({ id: "tre", name: "Tre Valli Varesine", race_class: "ProSeries", stages: 1 }),
+  ];
+  const result = selectSeasonRaces({
+    pool,
+    raceDaysTarget: 60,
+    boostSingleRaceIds: ["deleted-id-1", "tre", "deleted-id-2"],
+  });
+  assert.equal(result.selected.length, 1);
+  assert.equal(result.selected[0].name, "Tre Valli Varesine");
 });
 
 test("determinisme — quota+boost giver samme output ved gentagne kald", () => {
   const pool = [
-    makeRace({ name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
-    makeRace({ name: "Tour of the Alps", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
-    makeRace({ name: "Tre Valli Varesine", race_class: "ProSeries", stages: 1 }),
-    makeRace({ name: "Random Single", race_class: "ProSeries", stages: 1 }),
+    makeRace({ id: "oman", name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "alps", name: "Tour of the Alps", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "tre", name: "Tre Valli Varesine", race_class: "ProSeries", stages: 1 }),
+    makeRace({ id: "rng", name: "Random Single", race_class: "ProSeries", stages: 1 }),
   ];
-  const a = selectSeasonRaces({ pool, raceDaysTarget: 60, stageRaceQuota: 2 });
-  const b = selectSeasonRaces({ pool, raceDaysTarget: 60, stageRaceQuota: 2 });
+  const a = selectSeasonRaces({
+    pool,
+    raceDaysTarget: 60,
+    stageRaceQuota: 2,
+    prioritizedStageRaceIds: ["oman", "alps"],
+    boostSingleRaceIds: ["tre"],
+  });
+  const b = selectSeasonRaces({
+    pool,
+    raceDaysTarget: 60,
+    stageRaceQuota: 2,
+    prioritizedStageRaceIds: ["oman", "alps"],
+    boostSingleRaceIds: ["tre"],
+  });
   assert.deepEqual(
     a.selected.map((r) => r.name),
     b.selected.map((r) => r.name),

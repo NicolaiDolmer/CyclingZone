@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "3.63",
+    date: "2026-05-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Per-sæson prioritets-lister (variation over sæsoner)",
+        items: [
+          "EN · The race priority whitelists (stage race quota + single race boost) are now stored per season instead of being hardcoded. Each season starts with empty lists and falls back to alphabetic ordering when nothing is set. Use this to vary which races land in season 1, 2, 3 etc. so the same prestigious tours don't recur every year.",
+          "EN · New admin section 'Prioritets-lister (per sæson)' in Race-katalog with drag-and-drop ordering. Add stage races from a dropdown, drag to reorder, remove with the ✕ button. Same flow for the single race boost list. Hit 'Gem prioritets-lister' to persist.",
+          "EN · Backend: seasons.stage_race_priority + seasons.single_race_boost (uuid[]) columns; new PUT /api/admin/seasons/:id/race-priority endpoint validates race_type consistency. Preview endpoint reads from DB unless body overrides — that lets the admin preview unsaved whitelist changes before committing.",
+          "DA · Race priority whitelists (etape-quota + single boost) er nu gemt per sæson i stedet for hardcoded. Hver sæson starter med tomme lister og falder tilbage til alfabetisk når intet er sat. Brug det til at variere hvilke løb der lander i sæson 1, 2, 3 osv. så de samme prestigious tours ikke gentager hvert år.",
+          "DA · Ny admin-sektion 'Prioritets-lister (per sæson)' i Race-katalog med drag-and-drop. Tilføj etapeløb fra dropdown, træk for at omarrangere, fjern med ✕-knap. Samme flow for single race boost. Tryk 'Gem prioritets-lister' for at persistere.",
+          "DA · Backend: seasons.stage_race_priority + seasons.single_race_boost (uuid[]) felter; ny PUT /api/admin/seasons/:id/race-priority endpoint validerer race_type-konsistens. Preview-endpoint læser fra DB med mindre body overrider — det lader admin preview unsaved whitelist-ændringer før gem.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.62",
     date: "2026-05-19",
     label: "Beta",
