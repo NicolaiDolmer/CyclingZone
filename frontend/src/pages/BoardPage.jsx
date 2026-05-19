@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { satisfactionToModifier, getPlanDuration, FOCUS_LABELS } from "../lib/boardUtils";
+import { satisfactionToModifier, getPlanDuration } from "../lib/boardUtils";
 import { getCountryDisplay } from "../lib/countryUtils";
+import { formatNumber } from "../lib/intl";
 import { Flag } from "../components/Flag";
 import { Link } from "react-router-dom";
 import BoardEmptyState from "../components/BoardEmptyState";
@@ -10,57 +12,58 @@ import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
-const PLAN_LABELS = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" };
 const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
 
-// Onboarding v2 Slice 2 — tour-trin på /board (aktiveres fra Dashboard "Vis mig hvordan").
-// Pegger på BoardEmptyState-sektionerne — tour fyrer i onboarding-fasen (ingen planer endnu),
-// hvor empty state er rendered. Efter S-02h redesign: planerne vises som 3-panel dashboard
-// med GoalMiniDialog, board-members-grid og konsekvens-panel, men dette tour-segment
-// forklarer koncepterne inden den første plan forhandles.
-const BOARD_TOUR_STEPS = [
-  {
-    target: "[data-tour='board-plans']",
-    title: "Tre planer kører parallelt",
-    body: "1yr, 3yr og 5yr vises side om side i dashboardet. Hvert panel viser tilfredshed, sponsor×-modifier og top-mål med status-ikoner. Klik et mål for at se bestyrelsens reaktion.",
-  },
-  {
-    target: "[data-tour='board-satisfaction']",
-    title: "Tilfredshed → sponsor + konsekvenser",
-    body: "Høj tilfredshed (>70%) øger sponsor-indkomsten. Lav tilfredshed (<40%) kan udløse lønloft, signing-restriktioner og i sidste ende tvunget ryttersalg — gradvist og forudsigeligt.",
-  },
-  {
-    target: "[data-tour='board-kpis']",
-    title: "Hvad de vurderer på",
-    body: "Resultater, økonomi, identitet (U25/national kerne) og rangering — plus nyere typer: monumenter, trøjer, stjernerytter og U25-stat-gevinst. Din klub-DNA og 5 navngivne bestyrelsesmedlemmer farver reaktionerne.",
-  },
-];
-const GOAL_CHANGE_META = {
-  relaxed: { label: "Lempet", accent: "text-green-300", box: "border-cz-success/30 bg-cz-success-bg0/8" },
-  tightened: { label: "Skærpet", accent: "text-red-300", box: "border-cz-danger/30 bg-cz-danger-bg0/8" },
-  replaced: { label: "Omlagt", accent: "text-blue-300", box: "border-blue-500/20 bg-cz-info-bg0/8" },
+function buildBoardTourSteps(t) {
+  return [
+    { target: "[data-tour='board-plans']",        title: t("tour.plans.title"),        body: t("tour.plans.body") },
+    { target: "[data-tour='board-satisfaction']", title: t("tour.satisfaction.title"), body: t("tour.satisfaction.body") },
+    { target: "[data-tour='board-kpis']",         title: t("tour.kpis.title"),         body: t("tour.kpis.body") },
+  ];
+}
+
+const GOAL_CHANGE_STYLE = {
+  relaxed:   { accent: "text-green-300", box: "border-cz-success/30 bg-cz-success-bg0/8" },
+  tightened: { accent: "text-red-300",   box: "border-cz-danger/30 bg-cz-danger-bg0/8" },
+  replaced:  { accent: "text-blue-300",  box: "border-blue-500/20 bg-cz-info-bg0/8" },
 };
 
-const GOAL_STATUS_META = {
-  behind:        { label: "I fare",     color: "text-red-400",   icon: "!" },
-  near_miss:     { label: "Tæt på",    color: "text-cz-accent-t", icon: "~" },
-  on_track:      { label: "På sporet", color: "text-cz-3", icon: null },
-  watch:         { label: "Hold øje",  color: "text-cz-accent-t", icon: "~" },
-  awaiting_data: { label: null, color: null, icon: null },
-  neutral:       { label: null, color: null, icon: null },
+const GOAL_STATUS_STYLE = {
+  behind:        { color: "text-red-400",     icon: "!" },
+  near_miss:     { color: "text-cz-accent-t", icon: "~" },
+  on_track:      { color: "text-cz-3",        icon: null },
+  watch:         { color: "text-cz-accent-t", icon: "~" },
+  awaiting_data: { color: null,               icon: null },
+  neutral:       { color: null,               icon: null },
 };
 
-const PERSONALITY_LABELS = {
-  sports_ambition:   { low: "Lav ambition", medium: "Moderat ambition", high: "Høj ambition" },
-  financial_risk:    { cautious: "Forsigtig økonomi", balanced: "Balanceret økonomi", aggressive: "Aggressiv økonomi" },
-  identity_strength: { low: "Svag identitet", medium: "Moderat identitet", high: "Stærk identitet" },
+const STATUS_LABEL_KEYS = {
+  behind: "status.behind",
+  near_miss: "status.near_miss",
+  on_track: "status.on_track",
+  watch: "status.watch",
 };
 
-function getBoardGoalLabel(goal) {
+function getGoalStatusMeta(t, status) {
+  const style = GOAL_STATUS_STYLE[status];
+  if (!style) return null;
+  const labelKey = STATUS_LABEL_KEYS[status];
+  return { label: labelKey ? t(labelKey) : null, color: style.color, icon: style.icon };
+}
+
+function getPlanLabel(t, planType) {
+  return t(`planLabels.${planType}`);
+}
+
+function getFocusLabel(t, focus) {
+  return t(`focus.${focus}`, { defaultValue: focus });
+}
+
+function getBoardGoalLabel(t, goal) {
   if (!goal) return "";
   if (goal.type === "min_national_riders" && goal.nationality_code) {
     const country = getCountryDisplay(goal.nationality_code);
-    return `Min. ${goal.target} ryttere fra ${country.name || country.code}`;
+    return t("goal.minNationalRiders", { target: goal.target, country: country.name || country.code });
   }
   return goal.label || "";
 }
@@ -73,16 +76,22 @@ function formatBoardCopy(text) {
     .replace(/\b([A-Z]{2})-praegede\b/g, (_match, code) => `${getCountryDisplay(code).name}-praegede`);
 }
 
+function formatCash(value) {
+  const num = Number(value || 0);
+  return `${formatNumber(num)} CZ$`;
+}
+
 // ── S-02c · Board-medlems-komponenter ──────────────────────────────────────────
 
 // 5-kolonne avatar-grid (mobile-stackbar). Vises mellem BoardIdentityCard og plan-kort.
 function BoardMembersGrid({ members = [] }) {
+  const { t } = useTranslation("board");
   if (!members.length) return null;
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-cz-3 text-xs uppercase tracking-wider">Bestyrelsen</p>
-        <span className="text-cz-3 text-[10px]">{members.length} medlemmer</span>
+        <p className="text-cz-3 text-xs uppercase tracking-wider">{t("members.heading")}</p>
+        <span className="text-cz-3 text-[10px]">{t("members.count", { count: members.length })}</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {members.map((member) => (
@@ -95,7 +104,7 @@ function BoardMembersGrid({ members = [] }) {
               {member.is_chairman && (
                 <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-cz-accent
                   text-cz-on-accent text-[9px] font-bold flex items-center justify-center
-                  border border-cz-card" title="Bestyrelsesformand">★</span>
+                  border border-cz-card" title={t("members.chairmanTitle")}>★</span>
               )}
             </div>
             <div>
@@ -103,11 +112,11 @@ function BoardMembersGrid({ members = [] }) {
               <p className="text-cz-3 text-[10px] mt-0.5 leading-tight line-clamp-2">{member.short_description}</p>
               {member.is_chairman && (
                 <p className="text-cz-accent-t text-[9px] uppercase tracking-wider mt-1 font-semibold">
-                  Formand
+                  {t("members.chairman")}
                 </p>
               )}
               {member.selection_kind === "wildcard" && !member.is_chairman && (
-                <p className="text-cz-3 text-[9px] uppercase tracking-wider mt-1">Wildcard</p>
+                <p className="text-cz-3 text-[9px] uppercase tracking-wider mt-1">{t("members.wildcard")}</p>
               )}
             </div>
           </div>
@@ -119,27 +128,18 @@ function BoardMembersGrid({ members = [] }) {
 
 // ── S-02f · Klub-DNA-komponenter ───────────────────────────────────────────────
 
-const DNA_SLOT_LABELS = {
-  national_match: "National-match",
-  specialization_match: "Specialiserings-match",
-  wildcard: "Wildcard",
-};
-
 // Vises før første plan-card når manageren er i sæson 2+ (identity_basis findes,
 // is_baseline_phase=false), men endnu ikke har valgt DNA. 3 forslag-kort + Vælg-knap.
 function ClubDnaSelectionCard({ suggestions = [], onChoose, busy = false, error = "" }) {
+  const { t } = useTranslation("board");
   if (!suggestions.length) return null;
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Klub-DNA</p>
-          <h2 className="text-cz-1 font-semibold text-base">Vælg klubbens identitet</h2>
-          <p className="text-cz-2 text-sm mt-1">
-            Bestyrelsen har observeret sæson 1 og foreslår tre retninger. DNA påvirker
-            målvægtning, klub-tradition-mål og hvilke bestyrelses-medlemmer du tildeles
-            ved fremtidige formandsskift.
-          </p>
+          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("dna.sectionLabel")}</p>
+          <h2 className="text-cz-1 font-semibold text-base">{t("dna.selectHeading")}</h2>
+          <p className="text-cz-2 text-sm mt-1">{t("dna.selectIntro")}</p>
         </div>
       </div>
       {error && (
@@ -158,7 +158,7 @@ function ClubDnaSelectionCard({ suggestions = [], onChoose, busy = false, error 
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-cz-3 text-[10px] uppercase tracking-wider">
-                  {DNA_SLOT_LABELS[suggestion.suggestion_slot] || "Forslag"}
+                  {t(`dna.slot.${suggestion.suggestion_slot}`, { defaultValue: t("dna.slot.fallback") })}
                 </p>
                 <p className="text-cz-1 font-semibold text-sm leading-tight">{suggestion.label}</p>
               </div>
@@ -179,7 +179,7 @@ function ClubDnaSelectionCard({ suggestions = [], onChoose, busy = false, error 
               className="mt-auto py-2 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-lg
                 hover:brightness-110 disabled:opacity-50 transition-all"
             >
-              {busy ? "Gemmer…" : "Vælg dette DNA"}
+              {busy ? t("dna.saving") : t("dna.choose")}
             </button>
           </div>
         ))}
@@ -190,6 +190,7 @@ function ClubDnaSelectionCard({ suggestions = [], onChoose, busy = false, error 
 
 // Vises efter DNA er valgt — kompakt badge der bekræfter valget + giver kontekst.
 function ClubDnaBadge({ dna }) {
+  const { t } = useTranslation("board");
   if (!dna) return null;
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-4 mt-4 flex items-start gap-4">
@@ -198,7 +199,7 @@ function ClubDnaBadge({ dna }) {
         <span aria-hidden>{dna.emoji}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-cz-3 text-xs uppercase tracking-wider">Klubbens DNA</p>
+        <p className="text-cz-3 text-xs uppercase tracking-wider">{t("dna.badge.label")}</p>
         <p className="text-cz-1 font-semibold text-sm">{dna.label}</p>
         <p className="text-cz-2 text-xs mt-1 leading-relaxed">{dna.short_description}</p>
         {dna.long_description && (
@@ -231,13 +232,14 @@ function MemberReactionPanel({ reaction, compact = false }) {
 // ── Delte komponenter ─────────────────────────────────────────────────────────
 
 function SatisfactionMeter({ value }) {
+  const { t } = useTranslation("board");
   const color = value >= 70 ? "#4ade80" : value >= 40 ? "#e8c547" : "#f87171";
-  const label = value >= 80 ? "Meget tilfreds" : value >= 60 ? "Tilfreds" :
-    value >= 40 ? "Neutral" : value >= 20 ? "Utilfreds" : "Meget utilfreds";
+  const labelKey = value >= 80 ? "veryHappy" : value >= 60 ? "happy" :
+    value >= 40 ? "neutral" : value >= 20 ? "unhappy" : "veryUnhappy";
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-cz-3 text-xs uppercase tracking-wider">Bestyrelsestilfredshed</p>
+        <p className="text-cz-3 text-xs uppercase tracking-wider">{t("satisfactionMeter.label")}</p>
         <span className="font-mono font-bold text-lg" style={{ color }}>{value}%</span>
       </div>
       <div className="bg-cz-subtle rounded-full h-3 mb-2">
@@ -245,19 +247,20 @@ function SatisfactionMeter({ value }) {
           style={{ width: `${value}%`, backgroundColor: color }} />
       </div>
       <div className="flex items-center justify-between">
-        <p className="text-cz-2 text-sm font-medium">{label}</p>
-        <p className="text-cz-3 text-xs">Sponsor ×{satisfactionToModifier(value).toFixed(2)}</p>
+        <p className="text-cz-2 text-sm font-medium">{t(`satisfactionMeter.${labelKey}`)}</p>
+        <p className="text-cz-3 text-xs">{t("satisfactionMeter.sponsorModifier", { modifier: satisfactionToModifier(value).toFixed(2) })}</p>
       </div>
     </div>
   );
 }
 
 function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
+  const { t } = useTranslation("board");
   const [identityExpanded, setIdentityExpanded] = useState(false);
   // S-02c: medlem-reaktion expand — klik på goal viser portræt + citat
   const [memberExpanded, setMemberExpanded] = useState(false);
   const status = evaluation?.status;
-  const statusMeta = !achieved && status ? GOAL_STATUS_META[status] : null;
+  const statusMeta = !achieved && status ? getGoalStatusMeta(t, status) : null;
   const isRequired = goal.importance === "required";
   const isBehind = status === "behind";
   const isNearMiss = status === "near_miss" || status === "watch";
@@ -284,7 +287,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
       </div>
       <div className="flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className={`text-sm font-medium ${achieved ? "text-green-300" : "text-cz-2"}`}>{getBoardGoalLabel(goal)}</p>
+          <p className={`text-sm font-medium ${achieved ? "text-green-300" : "text-cz-2"}`}>{getBoardGoalLabel(t, goal)}</p>
           {!achieved && evaluation?.actual != null && (
             <span className="text-xs font-mono text-cz-3 flex-shrink-0">
               {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}/{goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
@@ -306,28 +309,33 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
           && evaluation?.rank_in_division != null
           && evaluation?.division_manager_count != null && (
           <p className="text-[11px] text-cz-3 mt-1.5 leading-relaxed">
-            Du staar <span className="font-medium text-cz-2">#{evaluation.rank_in_division}</span> af {evaluation.division_manager_count} managers i divisionen
-            {" "}— slaar {evaluation.actual ?? 0} (maal: {evaluation.target}{evaluation.actual >= evaluation.target ? " ✓" : ""}).
+            {t("goal.relativeRankDetail", {
+              rank: evaluation.rank_in_division,
+              total: evaluation.division_manager_count,
+              actual: evaluation.actual ?? 0,
+              target: evaluation.target,
+              check: evaluation.actual >= evaluation.target ? " ✓" : "",
+            })}
           </p>
         )}
         <div className="flex flex-wrap gap-3 mt-1">
           {!achieved && isRequired && (
-            <span className="text-[10px] text-cz-3 uppercase tracking-wider">Krav</span>
+            <span className="text-[10px] text-cz-3 uppercase tracking-wider">{t("goal.required")}</span>
           )}
           {statusMeta?.label && (
             <span className={`text-xs font-medium ${statusMeta.color}`}>{statusMeta.label}</span>
           )}
-          {goal.negotiated && <span className="text-xs text-cz-info/70">Forhandlet</span>}
+          {goal.negotiated && <span className="text-xs text-cz-info/70">{t("goal.negotiated")}</span>}
           {/* S-02g · Tradeoff-stramning indikator. Vises når et mål er hævet pga. tidligere
               approved board request (lower_results_pressure / ease_identity_requirements). */}
           {goal.tradeoff_tightened && (
-            <span className="text-xs text-cz-warning/80" title="Strammet af bestyrelsen pga. tidligere request">🔒 Strammet</span>
+            <span className="text-xs text-cz-warning/80" title={t("goal.tightenedTitle")}>{t("goal.tightenedBadge")}</span>
           )}
           {goal.satisfaction_bonus > 0 && (
-            <span className="text-xs text-cz-success/70">+{goal.satisfaction_bonus} tilfredshed</span>
+            <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: goal.satisfaction_bonus })}</span>
           )}
           {goal.satisfaction_penalty > 0 && (
-            <span className="text-xs text-cz-danger/70">-{goal.satisfaction_penalty} hvis ikke opfyldt</span>
+            <span className="text-xs text-cz-danger/70">{t("goal.satisfactionPenalty", { count: goal.satisfaction_penalty })}</span>
           )}
         </div>
         {identityRationale && (
@@ -357,7 +365,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
               className="inline-flex items-center gap-1 text-[11px] text-cz-2 hover:text-cz-1 underline-offset-2 hover:underline transition-colors"
             >
               <span>{memberReaction.emoji}</span>
-              <span>{memberReaction.label} reagerer</span>
+              <span>{t("goal.memberReacts", { member: memberReaction.label })}</span>
               <span className="text-cz-3">{memberExpanded ? "↑" : "↓"}</span>
             </button>
             {memberExpanded && (
@@ -375,8 +383,9 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
 // ── S-02h · GoalMiniDialog — klik på mål i dashboard-panel → portræt + reaktion ──
 
 function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClose }) {
+  const { t } = useTranslation("board");
   const status = evaluation?.status;
-  const statusMeta = !achieved && status ? GOAL_STATUS_META[status] : null;
+  const statusMeta = !achieved && status ? getGoalStatusMeta(t, status) : null;
   const memberReaction = evaluation?.member_reaction || null;
   const identityRationale = goal?.identity_basis_rationale || null;
   const isBehind = status === "behind";
@@ -398,7 +407,7 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
             {iconContent}
           </div>
           <div className="flex-1">
-            <p className="text-cz-1 font-semibold text-base leading-snug">{getBoardGoalLabel(goal)}</p>
+            <p className="text-cz-1 font-semibold text-base leading-snug">{getBoardGoalLabel(t, goal)}</p>
             {statusMeta?.label && (
               <p className={`text-sm mt-0.5 ${statusMeta.color}`}>{statusMeta.label}</p>
             )}
@@ -408,7 +417,7 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
 
         {evaluation?.actual != null && (
           <div className="bg-cz-subtle rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
-            <span className="text-cz-3 text-sm">Fremgang</span>
+            <span className="text-cz-3 text-sm">{t("goal.progress")}</span>
             <span className="font-mono text-cz-1 text-sm font-semibold">
               {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}
               {" / "}
@@ -419,7 +428,10 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
 
         {goal.type === "relative_rank" && evaluation?.rank_in_division != null && (
           <p className="text-cz-3 text-sm mb-4 leading-relaxed">
-            Du staar <span className="font-medium text-cz-2">#{evaluation.rank_in_division}</span> af {evaluation.division_manager_count} managers i divisionen.
+            {t("goal.rankInDivisionShort", {
+              rank: evaluation.rank_in_division,
+              total: evaluation.division_manager_count,
+            })}
           </p>
         )}
 
@@ -434,12 +446,12 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
         )}
 
         <div className="flex flex-wrap gap-2 mb-4">
-          {goal.importance === "required" && <span className="text-xs bg-cz-subtle text-cz-3 px-2 py-0.5 rounded border border-cz-border">Obligatorisk</span>}
-          {goal.cumulative && <span className="text-xs bg-cz-info-bg0/10 text-cz-info px-2 py-0.5 rounded">Kumulativt</span>}
-          {goal.tradeoff_tightened && <span className="text-xs text-cz-warning/80">🔒 Strammet</span>}
-          {goal.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/70">+{goal.satisfaction_bonus} tilfredshed</span>}
-          {goal.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/70">-{goal.satisfaction_penalty} straf</span>}
-          {goal.negotiated && <span className="text-xs text-cz-info/70">Forhandlet</span>}
+          {goal.importance === "required" && <span className="text-xs bg-cz-subtle text-cz-3 px-2 py-0.5 rounded border border-cz-border">{t("goal.obligatory")}</span>}
+          {goal.cumulative && <span className="text-xs bg-cz-info-bg0/10 text-cz-info px-2 py-0.5 rounded">{t("goal.cumulative")}</span>}
+          {goal.tradeoff_tightened && <span className="text-xs text-cz-warning/80">{t("goal.tightenedBadge")}</span>}
+          {goal.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: goal.satisfaction_bonus })}</span>}
+          {goal.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/70">{t("goal.satisfactionPenalty", { count: goal.satisfaction_penalty })}</span>}
+          {goal.negotiated && <span className="text-xs text-cz-info/70">{t("goal.negotiated")}</span>}
         </div>
 
         {identityRationale && (
@@ -453,7 +465,7 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
 
         {memberReaction && (
           <div>
-            <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">Bestyrelsens reaktion</p>
+            <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("goal.boardReaction")}</p>
             <MemberReactionPanel reaction={memberReaction} />
           </div>
         )}
@@ -495,6 +507,7 @@ function PlanTimelineBar({ planDuration, seasonsCompleted, snapshots }) {
 }
 
 function CumulativeStatsRow({ goals, cumStats }) {
+  const { t } = useTranslation("board");
   const cumulativeGoals = (goals || []).filter(g => g.cumulative);
   if (!cumulativeGoals.length) return null;
   return (
@@ -506,7 +519,7 @@ function CumulativeStatsRow({ goals, cumStats }) {
         return (
           <div key={i} className="bg-cz-card border border-cz-border rounded-xl p-4">
             <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">
-              {goal.type === "stage_wins" ? "Etapesejre" : "Samlede sejre"}
+              {goal.type === "stage_wins" ? t("cumulative.stageWins") : t("cumulative.gcWins")}
             </p>
             <div className="flex items-end gap-2 mb-2">
               <span className={`font-mono font-bold text-2xl ${achieved ? "text-cz-success" : "text-cz-1"}`}>
@@ -526,26 +539,27 @@ function CumulativeStatsRow({ goals, cumStats }) {
 }
 
 function SeasonSnapshotGrid({ snapshots }) {
+  const { t } = useTranslation("board");
   if (!snapshots?.length) return null;
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-      <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">Sæsonhistorik</p>
+      <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("snapshot.heading")}</p>
       <table className="w-full text-xs">
         <thead>
           <tr className="text-cz-3 border-b border-cz-border">
-            <th className="text-left pb-2">Sæson</th>
-            <th className="text-center pb-2">Rang</th>
-            <th className="text-center pb-2">Etaper</th>
-            <th className="text-center pb-2">Saml.</th>
-            <th className="text-center pb-2">Mål</th>
-            <th className="text-right pb-2">Tilfredshed</th>
+            <th className="text-left pb-2">{t("snapshot.columns.season")}</th>
+            <th className="text-center pb-2">{t("snapshot.columns.rank")}</th>
+            <th className="text-center pb-2">{t("snapshot.columns.stageWins")}</th>
+            <th className="text-center pb-2">{t("snapshot.columns.gcWins")}</th>
+            <th className="text-center pb-2">{t("snapshot.columns.goalsMet")}</th>
+            <th className="text-right pb-2">{t("snapshot.columns.satisfaction")}</th>
           </tr>
         </thead>
         <tbody>
           {snapshots.map(s => (
             <tr key={s.id} className="border-t border-cz-border">
-              <td className="py-2 text-cz-2">Sæson {s.season_number}</td>
-              <td className="py-2 text-center text-cz-2">{s.division_rank ? `#${s.division_rank}` : "—"}</td>
+              <td className="py-2 text-cz-2">{t("snapshot.seasonNumber", { number: s.season_number })}</td>
+              <td className="py-2 text-center text-cz-2">{s.division_rank ? `#${s.division_rank}` : t("snapshot.rankNone")}</td>
               <td className="py-2 text-center text-cz-2">{s.stage_wins}</td>
               <td className="py-2 text-center text-cz-2">{s.gc_wins}</td>
               <td className="py-2 text-center">
@@ -570,55 +584,59 @@ function SeasonSnapshotGrid({ snapshots }) {
   );
 }
 
-function BoardIdentityCard({ identityProfile, title = "Holdidentitet" }) {
+function BoardIdentityCard({ identityProfile, title }) {
+  const { t } = useTranslation("board");
+  const resolvedTitle = title || t("identity.defaultTitle");
   if (!identityProfile) return null;
   const nationalCore = identityProfile.national_core;
   const starProfile = identityProfile.star_profile;
   const nationalCoreCountry = getCountryDisplay(nationalCore?.code);
-  const nationalCoreValue = nationalCore?.established && nationalCore?.code ? (nationalCoreCountry.name || nationalCoreCountry.code) : "Blandet";
+  const nationalCoreValue = nationalCore?.established && nationalCore?.code
+    ? (nationalCoreCountry.name || nationalCoreCountry.code)
+    : t("identity.nationalCoreMixed");
   const nationalCoreSub = nationalCore?.established
-    ? `${nationalCore.count} ryttere · ${nationalCore.share_pct}% af truppen`
-    : "Ingen tydelig kerne endnu";
-  const starProfileValue = starProfile?.label || "Ukendt";
+    ? t("identity.nationalCoreSub", { count: nationalCore.count, percent: nationalCore.share_pct })
+    : t("identity.nationalCoreNone");
+  const starProfileValue = starProfile?.label || t("identity.starProfileUnknown");
   const starProfileSub = starProfile?.star_rider_count
-    ? `${starProfile.star_rider_count} profilryttere`
-    : "Ingen klare profiler endnu";
+    ? t("identity.starProfileSub", { count: starProfile.star_rider_count })
+    : t("identity.starProfileNone");
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{title}</p>
+          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{resolvedTitle}</p>
           <p className="text-cz-1 font-semibold text-sm">{identityProfile.primary_specialization_label}</p>
           <p className="text-cz-2 text-sm mt-1">{formatBoardCopy(identityProfile.summary)}</p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">U25</p>
+          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("identity.u25")}</p>
           <p className="font-mono font-bold text-sm text-[#7dd3fc]">{identityProfile.u25_share_pct ?? 0}%</p>
         </div>
       </div>
       <div className="grid sm:grid-cols-3 xl:grid-cols-6 gap-3 mt-4">
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Primær</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.primary")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1">{identityProfile.primary_specialization_label}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Sekundær</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.secondary")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1">{identityProfile.secondary_specialization_label}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Sportsligt spor</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.competitive")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1">{identityProfile.competitive_tier_label}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Trup</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.squad")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1">
             {identityProfile.rider_count}/{identityProfile?.squad_limits?.max}
           </p>
           <p className="text-cz-3 text-xs mt-1">{identityProfile.squad_status_label}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">National kerne</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.nationalCore")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1 inline-flex items-center gap-1.5">
             {nationalCore?.established && nationalCore?.code && <Flag code={nationalCore.code} />}
             {nationalCoreValue}
@@ -626,7 +644,7 @@ function BoardIdentityCard({ identityProfile, title = "Holdidentitet" }) {
           <p className="text-cz-3 text-xs mt-1">{nationalCoreSub}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Stjerneprofil</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.starProfile")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1">{starProfileValue}</p>
           <p className="text-cz-3 text-xs mt-1">{starProfileSub}</p>
         </div>
@@ -635,7 +653,15 @@ function BoardIdentityCard({ identityProfile, title = "Holdidentitet" }) {
   );
 }
 
+const OUTCOME_STYLE = {
+  approved: { accent: "text-green-300",   box: "border-cz-success/30 bg-cz-success-bg0/8" },
+  partial:  { accent: "text-cz-accent-t", box: "border-cz-accent/30 bg-cz-accent/10" },
+  tradeoff: { accent: "text-blue-300",    box: "border-blue-500/20 bg-cz-info-bg0/8" },
+  rejected: { accent: "text-red-300",     box: "border-cz-danger/30 bg-cz-danger-bg0/8" },
+};
+
 function BoardRequestPanel({ requestOptions, requestStatus, requestError, requestingType, onRequest }) {
+  const { t } = useTranslation("board");
   const latestRequest = requestStatus?.latest_request;
   const usedThisSeason = Boolean(requestStatus?.used_this_season);
   const supported = requestStatus?.supported !== false;
@@ -643,43 +669,38 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
   const focusBefore = latestRequest?.board_changes?.focus_before;
   const focusAfter = latestRequest?.board_changes?.focus_after;
   const focusChanged = Boolean(focusBefore && focusAfter && focusBefore !== focusAfter);
-  const outcomeMeta = {
-    approved: { label: "Godkendt", accent: "text-green-300", box: "border-cz-success/30 bg-cz-success-bg0/8" },
-    partial: { label: "Delvist", accent: "text-cz-accent-t", box: "border-cz-accent/30 bg-cz-accent/10" },
-    tradeoff: { label: "Tradeoff", accent: "text-blue-300", box: "border-blue-500/20 bg-cz-info-bg0/8" },
-    rejected: { label: "Afvist", accent: "text-red-300", box: "border-cz-danger/30 bg-cz-danger-bg0/8" },
-  };
-  const latestMeta = outcomeMeta[latestRequest?.outcome] || outcomeMeta.partial;
+  const outcomeKey = latestRequest?.outcome && OUTCOME_STYLE[latestRequest.outcome] ? latestRequest.outcome : "partial";
+  const latestStyle = OUTCOME_STYLE[outcomeKey];
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Bestyrelsesforespørgsel</p>
-          <p className="text-cz-1 font-semibold text-sm">Én strategisk forespørgsel pr. sæson</p>
+          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("request.heading")}</p>
+          <p className="text-cz-1 font-semibold text-sm">{t("request.subheading")}</p>
         </div>
         <div className="text-right flex-shrink-0">
           <p className={`text-sm font-semibold ${usedThisSeason ? "text-cz-accent-t" : "text-green-300"}`}>
-            {usedThisSeason ? "Brugt" : "Klar"}
+            {usedThisSeason ? t("request.used") : t("request.ready")}
           </p>
         </div>
       </div>
 
       {!supported && (
         <div className="rounded-xl border border-cz-accent/30 bg-cz-accent/10 p-4 mt-4">
-          <p className="text-cz-accent-t text-sm font-semibold">Bestyrelsesforespørgsler venter på database-migration</p>
+          <p className="text-cz-accent-t text-sm font-semibold">{t("request.pendingMigration")}</p>
         </div>
       )}
 
       {latestRequest && (
-        <div className={`rounded-xl border p-4 mt-4 ${latestMeta.box}`}>
+        <div className={`rounded-xl border p-4 mt-4 ${latestStyle.box}`}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-cz-1 text-sm font-semibold">{latestRequest.title}</p>
               <p className="text-cz-2 text-xs mt-1">{latestRequest.request_label}</p>
             </div>
-            <span className={`text-xs font-semibold uppercase tracking-wider ${latestMeta.accent}`}>
-              {latestMeta.label}
+            <span className={`text-xs font-semibold uppercase tracking-wider ${latestStyle.accent}`}>
+              {t(`outcome.${outcomeKey}`)}
             </span>
           </div>
           <p className="text-cz-2 text-sm mt-2">{formatBoardCopy(latestRequest.summary)}</p>
@@ -688,27 +709,28 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
           )}
           {(focusChanged || goalChanges.length > 0) && (
             <div className="mt-4 pt-4 border-t border-cz-border">
-              <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-3">Det reagerede bestyrelsen på</p>
+              <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-3">{t("request.changesHeading")}</p>
               <div className="flex flex-col gap-2">
                 {focusChanged && (
                   <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
-                    <p className="text-cz-3 text-[10px] uppercase tracking-wider">Fokus</p>
+                    <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("request.focusLabel")}</p>
                     <p className="text-cz-2 text-sm mt-1">
-                      {FOCUS_LABELS[focusBefore] || focusBefore} → {FOCUS_LABELS[focusAfter] || focusAfter}
+                      {getFocusLabel(t, focusBefore)} → {getFocusLabel(t, focusAfter)}
                     </p>
                   </div>
                 )}
                 {goalChanges.map((change, index) => {
-                  const meta = GOAL_CHANGE_META[change.kind] || GOAL_CHANGE_META.replaced;
+                  const kind = GOAL_CHANGE_STYLE[change.kind] ? change.kind : "replaced";
+                  const style = GOAL_CHANGE_STYLE[kind];
                   return (
-                    <div key={`${change.kind}-${index}`} className={`border rounded-lg p-3 ${meta.box}`}>
+                    <div key={`${change.kind}-${index}`} className={`border rounded-lg p-3 ${style.box}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-cz-2 text-sm">{formatBoardCopy(change.before_label)}</p>
                           <p className="text-cz-3 text-xs mt-1">→ {formatBoardCopy(change.after_label)}</p>
                         </div>
-                        <span className={`text-[10px] font-semibold uppercase tracking-wider ${meta.accent}`}>
-                          {meta.label}
+                        <span className={`text-[10px] font-semibold uppercase tracking-wider ${style.accent}`}>
+                          {t(`changeKind.${kind}`)}
                         </span>
                       </div>
                     </div>
@@ -743,7 +765,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
                     bg-cz-accent text-cz-on-accent border-[#e8c547]/40 hover:brightness-110
                     disabled:bg-cz-subtle disabled:text-cz-3 disabled:border-cz-border disabled:cursor-not-allowed"
                 >
-                  {isBusy ? "Sender..." : "Send request"}
+                  {isBusy ? t("request.sending") : t("request.send")}
                 </button>
                 {disabled && option.disabled_reason && (
                   <p className="text-cz-3 text-xs mt-2">{option.disabled_reason}</p>
@@ -766,24 +788,27 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
 // Q-batch 1C Q21 låser routing: lag 1 (passive_modifier) vises kun via tilfredshed.
 // Lag 2-3 = warning på BoardPage (ingen notif). Lag 4-5 = røde events i Bestyrelse-feed
 // + 'Skal handles' notif. Lag 6 (bonus_offer) har egen card-komponent (BonusOfferCard).
-const CONSEQUENCE_LAYER_META = {
-  2: { label: "Lønloft", emoji: "🔒", severity: "warning",
-       describe: (c) => `Bestyrelsen har pålagt et lønloft på ${formatCash(c.severity)}. Du kan ikke øge holdets samlede løn — sælg en rytter først.` },
-  3: { label: "Underskriv-restriktion", emoji: "🛑", severity: "warning",
-       describe: (c) => `Bestyrelsen blokerer alle køb over ${formatCash(c.severity)} indtil tilfredsheden stiger.` },
-  4: { label: "Tvunget salg", emoji: "📢", severity: "critical",
-       describe: (c) => `Bestyrelsen har tvangs-listet ${c.payload?.rider_name || "en rytter"} til ${formatCash(c.severity)}. Kontakt evt. en køber for at lukke handlen hurtigt.` },
-  5: { label: "Sponsor-pull-out", emoji: "💸", severity: "critical",
-       describe: () => `En hovedsponsor har trukket sig. Sponsorindtægten er reduceret med 10% i den næste sæson.` },
+const CONSEQUENCE_LAYER_STYLE = {
+  2: { emoji: "🔒", severity: "warning"  },
+  3: { emoji: "🛑", severity: "warning"  },
+  4: { emoji: "📢", severity: "critical" },
+  5: { emoji: "💸", severity: "critical" },
 };
 
-function formatCash(value) {
-  const num = Number(value || 0);
-  return `${num.toLocaleString("da-DK")} CZ$`;
+function describeConsequence(t, c) {
+  const cash = formatCash(c.severity);
+  switch (c.layer) {
+    case 2: return t("consequence.layer2.describe", { cash });
+    case 3: return t("consequence.layer3.describe", { cash });
+    case 4: return t("consequence.layer4.describe", { rider: c.payload?.rider_name || t("consequence.layer4DefaultRider"), cash });
+    case 5: return t("consequence.layer5.describe");
+    default: return "";
+  }
 }
 
 function BoardConsequencesPanel({ consequences = [] }) {
-  const visible = consequences.filter((c) => CONSEQUENCE_LAYER_META[c.layer]);
+  const { t } = useTranslation("board");
+  const visible = consequences.filter((c) => CONSEQUENCE_LAYER_STYLE[c.layer]);
   useEffect(() => {
     if (visible.length > 0) logEvent("feature_board_consequences_panel_viewed", { count: visible.length });
   }, [visible.length]);
@@ -792,25 +817,25 @@ function BoardConsequencesPanel({ consequences = [] }) {
   return (
     <div className="mt-5 bg-cz-card border border-cz-border rounded-xl p-5">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-cz-3 text-xs uppercase tracking-wider">Aktive konsekvenser</p>
-        <span className="text-cz-3 text-[10px]">{visible.length} aktiv{visible.length === 1 ? "" : "e"}</span>
+        <p className="text-cz-3 text-xs uppercase tracking-wider">{t("consequence.heading")}</p>
+        <span className="text-cz-3 text-[10px]">{t("consequence.count", { count: visible.length })}</span>
       </div>
       <div className="flex flex-col gap-2">
         {visible.sort((a, b) => a.layer - b.layer).map((c) => {
-          const meta = CONSEQUENCE_LAYER_META[c.layer];
-          const isCritical = meta.severity === "critical";
+          const style = CONSEQUENCE_LAYER_STYLE[c.layer];
+          const isCritical = style.severity === "critical";
           return (
             <div key={c.id}
               className={`p-3 rounded-lg border ${isCritical
                 ? "bg-cz-danger-bg0/8 border-cz-danger/30"
                 : "bg-cz-accent/10 border-cz-accent/30"}`}>
               <div className="flex items-start gap-3">
-                <span className="text-xl flex-shrink-0">{meta.emoji}</span>
+                <span className="text-xl flex-shrink-0">{style.emoji}</span>
                 <div className="flex-1">
                   <p className={`text-sm font-semibold ${isCritical ? "text-red-300" : "text-cz-accent-t"}`}>
-                    {meta.label}
+                    {t(`consequence.layer${c.layer}.label`)}
                   </p>
-                  <p className="text-cz-3 text-xs mt-1 leading-relaxed">{meta.describe(c)}</p>
+                  <p className="text-cz-3 text-xs mt-1 leading-relaxed">{describeConsequence(t, c)}</p>
                 </div>
               </div>
             </div>
@@ -823,8 +848,9 @@ function BoardConsequencesPanel({ consequences = [] }) {
 
 // S-02e · Bonus-offer card (lag 6). Q-batch 1B Q14: maks 1/sæson, +200K mod ekstra-mål.
 function BonusOfferCard({ offer, onAccept, onDecline, busy }) {
+  const { t } = useTranslation("board");
   if (!offer) return null;
-  const goalLabel = offer.payload?.extra_goal_label || "1 ekstra-mål";
+  const goalLabel = offer.payload?.extra_goal_label || t("bonusOffer.defaultGoal");
   const bonus = offer.severity || 0;
 
   return (
@@ -832,28 +858,32 @@ function BonusOfferCard({ offer, onAccept, onDecline, busy }) {
       <div className="flex items-start gap-3">
         <span className="text-2xl flex-shrink-0">🎁</span>
         <div className="flex-1">
-          <p className="text-sm font-semibold text-cz-success">Bonus-tilbud fra bestyrelsen</p>
+          <p className="text-sm font-semibold text-cz-success">{t("bonusOffer.heading")}</p>
           <p className="text-cz-2 text-xs mt-2 leading-relaxed">
-            Bestyrelsen er imponeret. De tilbyder <span className="font-mono font-bold text-cz-success">+{formatCash(bonus)}</span> til
-            holdets balance mod ét ekstra-mål: <span className="font-medium text-cz-2">{goalLabel}</span>.
+            <Trans
+              i18nKey="board:bonusOffer.body"
+              values={{ cash: formatCash(bonus), goal: goalLabel }}
+              components={{
+                bonus: <span className="font-mono font-bold text-cz-success" />,
+                goal: <span className="font-medium text-cz-2" />,
+              }}
+            />
           </p>
-          <p className="text-cz-3 text-xs mt-2 leading-relaxed">
-            Acceptér og budgettet krediteres straks. Det ekstra mål bliver lagt til din 1-årsplan og evalueres ved sæsonens slutning.
-          </p>
+          <p className="text-cz-3 text-xs mt-2 leading-relaxed">{t("bonusOffer.footer")}</p>
           <div className="flex gap-2 mt-3">
             <button
               type="button"
               disabled={busy}
               onClick={onAccept}
               className="px-3 py-2 rounded-md bg-cz-success/20 hover:bg-cz-success/30 text-cz-success text-xs font-semibold border border-cz-success/40 disabled:opacity-50">
-              Acceptér tilbud
+              {t("bonusOffer.accept")}
             </button>
             <button
               type="button"
               disabled={busy}
               onClick={onDecline}
               className="px-3 py-2 rounded-md bg-cz-subtle hover:bg-cz-subtle/70 text-cz-2 text-xs font-medium border border-cz-border disabled:opacity-50">
-              Afvis
+              {t("bonusOffer.decline")}
             </button>
           </div>
         </div>
@@ -863,6 +893,7 @@ function BonusOfferCard({ offer, onAccept, onDecline, busy }) {
 }
 
 function BoardFeedSection({ items = [] }) {
+  const { t } = useTranslation("board");
   if (!items.length) return null;
 
   const recent = items.slice(0, 5);
@@ -870,8 +901,8 @@ function BoardFeedSection({ items = [] }) {
   return (
     <div className="mt-5 bg-cz-card border border-cz-border rounded-xl p-5">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-cz-3 text-xs uppercase tracking-wider">Bestyrelse-feed</p>
-        <span className="text-cz-3 text-[10px]">{items.length} senest</span>
+        <p className="text-cz-3 text-xs uppercase tracking-wider">{t("feed.heading")}</p>
+        <span className="text-cz-3 text-[10px]">{t("feed.latestCount", { count: items.length })}</span>
       </div>
       <div className="flex flex-col gap-2">
         {recent.map((item) => {
@@ -890,7 +921,7 @@ function BoardFeedSection({ items = [] }) {
                 </div>
                 {isCritical && (
                   <span className="text-[10px] uppercase tracking-wider text-cz-danger flex-shrink-0">
-                    Skal handles
+                    {t("feed.needsAction")}
                   </span>
                 )}
               </div>
@@ -906,6 +937,7 @@ function BoardFeedSection({ items = [] }) {
 // Q-bekræftelse C (2026-05-05): T-3 (race_days=2) info, T-1 (=4) Skal-handles,
 // auto-accept (>=5). UI viser kun hvis der findes en pending plan + race-days igang.
 function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanType, plans }) {
+  const { t } = useTranslation("board");
   if (isBaselinePhase || !autoAccept) return null;
 
   const hasPendingPlan = Boolean(setupNextPlanType)
@@ -936,12 +968,10 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
         <div className="flex-1">
           <p className={`font-semibold text-sm ${accentClass}`}>
             {isCritical
-              ? `Sidste chance — bestyrelsen tager over om ${raceDaysLeft} race-day${raceDaysLeft === 1 ? "" : "s"}`
-              : `Bestyrelsen venter pa din forhandling — ${raceDaysLeft} race-day${raceDaysLeft === 1 ? "" : "s"} tilbage`}
+              ? t("autoAccept.lastChance", { count: raceDaysLeft })
+              : t("autoAccept.waiting",     { count: raceDaysLeft })}
           </p>
-          <p className="text-cz-3 text-xs mt-1 leading-relaxed">
-            Hvis du ikke har valgt fokus og forhandlet maal naar race-day 5 starter, vaelger bestyrelsen selv en plan baseret paa dit holds identitet fra saeson 1.
-          </p>
+          <p className="text-cz-3 text-xs mt-1 leading-relaxed">{t("autoAccept.footer")}</p>
         </div>
       </div>
     </div>
@@ -952,6 +982,7 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
 
 function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCount, team,
   requestError, requestingType, onRequest, onRenew, onNegotiate, onGoalClick }) {
+  const { t } = useTranslation("board");
   const [detailOpen, setDetailOpen] = useState(false);
 
   if (!planData) {
@@ -960,8 +991,8 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
         <div className="w-8 h-8 rounded-full bg-cz-subtle flex items-center justify-center text-cz-3 text-sm font-bold">
           {planType === "5yr" ? "5" : planType === "3yr" ? "3" : "1"}
         </div>
-        <p className="text-cz-3 text-xs">{PLAN_LABELS[planType]}</p>
-        <p className="text-cz-3 text-[11px]">Konfigureres automatisk ved næste sæsonstart</p>
+        <p className="text-cz-3 text-xs">{getPlanLabel(t, planType)}</p>
+        <p className="text-cz-3 text-[11px]">{t("plan.autoConfigured")}</p>
       </div>
     );
   }
@@ -1017,8 +1048,8 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
               {planType === "5yr" ? "5" : planType === "3yr" ? "3" : "1"}
             </div>
             <div>
-              <p className="text-cz-1 font-semibold text-sm">{PLAN_LABELS[planType]}</p>
-              <p className="text-cz-3 text-[11px]">{FOCUS_LABELS[board.focus] || board.focus}</p>
+              <p className="text-cz-1 font-semibold text-sm">{getPlanLabel(t, planType)}</p>
+              <p className="text-cz-3 text-[11px]">{getFocusLabel(t, board.focus)}</p>
             </div>
           </div>
           <div className="text-right flex-shrink-0">
@@ -1030,12 +1061,12 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
         {is_expired ? (
           <button onClick={onNegotiate}
             className="w-full py-2 text-xs font-semibold bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 rounded-lg hover:bg-cz-accent/20 transition-all">
-            Forhandl ny plan →
+            {t("plan.negotiateExpired")}
           </button>
         ) : (
           <>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-cz-3 text-[10px]">Mål</span>
+              <span className="text-cz-3 text-[10px]">{t("plan.goalsLabel")}</span>
               <span className="text-cz-2 text-[10px] font-mono">{goalsAchieved}/{nonCumGoals.length}</span>
             </div>
             <div className="bg-cz-subtle rounded-full h-1">
@@ -1043,7 +1074,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
                 style={{ width: `${nonCumGoals.length ? (goalsAchieved / nonCumGoals.length) * 100 : 0}%` }} />
             </div>
             {seasons_remaining != null && plan_duration > 1 && (
-              <p className="text-cz-3 text-[10px] mt-1 text-right">{seasons_remaining} sæson{seasons_remaining !== 1 ? "er" : ""} tilbage</p>
+              <p className="text-cz-3 text-[10px] mt-1 text-right">{t("plan.seasonsRemaining", { count: seasons_remaining })}</p>
             )}
           </>
         )}
@@ -1057,7 +1088,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
             const gIdx = goals.indexOf(g);
             const evalItem = outlook?.goal_evaluations?.[gIdx];
             const status = evalItem?.status;
-            const meta = !ach && status ? GOAL_STATUS_META[status] : null;
+            const meta = !ach && status ? getGoalStatusMeta(t, status) : null;
             const icon = ach ? "✓" : status === "behind" ? "!" : (status === "near_miss" || status === "watch") ? "~" : "○";
             const iconCls = ach ? "text-cz-success" : status === "behind" ? "text-red-400"
               : (status === "near_miss" || status === "watch") ? "text-cz-accent-t" : "text-cz-3";
@@ -1068,13 +1099,13 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
                 onClick={() => onGoalClick(g, evalItem, ach, cumProgress)}
                 className="flex items-center gap-2 text-left w-full hover:bg-cz-subtle/60 rounded-md px-1 py-1 transition-colors group">
                 <span className={`text-xs font-bold flex-shrink-0 w-4 text-center ${iconCls}`}>{icon}</span>
-                <span className="text-xs text-cz-2 flex-1 line-clamp-1 group-hover:text-cz-1">{getBoardGoalLabel(g)}</span>
+                <span className="text-xs text-cz-2 flex-1 line-clamp-1 group-hover:text-cz-1">{getBoardGoalLabel(t, g)}</span>
                 {meta?.label && <span className={`text-[10px] flex-shrink-0 ${meta.color}`}>{meta.label}</span>}
               </button>
             );
           })}
           {nonCumGoals.length > 3 && (
-            <p className="text-cz-3 text-[10px] text-right mt-0.5">+{nonCumGoals.length - 3} mål mere</p>
+            <p className="text-cz-3 text-[10px] text-right mt-0.5">{t("plan.moreGoals", { count: nonCumGoals.length - 3 })}</p>
           )}
         </div>
       )}
@@ -1084,7 +1115,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
         <button onClick={() => setDetailOpen(v => !v)}
           className="w-full py-2.5 text-xs text-cz-3 hover:text-cz-2 transition-colors flex items-center justify-center gap-1">
           <span>{detailOpen ? "↑" : "↓"}</span>
-          <span>{detailOpen ? "Skjul detaljer" : "Vis detaljer"}</span>
+          <span>{detailOpen ? t("plan.hideDetails") : t("plan.showDetails")}</span>
         </button>
       </div>
 
@@ -1093,24 +1124,22 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
         <div className="border-t border-cz-border p-4 flex flex-col gap-4">
           {plan_duration > 1 && (
             <div>
-              <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Planforløb</p>
+              <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("plan.timelineHeading")}</p>
               <PlanTimelineBar planDuration={plan_duration} seasonsCompleted={seasons_completed} snapshots={snapshots} />
               <div className="mt-2">
                 <div className="bg-cz-subtle rounded-full h-1.5">
                   <div className="h-1.5 rounded-full bg-cz-accent transition-all"
                     style={{ width: `${plan_progress_pct || 0}%` }} />
                 </div>
-                <p className="text-cz-3 text-xs text-center mt-1">
-                  {seasons_remaining} sæson{seasons_remaining !== 1 ? "er" : ""} tilbage
-                </p>
+                <p className="text-cz-3 text-xs text-center mt-1">{t("plan.seasonsRemaining", { count: seasons_remaining })}</p>
               </div>
             </div>
           )}
 
           {showMidReviewBanner && (
             <div className="bg-cz-info-bg0/10 border border-blue-500/20 rounded-xl p-4">
-              <p className="text-blue-300 text-sm font-semibold">Halvvejsevaluering afsluttet</p>
-              <p className="text-blue-300/60 text-xs mt-1">Sæson {Math.floor(plan_duration / 2)} af {plan_duration} evalueret.</p>
+              <p className="text-blue-300 text-sm font-semibold">{t("plan.midReviewHeading")}</p>
+              <p className="text-blue-300/60 text-xs mt-1">{t("plan.midReviewBody", { current: Math.floor(plan_duration / 2), total: plan_duration })}</p>
             </div>
           )}
 
@@ -1120,7 +1149,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
 
           <div>
             <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">
-              {plan_duration > 1 ? "Planmål" : "Sæsonmål"}
+              {plan_duration > 1 ? t("plan.planGoalsLabel") : t("plan.seasonGoalsLabel")}
             </p>
             <div className="flex flex-col gap-2">
               {goals.map((g, i) => (
@@ -1142,7 +1171,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
 
           {outlook?.feedback && (
             <div className="bg-cz-subtle border border-cz-border rounded-xl p-4">
-              <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Bestyrelsens vurdering</p>
+              <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("plan.outlookHeading")}</p>
               <p className="text-cz-1 text-sm font-semibold">{outlook.feedback.headline}</p>
               <p className="text-cz-2 text-sm mt-1">{formatBoardCopy(outlook.feedback.summary)}</p>
               {outlook.feedback.dominant_member && (
@@ -1151,9 +1180,9 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
               {outlook.personality && (
                 <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-cz-border">
                   {[
-                    PERSONALITY_LABELS.sports_ambition[outlook.personality.sports_ambition],
-                    PERSONALITY_LABELS.financial_risk[outlook.personality.financial_risk],
-                    PERSONALITY_LABELS.identity_strength[outlook.personality.identity_strength],
+                    t(`personality.sports_ambition.${outlook.personality.sports_ambition}`, { defaultValue: "" }),
+                    t(`personality.financial_risk.${outlook.personality.financial_risk}`, { defaultValue: "" }),
+                    t(`personality.identity_strength.${outlook.personality.identity_strength}`, { defaultValue: "" }),
                   ].filter(Boolean).map(label => (
                     <span key={label} className="text-[10px] bg-cz-subtle text-cz-2 px-2 py-0.5 rounded-full border border-cz-border">{label}</span>
                   ))}
@@ -1173,7 +1202,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
           {!is_expired && (
             <button onClick={onRenew}
               className="w-full py-2 text-xs border border-cz-border text-cz-3 rounded-lg hover:text-cz-2 hover:border-cz-border/80 transition-all">
-              Forny plan (status quo)
+              {t("plan.renew")}
             </button>
           )}
         </div>
@@ -1184,19 +1213,10 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
 
 // ── Wizard trin ───────────────────────────────────────────────────────────────
 
-const FOCUS_OPTIONS = [
-  { key: "balanced",          label: "Balanceret" },
-  { key: "youth_development", label: "Ungdomsudvikling" },
-  { key: "star_signing",      label: "Stjernesignering" },
-];
-
-const PLAN_DESCS = {
-  "1yr": "Strenge mål, hurtige resultater — fuld straf ved manglende opfyldelse",
-  "3yr": "Moderate mål, plads til vækst — 20% reduceret straf",
-  "5yr": "Langsigtede ambitioner — 40% reduceret straf",
-};
+const FOCUS_KEYS = ["balanced", "youth_development", "star_signing"];
 
 function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals, previewLoading, previewError, onStart }) {
+  const { t } = useTranslation("board");
   const duration = getPlanDuration(planType);
   const preview = previewGoals || [];
   return (
@@ -1204,43 +1224,43 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
       <div className="text-center mb-8">
         <div className="w-14 h-14 rounded-full bg-cz-accent/10 border border-cz-accent/30
           flex items-center justify-center text-2xl mx-auto mb-4">◧</div>
-        <h2 className="text-cz-1 font-bold text-xl">Bestyrelsens forslag</h2>
-        <p className="text-cz-2 text-sm mt-1">Vælg strategi — bestyrelsen genererer krav</p>
+        <h2 className="text-cz-1 font-bold text-xl">{t("wizard.step1Title")}</h2>
+        <p className="text-cz-2 text-sm mt-1">{t("wizard.step1Subtitle")}</p>
       </div>
 
-      <BoardIdentityCard identityProfile={identityProfile} title="Bestyrelsens læsning af holdet" />
+      <BoardIdentityCard identityProfile={identityProfile} title={t("identity.wizardTitle")} />
 
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4 mt-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-cz-3 text-xs uppercase tracking-wider mb-2">Holdfokus</label>
-            {FOCUS_OPTIONS.map(o => (
-              <button key={o.key} onClick={() => setFocus(o.key)}
+            <label className="block text-cz-3 text-xs uppercase tracking-wider mb-2">{t("wizard.focusLabel")}</label>
+            {FOCUS_KEYS.map(key => (
+              <button key={key} onClick={() => setFocus(key)}
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm mb-1 border transition-all
-                  ${focus === o.key
+                  ${focus === key
                     ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                     : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-2"}`}>
-                {o.label}
+                {getFocusLabel(t, key)}
               </button>
             ))}
           </div>
           <div>
-            <label className="block text-cz-3 text-xs uppercase tracking-wider mb-2">Tidshorisont</label>
+            <label className="block text-cz-3 text-xs uppercase tracking-wider mb-2">{t("wizard.horizonLabel")}</label>
             <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-lg px-3 py-3">
-              <p className="text-cz-accent-t font-semibold text-sm">{PLAN_LABELS[planType]}</p>
-              <p className="text-cz-accent-t/60 text-xs mt-0.5">{PLAN_DESCS[planType]}</p>
+              <p className="text-cz-accent-t font-semibold text-sm">{getPlanLabel(t, planType)}</p>
+              <p className="text-cz-accent-t/60 text-xs mt-0.5">{t(`planDescriptions.${planType}`)}</p>
             </div>
           </div>
         </div>
         {duration > 1 && (
           <p className="text-cz-3 text-xs mt-3 text-center">
-            Planen løber over {duration} sæsoner — mål evalueres løbende
+            {t("wizard.horizonDuration", { count: duration })}
           </p>
         )}
       </div>
 
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-6">
-        <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">Bestyrelsens krav</p>
+        <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("wizard.requirementsHeading")}</p>
         {previewLoading ? (
           <div className="flex items-center justify-center py-8">
             <div className="w-5 h-5 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
@@ -1254,11 +1274,11 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
                 <div className="w-5 h-5 rounded-full bg-cz-subtle text-cz-3 flex items-center justify-center
                   flex-shrink-0 mt-0.5 text-xs">○</div>
                 <div className="flex-1">
-                  <p className="text-cz-2 text-sm">{getBoardGoalLabel(g)}</p>
+                  <p className="text-cz-2 text-sm">{getBoardGoalLabel(t, g)}</p>
                   <div className="flex gap-3 mt-1">
-                    {g.cumulative && <span className="text-xs text-cz-info/50">Kumulativt</span>}
+                    {g.cumulative && <span className="text-xs text-cz-info/50">{t("goal.cumulative")}</span>}
                     {g.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/60">+{g.satisfaction_bonus}</span>}
-                    {g.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/60">-{g.satisfaction_penalty} straf</span>}
+                    {g.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/60">{t("goal.satisfactionPenalty", { count: g.satisfaction_penalty })}</span>}
                   </div>
                   {g.identity_basis_rationale && (
                     <p className="text-[11px] text-cz-info mt-1.5">
@@ -1278,13 +1298,14 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
         className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-xl text-sm hover:brightness-110
           disabled:opacity-50 transition-all"
       >
-        Start forhandling →
+        {t("wizard.startNegotiation")}
       </button>
     </div>
   );
 }
 
 function WizardStep2({ goals, goalIdx, negotiated, pendingNegotiate, onAccept, onNegotiate, onAcceptNegotiated }) {
+  const { t } = useTranslation("board");
   const current = goals[goalIdx];
   const total = goals.length;
   const negotiationsUsed = Object.values(negotiated).filter(Boolean).length;
@@ -1292,7 +1313,7 @@ function WizardStep2({ goals, goalIdx, negotiated, pendingNegotiate, onAccept, o
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
-        <span className="text-cz-3 text-xs flex-shrink-0">Mål {goalIdx + 1}/{total}</span>
+        <span className="text-cz-3 text-xs flex-shrink-0">{t("wizard.goalCounter", { current: goalIdx + 1, total })}</span>
         <div className="flex-1 bg-cz-subtle rounded-full h-1.5">
           <div className="h-1.5 rounded-full bg-cz-accent transition-all"
             style={{ width: `${((goalIdx) / total) * 100}%` }} />
@@ -1300,30 +1321,30 @@ function WizardStep2({ goals, goalIdx, negotiated, pendingNegotiate, onAccept, o
       </div>
 
       <div className="text-center mb-8">
-        <h2 className="text-cz-1 font-bold text-xl">Forhandling</h2>
-        <p className="text-cz-2 text-sm mt-1">Gennemgå bestyrelsens krav ét ad gangen</p>
+        <h2 className="text-cz-1 font-bold text-xl">{t("wizard.step2Title")}</h2>
+        <p className="text-cz-2 text-sm mt-1">{t("wizard.step2Subtitle")}</p>
       </div>
 
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
-        <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">Bestyrelsens krav</p>
+        <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("wizard.requirementsHeading")}</p>
         <div className={`flex items-start gap-3 p-4 rounded-lg border
           ${current?.negotiated ? "bg-cz-info-bg0/5 border-blue-500/20" : "bg-cz-subtle border-cz-border"}`}>
           <div className="w-6 h-6 rounded-full bg-cz-accent/10 border border-cz-accent/30
             flex items-center justify-center flex-shrink-0 text-xs text-cz-accent-t">◎</div>
           <div className="flex-1">
-            <p className="text-cz-1 font-semibold">{getBoardGoalLabel(current)}</p>
+            <p className="text-cz-1 font-semibold">{getBoardGoalLabel(t, current)}</p>
             <div className="flex flex-wrap gap-3 mt-2">
               {current?.importance === "required" && (
-                <span className="text-[10px] text-cz-3 uppercase tracking-wider">Obligatorisk krav</span>
+                <span className="text-[10px] text-cz-3 uppercase tracking-wider">{t("wizard.obligatory")}</span>
               )}
-              {current?.cumulative && <span className="text-xs text-cz-info/70 bg-cz-info-bg0/10 px-2 py-0.5 rounded">Kumulativt</span>}
+              {current?.cumulative && <span className="text-xs text-cz-info/70 bg-cz-info-bg0/10 px-2 py-0.5 rounded">{t("goal.cumulative")}</span>}
               {current?.satisfaction_bonus > 0 && (
-                <span className="text-xs text-cz-success/70">+{current?.satisfaction_bonus} tilfredshed</span>
+                <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: current?.satisfaction_bonus })}</span>
               )}
               {current?.satisfaction_penalty > 0 && (
-                <span className="text-xs text-cz-danger/70">-{current?.satisfaction_penalty} straf</span>
+                <span className="text-xs text-cz-danger/70">{t("goal.satisfactionPenalty", { count: current?.satisfaction_penalty })}</span>
               )}
-              {current?.negotiated && <span className="text-xs text-cz-info/70">Forhandlet ✓</span>}
+              {current?.negotiated && <span className="text-xs text-cz-info/70">{t("wizard.negotiatedTick")}</span>}
             </div>
           </div>
         </div>
@@ -1336,48 +1357,49 @@ function WizardStep2({ goals, goalIdx, negotiated, pendingNegotiate, onAccept, o
               ${negotiated[goalIdx]
                 ? "bg-cz-subtle text-cz-3 border-cz-border cursor-not-allowed"
                 : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-2"}`}>
-            {negotiated[goalIdx] ? "Allerede forhandlet" : "Forhandl ned ↓"}
+            {negotiated[goalIdx] ? t("wizard.alreadyNegotiated") : t("wizard.negotiateDown")}
           </button>
           <button onClick={onAccept}
             className="flex-1 py-3 bg-cz-accent text-cz-on-accent font-bold rounded-xl text-sm hover:brightness-110 transition-all">
-            Accepter →
+            {t("wizard.accept")}
           </button>
         </div>
       ) : (
         <div>
           <div className="bg-cz-info-bg0/10 border border-blue-500/20 rounded-xl p-4 mb-4">
-            <p className="text-blue-300 text-sm font-medium">Bestyrelsen har accepteret kompromis</p>
-            <p className="text-blue-300/60 text-xs mt-1">Straf halveret. Accepter det forhandlede mål?</p>
+            <p className="text-blue-300 text-sm font-medium">{t("wizard.compromiseHeading")}</p>
+            <p className="text-blue-300/60 text-xs mt-1">{t("wizard.compromiseBody")}</p>
           </div>
           <button onClick={onAcceptNegotiated}
             className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-xl text-sm hover:brightness-110 transition-all">
-            Accepter forhandlet mål →
+            {t("wizard.acceptNegotiated")}
           </button>
         </div>
       )}
 
       {negotiationsUsed > 0 && (
-        <p className="text-cz-3 text-xs text-center mt-4">{negotiationsUsed} forhandling(er) brugt</p>
+        <p className="text-cz-3 text-xs text-center mt-4">{t("wizard.negotiationsUsed", { count: negotiationsUsed })}</p>
       )}
     </div>
   );
 }
 
 function WizardStep3({ finalGoals, planType, onSign, saving }) {
+  const { t } = useTranslation("board");
   const duration = getPlanDuration(planType);
   return (
     <div>
       <div className="text-center mb-8">
         <div className="w-14 h-14 rounded-full bg-cz-success-bg border border-cz-success/30
           flex items-center justify-center text-2xl mx-auto mb-4">✍</div>
-        <h2 className="text-cz-1 font-bold text-xl">Underskrift</h2>
+        <h2 className="text-cz-1 font-bold text-xl">{t("wizard.step3Title")}</h2>
         <p className="text-cz-2 text-sm mt-1">
-          {PLAN_LABELS[planType]} — løber over {duration} sæson{duration > 1 ? "er" : ""}
+          {t("wizard.step3Subtitle", { plan: getPlanLabel(t, planType), count: duration })}
         </p>
       </div>
 
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-6">
-        <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">Aftalte mål</p>
+        <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("wizard.agreedHeading")}</p>
         <div className="flex flex-col gap-2">
           {finalGoals.map((g, i) => (
             <div key={i} className={`flex items-start gap-3 p-3 rounded-lg border
@@ -1385,12 +1407,12 @@ function WizardStep3({ finalGoals, planType, onSign, saving }) {
               <div className="w-5 h-5 rounded-full bg-cz-subtle text-cz-3 flex items-center
                 justify-center flex-shrink-0 mt-0.5 text-xs">○</div>
               <div className="flex-1">
-                <p className="text-cz-2 text-sm font-medium">{getBoardGoalLabel(g)}</p>
+                <p className="text-cz-2 text-sm font-medium">{getBoardGoalLabel(t, g)}</p>
                 <div className="flex gap-3 mt-1">
-                  {g.cumulative && <span className="text-xs text-cz-info/50">Kumulativt</span>}
-                  {g.negotiated && <span className="text-xs text-cz-info/70">Forhandlet</span>}
+                  {g.cumulative && <span className="text-xs text-cz-info/50">{t("goal.cumulative")}</span>}
+                  {g.negotiated && <span className="text-xs text-cz-info/70">{t("goal.negotiated")}</span>}
                   {g.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/60">+{g.satisfaction_bonus}</span>}
-                  {g.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/60">-{g.satisfaction_penalty} straf</span>}
+                  {g.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/60">{t("goal.satisfactionPenalty", { count: g.satisfaction_penalty })}</span>}
                 </div>
               </div>
             </div>
@@ -1401,7 +1423,7 @@ function WizardStep3({ finalGoals, planType, onSign, saving }) {
       <button onClick={onSign} disabled={saving}
         className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-xl
           hover:brightness-110 disabled:opacity-50 transition-all">
-        {saving ? "Gemmer..." : "Underskriv kontrakt ✍"}
+        {saving ? t("wizard.signing") : t("wizard.sign")}
       </button>
     </div>
   );
@@ -1410,6 +1432,7 @@ function WizardStep3({ finalGoals, planType, onSign, saving }) {
 // ── Hoved-komponent ───────────────────────────────────────────────────────────
 
 export default function BoardPage() {
+  const { t } = useTranslation("board");
   // Plandata
   const [plans, setPlans] = useState({ "5yr": null, "3yr": null, "1yr": null });
   const [setupNextPlanType, setSetupNextPlanType] = useState(null);
@@ -1473,7 +1496,7 @@ export default function BoardPage() {
       if (!proposal) {
         setPreviewGoals([]);
         setNegotiationOptions([]);
-        setPreviewError("Kunne ikke hente bestyrelsens forslag.");
+        setPreviewError(t("wizard.errorProposal"));
         setPreviewLoading(false);
         return;
       }
@@ -1602,7 +1625,7 @@ export default function BoardPage() {
     if (!goals.length) {
       const proposal = await fetchBoardProposal(wizardFocus, wizardPlanType);
       if (!proposal) {
-        setPreviewError("Kunne ikke hente bestyrelsens forslag.");
+        setPreviewError(t("wizard.errorProposal"));
         return;
       }
       goals = proposal.goals || [];
@@ -1697,7 +1720,7 @@ export default function BoardPage() {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     if (!token) {
-      setRequestErrors(e => ({ ...e, [planType]: "Du skal være logget ind." }));
+      setRequestErrors(e => ({ ...e, [planType]: t("errors.loginRequired") }));
       setRequestingType("");
       return;
     }
@@ -1710,7 +1733,7 @@ export default function BoardPage() {
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setRequestErrors(e => ({ ...e, [planType]: data.error || "Kunne ikke sende bestyrelsesforespørgslen." }));
+      setRequestErrors(e => ({ ...e, [planType]: data.error || t("errors.requestFallback") }));
       setRequestingType("");
       return;
     }
@@ -1736,7 +1759,7 @@ export default function BoardPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setDnaError(data.error || "Kunne ikke vælge DNA");
+        setDnaError(data.error || t("dna.errorFallback"));
         return;
       }
       await loadAll();
@@ -1800,16 +1823,16 @@ export default function BoardPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <OnboardingTour pageKey="board" steps={BOARD_TOUR_STEPS} />
+      <OnboardingTour pageKey="board" steps={buildBoardTourSteps(t)} />
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-cz-1">Bestyrelse</h1>
-          <p className="text-cz-3 text-sm">Tre parallelle planer — egne mål og tilfredshed</p>
+          <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
+          <p className="text-cz-3 text-sm">{t("page.subtitle")}</p>
         </div>
         <Link to="/finance"
           className="px-3 py-2 rounded-lg text-sm border bg-cz-subtle text-cz-2 border-cz-border
             hover:text-cz-1 hover:bg-cz-subtle transition-all">
-          💰 Finanser
+          💰 {t("page.financeLink")}
         </Link>
       </div>
 
@@ -1819,11 +1842,8 @@ export default function BoardPage() {
           <div className="flex items-start gap-3">
             <span className="text-2xl">👀</span>
             <div>
-              <h2 className="text-cz-1 font-semibold text-base mb-1">Bestyrelsen observerer din første sæson</h2>
-              <p className="text-cz-3 text-sm leading-relaxed">
-                Du er i din baseline-sæson — bestyrelsen lærer dit hold at kende uden krav eller mål. Sponsor-modifier holdes på 1.0×.
-                Når sæsonen slutter, åbner forhandlingerne sekventielt: først 5-årsplan, så 3-årsplan, så 1-årsplan.
-              </p>
+              <h2 className="text-cz-1 font-semibold text-base mb-1">{t("baseline.title")}</h2>
+              <p className="text-cz-3 text-sm leading-relaxed">{t("baseline.body")}</p>
             </div>
           </div>
         </div>
@@ -1910,17 +1930,17 @@ export default function BoardPage() {
 
       {/* Tilfredshedsforklaring */}
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-5">
-        <h2 className="text-cz-1 font-semibold text-sm mb-4">Hvad betyder tilfredshed?</h2>
+        <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("satisfactionExplainer.heading")}</h2>
         <div className="grid sm:grid-cols-3 gap-3">
           {[
-            { range: "70–100%", label: "Høj tilfredshed",    effect: "Sponsor × > 1.0 — ekstra indtægt", color: "text-cz-success" },
-            { range: "40–69%", label: "Moderat tilfredshed", effect: "Sponsor × 1.0 — normal indtægt",   color: "text-cz-accent-t" },
-            { range: "0–39%",  label: "Lav tilfredshed",     effect: "Sponsor × < 1.0 — reduceret",      color: "text-cz-danger" },
+            { key: "high",     color: "text-cz-success" },
+            { key: "moderate", color: "text-cz-accent-t" },
+            { key: "low",      color: "text-cz-danger" },
           ].map(item => (
-            <div key={item.range} className="bg-cz-subtle rounded-lg p-3 border border-cz-border">
-              <p className={`font-mono font-bold text-sm ${item.color}`}>{item.range}</p>
-              <p className="text-cz-2 text-xs font-medium mt-1">{item.label}</p>
-              <p className="text-cz-3 text-xs mt-1">{item.effect}</p>
+            <div key={item.key} className="bg-cz-subtle rounded-lg p-3 border border-cz-border">
+              <p className={`font-mono font-bold text-sm ${item.color}`}>{t(`satisfactionExplainer.${item.key}.range`)}</p>
+              <p className="text-cz-2 text-xs font-medium mt-1">{t(`satisfactionExplainer.${item.key}.label`)}</p>
+              <p className="text-cz-3 text-xs mt-1">{t(`satisfactionExplainer.${item.key}.effect`)}</p>
             </div>
           ))}
         </div>
@@ -1934,10 +1954,10 @@ export default function BoardPage() {
             {wizardIsSetup && (
               <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-xl p-4 mb-6">
                 <p className="text-cz-accent-t text-sm font-semibold">
-                  Opsætning af bestyrelsesplaner ({wizardSetupStep}/3)
+                  {t("wizard.setupHeading", { step: wizardSetupStep })}
                 </p>
                 <p className="text-cz-accent-t/60 text-xs mt-1">
-                  Forhandl din {PLAN_LABELS[wizardPlanType]} med bestyrelsen. Derefter fortsættes med næste plan.
+                  {t("wizard.setupBody", { plan: getPlanLabel(t, wizardPlanType) })}
                 </p>
               </div>
             )}
@@ -1946,12 +1966,12 @@ export default function BoardPage() {
             {isMultiRenewal && (
               <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-xl p-4 mb-6">
                 <p className="text-cz-accent-t text-sm font-semibold">
-                  Planfornyelse {renewalQueueIdx + 1}/{renewalQueue.length} — {PLAN_LABELS[wizardPlanType]}
+                  {t("wizard.multiRenewalHeading", { current: renewalQueueIdx + 1, total: renewalQueue.length, plan: getPlanLabel(t, wizardPlanType) })}
                 </p>
                 <p className="text-cz-accent-t/60 text-xs mt-1">
                   {renewalQueueIdx + 1 < renewalQueue.length
-                    ? `Derefter fortsættes med ${PLAN_LABELS[renewalQueue[renewalQueueIdx + 1]]}.`
-                    : "Sidste plan i køen."}
+                    ? t("wizard.multiRenewalBodyNext", { next: getPlanLabel(t, renewalQueue[renewalQueueIdx + 1]) })
+                    : t("wizard.multiRenewalBodyLast")}
                 </p>
               </div>
             )}
@@ -1959,10 +1979,8 @@ export default function BoardPage() {
             {/* Enkelt renewal header */}
             {!wizardIsSetup && !isMultiRenewal && wizardExistingPlanData?.is_expired && (
               <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-xl p-4 mb-6">
-                <p className="text-cz-accent-t text-sm font-semibold">{PLAN_LABELS[wizardPlanType]} udløbet</p>
-                <p className="text-cz-accent-t/60 text-xs mt-1">
-                  Forhandl en ny {PLAN_LABELS[wizardPlanType]} med bestyrelsen.
-                </p>
+                <p className="text-cz-accent-t text-sm font-semibold">{t("wizard.singleRenewalHeading", { plan: getPlanLabel(t, wizardPlanType) })}</p>
+                <p className="text-cz-accent-t/60 text-xs mt-1">{t("wizard.singleRenewalBody", { plan: getPlanLabel(t, wizardPlanType) })}</p>
               </div>
             )}
 
@@ -1970,10 +1988,10 @@ export default function BoardPage() {
             <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
               <div className="flex items-center">
                 {[
-                  { n: 1, label: "Strategi" },
-                  { n: 2, label: "Forhandling" },
-                  { n: 3, label: "Underskrift" },
-                ].map(({ n, label }, i) => (
+                  { n: 1, labelKey: "strategy"    },
+                  { n: 2, labelKey: "negotiation" },
+                  { n: 3, labelKey: "signature"   },
+                ].map(({ n, labelKey }, i) => (
                   <div key={n} className={`flex items-center ${i < 2 ? "flex-1" : ""}`}>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
@@ -1982,7 +2000,7 @@ export default function BoardPage() {
                           : "bg-cz-subtle text-cz-3"}`}>
                         {wizardStep > n ? "✓" : n}
                       </div>
-                      <span className={`text-xs ${wizardStep === n ? "text-cz-2" : "text-cz-3"}`}>{label}</span>
+                      <span className={`text-xs ${wizardStep === n ? "text-cz-2" : "text-cz-3"}`}>{t(`wizard.steps.${labelKey}`)}</span>
                     </div>
                     {i < 2 && (
                       <div className={`flex-1 h-px mx-3 ${wizardStep > n ? "bg-cz-success-bg0/30" : "bg-cz-subtle"}`} />
@@ -2045,7 +2063,7 @@ export default function BoardPage() {
                   setPendingNegotiate(false);
                 }}
                 className="mt-4 w-full py-2 text-sm text-cz-3 hover:text-cz-2 transition-colors">
-                ← Tilbage til {PLAN_LABELS[renewalQueue[renewalQueueIdx - 1]]}
+                {t("wizard.backToPlan", { plan: getPlanLabel(t, renewalQueue[renewalQueueIdx - 1]) })}
               </button>
             )}
 
@@ -2053,7 +2071,7 @@ export default function BoardPage() {
             {!wizardIsSetup && !(isMultiRenewal && renewalQueueIdx > 0) && (
               <button onClick={closeWizard}
                 className="mt-4 w-full py-2 text-sm text-cz-3 hover:text-cz-2 transition-colors">
-                ← Tilbage til oversigt
+                {t("wizard.backToOverview")}
               </button>
             )}
           </div>

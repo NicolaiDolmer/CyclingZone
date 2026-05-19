@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "3.58",
+    date: "2026-05-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infra · i18n Fase 3.5 — BoardPage på EN/DA (#484)",
+        items: [
+          "Feature · Hele Bestyrelse-siden kører nu på begge sprog: sidetitlen, baseline-sæson observation-kort, klub-DNA-valg (3 forslag + badge), bonus-tilbud-card, konsekvens-panel (lønloft, signing-restriktion, tvunget salg, sponsor-pull-out), board-feed, auto-accept countdown og tilfredshedsforklaring.",
+          "Feature · DashboardPlanPanel: 3-panel grid (5yr/3yr/1yr) oversat fuldt ud inkl. fokus-label, mål-progress, plan-timeline, halvvejsevaluering, sæsonhistorik-tabel, kumulative stats og bestyrelsens vurdering med personality-tags (Lav/Moderat/Høj ambition × Forsigtig/Balanceret/Aggressiv økonomi × Svag/Moderat/Stærk identitet).",
+          "Feature · Plan-forhandlings-wizard (3 trin: Strategi / Forhandling / Underskrift): alle krav-kort, status-badges (I fare / At risk, Tæt på / Close, På sporet / On track, Hold øje / Watch), board-request-outcomes (Godkendt / Approved, Delvist / Partial, Tradeoff, Afvist / Rejected) plus multi-plan renewal-flow og setup-onboarding-headers følger sproget.",
+          "Feature · BoardEmptyState (managers uden plan): \"Mød din bestyrelse / Meet your board\"-kort med 1yr/3yr/5yr-forklaring, satisfaction→sponsor-modifier-skala og KPI-kategorier (Resultater, Økonomi, Identitet, Rangering) oversat. Tour-trin matcher BoardPage's `buildBoardTourSteps(t)` så onboarding-overlay følger sproget.",
+          "Tone · Em-dash systematisk renset i alle nye player-facing strenge jf. tone-of-voice-guide. Erstattet med komma, kolon, parentes eller punktum afhængigt af kontekst.",
+          "Infra · Nyt `board`-namespace (~110 keys/sprog) inline-bundlet i `i18n/index.js` (matcher help-pattern fra Fase 3d) for FOUC-fri first paint. Helper-functions: `getBoardGoalLabel(t, goal)`, `getPlanLabel(t, planType)`, `getFocusLabel(t, focus)`, `getGoalStatusMeta(t, status)`, `buildBoardTourSteps(t)`, `describeConsequence(t, c)`. Style-only constants (farver, emoji, severity) adskilt fra label-data så stylingen kan deles på tværs af sprog.",
+          "Infra · `FOCUS_LABELS`-konstant fjernet fra `lib/boardUtils.js` (nu kun i `focus.*`-keys i board-namespace). `formatCash` skifter fra hardcoded `da-DK`-locale til i18next-locale-aware `formatNumber` fra `lib/intl.js`, så 1.500.000 CZ$ formatteres korrekt på begge sprog.",
+          "Scope · Backend-leverede strenge (board-member labels, goal labels fra API, DNA-beskrivelser, request-tekster, identity-profile summary, outlook-feedback) bevarer backend-sproget. Backend-localization tages som separat slice — alle frontend-konstruerede strings er nu locale-aware.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.57",
     date: "2026-05-18",
     label: "Beta",

@@ -1,0 +1,329 @@
+{
+  "page": {
+    "title": "Bestyrelse",
+    "subtitle": "Tre parallelle planer, egne mål og tilfredshed",
+    "financeLink": "Finanser"
+  },
+  "tour": {
+    "plans": {
+      "title": "Tre planer kører parallelt",
+      "body": "1yr, 3yr og 5yr vises side om side i dashboardet. Hvert panel viser tilfredshed, sponsor×-modifier og top-mål med status-ikoner. Klik et mål for at se bestyrelsens reaktion."
+    },
+    "satisfaction": {
+      "title": "Tilfredshed driver sponsor og konsekvenser",
+      "body": "Høj tilfredshed (over 70%) øger sponsor-indkomsten. Lav tilfredshed (under 40%) kan udløse lønloft, signing-restriktioner og i sidste ende tvunget ryttersalg. Forløbet er gradvist og forudsigeligt."
+    },
+    "kpis": {
+      "title": "Hvad de vurderer på",
+      "body": "Resultater, økonomi, identitet (U25, national kerne) og rangering, plus nyere typer: monumenter, trøjer, stjernerytter og U25-stat-gevinst. Din klub-DNA og 5 navngivne bestyrelsesmedlemmer farver reaktionerne."
+    }
+  },
+  "baseline": {
+    "title": "Bestyrelsen observerer din første sæson",
+    "body": "Du er i din baseline-sæson. Bestyrelsen lærer dit hold at kende uden krav eller mål. Sponsor-modifier holdes på 1.0×. Når sæsonen slutter, åbner forhandlingerne sekventielt: først 5-årsplan, så 3-årsplan, så 1-årsplan."
+  },
+  "emptyState": {
+    "headline": "Mød din bestyrelse",
+    "intro": "Du har endnu ingen bestyrelsesplaner. Bestyrelsen sætter mål, vurderer din sæson og bestemmer hvor meget sponsor-indkomst dit hold får udbetalt.",
+    "plans": {
+      "oneYear": {
+        "label": "1-årsplan",
+        "description": "Strenge mål, hurtige resultater. Fuld straf ved fejl."
+      },
+      "threeYear": {
+        "label": "3-årsplan",
+        "description": "Moderate mål, plads til vækst. 20% reduceret straf."
+      },
+      "fiveYear": {
+        "label": "5-årsplan",
+        "description": "Langsigtede ambitioner. 40% reduceret straf."
+      }
+    },
+    "plansFooter": "Alle tre planer kører parallelt. Du forhandler én ad gangen, og hver har sine egne mål og tidshorisont.",
+    "satisfactionLabel": "Tilfredshed → sponsor-modifier",
+    "satisfactionFooter": "Hvert opfyldt mål øger tilfredsheden. Utilfredse bestyrelser skærper kravene ved næste planforhandling.",
+    "kpis": {
+      "heading": "Hvad de vurderer på",
+      "results": {
+        "label": "Resultater",
+        "text": "etapesejre, top-N-finish, samlede sejre"
+      },
+      "finance": {
+        "label": "Økonomi",
+        "text": "udestående gæld, sponsor-vækst over planen"
+      },
+      "identity": {
+        "label": "Identitet",
+        "text": "U25-andel, national kerne, profilryttere"
+      },
+      "rank": {
+        "label": "Rangering",
+        "text": "division-placering ved sæsonafslutning"
+      }
+    },
+    "ctaNegotiate": "Forhandl din første plan med bestyrelsen →",
+    "ctaShowTour": "Vis mig rundt"
+  },
+  "planLabels": {
+    "1yr": "1-årsplan",
+    "3yr": "3-årsplan",
+    "5yr": "5-årsplan"
+  },
+  "planDescriptions": {
+    "1yr": "Strenge mål, hurtige resultater. Fuld straf ved fejl.",
+    "3yr": "Moderate mål, plads til vækst. 20% reduceret straf.",
+    "5yr": "Langsigtede ambitioner. 40% reduceret straf."
+  },
+  "focus": {
+    "balanced": "Balanceret",
+    "youth_development": "Ungdomsudvikling",
+    "star_signing": "Stjernesignering"
+  },
+  "goal": {
+    "minNationalRiders": "Min. {target} ryttere fra {country}",
+    "required": "Krav",
+    "negotiated": "Forhandlet",
+    "tightenedBadge": "🔒 Strammet",
+    "tightenedTitle": "Strammet af bestyrelsen pga. tidligere request",
+    "cumulative": "Kumulativt",
+    "satisfactionBonus": "+{count} tilfredshed",
+    "satisfactionPenalty": "-{count} hvis ikke opfyldt",
+    "memberReacts": "{member} reagerer",
+    "relativeRankDetail": "Du står #{rank} af {total} managers i divisionen, slår {actual} (mål: {target}{check}).",
+    "rankInDivisionShort": "Du står #{rank} af {total} managers i divisionen.",
+    "progress": "Fremgang",
+    "obligatory": "Obligatorisk",
+    "boardReaction": "Bestyrelsens reaktion"
+  },
+  "status": {
+    "behind": "I fare",
+    "near_miss": "Tæt på",
+    "on_track": "På sporet",
+    "watch": "Hold øje"
+  },
+  "changeKind": {
+    "relaxed": "Lempet",
+    "tightened": "Skærpet",
+    "replaced": "Omlagt"
+  },
+  "outcome": {
+    "approved": "Godkendt",
+    "partial": "Delvist",
+    "tradeoff": "Tradeoff",
+    "rejected": "Afvist"
+  },
+  "personality": {
+    "sports_ambition": {
+      "low": "Lav ambition",
+      "medium": "Moderat ambition",
+      "high": "Høj ambition"
+    },
+    "financial_risk": {
+      "cautious": "Forsigtig økonomi",
+      "balanced": "Balanceret økonomi",
+      "aggressive": "Aggressiv økonomi"
+    },
+    "identity_strength": {
+      "low": "Svag identitet",
+      "medium": "Moderat identitet",
+      "high": "Stærk identitet"
+    }
+  },
+  "satisfactionMeter": {
+    "label": "Bestyrelsestilfredshed",
+    "veryHappy": "Meget tilfreds",
+    "happy": "Tilfreds",
+    "neutral": "Neutral",
+    "unhappy": "Utilfreds",
+    "veryUnhappy": "Meget utilfreds",
+    "sponsorModifier": "Sponsor ×{modifier}"
+  },
+  "members": {
+    "heading": "Bestyrelsen",
+    "count": "{count, plural, one {1 medlem} other {# medlemmer}}",
+    "chairman": "Formand",
+    "chairmanTitle": "Bestyrelsesformand",
+    "wildcard": "Wildcard"
+  },
+  "dna": {
+    "sectionLabel": "Klub-DNA",
+    "selectHeading": "Vælg klubbens identitet",
+    "selectIntro": "Bestyrelsen har observeret sæson 1 og foreslår tre retninger. DNA påvirker målvægtning, klub-tradition-mål og hvilke bestyrelses-medlemmer du tildeles ved fremtidige formandsskift.",
+    "slot": {
+      "national_match": "National-match",
+      "specialization_match": "Specialiserings-match",
+      "wildcard": "Wildcard",
+      "fallback": "Forslag"
+    },
+    "saving": "Gemmer…",
+    "choose": "Vælg dette DNA",
+    "badge": {
+      "label": "Klubbens DNA"
+    },
+    "errorFallback": "Kunne ikke vælge DNA"
+  },
+  "identity": {
+    "defaultTitle": "Holdidentitet",
+    "wizardTitle": "Bestyrelsens læsning af holdet",
+    "u25": "U25",
+    "primary": "Primær",
+    "secondary": "Sekundær",
+    "competitive": "Sportsligt spor",
+    "squad": "Trup",
+    "nationalCore": "National kerne",
+    "nationalCoreMixed": "Blandet",
+    "nationalCoreNone": "Ingen tydelig kerne endnu",
+    "nationalCoreSub": "{count, plural, one {1 rytter} other {# ryttere}} · {percent}% af truppen",
+    "starProfile": "Stjerneprofil",
+    "starProfileUnknown": "Ukendt",
+    "starProfileNone": "Ingen klare profiler endnu",
+    "starProfileSub": "{count, plural, one {1 profilrytter} other {# profilryttere}}"
+  },
+  "request": {
+    "heading": "Bestyrelsesforespørgsel",
+    "subheading": "Én strategisk forespørgsel pr. sæson",
+    "used": "Brugt",
+    "ready": "Klar",
+    "pendingMigration": "Bestyrelsesforespørgsler venter på database-migration",
+    "changesHeading": "Det reagerede bestyrelsen på",
+    "focusLabel": "Fokus",
+    "sending": "Sender...",
+    "send": "Send request",
+    "errorFallback": "Kunne ikke sende bestyrelsesforespørgslen."
+  },
+  "consequence": {
+    "heading": "Aktive konsekvenser",
+    "count": "{count, plural, one {1 aktiv} other {# aktive}}",
+    "layer2": {
+      "label": "Lønloft",
+      "describe": "Bestyrelsen har pålagt et lønloft på {cash}. Du kan ikke øge holdets samlede løn, sælg en rytter først."
+    },
+    "layer3": {
+      "label": "Underskriv-restriktion",
+      "describe": "Bestyrelsen blokerer alle køb over {cash} indtil tilfredsheden stiger."
+    },
+    "layer4": {
+      "label": "Tvunget salg",
+      "describe": "Bestyrelsen har tvangs-listet {rider} til {cash}. Kontakt evt. en køber for at lukke handlen hurtigt."
+    },
+    "layer4DefaultRider": "en rytter",
+    "layer5": {
+      "label": "Sponsor-pull-out",
+      "describe": "En hovedsponsor har trukket sig. Sponsorindtægten er reduceret med 10% i den næste sæson."
+    }
+  },
+  "bonusOffer": {
+    "heading": "Bonus-tilbud fra bestyrelsen",
+    "body": "Bestyrelsen er imponeret. De tilbyder <bonus>+{cash}</bonus> til holdets balance mod ét ekstra-mål: <goal>{goal}</goal>.",
+    "footer": "Acceptér og budgettet krediteres straks. Det ekstra mål bliver lagt til din 1-årsplan og evalueres ved sæsonens slutning.",
+    "defaultGoal": "1 ekstra-mål",
+    "accept": "Acceptér tilbud",
+    "decline": "Afvis"
+  },
+  "feed": {
+    "heading": "Bestyrelse-feed",
+    "latestCount": "{count} senest",
+    "needsAction": "Skal handles"
+  },
+  "autoAccept": {
+    "lastChance": "Sidste chance, bestyrelsen tager over om {count, plural, one {1 race-day} other {# race-days}}",
+    "waiting": "Bestyrelsen venter på din forhandling, {count, plural, one {1 race-day} other {# race-days}} tilbage",
+    "footer": "Hvis du ikke har valgt fokus og forhandlet mål når race-day 5 starter, vælger bestyrelsen selv en plan baseret på dit holds identitet fra sæson 1."
+  },
+  "plan": {
+    "autoConfigured": "Konfigureres automatisk ved næste sæsonstart",
+    "negotiateExpired": "Forhandl ny plan →",
+    "goalsLabel": "Mål",
+    "seasonsRemaining": "{count, plural, one {1 sæson tilbage} other {# sæsoner tilbage}}",
+    "moreGoals": "+{count} {count, plural, one {mål} other {mål}} mere",
+    "hideDetails": "Skjul detaljer",
+    "showDetails": "Vis detaljer",
+    "timelineHeading": "Planforløb",
+    "midReviewHeading": "Halvvejsevaluering afsluttet",
+    "midReviewBody": "Sæson {current} af {total} evalueret.",
+    "planGoalsLabel": "Planmål",
+    "seasonGoalsLabel": "Sæsonmål",
+    "outlookHeading": "Bestyrelsens vurdering",
+    "renew": "Forny plan (status quo)"
+  },
+  "snapshot": {
+    "heading": "Sæsonhistorik",
+    "columns": {
+      "season": "Sæson",
+      "rank": "Rang",
+      "stageWins": "Etaper",
+      "gcWins": "Saml.",
+      "goalsMet": "Mål",
+      "satisfaction": "Tilfredshed"
+    },
+    "seasonNumber": "Sæson {number}",
+    "rankNone": "—"
+  },
+  "cumulative": {
+    "stageWins": "Etapesejre",
+    "gcWins": "Samlede sejre"
+  },
+  "wizard": {
+    "step1Title": "Bestyrelsens forslag",
+    "step1Subtitle": "Vælg strategi; bestyrelsen genererer krav",
+    "focusLabel": "Holdfokus",
+    "horizonLabel": "Tidshorisont",
+    "horizonDuration": "Planen løber over {count, plural, one {1 sæson} other {# sæsoner}}, mål evalueres løbende",
+    "requirementsHeading": "Bestyrelsens krav",
+    "startNegotiation": "Start forhandling →",
+    "errorProposal": "Kunne ikke hente bestyrelsens forslag.",
+    "step2Title": "Forhandling",
+    "step2Subtitle": "Gennemgå bestyrelsens krav ét ad gangen",
+    "goalCounter": "Mål {current}/{total}",
+    "alreadyNegotiated": "Allerede forhandlet",
+    "negotiateDown": "Forhandl ned ↓",
+    "accept": "Accepter →",
+    "compromiseHeading": "Bestyrelsen har accepteret kompromis",
+    "compromiseBody": "Straf halveret. Accepter det forhandlede mål?",
+    "acceptNegotiated": "Accepter forhandlet mål →",
+    "negotiationsUsed": "{count, plural, one {1 forhandling brugt} other {# forhandlinger brugt}}",
+    "step3Title": "Underskrift",
+    "step3Subtitle": "{plan}, løber over {count, plural, one {1 sæson} other {# sæsoner}}",
+    "agreedHeading": "Aftalte mål",
+    "signing": "Gemmer...",
+    "sign": "Underskriv kontrakt ✍",
+    "obligatory": "Obligatorisk krav",
+    "negotiatedTick": "Forhandlet ✓",
+    "steps": {
+      "strategy": "Strategi",
+      "negotiation": "Forhandling",
+      "signature": "Underskrift"
+    },
+    "setupHeading": "Opsætning af bestyrelsesplaner ({step}/3)",
+    "setupBody": "Forhandl din {plan} med bestyrelsen. Derefter fortsættes med næste plan.",
+    "multiRenewalHeading": "Planfornyelse {current}/{total}, {plan}",
+    "multiRenewalBodyNext": "Derefter fortsættes med {next}.",
+    "multiRenewalBodyLast": "Sidste plan i køen.",
+    "singleRenewalHeading": "{plan} udløbet",
+    "singleRenewalBody": "Forhandl en ny {plan} med bestyrelsen.",
+    "backToPlan": "← Tilbage til {plan}",
+    "backToOverview": "← Tilbage til oversigt"
+  },
+  "satisfactionExplainer": {
+    "heading": "Hvad betyder tilfredshed?",
+    "high": {
+      "range": "70–100%",
+      "label": "Høj tilfredshed",
+      "effect": "Sponsor × > 1.0, ekstra indtægt"
+    },
+    "moderate": {
+      "range": "40–69%",
+      "label": "Moderat tilfredshed",
+      "effect": "Sponsor × 1.0, normal indtægt"
+    },
+    "low": {
+      "range": "0–39%",
+      "label": "Lav tilfredshed",
+      "effect": "Sponsor × < 1.0, reduceret"
+    }
+  },
+  "errors": {
+    "loginRequired": "Du skal være logget ind.",
+    "requestFallback": "Kunne ikke sende bestyrelsesforespørgslen."
+  }
+}

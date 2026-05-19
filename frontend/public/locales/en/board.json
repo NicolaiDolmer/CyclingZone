@@ -1,0 +1,329 @@
+{
+  "page": {
+    "title": "Board",
+    "subtitle": "Three parallel plans, separate targets and satisfaction",
+    "financeLink": "Finances"
+  },
+  "tour": {
+    "plans": {
+      "title": "Three plans run in parallel",
+      "body": "1yr, 3yr and 5yr appear side by side in the dashboard. Each panel shows satisfaction, sponsor× modifier and top targets with status icons. Click a target to see the board's reaction."
+    },
+    "satisfaction": {
+      "title": "Satisfaction drives sponsor and consequences",
+      "body": "High satisfaction (over 70%) boosts sponsor income. Low satisfaction (under 40%) can trigger salary caps, signing restrictions and ultimately forced rider sales. The progression is gradual and predictable."
+    },
+    "kpis": {
+      "title": "What they evaluate on",
+      "body": "Results, finances, identity (U25, national core) and ranking, plus newer types: monuments, jerseys, star rider and U25 stat gains. Your club DNA and 5 named board members colour the reactions."
+    }
+  },
+  "baseline": {
+    "title": "The board is observing your first season",
+    "body": "You are in your baseline season. The board is learning your team with no demands or targets. Sponsor modifier stays at 1.0×. When the season ends, negotiations open sequentially: first the 5-year plan, then the 3-year plan, then the 1-year plan."
+  },
+  "emptyState": {
+    "headline": "Meet your board",
+    "intro": "You do not have any board plans yet. The board sets targets, evaluates your season and decides how much sponsor income your team gets paid out.",
+    "plans": {
+      "oneYear": {
+        "label": "1-year plan",
+        "description": "Strict targets, fast results. Full penalty on failure."
+      },
+      "threeYear": {
+        "label": "3-year plan",
+        "description": "Moderate targets, room to grow. 20% reduced penalty."
+      },
+      "fiveYear": {
+        "label": "5-year plan",
+        "description": "Long-term ambitions. 40% reduced penalty."
+      }
+    },
+    "plansFooter": "All three plans run in parallel. You negotiate one at a time, and each has its own targets and time horizon.",
+    "satisfactionLabel": "Satisfaction → sponsor modifier",
+    "satisfactionFooter": "Every met target boosts satisfaction. Dissatisfied boards tighten requirements at the next plan negotiation.",
+    "kpis": {
+      "heading": "What they evaluate on",
+      "results": {
+        "label": "Results",
+        "text": "stage wins, top-N finishes, total wins"
+      },
+      "finance": {
+        "label": "Finances",
+        "text": "outstanding debt, sponsor growth across the plan"
+      },
+      "identity": {
+        "label": "Identity",
+        "text": "U25 share, national core, star riders"
+      },
+      "rank": {
+        "label": "Ranking",
+        "text": "division placement at season end"
+      }
+    },
+    "ctaNegotiate": "Negotiate your first plan with the board →",
+    "ctaShowTour": "Show me around"
+  },
+  "planLabels": {
+    "1yr": "1-year plan",
+    "3yr": "3-year plan",
+    "5yr": "5-year plan"
+  },
+  "planDescriptions": {
+    "1yr": "Strict targets, fast results. Full penalty on failure.",
+    "3yr": "Moderate targets, room to grow. 20% reduced penalty.",
+    "5yr": "Long-term ambitions. 40% reduced penalty."
+  },
+  "focus": {
+    "balanced": "Balanced",
+    "youth_development": "Youth development",
+    "star_signing": "Star signing"
+  },
+  "goal": {
+    "minNationalRiders": "Min. {target} riders from {country}",
+    "required": "Required",
+    "negotiated": "Negotiated",
+    "tightenedBadge": "🔒 Tightened",
+    "tightenedTitle": "Tightened by the board after a previous request",
+    "cumulative": "Cumulative",
+    "satisfactionBonus": "+{count} satisfaction",
+    "satisfactionPenalty": "-{count} if not met",
+    "memberReacts": "{member} reacts",
+    "relativeRankDetail": "You are #{rank} of {total} managers in the division, beating {actual} (target: {target}{check}).",
+    "rankInDivisionShort": "You are #{rank} of {total} managers in the division.",
+    "progress": "Progress",
+    "obligatory": "Mandatory",
+    "boardReaction": "The board's reaction"
+  },
+  "status": {
+    "behind": "At risk",
+    "near_miss": "Close",
+    "on_track": "On track",
+    "watch": "Watch"
+  },
+  "changeKind": {
+    "relaxed": "Eased",
+    "tightened": "Tightened",
+    "replaced": "Replaced"
+  },
+  "outcome": {
+    "approved": "Approved",
+    "partial": "Partial",
+    "tradeoff": "Tradeoff",
+    "rejected": "Rejected"
+  },
+  "personality": {
+    "sports_ambition": {
+      "low": "Low ambition",
+      "medium": "Moderate ambition",
+      "high": "High ambition"
+    },
+    "financial_risk": {
+      "cautious": "Cautious economy",
+      "balanced": "Balanced economy",
+      "aggressive": "Aggressive economy"
+    },
+    "identity_strength": {
+      "low": "Weak identity",
+      "medium": "Moderate identity",
+      "high": "Strong identity"
+    }
+  },
+  "satisfactionMeter": {
+    "label": "Board satisfaction",
+    "veryHappy": "Very satisfied",
+    "happy": "Satisfied",
+    "neutral": "Neutral",
+    "unhappy": "Dissatisfied",
+    "veryUnhappy": "Very dissatisfied",
+    "sponsorModifier": "Sponsor ×{modifier}"
+  },
+  "members": {
+    "heading": "The board",
+    "count": "{count, plural, one {1 member} other {# members}}",
+    "chairman": "Chairman",
+    "chairmanTitle": "Board chairman",
+    "wildcard": "Wildcard"
+  },
+  "dna": {
+    "sectionLabel": "Club DNA",
+    "selectHeading": "Choose your club identity",
+    "selectIntro": "The board has observed season 1 and suggests three directions. DNA shapes target weighting, club tradition targets and which board members you get at future chairman shifts.",
+    "slot": {
+      "national_match": "National match",
+      "specialization_match": "Specialisation match",
+      "wildcard": "Wildcard",
+      "fallback": "Suggestion"
+    },
+    "saving": "Saving…",
+    "choose": "Choose this DNA",
+    "badge": {
+      "label": "Club DNA"
+    },
+    "errorFallback": "Could not select DNA"
+  },
+  "identity": {
+    "defaultTitle": "Team identity",
+    "wizardTitle": "The board's reading of the team",
+    "u25": "U25",
+    "primary": "Primary",
+    "secondary": "Secondary",
+    "competitive": "Competitive track",
+    "squad": "Squad",
+    "nationalCore": "National core",
+    "nationalCoreMixed": "Mixed",
+    "nationalCoreNone": "No clear core yet",
+    "nationalCoreSub": "{count, plural, one {1 rider} other {# riders}} · {percent}% of squad",
+    "starProfile": "Star profile",
+    "starProfileUnknown": "Unknown",
+    "starProfileNone": "No clear profiles yet",
+    "starProfileSub": "{count, plural, one {1 star rider} other {# star riders}}"
+  },
+  "request": {
+    "heading": "Board request",
+    "subheading": "One strategic request per season",
+    "used": "Used",
+    "ready": "Ready",
+    "pendingMigration": "Board requests are waiting for a database migration",
+    "changesHeading": "What the board reacted to",
+    "focusLabel": "Focus",
+    "sending": "Sending...",
+    "send": "Send request",
+    "errorFallback": "Could not send the board request."
+  },
+  "consequence": {
+    "heading": "Active consequences",
+    "count": "{count, plural, one {1 active} other {# active}}",
+    "layer2": {
+      "label": "Salary cap",
+      "describe": "The board has imposed a salary cap of {cash}. You cannot raise the team's total salary, sell a rider first."
+    },
+    "layer3": {
+      "label": "Signing restriction",
+      "describe": "The board blocks all signings over {cash} until satisfaction recovers."
+    },
+    "layer4": {
+      "label": "Forced sale",
+      "describe": "The board has force-listed {rider} for {cash}. Contact a buyer to close the deal quickly."
+    },
+    "layer4DefaultRider": "a rider",
+    "layer5": {
+      "label": "Sponsor pull-out",
+      "describe": "A main sponsor has pulled out. Sponsor income is reduced by 10% next season."
+    }
+  },
+  "bonusOffer": {
+    "heading": "Bonus offer from the board",
+    "body": "The board is impressed. They offer <bonus>+{cash}</bonus> to the team's balance for one extra target: <goal>{goal}</goal>.",
+    "footer": "Accept and the budget is credited immediately. The extra target is added to your 1-year plan and evaluated at season end.",
+    "defaultGoal": "1 extra target",
+    "accept": "Accept offer",
+    "decline": "Decline"
+  },
+  "feed": {
+    "heading": "Board feed",
+    "latestCount": "{count} latest",
+    "needsAction": "Needs action"
+  },
+  "autoAccept": {
+    "lastChance": "Last chance, the board takes over in {count, plural, one {1 race day} other {# race days}}",
+    "waiting": "The board is waiting on your negotiation, {count, plural, one {1 race day} other {# race days}} left",
+    "footer": "If you have not chosen focus and negotiated targets by race day 5, the board picks a plan based on your team identity from season 1."
+  },
+  "plan": {
+    "autoConfigured": "Configured automatically at next season start",
+    "negotiateExpired": "Negotiate new plan →",
+    "goalsLabel": "Targets",
+    "seasonsRemaining": "{count, plural, one {1 season left} other {# seasons left}}",
+    "moreGoals": "+{count} more {count, plural, one {target} other {targets}}",
+    "hideDetails": "Hide details",
+    "showDetails": "Show details",
+    "timelineHeading": "Plan timeline",
+    "midReviewHeading": "Mid-plan review completed",
+    "midReviewBody": "Season {current} of {total} evaluated.",
+    "planGoalsLabel": "Plan targets",
+    "seasonGoalsLabel": "Season targets",
+    "outlookHeading": "The board's assessment",
+    "renew": "Renew plan (status quo)"
+  },
+  "snapshot": {
+    "heading": "Season history",
+    "columns": {
+      "season": "Season",
+      "rank": "Rank",
+      "stageWins": "Stages",
+      "gcWins": "Totals",
+      "goalsMet": "Targets",
+      "satisfaction": "Satisfaction"
+    },
+    "seasonNumber": "Season {number}",
+    "rankNone": "—"
+  },
+  "cumulative": {
+    "stageWins": "Stage wins",
+    "gcWins": "Total wins"
+  },
+  "wizard": {
+    "step1Title": "The board's proposal",
+    "step1Subtitle": "Pick a strategy; the board generates requirements",
+    "focusLabel": "Team focus",
+    "horizonLabel": "Time horizon",
+    "horizonDuration": "The plan spans {count, plural, one {1 season} other {# seasons}}, targets evaluated continuously",
+    "requirementsHeading": "The board's requirements",
+    "startNegotiation": "Start negotiation →",
+    "errorProposal": "Could not fetch the board's proposal.",
+    "step2Title": "Negotiation",
+    "step2Subtitle": "Review the board's requirements one at a time",
+    "goalCounter": "Target {current}/{total}",
+    "alreadyNegotiated": "Already negotiated",
+    "negotiateDown": "Negotiate down ↓",
+    "accept": "Accept →",
+    "compromiseHeading": "The board has accepted a compromise",
+    "compromiseBody": "Penalty halved. Accept the negotiated target?",
+    "acceptNegotiated": "Accept negotiated target →",
+    "negotiationsUsed": "{count, plural, one {1 negotiation used} other {# negotiations used}}",
+    "step3Title": "Signature",
+    "step3Subtitle": "{plan}, spans {count, plural, one {1 season} other {# seasons}}",
+    "agreedHeading": "Agreed targets",
+    "signing": "Saving...",
+    "sign": "Sign contract ✍",
+    "obligatory": "Required",
+    "negotiatedTick": "Negotiated ✓",
+    "steps": {
+      "strategy": "Strategy",
+      "negotiation": "Negotiation",
+      "signature": "Signature"
+    },
+    "setupHeading": "Board plan setup ({step}/3)",
+    "setupBody": "Negotiate your {plan} with the board. Then continue with the next plan.",
+    "multiRenewalHeading": "Plan renewal {current}/{total}, {plan}",
+    "multiRenewalBodyNext": "Then continue with {next}.",
+    "multiRenewalBodyLast": "Last plan in the queue.",
+    "singleRenewalHeading": "{plan} expired",
+    "singleRenewalBody": "Negotiate a new {plan} with the board.",
+    "backToPlan": "← Back to {plan}",
+    "backToOverview": "← Back to overview"
+  },
+  "satisfactionExplainer": {
+    "heading": "What does satisfaction mean?",
+    "high": {
+      "range": "70–100%",
+      "label": "High satisfaction",
+      "effect": "Sponsor × > 1.0, extra income"
+    },
+    "moderate": {
+      "range": "40–69%",
+      "label": "Moderate satisfaction",
+      "effect": "Sponsor × 1.0, normal income"
+    },
+    "low": {
+      "range": "0–39%",
+      "label": "Low satisfaction",
+      "effect": "Sponsor × < 1.0, reduced"
+    }
+  },
+  "errors": {
+    "loginRequired": "You must be logged in.",
+    "requestFallback": "Could not send the board request."
+  }
+}
