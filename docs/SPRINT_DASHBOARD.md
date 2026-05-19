@@ -3,9 +3,11 @@
 > **Sprint:** Monetization Validation Sprint
 > **Periode:** 2026-05-18 → 2026-06-17 (30 dage)
 > **I dag:** 2026-05-18 (**Sprint Day 1** 🚀)
-> **Sidste opdatering:** 2026-05-18 13:11 UTC (baseline-metrics + top-spiller-liste trukket via Claude/Supabase MCP)
+> **Sidste opdatering:** 2026-05-19 (masterplan note tilføjet; metrics-baseline stadig fra 2026-05-18 13:11 UTC)
 >
-> **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). **Prioriteret backlog (alle 150 åbne issues) → [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md).**
+> **Formål:** Single-page status på hvor langt vi er. Opdateres ved session-start og når metrics ændrer sig. Detaljeret strategi → [`BUSINESS_STRATEGY.md`](BUSINESS_STRATEGY.md). **Overordnet styring og agentroller → [`MASTER_PLAN.md`](MASTER_PLAN.md).** Prioriteret backlog → [`BACKLOG_PRIORITIZED.md`](BACKLOG_PRIORITIZED.md).
+>
+> **Status-note 2026-05-19:** `MASTER_PLAN.md` er nu styringskontrakt. Næste session skal køre en fuld status-synk af denne fil mod faktisk GitHub-state, fordi enkelte checkbox-/issue-statusser er ældre end de seneste lukkede sprint-issues.
 
 ## 📊 Metrics at a glance
 
