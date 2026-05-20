@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.75",
+    date: "2026-05-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Tab-based navigation midlertidigt rullet tilbage",
+        items: [
+          "EN · The tab-based /admin layout introduced briefly in v3.74 has been rolled back to the previous single-page layout. The new tabs were committed accidentally before they were ready, so URLs like /admin/season currently 404 in production. The full tab rewrite will return in an upcoming patch once the new admin panel is complete. No data was affected and no admin actions are blocked.",
+          "DA · Den tab-baserede /admin-layout der kort kom i v3.74 er rullet tilbage til det tidligere single-page-layout. De nye faner blev committet ved en fejl før de var klar, så URLs som /admin/season 404'er lige nu i produktion. Hele tab-omskrivningen kommer tilbage i en kommende patch når det nye admin-panel er færdigt. Ingen data er påvirket og ingen admin-handlinger er blokeret.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.73",
     date: "2026-05-21",
     label: "Beta",
