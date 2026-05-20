@@ -14,11 +14,6 @@ function formatCZ(amount) {
   return `${(amount || 0).toLocaleString("da-DK")} CZ$`;
 }
 
-function formatDate(dateStr) {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("da-DK", { day: "numeric", month: "short" });
-}
-
 function MiniLineChart({ data, color }) {
   if (!data || data.length < 2) return <span className="text-cz-3 text-xs">—</span>;
   const max = Math.max(...data, 1);
