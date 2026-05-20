@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.73",
+    date: "2026-05-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Backend · Database security hardening fase A (Refs #516, #525)",
+        items: [
+          "EN · Internal database hardening. No visible UI change. Removed an unused legacy economy function (increment_balance) that bypassed the audited balance flow, locked down execute permissions on database-internal functions so they can no longer be called from the browser, and rebuilt three admin inspector views so they no longer bypass row-level security. The current audited economy path (increment_balance_with_audit) is unchanged and continues to be the only way balances move.",
+          "DA · Intern database-hærdning. Ingen synlig UI-ændring. Fjernede en ubrugt legacy økonomi-funktion (increment_balance) der omgik den auditerede balance-vej, strammede execute-rettigheder på database-interne funktioner så de ikke længere kan kaldes fra browseren, og genopbyggede tre admin inspector-views så de ikke længere omgår row-level-security. Den nuværende auditerede økonomi-vej (increment_balance_with_audit) er uændret og fortsætter med at være den eneste måde balancer flyttes.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.72",
     date: "2026-05-20",
     label: "Beta",
