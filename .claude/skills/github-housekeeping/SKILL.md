@@ -40,8 +40,6 @@ Limits: 300 åbne (repo har 150+; margin). 100 PRs (14 dage = ~30-50 typisk).
 
 **Per `claude:blocked`-issue:** `gh issue view <blocker-N> --json state` — hvis blocker lukket → Kategori I.
 
-**Per lukket issue sidste 14 dage:** havde den `claude:done` før close? Hvis ej → Kategori G (state-brud). _(Note: Per workflow 2026-05-18 er direct-close fra todo/in-progress nu kanonisk → Kategori G bør re-defineres som "lukkede uden nogen `claude:*` label nogensinde", ikke "uden done". Behold som info-pattern, ikke action.)_
-
 ## Trin 3 — Verifikations-score (EKSPLICITTE regler)
 
 | Score | Kriterie | Auto-handling |
@@ -74,7 +72,9 @@ Limits: 300 åbne (repo har 150+; margin). 100 PRs (14 dage = ~30-50 typisk).
 
 Begrundelse: "verificeret prod" kan referere til _deploy-verification_ ("HTTP 200 OK på prod-URL") snarere end _feature-verification_ ("feature virker for brugeren"). NEG-keywords fanger to subtle pitfalls: (a) feature er teknisk live men brugeren mangler manuel UI-cleanup (`⚠️ kan ikke ... via API`); (b) merge er live men afventer eksplicit user-verify (`🟡 klar til din verifikation`).
 
-## Trin 4 — Kategorisér (10 dimensioner)
+**Post-comment work-completion check (lektion 2026-05-20-pass2):** Hvis claude:done-issue's seneste comment matcher work-pending patterns (`Næste session`, `next session`, `bagudretter`, `efter merge`, `mangler X`) MEN der findes en merged PR med `Refs #N` til samme issue _efter_ comment-timestamp → flag som "comment likely outdated, work done via PR #M". Re-læs issue + PR #M for ægte status før scoring. Eksempel #508: comment 14:23Z sagde "Næste session bagudretter eksisterende ryttere", men PR #511 (Refs #508) merged 15:07Z udførte faktisk backwards-fix på 45 ryttere. Den outdated comment dictated WEAK-scoring; real state var "work done, awaiting user UI-verify".
+
+## Trin 4 — Kategorisér (9 dimensioner)
 
 **Primær:**
 - **A. Mangler claude:done** — PR merged + bruger-verify findes, label glemt
@@ -85,10 +85,11 @@ Begrundelse: "verificeret prod" kan referere til _deploy-verification_ ("HTTP 20
 - **D. Label-konflikter** — `claude:todo+done`, `claude:todo+blocked`, eller helt uden `claude:*`
 - **E. Forfaldne pendings** — `claude:done` >14 dage uden bruger-interaktion
 - **F. Stale backlog** — `claude:todo` >30 dage uden `updatedAt`-bevægelse (close/downgrade-kandidat)
-- **G. State-brud** — lukkede issues uden forudgående `claude:done`
 - **H. `needs-user-action` reality-check** — sample 3-5, er handlingen muligvis udført?
 - **I. Dependency unblock** — `claude:blocked` hvor blocker er lukket
 - **J. Orphan PRs** — merged uden `Refs #N`
+
+_(Tidligere G "State-brud" fjernet 2026-05-20-pass2 — per workflow 2026-05-18 er direct-close kanonisk og 2 audits i træk gav 0 actions. Behold som info-only pattern i baked-in lessons, ikke i kategori-listen.)_
 
 ## Trin 5 — Epic + duplikat-rollup
 
@@ -117,8 +118,7 @@ Separate `AskUserQuestion` per kategori-gruppe (ikke alt-i-én):
 3. Ryd label-konflikter D?
 4. Triage stale backlog F (close/downgrade/keep)?
 5. Unblock Kategori I (blocked → todo)?
-6. Patch state-brud G (add claude:done før close, retro)?
-7. Comment på orphan PRs J?
+6. Comment på orphan PRs J?
 
 Idempotente parallelle batches:
 ```bash
@@ -185,6 +185,8 @@ Output efter retro: 1 linje per accepted/rejected. Hvis ingen ændringer foresl�
 - Stop ikke ved label-cleanup — backlog-stale, dep-graph, epic-rollup giver mest værdi
 - **JSON-parsing:** `jq` er installeret (winget jqlang.jq). Brug `jq` for kompakte filtre; fallback Python json+re for komplekse joins (epic-rollup, score-logic). Hvis `jq` ikke på PATH efter `winget install jqlang.jq --silent`: brug fuld path `/c/Users/ndmh3/AppData/Local/Microsoft/WinGet/Packages/jqlang.jq_Microsoft.Winget.Source_8wekyb3d8bbwe/jq` eller `export PATH="$PATH:<den path>"` i hver Bash-kald — PATH-ændring kræver shell-restart for automatisk pickup _(lektion 2026-05-20: winget tilføjer til Windows PATH men `bash`-tool læser PATH ved shell-start)._
 - **Refs vs Closes (lektion 2026-05-18):** `Refs #N` er informativt (typisk sub-PR mod epic), `Closes/Fixes/Resolves #N` er close-intent. Hold dem adskilt i regex.
+- **Python UTF-8 på Windows (lektion 2026-05-20-pass2):** Default `cp1252`-codec fejler på emojis/UTF-8 i `gh`-output. Brug altid `open(path, encoding='utf-8')` i score/parse-scripts. Bidt 3x i én kørsel (cp1252 kunne ikke decode `0x8f` ved Brugerverifikation-emoji). Også: `subprocess.run(['gh', ...])` direkte fra Python på Windows returnerer typisk empty stdout — workaround er at skrive `gh`-output til fil via Bash først (`gh issue view N --json ... > /tmp/issue-N.json`) og læse fra fil i Python.
+- **State-brud-detection deprecated (lektion 2026-05-20-pass2):** Kategori G fjernet fra Trin 4 — 2 audits i træk gav 0 actions (direct-close kanonisk per workflow 2026-05-18). Hvis pattern dukker op igen som relevant, re-introducer som ny kategori.
 
 ## Changelog
 
@@ -209,6 +211,13 @@ Output efter retro: 1 linje per accepted/rejected. Hvis ingen ændringer foresl�
   - **Trin 2/4 Kategori G re-definition:** Per workflow 2026-05-18 er direct-close kanonisk. "Lukket uden claude:* nogensinde" sidste 14d gav 1 issue (#495 GitHub Actions billing) — info-only, ingen action. Bekræfter forrige audit's re-definition.
   - **`jq` PATH-issue:** Winget tilføjer `jq` til Windows PATH, men bash-tool's PATH er læst ved shell-start, så `jq` er først tilgængelig næste session. Workaround: brug fuld path eller `export PATH=...` i hver Bash-kald.
 
+- **2026-05-20-pass2 — Audit-housekeeping retro (anden kørsel samme dag).** Lessons fra 4. kørsel — reneste state observed (0 actions på alle 10 kategorier efter morgenens deep-cleanup).
+  - **Trin 3 (Post-comment work-completion check):** Nyt afsnit tilføjet. Citat fra #508: comment 14:23Z sagde "Næste session bagudretter eksisterende ryttere" → scored WEAK. Men PR #511 (Refs #508) merged 15:07Z udførte faktisk backwards-fix på 45 ryttere — den outdated comment dictated forkert score. Skill checker nu efter `Refs #N` PRs merged _efter_ comment-timestamp + flagger som "comment likely outdated, re-læs PR for ægte status".
+  - **Trin 4 (Kategori G fjernet):** Per 2 audits i træk med 0 actions er Kategori G "State-brud" deprecated. Skill simplificeret fra 10 → 9 dimensioner. Direct-close er kanonisk per workflow 2026-05-18; ingen action mulig fra audit-siden.
+  - **Trin 7 renummerering:** AskUserQuestion-tjekliste gik fra 7 → 6 items.
+  - **Baked-in lesson (Python UTF-8):** `open(..., encoding='utf-8')` påkrævet på Windows — default `cp1252` fejler på emojis i `gh`-output. Bidt 3x i denne kørsel (`UnicodeDecodeError: 'charmap' codec can't decode byte 0x8f`). Også: `subprocess.run(['gh', ...])` fra Python returnerer empty stdout på Windows — workaround er Bash-write-to-file → Python-read-from-file.
+  - **Brugerverifikation parsing virker (validation):** 11/100 PRs all-checked sidste 14d (var 2 ved forrige audit-pass). Forfattere udfylder sektionen mere konsekvent siden skill-fix.
+
 ## Rejected suggestions
 
-_(Tom — append her hvis bruger afviser forbedringsforslag, så vi ikke gentager dem)_
+- **2026-05-20-pass2 — Whitelist permanent trackers i Kategori D.** Foreslået: ekskludér issues med `docs-only` + `cat:ai-ops`-labels fra "no claude:* state"-rapportering (eksempel: #499 Weekly time-reports cron-tracker). Afvist fordi: kun 1 issue i hele backloggen matcher mønstret → lavt signal, høj brittleness-risiko hvis labels ændrer sig. Hvis flere permanente trackers dukker op senere, re-introducer som ny whitelist-mekanisme.
