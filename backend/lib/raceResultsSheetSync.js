@@ -1,4 +1,4 @@
-import { applyRaceResults as applyRaceResultsShared } from "./raceResultsEngine.js";
+import { applyRaceResults as applyRaceResultsShared, PRIZE_PER_POINT } from "./raceResultsEngine.js";
 import { buildGoogleSheetCsvUrl, parseGoogleSheetUrl } from "./urlSafety.js";
 
 
@@ -11,6 +11,9 @@ const BENÆVNELSE_TO_TYPE = {
   "Bjergtrøje": "mountain",
   "Pointtrøje": "points",
   "Førertrøje": "leader",
+  "Bjergtrøje per dag": "mountain_day",
+  "Pointtrøje per dag": "points_day",
+  "Ungdomstrøje per dag": "young_day",
   "Klassiker": "stage",
   "Klassiker Hold": "team",
 };
@@ -24,6 +27,9 @@ const BENÆVNELSE_TO_POINTS_KEY = {
   "Bjergtrøje": "Bjergtroje",
   "Pointtrøje": "Pointtroje",
   "Førertrøje": "Forertroje",
+  "Bjergtrøje per dag": "BjergtrojeDag",
+  "Pointtrøje per dag": "PointtrojeDag",
+  "Ungdomstrøje per dag": "UngdomstrojeDag",
   "Klassiker": "Klassiker",
   "Klassiker Hold": "KlassikerHold",
 };
@@ -320,7 +326,7 @@ export async function syncRaceResultsFromSheets({
           team_name: teamName || null,
           finish_time: null,
           points_earned: points,
-          prize_money: points,
+          prize_money: points * PRIZE_PER_POINT,
         });
       }
 

@@ -21,6 +21,9 @@ const RESULT_TYPE_TO_RACE_POINTS = {
     young: "Ungdomstroje",
     team: "EtapelobHold",
     leader: "Forertroje",
+    mountain_day: "BjergtrojeDag",
+    points_day: "PointtrojeDag",
+    young_day: "UngdomstrojeDag",
   },
   single: {
     gc: "Klassiker",

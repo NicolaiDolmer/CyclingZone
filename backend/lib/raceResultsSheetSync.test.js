@@ -78,7 +78,7 @@ function createSheetSyncSupabase({ raceResultDeletes, raceUpdates, importLogs, p
             return {
               in() {
                 return Promise.resolve({
-                  data: pointRows || [{ race_class: "WT", result_type: "Etapeplacering", rank: 1, points: 200000 }],
+                  data: pointRows || [{ race_class: "WT", result_type: "Etapeplacering", rank: 1, points: 210 }],
                   error: null,
                 });
               },
@@ -146,7 +146,8 @@ test("syncRaceResultsFromSheets delegates writes through applyRaceResults", asyn
   assert.equal(applyCalls.length, 1);
   assert.equal(applyCalls[0].race.id, "race-1");
   assert.equal(applyCalls[0].race.season_id, "season-1");
-  assert.equal(applyCalls[0].resultRows[0].prize_money, 200000);
+  assert.equal(applyCalls[0].resultRows[0].points_earned, 210);
+  assert.equal(applyCalls[0].resultRows[0].prize_money, 315000);
   assert.deepEqual(raceResultDeletes, ["race-1"]);
   assert.deepEqual(raceUpdates, [{ raceId: "race-1", payload: { status: "completed" } }]);
   assert.deepEqual(ensureCalls, ["season-1"]);
@@ -359,7 +360,7 @@ test("syncRaceResultsFromSheets dryRun returns preview without DB writes", async
   assert.deepEqual(p.unmatched_riders, ["Mystery Ghost"]);
   assert.equal(p.matched_teams, 1);
   assert.deepEqual(p.unmatched_teams, ["Unknown Team"]);
-  assert.equal(p.total_points, 200000); // rank 1 only — rank 2 has no point row in lookup
+  assert.equal(p.total_points, 210); // rank 1 only — rank 2 has no point row in lookup
 });
 
 test("syncRaceResultsFromSheets matches known calendar aliases", async () => {

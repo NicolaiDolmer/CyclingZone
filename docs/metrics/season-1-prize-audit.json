@@ -1,0 +1,56 @@
+{
+  "generated_at": "2026-05-20T00:00:00Z",
+  "generated_by": "scripts/audit-season-races.js (via Supabase MCP)",
+  "season": {
+    "number": 1,
+    "status": "scheduled",
+    "race_classes_used": ["ProSeries"]
+  },
+  "totals": {
+    "races": 26,
+    "stage_races": 9,
+    "one_day_races": 17,
+    "season_total_czk": 55333500,
+    "season_total_czk_formatted": "55.3M CZ$",
+    "races_missing_class": 0,
+    "races_missing_edition_year": 26
+  },
+  "per_race_class_coverage": {
+    "ProSeries": {
+      "Klassement": { "rows": 40, "rank_1_points": 200 },
+      "Klassiker": { "rows": 40, "rank_1_points": 200 },
+      "Etapeplacering": { "rows": 5, "rank_1_points": 20 },
+      "Bjergtroje": { "rows": 3, "rank_1_points": 32 },
+      "Pointtroje": { "rows": 3, "rank_1_points": 32 },
+      "Ungdomstroje": { "rows": 3, "rank_1_points": 16 },
+      "Forertroje": { "rows": 1, "rank_1_points": 5 },
+      "BjergtrojeDag": { "rows": 1, "rank_1_points": 3 },
+      "PointtrojeDag": { "rows": 1, "rank_1_points": 3 },
+      "UngdomstrojeDag": { "rows": 1, "rank_1_points": 3 },
+      "EtapelobHold": { "rows": 1, "rank_1_points": 10 },
+      "KlassikerHold": { "rows": 1, "rank_1_points": 10 }
+    }
+  },
+  "stage_races": [
+    { "name": "4 Jours de Dunkerque / Grand Prix des Hauts-de-France", "stages": 5, "expected_points": 1643, "expected_czk": 2464500 },
+    { "name": "AlUla Tour", "stages": 5, "expected_points": 1643, "expected_czk": 2464500 },
+    { "name": "Arctic Race of Norway", "stages": 4, "expected_points": 1576, "expected_czk": 2364000 },
+    { "name": "Baloise Belgium Tour", "stages": 5, "expected_points": 1643, "expected_czk": 2464500 },
+    { "name": "Boucles de la Mayenne - Crédit Mutuel", "stages": 4, "expected_points": 1576, "expected_czk": 2364000 },
+    { "name": "CRO Race", "stages": 6, "expected_points": 1710, "expected_czk": 2565000 },
+    { "name": "Czech Tour", "stages": 4, "expected_points": 1576, "expected_czk": 2364000 },
+    { "name": "Ethias-Tour de Wallonie", "stages": 5, "expected_points": 1643, "expected_czk": 2464500 },
+    { "name": "Lidl Deutschland Tour", "stages": 5, "expected_points": 1643, "expected_czk": 2464500 }
+  ],
+  "one_day_races_template": {
+    "race_class": "ProSeries",
+    "expected_points": 1308,
+    "expected_czk": 1962000,
+    "count": 17
+  },
+  "warnings": [
+    "All 26 races have edition_year=NULL — admin skal udfylde manuelt før sæson 1 starter (per commit 35a6b53)",
+    "All 26 races use race_class='ProSeries' — bevidst valg for første sæson (lav skala under testing)",
+    "Per-day jerseys + team classification + Ungdomstroje seeded med derived værdier — kan justeres via /admin race-points editor (#505)"
+  ]
+}

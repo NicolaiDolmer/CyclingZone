@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "3.66",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Race-points · Komplet jersey-system + sheet-sync bug fix (Refs #503)",
+        items: [
+          "EN · Race points are now seeded for every classification on every race class. Before this update only Tour, Giro and Vuelta awarded points for the mountain and points jerseys, and the white (young rider) jersey, team classification and per-day points for holding the mountain/points/young jerseys were missing entirely. Now every stage race awards points for: leader jersey per stage (existing), holding the mountain jersey per stage (new), holding the points jersey per stage (new), holding the white jersey per stage (new), final top-3 for mountain/points/young, and the team classification. One-day races award team-classification points too. Tour-level numbers are unchanged from real UCI values; lower tiers use derived scales (~16/12/8% of GC rank 1 for jersey finals, ~60% of leader-jersey for per-day holding).",
+          "EN · Bug fix: the Google Sheets results import was writing race_points directly into the prize_money column without multiplying by 1500 CZ$/point. Effect: any race imported via the sheet path would pay out 1500× too little. The path is now consistent with the admin XLSX import and the pending-results flow. No production data was corrupted (verified: no season 1 results exist yet).",
+          "EN · New sheet input columns: 'Bjergtrøje per dag', 'Pointtrøje per dag', 'Ungdomstrøje per dag' (one row per stage at rank 1). The existing 'Førertrøje' column for the leader jersey is unchanged.",
+          "EN · Season 1 forventet total prize-pool: ~55.3M CZ$ across 26 races (9 stage races + 17 one-day races, all ProSeries). Baseline audit committed to docs/metrics/season-1-prize-audit.json.",
+          "DA · Race-points er nu seedet for hver klassifikation på hver løbsklasse. Før denne opdatering tildelte kun Tour, Giro og Vuelta point for bjerg- og pointtrøjen, og ungdomstrøje, holdklassement samt per-dag-point for at HOLDE bjerg/point/ungdomstrøjen manglede helt. Nu tildeler hvert etapeløb point for: førertrøjen per etape (eksisterende), at holde bjergtrøjen per etape (ny), at holde pointtrøjen per etape (ny), at holde ungdomstrøjen per etape (ny), final top-3 for bjerg/point/ungdoms, og holdklassementet. Endagsløb tildeler også holdklassement-point. Tour-niveau-tal er uændrede fra ægte UCI-værdier; lavere tiers bruger derived skalaer (~16/12/8% af GC-rank-1 for jersey-finals, ~60% af førertrøje for per-dag).",
+          "DA · Bug-fix: Google Sheets-importen skrev race_points direkte ind i prize_money-kolonnen uden at multiplicere med 1500 CZ$/point. Effekt: ethvert løb importeret via sheet-pathen ville udbetale 1500× for lidt. Pathen er nu konsistent med admin XLSX-importen og pending-results-flowet. Ingen produktionsdata blev korrupteret (verificeret: ingen sæson 1-resultater eksisterer endnu).",
+          "DA · Nye sheet-input-kolonner: 'Bjergtrøje per dag', 'Pointtrøje per dag', 'Ungdomstrøje per dag' (én række per etape ved rank 1). Den eksisterende 'Førertrøje'-kolonne er uændret.",
+          "DA · Sæson 1 forventet total præmiepulje: ~55,3M CZ$ fordelt på 26 løb (9 etapeløb + 17 endagsløb, alle ProSeries). Baseline-audit committet i docs/metrics/season-1-prize-audit.json.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.65",
     date: "2026-05-20",
     label: "Beta",

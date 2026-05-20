@@ -7,6 +7,9 @@ const SHEET_TO_TYPE = {
   mountain: "mountain",
   "team results": "team",
   "young results": "young",
+  "mountain day": "mountain_day",
+  "points day": "points_day",
+  "young day": "young_day",
 };
 
 async function defaultParseWorkbook(buffer) {

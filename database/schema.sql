@@ -124,7 +124,7 @@ CREATE TABLE race_results (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   race_id UUID REFERENCES races(id) ON DELETE CASCADE,
   stage_number INTEGER DEFAULT 1,
-  result_type TEXT NOT NULL CHECK (result_type IN ('stage', 'gc', 'points', 'mountain', 'young', 'team', 'leader')),
+  result_type TEXT NOT NULL CHECK (result_type IN ('stage', 'gc', 'points', 'mountain', 'young', 'team', 'leader', 'mountain_day', 'points_day', 'young_day')),
   rank INTEGER,
   rider_id UUID REFERENCES riders(id) ON DELETE SET NULL,
   rider_name TEXT, -- denormalized for display

@@ -16,8 +16,11 @@ export const UCI_MEN_RESULT_TYPES = [
   { key: "Klassiker", label: "Klassiker", maxRank: 60 },
   { key: "Pointtroje", label: "Pointtroje", maxRank: 3 },
   { key: "Bjergtroje", label: "Bjergtroje", maxRank: 3 },
-  { key: "Forertroje", label: "Forertroje", maxRank: 1 },
   { key: "Ungdomstroje", label: "Ungdomstroje", maxRank: 3 },
+  { key: "Forertroje", label: "Forertroje", maxRank: 1 },
+  { key: "BjergtrojeDag", label: "Bjergtroje per dag", maxRank: 1 },
+  { key: "PointtrojeDag", label: "Pointtroje per dag", maxRank: 1 },
+  { key: "UngdomstrojeDag", label: "Ungdomstroje per dag", maxRank: 1 },
   { key: "EtapelobHold", label: "Etapelob Hold", maxRank: 1 },
   { key: "KlassikerHold", label: "Klassiker Hold", maxRank: 1 },
 ];
@@ -104,11 +107,33 @@ const stagePoints = {
   Class2: [7, 3, 1],
 };
 
+// Bjerg + Point final classification (top 3). UCI-real for Tour/Giro/Vuelta.
+// For øvrige classes: derived ~16/12/8.5% af GC rank 1 (matcher UCI's egen Tour/Giro-skala).
 const secondaryClassifications = {
-  TourFrance: [210, 150, 110],
-  GiroVuelta: [180, 130, 95],
+  TourFrance: [210, 150, 110],         // UCI-real
+  GiroVuelta: [180, 130, 95],          // UCI-real
+  OtherWorldTourA: [80, 60, 42],       // derived (GC=500)
+  OtherWorldTourB: [65, 48, 34],       // derived (GC=400)
+  OtherWorldTourC: [50, 36, 26],       // derived (GC=300)
+  ProSeries: [32, 24, 17],             // derived (GC=200)
+  Class1: [20, 15, 11],                // derived (GC=125)
+  Class2: [6, 5, 3],                   // derived (GC=40)
 };
 
+// Young rider final classification (top 3). UCI publicerer ikke white-jersey points
+// — derived ~8/5/3% af GC rank 1. Tweak via /admin race-points override (#505).
+const youngRiderFinals = {
+  TourFrance: [100, 60, 30],
+  GiroVuelta: [80, 50, 25],
+  OtherWorldTourA: [40, 25, 15],
+  OtherWorldTourB: [32, 20, 12],
+  OtherWorldTourC: [24, 15, 9],
+  ProSeries: [16, 10, 6],
+  Class1: [10, 6, 4],
+  Class2: [3, 2, 1],
+};
+
+// Yellow leader jersey per stage worn. UCI-real for Grand Tours; derived for resten.
 const leaderJersey = {
   TourFrance: 25,
   GiroVuelta: 20,
@@ -118,6 +143,42 @@ const leaderJersey = {
   ProSeries: 5,
   Class1: 3,
   Class2: 1,
+};
+
+// Per-stage holding points for Bjerg/Point/Ungdoms jersey (rank 1 = aktuelle holder).
+// ~60% af Forertroje-værdi. Game-design extension — UCI publicerer ikke per-day secondary jerseys.
+const secondaryJerseyPerDay = {
+  TourFrance: 15,
+  GiroVuelta: 12,
+  OtherWorldTourA: 6,
+  OtherWorldTourB: 5,
+  OtherWorldTourC: 4,
+  ProSeries: 3,
+  Class1: 2,
+  Class2: 1,
+};
+
+// Team classification (rank 1 only). UCI publicerer ikke team-points i World Ranking
+// — derived ~5% af GC rank 1. EtapelobHold = stage races, KlassikerHold = one-day.
+const teamClassificationStage = {
+  TourFrance: 65,
+  GiroVuelta: 55,
+  OtherWorldTourA: 25,
+  OtherWorldTourB: 20,
+  OtherWorldTourC: 15,
+  ProSeries: 10,
+  Class1: 6,
+  Class2: 2,
+};
+
+const teamClassificationOneDay = {
+  Monuments: 40,
+  OtherWorldTourA: 25,
+  OtherWorldTourB: 20,
+  OtherWorldTourC: 15,
+  ProSeries: 10,
+  Class1: 6,
+  Class2: 2,
 };
 
 function rowsForScale(raceClass, resultType, points) {
@@ -155,10 +216,43 @@ export function buildUciMenRacePointRows() {
     rows.push(...rowsForScale(raceClass, "Bjergtroje", points));
   }
 
+  for (const [raceClass, points] of Object.entries(youngRiderFinals)) {
+    rows.push(...rowsForScale(raceClass, "Ungdomstroje", points));
+  }
+
   for (const [raceClass, points] of Object.entries(leaderJersey)) {
     rows.push({
       race_class: raceClass,
       result_type: "Forertroje",
+      rank: 1,
+      points,
+    });
+  }
+
+  for (const [raceClass, points] of Object.entries(secondaryJerseyPerDay)) {
+    for (const resultType of ["BjergtrojeDag", "PointtrojeDag", "UngdomstrojeDag"]) {
+      rows.push({
+        race_class: raceClass,
+        result_type: resultType,
+        rank: 1,
+        points,
+      });
+    }
+  }
+
+  for (const [raceClass, points] of Object.entries(teamClassificationStage)) {
+    rows.push({
+      race_class: raceClass,
+      result_type: "EtapelobHold",
+      rank: 1,
+      points,
+    });
+  }
+
+  for (const [raceClass, points] of Object.entries(teamClassificationOneDay)) {
+    rows.push({
+      race_class: raceClass,
+      result_type: "KlassikerHold",
       rank: 1,
       points,
     });
