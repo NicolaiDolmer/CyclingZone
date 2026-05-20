@@ -5,6 +5,7 @@ import RiderLink from "../components/RiderLink";
 import * as XLSX from "@e965/xlsx";
 import RacePointsPage from "./RacePointsPage";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
+import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 
 const RESULT_TYPES = [
   { key: "stage", label: "Etape" },
@@ -53,6 +54,7 @@ export default function RacesPage() {
     : "calendar";
 
   const [races, setRaces] = useState([]);
+  const [racePoints, setRacePoints] = useState([]);
   const [season, setSeason] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedRace, setSelectedRace] = useState(null);
@@ -156,17 +158,19 @@ export default function RacesPage() {
     const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).single();
     setIsAdmin(userData?.role === "admin");
 
-    const [seasonRes, racesRes, pendingRes] = await Promise.all([
+    const [seasonRes, racesRes, pendingRes, racePointsRes] = await Promise.all([
       supabase.from("seasons").select("*").eq("status", "active").single(),
       supabase.from("races").select("*, results:race_results(id), pool_race:pool_race_id(date_text)").order("name"),
       supabase.from("pending_race_results")
         .select("*, race:race_id(name), submitter:submitted_by(username)")
         .order("submitted_at", { ascending: false }),
+      supabase.from("race_points").select("race_class, result_type, rank, points"),
     ]);
 
     setSeason(seasonRes.data);
     setRaces(racesRes.data || []);
     setPending(pendingRes.data || []);
+    setRacePoints(racePointsRes.data || []);
     if (racesRes.data?.length) setUploadRaceId(racesRes.data[0].id);
     setLoading(false);
   }
@@ -335,7 +339,14 @@ export default function RacesPage() {
               <div className="mb-5">
                 <h2 className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">Kommende</h2>
                 <div className="flex flex-col gap-2">
-                  {racesByStatus.upcoming.map(race => (
+                  {racesByStatus.upcoming.map(race => {
+                    const expectedPrize = computeExpectedRacePrize({
+                      raceClass: race.race_class,
+                      raceType: race.race_type,
+                      stages: race.stages,
+                      racePoints,
+                    });
+                    return (
                     <div key={race.id}
                       className={`bg-cz-card border rounded-xl p-4 cursor-pointer transition-all
                         ${selectedRace?.id === race.id ? "border-cz-accent/40" : "border-cz-border hover:border-cz-border"}`}
@@ -354,10 +365,16 @@ export default function RacesPage() {
                           {race.edition_year && (
                             <p className="text-cz-accent-t text-xs font-mono mt-0.5">{race.edition_year}-udgave</p>
                           )}
+                          {expectedPrize > 0 && (
+                            <p className="text-cz-2 text-xs font-mono mt-0.5" title="Live-beregnet forventet pulje baseret på race-class × race-type × etaper">
+                              Forventet pulje {formatExpectedPrize(expectedPrize)}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -403,11 +420,24 @@ export default function RacesPage() {
             {selectedRace ? (
               <div className="bg-cz-card border border-cz-border rounded-xl p-5 sticky top-4">
                 <h2 className="text-cz-1 font-bold text-base mb-1">{selectedRace.name}</h2>
-                <p className="text-cz-3 text-xs mb-4">
+                <p className="text-cz-3 text-xs mb-1">
                   {selectedRace.race_type === "stage_race" ? `${selectedRace.stages} etaper` : "Enkeltdagsløb"}
                   {selectedRace.pool_race?.date_text && ` · ${selectedRace.pool_race.date_text}`}
                   {selectedRace.edition_year && ` · ${selectedRace.edition_year}-udgave`}
                 </p>
+                {(() => {
+                  const expected = computeExpectedRacePrize({
+                    raceClass: selectedRace.race_class,
+                    raceType: selectedRace.race_type,
+                    stages: selectedRace.stages,
+                    racePoints,
+                  });
+                  return expected > 0 ? (
+                    <p className="text-cz-2 text-xs font-mono mb-4" title="Live-beregnet forventet pulje baseret på race-class × race-type × etaper">
+                      Forventet pulje {formatExpectedPrize(expected)}
+                    </p>
+                  ) : <div className="mb-4" />;
+                })()}
 
                 {selectedRace.loading && (
                   <div className="flex justify-center py-8">

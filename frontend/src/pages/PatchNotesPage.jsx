@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "3.67",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Display · Forventet præmie-badges på race-cards (Refs #504)",
+        items: [
+          "EN · Every upcoming race in the calendar now shows a live-computed 'Forventet pulje ~X CZ$' label so you can size up the payout before deciding which riders to send. The number is recalculated from race-class points × stages × 1500 CZ$/point, so it stays in sync if admin tunes race_points later.",
+          "EN · The season overview page (Sæson-snapshot) adds the same per-race label and shows a 'Total forventet pulje for sæsonen' header above the calendar. For season 1 that totals ~55,3M CZ$ across the 26 ProSeries races.",
+          "EN · Pure display feature: no database changes, no rider stats, no transfer-window effects. The badge is hidden if a race has no race_class set yet.",
+          "DA · Hvert kommende løb i kalenderen viser nu en live-beregnet 'Forventet pulje ~X CZ$'-label, så du kan vurdere udbetalingen før du beslutter hvilke ryttere du sender. Tallet genberegnes fra race-class point × etaper × 1500 CZ$/point, så det følger med hvis admin justerer race_points senere.",
+          "DA · Sæson-snapshot-siden tilføjer samme label per løb og viser en 'Total forventet pulje for sæsonen' over kalenderen. For sæson 1 lander det på ~55,3M CZ$ fordelt på de 26 ProSeries-løb.",
+          "DA · Ren display-feature: ingen database-ændringer, ingen rider-stats, ingen effekt på transfer-vinduer. Badgen er skjult hvis et løb ikke har race_class sat endnu.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.66",
     date: "2026-05-20",
     label: "Beta",

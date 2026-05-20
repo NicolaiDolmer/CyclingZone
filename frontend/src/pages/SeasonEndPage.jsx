@@ -1,6 +1,7 @@
-﻿import { useState, useEffect, Fragment } from "react";
+﻿import { useState, useEffect, Fragment, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate, useParams } from "react-router-dom";
+import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
 
@@ -41,6 +42,7 @@ export default function SeasonEndPage() {
   const [selectedSeason, setSelectedSeason] = useState(null);
   const [standings, setStandings] = useState([]);
   const [races, setRaces] = useState([]);
+  const [racePoints, setRacePoints] = useState([]);
   const [pointsByTeam, setPointsByTeam] = useState({});
   const [winners, setWinners] = useState({ prize: null, biggestTransfer: null, mostActive: null, stageKing: null });
   const [myTeamId, setMyTeamId] = useState(null);
@@ -65,16 +67,18 @@ export default function SeasonEndPage() {
 
   const loadSeason = async (season) => {
     setSelectedSeason(season);
-    const [standingsRes, racesRes] = await Promise.all([
+    const [standingsRes, racesRes, racePointsRes] = await Promise.all([
       supabase.from("season_standings")
         .select("*, team:team_id(id, name, division, is_ai)")
         .eq("season_id", season.id)
         .order("division").order("total_points", { ascending: false }),
       supabase.from("races")
-        .select("id, name, race_type, stages, status, edition_year, pool_race:pool_race_id(date_text)")
+        .select("id, name, race_type, race_class, stages, status, edition_year, pool_race:pool_race_id(date_text)")
         .eq("season_id", season.id)
         .order("name"),
+      supabase.from("race_points").select("race_class, result_type, rank, points"),
     ]);
+    setRacePoints(racePointsRes.data || []);
 
     const allStandings = standingsRes.data || [];
     const standings = allStandings.filter(s => !s.team?.is_ai);
@@ -173,6 +177,16 @@ export default function SeasonEndPage() {
     if (!target) target = seasons.find(s => s.status === "active") || seasons[0];
     if (target && target.id !== selectedSeason?.id) loadSeason(target);
   }, [urlSeasonId, seasons]);
+
+  const seasonExpectedTotal = useMemo(() => {
+    if (!races.length || !racePoints.length) return 0;
+    return races.reduce((sum, race) => sum + computeExpectedRacePrize({
+      raceClass: race.race_class,
+      raceType: race.race_type,
+      stages: race.stages,
+      racePoints,
+    }), 0);
+  }, [races, racePoints]);
 
   // Group standings by division
   const byDiv = standings.reduce((acc, s) => {
@@ -277,8 +291,15 @@ export default function SeasonEndPage() {
           {/* Kalender */}
           {races.length > 0 && (
             <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-              <div className="px-5 py-3 border-b border-cz-border flex items-center justify-between">
-                <h2 className="font-bold text-cz-1 text-sm">📅 Kalender — {races.length} løb</h2>
+              <div className="px-5 py-3 border-b border-cz-border flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h2 className="font-bold text-cz-1 text-sm">📅 Kalender — {races.length} løb</h2>
+                  {seasonExpectedTotal > 0 && (
+                    <p className="text-cz-3 text-xs mt-0.5" title="Live-beregnet sum af forventet pulje for alle sæsonens løb">
+                      Total forventet pulje for sæsonen: <span className="text-cz-2 font-mono">{formatExpectedPrize(seasonExpectedTotal)}</span>
+                    </p>
+                  )}
+                </div>
                 <span className="text-cz-3 text-xs">
                   {races.filter(r => r.status === "completed").length} afsluttet ·
                   {" "}{races.filter(r => r.status === "scheduled").length} kommende
@@ -287,6 +308,12 @@ export default function SeasonEndPage() {
               <div className="divide-y divide-cz-border">
                 {races.map(race => {
                   const meta = RACE_STATUS_LABEL[race.status] || RACE_STATUS_LABEL.scheduled;
+                  const expectedPrize = computeExpectedRacePrize({
+                    raceClass: race.race_class,
+                    raceType: race.race_type,
+                    stages: race.stages,
+                    racePoints,
+                  });
                   return (
                     <div key={race.id}
                       onClick={() => navigate(`/race-archive/${encodeURIComponent(race.name)}`)}
@@ -297,6 +324,7 @@ export default function SeasonEndPage() {
                         <p className="text-cz-3 text-xs">
                           {race.race_type === "stage_race" ? `Etapeløb · ${race.stages} etaper` : "Enkeltdagsløb"}
                           {race.edition_year ? ` · ${race.edition_year}-udgave` : ""}
+                          {expectedPrize > 0 ? <span className="text-cz-2 font-mono"> · {formatExpectedPrize(expectedPrize)}</span> : ""}
                         </p>
                       </div>
                       <span className={`text-[9px] uppercase px-2 py-0.5 rounded-full border flex-shrink-0 ${meta.cls}`}>
