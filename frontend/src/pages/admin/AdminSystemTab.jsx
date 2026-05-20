@@ -65,6 +65,7 @@ export default function AdminSystemTab() {
     else showMsg(`❌ ${data.error}`, "error");
     setLoad(`pause_${level}`, false);
     loadData();
+    window.dispatchEvent(new Event("cz:market-pause-changed"));
   }
 
   async function resumeMarket() {
@@ -78,6 +79,7 @@ export default function AdminSystemTab() {
     else showMsg(`❌ ${data.error}`, "error");
     setLoad("market_resume", false);
     loadData();
+    window.dispatchEvent(new Event("cz:market-pause-changed"));
   }
 
   async function addWebhook() {
@@ -133,18 +135,6 @@ export default function AdminSystemTab() {
   return (
     <>
       <AdminMessageBanner msg={msg} />
-
-      {marketPause.level !== "none" && (
-        <div className="mb-4 px-4 py-3 rounded-xl text-sm border bg-cz-danger-bg text-cz-danger border-cz-danger/30">
-          <p className="font-semibold">
-            🛑 {marketPause.level === "all" ? "Hele markedet er pauset" : "Auktioner er pauset"}
-          </p>
-          {marketPause.reason && <p className="text-xs mt-1">Årsag: {marketPause.reason}</p>}
-          {marketPause.pausedAt && (
-            <p className="text-xs mt-1 text-cz-3">Pauset siden {new Date(marketPause.pausedAt).toLocaleString("da-DK")}</p>
-          )}
-        </div>
-      )}
 
       <AdminSection title="Marked-pause">
         <p className="text-cz-3 text-xs mb-3">
