@@ -12,6 +12,8 @@ permissions:
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       SUPABASE_URL: https://example.supabase.co
       SUPABASE_SERVICE_KEY: test-service-key
@@ -40,6 +42,8 @@ jobs:
 
   frontend-build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       VITE_API_URL: https://example.invalid
     defaults:
@@ -79,6 +83,8 @@ jobs:
 
   warning-budget:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
