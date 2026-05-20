@@ -167,7 +167,7 @@ export default function AdminPage() {
   const [seasonForm, setSeasonForm] = useState({ number: "", race_days_total: 60 });
   const [raceForm, setRaceForm] = useState({
     season_id: "", name: "", race_type: "stage_race",
-    race_class: "", stages: 21, start_date: "", prize_pool: 1000,
+    race_class: "", stages: 21, edition_year: "",
   });
   const [importRaceId, setImportRaceId] = useState("");
   const [importStage, setImportStage] = useState(1);
@@ -236,7 +236,7 @@ export default function AdminPage() {
   async function loadAll() {
     const [s, r, t, w, w2, lc, al, rp, u, ac] = await Promise.all([
       supabase.from("seasons").select("*").order("number", { ascending: false }),
-      supabase.from("races").select("*").order("start_date"),
+      supabase.from("races").select("*").order("name"),
       supabase.from("teams").select("id,name,balance,division").eq("is_ai", false).order("name"),
       supabase.from("transfer_windows").select("*").order("created_at", { ascending: false }).limit(1).single(),
       supabase.from("discord_settings").select("*").order("created_at"),
@@ -354,12 +354,12 @@ export default function AdminPage() {
       body: JSON.stringify({
         ...raceForm,
         stages: parseInt(raceForm.stages),
-        prize_pool: parseInt(raceForm.prize_pool),
+        edition_year: raceForm.edition_year ? parseInt(raceForm.edition_year, 10) : null,
         race_class: raceForm.race_class || null,
       }),
     });
     const data = await res.json();
-    if (res.ok) { showMsg(`✅ Løb "${data.name}" tilføjet`); loadAll(); setRaceForm(f => ({ ...f, name: "", start_date: "", race_class: "" })); }
+    if (res.ok) { showMsg(`✅ Løb "${data.name}" tilføjet`); loadAll(); setRaceForm(f => ({ ...f, name: "", edition_year: "", race_class: "" })); }
     else showMsg(`❌ ${data.error}`, "error");
     setLoad("race", false);
   }
@@ -372,8 +372,7 @@ export default function AdminPage() {
       race_class: editingRace.race_class || null,
       race_type: editingRace.race_type,
       stages: parseInt(editingRace.stages) || 1,
-      start_date: editingRace.start_date || null,
-      prize_pool: parseInt(editingRace.prize_pool) || 0,
+      edition_year: editingRace.edition_year ? parseInt(editingRace.edition_year, 10) : null,
     }).eq("id", editingRace.id);
     if (!error) { showMsg("✅ Løb gemt"); setEditingRace(null); loadAll(); }
     else showMsg(`❌ ${error.message}`, "error");
@@ -988,7 +987,7 @@ export default function AdminPage() {
                         )}
                       </td>
                       <td className="px-3 py-2.5 text-cz-2 hidden md:table-cell">
-                        {r.start_date ? new Date(r.start_date).toLocaleDateString("da-DK") : "—"}
+                        {r.edition_year ? `${r.edition_year}-udgave` : "—"}
                       </td>
                       <td className="px-3 py-2.5 text-right">
                         <div className="flex gap-2 justify-end">
@@ -1056,15 +1055,10 @@ export default function AdminPage() {
                                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
                             </div>
                             <div>
-                              <label className="block text-cz-3 text-xs mb-1">Startdato</label>
-                              <input type="date" value={editingRace.start_date || ""}
-                                onChange={e => setEditingRace(er => ({ ...er, start_date: e.target.value }))}
-                                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
-                            </div>
-                            <div>
-                              <label className="block text-cz-3 text-xs mb-1">Præmiepulje</label>
-                              <input type="number" value={editingRace.prize_pool || 0}
-                                onChange={e => setEditingRace(er => ({ ...er, prize_pool: e.target.value }))}
+                              <label className="block text-cz-3 text-xs mb-1">Løbsudgave (årstal)</label>
+                              <input type="number" min={2000} max={2099} placeholder="fx 2024"
+                                value={editingRace.edition_year || ""}
+                                onChange={e => setEditingRace(er => ({ ...er, edition_year: e.target.value }))}
                                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
                             </div>
                           </div>
@@ -1134,15 +1128,10 @@ export default function AdminPage() {
               className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
           </div>
           <div>
-            <label className="block text-cz-3 text-xs mb-1">Startdato</label>
-            <input type="date" value={raceForm.start_date}
-              onChange={e => setRaceForm(f => ({ ...f, start_date: e.target.value }))}
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
-          </div>
-          <div>
-            <label className="block text-cz-3 text-xs mb-1">Præmiepulje</label>
-            <input type="number" value={raceForm.prize_pool}
-              onChange={e => setRaceForm(f => ({ ...f, prize_pool: e.target.value }))}
+            <label className="block text-cz-3 text-xs mb-1">Løbsudgave (årstal)</label>
+            <input type="number" min={2000} max={2099} placeholder="fx 2024"
+              value={raceForm.edition_year}
+              onChange={e => setRaceForm(f => ({ ...f, edition_year: e.target.value }))}
               className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
           </div>
           <div className="flex items-end">

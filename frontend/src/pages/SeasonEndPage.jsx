@@ -76,9 +76,9 @@ export default function SeasonEndPage() {
         .eq("season_id", season.id)
         .order("division").order("total_points", { ascending: false }),
       supabase.from("races")
-        .select("id, name, race_type, stages, start_date, status, prize_pool")
+        .select("id, name, race_type, stages, status, edition_year, pool_race:pool_race_id(date_text)")
         .eq("season_id", season.id)
-        .order("start_date"),
+        .order("name"),
     ]);
 
     const allStandings = standingsRes.data || [];
@@ -296,12 +296,12 @@ export default function SeasonEndPage() {
                     <div key={race.id}
                       onClick={() => navigate(`/race-archive/${encodeURIComponent(race.name)}`)}
                       className="flex items-center gap-3 px-5 py-2.5 hover:bg-cz-subtle cursor-pointer transition-colors">
-                      <span className="text-cz-3 text-xs font-mono w-14 flex-shrink-0">{formatDate(race.start_date)}</span>
+                      <span className="text-cz-3 text-xs font-mono w-14 flex-shrink-0">{race.pool_race?.date_text || "—"}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-cz-1 text-sm font-medium truncate">{race.name}</p>
                         <p className="text-cz-3 text-xs">
                           {race.race_type === "stage_race" ? `Etapeløb · ${race.stages} etaper` : "Enkeltdagsløb"}
-                          {race.prize_pool ? ` · ${formatCZ(race.prize_pool)}` : ""}
+                          {race.edition_year ? ` · ${race.edition_year}-udgave` : ""}
                         </p>
                       </div>
                       <span className={`text-[9px] uppercase px-2 py-0.5 rounded-full border flex-shrink-0 ${meta.cls}`}>

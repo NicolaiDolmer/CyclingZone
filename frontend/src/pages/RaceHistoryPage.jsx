@@ -18,9 +18,9 @@ export default function RaceHistoryPage() {
 
     const { data: races } = await supabase
       .from("races")
-      .select("id, name, race_type, stages, start_date, prize_pool, status, season:season_id(id, number, status)")
+      .select("id, name, race_type, stages, edition_year, status, season:season_id(id, number, status)")
       .ilike("name", raceName)
-      .order("start_date");
+      .order("edition_year", { ascending: false, nullsFirst: false });
 
     if (!races?.length) { setLoading(false); return; }
 
@@ -129,12 +129,8 @@ export default function RaceHistoryPage() {
               <div key={ed.id} className="px-4 py-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-cz-2 text-sm font-medium">Sæson {ed.season?.number}</p>
-                  {ed.start_date && (
-                    <p className="text-cz-3 text-xs">
-                      {new Date(ed.start_date).toLocaleDateString("da-DK", {
-                        day: "numeric", month: "short", year: "numeric",
-                      })}
-                    </p>
+                  {ed.edition_year && (
+                    <p className="text-cz-3 text-xs">{ed.edition_year}-udgave</p>
                   )}
                 </div>
                 <div className="text-right">

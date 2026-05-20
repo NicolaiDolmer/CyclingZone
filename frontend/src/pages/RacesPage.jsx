@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import * as XLSX from "@e965/xlsx";
 import RacePointsPage from "./RacePointsPage";
+import { dateTextToDayOfYear } from "../lib/raceCalendar";
 
 const RESULT_TYPES = [
   { key: "stage", label: "Etape" },
@@ -125,8 +126,8 @@ export default function RacesPage() {
     const [racesRes, seasonsRes] = await Promise.all([
       supabase
         .from("races")
-        .select("id, name, race_type, race_class, stages, start_date, status, prize_pool, season:season_id(id, number, status)")
-        .order("start_date", { ascending: false, nullsFirst: false }),
+        .select("id, name, race_type, race_class, stages, status, edition_year, pool_race:pool_race_id(date_text), season:season_id(id, number, status)")
+        .order("name"),
       supabase
         .from("seasons")
         .select("id, number, status")
@@ -157,7 +158,7 @@ export default function RacesPage() {
 
     const [seasonRes, racesRes, pendingRes] = await Promise.all([
       supabase.from("seasons").select("*").eq("status", "active").single(),
-      supabase.from("races").select("*, results:race_results(id)").order("start_date"),
+      supabase.from("races").select("*, results:race_results(id), pool_race:pool_race_id(date_text)").order("name"),
       supabase.from("pending_race_results")
         .select("*, race:race_id(name), submitter:submitted_by(username)")
         .order("submitted_at", { ascending: false }),
@@ -280,7 +281,9 @@ export default function RacesPage() {
   }
 
   const racesByStatus = {
-    upcoming: races.filter(r => !r.results?.length && r.status !== "completed"),
+    upcoming: races
+      .filter(r => !r.results?.length && r.status !== "completed")
+      .sort((a, b) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text)),
     completed: races.filter(r => r.results?.length > 0 || r.status === "completed"),
   };
 
@@ -345,12 +348,12 @@ export default function RacesPage() {
                           </p>
                         </div>
                         <div className="text-right">
-                          {race.start_date && (
-                            <p className="text-cz-2 text-xs">
-                              {new Date(race.start_date).toLocaleDateString("da-DK", { day: "numeric", month: "short" })}
-                            </p>
+                          {race.pool_race?.date_text && (
+                            <p className="text-cz-3 text-xs">{race.pool_race.date_text}</p>
                           )}
-                          <p className="text-cz-accent-t text-xs font-mono mt-0.5">{race.prize_pool?.toLocaleString("da-DK")} CZ$</p>
+                          {race.edition_year && (
+                            <p className="text-cz-accent-t text-xs font-mono mt-0.5">{race.edition_year}-udgave</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -402,8 +405,8 @@ export default function RacesPage() {
                 <h2 className="text-cz-1 font-bold text-base mb-1">{selectedRace.name}</h2>
                 <p className="text-cz-3 text-xs mb-4">
                   {selectedRace.race_type === "stage_race" ? `${selectedRace.stages} etaper` : "Enkeltdagsløb"}
-                  {selectedRace.start_date && ` · ${new Date(selectedRace.start_date).toLocaleDateString("da-DK")}`}
-                  {` · ${selectedRace.prize_pool?.toLocaleString("da-DK")} CZ$ præmiepulje`}
+                  {selectedRace.pool_race?.date_text && ` · ${selectedRace.pool_race.date_text}`}
+                  {selectedRace.edition_year && ` · ${selectedRace.edition_year}-udgave`}
                 </p>
 
                 {selectedRace.loading && (
@@ -573,9 +576,7 @@ export default function RacesPage() {
                             {r.race_type === "stage_race" ? `Etapeløb (${r.stages})` : "Enkeltdag"}
                           </td>
                           <td className="px-4 py-2.5 text-cz-2 text-xs">
-                            {r.start_date
-                              ? new Date(r.start_date).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" })
-                              : "—"}
+                            {r.edition_year ? `${r.edition_year}-udgave` : "—"}
                           </td>
                           <td className="px-4 py-2.5 text-xs">
                             <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] uppercase

@@ -1542,44 +1542,41 @@ export type Database = {
       races: {
         Row: {
           created_at: string | null
+          edition_year: number | null
           id: string
           name: string
           pool_race_id: string | null
           prize_paid_at: string | null
-          prize_pool: number | null
           race_class: string | null
           race_type: string | null
           season_id: string | null
           stages: number | null
-          start_date: string | null
           status: string | null
         }
         Insert: {
           created_at?: string | null
+          edition_year?: number | null
           id?: string
           name: string
           pool_race_id?: string | null
           prize_paid_at?: string | null
-          prize_pool?: number | null
           race_class?: string | null
           race_type?: string | null
           season_id?: string | null
           stages?: number | null
-          start_date?: string | null
           status?: string | null
         }
         Update: {
           created_at?: string | null
+          edition_year?: number | null
           id?: string
           name?: string
           pool_race_id?: string | null
           prize_paid_at?: string | null
-          prize_pool?: number | null
           race_class?: string | null
           race_type?: string | null
           season_id?: string | null
           stages?: number | null
-          start_date?: string | null
           status?: string | null
         }
         Relationships: [

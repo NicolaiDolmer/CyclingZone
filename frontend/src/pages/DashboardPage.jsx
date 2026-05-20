@@ -9,6 +9,7 @@ import { FinanceForecastBadge } from "../components/FinanceForecastCard";
 import SurveyBanner from "../components/SurveyBanner";
 import { computeDashboardSquadStats } from "../lib/dashboardSquadStats";
 import { formatNumber, formatDate } from "../lib/intl";
+import { dateTextToDayOfYear } from "../lib/raceCalendar";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -124,8 +125,8 @@ export default function DashboardPage() {
       supabase.from("auctions")
         .select("id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname, team_id)")
         .in("status", ["active", "extended"]),
-      supabase.from("races").select("*").not("status", "eq", "completed")
-        .order("start_date", { ascending: true, nullsFirst: false }).limit(3),
+      supabase.from("races").select("*, pool_race:pool_race_id(date_text)").not("status", "eq", "completed")
+        .order("name").limit(10),
       activeSeason
         ? supabase.from("season_standings")
             .select("*, team:team_id(id, name, division, is_ai)")
@@ -143,7 +144,10 @@ export default function DashboardPage() {
     setPendingIncomingCount(pendingIncomingRes.count || 0);
     setActiveLoanCount(loansInRes.count || 0);
     setAllAuctions(auctionsRes.data || []);
-    setNextRaces(racesRes.data || []);
+    const sortedRaces = [...(racesRes.data || [])]
+      .sort((a, b) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text))
+      .slice(0, 3);
+    setNextRaces(sortedRaces);
     const activePlan = boardStatus?.plans?.["1yr"] || boardStatus?.plans?.["3yr"] || boardStatus?.plans?.["5yr"] || null;
     setBoard(activePlan?.board || null);
     setBoardOutlook(activePlan?.outlook || null);
@@ -581,10 +585,12 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    {race.start_date
-                      ? <p className="text-cz-2 text-sm">{formatDate(race.start_date, null, { day: "numeric", month: "short" })}</p>
+                    {race.pool_race?.date_text
+                      ? <p className="text-cz-2 text-sm">{race.pool_race.date_text}</p>
                       : <p className="text-cz-3 text-sm">{t("dashboard:cards.races.dateTbd")}</p>}
-                    <p className="text-cz-accent-t text-xs font-mono">{formatNumber(race.prize_pool)} CZ$</p>
+                    {race.edition_year && (
+                      <p className="text-cz-accent-t text-xs font-mono">{race.edition_year}-udgave</p>
+                    )}
                   </div>
                 </div>
               ))}

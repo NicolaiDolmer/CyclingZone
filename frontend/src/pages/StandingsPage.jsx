@@ -49,9 +49,9 @@ export default function StandingsPage() {
             .order("total_points", { ascending: false })
         : Promise.resolve({ data: [] }),
       supabase.from("races")
-        .select("id, name, start_date")
+        .select("id, name, edition_year, pool_race:pool_race_id(date_text)")
         .eq("season_id", activeSeason?.id || "")
-        .order("start_date"),
+        .order("name"),
     ]);
 
     // Index actual standings by team_id

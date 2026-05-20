@@ -3441,8 +3441,7 @@ router.post("/admin/races", requireAdmin, adminWriteLimiter, async (req, res) =>
       name,
       race_type = "single",
       stages = 1,
-      start_date = null,
-      prize_pool = 0,
+      edition_year = null,
       race_class,
     } = req.body;
 
@@ -3455,15 +3454,26 @@ router.post("/admin/races", requireAdmin, adminWriteLimiter, async (req, res) =>
     const normalizedStages = race_type === "single"
       ? 1
       : Math.max(1, Number.parseInt(stages, 10) || 1);
-    const normalizedPrizePool = Math.max(0, Number.parseInt(prize_pool, 10) || 0);
+
+    let normalizedEditionYear = null;
+    if (edition_year !== null && edition_year !== undefined && edition_year !== "") {
+      const parsed = Number.parseInt(edition_year, 10);
+      if (!Number.isFinite(parsed) || parsed < 2000 || parsed > 2099) {
+        return res.status(400).json({ error: "edition_year skal være mellem 2000 og 2099" });
+      }
+      normalizedEditionYear = parsed;
+    }
 
     const { data: season, error: seasonError } = await supabase
       .from("seasons")
-      .select("id, status")
+      .select("id, status, number")
       .eq("id", season_id)
       .single();
     if (seasonError) return res.status(500).json({ error: seasonError.message });
     if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+    if (season.number === 0) {
+      return res.status(400).json({ error: "Sæson 0 må ikke have løb" });
+    }
     if (season.status === "completed") {
       return res.status(400).json({ error: "Kan ikke tilføje løb til en afsluttet sæson" });
     }
@@ -3473,8 +3483,7 @@ router.post("/admin/races", requireAdmin, adminWriteLimiter, async (req, res) =>
       name: String(name).trim(),
       race_type,
       stages: normalizedStages,
-      start_date: start_date || null,
-      prize_pool: normalizedPrizePool,
+      edition_year: normalizedEditionYear,
       status: "scheduled",
       race_class: race_class || null,
     };
@@ -3804,7 +3813,6 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
         race_type: p.race_type,
         stages: p.stages,
         status: "scheduled",
-        prize_pool: 0,
       }));
 
     if (toInsert.length === 0) {
@@ -3877,9 +3885,9 @@ router.get("/races", requireAuth, cached({ namespace: "races", ttlMs: CACHE_TTL.
     let query = supabase
       .from("races")
       .select(
-        "id, name, race_type, race_class, stages, start_date, status, prize_pool, season:season_id(id, number, status)"
+        "id, name, race_type, race_class, stages, status, edition_year, pool_race:pool_race_id(date_text), season:season_id(id, number, status)"
       )
-      .order("start_date", { ascending: false, nullsFirst: false });
+      .order("name", { ascending: true });
 
     if (seasonId) query = query.eq("season_id", seasonId);
     if (raceClass) query = query.eq("race_class", raceClass);

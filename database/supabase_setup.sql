@@ -97,10 +97,10 @@ CREATE TABLE IF NOT EXISTS public.races (
   race_type TEXT DEFAULT 'single' CHECK (race_type IN ('single', 'stage_race')),
   race_class TEXT,
   stages INTEGER DEFAULT 1,
-  start_date DATE,
+  edition_year INTEGER CHECK (edition_year IS NULL OR (edition_year BETWEEN 2000 AND 2099)),
   status TEXT DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'active', 'completed')),
-  prize_pool BIGINT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT races_no_season_zero CHECK (season_id <> '00000000-0000-0000-0000-000000000000'::uuid)
 );
 
 -- ── RACE RESULTS ──────────────────────────────────────────────

@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "3.65",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Race-skema · Løbsudgave + ryddet up i metadata (Refs #168, #502)",
+        items: [
+          "EN · Admin can now tag each race with the edition year it represents — e.g. 'Tour de France 2024' — via a new 'Løbsudgave (årstal)' input on the race create/edit form. The year appears on race cards in the calendar, the dashboard 'next races' panel, and on each historic edition in race history. Optional field — existing races start blank and you fill them in over time.",
+          "EN · The 'Startdato' and 'Præmiepulje' fields are removed from races. We don't know which day a race will run inside our game, and prize money is already determined by race class (race_points × 1500 CZ$) — the per-race override served no purpose. Race calendars now sort by the real-life PCM date (e.g. '20/5 - 24/5') from the race pool instead.",
+          "EN · Season 0 (open beta) is now permanently locked at 0 races via a database CHECK constraint. Any code path that tries to add a race to season 0 fails with a clear 400 error instead of silently writing.",
+          "DA · Admin kan nu mærke hvert løb med hvilken udgave/årgang det repræsenterer — fx 'Tour de France 2024' — via et nyt 'Løbsudgave (årstal)'-felt på opret/rediger-formularen. Årstallet vises på løbs-cards i kalenderen, dashboard-panelet 'kommende løb' og på hver historisk udgave i løbshistorik. Frivilligt felt — eksisterende løb starter blanke og du fylder dem ind over tid.",
+          "DA · Felterne 'Startdato' og 'Præmiepulje' er fjernet fra løb. Vi ved ikke hvilken dag et løb køres inde i spillet, og præmiepenge er allerede defineret af løbsklasse (race_points × 1500 CZ$) — per-løb override gjorde ingenting. Løbskalender sorterer nu efter den virkelige PCM-dato (fx '20/5 - 24/5') fra race-poolen i stedet.",
+          "DA · Sæson 0 (open beta) er nu permanent låst til 0 løb via en database CHECK-constraint. Enhver kodevej der prøver at tilføje løb til sæson 0 fejler med en klar 400-fejl i stedet for at skrive stille.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.64",
     date: "2026-05-19",
     label: "Beta",
