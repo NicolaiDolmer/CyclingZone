@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "3.69",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "UCI-points · Fix translit-mismatch for 45 ryttere (Refs #508)",
+        items: [
+          "EN · 45 riders had their UCI points stuck at the minimum (5) because the weekly sync from ProCyclingStats couldn't match their database name to the published name. The cause: transliteration drift on Slavic / Arabic / Asian / Latin-American names — e.g. PCS publishes 'BOLDYREV Matvei' while the database stored 'Matvey Boldyrev', or 'JANG Kyung-Gu' vs 'Kyunggu Jang'. The token-set match used by the sync requires exact spelling, so it silently fell back to the minimum.",
+          "EN · Largest corrections (uci_points before → after): Tegshbayar Batsaikhan (MN, pop 21) 5→196; Mohammad Al Mutaiwei (AE) 5→153; Alfie George (GB) 5→138; Edinson Alejandro Callejas (CO) 5→115; Nahom Zerai (ER) and Finlay Walsh (AU) 5→110 each; Cristofer Robin Jurado (PA) 5→101; Matvey Boldyrev (RU) 5→78; plus 37 more (full list in Refs #508).",
+          "EN · Manager-economy impact: each restored rider's salary jumped accordingly — Batsaikhan's CZ$ value went 2,000 → 78,400, Boldyrev's 2,000 → 31,200. If you had any of these riders on your team you'll see the new salaries on the next refresh.",
+          "EN · Forward fix: the 45 verified name-variants are now in the scraper's UCI_NAME_OVERRIDE map, so next Wednesday's cron won't re-break them. A new GitHub Actions workflow ('UCI Translit Audit') can be run ad-hoc to surface any future translit drift before it bites.",
+          "DA · 45 ryttere stod fast på UCI-minimum (5 point) fordi den ugentlige sync fra ProCyclingStats ikke kunne matche deres database-navn til det offentliggjorte navn. Årsagen: transliteration-drift på slaviske/arabiske/asiatiske/latinamerikanske navne — fx PCS skriver 'BOLDYREV Matvei' mens databasen havde 'Matvey Boldyrev', eller 'JANG Kyung-Gu' vs 'Kyunggu Jang'. Token-set-matchet kræver præcis stavning og faldt derfor lydløst tilbage til minimum.",
+          "DA · Største rettelser (uci_points før → efter): Tegshbayar Batsaikhan (MN, pop 21) 5→196; Mohammad Al Mutaiwei (AE) 5→153; Alfie George (GB) 5→138; Edinson Alejandro Callejas (CO) 5→115; Nahom Zerai (ER) og Finlay Walsh (AU) 5→110 hver; Cristofer Robin Jurado (PA) 5→101; Matvey Boldyrev (RU) 5→78; plus 37 til (komplet liste i Refs #508).",
+          "DA · Manager-økonomi-effekt: hver genoprettet rytters CZ$-værdi steg tilsvarende — Batsaikhan gik 2.000 → 78.400, Boldyrev 2.000 → 31.200. Har du nogle af disse ryttere på holdet, ser du de nye lønninger ved næste refresh.",
+          "DA · Forward-fix: de 45 verificerede navn-varianter ligger nu i scraperens UCI_NAME_OVERRIDE-map, så onsdagens cron ikke knækker dem igen. En ny GitHub Actions-workflow ('UCI Translit Audit') kan køres ad hoc og finde fremtidig translit-drift før den bider.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.68",
     date: "2026-05-20",
     label: "Beta",

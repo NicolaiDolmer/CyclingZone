@@ -94,11 +94,63 @@ def name_tokens(name: str) -> frozenset[str]:
 
 # Runtime overrides for known DB ↔ PCS name variants.
 # Key: normalized DB name (firstname lastname). Value: normalized PCS/UCI name.
+#
+# De første 4 er pre-#508 manual fixes. De resterende 45 er translit-victims
+# afdækket af scripts/uci_audit.py --mode translit + GitHub Actions workflow
+# "UCI Translit Audit" (kører ad hoc) — verificeret 2026-05-20 (Refs #508).
+# Backwards-fixet ligger i database/2026-05-20-fix-uci-translit-mismatches.sql.
 UCI_NAME_OVERRIDE: dict[str, str] = {
     normalize_name("Benjamí Prades"): normalize_name("PRADES Benjamín"),
     normalize_name("Bjoern Koerdt"): normalize_name("KOERDT Bjorn"),
     normalize_name("Joe Blackmore"): normalize_name("BLACKMORE Joseph"),
     normalize_name("Natnael Tesfazion"): normalize_name("TESFATSION Natnael"),
+    # ── Translit-victims fixet 2026-05-20 (Refs #508) ────────────────────────
+    # Sorteret efter sheet-points descending (storst CZ$-paavirkning forst).
+    normalize_name("Tegshbayar Batsaikhan"): normalize_name("BATSAIKHAN Tegsh-Bayar"),
+    normalize_name("Mohammad Al Mutaiwei"): normalize_name("ALMUTAIWEI Mohammad"),
+    normalize_name("Alfie George"): normalize_name("GEORGE Alfred"),
+    normalize_name("Edinson Alejandro Callejas"): normalize_name("CALLEJAS Edison Alejandro"),
+    normalize_name("Nahom Zerai"): normalize_name("ZERAY Nahom"),
+    normalize_name("Finlay Walsh"): normalize_name("WALSH Finn"),
+    normalize_name("Cristofer Robin Jurado"): normalize_name("JURADO Christofer Robín"),
+    normalize_name("Will Smith"): normalize_name("SMITH William"),
+    normalize_name("Akil Campbell"): normalize_name("CAMPBELL Akill"),
+    normalize_name("Matvey Boldyrev"): normalize_name("BOLDYREV Matvei"),
+    normalize_name("Martin Pluto"): normalize_name("PLUTO Mārtiņš"),
+    normalize_name("Luis Fernando Bomfim de Almeida"): normalize_name("BOMFIM DE ALMEIDA Luiz Fernando"),
+    normalize_name("Muhammad Abdurrohman"): normalize_name("ABDURRAHMAN Muhammad"),
+    normalize_name("Brayan Obando"): normalize_name("OBANDO Bryan Raul"),
+    normalize_name("Joshua Kench"): normalize_name("KENCH Josh"),
+    normalize_name("Serdar Anil Depe"): normalize_name("DEPE Serdar Anıl"),
+    normalize_name("Thavone Phon Asa"): normalize_name("PHONASA Thavone"),
+    normalize_name("David Jónsson"): normalize_name("JÓNSSON Davíð"),
+    normalize_name("Wooho Jung"): normalize_name("JUNG Woo-Ho"),
+    normalize_name("Mattie Dodd"): normalize_name("DODD Matthew"),
+    normalize_name("Mohamed Alaleeli"): normalize_name("ALALEELI Mohammed"),
+    normalize_name("Nattawat Mongkonwong"): normalize_name("MONGKONWONG Natawat"),
+    normalize_name("Maher Habouria"): normalize_name("MAHER Habouriya"),
+    normalize_name("Ioannis Kyriakidis"): normalize_name("KIRIAKIDIS Ioannis"),
+    normalize_name("Hassan Elseify"): normalize_name("ELSAIFY Hassan"),
+    normalize_name("Ahmed Khalid Al Nuaimi"): normalize_name("ALNUAIMI Khalid"),
+    normalize_name("Hyeongmin Choe"): normalize_name("CHOE Hyeong Min"),
+    normalize_name("Sasha Bergaud"): normalize_name("BERGAUD Sacha"),
+    normalize_name("Saif Al Kaabi"): normalize_name("ALKAABI Saif"),
+    normalize_name("Julio Amicar Ispache"): normalize_name("ISPACHE Julio Amilcar"),
+    normalize_name("Abderaouf Bengayou"): normalize_name("BENGAYOU Abdelraouf"),
+    normalize_name("Maksim Bilyi"): normalize_name("BILYI Maksym"),
+    normalize_name("Dionisyos Douzas"): normalize_name("DOUZAS Dionysios"),
+    normalize_name("Nadhem Ben Amar"): normalize_name("BEN AMOR Nadhem"),
+    normalize_name("Fanis Kyritsis"): normalize_name("KYRITSIS Theofanis"),
+    normalize_name("Matthijs De Clercq"): normalize_name("DE CLERCQ Mathijs"),
+    normalize_name("Thanakone Vongdeaune"): normalize_name("VONGDEUANE Thanakone"),
+    normalize_name("Zer Abruk Debay"): normalize_name("DEBAY Filimon Zerabruk"),
+    normalize_name("Alex Correll"): normalize_name("CORRELL Alexander"),
+    normalize_name("Julen Arriola-Bengoa"): normalize_name("ARRIOLABENGOA Julen"),
+    normalize_name("Sergei Rostovtsev"): normalize_name("ROSTOVTSEV Sergey"),
+    normalize_name("Abdallah Ben Youcef"): normalize_name("BENYOUCEF Abdallah"),
+    normalize_name("Kyunggu Jang"): normalize_name("JANG Kyung-Gu"),
+    normalize_name("Vitaliy Hryniv"): normalize_name("GRYNIV Vitaliy"),
+    normalize_name("Cristhian Triminio Martinez"): normalize_name("TRIMINIO Cristian"),
 }
 
 # Explicitly approved as not found in current PCS top-3000; allow minimum downgrade
