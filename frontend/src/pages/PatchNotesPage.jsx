@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.70",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Løbskalender 'Udgave'-kolonne synlig på mobil",
+        items: [
+          "EN · The race calendar in /admin used to have a column titled 'Dato' that actually showed the edition year ('2024-udgave'), and it was hidden on screens narrower than 768px. The column is now titled 'Udgave' and visible at every screen size, so the edition_year you just typed is immediately confirmed after save — no more wondering if it stuck.",
+          "DA · Løbskalenderen i /admin havde en kolonne kaldet 'Dato', der faktisk viste løbsudgavens årstal ('2024-udgave'), og den var skjult på skærme smallere end 768px. Kolonnen hedder nu 'Udgave' og vises på alle skærmstørrelser, så det edition_year du lige har skrevet bekræftes med det samme efter gem — ingen tvivl om at det blev gemt.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.69",
     date: "2026-05-20",
     label: "Beta",
