@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "3.68",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Race-points editor med audit-log (Refs #505)",
+        items: [
+          "EN · Admin can now edit UCI race points (the per-classification, per-rank points awarded for race results) directly in /admin → Pointtabel per løbsklasse, with every edit logged to the admin audit trail. Replaces the older direct-write editor that bypassed audit logging and was missing the per-day jersey result_types added in v3.66.",
+          "EN · New per-row 'Reset til baseline' button restores the UCI default for a result type in one click. A sticky save bar collects pending edits and commits them as a batch — no more accidental saves on click-away.",
+          "EN · Backend: 3 new endpoints (GET /admin/race-points, GET /admin/race-points/baseline, PUT /admin/race-points/:id) all guarded by requireAdmin + rate-limited. Each PUT writes a race_points_edited row to admin_log with before/after values, race_class, result_type and rank.",
+          "DA · Admin kan nu redigere UCI race-points (point per klassifikation × placering) direkte i /admin → Pointtabel per løbsklasse, med audit-log på hver ændring. Erstatter den gamle direkte editor der gik uden om audit-trail og manglede de per-dag jersey-typer fra v3.66.",
+          "DA · Ny per-række 'Reset til baseline'-knap fører UCI-default tilbage med ét klik. En sticky save-bar samler ventende ændringer og commiter dem batch-vis — ingen flere uheld med save-on-click-away.",
+          "DA · Backend: 3 nye endpoints (GET /admin/race-points, GET /admin/race-points/baseline, PUT /admin/race-points/:id) auth-gated via requireAdmin + rate-limit. Hver PUT skriver en race_points_edited-række til admin_log med før/efter-værdier, race_class, result_type og rank.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.67",
     date: "2026-05-20",
     label: "Beta",

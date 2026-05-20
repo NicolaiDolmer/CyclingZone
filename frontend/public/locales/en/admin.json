@@ -1,1 +1,48 @@
-{}
+{
+  "racePoints": {
+    "sectionTitle": "Race points · UCI override",
+    "intro": "Adjust the UCI ranking points awarded per finishing position, per race class. Changes are audited in the admin log. Use \"Reset to baseline\" to restore UCI defaults.",
+    "raceClassTab": "Race class",
+    "rankHeader": "#{rank}",
+    "resultTypeLabel": "Classification",
+    "save": "Save changes ({count})",
+    "discard": "Discard",
+    "resetRow": "Reset to baseline",
+    "saving": "Saving…",
+    "saved": "Saved {count, plural, one {1 change} other {# changes}}",
+    "saveError": "Could not save: {error}",
+    "loadError": "Could not load race points: {error}",
+    "invalidValue": "Must be a non-negative integer",
+    "groups": {
+      "Grand Tour": "Grand Tour",
+      "Endagslob": "One-day Monuments",
+      "WorldTour": "World Tour",
+      "Continental Circuit": "Continental Circuit"
+    },
+    "raceClasses": {
+      "TourFrance": "Tour de France",
+      "GiroVuelta": "Giro / Vuelta",
+      "Monuments": "Monuments",
+      "OtherWorldTourA": "Other WorldTour A",
+      "OtherWorldTourB": "Other WorldTour B",
+      "OtherWorldTourC": "Other WorldTour C",
+      "ProSeries": "ProSeries",
+      "Class1": "Class 1",
+      "Class2": "Class 2"
+    },
+    "resultTypes": {
+      "Etapeplacering": "Stage placement",
+      "Klassement": "GC (final)",
+      "Klassiker": "One-day result",
+      "Pointtroje": "Points jersey (final)",
+      "Bjergtroje": "Mountain jersey (final)",
+      "Ungdomstroje": "Youth jersey (final)",
+      "Forertroje": "Leader jersey (per stage held)",
+      "BjergtrojeDag": "Mountain jersey (per day held)",
+      "PointtrojeDag": "Points jersey (per day held)",
+      "UngdomstrojeDag": "Youth jersey (per day held)",
+      "EtapelobHold": "Team — stage race",
+      "KlassikerHold": "Team — one-day"
+    }
+  }
+}

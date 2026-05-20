@@ -40,6 +40,7 @@ const MIGRATION_ADMIN_ACTION_TYPES = new Set([
   "team_data_edited",
   "rider_data_edited",
   "season_transition",
+  "race_points_edited",
 ]);
 
 const MIGRATION_ACTOR_TYPES = new Set(["cron", "api", "admin", "system", "migration"]);

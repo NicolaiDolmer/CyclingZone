@@ -162,6 +162,11 @@ import { captureException } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { parseRacePoolCsv, summarizePool, WORLD_TOUR_CLASSES } from "../lib/racePoolImport.js";
 import {
+  UCI_MEN_RACE_CLASSES,
+  UCI_MEN_RESULT_TYPES,
+  buildUciMenRacePointRows,
+} from "../lib/uciRacePointDefaults.js";
+import {
   selectFirstSeasonRaces,
   selectSeasonRaces,
   DEFAULT_RACE_DAYS_TARGET,
@@ -3728,6 +3733,94 @@ router.get("/admin/seasons/:seasonId/race-priority", requireAdmin, async (req, r
       stage_race_priority: season.stage_race_priority || [],
       single_race_boost: season.single_race_boost || [],
     });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============================================================
+// #505 — race_points editor: GET all, GET baseline, PUT one
+// ============================================================
+
+// GET /api/admin/race-points — alle race_points-rows + meta (race_class + result_type lists)
+router.get("/admin/race-points", requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("race_points")
+      .select("id, race_class, result_type, rank, points, updated_at")
+      .order("race_class")
+      .order("result_type")
+      .order("rank");
+    if (error) return res.status(500).json({ error: error.message });
+
+    res.json({
+      rows: data || [],
+      race_classes: UCI_MEN_RACE_CLASSES,
+      result_types: UCI_MEN_RESULT_TYPES,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/race-points/baseline — UCI baseline-værdier fra buildUciMenRacePointRows
+// Bruges af "Reset to baseline"-knap i frontend.
+router.get("/admin/race-points/baseline", requireAdmin, async (req, res) => {
+  try {
+    const rows = buildUciMenRacePointRows();
+    res.json({ rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT /api/admin/race-points/:id — opdatér points for én row + audit-log
+// Body: { points: number }
+router.put("/admin/race-points/:id", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { points } = req.body || {};
+
+    if (!Number.isInteger(points) || points < 0) {
+      return res.status(400).json({ error: "points skal være et ikke-negativt heltal" });
+    }
+
+    // Hent eksisterende row for audit-log (before-værdi)
+    const { data: existing, error: fetchError } = await supabase
+      .from("race_points")
+      .select("id, race_class, result_type, rank, points")
+      .eq("id", id)
+      .single();
+    if (fetchError) return res.status(500).json({ error: fetchError.message });
+    if (!existing) return res.status(404).json({ error: "race_points row ikke fundet" });
+
+    if (existing.points === points) {
+      return res.json({ row: existing, unchanged: true });
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from("race_points")
+      .update({ points, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("id, race_class, result_type, rank, points, updated_at")
+      .single();
+    if (updateError) return res.status(500).json({ error: updateError.message });
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: ADMIN_ACTION_TYPE.RACE_POINTS_EDITED,
+      description: `race_points ${existing.race_class}/${existing.result_type}/#${existing.rank}: ${existing.points} → ${points}`,
+      meta: {
+        race_points_id: existing.id,
+        race_class: existing.race_class,
+        result_type: existing.result_type,
+        rank: existing.rank,
+        before: existing.points,
+        after: points,
+      },
+    });
+
+    res.json({ row: updated });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -1,16 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import {
-  MAX_RANKS,
-  RACE_CLASSES,
-  RESULT_TYPES,
-  getRaceClassLabel,
-} from "../lib/uciRaceClasses";
+import { RACE_CLASSES, getRaceClassLabel } from "../lib/uciRaceClasses";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import EconomyAdminSection from "../components/admin/EconomyAdminSection";
 import SeasonCycleSection from "../components/admin/SeasonCycleSection";
 import RacePoolSection from "../components/admin/RacePoolSection";
 import DeadlineReadinessSection from "../components/admin/DeadlineReadinessSection";
+import RacePointsAdminSection from "../components/admin/RacePointsAdminSection";
 import { logEvent } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
@@ -161,7 +157,6 @@ export default function AdminPage() {
   const [webhooks, setWebhooks] = useState([]);
   const [loanConfigs, setLoanConfigs] = useState([]);
   const [adminLogs, setAdminLogs] = useState([]);
-  const [racePoints, setRacePoints] = useState([]);
   const [users, setUsers] = useState([]);
 
   const [seasonForm, setSeasonForm] = useState({ number: "", race_days_total: 60 });
@@ -221,8 +216,6 @@ export default function AdminPage() {
   const [betaClearTransactions, setBetaClearTransactions] = useState(false);
 
   // Points editor — NY
-  const [selectedPointsClass, setSelectedPointsClass] = useState(RACE_CLASSES[0].key);
-  const [editingPoint, setEditingPoint] = useState(null); // { race_class, result_type, rank, points }
 
   // Synkroniser closes_at input fra window_ når det loader
   useEffect(() => {
@@ -234,7 +227,7 @@ export default function AdminPage() {
   }, [window_?.closes_at]);
 
   async function loadAll() {
-    const [s, r, t, w, w2, lc, al, rp, u, ac] = await Promise.all([
+    const [s, r, t, w, w2, lc, al, u, ac] = await Promise.all([
       supabase.from("seasons").select("*").order("number", { ascending: false }),
       supabase.from("races").select("*").order("name"),
       supabase.from("teams").select("id,name,balance,division").eq("is_ai", false).order("name"),
@@ -243,7 +236,6 @@ export default function AdminPage() {
       supabase.from("loan_config").select("*").order("division").order("loan_type"),
       supabase.from("admin_log").select("*, target_team:target_team_id(name)")
         .order("created_at", { ascending: false }).limit(50),
-      supabase.from("race_points").select("*").order("race_class").order("result_type").order("rank"),
       supabase.from("users").select("id, email, username, role, created_at, teams(id, name, division)").order("created_at", { ascending: false }),
       supabase.from("auction_timing_config").select("*").eq("id", 1).single(),
     ]);
@@ -254,7 +246,6 @@ export default function AdminPage() {
     setWebhooks(w2.data || []);
     setLoanConfigs(lc.data || []);
     setAdminLogs(al.data || []);
-    setRacePoints(rp.data || []);
     setUsers(u.data || []);
     setAuctionConfig(ac.data || null);
     setMarketPause({
@@ -474,20 +465,6 @@ export default function AdminPage() {
     else showMsg(`❌ ${data.error}`, "error");
     setLoad("market_resume", false);
     loadAll();
-  }
-
-  // ── Points (ny tabel) ─────────────────────────────────────────────────────
-  async function savePoint(raceClass, resultType, rank, pts) {
-    const { error } = await supabase.from("race_points").upsert(
-      { race_class: raceClass, result_type: resultType, rank, points: parseInt(pts) || 0, updated_at: new Date().toISOString() },
-      { onConflict: "race_class,result_type,rank" }
-    );
-    if (!error) { showMsg("✅ Point gemt"); setEditingPoint(null); loadAll(); }
-    else showMsg(`❌ ${error.message}`, "error");
-  }
-
-  function getPoints(raceClass, resultType, rank) {
-    return racePoints.find(p => p.race_class === raceClass && p.result_type === resultType && p.rank === rank)?.points ?? "";
   }
 
   // ── Webhooks ───────────────────────────────────────────────────────────────
@@ -1144,83 +1121,9 @@ export default function AdminPage() {
       </Section>
 
       {/* ── Pointtabel per løbsklasse (NY) ──────────────────────────────────── */}
+      {/* #505 — backend-baseret editor med audit-log + reset-to-baseline */}
       <Section title="Pointtabel per løbsklasse">
-        <p className="text-cz-3 text-xs mb-4 leading-relaxed">
-          Vælg en løbsklasse og sæt point for hver benævnelse og placering.
-          Klik på et felt for at redigere. Tomme felter giver 0 point.
-        </p>
-
-        {/* Klasse-vælger */}
-        <div className="mb-4">
-          <label className="block text-cz-3 text-xs mb-1">Løbsklasse</label>
-          <select value={selectedPointsClass} onChange={e => { setSelectedPointsClass(e.target.value); setEditingPoint(null); }}
-            className="bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent min-w-[260px]">
-            {["Grand Tour", "WorldTour", "Endagsløb", "Continental Circuit"].map(type => (
-              <optgroup key={type} label={type}>
-                {RACE_CLASSES.filter(c => c.type === type).map(c => (
-                  <option key={c.key} value={c.key}>{c.label}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </div>
-
-        {/* Pointgrid */}
-        <div className="overflow-x-auto rounded-lg border border-cz-border">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-cz-border">
-                <th className="px-3 py-2 text-left text-cz-3 font-medium">Benævnelse</th>
-                {Array.from({ length: Math.max(...Object.values(MAX_RANKS)) }, (_, i) => i + 1).map(r => (
-                  <th key={r} className="px-2 py-2 text-center text-cz-3 font-medium w-12">#{r}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {RESULT_TYPES.map(rt => {
-                const maxRank = MAX_RANKS[rt.key] || 10;
-                return (
-                  <tr key={rt.key} className="border-b border-cz-border last:border-0">
-                    <td className="px-3 py-2 text-cz-2 font-medium whitespace-nowrap">{rt.label}</td>
-                    {Array.from({ length: Math.max(...Object.values(MAX_RANKS)) }, (_, i) => i + 1).map(rank => {
-                      if (rank > maxRank) return <td key={rank} className="px-2 py-2 text-center text-cz-3">—</td>;
-                      const currentPts = getPoints(selectedPointsClass, rt.key, rank);
-                      const isEditing = editingPoint?.race_class === selectedPointsClass && editingPoint?.result_type === rt.key && editingPoint?.rank === rank;
-                      return (
-                        <td key={rank} className="px-2 py-2 text-center">
-                          {isEditing ? (
-                            <div className="flex gap-1 items-center justify-center">
-                              <input
-                                type="number"
-                                min={0}
-                                autoFocus
-                                defaultValue={currentPts}
-                                onKeyDown={e => {
-                                  if (e.key === "Enter") savePoint(selectedPointsClass, rt.key, rank, e.target.value);
-                                  if (e.key === "Escape") setEditingPoint(null);
-                                }}
-                                onBlur={e => savePoint(selectedPointsClass, rt.key, rank, e.target.value)}
-                                className="w-14 bg-cz-card border border-[#e8c547]/50 rounded px-1 py-0.5 text-cz-1 text-xs font-mono text-center focus:outline-none"
-                              />
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setEditingPoint({ race_class: selectedPointsClass, result_type: rt.key, rank })}
-                              className={`w-full px-1 py-1 rounded text-xs font-mono transition-all hover:bg-cz-subtle
-                                ${currentPts !== "" && currentPts > 0 ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"}`}>
-                              {currentPts !== "" ? currentPts : "—"}
-                            </button>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-cz-3 text-xs mt-2">Klik på et felt for at redigere. Enter eller klik uden for feltet for at gemme. Escape for at annullere.</p>
+        <RacePointsAdminSection getAuth={getAuth} onMsg={showMsg} />
       </Section>
 
       {/* ── Import resultater ────────────────────────────────────────────────── */}

@@ -1,1 +1,48 @@
-{}
+{
+  "racePoints": {
+    "sectionTitle": "Race points · UCI override",
+    "intro": "Justér UCI-ranking-point per placering og løbsklasse. Ændringer logges i admin log. Brug \"Reset til baseline\" for at gå tilbage til UCI default.",
+    "raceClassTab": "Løbsklasse",
+    "rankHeader": "#{rank}",
+    "resultTypeLabel": "Benævnelse",
+    "save": "Gem ændringer ({count})",
+    "discard": "Fortryd",
+    "resetRow": "Reset til baseline",
+    "saving": "Gemmer…",
+    "saved": "Gemte {count, plural, one {1 ændring} other {# ændringer}}",
+    "saveError": "Kunne ikke gemme: {error}",
+    "loadError": "Kunne ikke hente race points: {error}",
+    "invalidValue": "Skal være et ikke-negativt heltal",
+    "groups": {
+      "Grand Tour": "Grand Tour",
+      "Endagslob": "Endagsløb · Monuments",
+      "WorldTour": "WorldTour",
+      "Continental Circuit": "Continental Circuit"
+    },
+    "raceClasses": {
+      "TourFrance": "Tour de France",
+      "GiroVuelta": "Giro / Vuelta",
+      "Monuments": "Monuments",
+      "OtherWorldTourA": "Other WorldTour A",
+      "OtherWorldTourB": "Other WorldTour B",
+      "OtherWorldTourC": "Other WorldTour C",
+      "ProSeries": "ProSeries",
+      "Class1": "Class 1",
+      "Class2": "Class 2"
+    },
+    "resultTypes": {
+      "Etapeplacering": "Etapeplacering",
+      "Klassement": "Klassement (final)",
+      "Klassiker": "Endagsløb / klassiker",
+      "Pointtroje": "Pointtrøje (final)",
+      "Bjergtroje": "Bjergtrøje (final)",
+      "Ungdomstroje": "Ungdomstrøje (final)",
+      "Forertroje": "Førertrøje (per etape båret)",
+      "BjergtrojeDag": "Bjergtrøje (per dag båret)",
+      "PointtrojeDag": "Pointtrøje (per dag båret)",
+      "UngdomstrojeDag": "Ungdomstrøje (per dag båret)",
+      "EtapelobHold": "Hold · etapeløb",
+      "KlassikerHold": "Hold · endagsløb"
+    }
+  }
+}
