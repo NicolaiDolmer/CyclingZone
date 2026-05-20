@@ -29,7 +29,7 @@ export default function AdminSeasonTab() {
       const res = await fetch(`${API}/api/admin/auctions/active`, { headers: await getAuth() });
       const data = await res.json();
       if (res.ok) setActiveAuctions(data.auctions || []);
-    } catch (_e) { /* silent */ }
+    } catch { /* silent */ }
   }
 
   async function loadData() {
@@ -44,6 +44,7 @@ export default function AdminSeasonTab() {
     loadActiveAuctions();
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData only on mount; handlers call it explicitly
   useEffect(() => { loadData(); }, []);
 
   useEffect(() => {
