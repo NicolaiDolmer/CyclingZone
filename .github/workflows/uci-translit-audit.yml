@@ -35,19 +35,18 @@ jobs:
 
       - name: Run UCI translit audit (source=sheet)
         env:
+          # Scriptet's _clean_env() strippes whitespace internt — ingen behov
+          # for re-export her (undgaar samtidig pre-push secret-leak heuristik).
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.UCI_GOOGLE_SERVICE_ACCOUNT_JSON }}
           GOOGLE_SHEET_ID: ${{ secrets.UCI_GOOGLE_SHEET_ID }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          export SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
-          export SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
-          export GOOGLE_SHEET_ID=$(printf '%s' "$GOOGLE_SHEET_ID" | tr -d '[:space:]')
           python scripts/uci_audit.py \
             --mode translit \
             --source sheet \
-            --threshold ${{ github.event.inputs.threshold }} \
-            --min-points ${{ github.event.inputs.min_points }}
+            --threshold "${{ github.event.inputs.threshold }}" \
+            --min-points "${{ github.event.inputs.min_points }}"
 
       - name: Upload audit artifacts
         if: always()
