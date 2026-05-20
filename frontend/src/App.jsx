@@ -21,12 +21,7 @@ const AuctionsPage = lazy(() => import("./pages/AuctionsPage"));
 const AuctionHistoryPage = lazy(() => import("./pages/AuctionHistoryPage"));
 const TransfersPage = lazy(() => import("./pages/TransfersPage"));
 const TeamPage = lazy(() => import("./pages/TeamPage"));
-const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
-const AdminSeasonTab = lazy(() => import("./pages/admin/AdminSeasonTab"));
-const AdminEconomyTab = lazy(() => import("./pages/admin/AdminEconomyTab"));
-const AdminUsersTab = lazy(() => import("./pages/admin/AdminUsersTab"));
-const AdminDataTab = lazy(() => import("./pages/admin/AdminDataTab"));
-const AdminSystemTab = lazy(() => import("./pages/admin/AdminSystemTab"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
 const AdminWaitlistPage = lazy(() => import("./pages/AdminWaitlistPage"));
 const AdminSprintMetricsPage = lazy(() => import("./pages/AdminSprintMetricsPage"));
 const StandingsPage = lazy(() => import("./pages/StandingsPage"));
@@ -151,15 +146,7 @@ export default function App() {
             <Route path="seasons/:seasonId/finance/:teamId" element={<SeasonFinanceReport />} />
             <Route path="race-points" element={<RacePointsPage />} />
             <Route path="managers/:teamId" element={<ManagerProfilePage />} />
-            <Route path="admin" element={<AdminLayout />}>
-              <Route index element={<Navigate to="season" replace />} />
-              <Route path="season"  element={<AdminSeasonTab />} />
-              <Route path="economy" element={<AdminEconomyTab />} />
-              <Route path="users"   element={<AdminUsersTab />} />
-              <Route path="data"    element={<AdminDataTab />} />
-              <Route path="system"  element={<AdminSystemTab />} />
-              <Route path="*"       element={<Navigate to="season" replace />} />
-            </Route>
+            <Route path="admin" element={<AdminPage />} />
             <Route path="admin/waitlist" element={<AdminWaitlistPage />} />
             <Route path="admin/sprint-metrics" element={<AdminSprintMetricsPage />} />
             <Route path="deadline-day" element={<DeadlineDayBoard />} />
