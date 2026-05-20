@@ -71,7 +71,7 @@ if [ -d ".git" ]; then
     GAP=$((LAST_MAIN_TS - LAST_NOW_TS))
     if [ "$MAIN_AGE" -lt 1800 ] && [ "$GAP" -gt 300 ]; then
       LATEST_MAIN_MSG=$(git log origin/main -1 --format=%s 2>/dev/null | head -c 80)
-      WARNINGS+=("main blev opdateret \\\"$LATEST_MAIN_MSG\\\" - har du koert close-out? (NOW.md entry, FEATURE_STATUS.md hvis kontrakt-aendring, learnings hvis bugfix, claude:done label paa issue)")
+      WARNINGS+=("main blev opdateret \\\"$LATEST_MAIN_MSG\\\" - har du koert close-out? (NOW.md entry, FEATURE_STATUS.md hvis kontrakt-aendring, learnings hvis bugfix, issue-kommentar m. commit-SHA)")
     fi
 
     # (3) Refs #N reminder: seneste commit på main har Refs #N men issue mangler en

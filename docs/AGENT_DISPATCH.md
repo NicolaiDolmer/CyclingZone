@@ -34,7 +34,7 @@ Der må gerne være flere agent-labels på samme issue, men der skal altid være
 | `manual-review` | Må ikke auto-merges uden menneskelig review. |
 | `claude:todo` | Klar til Claude pick-up eller GitHub Action trigger. |
 | `claude:blocked` | Claude er stoppet korrekt og venter på input. |
-| `claude:done` | PR/arbejde er leveret; afventer bruger- eller runtime-verifikation. |
+| ~~`claude:done`~~ | **Deprecated 2026-05-18.** Bruger lukker issues direkte fra `claude:todo`/`claude:in-progress`. Per audit-housekeeping: 38/100 closed issues sprang done-step over → direct-close er kanonisk. |
 
 ---
 

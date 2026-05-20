@@ -16,7 +16,7 @@ Status-noter:
 | 3 | AI bruger `gh issue create --body-file` (ikke MCP `issue_write`) i hovedsession | `feedback_github_mcp_issue_write_403.md` | — | ⚪️ |
 | 4 | AI kører `npm run build` lokalt FØR push ved dependency-ændringer; `verify-deploy.ps1` EFTER push | `feedback_verify_before_push.md` | — | ⚪️ |
 | 5 | AI bruger `Write` til commit-message-fil + `git commit -F` i Bash-tool (ikke `@'...'@` PowerShell-heredoc) | `feedback_bash_no_powershell_heredoc.md` | — | ⚪️ |
-| 6 | AI bruger ikke "Closes #N" i commits — bruger `Refs #N` + `claude:done` label, lader brugeren lukke | `feedback_github_close_protocol.md` | — | ⚪️ |
+| 6 | AI bruger ikke "Closes #N" i commits — bruger `Refs #N` og lader brugeren lukke direkte _(claude:done deprecated 2026-05-18)_ | `feedback_github_close_protocol.md` | — | ⚪️ |
 | 7 | AI verificerer at PR-body har `## Brugerverifikation`-sektion ELLER `backend-only`/`docs-only` label | `feedback_pr_body_brugerverifikation.md` | — | ⚪️ |
 | 8 | AI signalerer 🟢/🟡/🔴/🆕 ved naturlige break-points (close-out-rytme) | `feedback_session_rhythm.md` | — | ⚪️ |
 | 9 | AI læser kode-kommentarer FØR den råber bug på mistænkelige data-mønstre (free-agent flow etc.) | `feedback_read_code_comments_first.md` | — | ⚪️ |

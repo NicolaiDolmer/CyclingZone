@@ -184,7 +184,7 @@ Project is done when:
 - ✅ Discord server fully branded
 - ✅ Social avatars deployed
 - ✅ One Pull Request consolidates all changes for review
-- ✅ Master GitHub issue closed with `claude:done` label
+- ✅ Master GitHub issue closed (bruger lukker direkte; claude:done label deprecated 2026-05-18)
 
 ## Estimated effort
 

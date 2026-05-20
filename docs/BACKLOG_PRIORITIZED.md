@@ -260,7 +260,7 @@
 
 Per memory-regel `feedback_github_close_protocol`: bruger lukker selv. Disse markeres til veto-runde:
 
-### Verificeret done (claude:done label + PR/slice komplet)
+### Verificeret done (PR/slice komplet) _(historisk snapshot — claude:done label deprecated 2026-05-18)_
 
 | # | Titel | Begrundelse for luk |
 |---|---|---|
@@ -304,7 +304,7 @@ Per memory-regel `feedback_github_close_protocol`: bruger lukker selv. Disse mar
 ## 📋 Antagelser jeg har truffet (bruger kan korrigere)
 
 1. **AI/Ops token-reduktion (aktiv slice) må ikke crowde sprintet** → epic:ai-workflow lavt-prioriteret under sprint
-2. **claude:done lukkes IKKE automatisk** → bruger har veto
+2. **Bruger lukker selv** → ingen auto-close. _(claude:done label deprecated 2026-05-18 — direct-close fra todo/in-progress er kanonisk.)_
 3. **Slice 07 efterveer er lukke-kandidater** → #82, #86, #235, #79, #137 anbefales luk
 4. **Post-sprint juni-juli er BETINGET Go-beslutning** → Stripe/ApS/MoR-issues markeret 🔒
 5. **UCI/IP-migration er commercial-launch-blocker** → får 🟧 og deadlines pre-day-30
