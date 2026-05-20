@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.71",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Race-katalog autocomplete i \"Tilføj nyt løb\"",
+        items: [
+          "EN · /admin → Løbskalender → 'Tilføj nyt løb' now searches the race-catalog (race_pool) as you type. Pick a race from the dropdown and the name, class, type and stages auto-fill from the pool entry — you only need to type the edition_year. Removes the previous risk of typos that didn't match a pool name and let you skip the manual class/type/stages lookup. The free-text entry mode still works if you need a race that isn't in the catalog. Each pool match shows the class, stages, country and PCM real-world date; entries already added to the selected season show an 'allerede i sæson' marker so you don't double up.",
+          "DA · /admin → Løbskalender → 'Tilføj nyt løb' søger nu i race-kataloget (race_pool) mens du skriver. Vælg et løb i dropdown'en og navn, klasse, type og etaper auto-udfyldes fra pool-rækken — du skal kun taste edition_year selv. Fjerner risikoen for stavefejl der ikke matcher et pool-navn og sparer dig for manuel klasse/type/etaper-opslag. Frihåndsindtastning virker stadig hvis du har brug for et løb der ikke er i kataloget. Hver pool-match viser klasse, etaper, land og PCM-rigtig-verdens-dato; løb der allerede er tilføjet til den valgte sæson markeres med 'allerede i sæson' så du ikke dublerer.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.70",
     date: "2026-05-20",
     label: "Beta",
