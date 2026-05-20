@@ -26,6 +26,7 @@ const MIGRATION_ADMIN_ACTION_TYPES = new Set([
   "user_deleted",
   "role_changed",
   "race_deleted",
+  "race_edited",
   "race_results_imported",
   "race_results_approved",
   "beta_reset",

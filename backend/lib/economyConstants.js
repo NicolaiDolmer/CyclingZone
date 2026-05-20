@@ -47,6 +47,7 @@ export const ADMIN_ACTION_TYPE = Object.freeze({
   USER_DELETED: "user_deleted",
   ROLE_CHANGED: "role_changed",
   RACE_DELETED: "race_deleted",
+  RACE_EDITED: "race_edited",
   RACE_RESULTS_IMPORTED: "race_results_imported",
   RACE_RESULTS_APPROVED: "race_results_approved",
   BETA_RESET: "beta_reset",

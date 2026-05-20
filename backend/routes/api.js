@@ -3503,6 +3503,102 @@ router.post("/admin/races", requireAdmin, adminWriteLimiter, async (req, res) =>
   }
 });
 
+// PUT /api/admin/races/:raceId — opdatér løb-metadata (#515)
+// Body: { name?, race_type?, race_class?, stages?, edition_year? }
+// Erstatter den gamle inline supabase.from("races").update() i AdminPage.jsx,
+// som blev blokeret af RLS (kun SELECT-policy findes på races-tabellen → silent failure).
+router.put("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { raceId } = req.params;
+    const body = req.body || {};
+
+    // Hent eksisterende race for audit-log before-værdier + validering
+    const { data: existing, error: fetchError } = await supabase
+      .from("races")
+      .select("id, season_id, name, race_type, race_class, stages, edition_year, status")
+      .eq("id", raceId)
+      .single();
+    if (fetchError) return res.status(500).json({ error: fetchError.message });
+    if (!existing) return res.status(404).json({ error: "Løb ikke fundet" });
+
+    // Bygg update-payload — kun felter der eksplicit er sendt
+    const updates = {};
+
+    if (body.name !== undefined) {
+      const trimmed = String(body.name).trim();
+      if (!trimmed) return res.status(400).json({ error: "Navn må ikke være tomt" });
+      updates.name = trimmed;
+    }
+
+    if (body.race_type !== undefined) {
+      if (!["single", "stage_race"].includes(body.race_type)) {
+        return res.status(400).json({ error: "Ugyldig race_type" });
+      }
+      updates.race_type = body.race_type;
+    }
+
+    if (body.race_class !== undefined) {
+      updates.race_class = body.race_class || null;
+    }
+
+    if (body.stages !== undefined) {
+      const effectiveType = updates.race_type || existing.race_type;
+      updates.stages = effectiveType === "single"
+        ? 1
+        : Math.max(1, Number.parseInt(body.stages, 10) || 1);
+    }
+
+    if (body.edition_year !== undefined) {
+      if (body.edition_year === null || body.edition_year === "") {
+        updates.edition_year = null;
+      } else {
+        const parsed = Number.parseInt(body.edition_year, 10);
+        if (!Number.isFinite(parsed) || parsed < 2000 || parsed > 2099) {
+          return res.status(400).json({ error: "edition_year skal være mellem 2000 og 2099" });
+        }
+        updates.edition_year = parsed;
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.json({ race: existing, unchanged: true });
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from("races")
+      .update(updates)
+      .eq("id", raceId)
+      .select("id, season_id, name, race_type, race_class, stages, edition_year, status")
+      .single();
+    if (updateError) return res.status(500).json({ error: updateError.message });
+
+    // Audit-log: før/efter pr. ændret felt
+    const before = {};
+    const after = {};
+    for (const key of Object.keys(updates)) {
+      before[key] = existing[key];
+      after[key] = updated[key];
+    }
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: ADMIN_ACTION_TYPE.RACE_EDITED,
+      description: `Løb redigeret: ${existing.name}`,
+      meta: {
+        race_id: raceId,
+        season_id: existing.season_id,
+        before,
+        after,
+      },
+    });
+
+    invalidateNamespace("races");
+    res.json({ race: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/race-pool — public katalog af alle tilgængelige løb (Slice 09)
 // Cached 10 min; admin race-pool import-csv invalidates the namespace.
 router.get("/race-pool", cached({ namespace: "race-pool", ttlMs: CACHE_TTL.racePool }, async (req, res) => {

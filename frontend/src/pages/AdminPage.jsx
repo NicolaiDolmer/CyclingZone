@@ -377,15 +377,25 @@ export default function AdminPage() {
   async function saveRaceEdit() {
     if (!editingRace) return;
     setLoad("raceEdit", true);
-    const { error } = await supabase.from("races").update({
-      name: editingRace.name,
-      race_class: editingRace.race_class || null,
-      race_type: editingRace.race_type,
-      stages: parseInt(editingRace.stages) || 1,
-      edition_year: editingRace.edition_year ? parseInt(editingRace.edition_year, 10) : null,
-    }).eq("id", editingRace.id);
-    if (!error) { showMsg("✅ Løb gemt"); setEditingRace(null); loadAll(); }
-    else showMsg(`❌ ${error.message}`, "error");
+    // Går gennem backend PUT /api/admin/races/:raceId (#515) i stedet for direkte
+    // supabase.update — sidstnævnte blev silent-blocked af RLS (kun SELECT-policy
+    // findes på races-tabellen, så update returnerede 0 rows uden fejl).
+    const res = await fetch(`${API}/api/admin/races/${editingRace.id}`, {
+      method: "PUT",
+      headers: await getAuth(),
+      body: JSON.stringify({
+        name: editingRace.name,
+        race_class: editingRace.race_class || null,
+        race_type: editingRace.race_type,
+        stages: parseInt(editingRace.stages) || 1,
+        edition_year: editingRace.edition_year === "" || editingRace.edition_year == null
+          ? null
+          : parseInt(editingRace.edition_year, 10),
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) { showMsg("✅ Løb gemt"); setEditingRace(null); loadAll(); }
+    else showMsg(`❌ ${data.error || "Kunne ikke gemme løb"}`, "error");
     setLoad("raceEdit", false);
   }
 

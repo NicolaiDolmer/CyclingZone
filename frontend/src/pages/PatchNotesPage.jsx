@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "3.72",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Race-katalog edit (årgang/navn/klasse) gemmer nu rigtigt (Refs #515)",
+        items: [
+          "EN · /admin → Løbskalender → ✏ Rediger now actually saves your changes. The old editor silently dropped name, class, type, stages and edition_year edits — the UI showed 'Løb gemt' but the database was unchanged. Cause: the frontend wrote straight to the races table from the browser, and the row-level security policy only allows reads. Saves now go through a new admin-gated backend endpoint that applies the update server-side and records before/after values to the admin audit log.",
+          "EN · Unblocks the pre-season-1 workflow of filling edition_year on the 26 season-1 races (needed before season 1 starts Thu 2026-05-21 23:00). If you previously typed an edition_year and it appeared blank afterwards, just open the row, retype it and click Gem — it now sticks.",
+          "DA · /admin → Løbskalender → ✏ Rediger gemmer nu rigtigt dine ændringer. Den gamle editor smed lydløst navn, klasse, type, etaper og løbsudgave-ændringer væk — UI'et viste 'Løb gemt' men databasen var uændret. Årsag: frontend skrev direkte til races-tabellen fra browseren, men row-level security-policy'en tillader kun læsning. Gem går nu gennem et nyt admin-gated backend-endpoint der laver ændringen server-side og logger før/efter-værdier til admin-audit-log.",
+          "DA · Fjerner blokeringen for pre-sæson-1-flowet med at udfylde edition_year på de 26 sæson 1-løb (skal være på plads inden sæson 1 starter Thu 2026-05-21 23:00). Hvis du tidligere har tastet et edition_year og det stod blankt bagefter, så åbn rækken, skriv det igen og klik Gem — det bliver gemt nu.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.71",
     date: "2026-05-20",
     label: "Beta",
