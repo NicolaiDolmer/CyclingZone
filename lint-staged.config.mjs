@@ -16,7 +16,10 @@
 // on the CI side (warning-budget job in ci.yml), so we are not losing
 // coverage — only shifting it from local pre-commit to CI.
 
-const escape = (f) => `"${f.replace(/"/g, '\\"')}"`;
+// JSON.stringify handles double-quotes AND backslashes (CodeQL flagged the
+// hand-rolled escaper for missing backslash-escape, which would be incorrect
+// for filenames containing literal backslashes on Windows).
+const escape = (f) => JSON.stringify(f);
 
 export default {
   "frontend/**/*.{js,jsx}": (files) => `npx eslint ${files.map(escape).join(" ")}`,

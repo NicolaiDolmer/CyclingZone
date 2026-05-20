@@ -17,9 +17,14 @@ on:
       - 'scripts/i18n-check-namespace-inline.mjs'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   key-coverage:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     # Advisory i Fase 1 (Refs #410). Promotes til required via branch
     # protection ved Fase 5 (#414) — eller når en/da har overlappende
     # keys ud over `common.json`.
@@ -37,6 +42,8 @@ jobs:
 
   namespace-inline:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     # REQUIRED — fanger den bug-klasse hvor t() returnerer raw key på first
     # paint fordi namespace er useTranslation'et men ikke inlinet i resources
     # (Refs #470, postmortem 2026-05-17). Med useSuspense: false er dette en
