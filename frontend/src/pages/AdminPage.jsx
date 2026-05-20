@@ -380,23 +380,33 @@ export default function AdminPage() {
     // Går gennem backend PUT /api/admin/races/:raceId (#515) i stedet for direkte
     // supabase.update — sidstnævnte blev silent-blocked af RLS (kun SELECT-policy
     // findes på races-tabellen, så update returnerede 0 rows uden fejl).
-    const res = await fetch(`${API}/api/admin/races/${editingRace.id}`, {
-      method: "PUT",
-      headers: await getAuth(),
-      body: JSON.stringify({
-        name: editingRace.name,
-        race_class: editingRace.race_class || null,
-        race_type: editingRace.race_type,
-        stages: parseInt(editingRace.stages) || 1,
-        edition_year: editingRace.edition_year === "" || editingRace.edition_year == null
-          ? null
-          : parseInt(editingRace.edition_year, 10),
-      }),
-    });
-    const data = await res.json();
-    if (res.ok) { showMsg("✅ Løb gemt"); setEditingRace(null); loadAll(); }
-    else showMsg(`❌ ${data.error || "Kunne ikke gemme løb"}`, "error");
-    setLoad("raceEdit", false);
+    // try/finally sikrer at loading-state altid clearer, selv hvis backend endnu
+    // ikke har deployet endpointet (returnerer ikke-JSON 404) eller netværket dør.
+    try {
+      const res = await fetch(`${API}/api/admin/races/${editingRace.id}`, {
+        method: "PUT",
+        headers: await getAuth(),
+        body: JSON.stringify({
+          name: editingRace.name,
+          race_class: editingRace.race_class || null,
+          race_type: editingRace.race_type,
+          stages: parseInt(editingRace.stages) || 1,
+          edition_year: editingRace.edition_year === "" || editingRace.edition_year == null
+            ? null
+            : parseInt(editingRace.edition_year, 10),
+        }),
+      });
+      // Parse JSON safely — 404/5xx kan returnere HTML/tom body.
+      let data = {};
+      try { data = await res.json(); } catch { /* non-JSON response */ }
+      if (res.ok) { showMsg("✅ Løb gemt"); setEditingRace(null); loadAll(); }
+      else if (res.status === 404) showMsg("❌ Endpoint ikke deployet endnu — vent 1-2 min og prøv igen", "error");
+      else showMsg(`❌ ${data.error || `HTTP ${res.status}`}`, "error");
+    } catch (e) {
+      showMsg(`❌ Netværksfejl: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("raceEdit", false);
+    }
   }
 
   // ── Import ─────────────────────────────────────────────────────────────────
