@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.76",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Tab-based navigation re-applied — clean rollout (Refs #529)",
+        items: [
+          "EN · The /admin panel is now split into 5 tabs with their own URLs: /admin/season, /admin/economy, /admin/users, /admin/data, /admin/system. You can bookmark or share a link straight to a tab. Old /admin bookmarks redirect to /admin/season. This is the clean re-apply of the work that v3.75 rolled back — same scope, now committed properly via a reviewed PR instead of a pre-commit sweep. Beta-test reset tools are hidden in production (only visible in dev mode). No backend changes. The original AdminPage will be removed in a later phase once everything is verified on prod.",
+          "DA · /admin-panelet er nu opdelt i 5 faner med egne URLs: /admin/season, /admin/economy, /admin/users, /admin/data, /admin/system. Du kan bookmarke eller dele et link direkte til en fane. Gamle /admin-bookmarks redirecter til /admin/season. Dette er den rene re-apply af det arbejde v3.75 rullede tilbage — samme scope, nu committet ordentligt via en reviewed PR i stedet for et pre-commit sweep. Beta-test-nulstillingsværktøjer er skjult i prod (kun synlige i dev-tilstand). Ingen backend-ændringer. Den oprindelige AdminPage fjernes i en senere fase når alt er verificeret på prod.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.75",
     date: "2026-05-21",
     label: "Beta",
