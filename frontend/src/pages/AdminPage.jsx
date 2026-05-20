@@ -944,7 +944,7 @@ export default function AdminPage() {
                 <tr className="border-b border-cz-border">
                   <th className="px-3 py-2 text-left text-cz-3">Løb</th>
                   <th className="px-3 py-2 text-left text-cz-3 hidden sm:table-cell">Klasse</th>
-                  <th className="px-3 py-2 text-left text-cz-3 hidden md:table-cell">Dato</th>
+                  <th className="px-3 py-2 text-left text-cz-3">Udgave</th>
                   <th className="px-3 py-2 text-right text-cz-3">Handlinger</th>
                 </tr>
               </thead>
@@ -963,7 +963,7 @@ export default function AdminPage() {
                           <span className="text-cz-3 text-xs italic">Ikke sat</span>
                         )}
                       </td>
-                      <td className="px-3 py-2.5 text-cz-2 hidden md:table-cell">
+                      <td className="px-3 py-2.5 text-cz-2">
                         {r.edition_year ? `${r.edition_year}-udgave` : "—"}
                       </td>
                       <td className="px-3 py-2.5 text-right">
