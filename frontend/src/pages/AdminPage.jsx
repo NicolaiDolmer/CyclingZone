@@ -208,6 +208,10 @@ export default function AdminPage() {
   // Race editor — NY
   const [editingRace, setEditingRace] = useState(null);
 
+  // Race-pool autocomplete (til "Tilføj nyt løb"-formular)
+  const [racePool, setRacePool] = useState([]);
+  const [poolSearchOpen, setPoolSearchOpen] = useState(false);
+
   // Deadline Day
   const [closesAtInput, setClosesAtInput] = useState("");
 
@@ -227,7 +231,7 @@ export default function AdminPage() {
   }, [window_?.closes_at]);
 
   async function loadAll() {
-    const [s, r, t, w, w2, lc, al, u, ac] = await Promise.all([
+    const [s, r, t, w, w2, lc, al, u, ac, rp] = await Promise.all([
       supabase.from("seasons").select("*").order("number", { ascending: false }),
       supabase.from("races").select("*").order("name"),
       supabase.from("teams").select("id,name,balance,division").eq("is_ai", false).order("name"),
@@ -238,6 +242,7 @@ export default function AdminPage() {
         .order("created_at", { ascending: false }).limit(50),
       supabase.from("users").select("id, email, username, role, created_at, teams(id, name, division)").order("created_at", { ascending: false }),
       supabase.from("auction_timing_config").select("*").eq("id", 1).single(),
+      supabase.from("race_pool").select("id, name, race_class, race_type, stages, date_text, country").order("name"),
     ]);
     setSeasons(s.data || []);
     setRaces(r.data || []);
@@ -248,6 +253,7 @@ export default function AdminPage() {
     setAdminLogs(al.data || []);
     setUsers(u.data || []);
     setAuctionConfig(ac.data || null);
+    setRacePool(rp.data || []);
     setMarketPause({
       level: ac.data?.market_pause_level || "none",
       pausedAt: ac.data?.market_paused_at || null,
@@ -353,6 +359,19 @@ export default function AdminPage() {
     if (res.ok) { showMsg(`✅ Løb "${data.name}" tilføjet`); loadAll(); setRaceForm(f => ({ ...f, name: "", edition_year: "", race_class: "" })); }
     else showMsg(`❌ ${data.error}`, "error");
     setLoad("race", false);
+  }
+
+  // Pick et løb fra race-katalog → auto-udfyld navn + klasse + type + etaper.
+  // edition_year tastes stadig af admin (pool har ikke årstal).
+  function pickFromRacePool(poolRace) {
+    setRaceForm(f => ({
+      ...f,
+      name: poolRace.name,
+      race_class: poolRace.race_class || "",
+      race_type: poolRace.race_type || "single",
+      stages: poolRace.stages || 1,
+    }));
+    setPoolSearchOpen(false);
   }
 
   async function saveRaceEdit() {
@@ -1070,11 +1089,56 @@ export default function AdminPage() {
               {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-cz-3 text-xs mb-1">Løbsnavn</label>
-            <input type="text" required placeholder="Tour de France" value={raceForm.name}
-              onChange={e => setRaceForm(f => ({ ...f, name: e.target.value }))}
+          <div className="relative">
+            <label className="block text-cz-3 text-xs mb-1">
+              Løbsnavn
+              <span className="text-cz-3 normal-case ml-1">— søg i katalog eller skriv frihånd</span>
+            </label>
+            <input type="text" required placeholder="Skriv for at søge i race-katalog..." value={raceForm.name}
+              onChange={e => { setRaceForm(f => ({ ...f, name: e.target.value })); setPoolSearchOpen(true); }}
+              onFocus={() => setPoolSearchOpen(true)}
+              onBlur={() => setTimeout(() => setPoolSearchOpen(false), 150)}
+              autoComplete="off"
               className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
+            {poolSearchOpen && raceForm.name.length >= 1 && (() => {
+              const q = raceForm.name.toLowerCase().trim();
+              const matches = racePool
+                .filter(p => p.name.toLowerCase().includes(q))
+                .slice(0, 8);
+              if (matches.length === 0) return null;
+              const seasonRaceNames = new Set(
+                races.filter(r => r.season_id === raceForm.season_id).map(r => r.name.toLowerCase())
+              );
+              return (
+                <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                  {matches.map(p => {
+                    const alreadyInSeason = seasonRaceNames.has(p.name.toLowerCase());
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => pickFromRacePool(p)}
+                        className="w-full text-left px-3 py-2 hover:bg-cz-subtle border-b border-cz-border last:border-b-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-cz-1 text-sm truncate">{p.name}</span>
+                          {alreadyInSeason && (
+                            <span className="text-cz-3 text-xs italic shrink-0">allerede i sæson</span>
+                          )}
+                        </div>
+                        <div className="text-cz-3 text-xs">
+                          {getRaceClassLabel(p.race_class) || p.race_class || "ingen klasse"}
+                          {" · "}
+                          {p.race_type === "stage_race" ? `${p.stages} etaper` : "Enkeltdagsløb"}
+                          {p.country ? ` · ${p.country}` : ""}
+                          {p.date_text ? ` · ${p.date_text}` : ""}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
           <div>
             <label className="block text-cz-3 text-xs mb-1">Løbsklasse</label>
