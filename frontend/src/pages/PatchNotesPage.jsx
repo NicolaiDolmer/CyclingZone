@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.74",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Tab-based navigation in /admin panel (Phase 1 of 4, Refs #529)",
+        items: [
+          "EN · /admin is now split into 5 tabs: Sæson & Løb, Økonomi, Brugere, Data/Import, System & Debug. Each tab has its own URL (/admin/season, /admin/economy, /admin/users, /admin/data, /admin/system) so you can bookmark or share links straight to a section. Old /admin bookmarks redirect to /admin/season. Beta test tools are now hidden in production (only visible in dev mode). No backend changes — same endpoints, same auth.",
+          "DA · /admin er nu opdelt i 5 faner: Sæson & Løb, Økonomi, Brugere, Data/Import, System & Debug. Hver fane har sin egen URL (/admin/season, /admin/economy, /admin/users, /admin/data, /admin/system) så du kan bookmarke eller dele links direkte til en sektion. Gamle /admin-bookmarks redirecter til /admin/season. Beta-testværktøjerne er nu skjulte i prod (kun synlige i dev-tilstand). Ingen backend-ændringer — samme endpoints, samme auth.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.73",
     date: "2026-05-21",
     label: "Beta",
