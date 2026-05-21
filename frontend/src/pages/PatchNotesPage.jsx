@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.85",
+    date: "2026-05-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Deadline Day · Frosne hold fjernet fra Panic Board + polish",
+        items: [
+          "EN · The Deadline Day overview (/deadline-day) no longer lists frozen teams, AI teams or unowned teams in the squad-size table. Previously it only filtered out the bank team, so 4 frozen teams (Inuit Cycling + 3 test teams) were shown as 'under minimum' even though they don't participate in the season. Same is_frozen-filter as the v3.83 cron fix, now applied to the UI endpoint as well. The page is also renamed from 'Panic Board' to 'Deadline Day' to match the navigation, banner and route. Other small improvements: real error messages when the backend is unreachable (instead of the misleading 'not active' state), accessibility attributes on the table, horizontal scroll on narrow screens, and an explicit 'all teams over minimum' state.",
+          "DA · Deadline Day-oversigten (/deadline-day) viser ikke længere frosne hold, AI-hold eller hold uden manager i trupstørrelse-tabellen. Tidligere filtrerede den kun bank-holdet fra, så 4 frosne hold (Inuit Cycling + 3 test-hold) blev vist som 'under minimum' selv om de ikke deltager i sæsonen. Samme is_frozen-filter som v3.83 cron-fixen, nu også på UI-endpointet. Siden er også omdøbt fra 'Panic Board' til 'Deadline Day' så den matcher navigationen, banneret og ruten. Øvrige små forbedringer: rigtige fejlmeddelelser når backend ikke kan nås (i stedet for den misvisende 'ikke aktiv'-tilstand), tilgængelighedsattributter på tabellen, vandret scroll på smalle skærme, og en eksplicit 'alle hold over minimum'-tilstand.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.84",
     date: "2026-05-21",
     label: "Beta",
