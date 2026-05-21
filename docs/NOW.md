@@ -6,9 +6,9 @@
 > **🟢 Sæson 1 starter i aften kl 23:00 (Europe/Copenhagen) — bruger-action (REVIDERET 2026-05-21, v3.78):**
 > 1. Gå til `/admin → Sæson` → sektion `🔄 Sæson-cyklus`
 > 2. Tryk **Udfør sæsonskifte (sæson 0 → 1)** og bekræft
-> 3. Engine'n hopper over `processSeasonEnd` for sæson 0, opretter sæson 1's transfer-window, og udbetaler 240K sponsor til **20 hold** (3 test-hold frosset ud)
+> 3. Engine'n hopper over `processSeasonEnd` for sæson 0, opretter sæson 1's transfer-window, og udbetaler 240K sponsor til **19 hold** (3 test-hold + 1 inaktiv manager (Inuit Cycling) frosset ud per 2026-05-21)
 > 4. Per-fase-log skal vise 6 ✅ — særligt `insert_next_season: updated (promoted upcoming → active)`
-> 5. **NYT v3.78:** Salary + loan-interest + emergency-lån trækkes nu ved sæson-START sammen med sponsor. 20 hold får sponsor 240K, derefter trækkes ~1,5M samlet løn, ~278K rente, og 9 hold får emergency-lån
+> 5. **NYT v3.78:** Salary + loan-interest + emergency-lån trækkes nu ved sæson-START sammen med sponsor. 19 hold får sponsor 240K, derefter trækkes ~1,5M samlet løn, ~278K rente, og 9 hold får emergency-lån
 >
 > **⚠️ Brug IKKE manual ⏹ Afslut + ▶ Start-knapperne** — audit 2026-05-21 ([`docs/economy-flow-audit-2026-05-21.md`](docs/economy-flow-audit-2026-05-21.md)) viste at ⏹ Afslut sæson 0 ubetinget kører `processSeasonEnd` → ~1.5M pts salary-debit på 17 hold, ~278K loan-interest, 9 hold får emergency-lån (~438K), 2 vilkårlige hold rykker op til D2. NOW.md sagde tidligere "formentlig harmløs" — det var forkert. Engine'n er den sikre vej.
 >

@@ -44,6 +44,7 @@ export default function HallOfFamePage() {
         .select("id, name, division, manager_name, user:user_id(id, username, level, xp, role)")
         .eq("is_ai", false)
         .eq("is_test_account", false)
+        .eq("is_frozen", false)
         .order("name"),
     ]);
 

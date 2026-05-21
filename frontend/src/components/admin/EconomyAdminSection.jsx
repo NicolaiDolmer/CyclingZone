@@ -84,6 +84,9 @@ const ADMIN_ACTION_LABELS = {
   team_data_edited: "Hold-data redigeret",
   rider_data_edited: "Rytter-data redigeret",
   season_transition: "Sæson-overgang",
+  race_points_edited: "Løb-point redigeret",
+  team_frozen: "Hold frosset",
+  team_unfrozen: "Hold optøet",
 };
 const ADMIN_ACTION_TYPES = ["", ...Object.keys(ADMIN_ACTION_LABELS)];
 
@@ -244,6 +247,7 @@ function HealthView({ getAuth, onMsg }) {
 function OverviewView({ getAuth, onMsg }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [pendingTeam, setPendingTeam] = useState(null);
   const [filters, setFilters] = useState({ division: "", q: "", include_ai: false, include_frozen: false });
 
   async function refresh() {
@@ -262,6 +266,36 @@ function OverviewView({ getAuth, onMsg }) {
       onMsg(`❌ ${e.message}`, "error");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function toggleFreeze(team) {
+    const action = team.is_frozen ? "unfreeze" : "freeze";
+    const verb = team.is_frozen ? "optø" : "frys";
+    const reason = window.prompt(
+      `Vil du ${verb} "${team.name}" (D${team.division})?\n\n` +
+      (team.is_frozen
+        ? "Holdet vises igen i standings, sponsor-payouts og board-flow ved næste tick."
+        : "Holdet skjules fra standings, sponsor, board og beta-resets. Balance + ryttere bevares.") +
+      "\n\nValgfri begrundelse (tom = ingen):"
+    );
+    if (reason === null) return; // bruger valgte cancel
+    setPendingTeam(team.id);
+    try {
+      const headers = { ...(await getAuth()), "Content-Type": "application/json" };
+      const res = await fetch(`${API}/api/admin/teams/${team.id}/${action}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ reason: reason || null }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || `Kunne ikke ${verb}`);
+      onMsg(`✅ ${team.name} ${team.is_frozen ? "optøet" : "frosset"}`, "success");
+      await refresh();
+    } catch (e) {
+      onMsg(`❌ ${e.message}`, "error");
+    } finally {
+      setPendingTeam(null);
     }
   }
 
@@ -328,14 +362,17 @@ function OverviewView({ getAuth, onMsg }) {
               <th className="px-3 py-2 text-right text-cz-3 font-medium hidden md:table-cell">Loft</th>
               <th className="px-3 py-2 text-right text-cz-3 font-medium hidden md:table-cell">Ratio</th>
               <th className="px-3 py-2 text-left text-cz-3 font-medium">Status</th>
+              <th className="px-3 py-2 text-right text-cz-3 font-medium">Handling</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-4 text-center text-cz-3">{loading ? "Indlæser..." : "Ingen hold matcher filteret."}</td></tr>
+              <tr><td colSpan={9} className="px-3 py-4 text-center text-cz-3">{loading ? "Indlæser..." : "Ingen hold matcher filteret."}</td></tr>
             )}
             {rows.map((r) => {
               const sus = SUSTAINABILITY_LABEL[r.sustainability] || SUSTAINABILITY_LABEL.green;
+              const busy = pendingTeam === r.id;
+              const canFreeze = !r.is_ai;
               return (
                 <tr key={r.id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/50">
                   <td className="px-3 py-2 text-cz-1 font-medium">
@@ -350,6 +387,26 @@ function OverviewView({ getAuth, onMsg }) {
                   <td className="px-3 py-2 text-right font-mono text-cz-3 hidden md:table-cell">{formatCz(r.debt_ceiling)}</td>
                   <td className="px-3 py-2 text-right font-mono text-cz-3 hidden md:table-cell">{(r.debt_ratio * 100).toFixed(1)}%</td>
                   <td className={`px-3 py-2 text-xs ${sus.className}`}>{sus.label}</td>
+                  <td className="px-3 py-2 text-right">
+                    {canFreeze ? (
+                      <button
+                        onClick={() => toggleFreeze(r)}
+                        disabled={busy}
+                        className={`px-2 py-1 rounded text-[11px] font-medium border transition-all disabled:opacity-50 ${
+                          r.is_frozen
+                            ? "bg-cz-subtle text-cz-success border-cz-success/40 hover:bg-cz-success/10"
+                            : "bg-cz-subtle text-cz-warning border-cz-warning/40 hover:bg-cz-warning/10"
+                        }`}
+                        title={r.is_frozen
+                          ? "Optø: hold deltager igen i standings, sponsor og board"
+                          : "Frys: skjul fra standings, sponsor, board og beta-reset. Balance + ryttere bevares."}
+                      >
+                        {busy ? "..." : r.is_frozen ? "Optø" : "Frys"}
+                      </button>
+                    ) : (
+                      <span className="text-cz-3 text-[11px]">—</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}

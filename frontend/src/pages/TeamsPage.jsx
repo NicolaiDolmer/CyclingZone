@@ -30,6 +30,7 @@ export default function TeamsPage() {
         .select("id, name, division, balance, sponsor_income, manager_name, user:user_id(last_seen)")
         .eq("is_ai", false)
         .eq("is_test_account", false)
+        .eq("is_frozen", false)
         .order("division").order("name"),
       supabase.from("riders").select("team_id").not("team_id", "is", null),
       activeSeason

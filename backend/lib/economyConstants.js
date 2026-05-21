@@ -63,6 +63,8 @@ export const ADMIN_ACTION_TYPE = Object.freeze({
   RIDER_DATA_EDITED: "rider_data_edited",
   SEASON_TRANSITION: "season_transition",
   RACE_POINTS_EDITED: "race_points_edited",
+  TEAM_FROZEN: "team_frozen",
+  TEAM_UNFROZEN: "team_unfrozen",
 });
 
 // finance_transactions.actor_type — hvem genererede pengebevægelsen.

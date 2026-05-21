@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.80",
+    date: "2026-05-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Frys/optø manager-hold (Refs #452)",
+        items: [
+          "EN · Admins can now freeze a manager team from /admin/economy → Overview. A frozen team is hidden from public standings, the team list, hall of fame, head-to-head search and the season-preview, and is automatically skipped by sponsor payouts, season-end processing, board flows, sequential negotiation and beta-reset jobs. The team's balance, riders and user account are fully preserved — the manager can still log in, and an admin can unfreeze later from the same row. Built for inactive managers who never bought riders and shouldn't take up a Division 3 slot until they come back. The first real team to be frozen with this tool is Inuit Cycling — they can be re-activated any time via the new \"Optø\" button.",
+          "DA · Admins kan nu fryse et manager-hold fra /admin/economy → Overblik. Et frosset hold skjules fra offentlige standings, holdlisten, hall of fame, head-to-head-søgningen og sæson-previewet, og springes automatisk over af sponsor-payouts, sæson-slut, bestyrelses-flow, sekventiel forhandling og beta-reset-jobs. Holdets balance, ryttere og bruger-konto bevares fuldstændigt — manageren kan stadig logge ind, og en admin kan optø igen fra samme række. Bygget til inaktive managers der aldrig har købt ryttere og ikke skal tage en Division 3-plads op indtil de kommer tilbage. Det første rigtige hold der fryses med værktøjet er Inuit Cycling — de kan reaktiveres når som helst via den nye \"Optø\"-knap.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.79",
     date: "2026-05-21",
     label: "Beta",

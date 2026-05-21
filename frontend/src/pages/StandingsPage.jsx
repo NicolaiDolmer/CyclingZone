@@ -41,7 +41,7 @@ export default function StandingsPage() {
     setSeason(activeSeason);
 
     const [teamsRes, standingsRes, racesRes] = await Promise.all([
-      supabase.from("teams").select("id, name, division").eq("is_ai", false).eq("is_test_account", false).order("division").order("name"),
+      supabase.from("teams").select("id, name, division").eq("is_ai", false).eq("is_test_account", false).eq("is_frozen", false).order("division").order("name"),
       activeSeason
         ? supabase.from("season_standings")
             .select("*, team:team_id(id, name, division, is_ai)")

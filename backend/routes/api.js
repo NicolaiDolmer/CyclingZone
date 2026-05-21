@@ -4835,6 +4835,75 @@ router.get("/admin/economy-overview", requireAdmin, async (req, res) => {
   }
 });
 
+// POST /api/admin/teams/:teamId/freeze — frys et hold (skjul fra standings, sponsor, board, beta-reset).
+// Bevarer user_id + balance + rytter-historik så holdet kan optøs igen senere.
+// Refs #452 — manager der ikke kan stille hold ved sæsonstart skal kunne sættes på pause.
+router.post("/admin/teams/:teamId/freeze", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const { reason } = req.body || {};
+
+    const { data: team, error: loadErr } = await supabase
+      .from("teams")
+      .select("id, name, is_ai, is_bank, is_frozen, division")
+      .eq("id", teamId)
+      .maybeSingle();
+    if (loadErr) throw loadErr;
+    if (!team) return res.status(404).json({ error: "Hold ikke fundet" });
+    if (team.is_ai) return res.status(400).json({ error: "AI-hold kan ikke fryses" });
+    if (team.is_bank) return res.status(400).json({ error: "Bank-hold kan ikke fryses" });
+    if (team.is_frozen) return res.status(409).json({ error: "Hold er allerede frosset" });
+
+    const { error: updateErr } = await supabase
+      .from("teams").update({ is_frozen: true }).eq("id", teamId);
+    if (updateErr) throw updateErr;
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: ADMIN_ACTION_TYPE.TEAM_FROZEN,
+      description: `Hold frosset: ${team.name} (D${team.division})${reason ? ` — ${reason}` : ""}`,
+      meta: { team_id: teamId, team_name: team.name, division: team.division, reason: reason || null },
+    });
+
+    res.json({ success: true, team_id: teamId, is_frozen: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/teams/:teamId/unfreeze — optø et tidligere frosset hold.
+// Holdet returnerer til standings, sponsor-payouts og board-flow ved næste sæson-start / cron-tick.
+router.post("/admin/teams/:teamId/unfreeze", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const { reason } = req.body || {};
+
+    const { data: team, error: loadErr } = await supabase
+      .from("teams")
+      .select("id, name, is_frozen, division")
+      .eq("id", teamId)
+      .maybeSingle();
+    if (loadErr) throw loadErr;
+    if (!team) return res.status(404).json({ error: "Hold ikke fundet" });
+    if (!team.is_frozen) return res.status(409).json({ error: "Hold er ikke frosset" });
+
+    const { error: updateErr } = await supabase
+      .from("teams").update({ is_frozen: false }).eq("id", teamId);
+    if (updateErr) throw updateErr;
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: ADMIN_ACTION_TYPE.TEAM_UNFROZEN,
+      description: `Hold optøet: ${team.name} (D${team.division})${reason ? ` — ${reason}` : ""}`,
+      meta: { team_id: teamId, team_name: team.name, division: team.division, reason: reason || null },
+    });
+
+    res.json({ success: true, team_id: teamId, is_frozen: false });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/admin/finance-transactions — paginated + filtreret tx-historik
 router.get("/admin/finance-transactions", requireAdmin, async (req, res) => {
   try {
