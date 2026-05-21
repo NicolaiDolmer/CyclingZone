@@ -580,7 +580,16 @@ router.get("/deadline-day/squads", requireAuth, async (req, res) => {
   try {
     const LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
     const [{ data: teams }, { data: riders }] = await Promise.all([
-      supabase.from("teams").select("id, name, division").eq("is_bank", false).order("division").order("name"),
+      // Filter matcher v3.83 cron-fix (a57b8d9): kun aktive manager-hold tæller mod
+      // squad-minimum. Frosne hold (is_frozen=true) + AI-hold + bank + eierløse rows
+      // ekskluderes så Panic Board ikke flagger hold som ikke deltager i sæsonen.
+      supabase.from("teams")
+        .select("id, name, division")
+        .eq("is_bank", false)
+        .eq("is_ai", false)
+        .eq("is_frozen", false)
+        .not("user_id", "is", null)
+        .order("division").order("name"),
       supabase.from("riders").select("team_id").not("team_id", "is", null),
     ]);
     if (!teams || !riders) throw new Error("data missing");

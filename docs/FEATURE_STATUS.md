@@ -184,7 +184,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - `DeadlineDayTicker` — horisontal scrollende live feed (fixed bottom) med seneste bud/salg/transfers; poller 10s, vises kun når active=true
 - `GET /api/deadline-day/ticker` — merger bids + completed auctions + accepted transfers, seneste 20 events inden for 24t
 - `DeadlineDayBoard` (`/deadline-day`) — Deadline Day-overblik: alle holds truppestørrelse vs. divisions-minimum, grøn/gul/rød, 30s poll; vises kun under Deadline Day; nav-link permanent under Marked (menu-label `Deadline Day` fra v2.44)
-- `GET /api/deadline-day/squads` — returnerer alle ikke-bank holds squad-count vs. MARKET_SQUAD_LIMITS, med status ok/warning/critical
+- `GET /api/deadline-day/squads` — returnerer aktive manager-holds squad-count vs. MARKET_SQUAD_LIMITS, med status ok/warning/critical. Filtrerer bank, AI-hold, frosne hold og hold uden manager (jf. v3.85 fix, samme mønster som v3.83 cron-filter — sikrer at ikke-deltagende hold ikke vises som "under minimum")
 
 ### Trupstørrelse-håndhævelse (S-03 v2.29, 2026-05-04)
 - `backend/lib/squadEnforcement.js` — `enforceTeamSquadCompliance` + `processSquadEnforcementCron`. Cron fyrer hver 5. min via `cron.js`, men kun aktiv på lukkede vinduer der ikke er enforced endnu (atomic claim på `transfer_windows.squad_enforcement_completed_at`)
