@@ -139,9 +139,19 @@ function createSeasonEndSupabase({
                 if (column === "is_ai") {
                   assert.equal(value, false);
                   assert.equal(columns.includes("riders("), false);
-                  return Promise.resolve({
+                  // 2026-05-21: loadHumanSeasonEndTeams chainer .eq("is_frozen", false)
+                  // efter .eq("is_ai", false). Mocken understøtter begge chain-rækkefølger:
+                  // direkte Promise (legacy single-eq callers) eller .eq igen (ny dual-eq).
+                  const teamsResult = {
                     data: [clone(state.team)],
                     error: null,
+                  };
+                  return Object.assign(Promise.resolve(teamsResult), {
+                    eq(innerCol, innerVal) {
+                      assert.equal(innerCol, "is_frozen");
+                      assert.equal(innerVal, false);
+                      return Promise.resolve(teamsResult);
+                    },
                   });
                 }
 
@@ -1056,7 +1066,7 @@ test("processSeasonEnd fails before writes when live-like rider loading fails", 
   assert.equal(supabase.state.inserts.board_plan_snapshots.length, 0);
 });
 
-test("processSeasonEnd writes finance and board side effects before completing the season", async () => {
+test("processSeasonEnd writes board side effects and division bonus before completing the season (salary/loan-interest flyttet til sæson-start 2026-05-21)", async () => {
   const supabase = createSeasonEndSupabase({
     season: {
       id: "season-1",
@@ -1108,36 +1118,14 @@ test("processSeasonEnd writes finance and board side effects before completing t
   await processSeasonEnd("season-1", {
     supabase,
     now: FIXED_SEASON_END_NOW,
-    processLoanInterest: async (teamId, seasonId, client) => {
-      await client.from("finance_transactions").insert({
-        team_id: teamId,
-        type: "loan_interest",
-        amount: -25,
-        description: "Lånerenter tilskrevet (test)",
-        season_id: seasonId,
-      });
-    },
-    createEmergencyLoan: async (teamId, amountNeeded, client, seasonId) => {
-      await client.from("finance_transactions").insert({
-        team_id: teamId,
-        type: "emergency_loan",
-        amount: amountNeeded,
-        description: "Nødlån oprettet automatisk (test)",
-        season_id: seasonId,
-      });
-      const teamRow = supabase.state.team;
-      teamRow.balance += amountNeeded;
-    },
     updateRiderValues: async () => {},
   });
 
+  // 2026-05-21: Sæson-slut skriver nu kun division-bonus + board-snapshots.
+  // Salary, loan-interest, emergency-loan og negative-balance-interest sker
+  // i processSeasonStart i stedet (ved næste sæson-start).
   const transactionTypes = supabase.state.inserts.finance_transactions.map(row => row.type);
-  assert.deepEqual(transactionTypes, ["loan_interest", "emergency_loan", "salary", "bonus"]);
-  assert.equal(
-    supabase.state.inserts.finance_transactions.find(row => row.type === "emergency_loan").season_id,
-    "season-1"
-  );
-  assert.equal(supabase.state.inserts.finance_transactions.find(row => row.type === "salary").amount, -100);
+  assert.deepEqual(transactionTypes, ["bonus"]);
   assert.equal(supabase.state.inserts.board_plan_snapshots.length, 1);
   assert.equal(supabase.state.season.status, "completed");
   assert.equal(supabase.state.updates.seasons.length, 1);
@@ -1505,13 +1493,13 @@ test("repairSeasonEndFinanceAndBoard runs finance and board only without season 
   const result = await repairSeasonEndFinanceAndBoard("season-1", {
     supabase,
     now: FIXED_SEASON_END_NOW,
-    processLoanInterest: async () => {},
-    createEmergencyLoan: async () => {},
   });
 
+  // 2026-05-21: Repair-funktionen er nu kun board-snapshot-repair.
+  // Salary/loan-interest/emergency-loan tilhører processSeasonStart (næste
+  // sæson). Repair skriver derfor 0 finance-rows og 1 board-snapshot.
   assert.equal(result.teamsProcessed, 1);
-  assert.equal(supabase.state.inserts.finance_transactions.length, 1);
-  assert.equal(supabase.state.inserts.finance_transactions[0].type, "salary");
+  assert.equal(supabase.state.inserts.finance_transactions.length, 0);
   assert.equal(supabase.state.inserts.board_plan_snapshots.length, 1);
   assert.equal(supabase.state.updates.seasons.length, 0);
   assert.equal(
@@ -1583,16 +1571,13 @@ test("repairSeasonEndFinanceAndBoard resumes without duplicating existing salary
   const result = await repairSeasonEndFinanceAndBoard("season-1", {
     supabase,
     now: FIXED_SEASON_END_NOW,
-    processLoanInterest: async () => {},
-    createEmergencyLoan: async () => {},
   });
 
-  assert.equal(result.existingSalaryTransactions, 1);
+  // 2026-05-21: Repair håndterer kun board-snapshots. Eksisterende
+  // board_snapshot for board-1 → skippes → 1 row total (det eksisterende).
+  // Salary-row prepended som setup forbliver urørt (existingSalaryTransactions
+  // er ikke længere returneret af repair-funktionen).
   assert.equal(result.existingBoardSnapshotBoards, 1);
-  assert.equal(
-    supabase.state.inserts.finance_transactions.filter(row => row.type === "salary").length,
-    1
-  );
   assert.equal(supabase.state.inserts.board_plan_snapshots.length, 1);
   assert.equal(supabase.state.updates.seasons.length, 0);
 });

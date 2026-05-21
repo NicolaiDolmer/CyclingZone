@@ -104,7 +104,8 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
   const { data: teams, error: teamsError } = await supabaseClient
     .from("teams")
     .select("*")
-    .eq("is_ai", false);
+    .eq("is_ai", false)
+    .eq("is_frozen", false);
   throwIfSupabaseError(teamsError, "Could not load human teams for season end");
 
   const teamIds = (teams || []).map(team => team.id).filter(Boolean);
@@ -285,7 +286,118 @@ export async function processSeasonStart(seasonId, deps = {}) {
     throwIfSupabaseError(expireError, "Could not expire sponsor-pullouts");
   }
 
+  // 2026-05-21: Sæson-payroll flyttet fra sæson-SLUT til sæson-START.
+  // Rækkefølge i sæson-start er nu:
+  //   1. Sponsor (kredit) — udbetalt ovenfor
+  //   2. Loan-interest (debit) — årlig rente på aktive lån
+  //   3. Salary (debit) — sum af riders.salary, med emergency-lån hvis shortfall
+  //   4. Negative-balance interest (debit) — 10% på resterende negativ balance
+  //   5. Loan-agreement fees — allerede behandlet i processLoanAgreementSeasonFees pr. hold
+  // Managers ser dermed ét samlet sæson-start-cashflow i stedet for at vente
+  // til sæson-slut for at få regningen.
+  // Payroll injicerbar via deps.runSeasonPayroll så sponsor-fokuserede tests
+  // kan stub'e den uden at skulle mocke riders/board_profiles-tabeller.
+  const runSeasonPayrollFn = deps.runSeasonPayroll ?? defaultRunSeasonPayroll;
+  await runSeasonPayrollFn(supabaseClient, seasonId, deps);
+
   return results;
+}
+
+async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
+  const teamsWithRoster = await loadHumanSeasonEndTeams(supabaseClient);
+  const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
+  const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
+  const results = [];
+  for (const teamWithRoster of teamsWithRoster) {
+    const payroll = await processTeamSeasonPayroll(teamWithRoster, seasonId, {
+      supabase: supabaseClient,
+      processLoanInterest: processLoanInterestFn,
+      createEmergencyLoan: createEmergencyLoanFn,
+    });
+    results.push(payroll);
+  }
+  return results;
+}
+
+/**
+ * Sæson-payroll: lånerenter + lønninger (+ emergency-lån hvis shortfall) +
+ * resterende negativ-balance-rente. Kører ved sæson-START efter sponsor er
+ * udbetalt. Idempotent via finance_transactions partial unique-indices.
+ *
+ * Flyttet 2026-05-21 fra processTeamSeasonEnd. Sæson-slut beholder kun
+ * board-evaluation, divisionsbonusser, op/nedrykning og rytter-værdi-recalc.
+ */
+export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
+  const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
+  const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
+  const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
+
+  // 1. Lånerenter på alle aktive lån
+  await processLoanInterestFn(team.id, seasonId, supabaseClient);
+
+  // 2. Løn — sum(rider.salary). Hvis balance < salary → emergency-lån.
+  const totalSalary = (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
+  let emergencyLoanAmount = 0;
+
+  if (totalSalary > 0) {
+    const { data: freshTeam, error: freshTeamError } = await supabaseClient
+      .from("teams").select("balance").eq("id", team.id).single();
+    throwIfSupabaseError(freshTeamError, `Could not load balance for ${team.name}`);
+    if (!freshTeam) throw new Error(`Could not load balance for ${team.name}`);
+    const shortfall = totalSalary - freshTeam.balance;
+    if (shortfall > 0) {
+      console.log(`  ⚠️  ${team.name}: mangler ${shortfall} pts til løn — opretter nødlån`);
+      await createEmergencyLoanFn(team.id, shortfall, supabaseClient, seasonId);
+      emergencyLoanAmount = shortfall;
+    }
+    await debitTeam(
+      team.id,
+      totalSalary,
+      "salary",
+      `Sæsonlønninger — ${(team.riders || []).length} ryttere`,
+      seasonId,
+      supabaseClient,
+      {
+        idempotent: true,
+        audit: {
+          sourcePath: "economyEngine.processSeasonStart.salary",
+          reasonCode: FINANCE_REASON.SEASON_END_SALARY,
+          idempotencyKey: `salary:${team.id}:${seasonId}`,
+        },
+      }
+    );
+  }
+
+  // 3. Negativ-balance-rente (safety net hvis emergency-lån ikke dækkede)
+  const { data: postSalaryTeam, error: postSalaryError } = await supabaseClient
+    .from("teams").select("balance").eq("id", team.id).single();
+  throwIfSupabaseError(postSalaryError, `Could not load post-salary balance for ${team.name}`);
+  let negativeInterestCharged = 0;
+  if (postSalaryTeam && postSalaryTeam.balance < 0) {
+    negativeInterestCharged = Math.round(Math.abs(postSalaryTeam.balance) * INTEREST_RATE);
+    await debitTeam(
+      team.id,
+      negativeInterestCharged,
+      "interest",
+      `Renter på gæld (10% af ${Math.abs(postSalaryTeam.balance).toLocaleString()} pts)`,
+      seasonId,
+      supabaseClient,
+      {
+        audit: {
+          sourcePath: "economyEngine.processSeasonStart.negativeInterest",
+          reasonCode: FINANCE_REASON.SEASON_END_NEGATIVE_INTEREST,
+        },
+      }
+    );
+    console.log(`  💸 ${team.name}: -${negativeInterestCharged} pts interest on negative balance`);
+  }
+
+  return {
+    team: team.name,
+    total_salary: totalSalary,
+    emergency_loan: emergencyLoanAmount,
+    negative_interest: negativeInterestCharged,
+  };
 }
 
 async function loadSponsorStandingsContextForSeason(supabaseClient, seasonNumber) {
@@ -445,7 +557,7 @@ export async function processSeasonEnd(seasonId, deps = {}) {
 }
 
 export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
-  console.log(`\n🛠️  Repairing season-end finance/board side effects: ${seasonId}`);
+  console.log(`\n🛠️  Repairing season-end board side effects: ${seasonId}`);
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const notificationNow = deps.now ?? new Date();
 
@@ -457,13 +569,10 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
   throwIfSupabaseError(seasonError, "Could not load season for season-end repair");
   if (!currentSeason) throw new Error("Season not found");
 
-  const { data: existingFinanceRows, error: existingFinanceError } = await supabaseClient
-    .from("finance_transactions")
-    .select("team_id, type")
-    .eq("season_id", seasonId)
-    .in("type", ["salary", "loan_interest", "interest", "emergency_loan"]);
-  throwIfSupabaseError(existingFinanceError, "Could not check existing finance transactions");
-
+  // 2026-05-21: Salary/loan-interest/emergency-loan flyttet til sæson-start.
+  // Repair-funktionen reparerer derfor nu kun board-snapshots og division-side-
+  // effects, ikke finance-rows. Salary-repair (for historiske sæsoner der
+  // sluttede før flytningen) håndteres separat via dedikeret script om nødvendigt.
   const { data: existingSnapshots, error: snapshotCountError } = await supabaseClient
     .from("board_plan_snapshots")
     .select("team_id, board_id")
@@ -479,27 +588,13 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
   if (!standings?.length) throw new Error("No standings found for season-end repair");
 
   const teams = await loadHumanSeasonEndTeams(supabaseClient);
-  const existingSalaryTeams = new Set(
-    (existingFinanceRows || []).filter(row => row.type === "salary").map(row => row.team_id)
-  );
-  const existingLoanInterestTeams = new Set(
-    (existingFinanceRows || []).filter(row => row.type === "loan_interest").map(row => row.team_id)
-  );
-  const existingLegacyInterestTeams = new Set(
-    (existingFinanceRows || []).filter(row => row.type === "interest").map(row => row.team_id)
-  );
-  const existingEmergencyLoanTeams = new Set(
-    (existingFinanceRows || []).filter(row => row.type === "emergency_loan").map(row => row.team_id)
-  );
   const existingSnapshotBoards = new Set(
     (existingSnapshots || []).map(row => row.board_id).filter(Boolean)
   );
 
   for (const team of teams) {
-    const salaryAlreadyProcessed = existingSalaryTeams.has(team.id);
     const repairTeam = {
       ...team,
-      riders: salaryAlreadyProcessed ? [] : team.riders,
       board_profiles: (team.board_profiles || []).filter(board => !existingSnapshotBoards.has(board.id)),
     };
 
@@ -507,24 +602,12 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
       ...deps,
       supabase: supabaseClient,
       now: notificationNow,
-      processLoanInterest: async (teamId, repairSeasonId, client) => {
-        if (existingLoanInterestTeams.has(teamId)) return [];
-        const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
-        return processLoanInterestFn(teamId, repairSeasonId, client);
-      },
-      createEmergencyLoan: async (teamId, amountNeeded, client, emergencySeasonId) => {
-        if (existingEmergencyLoanTeams.has(teamId)) return null;
-        const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
-        return createEmergencyLoanFn(teamId, amountNeeded, client, emergencySeasonId);
-      },
-      skipNegativeBalanceInterest: salaryAlreadyProcessed || existingLegacyInterestTeams.has(team.id),
     });
   }
 
-  console.log("  ✅ Season-end finance/board repair complete");
+  console.log("  ✅ Season-end board repair complete");
   return {
     teamsProcessed: teams.length,
-    existingSalaryTransactions: existingSalaryTeams.size,
     existingBoardSnapshots: existingSnapshots?.length || 0,
     existingBoardSnapshotBoards: existingSnapshotBoards.size,
   };
@@ -607,74 +690,18 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
 
 async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumber, deps = {}) {
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
-  const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
-  const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
   const processReplacementTriggerFn = deps.processReplacementTrigger ?? processReplacementTrigger;
   const evaluateAndApplyConsequencesFn = deps.evaluateAndApplyConsequences ?? evaluateAndApplyConsequences;
   const notificationDeps = { supabase: supabaseClient, now: deps.now };
   const teamStanding = standings.find(s => s.team_id === team.id);
   const boards = team.board_profiles || [];
 
-  // 1. Tilskriv lånerenter
-  await processLoanInterestFn(team.id, seasonId, supabaseClient);
+  // 2026-05-21: Lånerenter, lønninger og negativ-balance-rente flyttet til
+  // processSeasonStart (kører nu ved sæson-START i stedet for sæson-SLUT).
+  // Sæson-slut beholder kun board-evaluation, divisionsbonusser, op/nedrykning
+  // og rytter-værdi-recalc. Se processTeamSeasonPayroll.
 
-  // 2. Deduct salaries — opret nødlån hvis holdet ikke kan betale
-  const totalSalary = (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
-
-  if (totalSalary > 0) {
-    const { data: freshTeam, error: freshTeamError } = await supabaseClient
-      .from("teams").select("balance").eq("id", team.id).single();
-    throwIfSupabaseError(freshTeamError, `Could not load balance for ${team.name}`);
-    if (!freshTeam) throw new Error(`Could not load balance for ${team.name}`);
-    const shortfall = totalSalary - freshTeam.balance;
-    if (shortfall > 0) {
-      console.log(`  ⚠️  ${team.name}: mangler ${shortfall} pts til løn — opretter nødlån`);
-      await createEmergencyLoanFn(team.id, shortfall, supabaseClient, seasonId);
-    }
-    await debitTeam(
-      team.id,
-      totalSalary,
-      "salary",
-      `Sæsonlønninger — ${team.riders.length} ryttere`,
-      seasonId,
-      supabaseClient,
-      {
-        idempotent: true,
-        audit: {
-          sourcePath: "economyEngine.processSeasonEnd.salary",
-          reasonCode: FINANCE_REASON.SEASON_END_SALARY,
-          idempotencyKey: `salary:${team.id}:${seasonId}`,
-        },
-      }
-    );
-  }
-
-  // 3. Opkræv renter på resterende negativ balance (legacy-sikkerhedsnet)
-  const { data: postSalaryTeam, error: postSalaryTeamError } = await supabaseClient
-    .from("teams").select("balance").eq("id", team.id).single();
-  throwIfSupabaseError(postSalaryTeamError, `Could not load post-salary balance for ${team.name}`);
-  if (!postSalaryTeam) throw new Error(`Could not load post-salary balance for ${team.name}`);
-
-  if (!deps.skipNegativeBalanceInterest && postSalaryTeam.balance < 0) {
-    const interest = Math.round(Math.abs(postSalaryTeam.balance) * INTEREST_RATE);
-    await debitTeam(
-      team.id,
-      interest,
-      "interest",
-      `Renter på gæld (10% af ${Math.abs(postSalaryTeam.balance).toLocaleString()} pts)`,
-      seasonId,
-      supabaseClient,
-      {
-        audit: {
-          sourcePath: "economyEngine.processSeasonEnd.negativeInterest",
-          reasonCode: FINANCE_REASON.SEASON_END_NEGATIVE_INTEREST,
-        },
-      }
-    );
-    console.log(`  💸 ${team.name}: -${interest} pts interest on negative balance`);
-  }
-
-  // 4. Plan-aware board evaluation — evaluate all active plans
+  // Plan-aware board evaluation — evaluate all active plans
   // S-02a: Skip baseline-profiler. Sæson 1 = observation, ingen mål/evaluering/modifier-skift.
   for (const board of boards) {
     if (!board || !teamStanding) continue;
@@ -884,8 +911,6 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       + `(season ${seasonsCompleted}/${planDuration}, score ${Math.round((scoreBreakdown.adjusted_overall_score || 0) * 100)}%)`
     );
   }
-
-  console.log(`  💰 ${team.name}: -${totalSalary} pts salary`);
 }
 
 // ─── Rider Value & Salary Recalculation ──────────────────────────────────────

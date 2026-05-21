@@ -511,7 +511,11 @@ test("processSeasonStart fanger unique_violation på sponsor (team, season)", as
   };
 
   // Må ikke kaste når DB afviser duplicate sponsor — skal logge og fortsætte.
-  await processSeasonStart("season-1", { supabase: supabase.client });
+  // runSeasonPayroll stubbet — testen fokuserer på sponsor-idempotency, ikke payroll.
+  await processSeasonStart("season-1", {
+    supabase: supabase.client,
+    runSeasonPayroll: async () => [],
+  });
 
   const sponsorRows = supabase.state.insertedFinanceRows.filter((r) => r.type === "sponsor");
   assert.equal(sponsorRows.length, 0, "ingen sponsor-row inserted ved unique_violation");
@@ -629,6 +633,7 @@ test("processSeasonStart bruger variabel sponsor fra forrige sæsons standings f
   const result = await processSeasonStart("season-2", {
     supabase,
     processLoanAgreementSeasonFees: async () => [],
+    runSeasonPayroll: async () => [],
   });
 
   assert.equal(financeRows.length, 1);
