@@ -49,7 +49,7 @@ export default function FinanceFirstVisitHint({ onDismiss, onStartTour }) {
           </div>
           <p className="text-cz-3 text-xs">
             10% af rytterværdien pr. sæson (uci_points × 4000). Trækkes som engangsbeløb
-            ved sæsonafslutning — stjerneryttere er dyre at holde på.
+            ved næste sæsons start — lige efter sponsor lander. Stjerneryttere er dyre at holde på.
           </p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">

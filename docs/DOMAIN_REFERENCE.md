@@ -127,7 +127,7 @@ Shortfall: Auto-nødlån oprettes
 | `emergency` | Auto-skabt hvis hold ikke kan betale løn |
 
 - Nødlån: 15% oprettelsesgebyr, 15% rente per sæson, 1 sæsons varighed
-- Rente beregnes på `amount_remaining` ved sæsonslut
+- Rente beregnes på `amount_remaining` ved sæsonstart (flyttet fra sæsonslut i v3.78, 2026-05-21)
 
 ### Præmiepenge (default ved løbsimport)
 

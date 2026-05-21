@@ -1,5 +1,7 @@
 # Economy Flow Audit — Sæson 0 → 1 → 2
 
+> **⚠️ HISTORISK ADVARSEL — IKKE engine-flowet.** Dette dokument analyserer det FORKERTE manuelle `⏹ Afslut sæson 0` + `▶ Start sæson 1` flow, hvor `processSeasonEnd(sæson 0)` ville køre FØR `processSeasonStart(sæson 1)`. I det scenario trækkes løn+renter UDEN at ny sponsor først er udbetalt → 9 hold ville få emergency-lån. **Det er præcis derfor vi skal bruge engine-knappen `🔄 Udfør sæsonskifte` i stedet.** Engine'n springer `processSeasonEnd(0)` over (sæson 0 har ingen race-data) og lader v3.78's `processSeasonStart(1)` kreditere sponsor til ALLE hold FØR payroll-loopet starter — så 0 hold forventes at få emergency-lån.
+>
 > **Skrevet:** 2026-05-21 (før sæson 1 launch kl 23:00 Europe/Copenhagen)
 > **Scope:** Fase 1 (in-flight events), Fase 2 (⏹ Afslut sæson 0), Fase 3 (▶ Start sæson 1), Fase 4 (sæson 1 kørsel), Fase 5 (sæson 1→2 via engine), Fase 6 (gap-analyse mod plan).
 > **Kilde-snapshot:** Supabase prod (project `ghwvkxzhsbbltzfnuhhz`) på skrivetidspunktet. Verificér igen før knaptryk.

@@ -332,9 +332,9 @@
         "title": "Sæsonforløb",
         "steps": [
           "Admin lukker transfervinduet og starter ny sæson.",
-          "Ved sæsonstart: ventende transfers behandles, lønninger følger den aktuelle markedsværdi, og sponsorpenge udbetales.",
+          "Ved sæsonstart: ventende transfers behandles, sponsorpenge udbetales først, dernæst trækkes lånerenter og lønninger (følger den aktuelle markedsværdi). Nødlån oprettes kun hvis sponsor+balance ikke kan dække.",
           "Løb køres i Pro Cycling Manager og resultaterne indberettes af en manager og godkendes af admin.",
-          "Ved sæsonafslutning: divisionsbonus udbetales, point tælles op, op/nedrykning afgøres, lønninger trækkes, gældsrenter tilskrives."
+          "Ved sæsonafslutning: point tælles op, divisionsbonus udbetales, op/nedrykning afgøres (fra sæson 3 og frem), og bestyrelsesplaner evalueres. Løn og renter trækkes IKKE ved sæsonslut længere — det er flyttet til næste sæsons start (v3.78)."
         ]
       },
       "racesAndResults": {
@@ -433,7 +433,7 @@
       },
       "salary": {
         "title": "Løn",
-        "text": "Hver rytters årsløn er ca. 10% af markedsværdien og sættes ved købet eller ved den planlagte løngenberegning. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved sæsonafslutning. Kan din balance ikke dække lønningerne, optager systemet automatisk et nødlån."
+        "text": "Hver rytters årsløn er ca. 10% af markedsværdien og sættes ved købet eller ved den planlagte løngenberegning. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved næste sæsons start, lige efter sponsor er udbetalt. Kan sponsor + din eksisterende balance ikke dække lønningerne, optager systemet automatisk et nødlån."
       },
       "stats": {
         "title": "Rytterstatistik",
@@ -558,11 +558,11 @@
     },
     "salaryShortfall": {
       "q": "Hvad sker der hvis jeg ikke kan betale lønninger?",
-      "a": "Hvis din balance er negativ ved sæsonafslutning, optager du automatisk et nødlån. Renter tilskrives ved næste sæsonafslutning."
+      "a": "Lønninger trækkes ved sæsonstart EFTER sponsor er udbetalt. Hvis din balance + sponsor + lånerenter ikke dækker lønnen, optager systemet automatisk et nødlån for det manglende beløb. Renter på nødlånet tilskrives ved næste sæsons start."
     },
     "debtCeiling": {
       "q": "Hvad er gældsloftet, og hvornår gælder det?",
-      "a": "Hver division har et maksimalt gældsbeløb: Division 1: 1.200.000 CZ$, Division 2: 900.000 CZ$, Division 3: 600.000 CZ$. Systemet afviser nødlån der ville overskride loftet. Gældsrenter tilskrives ved sæsonafslutning oveni eksisterende gæld."
+      "a": "Hver division har et maksimalt gældsbeløb: Division 1: 1.200.000 CZ$, Division 2: 900.000 CZ$, Division 3: 600.000 CZ$. Systemet afviser nødlån der ville overskride loftet. Lånerenter tilskrives ved sæsonstart oveni eksisterende gæld (flyttet fra sæsonslut i v3.78)."
     },
     "prizeMoneyFaq": {
       "q": "Hvad er præmiepenge, og hvornår udbetales de?",
@@ -686,7 +686,7 @@
     },
     "season0To1Special": {
       "q": "Hvad sker der ved overgangen fra sæson 0 til sæson 1?",
-      "a": "Sæson 0 er åbnings-fasen uden løb, point eller lønninger. Når transfervinduet lukker, springer systemet løn-træk og rente-træk over (der er ingen sæson 0 at lave op for). Det eneste pengeflow er: sponsor 240.000 CZ$ lander på dit hold når sæson 1 starter. Fra sæson 1 og frem kører den normale cyklus: lønninger trækkes ved sæsonafslutning, renter på negativ saldo tilskrives, sponsor udbetales ved næste sæsonstart."
+      "a": "Sæson 0 er åbnings-fasen uden løb, point eller lønninger. Når transfervinduet lukker, springer systemet sæson-0's løn-træk og rente-træk over (der er ingen sæson 0 at lave op for). Det eneste pengeflow er: sponsor 240.000 CZ$ lander på dit hold når sæson 1 starter. Fra sæson 1 og frem kører den normale cyklus ved sæsonstart: 1) sponsor udbetales, 2) lånerenter trækkes, 3) lønninger trækkes, 4) nødlån oprettes hvis stadig shortfall. Sæsonslut håndterer kun divisionsbonus, op/nedrykning og bestyrelsesplaner."
     },
     "deadlineTimelineFaq": {
       "q": "Hvad sker der præcist når transfervinduet lukker?",

@@ -17,17 +17,17 @@ const FINANCE_TOUR_STEPS = [
   {
     target: "[data-tour='finance-balance']",
     title: "Din balance og pengestrømme",
-    body: "Balance ændrer sig ved sponsor (ind, ved sæsonstart), løn (ud, ved sæsonafslutning), transfers og præmier (løbende). Røde tal = negativ balance, hvilket aktiverer nødlån-mekanismen ved sæsonafslutning.",
+    body: "Balance ændrer sig ved sponsor (ind, ved sæsonstart), løn (ud, ved næste sæsonstart efter sponsor), transfers og præmier (løbende). Røde tal = negativ balance — nødlån-mekanismen kicker ind ved næste sæsonstart hvis sponsor+balance ikke dækker løn+renter.",
   },
   {
     target: "[data-tour='finance-debt-ceiling']",
     title: "Gældsloft pr. division",
-    body: "Hver division har et loft for total gæld (D1 1.200K · D2 900K · D3 600K). Når loftet er nået, spærres nye lån — bestyrelsen straffer også overforbrug ved sæsonafslutning.",
+    body: "Hver division har et loft for total gæld (D1 1.200K · D2 900K · D3 600K). Når loftet er nået, spærres nye lån — bestyrelsen straffer også overforbrug ved sæsonevaluering.",
   },
   {
     target: "[data-tour='finance-tx-history']",
     title: "Følg pengestrømmene",
-    body: "Sponsor og løn er sæson-engangs (ind ved start, ud ved slut), mens præmier og transfers tikker ind løbende. Her ser du hver transaktion — brug den til at spore om økonomien går den rigtige vej.",
+    body: "Sponsor og løn er sæson-engangs (begge ved sæsonstart — sponsor først, så løn), mens præmier og transfers tikker ind løbende. Her ser du hver transaktion — brug den til at spore om økonomien går den rigtige vej.",
   },
 ];
 

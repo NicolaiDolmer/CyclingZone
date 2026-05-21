@@ -8,9 +8,9 @@
 > 2. Tryk **Udfør sæsonskifte (sæson 0 → 1)** og bekræft
 > 3. Engine'n hopper over `processSeasonEnd` for sæson 0, opretter sæson 1's transfer-window, og udbetaler 240K sponsor til **19 hold** (3 test-hold + 1 inaktiv manager (Inuit Cycling) frosset ud per 2026-05-21)
 > 4. Per-fase-log skal vise 6 ✅ — særligt `insert_next_season: updated (promoted upcoming → active)`
-> 5. **NYT v3.78:** Salary + loan-interest + emergency-lån trækkes nu ved sæson-START sammen med sponsor. 19 hold får sponsor 240K, derefter trækkes ~1,5M samlet løn, ~278K rente, og 9 hold får emergency-lån
+> 5. **NYT v3.78 (verificeret 2026-05-21 mod prod-DB):** `processSeasonStart` kører i to passes — først krediteres sponsor til ALLE 19 hold (1 pass), DEREFTER kører `runSeasonPayroll` der per hold trækker renter → løn → (kun emergency-lån hvis stadig shortfall). Fordi sponsor 240K kommer FØR payroll-loopet, dækker den løn+renter for alle hold: forventet ~4,56M sponsor +, ~250K renter − (7 hold med 8 aktive lån), ~1,52M løn − (19 hold). **0 hold forventes at få emergency-lån, 0 hold negativ-balance-rente.**
 >
-> **⚠️ Brug IKKE manual ⏹ Afslut + ▶ Start-knapperne** — audit 2026-05-21 ([`docs/economy-flow-audit-2026-05-21.md`](docs/economy-flow-audit-2026-05-21.md)) viste at ⏹ Afslut sæson 0 ubetinget kører `processSeasonEnd` → ~1.5M pts salary-debit på 17 hold, ~278K loan-interest, 9 hold får emergency-lån (~438K), 2 vilkårlige hold rykker op til D2. NOW.md sagde tidligere "formentlig harmløs" — det var forkert. Engine'n er den sikre vej.
+> **⚠️ Brug IKKE manual ⏹ Afslut + ▶ Start-knapperne** — audit 2026-05-21 ([`docs/economy-flow-audit-2026-05-21.md`](docs/economy-flow-audit-2026-05-21.md)) analyserede netop det FORKERTE manuelle flow hvor `processSeasonEnd(sæson 0)` ubetinget ville køre FØR sponsor blev udbetalt → 9 hold ville få emergency-lån (~438K) fordi løn trækkes uden ny sponsor til dækning. Engine'n undgår problemet ved at springe `processSeasonEnd(0)` over og lade `processSeasonStart(1)` betale sponsor før payroll. Brug engine-knappen.
 >
 > **Verifikation efter sæsonskifte (kør queries efter knapklik):**
 > - `seasons`: sæson 0 'completed' med end_date, sæson 1 'active' med start_date

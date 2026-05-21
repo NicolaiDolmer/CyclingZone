@@ -642,3 +642,87 @@ test("processSeasonStart bruger variabel sponsor fra forrige sæsons standings f
   assert.equal(result[0].sponsor, 275_000);
   assert.equal(result[0].sponsor_breakdown.mode, "variable");
 });
+
+// ── v3.78 invariant: sponsor pass A er FÆRDIG for alle hold før payroll (pass B) starter ───
+//
+// Beskytter mod regression hvor renter/løn ved et uheld interleaves med sponsor-loopet
+// (fx ved at flytte runSeasonPayroll-kaldet ind i for-loopet). Det ville reintroducere
+// emergency-lån-pres som blev løst i v3.78, fordi hold uden balance ville få trukket
+// salary FØR resten af holdene havde modtaget deres sponsor.
+test("processSeasonStart krediterer sponsor til ALLE hold før runSeasonPayroll kører (v3.78 invariant)", async () => {
+  const callLog = [];
+  const teams = [
+    { id: "t1", name: "Team 1", is_ai: false, is_frozen: false, balance: 0,
+      board_profiles: [{ plan_type: "1yr", negotiation_status: "completed", budget_modifier: 1.0 }] },
+    { id: "t2", name: "Team 2", is_ai: false, is_frozen: false, balance: 0,
+      board_profiles: [{ plan_type: "1yr", negotiation_status: "completed", budget_modifier: 1.0 }] },
+    { id: "t3", name: "Team 3", is_ai: false, is_frozen: false, balance: 0,
+      board_profiles: [{ plan_type: "1yr", negotiation_status: "completed", budget_modifier: 1.0 }] },
+  ];
+
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      callLog.push({ phase: "sponsor", team_id: params.p_team_id });
+      return Promise.resolve({ data: params.p_delta, error: null });
+    },
+    from(table) {
+      if (table === "seasons") {
+        return {
+          select() {
+            return { eq() { return { single: () => Promise.resolve({ data: { number: 1 }, error: null }) }; } };
+          },
+        };
+      }
+      if (table === "teams") {
+        return {
+          select() {
+            return {
+              eq(_col, _val) {
+                return {
+                  eq() { return Promise.resolve({ data: teams, error: null }); },
+                };
+              },
+            };
+          },
+        };
+      }
+      if (table === "board_consequences") {
+        return {
+          select() {
+            return { eq() { return { eq() { return Promise.resolve({ data: [], error: null }); } }; } };
+          },
+          update() {
+            return { eq() { return { eq() { return Promise.resolve({ error: null }); } }; } };
+          },
+        };
+      }
+      if (table === "board_profiles") {
+        return { insert() { return Promise.resolve({ error: null }); } };
+      }
+      if (table === "finance_transactions") {
+        return { insert() { return Promise.resolve({ error: null }); } };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  await processSeasonStart("season-1", {
+    supabase,
+    processLoanAgreementSeasonFees: async () => [],
+    runSeasonPayroll: async () => {
+      callLog.push({ phase: "payroll" });
+      return [];
+    },
+  });
+
+  // Forventet rækkefølge: sponsor t1, sponsor t2, sponsor t3, payroll.
+  const sponsorEvents = callLog.filter((e) => e.phase === "sponsor");
+  const payrollIdx = callLog.findIndex((e) => e.phase === "payroll");
+  assert.equal(sponsorEvents.length, 3, "sponsor krediteres til alle 3 hold");
+  assert.equal(payrollIdx, 3, "runSeasonPayroll skal kaldes EFTER alle sponsor-credits (index 3, ikke før)");
+  assert.ok(
+    callLog.slice(0, payrollIdx).every((e) => e.phase === "sponsor"),
+    "alle events før payroll skal være sponsor-credits — ingen interleaved payroll-call"
+  );
+});

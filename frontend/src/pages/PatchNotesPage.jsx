@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.82",
+    date: "2026-05-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Dokumentation · Sæsonstart-rækkefølge klargjort overalt",
+        items: [
+          "EN · Help texts, FAQ, finance hints and admin dialogs now consistently describe the v3.78 cash-flow order: at season start sponsor is credited to ALL teams first, then loan interest is deducted, then salaries are deducted, and only if balance is still short does the system take an emergency loan. Several pages still said 'salaries are deducted at season end' — that was outdated since v3.78. No behaviour change; the engine has worked this way since 2026-05-21 morning. A new regression test locks the invariant so the order cannot regress unnoticed.",
+          "DA · Hjælpetekster, FAQ, finance-hints og admin-dialoger beskriver nu konsekvent v3.78-cashflowet: ved sæsonstart krediteres sponsor til ALLE hold først, dernæst trækkes lånerenter, så lønninger, og kun hvis balance stadig er negativ optager systemet et nødlån. Flere sider sagde stadig 'løn trækkes ved sæsonslut' — det var forældet siden v3.78. Ingen adfærdsændring; engine'n har kørt sådan siden morgenen 2026-05-21. Ny regressionstest låser invariant, så rækkefølgen ikke kan smutte uden vi opdager det.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.81",
     date: "2026-05-21",
     label: "Beta",

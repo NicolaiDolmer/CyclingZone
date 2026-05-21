@@ -332,9 +332,9 @@
         "title": "Season flow",
         "steps": [
           "Admin closes the transfer window and starts a new season.",
-          "At season start: pending transfers are processed, salaries follow the current market value, and sponsor money is paid out.",
+          "At season start: pending transfers are processed, sponsor money is paid out first, then loan interest and salaries are deducted (salaries follow the current market value). An emergency loan is created only if sponsor + balance can't cover the shortfall.",
           "Races are run in Pro Cycling Manager and results are reported by a manager and approved by admin.",
-          "At season end: division bonus is paid out, points are tallied, promotion/relegation is decided, salaries are deducted, debt interest is added."
+          "At season end: points are tallied, division bonus is paid out, promotion/relegation is decided (from season 3 onwards), and board plans are evaluated. Salaries and interest are no longer deducted at season end — they moved to the next season's start (v3.78)."
         ]
       },
       "racesAndResults": {
@@ -433,7 +433,7 @@
       },
       "salary": {
         "title": "Salary",
-        "text": "Each rider's annual salary is about 10% of market value and is set at purchase or at the scheduled salary recalculation. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at season end. If your balance can't cover the salaries, the system automatically takes an emergency loan."
+        "text": "Each rider's annual salary is about 10% of market value and is set at purchase or at the scheduled salary recalculation. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at the start of the next season, right after sponsor money lands. If sponsor + your existing balance can't cover the salaries, the system automatically takes an emergency loan."
       },
       "stats": {
         "title": "Rider stats",
@@ -558,11 +558,11 @@
     },
     "salaryShortfall": {
       "q": "What happens if I can't pay the salaries?",
-      "a": "If your balance is negative at season end, you automatically take an emergency loan. Interest is added at the next season end."
+      "a": "Salaries are deducted at season start AFTER sponsor money is paid out. If your balance + sponsor minus loan interest doesn't cover the salaries, the system automatically takes an emergency loan for the shortfall. Interest on the emergency loan is added at the next season's start."
     },
     "debtCeiling": {
       "q": "What is the debt ceiling, and when does it apply?",
-      "a": "Each division has a maximum debt amount: Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$. The system rejects emergency loans that would exceed the ceiling. Debt interest is added at season end on top of existing debt."
+      "a": "Each division has a maximum debt amount: Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$. The system rejects emergency loans that would exceed the ceiling. Loan interest is added at season start on top of existing debt (moved from season end in v3.78)."
     },
     "prizeMoneyFaq": {
       "q": "What is prize money, and when is it paid out?",
@@ -686,7 +686,7 @@
     },
     "season0To1Special": {
       "q": "What happens at the transition from season 0 to season 1?",
-      "a": "Season 0 is the opening phase with no races, points or salaries. When the transfer window closes, the system skips salary deduction and interest charges (there's no season 0 to settle). The only cash flow is: sponsor money of 240,000 CZ$ lands on your team when season 1 starts. From season 1 onwards the normal cycle runs: salaries are deducted at season end, interest on negative balance is added, sponsor pays out at next season start."
+      "a": "Season 0 is the opening phase with no races, points or salaries. When the transfer window closes, the system skips season 0's salary deduction and interest charges (there's no season 0 to settle). The only cash flow is: sponsor money of 240,000 CZ$ lands on your team when season 1 starts. From season 1 onwards the normal cycle runs at season start: 1) sponsor is paid out, 2) loan interest is deducted, 3) salaries are deducted, 4) an emergency loan is taken if there's still a shortfall. Season end only handles division bonus, promotion/relegation and board plan evaluation."
     },
     "deadlineTimelineFaq": {
       "q": "What exactly happens when the transfer window closes?",

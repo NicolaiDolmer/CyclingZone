@@ -61,7 +61,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Lejegebyr ved aktivering + ved dækket sæsonstart
 - Låneoversigt (aktive + egne)
 - Låneafdrag
-- Auto-nødlån ved manglende løn
+- Auto-nødlån ved manglende løn (kører ved sæsonstart efter sponsor+renter, kun hvis balance stadig < salary)
 
 ### Økonomi & Finans
 - **Alle beløb skaleret ×4000 (v1.43)** — rytterværdi = uci_points × 4000 CZ$
@@ -71,8 +71,10 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **Rytter-løn er en GENERATED column (v2.25, 2026-05-04)** — `riders.salary = max(1, round((max(5, uci_points) * 4000 + prize_earnings_bonus) * 0.10))` beregnes automatisk af Postgres. Ingen application-path kan skrive direkte til `riders.salary` — DB genberegner ved opdatering af `uci_points` eller `prize_earnings_bonus`. Eliminerer permanent dual-formula konflikten mellem 10% (cron) og 15% (auktioner/transfers/lån) der drev løn-drift mellem mandag og onsdag
 - **Economy baseline simulation (2026-04-29)** — read-only live baseline + lokale scenarier er dokumenteret i `docs/archive/ECONOMY_BASELINE_SIMULATION_2026-04-29.md`, med gentagelig kommando `backend/scripts/economyBaselineSimulation.js`
 - Sponsorindtægt ved sæsonstart (med board-modifier)
-- Lønudbetaling ved sæsonslut
-- Renteberegning på negativ saldo (10%/sæson)
+- **Lønudbetaling ved sæsonstart** (flyttet fra sæsonslut i v3.78, 2026-05-21) — kører efter sponsor er udbetalt til alle hold, så de ny-krediterede penge dækker løn for de fleste hold
+- **Lånerenter ved sæsonstart** (flyttet fra sæsonslut i v3.78) — trækkes efter sponsor, før løn
+- **Emergency-lån ved sæsonstart** (flyttet fra sæsonslut i v3.78) — kun hvis sponsor+balance stadig ikke dækker løn+renter
+- Renteberegning på negativ saldo (10%/sæson) — trækkes ved sæsonstart efter løn, kun hvis balance stadig er negativ
 - Resultatpoint (`points_earned`) og præmiepenge (`prize_money = points × 1.500 CZ$`) er adskilt ved løbsimport — `points_earned` fra `race_points[race_class]`, `prize_money` krediteres holdbalancen som type=`prize` (v1.75)
 - Divisionsbonus ved sæsonslut: D1 300K/200K/100K/50K · D2 150K/100K/50K/25K · D3 75K/50K/25K, type=`bonus`, idempotent (v1.75)
 - **DB-håndhævet idempotency for cron-payouts (v2.51, slice 07b, 2026-05-07):** 4 partial UNIQUE indices på `finance_transactions` — `uniq_sponsor_per_team_season`, `uniq_salary_per_team_season`, `uniq_bonus_per_team_season` (alle på `(team_id, season_id)`) + `uniq_loan_interest_per_loan_season` på `(related_loan_id, season_id)`. Ny `finance_transactions.related_loan_id` UUID-kolonne (FK til `loans.id`) sporer renter per individuelt lån. Backend-engines fanger `unique_violation` (PG 23505) og skipper stille — cron-retry er nu sikkert.
@@ -82,7 +84,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Balance-justering (admin)
 - Finance transaction type-kontrakt er afstemt i schema/migration/test med runtime for lån, lånerenter, nødlån og admin-justeringer
 - Live DB migration for finance-/notification type-kontrakt er applied 2026-04-29.
-- Season-end nødlån sender nu `season_id` med til finance-loggen, så `emergency_loan` rows kan verificeres per sæson fremover.
+- Nødlån sender nu `season_id` med til finance-loggen, så `emergency_loan` rows kan verificeres per sæson fremover (skifter retning til sæson-start fra v3.78).
 - Service-visible season 6 repair verifier findes som `backend/scripts/verifySeasonEndRepair.js` / `npm run season:end:verify-repair -- --markdown`.
 - UCI salary recalculation: GitHub Actions kører `backend/scripts/recalculateRiderSalaries.js` efter UCI scraperen. Scriptet kører `updateRiderValues` som nu kun opdaterer `prize_earnings_bonus` (3-sæson-gennemsnit) — DB genberegner `salary` automatisk via GENERATED-formel når `uci_points` eller `prize_earnings_bonus` ændres (v2.25)
 - **Auto-migrate workflow (v2.25, 2026-05-04):** `.github/workflows/auto-migrate.yml` kører nye `database/2026-*.sql` filer mod live Supabase ved push til main. Tracker applied filenames i `schema_migrations` tabel (PK = filename) for idempotency. Sleeps 180s for Vercel + backend deploy at færdiggøre, så `psql -f` med `ON_ERROR_STOP=1`. Setup-doc: `docs/AUTO_MIGRATION_SETUP.md` (kræver `SUPABASE_DB_URL` GitHub secret). Eliminerer manuel "kopier SQL ind i dashboard"-proces

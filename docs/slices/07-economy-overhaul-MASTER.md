@@ -85,7 +85,7 @@
 
 **4. Minimal change.** Light konkurs-mekanik (besluttet 2026-05-07 — kun forvarsel-lag, ingen auto-actions):
 - **Lag 1 forvarsel ved 70% af loft:** Dashboard risk-tier `gul`, in-app-notif `board_warning` (ikke critical) "Sæson N: din gæld er Y% af loftet. Sælg en rytter eller reducér aktivitet."
-- **Lag 2 hard-warning ved 90%:** in-app-notif `board_critical` + popup ved næste login "ADVARSEL: ved sæsonslut kan emergency-lån presse dig over loftet."
+- **Lag 2 hard-warning ved 90%:** in-app-notif `board_critical` + popup ved næste login "ADVARSEL: ved næste sæsonstart kan emergency-lån presse dig over loftet." (v3.78: payroll trækkes ved sæson-start)
 - **Ved faktisk breach:** status quo (emergency-lån oprettes uden hård grænse). 07b's createEmergencyLoan-tjek bevares som SOFT (logger advarsel, blokerer ikke). Hvis live-data viser at dette utilstrækkeligt → senere slice 07i for hard-enforcement (auto-salg eller account-freeze).
 
 Migration `database/2026-05-07-economy-idempotency.sql`:

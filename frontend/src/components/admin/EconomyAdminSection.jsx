@@ -27,10 +27,10 @@ const TX_TYPES = ["", "income", "expense"];
 // Spejl af FINANCE_REASON i backend/lib/economyConstants.js — bruges som dropdown-options.
 const REASON_CODE_LABELS = {
   season_start_sponsor: "Sponsorindtægt (sæsonstart)",
-  season_end_salary: "Lønudbetaling (sæsonslut)",
+  season_end_salary: "Lønudbetaling (sæsonstart, v3.78)",
   season_end_division_bonus: "Division-bonus (sæsonslut)",
-  season_end_negative_interest: "Rente på negativ saldo",
-  season_end_loan_interest: "Renteudgift på lån",
+  season_end_negative_interest: "Rente på negativ saldo (sæsonstart, v3.78)",
+  season_end_loan_interest: "Renteudgift på lån (sæsonstart, v3.78)",
   starting_budget: "Startbudget",
   race_prize_payout: "Præmiepenge fra løb",
   auction_winner_payment: "Betaling for vundet auktion",

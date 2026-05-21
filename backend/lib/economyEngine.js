@@ -149,11 +149,28 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
 // ─── Season Start Processing ──────────────────────────────────────────────────
 
 /**
- * Process season start for all active teams:
- * - Pay out sponsor income (modified by board satisfaction)
- * - Charge recurring rider-loan fees for continuing agreements
- * - Initialize board profiles if missing
- * - Log starting transactions
+ * Process season start for all active teams.
+ *
+ * INVARIANT (v3.78, 2026-05-21): Sponsor krediteres til ALLE hold i pass A
+ * FØR runSeasonPayroll (pass B) starter. Det betyder freshTeam.balance i
+ * payroll allerede inkluderer sponsor — emergency-lån udløses kun hvis
+ * sponsor + start_balance < salary + renter.
+ *
+ * Rækkefølge per sæson-start:
+ *   PASS A (loop over alle hold):
+ *     1. Sponsor +  (board-modifier × pullout-faktor × intro/variabel-base)
+ *     2. Loan-agreement-fees − (løbende rytter-lån)
+ *     3. Ensure board-profiles (1yr/3yr/5yr) eksisterer
+ *   PASS B = runSeasonPayroll (separat loop over alle hold, EFTER pass A):
+ *     1. processLoanInterest − (rente på hvert aktivt lån)
+ *     2. Salary − (sum af riders.salary). Emergency-lån + hvis shortfall.
+ *     3. Negativ-balance-rente − (10% af |balance| hvis stadig < 0)
+ *
+ * Sæson-slut (processSeasonEnd) håndterer KUN board-eval + divisionsbonus +
+ * op/nedrykning (gated på FIRST_PROMOTION_RELEGATION_SEASON) + rytter-recalc.
+ * Payroll-trinene blev flyttet fra sæson-slut til sæson-start i v3.78 for at
+ * undgå at hold starter ny sæson med utilsigtet emergency-lån — sponsor skal
+ * dække løn FØR shortfall-tjek.
  */
 export async function processSeasonStart(seasonId, deps = {}) {
   console.log(`\n🏁 Processing season start: ${seasonId}`);

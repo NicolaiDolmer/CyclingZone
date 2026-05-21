@@ -16,13 +16,27 @@ Autoritativ beskrivelse af alle sæson- og markedshændelsers rækkefølge. Kild
 2. UPDATE seasons SET status='active', start_date=now
 
 3. processSeasonStart(seasonId)  [economyEngine.js]
+
+   PASS A — Sponsor + plan-setup (looper over alle hold først):
    For hvert menneskehold:
    ├─ Beregn sponsor-modifier fra bestyrelsestilfredshed
-   │  (0.80 lav · 1.00 normal · 1.20 høj)
+   │  (0.80 lav · 1.00 normal · 1.20 høj) × evt. sponsor-pullout
    ├─ Kredit sponsorindkomst × modifier → holdbalance
    ├─ Log finance transaction (type: 'sponsor')
    ├─ processLoanAgreementSeasonFees() — løbende långebyrer
    └─ Sikr at alle 3 bestyrelsesplantyper eksisterer (1yr/3yr/5yr)
+
+   PASS B — runSeasonPayroll (v3.78, flyttet fra processSeasonEnd 2026-05-21):
+   For hvert menneskehold (separat loop EFTER pass A er færdig for alle hold):
+   ├─ processLoanInterest() — træk rente på hvert aktivt lån (per loan.interest_rate)
+   ├─ totalSalary = sum(rider.salary). Hvis balance < salary efter rente:
+   │  └─ createEmergencyLoan(shortfall) — krediterer holdet, så salary kan trækkes
+   ├─ Debiter løn (type: 'salary')
+   └─ Negativ-balance-rente: hvis balance stadig < 0 → debiter 10% (type: 'interest')
+
+   Invariant: sponsor (pass A) er udbetalt til ALLE hold FØR payroll (pass B) starter.
+   Det betyder freshTeam.balance i payroll allerede inkluderer sponsor — emergency-lån
+   udløses kun hvis sponsor + start_balance < salary + renter.
 
 4. logActivity("season_started", { season_id, sponsor_payouts })
 5. notifySeasonEvent({ type: "season_started" })  → Discord
@@ -79,18 +93,21 @@ Autoritativ beskrivelse af alle sæson- og markedshændelsers rækkefølge. Kild
 
 3. processSeasonEnd(seasonId)  [economyEngine.js]
 
+   v3.78 (2026-05-21): payroll (salary + loan-interest + emergency + neg-balance-rente)
+   er FLYTTET til processSeasonStart. processSeasonEnd håndterer nu kun:
+
    A) Oprykning/nedrykning pr. division (div 1-3):
       Top 2 i div 2 & 3 → rykker op (division - 1)
       Bund 2 i div 1 & 2 → rykker ned (division + 1)
       Notify hold
+      NB: Gated på sæson < FIRST_PROMOTION_RELEGATION_SEASON (=3) fra v3.81 / #533.
+          Sæson 1+2 slutter uden division-skifte; genaktiveres fra sæson 3-slut.
 
-   B) For hvert menneskehold:
-      ├─ processLoanInterest()
-      │  └─ Debiter 10 % rente på negativ saldo
-      ├─ Beregn samlet løn (rider.price × 0.10 pr. rytter)
-      ├─ Hvis saldo utilstrækkelig: createEmergencyLoan(shortfall)
-      ├─ Debiter løn; log finance transaction (type: 'salary')
-      ├─ Resterende negativ saldo: debiter 10 % rente (type: 'interest')
+   B) Divisionsbonus til top-rangerede hold (D1/D2/D3 separat)
+      ├─ Debiter sæson-vinder, runner-up, etc. (type: 'bonus')
+      └─ Idempotent via uniq_bonus_per_team_season
+
+   C) For hvert menneskehold:
       └─ Evaluer bestyrelses-planer (evaluateBoardSeason)
          ├─ Plan udløbet (seasons_completed >= planDuration):
          │  ├─ board negotiation_status = 'pending'
@@ -100,6 +117,9 @@ Autoritativ beskrivelse af alle sæson- og markedshændelsers rækkefølge. Kild
          │  └─ Notify med fremskridts-feedback
          └─ INSERT board_plan_snapshot
             UPDATE board satisfaction + budget_modifier
+
+   D) updateRiderValues() — recalc prize_earnings_bonus (3-sæson avg) → trigger
+      DB-side recompute af riders.salary (GENERATED column, v2.25)
 
 4. UPDATE seasons SET status='completed'
 
@@ -222,7 +242,7 @@ NB: Koblingen er manuel — systemet åbner/lukker ikke vinduet automatisk ved s
 | Auktionsfinalisering | 60 sek | `finalizeExpiredAuctions()` |
 | Gældsadvarsler | 6 timer | `checkDebtWarnings()` |
 
-**Gældsadvarsel:** Notify alle hold med negativ saldo: `"⚠️ Negativ saldo — renter ved sæsonafslutning: {10% af saldo} pts"`
+**Gældsadvarsel:** Notify alle hold med negativ saldo: `"⚠️ Negativ saldo — renter ved næste sæsonstart: {10% af saldo} pts"` (timing reflekterer v3.78-flytning)
 
 ---
 
