@@ -418,6 +418,57 @@ test("processDeadlineDayCron: auto-closes window AND fires Final Whistle in same
   assert.equal(sentEmbeds.length, 1);
 });
 
+test("processDeadlineDayCron: racing-window (closes_at=null + closed_at=null) springes helt over (regression: sæson-loop 2026-05-21)", async () => {
+  // Racing-vindue: nyfødt fra transitionToNextSeason med status='closed' men ingen
+  // deadline-historik. Cron'en MÅ IKKE claime final_whistle_sent_at på det, ellers
+  // matcher auto-transition cron'en det 5 min senere og fyrer endnu en transition.
+  const racingWindow = {
+    id: "racing",
+    season_id: "s2",
+    status: "closed",
+    closes_at: null,
+    closed_at: null,
+    created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    final_whistle_sent_at: null,
+  };
+  let updateAttempted = false;
+  const supabase = {
+    from(table) {
+      if (table === "transfer_windows") {
+        return {
+          select: () => ({
+            order: () => ({
+              limit: () => ({
+                single: () => Promise.resolve({ data: racingWindow, error: null }),
+              }),
+            }),
+          }),
+          update() {
+            updateAttempted = true;
+            return { eq() { return this; }, is() { return this; }, select: () => Promise.resolve({ data: [], error: null }) };
+          },
+        };
+      }
+      return emptyQueryBuilder();
+    },
+  };
+
+  let webhookSent = false;
+  const result = await processDeadlineDayCron({
+    supabase,
+    notifyTeamOwnerFn: async () => { throw new Error("must not notify on racing-window"); },
+    sendDiscordWebhookFn: async () => { webhookSent = true; },
+    getDefaultWebhookFn: async () => "https://discord.test/webhook",
+    now: new Date(),
+  });
+
+  assert.equal(result.whistleSent, false);
+  assert.equal(result.warnings, 0);
+  assert.equal(result.autoClosed, false);
+  assert.equal(updateAttempted, false, "racing-window må aldrig opdateres af deadline-cron");
+  assert.equal(webhookSent, false);
+});
+
 test("processDeadlineDayCron skips Final Whistle when already claimed", async () => {
   const closedWindow = {
     id: "w1",

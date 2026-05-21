@@ -22,10 +22,16 @@ export async function processSeasonAutoTransitionCron({
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
+  // closed_at IS NOT NULL skelner racing-windows (oprettet via transitionToNextSeason
+  // med status='closed' men closed_at=null) fra deadline-windows der faktisk er blevet
+  // lukket via fireAutoCloseIfDue eller admin-action. Uden dette filter ville cron'en
+  // matche det nyfødte racing-window og fyre en ekstra transition hver 5-10 min
+  // (sæson-loop-bug rettet 2026-05-21 efter 0→1→2→3→4-incident).
   const { data: window, error: windowError } = await supabase
     .from("transfer_windows")
     .select("id, season_id, status, closes_at, closed_at, final_whistle_sent_at, squad_enforcement_completed_at")
     .eq("status", "closed")
+    .not("closed_at", "is", null)
     .not("final_whistle_sent_at", "is", null)
     .not("squad_enforcement_completed_at", "is", null)
     .order("created_at", { ascending: false })

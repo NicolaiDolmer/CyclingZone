@@ -228,6 +228,8 @@ function createMockSupabase(initialState) {
         const builder = {
           eq(col, val) { filters[col] = val; return builder; },
           is(col, val) { filters[`is:${col}`] = val; return builder; },
+          // not("closed_at", "is", null) = "closed_at IS NOT NULL" i Supabase JS.
+          not(col, _op, val) { filters[`not:${col}`] = val; return builder; },
           order() { return builder; },
           limit() { return builder; },
           maybeSingle: () => {
@@ -237,6 +239,10 @@ function createMockSupabase(initialState) {
                   const col = k.slice(3);
                   if (v === null && w[col] != null) return false;
                   if (v !== null && w[col] !== v) return false;
+                } else if (k.startsWith("not:")) {
+                  const col = k.slice(4);
+                  // not(col, "is", null) = col IS NOT NULL
+                  if (v === null && w[col] == null) return false;
                 } else if (w[k] !== v) {
                   return false;
                 }
@@ -557,7 +563,7 @@ test("processSquadEnforcementCron: atomic claim sætter completed_at + iter alle
       { id: "fa3", firstname: "F3", lastname: "L", team_id: null, market_value: 20_000, uci_points: 3, ai_team_id: null },
     ],
     transferWindows: [
-      { id: "w1", season_id: "season-1", status: "closed", squad_enforcement_completed_at: null, created_at: "2026-05-04" },
+      { id: "w1", season_id: "season-1", status: "closed", closed_at: "2026-05-04T11:00:00Z", squad_enforcement_completed_at: null, created_at: "2026-05-04" },
     ],
   });
 
@@ -601,7 +607,7 @@ test("processSquadEnforcementCron: frosne hold inkluderes IKKE i load → ingen 
       market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
     })),
     transferWindows: [
-      { id: "w1", season_id: "season-1", status: "closed", squad_enforcement_completed_at: null, created_at: "2026-05-21" },
+      { id: "w1", season_id: "season-1", status: "closed", closed_at: "2026-05-21T21:00:00Z", squad_enforcement_completed_at: null, created_at: "2026-05-21" },
     ],
   });
 
@@ -618,6 +624,33 @@ test("processSquadEnforcementCron: frosne hold inkluderes IKKE i load → ingen 
   assert.equal(supabase.state.financeTransactions.length, 0);
   assert.equal(supabase.state.notifications.length, 0);
   assert.equal(supabase.state.riderUpdates.length, 0);
+});
+
+test("processSquadEnforcementCron: racing-window (closed_at=null) springes over (regression: sæson-loop 2026-05-21)", async () => {
+  // Racing-vindue: status='closed' fra fødslen, men closed_at=null fordi det aldrig
+  // gennemgik fireAutoCloseIfDue. Cron'en MÅ IKKE claime eller enforce noget på det.
+  const supabase = createMockSupabase({
+    teams: [
+      { id: "t1", name: "A", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false, is_frozen: false },
+    ],
+    riders: [],
+    transferWindows: [
+      // Racing-window: closed_at=null
+      { id: "racing", season_id: "season-2", status: "closed", closed_at: null, squad_enforcement_completed_at: null, created_at: "2026-05-21T22:00:00Z" },
+    ],
+  });
+
+  const result = await processSquadEnforcementCron({
+    supabase,
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-05-21T22:05:00Z"),
+  });
+
+  assert.equal(result.claimed, false);
+  assert.equal(result.enforced, 0);
+  // squad_enforcement_completed_at MÅ IKKE være sat — racing-window er urørt
+  assert.equal(supabase.state.transferWindows[0].squad_enforcement_completed_at, null);
 });
 
 test("konstanter matcher spec", () => {

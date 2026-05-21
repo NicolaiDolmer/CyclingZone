@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.86",
+    date: "2026-05-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sæson · Auto-transition cron-loop stoppet + rollback til sæson 1",
+        items: [
+          "EN · After the season 0 → 1 transition completed correctly at 23:15, the auto-transition cron triggered a second transition 10 minutes later, and then kept firing every 5–10 minutes — landing the database on season 4 by midnight. Root cause: the freshly-created next-season transfer_window is inserted with status='closed' (it's a racing window — market is closed during races), but with closed_at=null since it was never actually closed via a deadline. Three crons (deadline-day, squad-enforcement, season auto-transition) filtered only on status='closed' without checking closed_at, so they processed the brand-new racing window as if it were a wrapped deadline-window and triggered yet another transition. The cron loop has been stopped, sessions 2/3/4 + their 144 ghost finance_transactions have been rolled back, and all three crons now filter on closed_at IS NOT NULL so racing-windows can never be matched again. Also fixed: admin_log.admin_user_id is now nullable so cron-initiated transitions get audit entries (previously the INSERT failed silently because cron passes admin_user_id=null against a NOT NULL column). Regression tests cover all three crons.",
+          "DA · Efter sæson 0 → 1 transitionen kørte korrekt kl 23:15, fyrede auto-transition cron'en en NY transition 10 minutter senere, og blev så ved hvert 5.-10. minut — så databasen landede på sæson 4 ved midnat. Rod-årsag: det nyoprettede vindue for næste sæson inserts med status='closed' (det er et racing-window — markedet er lukket under løb), men med closed_at=null da det aldrig faktisk blev lukket via en deadline. Tre crons (deadline-day, squad-enforcement, season auto-transition) filtrerede kun på status='closed' uden at tjekke closed_at, så de behandlede det helt nye racing-window som om det var et wrapped deadline-window og triggede endnu en transition. Cron-loopen er stoppet, sæson 2/3/4 + deres 144 ghost finance_transactions er rullet tilbage, og alle tre crons filtrerer nu på closed_at IS NOT NULL så racing-windows aldrig kan matches igen. Også fixet: admin_log.admin_user_id er nu nullable så cron-initierede transitions får audit-entries (tidligere fejlede INSERT'et silently fordi cron sender admin_user_id=null mod en NOT NULL kolonne). Regressionstests dækker alle tre crons.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.85",
     date: "2026-05-21",
     label: "Beta",

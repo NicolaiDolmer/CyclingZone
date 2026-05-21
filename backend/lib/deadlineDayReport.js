@@ -335,12 +335,20 @@ export async function processDeadlineDayCron({
 }) {
   const { data: window } = await supabase
     .from("transfer_windows")
-    .select("id, season_id, status, closes_at, created_at, final_whistle_sent_at")
+    .select("id, season_id, status, closes_at, closed_at, created_at, final_whistle_sent_at")
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
 
   if (!window) return { warnings: 0, whistleSent: false, autoClosed: false };
+
+  // Racing-windows (oprettet via transitionToNextSeason med status='closed' men
+  // closes_at=null + closed_at=null) er aldrig en "deadline day" — markedet var
+  // aldrig åbent på dem. Spring helt over så fireFinalWhistle ikke claimer dem og
+  // dermed bidrager til sæson-loop-bug'en (rettet 2026-05-21).
+  if (!window.closes_at && !window.closed_at) {
+    return { warnings: 0, whistleSent: false, autoClosed: false };
+  }
 
   let warnings = 0;
   let whistleSent = false;

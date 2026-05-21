@@ -278,11 +278,19 @@ async function writeAdminLog(supabase, payload) {
     return { skipped: true, reason: "admin_log entry already exists", id: existing.id };
   }
 
+  // description er NOT NULL i admin_log. Cron-runs har adminUserId=null — kræver
+  // at admin_log.admin_user_id er gjort nullable (migration 2026-05-21 efter
+  // sæson-loop-incidenten). Uden description-feltet eller med null admin_user_id
+  // fejlede tidligere INSERT silently → 0 season_transition-rows i logs trods
+  // 4 reelle transitions kørte (incident 2026-05-21 21:15–21:45 UTC).
   const { data, error } = await supabase
     .from("admin_log")
     .insert({
       action_type: ADMIN_ACTION_TYPE.SEASON_TRANSITION,
       admin_user_id: adminUserId,
+      description: adminUserId
+        ? `Sæson-transition: ${fromNumber} → ${toNumber} (manuel via admin)`
+        : `Sæson-transition: ${fromNumber} → ${toNumber} (auto via cron)`,
       target_team_id: null,
       meta: {
         from_season_id: fromSeasonId,

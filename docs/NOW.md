@@ -1,5 +1,5 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🟢 Session close 2026-05-21 13:45 CEST — pre-flight til sæson 1:** v3.83 (is_frozen-fix i squad enforcement + deadline + debt crons) og v3.84 (Final Whistle inkluderer ai-pool + split største auktion/transfer) live på prod. Scheduled task `verify-season-1-transition-2026-05-21` kører 23:20 CEST og rapporterer transition-state. Postmortem: [`.claude/learnings/2026-05-21-filter-assumption-drift-cron-vs-frozen-teams-and-ai-pool.md`](.claude/learnings/2026-05-21-filter-assumption-drift-cron-vs-frozen-teams-and-ai-pool.md).
+> **🔴 Session 2026-05-22 00:10 CEST — sæson-loop incident løst:** Auto-transition cron fyrede 0→1→2→3→4 (loop) pga. racing-window cron-leakage. Akut-stop kl 23:48; rollback til sæson 1 kl 00:08; v3.86 fix deployer nu (closed_at IS NOT NULL guard i 3 crons + admin_log.admin_user_id nullable + 3 regressionstests). Postmortem: [`.claude/learnings/2026-05-22-season-transition-cron-loop-racing-window-leakage.md`](.claude/learnings/2026-05-22-season-transition-cron-loop-racing-window-leakage.md).
 
 ## Aktiv styring

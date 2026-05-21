@@ -414,11 +414,16 @@ export async function processSquadEnforcementCron({
   onError = () => {},
 }) {
   // Find seneste lukkede vindue der ikke er enforced endnu.
+  // closed_at IS NOT NULL skelner deadline-lukkede vinduer fra racing-windows
+  // (oprettet via transitionToNextSeason med status='closed' men closed_at=null).
+  // Uden dette filter ville squad enforcement fyre på det nyfødte racing-window
+  // og dermed bidrage til sæson-loop-bug'en (rettet 2026-05-21).
   const window = await expectMaybeSingle(
     supabase
       .from("transfer_windows")
-      .select("id, season_id, status, closes_at, squad_enforcement_completed_at")
+      .select("id, season_id, status, closes_at, closed_at, squad_enforcement_completed_at")
       .eq("status", "closed")
+      .not("closed_at", "is", null)
       .is("squad_enforcement_completed_at", null)
       .order("created_at", { ascending: false })
       .limit(1)

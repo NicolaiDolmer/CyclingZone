@@ -4,11 +4,15 @@ import assert from "node:assert/strict";
 import { processSeasonAutoTransitionCron } from "./seasonAutoTransition.js";
 
 // Mock builder for transfer_windows query with .eq, .not, .order, .limit, .maybeSingle.
-function makeWindowQuery(windowRow) {
+// Tracker .not()-kald så tests kan verificere at racing-window-guard er aktiv.
+function makeWindowQuery(windowRow, capturedFilters = null) {
   const builder = {
     select() { return builder; },
     eq() { return builder; },
-    not() { return builder; },
+    not(column, op, value) {
+      if (capturedFilters) capturedFilters.push({ column, op, value });
+      return builder;
+    },
     order() { return builder; },
     limit() { return builder; },
     maybeSingle: () => Promise.resolve({ data: windowRow, error: null }),
@@ -25,10 +29,10 @@ function makeSeasonQuery(seasonRow) {
   return builder;
 }
 
-function makeSupabase({ window: w, season: s }) {
+function makeSupabase({ window: w, season: s, capturedFilters = null }) {
   return {
     from(table) {
-      if (table === "transfer_windows") return makeWindowQuery(w);
+      if (table === "transfer_windows") return makeWindowQuery(w, capturedFilters);
       if (table === "seasons") return makeSeasonQuery(s);
       throw new Error(`Unexpected table: ${table}`);
     },
@@ -112,4 +116,35 @@ test("processSeasonAutoTransitionCron: rejects missing supabase client", async (
     () => processSeasonAutoTransitionCron({ supabase: null }),
     /Supabase client required/
   );
+});
+
+// ─── Regression: sæson-loop-bug 2026-05-21 ────────────────────────────────────
+// Racing-vinduer (oprettet via transitionToNextSeason med status='closed' men
+// closed_at=null) må aldrig matche cron-filteret — ellers fyrer cron'en endnu
+// en transition 5-10 min efter den forrige, hvilket skaber en endless loop.
+
+test("processSeasonAutoTransitionCron: filter includes closed_at IS NOT NULL guard", async () => {
+  const captured = [];
+  const supabase = makeSupabase({
+    window: null, season: null, capturedFilters: captured,
+  });
+  await processSeasonAutoTransitionCron({ supabase, transitionFn: async () => ({}) });
+  const closedAtFilter = captured.find(f => f.column === "closed_at");
+  assert.ok(closedAtFilter, "closed_at filter must be applied to exclude racing-windows");
+  assert.equal(closedAtFilter.op, "is");
+  assert.equal(closedAtFilter.value, null);
+});
+
+test("processSeasonAutoTransitionCron: ignores racing-window even if season is active (regression: dobbelt-transition 2026-05-21)", async () => {
+  // Mock returnerer null fra query — det er hvad vi forventer når closed_at-filteret
+  // er på plads og det øverste vindue er et racing-window (closed_at=null).
+  // Test verificerer at cron'en ikke fyrer transition i denne situation.
+  const supabase = makeSupabase({ window: null, season: null });
+  let transitionCalled = false;
+  const result = await processSeasonAutoTransitionCron({
+    supabase,
+    transitionFn: async () => { transitionCalled = true; return { ok: true }; },
+  });
+  assert.equal(result.transitioned, false);
+  assert.equal(transitionCalled, false);
 });
