@@ -86,7 +86,7 @@ import {
   computeDebtRatio,
   computeSustainabilityTier,
 } from "../lib/economyAdminDashboard.js";
-import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.js";
+import { computeMultiSeasonForecast } from "../lib/financeForecast.js";
 import { buildSeasonFinanceReport } from "../lib/seasonFinanceReport.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
 import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";

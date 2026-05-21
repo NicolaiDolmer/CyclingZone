@@ -292,7 +292,6 @@ export function computeMultiSeasonForecast({
   activeLoans = [],
   inboundLoanAgreements = [],
   outboundLoanAgreements = [],
-  totalDebt = 0,
   debtCeiling = null,
   currentSeasonNumber = null,
   lastSeasonStanding = null,
