@@ -24,6 +24,14 @@ export const NEGATIVE_BALANCE_INTEREST_RATE = 0.10;
 // Bruges som soft-tjek; loan_config er kanonisk runtime-værdi.
 export const DEBT_CEILING_BY_DIVISION = { 1: 1200000, 2: 900000, 3: 600000 };
 
+// Første sæson-slut hvor op/nedrykninger må ske. Aktiveret 2026-05-21 for at give
+// open-beta tid til at finde en sund langtids-fordeling af hold i divisioner før
+// vi flytter rundt på dem. Med værdi 3 betyder det: sæson 1 og 2 slutter uden
+// division-skifte; først når sæson 2 slutter (transition 2→3) sker oprykninger.
+// Hævelse her kræver ingen migration — gate er ren applikationskode i
+// economyEngine.processDivisionEnd.
+export const FIRST_PROMOTION_RELEGATION_SEASON = 3;
+
 // SALARY_RATE = 0.10 lever i database/2026-05-04-salary-generated-column.sql som
 // GENERATED-formel og kan ikke skrives fra applikationskode. Defineret her som info-only.
 export const SALARY_RATE_INFO = 0.10;

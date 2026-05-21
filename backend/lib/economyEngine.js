@@ -35,6 +35,7 @@ import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
+  FIRST_PROMOTION_RELEGATION_SEASON,
   SPONSOR_INCOME_BASE,
 } from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -524,7 +525,7 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   // Process each division after finance/board side effects have succeeded.
   for (const division of [1, 2, 3]) {
     const divStandings = standings.filter(s => s.division === division);
-    await processDivisionEnd(divStandings, division, seasonId, {
+    await processDivisionEnd(divStandings, division, seasonId, currentSeasonNumber, {
       supabase: supabaseClient,
       now: notificationNow,
     });
@@ -1029,9 +1030,18 @@ export async function updateRiderValues(supabaseClient) {
   return { ridersUpdated };
 }
 
-async function processDivisionEnd(standings, division, seasonId, deps = {}) {
+export async function processDivisionEnd(standings, division, seasonId, seasonNumber, deps = {}) {
   const client = deps.supabase ?? await getDefaultSupabaseClient();
   const notificationDeps = { supabase: client, now: deps.now };
+  // Gate: open-beta-fasen skal kunne afslutte sæsoner uden at flytte hold mellem
+  // divisioner, indtil vi har fundet en sund langtidsfordeling. Se
+  // FIRST_PROMOTION_RELEGATION_SEASON i economyConstants.js for rationale.
+  if (seasonNumber < FIRST_PROMOTION_RELEGATION_SEASON) {
+    console.log(
+      `  ⏸  Div ${division}: oprykninger sprunget over (sæson ${seasonNumber} < FIRST_PROMOTION_RELEGATION_SEASON=${FIRST_PROMOTION_RELEGATION_SEASON})`
+    );
+    return;
+  }
   if (standings.length < PROMOTION_SLOTS + RELEGATION_SLOTS) return;
 
   const promotions = [];

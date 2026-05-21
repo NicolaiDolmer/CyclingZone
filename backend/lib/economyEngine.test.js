@@ -7,6 +7,7 @@ process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-ser
 const {
   buildSeasonEndPreviewRows,
   payDivisionBonuses,
+  processDivisionEnd,
   processSeasonEnd,
   repairSeasonEndFinanceAndBoard,
   updateRiderValues,
@@ -1822,4 +1823,86 @@ test("payDivisionBonuses credits correct amounts per division rank and is idempo
   assert.equal(balances["team-d1-r1"], 800_000);
   assert.equal(balances["team-d2-r3"], 350_000);
   assert.equal(financeRows.length, 2);
+});
+
+// ─── processDivisionEnd gating (FIRST_PROMOTION_RELEGATION_SEASON) ────────────
+
+function createDivisionEndSupabase() {
+  const updates = [];
+  const notifications = [];
+  return {
+    updates,
+    notifications,
+    rpc(name) {
+      assert.equal(name, "increment_balance_with_audit");
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select() {
+            // notifyTeamOwner kalder .select("user_id").eq("id", teamId).single() —
+            // returnér user_id=null så notifyUser early-exiter på missing_user uden
+            // at vi behøver mocke notifications-dedup-pathen i sin helhed.
+            return {
+              eq() {
+                return {
+                  single() { return Promise.resolve({ data: { user_id: null }, error: null }); },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(column, value) {
+                assert.equal(column, "id");
+                updates.push({ id: value, payload });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "notifications") {
+        return {
+          insert(rows) {
+            notifications.push(...(Array.isArray(rows) ? rows : [rows]));
+            return Promise.resolve({ error: null });
+          },
+        };
+      }
+      throw new Error(`Unexpected table in division-end mock: ${table}`);
+    },
+  };
+}
+
+function buildDivStandings(division) {
+  return [
+    { team_id: `${division}-a`, division, rank_in_division: 1, total_points: 400, team: { id: `${division}-a`, is_ai: false } },
+    { team_id: `${division}-b`, division, rank_in_division: 2, total_points: 300, team: { id: `${division}-b`, is_ai: false } },
+    { team_id: `${division}-c`, division, rank_in_division: 3, total_points: 200, team: { id: `${division}-c`, is_ai: false } },
+    { team_id: `${division}-d`, division, rank_in_division: 4, total_points: 100, team: { id: `${division}-d`, is_ai: false } },
+  ];
+}
+
+test("processDivisionEnd skips promotion/relegation for season 1 (gated by FIRST_PROMOTION_RELEGATION_SEASON)", async () => {
+  const supabase = createDivisionEndSupabase();
+  await processDivisionEnd(buildDivStandings(2), 2, "season-1", 1, { supabase, now: new Date("2026-05-21T23:00:00Z") });
+  assert.equal(supabase.updates.length, 0, "no team.division writes expected for season 1");
+});
+
+test("processDivisionEnd skips promotion/relegation for season 2 (gated by FIRST_PROMOTION_RELEGATION_SEASON)", async () => {
+  const supabase = createDivisionEndSupabase();
+  await processDivisionEnd(buildDivStandings(2), 2, "season-2", 2, { supabase, now: new Date("2026-06-21T23:00:00Z") });
+  assert.equal(supabase.updates.length, 0, "no team.division writes expected for season 2");
+});
+
+test("processDivisionEnd performs promotion + relegation for season 3 (gate cleared)", async () => {
+  const supabase = createDivisionEndSupabase();
+  await processDivisionEnd(buildDivStandings(2), 2, "season-3", 3, { supabase, now: new Date("2026-07-21T23:00:00Z") });
+  // Div 2: top 2 promoted to div 1, bottom 2 relegated to div 3
+  const promotions = supabase.updates.filter(u => u.payload.division === 1).map(u => u.id).sort();
+  const relegations = supabase.updates.filter(u => u.payload.division === 3).map(u => u.id).sort();
+  assert.deepEqual(promotions, ["2-a", "2-b"]);
+  assert.deepEqual(relegations, ["2-c", "2-d"]);
 });

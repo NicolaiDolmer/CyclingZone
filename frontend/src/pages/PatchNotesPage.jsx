@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.81",
+    date: "2026-05-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sæson · Ingen op/nedrykninger i sæson 1 og 2",
+        items: [
+          "EN · Promotion and relegation between divisions is paused for the rest of season 1 and all of season 2. When season 1 and season 2 end, no teams will move between Division 1, 2 and 3 based on the final standings. Division bonuses, board evaluation and rider value recalculation still run as normal — only the division-shuffle is skipped. Reason: with open beta still finding its footing and an uneven team-count per division, we want time to design a healthy long-term distribution before we start moving teams around. Promotion/relegation re-enables automatically when season 2 ends (i.e. starting with the season 2 → 3 transition), unless we change the rules again before then.",
+          "DA · Op- og nedrykning mellem divisioner er sat på pause for resten af sæson 1 og hele sæson 2. Når sæson 1 og sæson 2 slutter, flytter ingen hold mellem Division 1, 2 og 3 baseret på den endelige stilling. Divisionsbonusser, bestyrelses-evaluering og rytter-værdi-recalc kører stadig normalt — kun selve division-skiftet springes over. Begrundelse: open beta er stadig ved at finde sin form og hold-fordelingen per division er ujævn, så vi vil have tid til at designe en sund langtidsfordeling før vi begynder at flytte rundt på hold. Op/nedrykning genaktiveres automatisk når sæson 2 slutter (dvs. ved sæson 2 → 3-transitionen), medmindre vi ændrer reglerne igen inden da.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.80",
     date: "2026-05-21",
     label: "Beta",
