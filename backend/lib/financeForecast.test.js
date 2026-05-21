@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeFinanceForecast, FORECAST_THRESHOLDS } from "./financeForecast.js";
+import { computeFinanceForecast, computeMultiSeasonForecast, FORECAST_THRESHOLDS } from "./financeForecast.js";
 
 // 4 manager-arketyper fra spec'en (07g · verification path).
 const ARCHETYPES = {
@@ -257,6 +257,95 @@ test("computeFinanceForecast: risk-tier-grænser matcher spec'en", () => {
     debtCeiling: 900_000,
   });
   assert.equal(debt80Plus.risk_tier, "red");
+});
+
+// ─── Multi-sæson forecast (2026-05-21) ────────────────────────────────────────
+
+test("computeMultiSeasonForecast — seasonsAhead=1 returnerer ét forecast", () => {
+  const result = computeMultiSeasonForecast({ ...ARCHETYPES.healthy, seasonsAhead: 1 });
+  assert.equal(result.forecasts.length, 1);
+  assert.equal(result.forecasts[0].is_estimate, false);
+  assert.equal(result.forecasts[0].estimate_basis, "actual_state");
+  assert.equal(result.summary.seasons_ahead, 1);
+  assert.equal(result.summary.from_season, 2);
+  assert.equal(result.summary.to_season, 2);
+});
+
+test("computeMultiSeasonForecast — seasonsAhead=3 returnerer 3 forecasts, sæson 2-3 er estimater", () => {
+  const result = computeMultiSeasonForecast({ ...ARCHETYPES.healthy, seasonsAhead: 3 });
+  assert.equal(result.forecasts.length, 3);
+  assert.equal(result.forecasts[0].is_estimate, false);
+  assert.equal(result.forecasts[1].is_estimate, true);
+  assert.equal(result.forecasts[2].is_estimate, true);
+  assert.equal(result.forecasts[0].season_number, 2);
+  assert.equal(result.forecasts[1].season_number, 3);
+  assert.equal(result.forecasts[2].season_number, 4);
+});
+
+test("computeMultiSeasonForecast — seasonsAhead clampes til 1-5", () => {
+  const tooLow = computeMultiSeasonForecast({ ...ARCHETYPES.healthy, seasonsAhead: 0 });
+  assert.equal(tooLow.forecasts.length, 1);
+  const tooHigh = computeMultiSeasonForecast({ ...ARCHETYPES.healthy, seasonsAhead: 10 });
+  assert.equal(tooHigh.forecasts.length, 5);
+  const negative = computeMultiSeasonForecast({ ...ARCHETYPES.healthy, seasonsAhead: -5 });
+  assert.equal(negative.forecasts.length, 1);
+});
+
+test("computeMultiSeasonForecast — rolling balance ruller fra én sæson til næste", () => {
+  const result = computeMultiSeasonForecast({ ...ARCHETYPES.healthy, seasonsAhead: 3 });
+  const [s1, s2, s3] = result.forecasts;
+  assert.equal(s1.starting_balance, 850_000);
+  assert.equal(s1.ending_balance, 850_000 + s1.projected_net);
+  assert.equal(s2.starting_balance, s1.ending_balance, "sæson 2 starter hvor sæson 1 endte");
+  assert.equal(s3.starting_balance, s2.ending_balance, "sæson 3 starter hvor sæson 2 endte");
+  assert.equal(result.summary.starting_balance, 850_000);
+  assert.equal(result.summary.ending_balance, s3.ending_balance);
+});
+
+test("computeMultiSeasonForecast — gæld-tung manager: lån decay'er over sæsoner", () => {
+  const result = computeMultiSeasonForecast({ ...ARCHETYPES.debtHeavy, seasonsAhead: 3 });
+  const [s1, s2, s3] = result.forecasts;
+  // Loan-interest = amount × interest_rate; med 25% decay per sæson:
+  //   s1: 1.000.000 × 0.10 = -100.000
+  //   s2: ~750.000 × 0.10 = ~-75.000
+  //   s3: ~562.500 × 0.10 = ~-56.250
+  assert.ok(s1.projected_loan_interest <= -99_000);
+  assert.ok(s2.projected_loan_interest > s1.projected_loan_interest, "rente falder med decay");
+  assert.ok(s3.projected_loan_interest > s2.projected_loan_interest);
+});
+
+test("computeMultiSeasonForecast — sæson 2+ bruger variabel sponsor (intro kun sæson 1)", () => {
+  const result = computeMultiSeasonForecast({
+    ...ARCHETYPES.healthy,
+    currentSeasonNumber: 0, // target = sæson 1, 2, 3
+    seasonsAhead: 3,
+  });
+  // Sæson 1 = intro (fast 240K), sæson 2-3 = variabel (200K base + 0-150K)
+  assert.equal(result.forecasts[0].inputs.sponsor_mode, "intro");
+  assert.equal(result.forecasts[1].inputs.sponsor_mode, "fallback");
+  assert.equal(result.forecasts[2].inputs.sponsor_mode, "fallback");
+});
+
+test("computeMultiSeasonForecast — worst_risk_tier = max over alle sæsoner", () => {
+  // Healthy starter grøn, men bliver mere usikker hvis gæld dukker op.
+  // Vi bruger marginal som har gul-zone net.
+  const result = computeMultiSeasonForecast({ ...ARCHETYPES.marginal, seasonsAhead: 3 });
+  const tiers = result.forecasts.map((f) => f.risk_tier);
+  const tierOrder = { green: 0, yellow: 1, red: 2 };
+  const expectedWorst = tiers.reduce(
+    (worst, t) => (tierOrder[t] > tierOrder[worst] ? t : worst),
+    "green"
+  );
+  assert.equal(result.summary.worst_risk_tier, expectedWorst);
+});
+
+test("computeMultiSeasonForecast — alle warnings aggregeres med sæson-stempel", () => {
+  const result = computeMultiSeasonForecast({ ...ARCHETYPES.nearBankrupt, seasonsAhead: 2 });
+  assert.ok(result.warnings_all.length > 0);
+  for (const w of result.warnings_all) {
+    assert.ok(Number.isInteger(w.season_number));
+    assert.ok(typeof w.is_estimate === "boolean");
+  }
 });
 
 test("FORECAST_THRESHOLDS er frosset og matcher 07g-spec", () => {

@@ -2,6 +2,34 @@
 
 const PATCHES = [
   {
+    version: "3.78",
+    date: "2026-05-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Økonomi · Løn betales nu ved sæson-START i stedet for sæson-slut",
+        items: [
+          "EN · Rider salaries, loan interest, emergency loans and negative-balance interest now hit your balance at the START of each season (right when sponsor money lands), instead of at the end. You see one combined cashflow event per season instead of getting hit with a big bill when the season closes. Your forecast and accounting becomes simpler — what you see at season start is your real budget. No retroactive effect: season 0 stays untouched, season 1 starts with the new model when the season transition button is clicked tonight.",
+          "DA · Rytterlønninger, lånerenter, nødlån og negativ-balance-rente trækkes nu fra din balance ved STARTEN af hver sæson (samtidig med sponsorindkomst), i stedet for ved sæsonens slut. Du ser én samlet pengestrøm pr. sæson i stedet for at få regningen ved sæson-slut. Din prognose og bogføring bliver simplere — det du ser ved sæson-start er dit reelle budget. Ingen tilbagevirkende effekt: sæson 0 forbliver urørt, sæson 1 starter med den nye model når sæson-skifte-knappen trykkes i aften.",
+        ],
+      },
+      {
+        category: "Prognose · Se op til 5 sæsoner frem (estimater fra sæson 2+)",
+        items: [
+          "EN · Finance forecast on /finance now supports a 1-5 season horizon via a dropdown. Season +1 is precise (based on actual roster, standings and active loans). Seasons +2 through +5 are estimates using a 'status quo' assumption: same roster, same sponsor formula, and 25%-per-season loan-amortization decay. The table shows sponsor, prize, salary, interest, net cashflow, ending balance and risk tier per season, plus a total row across the full horizon. Helps you stress-test 3yr/5yr board plans before you commit to them.",
+          "DA · Finansprognosen på /finance understøtter nu en 1-5 sæsoners horisont via en dropdown. Sæson +1 er præcis (baseret på din faktiske trup, placering og aktive lån). Sæson +2 til +5 er estimater under 'status quo'-antagelsen: samme trup, samme sponsor-formel, og 25% lån-afdrag per sæson som proxy. Tabellen viser sponsor, præmie, løn, rente, netto-cashflow, slut-saldo og risiko-tier per sæson plus en total-række. Hjælper dig med at stress-teste 3-årige/5-årige bestyrelsesplaner inden du forpligter dig.",
+        ],
+      },
+      {
+        category: "Drift · 3 test-hold frosset ud af gameplay",
+        items: [
+          "EN · The three test accounts (test-a, test-b, test-seller) have been set to is_frozen=true. They no longer appear in sponsor payouts, season-end processing, board flows, sequential negotiation or beta-reset queries. Their balance and ownership records are preserved so the data can be unfrozen later if test access is needed again. Cleans up your standings, dashboards and rankings.",
+          "DA · De tre test-konti (test-a, test-b, test-seller) er sat til is_frozen=true. De vises ikke længere i sponsor-payouts, sæson-slut-behandling, bestyrelses-flows, sekventiel forhandling eller beta-reset-queries. Deres balance og ejer-relationer bevares så data kan optos igen senere hvis test-adgang er nødvendig. Rydder op i ranglister, dashboards og standings.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.77",
     date: "2026-05-21",
     label: "Beta",

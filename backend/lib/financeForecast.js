@@ -260,3 +260,128 @@ export const FORECAST_THRESHOLDS = Object.freeze({
   RISK_DEBT_YELLOW_RATIO,
   CONFIDENCE_BAND_PCT,
 });
+
+/**
+ * Multi-sæson forecast (2026-05-21). Iterativ rolling-forward fra nuværende
+ * state. Sæson +1 er præcis (faktisk roster + standings); sæson +2 til +N er
+ * estimater baseret på "intet ændrer sig"-antagelse:
+ *   - Roster = uændret (vi ved ikke fremtidige transfers)
+ *   - Sponsor = variabel-formel hvis sæson ≥ 2 (med forrige standings); ellers intro 240K
+ *   - Salary = sum(riders.salary) — uændret (rytter-værdier justeres dog
+ *     i live ved updateRiderValues, men det modellerer vi ikke her)
+ *   - Loan-interest = decay: amount_remaining × 0.75 per sæson som proxy for
+ *     gradvis afdrag (manager kan også optage nye lån — ikke modelleret)
+ *   - Loan-agreements = match start_season ≤ N ≤ end_season per aftale
+ *   - Lejegebyrer ind/ud = uændret hvis aftalen stadig dækker N
+ *   - Balance ruller frem: balance_{N+1} = balance_N + projected_net_N
+ *
+ * Sæson 0 (open-beta): forecast giver kun mening fra sæson 1+. Hvis target
+ * er sæson 0 returneres tomt array.
+ *
+ * @param {object} args
+ * @param {number} [args.seasonsAhead=1] — 1-5, clamped.
+ */
+const MAX_SEASONS_AHEAD = 5;
+const LOAN_DECAY_FACTOR = 0.75; // proxy for gradvis afdrag
+
+export function computeMultiSeasonForecast({
+  team = {},
+  boardModifier = 1.0,
+  pulloutFactor = 1.0,
+  riders = [],
+  activeLoans = [],
+  inboundLoanAgreements = [],
+  outboundLoanAgreements = [],
+  totalDebt = 0,
+  debtCeiling = null,
+  currentSeasonNumber = null,
+  lastSeasonStanding = null,
+  lastSeasonStandings = [],
+  seasonsAhead = 1,
+} = {}) {
+  const clamped = Math.max(1, Math.min(MAX_SEASONS_AHEAD, Math.round(Number(seasonsAhead) || 1)));
+  const forecasts = [];
+
+  let rollingBalance = team?.balance ?? 0;
+  let rollingActiveLoans = (activeLoans || []).map((loan) => ({ ...loan }));
+  let rollingLastStanding = lastSeasonStanding;
+  let rollingLastStandings = lastSeasonStandings;
+
+  for (let i = 0; i < clamped; i++) {
+    const targetSeasonNumber = (Number.isInteger(currentSeasonNumber) ? currentSeasonNumber : 0) + 1 + i;
+    const isPrecise = i === 0;
+
+    const rollingTotalDebt = rollingActiveLoans.reduce(
+      (sum, loan) => sum + (loan?.amount_remaining || 0),
+      0
+    );
+
+    const forecast = computeFinanceForecast({
+      team: { ...team, balance: rollingBalance },
+      boardModifier,
+      pulloutFactor,
+      riders,
+      activeLoans: rollingActiveLoans,
+      inboundLoanAgreements,
+      outboundLoanAgreements,
+      totalDebt: rollingTotalDebt,
+      debtCeiling,
+      currentSeasonNumber: targetSeasonNumber - 1,
+      targetSeasonNumber,
+      lastSeasonStanding: rollingLastStanding,
+      lastSeasonStandings: rollingLastStandings,
+    });
+
+    const endingBalance = rollingBalance + forecast.projected_net;
+
+    forecasts.push({
+      ...forecast,
+      season_number: targetSeasonNumber,
+      is_estimate: !isPrecise,
+      estimate_basis: isPrecise ? "actual_state" : "rolling_status_quo",
+      starting_balance: rollingBalance,
+      ending_balance: endingBalance,
+    });
+
+    // Roll state forward for næste iteration
+    rollingBalance = endingBalance;
+    rollingActiveLoans = rollingActiveLoans
+      .map((loan) => ({
+        ...loan,
+        amount_remaining: Math.max(0, Math.round((loan.amount_remaining || 0) * LOAN_DECAY_FACTOR)),
+      }))
+      .filter((loan) => loan.amount_remaining > 0);
+    // Sæson +1's "rank" som proxy for sæson +2's lastSeasonStanding kender
+    // vi ikke uden simulation; behold rollingLastStanding uændret (= "samme
+    // placering som hidtil"). Hvis vi senere vil have bedre estimat, kan vi
+    // bruge median/p50 fra forrige standings — men "status quo" er ærlig.
+  }
+
+  const totalNet = forecasts.reduce((sum, f) => sum + f.projected_net, 0);
+  const startingBalance = team?.balance ?? 0;
+  const endingBalance = forecasts.length > 0
+    ? forecasts[forecasts.length - 1].ending_balance
+    : startingBalance;
+  const tierOrder = { green: 0, yellow: 1, red: 2 };
+  const worstRiskTier = forecasts.reduce(
+    (worst, f) => (tierOrder[f.risk_tier] > tierOrder[worst] ? f.risk_tier : worst),
+    "green"
+  );
+  const allWarnings = forecasts.flatMap((f, idx) =>
+    (f.warnings || []).map((w) => ({ ...w, season_number: f.season_number, is_estimate: idx > 0 }))
+  );
+
+  return {
+    forecasts,
+    summary: {
+      seasons_ahead: clamped,
+      starting_balance: startingBalance,
+      ending_balance: endingBalance,
+      total_net: totalNet,
+      worst_risk_tier: worstRiskTier,
+      from_season: Number.isInteger(currentSeasonNumber) ? currentSeasonNumber + 1 : null,
+      to_season: Number.isInteger(currentSeasonNumber) ? currentSeasonNumber + clamped : null,
+    },
+    warnings_all: allWarnings,
+  };
+}

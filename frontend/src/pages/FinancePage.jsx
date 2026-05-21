@@ -67,9 +67,26 @@ export default function FinancePage() {
   const [reservedBalance, setReservedBalance] = useState(0);
   const [forecast, setForecast] = useState(null);
   const [forecastLoading, setForecastLoading] = useState(true);
+  const [seasonsAhead, setSeasonsAhead] = useState(1);
   useEffect(() => {
     if (!forecastLoading && forecast) logEvent("feature_finance_forecast_card_viewed");
   }, [forecastLoading, forecast]);
+
+  async function refetchForecast(nextSeasonsAhead) {
+    setForecastLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${API}/api/me/finance-forecast?seasonsAhead=${nextSeasonsAhead}`,
+        { headers: { Authorization: `Bearer ${session.access_token}` } },
+      );
+      if (res.ok) {
+        setForecast(await res.json());
+      }
+    } finally {
+      setForecastLoading(false);
+    }
+  }
   const [activeSeasonId, setActiveSeasonId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ text: "", type: "" });
@@ -305,7 +322,15 @@ export default function FinancePage() {
       </div>
 
       {/* Slice 07g · Næste sæsons forecast + risk-tier */}
-      <FinanceForecastCard forecast={forecast} loading={forecastLoading} />
+      <FinanceForecastCard
+        forecast={forecast}
+        loading={forecastLoading}
+        seasonsAhead={seasonsAhead}
+        onSeasonsAheadChange={(value) => {
+          setSeasonsAhead(value);
+          refetchForecast(value);
+        }}
+      />
 
       {/* Løbspræmier */}
       {prizeRows.length > 0 && (

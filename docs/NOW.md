@@ -3,18 +3,23 @@
 ## Aktiv styring
 **Masterplan landed 2026-05-19:** `docs/MASTER_PLAN.md` er styringskontrakten for CyclingZone på tværs af Manus, Claude Code og Codex. Frem til sprinten slutter 2026-06-17 har **Monetization Validation** forrang over brand-polish, bot-polish og post-Go betalingsimplementation. Brand Phase 1 er låst, men Brand Phase 2 må ikke trumfe feedback-loopet.
 
-> **🟢 Sæson 1 starter i aften kl 23:00 (Europe/Copenhagen) — bruger-action (REVIDERET 2026-05-21):**
+> **🟢 Sæson 1 starter i aften kl 23:00 (Europe/Copenhagen) — bruger-action (REVIDERET 2026-05-21, v3.78):**
 > 1. Gå til `/admin → Sæson` → sektion `🔄 Sæson-cyklus`
 > 2. Tryk **Udfør sæsonskifte (sæson 0 → 1)** og bekræft
-> 3. Engine'n (Slice 08, patched v3.77) hopper over `processSeasonEnd` for sæson 0 by design, opretter sæson 1's transfer-window, og udbetaler 240K sponsor til 23 hold
-> 4. Per-fase-log skal vise 6 ✅ — særligt `insert_next_season: updated (promoted upcoming → active)` efter v3.77-patch
+> 3. Engine'n hopper over `processSeasonEnd` for sæson 0, opretter sæson 1's transfer-window, og udbetaler 240K sponsor til **20 hold** (3 test-hold frosset ud)
+> 4. Per-fase-log skal vise 6 ✅ — særligt `insert_next_season: updated (promoted upcoming → active)`
+> 5. **NYT v3.78:** Salary + loan-interest + emergency-lån trækkes nu ved sæson-START sammen med sponsor. 20 hold får sponsor 240K, derefter trækkes ~1,5M samlet løn, ~278K rente, og 9 hold får emergency-lån
 >
 > **⚠️ Brug IKKE manual ⏹ Afslut + ▶ Start-knapperne** — audit 2026-05-21 ([`docs/economy-flow-audit-2026-05-21.md`](docs/economy-flow-audit-2026-05-21.md)) viste at ⏹ Afslut sæson 0 ubetinget kører `processSeasonEnd` → ~1.5M pts salary-debit på 17 hold, ~278K loan-interest, 9 hold får emergency-lån (~438K), 2 vilkårlige hold rykker op til D2. NOW.md sagde tidligere "formentlig harmløs" — det var forkert. Engine'n er den sikre vej.
 >
 > **Verifikation efter sæsonskifte (kør queries efter knapklik):**
 > - `seasons`: sæson 0 'completed' med end_date, sæson 1 'active' med start_date
 > - `transfer_windows`: sæson 0's window 'closed', ny `00000000-...0001aaaa` for sæson 1 ('closed' status — racing-sæson)
-> - `finance_transactions WHERE season_id='00000000-0000-0000-0000-000000000001' AND type='sponsor'`: 23 rows á 240.000 (eller 100 for test-a/b/seller)
+> - `finance_transactions WHERE season_id='00000000-0000-0000-0000-000000000001'`:
+>   - 20 sponsor-rows á 240.000 (test-hold ekskluderet)
+>   - 17 salary-rows (hold med ryttere)
+>   - 7 loan_interest-rows (hold med aktive lån)
+>   - 9 emergency_loan-rows (hold der ikke kunne betale løn)
 > - Postmortem: `.claude/learnings/2026-05-21-season-1-uuid-drift.md`
 >
 > **Næste session efter sæson 1 er live (vælg én):**

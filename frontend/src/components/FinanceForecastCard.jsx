@@ -46,7 +46,12 @@ function Row({ label, value, accent, detail }) {
   );
 }
 
-export default function FinanceForecastCard({ forecast, loading }) {
+export default function FinanceForecastCard({
+  forecast,
+  loading,
+  seasonsAhead = 1,
+  onSeasonsAheadChange,
+}) {
   const { t } = useTranslation("dashboard");
 
   if (loading) {
@@ -60,6 +65,8 @@ export default function FinanceForecastCard({ forecast, loading }) {
     );
   }
   if (!forecast) return null;
+
+  const multiSeason = Array.isArray(forecast.forecasts) && forecast.forecasts.length > 1;
 
   const tier = getTierMeta(t, forecast.risk_tier);
   const netAccent =
@@ -88,6 +95,29 @@ export default function FinanceForecastCard({ forecast, loading }) {
           <span>{tier.label}</span>
         </span>
       </div>
+
+      {/* 2026-05-21: Sæsons-horisont selector (1-5) */}
+      {typeof onSeasonsAheadChange === "function" && (
+        <div className="flex items-center gap-2 mb-3">
+          <label className="text-cz-3 text-xs">Forecast-horisont:</label>
+          <select
+            value={seasonsAhead}
+            onChange={(e) => onSeasonsAheadChange(Number.parseInt(e.target.value, 10))}
+            className="bg-cz-subtle border border-cz-border text-cz-1 text-xs rounded-md px-2 py-1"
+          >
+            <option value={1}>1 sæson</option>
+            <option value={2}>2 sæsoner</option>
+            <option value={3}>3 sæsoner</option>
+            <option value={4}>4 sæsoner</option>
+            <option value={5}>5 sæsoner</option>
+          </select>
+          {multiSeason && forecast.summary && (
+            <span className="text-cz-3 text-xs">
+              ({forecast.summary.from_season ?? "?"}–{forecast.summary.to_season ?? "?"})
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="bg-cz-subtle border border-cz-border rounded-lg p-4 mb-4">
         <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">
@@ -146,6 +176,84 @@ export default function FinanceForecastCard({ forecast, loading }) {
           />
         )}
       </div>
+
+      {multiSeason && (
+        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 mb-3">
+          <p className="text-cz-2 font-medium text-xs mb-2">
+            Sæson-for-sæson (estimat fra sæson {forecast.forecasts[1]?.season_number ?? "?"} →)
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-cz-3 text-left">
+                  <th className="py-1 pr-2">Sæson</th>
+                  <th className="py-1 px-2 text-right">Sponsor</th>
+                  <th className="py-1 px-2 text-right">Præmie</th>
+                  <th className="py-1 px-2 text-right">Løn</th>
+                  <th className="py-1 px-2 text-right">Rente</th>
+                  <th className="py-1 px-2 text-right">Net</th>
+                  <th className="py-1 px-2 text-right">Saldo slut</th>
+                  <th className="py-1 pl-2 text-right">Risiko</th>
+                </tr>
+              </thead>
+              <tbody>
+                {forecast.forecasts.map((row) => {
+                  const rowTier = getTierMeta(t, row.risk_tier);
+                  return (
+                    <tr key={row.season_number} className="border-t border-cz-border">
+                      <td className="py-1 pr-2 text-cz-1 font-medium">
+                        S{row.season_number}
+                        {row.is_estimate && (
+                          <span className="text-cz-3 text-[10px] ml-1" title="Estimat — antager status quo">~</span>
+                        )}
+                      </td>
+                      <td className="py-1 px-2 text-right font-mono text-cz-success">
+                        {formatSigned(row.projected_sponsor)}
+                      </td>
+                      <td className="py-1 px-2 text-right font-mono text-cz-success">
+                        {formatSigned(row.projected_prize)}
+                      </td>
+                      <td className="py-1 px-2 text-right font-mono text-cz-danger">
+                        {formatSigned(row.projected_salary)}
+                      </td>
+                      <td className="py-1 px-2 text-right font-mono text-cz-danger">
+                        {formatSigned(row.projected_loan_interest)}
+                      </td>
+                      <td className={`py-1 px-2 text-right font-mono font-bold ${row.projected_net >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
+                        {formatSigned(row.projected_net)}
+                      </td>
+                      <td className="py-1 px-2 text-right font-mono text-cz-1">
+                        {formatNumber(row.ending_balance)} CZ$
+                      </td>
+                      <td className="py-1 pl-2 text-right" title={rowTier.summary}>
+                        {rowTier.icon}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-cz-border font-semibold">
+                  <td className="py-1 pr-2 text-cz-1">Total</td>
+                  <td colSpan={4}></td>
+                  <td className={`py-1 px-2 text-right font-mono ${forecast.summary?.total_net >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
+                    {formatSigned(forecast.summary?.total_net ?? 0)}
+                  </td>
+                  <td className="py-1 px-2 text-right font-mono text-cz-1">
+                    {formatNumber(forecast.summary?.ending_balance ?? 0)} CZ$
+                  </td>
+                  <td className="py-1 pl-2 text-right">
+                    {getTierMeta(t, forecast.summary?.worst_risk_tier).icon}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p className="text-cz-3 text-[11px] mt-2">
+            ~ = estimat baseret på &ldquo;intet ændrer sig&rdquo;-antagelse (samme roster, sponsor og lån-decay 25% per sæson).
+          </p>
+        </div>
+      )}
 
       {(forecast.warnings || []).length > 0 && (
         <div className="flex flex-col gap-2">

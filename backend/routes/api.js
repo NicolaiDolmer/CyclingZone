@@ -86,7 +86,7 @@ import {
   computeDebtRatio,
   computeSustainabilityTier,
 } from "../lib/economyAdminDashboard.js";
-import { computeFinanceForecast } from "../lib/financeForecast.js";
+import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.js";
 import { buildSeasonFinanceReport } from "../lib/seasonFinanceReport.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
 import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
@@ -2834,7 +2834,15 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       lastSeasonStandings = standingsData || [];
     }
 
-    const forecast = computeFinanceForecast({
+    // 2026-05-21: seasonsAhead query-param (1-5, default 1). Returnerer multi-
+    // sæson forecast med rolling-status-quo-estimat for sæson 2+. Backwards-
+    // compat: når seasonsAhead=1, eksponerer vi forecasts[0]-felterne på root
+    // så eksisterende FinanceForecastCard fortsat virker uden ændring.
+    const seasonsAhead = Math.max(
+      1,
+      Math.min(5, Number.parseInt(req.query?.seasonsAhead ?? "1", 10) || 1)
+    );
+    const multi = computeMultiSeasonForecast({
       team,
       boardModifier,
       pulloutFactor,
@@ -2845,13 +2853,13 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       totalDebt,
       debtCeiling,
       currentSeasonNumber,
-      targetSeasonNumber: Number.isInteger(currentSeasonNumber)
-        ? currentSeasonNumber + 1
-        : null,
       lastSeasonStandings,
+      seasonsAhead,
     });
 
-    res.json(forecast);
+    // Backward-compat: spred det første (præcise) forecast på root.
+    const first = multi.forecasts[0] || {};
+    res.json({ ...first, ...multi });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
