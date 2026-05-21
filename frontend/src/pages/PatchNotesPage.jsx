@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.88",
+    date: "2026-05-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sæson · Loop-incident rest-cleanup: ghost-renter på lån fjernet (zero-sum-justering)",
+        items: [
+          "EN · Forensic deep-dive after the v3.86 rollback revealed the original cleanup only removed ghost finance_transactions and reset team balances using SUM(ghost-tx.amount). But processLoanInterest writes a finance_transactions row with amount=-interest as audit, while the actual debit happens by increasing loans.amount_remaining (the loan grows by the interest), NOT by deducting from teams.balance. The original rollback therefore subtracted ghost loan_interest amounts from balance even though they were never in the balance to begin with — and left loans.amount_remaining pumped up by 3 extra ghost interest cycles. Net effect: 8 teams with loans had 1.09M CZ$ of phantom money on their balance, AND their loans had 1.09M CZ$ of phantom debt (perfect 1:1 correspondence). Rest-cleanup deployed: 10 active loans rolled back via amount_remaining / (1+interest_rate)^3 + seasons_remaining += 3, 8 teams' balances reduced by sum of per-loan overshoot. Manager net-worth (balance − debt) is unchanged per team. All 19 teams now reconcile cleanly against finance_transactions. New doc docs/SEASON_LOOP_FORENSICS.md documents the methodology so the same audit can be redone in the future.",
+          "DA · Forensisk dybde-undersøgelse efter v3.86-rollbacken afslørede at den oprindelige cleanup kun fjernede ghost finance_transactions og resatte hold-balancer via SUM(ghost-tx.amount). Men processLoanInterest skriver en finance_transactions-row med amount=-rente som audit, mens den faktiske debet sker ved at lægge renten oven i loans.amount_remaining (gælden vokser), IKKE ved at trække fra teams.balance. Original rollback subtraherede derfor ghost loan_interest-amounts fra balance selvom de aldrig var i balancen — og lod loans.amount_remaining stå pumpet med 3 ekstra ghost-rente-cykler. Net effekt: 8 hold med lån havde 1,09M CZ$ phantom-penge på balancen, OG deres lån havde 1,09M CZ$ phantom-gæld (perfekt 1:1 korrespondance). Rest-cleanup deployed: 10 aktive lån rullet tilbage via amount_remaining / (1+rente)^3 + seasons_remaining += 3, 8 holds balancer reduceret med sum af ghost-overshoot per lån. Manager net-worth (balance − gæld) er uændret per hold. Alle 19 hold matcher nu rekonstruktion fra finance_transactions. Ny doc docs/SEASON_LOOP_FORENSICS.md dokumenterer metodologien så samme audit kan gentages fremover.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.87",
     date: "2026-05-22",
     label: "Beta",
