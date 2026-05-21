@@ -16,7 +16,7 @@
 > - `seasons`: sæson 0 'completed' med end_date, sæson 1 'active' med start_date
 > - `transfer_windows`: sæson 0's window 'closed', ny `00000000-...0001aaaa` for sæson 1 ('closed' status — racing-sæson)
 > - `finance_transactions WHERE season_id='00000000-0000-0000-0000-000000000001'`:
->   - 20 sponsor-rows á 240.000 (test-hold ekskluderet)
+>   - 19 sponsor-rows á 240.000 (3 test-hold + 1 inaktiv (Inuit Cycling) ekskluderet)
 >   - 17 salary-rows (hold med ryttere)
 >   - 7 loan_interest-rows (hold med aktive lån)
 >   - 9 emergency_loan-rows (hold der ikke kunne betale løn)
@@ -27,4 +27,4 @@
 > 1. **VERIFICÉR post-23:00 state** — kør verifikations-queries ovenfor og sammenlign med forventede rækker. Hvis tal ikke matcher → læs [`docs/economy-flow-audit-2026-05-21.md`](docs/economy-flow-audit-2026-05-21.md) Fase 2/3-trace.
 > 2. **Validér forecast-numerik** — gå til `/finance` som en testbruger og kør forecast med horisont 1/3/5 sæsoner. Tjek at sæson 1's projected_net inkluderer faktisk salary + interest (ikke 0 som før patch). Estimat-sæsoner (~) skal vise faldende loan-interest pga. 25% decay.
 > 3. ~~**buildSeasonEndPreviewRows i frontend er nu misvisende**~~ — ✅ fikset i v3.79 (2026-05-21): preview-tabellen omdøbt til "Sæson-transition preview", kolonner reordered til v3.78-cashflow (balance + sponsor − renter − løn), backend-math inkluderer sponsor i balance_after + nødlån-flag.
-> 4. **#452 tilmeld-knap til kommende sæson** — sub-issue til Slice 08 #239. Manager der ikke kan stille hold ved sæson-skifte (ingen ryttere) skal kunne tilmelde sig kommende sæson. Mangler spec.
+> 4. **#452 tilmeld-knap til kommende sæson** — sub-issue til Slice 08 #239. **Defensiv del løst i v3.80 (2026-05-21):** admin kan nu fryse/optø manager-hold via `/admin/economy → Overblik`. Inuit Cycling (1 inaktiv manager) frosset. Player-facing tilmeld-knap mangler stadig: "kan stille hold"-tjek + dashboard-banner + transition-engine-respekt. Mangler spec.
