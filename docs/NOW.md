@@ -8,6 +8,11 @@
 > 2. Samme sted → ▶ **Start sæson 1** (kalender + 26 races allerede låst, UUID `00000000-...001`)
 > 3. ⚠️ Brug **IKKE** `Udfør sæson-skifte` i SeasonCycleSection — manual ⏹/▶ knapper er det rigtige flow for 0→1.
 >
+> **⚠️ KENDTE HUL i manual flow (ikke fixed denne session, men vigtige at vide):**
+> - `⏹ Afslut`-endpoint kalder `processSeasonEnd` som via `ensureSeasonStandings` opretter standings-rows for alle 24 hold + kører salary/division-logik. For sæson 0 (open-beta, 0 races, 0 points) er det formentlig harmløst (0 points → 0 bonuser, fast salary OK), men IKKE verificeret. Modsætning: `season-transition` engine springer `processSeasonEnd` over for sæson 0 by design (se kommentar øverst i `backend/lib/seasonTransition.js`).
+> - `▶ Start`-endpoint opretter IKKE `transfer_windows`-row for sæson 1. Sæson 0's window (`00000000-...0000aaaa`, status='open') bliver stående. Transfer-features afhænger måske af én aktiv window pr. aktiv sæson. Tjek `transfer_windows` state efter start.
+> - **Anbefaling før knap-klik:** lav Supabase MCP `create_branch` → test manual flow på branchen → verificér end-state matcher forventning → derefter samme handling på prod. Postmortem detaljer: `.claude/learnings/2026-05-21-season-1-uuid-drift.md`.
+>
 > **Næste session efter sæson 1 er live (vælg én):**
 > - **Brand Phase 2 P2 pick** ([#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481)): preview-server `brand` (port 4173) → `/logo-explorations.html` → vælg blandt 4 cycling-DNA-koncepter. P1 dark canvas LOCKED på `#0e0f15`. Full state i [`DECISIONS_LOG.md`](docs/brand/DECISIONS_LOG.md).
 > - **Security Phase B** ([#527](https://github.com/NicolaiDolmer/CyclingZone/issues/527)): tighten 6× `rls_policy_always_true` policies. Follow-up til #525.
