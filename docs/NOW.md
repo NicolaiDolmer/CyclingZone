@@ -17,9 +17,10 @@
 > - `transfer_windows`: sæson 0's window 'closed', ny `00000000-...0001aaaa` for sæson 1 ('closed' status — racing-sæson)
 > - `finance_transactions WHERE season_id='00000000-0000-0000-0000-000000000001'`:
 >   - 19 sponsor-rows á 240.000 (3 test-hold + 1 inaktiv (Inuit Cycling) ekskluderet)
->   - 17 salary-rows (hold med ryttere)
->   - 7 loan_interest-rows (hold med aktive lån)
->   - 9 emergency_loan-rows (hold der ikke kunne betale løn)
+>   - 19 salary-rows (alle aktive hold har ryttere — Swatt har færrest m. 7, Decathlon laveste salary 28.800)
+>   - 7-8 loan_interest-rows (hold med aktive lån — Hopplà har 2)
+>   - 0 emergency_loan-rows (v3.78 cashflow: sponsor før payroll → alle 19 hold projeret med positiv balance 60K-551K)
+>   - 0 squad-relaterede rows (v3.83 fix: frosne hold ekskluderet; Swatt's 7 ryttere kan udløse 1 auto-køb + 100K bøde hvis manageren ikke køber selv)
 > - Postmortem: `.claude/learnings/2026-05-21-season-1-uuid-drift.md`
 >
 > **Næste session — fortsæt på økonomien (REVIDERET 2026-05-21 efter v3.78):**
