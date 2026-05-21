@@ -247,6 +247,7 @@ async function fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, now }
     .select("id")
     .eq("is_bank", false)
     .eq("is_ai", false)
+    .eq("is_frozen", false)
     .not("user_id", "is", null);
 
   if (!teams?.length) return { warnings: 0 };

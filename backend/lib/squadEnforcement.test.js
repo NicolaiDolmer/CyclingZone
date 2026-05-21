@@ -505,12 +505,40 @@ test("enforceTeamSquadCompliance: AI-hold skippes", async () => {
   assert.equal(result.code, "skipped_non_human");
 });
 
+test("enforceTeamSquadCompliance: frosset hold skippes (ingen auto-køb, ingen bøde)", async () => {
+  // Reproducerer prod-scenarie 2026-05-21: 4 frosne hold (Inuit + 3 test-hold)
+  // har 0 ryttere. Uden is_frozen-skip ville cron forsøge at auto-købe 8 ryttere
+  // hver á 150% market value + 8 × 100K bøde — direkte i strid med v3.80
+  // freeze-feature (admin har eksplicit ekskluderet dem fra sæson-flowet).
+  const supabase = createMockSupabase({
+    teams: [{
+      id: "frozen1", name: "Inuit Cycling", balance: 800_000, division: 3,
+      user_id: "u-inuit", is_ai: false, is_bank: false, is_frozen: true,
+    }],
+    riders: [], // 0 ryttere — ville udløse auto-køb hvis frozen ikke skippes
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "frozen1",
+    seasonId: "season-1",
+    notifyTeamOwner: async () => { throw new Error("Should not notify frozen team"); },
+    createEmergencyLoanFn: async () => { throw new Error("Should not loan frozen team"); },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "skipped_frozen");
+  assert.equal(supabase.state.financeTransactions.length, 0);
+  assert.equal(supabase.state.notifications.length, 0);
+  assert.equal(supabase.state.riderUpdates.length, 0);
+});
+
 test("processSquadEnforcementCron: atomic claim sætter completed_at + iter alle teams", async () => {
   const supabase = createMockSupabase({
     teams: [
-      { id: "t1", name: "A", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false },
-      { id: "t2", name: "B", balance: 5_000_000, division: 3, user_id: "u2", is_ai: false, is_bank: false },
-      { id: "ai1", name: "AI", balance: 0, division: 3, user_id: null, is_ai: true, is_bank: false },
+      { id: "t1", name: "A", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "t2", name: "B", balance: 5_000_000, division: 3, user_id: "u2", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "ai1", name: "AI", balance: 0, division: 3, user_id: null, is_ai: true, is_bank: false, is_frozen: false },
     ],
     riders: [
       // t1 har 9 ryttere — inden for limits
@@ -557,6 +585,39 @@ test("processSquadEnforcementCron: atomic claim sætter completed_at + iter alle
 
   assert.equal(second.claimed, false);
   assert.equal(second.enforced, 0);
+});
+
+test("processSquadEnforcementCron: frosne hold inkluderes IKKE i load → ingen forced-purchases", async () => {
+  // Forward-guard mod prod-scenarie 2026-05-21: cron-filter skal ekskludere
+  // is_frozen=true så frosne hold (0 ryttere) ikke ender i loop'et i første sted.
+  const supabase = createMockSupabase({
+    teams: [
+      { id: "active1", name: "Active", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "frozen1", name: "Inuit", balance: 800_000, division: 3, user_id: "u-inuit", is_ai: false, is_bank: false, is_frozen: true },
+      { id: "frozen2", name: "test-a", balance: 800_000, division: 3, user_id: "u-test", is_ai: false, is_bank: false, is_frozen: true },
+    ],
+    riders: Array.from({ length: 9 }, (_, i) => ({
+      id: `r${i}`, team_id: "active1", firstname: "F", lastname: `${i}`,
+      market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+    })),
+    transferWindows: [
+      { id: "w1", season_id: "season-1", status: "closed", squad_enforcement_completed_at: null, created_at: "2026-05-21" },
+    ],
+  });
+
+  const result = await processSquadEnforcementCron({
+    supabase,
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-05-21T21:05:00Z"),
+  });
+
+  assert.equal(result.claimed, true);
+  assert.equal(result.enforced, 0);
+  // Vigtigst: hverken frosset hold blev tilgået for snapshot/notifikation/state-mutation
+  assert.equal(supabase.state.financeTransactions.length, 0);
+  assert.equal(supabase.state.notifications.length, 0);
+  assert.equal(supabase.state.riderUpdates.length, 0);
 });
 
 test("konstanter matcher spec", () => {

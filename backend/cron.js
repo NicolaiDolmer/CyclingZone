@@ -77,6 +77,7 @@ export async function checkDebtWarnings({
     .from("teams")
     .select("id, name, balance, user_id")
     .eq("is_ai", false)
+    .eq("is_frozen", false)
     .lt("balance", 0);
 
   for (const team of teams || []) {

@@ -42,7 +42,7 @@ async function getSquadSnapshot(supabase, teamId) {
   const team = await expectSingle(
     supabase
       .from("teams")
-      .select("id, name, balance, division, user_id, is_ai, is_bank")
+      .select("id, name, balance, division, user_id, is_ai, is_bank, is_frozen")
       .eq("id", teamId)
   );
 
@@ -300,6 +300,9 @@ export async function enforceTeamSquadCompliance({
   if (team.is_ai || team.is_bank || !team.user_id) {
     return { ok: true, code: "skipped_non_human", teamId };
   }
+  if (team.is_frozen) {
+    return { ok: true, code: "skipped_frozen", teamId };
+  }
 
   const limits = getSquadLimitsForDivision(team.division);
   const effectiveCount = ownedRiders.length + activeLoanCount;
@@ -434,12 +437,16 @@ export async function processSquadEnforcementCron({
   if (claimError) throw claimError;
   if (!claimed?.length) return { enforced: 0, claimed: false };
 
-  // Hent alle human-managers (ikke bank, ikke AI, har user_id).
+  // Hent alle human-managers (ikke bank, ikke AI, ikke frosset, har user_id).
+  // is_frozen=false matcher samme filter som processSeasonStart + seasonTransition
+  // så frosne hold ikke får forceret køb/salg + bøder på trods af at de er
+  // ekskluderet fra sponsor + payroll.
   const { data: teams, error: teamsError } = await supabase
     .from("teams")
     .select("id")
     .eq("is_ai", false)
     .eq("is_bank", false)
+    .eq("is_frozen", false)
     .not("user_id", "is", null);
   if (teamsError) throw teamsError;
 

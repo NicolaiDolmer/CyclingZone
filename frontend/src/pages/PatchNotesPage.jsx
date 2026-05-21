@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.83",
+    date: "2026-05-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sæson · Frosne hold ekskluderet fra deadline-cron + squad enforcement + debt warnings",
+        items: [
+          "EN · Frozen teams are now correctly skipped by three background jobs that previously treated them as active managers: (1) squad-size enforcement no longer force-buys riders or fines frozen teams when a transfer window closes, (2) deadline-day notifications (24h/2h/30min reminders + final whistle) are no longer sent to frozen managers, and (3) negative-balance interest warnings skip frozen teams. Previously these jobs only filtered out AI and bank teams, so frozen human teams could be hit with forced auto-purchases at 150% market value plus 100K CZ$ fines plus 200 penalty points per missing rider. Reason: ahead of the season 0 → 1 transition tonight, 4 frozen teams (Inuit Cycling + 3 test teams) had 0 riders, which would have triggered 32 forced purchases and ~3.2M CZ$ in fines if the cron had run. New regression tests lock the is_frozen skip-path on both the per-team helper and the cron loader.",
+          "DA · Frosne hold springes nu korrekt over af tre baggrundsjobs der tidligere behandlede dem som aktive managers: (1) trupstørrelse-håndhævelse tvinger ikke længere køb af ryttere eller bøder på frosne hold når et transfervindue lukker, (2) deadline-day notifikationer (24h/2h/30min advarsler + final whistle) sendes ikke længere til frosne managers, og (3) negativ-saldo-advarsler skipper frosne hold. Tidligere filtrerede disse jobs kun AI- og bank-hold fra, så frosne human-hold kunne blive ramt af tvungne auto-køb til 150% market value plus 100K CZ$ bøder plus 200 fradragspoint per manglende rytter. Begrundelse: før sæson 0 → 1 transitionen i aften havde 4 frosne hold (Inuit Cycling + 3 test-hold) 0 ryttere, hvilket ville have udløst 32 tvungne køb og ~3,2M CZ$ i bøder hvis cron'en havde kørt. Nye regressionstests låser is_frozen skip-stien på både per-hold-helperen og cron-loaderen.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.82",
     date: "2026-05-21",
     label: "Beta",
