@@ -95,7 +95,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Google Sheets-resultatimport er idempotent for prize finance: gamle prize-transaktioner for samme løb reverseres før re-import
 - Adminens `race_points`-editor bruger moderne herre-UCI-klasser og seedede UCI-point for klassement, klassikere, etaper, pointtrøje, bjergtrøje og førertrøje
 - Pointtavle (season_standings) inkl. rank_in_division, recalkuleres fra race_results
-- Opryknings/nedrykningslogik (top/bund 2 per division)
+- Opryknings/nedrykningslogik (top/bund 2 per division) — **gated på sæson < `FIRST_PROMOTION_RELEGATION_SEASON` (=3) fra v3.81 / Refs #533: sæson 1+2 slutter uden division-skifte, genaktiveres automatisk fra sæson 3-slut**
 - Holdranglisten viser opryknings-/nedrykningszoner efter samme season-end-regel: Division 2-3 kan rykke op, Division 1-2 kan rykke ned
 - Sæsonpreview-side
 - **Løb-hub (v2.22, 2026-05-04):** `/races` konsolideret med tabs Kalender · Bibliotek · Point & præmier · Indberét resultater (· Godkend for admin). Bibliotek = søgbar/filtrerbar liste over alle løb på tværs af sæsoner (sæson/klasse/status/q-filtre, lazy-loadet). Point & præmier embedder `RacePointsPage`. Tab-state synkroniseres til URL (`?tab=library`). Den gamle `/race-archive` redirecter til `/races?tab=library`; `/race-archive/:raceSlug` (RaceHistoryPage) bevaret som detail-side
