@@ -165,9 +165,22 @@ function buildSponsorPreviewRow(team, toSeasonNumber, sponsorStandingsContext) {
 
 async function insertSeasonIfMissing(supabase, seasonId, seasonNumber, transitionAtIso) {
   const { data: existing } = await supabase
-    .from("seasons").select("id, status").eq("id", seasonId).maybeSingle();
+    .from("seasons").select("id, status, start_date").eq("id", seasonId).maybeSingle();
 
   if (existing) {
+    // Legacy /admin/seasons-endpoint kan have pre-created rowen med status='upcoming'
+    // (typisk 0→1 hvor sæson 1 er admin-oprettet før engine'n bruges). Engine'ns
+    // kontrakt siger sæson X+1 skal være 'active' efter transition — promotér her
+    // så confirm-dialogen ikke lyver og processSeasonStart kører mod en faktisk
+    // aktiv sæson. Andre statusser ('active', 'completed') skipper som før.
+    if (existing.status === "upcoming") {
+      const { error } = await supabase
+        .from("seasons")
+        .update({ status: "active", start_date: existing.start_date || transitionAtIso })
+        .eq("id", seasonId);
+      if (error) throw new Error(`Could not activate season ${seasonNumber}: ${error.message}`);
+      return { updated: true, reason: "promoted upcoming → active", season_id: seasonId, season_number: seasonNumber };
+    }
     return { skipped: true, reason: `season ${seasonNumber} already exists`, status: existing.status };
   }
 

@@ -385,6 +385,63 @@ test("transitionToNextSeason — kaster fejl hvis fromSeasonId mangler", async (
   );
 });
 
+test("transitionToNextSeason — promoterer pre-created sæson 1 fra 'upcoming' til 'active'", async () => {
+  // Realistic 2026-05-21 setup: sæson 1 er allerede oprettet via legacy
+  // POST /admin/seasons med status='upcoming' (race-katalog seedet). Engine
+  // skal aktivere den i stedet for at skip den.
+  const supabase = createMockSupabase({
+    seasons: [
+      { id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active", start_date: "2026-05-08" },
+      { id: "00000000-0000-0000-0000-000000000001", number: 1, status: "upcoming", start_date: null, end_date: null },
+    ],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-21T21:00:00Z"),
+    deps: { processSeasonStart: async () => [] },
+  });
+
+  // Fase 1 skal nu rapportere updated=true (ikke skipped, ikke inserted)
+  assert.equal(result.log[0].phase, "insert_next_season");
+  assert.equal(result.log[0].updated, true, "skal promotere upcoming → active");
+  assert.match(result.log[0].reason, /promoted upcoming/);
+
+  const sæson1 = supabase.__state.seasons.find((s) => s.number === 1);
+  assert.equal(sæson1.status, "active");
+  assert.equal(sæson1.start_date, "2026-05-21T21:00:00.000Z");
+
+  // Sæson 0 skal stadig markeres completed
+  const sæson0 = supabase.__state.seasons.find((s) => s.number === 0);
+  assert.equal(sæson0.status, "completed");
+});
+
+test("transitionToNextSeason — bevarer eksisterende start_date hvis sæson 1 allerede har en", async () => {
+  // Edge: admin har sat start_date manuelt via legacy endpoint. Engine må ikke
+  // overskrive den.
+  const supabase = createMockSupabase({
+    seasons: [
+      { id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" },
+      { id: "00000000-0000-0000-0000-000000000001", number: 1, status: "upcoming", start_date: "2026-05-20" },
+    ],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+  });
+
+  await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-21T21:00:00Z"),
+    deps: { processSeasonStart: async () => [] },
+  });
+
+  const sæson1 = supabase.__state.seasons.find((s) => s.number === 1);
+  assert.equal(sæson1.start_date, "2026-05-20", "bevarer admin-sat start_date");
+});
+
 test("transitionToNextSeason — sæson 1's transfer_window oprettes som 'closed' (ikke open)", async () => {
   const supabase = createMockSupabase({
     seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],

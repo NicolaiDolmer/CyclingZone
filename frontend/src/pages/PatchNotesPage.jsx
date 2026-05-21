@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.77",
+    date: "2026-05-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sæson-cyklus · Sikrere transition fra sæson 0 til sæson 1",
+        items: [
+          "EN · The admin Season transition engine now correctly activates a season that was pre-created with status 'upcoming' (instead of silently skipping it). This was a contract bug that would have left season 1 in 'upcoming' state after the transition button was clicked, even though the confirmation dialog promised 'active'. No visible UI change for managers. Backend-only fix to backend/lib/seasonTransition.js + 2 new unit tests (676 backend tests still green).",
+          "DA · Admin sæson-skifte-motoren aktiverer nu korrekt en sæson der er pre-created med status 'upcoming' (i stedet for at skippe den). Det var en kontrakt-bug der ville efterlade sæson 1 i 'upcoming' efter klik på sæson-skifte-knappen, selv om confirm-dialogen lover 'active'. Ingen synlig UI-ændring for managers. Backend-only fix i backend/lib/seasonTransition.js + 2 nye unit-tests (676 backend-tests stadig grønne).",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.76",
     date: "2026-05-20",
     label: "Beta",
