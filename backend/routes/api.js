@@ -41,6 +41,7 @@ import {
 } from "../lib/auctionFinalization.js";
 import {
   buildTransitionPlan,
+  computeSeasonUuid,
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
@@ -3236,6 +3237,7 @@ router.post("/admin/seasons", requireAdmin, adminWriteLimiter, async (req, res) 
     const { data: createdSeason, error: createError } = await supabase
       .from("seasons")
       .insert({
+        id: computeSeasonUuid(number),
         number,
         race_days_total: raceDaysTotal,
         status: "upcoming",
