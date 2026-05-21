@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.84",
+    date: "2026-05-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Discord · Final Whistle inkluderer nu ai-pool auktioner + viser største auktion og største transfer separat",
+        items: [
+          "EN · The Final Whistle Discord embed (posted automatically when a transfer window closes) now counts ALL completed auctions during the window, including purchases from the free agent / AI rider pool. Previously only manager-to-manager auctions were counted, which made the report misleading in early seasons where most deals are from the open pool — e.g. season 0 had 111 completed auctions, but only 9 would have shown. The embed also splits 'Biggest deal' into two separate fields: 🏆 Biggest auction and 💸 Biggest transfer, so manager-vs-manager moves don't get hidden when an AI-pool buy happens to be larger. Auctions with no seller (pool buys) show as 'fri pulje' instead of '–'. Panic-handler flag still requires a real seller team, so AI-pool auctions can never be panic deals.",
+          "DA · Final Whistle Discord-embed (sendes automatisk når et transfervindue lukker) tæller nu ALLE gennemførte auktioner i vinduet, inklusive køb fra fri-agent-puljen / AI-rytter-puljen. Tidligere blev kun manager-til-manager auktioner talt med, hvilket gjorde rapporten misvisende i tidlige sæsoner hvor de fleste handler er fra den åbne pulje — fx havde sæson 0 111 gennemførte auktioner, men kun 9 ville være vist. Embeddet splitter også 'Største handel' i to separate felter: 🏆 Største auktion og 💸 Største transfer, så manager-vs-manager træk ikke skjules når et AI-pool-køb tilfældigvis er større. Auktioner uden sælger (pulje-køb) vises som 'fri pulje' i stedet for '–'. Panik-handler-flag kræver stadig et faktisk sælger-hold, så AI-pool auktioner kan aldrig være panik-handler.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.83",
     date: "2026-05-21",
     label: "Beta",

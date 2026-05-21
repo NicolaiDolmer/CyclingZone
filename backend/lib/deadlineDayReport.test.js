@@ -49,10 +49,11 @@ test("buildWarningPayload returns deadline_day_warning type", () => {
   }
 });
 
-test("computeFinalWhistleReport finds biggest deal across kinds", () => {
+test("computeFinalWhistleReport returnerer separat biggestAuction og biggestTransfer", () => {
   const report = computeFinalWhistleReport({
     auctionDeals: [
       { amount: 800_000, riderName: "A. Rider", sellerName: "S1", buyerName: "B1", sellerTeamId: 1 },
+      { amount: 200_000, riderName: "Small", sellerName: "fri pulje", buyerName: "B1", sellerTeamId: null },
     ],
     transferDeals: [
       { amount: 1_500_000, riderName: "B. Rider", sellerName: "S2", buyerName: "B2", sellerTeamId: 2 },
@@ -60,10 +61,29 @@ test("computeFinalWhistleReport finds biggest deal across kinds", () => {
     bids: [],
     panicTeamIds: new Set(),
   });
-  assert.equal(report.biggestDeal.kind, "transfer");
-  assert.equal(report.biggestDeal.amount, 1_500_000);
-  assert.equal(report.totalDeals, 2);
-  assert.equal(report.totalSpent, 2_300_000);
+  assert.equal(report.biggestAuction.amount, 800_000);
+  assert.equal(report.biggestAuction.riderName, "A. Rider");
+  assert.equal(report.biggestTransfer.amount, 1_500_000);
+  assert.equal(report.totalDeals, 3);
+  assert.equal(report.totalAuctions, 2);
+  assert.equal(report.totalTransfers, 1);
+  assert.equal(report.totalSpent, 2_500_000);
+});
+
+test("computeFinalWhistleReport: biggestAuction kan være ai-pool deal (sellerTeamId=null)", () => {
+  const report = computeFinalWhistleReport({
+    auctionDeals: [
+      { amount: 500_000, riderName: "Pool Rider", sellerName: "fri pulje", buyerName: "B1", sellerTeamId: null },
+    ],
+    transferDeals: [],
+    bids: [],
+    panicTeamIds: new Set(),
+  });
+  assert.equal(report.biggestAuction.amount, 500_000);
+  assert.equal(report.biggestAuction.sellerTeamId, null);
+  assert.equal(report.biggestTransfer, null);
+  assert.equal(report.totalAuctions, 1);
+  assert.equal(report.totalTransfers, 0);
 });
 
 test("computeFinalWhistleReport finds most active manager and panic deals", () => {
@@ -89,19 +109,25 @@ test("computeFinalWhistleReport finds most active manager and panic deals", () =
 test("computeFinalWhistleReport handles empty input", () => {
   const report = computeFinalWhistleReport({});
   assert.equal(report.totalDeals, 0);
+  assert.equal(report.totalAuctions, 0);
+  assert.equal(report.totalTransfers, 0);
   assert.equal(report.totalSpent, 0);
-  assert.equal(report.biggestDeal, null);
+  assert.equal(report.biggestAuction, null);
+  assert.equal(report.biggestTransfer, null);
   assert.equal(report.mostActiveManager, null);
   assert.equal(report.panicCount, 0);
   assert.deepEqual(report.panicSamples, []);
 });
 
-test("formatFinalWhistleEmbed produces a valid Discord payload", () => {
+test("formatFinalWhistleEmbed produces a valid Discord payload med separate auction+transfer felter", () => {
   const payload = formatFinalWhistleEmbed({
     report: {
       totalDeals: 5,
+      totalAuctions: 4,
+      totalTransfers: 1,
       totalSpent: 3_000_000,
-      biggestDeal: { kind: "transfer", amount: 1_500_000, riderName: "X", buyerName: "B", sellerName: "S", sellerTeamId: 1 },
+      biggestAuction: { kind: "auction", amount: 800_000, riderName: "A", buyerName: "B1", sellerName: "S1", sellerTeamId: 1 },
+      biggestTransfer: { kind: "transfer", amount: 1_500_000, riderName: "X", buyerName: "B", sellerName: "S", sellerTeamId: 2 },
       mostActiveManager: { teamName: "T", bidCount: 7 },
       panicCount: 1,
       panicSamples: [{ kind: "auction", amount: 50_000, riderName: "P", buyerName: "B", sellerName: "S", sellerTeamId: 1 }],
@@ -111,11 +137,37 @@ test("formatFinalWhistleEmbed produces a valid Discord payload", () => {
   });
   assert.equal(payload.embeds.length, 1);
   assert.match(payload.embeds[0].title, /Sæson 7/);
-  const fieldNames = payload.embeds[0].fields.map(f => f.name);
-  assert.ok(fieldNames.includes("Handler i alt"));
-  assert.ok(fieldNames.some(n => n.includes("Største handel")));
+  const fields = payload.embeds[0].fields;
+  const fieldNames = fields.map(f => f.name);
+  const handler = fields.find(f => f.name === "Handler i alt");
+  assert.match(handler.value, /5 \(4 auktioner · 1 transfers\)/);
+  assert.ok(fieldNames.some(n => n.includes("Største auktion")));
+  assert.ok(fieldNames.some(n => n.includes("Største transfer")));
   assert.ok(fieldNames.some(n => n.includes("Mest aktive manager")));
   assert.ok(fieldNames.some(n => n.includes("Panikhandler")));
+});
+
+test("formatFinalWhistleEmbed: ai-pool auktion vises som 'fri pulje' (ingen seller-navn)", () => {
+  const payload = formatFinalWhistleEmbed({
+    report: {
+      totalDeals: 1,
+      totalAuctions: 1,
+      totalTransfers: 0,
+      totalSpent: 500_000,
+      biggestAuction: { kind: "auction", amount: 500_000, riderName: "Pool Hero", buyerName: "Team A", sellerName: "–", sellerTeamId: null },
+      biggestTransfer: null,
+      mostActiveManager: null,
+      panicCount: 0,
+      panicSamples: [],
+    },
+    seasonNumber: 0,
+    closedAt: "2026-05-21T21:00:00Z",
+  });
+  const auctionField = payload.embeds[0].fields.find(f => f.name.includes("Største auktion"));
+  assert.match(auctionField.value, /fri pulje/);
+  assert.match(auctionField.value, /Pool Hero/);
+  // Transfer-felt findes ikke når der ikke er nogen transfer
+  assert.equal(payload.embeds[0].fields.find(f => f.name.includes("Største transfer")), undefined);
 });
 
 // ── processDeadlineDayCron — orchestration tests ─────────────────────────────

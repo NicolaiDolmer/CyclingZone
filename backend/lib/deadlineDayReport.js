@@ -42,28 +42,30 @@ export function computeFinalWhistleReport({
   bids = [],
   panicTeamIds = new Set(),
 }) {
-  const allDeals = [
-    ...auctionDeals.map(a => ({
-      kind: "auction",
-      amount: a.amount,
-      riderName: a.riderName,
-      sellerName: a.sellerName,
-      buyerName: a.buyerName,
-      sellerTeamId: a.sellerTeamId,
-    })),
-    ...transferDeals.map(t => ({
-      kind: "transfer",
-      amount: t.amount,
-      riderName: t.riderName,
-      sellerName: t.sellerName,
-      buyerName: t.buyerName,
-      sellerTeamId: t.sellerTeamId,
-    })),
-  ];
+  const auctionRows = auctionDeals.map(a => ({
+    kind: "auction",
+    amount: a.amount,
+    riderName: a.riderName,
+    sellerName: a.sellerName,
+    buyerName: a.buyerName,
+    sellerTeamId: a.sellerTeamId,
+  }));
+  const transferRows = transferDeals.map(t => ({
+    kind: "transfer",
+    amount: t.amount,
+    riderName: t.riderName,
+    sellerName: t.sellerName,
+    buyerName: t.buyerName,
+    sellerTeamId: t.sellerTeamId,
+  }));
+  const allDeals = [...auctionRows, ...transferRows];
 
-  const biggestDeal = allDeals.length
-    ? [...allDeals].sort((a, b) => b.amount - a.amount)[0]
-    : null;
+  const pickBiggest = rows => (rows.length
+    ? [...rows].sort((a, b) => b.amount - a.amount)[0]
+    : null);
+
+  const biggestAuction = pickBiggest(auctionRows);
+  const biggestTransfer = pickBiggest(transferRows);
 
   const bidCounts = new Map();
   for (const bid of bids) {
@@ -77,14 +79,19 @@ export function computeFinalWhistleReport({
     }
   }
 
+  // Panik kræver seller-hold — ai-pool auctions (sellerTeamId=null) er pr.
+  // definition ikke panik (ingen manager har solgt sig under min).
   const panicDeals = allDeals.filter(d => d.sellerTeamId && panicTeamIds.has(d.sellerTeamId));
 
   const totalSpent = allDeals.reduce((sum, d) => sum + (d.amount || 0), 0);
 
   return {
     totalDeals: allDeals.length,
+    totalAuctions: auctionRows.length,
+    totalTransfers: transferRows.length,
     totalSpent,
-    biggestDeal,
+    biggestAuction,
+    biggestTransfer,
     mostActiveManager,
     panicCount: panicDeals.length,
     panicSamples: panicDeals.slice(0, 3),
@@ -93,18 +100,29 @@ export function computeFinalWhistleReport({
 
 export function formatFinalWhistleEmbed({ report, seasonNumber, closedAt }) {
   const fmtCz = n => `${Math.round((n || 0) / 1000).toLocaleString("da-DK")}K CZ$`;
+  const dealsLabel = report.totalAuctions != null && report.totalTransfers != null
+    ? `${report.totalDeals} (${report.totalAuctions} auktioner · ${report.totalTransfers} transfers)`
+    : String(report.totalDeals);
   const fields = [
-    { name: "Handler i alt", value: String(report.totalDeals), inline: true },
+    { name: "Handler i alt", value: dealsLabel, inline: true },
     { name: "Volumen", value: fmtCz(report.totalSpent), inline: true },
     { name: "Panikhandler", value: String(report.panicCount), inline: true },
   ];
 
-  if (report.biggestDeal) {
-    const d = report.biggestDeal;
-    const route = d.kind === "auction" ? "auktion" : "transfer";
+  if (report.biggestAuction) {
+    const a = report.biggestAuction;
+    const sellerLabel = a.sellerName && a.sellerName !== "–" ? a.sellerName : "fri pulje";
     fields.push({
-      name: "🏆 Største handel",
-      value: `${d.riderName} → ${d.buyerName ?? "–"} (${fmtCz(d.amount)} via ${route})`,
+      name: "🏆 Største auktion",
+      value: `${a.riderName} (${sellerLabel} → ${a.buyerName ?? "–"}, ${fmtCz(a.amount)})`,
+      inline: false,
+    });
+  }
+  if (report.biggestTransfer) {
+    const t = report.biggestTransfer;
+    fields.push({
+      name: "💸 Største transfer",
+      value: `${t.riderName} (${t.sellerName ?? "–"} → ${t.buyerName ?? "–"}, ${fmtCz(t.amount)})`,
       inline: false,
     });
   }
@@ -166,8 +184,12 @@ async function loadFinalWhistleData({ supabase, window }) {
       .lte("bid_time", until),
   ]);
 
+  // Auctions inkluderer både manager-til-manager OG ai-pool/fri-agent køb.
+  // Ai-pool deals har seller_team_id=null → sellerName falder tilbage til "fri pulje"
+  // i embed-formatter. Panik-flag kræver stadig seller_team_id (en manager der har solgt
+  // sig under min), så ai-pool auctions kan aldrig være panik.
   const auctionDeals = (auctions || [])
-    .filter(a => a.winner && a.rider && a.seller_team_id)
+    .filter(a => a.winner && a.rider)
     .map(a => ({
       amount: a.current_price,
       riderName: `${a.rider.firstname} ${a.rider.lastname}`,
@@ -186,11 +208,12 @@ async function loadFinalWhistleData({ supabase, window }) {
     }));
   const bidsForReport = (bids || []).map(b => ({ teamName: b.team?.name }));
 
+  // Filter null sellers (ai-pool auctions) — panic-lookup kræver et faktisk sælger-hold.
   const sellerIds = [
     ...new Set([
       ...auctionDeals.map(d => d.sellerTeamId),
       ...transferDeals.map(d => d.sellerTeamId),
-    ]),
+    ].filter(id => id != null)),
   ];
   const panicTeamIds = new Set();
   if (sellerIds.length) {
