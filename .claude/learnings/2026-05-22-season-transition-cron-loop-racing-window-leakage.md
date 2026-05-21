@@ -26,16 +26,25 @@ De tre crons:
 
 Forskel mellem racing- og deadline-window var ikke encoded i filteret, så cron'en behandlede dem ens.
 
-## Fix
+## Fix (3-lags defense)
 
-**Single source of truth:** `closed_at IS NOT NULL` skelner "vinduet er faktisk lukket via handling" fra "vinduet eksisterer kun fordi en racing-sæson kører". Racing-windows har aldrig `closed_at` sat (de er aldrig blevet "lukket via handling").
+**Lag 1 — kode-filter:** `closed_at IS NOT NULL` skelner "vinduet er faktisk lukket via handling" fra "vinduet eksisterer kun fordi en racing-sæson kører". Racing-windows har aldrig `closed_at` sat (de er aldrig blevet "lukket via handling").
 
 Anvendt i alle 3 crons:
 - `seasonAutoTransition.js`: `.not("closed_at", "is", null)`
 - `squadEnforcement.js`: `.not("closed_at", "is", null)`
 - `deadlineDayReport.js`: Guard early-return på `!window.closes_at && !window.closed_at`
 
-3 regressionstests verificerer at racing-windows aldrig matches.
+**Lag 2 — DB-niveau CHECK constraint:** Tilføjet 2026-05-22 i `database/2026-05-22-transfer-window-racing-guard.sql`. Selv hvis kode-filteret omgås i en fremtidig cron, vil PostgreSQL afvise UPDATE'en:
+
+```sql
+CHECK (final_whistle_sent_at IS NULL OR closed_at IS NOT NULL);
+CHECK (squad_enforcement_completed_at IS NULL OR closed_at IS NOT NULL);
+```
+
+Verificeret aktiv: `UPDATE transfer_windows SET squad_enforcement_completed_at = NOW() WHERE id = '<racing-window>'` kaster `ERROR 23514: check_violation`.
+
+**Lag 3 — tests:** 3 regressionstests verificerer at racing-windows aldrig matches af de 3 crons.
 
 ## Sidemæssigt fundet bug
 
