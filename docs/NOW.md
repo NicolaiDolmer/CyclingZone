@@ -1,5 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
+> **🟢 Session close 2026-05-21 13:45 CEST — pre-flight til sæson 1:** v3.83 (is_frozen-fix i squad enforcement + deadline + debt crons) og v3.84 (Final Whistle inkluderer ai-pool + split største auktion/transfer) live på prod. Scheduled task `verify-season-1-transition-2026-05-21` kører 23:20 CEST og rapporterer transition-state. Postmortem: [`.claude/learnings/2026-05-21-filter-assumption-drift-cron-vs-frozen-teams-and-ai-pool.md`](.claude/learnings/2026-05-21-filter-assumption-drift-cron-vs-frozen-teams-and-ai-pool.md).
+
 ## Aktiv styring
 **Masterplan landed 2026-05-19:** `docs/MASTER_PLAN.md` er styringskontrakten for CyclingZone på tværs af Manus, Claude Code og Codex. Frem til sprinten slutter 2026-06-17 har **Monetization Validation** forrang over brand-polish, bot-polish og post-Go betalingsimplementation. Brand Phase 1 er låst, men Brand Phase 2 må ikke trumfe feedback-loopet.
 
@@ -28,4 +30,3 @@
 > 1. **VERIFICÉR post-23:00 state** — kør verifikations-queries ovenfor og sammenlign med forventede rækker. Hvis tal ikke matcher → læs [`docs/economy-flow-audit-2026-05-21.md`](docs/economy-flow-audit-2026-05-21.md) Fase 2/3-trace.
 > 2. **Validér forecast-numerik** — gå til `/finance` som en testbruger og kør forecast med horisont 1/3/5 sæsoner. Tjek at sæson 1's projected_net inkluderer faktisk salary + interest (ikke 0 som før patch). Estimat-sæsoner (~) skal vise faldende loan-interest pga. 25% decay.
 > 3. ~~**buildSeasonEndPreviewRows i frontend er nu misvisende**~~ — ✅ fikset i v3.79 (2026-05-21): preview-tabellen omdøbt til "Sæson-transition preview", kolonner reordered til v3.78-cashflow (balance + sponsor − renter − løn), backend-math inkluderer sponsor i balance_after + nødlån-flag.
-> 4. **#452 tilmeld-knap til kommende sæson** — sub-issue til Slice 08 #239. **Defensiv del løst i v3.80 (2026-05-21):** admin kan nu fryse/optø manager-hold via `/admin/economy → Overblik`. Inuit Cycling (1 inaktiv manager) frosset. Player-facing tilmeld-knap mangler stadig: "kan stille hold"-tjek + dashboard-banner + transition-engine-respekt. Mangler spec.
