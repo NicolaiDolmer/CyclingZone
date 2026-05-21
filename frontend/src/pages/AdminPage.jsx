@@ -1248,11 +1248,14 @@ export default function AdminPage() {
         <ManualOverride onMsg={(text, type) => showMsg(text, type)} onRefresh={loadAll} teams={teams} />
       </Section>
 
-      {/* ── Sæsonafslutnings-preview ─────────────────────────────────────────── */}
-      <Section title="Sæsonafslutnings-preview">
+      {/* ── Sæson-transition preview ─────────────────────────────────────────── */}
+      <Section title="Sæson-transition preview (næste sæson-start)">
+        <p className="text-cz-3 text-xs mb-3">
+          v3.78: Sponsor, lånerenter og lønninger udbetales nu ved STARTEN af næste sæson (samtidig). Tabellen viser samlet cashflow ved sæsonskiftet i den rækkefølge engine&apos;n kører: balance + sponsor − renter − løn = balance efter start. Nødlån oprettes hvis resultatet er negativt.
+        </p>
         <div className="flex gap-3 mb-4 flex-wrap">
           <div className="flex-1">
-            <label className="block text-cz-3 text-xs mb-1">Vælg sæson</label>
+            <label className="block text-cz-3 text-xs mb-1">Vælg sæson (den sæson der afsluttes)</label>
             <select value={previewSeason} onChange={e => setPreviewSeason(e.target.value)}
               className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
               <option value="">Vælg sæson...</option>
@@ -1268,17 +1271,17 @@ export default function AdminPage() {
         </div>
         {seasonPreview && (
           <div className="overflow-x-auto rounded-lg border border-cz-border">
-            <table className="w-full text-xs min-w-[700px]">
+            <table className="w-full text-xs min-w-[760px]">
               <thead>
                 <tr className="border-b border-cz-border">
                   <th className="px-3 py-2 text-left text-cz-3">Hold</th>
                   <th className="px-3 py-2 text-right text-cz-3">Balance</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Løntræk</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Renter</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Balance efter</th>
+                  <th className="px-3 py-2 text-right text-cz-3">+ Sponsor (start)</th>
+                  <th className="px-3 py-2 text-right text-cz-3">− Renter</th>
+                  <th className="px-3 py-2 text-right text-cz-3">− Løn</th>
+                  <th className="px-3 py-2 text-right text-cz-3">Balance efter start</th>
                   <th className="px-3 py-2 text-right text-cz-3">Nødlån?</th>
                   <th className="px-3 py-2 text-right text-cz-3">Tilfredshed</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Sponsor næste</th>
                   <th className="px-3 py-2 text-right text-cz-3">Rang</th>
                 </tr>
               </thead>
@@ -1290,10 +1293,11 @@ export default function AdminPage() {
                       <p className="text-cz-3">Div {row.division}</p>
                     </td>
                     <td className="px-3 py-2 text-right text-cz-2 font-mono">{row.current_balance?.toLocaleString("da-DK")}</td>
-                    <td className="px-3 py-2 text-right text-cz-danger font-mono">-{row.salary_deduction?.toLocaleString("da-DK")}</td>
+                    <td className="px-3 py-2 text-right text-cz-accent-t font-mono">+{row.next_season_sponsor?.toLocaleString("da-DK")}</td>
                     <td className="px-3 py-2 text-right text-cz-warning font-mono">
                       {row.loan_interest > 0 ? `-${row.loan_interest?.toLocaleString("da-DK")}` : "—"}
                     </td>
+                    <td className="px-3 py-2 text-right text-cz-danger font-mono">-{row.salary_deduction?.toLocaleString("da-DK")}</td>
                     <td className={`px-3 py-2 text-right font-mono font-bold ${row.balance_after < 0 ? "text-cz-danger" : "text-cz-success"}`}>
                       {row.balance_after?.toLocaleString("da-DK")}
                     </td>
@@ -1307,7 +1311,6 @@ export default function AdminPage() {
                         {row.board_satisfaction}%
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right text-cz-accent-t font-mono">{row.next_season_sponsor?.toLocaleString("da-DK")}</td>
                     <td className="px-3 py-2 text-right text-cz-2 font-mono">#{row.current_rank || "—"}</td>
                   </tr>
                 ))}
@@ -1317,7 +1320,7 @@ export default function AdminPage() {
         )}
         {seasonPreview && (
           <p className="text-cz-3 text-xs mt-2">
-            Preview er ikke bindende. Bekræft og afslut sæson via &quot;⏹ Afslut&quot;-knappen ovenfor.
+            Preview er ikke bindende. Udfør sæsonskiftet via &quot;Udfør sæsonskifte&quot;-knappen i Sæson-cyklus-sektionen ovenfor.
           </p>
         )}
       </Section>

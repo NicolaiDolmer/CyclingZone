@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.79",
+    date: "2026-05-21",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Sæson-transition preview omformuleret til v3.78-cashflow",
+        items: [
+          "EN · The admin /admin/season preview table is renamed from \"Sæsonafslutnings-preview\" to \"Sæson-transition preview (næste sæson-start)\" and reordered to match the v3.78 cashflow order: balance + sponsor − interest − salary = balance after start. The columns are now Balance | + Sponsor (start) | − Interest | − Salary | Balance after start | Emergency loan? | Satisfaction | Rank. The underlying calculation also now includes sponsor income, so the emergency-loan flag matches what processSeasonStart actually does — teams that have low cash but enough sponsor to cover salary no longer falsely show as needing an emergency loan. The disclaimer now points at the \"Udfør sæsonskifte\" button in the Season cycle section instead of the deprecated ⏹ End button.",
+          "DA · Admin /admin/season preview-tabellen er omdøbt fra \"Sæsonafslutnings-preview\" til \"Sæson-transition preview (næste sæson-start)\" og kolonnerne er omarrangeret efter v3.78-rækkefølgen: balance + sponsor − renter − løn = balance efter start. Kolonnerne er nu Balance | + Sponsor (start) | − Renter | − Løn | Balance efter start | Nødlån? | Tilfredshed | Rang. Den underliggende beregning inkluderer nu også sponsor-indtægt, så nødlån-flaget stemmer med hvad processSeasonStart faktisk gør — hold med lav cash men nok sponsor til at dække løn flagges ikke længere fejlagtigt som nødlåns-kandidater. Disclaimer'en peger nu på \"Udfør sæsonskifte\"-knappen i Sæson-cyklus-sektionen i stedet for den deprecated ⏹ Afslut-knap.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.78",
     date: "2026-05-21",
     label: "Beta",

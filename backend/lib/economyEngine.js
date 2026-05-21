@@ -613,6 +613,14 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
   };
 }
 
+// 2026-05-21 (v3.78/v3.79): "Sæson-transition preview". Cashflow modelleres
+// nu efter den faktiske rækkefølge i processSeasonStart →
+// processTeamSeasonPayroll (sponsor + → renter − → løn − → emergency-lån
+// hvis shortfall), ikke som det gamle "sæson-slut deduct salary"-flow.
+// Felt-navne (salary_deduction, loan_interest, next_season_sponsor,
+// balance_after, needs_emergency_loan) bevares for kontrakt-stabilitet,
+// men balance_after og needs_emergency_loan reflekterer nu den samlede
+// transition og inkluderer sponsor-income.
 export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData = [] } = {}) {
   return teams.map((team) => {
     const standing = standings.find(s => s.team_id === team.id);
@@ -664,7 +672,9 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
       .filter(s => s.division === team.division)
       .sort((a, b) => (b.total_points || 0) - (a.total_points || 0));
     const rank = divStandings.findIndex(s => s.team_id === team.id) + 1;
-    const balanceAfter = (team.balance || 0) - totalSalary;
+    const nextSeasonSponsor = Math.round((team.sponsor_income || 0) * sponsorModifier);
+    // Følger processSeasonStart-rækkefølgen: +sponsor → −renter → −løn.
+    const balanceAfter = (team.balance || 0) + nextSeasonSponsor - totalInterest - totalSalary;
 
     return {
       team_id: team.id,
@@ -679,7 +689,7 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
       current_board_satisfaction: currentSatisfaction,
       board_satisfaction: projectedSatisfaction,
       sponsor_modifier: sponsorModifier,
-      next_season_sponsor: Math.round((team.sponsor_income || 0) * sponsorModifier),
+      next_season_sponsor: nextSeasonSponsor,
       board_goals_met: goalsMet,
       board_goals_total: goalsTotal,
       total_points: standing?.total_points || 0,

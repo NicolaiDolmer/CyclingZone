@@ -1638,7 +1638,11 @@ test("buildSeasonEndPreviewRows projects board modifier on the same path as seas
 
   assert.equal(preview.salary_deduction, 100);
   assert.equal(preview.loan_interest, 10);
-  assert.equal(preview.balance_after, 400);
+  // v3.78: balance_after følger processSeasonStart-rækkefølgen
+  // balance + sponsor − renter − løn = 500 + 220 − 10 − 100 = 610
+  assert.equal(preview.balance_after, 610);
+  assert.equal(preview.needs_emergency_loan, false);
+  assert.equal(preview.emergency_loan_amount, 0);
   assert.equal(preview.current_board_satisfaction, 50);
   assert.equal(preview.board_satisfaction, 74);
   assert.equal(preview.sponsor_modifier, 1.1);
