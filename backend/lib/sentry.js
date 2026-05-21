@@ -41,8 +41,10 @@ export function initSentry() {
 
 export function captureException(error, context = {}) {
   if (!enabled) return;
+  const { tags, ...extra } = context;
   Sentry.captureException(error, {
-    extra: context,
+    extra,
+    ...(tags ? { tags } : {}),
   });
 }
 

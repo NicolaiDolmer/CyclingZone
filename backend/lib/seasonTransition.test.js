@@ -275,12 +275,13 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
         sponsorCalls.push(seasonId);
         return [{ team: "T1", sponsor: 240000, recurring_loan_fees: 0, pullout_applied: false }];
       },
+      notifySeasonEvent: async () => {},
     },
   });
 
   assert.equal(result.ok, true);
   assert.equal(result.dryRun, false);
-  assert.equal(result.log.length, 6);
+  assert.equal(result.log.length, 7);
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
@@ -293,6 +294,8 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.log[4].count, 1);
   assert.equal(result.log[5].phase, "admin_log");
   assert.equal(result.log[5].inserted, true);
+  assert.equal(result.log[6].phase, "discord_broadcast");
+  assert.equal(result.log[6].sent, true);
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 
@@ -333,7 +336,7 @@ test("transitionToNextSeason — re-run efter delvis fejl skipper allerede-gjort
     supabase,
     fromSeasonId: "00000000-0000-0000-0000-000000000000",
     transitionAt: new Date("2026-05-15T06:00:00Z"),
-    deps: { processSeasonStart: async () => [] },
+    deps: { processSeasonStart: async () => [], notifySeasonEvent: async () => {} },
   });
 
   assert.equal(result.ok, true);
@@ -402,7 +405,7 @@ test("transitionToNextSeason — promoterer pre-created sæson 1 fra 'upcoming' 
     supabase,
     fromSeasonId: "00000000-0000-0000-0000-000000000000",
     transitionAt: new Date("2026-05-21T21:00:00Z"),
-    deps: { processSeasonStart: async () => [] },
+    deps: { processSeasonStart: async () => [], notifySeasonEvent: async () => {} },
   });
 
   // Fase 1 skal nu rapportere updated=true (ikke skipped, ikke inserted)
@@ -435,11 +438,64 @@ test("transitionToNextSeason — bevarer eksisterende start_date hvis sæson 1 a
     supabase,
     fromSeasonId: "00000000-0000-0000-0000-000000000000",
     transitionAt: new Date("2026-05-21T21:00:00Z"),
-    deps: { processSeasonStart: async () => [] },
+    deps: { processSeasonStart: async () => [], notifySeasonEvent: async () => {} },
   });
 
   const sæson1 = supabase.__state.seasons.find((s) => s.number === 1);
   assert.equal(sæson1.start_date, "2026-05-20", "bevarer admin-sat start_date");
+});
+
+test("transitionToNextSeason — Discord-broadcast: notifySeasonEvent kaldes nøjagtigt 1 gang per transition", async () => {
+  // Pre-incident 2026-05-21 var cron-fyrede transitions silent — bruger spotted
+  // først loopen efter 30 min. Discord-broadcast er nu en phase i engine'n så
+  // både cron + /admin/season-transition broadcaster ens.
+  const notifyCalls = [];
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      processSeasonStart: async () => [],
+      notifySeasonEvent: async (payload) => { notifyCalls.push(payload); },
+    },
+  });
+
+  assert.equal(notifyCalls.length, 1, "notifySeasonEvent skal kaldes nøjagtigt 1 gang");
+  assert.equal(notifyCalls[0].type, "season_started");
+  assert.equal(notifyCalls[0].seasonNumber, 1);
+  const broadcastLog = result.log.find((entry) => entry.phase === "discord_broadcast");
+  assert.ok(broadcastLog, "discord_broadcast phase skal logges");
+  assert.equal(broadcastLog.sent, true);
+});
+
+test("transitionToNextSeason — Discord-broadcast: webhook-fejl må aldrig blokere transition", async () => {
+  // Discord-webhook kan fejle (5xx, rate-limit, netværk). Engine'n skal stadig
+  // returnere ok: true så cron'en kan markere transition fuldført.
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    deps: {
+      processSeasonStart: async () => [],
+      notifySeasonEvent: async () => { throw new Error("Discord 503"); },
+    },
+  });
+
+  assert.equal(result.ok, true);
+  const broadcastLog = result.log.find((entry) => entry.phase === "discord_broadcast");
+  assert.equal(broadcastLog.sent, false);
+  assert.match(broadcastLog.error, /Discord 503/);
 });
 
 test("transitionToNextSeason — sæson 1's transfer_window oprettes som 'closed' (ikke open)", async () => {
@@ -452,7 +508,7 @@ test("transitionToNextSeason — sæson 1's transfer_window oprettes som 'closed
   await transitionToNextSeason({
     supabase,
     fromSeasonId: "00000000-0000-0000-0000-000000000000",
-    deps: { processSeasonStart: async () => [] },
+    deps: { processSeasonStart: async () => [], notifySeasonEvent: async () => {} },
   });
 
   const sæson1Window = supabase.__state.transfer_windows.find(

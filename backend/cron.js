@@ -28,6 +28,8 @@ import { processSeasonAutoTransitionCron } from "./lib/seasonAutoTransition.js";
 import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
+import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
+import { captureException as sentryCapture } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, '../.env'), quiet: true });
 
@@ -236,6 +238,24 @@ async function runSeasonAutoTransitionCron() {
   }
 }
 
+// ─── Daily Season-Count Safety-Net ───────────────────────────────────────────
+// Forward-guard mod gentagelse af incident 2026-05-21 (cron-loop fyrede 4
+// transitions på 30 min). Hvis admin_log viser >1 sæson-transition per døgn
+// → alert til Discord + Sentry. Pure read + notify, ingen DB-writes.
+
+async function runDailySeasonCountCheck() {
+  const result = await processDailySeasonCountCheck({
+    supabase,
+    now: new Date(),
+    sendWebhookFn: sendWebhook,
+    getDefaultWebhookFn: getDefaultWebhook,
+    captureExceptionFn: sentryCapture,
+  });
+  if (result.alerted) {
+    console.error(`🚨 Daily season-count check: ${result.transitionCount} transitions seneste 24h (>1 alert fyret)`);
+  }
+}
+
 // ─── Squad Enforcement ───────────────────────────────────────────────────────
 
 async function runSquadEnforcementCron() {
@@ -253,62 +273,76 @@ async function runSquadEnforcementCron() {
   }
 }
 
+// ─── In-flight tracking for graceful shutdown ────────────────────────────────
+// SIGTERM (Railway-deploy) skal ikke afbryde en transition mid-tick. server.js
+// kalder awaitCronsIdle() i sin SIGTERM-handler så processen venter til ticks
+// er afsluttet før process.exit(0).
+
+let cronInFlight = 0;
+
+export function getCronInFlight() {
+  return cronInFlight;
+}
+
+export async function awaitCronsIdle(timeoutMs = 30_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (cronInFlight > 0 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return cronInFlight === 0;
+}
+
+export function trackedTick(label, fn, deps = {}) {
+  const capture = deps.captureException ?? sentryCapture;
+  return async () => {
+    cronInFlight++;
+    try {
+      await fn();
+    } catch (err) {
+      console.error(`Cron error (${label}):`, err.message);
+      capture(err, { tags: { cron: label } });
+    } finally {
+      cronInFlight--;
+    }
+  };
+}
+
 // ─── Scheduler ───────────────────────────────────────────────────────────────
 
 export function startCron() {
   console.log("⏱  Cron jobs started");
 
   // Every 60 seconds: finalize auctions
-  setInterval(async () => {
-    try {
-      await finalizeExpiredAuctions();
-    } catch (err) {
-      console.error("Cron error (auctions):", err.message);
-    }
-  }, 60 * 1000);
+  setInterval(trackedTick("auctions", finalizeExpiredAuctions), 60 * 1000);
 
   // Every 5 minutes: deadline day warnings + final whistle
-  setInterval(async () => {
-    try {
-      await runDeadlineDayCron();
-    } catch (err) {
-      console.error("Cron error (deadline day):", err.message);
-    }
-  }, 5 * 60 * 1000);
+  setInterval(trackedTick("deadline day", runDeadlineDayCron), 5 * 60 * 1000);
 
   // Every 5 minutes: squad enforcement (kun aktiv på lukkede vinduer der ikke er enforced)
-  setInterval(async () => {
-    try {
-      await runSquadEnforcementCron();
-    } catch (err) {
-      console.error("Cron error (squad enforcement):", err.message);
-    }
-  }, 5 * 60 * 1000);
+  setInterval(trackedTick("squad enforcement", runSquadEnforcementCron), 5 * 60 * 1000);
 
   // Every 5 minutes: season auto-transition (kun fyrer når window er fuldt-wrapped).
-  setInterval(runSeasonAutoTransitionCron, 5 * 60 * 1000);
+  setInterval(trackedTick("season auto-transition", runSeasonAutoTransitionCron), 5 * 60 * 1000);
 
   // Every 6 hours: check debt
-  setInterval(async () => {
-    try {
-      await checkDebtWarnings();
-    } catch (err) {
-      console.error("Cron error (debt):", err.message);
-    }
-  }, 6 * 60 * 60 * 1000);
+  setInterval(trackedTick("debt", checkDebtWarnings), 6 * 60 * 60 * 1000);
 
   // Every 30 minutes: board auto-accept reminders + auto-accept (S-02b).
   // Notif-dedup (24h) sikrer ingen spam selv ved hyppig polling.
-  setInterval(runBoardAutoAcceptCron, 30 * 60 * 1000);
+  setInterval(trackedTick("board auto-accept", runBoardAutoAcceptCron), 30 * 60 * 1000);
 
   // Every 30 minutes: board mid-season review (S-02g).
   // Per-board-per-season dedupe (eksplicit notification-tabel-tjek) gør cron idempotent.
-  setInterval(runMidSeasonReviewCron, 30 * 60 * 1000);
+  setInterval(trackedTick("board mid-season", runMidSeasonReviewCron), 30 * 60 * 1000);
+
+  // Every 24 hours: daily season-count safety-net (forward-guard mod cron-loop).
+  setInterval(trackedTick("daily season-count check", runDailySeasonCountCheck), 24 * 60 * 60 * 1000);
 
   // Run immediately on start
-  finalizeExpiredAuctions();
-  runBoardAutoAcceptCron();
-  runMidSeasonReviewCron();
+  trackedTick("auctions", finalizeExpiredAuctions)();
+  trackedTick("board auto-accept", runBoardAutoAcceptCron)();
+  trackedTick("board mid-season", runMidSeasonReviewCron)();
+  trackedTick("daily season-count check", runDailySeasonCountCheck)();
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────

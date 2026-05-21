@@ -13,7 +13,7 @@ import cors from "cors";
 import helmet from "helmet";
 import { createClient } from "@supabase/supabase-js";
 import apiRoutes from "./routes/api.js";
-import { startCron } from "./cron.js";
+import { startCron, awaitCronsIdle, getCronInFlight } from "./cron.js";
 import { handleSyncRequest } from "./lib/sheetsSync.js";
 import { adminWriteLimiter } from "./lib/rateLimiters.js";
 
@@ -60,4 +60,29 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-app.listen(PORT, () => { console.log(`🚴 Cycling Zone Manager API — port ${PORT}`); startCron(); });
+const server = app.listen(PORT, () => { console.log(`🚴 Cycling Zone Manager API — port ${PORT}`); startCron(); });
+
+// Graceful shutdown — Railway sender SIGTERM før dyno-kill ved deploy. Uden
+// denne handler kunne en cron-tick midt i en sæson-transition afbrydes (cron.js
+// håndhæver idempotens per fase, men shutdown bør stadig vente).
+const SHUTDOWN_TIMEOUT_MS = 30_000;
+let shuttingDown = false;
+async function gracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[shutdown] ${signal} received — stopper accept af nye requests`);
+  server.close(() => console.log("[shutdown] HTTP server lukket"));
+  const inFlight = getCronInFlight();
+  if (inFlight > 0) {
+    console.log(`[shutdown] venter på ${inFlight} cron-tick(s) (timeout ${SHUTDOWN_TIMEOUT_MS}ms)`);
+  }
+  const idle = await awaitCronsIdle(SHUTDOWN_TIMEOUT_MS);
+  if (!idle) {
+    console.warn(`[shutdown] timeout — ${getCronInFlight()} cron-tick(s) stadig in-flight ved exit`);
+  } else {
+    console.log("[shutdown] alle cron-ticks afsluttet");
+  }
+  process.exit(0);
+}
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));

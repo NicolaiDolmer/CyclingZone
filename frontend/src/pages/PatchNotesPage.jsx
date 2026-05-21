@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.87",
+    date: "2026-05-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sæson · Safety-net mod cron-loop bug (forward-guards efter v3.86)",
+        items: [
+          "EN · Five forward-guards are now active after the v3.86 fix: (1) Discord-broadcast moved into transitionToNextSeason so EVERY transition — both admin-triggered and cron-triggered — posts to Discord (previously cron-fired transitions were silent and took 30 minutes to spot during the incident). (2) SIGTERM-handler in server.js: Railway deploys now wait up to 30 seconds for in-flight cron-ticks to finish before exiting, so a cron mid-season-transition is never interrupted by a redeploy. (3) Sentry alerts on cron failures: every cron-tick is now wrapped with a 'cron:<name>' tag, so any error in the season-transition chain is visible in the Sentry dashboard in real time. (4) Daily season-count safety-net: a new cron runs every 24h, counts season_transition entries in admin_log, and posts a Discord ALERT + Sentry event if more than 1 transition happened per day (a healthy season lasts weeks). (5) New admin checklist at docs/SEASON_TRANSITION_CHECKLIST.md documents the exact admin actions for ending a season + the expected cron-chain timing + abort procedure. Out of scope (parked as GitHub issues #542, #543, #544): refactoring the transfer_windows.status overload to an explicit lifecycle_phase enum, a season_transition_paused admin toggle, and a stricter DB CHECK on closed_at-manipulation. 5 new tests + 708 existing tests all pass.",
+          "DA · Fem forward-guards er nu aktive efter v3.86-fixet: (1) Discord-broadcast flyttet ind i transitionToNextSeason så HVER transition — både admin-trigget og cron-trigget — posteres til Discord (tidligere var cron-fyrede transitions silent og tog 30 min at spotte under incidenten). (2) SIGTERM-handler i server.js: Railway-deploy venter nu op til 30 sek på igangværende cron-ticks før exit, så en cron midt i sæson-transition aldrig afbrydes af et redeploy. (3) Sentry-alerts på cron-fejl: hver cron-tick er nu wrappet med 'cron:<navn>'-tag, så enhver fejl i sæson-transition-kæden bliver synlig i Sentry-dashboardet i realtid. (4) Daglig season-count safety-net: ny cron der kører hver 24t, tæller season_transition-entries i admin_log, og poster Discord-ALERT + Sentry-event hvis mere end 1 transition på en dag (en sund sæson varer uger). (5) Ny admin-checklist på docs/SEASON_TRANSITION_CHECKLIST.md dokumenterer de præcise admin-handlinger for at afslutte en sæson + det forventede cron-chain-tidsforløb + abort-procedure. Parkeret som GitHub-issues #542, #543, #544: refactor af transfer_windows.status-overloaden til en eksplicit lifecycle_phase enum, season_transition_paused admin-toggle, og strammere DB CHECK på closed_at-manipulation. 5 nye tests + 708 eksisterende tests består alle.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.86",
     date: "2026-05-22",
     label: "Beta",

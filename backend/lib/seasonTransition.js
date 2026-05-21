@@ -26,6 +26,7 @@
  */
 
 import { ADMIN_ACTION_TYPE } from "./economyConstants.js";
+import { notifySeasonEvent as defaultNotifySeasonEvent } from "./discordNotifier.js";
 import {
   buildSponsorStandingsContext,
   computeSponsorForSeason,
@@ -393,6 +394,18 @@ export async function transitionToNextSeason({
       plan,
     })),
   });
+
+  // Phase 7: Discord-broadcast (fire-and-forget). Pre-incident 2026-05-21 var
+  // cron-fyrede transitions silent — bruger spotted først loopen efter 30 min.
+  // Kaldet placeres her så både cron + /admin/season-transition broadcaster ens
+  // (legacy /admin/seasons/:id/start og /end bruger separate kald).
+  const notifyFn = deps.notifySeasonEvent ?? defaultNotifySeasonEvent;
+  try {
+    await notifyFn({ type: "season_started", seasonNumber: plan.to_season.number });
+    log.push({ phase: "discord_broadcast", sent: true });
+  } catch (err) {
+    log.push({ phase: "discord_broadcast", sent: false, error: err.message });
+  }
 
   return { ok: true, dryRun: false, plan, log };
 }
