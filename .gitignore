@@ -29,6 +29,7 @@ audit-output/
 *.canvas
 /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md
 .vercel
+.railway
 
 # Temporary files used by claude/agent flows for multi-line commit/PR bodies
 # (skrives med Write-tool, brugt med git commit -F / gh pr create --body-file, slettes efter).
