@@ -63,6 +63,7 @@ CREATE POLICY "Service role full access admin_log" ON public.admin_log
 -- til alle auth users). Behold "Users can read own profile" (auth.uid()=id).
 -- Tilføj admin-policy via is_admin() SECURITY DEFINER function — undgår RLS-rekursion.
 DROP POLICY IF EXISTS "Public read basic user info" ON public.users;
+DROP POLICY IF EXISTS "Admins can read all users" ON public.users;
 CREATE POLICY "Admins can read all users" ON public.users
   FOR SELECT TO authenticated
   USING (public.is_admin());
