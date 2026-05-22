@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.90",
+    date: "2026-05-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Security · RLS permissive policy lockdown + users PII leak fix",
+        items: [
+          "EN · Five-in-one security hardening pass following the #548 RLS correctness audit. Five Row-Level Security policies named \"Service role full access X\" were technically scoped to the `public` PostgreSQL role, which in Postgres semantics means ALL roles — so any signed-in user could write through them. Verified exploits on prod (rolled back): random auth user could (1) INSERT/UPDATE/DELETE any team's loans, (2) UPDATE loan_config — changing interest rates and debt ceilings for ALL teams in the game, (3) INSERT phishing notifications targeting any user (\"You won $100k, click: evil.com\" — would appear as official in-app notification), (4) INSERT fake activity feed entries for any team, (5) INSERT fake admin_log entries (blocked only by CHECK constraint as defense-in-depth, not RLS). Plus a sixth, unrelated finding from the same audit: the \"Public read basic user info\" policy on the users table exposed EVERY column (email × 24, discord_id × 14, consent_preferences) to ANY authenticated user — a GDPR/doxxing risk. Fix migration applied to prod 2026-05-22: all 5 permissive policies rescoped to `TO service_role` (which is the only role that should be writing system tables — service_role bypasses RLS anyway, so this is the correct \"only service can write\" idiom), and the users policy was replaced with an admin-only cross-user read via the existing `is_admin()` SECURITY DEFINER function. Post-fix advisor: 15 → 10 findings (-33%). All flows verified: admins still see all users + emails, normal users only see their own profile. Refs #548. Audit: docs/RLS_AUDIT_2026-05-22.md. Postmortem: .claude/learnings/2026-05-22-rls-permissive-public-policies.md.",
+          "DA · Fem-i-én sikkerhedshærdning efter #548 RLS correctness audit. Fem Row-Level Security policies med navne som \"Service role full access X\" var teknisk scopet til `public` PostgreSQL-rollen, hvilket i Postgres-semantik betyder ALLE roller — så enhver logget-ind bruger kunne skrive via dem. Verificerede exploits på prod (rullet tilbage): random auth user kunne (1) INSERT/UPDATE/DELETE ethvert holds lån, (2) UPDATE loan_config — ændre renter og gældslofter for ALLE hold i spillet, (3) INSERT phishing-notifikationer rettet mod enhver bruger (\"Du har vundet $100k, klik: evil.com\" — ville fremstå som official in-app-notifikation), (4) INSERT fake activity-feed-entries for ethvert hold, (5) INSERT fake admin_log-entries (blokeret kun af CHECK-constraint som defense-in-depth, ikke RLS). Plus et sjette, urelateret fund fra samme audit: \"Public read basic user info\"-policy på users-tabellen eksponerede HVER kolonne (email × 24, discord_id × 14, consent_preferences) til ENHVER authenticated user — en GDPR/doxxing-risiko. Fix-migration applied til prod 2026-05-22: alle 5 permissive policies re-scopet til `TO service_role` (den eneste rolle der bør skrive system-tabeller — service_role bypasser RLS uanset, så dette er det korrekte \"kun service kan skrive\"-mønster), og users-policy'en blev erstattet med admin-only cross-user læsning via den eksisterende `is_admin()` SECURITY DEFINER function. Post-fix advisor: 15 → 10 findings (-33%). Alle flows verificeret: admins ser stadig alle users + emails, normale brugere ser kun egen profil. Refs #548. Audit: docs/RLS_AUDIT_2026-05-22.md. Postmortem: .claude/learnings/2026-05-22-rls-permissive-public-policies.md.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.89",
     date: "2026-05-22",
     label: "Beta",
