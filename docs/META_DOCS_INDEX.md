@@ -16,6 +16,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/BUSINESS_STRATEGY.md` | Monetization-spørgsmål · tier-struktur · validation sprint · UCI/IP-risiko · dansk finansiering · fact-check krav |
 | `docs/SPRINT_DASHBOARD.md` | Live status på 30-dages validation sprint · metrics-snapshot · uge-checkbox-tasks · founder-track · decision log |
 | `docs/AGENT_ARCHITECTURE.md` | Cross-agent bug · parallel-session-setup · failure-mode lookup (auto-gen fra learnings) |
+| `docs/AI_CHANNEL_ROUTING.md` | Tvivl om kanal-valg (Claude Code vs chat vs Cowork vs Dispatch) · use-case→kanal matrix · anti-patterns |
 | `docs/AI_OPS_DISABLE_PLAYBOOK.md` | MCP/skills audit + disable-handlinger |
 | `docs/AI_OPS_QUALITY_CANARIES.md` | Regression-tjek efter token-reduktion |
 | `docs/AI_OPS_TOKEN_BUDGET.md` | Token-budget regler + tier-system |
