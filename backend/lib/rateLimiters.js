@@ -12,17 +12,16 @@
  * Thresholds and break-glass are documented in docs/ARCHITECTURE.md.
  */
 
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 const DISABLE_FLAG = process.env.RATE_LIMIT_DISABLED === "1";
 
 // `trust proxy = 1` in server.js makes req.ip resolve to the first hop client.
-// We do not normalise IPv6 here — express-rate-limit's default behavior is fine
-// for /128 buckets; abuse from a shared egress IPv6 prefix is acceptable risk
-// for the in-memory day-1 setup.
+// ipKeyGenerator normalises IPv6 to a /64 subnet prefix, preventing subnet-
+// rotation bypass; IPv4 passes through unchanged.
 function userOrIpKey(req) {
   if (req.user?.id) return `u:${req.user.id}`;
-  return `ip:${req.ip}`;
+  return `ip:${ipKeyGenerator(req.ip)}`;
 }
 
 function buildLimiter({ name, windowMs, max, message }) {
