@@ -1,6 +1,8 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🆕 Næste session-kandidater:** [#563](https://github.com/NicolaiDolmer/CyclingZone/issues/563) (OneDrive secret decommission — HIGH-prio før fuldtid 2026-06-01), [#383](https://github.com/NicolaiDolmer/CyclingZone/issues/383) (Cross-PC settings — kræver pc1-session, første step i konsolideret Fase X1), [#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562) (Mobil→Claude-Code task-templating, B8), [#549](https://github.com/NicolaiDolmer/CyclingZone/issues/549) (npm audit).
+> **🆕 Næste session-kandidater:** [#563](https://github.com/NicolaiDolmer/CyclingZone/issues/563) (OneDrive secret decommission — HIGH-prio før fuldtid 2026-06-01), [#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562) (Mobil→Claude-Code task-templating, B8), [#549](https://github.com/NicolaiDolmer/CyclingZone/issues/549) (npm audit), [#557](https://github.com/NicolaiDolmer/CyclingZone/issues/557) (DISPATCH_PLAYBOOK).
+
+> **🟢 Session 2026-05-22-L — #383 Cross-PC settings.json reconciliation (PC1):** Begge PC1-only hook-scripts committet til repo: [`scripts/hooks/protect-claude-process.sh`](scripts/hooks/protect-claude-process.sh) (PreToolUse self-kill blocker) + [`scripts/hooks/cycling-manager-cleanup.sh`](scripts/hooks/cycling-manager-cleanup.sh) (SessionStart worktree self-heal). Sidstnævnte havde stale hard-coded REPO-sti `/c/Users/ndmh3/OneDrive/Skrivebord/cycling-manager` → generaliseret til `git rev-parse --show-toplevel` + origin-URL-check (CyclingZone/cycling-manager only). PC1's `~/.claude/settings.json` refactored: `bash /c/Users/ndmh3/.claude/scripts/X.sh` → `bash scripts/hooks/X.sh`. `install-user-hooks.ps1` udvidet med PreToolUse + cycling-manager-cleanup (matcher + timeout support); plugin-defaults respekterer eksisterende value (fix: tidligere overwrote `code-modernization=false` til `true`). Forward-guard tilføjet: `cross-pc-forensic-audit.ps1` nu detect `/c/Users/<name>/` patterns i `~/.claude/settings.json` + `scripts/hooks/*.sh` → error finding. PC2-rollout: kør `pwsh -File scripts/install-user-hooks.ps1` på EMMAPC efter pull.
 
 > **🟢 Session 2026-05-22-K — #538 Vercel retrigger auto-resolved:** Verificeret via Vercel MCP at latest prod-deploy `dpl_2jExVpX6jVh8qCSajFgEYvSGTTLK` = `READY` på commit `d09f062` (main HEAD). 18+ READY-deploys siden den failed `01cedaf`-deploy fra Vercel-incidenten 2026-05-21. Source-grep bekræfter "Deadline Day"-rename i i18n (`common.json:21`), "Panic Board" kun som historisk eslint-kommentar. Ingen retrigger nødvendig — efterfølgende commits trigget fresh deploys automatisk. #538 re-labelet `claude:todo` → `claude:done` med evidens-comment ([#538-comment-4520391740](https://github.com/NicolaiDolmer/CyclingZone/issues/538#issuecomment-4520391740)). Ingen kode-ændring.
 
@@ -24,7 +26,7 @@
 >
 > _Format (max 2 linjer): `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2 (B4, [#558](https://github.com/NicolaiDolmer/CyclingZone/issues/558)). Opdatér FØR session slutter._
 
-> **🤖 Working agent:** _Ingen aktiv session._
+> **🤖 Working agent:** Claude Code · CLI · PC1 · 2026-05-22 18:20
 >
 > _Format: `<agent> · <kanal> · <PC> · <ISO-tid CET>` fx `Claude Code · CLI · PC2 · 2026-05-22 14:30`. Multi-AI claim (B5, [#559](https://github.com/NicolaiDolmer/CyclingZone/issues/559)). Opdatér ved session-start; nulstil til "Ingen aktiv session" ved close-out._
 

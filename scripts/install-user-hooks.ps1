@@ -1,13 +1,19 @@
 # install-user-hooks.ps1
 #
-# Skriver SessionStart + Stop hooks til ~/.claude/settings.json paa denne PC.
+# Skriver SessionStart + PreToolUse + Stop hooks til ~/.claude/settings.json paa denne PC.
 # Idempotent: bevarer eksisterende settings, tilfoejer kun cross-PC hooks hvis de mangler.
 #
 # Hooks:
+#   PreToolUse:   'bash scripts/hooks/protect-claude-process.sh'             (block self-kill)
+#   SessionStart: 'bash scripts/hooks/cycling-manager-cleanup.sh'            (worktree self-heal)
 #   SessionStart: 'git fetch --prune origin'                                 (cross-PC sync)
 #   SessionStart: 'pwsh -File scripts/link-onedrive-context.ps1' (quiet)     (auto-relink OneDrive)
 #   SessionStart: 'bash scripts/check-stale-branches.sh'                     (warn om gone-branches)
 #   Stop:         'bash scripts/cross-pc-stop-check.sh'                      (warn om uncommitted)
+#
+# Hooks bruger repo-relative paths (scripts/hooks/*.sh). De fires med CWD =
+# projekt-root naar Claude Code starter i CyclingZone-repoet. Hvis du starter
+# Claude Code udenfor repoet vil hookene silently no-op.
 #
 # Brug: pwsh -File scripts/install-user-hooks.ps1
 
@@ -46,16 +52,18 @@ function Add-Hook {
     [Parameter(Mandatory)] [string] $Event,
     [Parameter(Mandatory)] [string] $Command,
     [Parameter(Mandatory)] [string] $MatchPattern,
-    [Parameter(Mandatory)] [string] $DisplayName
+    [Parameter(Mandatory)] [string] $DisplayName,
+    [string] $Matcher = "",
+    [int] $Timeout = 0
   )
+  $hookCmd = [ordered]@{
+    type    = "command"
+    command = $Command
+  }
+  if ($Timeout -gt 0) { $hookCmd["timeout"] = $Timeout }
   $newHook = [PSCustomObject]@{
-    matcher = ""
-    hooks   = @(
-      [PSCustomObject]@{
-        type    = "command"
-        command = $Command
-      }
-    )
+    matcher = $Matcher
+    hooks   = @([PSCustomObject]$hookCmd)
   }
   $existingProp = @($script:settings.hooks.PSObject.Properties | Where-Object { $_.Name -eq $Event })
   if ($existingProp.Count -eq 0) {
@@ -76,7 +84,21 @@ function Add-Hook {
   Write-Host "Tilfoejet ${Event}: $DisplayName (bevarer eksisterende)"
 }
 
+# --- PreToolUse hooks ---
+Add-Hook -Event "PreToolUse" `
+  -Command "bash scripts/hooks/protect-claude-process.sh" `
+  -MatchPattern "*protect-claude-process*" `
+  -DisplayName "block self-kill (claude.exe protection)" `
+  -Matcher "Bash|PowerShell" `
+  -Timeout 5
+
 # --- SessionStart hooks ---
+Add-Hook -Event "SessionStart" `
+  -Command "bash scripts/hooks/cycling-manager-cleanup.sh" `
+  -MatchPattern "*cycling-manager-cleanup*" `
+  -DisplayName "worktree self-heal (cycling-manager-cleanup)" `
+  -Timeout 10
+
 Add-Hook -Event "SessionStart" `
   -Command "git fetch --prune origin 2>&1; git status -sb" `
   -MatchPattern "*git fetch*origin*" `
@@ -102,17 +124,19 @@ Add-Hook -Event "Stop" `
 if (-not ($settings.PSObject.Properties.Name -contains "enabledPlugins")) {
   $settings | Add-Member -NotePropertyName "enabledPlugins" -NotePropertyValue ([PSCustomObject]@{}) -Force
 }
-$pluginsToEnable = @(
-  "claude-code-setup@claude-plugins-official",
-  "code-modernization@claude-plugins-official"
-)
-foreach ($plugin in $pluginsToEnable) {
+# Plugin defaults: kun tilfoejet hvis key MANGLER. Eksisterende value (true/false)
+# respekteres altid — brugeren kan eksplicit disable plugins uden at scriptet
+# overwriter det (fx code-modernization disabled per #382 token-besparelse).
+$pluginDefaults = @{
+  "claude-code-setup@claude-plugins-official" = $true
+}
+foreach ($plugin in $pluginDefaults.Keys) {
   $existing = $settings.enabledPlugins.PSObject.Properties[$plugin]
-  if ($existing -and $existing.Value -eq $true) {
-    Write-Host "[skip] Plugin allerede aktiveret: $plugin"
+  if ($existing) {
+    Write-Host "[skip] Plugin allerede konfigureret: $plugin = $($existing.Value)"
   } else {
-    $settings.enabledPlugins | Add-Member -NotePropertyName $plugin -NotePropertyValue $true -Force
-    Write-Host "Aktiveret plugin: $plugin"
+    $settings.enabledPlugins | Add-Member -NotePropertyName $plugin -NotePropertyValue $pluginDefaults[$plugin] -Force
+    Write-Host "Tilfoejet plugin (default=$($pluginDefaults[$plugin])): $plugin"
   }
 }
 

@@ -153,6 +153,44 @@ if (Test-Path $manus) {
   }
 }
 
+# --- 5b. Hard-coded user paths in hooks + settings ---
+# Forward-guard fra #383: any `/c/Users/<name>/` reference in ~/.claude/settings.json
+# or scripts/hooks/*.sh breaks cross-PC reproducibility — fails on the other PC
+# whose USERPROFILE name differs (ndmh3 vs emmas). Comments are excluded.
+$pathPattern = '/c/Users/[A-Za-z0-9_.-]+/'
+
+$claudeSettings = Join-Path $env:USERPROFILE ".claude\settings.json"
+if (Test-Path $claudeSettings) {
+  $content = Get-Content $claudeSettings -Raw -ErrorAction SilentlyContinue
+  if ($content -and $content -match $pathPattern) {
+    $matchValue = ([regex]::Match($content, $pathPattern)).Value
+    Add-Finding -Severity "error" -Category "hardcoded-user-path" -Path $claudeSettings `
+      -Message "Hardcoded user path '$matchValue' i ~/.claude/settings.json — vil fejle paa anden PC" `
+      -Fix "Refactor til repo-relative path (fx 'bash scripts/hooks/X.sh'); kor 'pwsh -File scripts/install-user-hooks.ps1' for idempotent re-install"
+  }
+}
+
+$hooksDir = Join-Path $RepoRoot "scripts\hooks"
+if (Test-Path $hooksDir) {
+  $hookFiles = Get-ChildItem $hooksDir -Filter "*.sh" -File -ErrorAction SilentlyContinue
+  foreach ($f in $hookFiles) {
+    $lines = Get-Content $f.FullName -ErrorAction SilentlyContinue
+    $lineNo = 0
+    foreach ($line in $lines) {
+      $lineNo++
+      # Skip comment-only lines (bash shebang or # comments after optional whitespace).
+      if ($line -match '^\s*#') { continue }
+      if ($line -match $pathPattern) {
+        $matchValue = ([regex]::Match($line, $pathPattern)).Value
+        Add-Finding -Severity "error" -Category "hardcoded-user-path" -Path "$($f.FullName):$lineNo" `
+          -Message "Hardcoded user path '$matchValue' i hook-script linje $lineNo — vil fejle paa anden PC" `
+          -Fix "Erstat med git-baseret detection (fx 'git rev-parse --show-toplevel') eller relative path"
+        break
+      }
+    }
+  }
+}
+
 # --- 5. Git: uncommitted / unpushed ---
 Push-Location $RepoRoot
 try {
