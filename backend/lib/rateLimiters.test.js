@@ -137,6 +137,21 @@ test("userOrIpKey prefers req.user.id over req.ip", () => {
   );
 });
 
+test("userOrIpKey normalises IPv6 addresses to /64 subnet", () => {
+  // Two hosts in the same /64 subnet → same rate-limit bucket
+  const keyA = userOrIpKey({ ip: "2001:db8:85a3::1" });
+  const keyB = userOrIpKey({ ip: "2001:db8:85a3::2" });
+  assert.equal(keyA, keyB);
+  assert.match(keyA, /^ip:/);
+
+  // Hosts in different /64 subnets → different buckets
+  const keyC = userOrIpKey({ ip: "2001:db8:85b3::1" });
+  assert.notEqual(keyA, keyC);
+
+  // IPv4 remains unchanged
+  assert.equal(userOrIpKey({ ip: "10.0.0.1" }), "ip:10.0.0.1");
+});
+
 test("rateLimiters.js wires production limiters with expected names", async () => {
   // Smoke: each production limiter rate-limits at its threshold + 1 by sending
   // a tiny burst with the user-key bypass header so the test is deterministic.
