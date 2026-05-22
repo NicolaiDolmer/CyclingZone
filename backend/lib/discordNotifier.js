@@ -171,15 +171,26 @@ async function postDm(channelId, botToken, payload) {
 
 /**
  * Send a raw payload as DM to a Discord user (best-effort, never throws).
+ *
+ * #449: silent return-pattern fjernet — vi logger nu hvorfor vi springer over
+ * (mangler bot-token, mangler discord_id) så Railway-logs kan vise om DMs
+ * fejler pga. config (token mangler/roteret) eller data (user uden discord_id).
  */
 export async function sendDM(discordId, payload) {
   const botToken = process.env.DISCORD_BOT_TOKEN;
-  if (!botToken || !discordId) return;
+  if (!botToken) {
+    console.warn("[discord-dm:skip] DISCORD_BOT_TOKEN ikke sat — DM ikke sendt", { discordId: discordId ? "set" : "missing" });
+    return;
+  }
+  if (!discordId) {
+    console.warn("[discord-dm:skip] discordId mangler — DM ikke sendt");
+    return;
+  }
   try {
     const channelId = await openDmChannel(discordId, botToken);
     await postDm(channelId, botToken, payload);
   } catch (err) {
-    console.error("Discord sendDM error:", err.message);
+    console.error("[discord-dm:error] sendDM failed", { discordId, error: err.message });
   }
 }
 
@@ -222,7 +233,12 @@ export async function notifyDiscordDM({ teamId, type, title, description, fields
   }
 
   const discordId = await getDmRecipient(teamId);
-  if (!discordId) return;
+  if (!discordId) {
+    // #449: ikke en fejl (user kan have valgt opt-out eller mangler discord_id),
+    // men log som info så vi kan se hvis ALLE DMs skippes pga. data-issue.
+    console.info("[discord-dm:no-recipient]", { teamId, type });
+    return;
+  }
   await sendDM(discordId, payload);
 }
 

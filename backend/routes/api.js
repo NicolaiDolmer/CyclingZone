@@ -1094,7 +1094,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
       newBid: amount,
       bidderName: req.team.name,
       teamId: auction.current_bidder_id,
-    }).catch(() => {});
+    }).catch((e) => console.error("[notifyOutbid] failed", { auctionId: auction.id, error: e.message }));
   }
 
   // Only notify seller if they're a real human manager selling their own rider
@@ -1588,7 +1588,7 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
     offerAmount: offer_amount,
     buyerName: req.team.name,
     teamId: rider.team_id,
-  }).catch(() => {});
+  }).catch((e) => console.error("[notifyTransferOffer] failed", { offerId: data.id, error: e.message }));
 
   res.status(201).json(data);
 });
@@ -1712,7 +1712,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
       accepted: true,
       teamId: offer.buyer_team_id,
-    }).catch(() => {});
+    }).catch((e) => console.error("[notifyTransferResponse:accepted] failed", { offerId: offer.id, error: e.message }));
 
     return res.json({ success: true, action: "awaiting_confirmation", price });
   }
@@ -1727,7 +1727,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
       accepted: false,
       teamId: offer.buyer_team_id,
-    }).catch(() => {});
+    }).catch((e) => console.error("[notifyTransferResponse:rejected] failed", { offerId: offer.id, error: e.message }));
     return res.json({ success: true, action: "rejected" });
   }
 
@@ -1748,7 +1748,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       accepted: false,
       teamId: offer.buyer_team_id,
       counterAmount: counter_amount,
-    }).catch(() => {});
+    }).catch((e) => console.error("[notifyTransferResponse:countered] failed", { offerId: offer.id, error: e.message }));
     return res.json({ success: true, action: "countered", counter_amount });
   }
 
@@ -4654,6 +4654,102 @@ router.post("/admin/discord/test", requireAdmin, adminWriteLimiter, async (req, 
   const { webhook_url } = req.body;
   if (!webhook_url) return res.status(400).json({ error: "webhook_url påkrævet" });
   const result = await sendTestEmbed(webhook_url);
+  res.json({ ...result, timestamp: new Date().toISOString() });
+});
+
+// #517: discord_settings ejes nu af backend (service_role bypasser RLS, public-read
+// policy droppet 2026-05-22). Webhook URLs er secrets — masking sker server-side
+// så frontend kun ser sidste 8 tegn til UI-genkendelse, fuld URL aldrig sendes.
+function maskWebhookUrl(url) {
+  if (!url || typeof url !== "string") return null;
+  const tail = url.slice(-8);
+  return `https://discord.com/api/webhooks/…${tail}`;
+}
+
+// GET /api/admin/discord-settings — list alle webhooks (maskerede URLs)
+router.get("/admin/discord-settings", requireAdmin, async (req, res) => {
+  const { data, error } = await supabase
+    .from("discord_settings")
+    .select("id, webhook_name, webhook_type, is_default, created_at, webhook_url")
+    .order("created_at");
+  if (error) return res.status(500).json({ error: error.message });
+  const webhooks = (data || []).map((row) => ({
+    id: row.id,
+    webhook_name: row.webhook_name,
+    webhook_type: row.webhook_type,
+    is_default: row.is_default,
+    created_at: row.created_at,
+    webhook_url_masked: maskWebhookUrl(row.webhook_url),
+  }));
+  res.json({ webhooks });
+});
+
+// POST /api/admin/discord-settings — opret ny webhook
+router.post("/admin/discord-settings", requireAdmin, adminWriteLimiter, async (req, res) => {
+  const { webhook_name, webhook_url, webhook_type, is_default } = req.body || {};
+  if (!webhook_name || !webhook_url) {
+    return res.status(400).json({ error: "webhook_name og webhook_url påkrævet" });
+  }
+  if (!/^https:\/\/(canary\.|ptb\.)?discord(app)?\.com\/api\/webhooks\//.test(webhook_url)) {
+    return res.status(400).json({ error: "webhook_url skal være en Discord webhook URL" });
+  }
+  const { count } = await supabase
+    .from("discord_settings")
+    .select("id", { count: "exact", head: true });
+  const shouldBeDefault = is_default === true || (count || 0) === 0;
+  if (shouldBeDefault) {
+    await supabase.from("discord_settings").update({ is_default: false }).neq("id", "00000000-0000-0000-0000-000000000000");
+  }
+  const { data, error } = await supabase
+    .from("discord_settings")
+    .insert({
+      webhook_name,
+      webhook_url,
+      webhook_type: webhook_type || "general",
+      is_default: shouldBeDefault,
+    })
+    .select("id")
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json({ id: data.id, is_default: shouldBeDefault });
+});
+
+// PATCH /api/admin/discord-settings/:id/default — sæt som standard-webhook
+router.patch("/admin/discord-settings/:id/default", requireAdmin, adminWriteLimiter, async (req, res) => {
+  const { id } = req.params;
+  const { error: clearErr } = await supabase
+    .from("discord_settings")
+    .update({ is_default: false })
+    .neq("id", id);
+  if (clearErr) return res.status(500).json({ error: clearErr.message });
+  const { error } = await supabase
+    .from("discord_settings")
+    .update({ is_default: true })
+    .eq("id", id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+// DELETE /api/admin/discord-settings/:id
+router.delete("/admin/discord-settings/:id", requireAdmin, adminWriteLimiter, async (req, res) => {
+  const { error } = await supabase
+    .from("discord_settings")
+    .delete()
+    .eq("id", req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+// POST /api/admin/discord-settings/:id/test — test gemte webhook via stored URL
+// Frontend kan kalde denne i stedet for selv at indsende URL (som vi ikke længere returnerer).
+router.post("/admin/discord-settings/:id/test", requireAdmin, adminWriteLimiter, async (req, res) => {
+  const { data, error } = await supabase
+    .from("discord_settings")
+    .select("webhook_url")
+    .eq("id", req.params.id)
+    .single();
+  if (error || !data) return res.status(404).json({ error: "Webhook ikke fundet" });
+  const result = await sendTestEmbed(data.webhook_url);
   res.json({ ...result, timestamp: new Date().toISOString() });
 });
 
