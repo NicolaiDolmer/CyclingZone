@@ -1,0 +1,35 @@
+# CODEOWNERS — AI-rolle file-patterns (G5)
+#
+# Mapper fil-patterns til primær review-ansvarlig.
+# Formål: signal til multi-AI workflow om hvilken AI-agent der reviewer hvad.
+#
+# AI-rolle-nøgle (bruges af Claude Code + Codex dispatch):
+#   CLAUDE  — Claude Code (claude-code-action) — primær: frontend + backend
+#   CODEX   — OpenAI Codex — docs-only cleanup, surface-level review
+#   MANUS   — Manus — ADR-decisions + arkitektur-dokumenter
+#
+# GitHub kræver gyldige GitHub-brugernavne; @NicolaiDolmer er fallback-owner
+# der sikrer PR-review-enforcement mens AI-rollerne dokumenteres i kommentarer.
+
+# === FRONTEND (AI-rolle: CLAUDE) ===
+frontend/**                         @NicolaiDolmer
+
+# === BACKEND (AI-rolle: CLAUDE) ===
+backend/**                          @NicolaiDolmer
+
+# === ADR / DECISIONS (AI-rolle: MANUS) ===
+# Arkitekturbeslutninger — kræver tungt domæne-review
+docs/decisions/**                   @NicolaiDolmer
+
+# === DOCS (AI-rolle: CODEX eller CLAUDE — fleksibel) ===
+# Docs-only cleanup kan delegeres til Codex; arkitektur-docs til Claude
+docs/**                             @NicolaiDolmer
+
+# === DATABASE (AI-rolle: CLAUDE) ===
+# Migreringer og skema-ændringer — kritisk scope
+database/**                         @NicolaiDolmer
+
+# === KONFIGURATION + CI (AI-rolle: CLAUDE) ===
+.github/**                          @NicolaiDolmer
+*.json                              @NicolaiDolmer
+*.mjs                               @NicolaiDolmer
