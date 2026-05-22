@@ -1,6 +1,8 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🆕 Næste session-kandidater:** [#558](https://github.com/NicolaiDolmer/CyclingZone/issues/558) (NOW.md next-action felt), [#563](https://github.com/NicolaiDolmer/CyclingZone/issues/563) (OneDrive secret decommission), [#383](https://github.com/NicolaiDolmer/CyclingZone/issues/383) (Cross-PC settings — kræver pc1-session, første step i konsolideret Fase X1), [#549](https://github.com/NicolaiDolmer/CyclingZone/issues/549) (npm audit).
+> **🆕 Næste session-kandidater:** [#563](https://github.com/NicolaiDolmer/CyclingZone/issues/563) (OneDrive secret decommission — HIGH-prio før fuldtid 2026-06-01), [#383](https://github.com/NicolaiDolmer/CyclingZone/issues/383) (Cross-PC settings — kræver pc1-session, første step i konsolideret Fase X1), [#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562) (Mobil→Claude-Code task-templating, B8), [#549](https://github.com/NicolaiDolmer/CyclingZone/issues/549) (npm audit).
+
+> **🟢 Session 2026-05-22-J — NOW.md Next action + Working agent felter (#558+#559, B4+B5):** Bundlet PR [#573](https://github.com/NicolaiDolmer/CyclingZone/pull/573) `d07418b` (auto-merged, docs-only). NOW.md "Aktiv styring" har nu to nye blockquote-felter: 🎯 **Next action** (cross-device handoff PC1↔mobil↔PC2 pointer, max 2 linjer, format-spec inline) + 🤖 **Working agent** (multi-AI claim med format `<agent> · <kanal> · <PC> · <ISO-tid CET>`). CLAUDE.md Start trin 1 peger på begge + STOP-regel ved overlappende Working agent (multi-session safety); Close-out trin 2 obligatorisk opdatering. Denne session er første test af close-out-protokollen (Next action peger nu på #563).
 
 > **🟢 Session 2026-05-22-I — Verdensklasse-roadmap konsolideret (#560, B6):** Ny doc [`docs/VERDENSKLASSE_ROADMAP.md`](docs/VERDENSKLASSE_ROADMAP.md) mapper Track A (Step 2-7 #356/#383/#385/#386/#388/#455/#357) + Track B (Epic #323 4-fase) til én tabel pr. step/fase med status, owner-AI, effort, blocker. 4 overlap-punkter identificeret + kombineret eksekverings-rækkefølge X1-X4 (X1=cross-PC stabilitet, X2=secret-mgmt før fuldtid, X3=bootstrap+nice-to-have, X4=skalering Q3). Cross-linked fra CLAUDE.md + META_DOCS_INDEX.md + kommentar på 6 kilde-issues. PR: [#572](https://github.com/NicolaiDolmer/CyclingZone/pull/572) (`docs-only`).
 
@@ -16,7 +18,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** _Ingen aktiv. Start med #1 i "Næste session-kandidater" ovenfor._
+> **🎯 Next action:** [#563](https://github.com/NicolaiDolmer/CyclingZone/issues/563) — OneDrive secret-folder decommission (B10, HIGH-prio før fuldtid 2026-06-01; needs-decision label = afklar scope med bruger først).
 >
 > _Format (max 2 linjer): `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2 (B4, [#558](https://github.com/NicolaiDolmer/CyclingZone/issues/558)). Opdatér FØR session slutter._
 
