@@ -8,7 +8,7 @@
     "seed:uci-race-points": "node scripts/seedUciMenRacePoints.js",
     "economy:baseline": "node scripts/economyBaselineSimulation.js",
     "season:end:verify-repair": "node scripts/verifySeasonEndRepair.js",
-    "test": "node --test",
+    "test": "node --test --import ./test-setup.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write --ignore-unknown .",

@@ -4,6 +4,27 @@
 > "manual-test-only"-gappet for auktions-cluster så AI kan verificere AC'er
 > end-to-end uden manuel klik.
 
+## Backend unit-tests — WebSocket polyfill (#552)
+
+CI kører Node 20, som mangler native `WebSocket`. `@supabase/realtime-js` init'er
+eagerly ved `createClient()`, så enhver test-fil der direkte eller transitivt
+importerer `@supabase/supabase-js` crasher med:
+
+```
+Error: Node.js 20 detected without native WebSocket support.
+```
+
+Fix: [`backend/test-setup.js`](../backend/test-setup.js) polyfiller `globalThis.WebSocket`
+via `ws` (allerede dep). Køres via `--import` flag i `backend/package.json`'s
+test script.
+
+**Forward-guard:** nye test-filer der importerer supabase (direkte eller transitivt
+via fx `discordNotifier.js`) virker automatisk uden ekstra arbejde. Polyfillen
+fjernes når CI opgraderes til Node 22+ (har native `WebSocket`).
+
+Alternativt pattern (kun hvis polyfillen ikke matcher): extract pure functions til
+separat modul uden supabase-import. Eksempel: [`backend/lib/discordDmTarget.js`](../backend/lib/discordDmTarget.js).
+
 ## Test-konti
 
 3 dedikerede konti i prod-Supabase (markeret `is_test_account=true`, default 800K balance):
