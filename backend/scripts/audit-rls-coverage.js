@@ -101,13 +101,46 @@ function classify(tables, frontendRefs) {
   return findings;
 }
 
+// Required-policy guard: specific named policies that must exist on critical tables.
+// Catches Studio-side deletion or unapplied migrations even when SELECT coverage passes.
+// Text-contract proves the SQL was correct; this proves it was actually applied (#518).
+const REQUIRED_POLICIES = {
+  pending_race_result_rows: [
+    "Owner or admin insert pending rows",
+    "Owner or admin read pending rows",
+  ],
+};
+
+function classifyPolicyGuard(tables) {
+  const findings = [];
+  for (const [tableName, requiredNames] of Object.entries(REQUIRED_POLICIES)) {
+    const tableData = tables.find((t) => t.table_name === tableName);
+    const existing = new Set(tableData?.policy_names ?? []);
+    for (const name of requiredNames) {
+      if (!existing.has(name)) {
+        findings.push({
+          table: tableName,
+          severity: "critical",
+          reason: `Required policy missing on live DB: "${name}" — #518 guard unapplied or deleted`,
+          policy_count: tableData?.policy_count ?? 0,
+          policy_names: tableData?.policy_names ?? [],
+          frontend_files: [],
+        });
+      }
+    }
+  }
+  return findings;
+}
+
 const [tables, frontendRefs] = await Promise.all([
   fetchRlsState(),
   findFrontendTableRefs(),
 ]);
 const findings = classify(tables, frontendRefs);
-const critical = findings.filter((f) => f.severity === "critical");
-const info = findings.filter((f) => f.severity === "info");
+const guardFindings = classifyPolicyGuard(tables);
+const allFindings = [...findings, ...guardFindings];
+const critical = allFindings.filter((f) => f.severity === "critical");
+const info = allFindings.filter((f) => f.severity === "info");
 
 if (JSON_OUT) {
   console.log(JSON.stringify({
@@ -120,14 +153,14 @@ if (JSON_OUT) {
 } else {
   console.log(`Scanned ${tables.length} tables in public schema.\n`);
   if (critical.length === 0) {
-    console.log("OK — no frontend-referenced tables are blocked by missing RLS policies.\n");
+    console.log("OK — no frontend-referenced tables are blocked by missing RLS policies, and all required named policies are present.\n");
   } else {
-    console.log(`CRITICAL: ${critical.length} table(s) blocked for authenticated frontend reads:\n`);
+    console.log(`CRITICAL: ${critical.length} finding(s):\n`);
     for (const f of critical) {
       console.log(`  ${f.table}`);
       console.log(`    reason:    ${f.reason}`);
       console.log(`    policies:  ${f.policy_count} (${f.policy_names.join(", ") || "—"})`);
-      console.log(`    used by:   ${f.frontend_files.join(", ")}`);
+      if (f.frontend_files.length > 0) console.log(`    used by:   ${f.frontend_files.join(", ")}`);
       console.log();
     }
   }
