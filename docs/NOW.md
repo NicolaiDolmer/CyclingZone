@@ -1,6 +1,8 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🆕 Næste session-kandidater:** #563-decision (A/B/C på OneDrive-decommission scope, høj-prio før fuldtid 2026-06-01). [#576](https://github.com/NicolaiDolmer/CyclingZone/pull/576) merge når CI grøn (lukker #549). UI-verify carry-forward: [#449](https://github.com/NicolaiDolmer/CyclingZone/issues/449) Discord DM, [#505](https://github.com/NicolaiDolmer/CyclingZone/issues/505) race_points editor, [#529](https://github.com/NicolaiDolmer/CyclingZone/issues/529) AdminPage tabs.
+> **🆕 Næste session-kandidater:** [#582](https://github.com/NicolaiDolmer/CyclingZone/pull/582) UI-verify XLSX dynamic import (test upload-flow + patch-notes v3.92, merge når OK). #563-decision (A/B/C på OneDrive-decommission scope, høj-prio før fuldtid 2026-06-01). UI-verify carry-forward: [#449](https://github.com/NicolaiDolmer/CyclingZone/issues/449) Discord DM, [#505](https://github.com/NicolaiDolmer/CyclingZone/issues/505) race_points editor, [#529](https://github.com/NicolaiDolmer/CyclingZone/issues/529) AdminPage tabs.
+
+> **🟢 Session 2026-05-23-I — PR merge-runde KOMPLET (5/6):** 5 PRs merget i sekventiel rebase: [#576](https://github.com/NicolaiDolmer/CyclingZone/pull/576) npm overrides (lukker #549), [#583](https://github.com/NicolaiDolmer/CyclingZone/pull/583) docs cleanup (#522), [#585](https://github.com/NicolaiDolmer/CyclingZone/pull/585) RLS required-policy guard (#580), [#581](https://github.com/NicolaiDolmer/CyclingZone/pull/581) IPv6 ipKeyGenerator (#579), [#584](https://github.com/NicolaiDolmer/CyclingZone/pull/584) economy idempotency-guard (#577). Alle backend/docs-only, admin-bypass på check-verification (advisory, ikke required). [#582](https://github.com/NicolaiDolmer/CyclingZone/pull/582) frontend XLSX dynamic import rebased + Brugerverifikation-sektion tilføjet → afventer UI-verify før merge. Bot's session-IDs (alle "2026-05-22-R") omdøbt til D/E/F/G/H ved rebase. Refs PR-thread.
 
 > **🟢 Session 2026-05-23-G — #577 Idempotency-fix for negative-interest debit KOMPLET:** `processTeamSeasonPayroll()` debiterede negativ-balance-rente uden idempotency-guard — ved cron-retry ville renten blive trukket flere gange (og hvert gentagende beløb ville være større fordi balancen er mere negativ). Fix: tilføjet `idempotent: true` + `idempotencyKey: negative_interest:${team.id}:${seasonId}` til interest-debit, konsistent med salary-debits eksisterende pattern. `uniq_finance_idempotency_key` DB-index (2026-05-09) dækker dette uden ny migration. Ny test i `economyInvariants.test.js` (test 10) verificerer at gentaget kørsel ikke dobbelt-debiterer. Refs [#577](https://github.com/NicolaiDolmer/CyclingZone/issues/577).
 
@@ -24,7 +26,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** #563-decision (vælg A/B/C på OneDrive-decommission scope, høj-prio før fuldtid 2026-06-01). Merge [#576](https://github.com/NicolaiDolmer/CyclingZone/pull/576) når CI grøn. UI-verify åbne done-issues (#449/#505/#529) hvis tid.
+> **🎯 Next action:** UI-verify [#582](https://github.com/NicolaiDolmer/CyclingZone/pull/582) XLSX dynamic import (preview: cycling-zone-git-claude-issue-5-31a168) → merge når OK. Derefter #563-decision (A/B/C på OneDrive-decommission scope, høj-prio før fuldtid 2026-06-01).
 >
 > _Format (max 2 linjer): `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
