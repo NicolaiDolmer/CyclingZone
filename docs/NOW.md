@@ -15,3 +15,12 @@
 > **📚 Tidligere sessions arkiveret:** Session 2026-05-22-A/B/C/D i [`docs/archive/NOW-2026-05-22.md`](docs/archive/NOW-2026-05-22.md).
 
 ## Aktiv styring
+
+> **🎯 Next action:** _Ingen aktiv. Start med #1 i "Næste session-kandidater" ovenfor._
+>
+> _Format (max 2 linjer): `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2 (B4, [#558](https://github.com/NicolaiDolmer/CyclingZone/issues/558)). Opdatér FØR session slutter._
+
+> **🤖 Working agent:** _Ingen aktiv session._
+>
+> _Format: `<agent> · <kanal> · <PC> · <ISO-tid CET>` fx `Claude Code · CLI · PC2 · 2026-05-22 14:30`. Multi-AI claim (B5, [#559](https://github.com/NicolaiDolmer/CyclingZone/issues/559)). Opdatér ved session-start; nulstil til "Ingen aktiv session" ved close-out._
+
