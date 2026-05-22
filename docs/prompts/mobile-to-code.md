@@ -78,6 +78,6 @@ For tasks der kræver investigation FØR du ved hvad du vil implementere, brug i
 
 - Kanal-til-task matrix: [`docs/AI_CHANNEL_ROUTING.md`](../AI_CHANNEL_ROUTING.md) (B1, [#556](https://github.com/NicolaiDolmer/CyclingZone/issues/556)).
 - Prompt-bibliotek udvidelse: [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561) (B7, planlagte yderligere templates).
-- Dispatch-konkret playbook: [#557](https://github.com/NicolaiDolmer/CyclingZone/issues/557) (B2).
+- Dispatch-konkret playbook (safe/forbidden + verification on return): [`docs/DISPATCH_PLAYBOOK.md`](../DISPATCH_PLAYBOOK.md) (B2, [#557](https://github.com/NicolaiDolmer/CyclingZone/issues/557)).
 - Workflow-analyse (kilde): [`docs/archive/2026-05-22-workflow-analyse.md`](../archive/2026-05-22-workflow-analyse.md), sektion 5B + 10.
 - Tracker: [#555](https://github.com/NicolaiDolmer/CyclingZone/issues/555).

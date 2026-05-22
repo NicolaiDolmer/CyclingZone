@@ -70,6 +70,6 @@ Aldrig-kolonnen i matrixen er ikke konvention — det er konkrete fejl-modes vi 
 
 - Workflow-analyse (kilde): [`docs/archive/2026-05-22-workflow-analyse.md`](archive/2026-05-22-workflow-analyse.md), sektion 3-4.
 - Mobile → Claude Code task-format (5-linje template + eksempler): [`docs/prompts/mobile-to-code.md`](prompts/mobile-to-code.md) (B8, [#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562)).
-- Dispatch-konkret playbook: planned i [#557](https://github.com/NicolaiDolmer/CyclingZone/issues/557) (`docs/DISPATCH_PLAYBOOK.md`).
+- Dispatch-konkret playbook (safe/forbidden tasks + verification on return): [`docs/DISPATCH_PLAYBOOK.md`](DISPATCH_PLAYBOOK.md) (B2, [#557](https://github.com/NicolaiDolmer/CyclingZone/issues/557)).
 - Cowork-konkret playbook: planned senere ([fase C i analyse-doc, B3]).
 - Tracker: [#555](https://github.com/NicolaiDolmer/CyclingZone/issues/555) (workflow-analyse epic) → [#556](https://github.com/NicolaiDolmer/CyclingZone/issues/556) (denne doc).
