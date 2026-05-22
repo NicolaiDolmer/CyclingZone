@@ -68,12 +68,13 @@ if [ "$ARCHIVE_AFTER" -ge "$ARCHIVE_BEFORE" ]; then
   echo "PASS  archive dir grew or stayed same ($ARCHIVE_BEFORE -> $ARCHIVE_AFTER)"
 fi
 
-# Test 2: Aktiv styring-protection (regression-guard mod dfcee56-incident 2026-05-22).
-# Felter under "## Aktiv styring" må ALDRIG arkiveres.
+# Test 2: Aktiv styring-protection MED en cut-point header til archivering.
+# Regression-guard mod dfcee56-incident 2026-05-22 (Aktiv styring arkiveret som
+# hvis det var historisk indhold).
 {
   echo "# NOW — Aktuel arbejdsstatus"
   echo ""
-  echo "> Næste session-kandidater: noget"
+  echo "## Recent sessions"
   echo ""
   for i in $(seq 1 25); do echo "> Session quote $i"; echo ""; done
   echo "## Aktiv styring"
@@ -88,8 +89,6 @@ fi
 } > docs/NOW.md
 
 bash scripts/check-now-md.sh </dev/null >/dev/null 2>&1
-
-NEW_LINES=$(wc -l < docs/NOW.md)
 
 if grep -q "SENTINEL_NEXT_ACTION_KEEP" docs/NOW.md && grep -q "SENTINEL_WORKING_AGENT_KEEP" docs/NOW.md; then
   PASS=$((PASS+1))
@@ -107,7 +106,7 @@ else
   echo "FAIL  '## Aktiv styring' header missing from NOW.md after trim"
 fi
 
-# Sanity: noget gammelt session-quote MÅ være arkiveret (ellers virker trim ikke).
+# Sanity: gamle session-quotes MÅ være arkiveret (cut-header eksisterer).
 TODAY_ARCHIVE="docs/archive/NOW-$(date +%F).md"
 if [ -f "$TODAY_ARCHIVE" ] && grep -q "Session quote" "$TODAY_ARCHIVE"; then
   PASS=$((PASS+1))
@@ -115,6 +114,45 @@ if [ -f "$TODAY_ARCHIVE" ] && grep -q "Session quote" "$TODAY_ARCHIVE"; then
 else
   FAIL=$((FAIL+1))
   echo "FAIL  Old session quotes NOT archived (expected at least one in $TODAY_ARCHIVE)"
+fi
+
+# Test 3: real-world layout — kun ÉN ## header (Aktiv styring), session-quotes er
+# blockquotes uden ## boundaries. Script må IKKE arkivere (ingen sikker cut) men
+# må heller IKKE ødelægge filen.
+{
+  echo "# NOW — Aktuel arbejdsstatus"
+  echo ""
+  echo "> Næste session-kandidater: noget"
+  echo ""
+  for i in $(seq 1 12); do echo "> Session quote $i — lang nok til at fylde linjen"; echo ""; done
+  echo "## Aktiv styring"
+  echo ""
+  echo "> **🎯 Next action:** SENTINEL_REAL_WORLD_NEXT"
+  echo ""
+  echo "> **🤖 Working agent:** SENTINEL_REAL_WORLD_WORKING"
+} > docs/NOW.md
+
+LINES_BEFORE=$(wc -l < docs/NOW.md)
+SHA_BEFORE=$(md5sum docs/NOW.md | cut -d' ' -f1)
+bash scripts/check-now-md.sh </dev/null >/dev/null 2>&1
+LINES_AFTER=$(wc -l < docs/NOW.md)
+SHA_AFTER=$(md5sum docs/NOW.md | cut -d' ' -f1)
+
+if grep -q "SENTINEL_REAL_WORLD_NEXT" docs/NOW.md && grep -q "SENTINEL_REAL_WORLD_WORKING" docs/NOW.md; then
+  PASS=$((PASS+1))
+  echo "PASS  Real-world layout: sentinels preserved"
+else
+  FAIL=$((FAIL+1))
+  echo "FAIL  Real-world layout: sentinels LOST (regression)"
+fi
+
+# Når der ingen pre-Aktiv-styring ## headers er, skal scriptet skip-archive — fil unchanged.
+if [ "$SHA_BEFORE" = "$SHA_AFTER" ]; then
+  PASS=$((PASS+1))
+  echo "PASS  Real-world layout: file unchanged when no safe cut exists (no destructive trim)"
+else
+  FAIL=$((FAIL+1))
+  echo "FAIL  Real-world layout: file modified despite no safe cut (lines $LINES_BEFORE -> $LINES_AFTER)"
 fi
 
 echo ""

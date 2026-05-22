@@ -24,34 +24,39 @@ if [ -f "docs/NOW.md" ]; then
     # Find "## Aktiv styring" — alt fra den linje og frem er PROTECTED (active state).
     AKTIV_LINE=$(grep -n '^## Aktiv styring' "docs/NOW.md" | head -1 | cut -d: -f1)
 
-    # Find sidste "## " header der IKKE er Aktiv styring (kandidat-cut for arkivering).
-    # Hvis Aktiv styring er på fx linje 23, søges kun i linjer 1..22.
     if [ -n "$AKTIV_LINE" ]; then
+      # Find sidste "## " header FØR Aktiv styring som kandidat-cut.
       CUT_LINE=$(head -n $((AKTIV_LINE - 1)) "docs/NOW.md" | grep -n '^## ' | tail -1 | cut -d: -f1)
-    else
-      CUT_LINE=$(head -30 "docs/NOW.md" | grep -n '^## ' | tail -1 | cut -d: -f1)
-    fi
-    if [ -z "$CUT_LINE" ] || [ "$CUT_LINE" -lt 5 ]; then
-      CUT_LINE=30
-    fi
 
-    if [ -n "$AKTIV_LINE" ]; then
-      # Archive ONLY lines (CUT_LINE+1)..(AKTIV_LINE-1). Aktiv styring + alt under
-      # forbliver intakt i NOW.md.
-      {
-        echo ""
-        echo "## Auto-archived $(date -Iseconds)"
-        echo ""
-        sed -n "$((CUT_LINE + 1)),$((AKTIV_LINE - 1))p" "docs/NOW.md"
-      } >> "$ARCHIVE_FILE"
+      if [ -z "$CUT_LINE" ] || [ "$CUT_LINE" -ge $((AKTIV_LINE - 1)) ]; then
+        # Ingen brugbar pre-Aktiv-styring header (eller header er klistret op ad
+        # Aktiv styring uden indhold imellem). Vi kan ikke auto-arkivere uden
+        # at risikere protected section — warn og skip.
+        WARNINGS+=("NOW.md er $L linjer men ingen brugbar '## '-header foer '## Aktiv styring' - skip auto-archive. Manuel trim af session-blockquotes kraevet.")
+      else
+        # Archive ONLY lines (CUT_LINE+1)..(AKTIV_LINE-1). Aktiv styring + alt under
+        # forbliver intakt i NOW.md.
+        {
+          echo ""
+          echo "## Auto-archived $(date -Iseconds)"
+          echo ""
+          sed -n "$((CUT_LINE + 1)),$((AKTIV_LINE - 1))p" "docs/NOW.md"
+        } >> "$ARCHIVE_FILE"
 
-      # Reconstruct NOW.md = lines 1..CUT_LINE + Aktiv styring og videre.
-      {
-        head -n "$CUT_LINE" "docs/NOW.md"
-        tail -n +"$AKTIV_LINE" "docs/NOW.md"
-      } > "docs/NOW.md.tmp" && mv "docs/NOW.md.tmp" "docs/NOW.md"
+        # Reconstruct NOW.md = lines 1..CUT_LINE + Aktiv styring og videre.
+        {
+          head -n "$CUT_LINE" "docs/NOW.md"
+          tail -n +"$AKTIV_LINE" "docs/NOW.md"
+        } > "docs/NOW.md.tmp" && mv "docs/NOW.md.tmp" "docs/NOW.md"
+
+        WARNINGS+=("NOW.md var $L linjer - auto-arkiverede linjer $((CUT_LINE + 1))..$((AKTIV_LINE - 1)) til $ARCHIVE_FILE (Aktiv styring bevaret)")
+      fi
     else
       # Legacy behavior (ingen Aktiv styring-sektion).
+      CUT_LINE=$(head -30 "docs/NOW.md" | grep -n '^## ' | tail -1 | cut -d: -f1)
+      if [ -z "$CUT_LINE" ] || [ "$CUT_LINE" -lt 5 ]; then
+        CUT_LINE=30
+      fi
       {
         echo ""
         echo "## Auto-archived $(date -Iseconds)"
@@ -59,9 +64,8 @@ if [ -f "docs/NOW.md" ]; then
         tail -n +$((CUT_LINE + 1)) "docs/NOW.md"
       } >> "$ARCHIVE_FILE"
       head -n "$CUT_LINE" "docs/NOW.md" > "docs/NOW.md.tmp" && mv "docs/NOW.md.tmp" "docs/NOW.md"
+      WARNINGS+=("NOW.md var $L linjer - auto-arkiverede linjer >${CUT_LINE} til $ARCHIVE_FILE")
     fi
-
-    WARNINGS+=("NOW.md var $L linjer - auto-arkiverede linjer >${CUT_LINE} til $ARCHIVE_FILE")
   fi
 fi
 
