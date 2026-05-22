@@ -1,6 +1,8 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🆕 Næste session-kandidater:** [#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562) (Mobil→Claude-Code task-templating, B8), [#549](https://github.com/NicolaiDolmer/CyclingZone/issues/549) (npm audit), [#557](https://github.com/NicolaiDolmer/CyclingZone/issues/557) (DISPATCH_PLAYBOOK), #563-decision (A/B/C på OneDrive-decommission scope). #339 → KOMPLET denne session.
+> **🆕 Næste session-kandidater:** [#557](https://github.com/NicolaiDolmer/CyclingZone/issues/557) (DISPATCH_PLAYBOOK B2, priority:high, docs-only), [#549](https://github.com/NicolaiDolmer/CyclingZone/issues/549) (npm audit), [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561) (B7 prompt-bibliotek udvidelse, bygger ovenpå #562), #563-decision (A/B/C på OneDrive-decommission scope). #562 → KOMPLET denne session.
+
+> **🟢 Session 2026-05-22-O — #562 Mobil→Claude-Code task-templating (B8) KOMPLET:** Ny doc [`docs/prompts/mobile-to-code.md`](docs/prompts/mobile-to-code.md) etablerer 5-linjers hand-off format (Mål · Filer · Acceptance · Refs · Blockers) + 3 eksempler (bugfix · docs-only · investigation med ekstern blocker) + anti-patterns + sådan-bruges-fra-mobilen flow. Cross-linket fra `docs/AI_CHANNEL_ROUTING.md` Cross-refs. Foundation for [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561) (B7) som udvider prompt-biblioteket med yderligere templates. Refs [#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562).
 
 > **🟢 Session 2026-05-22-N — #339 Infisical Phase 1 KOMPLET (dev+preview+prod populated via automation):** Infisical workspace `Cycling Zone` linked manuelt (workspaceId `681fe0be-...` ekstraheret fra dashboard-URL efter `infisical init` valgte forkert cert-manager workspace). Ny `scripts/seed-infisical.ps1` automatiserer seed fra autoritative kilder: lokal `.env` (dev), Vercel CLI (preview+prod frontend), Railway CLI (prod backend) — values flyder shell-pipes only, aldrig agent-context. Allowlist-filter (ADR §"Runtime-verified secret inventory") fjerner Vercel-system-vars (`VERCEL_*`, `TURBO_*`, `NEXT_PUBLIC_POSTGRES_*`). Total: **19 keys** (dev 7, preview 4, prod 8). Verification: `infisical --version 0.43.84` ✅, dev keys match backend/.env ✅, `agent-doctor.ps1` infisical-cli OK ✅. Sensitive-type vars i Vercel (`VITE_SUPABASE_ANON_KEY` prod) returnerer empty fra `vercel env pull` — fix: seed prod fra lokal `frontend/.env.production` (idempotent). Postmortem: [`.claude/learnings/2026-05-22-infisical-cert-manager-workspace-trap.md`](.claude/learnings/2026-05-22-infisical-cert-manager-workspace-trap.md).
 
@@ -28,7 +30,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** [#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562) — Mobil→Claude-Code task-templating (B8, AI-actionable). EMMAPC `git pull` + `pwsh -File scripts/install-user-hooks.ps1` venter stadig fra Session L (#383 PC2 rollout).
+> **🎯 Next action:** [#557](https://github.com/NicolaiDolmer/CyclingZone/issues/557) — DISPATCH_PLAYBOOK.md safe/forbidden tasks (B2, priority:high, docs-only). EMMAPC `git pull` + `pwsh -File scripts/install-user-hooks.ps1` venter stadig fra Session L (#383 PC2 rollout).
 >
 > _Format (max 2 linjer): `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2 (B4, [#558](https://github.com/NicolaiDolmer/CyclingZone/issues/558)). Opdatér FØR session slutter._
 
