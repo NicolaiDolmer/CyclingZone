@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.91",
+    date: "2026-05-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Security · Race-result submit blev atomisk + RLS strammet på pending_race_result_rows",
+        items: [
+          "EN · Two-in-one fix on the manager-driven race-result upload flow (#518). (1) Atomicity: the frontend previously inserted the parent pending_race_results row and the child pending_race_result_rows in two separate Supabase calls with no transaction — if the second call failed, an orphan parent row was left in the DB. The whole submit now goes through a single Postgres RPC submit_race_results(p_race_id, p_rows jsonb) that wraps both inserts in one transaction. (2) RLS lockdown: pending_race_result_rows had INSERT WITH CHECK (true) and SELECT USING (true), meaning any authenticated user could (a) read every other manager's pending submissions and (b) inject fake rows under anyone else's pending_id. Both policies replaced with owner-or-admin-gated equivalents that join to the parent row to verify submitted_by = auth.uid() (or is_admin()). Live-verified with two impersonated user sessions: user B sees 0 rows from user A's submission (was: all rows), and user B's direct INSERT under user A's pending_id is rejected with RLS violation 42501 (was: silent success). Admin approve/reject workflow unaffected — backend uses service_role which bypasses RLS. This clears the last rls_policy_always_true advisor warning. Refs #518.",
+          "DA · To-i-én fix på det manager-drevne race-result upload flow (#518). (1) Atomicity: frontend inserterede tidligere parent pending_race_results og børnene pending_race_result_rows i to separate Supabase-kald uden transaction — fejlede andet kald, var en orphan parent-row efterladt i DB. Hele submit går nu via en enkelt Postgres-RPC submit_race_results(p_race_id, p_rows jsonb) der wrapper begge inserts i én transaction. (2) RLS-lockdown: pending_race_result_rows havde INSERT WITH CHECK (true) og SELECT USING (true), så enhver authenticated user kunne (a) læse alle andre managers' pending submissions og (b) injicere fake rows under andres pending_id. Begge policies erstattet med owner-or-admin-gated equivalents der joiner til parent for at verificere submitted_by = auth.uid() (eller is_admin()). Live-verificeret med to impersonerede user-sessioner: user B ser 0 rows fra user A's submission (var: alle rows), og user B's direkte INSERT under user A's pending_id afvises med RLS-violation 42501 (var: silent success). Admin approve/reject upåvirket — backend bruger service_role som bypasser RLS. Sidste rls_policy_always_true advisor-warning er nu væk. Refs #518.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.90",
     date: "2026-05-22",
     label: "Beta",

@@ -240,22 +240,21 @@ export default function RacesPage() {
       return;
     }
     setSubmitting(true);
-    // Create pending submission
-    const { data: pending, error } = await supabase
-      .from("pending_race_results")
-      .insert({ race_id: uploadRaceId, submitted_by: userId, status: "pending" })
-      .select("id").single();
-    if (error) { setSubmitMsg(`❌ ${error.message}`); setSubmitting(false); return; }
-
-    // Insert rows
     const rows = editingRows.map(r => ({
-      pending_id: pending.id,
       rider_id: r.rider_id,
       result_type: uploadResultType,
       rank: r.rank,
       stage_number: uploadStage,
     }));
-    await supabase.from("pending_race_result_rows").insert(rows);
+    const { error } = await supabase.rpc("submit_race_results", {
+      p_race_id: uploadRaceId,
+      p_rows: rows,
+    });
+    if (error) {
+      setSubmitMsg(`❌ ${error.message}`);
+      setSubmitting(false);
+      return;
+    }
     setSubmitMsg("✅ Resultater indsendt — afventer godkendelse fra admin");
     setEditingRows([]);
     loadAll();
