@@ -28,102 +28,105 @@
 -- expected-fra-finance_tx via SUM(amount). Audit lever i admin_log meta-snapshots
 -- (samme mønster som original 2026-05-21 rollback brugte).
 --
--- Idempotent: aborter hvis cleanup_phase='loans_rest_correction' allerede findes.
+-- Idempotent: skipper gracefully hvis cleanup_phase='loans_rest_correction' allerede findes.
+-- Hele scriptet er pakket i en DO-blok så RETURN skipper alle UPDATE/INSERT statements
+-- (auto-migrate workflow får exit 0 + filename registreres i schema_migrations).
 --
 -- KØRT MOD PROD: 2026-05-22 ~01:00 CEST. Verifikation: alle 19 hold's balancer
 -- matcher rekonstruktion fra non-loan-interest finance_tx (diff=0, ± 1 CZ$ rounding).
 
 BEGIN;
 
--- ── Sanity-check ────────────────────────────────────────────────────────────
 DO $$
 DECLARE
   prior_cleanup_count INT;
 BEGIN
+  -- ── Idempotent-guard: skip hele scriptet hvis cleanup allerede kørt ──────
   SELECT COUNT(*) INTO prior_cleanup_count
   FROM admin_log
   WHERE action_type = 'season_repaired'
     AND meta->>'cleanup_phase' = 'loans_rest_correction';
   IF prior_cleanup_count > 0 THEN
-    RAISE EXCEPTION 'Cleanup allerede kørt (cleanup_phase=loans_rest_correction findes). Aborter.';
+    RAISE NOTICE 'Cleanup allerede kørt (cleanup_phase=loans_rest_correction findes) — skipper migration (idempotent)';
+    RETURN;
   END IF;
+
+  -- ── 1. Audit-snapshot FØR ────────────────────────────────────────────────
+  INSERT INTO admin_log (admin_user_id, action_type, description, meta)
+  VALUES (
+    NULL,
+    'season_repaired',
+    'Sæson-loop forensik 2026-05-22 (rest-correction): ruller 3 ghost-renter tilbage på 10 lån + reducerer 8 holds balance med samme beløb.',
+    jsonb_build_object(
+      'cleanup_phase', 'loans_rest_correction',
+      'incident_date', '2026-05-21',
+      'follow_up_date', '2026-05-22',
+      'rollback_strategy', 'iterativ rente-rolling: corrected = current / (1+rate)^3; balance -= sum(overshoot) per loan',
+      'pre_cleanup_balances', (
+        SELECT jsonb_object_agg(name, balance) FROM teams
+        WHERE is_ai = false AND COALESCE(is_bank, false) = false AND user_id IS NOT NULL
+      ),
+      'pre_cleanup_loans', (
+        SELECT jsonb_agg(jsonb_build_object(
+          'loan_id', id, 'team_id', team_id, 'amount_remaining', amount_remaining, 'seasons_remaining', seasons_remaining
+        )) FROM loans WHERE status = 'active'
+      )
+    )
+  );
+
+  -- ── 2. Snapshot per-loan overshoot + per-team aggregate ──────────────────
+  CREATE TEMP TABLE _ghost_loan_correction AS
+  SELECT
+    l.id AS loan_id, l.team_id, l.interest_rate,
+    l.amount_remaining AS current_amount_remaining,
+    ROUND(l.amount_remaining / POWER(1 + l.interest_rate, 3))::BIGINT AS corrected_amount_remaining,
+    (l.amount_remaining - ROUND(l.amount_remaining / POWER(1 + l.interest_rate, 3))::BIGINT) AS ghost_overshoot
+  FROM loans l
+  WHERE l.status = 'active'
+    AND l.team_id IN (SELECT id FROM teams WHERE is_ai = false AND COALESCE(is_bank, false) = false AND user_id IS NOT NULL);
+
+  CREATE TEMP TABLE _team_overshoot AS
+  SELECT c.team_id, SUM(c.ghost_overshoot)::BIGINT AS total_overshoot, t.balance AS current_balance
+  FROM _ghost_loan_correction c JOIN teams t ON t.id = c.team_id
+  GROUP BY c.team_id, t.balance;
+
+  -- ── 3. Rul 3 ghost-renter tilbage på alle aktive lån ─────────────────────
+  UPDATE loans l
+  SET amount_remaining = c.corrected_amount_remaining,
+      seasons_remaining = l.seasons_remaining + 3
+  FROM _ghost_loan_correction c
+  WHERE l.id = c.loan_id;
+
+  -- ── 4. Reducer balance med sum(ghost_overshoot) per hold ─────────────────
+  UPDATE teams t
+  SET balance = t.balance - oc.total_overshoot
+  FROM _team_overshoot oc
+  WHERE t.id = oc.team_id;
+
+  -- ── 5. Audit-snapshot EFTER ──────────────────────────────────────────────
+  INSERT INTO admin_log (admin_user_id, action_type, description, meta)
+  VALUES (
+    NULL,
+    'season_repaired',
+    'Sæson-loop forensik 2026-05-22 (rest-correction COMPLETED): cleanup gennemført. Zero-sum justering.',
+    jsonb_build_object(
+      'cleanup_phase', 'loans_rest_correction_completed',
+      'incident_date', '2026-05-21',
+      'total_overcorrection_removed', (SELECT SUM(ghost_overshoot) FROM _ghost_loan_correction),
+      'loans_corrected', (SELECT COUNT(*) FROM _ghost_loan_correction),
+      'teams_corrected', (SELECT COUNT(*) FROM _team_overshoot),
+      'post_cleanup_balances', (
+        SELECT jsonb_object_agg(name, balance) FROM teams
+        WHERE is_ai = false AND COALESCE(is_bank, false) = false AND user_id IS NOT NULL
+      ),
+      'post_cleanup_loans', (
+        SELECT jsonb_agg(jsonb_build_object(
+          'loan_id', id, 'team_id', team_id, 'amount_remaining', amount_remaining, 'seasons_remaining', seasons_remaining
+        )) FROM loans WHERE status = 'active'
+      )
+    )
+  );
 END $$;
-
--- ── 1. Audit-snapshot FØR ──────────────────────────────────────────────────
-INSERT INTO admin_log (admin_user_id, action_type, description, meta)
-VALUES (
-  NULL,
-  'season_repaired',
-  'Sæson-loop forensik 2026-05-22 (rest-correction): ruller 3 ghost-renter tilbage på 10 lån + reducerer 8 holds balance med samme beløb.',
-  jsonb_build_object(
-    'cleanup_phase', 'loans_rest_correction',
-    'incident_date', '2026-05-21',
-    'follow_up_date', '2026-05-22',
-    'rollback_strategy', 'iterativ rente-rolling: corrected = current / (1+rate)^3; balance -= sum(overshoot) per loan',
-    'pre_cleanup_balances', (
-      SELECT jsonb_object_agg(name, balance) FROM teams
-      WHERE is_ai = false AND COALESCE(is_bank, false) = false AND user_id IS NOT NULL
-    ),
-    'pre_cleanup_loans', (
-      SELECT jsonb_agg(jsonb_build_object(
-        'loan_id', id, 'team_id', team_id, 'amount_remaining', amount_remaining, 'seasons_remaining', seasons_remaining
-      )) FROM loans WHERE status = 'active'
-    )
-  )
-);
-
--- ── 2. Snapshot per-loan overshoot + per-team aggregate ─────────────────────
-CREATE TEMP TABLE _ghost_loan_correction AS
-SELECT
-  l.id AS loan_id, l.team_id, l.interest_rate,
-  l.amount_remaining AS current_amount_remaining,
-  ROUND(l.amount_remaining / POWER(1 + l.interest_rate, 3))::BIGINT AS corrected_amount_remaining,
-  (l.amount_remaining - ROUND(l.amount_remaining / POWER(1 + l.interest_rate, 3))::BIGINT) AS ghost_overshoot
-FROM loans l
-WHERE l.status = 'active'
-  AND l.team_id IN (SELECT id FROM teams WHERE is_ai = false AND COALESCE(is_bank, false) = false AND user_id IS NOT NULL);
-
-CREATE TEMP TABLE _team_overshoot AS
-SELECT c.team_id, SUM(c.ghost_overshoot)::BIGINT AS total_overshoot, t.balance AS current_balance
-FROM _ghost_loan_correction c JOIN teams t ON t.id = c.team_id
-GROUP BY c.team_id, t.balance;
-
--- ── 3. Rul 3 ghost-renter tilbage på alle aktive lån ────────────────────────
-UPDATE loans l
-SET amount_remaining = c.corrected_amount_remaining,
-    seasons_remaining = l.seasons_remaining + 3
-FROM _ghost_loan_correction c
-WHERE l.id = c.loan_id;
-
--- ── 4. Reducer balance med sum(ghost_overshoot) per hold ────────────────────
-UPDATE teams t
-SET balance = t.balance - oc.total_overshoot
-FROM _team_overshoot oc
-WHERE t.id = oc.team_id;
-
--- ── 5. Audit-snapshot EFTER ────────────────────────────────────────────────
-INSERT INTO admin_log (admin_user_id, action_type, description, meta)
-VALUES (
-  NULL,
-  'season_repaired',
-  'Sæson-loop forensik 2026-05-22 (rest-correction COMPLETED): cleanup gennemført. Zero-sum justering.',
-  jsonb_build_object(
-    'cleanup_phase', 'loans_rest_correction_completed',
-    'incident_date', '2026-05-21',
-    'total_overcorrection_removed', (SELECT SUM(ghost_overshoot) FROM _ghost_loan_correction),
-    'loans_corrected', (SELECT COUNT(*) FROM _ghost_loan_correction),
-    'teams_corrected', (SELECT COUNT(*) FROM _team_overshoot),
-    'post_cleanup_balances', (
-      SELECT jsonb_object_agg(name, balance) FROM teams
-      WHERE is_ai = false AND COALESCE(is_bank, false) = false AND user_id IS NOT NULL
-    ),
-    'post_cleanup_loans', (
-      SELECT jsonb_agg(jsonb_build_object(
-        'loan_id', id, 'team_id', team_id, 'amount_remaining', amount_remaining, 'seasons_remaining', seasons_remaining
-      )) FROM loans WHERE status = 'active'
-    )
-  )
-);
 
 COMMIT;
 
