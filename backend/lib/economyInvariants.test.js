@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 process.env.SUPABASE_URL ??= "https://example.supabase.co";
 process.env.SUPABASE_SERVICE_KEY ??= "test-service-key";
 
-const { payDivisionBonuses, processSeasonStart } = await import("./economyEngine.js");
+const { payDivisionBonuses, processSeasonStart, processTeamSeasonPayroll } = await import("./economyEngine.js");
 const { createEmergencyLoan, processLoanInterest } = await import("./loanEngine.js");
 
 // ── Test fixture: in-memory finance_transactions with optional unique-violation ───
@@ -725,4 +725,68 @@ test("processSeasonStart krediterer sponsor til ALLE hold før runSeasonPayroll 
     callLog.slice(0, payrollIdx).every((e) => e.phase === "sponsor"),
     "alle events før payroll skal være sponsor-credits — ingen interleaved payroll-call"
   );
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// 8. processTeamSeasonPayroll — negative-interest idempotency (#577)
+//
+// Cron-retry-scenariet: salary er allerede debiteret (idempotent), men process
+// crasher inden den returnerer. Retry læser en mere negativ balance og beregner
+// en større rente — uden idempotency-guard ville begge beløb trækkes.
+// idempotencyKey `negative_interest:${team.id}:${seasonId}` forhindrer det.
+// ───────────────────────────────────────────────────────────────────────────────
+
+test("processTeamSeasonPayroll er idempotent for negative-interest — gentaget kørsel dobbeltdebiter ikke", async () => {
+  const financeRows = [];
+  const teamState = { balance: -100 };
+
+  const mockSupabase = {
+    rpc(name, params) {
+      if (name !== "increment_balance_with_audit") throw new Error(`Unexpected rpc: ${name}`);
+      const row = { team_id: params.p_team_id, ...params.p_finance_payload };
+      if (row.idempotency_key) {
+        const duplicate = financeRows.find((r) => r.idempotency_key === row.idempotency_key);
+        if (duplicate) {
+          return Promise.resolve({
+            data: null,
+            error: { code: "23505", constraint: "uniq_finance_idempotency_key" },
+          });
+        }
+      }
+      teamState.balance += params.p_delta;
+      financeRows.push(row);
+      return Promise.resolve({ data: teamState.balance, error: null });
+    },
+    from(table) {
+      if (table !== "teams") throw new Error(`Unexpected table: ${table}`);
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                single: () => Promise.resolve({ data: { balance: teamState.balance }, error: null }),
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const team = { id: "team-1", name: "Test Team", riders: [] };
+  const deps = {
+    supabase: mockSupabase,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+  };
+
+  // Første kørsel: rente debiteres (10% af 100 = 10).
+  await processTeamSeasonPayroll(team, "season-1", deps);
+  assert.equal(financeRows.filter((r) => r.type === "interest").length, 1, "første kørsel: 1 interest-row");
+  assert.equal(teamState.balance, -110, "balance efter første kørsel: -100 - 10 = -110");
+
+  // Anden kørsel (cron-retry): rente må ikke debiteres igen.
+  await processTeamSeasonPayroll(team, "season-1", deps);
+  assert.equal(financeRows.filter((r) => r.type === "interest").length, 1, "anden kørsel: stadig kun 1 interest-row");
+  assert.equal(teamState.balance, -110, "balance uændret efter anden kørsel");
 });

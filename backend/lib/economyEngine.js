@@ -401,9 +401,11 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
       seasonId,
       supabaseClient,
       {
+        idempotent: true,
         audit: {
           sourcePath: "economyEngine.processSeasonStart.negativeInterest",
           reasonCode: FINANCE_REASON.SEASON_END_NEGATIVE_INTEREST,
+          idempotencyKey: `negative_interest:${team.id}:${seasonId}`,
         },
       }
     );
