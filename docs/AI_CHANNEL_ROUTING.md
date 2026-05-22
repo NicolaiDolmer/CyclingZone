@@ -70,6 +70,11 @@ Aldrig-kolonnen i matrixen er ikke konvention — det er konkrete fejl-modes vi 
 
 - Workflow-analyse (kilde): [`docs/archive/2026-05-22-workflow-analyse.md`](archive/2026-05-22-workflow-analyse.md), sektion 3-4.
 - Mobile → Claude Code task-format (5-linje template + eksempler): [`docs/prompts/mobile-to-code.md`](prompts/mobile-to-code.md) (B8, [#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562)).
+- Session-prompt templates (når Claude Code modtager en task):
+  - Bugfix: [`docs/prompts/bugfix.md`](prompts/bugfix.md) (5-fase flow med gates) — B7, [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561).
+  - Investigation: [`docs/prompts/investigation.md`](prompts/investigation.md) (hypothesis-tracking, evidence-first) — B7, [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561).
+  - Postmortem: [`docs/prompts/postmortem.md`](prompts/postmortem.md) (struktur for `.claude/learnings/`) — B7, [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561).
+  - Ultrareview economy/finalization: [`docs/prompts/ultrareview-economy.md`](prompts/ultrareview-economy.md).
 - Dispatch-konkret playbook (safe/forbidden tasks + verification on return): [`docs/DISPATCH_PLAYBOOK.md`](DISPATCH_PLAYBOOK.md) (B2, [#557](https://github.com/NicolaiDolmer/CyclingZone/issues/557)).
 - Cowork-konkret playbook: planned senere ([fase C i analyse-doc, B3]).
 - Tracker: [#555](https://github.com/NicolaiDolmer/CyclingZone/issues/555) (workflow-analyse epic) → [#556](https://github.com/NicolaiDolmer/CyclingZone/issues/556) (denne doc).

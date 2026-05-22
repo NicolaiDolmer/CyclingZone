@@ -27,4 +27,5 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/RUNBOOK_RESTORE_DRILL.md` | Supabase backup restore-drill cadence, procedure og smoke-tests |
 | `docs/SEASON_TRANSITION_CHECKLIST.md` | Admin-checklist for sæson N→N+1 (sæt closes_at, cron-chain-tider, verifikation, abort-procedure) |
 | `docs/slices/<slug>.md` | Slice har dedikeret brief |
+| `docs/prompts/<type>.md` | Session-prompt templates: `bugfix.md` · `investigation.md` · `postmortem.md` · `mobile-to-code.md` · `ultrareview-economy.md` (B7/B8, [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561)/[#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562)) |
 | `gh issue view N --comments` | Behov for sessionshistorik på issue |
