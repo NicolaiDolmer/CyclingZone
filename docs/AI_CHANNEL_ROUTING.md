@@ -69,6 +69,7 @@ Aldrig-kolonnen i matrixen er ikke konvention — det er konkrete fejl-modes vi 
 ## Cross-refs
 
 - Workflow-analyse (kilde): [`docs/archive/2026-05-22-workflow-analyse.md`](archive/2026-05-22-workflow-analyse.md), sektion 3-4.
+- Agent-rolle-matrix (hvem ejer hvilken beslutning + SLA + reassign-protokol): [`docs/AI_COUNCIL.md`](AI_COUNCIL.md) (B12, [#564](https://github.com/NicolaiDolmer/CyclingZone/issues/564)).
 - Mobile → Claude Code task-format (5-linje template + eksempler): [`docs/prompts/mobile-to-code.md`](prompts/mobile-to-code.md) (B8, [#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562)).
 - Session-prompt templates (når Claude Code modtager en task):
   - Bugfix: [`docs/prompts/bugfix.md`](prompts/bugfix.md) (5-fase flow med gates) — B7, [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561).

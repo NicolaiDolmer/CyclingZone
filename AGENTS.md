@@ -78,6 +78,8 @@ Supabase-inspektion: start med målrettede `npm run db:ai:*` frem for brede dump
 
 ## Rolle-fordeling mellem AI-assistenter (Verdensklasse AI-Standard)
 
+> **Full council-kontrakt** (SLA pr. rolle, fallback-protokol når en agent ikke leverer, og issue→agent eksempler): [`docs/AI_COUNCIL.md`](docs/AI_COUNCIL.md) ([#564](https://github.com/NicolaiDolmer/CyclingZone/issues/564)). Sektionerne nedenfor er den korte version; AI_COUNCIL.md er sandheden for reassign-beslutninger.
+
 ### Manus (The Architect & Coordinator)
 **Primær brug:** Strategisk planlægning, orkestrering af komplekse workflows, og cross-domain koordinering. Manus er "ejeren" af den overordnede projekt-konfiguration og AI-Autopilot (Fase 2).
 
