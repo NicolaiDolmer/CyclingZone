@@ -231,24 +231,34 @@ export default function AdminPage() {
   }, [window_?.closes_at]);
 
   async function loadAll() {
-    const [s, r, t, w, w2, lc, al, u, ac, rp] = await Promise.all([
+    // #517: discord_settings læses nu via backend (anon kan ikke længere se
+    // webhook_url efter RLS-lockdown 2026-05-22). Frontend får maskerede URLs.
+    const webhooksPromise = (async () => {
+      try {
+        const res = await fetch(`${API}/api/admin/discord-settings`, { headers: await getAuth() });
+        if (!res.ok) return { webhooks: [] };
+        return await res.json();
+      } catch { return { webhooks: [] }; }
+    })();
+
+    const [s, r, t, w, lc, al, u, ac, rp, dh] = await Promise.all([
       supabase.from("seasons").select("*").order("number", { ascending: false }),
       supabase.from("races").select("*").order("name"),
       supabase.from("teams").select("id,name,balance,division").eq("is_ai", false).order("name"),
       supabase.from("transfer_windows").select("*").order("created_at", { ascending: false }).limit(1).single(),
-      supabase.from("discord_settings").select("*").order("created_at"),
       supabase.from("loan_config").select("*").order("division").order("loan_type"),
       supabase.from("admin_log").select("*, target_team:target_team_id(name)")
         .order("created_at", { ascending: false }).limit(50),
       supabase.from("users").select("id, email, username, role, created_at, teams(id, name, division)").order("created_at", { ascending: false }),
       supabase.from("auction_timing_config").select("*").eq("id", 1).single(),
       supabase.from("race_pool").select("id, name, race_class, race_type, stages, date_text, country").order("name"),
+      webhooksPromise,
     ]);
     setSeasons(s.data || []);
     setRaces(r.data || []);
     setTeams(t.data || []);
     setWindow_(w.data || null);
-    setWebhooks(w2.data || []);
+    setWebhooks(dh.webhooks || []);
     setLoanConfigs(lc.data || []);
     setAdminLogs(al.data || []);
     setUsers(u.data || []);
@@ -507,25 +517,29 @@ export default function AdminPage() {
   }
 
   // ── Webhooks ───────────────────────────────────────────────────────────────
+  // #517: webhook_url er secret — frontend sender den til backend, men læser den
+  // aldrig tilbage (kun maskeret webhook_url_masked til UI-genkendelse).
   async function addWebhook() {
     if (!newWebhook.webhook_name || !newWebhook.webhook_url) return;
-    const isFirst = webhooks.length === 0;
-    await supabase.from("discord_settings").insert({
-      webhook_name: newWebhook.webhook_name,
-      webhook_url: newWebhook.webhook_url,
-      webhook_type: newWebhook.webhook_type,
-      is_default: isFirst,
+    const res = await fetch(`${API}/api/admin/discord-settings`, {
+      method: "POST", headers: await getAuth(),
+      body: JSON.stringify({
+        webhook_name: newWebhook.webhook_name,
+        webhook_url: newWebhook.webhook_url,
+        webhook_type: newWebhook.webhook_type,
+      }),
     });
+    const data = await res.json();
+    if (!res.ok) { showMsg(`❌ ${data.error || "Webhook kunne ikke gemmes"}`, "error"); return; }
     setNewWebhook({ webhook_name: "", webhook_url: "", webhook_type: "general" });
     loadAll();
-    showMsg("✅ Webhook tilføjet" + (isFirst ? " og sat som standard" : ""));
+    showMsg("✅ Webhook tilføjet" + (data.is_default ? " og sat som standard" : ""));
   }
 
   async function testWebhook(webhook) {
     setLoad(`test_${webhook.id}`, true);
-    const res = await fetch(`${API}/api/admin/discord/test`, {
+    const res = await fetch(`${API}/api/admin/discord-settings/${webhook.id}/test`, {
       method: "POST", headers: await getAuth(),
-      body: JSON.stringify({ webhook_url: webhook.webhook_url }),
     });
     const data = await res.json();
     setWebhookTestResults(prev => ({ ...prev, [webhook.id]: data }));
@@ -638,14 +652,19 @@ export default function AdminPage() {
   }
 
   async function setDefaultWebhook(id) {
-    await supabase.from("discord_settings").update({ is_default: false }).neq("id", id);
-    await supabase.from("discord_settings").update({ is_default: true }).eq("id", id);
+    const res = await fetch(`${API}/api/admin/discord-settings/${id}/default`, {
+      method: "PATCH", headers: await getAuth(),
+    });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); showMsg(`❌ ${d.error || "Kunne ikke opdatere standard"}`, "error"); return; }
     loadAll();
     showMsg("✅ Standard webhook opdateret");
   }
 
   async function deleteWebhook(id) {
-    await supabase.from("discord_settings").delete().eq("id", id);
+    const res = await fetch(`${API}/api/admin/discord-settings/${id}`, {
+      method: "DELETE", headers: await getAuth(),
+    });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); showMsg(`❌ ${d.error || "Kunne ikke slette webhook"}`, "error"); return; }
     loadAll();
   }
 
@@ -1558,7 +1577,7 @@ export default function AdminPage() {
                       <span className="text-cz-info text-xs border border-cz-info/30 px-1.5 py-0.5 rounded-full">{w.webhook_type}</span>
                     )}
                   </div>
-                  <p className="text-cz-3 text-xs font-mono truncate max-w-xs">{w.webhook_url?.slice(0, 40)}...</p>
+                  <p className="text-cz-3 text-xs font-mono truncate max-w-xs">{w.webhook_url_masked || "(maskeret)"}</p>
                   {result && (
                     <p className={`text-xs font-mono mt-1 ${result.tone === "ok" ? "text-cz-accent-t" : "text-cz-danger"}`}>
                       {result.text}

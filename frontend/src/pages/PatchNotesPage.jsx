@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.89",
+    date: "2026-05-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Sikkerhed & Discord-DMs · webhook-URL'er låst ned + DM-observability",
+        items: [
+          "EN · Two-in-one hardening pass. (1) Security #517: Discord webhook URLs were public-readable through Supabase's anon role — anyone could pull the full webhook list including the secret URL. Public read-policy on discord_settings has been dropped (verified: anon now sees 0 rows). Admin UI for Discord webhooks now goes through new backend endpoints under /api/admin/discord-settings, and the frontend only ever receives a masked URL (last 8 chars) for display — full URL never leaves the server. ACTION REQUIRED FROM ADMIN: rotate existing Discord webhook URLs in Discord (Server Settings → Integrations → Webhooks → regenerate) since the old URLs were exposed during the leak window. (2) Bug #449: Discord DMs on outbid silently stopped working around May 11. Root cause not 100% confirmed (likely related to the May 11 Supabase rotation/redeploy), but we found a class of silent fail-patterns in the notification pipeline: sendDM returned without logging when DISCORD_BOT_TOKEN was missing, and 5 .catch(() => {}) calls swallowed all DM-send errors. All now log structured warnings/errors so Railway logs will surface the real failure mode next time. If your DMs are still not working, ping in #bugs and we now have logs to diagnose with.",
+          "DA · To-i-én hardening-pass. (1) Sikkerhed #517: Discord webhook URLs var public-readable via Supabases anon-rolle — enhver kunne trække hele webhook-listen inklusive den hemmelige URL. Public-read-policy på discord_settings er droppet (verificeret: anon ser nu 0 rows). Admin-UI for Discord-webhooks går nu gennem nye backend-endpoints under /api/admin/discord-settings, og frontend modtager kun en maskeret URL (sidste 8 tegn) til visning — fuld URL forlader aldrig serveren. HANDLING KRÆVET FRA ADMIN: rotér eksisterende Discord webhook URLs i Discord (Server Settings → Integrations → Webhooks → regenerate), da de gamle URLs var eksponeret i leak-vinduet. (2) Bug #449: Discord-DM ved overbud holdt op silent omkring 11. maj. Root cause ikke 100% bekræftet (sandsynligvis relateret til Supabase-rotation/redeploy 11. maj), men vi fandt en klasse af silent fail-patterns i notifikations-pipelinen: sendDM returnerede uden at logge når DISCORD_BOT_TOKEN manglede, og 5 .catch(() => {})-kald slugte alle DM-send-fejl. Alle logger nu strukturerede warnings/errors så Railway-logs viser den faktiske fejl næste gang. Hvis dine DM'er stadig ikke virker, ping i #bugs og vi har nu logs at diagnostisere med.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.88",
     date: "2026-05-22",
     label: "Beta",
