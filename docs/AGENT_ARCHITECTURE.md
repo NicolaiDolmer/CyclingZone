@@ -119,7 +119,7 @@ SessionStart-hook cleaner `.claude/worktrees/` automatisk efter ship (per [AGENT
 | Fra → Til | Hvor | Format |
 |---|---|---|
 | Manus → Claude | GitHub issue + slice-doc | Issue-body m. spec; slice-doc m. kontrakt + verification-path |
-| Claude → Codex | Issue-kommentar m. commit-SHA + slice-doc | "Done: <list>". Codex tager test/lint follow-ups. _(claude:done label deprecated 2026-05-18 — bruger lukker direkte fra todo/in-progress.)_ |
+| Claude → Codex | Issue-kommentar m. commit-SHA + slice-doc | "Done: <list>". Codex tager test/lint follow-ups. (`claude:done` label er valgfri — bruger kan også lukke direkte fra todo/in-progress.) |
 | Codex → Claude | PR-kommentar + issue-comment | Test-resultater + edge-cases fundet |
 | Session A → Session B (samme agent, samme PC) | `docs/NOW.md` ved close-out + issue-comment | 15-linjers `Session context — [dato]` ([AGENTS.md §Delt handoff-format](../AGENTS.md#delt-handoff-format-alle-agents)) |
 | PC1 → PC2 (samme agent) | GitHub + OneDrive-context | Identisk m. session A→B. Lokale caches regenereres på modtagende PC |
