@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.92",
+    date: "2026-05-22",
+    label: "Beta",
+    changes: [
+      {
+        category: "Performance · XLSX lazy-loading on /races",
+        items: [
+          "EN · The @e965/xlsx library (~493 kB) is now loaded on demand when a user triggers a file upload on the Races page, instead of being bundled into the initial route chunk. The RacesPage initial chunk drops from ~392 kB to ~28 kB. Upload functionality is unchanged. Refs #521.",
+          "DA · @e965/xlsx-biblioteket (~493 kB) indlæses nu on demand, når en bruger uploader en fil på Races-siden, i stedet for at være inkluderet i det initiale route-chunk. RacesPage initial chunk falder fra ~392 kB til ~28 kB. Upload-funktionalitet er uændret. Refs #521.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.91",
     date: "2026-05-22",
     label: "Beta",

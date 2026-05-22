@@ -2,7 +2,6 @@
 import { supabase } from "../lib/supabase";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
-import * as XLSX from "@e965/xlsx";
 import RacePointsPage from "./RacePointsPage";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
@@ -191,10 +190,11 @@ export default function RacesPage() {
     setSelectedRace({ ...race, results, loading: false });
   }
 
-  // Parse Excel file
-  function handleFileUpload(e) {
+  // Parse Excel file — XLSX loaded on demand to keep initial chunk small
+  async function handleFileUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const XLSX = await import("@e965/xlsx");
     const reader = new FileReader();
     reader.onload = (ev) => {
       const wb = XLSX.read(new Uint8Array(ev.target.result));
