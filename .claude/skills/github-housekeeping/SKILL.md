@@ -5,7 +5,11 @@ description: Grundig GitHub-issue-audit + state-maskine-cleanup. Trigger med "gi
 
 # GitHub Housekeeping (self-improving)
 
-Grundig audit af GitHub-issues. Mål: ren label-state-maskine, fang forfaldne, opdag dependency-kæder, intet glemmer sig. **Konfirmér før mass-handling.** Slutter med self-improvement retro (Trin 9 — ALTID).
+Grundig audit af GitHub-issues. **PRIMÆRT MÅL: LUK verificerede issues.** Sekundært: ren label-state-maskine, fang forfaldne, opdag dependency-kæder.
+
+**Audit-success kriterium (lektion 2026-05-23):** En audit hvor 20 claude:done-issues blev scored men 0 lukket er en fejlet audit. Hvis arbejdet kan verificeres uafhængigt (commit på main, migration live via Supabase MCP, PR merged), skal det lukkes — IKKE udskydes pga. "skill regel kræver user-comment". Default: aggressive close, ikke defensive scoring.
+
+**Konfirmér før mass-handling** (>5 closes). Slutter med self-improvement retro (Trin 9 — ALTID).
 
 ## Trin 0 — Setup
 
@@ -21,11 +25,11 @@ gh issue list --state open --label "claude:done" --limit 100 --json number,title
 gh issue list --state open --label "claude:blocked" --limit 50 --json number,title,labels,comments
 gh issue list --state open --label "needs-user-action" --limit 50 --json number,title,updatedAt
 gh issue list --state closed --limit 100 --json number,title,labels,closedAt
-gh pr list --state merged --limit 100 --json number,title,mergedAt,body
+gh pr list --state merged --limit 200 --json number,title,mergedAt,body
 gh pr list --state open --limit 30 --json number,title,isDraft,body
 ```
 
-Limits: 300 åbne (repo har 150+; margin). 100 PRs (14 dage = ~30-50 typisk).
+Limits: 300 åbne (repo har 150+; margin). 200 merged PRs (lektion 2026-05-23: 5 audits i træk ramte 100/100 inden for 14d — pace højere end antaget; 200 giver fuld dækning med marginal extra runtime).
 
 ## Trin 2 — Cross-reference (systematisk)
 
@@ -36,7 +40,7 @@ Limits: 300 åbne (repo har 150+; margin). 100 PRs (14 dage = ~30-50 typisk).
 - Parse PR-body Brugerverifikation-section: find `## Brugerverifikation`-header → tæl `- [x]` vs `- [ ]` checkboxes EFTER header → rapportér `X/Y checked`. _(Lektion 2026-05-20: tidligere regex `- [x] Brugerverifikation` matchede 0/100 PRs — real format er sektion-header med multiple underliggende boxes, ikke en enkelt checkbox-linje.)_
 - Flag PRs UDEN nogen `#N`-ref (heller ikke parentes-shorthand `(#N)`) som Kategori J: orphan. Filtrer dependabot/chore-PRs fra orphan-rapporten.
 
-**Per `claude:done`-issue:** find seneste comment EFTER claude:done-label, score per Trin 3. _(Note: `claude:done` blev deprecated 2026-05-18 per audit-housekeeping → fremtidige audits ser sandsynligvis 0 done-issues. Trin 2's done-scan kan med tiden fjernes hvis label er retired.)_
+**Per `claude:done`-issue:** find seneste comment EFTER claude:done-label, score per Trin 3. _(Note: `claude:done` blev un-deprecated 2026-05-22 per workflow-revision. 2026-05-23-audit observerede 20 åbne done-issues (var 4 dagen før, +16 fra B-series + security batch). Label er aktiv del af state-maskine igen.)_
 
 **Per `claude:blocked`-issue:** `gh issue view <blocker-N> --json state` — hvis blocker lukket → Kategori I.
 
@@ -56,6 +60,16 @@ Limits: 300 åbne (repo har 150+; margin). 100 PRs (14 dage = ~30-50 typisk).
 
 **Age-precision (lektion 2026-05-20):** brug `hours_since_comment` (`datetime.now(timezone.utc) - comments[-1].createdAt`), IKKE rundet `days`. Tærskel er 24 timer ikke "1 dag" — ellers misser kommentarer kl. 08:46 på dag N når audit kører kl. 11:00 på dag N+1 (faktisk 27h, men `days`-rounding giver 1d eller 0d afhængig af clock-start).
 
+**Author-tracking (lektion 2026-05-23):** STRONG kriteriet siger eksplicit "**Bruger-kommentar** EFTER done-label". Score-script SKAL tracke `comments[-1].author.login` og afvise STRONG hvis author er AI-agent (`Claude` / `Codex` / `Manus` / `nicolaidolmer-mikkelsen[bot]` el.lign.). I 2026-05-23-audit havde 20/20 done-issues AI-authored latest comments — derfor 0 STRONG kandidater. Tidligere audits (2026-05-22) brugte denne regel implicit ved at citere "Bruger-citat 'kan lukke issuet'" (#515). Mangler i automatiseret scorer = systematisk over-promotion til STRONG. Pattern-match alene er ikke nok.
+
+**MEN: AI-author er IKKE close-blocker for backend/docs-only (lektion 2026-05-23-pass2):** Pass1 lukkede 0 issues fordi strict author-tracking blokerede alle. Bruger flaggede direkte: "Det vigtigste ved denne skill og opgave du lige har kørt, det er at du gennemgår alle opgaver. Vurdere om opgaverne allerede er løst eller ej. Og hvis opgaverne er løst sikkert allerede og du er 100% sikker på, at de er løst, så skal du lukke opgaverne." Strict author-tracking gælder primært **cat:user-feature**-issues hvor UI-verify er den meningsfulde test. For backend/docs/CI er uafhængig verifikation tilstrækkelig:
+- **Docs-only** (cat:ai-ops/type:docs): commit på main = done (ingen UI at verify)
+- **Backend security**: Supabase MCP `list_migrations` viser version + applied_at = done (eksempel #517: migration 20260522091534 live i prod ✓)
+- **CI/tooling**: commit på main + CI grøn = done
+- **PR merged**: `gh pr view N --json mergedAt` + commit på main = done
+
+Konkret 2026-05-23-pass2 lukkede 15 issues efter MCP-cross-verify uden brug af user-comment. Default for backend/docs: aggressive close med evidens-link.
+
 **STRONG-patterns (regex, case-insensitive):**
 - `verify-deploy\.ps1\s*OK`
 - `verificeret\s+(?:på\s+)?prod` | `verified\s+on\s+prod`
@@ -65,6 +79,7 @@ Limits: 300 åbne (repo har 150+; margin). 100 PRs (14 dage = ~30-50 typisk).
 - `[Ll]ive\s+verificeret` | `verificeret\s+live` _(2026-05-20: tabel-kolonne "Live verificeret ✓")_
 - `200\s*OK.*\bcycling-zone\.vercel\.app\b` (begge retninger) _(2026-05-20: "(200 OK)" mod prod-URL)_
 - `merget\s+til\s+main.*deployet\s+til\s+prod` _(2026-05-20: "## LIVE — fixet er merget til main + deployet til prod")_
+- `(?:Migration\s+)?anvendt\s+p[åa]\s+prod` _(2026-05-23: "Migration anvendt på prod 2026-05-22 ~11:00" på #517 — prod-evidens men fanges ikke af "verificeret prod"-pattern)_
 
 **STRONG-test:** ✅-emoji alene = ikke STRONG. Skal nævne PROD eller deploy-script eller commit-hash.
 
@@ -89,7 +104,7 @@ Begrundelse: "verificeret prod" kan referere til _deploy-verification_ ("HTTP 20
 - **C. Awaiting verify** — claude:done + MEDIUM/WEAK/BLOCKED (begrundelse per issue)
 
 **Bonus:**
-- **D. Label-konflikter** — `claude:todo+done`, `claude:todo+blocked`, eller helt uden `claude:*`
+- **D. Label-konflikter** — `claude:todo+done`, `claude:todo+blocked`, eller helt uden `claude:*`. **4-state-machine (lektion 2026-05-23):** Repo har de-facto 4 states (`claude:todo`, `claude:in-progress`, `claude:done`, `claude:blocked`). Hvis `claude:in-progress` persistent >24h efter en `Refs #N` PR er merged → label-cleanup-action (flyt til `claude:done`). Eksempel #558/#559: comment "venter på CI-grønt før merge" 15:47:28Z, PR #573 merged 15:47:48Z (20 sekunder senere), men `claude:in-progress` stadig sat dagen efter. Skill skal også tjekke 2-state-konflikter med in-progress (fx `claude:in-progress+done`).
 - **E. Forfaldne pendings** — `claude:done` >14 dage uden bruger-interaktion
 - **F. Stale backlog** — `claude:todo` >30 dage uden `updatedAt`-bevægelse (close/downgrade-kandidat)
 - **H. `needs-user-action` reality-check** — sample 3-5, er handlingen muligvis udført?
@@ -98,11 +113,13 @@ Begrundelse: "verificeret prod" kan referere til _deploy-verification_ ("HTTP 20
 
 _(Tidligere G "State-brud" fjernet 2026-05-20-pass2 — per workflow 2026-05-18 er direct-close kanonisk og 2 audits i træk gav 0 actions. Behold som info-only pattern i baked-in lessons, ikke i kategori-listen.)_
 
-## Trin 5 — Epic + duplikat-rollup
+## Trin 5 — Epic + duplikat-rollup (info-only, lav prioritet)
 
 **Per `epic:*`-label:** tæl åbne sub-issues. Hvis 0 → "EPIC-READY-TO-CLOSE". Hvis epic-body checklist er ude af sync → foreslå opdatering.
 
 **Duplikat-detection:** grep titler for substrings ≥4 ord; tjek "lignende #N" / "forskellig fra #N"-referencer for begge-åbne tilfælde.
+
+**Bemærkning (lektion 2026-05-23):** 5 audits i træk = 0 EPIC-READY-TO-CLOSE-actions. Trinet behold som info-only (epic-count + dominans-fordeling er nyttigt for backlog-overblik), men under-prioriteres i præsentationen. Spring detail-print over hvis ingen action.
 
 ## Trin 6 — Præsentér (severity-sorted)
 
@@ -193,7 +210,7 @@ Output efter retro: 1 linje per accepted/rejected. Hvis ingen ændringer foresl�
 - Brug `--limit 300` på open issues (repo har 150+, 100 er for snævert) — Lektion 2026-05-17
 - STRONG kræver prod-evidens, ikke ✅-emoji alene — Lektion 2026-05-17
 - Skriv artifact selv ved 0 handlinger — næste audit har brug for diff-baseline
-- Bruger lukker normalt selv (`feedback_github_close_protocol.md`), MEN: STRONG + ≥24h = auto-close OK _(post-2026-05-18: `claude:done` deprecated → ingen kandidater forventes)_
+- Bruger lukker normalt selv (`feedback_github_close_protocol.md`), MEN: STRONG + ≥24h = auto-close OK. _(Update 2026-05-23: `claude:done` blev un-deprecated; 20 åbne done-issues observeret. STRONG-auto-close er aktivt værktøj igen.)_
 - Multi-step `AskUserQuestion` per kategori beats én stor (færre fejlklik)
 - Stop ikke ved label-cleanup — backlog-stale, dep-graph, epic-rollup giver mest værdi
 - **JSON-parsing:** `jq` er installeret (winget jqlang.jq). Brug `jq` for kompakte filtre; fallback Python json+re for komplekse joins (epic-rollup, score-logic). Hvis `jq` ikke på PATH efter `winget install jqlang.jq --silent`: brug fuld path `/c/Users/ndmh3/AppData/Local/Microsoft/WinGet/Packages/jqlang.jq_Microsoft.Winget.Source_8wekyb3d8bbwe/jq` eller `export PATH="$PATH:<den path>"` i hver Bash-kald — PATH-ændring kræver shell-restart for automatisk pickup _(lektion 2026-05-20: winget tilføjer til Windows PATH men `bash`-tool læser PATH ved shell-start)._
@@ -231,6 +248,19 @@ Output efter retro: 1 linje per accepted/rejected. Hvis ingen ændringer foresl�
   - **Trin 7 renummerering:** AskUserQuestion-tjekliste gik fra 7 → 6 items.
   - **Baked-in lesson (Python UTF-8):** `open(..., encoding='utf-8')` påkrævet på Windows — default `cp1252` fejler på emojis i `gh`-output. Bidt 3x i denne kørsel (`UnicodeDecodeError: 'charmap' codec can't decode byte 0x8f`). Også: `subprocess.run(['gh', ...])` fra Python returnerer empty stdout på Windows — workaround er Bash-write-to-file → Python-read-from-file.
   - **Brugerverifikation parsing virker (validation):** 11/100 PRs all-checked sidste 14d (var 2 ved forrige audit-pass). Forfattere udfylder sektionen mere konsekvent siden skill-fix.
+
+- **2026-05-23-pass2 — Post-audit korrektion.** Bruger flaggede pass1 som fejlet: "Det vigtigste ved denne skill og opgave du lige har kørt, det er at du gennemgår alle opgaver. Vurdere om opgaverne allerede er løst eller ej. Og hvis opgaverne er løst sikkert allerede og du er 100% sikker på, at de er løst, så skal du lukke opgaverne. Har du overhovedet gjort det?" Lessons:
+  - **Header (Audit-success kriterium):** Tilføjet eksplicit. En audit hvor 20 done-issues blev scored men 0 lukket = fejlet audit. PRIMÆRT mål er at lukke, ikke at score.
+  - **Trin 3 (AI-author IKKE close-blocker):** Tilføjet undtagelse. Strict author-tracking (pass1's regel) gjorde alle 20 done-issues til WEAK. Pass2 lukkede 15 via uafhængig MCP/git/PR-verifikation: 9 docs (commit på main / PR merged) + 3 security (Supabase MCP `list_migrations` viste migrations live i prod) + 2 CI/tooling (commit på main + CI grøn) + 1 backend setup (Infisical Phase 1).
+  - **Memory (feedback):** Skrevet `feedback_audit_close_aggressive.md` + tilføjet til HOT-tier MEMORY.md. Default: aggressive close for backend/docs, defensive for user-feature.
+
+- **2026-05-23 — Audit-housekeeping retro.** Lessons fra 6. kørsel — 7 actions (2 label-cleanup + 5 NUA-pings), 0 STRONG, 16 nye done-issues siden gårsdagens audit (+ B-series & security batch).
+  - **Trin 1 (PR-loft bump):** Bumpet `gh pr list --state merged --limit` fra 100 til 200. 5 audits i træk har ramt 100/100 inden for 14d → indikerer PR-pace er højere end antaget; 200 giver fuld 14d-dækning uden at miste data.
+  - **Trin 3 (STRONG_PATTERNS):** Tilføjet `(?:Migration\s+)?anvendt\s+p[åa]\s+prod`. Citat fra #517 (P0 RLS-lockdown): "Migration anvendt på prod 2026-05-22 ~11:00:" — klar prod-evidens men fanges ikke af "verificeret prod"-pattern. Stadig WEAK fordi author-tracking endnu ikke er aktiv i scoreren, men patternen er nu klar til når author-tracking lander.
+  - **Trin 3 (Author-tracking):** Tilføjet eksplicit afsnit. Skill-tekst sagde "Bruger-kommentar EFTER done-label" men scorer trackede ikke author. 2026-05-23-audit: 20/20 åbne done-issues havde AI-authored latest comments → derfor 0 STRONG-kandidater systematisk. Yesterday's audit (2026-05-22) brugte reglen implicit ved at citere "Bruger-citat 'kan lukke issuet'" — men det var manuel filtrering. Næste audit skal automatisere: tjek `comments[-1].author.login` og afvis STRONG hvis AI.
+  - **Trin 4 (Kategori D — 4. state):** Tilføjet `claude:in-progress` til state-machine. Skill antog 3 states; repo har 4. Citat: #558 + #559 havde `claude:in-progress` med comment "venter på CI-grønt før merge" 15:47:28Z, men PR #573 merged 15:47:48Z (20 sekunder senere). State var stale dagen efter. Ny regel: hvis `claude:in-progress` >24h efter en `Refs #N` PR mergede → cleanup-action til `claude:done`.
+  - **Trin 5 (Epic-rollup downgrade):** Markeret som "info-only, lav prioritet". 5 audits i træk = 0 EPIC-READY-TO-CLOSE actions. Behold info-output men forenkl præsentation når ingen action.
+  - **Baked-in lessons opdatering:** Fjernet "claude:done deprecated"-note (un-deprecated 2026-05-22).
 
 - **2026-05-22 — Audit-housekeeping retro.** Lessons fra 5. kørsel — 2 STRONG auto-close (#515, #525), 4 carry-forward, 4. ren state i træk.
   - **Trin 2 (MCP cross-verify):** Nyt afsnit. For Kategori B-kandidater (STRONG, ≥24h): brug Vercel MCP `get_deployment` til at verify commit-hash matcher prod-deploy, og Supabase MCP `execute_sql` til at re-run DB-claims. Citat fra #515: "Read-only Supabase-query 2026-05-20 ... 26/26 sæson 1-løb har edition_year" — jeg stolede på user-citat, men kunne have re-run query selv via MCP for uafhængig STRONG-confirmation. Citat fra #525: "migration 20260520201822 live i prod" — Vercel MCP kunne bekræfte deployment-status. Verdens-klasse = selvstændig verifikation, ikke kun proxy-evidens.
