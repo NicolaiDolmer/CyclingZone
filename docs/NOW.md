@@ -1,6 +1,8 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🆕 Næste session-kandidater:** [#582](https://github.com/NicolaiDolmer/CyclingZone/pull/582) UI-verify XLSX dynamic import (test upload-flow + patch-notes v3.92, merge når OK). #563-decision (A/B/C på OneDrive-decommission scope, høj-prio før fuldtid 2026-06-01). UI-verify carry-forward: [#449](https://github.com/NicolaiDolmer/CyclingZone/issues/449) Discord DM, [#505](https://github.com/NicolaiDolmer/CyclingZone/issues/505) race_points editor, [#529](https://github.com/NicolaiDolmer/CyclingZone/issues/529) AdminPage tabs.
+> **🆕 Næste session-kandidater:** #563-decision (A/B/C på OneDrive-decommission scope, høj-prio før fuldtid 2026-06-01). UI-verify carry-forward: [#449](https://github.com/NicolaiDolmer/CyclingZone/issues/449) Discord DM, [#505](https://github.com/NicolaiDolmer/CyclingZone/issues/505) race_points editor, [#529](https://github.com/NicolaiDolmer/CyclingZone/issues/529) AdminPage tabs.
+
+> **🟢 Session 2026-05-23-J — PR #582 UI-verify + merge KOMPLET (6/6):** Rebased [#582](https://github.com/NicolaiDolmer/CyclingZone/pull/582) mod main (NOW.md-konflikt løst: Session H + I begge bevaret). Pre-flight grøn lokalt: build (RacesPage = 28.22 kB ✓), warning-budget (frontend 26/26, backend 38/38), i18n keys + namespace-inline, playwright core-smoke alle 3 projekter (1 webkit-flake → passed på retry). Force-push → Vercel preview redeployed. **UI-verify via Chrome MCP + network analyse på preview:** index.js entry IKKE refererer xlsx, RacesPage-chunk (27.6 kB br) er eneste reference til xlsx-chunk (481.7 kB br), PatchNotes v3.92 indhold deployed. CI alle grøn (frontend-smoke, frontend-build, backend-tests, review). Squash-merged → commit `10b6ff6`. Refs [#521](https://github.com/NicolaiDolmer/CyclingZone/issues/521) (claude:done).
 
 > **🟢 Session 2026-05-23-I — PR merge-runde KOMPLET (5/6):** 5 PRs merget i sekventiel rebase: [#576](https://github.com/NicolaiDolmer/CyclingZone/pull/576) npm overrides (lukker #549), [#583](https://github.com/NicolaiDolmer/CyclingZone/pull/583) docs cleanup (#522), [#585](https://github.com/NicolaiDolmer/CyclingZone/pull/585) RLS required-policy guard (#580), [#581](https://github.com/NicolaiDolmer/CyclingZone/pull/581) IPv6 ipKeyGenerator (#579), [#584](https://github.com/NicolaiDolmer/CyclingZone/pull/584) economy idempotency-guard (#577). Alle backend/docs-only, admin-bypass på check-verification (advisory, ikke required). [#582](https://github.com/NicolaiDolmer/CyclingZone/pull/582) frontend XLSX dynamic import rebased + Brugerverifikation-sektion tilføjet → afventer UI-verify før merge. Bot's session-IDs (alle "2026-05-22-R") omdøbt til D/E/F/G/H ved rebase. Refs PR-thread.
 
@@ -28,7 +30,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** UI-verify [#582](https://github.com/NicolaiDolmer/CyclingZone/pull/582) XLSX dynamic import (preview: cycling-zone-git-claude-issue-5-31a168) → merge når OK. Derefter #563-decision (A/B/C på OneDrive-decommission scope, høj-prio før fuldtid 2026-06-01).
+> **🎯 Next action:** #563-decision (vælg A/B/C på OneDrive-decommission scope, høj-prio før fuldtid 2026-06-01). Derefter UI-verify carry-forward [#449](https://github.com/NicolaiDolmer/CyclingZone/issues/449)/[#505](https://github.com/NicolaiDolmer/CyclingZone/issues/505)/[#529](https://github.com/NicolaiDolmer/CyclingZone/issues/529) hvis tid.
 >
 > _Format (max 2 linjer): `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
