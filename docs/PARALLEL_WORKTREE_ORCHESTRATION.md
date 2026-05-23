@@ -84,9 +84,7 @@ Send 3 `Agent`-kald i samme message for ægte parallel-execution.
 
 Brug `run_in_background: true` så master får completion-notifikation.
 
-**⚠️ Kendt issue: subagent Write-restriktion er inkonsistent.** I 2026-05-23-K blev 2 af 3 subagents nægtet Write-tool. Dry-run test viste at `isolation: "worktree"` parameter IKKE fikser problemet (denial sker på harness/permission-laget, ikke worktree-laget). Indtil rod-årsag er fundet ([#591](https://github.com/NicolaiDolmer/CyclingZone/issues/591) subagent permission debug), giv subagents fallback-instruktion:
-
-> "Hvis Write-tool denied: brug `git commit -m "line1" -m "line2"` med multiple flags i stedet for tmp-fil, og `gh pr create --body "..."` med inline body. Returnér PR-nummer + commit-SHA, så master kan re-edit PR-body med proper markdown bagefter."
+**✅ Write-restriktion LØST (2026-05-23, Session N, [#591](https://github.com/NicolaiDolmer/CyclingZone/issues/591)):** `Write` / `Edit` / `NotebookEdit` er nu i `.claude/settings.json` `permissions.allow`. Subagents kan skrive filer normalt — ingen fallback-instruktion nødvendig. Hvis du ser denial efter en Claude Code update: tjek at allow-entries stadig findes. Postmortem: [`.claude/learnings/2026-05-23-subagent-write-restriction.md`](../.claude/learnings/2026-05-23-subagent-write-restriction.md).
 
 ### 5. Vent på notifikationer
 
@@ -186,7 +184,7 @@ Roughly neutral vs. 3 sekventielle sessions med cold-start hver. **Wall-clock-be
 
 ## Common pitfalls
 
-1. **Subagent Write-restriktion (ULØST, nu 100% hit-rate)** — Session M (2026-05-23): 3/3 subagents ramt af Write/Bash-denial. `isolation: "worktree"` fikser IKKE (verified 2026-05-23). Workaround-hierarki: (a) `gh api git/blobs` med `encoding=utf-8` → `git/trees` + `git/commits` + `git/refs PATCH --force` (renest), (b) `git commit -m ... -m ...` + `gh pr create --body ...` inline (single-line, master re-edit bagefter). Se "Lessons fra anden run (2026-05-23-M)" for 3 verificerede workarounds.
+1. **Subagent Write-restriktion (LØST 2026-05-23-N, [#591](https://github.com/NicolaiDolmer/CyclingZone/issues/591))** — Background-subagents auto-deny tools uden allow-entry. Fix: `Write` / `Edit` / `NotebookEdit` tilføjet til `.claude/settings.json` `permissions.allow`. Workarounds nedenfor er bevaret som historisk reference, men er IKKE længere nødvendige.
 2. **Subagent skriver til docs/NOW.md** — race-condition med master. Instruér eksplicit "rør IKKE NOW.md".
 3. **Parallel worktree-setup** — `git worktree add` har race condition. Kør sekventielt.
 4. **Skip Brugerverifikation-sektion i PR-body** — `PR user-verification check` fejler. Tilføj sektion ELLER `backend-only`/`docs-only` label.
@@ -201,7 +199,9 @@ Roughly neutral vs. 3 sekventielle sessions med cold-start hver. **Wall-clock-be
 - Same-time NOW.md slankning er gratis side-win
 - Sandbox Write-restriktion var største friktion — `isolation: "worktree"` testet 2026-05-23 og fikser det IKKE (denial sker på harness-laget). Workaround via `git commit -m` + inline body fungerer indtil rod-årsag fundet
 
-## Lessons fra anden run (2026-05-23-M)
+## Lessons fra anden run (2026-05-23-M) — historisk, workarounds ikke længere nødvendige
+
+> Bevaret som reference. Rod-årsag fundet og fixet i Session N ([#591](https://github.com/NicolaiDolmer/CyclingZone/issues/591), [postmortem](../.claude/learnings/2026-05-23-subagent-write-restriction.md)). Workarounds nedenfor er kun relevante hvis Write-allow-entries bliver fjernet i fremtidig settings.json-edit.
 
 3 subagents (#565 templates, #590 script, #501 CI fix), alle 3 ramt af Write/Bash-sandbox-denial (100% hit-rate, ikke 2/3 som Session K). Tre forskellige workarounds udviklet:
 
@@ -216,6 +216,6 @@ Roughly neutral vs. 3 sekventielle sessions med cold-start hver. **Wall-clock-be
 - **Master skal runtime-verificere kode-output før merge** — subagents kan ikke teste deres egen kode (pwsh/Bash node alle denied). For scripts: `git show origin/<branch>:scripts/x.ps1 > /tmp/x.ps1 && pwsh -File /tmp/x.ps1`.
 - **PR-body fallbacks giver single-line bodies** — master skal re-edit med `gh pr edit <N> --body-file <md>` før merge for ren squash-commit-historie.
 - **`gh pr merge --delete-branch` fejler hvis worktree-bruger** — branch er locked indtil worktree-cleanup. Kør uden `--delete-branch` og slet branch i close-out via `git branch -D` efter `remove-worktree.ps1`.
-- **Subagent permission-state er IKKE engang inkonsistent længere** — Session M: 3/3 ramt. Session K: 2/3 ramt. Tendens: 100% Write-denial er nu default. [#591](https://github.com/NicolaiDolmer/CyclingZone/issues/591) debug er fortsat high-prio.
+- **Subagent permission-state — LØST i Session N ([#591](https://github.com/NicolaiDolmer/CyclingZone/issues/591))** — rod-årsag var background-subagent auto-deny default (ikke race-condition). Fix: `Write` / `Edit` / `NotebookEdit` i `.claude/settings.json` `permissions.allow`. Session K's 2/3 og Session M's 3/3 var begge silent-deny — Agent B's success var timing-bivirkning.
 - **`find-parallel-candidates.ps1` virker** — brugt til selv-validering: identificerede #565 som top-1 kandidat i denne run. Brug det i step 1 fra Session N+.
 
