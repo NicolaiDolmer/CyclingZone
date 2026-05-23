@@ -1,3 +1,4 @@
+
 # Parallel Worktree Orchestration — Playbook
 
 > Etableret 2026-05-23 efter Session K (3 PRs merged i én parallel run, ~30 min wall-clock vs. 2-3h sekventielt).
@@ -27,15 +28,32 @@ Master-session spawner 3 parallelle subagents (1 pr. worktree) → 3 PRs merges 
 
 ## 7-step protokol
 
+
+
 ### 1. Candidate-selection
 
-Brug `scripts/find-parallel-candidates.ps1` (når implementeret per [#590](https://github.com/NicolaiDolmer/CyclingZone/issues/590)) ELLER manuelt:
+Brug `scripts/find-parallel-candidates.ps1` (auto-rank + greedy bundle-selection, ~5-10 min sparet vs. manuel gennemgang):
+
+```powershell
+pwsh -File scripts/find-parallel-candidates.ps1
+# Optional: tune
+pwsh -File scripts/find-parallel-candidates.ps1 -Limit 30 -BundleSize 3 -NumBundles 5
+# Vis ogsaa hard-blocked issues (cat:user-feature etc.)
+pwsh -File scripts/find-parallel-candidates.ps1 -IncludeFiltered
+```
+
+Scriptet henter aabne `claude:todo` issues via `gh`, scorer hver paa parallel-safety (penalty for `cat:user-feature` / `shared-refactor` / `needs-contract` / `risk:high`; bonus for `docs-only` / `backend-only` / `cleanup` / `risk:low`), foreslaar touch-area pr. issue og genererer top-3 bundles med NUL overlap. Output er markdown - pipe til fil eller laes direkte.
+
+Eller manuelt (fallback hvis scriptet fejler):
 
 ```powershell
 gh issue list --label "claude:todo" --state open --limit 20 --json number,title,labels,updatedAt
 ```
 
-Filter på constraints ovenfor. Vis touch-area-tabel:
+Filter paa constraints ovenfor. Vis touch-area-tabel:
+
+
+
 
 | # | Issue | Touch-area | Konflikt-risiko |
 |---|---|---|---|
@@ -182,3 +200,4 @@ Roughly neutral vs. 3 sekventielle sessions med cold-start hver. **Wall-clock-be
 - Sekventiel merge med rebase = ingen konflikter på main
 - Same-time NOW.md slankning er gratis side-win
 - Sandbox Write-restriktion var største friktion — `isolation: "worktree"` testet 2026-05-23 og fikser det IKKE (denial sker på harness-laget). Workaround via `git commit -m` + inline body fungerer indtil rod-årsag fundet
+
