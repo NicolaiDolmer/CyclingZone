@@ -1,0 +1,74 @@
+name: Security report
+description: Sårbarhed eller security-impact (RLS, auth, secrets, dependencies)
+title: "[security] "
+labels: ["claude:todo", "type:bug", "security", "needs-ai-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Disclosure:** Hvis sårbarheden er kritisk og ikke allerede er public, overvej at sende den privat via email til ejeren først (se SECURITY.md hvis den findes), eller marker dette issue som draft mens fix udvikles. Ellers fortsæt her.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Resume
+      description: Én sætning der beskriver sårbarheden. Undgå at lække secrets/PII i selve teksten.
+      placeholder: "Authenticated users kan læse andre brugeres sponsor-tilbud via direct REST-call"
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      description: Hvor alvorlig er sårbarheden hvis den udnyttes?
+      options:
+        - "critical (data-tab, account-takeover, økonomi-tab, RCE)"
+        - "high (auth-bypass, læs af andres data, escalation)"
+        - "med (info-leak uden PII, DoS, kun-self-exploitation)"
+        - "low (kosmetisk eller defense-in-depth)"
+      default: 1
+    validations:
+      required: true
+  - type: textarea
+    id: blast_radius
+    attributes:
+      label: Blast radius
+      description: Hvor mange brugere/rækker/systemer er påvirket? Auth-required? Hvilke tabeller/endpoints/secrets?
+      placeholder: "Alle authenticated users (~20 brugere); rammer sponsors- og user_sponsorships-tabellerne; ingen secret-rotation nødvendig."
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduktion
+      description: Skridt-for-skridt så fix kan verificeres. Skriv minimal repro — ingen offentlig PoC i issue-body hvis impact er high+.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: disclosure
+    attributes:
+      label: Disclosure-håndtering
+      description: Skal dette holdes privat indtil fix er live? Skal CVE requests? Skal brugere notificeres? Coordinated disclosure timeline?
+      placeholder: "Privat indtil fix merged + deployed; ingen CVE (lille bruger-base); patch notes nævner ‘security-fix’ uden detaljer."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptkriterier
+      description: Hvad skal være sandt før dette er done? Inkluder regression-test hvis muligt.
+      value: |
+        - [ ] Fix merged + deployet
+        - [ ] Regression-test tilføjet (eller dokumenteret hvorfor ikke)
+        - [ ] Postmortem i `.claude/learnings/` hvis impact er high+
+    validations:
+      required: true
+  - type: textarea
+    id: refs
+    attributes:
+      label: Refs
+      description: Relaterede issues, advisories, CVE, eksterne links.
+      placeholder: "Refs #N, GHSA-xxxx, CVE-YYYY-NNNNN"

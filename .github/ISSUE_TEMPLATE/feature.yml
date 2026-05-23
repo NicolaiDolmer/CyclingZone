@@ -1,0 +1,79 @@
+name: Feature request
+description: Ny funktionalitet eller forbedring til CyclingZone
+title: "[feature] "
+labels: ["claude:todo", "type:feature"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Mål
+      description: Hvad skal være anderledes når dette er færdigt? (én sætning)
+      placeholder: "Brugere kan se sponsor-tilbud i Min aktivitet uden at åbne sponsor-tabben"
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Kontekst & motivation
+      description: Hvorfor nu? Hvilken bruger-/forretnings-smerte løses? Link til evt. tidligere issue/PR.
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Filer / områder Claude bør kigge i
+      description: Sti(er) eller komponenter. Lad være tomt hvis du ikke ved det — Claude finder selv.
+      placeholder: "frontend/src/pages/MyActivityPage.jsx, backend/lib/sponsorEngine.js"
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptkriterier
+      description: Punktliste — hvad skal være sandt før dette er done?
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Forventet effort
+      description: Estimat — Claude kan re-estimere efter scope-analyse.
+      options:
+        - "S (under 1 time)"
+        - "M (1-3 timer)"
+        - "L (halv dag - 1 dag)"
+        - "XL (multi-session, brug for slice/epic)"
+      default: 1
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: Hvad skal Claude IKKE røre? (modvirker scope-creep)
+  - type: textarea
+    id: user_verification
+    attributes:
+      label: Brugerverifikation
+      description: Hvordan kan brugeren teste at feature virker efter merge? (UI-flow, URL, test-data)
+      placeholder: "Log ind → gå til Min aktivitet → verificér at sponsor-card vises øverst med korrekt tilbud"
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioritet
+      options:
+        - "priority:high"
+        - "priority:med"
+        - "priority:low"
+      default: 1
+    validations:
+      required: true
+  - type: textarea
+    id: refs
+    attributes:
+      label: Refs
+      description: Relaterede issues, PRs, slice-docs, eller eksterne links.
+      placeholder: "Refs #N, slice-XX-doc, Discord-tråd"
