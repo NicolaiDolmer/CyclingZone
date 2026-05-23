@@ -154,7 +154,13 @@ GET  /api/transfer-window                 → { open, status, season_id }
 ### Admin
 ```
 POST /api/admin/seasons                   { number, race_days_total }
-POST /api/admin/races                     { season_id, name, race_type, stages, start_date, prize_pool, race_class? }
+POST /api/admin/races                     { season_id, name, race_type, stages, edition_year?, race_class? }
+PUT  /api/admin/races/:raceId             { name?, race_type?, race_class?, stages?, edition_year? }
+GET  /api/race-pool                       public katalog af alle tilgængelige løb (Slice 09)
+POST /api/admin/race-pool/import-csv      multipart-CSV → seed/opdatér `race_pool` (idempotent via external_id)
+GET  /api/admin/seasons/:id/race-selection/preview
+POST /api/admin/seasons/:id/race-selection  { pool_race_ids[], replace?: bool } — bind pool-løb til sæson
+GET  /api/races                           q, season, class, status (søgbar liste på tværs af sæsoner)
 POST /api/admin/import-results            multipart: file + race_id
 POST /api/admin/seasons/:id/start
 POST /api/admin/seasons/:id/end
@@ -333,11 +339,20 @@ riders           id, pcm_id, firstname, lastname, full_name(gen), birthdate,
                  stat_res, stat_ftr
 seasons          id, number, status(upcoming|active|completed), start_date,
                  end_date, race_days_total, race_days_completed
-races            id, season_id, name, race_type(single|stage_race), stages,
-                 start_date, status(scheduled|active|completed), prize_pool
-race_results     id, race_id, stage_number, result_type(stage|gc|points|mountain|young|team),
+races            id, season_id, name, race_type(single|stage_race), race_class,
+                 stages, edition_year(2000-2099, nullable), pool_race_id(FK race_pool, nullable),
+                 status(scheduled|active|completed)
+                 — CONSTRAINT races_no_season_zero (season_id != all-zero uuid)
+                 — NOTE: ingen start_date/prize_pool på races; løbsdato vises via
+                   pool_race.date_text (tekst, kalender-baseret), præmiepenge ligger
+                   pr. resultat i race_results.prize_money (BIGINT)
+race_pool        id, external_id(unique), name, race_class(9 klasser jvf frontend
+                 uciRaceClasses.js), race_type, stages, date_text, country
+                 — public-readable RLS, service_role write
+race_results     id, race_id, stage_number, result_type(stage|gc|points|mountain|
+                 young|team|leader|mountain_day|points_day|young_day),
                  rank, rider_id, rider_name, team_id, team_name, finish_time,
-                 points_earned, prize_money
+                 points_earned, prize_money(BIGINT)
 auctions         id, rider_id, seller_team_id, starting_price, current_price,
                  current_bidder_id, min_increment, requested_start, calculated_end,
                  actual_end, status(active|extended|completed|cancelled),

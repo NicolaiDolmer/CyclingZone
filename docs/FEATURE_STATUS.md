@@ -253,7 +253,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
   - 💸 **Største enkelt-transfer**: max(ABS(`finance_transactions.amount`)) WHERE `season_id={id}` AND `type='transfer_in'` (sælger-perspektiv undgår double-count). Vises beløb + description (rytter-navn) + hold. Klik → hold-profil
   - 🔄 **Mest aktive transfer-marked-hold**: count(`finance_transactions`) per `team_id` WHERE `type IN ('transfer_in','transfer_out')`. Klik → hold-profil
   - 🚴 **Stage-king**: count(`race_results` WHERE `result_type='stage' AND rank=1`) per rider_id. Vises navn + antal etapesejre. Klik → rytter-profil
-- **Kalender-sektion:** alle løb i sæsonen sorteret kronologisk (`races.start_date ASC`). Viser dato (DD MMM), navn, type (etapeløb/enkeltdag), præmiepulje og status-badge (afsluttet/igang/kommende). Header viser totals (`X afsluttet · Y kommende`). Klik på række → `/race-archive/:raceSlug`
+- **Kalender-sektion:** alle løb i sæsonen vises med kalender-dato via `pool_race.date_text` (tekst-baseret kalender — der findes ingen `races.start_date`-kolonne; løb er instanser af `race_pool`-katalog jvf Slice 09). Viser dato (`pool_race.date_text`), navn, type (etapeløb/enkeltdag), status-badge (afsluttet/igang/kommende) og `edition_year`-suffix når sat. Klik på række → `/race-archive/:raceSlug`. (Note: præmiepulje pr. løb beregnes pr. resultat-row via `race_results.prize_money`; der er ingen aggregat-`prize_pool`-kolonne på `races`.)
 - **Backend:** Ingen nye endpoints — alt læses via supabase-client (`season_standings`, `races`, `race_results`, `finance_transactions`). Reuse-pattern matcher resten af `SeasonEndPage`
 - **URL-flow:** Dropdown-skift kalder `changeSeason(s)` → `navigate('/seasons/{id}')`. `useEffect([urlSeasonId, seasons])` reagerer på URL og kalder `loadSeason(target)`. Re-renders triggered af split useEffect-pattern (init + load) for at undgå `react-hooks/exhaustive-deps` parser-error når function-decl forward-refereres
 - **Empty-states:** Vinder-kort viser "—" + "Ingen X endnu" hvis ingen data. Kalender-sektion vises kun hvis `races.length > 0`
@@ -426,6 +426,37 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## 🔴 Broken / Kendte bugs
 
+Snapshot fra åbne `type:bug`-issues (gh issue list --state open --label type:bug). Auditeret 2026-05-23 (#524). Live state: `gh issue list --state open --label type:bug --limit 30`.
+
+**Gameplay / UX (player-facing):**
+- [#251](https://github.com/NicolaiDolmer/CyclingZone/issues/251) Ønskeliste viser "fri agent" for købte ryttere + mangler aktiv-auktion-status (priority:med)
+- [#249](https://github.com/NicolaiDolmer/CyclingZone/issues/249) Bud-historik: sekundær sortering bør være beløb (descending) (priority:med)
+- [#248](https://github.com/NicolaiDolmer/CyclingZone/issues/248) Evne-sortering virker ikke i "Min situation"-overbudt-sektion (priority:med)
+- [#231](https://github.com/NicolaiDolmer/CyclingZone/issues/231) Løn-kørsel viser '-' for nogle ryttere efter første salary-tick (2026-05-08 ~20:17 UTC) (priority:med)
+- [#229](https://github.com/NicolaiDolmer/CyclingZone/issues/229) Rytteroversigt: ny side starter i bunden i stedet for toppen ved page-skift (priority:low)
+- [#225](https://github.com/NicolaiDolmer/CyclingZone/issues/225) Guide-banner kan ikke lukkes på /riders (forskellig fra #107) (priority:low)
+- [#224](https://github.com/NicolaiDolmer/CyclingZone/issues/224) Manager-navn opdateres ikke i dashboard efter ændring (priority:med)
+- [#164](https://github.com/NicolaiDolmer/CyclingZone/issues/164) Rytter evne-filter slider hopper ved drag (live re-render) (priority:low)
+- [#162](https://github.com/NicolaiDolmer/CyclingZone/issues/162) Alder-felt mangler på rytterside (regression efter #108) (priority:med)
+- [#161](https://github.com/NicolaiDolmer/CyclingZone/issues/161) "Undefined" holdnavn vises i transferhistorik (i stedet for AI/fri transfer) (priority:low)
+- [#109](https://github.com/NicolaiDolmer/CyclingZone/issues/109) Ikke alle ryttere under 25 år er kategoriseret som U25 (priority:med)
+
+**CI / infra / ops (ikke player-facing, men aktive bugs):**
+- [#579](https://github.com/NicolaiDolmer/CyclingZone/issues/579) Vurder IPv6-safe keyGenerator for backend rate limits (security, priority:high — followup fra #581 fix)
+- [#578](https://github.com/NicolaiDolmer/CyclingZone/issues/578) Vurder recovery-kontrakt for partial season-transition failure (slice-08, priority:high)
+- [#577](https://github.com/NicolaiDolmer/CyclingZone/issues/577) Vurder idempotency for negative-interest ved season payroll (priority:high — fix landet i #584)
+- [#523](https://github.com/NicolaiDolmer/CyclingZone/issues/523) Installer/verificér Playwright browsers og gør lokal e2e audit-kørsel reproducerbar (priority:med)
+- [#512](https://github.com/NicolaiDolmer/CyclingZone/issues/512) auctions-mobile-chromium snapshot flake + worker-hang force-kill (priority:med) — fra audit 2026-05-20
+- [#501](https://github.com/NicolaiDolmer/CyclingZone/issues/501) sprint-metrics-snapshot.yml fejler på alle main-pushes (priority:low) — fra audit 2026-05-20
+- [#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481) Brand identity overhaul — logo + design manual (priority:med)
+- [#479](https://github.com/NicolaiDolmer/CyclingZone/issues/479) Mobile Performance optim for /founder-supporter waitlist (priority:med)
+- [#404](https://github.com/NicolaiDolmer/CyclingZone/issues/404) frontend/.env har disabled legacy JWT — opdatér til publishable key (priority:med)
+- [#385](https://github.com/NicolaiDolmer/CyclingZone/issues/385) Settings.json 3-lag split + path-audit forward-guard (priority:high, ai-ops)
+- [#357](https://github.com/NicolaiDolmer/CyclingZone/issues/357) AI Ops: Verificér Phase 1-3 cold-start <8K + canary-regression (priority:med, needs-user-action)
+- [#347](https://github.com/NicolaiDolmer/CyclingZone/issues/347) Gør deploy-verify robust for script/doc-only commits og manglende Railway-status (priority:med)
+- [#346](https://github.com/NicolaiDolmer/CyclingZone/issues/346) Quality Inbox: 0 fail, 13 warn (priority:high, bot-genereret)
+- [#337](https://github.com/NicolaiDolmer/CyclingZone/issues/337) Roter lokal backend/.env service-key til sb_secret_* (priority:med, needs-user-action)
+- [#263](https://github.com/NicolaiDolmer/CyclingZone/issues/263) "Talentspejler" — forældet eller ikke udviklet (priority:low, investigation)
 
 ---
 
