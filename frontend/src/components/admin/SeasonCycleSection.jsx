@@ -210,27 +210,14 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
           {/* #535: Payroll-summary tabel — viser counts + totaler pr. kategori
               så admin kan verificere at de forventede finance_transactions
               rows blev skrevet, uden manuel SQL i Supabase. */}
-          <PayrollSummaryTable result={result} preview={preview} />
+          <PayrollSummaryTable result={result} />
         </div>
       )}
     </div>
   );
 }
 
-/**
- * #535 · Payroll-summary tabel for admin.
- *
- * Læser season_payroll-fasen fra transitionToNextSeason's return-log og viser
- * forventet vs. faktisk pr. kategori (loan_interest, salary, emergency_loan,
- * negative_balance_interest). Rød markering hvis forventet ≠ faktisk.
- *
- * Forventet-tal: vi har pt. ikke en separat "forventet"-preview-feed for
- * payroll-trinene (kun sponsor-preview findes). Indtil sådan preview er
- * bygget, viser tabellen kun faktisk-counts/totaler. Hvis fremtidig preview
- * tilføjer expected-felter (fx fra buildSeasonEndPreviewRows), kan tabellen
- * udvides uden API-ændring.
- */
-function PayrollSummaryTable({ result, preview }) {
+function PayrollSummaryTable({ result }) {
   const payrollEntry = (result?.log || []).find((e) => e.phase === "season_payroll");
   if (!payrollEntry) return null;
 
