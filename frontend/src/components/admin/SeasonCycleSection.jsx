@@ -206,8 +206,129 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
               </div>
             ))}
           </div>
+
+          {/* #535: Payroll-summary tabel — viser counts + totaler pr. kategori
+              så admin kan verificere at de forventede finance_transactions
+              rows blev skrevet, uden manuel SQL i Supabase. */}
+          <PayrollSummaryTable result={result} />
         </div>
       )}
+    </div>
+  );
+}
+
+function PayrollSummaryTable({ result }) {
+  const payrollEntry = (result?.log || []).find((e) => e.phase === "season_payroll");
+  if (!payrollEntry) return null;
+
+  // Engine'n kan have returneret { skipped: true, reason } hvis processSeasonStart
+  // er stubbed (legacy test-path). I produktion sker det ikke, men vi viser en
+  // venlig fallback i stedet for tomme tal.
+  if (payrollEntry.skipped) {
+    return (
+      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-900 text-xs">
+        ⚠️ Payroll-summary ikke tilgængelig: {payrollEntry.reason}
+      </div>
+    );
+  }
+
+  const teamsProcessed = payrollEntry.teams_processed ?? 0;
+  // Forventet tal: hvis preview-data findes for kategorien, brug den; ellers null.
+  // Pt. har sponsor-preview ingen payroll-forventninger, så alle expected er null.
+  // Et fremtidigt buildSeasonEndPreviewRows-feed (ledger fra forrige sæsons
+  // riders/loans) ville kunne udfylde disse.
+  const rows = [
+    {
+      key: "loan_interest",
+      label: "Lånerenter",
+      expectedCount: null,
+      actualCount: payrollEntry.loan_interest_count ?? 0,
+      actualTotal: payrollEntry.loan_interest_total ?? 0,
+      hint: "uniq_loan_interest_per_loan_season — divergens kan indikere skip-events",
+    },
+    {
+      key: "salary",
+      label: "Lønninger",
+      expectedCount: null,
+      actualCount: payrollEntry.salary_count ?? 0,
+      actualTotal: payrollEntry.salary_total ?? 0,
+      hint: "Forventer salary-row pr. hold med ryttere — divergens kan indikere idempotent-retry",
+    },
+    {
+      key: "emergency_loan",
+      label: "Nødlån",
+      expectedCount: null,
+      actualCount: payrollEntry.emergency_loan_count ?? 0,
+      actualTotal: payrollEntry.emergency_loan_total ?? 0,
+      hint: "Oprettes når balance < salary efter sponsor — afhænger af holdenes økonomi",
+    },
+    {
+      key: "negative_balance_interest",
+      label: "Renter på negativ balance",
+      expectedCount: null,
+      actualCount: payrollEntry.negative_balance_interest_count ?? 0,
+      actualTotal: payrollEntry.negative_balance_interest_total ?? 0,
+      hint: "Safety net når emergency-lån ikke dækker — sjælden i normal-drift",
+    },
+  ];
+
+  const fmt = (n) =>
+    typeof n === "number" ? n.toLocaleString("da-DK") : "—";
+
+  return (
+    <div className="mt-4">
+      <p className="text-cz-2 font-medium text-sm mb-2">
+        Payroll-summary ({teamsProcessed} hold behandlet)
+      </p>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-cz-3 text-left">
+            <th className="py-1 pr-2">Kategori</th>
+            <th className="py-1 pr-2 text-right">Forventet rows</th>
+            <th className="py-1 pr-2 text-right">Faktisk rows</th>
+            <th className="py-1 text-right">Total beløb (CZ$)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const hasExpected = row.expectedCount !== null && row.expectedCount !== undefined;
+            const diverges = hasExpected && row.expectedCount !== row.actualCount;
+            return (
+              <tr
+                key={row.key}
+                className={`border-t border-cz-border ${diverges ? "bg-red-50" : ""}`}
+              >
+                <td className="py-1 pr-2 text-cz-1">{row.label}</td>
+                <td className="py-1 pr-2 text-right text-cz-2">
+                  {hasExpected ? fmt(row.expectedCount) : "—"}
+                </td>
+                <td
+                  className={`py-1 pr-2 text-right font-semibold ${
+                    diverges ? "text-red-700" : "text-cz-1"
+                  }`}
+                >
+                  {fmt(row.actualCount)}
+                </td>
+                <td className="py-1 text-right text-cz-1">{fmt(row.actualTotal)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {rows.some((r) => r.expectedCount === null) && (
+        <p className="mt-2 text-cz-3 text-xs italic">
+          Forventet-tal ikke tilgængelige (ingen payroll-preview-feed). Viser faktisk-rows
+          fra engine-return + total beløb. Sammenlign mod Supabase finance_transactions ved
+          mistanke om divergens — hints pr. række:
+        </p>
+      )}
+      <ul className="mt-1 list-disc list-inside text-cz-3 text-xs space-y-0.5">
+        {rows.map((r) => (
+          <li key={`${r.key}-hint`}>
+            <span className="font-medium text-cz-2">{r.label}:</span> {r.hint}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

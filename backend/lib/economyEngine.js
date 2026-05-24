@@ -316,11 +316,42 @@ export async function processSeasonStart(seasonId, deps = {}) {
   // Payroll injicerbar via deps.runSeasonPayroll så sponsor-fokuserede tests
   // kan stub'e den uden at skulle mocke riders/board_profiles-tabeller.
   const runSeasonPayrollFn = deps.runSeasonPayroll ?? defaultRunSeasonPayroll;
-  await runSeasonPayrollFn(supabaseClient, seasonId, deps);
+  const payrollOutcome = await runSeasonPayrollFn(supabaseClient, seasonId, deps);
 
-  return results;
+  // #535: Returnér struktureret { sponsor, payroll } så admin-UI og
+  // transitionToNextSeason's return-log kan vise payroll-counts + totaler
+  // uden manuel SQL i Supabase. Bagudkompatibilitet: results-arrayet er stadig
+  // tilgængeligt via `.sponsor`. Callere der læser .length skal opdateres.
+  //
+  // Defensive defaults: hvis runSeasonPayroll er stubbed til at returnere
+  // `undefined`/array (legacy tests), fald tilbage til tomt summary i stedet
+  // for at kaste.
+  const payrollSummary = (payrollOutcome && payrollOutcome.summary) || {
+    teams_processed: Array.isArray(payrollOutcome) ? payrollOutcome.length : 0,
+    loan_interest_count: 0,
+    loan_interest_total: 0,
+    salary_count: 0,
+    salary_total: 0,
+    emergency_loan_count: 0,
+    emergency_loan_total: 0,
+    negative_balance_interest_count: 0,
+    negative_balance_interest_total: 0,
+  };
+  const payrollResults = (payrollOutcome && payrollOutcome.results) ||
+    (Array.isArray(payrollOutcome) ? payrollOutcome : []);
+
+  return {
+    sponsor: results,
+    payroll: {
+      results: payrollResults,
+      summary: payrollSummary,
+    },
+  };
 }
 
+// #535: Returnerer både per-hold results (legacy) og aggregated summary så
+// processSeasonStart kan eksponere én struktureret payroll-summary til
+// admin-UI uden at admin skal læse finance_transactions manuelt.
 async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
   const teamsWithRoster = await loadHumanSeasonEndTeams(supabaseClient);
   const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
@@ -334,7 +365,34 @@ async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
     });
     results.push(payroll);
   }
-  return results;
+
+  // Aggregated summary: 9 felter (teams_processed + 4×count + 4×total).
+  // Counts tæller kun hold/lån hvor noget faktisk blev debiteret i denne
+  // kørsel — skipped (idempotent-retry) ekskluderes så tællingen matcher
+  // antal finance_transactions rows skrevet i denne kørsel.
+  const summary = results.reduce((acc, p) => {
+    acc.loan_interest_count += p.loan_interest_count || 0;
+    acc.loan_interest_total += p.loan_interest || 0;
+    acc.salary_count += p.salary_count || 0;
+    acc.salary_total += p.salary || 0;
+    acc.emergency_loan_count += p.emergency_loan_count || 0;
+    acc.emergency_loan_total += p.emergency_loan_amount || 0;
+    acc.negative_balance_interest_count += p.negative_balance_interest_count || 0;
+    acc.negative_balance_interest_total += p.negative_balance_interest || 0;
+    return acc;
+  }, {
+    teams_processed: results.length,
+    loan_interest_count: 0,
+    loan_interest_total: 0,
+    salary_count: 0,
+    salary_total: 0,
+    emergency_loan_count: 0,
+    emergency_loan_total: 0,
+    negative_balance_interest_count: 0,
+    negative_balance_interest_total: 0,
+  });
+
+  return { results, summary };
 }
 
 /**
@@ -344,14 +402,28 @@ async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
  *
  * Flyttet 2026-05-21 fra processTeamSeasonEnd. Sæson-slut beholder kun
  * board-evaluation, divisionsbonusser, op/nedrykning og rytter-værdi-recalc.
+ *
+ * #535: Returnerer både legacy-felter (team, total_salary, emergency_loan,
+ * negative_interest) og normaliserede tal-felter til payroll-summary
+ * aggregation: loan_interest, salary, emergency_loan_amount,
+ * negative_balance_interest. Begge sæt er rene tal (ikke nested objekter).
  */
 export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
   const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
 
-  // 1. Lånerenter på alle aktive lån
-  await processLoanInterestFn(team.id, seasonId, supabaseClient);
+  // 1. Lånerenter på alle aktive lån. processLoanInterest returnerer
+  //    { charged: [{ loan_id, interest, skipped }] } så vi kan aggregere
+  //    faktisk debiteret rente (skipped=idempotent-retry tæller ikke).
+  const loanInterestResult = (await processLoanInterestFn(team.id, seasonId, supabaseClient)) || {};
+  const loanInterestCharges = Array.isArray(loanInterestResult.charged)
+    ? loanInterestResult.charged.filter((c) => !c.skipped)
+    : [];
+  const loanInterestTotal = loanInterestCharges.reduce(
+    (sum, c) => sum + (c.interest || 0),
+    0
+  );
 
   // 2. Løn — sum(rider.salary). Hvis balance < salary → emergency-lån.
   const totalSalary = (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
@@ -414,9 +486,22 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
 
   return {
     team: team.name,
+    team_id: team.id,
+    // Legacy field-navne bevares for kontrakt-stabilitet med eksisterende callers/tests
     total_salary: totalSalary,
     emergency_loan: emergencyLoanAmount,
     negative_interest: negativeInterestCharged,
+    // #535: Per-hold payroll-summary felter (rene tal). loan_interest_count
+    // er antallet af lån der faktisk fik debiteret rente i denne kørsel
+    // (skipped/idempotent-retry tælles ikke).
+    loan_interest: loanInterestTotal,
+    loan_interest_count: loanInterestCharges.length,
+    salary: totalSalary,
+    salary_count: totalSalary > 0 ? 1 : 0,
+    emergency_loan_amount: emergencyLoanAmount,
+    emergency_loan_count: emergencyLoanAmount > 0 ? 1 : 0,
+    negative_balance_interest: negativeInterestCharged,
+    negative_balance_interest_count: negativeInterestCharged > 0 ? 1 : 0,
   };
 }
 

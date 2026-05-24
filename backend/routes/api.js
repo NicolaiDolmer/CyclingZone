@@ -3308,14 +3308,18 @@ router.post("/admin/seasons/:id/start", requireAdmin, adminWriteLimiter, async (
       .single();
     if (startError) return res.status(500).json({ error: startError.message });
 
-    const sponsorResults = await processSeasonStart(seasonId);
+    // #535: processSeasonStart returnerer nu { sponsor: [...], payroll: {...} }
+    // i stedet for sponsor-array. Bagudkompatibilitet for ældre callere
+    // håndteres på callsite-niveau (tests må eksplicit migreres).
+    const seasonStartResult = await processSeasonStart(seasonId);
+    const sponsorPayouts = (seasonStartResult?.sponsor || []).length;
 
     await logActivity("season_started", {
       meta: {
         season_id: startedSeason.id,
         season_number: startedSeason.number,
         standings_initialized: standings.created,
-        sponsor_payouts: sponsorResults.length,
+        sponsor_payouts: sponsorPayouts,
       },
     });
 
@@ -3326,7 +3330,7 @@ router.post("/admin/seasons/:id/start", requireAdmin, adminWriteLimiter, async (
       season_id: startedSeason.id,
       number: startedSeason.number,
       standings_initialized: standings.created,
-      sponsor_payouts: sponsorResults.length,
+      sponsor_payouts: sponsorPayouts,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
