@@ -79,11 +79,6 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
     .maybeSingle();
   if (fromError) throw new Error(`Could not load season ${fromSeasonId}: ${fromError.message}`);
   if (!fromSeason) throw new Error(`Season ${fromSeasonId} not found`);
-  if (fromSeason.status !== "active") {
-    throw new Error(
-      `Cannot transition from season ${fromSeason.number}: status='${fromSeason.status}' (must be 'active')`
-    );
-  }
 
   const toSeasonNumber = fromSeason.number + 1;
   const toSeasonId = computeSeasonUuid(toSeasonNumber);
@@ -91,6 +86,18 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
 
   const { data: existingTo } = await supabase
     .from("seasons").select("id, status").eq("id", toSeasonId).maybeSingle();
+
+  // Resume-support (#578): tillad completed fromSeason når toSeason eksisterer.
+  // Signatur på partial failure efter mark_previous_completed (fase 3) — fase 4-8
+  // er alle idempotente og kan genoptages. Completed UDEN toSeason er en faktisk
+  // fejl (sandsynligvis manuel DB-tilstand) og blokeres stadig.
+  const isResumeFromPartialFailure =
+    fromSeason.status === "completed" && Boolean(existingTo);
+  if (fromSeason.status !== "active" && !isResumeFromPartialFailure) {
+    throw new Error(
+      `Cannot transition from season ${fromSeason.number}: status='${fromSeason.status}' (must be 'active' or 'completed' with existing next season for resume)`
+    );
+  }
 
   const { data: humanTeams, error: teamsError } = await supabase
     .from("teams")
@@ -316,9 +323,15 @@ async function writeAdminLog(supabase, payload) {
 /**
  * Udfør sæson-transition. Idempotent — re-run efter delvis fejl er sikker.
  *
+ * Re-run accepteres når enten:
+ *   - fromSeason.status='active' (normal kørsel), eller
+ *   - fromSeason.status='completed' OG toSeason eksisterer (resume efter
+ *     partial failure efter mark_previous_completed; alle remaining faser er
+ *     idempotente). Se #578.
+ *
  * @param {object} args
  * @param {object} args.supabase                — Supabase service-role client
- * @param {string} args.fromSeasonId            — UUID på sæsonen der lukkes (skal være 'active')
+ * @param {string} args.fromSeasonId            — UUID på sæsonen der lukkes (active eller completed-med-resume)
  * @param {Date|string} [args.transitionAt]     — tidspunkt for transition (default: nu)
  * @param {boolean} [args.dryRun]               — hvis true: ingen writes, returnér plan
  * @param {string|null} [args.adminUserId]      — auth.uid for admin-loggen

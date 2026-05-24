@@ -370,6 +370,11 @@ test("transitionToNextSeason — re-run efter delvis fejl skipper allerede-gjort
 });
 
 test("transitionToNextSeason — fuld idempotens: re-run med alt færdig giver alle skipped", async () => {
+  // Resume-support (#578): re-run med fromSeason='completed' og toSeason eksisterende
+  // SKAL ikke kaste — alle faser detekterer at arbejdet er gjort og skipper. Tidligere
+  // asserterede denne test at re-run kastede 'must be active', hvilket var dokumentation
+  // af et faktisk reliability-gap (cron kunne ikke genoptage efter partial failure
+  // efter mark_previous_completed).
   const transitionAt = "2026-05-15T06:00:00.000Z";
   const supabase = createMockSupabase({
     seasons: [
@@ -391,15 +396,116 @@ test("transitionToNextSeason — fuld idempotens: re-run med alt færdig giver a
     }],
   });
 
-  // Sæson 0 er nu completed → buildTransitionPlan vil afvise.
-  // I stedet kalder vi direkte fra sæson 0 men den er allerede completed.
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    deps: {
+      processSeasonStart: async () => ({
+        sponsor: [],
+        payroll: {
+          results: [],
+          summary: {
+            teams_processed: 0,
+            loan_interest_count: 0, loan_interest_total: 0,
+            salary_count: 0, salary_total: 0,
+            emergency_loan_count: 0, emergency_loan_total: 0,
+            negative_balance_interest_count: 0, negative_balance_interest_total: 0,
+          },
+        },
+      }),
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.log[0].phase, "insert_next_season");
+  assert.equal(result.log[0].skipped, true, "sæson 1 eksisterer → skipped");
+  assert.equal(result.log[1].phase, "mark_previous_completed");
+  assert.equal(result.log[1].skipped, true, "sæson 0 allerede completed → skipped");
+  assert.equal(result.log[2].phase, "close_prev_transfer_window");
+  assert.equal(result.log[2].skipped, true, "win-0 allerede closed → skipped");
+  assert.equal(result.log[3].phase, "insert_next_transfer_window");
+  assert.equal(result.log[3].skipped, true, "sæson 1's window eksisterer → skipped");
+  assert.equal(result.log[6].phase, "admin_log");
+  assert.equal(result.log[6].skipped, true, "admin_log-entry eksisterer → skipped");
+  // Discord broadcaster altid (fire-and-forget, bruger har godkendt 1 ekstra besked)
+  assert.equal(result.log[7].phase, "discord_broadcast");
+});
+
+test("transitionToNextSeason — resume efter partial failure efter mark_previous_completed (#578)", async () => {
+  // Reliability-gap: simuler at fase 3 (mark_previous_completed) gik igennem,
+  // men fase 4-7 fejlede. fromSeason er 'completed', toSeason er 'active',
+  // men win-0 er stadig 'open', sæson 1's transfer_window mangler, og admin_log
+  // har ingen entry. Cron skal kunne re-køre og afslutte de manglende faser
+  // uden manuel SQL-intervention.
+  const transitionAt = "2026-05-15T06:00:00.000Z";
+  const supabase = createMockSupabase({
+    seasons: [
+      { id: "00000000-0000-0000-0000-000000000000", number: 0, status: "completed", end_date: transitionAt },
+      { id: "00000000-0000-0000-0000-000000000001", number: 1, status: "active", start_date: transitionAt },
+    ],
+    transfer_windows: [
+      { id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" },
+    ],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date(transitionAt),
+    deps: {
+      processSeasonStart: async () => ({
+        sponsor: [],
+        payroll: {
+          results: [],
+          summary: {
+            teams_processed: 0,
+            loan_interest_count: 0, loan_interest_total: 0,
+            salary_count: 0, salary_total: 0,
+            emergency_loan_count: 0, emergency_loan_total: 0,
+            negative_balance_interest_count: 0, negative_balance_interest_total: 0,
+          },
+        },
+      }),
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.log[0].phase, "insert_next_season");
+  assert.equal(result.log[0].skipped, true, "sæson 1 var allerede insertet");
+  assert.equal(result.log[1].phase, "mark_previous_completed");
+  assert.equal(result.log[1].skipped, true, "sæson 0 var allerede completed (resume-scenariet)");
+  assert.equal(result.log[2].phase, "close_prev_transfer_window");
+  assert.equal(result.log[2].updated, true, "win-0 var 'open' → lukkes nu (fase 4 fejlede tidligere)");
+  assert.equal(result.log[3].phase, "insert_next_transfer_window");
+  assert.equal(result.log[3].inserted, true, "sæson 1's window manglede → oprettet nu");
+  assert.equal(result.log[6].phase, "admin_log");
+  assert.equal(result.log[6].inserted, true, "admin_log-entry manglede → oprettet nu");
+
+  const sæson0 = supabase.__state.seasons.find((s) => s.number === 0);
+  assert.equal(sæson0.status, "completed", "sæson 0 forbliver completed");
+
+  const sæson1Window = supabase.__state.transfer_windows.find(
+    (w) => w.id === "00000000-0000-0000-0000-00000001aaaa"
+  );
+  assert.ok(sæson1Window, "sæson 1's transfer_window blev oprettet ved resume");
+  assert.equal(sæson1Window.status, "closed");
+});
+
+test("buildTransitionPlan — completed UDEN toSeason kaster stadig (faktisk fejl, ikke resume)", async () => {
+  // Resume-support skal kun aktiveres når toSeason eksisterer. En lone 'completed'
+  // fromSeason uden toSeason er sandsynligvis manuel DB-corruption eller en
+  // anden bug — operatør skal undersøge, ikke blindly retry.
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "completed", end_date: "2026-05-15" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+  });
+
   await assert.rejects(
-    () => transitionToNextSeason({
-      supabase,
-      fromSeasonId: "00000000-0000-0000-0000-000000000000",
-      deps: { processSeasonStart: async () => [] },
-    }),
-    /must be 'active'/
+    () => buildTransitionPlan({ supabase, fromSeasonId: "00000000-0000-0000-0000-000000000000" }),
+    /must be 'active' or 'completed' with existing next season/
   );
 });
 
