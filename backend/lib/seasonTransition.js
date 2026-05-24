@@ -374,13 +374,45 @@ export async function transitionToNextSeason({
     )),
   });
 
-  // Phase 6: sponsor-payout (idempotent via partial UNIQUE-index på sponsor:team:season)
+  // Phase 6: sponsor-payout + payroll (idempotent via partial UNIQUE-indices
+  // på sponsor:team:season + salary/negative_interest:team:season +
+  // uniq_loan_interest_per_loan_season).
+  //
+  // #535: processSeasonStart returnerer nu { sponsor: [...], payroll: { results, summary } }
+  // i stedet for ren sponsor-array. Bagudkompatibilitet: ældre stubs (tests
+  // der returnerer et array eller intet payroll-felt) håndteres som "ingen
+  // payroll-data" i return-log.
   const processSeasonStartFn = deps.processSeasonStart ?? (await getProcessSeasonStart());
-  const sponsorResult = await processSeasonStartFn(plan.to_season.id, { supabase });
+  const seasonStartResult = await processSeasonStartFn(plan.to_season.id, { supabase });
+
+  const sponsorList = Array.isArray(seasonStartResult)
+    ? seasonStartResult
+    : (seasonStartResult?.sponsor || []);
   log.push({
     phase: "sponsor_payout",
-    count: Array.isArray(sponsorResult) ? sponsorResult.length : 0,
+    count: sponsorList.length,
   });
+
+  // Phase 6b: season_payroll — aggregeret summary af payroll-trinene
+  // (loan_interest, salary, emergency_loan, negative_balance_interest).
+  // Tidligere skete dette inde i processSeasonStart uden at counts/totaler
+  // blev returneret. Admin måtte køre manuel SQL i Supabase for at
+  // verificere at de forventede rows blev skrevet (audit 2026-05-21).
+  if (seasonStartResult && typeof seasonStartResult === "object" && seasonStartResult.payroll) {
+    log.push({
+      phase: "season_payroll",
+      ...seasonStartResult.payroll.summary,
+    });
+  } else {
+    // Legacy stub (test der returnerer en array) — log tom payroll-summary
+    // så fase-count er stabil, men markér eksplicit at data ikke kunne
+    // udledes så UI'en ikke viser misvisende 0-tællinger som "korrekt".
+    log.push({
+      phase: "season_payroll",
+      skipped: true,
+      reason: "processSeasonStart returnerede ikke payroll-summary",
+    });
+  }
 
   log.push({
     phase: "admin_log",

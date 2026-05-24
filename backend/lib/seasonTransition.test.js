@@ -271,9 +271,28 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
     transitionAt: new Date("2026-05-15T06:00:00Z"),
     adminUserId: "admin-uuid",
     deps: {
+      // #535: processSeasonStart returnerer nu { sponsor, payroll } i stedet
+      // for ren sponsor-array. season_payroll-fase i return-log læser fra
+      // payroll.summary.
       processSeasonStart: async (seasonId, _deps) => {
         sponsorCalls.push(seasonId);
-        return [{ team: "T1", sponsor: 240000, recurring_loan_fees: 0, pullout_applied: false }];
+        return {
+          sponsor: [{ team: "T1", sponsor: 240000, recurring_loan_fees: 0, pullout_applied: false }],
+          payroll: {
+            results: [{ team: "T1", team_id: "t1", loan_interest: 0, salary: 0, emergency_loan_amount: 0, negative_balance_interest: 0 }],
+            summary: {
+              teams_processed: 1,
+              loan_interest_count: 0,
+              loan_interest_total: 0,
+              salary_count: 0,
+              salary_total: 0,
+              emergency_loan_count: 0,
+              emergency_loan_total: 0,
+              negative_balance_interest_count: 0,
+              negative_balance_interest_total: 0,
+            },
+          },
+        };
       },
       notifySeasonEvent: async () => {},
     },
@@ -281,7 +300,8 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
 
   assert.equal(result.ok, true);
   assert.equal(result.dryRun, false);
-  assert.equal(result.log.length, 7);
+  // #535: 8 faser nu (season_payroll tilføjet mellem sponsor_payout og admin_log)
+  assert.equal(result.log.length, 8);
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
@@ -292,10 +312,13 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.log[3].inserted, true);
   assert.equal(result.log[4].phase, "sponsor_payout");
   assert.equal(result.log[4].count, 1);
-  assert.equal(result.log[5].phase, "admin_log");
-  assert.equal(result.log[5].inserted, true);
-  assert.equal(result.log[6].phase, "discord_broadcast");
-  assert.equal(result.log[6].sent, true);
+  assert.equal(result.log[5].phase, "season_payroll");
+  assert.equal(result.log[5].teams_processed, 1);
+  assert.equal(result.log[5].salary_count, 0);
+  assert.equal(result.log[6].phase, "admin_log");
+  assert.equal(result.log[6].inserted, true);
+  assert.equal(result.log[7].phase, "discord_broadcast");
+  assert.equal(result.log[7].sent, true);
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 

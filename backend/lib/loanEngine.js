@@ -401,6 +401,9 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
 
 // ── Tilskriv renter ved sæsonafslutning ───────────────────────────────────────
 
+// #535: Returnerer { charged: [{ loan_id, interest, skipped }] } så
+// payroll-summary kan aggregere counts + totaler. Charged-array er backward
+// compatible — callers der ignorerer return-værdien påvirkes ikke.
 export async function processLoanInterest(teamId, seasonId, supabaseClient = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
   const { data: loans, error: loansError } = await client
@@ -409,6 +412,8 @@ export async function processLoanInterest(teamId, seasonId, supabaseClient = nul
     .eq("team_id", teamId)
     .eq("status", "active");
   if (loansError) throw loansError;
+
+  const charged = [];
 
   for (const loan of loans || []) {
     const interest = Math.round(loan.amount_remaining * loan.interest_rate);
@@ -429,6 +434,7 @@ export async function processLoanInterest(teamId, seasonId, supabaseClient = nul
         console.warn(
           `[economy] loan-interest already charged for loan ${loan.id} season ${seasonId} — skip`
         );
+        charged.push({ loan_id: loan.id, interest, skipped: true });
         continue;
       }
       throw transactionError;
@@ -443,7 +449,11 @@ export async function processLoanInterest(teamId, seasonId, supabaseClient = nul
       updated_at: new Date().toISOString(),
     }).eq("id", loan.id);
     if (updateError) throw updateError;
+
+    charged.push({ loan_id: loan.id, interest, skipped: false });
   }
+
+  return { charged };
 }
 
 // ── Intern helper ─────────────────────────────────────────────────────────────
