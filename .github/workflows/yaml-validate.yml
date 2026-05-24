@@ -1,0 +1,82 @@
+name: YAML validate
+
+# Validerer YAML i .github/-mappen for at fange parse-fejl FØR de lander på main.
+#
+# Baggrund:
+#   - Refs #501 / #596: sprint-metrics-snapshot.yml havde block-literal
+#     indent-trap (multi-line shell-string brød `run: |`-indent). GitHub Actions
+#     loggede ingen synlig parse-fejl; workflow fejlede 30/30 historiske runs
+#     med phantom `event: push` i 5 dage før det blev opdaget manuelt.
+#     Postmortem: .claude/learnings/2026-05-23-yaml-block-literal-indent-trap.md
+#   - Refs #565: ISSUE_TEMPLATE/*.yml havde ingen automatisk validator;
+#     fejl opdages først når en bruger forsøger at åbne template.
+#
+# Strategi:
+#   - actionlint (de facto standard) fanger workflow-YAML-syntax + best practices
+#     (manglende permissions, shellcheck af `run:`-blocks, mistyped action-refs).
+#     Vil fange "name == path"-symptom for #501-bug-klassen.
+#   - yamllint validerer issue-template-YAML-syntax (GitHub validerer required
+#     fields naturligt ved template-load).
+#
+# Refs #597 #501 #565 #596
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/workflows/yaml-validate.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: actionlint (workflow YAML)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Run actionlint via reviewdog
+        uses: reviewdog/action-actionlint@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-check
+          fail_on_error: true
+          level: error
+
+  yamllint-issue-templates:
+    name: yamllint (issue templates)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install yamllint
+        run: pip install --no-cache-dir yamllint==1.35.1
+
+      - name: Validate ISSUE_TEMPLATE YAML
+        # Relaxed rules: GitHub-issue-templates har deres egne konventioner
+        # (lange description-strings, no-document-start). Vi vil kun fange
+        # actual parse-fejl + structural problems — ikke style-issues.
+        run: |
+          yamllint \
+            -d "{extends: relaxed, rules: {line-length: disable, document-start: disable, truthy: disable, comments: disable, comments-indentation: disable}}" \
+            .github/ISSUE_TEMPLATE/
