@@ -39,19 +39,3 @@ export function SentryBoundary({ children }) {
     </Sentry.ErrorBoundary>
   );
 }
-
-// #348 frontend-verify URL-trigger — fjernes igen efter Sentry MCP bekraefter event.
-// Aktiveres ved at besoege https://cycling-zone.vercel.app/?sentry-test=1
-export function maybeTriggerVerifyEvent() {
-  if (!ENABLED || typeof window === "undefined") return;
-  if (new URLSearchParams(window.location.search).get("sentry-test") !== "1") return;
-  const err = new Error("Sentry frontend verify - #348 URL-trigger test");
-  Sentry.captureException(err, {
-    tags: { verify: "frontend-348" },
-    extra: {
-      source: "main.jsx URL-trigger",
-      timestamp: new Date().toISOString(),
-      userAgent: window.navigator?.userAgent,
-    },
-  });
-}
