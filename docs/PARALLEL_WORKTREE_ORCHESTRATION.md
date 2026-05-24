@@ -78,6 +78,8 @@ pwsh -File scripts/new-worktree.ps1 -Branch <type>/<N>-<slug>
 
 Branch-navne følger projektets convention: `chore/`, `docs/`, `fix/`, `feat/` prefix.
 
+**Pre-condition:** `.claude/settings.json` SKAL have `permissions.additionalDirectories` der whitelist'er `../CyclingZone-worktrees/`. Uden den får subagents silent-deny på enhver Read/Glob/Grep/Write/Edit/Bash-cd mod worktree-path (sibling-path udenfor project root). Verificér med `grep additionalDirectories .claude/settings.json` før parallel-spawn. Fix postmortem: [`.claude/learnings/2026-05-24-subagent-worktree-sandbox-boundary.md`](../.claude/learnings/2026-05-24-subagent-worktree-sandbox-boundary.md) ([#617](https://github.com/NicolaiDolmer/CyclingZone/issues/617)).
+
 ### 4. Spawn subagents (PARALLELT — single message)
 
 Send 3 `Agent`-kald i samme message for ægte parallel-execution.
@@ -185,6 +187,7 @@ Roughly neutral vs. 3 sekventielle sessions med cold-start hver. **Wall-clock-be
 ## Common pitfalls
 
 1. **Subagent Write-restriktion (LØST 2026-05-23-N, [#591](https://github.com/NicolaiDolmer/CyclingZone/issues/591))** — Background-subagents auto-deny tools uden allow-entry. Fix: `Write` / `Edit` / `NotebookEdit` tilføjet til `.claude/settings.json` `permissions.allow`. Workarounds nedenfor er bevaret som historisk reference, men er IKKE længere nødvendige.
+   - **1b. Subagent worktree-path sandbox-boundary (LØST 2026-05-24-L, [#617](https://github.com/NicolaiDolmer/CyclingZone/issues/617))** — Sibling-paths som `C:\dev\CyclingZone-worktrees\*` er udenfor default project-root boundary; subagents silent-denies alle path-baserede tool-calls (Read/Glob/Grep/Write/Edit) + Bash/PowerShell `cd`. Fix: `permissions.additionalDirectories: ["../CyclingZone-worktrees/"]` i `.claude/settings.json`. Postmortem: [`.claude/learnings/2026-05-24-subagent-worktree-sandbox-boundary.md`](../.claude/learnings/2026-05-24-subagent-worktree-sandbox-boundary.md).
 2. **Subagent skriver til docs/NOW.md** — race-condition med master. Instruér eksplicit "rør IKKE NOW.md".
 3. **Parallel worktree-setup** — `git worktree add` har race condition. Kør sekventielt.
 4. **Skip Brugerverifikation-sektion i PR-body** — `PR user-verification check` fejler. Tilføj sektion ELLER `backend-only`/`docs-only` label.

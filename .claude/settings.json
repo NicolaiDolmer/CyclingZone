@@ -6,6 +6,9 @@
     "productivity@claude-plugins-official": false
   },
   "permissions": {
+    "additionalDirectories": [
+      "../CyclingZone-worktrees/"
+    ],
     "allow": [
       "Bash(git *)",
       "WebSearch",
