@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        **Disclosure:** Hvis sårbarheden er kritisk og ikke allerede er public, overvej at sende den privat via email til ejeren først (se SECURITY.md hvis den findes), eller marker dette issue som draft mens fix udvikles. Ellers fortsæt her.
+        **Disclosure:** Hvis sårbarheden er kritisk og ikke allerede er public, brug [GitHub's private vulnerability reporting](https://github.com/NicolaiDolmer/CyclingZone/security/advisories/new) i stedet — se [SECURITY.md](https://github.com/NicolaiDolmer/CyclingZone/blob/main/SECURITY.md) for full policy. Ellers fortsæt her.
   - type: textarea
     id: summary
     attributes:

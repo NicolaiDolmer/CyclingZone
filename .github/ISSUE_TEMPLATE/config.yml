@@ -3,3 +3,6 @@ contact_links:
   - name: Spørgsmål eller diskussion
     url: https://github.com/NicolaiDolmer/CyclingZone/discussions
     about: Brug Discussions til åbne spørgsmål uden konkret opgave
+  - name: Security disclosure (private)
+    url: https://github.com/NicolaiDolmer/CyclingZone/security/advisories/new
+    about: For security-sårbarheder med high/critical impact — brug GitHub's private vulnerability reporting i stedet for public issue. Se SECURITY.md for policy.
