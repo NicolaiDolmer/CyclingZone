@@ -7,7 +7,8 @@
     "check:warnings": "node scripts/check-eslint-warning-budget.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
     "test:smoke": "node scripts/smoke-test-prod.mjs",
-    "test:token": "node scripts/get-test-token.mjs"
+    "test:token": "node scripts/get-test-token.mjs",
+    "sync-deps": "npm ci && npm ci --prefix backend && npm ci --prefix frontend"
   },
   "devDependencies": {
     "lint-staged": "^17.0.5"

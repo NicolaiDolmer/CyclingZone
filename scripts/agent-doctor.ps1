@@ -84,6 +84,77 @@ Add-Check "local-hooks" ($(if ($hooksText -eq ".githooks") { "OK" } else { "WARN
 $trackedSecrets = Try-Run @("git", "ls-files", ".mcp.json", "*.env", ".codex.local/*")
 Add-Check "tracked-secrets" ($(if ([string]::IsNullOrWhiteSpace($trackedSecrets.Text)) { "OK" } else { "FAIL" })) ($(if ($trackedSecrets.Text) { $trackedSecrets.Text -replace "`n", ", " } else { "none" }))
 
+# install-parity — fanger drift mellem package-lock.json og faktisk installed node_modules.
+# Bidt af #616 (express-rate-limit 7.5.1 vs lock 8.5.2 efter PR #579) og #618 (PC2's frontend var
+# 1-3 patches bagud lockfile mens `npm install` rapporterede "up to date"). Tjekker kun direct
+# deps fra package.json — transitive deps håndteres af lockfile-integriteten selv.
+$installParityDrifts = New-Object System.Collections.Generic.List[object]
+foreach ($ws in @(".", "backend", "frontend")) {
+  $pkgPath = if ($ws -eq ".") { "package.json" } else { "$ws/package.json" }
+  $lockPath = if ($ws -eq ".") { "package-lock.json" } else { "$ws/package-lock.json" }
+  $modulesDir = if ($ws -eq ".") { "node_modules" } else { "$ws/node_modules" }
+  if (-not (Test-Path $pkgPath) -or -not (Test-Path $lockPath)) { continue }
+  try {
+    $pkg = Get-Content $pkgPath -Raw | ConvertFrom-Json -AsHashtable
+    $lock = Get-Content $lockPath -Raw | ConvertFrom-Json -AsHashtable
+  } catch {
+    $installParityDrifts.Add([PSCustomObject]@{ Workspace = $ws; Dep = "(parse-error)"; Lock = "?"; Installed = $_.Exception.Message })
+    continue
+  }
+  $directDeps = New-Object System.Collections.Generic.HashSet[string]
+  foreach ($section in @("dependencies", "devDependencies")) {
+    if ($pkg.ContainsKey($section) -and $pkg[$section]) {
+      foreach ($key in $pkg[$section].Keys) { [void]$directDeps.Add($key) }
+    }
+  }
+  if (-not $lock.ContainsKey("packages")) { continue }
+  $lockPackages = $lock["packages"]
+  foreach ($depName in $directDeps) {
+    $lockKey = "node_modules/$depName"
+    if (-not $lockPackages.ContainsKey($lockKey)) { continue }
+    $lockEntry = $lockPackages[$lockKey]
+    # Skip platform-mismatched optional deps (linux/darwin binaries on win32 etc.)
+    if ($lockEntry.ContainsKey("optional") -and $lockEntry["optional"]) {
+      $platformMismatch = $false
+      if ($lockEntry.ContainsKey("os") -and $lockEntry["os"]) {
+        $osList = @($lockEntry["os"]) | ForEach-Object { ([string]$_).ToLower() }
+        $hasWin = $osList -contains "win32"
+        $hasNotWin = $osList -contains "!win32"
+        if ((-not $hasWin -and -not $hasNotWin) -or $hasNotWin) { $platformMismatch = $true }
+      }
+      if (-not $platformMismatch -and $lockEntry.ContainsKey("cpu") -and $lockEntry["cpu"]) {
+        $cpuList = @($lockEntry["cpu"]) | ForEach-Object { ([string]$_).ToLower() }
+        $hasX64 = $cpuList -contains "x64"
+        $hasNotX64 = $cpuList -contains "!x64"
+        if ((-not $hasX64 -and -not $hasNotX64) -or $hasNotX64) { $platformMismatch = $true }
+      }
+      if ($platformMismatch) { continue }
+    }
+    $lockVersion = $lockEntry["version"]
+    $installedPkg = Join-Path $modulesDir "$depName/package.json"
+    if (-not (Test-Path $installedPkg)) {
+      $installParityDrifts.Add([PSCustomObject]@{ Workspace = $ws; Dep = $depName; Lock = $lockVersion; Installed = "MISSING" })
+      continue
+    }
+    try {
+      $installedVersion = (Get-Content $installedPkg -Raw | ConvertFrom-Json -AsHashtable)["version"]
+    } catch {
+      $installParityDrifts.Add([PSCustomObject]@{ Workspace = $ws; Dep = $depName; Lock = $lockVersion; Installed = "(parse-error)" })
+      continue
+    }
+    if ($installedVersion -ne $lockVersion) {
+      $installParityDrifts.Add([PSCustomObject]@{ Workspace = $ws; Dep = $depName; Lock = $lockVersion; Installed = $installedVersion })
+    }
+  }
+}
+$installParityDetail = if ($installParityDrifts.Count -eq 0) {
+  "all direct deps match lockfile across root/backend/frontend"
+} else {
+  $sample = ($installParityDrifts | Select-Object -First 3 | ForEach-Object { "$($_.Workspace)/$($_.Dep): lock=$($_.Lock) inst=$($_.Installed)" }) -join "; "
+  "$($installParityDrifts.Count) drift(s) — run 'npm run sync-deps'. Sample: $sample"
+}
+Add-Check "install-parity" ($(if ($installParityDrifts.Count -eq 0) { "OK" } else { "WARN" })) $installParityDetail
+
 $repoInfo = Gh-Json "repos/$Repo"
 if ($repoInfo) {
   if ($repoInfo.PSObject.Properties.Name -contains "security_and_analysis" -and $repoInfo.security_and_analysis) {

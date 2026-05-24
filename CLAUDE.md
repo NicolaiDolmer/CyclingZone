@@ -13,6 +13,7 @@
 2. **Aktivt issue:** kan læses fra `SESSION_CONTEXT.md`, men sandheden er GitHub + `docs/NOW.md`. Stale eller mangler? `gh issue list --label "claude:todo" --state open --limit 10`
 3. `docs/GUARDRAILS_CORE.md` læses KUN hvis issue-labels indeholder `needs-contract` eller `shared-refactor` (~80% af sessioner skipper).
 4. **Frontend/i18n-PR pre-flight:** build + warning-budget + i18n-keys + `npx playwright test core-smoke.spec.js` (uden `--project`-flag — kører desktop-chromium + mobile-chromium + mobile-webkit) lokalt FØR push. Hvis du laver visuelle ændringer eller refresher snapshots, kør ALLE 3 projekter, ikke kun desktop. CI fejler ellers på mobile selv om desktop passer (#536 ramte denne fælde 2026-05-21). Loop-guard: 2 CI-fails på samme symptom → STOP + spørg. Se `.claude/learnings/2026-05-17-symptom-patching-loop-vs-root-cause.md`.
+5. **Efter `git pull` der rør ved en `*package-lock.json`** → kør `npm run sync-deps` (eller `npm run doctor` → tjek `install-parity` row). `npm install` kan lyve med "up to date" mens direct deps er bagud lockfile (#616/#618). `npm ci` er eneste pålidelige sync.
 
 ## On-demand docs
 

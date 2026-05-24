@@ -27,6 +27,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/AI_OPS_TOKEN_BUDGET.md` | Token-budget regler + tier-system |
 | `docs/AI_OPS_BLIND_SPOTS.md` | Ops blind spots og fail-modes |
 | `docs/AI_OPS_COST_MODEL.md` | Cost-baseline ved 5k/10k brugere |
+| `scripts/agent-doctor.ps1` (`install-parity` check) | Lockfile vs `node_modules` drift på direct deps. Fanger #616-mønstret (`npm install` lyver "up to date"). Fix: `npm run sync-deps`. Snapshots i `docs/metrics/install-snapshot-*.json` |
 | `docs/RUNBOOK_RESTORE_DRILL.md` | Supabase backup restore-drill cadence, procedure og smoke-tests |
 | `docs/SEASON_TRANSITION_CHECKLIST.md` | Admin-checklist for sæson N→N+1 (sæt closes_at, cron-chain-tider, verifikation, abort-procedure) |
 | `docs/slices/<slug>.md` | Slice har dedikeret brief |
