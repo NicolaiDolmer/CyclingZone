@@ -127,6 +127,7 @@ Ingen identified.
 - Console.error + summary.errors++ fanger ikke i Sentry-dashboard. Top-level `trackedTick` fanger kun den FØRSTE fejl per tick (try/catch swallows).
 - **Fix:** `captureExceptionFn` injected som optional dep i alle 5 crons; kaldes ved per-team try/catch med `{ tags: { cron: "<name>" }, extra: { teamId, ...context } }`. cron.js wrappers passer `sentryCapture` fra `./sentry.js`. Pattern matcher `dailySeasonCountCheck` (gold-standard).
 - **Tests:** 7 nye regressionstests (én pr. cron + backwards-compat + null-safe) — verificerer fn-kald, tags, extra-felter, samt at omitted/null fn ikke crasher non-cron callers.
+- **Post-deploy verifikation:** AC #4 venter på `SENTRY_DSN` i Vercel prod ([#348](https://github.com/NicolaiDolmer/CyclingZone/issues/348)). Smoke-test pipeline tilføjet 2026-05-25: `pwsh -File scripts/setup-sentry-and-verify.ps1` setter env vars + kører `backend/scripts/sentry-smoke-test.mjs` der sender en test-event med samme `{ tags: { cron: "smoke-test" } }`-shape. Når event vises i Sentry Issues (filter `cron:smoke-test`) er #348 + #614 verificeret end-to-end.
 
 **P2-B: `finalizeExpiredAuctions` tick-overlap-guard** (cron #1)
 - Hvis tick tager >60s starter ny tick parallelt. Beskyttet af `idempotency_key` på finance, men teoretisk race på `rider.team_id`+`pending_team_id` hvis windowOpen-state ændrer sig mellem ticks.
