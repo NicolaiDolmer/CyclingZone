@@ -25,6 +25,7 @@ function createSupabaseStub({ teams }) {
           then(resolve) {
             const data = teams.filter((row) => {
               if (filters.is_ai !== undefined && row.is_ai !== filters.is_ai) return false;
+              if (filters.is_bank !== undefined && row.is_bank !== filters.is_bank) return false;
               if (filters.is_frozen !== undefined && row.is_frozen !== filters.is_frozen) return false;
               if (filters.__lt_balance !== undefined && !(row.balance < filters.__lt_balance)) return false;
               return true;
@@ -43,8 +44,8 @@ test("checkDebtWarnings — sender notification for hvert team med negativ saldo
   const calls = [];
   const supabaseClient = createSupabaseStub({
     teams: [
-      { id: "team-1", name: "Alpha", balance: -120, user_id: "user-1", is_ai: false, is_frozen: false },
-      { id: "team-2", name: "Beta", balance: -50, user_id: "user-2", is_ai: false, is_frozen: false },
+      { id: "team-1", name: "Alpha", balance: -120, user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-2", name: "Beta", balance: -50, user_id: "user-2", is_ai: false, is_bank: false, is_frozen: false },
     ],
   });
 
@@ -66,7 +67,7 @@ test("checkDebtWarnings — message er statisk på tværs af forskellige balance
 
   // Tick 1 — balance: -120
   const tick1Supabase = createSupabaseStub({
-    teams: [{ id: "team-1", name: "Alpha", balance: -120, user_id: "user-1", is_ai: false, is_frozen: false }],
+    teams: [{ id: "team-1", name: "Alpha", balance: -120, user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false }],
   });
   await checkDebtWarnings({
     supabaseClient: tick1Supabase,
@@ -76,7 +77,7 @@ test("checkDebtWarnings — message er statisk på tværs af forskellige balance
 
   // Tick 2 — balance: -5000 (drastisk ændring mellem ticks)
   const tick2Supabase = createSupabaseStub({
-    teams: [{ id: "team-1", name: "Alpha", balance: -5000, user_id: "user-1", is_ai: false, is_frozen: false }],
+    teams: [{ id: "team-1", name: "Alpha", balance: -5000, user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false }],
   });
   await checkDebtWarnings({
     supabaseClient: tick2Supabase,
@@ -121,7 +122,7 @@ test("checkDebtWarnings — dedup matcher mellem ticks med varierende balance (#
   const balanceTicks = [-120, -350, -5000, -200];
   for (let i = 0; i < balanceTicks.length; i++) {
     const supabaseClient = createSupabaseStub({
-      teams: [{ id: "team-1", name: "Alpha", balance: balanceTicks[i], user_id: "user-1", is_ai: false, is_frozen: false }],
+      teams: [{ id: "team-1", name: "Alpha", balance: balanceTicks[i], user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false }],
     });
     // Ticks 6h apart, alle indenfor samme 24h dedup-vindue
     await checkDebtWarnings({
@@ -141,9 +142,9 @@ test("checkDebtWarnings — skipper AI-teams og frozen teams", async () => {
   const calls = [];
   const supabaseClient = createSupabaseStub({
     teams: [
-      { id: "team-1", name: "Human", balance: -120, user_id: "user-1", is_ai: false, is_frozen: false },
-      { id: "team-2", name: "AI", balance: -500, user_id: null, is_ai: true, is_frozen: false },
-      { id: "team-3", name: "Frozen", balance: -300, user_id: "user-3", is_ai: false, is_frozen: true },
+      { id: "team-1", name: "Human", balance: -120, user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-2", name: "AI", balance: -500, user_id: null, is_ai: true, is_bank: false, is_frozen: false },
+      { id: "team-3", name: "Frozen", balance: -300, user_id: "user-3", is_ai: false, is_bank: false, is_frozen: true },
     ],
   });
 
@@ -166,4 +167,66 @@ test("checkDebtWarnings — håndterer teams=null/empty uden fejl", async () => 
     notifyUserFn: async () => { called = true; return { delivered: true, deduped: false }; },
   });
   assert.equal(called, false, "ingen notifyUser-kald når der ikke er teams med gæld");
+});
+
+test("checkDebtWarnings — skipper bank-team selv ved negativ saldo (#613)", async () => {
+  const calls = [];
+  const supabaseClient = createSupabaseStub({
+    teams: [
+      { id: "team-1", name: "Human", balance: -120, user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-bank", name: "Bank", balance: -50000, user_id: null, is_ai: false, is_bank: true, is_frozen: false },
+    ],
+  });
+
+  await checkDebtWarnings({
+    supabaseClient,
+    now: new Date("2026-05-24T08:00:00Z"),
+    notifyUserFn: async (args) => { calls.push(args); return { delivered: true, deduped: false }; },
+  });
+
+  assert.equal(calls.length, 1, "kun human-team skal notificeres; bank-team filtreres væk");
+  assert.equal(calls[0].userId, "user-1");
+});
+
+test("checkDebtWarnings — per-team try/catch isolerer fejl så øvrige teams stadig får warnings (#613)", async () => {
+  const supabaseClient = createSupabaseStub({
+    teams: [
+      { id: "team-1", name: "T1", balance: -100, user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-2", name: "T2", balance: -200, user_id: "user-2", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-3", name: "T3", balance: -300, user_id: "user-3", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-4", name: "T4", balance: -400, user_id: "user-4", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-5", name: "T5", balance: -500, user_id: "user-5", is_ai: false, is_bank: false, is_frozen: false },
+    ],
+  });
+
+  const delivered = [];
+  const notifyUserFn = async (args) => {
+    if (args.userId === "user-3") {
+      throw new Error("simulated transient failure for team-3");
+    }
+    delivered.push(args.userId);
+    return { delivered: true, deduped: false };
+  };
+
+  // Capture console.error to suppress + assert
+  const originalError = console.error;
+  const errorLogs = [];
+  console.error = (...args) => { errorLogs.push(args.join(" ")); };
+
+  try {
+    await checkDebtWarnings({
+      supabaseClient,
+      now: new Date("2026-05-24T08:00:00Z"),
+      notifyUserFn,
+    });
+  } finally {
+    console.error = originalError;
+  }
+
+  assert.deepEqual(delivered, ["user-1", "user-2", "user-4", "user-5"],
+    "teams 1, 2, 4, 5 SKAL alle modtage warning selvom team-3 throws (#613 per-team try/catch)");
+  assert.ok(
+    errorLogs.some((line) => line.includes("team-3") && line.includes("simulated transient failure")),
+    "console.error skal logge team-id og fejl-besked for den fejlende team"
+  );
 });

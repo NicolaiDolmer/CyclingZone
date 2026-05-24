@@ -84,23 +84,31 @@ export async function checkDebtWarnings({
     .from("teams")
     .select("id, name, balance, user_id")
     .eq("is_ai", false)
+    .eq("is_bank", false)
     .eq("is_frozen", false)
     .lt("balance", 0);
 
+  let sent = 0;
+  let errors = 0;
   for (const team of teams || []) {
-    await notifyUserFn({
-      supabase: supabaseClient,
-      userId: team.user_id,
-      type: "board_update",
-      title: "⚠️ Negativ saldo",
-      message: "Dit hold har negativ saldo. Tjek Økonomi-siden for detaljer.",
-      now,
-    });
+    try {
+      const result = await notifyUserFn({
+        supabase: supabaseClient,
+        userId: team.user_id,
+        type: "board_update",
+        title: "⚠️ Negativ saldo",
+        message: "Dit hold har negativ saldo. Tjek Økonomi-siden for detaljer.",
+        now,
+      });
+      if (result?.delivered) sent += 1;
+    } catch (err) {
+      errors += 1;
+      console.error(`  ❌ debt warning failed for team ${team.id}:`, err.message);
+    }
   }
 
-  if (teams?.length) {
-    console.log(`  ⚠️  Debt warnings sent to ${teams.length} teams`);
-  }
+  if (sent) console.log(`  ⚠️  Debt warnings sent to ${sent} teams`);
+  if (errors) console.error(`  ❌ Debt warnings: ${errors} fejl (per-team try/catch isolerede)`);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

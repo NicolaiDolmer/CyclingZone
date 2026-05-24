@@ -23,7 +23,7 @@ Filer læst: `backend/cron.js`, `backend/lib/{auctionFinalization,deadlineDayRep
 | `processDeadlineDayCron` (5m) | ⚠️ | ✅ | ⚠️ | ⚠️ | ✅ |
 | `processSquadEnforcementCron` (5m) | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | `processSeasonAutoTransitionCron` (5m) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `checkDebtWarnings` (6h) | ⚠️ | 🔴 | ⚠️ | ⚠️ | ✅ |
+| `checkDebtWarnings` (24h) | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | `processBoardAutoAcceptCron` (30m) | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | `processMidSeasonReviewCron` (30m) | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | `processDailySeasonCountCheck` (24h) | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -68,14 +68,13 @@ Filer læst: `backend/cron.js`, `backend/lib/{auctionFinalization,deadlineDayRep
 - **Observability:** ✅ Console.log success, Sentry via trackedTick, admin_log audit-entries, daily safety-net (cron #8).
 - **Concurrency:** ✅ Ingen atomic claim på selve transition-firingen, men `transitionToNextSeason` er self-idempotent. Hvis 2 instanser fyrer samme tick, 2nd ville se `season.status='completed'` og early-return.
 
-### 5. `checkDebtWarnings` (6h) — `backend/cron.js:74`
+### 5. `checkDebtWarnings` (24h, var 6h) — `backend/cron.js:78`
 
-- **Filter:** ⚠️ `.eq("is_ai", false).eq("is_frozen", false).lt("balance", 0)`. Mangler `is_bank=false` filter (banken kunne i edge-case have negativ balance og få warning). Lav prioritet — banken er typisk frozen eller AI.
-- **Idempotency:** 🔴 **Spam-risiko via dynamic message.** Notification-payload har `message: \`Dit hold skylder ${Math.abs(team.balance).toLocaleString()} pts. Renter ved sæsonafslutning: ${interest.toLocaleString()} pts\``. `notifyUser` dedup-nøglen er `userId + type + title + message + relatedId + 24h vindue` ([notificationService.js:1-25](backend/lib/notificationService.js:1)). Hvis balance ændrer sig mellem 6h-runs (lån, ny gæld, race-prize), så vil `message` differ → dedup MISSES → ny notification sent. Maks 4 warnings/24h pr. team med svingende balance.
-  - Sammenlign med [`boardAutoAccept.js`](backend/lib/boardAutoAccept.js) hvor `message` er statisk per plan-tier → dedup virker korrekt.
-- **Error-handling:** ⚠️ Ingen per-team try/catch i for-loopen (linje 85-95). En notifyUser-throw stopper resten af loopen.
-- **Observability:** ⚠️ Console.log på total, ingen per-team logging.
-- **Concurrency:** ✅ 6h interval, ingen DB-mutation udover notification.
+- **Filter:** ✅ Post-#613: `.eq("is_ai", false).eq("is_bank", false).eq("is_frozen", false).lt("balance", 0)`. Bank-team filtreres væk via defense-in-depth (mirror af `fireDeadlineWarnings`-pattern).
+- **Idempotency:** ✅ Post-#607 ([PR #611](https://github.com/NicolaiDolmer/CyclingZone/pull/611)): cadence skiftet til 24h + statisk message ("Dit hold har negativ saldo. Tjek Økonomi-siden for detaljer.") → `notifyUser` dedup-nøgle (`userId+type+title+message+relatedId+24h`) virker korrekt selv ved svingende balance. Regressionstest dækker 4 ticks med varierende balance → 1 notification.
+- **Error-handling:** ✅ Post-#613: per-team try/catch + `errors` counter. En notifyUser-throw isolerer kun den fejlende team, øvrige teams får stadig warning. Regressionstest dækker 5-team-fan-out med throw på team-3.
+- **Observability:** ⚠️ Console.log delivered-sum + errors-sum, ingen per-team Sentry capture (følger P2-A pattern i [#614](https://github.com/NicolaiDolmer/CyclingZone/issues/614)).
+- **Concurrency:** ✅ 24h interval, ingen DB-mutation udover notification.
 
 ### 6. `processBoardAutoAcceptCron` (30m) — `backend/lib/boardAutoAccept.js:45`
 
@@ -138,8 +137,8 @@ Ingen identified.
 - `.order(created_at desc).limit(1).single()` plukker nyeste window uden lifecycle-filter. Racing-window er post-fetch early-return. Mere robust at filtrere i query: kræver lifecycle_phase enum eller eksplicit `closed_at IS NOT NULL OR (status='open' AND closes_at IS NOT NULL)` predicate.
 - Dækket af eksisterende #542 (split transfer_windows.status overload til lifecycle_phase enum). Notér på #542.
 
-**P2-D: `checkDebtWarnings` mangler is_bank filter + per-team try/catch** (cron #5)
-- Lavt-impact edge-cases. Inkluderes i P1-B fix-issue.
+**P2-D: `checkDebtWarnings` mangler is_bank filter + per-team try/catch** (cron #5) → ✅ FIXED via [#613](https://github.com/NicolaiDolmer/CyclingZone/issues/613) (P1-B fix i #607/#611 missede disse to robusthedshul; spawnet som separat issue)
+- Filter + per-team try/catch tilføjet. Mirror af `fireDeadlineWarnings`-pattern fra [PR #612](https://github.com/NicolaiDolmer/CyclingZone/pull/612).
 
 ### Forward-guards — allerede tracked
 
