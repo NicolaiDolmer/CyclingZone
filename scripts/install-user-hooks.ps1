@@ -71,11 +71,38 @@ function Add-Hook {
     Write-Host "Tilfoejet ${Event}: $DisplayName"
     return
   }
+  # Eksisterende hooks: skelne mellem (a) eksakt match -> skip, (b) pattern-match
+  # med wrong-user hardcoded path -> replace (forward-guard fra #522: cross-PC
+  # session efterlod /c/Users/<other>/ paths som denne logik tidligere
+  # skippede over), og (c) pattern-match med anden command -> bevare (user
+  # customization). Hardcoded current-user paths (/c/Users/$env:USERNAME/)
+  # behandles ogsaa som wrong: hook-commands skal vaere repo-relative.
   $existing = @($script:settings.hooks.$Event)
   foreach ($entry in $existing) {
-    foreach ($h in @($entry.hooks)) {
-      if ($h.command -like $MatchPattern) {
+    $entryHooks = @($entry.hooks)
+    for ($i = 0; $i -lt $entryHooks.Count; $i++) {
+      $h = $entryHooks[$i]
+      if ($h.command -eq $Command) {
         Write-Host "[skip] ${Event} ($DisplayName) findes allerede"
+        return
+      }
+      if ($h.command -like $MatchPattern) {
+        if ($h.command -match '/c/Users/[A-Za-z0-9_.-]+/') {
+          $oldCmd = $h.command
+          $h.command = $Command
+          if ($Timeout -gt 0) {
+            if ($h.PSObject.Properties.Name -contains 'timeout') {
+              $h.timeout = $Timeout
+            } else {
+              $h | Add-Member -NotePropertyName 'timeout' -NotePropertyValue $Timeout -Force
+            }
+          }
+          Write-Host "[replace] ${Event} ($DisplayName): wrong-user-path erstattet"
+          Write-Host "          old: $oldCmd"
+          Write-Host "          new: $Command"
+          return
+        }
+        Write-Host "[skip] ${Event} ($DisplayName): pattern-match men custom command, bevarer"
         return
       }
     }

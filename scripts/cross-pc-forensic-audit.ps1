@@ -7,6 +7,14 @@
 #   pwsh -File scripts/cross-pc-forensic-audit.ps1
 #   pwsh -File scripts/cross-pc-forensic-audit.ps1 -Json     # maskine-laesbar
 #   pwsh -File scripts/cross-pc-forensic-audit.ps1 -Strict   # fail ogsaa paa warnings
+#   pwsh -File scripts/cross-pc-forensic-audit.ps1 -AutoFix  # auto-cleanup .codex.local/
+#
+# -AutoFix opfoersel (forward-guard fra #522):
+#   - stale-ephemeral (>1h gamle commit-msg/pr-body buffers): slettes ubetinget
+#   - local-only-content: filename parsed for issue/PR-nummer; hvis matching
+#     GitHub issue/PR findes via 'gh', slettes filen; ellers beholdes finding.
+#   - hardcoded-user-path, codex-global-*, manus-*, git-*: roeres ikke
+#     (kraever manuelt fix eller install-user-hooks.ps1 re-run).
 #
 # Hvad scriptet kigger efter:
 #   1. .codex.local/ — filer udenfor whitelisten (ephemerals OK, persistent indhold IKKE)
@@ -18,6 +26,7 @@
 param(
   [switch]$Json,
   [switch]$Strict,
+  [switch]$AutoFix,
   [string]$RepoRoot = "C:\dev\CyclingZone"
 )
 
@@ -53,6 +62,63 @@ function Add-Finding {
     message = $Message
     fix = $Fix
   }
+}
+
+# Filename -> issue/PR refs. Bruges af -AutoFix til at verificere GitHub-state
+# foer .codex.local/-filer slettes. Patterns matcher historiske agent-naming:
+#   issue-481-kickoff-comment.md     -> issue#481
+#   pr-366-body.md / pr366-body.md   -> pr#366
+#   pr-body-449-517.md               -> pr#449 + pr#517
+#   comment-449.md                   -> any#449 (issue eller PR)
+#   549-audit-comment.md             -> any#549
+# Filer uden parsbart nummer (fx 'issue-body-brand-identity.md') returneres
+# som tomt array -> finding beholdes og rapporteres til agent.
+function Get-FilenameRefs {
+  param([string] $Name)
+  $refs = @()
+  if ($Name -match '^issue-(\d+)') {
+    $refs += [PSCustomObject]@{ type = 'issue'; number = [int]$matches[1] }
+    return $refs
+  }
+  if ($Name -match '^pr-body-(\d+)(?:-(\d+))?') {
+    $refs += [PSCustomObject]@{ type = 'pr'; number = [int]$matches[1] }
+    if ($matches.Count -gt 2 -and $matches[2]) {
+      $refs += [PSCustomObject]@{ type = 'pr'; number = [int]$matches[2] }
+    }
+    return $refs
+  }
+  if ($Name -match '^pr-?(\d+)') {
+    $refs += [PSCustomObject]@{ type = 'pr'; number = [int]$matches[1] }
+    return $refs
+  }
+  if ($Name -match '^comment-(\d+)') {
+    $refs += [PSCustomObject]@{ type = 'any'; number = [int]$matches[1] }
+    return $refs
+  }
+  if ($Name -match '^(\d+)-') {
+    $refs += [PSCustomObject]@{ type = 'any'; number = [int]$matches[1] }
+    return $refs
+  }
+  return $refs
+}
+
+# Verify a GitHub ref exists. gh issue/pr view returnerer exit 0 hvis fundet,
+# !=0 hvis ikke. PR-numre er ogsaa "issues" i GitHub-API, saa 'any' tjekker
+# baade issue og pr endpoints (forste hit vinder).
+function Test-GitHubRefExists {
+  param(
+    [Parameter(Mandatory)] [int] $Number,
+    [Parameter(Mandatory)] [ValidateSet('issue','pr','any')] [string] $Type
+  )
+  if ($Type -eq 'issue' -or $Type -eq 'any') {
+    & gh issue view $Number --json number 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) { return $true }
+  }
+  if ($Type -eq 'pr' -or $Type -eq 'any') {
+    & gh pr view $Number --json number 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) { return $true }
+  }
+  return $false
 }
 
 # --- 1. .codex.local whitelist enforcement ---
@@ -215,6 +281,88 @@ try {
   Pop-Location
 }
 
+# --- AutoFix: process resolvable findings before output ---
+$autoFixApplied = @()
+$autoFixSkipped = @()
+
+if ($AutoFix) {
+  $ghAvailable = $null -ne (Get-Command gh -ErrorAction SilentlyContinue)
+  $remainingFindings = @()
+
+  foreach ($f in $findings) {
+    $handled = $false
+
+    if ($f.category -eq 'stale-ephemeral') {
+      $fullPath = Join-Path $RepoRoot ($f.path -replace '/', '\')
+      try {
+        Remove-Item -LiteralPath $fullPath -Force -ErrorAction Stop
+        $autoFixApplied += [PSCustomObject]@{
+          path = $f.path
+          reason = 'stale-ephemeral >1h, auto-deleted'
+        }
+        $handled = $true
+      } catch {
+        $autoFixSkipped += [PSCustomObject]@{
+          path = $f.path
+          reason = "delete failed: $($_.Exception.Message)"
+        }
+      }
+    }
+    elseif ($f.category -eq 'local-only-content') {
+      if (-not $ghAvailable) {
+        $autoFixSkipped += [PSCustomObject]@{
+          path = $f.path
+          reason = 'gh CLI ikke tilgaengelig; kan ikke verificere GitHub-state'
+        }
+      } else {
+        $fileName = Split-Path -Leaf $f.path
+        $refs = @(Get-FilenameRefs -Name $fileName)
+        if ($refs.Count -eq 0) {
+          $autoFixSkipped += [PSCustomObject]@{
+            path = $f.path
+            reason = 'ingen issue/PR-nummer i filename; kan ikke verificere'
+          }
+        } else {
+          $allExist = $true
+          $missing = @()
+          foreach ($ref in $refs) {
+            if (-not (Test-GitHubRefExists -Number $ref.number -Type $ref.type)) {
+              $allExist = $false
+              $missing += "$($ref.type)#$($ref.number)"
+            }
+          }
+          if ($allExist) {
+            $fullPath = Join-Path $RepoRoot ($f.path -replace '/', '\')
+            try {
+              Remove-Item -LiteralPath $fullPath -Force -ErrorAction Stop
+              $refsList = ($refs | ForEach-Object { "$($_.type)#$($_.number)" }) -join ', '
+              $autoFixApplied += [PSCustomObject]@{
+                path = $f.path
+                reason = "GitHub-state verificeret ($refsList), auto-deleted"
+              }
+              $handled = $true
+            } catch {
+              $autoFixSkipped += [PSCustomObject]@{
+                path = $f.path
+                reason = "delete failed: $($_.Exception.Message)"
+              }
+            }
+          } else {
+            $autoFixSkipped += [PSCustomObject]@{
+              path = $f.path
+              reason = "GitHub-state ikke fundet for: $($missing -join ', ')"
+            }
+          }
+        }
+      }
+    }
+
+    if (-not $handled) { $remainingFindings += $f }
+  }
+
+  $findings = $remainingFindings
+}
+
 # --- Output ---
 $errors = @($findings | Where-Object { $_.severity -eq "error" })
 $warns  = @($findings | Where-Object { $_.severity -eq "warn" })
@@ -226,8 +374,25 @@ if ($Json) {
     warnings = $warns.Count
     findings = $findings
   }
+  if ($AutoFix) {
+    $result | Add-Member -NotePropertyName autoFix -NotePropertyValue ([PSCustomObject]@{
+      applied = $autoFixApplied
+      skipped = $autoFixSkipped
+    }) -Force
+  }
   $result | ConvertTo-Json -Depth 5
 } else {
+  if ($AutoFix -and ($autoFixApplied.Count -gt 0 -or $autoFixSkipped.Count -gt 0)) {
+    Write-Host ""
+    Write-Host "AutoFix: $($autoFixApplied.Count) auto-rettet, $($autoFixSkipped.Count) sprunget over" -ForegroundColor Cyan
+    foreach ($a in $autoFixApplied) {
+      Write-Host ("  [fixed] {0} — {1}" -f $a.path, $a.reason) -ForegroundColor Green
+    }
+    foreach ($s in $autoFixSkipped) {
+      Write-Host ("  [skip]  {0} — {1}" -f $s.path, $s.reason) -ForegroundColor Yellow
+    }
+    Write-Host ""
+  }
   if ($findings.Count -eq 0) {
     Write-Host "[clean] Ingen lokal-only AI-state fundet." -ForegroundColor Green
   } else {
