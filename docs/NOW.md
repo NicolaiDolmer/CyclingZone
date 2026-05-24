@@ -1,5 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
+> **🟢 Session 2026-05-24-D — #522 root-cause fix KOMPLET:** `cross-pc-forensic-audit.ps1` har nu `-AutoFix` flag der auto-sletter stale-ephemeral (>1h) + local-only-content hvor filename refererer eksisterende GitHub issue/PR (verificeret via `gh` CLI). `install-user-hooks.ps1` fixet til at detektere `/c/Users/<other>/` paths i eksisterende hooks og erstatte dem i stedet for at skippe (pattern-match alene gav false-positive "findes allerede"). End-to-end testet: 3 temp-filer (stale + 2 m. eksisterende GitHub-refs) auto-slettet, 2 m. fake refs bevaret som ERROR. Idempotent re-run af install-user-hooks bekræftet. Forward-guard for cleanup-rod der gentog sig hver session.
+
 > **🟢 Session 2026-05-24-C — PC2 pickup + state-cleanup KOMPLET:** Forensic audit fandt 27 PC2-residuals (13 stale-ephemeral + 13 local-only-content + 1 hardcoded `/c/Users/ndmh3/` path i settings.json). Alle verificeret mod GitHub og slettet, hooks fixed til repo-relative paths. Audit nu `[clean]`. [#603](https://github.com/NicolaiDolmer/CyclingZone/issues/603) lukket; [#522](https://github.com/NicolaiDolmer/CyclingZone/issues/522) opdateret med konkret `-AutoFix`-plan + bug-finding i `install-user-hooks.ps1`. **Lesson:** PC1's "audit clean" gælder kun PC1's state — PC2 har sin egen residual fra tidligere sessioner. Cross-PC handoff er ikke envejs.
 
 > **🆕 Næste session-kandidater:** Session 2026-05-24-B shippet+merged PR [#602](https://github.com/NicolaiDolmer/CyclingZone/pull/602) (#578 resume-support, live på main). Tilbage på `claude:todo` med risk:med+: [#580](https://github.com/NicolaiDolmer/CyclingZone/issues/580) (RLS regression guard), [#596](https://github.com/NicolaiDolmer/CyclingZone/issues/596) (sprint-metrics-snapshot decision), eller [#563](https://github.com/NicolaiDolmer/CyclingZone/issues/563)-decision (OneDrive-secret-accel).
@@ -18,7 +20,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** [#522](https://github.com/NicolaiDolmer/CyclingZone/issues/522) `-AutoFix` flag + `install-user-hooks.ps1` bug-fix (root-cause på `.codex.local/` cleanup-rod, ~1-2 timer), eller [#580](https://github.com/NicolaiDolmer/CyclingZone/issues/580) RLS regression guard (risk:med, security).
+> **🎯 Next action:** [#580](https://github.com/NicolaiDolmer/CyclingZone/issues/580) RLS regression guard (risk:med, security), [#596](https://github.com/NicolaiDolmer/CyclingZone/issues/596) sprint-metrics-snapshot decision, eller [#563](https://github.com/NicolaiDolmer/CyclingZone/issues/563)-decision (OneDrive-secret-accel).
 >
 > _Format (max 2 linjer): `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 

@@ -35,6 +35,23 @@
 pwsh -File scripts/cross-pc-forensic-audit.ps1          # human-læsbar
 pwsh -File scripts/cross-pc-forensic-audit.ps1 -Json    # maskine-læsbar
 pwsh -File scripts/cross-pc-forensic-audit.ps1 -Strict  # fail ogsaa paa warnings
+pwsh -File scripts/cross-pc-forensic-audit.ps1 -AutoFix # auto-cleanup (se nedenfor)
 ```
 
 Exit 1 = der ligger lokal-only state der ikke skulle. Adressér før session-slut.
+
+### `-AutoFix` — forward-guard for [#522](https://github.com/NicolaiDolmer/CyclingZone/issues/522)
+
+Sletter automatisk lokal-only filer hvor indholdet aldrig var unikt:
+
+- **stale-ephemeral** (>1h gamle `commit-msg*.txt`, `pr-body-*.md` etc.): slettes ubetinget — buffers efter `git commit -F` / `gh pr create --body-file` skal aldrig overleve.
+- **local-only-content** med parsbart issue/PR-nummer i filename: tjekker via `gh issue view N` / `gh pr view N` om matchende GitHub-state findes. Hvis ja → slettes. Hvis nej → beholdes som ERROR (agent skal manuelt verificere).
+- Andre kategorier (`hardcoded-user-path`, `codex-global-*`, `manus-*`, `git-*`) rører den ikke — kræver manuelt fix eller `install-user-hooks.ps1` re-run.
+
+Filename-patterns der parses:
+- `issue-N-*.md` → issue#N
+- `pr-N-*.md`, `prN-body.md` → pr#N
+- `pr-body-N.md`, `pr-body-N-M.md` → pr#N (+ pr#M)
+- `comment-N.md`, `N-*.md` → issue eller pr#N (begge tjekkes)
+
+Filer uden parsbart nummer (fx `issue-body-brand-identity.md`) skippes — agent skal manuelt afgøre destination.
