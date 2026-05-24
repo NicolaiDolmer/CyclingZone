@@ -3,13 +3,30 @@
 .SYNOPSIS
   Setup Sentry env vars i Vercel prod + verificér via smoke-test (#614 + #348).
 
+.NOTES
+  ⚠️ ARCHITECTURE-NOTE (2026-05-25): CyclingZone BACKEND lever paa Railway,
+  ikke Vercel. Dette script saetter SENTRY_DSN paa VERCEL — relevant for
+  FRONTEND/VITE_SENTRY_DSN-setup, IKKE for backend cron-capture.
+
+  For backend (Railway) DSN-setup, brug i stedet:
+    railway variables --service CyclingZone --set "SENTRY_DSN=https://..." \
+                      --set "SENTRY_ENVIRONMENT=production" \
+                      --set "SENTRY_TRACES_SAMPLE_RATE=0.1"
+  Railway redeployer automatisk efter env-aendring.
+
+  Smoke-test-delen (-SkipEnvSetup) er stadig nyttig for at validere DSN +
+  Sentry pipeline uanset deploy-target.
+
+  Se [.claude/learnings/2026-05-24-claimed-fix-without-verifying-observability-pipeline.md](../.claude/learnings/2026-05-24-claimed-fix-without-verifying-observability-pipeline.md)
+  for arkitektur-konfusionen der affoedte denne note.
+
 .DESCRIPTION
   Idempotent driver der:
     1. Secure-prompter for SENTRY_DSN (input skjules)
     2. Validerer DSN format
-    3. Sætter SENTRY_DSN, SENTRY_ENVIRONMENT, SENTRY_TRACES_SAMPLE_RATE i Vercel prod
+    3. Saetter SENTRY_DSN, SENTRY_ENVIRONMENT, SENTRY_TRACES_SAMPLE_RATE i Vercel prod
     4. Trigger redeploy (optional — -SkipRedeploy)
-    5. Kører backend/scripts/sentry-smoke-test.mjs lokalt med prod-DSN
+    5. Koerer backend/scripts/sentry-smoke-test.mjs lokalt med prod-DSN
     6. Prompter dig til at verificere i Sentry UI
 
 .PARAMETER SkipEnvSetup

@@ -45,11 +45,30 @@ Konkret check-liste for "code calls X — er X actually live?":
 
 Tilføjet 2026-05-24:
 
-1. **`scripts/setup-sentry-and-verify.ps1`** — én-shot driver der sætter Vercel env vars + kører smoke-test mod prod-DSN. 3 min, kun DSN-paste fra bruger.
+1. **`scripts/setup-sentry-and-verify.ps1`** — én-shot driver der sætter Vercel env vars + kører smoke-test mod prod-DSN. (Bemærk: oprindeligt skrevet til at sætte SENTRY_DSN på Vercel, men backend lever på Railway — se "Architecture-confusion-addendum" nedenfor.)
 2. **`backend/scripts/sentry-smoke-test.mjs`** — sender én test-exception med samme call-shape som #614's cron-capture: `captureException(err, { tags: { cron: "smoke-test" }, extra: { ... } })`. Validerer hele pipeline'en lokalt mod prod-Sentry.
 3. **CRON_AUDIT_2026-05-24.md P2-A** opdateret med "Post-deploy verifikation"-note der peger på scriptet.
 
 **Sentry init-warning at overveje (ikke-implementeret):** Tilføj `console.warn` i `initSentry` når `SENTRY_DSN` mangler i `NODE_ENV=production`. Spawn evt. separat issue hvis det vurderes værd at fixe — det ville have fanget #614's verification-gap inden release.
+
+## Architecture-confusion-addendum (2026-05-25)
+
+Under fix-verifikation antog jeg at backend kørte på Vercel og brugte 5 min på at sætte SENTRY_DSN i Vercel prod env. Det var spildt arbejde — **backend (med cron.js) lever på Railway**, ikke Vercel. Vercel hoster kun frontend SPA.
+
+**Hvordan jeg burde have tjekket først:**
+- `find . -maxdepth 3 -name "railway.toml" -o -name "vercel.json"` → afslører `frontend/vercel.json` (frontend only)
+- `grep -r "railway.app\|vercel.app" --include="*.mjs" --include="*.json" --include="*.md" scripts/ docs/ | head` → `smoke-test-prod.mjs` har `BACKEND_URL = "https://cyclingzone-production.up.railway.app"`
+- `curl -s https://cyclingzone-production.up.railway.app/health` returnerer JSON (backend), `https://cycling-zone.vercel.app/api/health` returnerer HTML (no backend route)
+
+**Hvorfor jeg gættede forkert:** `vercel env ls production` viste mange backend-relevante vars (SUPABASE_SERVICE_KEY, DISCORD_BOT_TOKEN, PORT). Det gav indtryk af backend-på-Vercel, men er sandsynligvis legacy/build-time-shared vars eller forberedelse til serverless-migration. Lekt: en env-var-listing er IKKE bevis for hvor koden faktisk kører.
+
+**Fix-pattern for fremtiden:** Inden du sætter prod-secrets, identificér deploy-target via:
+1. Read deploy config files (railway.toml, railway.json, vercel.json, fly.toml, dockerfile)
+2. curl health-endpoints
+3. Læs eksisterende deploy-scripts/verify-scripts for hardcoded URLs
+4. Spørg brugeren hvis stadig usikker — 30 sek > genarbejde
+
+`scripts/setup-sentry-and-verify.ps1` blev kun delvist nyttig fordi det var Vercel-only. For Railway-prod-DSN brugte vi `railway variables --service CyclingZone --set "SENTRY_DSN=..."`. Script kan udvides til at understøtte begge targets i en follow-up.
 
 ## Cross-refs
 
