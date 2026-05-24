@@ -16,6 +16,8 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/BUSINESS_STRATEGY.md` | Monetization-spørgsmål · tier-struktur · validation sprint · UCI/IP-risiko · dansk finansiering · fact-check krav |
 | `docs/SPRINT_DASHBOARD.md` | Live status på 30-dages validation sprint · metrics-snapshot · uge-checkbox-tasks · founder-track · decision log |
 | `docs/AGENT_ARCHITECTURE.md` | Cross-agent bug · parallel-session-setup · failure-mode lookup (auto-gen fra learnings) |
+| `docs/WORKTREE_WORKFLOW.md` | Setup af parallelle Claude Code-sessioner via git worktrees · `new-worktree.ps1` / `remove-worktree.ps1` · node_modules-sharing · memory-junction · branch-collision gotchas |
+| `docs/PARALLEL_WORKTREE_ORCHESTRATION.md` | 7-step protokol for parallel worktree-orchestration (3+ subagents, ~30 min wall-clock vs. 2-3h sekventielt) · candidate-selection · sub-agent prompt template · token-budget · pitfalls |
 | `docs/AI_CHANNEL_ROUTING.md` | Tvivl om kanal-valg (Claude Code vs chat vs Cowork vs Dispatch) · use-case→kanal matrix · anti-patterns |
 | `docs/AI_COUNCIL.md` | Tvivl om hvem (Claude/Codex/Manus) ejer en beslutning · SLA pr. rolle · fallback-protokol når en agent ikke leverer · issue→agent mapping (B12, [#564](https://github.com/NicolaiDolmer/CyclingZone/issues/564)) |
 | `docs/DISPATCH_PLAYBOOK.md` | Før mobil→PC agentic dispatch (scheduled-tasks, Claude mobile app Dispatch, RemoteTrigger) · safe/forbidden tasks · pre-flight checklist · verification on return |
