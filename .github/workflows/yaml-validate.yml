@@ -52,7 +52,11 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-check
-          fail_on_error: true
+          # fail_level=error: blokerer merge ved actionlint-errors (parse-fejl,
+          # invalid action-refs, manglende permissions). Warnings rapporteres
+          # men blokerer ikke. `fail_on_error` er deprecated per actionlint
+          # selv-rapport på første run af denne workflow.
+          fail_level: error
           level: error
 
   yamllint-issue-templates:
