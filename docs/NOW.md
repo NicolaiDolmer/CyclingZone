@@ -5,7 +5,7 @@
 > **🆕 Næste session-kandidater:** [#615](https://github.com/NicolaiDolmer/CyclingZone/issues/615) (P2-B auction overlap-guard, dækket bredere af #330), [#596](https://github.com/NicolaiDolmer/CyclingZone/issues/596) sprint-metrics decision, [#532](https://github.com/NicolaiDolmer/CyclingZone/issues/532) manual sæson 0→1 validation. Bruger-decision pending: [#563](https://github.com/NicolaiDolmer/CyclingZone/issues/563) OneDrive-secret-accel.
 
 > **⚠️ Pending bruger-actions:**
-> - **Session M (#614, AC #4):** Verificér Sentry-dashboard modtager events ved forced/transient prod-fail efter `SENTRY_DSN` aktiveret (#348). Luk #614 efter verify.
+> - **Session M (#614 AC #4 + #348):** Kør `pwsh -File scripts/setup-sentry-and-verify.ps1` → secure-paste SENTRY_DSN fra Sentry UI (Settings → Projects → cyclingzone → Client Keys) → scriptet sætter Vercel prod env vars + triggrer redeploy + kører smoke-test. Verificér event i Sentry Issues (filter `cron:smoke-test`) → luk både #614 og #348.
 > - **Session N (#339):** (1) slet residual cert-manager "Cycling Zone" workspace i Infisical, (2) enable 2FA på Infisical-konto, (3) tjek EU/gmail Infisical-konto. Detaljer: [`.claude/learnings/2026-05-22-infisical-cert-manager-workspace-trap.md`](../.claude/learnings/2026-05-22-infisical-cert-manager-workspace-trap.md).
 > - **Session B (#550, v3.89):** (1) rotér Discord webhook URLs i Discord, (2) test AdminPage Discord-fane → maskerede URLs + Test-knap, (3) tjek Railway-logs for `[discord-dm:`-entries efter en auktion-event. Detaljer: [`docs/archive/NOW-2026-05-22.md`](archive/NOW-2026-05-22.md).
 > - **Session A (#601):** Admin-verify ved næste reelle sæsonskift → bekræft PayrollSummaryTable vises med 4 kategori-rækker (Lånerenter/Lønninger/Nødlån/Renter på negativ balance). Invariant-test låser count-konsistens, men UI er kun smoke-testet.
@@ -16,7 +16,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** [#615](https://github.com/NicolaiDolmer/CyclingZone/issues/615) P2-B auction overlap-guard (backend-only, lav prioritet — dækket bredere af #330). Alternativer: [#596](https://github.com/NicolaiDolmer/CyclingZone/issues/596), [#532](https://github.com/NicolaiDolmer/CyclingZone/issues/532). Parallel run unblocked — backend/docs candidates via `scripts/find-parallel-candidates.ps1`.
+> **🎯 Next action:** **Bruger:** kør `pwsh -File scripts/setup-sentry-and-verify.ps1` for at lukke #614 AC #4 + #348 (3 min, kun DSN-paste). Derefter session-kandidater: [#615](https://github.com/NicolaiDolmer/CyclingZone/issues/615), [#596](https://github.com/NicolaiDolmer/CyclingZone/issues/596), [#532](https://github.com/NicolaiDolmer/CyclingZone/issues/532).
 >
 > _Format (max 2 linjer): `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
