@@ -26,7 +26,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** [#606](https://github.com/NicolaiDolmer/CyclingZone/issues/606) squad-enforcement partial-failure recovery (sidste P1 fra cron-audit, risk:med — vurder først som #578 vej-A pattern). Alternativt [#596](https://github.com/NicolaiDolmer/CyclingZone/issues/596) sprint-metrics decision eller [#532](https://github.com/NicolaiDolmer/CyclingZone/issues/532) sæson 0→1 validation.
+> **🎯 Next action:** [#606](https://github.com/NicolaiDolmer/CyclingZone/issues/606) squad-enforcement partial-failure (sidste P1 cron-audit, risk:med). Eller pick fra Session-G's 5 nye issues: [#613](https://github.com/NicolaiDolmer/CyclingZone/issues/613) (#607-followup is_bank+try/catch), [#614](https://github.com/NicolaiDolmer/CyclingZone/issues/614) (P2-A Sentry pattern), [#615](https://github.com/NicolaiDolmer/CyclingZone/issues/615) (P2-B auction overlap-guard), [#616](https://github.com/NicolaiDolmer/CyclingZone/issues/616) (rateLimiters npm install), [#617](https://github.com/NicolaiDolmer/CyclingZone/issues/617) (subagent sandbox followup #591).
 >
 > _Format (max 2 linjer): `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
