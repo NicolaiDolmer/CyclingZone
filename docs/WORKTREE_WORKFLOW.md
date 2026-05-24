@@ -1,6 +1,8 @@
 # Worktree Workflow — parallelle Claude Code-sessioner
 
 > Etableret 2026-05-16 efter at samtidige sessioner i `C:\dev\CyclingZone\` kæmpede om branch + working tree (Refs #382-followup).
+>
+> For parallel multi-worktree-orchestration (3+ åbne issues kørt samtidig via subagents), se [`PARALLEL_WORKTREE_ORCHESTRATION.md`](PARALLEL_WORKTREE_ORCHESTRATION.md) — 7-step playbook, prompt-template og pitfalls.
 
 ## Hvorfor
 
