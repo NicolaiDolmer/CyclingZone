@@ -5,12 +5,13 @@ import App from "./App.jsx";
 import { ThemeProvider } from "./lib/theme.jsx";
 import { ConsentProvider } from "./lib/consent.jsx";
 import { LanguageProvider } from "./lib/language.jsx";
-import { initSentry, SentryBoundary } from "./lib/sentry.jsx";
+import { initSentry, SentryBoundary, maybeTriggerVerifyEvent } from "./lib/sentry.jsx";
 import i18n from "./i18n";
 import "./index.css";
 import "flag-icons/css/flag-icons.min.css";
 
 initSentry();
+maybeTriggerVerifyEvent();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

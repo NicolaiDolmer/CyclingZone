@@ -21,6 +21,6 @@
 >
 > _Format (max 2 linjer): `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
-> **🤖 Working agent:** _Ingen aktiv session._
+> **🤖 Working agent:** Claude Opus 4.7 · Code · PC1 · 2026-05-25 (frontend Sentry resten af #348)
 >
 > _Format: `<agent> · <kanal> · <PC> · <ISO-tid CET>`. Multi-AI claim. Opdatér ved session-start; nulstil til "Ingen aktiv session" ved close-out._
