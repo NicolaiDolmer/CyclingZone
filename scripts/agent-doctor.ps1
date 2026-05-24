@@ -25,7 +25,12 @@ function Add-Check {
 function Try-Run {
   param([string[]]$Command)
   try {
-    $output = & $Command[0] $Command[1..($Command.Length - 1)] 2>&1
+    # Splat via @args, not bare array — PowerShell's `& cmd $array` folds the
+    # array into a single string for strict CLI parsers (Rust/Clap, e.g. railway).
+    # gh/git tolerate this accidentally, but railway/vercel reject it.
+    $exe = $Command[0]
+    $callArgs = @($Command[1..($Command.Length - 1)])
+    $output = & $exe @callArgs 2>&1
     return [PSCustomObject]@{ Ok = ($LASTEXITCODE -eq 0); Text = ($output -join "`n") }
   } catch {
     return [PSCustomObject]@{ Ok = $false; Text = $_.Exception.Message }
@@ -56,6 +61,143 @@ function Get-AuditFailureDetail {
   }
   $firstLine = (($Text -split "`n") | Where-Object { $_.Trim() } | Select-Object -First 1)
   return "other: $firstLine"
+}
+
+# --- Sentry prod-state probe helpers (#620) ---
+# Probe Vercel/Railway for live env-var keys. Capture ONLY names, never values —
+# secrets must not be persisted to cache or log. Cache 5 min in $env:TEMP to keep
+# doctor-runs fast (CLI calls = ~500ms-2s each). DOCTOR_NO_CACHE=1 bypasser cache.
+
+function Get-SentryProbeCachePath {
+  param([string]$Provider)
+  $cacheDir = Join-Path ([System.IO.Path]::GetTempPath()) "cyclingzone-doctor-cache"
+  if (-not (Test-Path $cacheDir)) {
+    New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+  }
+  return Join-Path $cacheDir "sentry-probe-$Provider.json"
+}
+
+function Read-SentryProbeCache {
+  param([string]$Provider, [int]$MaxAgeSeconds = 300)
+  if ($env:DOCTOR_NO_CACHE -eq "1") { return $null }
+  $path = Get-SentryProbeCachePath -Provider $Provider
+  if (-not (Test-Path $path)) { return $null }
+  try {
+    $cached = Get-Content $path -Raw | ConvertFrom-Json
+    $age = (Get-Date) - [datetime]::Parse($cached.cached_at)
+    if ($age.TotalSeconds -gt $MaxAgeSeconds) { return $null }
+    return $cached.state
+  } catch {
+    return $null
+  }
+}
+
+function Write-SentryProbeCache {
+  param([string]$Provider, [object]$State)
+  try {
+    $payload = [PSCustomObject]@{
+      cached_at = (Get-Date).ToString("o")
+      state = $State
+    }
+    $path = Get-SentryProbeCachePath -Provider $Provider
+    $payload | ConvertTo-Json -Depth 5 | Set-Content -Path $path -Encoding UTF8
+  } catch {
+    # Cache write failures are non-fatal — next call just re-probes.
+  }
+}
+
+function New-SentryProbeUnavailable {
+  param([string]$Reason)
+  return [PSCustomObject]@{
+    Available = $false
+    Reason = $Reason
+    HasFrontendDsn = $false
+    HasAuthToken = $false
+    HasBackendDsn = $false
+    KeyCount = 0
+  }
+}
+
+function Get-VercelSentryProdState {
+  $cached = Read-SentryProbeCache -Provider "vercel"
+  if ($null -ne $cached) { return $cached }
+
+  $vercelCmd = Get-Command vercel -ErrorAction SilentlyContinue
+  if (-not $vercelCmd) {
+    return (New-SentryProbeUnavailable -Reason "vercel CLI not installed")
+  }
+
+  $result = Try-Run @("vercel", "env", "ls", "production", "--format", "json")
+  if (-not $result.Ok) {
+    $first = (($result.Text -split "`n") | Where-Object { $_.Trim() } | Select-Object -First 1)
+    return (New-SentryProbeUnavailable -Reason "vercel env ls failed: $first")
+  }
+
+  # Vercel CLI prints "Retrieving project..." to stderr before JSON; 2>&1 merges
+  # that into the captured text, so strip everything before the first "{".
+  $jsonStart = $result.Text.IndexOf("{")
+  if ($jsonStart -lt 0) {
+    return (New-SentryProbeUnavailable -Reason "vercel output had no JSON body")
+  }
+  $jsonText = $result.Text.Substring($jsonStart)
+  try {
+    $parsed = $jsonText | ConvertFrom-Json
+  } catch {
+    return (New-SentryProbeUnavailable -Reason "vercel JSON parse failed")
+  }
+  if (-not ($parsed.PSObject.Properties.Name -contains "envs")) {
+    return (New-SentryProbeUnavailable -Reason "vercel JSON unexpected shape (no .envs)")
+  }
+
+  # vercel env ls --format json returns {envs: [{key, type, target, ...}, ...]}.
+  # We extract ONLY .key (name); values are encrypted server-side and never in this output.
+  $prodKeys = @($parsed.envs | Where-Object { $_.target -contains "production" } | ForEach-Object { $_.key })
+  $state = [PSCustomObject]@{
+    Available = $true
+    Reason = $null
+    HasFrontendDsn = ($prodKeys -contains "VITE_SENTRY_DSN")
+    HasAuthToken = ($prodKeys -contains "SENTRY_AUTH_TOKEN")
+    HasBackendDsn = $false  # Vercel only hosts frontend here
+    KeyCount = $prodKeys.Count
+  }
+  Write-SentryProbeCache -Provider "vercel" -State $state
+  return $state
+}
+
+function Get-RailwaySentryProdState {
+  $cached = Read-SentryProbeCache -Provider "railway"
+  if ($null -ne $cached) { return $cached }
+
+  $railwayCmd = Get-Command railway -ErrorAction SilentlyContinue
+  if (-not $railwayCmd) {
+    return (New-SentryProbeUnavailable -Reason "railway CLI not installed")
+  }
+
+  $result = Try-Run @("railway", "variables", "--service", "CyclingZone", "--json")
+  if (-not $result.Ok) {
+    $first = (($result.Text -split "`n") | Where-Object { $_.Trim() } | Select-Object -First 1)
+    return (New-SentryProbeUnavailable -Reason "railway variables failed: $first")
+  }
+
+  try {
+    $vars = $result.Text | ConvertFrom-Json
+  } catch {
+    return (New-SentryProbeUnavailable -Reason "railway JSON parse failed")
+  }
+
+  # railway variables --json returns {KEY: "value", ...}. We extract ONLY .Name
+  # from PSObject.Properties; .Value is discarded immediately and never stored.
+  $keys = @($vars.PSObject.Properties | ForEach-Object { $_.Name })
+  $state = [PSCustomObject]@{
+    Available = $true
+    Reason = $null
+    HasFrontendDsn = $false  # Railway only hosts backend here
+    HasAuthToken = $false
+    HasBackendDsn = ($keys -contains "SENTRY_DSN")
+    KeyCount = $keys.Count
+  }
+  Write-SentryProbeCache -Provider "railway" -State $state
+  return $state
 }
 
 $rootResult = Try-Run @("git", "rev-parse", "--show-toplevel")
@@ -256,53 +398,82 @@ if ($infisicalCmd) {
   Add-Check "infisical-cli" "WARN" "not found — install: winget install Infisical.infisical (see docs/CROSS_PC_SETUP.md)"
 }
 
-$sentrySignals = @()
+# Sentry config — probes live prod-state (Vercel + Railway) for env-var presence,
+# falls back to local env scan if CLIs unavailable. Source of truth = prod, since
+# #348 close-out showed local-only check produces both false-WARN (prod live, local
+# empty) AND false-OK (local set, prod missing — original cause of #348). See #620.
 $sentryHasBackendPkg = (Test-Path "backend/package.json") -and ((Get-Content -Raw "backend/package.json") -match "@sentry/node")
 $sentryHasFrontendPkg = (Test-Path "frontend/package.json") -and ((Get-Content -Raw "frontend/package.json") -match "@sentry/react")
-if ($sentryHasBackendPkg) { $sentrySignals += "backend-package" }
-if ($sentryHasFrontendPkg) { $sentrySignals += "frontend-package" }
 
-# DSN-signal: faktisk konfiguration, ikke kun pakke-installation.
-# Tjekker proces-env, backend/.env, og frontend/.env* (alle filer Vite læser ved build).
-$sentryHasBackendDsn = [bool]$env:SENTRY_DSN
-$sentryHasFrontendDsn = [bool]$env:VITE_SENTRY_DSN
+$localHasBackendDsn = [bool]$env:SENTRY_DSN
+$localHasFrontendDsn = [bool]$env:VITE_SENTRY_DSN
 foreach ($envFile in @("backend/.env")) {
   if (Test-Path $envFile) {
     $content = Get-Content -Raw $envFile
-    if ($content -match "(?m)^\s*SENTRY_DSN\s*=\s*\S") { $sentryHasBackendDsn = $true }
+    if ($content -match "(?m)^\s*SENTRY_DSN\s*=\s*\S") { $localHasBackendDsn = $true }
   }
 }
 foreach ($envFile in @("frontend/.env", "frontend/.env.local", "frontend/.env.production")) {
   if (Test-Path $envFile) {
     $content = Get-Content -Raw $envFile
-    if ($content -match "(?m)^\s*VITE_SENTRY_DSN\s*=\s*\S") { $sentryHasFrontendDsn = $true }
+    if ($content -match "(?m)^\s*VITE_SENTRY_DSN\s*=\s*\S") { $localHasFrontendDsn = $true }
   }
 }
-if ($sentryHasBackendDsn) { $sentrySignals += "backend-dsn" }
-if ($sentryHasFrontendDsn) { $sentrySignals += "frontend-dsn" }
 
-# OK kræver BÅDE pakke OG DSN på begge sider — pakke alene betyder kun "wired", ikke "aktiv".
-# Bemærk: kan ikke verificere Railway/Vercel runtime-env herfra; manglende DSN her er kun et
-# lokalt signal. Prod-verifikation kræver Sentry-dashboard eller bundle-inspektion.
-$sentryStatus = if ($sentryHasBackendPkg -and $sentryHasFrontendPkg -and $sentryHasBackendDsn -and $sentryHasFrontendDsn) {
-  "OK"
-} elseif (($sentryHasBackendPkg -or $sentryHasFrontendPkg) -and -not ($sentryHasBackendDsn -or $sentryHasFrontendDsn)) {
-  "WARN"
-} elseif ($sentryHasBackendPkg -or $sentryHasFrontendPkg) {
-  "WARN"
+# Probe live prod env-var keys (NOT values — helpers only return presence flags).
+# Test hook: DOCTOR_MOCK_SENTRY_PROBE='{"vercel":{...},"railway":{...}}' bypasser CLI.
+if ($env:DOCTOR_MOCK_SENTRY_PROBE) {
+  try {
+    $mockState = $env:DOCTOR_MOCK_SENTRY_PROBE | ConvertFrom-Json
+    $vercelState = $mockState.vercel
+    $railwayState = $mockState.railway
+  } catch {
+    $vercelState = New-SentryProbeUnavailable -Reason "mock JSON parse failed"
+    $railwayState = $vercelState
+  }
 } else {
-  "WARN"
+  $vercelState = Get-VercelSentryProdState
+  $railwayState = Get-RailwaySentryProdState
 }
-$sentryDetail = if ($sentrySignals.Count -eq 0) {
-  "not configured"
-} elseif (-not ($sentryHasBackendDsn -or $sentryHasFrontendDsn)) {
-  "wired but no DSN — set SENTRY_DSN (Railway) + VITE_SENTRY_DSN (Vercel) (#348)"
-} elseif (-not ($sentryHasBackendDsn -and $sentryHasFrontendDsn)) {
-  "partial DSN — missing $(if (-not $sentryHasBackendDsn) { 'backend SENTRY_DSN' } else { 'frontend VITE_SENTRY_DSN' }) (#348); have: $($sentrySignals -join ', ')"
+
+$prodFrontendOk = [bool]($vercelState.Available -and $vercelState.HasFrontendDsn)
+$prodBackendOk = [bool]($railwayState.Available -and $railwayState.HasBackendDsn)
+$anyProbeWorked = [bool]($vercelState.Available -or $railwayState.Available)
+$bothProbesWorked = [bool]($vercelState.Available -and $railwayState.Available)
+
+if ($bothProbesWorked -and $prodFrontendOk -and $prodBackendOk) {
+  $localNote = if (-not ($localHasFrontendDsn -and $localHasBackendDsn)) { " (lokal .env mangler DSN, men prod runtime er live)" } else { "" }
+  Add-Check "sentry-config" "OK" "prod wired: Vercel VITE_SENTRY_DSN + Railway SENTRY_DSN$localNote"
+} elseif ($bothProbesWorked) {
+  $missing = @()
+  if (-not $prodFrontendOk) { $missing += "Vercel VITE_SENTRY_DSN" }
+  if (-not $prodBackendOk) { $missing += "Railway SENTRY_DSN" }
+  Add-Check "sentry-config" "WARN" "prod ikke wired: missing $($missing -join ', ') — kør scripts/setup-sentry-frontend.ps1 (#348)"
+} elseif ($anyProbeWorked) {
+  $haves = @(); $unverified = @()
+  if ($vercelState.Available) {
+    if ($prodFrontendOk) { $haves += "Vercel VITE_SENTRY_DSN" } else { $haves += "Vercel probe OK but VITE_SENTRY_DSN missing" }
+  } else { $unverified += "Vercel ($($vercelState.Reason))" }
+  if ($railwayState.Available) {
+    if ($prodBackendOk) { $haves += "Railway SENTRY_DSN" } else { $haves += "Railway probe OK but SENTRY_DSN missing" }
+  } else { $unverified += "Railway ($($railwayState.Reason))" }
+  Add-Check "sentry-config" "WARN" "partial prod probe — verified: $($haves -join '; '); unverified: $($unverified -join '; ')"
 } else {
-  $sentrySignals -join ", "
+  # No live probe available — fall back to local env + package signals.
+  $sentrySignals = @()
+  if ($sentryHasBackendPkg) { $sentrySignals += "backend-package" }
+  if ($sentryHasFrontendPkg) { $sentrySignals += "frontend-package" }
+  if ($localHasBackendDsn) { $sentrySignals += "backend-dsn-local" }
+  if ($localHasFrontendDsn) { $sentrySignals += "frontend-dsn-local" }
+  $fallbackNote = "fallback: vercel ($($vercelState.Reason)); railway ($($railwayState.Reason))"
+  if ($sentryHasBackendPkg -and $sentryHasFrontendPkg -and $localHasBackendDsn -and $localHasFrontendDsn) {
+    Add-Check "sentry-config" "WARN" "kun lokal verificeret ($($sentrySignals -join ', ')); $fallbackNote"
+  } elseif ($sentrySignals.Count -gt 0) {
+    Add-Check "sentry-config" "WARN" "lokal: $($sentrySignals -join ', '); $fallbackNote"
+  } else {
+    Add-Check "sentry-config" "WARN" "not configured; $fallbackNote"
+  }
 }
-Add-Check "sentry-config" $sentryStatus $sentryDetail
 
 $tokenHygiene = Try-Run @("pwsh", "-NoProfile", "-File", "scripts/check-agent-token-hygiene.ps1")
 if ($tokenHygiene.Ok) {
