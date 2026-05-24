@@ -13,9 +13,16 @@
  *     med fuld market_value som kredit
  *   - Bøde: 100K CZ$ + 200 fradrag-points pr. afvigende rytter (begge retninger)
  *
- * Idempotency: window-level atomic claim på squad_enforcement_completed_at,
- * samme mønster som final_whistle_sent_at. Cron skal kunne re-køre uden at
- * dobbelt-straffe nogen.
+ * Idempotency (#606, 2026-05-24): To-faset window-claim med stale-recovery.
+ *   1. squad_enforcement_started_at sættes FØR per-team loop (atomic claim mod 2-instans-race)
+ *   2. squad_enforcement_completed_at sættes SIDST når alle teams er processed
+ *   3. Stale recovery: hvis started_at sat men completed_at null AND started_at >10 min gammel,
+ *      re-claimer næste tick windowet og replay'er loopen. Per-team structural self-idempotency
+ *      i enforceTeamSquadCompliance + idempotency_key på squad_violation_fine sikrer replay-safety.
+ *
+ * Kendt restrisiko (B-pattern hvis observeret): single-team mid-crash mellem purchase og fine
+ * vil få team within_limits ved replay → ingen fine. ~50-200ms vindue per team. Hvis det rammer,
+ * skift til per-team squad_enforcement_records-tabel med in_progress/completed states.
  */
 
 import {
@@ -223,14 +230,18 @@ async function applyFinesAndPenalty({
   team,
   deviatingCount,
   seasonId,
+  windowId = null,
 }) {
   if (deviatingCount <= 0) return { fineAmount: 0, penaltyPoints: 0 };
 
   const fineAmount = SQUAD_FINE_AMOUNT * deviatingCount;
   const penaltyPoints = SQUAD_PENALTY_POINTS * deviatingCount;
 
-  // Slice 07c: balance + finance_transactions atomic via RPC.
-  await incrementBalanceWithAudit(supabase, {
+  // #606: idempotency_key per (window, team) sikrer at replay efter mid-loop-crash
+  // ikke double-fine'r. allowDuplicate=true returnerer skipped=true ved 23505 og
+  // hopper videre uden exception (samme mønster som auctionFinalization).
+  const idempotencyKey = windowId ? `squad_fine:${windowId}:${team.id}` : null;
+  const { skipped } = await incrementBalanceWithAudit(supabase, {
     teamId: team.id,
     delta: -fineAmount,
     payload: {
@@ -244,8 +255,13 @@ async function applyFinesAndPenalty({
       reason_code: FINANCE_REASON.SQUAD_VIOLATION_FINE,
       related_entity_type: FINANCE_RELATED_ENTITY.SEASON,
       related_entity_id: seasonId || null,
+      idempotency_key: idempotencyKey,
     },
-  });
+  }, { allowDuplicate: Boolean(idempotencyKey) });
+
+  // Hvis fine'n allerede er applied i en tidligere tick, skip også penalty_points-update.
+  // Standings-update er ikke wrapped i idempotency_key, så vi må ikke double-increment her.
+  if (skipped) return { fineAmount, penaltyPoints, skipped: true };
 
   // Increment penalty_points på det aktive sæsons standings-row.
   // Hvis der ikke findes en row endnu (sæsonen er lige startet), opretter vi den.
@@ -290,6 +306,7 @@ export async function enforceTeamSquadCompliance({
   supabase,
   teamId,
   seasonId = null,
+  windowId = null,
   notifyTeamOwner = NOOP,
   createEmergencyLoanFn,
   now = new Date(),
@@ -366,6 +383,7 @@ export async function enforceTeamSquadCompliance({
     team,
     deviatingCount,
     seasonId,
+    windowId,
   });
 
   // Notifikation til ramt manager (ikke spam — én pr. enforcement).
@@ -406,6 +424,11 @@ export async function enforceTeamSquadCompliance({
 
 // ─── Cron-entrypoint: window-level claim + iter alle human teams ─────────────
 
+// #606: stale started_at-claims overwrittes efter 10 min. Skal være > loop-tid
+// (14-30 sek ved 20 teams) men < cron-interval (5 min) × 2 så vi ikke holder
+// døde claims for længe. 10 min er konservativt buffer.
+export const SQUAD_ENFORCEMENT_STALE_CLAIM_MINUTES = 10;
+
 export async function processSquadEnforcementCron({
   supabase,
   notifyTeamOwner = NOOP,
@@ -421,7 +444,7 @@ export async function processSquadEnforcementCron({
   const window = await expectMaybeSingle(
     supabase
       .from("transfer_windows")
-      .select("id, season_id, status, closes_at, closed_at, squad_enforcement_completed_at")
+      .select("id, season_id, status, closes_at, closed_at, squad_enforcement_started_at, squad_enforcement_completed_at")
       .eq("status", "closed")
       .not("closed_at", "is", null)
       .is("squad_enforcement_completed_at", null)
@@ -431,16 +454,29 @@ export async function processSquadEnforcementCron({
 
   if (!window) return { enforced: 0, claimed: false };
 
-  // Atomic claim — samme mønster som final_whistle_sent_at.
+  // #606 to-faset claim. FØRST atomic claim på started_at — accept hvis enten
+  // (a) aldrig started, eller (b) stale (>10min siden start uden completed).
+  // Det forhindrer 2-instans-race samtidig med at vi recovery'er crashes mid-loop.
+  // wasResume capture'es FØR claim-update så vi rapporterer pre-claim state.
+  const wasResume = Boolean(window.squad_enforcement_started_at);
   const nowIso = now.toISOString();
+  const staleCutoffIso = new Date(
+    now.getTime() - SQUAD_ENFORCEMENT_STALE_CLAIM_MINUTES * 60 * 1000
+  ).toISOString();
+
   const { data: claimed, error: claimError } = await supabase
     .from("transfer_windows")
-    .update({ squad_enforcement_completed_at: nowIso })
+    .update({ squad_enforcement_started_at: nowIso })
     .eq("id", window.id)
     .is("squad_enforcement_completed_at", null)
+    .or(`squad_enforcement_started_at.is.null,squad_enforcement_started_at.lt.${staleCutoffIso}`)
     .select("id");
   if (claimError) throw claimError;
-  if (!claimed?.length) return { enforced: 0, claimed: false };
+
+  if (!claimed?.length) {
+    // Anden instans claim'ede først (started_at sat for nylig, ikke stale).
+    return { enforced: 0, claimed: false, reason: "concurrent_claim" };
+  }
 
   // Hent alle human-managers (ikke bank, ikke AI, ikke frosset, har user_id).
   // is_frozen=false matcher samme filter som processSeasonStart + seasonTransition
@@ -462,6 +498,7 @@ export async function processSquadEnforcementCron({
         supabase,
         teamId: t.id,
         seasonId: window.season_id,
+        windowId: window.id,
         notifyTeamOwner,
         createEmergencyLoanFn,
         now,
@@ -473,6 +510,16 @@ export async function processSquadEnforcementCron({
     }
   }
 
+  // Marker complete SIDST — hvis processen crasher før dette punkt, lader stale-recovery
+  // næste tick replay'e (per-team self-idempotency + squad_fine idempotency_key sikrer
+  // replay-safety). Per-team-fails (try/catch ovenfor) markeres til onError men blokerer
+  // ikke fremgang — kronisk-fejlende team ville ellers holde windowet for evigt.
+  const { error: completeError } = await supabase
+    .from("transfer_windows")
+    .update({ squad_enforcement_completed_at: nowIso })
+    .eq("id", window.id);
+  if (completeError) throw completeError;
+
   const enforced = results.filter(
     r => r.ok && (r.code === "auto_purchased" || r.code === "auto_sold")
   ).length;
@@ -480,6 +527,7 @@ export async function processSquadEnforcementCron({
   return {
     enforced,
     claimed: true,
+    wasResume,
     windowId: window.id,
     results,
   };

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.93",
+    date: "2026-05-24",
+    label: "Beta",
+    changes: [
+      {
+        category: "Reliability · Squad-enforcement partial-failure recovery",
+        items: [
+          "EN · Backend-only reliability fix for the squad-size enforcement cron (the system that auto-buys/sells riders and fines you if your squad is outside the per-division limits when a transfer window closes). Before #606: if the cron process died mid-loop (Railway deploy, OOM), the window was marked as 'done' even though only some teams had been enforced — the unhandled teams stayed outside squad-limits forever with no fine. Fix: two-phase claim (started_at + completed_at) with stale-claim recovery after 10 minutes, plus per-team idempotency_key on fines so replay can't double-fine. Cron-audit verdict updated from 🔴 to ✅. Refs #606.",
+          "DA · Backend-only reliability-fix for squad-size enforcement cron (systemet der auto-køber/sælger ryttere og bøder dig hvis din trup er uden for division-grænserne ved window-close). Før #606: hvis cron-processen døde midt i loopen (Railway-deploy, OOM), blev windowet markeret som 'færdig' selvom kun halvdelen af holdene var enforced — de manglende hold forblev uden for squad-limits permanent uden bøde. Fix: to-faset claim (started_at + completed_at) med stale-recovery efter 10 minutter, plus per-team idempotency_key på bøder så replay ikke kan double-fine. Cron-audit-verdict opdateret fra 🔴 til ✅. Refs #606.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.92",
     date: "2026-05-22",
     label: "Beta",

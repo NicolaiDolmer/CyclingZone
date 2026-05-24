@@ -255,25 +255,52 @@ function createMockSupabase(initialState) {
         return builder;
       },
       update(payload) {
-        return {
-          eq(col1, val1) {
-            return {
-              is(col2, val2) {
-                return {
-                  select() {
-                    const window = state.transferWindows.find(w => w[col1] === val1);
-                    if (!window) return Promise.resolve({ data: [], error: null });
-                    if (val2 === null && window[col2] != null) {
-                      return Promise.resolve({ data: [], error: null });
-                    }
-                    Object.assign(window, payload);
-                    return Promise.resolve({ data: [{ id: window.id }], error: null });
-                  },
-                };
-              },
-            };
+        // Filter-chain: .eq().is().or() — alle akkumuleres, anvendes ved .select() eller await.
+        const filters = { eq: [], is: [], or: null };
+        function apply() {
+          let window = state.transferWindows.find(w => {
+            for (const [col, val] of filters.eq) {
+              if (w[col] !== val) return false;
+            }
+            for (const [col, val] of filters.is) {
+              if (val === null && w[col] != null) return false;
+              if (val !== null && w[col] !== val) return false;
+            }
+            if (filters.or) {
+              // Parse "col.op.val,col.op.val" — OR mellem dem.
+              const clauses = filters.or.split(",");
+              let anyMatch = false;
+              for (const clause of clauses) {
+                const [col, op, ...valParts] = clause.split(".");
+                const val = valParts.join(".");
+                if (op === "is" && val === "null") {
+                  if (w[col] == null) { anyMatch = true; break; }
+                } else if (op === "lt") {
+                  if (w[col] != null && w[col] < val) { anyMatch = true; break; }
+                }
+              }
+              if (!anyMatch) return false;
+            }
+            return true;
+          });
+          if (!window) return [];
+          Object.assign(window, payload);
+          return [{ id: window.id }];
+        }
+        const builder = {
+          eq(col, val) { filters.eq.push([col, val]); return builder; },
+          is(col, val) { filters.is.push([col, val]); return builder; },
+          or(condString) { filters.or = condString; return builder; },
+          select() {
+            return Promise.resolve({ data: apply(), error: null });
+          },
+          // Thenable: tillader await uden .select() (returnerer { error })
+          then(resolve) {
+            apply();
+            resolve({ data: null, error: null });
           },
         };
+        return builder;
       },
     };
   }
@@ -299,9 +326,21 @@ function createMockSupabase(initialState) {
   }
 
   // Slice 07c: balance + finance_transactions atomic via RPC.
+  // Simulerer uniq_finance_idempotency_key UNIQUE-constraint: hvis idempotency_key
+  // findes i payload + en row med samme key allerede er i financeTransactions,
+  // returneres { error: { code: '23505' } } svarende til Postgres unique-violation.
   function rpc(name, params) {
     if (name !== "increment_balance_with_audit") {
       throw new Error(`Unexpected rpc: ${name}`);
+    }
+    const idempotencyKey = params.p_finance_payload?.idempotency_key;
+    if (idempotencyKey) {
+      const existing = state.financeTransactions.find(
+        t => t.idempotency_key === idempotencyKey
+      );
+      if (existing) {
+        return Promise.resolve({ data: null, error: { code: "23505", message: "duplicate idempotency_key" } });
+      }
     }
     const team = teamById(params.p_team_id);
     if (team) {
@@ -576,12 +615,14 @@ test("processSquadEnforcementCron: atomic claim sætter completed_at + iter alle
 
   assert.equal(result.claimed, true);
   assert.equal(result.windowId, "w1");
+  assert.equal(result.wasResume, false);
   assert.equal(result.enforced, 1); // kun t2 var afvigende
 
-  // Atomic claim er sat
+  // #606: begge claim-faser er sat efter normal flow
+  assert.ok(supabase.state.transferWindows[0].squad_enforcement_started_at != null);
   assert.ok(supabase.state.transferWindows[0].squad_enforcement_completed_at != null);
 
-  // 2. kald skal være no-op (claim allerede sat)
+  // 2. kald skal være no-op (claim allerede completed)
   const second = await processSquadEnforcementCron({
     supabase,
     notifyTeamOwner: async () => {},
@@ -657,4 +698,215 @@ test("konstanter matcher spec", () => {
   assert.equal(SQUAD_FINE_AMOUNT, 100_000);
   assert.equal(SQUAD_PENALTY_POINTS, 200);
   assert.equal(SQUAD_PURCHASE_MARKUP, 1.5);
+});
+
+// ─── #606 partial-failure recovery tests ────────────────────────────────────
+
+test("processSquadEnforcementCron: stale started_at + completed_at null → replay claim'er + completer", async () => {
+  // Scenarie: 1. tick claim'ede started_at men crashede før completed_at.
+  // 2. tick (15 min senere) ser stale claim → re-claim + replay loopen.
+  // Per-team self-idempotency: t2 var allerede mid-purchase men ikke fået fine endnu;
+  // replay ser t2 med 5 ryttere stadig → fortsætter purchase. Per-team idempotency_key
+  // på fine'n sikrer at hvis t2 HAVDE fået fine, ville den ikke double-fine.
+  const stalledStartedAt = "2026-05-04T11:45:00Z"; // 15 min før now → stale (>10min)
+  const supabase = createMockSupabase({
+    teams: [
+      { id: "t2", name: "B", balance: 5_000_000, division: 3, user_id: "u2", is_ai: false, is_bank: false, is_frozen: false },
+    ],
+    riders: [
+      ...Array.from({ length: 5 }, (_, i) => ({
+        id: `t2-r${i}`, team_id: "t2", firstname: "F", lastname: `${i}`,
+        market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+      })),
+      { id: "fa1", firstname: "F1", lastname: "L", team_id: null, market_value: 20_000, uci_points: 1, ai_team_id: null },
+      { id: "fa2", firstname: "F2", lastname: "L", team_id: null, market_value: 20_000, uci_points: 2, ai_team_id: null },
+      { id: "fa3", firstname: "F3", lastname: "L", team_id: null, market_value: 20_000, uci_points: 3, ai_team_id: null },
+    ],
+    transferWindows: [
+      {
+        id: "w1", season_id: "season-1", status: "closed",
+        closed_at: "2026-05-04T11:00:00Z",
+        squad_enforcement_started_at: stalledStartedAt,
+        squad_enforcement_completed_at: null,
+        created_at: "2026-05-04",
+      },
+    ],
+  });
+
+  const result = await processSquadEnforcementCron({
+    supabase,
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-05-04T12:00:00Z"), // 15 min efter stalled start
+  });
+
+  assert.equal(result.claimed, true);
+  assert.equal(result.wasResume, true, "wasResume skal være true når stale started_at overwrittes");
+  assert.equal(result.enforced, 1);
+
+  // Begge claim-faser er sat efter replay
+  const w = supabase.state.transferWindows[0];
+  assert.ok(w.squad_enforcement_started_at != null);
+  assert.notEqual(w.squad_enforcement_started_at, stalledStartedAt, "started_at skal være overwritten med now");
+  assert.ok(w.squad_enforcement_completed_at != null);
+});
+
+test("processSquadEnforcementCron: fresh started_at (ikke stale) → 2. tick får concurrent_claim skip", async () => {
+  // 1. tick er midt i loop. 2. tick fyrer 5 min senere men started_at er stadig <10min.
+  // 2. tick skal IKKE re-claim windowet — vi vil ikke double-up purchases under aktiv tick.
+  const freshStartedAt = "2026-05-04T11:55:00Z"; // 5 min før now (ikke stale)
+  const supabase = createMockSupabase({
+    teams: [
+      { id: "t2", name: "B", balance: 5_000_000, division: 3, user_id: "u2", is_ai: false, is_bank: false, is_frozen: false },
+    ],
+    riders: Array.from({ length: 5 }, (_, i) => ({
+      id: `t2-r${i}`, team_id: "t2", firstname: "F", lastname: `${i}`,
+      market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+    })),
+    transferWindows: [
+      {
+        id: "w1", season_id: "season-1", status: "closed",
+        closed_at: "2026-05-04T11:00:00Z",
+        squad_enforcement_started_at: freshStartedAt,
+        squad_enforcement_completed_at: null,
+        created_at: "2026-05-04",
+      },
+    ],
+  });
+
+  const result = await processSquadEnforcementCron({
+    supabase,
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-05-04T12:00:00Z"),
+  });
+
+  assert.equal(result.claimed, false);
+  assert.equal(result.reason, "concurrent_claim");
+  assert.equal(result.enforced, 0);
+  // started_at urørt — anden tick "vinder" som var den live
+  assert.equal(supabase.state.transferWindows[0].squad_enforcement_started_at, freshStartedAt);
+  assert.equal(supabase.state.transferWindows[0].squad_enforcement_completed_at, null);
+});
+
+test("enforceTeamSquadCompliance: fine får idempotency_key=squad_fine:${windowId}:${teamId}", async () => {
+  // Bekræfter at windowId bobler korrekt ned til applyFinesAndPenalty og sættes som
+  // idempotency_key på squad_violation_fine. Replay-safety verificeres end-to-end i
+  // næste test (replay med samme windowId).
+  const supabase = createMockSupabase({
+    teams: [{ id: "t1", name: "Test", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
+    riders: [
+      ...Array.from({ length: 5 }, (_, i) => ({
+        id: `r${i}`, team_id: "t1", firstname: "F", lastname: `${i}`,
+        market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+      })),
+      { id: "fa1", firstname: "F1", lastname: "L", team_id: null, market_value: 20_000, uci_points: 1, ai_team_id: null },
+      { id: "fa2", firstname: "F2", lastname: "L", team_id: null, market_value: 20_000, uci_points: 2, ai_team_id: null },
+      { id: "fa3", firstname: "F3", lastname: "L", team_id: null, market_value: 20_000, uci_points: 3, ai_team_id: null },
+    ],
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
+    ],
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: "season-1",
+    windowId: "w1",
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-05-04T12:00:00Z"),
+  });
+
+  assert.equal(result.code, "auto_purchased");
+  assert.equal(result.fineAmount, 300_000);
+
+  const fineTx = supabase.state.financeTransactions.find(t => t.type === "squad_violation_fine");
+  assert.ok(fineTx, "fine skal være registreret");
+  assert.equal(fineTx.idempotency_key, "squad_fine:w1:t1");
+});
+
+test("enforceTeamSquadCompliance: uden windowId → idempotency_key=null (backwards-kompatibel kald-path)", async () => {
+  // Sikrer at non-cron callsites (admin tools, scripts, framework-tests) der kalder
+  // enforceTeamSquadCompliance uden windowId stadig fungerer og bare ikke får
+  // idempotency-håndhævelse. allowDuplicate=false så duplicate kald ville fejle.
+  const supabase = createMockSupabase({
+    teams: [{ id: "t1", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
+    riders: [
+      ...Array.from({ length: 5 }, (_, i) => ({
+        id: `r${i}`, team_id: "t1", firstname: "F", lastname: `${i}`,
+        market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+      })),
+      { id: "fa1", firstname: "F1", lastname: "L", team_id: null, market_value: 20_000, uci_points: 1, ai_team_id: null },
+      { id: "fa2", firstname: "F2", lastname: "L", team_id: null, market_value: 20_000, uci_points: 2, ai_team_id: null },
+      { id: "fa3", firstname: "F3", lastname: "L", team_id: null, market_value: 20_000, uci_points: 3, ai_team_id: null },
+    ],
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
+    ],
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase, teamId: "t1", seasonId: "season-1",
+    notifyTeamOwner: async () => {}, createEmergencyLoanFn: async () => {},
+    now: new Date("2026-05-04T12:00:00Z"),
+  });
+
+  assert.equal(result.code, "auto_purchased");
+  const fineTx = supabase.state.financeTransactions.find(t => t.type === "squad_violation_fine");
+  assert.ok(fineTx);
+  assert.equal(fineTx.idempotency_key, null, "ingen windowId → ingen idempotency-håndhævelse");
+});
+
+test("processSquadEnforcementCron: replay med samme windowId → fines er idempotente via 23505", async () => {
+  // Sætter scenariet op manuelt: et team som STADIG er afvigende selv efter første tick
+  // (fx purchase fejlede så fine'n blev applied men ridercount ikke ændret). Replay vil
+  // forsøge applyFinesAndPenalty igen og skal få 23505 fra idempotency_key.
+  const supabase = createMockSupabase({
+    teams: [{ id: "t1", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false, is_frozen: false }],
+    riders: Array.from({ length: 5 }, (_, i) => ({
+      id: `r${i}`, team_id: "t1", firstname: "F", lastname: `${i}`,
+      market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+    })),
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
+    ],
+    transferWindows: [
+      {
+        id: "w1", season_id: "season-1", status: "closed",
+        closed_at: "2026-05-04T11:00:00Z",
+        squad_enforcement_started_at: "2026-05-04T11:45:00Z", // stale (>10 min)
+        squad_enforcement_completed_at: null,
+        created_at: "2026-05-04",
+      },
+    ],
+  });
+
+  // Pre-seed: simulér at fine ALLEREDE var applied i en tidligere stalled tick
+  supabase.state.financeTransactions.push({
+    team_id: "t1",
+    type: "squad_violation_fine",
+    amount: -300_000,
+    idempotency_key: "squad_fine:w1:t1",
+  });
+  // Penalty_points fra første tick — replay skal IKKE add 600 mere
+  supabase.state.seasonStandings[0].penalty_points = 600;
+
+  const result = await processSquadEnforcementCron({
+    supabase,
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-05-04T12:00:00Z"), // 15 min efter stale
+  });
+
+  assert.equal(result.claimed, true);
+  assert.equal(result.wasResume, true);
+
+  // Fine'n må ikke være duplikeret
+  const fines = supabase.state.financeTransactions.filter(t => t.type === "squad_violation_fine");
+  assert.equal(fines.length, 1, "kun én squad_violation_fine row (idempotency_key blokerede duplicate)");
+
+  // Penalty_points må ikke være double-incremented
+  assert.equal(supabase.state.seasonStandings[0].penalty_points, 600, "penalty_points må ikke double-incremente ved replay");
 });

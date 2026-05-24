@@ -21,7 +21,7 @@ Filer læst: `backend/cron.js`, `backend/lib/{auctionFinalization,deadlineDayRep
 |---|---|---|---|---|---|
 | `finalizeExpiredAuctions` (60s) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ |
 | `processDeadlineDayCron` (5m) | ⚠️ | ✅ | ⚠️ | ⚠️ | ✅ |
-| `processSquadEnforcementCron` (5m) | ✅ | 🔴 | ✅ | ⚠️ | ✅ |
+| `processSquadEnforcementCron` (5m) | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | `processSeasonAutoTransitionCron` (5m) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `checkDebtWarnings` (6h) | ⚠️ | 🔴 | ⚠️ | ⚠️ | ✅ |
 | `processBoardAutoAcceptCron` (30m) | ✅ | ✅ | ✅ | ⚠️ | ✅ |
@@ -109,9 +109,10 @@ Ingen identified.
 
 ### P1 — Bør fixes hurtigt
 
-**P1-A: `processSquadEnforcementCron` partial-failure recovery gap** (cron #3) → [#606](https://github.com/NicolaiDolmer/CyclingZone/issues/606)
+**P1-A: `processSquadEnforcementCron` partial-failure recovery gap** (cron #3) → [#606](https://github.com/NicolaiDolmer/CyclingZone/issues/606) ✅ **FIXED 2026-05-24 (Approach C lite-fix)**
 - Window-claim sker FØR per-team loop. Mid-tick crash efterlader window claim'et men halvdelen af teams ikke-enforced. Næste tick filtrerer windowet ud → permanent state-leak.
-- Mitigation: Tilføj `idempotency_key` på `incrementBalanceWithAudit`-calls i `executeAutoPurchase`/`executeAutoSale`/`applyFinesAndPenalty` (mønster: `squad_purchase:${teamId}:${windowId}` etc.), plus per-team status-tracker. Lift window-claim til at sætte `squad_enforcement_completed_at` SIDST når alle teams er processed (eller introducer `squad_enforcement_started_at` claim + slutclaim).
+- **Fix:** Split window-claim i `squad_enforcement_started_at` (atomic claim FØR loop, stale-recovery efter 10min) + `squad_enforcement_completed_at` (SIDST). Per-team `idempotency_key='squad_fine:${windowId}:${teamId}'` på fine-RPC sikrer replay-safety. Migration: [`database/2026-05-24-squad-enforcement-started-at.sql`](../database/2026-05-24-squad-enforcement-started-at.sql).
+- **Restrisiko (accepteret):** single-team mid-crash mellem purchase og fine vil få team within_limits ved replay → ingen fine. ~50-200ms vindue per team. Hvis observeret, skift til Approach B (per-team `squad_enforcement_records`-tabel med in_progress/completed states). Forward-guard kommenteret i `squadEnforcement.js`.
 
 **P1-B: `checkDebtWarnings` dedup-bypass via dynamic message** (cron #5) → [#607](https://github.com/NicolaiDolmer/CyclingZone/issues/607)
 - 4 cron-runs/døgn × `message` der varierer med balance → potentielt 4 warnings/døgn per team med ændret saldo.
