@@ -1,0 +1,94 @@
+{
+  "_schema_version": 1,
+  "_purpose": "Per-PC baseline af installed dependencies + tooling. Bruges til cross-PC parity-check (PC1 ↔ PC2). Refresh efter hver dep-bump eller hver `npm ci`. Compare-script: scripts/check-install-parity.ps1 (foreslået forward-guard).",
+  "host": "EmmaPC",
+  "pc_label": "PC2",
+  "captured": "2026-05-24T21:35+02:00",
+  "captured_via": "manuel audit efter PR #579 ipKeyGenerator install-bug",
+  "git": {
+    "branch": "main",
+    "head_sha": "7c19742",
+    "head_subject": "chore(now): claim parallel run #608+#607+#598"
+  },
+  "tooling": {
+    "node": "v25.9.0",
+    "npm": "11.13.0",
+    "git": "2.54.0.windows.1",
+    "gh": "2.92.0",
+    "pwsh": "7.6.2"
+  },
+  "lockfile_sha256": {
+    "package-lock.json": "77075f26199b346e005404342f8deeebb88389a0056d5fc1ff02fb6f1b28501c",
+    "backend/package-lock.json": "5de827063ef02c51d62f3febdc00c9018b942be0c657421eef194ddf6e1b7a73",
+    "frontend/package-lock.json": "1325e57be9e9bd64fad81ac394be6269ff13ba59f9b0b6e66d784a101c431974"
+  },
+  "direct_deps_installed": {
+    "root": {
+      "@supabase/supabase-js": "2.106.1",
+      "dotenv": "16.6.1",
+      "lint-staged": "17.0.5"
+    },
+    "backend": {
+      "@eslint/js": "10.0.1",
+      "@sentry/node": "10.53.1",
+      "@supabase/supabase-js": "2.106.1",
+      "cors": "2.8.6",
+      "dotenv": "17.4.2",
+      "eslint": "10.4.0",
+      "exceljs": "4.4.0",
+      "express": "4.22.2",
+      "express-rate-limit": "8.5.2",
+      "globals": "17.6.0",
+      "helmet": "8.2.0",
+      "multer": "2.1.1",
+      "prettier": "3.8.3",
+      "ws": "8.20.1"
+    },
+    "frontend": {
+      "@e965/xlsx": "0.20.3",
+      "@eslint/js": "10.0.1",
+      "@microsoft/clarity": "1.0.2",
+      "@playwright/test": "1.60.0",
+      "@sentry/react": "10.53.1",
+      "@sentry/vite-plugin": "5.3.0",
+      "@supabase/supabase-js": "2.106.1",
+      "@vercel/analytics": "2.0.1",
+      "@vercel/speed-insights": "2.0.0",
+      "@vitejs/plugin-react": "6.0.2",
+      "autoprefixer": "10.5.0",
+      "eslint": "10.4.0",
+      "eslint-plugin-react": "7.37.5",
+      "eslint-plugin-react-hooks": "7.1.1",
+      "flag-icons": "7.5.0",
+      "globals": "17.6.0",
+      "i18next": "26.2.0",
+      "i18next-browser-languagedetector": "8.2.1",
+      "i18next-http-backend": "4.0.0",
+      "i18next-icu": "2.4.3",
+      "intl-messageformat": "11.2.6",
+      "postcss": "8.5.15",
+      "prettier": "3.8.3",
+      "react": "18.3.1",
+      "react-dom": "18.3.1",
+      "react-i18next": "17.0.8",
+      "react-is": "19.2.6",
+      "react-router-dom": "6.30.3",
+      "recharts": "3.8.1",
+      "tailwindcss": "3.4.19",
+      "vite": "8.0.13"
+    }
+  },
+  "parity_status": {
+    "root": "OK — all direct deps match lockfile",
+    "backend": "OK — all direct deps match lockfile",
+    "frontend": "OK — all direct deps match lockfile"
+  },
+  "remediation_history": {
+    "2026-05-24T21:20+02:00": "backend: npm install --prefix backend → express-rate-limit 7.5.1 → 8.5.2 (root cause of PR #579 test SyntaxError)",
+    "2026-05-24T21:30+02:00": "root: npm install → first-ever install on PC2 (39 packages added: @supabase/* + dotenv + lint-staged)",
+    "2026-05-24T21:34+02:00": "frontend: npm ci --prefix frontend → eslint/postcss/vite/supabase-js bumped to lockfile versions; `npm install` had falsely reported 'up to date' even though direct deps were 1-3 patches behind"
+  },
+  "known_lesson": {
+    "npm_install_silently_skipped_frontend_updates": "On 2026-05-24 PC2, `npm install --prefix frontend` printed 'up to date' but left eslint/postcss/vite/@supabase/supabase-js 1-3 patches behind their lockfile-pinned versions. `npm ci --prefix frontend` fixed it. Recommendation: use `npm ci` instead of `npm install` for routine sync after `git pull`."
+  }
+}
