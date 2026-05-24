@@ -263,7 +263,7 @@ export async function fireAutoCloseIfDue({ supabase, window, now }) {
 
 async function fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, now }) {
   const dueSteps = getDueWarningSteps(window.closes_at, now);
-  if (!dueSteps.length) return { warnings: 0 };
+  if (!dueSteps.length) return { warnings: 0, errors: 0 };
 
   const { data: teams } = await supabase
     .from("teams")
@@ -273,24 +273,30 @@ async function fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, now }
     .eq("is_frozen", false)
     .not("user_id", "is", null);
 
-  if (!teams?.length) return { warnings: 0 };
+  if (!teams?.length) return { warnings: 0, errors: 0 };
 
   let sent = 0;
+  let errors = 0;
   for (const step of dueSteps) {
     const payload = buildWarningPayload(step, window.closes_at);
     for (const team of teams) {
-      const result = await notifyTeamOwnerFn({
-        teamId: team.id,
-        type: payload.type,
-        title: payload.title,
-        message: payload.message,
-        relatedId: window.id,
-        now,
-      });
-      if (result?.delivered) sent += 1;
+      try {
+        const result = await notifyTeamOwnerFn({
+          teamId: team.id,
+          type: payload.type,
+          title: payload.title,
+          message: payload.message,
+          relatedId: window.id,
+          now,
+        });
+        if (result?.delivered) sent += 1;
+      } catch (err) {
+        errors += 1;
+        console.error(`  ❌ deadline warning failed for team ${team.id}:`, err.message);
+      }
     }
   }
-  return { warnings: sent };
+  return { warnings: sent, errors };
 }
 
 async function fireFinalWhistle({ supabase, window, sendDiscordWebhookFn, getDefaultWebhookFn, now }) {
@@ -340,17 +346,18 @@ export async function processDeadlineDayCron({
     .limit(1)
     .single();
 
-  if (!window) return { warnings: 0, whistleSent: false, autoClosed: false };
+  if (!window) return { warnings: 0, errors: 0, whistleSent: false, autoClosed: false };
 
   // Racing-windows (oprettet via transitionToNextSeason med status='closed' men
   // closes_at=null + closed_at=null) er aldrig en "deadline day" — markedet var
   // aldrig åbent på dem. Spring helt over så fireFinalWhistle ikke claimer dem og
   // dermed bidrager til sæson-loop-bug'en (rettet 2026-05-21).
   if (!window.closes_at && !window.closed_at) {
-    return { warnings: 0, whistleSent: false, autoClosed: false };
+    return { warnings: 0, errors: 0, whistleSent: false, autoClosed: false };
   }
 
   let warnings = 0;
+  let errors = 0;
   let whistleSent = false;
 
   // 1. Auto-close hvis closes_at er passeret — sikrer Final Whistle kan fyre samme tick.
@@ -363,6 +370,7 @@ export async function processDeadlineDayCron({
   if (window.status === "open" && window.closes_at) {
     const result = await fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, now });
     warnings = result.warnings;
+    errors = result.errors;
   }
 
   if (window.status === "closed" && !window.final_whistle_sent_at) {
@@ -370,5 +378,5 @@ export async function processDeadlineDayCron({
     whistleSent = result.whistleSent;
   }
 
-  return { warnings, whistleSent, autoClosed: autoCloseResult.autoClosed };
+  return { warnings, errors, whistleSent, autoClosed: autoCloseResult.autoClosed };
 }

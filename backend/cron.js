@@ -171,6 +171,9 @@ async function runDeadlineDayCron() {
   if (result.warnings) {
     console.log(`📣 Deadline Day: ${result.warnings} advarsel(er) afsendt`);
   }
+  if (result.errors) {
+    console.error(`❌ Deadline Day: ${result.errors} advarsel(er) fejlede (per-team try/catch isolerede)`);
+  }
   if (result.whistleSent) {
     console.log("🏁 Deadline Day: Final Whistle-rapport sendt til Discord");
   }
