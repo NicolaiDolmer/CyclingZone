@@ -191,6 +191,7 @@ Roughly neutral vs. 3 sekventielle sessions med cold-start hver. **Wall-clock-be
 5. **Subagent bruger PowerShell heredoc** — kendt bug på Bash-tool på Windows. Instruér: Write→fil + `git commit -F`.
 6. **Subagent kører `git add -A`** — lint-staged-pitfall, sweeper untracked filer ind. Kun specifikke filer.
 7. **Master polluerer subagent-output** — læs IKKE subagent-transcript-filer (overflow context). Vent på completion-notifikation.
+8. **Subagent signalerer "completed" men har IKKE pushed** (Session 2026-05-24-A, #601) — completion-notifikationens summary-tekst kan være afkortet ("Now let me move to..."), agent-processen lukker før push-step. Master SKAL verificere: `git ls-remote origin <branch>` + `gh pr list --head <branch>`. Hvis tomme: inspicér worktree med `git status` + diff, kør tests/build, fix lokalt, commit + push manuelt. Stol IKKE på "completed"-status alene — bekræfter HOT-memory `feedback_runtime_verify_first` på orchestration-laget.
 
 ## Lessons fra første run (2026-05-23-K)
 

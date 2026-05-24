@@ -74,6 +74,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **Lønudbetaling ved sæsonstart** (flyttet fra sæsonslut i v3.78, 2026-05-21) — kører efter sponsor er udbetalt til alle hold, så de ny-krediterede penge dækker løn for de fleste hold
 - **Lånerenter ved sæsonstart** (flyttet fra sæsonslut i v3.78) — trækkes efter sponsor, før løn
 - **Emergency-lån ved sæsonstart** (flyttet fra sæsonslut i v3.78) — kun hvis sponsor+balance stadig ikke dækker løn+renter
+- **Payroll-summary i transition-log (#535, 2026-05-24):** `transitionToNextSeason` returnerer nu `season_payroll`-fase med aggregerede counts+totaler for `loan_interest`, `salary`, `emergency_loan`, `negative_balance_interest`. Contract-change: `processSeasonStart` returnerer `{ sponsor, payroll }` i stedet for sponsor-array; `processLoanInterest` returnerer `{ charged }`. Admin-UI (`SeasonCycleSection.jsx → PayrollSummaryTable`) viser tabellen så manuel SQL-tjek ikke længere kræves ved sæsonskift. Backend-invariant låser at summary-counts matcher `finance_transactions`-rows.
 - Renteberegning på negativ saldo (10%/sæson) — trækkes ved sæsonstart efter løn, kun hvis balance stadig er negativ
 - Resultatpoint (`points_earned`) og præmiepenge (`prize_money = points × 1.500 CZ$`) er adskilt ved løbsimport — `points_earned` fra `race_points[race_class]`, `prize_money` krediteres holdbalancen som type=`prize` (v1.75)
 - Divisionsbonus ved sæsonslut: D1 300K/200K/100K/50K · D2 150K/100K/50K/25K · D3 75K/50K/25K, type=`bonus`, idempotent (v1.75)
