@@ -6,8 +6,8 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "node --import @sentry/node/preload --watch server.js",
-    "start": "node --import @sentry/node/preload server.js",
+    "dev": "node --import ./instrument.mjs --watch server.js",
+    "start": "node --import ./instrument.mjs server.js",
     "seed:uci-race-points": "node scripts/seedUciMenRacePoints.js",
     "economy:baseline": "node scripts/economyBaselineSimulation.js",
     "season:end:verify-repair": "node scripts/verifySeasonEndRepair.js",
