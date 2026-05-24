@@ -3,7 +3,7 @@
  * ===============================================
  * Runs background jobs:
  *   - Every 60s: finalize expired auctions
- *   - Daily at 02:00: check debt interest warnings
+ *   - Every 24h: check debt interest warnings (statisk message → dedup-safe, #607)
  *
  * To run standalone:
  *   node cron.js
@@ -70,10 +70,15 @@ async function finalizeExpiredAuctions() {
 }
 
 // ─── Debt Warnings ────────────────────────────────────────────────────────────
+// Cadence: 24h (#607). Tidligere 6h cadence + dynamisk balance i message bypassede
+// notifyUser-dedup, så et team kunne få op til 4 warnings/døgn ved svingende saldo.
+// Nu: statisk message + 24h cadence → garanteret én warning/døgn per team.
+// UI viser den faktiske balance på Økonomi-siden.
 
 export async function checkDebtWarnings({
   supabaseClient = supabase,
   now = new Date(),
+  notifyUserFn = notifyUserShared,
 } = {}) {
   const { data: teams } = await supabaseClient
     .from("teams")
@@ -83,13 +88,12 @@ export async function checkDebtWarnings({
     .lt("balance", 0);
 
   for (const team of teams || []) {
-    const interest = Math.round(Math.abs(team.balance) * 0.10);
-    await notifyUserShared({
+    await notifyUserFn({
       supabase: supabaseClient,
       userId: team.user_id,
       type: "board_update",
       title: "⚠️ Negativ saldo",
-      message: `Dit hold skylder ${Math.abs(team.balance).toLocaleString()} pts. Renter ved sæsonafslutning: ${interest.toLocaleString()} pts`,
+      message: "Dit hold har negativ saldo. Tjek Økonomi-siden for detaljer.",
       now,
     });
   }
@@ -327,8 +331,9 @@ export function startCron() {
   // Every 5 minutes: season auto-transition (kun fyrer når window er fuldt-wrapped).
   setInterval(trackedTick("season auto-transition", runSeasonAutoTransitionCron), 5 * 60 * 1000);
 
-  // Every 6 hours: check debt
-  setInterval(trackedTick("debt", checkDebtWarnings), 6 * 60 * 60 * 1000);
+  // Every 24 hours: check debt (#607 — 6h → 24h. notifyUser-dedup virker nu da
+  // message er statisk; matcher cadence-pattern fra processDailySeasonCountCheck).
+  setInterval(trackedTick("debt", checkDebtWarnings), 24 * 60 * 60 * 1000);
 
   // Every 30 minutes: board auto-accept reminders + auto-accept (S-02b).
   // Notif-dedup (24h) sikrer ingen spam selv ved hyppig polling.
