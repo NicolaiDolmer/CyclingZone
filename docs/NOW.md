@@ -28,6 +28,6 @@
 >
 > _Format (max 2 linjer): `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
-> **🤖 Working agent:** _Ingen aktiv session._
+> **🤖 Working agent:** Claude · Code (Opus 4.7) · PC1 · 2026-05-24T19:45 CET — orchestrating 3 parallelle worktree-sessions: [#608](https://github.com/NicolaiDolmer/CyclingZone/issues/608) + [#607](https://github.com/NicolaiDolmer/CyclingZone/issues/607) + [#598](https://github.com/NicolaiDolmer/CyclingZone/issues/598).
 >
 > _Format: `<agent> · <kanal> · <PC> · <ISO-tid CET>`. Multi-AI claim. Opdatér ved session-start; nulstil til "Ingen aktiv session" ved close-out._
