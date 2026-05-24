@@ -435,6 +435,7 @@ export async function processSquadEnforcementCron({
   createEmergencyLoanFn,
   now = new Date(),
   onError = () => {},
+  captureExceptionFn,
 }) {
   // Find seneste lukkede vindue der ikke er enforced endnu.
   // closed_at IS NOT NULL skelner deadline-lukkede vinduer fra racing-windows
@@ -506,6 +507,12 @@ export async function processSquadEnforcementCron({
       results.push(result);
     } catch (error) {
       onError({ teamId: t.id, error });
+      if (captureExceptionFn) {
+        captureExceptionFn(error, {
+          tags: { cron: "squad-enforcement" },
+          extra: { teamId: t.id, windowId: window.id, seasonId: window.season_id },
+        });
+      }
       results.push({ ok: false, code: "error", teamId: t.id, error: error.message });
     }
   }

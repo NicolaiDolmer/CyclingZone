@@ -79,6 +79,7 @@ export async function checkDebtWarnings({
   supabaseClient = supabase,
   now = new Date(),
   notifyUserFn = notifyUserShared,
+  captureExceptionFn = sentryCapture,
 } = {}) {
   const { data: teams } = await supabaseClient
     .from("teams")
@@ -104,6 +105,12 @@ export async function checkDebtWarnings({
     } catch (err) {
       errors += 1;
       console.error(`  ❌ debt warning failed for team ${team.id}:`, err.message);
+      if (captureExceptionFn) {
+        captureExceptionFn(err, {
+          tags: { cron: "debt-warnings" },
+          extra: { teamId: team.id, userId: team.user_id },
+        });
+      }
     }
   }
 
@@ -178,6 +185,7 @@ async function runDeadlineDayCron() {
     notifyTeamOwnerFn: (args) => notifyTeamOwnerShared({ supabase, ...args }),
     sendDiscordWebhookFn: sendWebhook,
     getDefaultWebhookFn: getDefaultWebhook,
+    captureExceptionFn: sentryCapture,
     now: new Date(),
   });
   if (result.warnings) {
@@ -200,6 +208,7 @@ async function runBoardAutoAcceptCron() {
     const result = await processBoardAutoAcceptCron({
       supabase,
       notifyUser: (args) => notifyUserShared({ supabase, ...args }),
+      captureExceptionFn: sentryCapture,
       now: new Date(),
     });
     if (result.reminders_sent || result.auto_accepted || result.errors) {
@@ -222,6 +231,7 @@ async function runMidSeasonReviewCron() {
     const result = await processMidSeasonReviewCron({
       supabase,
       notifyUser: (args) => notifyUserShared({ supabase, ...args }),
+      captureExceptionFn: sentryCapture,
       now: new Date(),
     });
     if (result.banners_sent || result.errors) {
@@ -278,6 +288,7 @@ async function runSquadEnforcementCron() {
     supabase,
     notifyTeamOwner,
     createEmergencyLoanFn: createEmergencyLoan,
+    captureExceptionFn: sentryCapture,
     now: new Date(),
     onError: ({ teamId, error }) => {
       console.error(`  ❌ Squad enforcement failed for team ${teamId}:`, error.message);

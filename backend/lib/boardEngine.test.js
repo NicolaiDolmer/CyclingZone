@@ -1224,6 +1224,32 @@ test("processBoardAutoAcceptCron auto-signs default plan at race_days_completed=
   assert.ok(created.current_goals?.length > 0, "Default-mål skal være populeret");
 });
 
+test("processBoardAutoAcceptCron: per-team fail kalder captureExceptionFn med teamId+seasonId+raceDaysCompleted (Refs #614 P2-A)", async () => {
+  const state = makeAutoAcceptState({ raceDaysCompleted: 2 });
+  const supabase = makeFakeSupabase(state);
+
+  const captureCalls = [];
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    const summary = await processBoardAutoAcceptCron({
+      supabase,
+      notifyUser: async () => { throw new Error("simulated notify failure"); },
+      captureExceptionFn: (err, ctx) => { captureCalls.push({ err, ctx }); },
+      now: new Date("2026-05-05T10:00:00Z"),
+    });
+    assert.equal(summary.errors, 1);
+  } finally {
+    console.error = originalError;
+  }
+
+  assert.equal(captureCalls.length, 1);
+  assert.equal(captureCalls[0].ctx.tags.cron, "board-auto-accept");
+  assert.equal(captureCalls[0].ctx.extra.teamId, "team-1");
+  assert.equal(captureCalls[0].ctx.extra.seasonId, "season-2");
+  assert.equal(captureCalls[0].ctx.extra.raceDaysCompleted, 2);
+});
+
 test("processBoardAutoAcceptCron skips when window is locked (baseline phase)", async () => {
   const state = makeAutoAcceptState({ raceDaysCompleted: 5, windowState: "locked" });
   const supabase = makeFakeSupabase(state);

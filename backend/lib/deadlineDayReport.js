@@ -261,7 +261,7 @@ export async function fireAutoCloseIfDue({ supabase, window, now }) {
   return { autoClosed: true, windowId: window.id, closedAt: nowIso };
 }
 
-async function fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, now }) {
+async function fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, captureExceptionFn, now }) {
   const dueSteps = getDueWarningSteps(window.closes_at, now);
   if (!dueSteps.length) return { warnings: 0, errors: 0 };
 
@@ -293,6 +293,12 @@ async function fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, now }
       } catch (err) {
         errors += 1;
         console.error(`  ❌ deadline warning failed for team ${team.id}:`, err.message);
+        if (captureExceptionFn) {
+          captureExceptionFn(err, {
+            tags: { cron: "deadline-day-warning" },
+            extra: { teamId: team.id, windowId: window.id, step: step.key },
+          });
+        }
       }
     }
   }
@@ -337,6 +343,7 @@ export async function processDeadlineDayCron({
   notifyTeamOwnerFn,
   sendDiscordWebhookFn,
   getDefaultWebhookFn,
+  captureExceptionFn,
   now = new Date(),
 }) {
   const { data: window } = await supabase
@@ -368,7 +375,7 @@ export async function processDeadlineDayCron({
   }
 
   if (window.status === "open" && window.closes_at) {
-    const result = await fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, now });
+    const result = await fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, captureExceptionFn, now });
     warnings = result.warnings;
     errors = result.errors;
   }

@@ -252,6 +252,100 @@ test("processDeadlineDayCron sends warnings for due steps when window is open", 
   assert.ok(notified.every(n => n.relatedId === "w1"));
 });
 
+test("processDeadlineDayCron: per-team fail kalder captureExceptionFn med teamId+windowId+step (Refs #614 P2-A)", async () => {
+  const closesAt = new Date(Date.now() + 25 * 60 * 1000).toISOString();
+  const supabase = {
+    from(table) {
+      if (table === "transfer_windows") {
+        return {
+          select: () => ({
+            order: () => ({
+              limit: () => ({
+                single: () => Promise.resolve({
+                  data: { id: "w-sentry", season_id: "s1", status: "open", closes_at: closesAt, created_at: new Date(Date.now() - HOUR).toISOString(), final_whistle_sent_at: null },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "teams") {
+        const builder = {
+          select() { return builder; },
+          eq() { return builder; },
+          not() { return Promise.resolve({ data: [{ id: "t-ok" }, { id: "t-fail" }], error: null }); },
+        };
+        return builder;
+      }
+      return { select: () => ({}) };
+    },
+  };
+
+  const captureCalls = [];
+  await processDeadlineDayCron({
+    supabase,
+    notifyTeamOwnerFn: async (args) => {
+      if (args.teamId === "t-fail") throw new Error("simulated transient");
+      return { delivered: true };
+    },
+    sendDiscordWebhookFn: async () => {},
+    getDefaultWebhookFn: async () => null,
+    captureExceptionFn: (err, ctx) => { captureCalls.push({ err, ctx }); },
+    now: new Date(),
+  });
+
+  // 3 steps × 1 fejlende team = 3 capture-kald (én per step)
+  assert.equal(captureCalls.length, 3, "captureExceptionFn skal kaldes for hver fejlende warning-step");
+  assert.ok(captureCalls.every((c) => c.ctx.tags.cron === "deadline-day-warning"));
+  assert.ok(captureCalls.every((c) => c.ctx.extra.teamId === "t-fail"));
+  assert.ok(captureCalls.every((c) => c.ctx.extra.windowId === "w-sentry"));
+  assert.deepEqual(captureCalls.map((c) => c.ctx.extra.step).sort(), ["24h", "2h", "30min"].sort());
+});
+
+test("processDeadlineDayCron: captureExceptionFn omitted → ingen crash (backwards-compatible)", async () => {
+  const closesAt = new Date(Date.now() + 25 * 60 * 1000).toISOString();
+  const supabase = {
+    from(table) {
+      if (table === "transfer_windows") {
+        return {
+          select: () => ({
+            order: () => ({
+              limit: () => ({
+                single: () => Promise.resolve({
+                  data: { id: "w1", season_id: "s1", status: "open", closes_at: closesAt, created_at: new Date(Date.now() - HOUR).toISOString(), final_whistle_sent_at: null },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "teams") {
+        const builder = {
+          select() { return builder; },
+          eq() { return builder; },
+          not() { return Promise.resolve({ data: [{ id: "t1" }], error: null }); },
+        };
+        return builder;
+      }
+      return { select: () => ({}) };
+    },
+  };
+
+  // captureExceptionFn omitted entirely — fail må stadig isoleres uden crash
+  const result = await processDeadlineDayCron({
+    supabase,
+    notifyTeamOwnerFn: async () => { throw new Error("transient"); },
+    sendDiscordWebhookFn: async () => {},
+    getDefaultWebhookFn: async () => null,
+    now: new Date(),
+  });
+
+  assert.equal(result.errors, 3, "alle 3 steps registreres som error selv uden captureExceptionFn");
+  assert.equal(result.warnings, 0);
+});
+
 test("processDeadlineDayCron: per-team try/catch isolerer fejl så øvrige teams stadig får warnings (Refs #608)", async () => {
   const closesAt = new Date(Date.now() + 25 * 60 * 1000).toISOString(); // 25 min before close → 24h+2h+30min all due
   const supabase = {

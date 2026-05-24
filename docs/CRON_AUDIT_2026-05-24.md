@@ -20,12 +20,12 @@ Filer læst: `backend/cron.js`, `backend/lib/{auctionFinalization,deadlineDayRep
 | Cron | Filter-præcision | Idempotency | Error-handling | Observability | Concurrency |
 |---|---|---|---|---|---|
 | `finalizeExpiredAuctions` (60s) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ |
-| `processDeadlineDayCron` (5m) | ⚠️ | ✅ | ⚠️ | ⚠️ | ✅ |
-| `processSquadEnforcementCron` (5m) | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| `processDeadlineDayCron` (5m) | ⚠️ | ✅ | ⚠️ | ✅ | ✅ |
+| `processSquadEnforcementCron` (5m) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `processSeasonAutoTransitionCron` (5m) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `checkDebtWarnings` (24h) | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| `processBoardAutoAcceptCron` (30m) | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| `processMidSeasonReviewCron` (30m) | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| `checkDebtWarnings` (24h) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `processBoardAutoAcceptCron` (30m) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `processMidSeasonReviewCron` (30m) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `processDailySeasonCountCheck` (24h) | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ## Findings — pr. cron
@@ -43,7 +43,7 @@ Filer læst: `backend/cron.js`, `backend/lib/{auctionFinalization,deadlineDayRep
 - **Filter:** `.order("created_at", desc).limit(1).single()` — plukker SENESTE window uden lifecycle-filter. Racing-window guard er post-fetch early-return: `if (!window.closes_at && !window.closed_at) return`. ⚠️ Fragilt: hvis nyeste window er stale (ikke transitioned), ville cron skippe og older deadline-window aldrig handles. I praksis er det invariant-sikret af window-lifecycle, men query'en udtrykker ikke assumption.
 - **Idempotency:** `fireFinalWhistle` har atomic claim på `final_whistle_sent_at IS NULL`, `fireAutoCloseIfDue` på `status='open'`. CHECK constraint `transfer_windows_final_whistle_requires_closed` (database/2026-05-22-transfer-window-racing-guard.sql) er DB-niveau backup. ✅
 - **Error-handling:** 🔴 `fireDeadlineWarnings`-loop har **INGEN per-team try/catch** (linje 281-292). Hvis `notifyTeamOwnerFn` kaster på team N, vil teams N+1..M ikke få deres warning. Partial-failure mode med synlig user-impact (manglende deadline-warning).
-- **Observability:** ⚠️ `console.log` summary, ingen per-team Sentry capture på warning-fail.
+- **Observability:** ✅ Post-#614: `captureExceptionFn` injected (kaldes med `{ tags: { cron: "deadline-day-warning" }, extra: { teamId, windowId, step } }` på per-team-fail). `console.log` summary stadig på plads.
 - **Concurrency:** ✅ Atomic claims beskytter `final_whistle` + `auto_close`. Warnings beskyttet af `notifyUser` 24h dedup-window (samme title+message+relatedId).
 
 ### 3. `processSquadEnforcementCron` (5m) — `backend/lib/squadEnforcement.js:409`
@@ -57,7 +57,7 @@ Filer læst: `backend/cron.js`, `backend/lib/{auctionFinalization,deadlineDayRep
   - Modsat `auctionFinalization`, hvor per-item idempotency_key + retry kører hver tick, mangler squad-enforcement **per-team-claim** og **per-team idempotency_key** på finance-RPC calls (linje 151-166, 191-206, 234-247).
   - Samme klasse-bug som [#578](https://github.com/NicolaiDolmer/CyclingZone/issues/578) (season-transition partial failure recovery, lukket i session B). Squad-enforcement er nu det største blinde-spot for samme failure-mode.
 - **Error-handling:** ✅ Per-team try/catch, `onError` callback.
-- **Observability:** ⚠️ `onError` console.error, ingen Sentry capture på per-team fails (kun trackedTick top-level).
+- **Observability:** ✅ Post-#614: `captureExceptionFn` injected (kaldes ud over `onError` med `{ tags: { cron: "squad-enforcement" }, extra: { teamId, windowId, seasonId } }`).
 - **Concurrency:** ✅ Window-level claim sikrer kun én tick får fat i et givet window.
 
 ### 4. `processSeasonAutoTransitionCron` (5m) — `backend/lib/seasonAutoTransition.js:18`
@@ -73,7 +73,7 @@ Filer læst: `backend/cron.js`, `backend/lib/{auctionFinalization,deadlineDayRep
 - **Filter:** ✅ Post-#613: `.eq("is_ai", false).eq("is_bank", false).eq("is_frozen", false).lt("balance", 0)`. Bank-team filtreres væk via defense-in-depth (mirror af `fireDeadlineWarnings`-pattern).
 - **Idempotency:** ✅ Post-#607 ([PR #611](https://github.com/NicolaiDolmer/CyclingZone/pull/611)): cadence skiftet til 24h + statisk message ("Dit hold har negativ saldo. Tjek Økonomi-siden for detaljer.") → `notifyUser` dedup-nøgle (`userId+type+title+message+relatedId+24h`) virker korrekt selv ved svingende balance. Regressionstest dækker 4 ticks med varierende balance → 1 notification.
 - **Error-handling:** ✅ Post-#613: per-team try/catch + `errors` counter. En notifyUser-throw isolerer kun den fejlende team, øvrige teams får stadig warning. Regressionstest dækker 5-team-fan-out med throw på team-3.
-- **Observability:** ⚠️ Console.log delivered-sum + errors-sum, ingen per-team Sentry capture (følger P2-A pattern i [#614](https://github.com/NicolaiDolmer/CyclingZone/issues/614)).
+- **Observability:** ✅ Post-#614: `captureExceptionFn` default'er til `sentryCapture` (kaldes på per-team-fail med `{ tags: { cron: "debt-warnings" }, extra: { teamId, userId } }`). Console.log delivered-sum + errors-sum stadig på plads.
 - **Concurrency:** ✅ 24h interval, ingen DB-mutation udover notification.
 
 ### 6. `processBoardAutoAcceptCron` (30m) — `backend/lib/boardAutoAccept.js:45`
@@ -81,7 +81,7 @@ Filer læst: `backend/cron.js`, `backend/lib/{auctionFinalization,deadlineDayRep
 - **Filter:** ✅ Multi-stage: window.board_negotiation_state (skip locked/complete), active season check, race_days_completed threshold (≥T_MINUS_3), human teams.
 - **Idempotency:** ✅ `findPendingPlanType` returnerer kun pending plans. `autoAcceptPendingPlan` bruger `upsert(onConflict: "team_id,plan_type")`. Notif-dedup via `notifyUser` 24h vindue (titel er statisk per plan-type).
 - **Error-handling:** ✅ Per-team try/catch, `summary.errors++` + console.error.
-- **Observability:** ⚠️ Ingen Sentry capture per-team. summary-object returneret fra cron-tick, men aggregeret-fail-count går tabt hvis trackedTick ikke logger den.
+- **Observability:** ✅ Post-#614: `captureExceptionFn` injected (kaldes på per-team-fail med `{ tags: { cron: "board-auto-accept" }, extra: { teamId, seasonId, raceDaysCompleted } }`). summary-object stadig returneret.
 - **Concurrency:** ✅ Beskyttet af notification-dedup + upsert idempotency. 30m interval lav konflikt-risk.
 
 ### 7. `processMidSeasonReviewCron` (30m) — `backend/lib/boardMidSeason.js:37`
@@ -89,7 +89,7 @@ Filer læst: `backend/cron.js`, `backend/lib/{auctionFinalization,deadlineDayRep
 - **Filter:** ✅ Window state COMPLETE only, active season, race_days_completed ≥ midpoint, human teams. Per-team idempotency-check via existing-notification lookup på title+related_id+type.
 - **Idempotency:** ✅ Eksplicit per-team idempotency-check FØR send. Race window mellem check og insert er beskyttet af `notifyUser` 24h dedup-fallback.
 - **Error-handling:** ✅ Per-team try/catch.
-- **Observability:** ⚠️ Ingen Sentry capture per-team.
+- **Observability:** ✅ Post-#614: `captureExceptionFn` injected (kaldes på per-team-fail med `{ tags: { cron: "board-mid-season" }, extra: { teamId, seasonId, seasonNumber } }`).
 - **Concurrency:** ✅ Som #6.
 
 ### 8. `processDailySeasonCountCheck` (24h) — `backend/lib/dailySeasonCountCheck.js:15`
@@ -123,10 +123,10 @@ Ingen identified.
 
 ### P2 — Nice-to-have
 
-**P2-A: Per-team Sentry capture mangler i 5 crons** (#2, #3, #5, #6, #7)
+**P2-A: Per-team Sentry capture mangler i 5 crons** (#2, #3, #5, #6, #7) → [#614](https://github.com/NicolaiDolmer/CyclingZone/issues/614) ✅ **FIXED 2026-05-24**
 - Console.error + summary.errors++ fanger ikke i Sentry-dashboard. Top-level `trackedTick` fanger kun den FØRSTE fejl per tick (try/catch swallows).
-- Mitigation: Pass `captureExceptionFn` til alle crons (præcedens: `dailySeasonCountCheck` gør det allerede). Call på per-team-fail.
-- Spawn issue: P2, type:enhancement, risk:low.
+- **Fix:** `captureExceptionFn` injected som optional dep i alle 5 crons; kaldes ved per-team try/catch med `{ tags: { cron: "<name>" }, extra: { teamId, ...context } }`. cron.js wrappers passer `sentryCapture` fra `./sentry.js`. Pattern matcher `dailySeasonCountCheck` (gold-standard).
+- **Tests:** 7 nye regressionstests (én pr. cron + backwards-compat + null-safe) — verificerer fn-kald, tags, extra-felter, samt at omitted/null fn ikke crasher non-cron callers.
 
 **P2-B: `finalizeExpiredAuctions` tick-overlap-guard** (cron #1)
 - Hvis tick tager >60s starter ny tick parallelt. Beskyttet af `idempotency_key` på finance, men teoretisk race på `rider.team_id`+`pending_team_id` hvis windowOpen-state ændrer sig mellem ticks.

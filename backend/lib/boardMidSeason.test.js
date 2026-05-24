@@ -567,6 +567,34 @@ test("processMidSeasonReviewCron sender ikke til AI/bank/frozen teams", async ()
   assert.equal(banners[0].userId, "user-1");
 });
 
+test("processMidSeasonReviewCron: per-team fail kalder captureExceptionFn med teamId+seasonId+seasonNumber (Refs #614 P2-A)", async () => {
+  const state = makeMidSeasonState({
+    raceDaysCompleted: 30,
+    raceDaysTotal: 60,
+    boardSatisfaction: 40,
+  });
+  const supabase = makeFakeSupabase(state);
+
+  const captureCalls = [];
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    const summary = await processMidSeasonReviewCron({
+      supabase,
+      notifyUser: async () => { throw new Error("simulated mid-season notify fail"); },
+      captureExceptionFn: (err, ctx) => { captureCalls.push({ err, ctx }); },
+    });
+    assert.equal(summary.errors, 1);
+  } finally {
+    console.error = originalError;
+  }
+
+  assert.equal(captureCalls.length, 1);
+  assert.equal(captureCalls[0].ctx.tags.cron, "board-mid-season");
+  assert.equal(captureCalls[0].ctx.extra.teamId, "team-1");
+  assert.equal(captureCalls[0].ctx.extra.seasonNumber, 5);
+});
+
 test("processMidSeasonReviewCron skipper hold uden 1yr-completed plan", async () => {
   const state = makeMidSeasonState({
     raceDaysCompleted: 30,

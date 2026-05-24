@@ -38,6 +38,7 @@ export async function processMidSeasonReviewCron({
   supabase,
   notifyUser,
   now = new Date(),
+  captureExceptionFn,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (typeof notifyUser !== "function") throw new Error("notifyUser is required");
@@ -120,6 +121,12 @@ export async function processMidSeasonReviewCron({
     } catch (error) {
       summary.errors += 1;
       console.error(`  ❌ mid-season check failed for team ${team.id}:`, error.message);
+      if (captureExceptionFn) {
+        captureExceptionFn(error, {
+          tags: { cron: "board-mid-season" },
+          extra: { teamId: team.id, seasonId: activeSeason?.id, seasonNumber: activeSeason?.number },
+        });
+      }
     }
   }
 

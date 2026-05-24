@@ -910,3 +910,63 @@ test("processSquadEnforcementCron: replay med samme windowId → fines er idempo
   // Penalty_points må ikke være double-incremented
   assert.equal(supabase.state.seasonStandings[0].penalty_points, 600, "penalty_points må ikke double-incremente ved replay");
 });
+
+test("processSquadEnforcementCron: per-team fail kalder captureExceptionFn med teamId+windowId+seasonId (Refs #614 P2-A)", async () => {
+  // Hvis enforceTeamSquadCompliance throws (fx Supabase 503 mid-loop), skal Sentry-capture
+  // fyres så ops ser fejlen i dashboardet — top-level trackedTick wrapper fanger kun den
+  // FØRSTE fejl per tick.
+  const supabase = createMockSupabase({
+    teams: [
+      { id: "t-ok", name: "OK", balance: 5_000_000, division: 3, user_id: "u-ok", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "t-fail", name: "Fail", balance: 5_000_000, division: 3, user_id: "u-fail", is_ai: false, is_bank: false, is_frozen: false },
+    ],
+    riders: Array.from({ length: 9 }, (_, i) => ({
+      id: `t-ok-r${i}`, team_id: "t-ok", firstname: "F", lastname: `${i}`,
+      market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+    })),
+    transferWindows: [
+      { id: "w-sentry", season_id: "season-1", status: "closed", closed_at: "2026-05-04T11:00:00Z", squad_enforcement_completed_at: null, created_at: "2026-05-04" },
+    ],
+  });
+
+  // Wrap riders-table for at fejle på snapshot-load for t-fail
+  const origFrom = supabase.from;
+  supabase.from = (table) => {
+    const t = origFrom(table);
+    if (table === "teams") {
+      const origSelect = t.select.bind(t);
+      t.select = (cols) => {
+        const builder = origSelect(cols);
+        const origEq = builder.eq.bind(builder);
+        builder.eq = (col, val) => {
+          const chain = origEq(col, val);
+          const origSingle = chain.single?.bind(chain);
+          if (origSingle && col === "id" && val === "t-fail") {
+            chain.single = () => Promise.reject(new Error("simulated Supabase 503 for t-fail"));
+          }
+          return chain;
+        };
+        return builder;
+      };
+    }
+    return t;
+  };
+
+  const captureCalls = [];
+  const result = await processSquadEnforcementCron({
+    supabase,
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    captureExceptionFn: (err, ctx) => { captureCalls.push({ err, ctx }); },
+    now: new Date("2026-05-04T12:00:00Z"),
+  });
+
+  assert.equal(result.claimed, true);
+  assert.equal(captureCalls.length, 1, "captureExceptionFn skal kaldes præcis én gang for den fejlende team");
+  assert.equal(captureCalls[0].ctx.tags.cron, "squad-enforcement");
+  assert.equal(captureCalls[0].ctx.extra.teamId, "t-fail");
+  assert.equal(captureCalls[0].ctx.extra.windowId, "w-sentry");
+  assert.equal(captureCalls[0].ctx.extra.seasonId, "season-1");
+  // Window skal stadig completes selv om en team fejlede
+  assert.ok(supabase.state.transferWindows[0].squad_enforcement_completed_at != null);
+});

@@ -188,6 +188,58 @@ test("checkDebtWarnings — skipper bank-team selv ved negativ saldo (#613)", as
   assert.equal(calls[0].userId, "user-1");
 });
 
+test("checkDebtWarnings — per-team fail kalder captureExceptionFn med teamId+userId (#614 P2-A)", async () => {
+  const supabaseClient = createSupabaseStub({
+    teams: [
+      { id: "team-1", name: "OK", balance: -100, user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-2", name: "Fail", balance: -200, user_id: "user-2", is_ai: false, is_bank: false, is_frozen: false },
+    ],
+  });
+
+  const captureCalls = [];
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    await checkDebtWarnings({
+      supabaseClient,
+      now: new Date("2026-05-24T08:00:00Z"),
+      notifyUserFn: async (args) => {
+        if (args.userId === "user-2") throw new Error("simulated transient for team-2");
+        return { delivered: true, deduped: false };
+      },
+      captureExceptionFn: (err, ctx) => { captureCalls.push({ err, ctx }); },
+    });
+  } finally {
+    console.error = originalError;
+  }
+
+  assert.equal(captureCalls.length, 1, "captureExceptionFn skal kaldes for den fejlende team");
+  assert.equal(captureCalls[0].ctx.tags.cron, "debt-warnings");
+  assert.equal(captureCalls[0].ctx.extra.teamId, "team-2");
+  assert.equal(captureCalls[0].ctx.extra.userId, "user-2");
+});
+
+test("checkDebtWarnings — captureExceptionFn=null → ingen crash (admin/test-callere)", async () => {
+  // Verificér at non-cron callers (tests, ad-hoc scripts) der eksplicit sætter
+  // captureExceptionFn=null ikke crasher når et team fejler.
+  const supabaseClient = createSupabaseStub({
+    teams: [{ id: "team-1", name: "X", balance: -100, user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false }],
+  });
+
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    await checkDebtWarnings({
+      supabaseClient,
+      now: new Date("2026-05-24T08:00:00Z"),
+      notifyUserFn: async () => { throw new Error("transient"); },
+      captureExceptionFn: null,
+    });
+  } finally {
+    console.error = originalError;
+  }
+});
+
 test("checkDebtWarnings — per-team try/catch isolerer fejl så øvrige teams stadig får warnings (#613)", async () => {
   const supabaseClient = createSupabaseStub({
     teams: [

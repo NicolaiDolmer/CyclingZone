@@ -46,6 +46,7 @@ export async function processBoardAutoAcceptCron({
   supabase,
   notifyUser,
   now = new Date(),
+  captureExceptionFn,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (typeof notifyUser !== "function") throw new Error("notifyUser is required");
@@ -110,6 +111,12 @@ export async function processBoardAutoAcceptCron({
     } catch (error) {
       summary.errors += 1;
       console.error(`  ❌ board auto-accept failed for team ${team.id}:`, error.message);
+      if (captureExceptionFn) {
+        captureExceptionFn(error, {
+          tags: { cron: "board-auto-accept" },
+          extra: { teamId: team.id, seasonId: activeSeason?.id, raceDaysCompleted },
+        });
+      }
     }
   }
 
