@@ -33,14 +33,22 @@
 ALTER TABLE transfer_windows
   ADD COLUMN IF NOT EXISTS squad_enforcement_started_at TIMESTAMPTZ;
 
--- 2. Racing-window guard (samme mønster som final_whistle / completed_at).
+-- 2. Backfill: eksisterende windows med completed_at sat skal også have started_at
+-- (= completed_at som rimeligt estimat — historisk fyrede claim-update'en disse samtidigt).
+-- Uden backfill fejler completed_requires_started constraint på eksisterende rows.
+UPDATE transfer_windows
+  SET squad_enforcement_started_at = squad_enforcement_completed_at
+  WHERE squad_enforcement_completed_at IS NOT NULL
+    AND squad_enforcement_started_at IS NULL;
+
+-- 3. Racing-window guard (samme mønster som final_whistle / completed_at).
 ALTER TABLE transfer_windows
   DROP CONSTRAINT IF EXISTS transfer_windows_squad_enforcement_started_requires_closed;
 ALTER TABLE transfer_windows
   ADD CONSTRAINT transfer_windows_squad_enforcement_started_requires_closed
     CHECK (squad_enforcement_started_at IS NULL OR closed_at IS NOT NULL);
 
--- 3. Completed kræver started (cannot complete what was never started).
+-- 4. Completed kræver started (cannot complete what was never started).
 ALTER TABLE transfer_windows
   DROP CONSTRAINT IF EXISTS transfer_windows_squad_enforcement_completed_requires_started;
 ALTER TABLE transfer_windows
