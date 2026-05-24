@@ -252,6 +252,58 @@ test("processDeadlineDayCron sends warnings for due steps when window is open", 
   assert.ok(notified.every(n => n.relatedId === "w1"));
 });
 
+test("processDeadlineDayCron: per-team try/catch isolerer fejl så øvrige teams stadig får warnings (Refs #608)", async () => {
+  const closesAt = new Date(Date.now() + 25 * 60 * 1000).toISOString(); // 25 min before close → 24h+2h+30min all due
+  const supabase = {
+    from(table) {
+      if (table === "transfer_windows") {
+        return {
+          select: () => ({
+            order: () => ({
+              limit: () => ({
+                single: () => Promise.resolve({
+                  data: { id: "w1", season_id: "s1", status: "open", closes_at: closesAt, created_at: new Date(Date.now() - HOUR).toISOString(), final_whistle_sent_at: null },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "teams") {
+        const builder = {
+          select() { return builder; },
+          eq() { return builder; },
+          not() { return Promise.resolve({ data: [{ id: "t1" }, { id: "t2" }, { id: "t3" }, { id: "t4" }, { id: "t5" }], error: null }); },
+        };
+        return builder;
+      }
+      return { select: () => ({}) };
+    },
+  };
+
+  const notified = [];
+  const result = await processDeadlineDayCron({
+    supabase,
+    notifyTeamOwnerFn: async (args) => {
+      if (args.teamId === "t3") {
+        throw new Error("simulated transient failure for t3");
+      }
+      notified.push(args);
+      return { delivered: true };
+    },
+    sendDiscordWebhookFn: async () => {},
+    getDefaultWebhookFn: async () => null,
+    now: new Date(),
+  });
+
+  // 3 steps × 5 teams = 15 attempts. 1 failing team × 3 steps = 3 errors. 4 successful teams × 3 steps = 12 delivered.
+  assert.equal(result.warnings, 12, "teams t1, t2, t4, t5 fik warning for hvert af 3 steps");
+  assert.equal(result.errors, 3, "team t3 fejlede på alle 3 steps men isolerede ikke de andre");
+  assert.equal(notified.length, 12);
+  assert.ok(!notified.some(n => n.teamId === "t3"), "team t3 må ikke have leveret warning");
+});
+
 test("processDeadlineDayCron skips warnings when window is closed and fires Final Whistle", async () => {
   const closedWindow = {
     id: "w1",
