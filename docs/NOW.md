@@ -10,6 +10,8 @@
 > - **Session B (#550, v3.89):** (1) rotér Discord webhook URLs i Discord, (2) test AdminPage Discord-fane → maskerede URLs + Test-knap, (3) tjek Railway-logs for `[discord-dm:`-entries efter en auktion-event. Detaljer: [`docs/archive/NOW-2026-05-22.md`](archive/NOW-2026-05-22.md).
 > - **Session A (#601):** Admin-verify ved næste reelle sæsonskift → bekræft PayrollSummaryTable vises med 4 kategori-rækker (Lånerenter/Lønninger/Nødlån/Renter på negativ balance). Invariant-test låser count-konsistens, men UI er kun smoke-testet.
 
+> **🟢 Session 2026-05-24-N — github-housekeeping audit:** 17 closes (største batch til dato): #383, #501, #508, #521, #524, #535, #547, #549, #565, #567, #589, #590, #591, #597, #598, #607, #608 — alle backend/docs/CI med PR på main + ingen UI at verify. #521 label-konflikt (todo+done) ryddet. #505 escalation-ping (admin race_points editor, 103h). 3 STRONG <24h (#577/578/579) afventer 24h-tærskel. 4/4 skill self-improvement edits applied (author-tracking-begrænsning, NO_COMMENTS+PR+backend auto-suggest, STRONG-timestamp, PYTHONUTF8=1). Done-pile 20→8. Artifact: `.claude/audits/audit-2026-05-24.md`.
+
 > **📚 Tidligere sessions arkiveret:** 2026-05-22-A til Q i [`docs/archive/NOW-2026-05-22.md`](archive/NOW-2026-05-22.md). 2026-05-23-A til O i [`docs/archive/NOW-2026-05-23.md`](archive/NOW-2026-05-23.md). 2026-05-24-A til L i [`docs/archive/NOW-2026-05-24.md`](archive/NOW-2026-05-24.md).
 
 ## Aktiv styring
