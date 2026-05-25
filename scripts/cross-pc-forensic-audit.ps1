@@ -220,24 +220,61 @@ if (Test-Path $manus) {
 }
 
 # --- 5b. Hard-coded user paths in hooks + settings ---
-# Forward-guard fra #383: any `/c/Users/<name>/` reference in ~/.claude/settings.json
-# or scripts/hooks/*.sh breaks cross-PC reproducibility — fails on the other PC
-# whose USERPROFILE name differs (ndmh3 vs emmas). Comments are excluded.
-$pathPattern = '/c/Users/[A-Za-z0-9_.-]+/'
+# Forward-guard fra #383 + #385: any `/c/Users/<name>/` eller `C:\Users\<name>\`
+# reference i settings-filer eller hook-scripts braeker cross-PC reproducibility —
+# fejler paa anden PC hvis USERPROFILE-navn afviger (ndmh3 vs emmas).
+# Kommentar-linjer er undtaget. Tjekker baade forward-slash (Git Bash) og
+# backslash (Windows-native) form.
+$pathPatterns = @(
+  '/c/Users/[A-Za-z0-9_.-]+/',
+  'C:\\\\Users\\\\[A-Za-z0-9_.-]+\\\\',
+  'C:/Users/[A-Za-z0-9_.-]+/'
+)
 
-$claudeSettings = Join-Path $env:USERPROFILE ".claude\settings.json"
-if (Test-Path $claudeSettings) {
-  $content = Get-Content $claudeSettings -Raw -ErrorAction SilentlyContinue
-  if ($content -and $content -match $pathPattern) {
-    $matchValue = ([regex]::Match($content, $pathPattern)).Value
-    Add-Finding -Severity "error" -Category "hardcoded-user-path" -Path $claudeSettings `
-      -Message "Hardcoded user path '$matchValue' i ~/.claude/settings.json — vil fejle paa anden PC" `
-      -Fix "Refactor til repo-relative path (fx 'bash scripts/hooks/X.sh'); kor 'pwsh -File scripts/install-user-hooks.ps1' for idempotent re-install"
+function Test-LineForHardcodedPath {
+  param([string] $Line)
+  foreach ($pat in $pathPatterns) {
+    if ($Line -match $pat) {
+      return ([regex]::Match($Line, $pat)).Value
+    }
+  }
+  return $null
+}
+
+# Files to scan for hardcoded user paths.
+# (a) Settings-filer i alle 3 lag (#385): project, user, PC-local.
+$settingsFiles = @(
+  (Join-Path $env:USERPROFILE ".claude\settings.json"),
+  (Join-Path $RepoRoot ".claude\settings.json"),
+  (Join-Path $RepoRoot ".claude\settings.local.json")
+)
+
+foreach ($settingsFile in $settingsFiles) {
+  if (-not (Test-Path $settingsFile)) { continue }
+  $content = Get-Content $settingsFile -Raw -ErrorAction SilentlyContinue
+  if (-not $content) { continue }
+  $matchValue = Test-LineForHardcodedPath -Line $content
+  if ($matchValue) {
+    # settings.local.json er gitignored og per-PC by design — warn ikke error.
+    # User/project settings deles cross-PC (user via install-user-hooks, project via git)
+    # saa hardcoded paths der er error.
+    $isLocal = $settingsFile -like '*settings.local.json'
+    $severity = if ($isLocal) { "warn" } else { "error" }
+    $note = if ($isLocal) { " (PC-local fil — accepteres men ryd op naar muligt)" } else { "" }
+    Add-Finding -Severity $severity -Category "hardcoded-user-path" -Path $settingsFile `
+      -Message "Hardcoded user path '$matchValue' i settings-fil${note}" `
+      -Fix "Refactor til repo-relative path (fx 'bash scripts/hooks/X.sh'); ved user-level: kor 'pwsh -File scripts/install-user-hooks.ps1' for idempotent re-install"
   }
 }
 
-$hooksDir = Join-Path $RepoRoot "scripts\hooks"
-if (Test-Path $hooksDir) {
+# (b) Hook-scripts i begge hook-mapper.
+$hookDirs = @(
+  (Join-Path $RepoRoot "scripts\hooks"),
+  (Join-Path $RepoRoot ".claude\hooks")
+)
+
+foreach ($hooksDir in $hookDirs) {
+  if (-not (Test-Path $hooksDir)) { continue }
   $hookFiles = Get-ChildItem $hooksDir -Filter "*.sh" -File -ErrorAction SilentlyContinue
   foreach ($f in $hookFiles) {
     $lines = Get-Content $f.FullName -ErrorAction SilentlyContinue
@@ -246,8 +283,8 @@ if (Test-Path $hooksDir) {
       $lineNo++
       # Skip comment-only lines (bash shebang or # comments after optional whitespace).
       if ($line -match '^\s*#') { continue }
-      if ($line -match $pathPattern) {
-        $matchValue = ([regex]::Match($line, $pathPattern)).Value
+      $matchValue = Test-LineForHardcodedPath -Line $line
+      if ($matchValue) {
         Add-Finding -Severity "error" -Category "hardcoded-user-path" -Path "$($f.FullName):$lineNo" `
           -Message "Hardcoded user path '$matchValue' i hook-script linje $lineNo — vil fejle paa anden PC" `
           -Fix "Erstat med git-baseret detection (fx 'git rev-parse --show-toplevel') eller relative path"

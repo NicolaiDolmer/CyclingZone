@@ -1,11 +1,20 @@
 # Hooks — Cycling Zone
 
-Dette repo har to lag af Claude Code hooks:
+Dette repo har **tre lag** af Claude Code settings/hooks (per [#385](https://github.com/NicolaiDolmer/CyclingZone/issues/385)):
 
-- **Project-level** (committet, gælder for alle der arbejder på repoet): `.claude/settings.json`
-- **User-level** (per-PC, ikke committet, sat op via `scripts/install-user-hooks.ps1`): `~/.claude/settings.json`
+| Lag | Fil | Indhold | Committed |
+|---|---|---|---|
+| **Project** | `.claude/settings.json` | project-hooks + `enabledPlugins` + `permissions.allow` (delt mellem alle der arbejder på repoet) | Ja |
+| **User** | `~/.claude/settings.json` | PC-uafhængig user-config: `theme`, `autoUpdatesChannel`, `env.TZ`, `permissions.deny`, user-niveau hooks (kun referencer til `scripts/hooks/*.sh` — ingen hardcoded paths) | Nej (per-bruger via `scripts/install-user-hooks.ps1`) |
+| **PC-local** | `.claude/settings.local.json` | per-PC overrides (fx PC-specifikke permissions). Gitignored. | Nej (per-PC) |
 
-> Hooks i Claude Code: se [docs.claude.com/.../hooks](https://docs.claude.com/en/docs/claude-code/hooks). Hook-events der bruges her: `SessionStart`, `Stop`, `PreToolUse`.
+**Vigtigt — matcher-syntax (#385):** Claude Code's PreToolUse/PostToolUse matcher-parser håndterer IKKE regex-alternation (`"Edit|Write|NotebookEdit"`). Hooks fyrede ikke. Splittes derfor i separate entries pr. tool — én `"matcher": "Edit"`, én `"matcher": "Write"`, etc. Samme `hooks`-array kopieres til hver entry.
+
+**Forward-guard:** `scripts/cross-pc-forensic-audit.ps1` scanner alle 3 settings-filer + `scripts/hooks/*.sh` + `.claude/hooks/*.sh` for hardcoded `C:\Users\<name>\` paths (både Windows-native og Git-Bash form). Fail-fast hvis fundet — kør auditen før commit.
+
+**OneDrive-status:** `~/OneDrive/CyclingZone-context/claude-settings/` (med subfolder `skills/github-housekeeping/SKILL.md`) er en historisk leftover fra før 3-lag-modellen. Skills bor nu i `.claude/skills/` i repoet (committed). Mappen er IKKE længere kilden til settings/skills; brugeren kan slette efter manuel verifikation.
+
+> Hooks i Claude Code: se [docs.claude.com/.../hooks](https://docs.claude.com/en/docs/claude-code/hooks). Hook-events der bruges her: `SessionStart`, `Stop`, `PreToolUse`, `PostToolUse`.
 
 ---
 
@@ -66,7 +75,7 @@ Flagger:
 
 **Opgradering til block-mode:** mulig efter 1-2 ugers brug — skift exit 0 til exit 2 og rute besked til stderr.
 
-### `PreToolUse` → `bash scripts/hooks/check-now-md-edit.sh` (matcher: `Edit|Write`) — [#76](https://github.com/NicolaiDolmer/CyclingZone/issues/76)
+### `PreToolUse` → `bash scripts/hooks/check-now-md-edit.sh` (matcher: `Edit`, `Write`, `NotebookEdit` — split per #385) — [#76](https://github.com/NicolaiDolmer/CyclingZone/issues/76)
 
 **Hvad:** Hard-blokerer `Edit`/`Write` på `docs/NOW.md` hvis resulterende linjeantal >30.
 
@@ -74,7 +83,7 @@ Flagger:
 
 **Fail-safe:** Hvis `python3` ikke er tilgængeligt eller JSON er korrupt → exit 0 (ingen blokering).
 
-### `PreToolUse` → `bash scripts/hooks/block-archived-edit.sh` (matcher: `Edit|Write|NotebookEdit`) — [#77](https://github.com/NicolaiDolmer/CyclingZone/issues/77)
+### `PreToolUse` → `bash scripts/hooks/block-archived-edit.sh` (matcher: `Edit`, `Write`, `NotebookEdit` — split per #385) — [#77](https://github.com/NicolaiDolmer/CyclingZone/issues/77)
 
 **Hvad:** Hard-blokerer skriv til paths matchende glob-mønstre i `scripts/hooks/archived-paths.txt`. Default-liste: `docs/archive/**`.
 
@@ -191,7 +200,7 @@ Installeret via `pwsh -File scripts/install-user-hooks.ps1`. Idempotent — beva
 
 **Hvad:** Generisk worktree-oprydning for `.claude/worktrees/`.
 
-### `PreToolUse` (Bash|PowerShell) → `bash ~/.claude/scripts/protect-claude-process.sh`
+### `PreToolUse` (matcher: `Bash`, `PowerShell` — split per #385) → `bash scripts/hooks/protect-claude-process.sh`
 
 **Hvad:** Blokerer kommandoer der ville dræbe Claude's eget process-træ (lært 2026-05-04 efter incident).
 

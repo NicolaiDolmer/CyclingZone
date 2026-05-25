@@ -47,6 +47,26 @@ if (-not ($settings.PSObject.Properties.Name -contains "hooks")) {
   $settings | Add-Member -NotePropertyName "hooks" -NotePropertyValue ([PSCustomObject]@{}) -Force
 }
 
+# --- Migration (#385): fjern legacy combined matchers ---
+# Claude Code's matcher-parser haandterer ikke regex-alternation
+# (fx "Bash|PowerShell"). Hooks med pipe i matcher fyrer ikke.
+# Strip dem her saa Add-Hook kan tilfoeje split-versioner uden duplikater.
+foreach ($eventName in @("PreToolUse", "PostToolUse")) {
+  $eventProp = @($settings.hooks.PSObject.Properties | Where-Object { $_.Name -eq $eventName })
+  if ($eventProp.Count -eq 0) { continue }
+  $entries = @($settings.hooks.$eventName)
+  $filtered = @()
+  foreach ($entry in $entries) {
+    $entryMatcher = if ($entry.PSObject.Properties.Name -contains 'matcher') { $entry.matcher } else { "" }
+    if ($entryMatcher -match '\|') {
+      Write-Host "[migrate] ${eventName}: fjernet legacy combined matcher='$entryMatcher' (#385 splittes til separate entries)"
+      continue
+    }
+    $filtered += $entry
+  }
+  $settings.hooks.$eventName = @($filtered)
+}
+
 function Add-Hook {
   param(
     [Parameter(Mandatory)] [string] $Event,
@@ -79,14 +99,17 @@ function Add-Hook {
   # behandles ogsaa som wrong: hook-commands skal vaere repo-relative.
   $existing = @($script:settings.hooks.$Event)
   foreach ($entry in $existing) {
+    # Matcher-aware idempotency (#385): split-hooks deler command men har
+    # forskellig matcher. Skip kun hvis BAADE command OG matcher er ens.
+    $entryMatcher = if ($entry.PSObject.Properties.Name -contains 'matcher') { $entry.matcher } else { "" }
     $entryHooks = @($entry.hooks)
     for ($i = 0; $i -lt $entryHooks.Count; $i++) {
       $h = $entryHooks[$i]
-      if ($h.command -eq $Command) {
-        Write-Host "[skip] ${Event} ($DisplayName) findes allerede"
+      if ($h.command -eq $Command -and $entryMatcher -eq $Matcher) {
+        Write-Host "[skip] ${Event} ($DisplayName) findes allerede (matcher='$Matcher')"
         return
       }
-      if ($h.command -like $MatchPattern) {
+      if ($h.command -like $MatchPattern -and $entryMatcher -eq $Matcher) {
         if ($h.command -match '/c/Users/[A-Za-z0-9_.-]+/') {
           $oldCmd = $h.command
           $h.command = $Command
@@ -112,11 +135,20 @@ function Add-Hook {
 }
 
 # --- PreToolUse hooks ---
+# Matcher SKAL splittes per tool (#385): Claude Code's matcher-parser haandterer
+# ikke regex-alternation "Bash|PowerShell" — hooks fyrer ikke. Derfor 2 entries.
 Add-Hook -Event "PreToolUse" `
   -Command "bash scripts/hooks/protect-claude-process.sh" `
   -MatchPattern "*protect-claude-process*" `
-  -DisplayName "block self-kill (claude.exe protection)" `
-  -Matcher "Bash|PowerShell" `
+  -DisplayName "block self-kill (Bash)" `
+  -Matcher "Bash" `
+  -Timeout 5
+
+Add-Hook -Event "PreToolUse" `
+  -Command "bash scripts/hooks/protect-claude-process.sh" `
+  -MatchPattern "*protect-claude-process*" `
+  -DisplayName "block self-kill (PowerShell)" `
+  -Matcher "PowerShell" `
   -Timeout 5
 
 # --- SessionStart hooks ---

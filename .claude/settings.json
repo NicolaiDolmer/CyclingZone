@@ -111,7 +111,33 @@
         ]
       },
       {
-        "matcher": "Edit|Write|NotebookEdit",
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/check-now-md-edit.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/block-archived-edit.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/check-now-md-edit.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/block-archived-edit.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "NotebookEdit",
         "hooks": [
           {
             "type": "command",
@@ -126,7 +152,17 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash|PowerShell",
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/sanitize-secrets.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "PowerShell",
         "hooks": [
           {
             "type": "command",
