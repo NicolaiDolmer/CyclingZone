@@ -8,10 +8,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { formatDate, formatNumber } from "../lib/intl";
 
 function formatHistoryDate(value, options = { day: "numeric", month: "short" }) {
   if (!value) return "—";
-  return new Date(value).toLocaleDateString("da-DK", options);
+  return formatDate(value, null, options);
 }
 
 function toHistoryPoint(row, valueKey) {
@@ -29,7 +30,7 @@ function HistoryTooltip({ active, payload, label }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-lg shadow-sm px-3 py-2">
       <p className="text-cz-3 text-xs">{point?.tooltipDate || label}</p>
-      <p className="text-cz-1 text-sm font-mono font-bold">{payload[0].value?.toLocaleString("da-DK")}</p>
+      <p className="text-cz-1 text-sm font-mono font-bold">{formatNumber(payload[0].value)}</p>
     </div>
   );
 }

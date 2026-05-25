@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.98",
+    date: "2026-05-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Language · Rider values now follow the active language everywhere",
+        items: [
+          "EN · The `formatCz()` helper that renders every rider value, balance and CZ$-amount across the app (rider detail header, comparisons, transfers, watchlist, admin, season preview) was hard-coded to Danish thousand-separators (`46.520.000`), so EN-mode users saw period-separated numbers instead of `46,520,000`. Now the helper delegates to the locale-aware `formatNumber()` and picks up the i18next language. Same fix applied to the rider development chart's tooltip (`toLocaleString(\"da-DK\")` → `formatNumber()`) and its date axis. Refs #650.",
+          "DA · Hjælpe-funktionen `formatCz()` der renderer hver rytter-værdi, saldo og CZ$-beløb i appen (rytter-detail-header, sammenligning, transfers, ønskeliste, admin, sæson-preview) var hard-kodet til danske tusind-separatorer (`46.520.000`), så EN-brugere så punktum-separerede tal i stedet for `46,520,000`. Nu kalder den den locale-aware `formatNumber()` og følger i18next-sproget. Samme fix på rytter-udviklings-grafens tooltip (`toLocaleString(\"da-DK\")` → `formatNumber()`) og dens dato-akse. Refs #650.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.97",
     date: "2026-05-25",
     label: "Beta",
