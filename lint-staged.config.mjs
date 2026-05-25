@@ -24,4 +24,9 @@ const escape = (f) => JSON.stringify(f);
 export default {
   "frontend/**/*.{js,jsx}": (files) => `npx eslint ${files.map(escape).join(" ")}`,
   "backend/**/*.js": (files) => `npx eslint ${files.map(escape).join(" ")}`,
+  // #639 forward-guard: SQL string-literal lint catches unescaped apostrophes
+  // (e.g. `claim'et` instead of `claim''et`) that would otherwise abort
+  // auto-migrate on ON_ERROR_STOP=1 (the #635 bug shape).
+  "database/**/*.sql": (files) =>
+    `node scripts/lint-sql-strings.mjs ${files.map(escape).join(" ")}`,
 };

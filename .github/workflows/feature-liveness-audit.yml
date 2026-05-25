@@ -25,6 +25,18 @@ on:
       - 'backend/scripts/audit-feature-liveness.js'
       - 'frontend/src/**'
       - '.github/workflows/feature-liveness-audit.yml'
+  # #639 (Option D): run Detector C (migration-drift) on push to main as well.
+  # Cron is once-weekly so a botched auto-migrate (like the #635 unescaped
+  # apostrophe) could sit drifted for up to 7 days. Running C on every push
+  # gives us mean-time-to-detect ~5 min instead. Detectors A, B, D, E stay
+  # cron-only — they either need accumulated event data (E) or only catch
+  # things a PR audit-run already covered (A, B, D).
+  push:
+    branches: [main]
+    paths:
+      - 'database/**'
+      - 'backend/scripts/audit-feature-liveness.js'
+      - '.github/workflows/feature-liveness-audit.yml'
   schedule:
     - cron: '0 4 * * 1'
   workflow_dispatch:
@@ -74,9 +86,16 @@ jobs:
           #   efter merge til main. Cron + workflow_dispatch fanger ægte drift.
           # - E (zero-impression-features) tager dage/uger at akkumulere events
           #   efter rollout — kun cron-runs evaluerer E.
+          # Push-til-main-runs (#639 Option D): kør KUN Detector C. A/B/D
+          # blev allerede tjekket af PR-runet og ville bare bruge ekstra
+          # Action-minutter; E er weekly-only. C er forward-guard mod den
+          # præcise klasse #635 bug ramte: failed auto-migrate → manglende
+          # schema_migrations-row.
           SKIP_FLAG=""
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             SKIP_FLAG="--skip=C,E"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            SKIP_FLAG="--skip=A,B,D,E"
           fi
           node backend/scripts/audit-feature-liveness.js $SKIP_FLAG --json > feature-liveness.json
           node backend/scripts/audit-feature-liveness.js $SKIP_FLAG | tee feature-liveness.txt
@@ -117,19 +136,22 @@ jobs:
               body,
             });
 
-      - name: Open or update tracking issue (scheduled runs only)
-        if: github.event_name == 'schedule' && steps.audit.outputs.total != '0'
+      - name: Open or update tracking issue (scheduled + push-to-main runs)
+        if: (github.event_name == 'schedule' || github.event_name == 'push') && steps.audit.outputs.total != '0'
         uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
             const data = JSON.parse(fs.readFileSync('feature-liveness.json', 'utf8'));
             const report = fs.readFileSync('feature-liveness.txt', 'utf8');
+            const trigger = '${{ github.event_name }}' === 'push'
+              ? `push-to-main (commit ${'${{ github.sha }}'.slice(0, 7)})`
+              : `weekly cron-run (${new Date().toISOString().slice(0,10)})`;
             const title = `[bot] Feature-liveness audit fandt ${data.total_findings} drift-finding(s)`;
             const body = [
               '## Feature-liveness drift detected',
               '',
-              `Ugentligt cron-run (${new Date().toISOString().slice(0,10)}) fandt **${data.total_findings}** finding(s) — A=${data.by_detector.A} B=${data.by_detector.B} C=${data.by_detector.C} D=${data.by_detector.D}.`,
+              `Trigger: ${trigger} fandt **${data.total_findings}** finding(s) — A=${data.by_detector.A} B=${data.by_detector.B} C=${data.by_detector.C} D=${data.by_detector.D}.`,
               '',
               'Mest sandsynligt: schema/route/frontend-drift introduceret uden om de normale guard-rails (Studio-änding, migration uden push, eller dead code-akkumulering).',
               '',

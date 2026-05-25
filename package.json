@@ -5,6 +5,8 @@
     "check:patchnotes": "node scripts/check-patch-notes-version.js",
     "doctor": "pwsh -File scripts/agent-doctor.ps1",
     "check:warnings": "node scripts/check-eslint-warning-budget.mjs",
+    "lint:sql": "node scripts/lint-sql-strings.mjs",
+    "test:lint-sql": "node --test scripts/lint-sql-strings.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
     "test:smoke": "node scripts/smoke-test-prod.mjs",
     "test:token": "node scripts/get-test-token.mjs",
