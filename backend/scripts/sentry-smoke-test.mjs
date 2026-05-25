@@ -13,7 +13,7 @@
 //   node backend/scripts/sentry-smoke-test.mjs --dsn=https://abc@o123.ingest.us.sentry.io/456
 //
 // Exit-codes:
-//   0 = event sendt + flushed OK
+//   0 = event sendt + flushed OK (eller skipped under node --test uden DSN)
 //   1 = ugyldig DSN / args
 //   2 = flush timeout (events nåede måske ikke frem)
 //   3 = uventet fejl
@@ -43,8 +43,18 @@ function validateDsn(dsn) {
 async function main() {
   const args = parseArgs(process.argv);
   const dsn = args.dsn || process.env.SENTRY_DSN;
+  const isNodeTestRunner = Boolean(
+    process.env.NODE_TEST_CONTEXT ||
+      process.env.NODE_TEST_WORKER_ID ||
+      process.env.npm_lifecycle_event === "test",
+  );
 
   if (!dsn) {
+    if (isNodeTestRunner) {
+      console.log("SKIP: SENTRY_DSN ikke sat; sentry-smoke-test er deploy-verifikation, ikke unit-CI.");
+      return;
+    }
+
     console.error("❌ SENTRY_DSN mangler.");
     console.error("   Set env var eller pass --dsn=<value>");
     process.exit(1);
