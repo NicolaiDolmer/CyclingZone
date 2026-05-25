@@ -84,7 +84,7 @@ const FEED_FILTER_TYPES = {
 };
 
 // timeAgo builder using i18n strings. Returns short locale-aware relative time.
-function buildTimeAgo(t, i18n) {
+function buildTimeAgo(t, _i18n) {
   return (dateStr) => {
     const diff = new Date() - new Date(dateStr);
     const m = Math.floor(diff / 60000);
@@ -99,7 +99,7 @@ function buildTimeAgo(t, i18n) {
   };
 }
 
-function isLegacyWatchlistAuctionNotification(notification, i18n) {
+function isLegacyWatchlistAuctionNotification(notification, _i18n) {
   if (notification.type !== "watchlist_rider_listed") return false;
   const text = `${notification.title || ""} ${notification.message || ""}`.toLowerCase();
   // Detect via DK ("auktion") or EN ("auction") since legacy notifs persist text
