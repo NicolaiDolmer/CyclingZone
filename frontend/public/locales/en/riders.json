@@ -1,0 +1,48 @@
+{
+  "page": {
+    "title": "Rider Database",
+    "subtitle": "{count} riders",
+    "watchlistLink": "⭐ My Watchlist ({count})",
+    "loadingAria": "Loading riders"
+  },
+  "table": {
+    "rider": "Rider",
+    "value": "Value",
+    "salary": "Salary",
+    "potential": "Potential",
+    "compareTooltip": "Select for comparison",
+    "teamFree": "Free",
+    "auctionBadge": "⚡ Auction"
+  },
+  "pagination": {
+    "showing": "Showing {from}-{to} of {total}",
+    "prev": "← Previous",
+    "next": "Next →"
+  },
+  "tour": {
+    "filters": {
+      "title": "Filter the list to your budget",
+      "body": "Set 'Value max' to your balance to see only riders you can afford. The U25 / Free agent toggles open up cheaper paths."
+    },
+    "list": {
+      "title": "Click a rider",
+      "body": "The detail page shows full stats, contract status, and buy/auction options. You can start an auction or send an offer from there."
+    },
+    "watchlist": {
+      "title": "Use the watchlist",
+      "body": "The star adds the rider to your watchlist so you can come back easily. The list also lives in the menu under Market: Watchlist."
+    }
+  },
+  "emptyState": {
+    "title": "Build your first team",
+    "intro": "You have no riders yet. Use the filters below to find the riders that fit your strategy and budget.",
+    "balance": "Your balance",
+    "squadMin": "Squad minimum (Division {division})",
+    "squadMinRiders": "{count} riders",
+    "tipValue": "<strong>Value filters</strong> = price ceiling in CZ$. Set max below your balance to see only affordable riders.",
+    "tipStats": "<strong>Stat filters</strong> = sport attributes (BJ, SP, TT...). Start broad and narrow down later.",
+    "tipBudget": "<strong>U25 / Free agent</strong> = budget-friendly paths: younger potential or riders without a contract.",
+    "ctaFindFirst": "Find your first rider (≤ {balance} CZ$)",
+    "ctaTour": "💡 Show me around"
+  }
+}

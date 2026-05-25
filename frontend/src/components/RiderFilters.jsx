@@ -8,10 +8,16 @@
  *   compact: bool — fewer rows, for sidepanels
  *   teams: array
  *   nationalities: string[] — ISO codes present in the current dataset
+ *
+ * i18n: bruger `riderFilters` namespace (cross-page shared component).
+ * Stat-labels (FL/BJ/...) er internationale forkortelser — oversættes ikke.
+ * Refs #487.
  */
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "./Flag";
+import { formatNumber } from "../lib/intl";
 
 export const STAT_KEYS = [
   "stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
@@ -78,7 +84,7 @@ function DualStatSlider({ statKey, label, filters, onChange }) {
       <div className="flex items-center justify-between mb-1.5">
         <label className="text-cz-3 text-[10px] uppercase tracking-wider">{label}</label>
         <span className={`text-[10px] font-mono font-bold ${active ? "text-cz-accent-t" : "text-cz-3"}`}>
-          {valMin}–{valMax}
+          {valMin}-{valMax}
         </span>
       </div>
       <div className="flex flex-col gap-1">
@@ -103,6 +109,7 @@ export default function RiderFilters({
   showTeamFilter = true, compact = false, teams = [], nationalities = [],
   showAuctionPriceFilter = false,
 }) {
+  const { t } = useTranslation("riderFilters");
   const [statsOpen, setStatsOpen] = useState(false);
 
   const activeStatKeys = STAT_KEYS.filter(k => isStatActive(filters, k));
@@ -129,10 +136,10 @@ export default function RiderFilters({
       {/* ── Filter panel ── */}
       <div className="bg-cz-card border border-cz-border rounded-xl p-4 mb-3">
         <div className="flex items-center justify-between gap-3 mb-3">
-          <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">Filtrér</p>
+          <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">{t("panel.label")}</p>
           {hasActiveFilters && (
             <button onClick={onReset} className="text-xs text-cz-3 hover:text-cz-1 transition-colors flex-shrink-0">
-              Nulstil
+              {t("panel.reset")}
             </button>
           )}
         </div>
@@ -140,20 +147,20 @@ export default function RiderFilters({
         <div className={`grid gap-2 ${compact ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"}`}>
           {/* Name */}
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Navn</label>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.name")}</label>
             <input type="text" value={filters.q} onChange={e => onChange("q", e.target.value)}
-              placeholder="Søg rytter..."
+              placeholder={t("fields.namePlaceholder")}
               className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2
                 text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
           </div>
 
           {/* Country */}
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Land</label>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.country")}</label>
             <select value={filters.nationality_code} onChange={e => onChange("nationality_code", e.target.value)}
               className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                 text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
-              <option value="">Alle lande</option>
+              <option value="">{t("fields.countryAll")}</option>
               {nationalities.map(code => (
                 <option key={code} value={code}>{getCountryName(code)}</option>
               ))}
@@ -162,14 +169,14 @@ export default function RiderFilters({
 
           {/* UCI range */}
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Værdi CZ$ (min–max)</label>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.valueRange")}</label>
             <div className="flex gap-1">
               <input type="number" value={filters.min_uci} onChange={e => onChange("min_uci", e.target.value)}
-                placeholder="Min"
+                placeholder={t("fields.min")}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                   text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
               <input type="number" value={filters.max_uci} onChange={e => onChange("max_uci", e.target.value)}
-                placeholder="Max"
+                placeholder={t("fields.max")}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                   text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
             </div>
@@ -177,14 +184,14 @@ export default function RiderFilters({
 
           {/* Salary range */}
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Løn CZ$ (min–max)</label>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.salaryRange")}</label>
             <div className="flex gap-1">
               <input type="number" value={filters.min_salary} onChange={e => onChange("min_salary", e.target.value)}
-                placeholder="Min"
+                placeholder={t("fields.min")}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                   text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
               <input type="number" value={filters.max_salary} onChange={e => onChange("max_salary", e.target.value)}
-                placeholder="Max"
+                placeholder={t("fields.max")}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                   text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
             </div>
@@ -192,14 +199,14 @@ export default function RiderFilters({
 
           {/* Age range */}
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Alder (min–max)</label>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.ageRange")}</label>
             <div className="flex gap-1">
               <input type="number" value={filters.min_age} onChange={e => onChange("min_age", e.target.value)}
-                placeholder="Min" min={16} max={45}
+                placeholder={t("fields.min")} min={16} max={45}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                   text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
               <input type="number" value={filters.max_age} onChange={e => onChange("max_age", e.target.value)}
-                placeholder="Max" min={16} max={45}
+                placeholder={t("fields.max")} min={16} max={45}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                   text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
             </div>
@@ -208,14 +215,14 @@ export default function RiderFilters({
           {/* Højeste bud (auction-only) */}
           {showAuctionPriceFilter && (
             <div>
-              <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Højeste bud CZ$ (min–max)</label>
+              <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.bidRange")}</label>
               <div className="flex gap-1">
                 <input type="number" value={filters.min_auction_price} onChange={e => onChange("min_auction_price", e.target.value)}
-                  placeholder="Min"
+                  placeholder={t("fields.min")}
                   className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                     text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
                 <input type="number" value={filters.max_auction_price} onChange={e => onChange("max_auction_price", e.target.value)}
-                  placeholder="Max"
+                  placeholder={t("fields.max")}
                   className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                     text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
               </div>
@@ -224,14 +231,14 @@ export default function RiderFilters({
 
           {/* Potentiale */}
           <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Potentiale (min–max)</label>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.potentialRange")}</label>
             <div className="flex gap-1">
               <input type="number" value={filters.min_potentiale} onChange={e => onChange("min_potentiale", e.target.value)}
-                placeholder="Min" min={1} max={6} step={0.5}
+                placeholder={t("fields.min")} min={1} max={6} step={0.5}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                   text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
               <input type="number" value={filters.max_potentiale} onChange={e => onChange("max_potentiale", e.target.value)}
-                placeholder="Max" min={1} max={6} step={0.5}
+                placeholder={t("fields.max")} min={1} max={6} step={0.5}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                   text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
             </div>
@@ -240,19 +247,19 @@ export default function RiderFilters({
           {/* Team */}
           {showTeamFilter && teams.length > 0 && (
             <div>
-              <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">Hold</label>
+              <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.team")}</label>
               <select value={filters.team_id} onChange={e => onChange("team_id", e.target.value)}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                   text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
-                <option value="">Alle hold</option>
-                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                <option value="">{t("fields.teamAll")}</option>
+                {teams.map(tm => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
               </select>
             </div>
           )}
 
           {/* Toggles */}
           <div className={`grid grid-cols-3 gap-2 items-end ${compact ? "sm:col-span-2" : ""}`}>
-            {[{ key: "free_agent", label: "Fri agent" }, { key: "u25", label: "U25" }, { key: "u23", label: "U23" }].map(({ key, label }) => (
+            {[{ key: "free_agent", label: t("toggles.freeAgent") }, { key: "u25", label: t("toggles.u25") }, { key: "u23", label: t("toggles.u23") }].map(({ key, label }) => (
               <button key={key} onClick={() => onChange(key, !filters[key])}
                 className={`px-2 py-2 rounded-lg text-xs font-medium transition-all border
                   ${filters[key]
@@ -269,10 +276,10 @@ export default function RiderFilters({
           <button onClick={() => setStatsOpen(o => !o)}
             className="flex items-center gap-2 text-cz-3 hover:text-cz-2 text-xs transition-colors">
             <span className={`transition-transform duration-150 inline-block ${statsOpen ? "rotate-90" : ""}`}>▶</span>
-            <span className="uppercase tracking-wider font-medium">Evne-filtre</span>
+            <span className="uppercase tracking-wider font-medium">{t("stats.section")}</span>
             {hasActiveStats && (
               <span className="bg-cz-accent/10 text-cz-accent-t text-[10px] px-1.5 py-0.5 rounded-full">
-                {activeStatKeys.length} aktive
+                {t("stats.active", { count: activeStatKeys.length })}
               </span>
             )}
           </button>
@@ -296,34 +303,36 @@ export default function RiderFilters({
       {/* ── Active filter chips (between panel and table) ── */}
       {hasActiveFilters && (
         <div className="flex flex-wrap gap-1.5 mb-3">
-          {filters.q && <Chip label={`"${filters.q}"`} onRemove={() => onChange("q", "")} />}
+          {filters.q && <Chip t={t} label={`"${filters.q}"`} onRemove={() => onChange("q", "")} />}
           {filters.nationality_code && (
             <Chip
+              t={t}
               label={<><Flag code={filters.nationality_code} /> {getCountryName(filters.nationality_code)}</>}
               onRemove={() => onChange("nationality_code", "")}
             />
           )}
-          {filters.min_uci && <Chip label={`Værdi ≥ ${parseInt(filters.min_uci).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("min_uci", "")} />}
-          {filters.max_uci && <Chip label={`Værdi ≤ ${parseInt(filters.max_uci).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("max_uci", "")} />}
-          {filters.min_salary && <Chip label={`Løn ≥ ${parseInt(filters.min_salary).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("min_salary", "")} />}
-          {filters.max_salary && <Chip label={`Løn ≤ ${parseInt(filters.max_salary).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("max_salary", "")} />}
-          {filters.min_age && <Chip label={`Alder ≥ ${filters.min_age}`} onRemove={() => onChange("min_age", "")} />}
-          {filters.max_age && <Chip label={`Alder ≤ ${filters.max_age}`} onRemove={() => onChange("max_age", "")} />}
-          {filters.min_potentiale && <Chip label={`Pot. ≥ ${filters.min_potentiale}`} onRemove={() => onChange("min_potentiale", "")} />}
-          {filters.max_potentiale && <Chip label={`Pot. ≤ ${filters.max_potentiale}`} onRemove={() => onChange("max_potentiale", "")} />}
-          {filters.min_auction_price && <Chip label={`Bud ≥ ${parseInt(filters.min_auction_price).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("min_auction_price", "")} />}
-          {filters.max_auction_price && <Chip label={`Bud ≤ ${parseInt(filters.max_auction_price).toLocaleString("da-DK")} CZ$`} onRemove={() => onChange("max_auction_price", "")} />}
-          {filters.u25 && <Chip label="U25" onRemove={() => onChange("u25", false)} />}
-          {filters.u23 && <Chip label="U23" onRemove={() => onChange("u23", false)} />}
-          {filters.free_agent && <Chip label="Fri agent" onRemove={() => onChange("free_agent", false)} />}
-          {filters.team_id && <Chip label="Hold valgt" onRemove={() => onChange("team_id", "")} />}
+          {filters.min_uci && <Chip t={t} label={t("chips.value.min", { amount: formatNumber(parseInt(filters.min_uci)) })} onRemove={() => onChange("min_uci", "")} />}
+          {filters.max_uci && <Chip t={t} label={t("chips.value.max", { amount: formatNumber(parseInt(filters.max_uci)) })} onRemove={() => onChange("max_uci", "")} />}
+          {filters.min_salary && <Chip t={t} label={t("chips.salary.min", { amount: formatNumber(parseInt(filters.min_salary)) })} onRemove={() => onChange("min_salary", "")} />}
+          {filters.max_salary && <Chip t={t} label={t("chips.salary.max", { amount: formatNumber(parseInt(filters.max_salary)) })} onRemove={() => onChange("max_salary", "")} />}
+          {filters.min_age && <Chip t={t} label={t("chips.age.min", { value: filters.min_age })} onRemove={() => onChange("min_age", "")} />}
+          {filters.max_age && <Chip t={t} label={t("chips.age.max", { value: filters.max_age })} onRemove={() => onChange("max_age", "")} />}
+          {filters.min_potentiale && <Chip t={t} label={t("chips.potential.min", { value: filters.min_potentiale })} onRemove={() => onChange("min_potentiale", "")} />}
+          {filters.max_potentiale && <Chip t={t} label={t("chips.potential.max", { value: filters.max_potentiale })} onRemove={() => onChange("max_potentiale", "")} />}
+          {filters.min_auction_price && <Chip t={t} label={t("chips.bid.min", { amount: formatNumber(parseInt(filters.min_auction_price)) })} onRemove={() => onChange("min_auction_price", "")} />}
+          {filters.max_auction_price && <Chip t={t} label={t("chips.bid.max", { amount: formatNumber(parseInt(filters.max_auction_price)) })} onRemove={() => onChange("max_auction_price", "")} />}
+          {filters.u25 && <Chip t={t} label={t("toggles.u25")} onRemove={() => onChange("u25", false)} />}
+          {filters.u23 && <Chip t={t} label={t("toggles.u23")} onRemove={() => onChange("u23", false)} />}
+          {filters.free_agent && <Chip t={t} label={t("toggles.freeAgent")} onRemove={() => onChange("free_agent", false)} />}
+          {filters.team_id && <Chip t={t} label={t("chips.teamSelected")} onRemove={() => onChange("team_id", "")} />}
           {activeStatKeys.map(key => {
             const min = parseInt(filters[`${key}_min`]) ?? STAT_DEFAULT_MIN;
             const max = parseInt(filters[`${key}_max`]) ?? STAT_DEFAULT_MAX;
             return (
               <Chip
+                t={t}
                 key={key}
-                label={`${STAT_LABELS_MAP[key]} ${min}–${max}`}
+                label={t("chips.statRange", { label: STAT_LABELS_MAP[key], min, max })}
                 onRemove={() => resetStat(key)}
               />
             );
@@ -334,12 +343,13 @@ export default function RiderFilters({
   );
 }
 
-function Chip({ label, onRemove }) {
+function Chip({ t, label, onRemove }) {
+  const ariaLabel = typeof label === "string" ? t("chips.remove", { label }) : undefined;
   return (
     <button
       type="button"
       onClick={onRemove}
-      aria-label={`Fjern filter: ${label}`}
+      aria-label={ariaLabel}
       className="inline-flex items-center gap-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
         text-xs px-3 min-h-[44px] rounded-full font-medium hover:bg-cz-accent/20 transition-colors"
     >
