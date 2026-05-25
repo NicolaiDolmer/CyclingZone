@@ -98,7 +98,7 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, 
               <span className="text-[9px] uppercase bg-cz-info/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
             )}
             {isInAuction && (
-              <span className="text-[9px] uppercase bg-cz-accent/100/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("table.auctionBadge")}</span>
+              <span className="text-[9px] uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("table.auctionBadge")}</span>
             )}
             <span className="text-cz-3 text-xs">{rider.team?.name || t("table.teamFree")}</span>
           </div>

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.97",
+    date: "2026-05-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "UI · Active-auction badge background was invisible",
+        items: [
+          "EN · The orange \"Active auction\" pill next to a rider's name in the Riders table and on the rider detail page had a broken Tailwind opacity class (`bg-cz-accent/100/15` is not valid syntax — two opacity modifiers chained), so the background rendered as transparent and only the orange text was visible. Fixed to `bg-cz-accent/15` so the pill has the intended 15%-opacity accent background, matching every other accent-pill on the site. Refs #647.",
+          "DA · Den orange \"Aktiv auktion\"-pille ved siden af en rytters navn i Rytter-tabellen og på rytter-detail-siden havde en kaput Tailwind opacity-klasse (`bg-cz-accent/100/15` er ikke gyldig syntaks — to opacity-modifiers kædet sammen), så baggrunden rendrede transparent og kun den orange tekst var synlig. Rettet til `bg-cz-accent/15` så pillen har den tiltænkte 15%-opacity accent-baggrund, ligesom alle andre accent-piller på siden. Refs #647.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.96",
     date: "2026-05-25",
     label: "Beta",
