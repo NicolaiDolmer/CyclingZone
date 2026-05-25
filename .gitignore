@@ -35,6 +35,7 @@ audit-output/
 # (skrives med Write-tool, brugt med git commit -F / gh pr create --body-file, slettes efter).
 .tmp-*
 *.tmp.md
+*.tmp-*.json
 
 # Personlig planlægning (Emmas kalender, ADHD-profil, familietid) — lever i OneDrive/CyclingZone-context/
 docs/WEEKLY_PLANNING_GUIDE.md
