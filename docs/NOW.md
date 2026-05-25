@@ -1,6 +1,8 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🟡 Session 2026-05-25-P — #648 backend CI baseline fix klar:** Branch `codex-648-sentry-smoke-ci-baseline` gør `backend/scripts/sentry-smoke-test.mjs` til deploy-verifikation under unit-CI: Node test-runner uden `SENTRY_DSN` logger SKIP og passerer, mens manuel smoke uden DSN stadig fejler. PatchNotes ikke opdateret: CI-only/backend-test hygiene. Verify: targeted node --test ✅, manuel no-DSN fail ✅, backend test ✅ 742/742, backend lint ✅ 0 errors / 38 pre-existing warnings.
+> **🟢 Session 2026-05-25-Q — #489 FinancePage i18n leveret:** PR [#665](https://github.com/NicolaiDolmer/CyclingZone/pull/665), branch `feat/489-financepage-i18n`. Nyt `finance`-namespace inline-bundlet + `dashboard:forecast.*` udvidet med horizon/multiSeason keys. FinancePage, FinanceForecastCard, FinanceFirstVisitHint refaktor til `t()`. Tal via `formatNumber()`. Em-dashes ude. PatchNotes 4.00. Pre-flight: i18n-check × 2 ✅, build ✅, playwright 9/9 ✅, preview_eval bekræfter keys i begge sprog inkl. plurals.
+
+> **🟡 Session 2026-05-25-P — #648 backend CI baseline fix merged i 1d7bbee5 (PR #664).**
 
 > **🟢 Session 2026-05-25-O — TIER 1 cluster-konsolidering leveret:** #405, #454, #647/PR #659, #650/PR #661 og #438/PR #663 leveret/merged. Prod HTTP 200; backend-tests CI-fail var pre-existing og peger på #648.
 
@@ -12,7 +14,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** Watch #648 PR CI og merge når backend-tests er grøn; derefter brugerverifikation af session-O leverancer. Alternativt: #489 FinancePage i18n.
+> **🎯 Next action:** Watch PR #665 CI + bruger-verifikation af #489 (FinancePage EN/DA på prod). Derefter brugerverifikation af session-O leverancer (#647 accent-pille, #650 EN comma-format, #438 LTR layout) + næste i18n-sub-issue af #483.
 >
 > _Format: `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
