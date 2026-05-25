@@ -1,0 +1,248 @@
+{
+  "page": {
+    "back": "← Back",
+    "notFound": "Rider not found",
+    "loadingAria": "Loading rider"
+  },
+  "header": {
+    "watchlistAdd": "Add to watchlist",
+    "watchlistRemove": "Remove from watchlist",
+    "compare": "⇄ Compare",
+    "compareTitle": "Compare with other riders",
+    "watchlistCount": "👁 {count, plural, one {1 manager follows this rider} other {# managers follow this rider}}",
+    "u25": "U25",
+    "retired": "Retired",
+    "ageYears": "{age} yrs",
+    "heightCm": "{height} cm",
+    "weightKg": "{weight} kg",
+    "potential": "Potential",
+    "teamPrefix": "Team:",
+    "freeAgent": "Free agent",
+    "activeAuctionBadge": "⚡ Active auction",
+    "highestBidLabel": "Highest bid: {amount} CZ$",
+    "valueLabel": "Value CZ$",
+    "bestStat": "Best: {label} ({value})",
+    "typeDefault": "All-rounder"
+  },
+  "blocked": {
+    "pendingTransfer": "🔒 The rider has been won at auction and is awaiting transfer to the new team. Cannot be traded until the transfer is complete.",
+    "retired": "The rider is retired and cannot be traded.",
+    "errorFallback": "Something went wrong"
+  },
+  "tabs": {
+    "stats": "Skills",
+    "season": "Season history",
+    "results": "Race results",
+    "bids": "Bid history",
+    "history": "History",
+    "development": "Development"
+  },
+  "stats": {
+    "potentialRow": "Potential",
+    "loadingDevelopment": "Loading development..."
+  },
+  "skills": {
+    "fl": { "short": "FL", "long": "Flat" },
+    "bj": { "short": "BJ", "long": "Mountain" },
+    "kb": { "short": "KB", "long": "Mid-mountain" },
+    "bk": { "short": "BAK", "long": "Hill" },
+    "tt": { "short": "TT", "long": "Time trial" },
+    "prl": { "short": "PRL", "long": "Prologue" },
+    "bro": { "short": "BRO", "long": "Cobbles" },
+    "sp": { "short": "SP", "long": "Sprint" },
+    "acc": { "short": "ACC", "long": "Acceleration" },
+    "ned": { "short": "NED", "long": "Descent" },
+    "udh": { "short": "UDH", "long": "Endurance" },
+    "mod": { "short": "MOD", "long": "Resilience" },
+    "res": { "short": "RES", "long": "Recovery" },
+    "ftr": { "short": "FTR", "long": "Fighter" }
+  },
+  "season": {
+    "empty": "No history yet",
+    "table": {
+      "year": "Year",
+      "wins": "Wins",
+      "top3": "Top 3",
+      "prizes": "Prizes"
+    }
+  },
+  "results": {
+    "empty": "No race results yet",
+    "table": {
+      "race": "Race",
+      "type": "Type",
+      "position": "Pos.",
+      "prize": "Prize"
+    },
+    "fallbackDash": "-"
+  },
+  "bids": {
+    "noAuction": "No current auction for this rider",
+    "noBids": "No bids yet",
+    "soldLabel": "Sold",
+    "soldFor": "for",
+    "winnerFallback": "Unknown buyer",
+    "sellerPrefix": "Seller:",
+    "activeAuction": "⚡ Active auction",
+    "fallbackDash": "-",
+    "row": {
+      "teamFallback": "Unknown",
+      "autoBidTag": "Auto-bid",
+      "highestTag": "Highest"
+    }
+  },
+  "history": {
+    "empty": "No trade history yet",
+    "fallbackDash": "-",
+    "auction": {
+      "labelAi": "AI sale",
+      "labelGuaranteed": "Guaranteed sale",
+      "labelDefault": "Auction",
+      "wonBy": "won from",
+      "buyerFallback": "Unknown",
+      "sellerFallbackAi": "AI team",
+      "sellerFallback": "Unknown"
+    },
+    "transfer": {
+      "label": "Transfer",
+      "buys": "buys from",
+      "buyerFallback": "Unknown",
+      "sellerFallback": "Unknown"
+    },
+    "swap": {
+      "label": "Swap",
+      "teamFallback": "Unknown",
+      "cashAdjustment": "Cash adjustment: {amount} CZ$"
+    },
+    "loan": {
+      "label": "Loan",
+      "borrows": "loans from",
+      "toFallback": "Unknown",
+      "fromFallback": "Unknown",
+      "seasonRange": "Season {start}–{end}",
+      "feeSuffix": "· {amount} CZ$ fee",
+      "status": {
+        "active": "active",
+        "completed": "completed",
+        "buyout": "buyout",
+        "pending": "pending",
+        "cancelled": "cancelled",
+        "rejected": "rejected"
+      }
+    }
+  },
+  "auctionPanel": {
+    "activeLabel": "⚡ Active auction",
+    "badges": {
+      "leading": "You're leading",
+      "selling": "You're selling",
+      "outbid": "You've been outbid",
+      "extended": "⚡ Ext",
+      "flash": "⚡ Flash"
+    },
+    "highestBid": "Highest bid",
+    "leaderFallback": "",
+    "timeLeft": "Time left",
+    "sellerPrefix": "Seller: {name}",
+    "cannotBidOwn": "You're selling this auction. Cannot bid on your own rider.",
+    "fallbackDash": "-",
+    "bidInputAria": "Your bid in CZ$",
+    "bidPlace": "Bid",
+    "bidRaise": "Raise",
+    "bidError": "Error",
+    "bidPlaceAria": "Place bid",
+    "bidRaiseAria": "Raise your bid",
+    "minBid": "Min. bid: {amount} CZ$",
+    "errorFallback": "The bid could not be placed",
+    "proxyErrorFallback": "Failed to set auto-bid",
+    "proxy": {
+      "display": "Auto-bid: max {amount} CZ$",
+      "edit": "Change",
+      "editAria": "Change auto-bid limit",
+      "remove": "Remove",
+      "removeAria": "Remove auto-bid",
+      "addAria": "Set auto-bid limit",
+      "addButton": "+ Set auto-bid limit",
+      "inputPlaceholder": "Max limit",
+      "inputAria": "Auto-bid limit in CZ$",
+      "save": "Save",
+      "saveAria": "Save auto-bid limit",
+      "cancelAria": "Cancel auto-bid editing",
+      "error": "Error",
+      "saved": "✓"
+    },
+    "riderNameFallback": "rider"
+  },
+  "countdown": {
+    "completed": "Completed",
+    "expired": "Expired",
+    "hoursMinutes": "{h}h {m}m",
+    "minutesSeconds": "{m}m {s}s",
+    "seconds": "{s}s"
+  },
+  "auctionStart": {
+    "label": {
+      "myRider": "Put up for auction",
+      "bank": "Start auction (AI rider)",
+      "ai": "Start auction (AI rider)",
+      "free": "Start auction (free agent)"
+    },
+    "guaranteed": {
+      "label": "Guaranteed sale",
+      "hint": "(start price {amount} CZ$, 50% of Value)"
+    },
+    "flash": {
+      "label": "⚡ Flash auction (30 min)",
+      "hint": "Deadline Day: ends exactly 30 minutes after start"
+    },
+    "buttons": {
+      "start": "Start auction",
+      "startFlash": "⚡ Start Flash auction",
+      "loading": "..."
+    },
+    "priceError": "Start price must at least match Value ({amount} CZ$)",
+    "squadWarning": "Auction started.\n\nNote: you are now running auctions equal to {total} riders (max {max}). If you are still {exceedBy} over when the window closes: auto-sale + {fine} CZ$ fine + {points} deduction points."
+  },
+  "directOffer": {
+    "buttonOpen": "↔ Send transfer offer",
+    "windowClosed": "Transfer window closed",
+    "amountPlaceholder": "Offer amount in CZ$",
+    "messagePlaceholder": "Message (optional)",
+    "submit": "Send offer",
+    "sending": "Sending...",
+    "toast": {
+      "success": "✅ Offer sent!",
+      "errorPrefix": "❌"
+    }
+  },
+  "swapOffer": {
+    "buttonOpen": "⇄ Propose swap",
+    "windowClosed": "Transfer window closed",
+    "selectRider": "Select rider to offer",
+    "cashLabel": "Cash payment (CZ$)",
+    "cashHint": "Positive: you pay. Negative: you receive.",
+    "submit": "Send swap",
+    "sending": "Sending...",
+    "toast": {
+      "success": "✅ Swap proposed!",
+      "errorPrefix": "❌"
+    }
+  },
+  "loanOffer": {
+    "buttonOpen": "📋 Propose loan",
+    "windowClosed": "Transfer window closed",
+    "seasonPlaceholder": "Season number (e.g. 3)",
+    "feePlaceholder": "Loan fee (CZ$)",
+    "buyOptionPlaceholder": "Buy option (CZ$), optional",
+    "submit": "Send loan proposal",
+    "sending": "Sending...",
+    "toast": {
+      "success": "✅ Loan proposal sent!",
+      "errorPrefix": "❌"
+    }
+  },
+  "celebration": {
+    "title": "You won the auction! 🏆",
+    "subtitle": "The rider is now on your team"
+  }
+}

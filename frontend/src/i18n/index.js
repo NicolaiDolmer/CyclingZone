@@ -46,6 +46,8 @@ import boardDa from "../../public/locales/da/board.json";
 import boardEn from "../../public/locales/en/board.json";
 import adminDa from "../../public/locales/da/admin.json";
 import adminEn from "../../public/locales/en/admin.json";
+import riderDa from "../../public/locales/da/rider.json";
+import riderEn from "../../public/locales/en/rider.json";
 
 const PSEUDO_ENABLED = (() => {
   if (typeof window === "undefined") return false;
@@ -68,11 +70,11 @@ i18n
     supportedLngs: SUPPORTED,
     nonExplicitSupportedLngs: true,
     load: "languageOnly",
-    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help", "board"],
+    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help", "board", "rider"],
     defaultNS: "common",
     resources: {
-      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, help: helpDa, board: boardDa, admin: adminDa },
-      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, help: helpEn, board: boardEn, admin: adminEn },
+      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, help: helpDa, board: boardDa, admin: adminDa, rider: riderDa },
+      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, help: helpEn, board: boardEn, admin: adminEn, rider: riderEn },
     },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],

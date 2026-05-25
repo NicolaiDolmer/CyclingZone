@@ -1,0 +1,248 @@
+{
+  "page": {
+    "back": "← Tilbage",
+    "notFound": "Rytter ikke fundet",
+    "loadingAria": "Indlæser rytter"
+  },
+  "header": {
+    "watchlistAdd": "Tilføj til ønskeliste",
+    "watchlistRemove": "Fjern fra ønskeliste",
+    "compare": "⇄ Sammenlign",
+    "compareTitle": "Sammenlign med andre ryttere",
+    "watchlistCount": "👁 {count, plural, one {1 manager følger denne rytter} other {# managers følger denne rytter}}",
+    "u25": "U25",
+    "retired": "Pensioneret",
+    "ageYears": "{age} år",
+    "heightCm": "{height} cm",
+    "weightKg": "{weight} kg",
+    "potential": "Potentiale",
+    "teamPrefix": "Hold:",
+    "freeAgent": "Fri agent",
+    "activeAuctionBadge": "⚡ Aktiv auktion",
+    "highestBidLabel": "Højeste bud: {amount} CZ$",
+    "valueLabel": "Værdi CZ$",
+    "bestStat": "Bedste: {label} ({value})",
+    "typeDefault": "Allround"
+  },
+  "blocked": {
+    "pendingTransfer": "🔒 Rytteren er vundet på auktion og afventer overførsel til det nye hold. Kan ikke handles før overførslen er gennemført.",
+    "retired": "Rytteren er pensioneret og kan ikke handles.",
+    "errorFallback": "Noget gik galt"
+  },
+  "tabs": {
+    "stats": "Evner",
+    "season": "Sæsonhistorik",
+    "results": "Løbsresultater",
+    "bids": "Bud-historik",
+    "history": "Historik",
+    "development": "Udvikling"
+  },
+  "stats": {
+    "potentialRow": "Potentiale",
+    "loadingDevelopment": "Indlæser udvikling..."
+  },
+  "skills": {
+    "fl": { "short": "FL", "long": "Flad" },
+    "bj": { "short": "BJ", "long": "Bjerg" },
+    "kb": { "short": "KB", "long": "Mellembjerg" },
+    "bk": { "short": "BAK", "long": "Bakke" },
+    "tt": { "short": "TT", "long": "Enkeltstart" },
+    "prl": { "short": "PRL", "long": "Prolog" },
+    "bro": { "short": "BRO", "long": "Brosten" },
+    "sp": { "short": "SP", "long": "Sprint" },
+    "acc": { "short": "ACC", "long": "Acceleration" },
+    "ned": { "short": "NED", "long": "Nedkørsel" },
+    "udh": { "short": "UDH", "long": "Udholdenhed" },
+    "mod": { "short": "MOD", "long": "Modstandsdygtighed" },
+    "res": { "short": "RES", "long": "Restituering" },
+    "ftr": { "short": "FTR", "long": "Fighter" }
+  },
+  "season": {
+    "empty": "Ingen historik endnu",
+    "table": {
+      "year": "År",
+      "wins": "Sejre",
+      "top3": "Top 3",
+      "prizes": "Præmier"
+    }
+  },
+  "results": {
+    "empty": "Ingen løbsresultater endnu",
+    "table": {
+      "race": "Løb",
+      "type": "Type",
+      "position": "Plac.",
+      "prize": "Præmie"
+    },
+    "fallbackDash": "-"
+  },
+  "bids": {
+    "noAuction": "Ingen aktuel auktion for denne rytter",
+    "noBids": "Ingen bud endnu",
+    "soldLabel": "Solgt",
+    "soldFor": "for",
+    "winnerFallback": "Ukendt køber",
+    "sellerPrefix": "Sælger:",
+    "activeAuction": "⚡ Aktiv auktion",
+    "fallbackDash": "-",
+    "row": {
+      "teamFallback": "Ukendt",
+      "autoBidTag": "Autobud",
+      "highestTag": "Højest"
+    }
+  },
+  "history": {
+    "empty": "Ingen handelshistorik endnu",
+    "fallbackDash": "-",
+    "auction": {
+      "labelAi": "AI-salg",
+      "labelGuaranteed": "Garanteret salg",
+      "labelDefault": "Auktion",
+      "wonBy": "vandt af",
+      "buyerFallback": "Ukendt",
+      "sellerFallbackAi": "AI-hold",
+      "sellerFallback": "Ukendt"
+    },
+    "transfer": {
+      "label": "Transfer",
+      "buys": "køber af",
+      "buyerFallback": "Ukendt",
+      "sellerFallback": "Ukendt"
+    },
+    "swap": {
+      "label": "Bytte",
+      "teamFallback": "Ukendt",
+      "cashAdjustment": "Kontantjustering: {amount} CZ$"
+    },
+    "loan": {
+      "label": "Lån",
+      "borrows": "lejer af",
+      "toFallback": "Ukendt",
+      "fromFallback": "Ukendt",
+      "seasonRange": "Sæson {start}–{end}",
+      "feeSuffix": "· {amount} CZ$ gebyr",
+      "status": {
+        "active": "aktiv",
+        "completed": "afsluttet",
+        "buyout": "købsoption",
+        "pending": "afventer",
+        "cancelled": "annulleret",
+        "rejected": "afvist"
+      }
+    }
+  },
+  "auctionPanel": {
+    "activeLabel": "⚡ Aktiv auktion",
+    "badges": {
+      "leading": "Du leder",
+      "selling": "Du sælger",
+      "outbid": "Du er overbudt",
+      "extended": "⚡ Forlænget",
+      "flash": "⚡ Flash"
+    },
+    "highestBid": "Højeste bud",
+    "leaderFallback": "",
+    "timeLeft": "Tid tilbage",
+    "sellerPrefix": "Sælger: {name}",
+    "cannotBidOwn": "Du sælger denne auktion. Kan ikke byde på egen rytter.",
+    "fallbackDash": "-",
+    "bidInputAria": "Dit bud i CZ$",
+    "bidPlace": "Byd",
+    "bidRaise": "Hæv",
+    "bidError": "Fejl",
+    "bidPlaceAria": "Afgiv bud",
+    "bidRaiseAria": "Hæv dit bud",
+    "minBid": "Min. bud: {amount} CZ$",
+    "errorFallback": "Buddet kunne ikke placeres",
+    "proxyErrorFallback": "Fejl ved sæt autobud",
+    "proxy": {
+      "display": "Autobud: max {amount} CZ$",
+      "edit": "Ændr",
+      "editAria": "Ændr autobud-loft",
+      "remove": "Fjern",
+      "removeAria": "Fjern autobud",
+      "addAria": "Sæt autobud-loft",
+      "addButton": "+ Sæt autobud loft",
+      "inputPlaceholder": "Max-loft",
+      "inputAria": "Autobud-loft i CZ$",
+      "save": "Gem",
+      "saveAria": "Gem autobud-loft",
+      "cancelAria": "Annullér autobud-redigering",
+      "error": "Fejl",
+      "saved": "✓"
+    },
+    "riderNameFallback": "rytter"
+  },
+  "countdown": {
+    "completed": "Afsluttet",
+    "expired": "Udløbet",
+    "hoursMinutes": "{h}t {m}m",
+    "minutesSeconds": "{m}m {s}s",
+    "seconds": "{s}s"
+  },
+  "auctionStart": {
+    "label": {
+      "myRider": "Sæt til auktion",
+      "bank": "Start auktion (AI-rytter)",
+      "ai": "Start auktion (AI-rytter)",
+      "free": "Start auktion (fri rytter)"
+    },
+    "guaranteed": {
+      "label": "Garanteret salg",
+      "hint": "(startpris {amount} CZ$, 50% af Værdi)"
+    },
+    "flash": {
+      "label": "⚡ Flash Auktion (30 min)",
+      "hint": "Deadline Day: afsluttes præcis 30 min efter start"
+    },
+    "buttons": {
+      "start": "Start auktion",
+      "startFlash": "⚡ Start Flash Auktion",
+      "loading": "..."
+    },
+    "priceError": "Startpris skal mindst matche Værdi ({amount} CZ$)",
+    "squadWarning": "Auktion startet.\n\nOBS: leder nu auktioner svarende til {total} ryttere (max {max}). Hvis du stadig er {exceedBy} over ved vindue-luk: auto-salg + {fine} CZ$ bøde + {points} fradrag-points."
+  },
+  "directOffer": {
+    "buttonOpen": "↔ Send transfertilbud",
+    "windowClosed": "Transfervindue lukket",
+    "amountPlaceholder": "Tilbudsbeløb i CZ$",
+    "messagePlaceholder": "Besked (valgfri)",
+    "submit": "Send tilbud",
+    "sending": "Sender...",
+    "toast": {
+      "success": "✅ Tilbud sendt!",
+      "errorPrefix": "❌"
+    }
+  },
+  "swapOffer": {
+    "buttonOpen": "⇄ Foreslå byttehandel",
+    "windowClosed": "Transfervindue lukket",
+    "selectRider": "Vælg rytter du tilbyder",
+    "cashLabel": "Kontantbetaling (CZ$)",
+    "cashHint": "Positiv: du betaler. Negativ: du modtager.",
+    "submit": "Send byttehandel",
+    "sending": "Sender...",
+    "toast": {
+      "success": "✅ Byttehandel foreslået!",
+      "errorPrefix": "❌"
+    }
+  },
+  "loanOffer": {
+    "buttonOpen": "📋 Foreslå lejeaftale",
+    "windowClosed": "Transfervindue lukket",
+    "seasonPlaceholder": "Sæsonnummer (fx. 3)",
+    "feePlaceholder": "Lejegebyr (CZ$)",
+    "buyOptionPlaceholder": "Købsoption (CZ$), valgfri",
+    "submit": "Send lejeforslag",
+    "sending": "Sender...",
+    "toast": {
+      "success": "✅ Lejeforslag sendt!",
+      "errorPrefix": "❌"
+    }
+  },
+  "celebration": {
+    "title": "Du vandt auktionen! 🏆",
+    "subtitle": "Rytteren er nu på dit hold"
+  }
+}
