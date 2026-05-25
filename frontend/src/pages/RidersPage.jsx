@@ -1,4 +1,5 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import RiderFilters, { DEFAULT_FILTERS } from "../components/RiderFilters";
 import { buildSupabaseQuery } from "../lib/useRiderFilters";
 import {
@@ -18,6 +19,7 @@ import OnboardingTour from "../components/OnboardingTour";
 import WatchlistStar from "../components/WatchlistStar";
 import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSelection";
 import { startTour } from "../lib/onboardingTour";
+import { formatNumber } from "../lib/intl";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -26,23 +28,26 @@ const API = import.meta.env.VITE_API_URL;
 const FILTER_DEFAULTS = { ...DEFAULT_FILTERS, page: 1 };
 
 // Onboarding v2 Slice 1b — tour-trin på /riders (aktiveres fra Dashboard "Vis mig hvordan").
-const RIDERS_TOUR_STEPS = [
-  {
-    target: "[data-tour='riders-filters']",
-    title: "Filtrér listen til dit budget",
-    body: "Sæt 'Værdi max' til din balance for kun at se ryttere du har råd til. U25/Fri agent-knapperne åbner billigere veje.",
-  },
-  {
-    target: "[data-tour='riders-list']",
-    title: "Klik på en rytter",
-    body: "Detaljesiden viser fulde stats, kontraktstatus og købs-/auktionsmuligheder. Du kan starte en auktion eller sende et tilbud derfra.",
-  },
-  {
-    target: "[data-tour='riders-watchlist']",
-    title: "Brug ønskelisten",
-    body: "Stjernen tilføjer rytteren til din ønskeliste, så du nemt kan vende tilbage. Listen findes også i menuen under Marked → Ønskeliste.",
-  },
-];
+// Bygges fra t() ved render-tid, så sproget følger den aktive locale (Refs #487).
+function buildRidersTourSteps(t) {
+  return [
+    {
+      target: "[data-tour='riders-filters']",
+      title: t("tour.filters.title"),
+      body: t("tour.filters.body"),
+    },
+    {
+      target: "[data-tour='riders-list']",
+      title: t("tour.list.title"),
+      body: t("tour.list.body"),
+    },
+    {
+      target: "[data-tour='riders-watchlist']",
+      title: t("tour.watchlist.title"),
+      body: t("tour.watchlist.body"),
+    },
+  ];
+}
 
 const STATS = [
   { key: "stat_fl", label: "FL" }, { key: "stat_bj", label: "BJ" },
@@ -72,13 +77,13 @@ function StatBar({ value }) {
         <div className="bg-cz-3 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
       </div>
       <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded flex-shrink-0 ${statBg(value ?? 0)}`}>
-        {value ?? "—"}
+        {value ?? "-"}
       </span>
     </div>
   );
 }
 
-function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, compareActive, compareDisabled, onToggleCompare }) {
+function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, compareActive, compareDisabled, onToggleCompare, t }) {
   return (
     <tr className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors ${compareActive ? "bg-cz-accent/[0.04]" : ""}`}>
       <td className="px-3 py-2.5" onClick={() => onSelect(rider)}>
@@ -93,9 +98,9 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, 
               <span className="text-[9px] uppercase bg-cz-info/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
             )}
             {isInAuction && (
-              <span className="text-[9px] uppercase bg-cz-accent/100/15 text-cz-accent-t px-1.5 py-0.5 rounded">⚡ Auktion</span>
+              <span className="text-[9px] uppercase bg-cz-accent/100/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("table.auctionBadge")}</span>
             )}
-            <span className="text-cz-3 text-xs">{rider.team?.name || "Fri"}</span>
+            <span className="text-cz-3 text-xs">{rider.team?.name || t("table.teamFree")}</span>
           </div>
         </div>
       </td>
@@ -107,12 +112,12 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, 
       </td>
       <td className="px-3 py-2.5 text-right" onClick={() => onSelect(rider)}>
         <span className="text-cz-accent-t font-mono text-sm font-bold">
-          {getRiderMarketValue(rider).toLocaleString("da-DK")}
+          {formatNumber(getRiderMarketValue(rider))}
         </span>
       </td>
       <td className="px-3 py-2.5 text-right" onClick={() => onSelect(rider)}>
         <span className="text-cz-2 font-mono text-sm">
-          {rider.salary ? rider.salary.toLocaleString("da-DK") : "—"}
+          {rider.salary ? formatNumber(rider.salary) : "-"}
         </span>
       </td>
       <td className="px-3 py-2.5" onClick={() => onSelect(rider)}>
@@ -128,6 +133,7 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, 
 }
 
 export default function RidersPage() {
+  const { t } = useTranslation("riders");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [riders, setRiders] = useState([]);
@@ -143,6 +149,8 @@ export default function RidersPage() {
   const [myTeam, setMyTeam] = useState(null);
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [compareIds, setCompareIds] = useState([]);
+
+  const ridersTourSteps = buildRidersTourSteps(t);
 
   function toggleCompare(riderId) {
     setCompareIds(prev => {
@@ -256,16 +264,16 @@ export default function RidersPage() {
 
   return (
     <div className="max-w-full">
-      <OnboardingTour pageKey="riders" steps={RIDERS_TOUR_STEPS} />
+      <OnboardingTour pageKey="riders" steps={ridersTourSteps} />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-xl font-bold text-cz-1">Rytterdatabase</h1>
-          <p className="text-cz-3 text-sm">{total.toLocaleString("da-DK")} ryttere</p>
+          <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
+          <p className="text-cz-3 text-sm">{t("page.subtitle", { count: formatNumber(total) })}</p>
         </div>
         <Link to="/watchlist" data-tour="riders-watchlist"
           className="w-full sm:w-auto text-center px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
             rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
-          ⭐ Min ønskeliste ({watchlist.size})
+          {t("page.watchlistLink", { count: watchlist.size })}
         </Link>
       </div>
 
@@ -293,15 +301,15 @@ export default function RidersPage() {
               <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
                 <tr className="border-b border-cz-border">
                   <SortTh sortKey="firstname" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium uppercase tracking-wider w-48">Rytter</SortTh>
-                  <th className="px-1 py-3 w-8" title="Vælg til sammenligning">⇄</th>
+                    className="px-3 py-3 text-left font-medium uppercase tracking-wider w-48">{t("table.rider")}</SortTh>
+                  <th className="px-1 py-3 w-8" title={t("table.compareTooltip")}>⇄</th>
                   <th className="px-2 py-3 w-8" />
                   <SortTh sortKey="uci_points" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">Værdi</SortTh>
+                    className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">{t("table.value")}</SortTh>
                   <SortTh sortKey="salary" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">Løn</SortTh>
+                    className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">{t("table.salary")}</SortTh>
                   <SortTh sortKey="potentiale" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium uppercase tracking-wider w-24">Potentiale</SortTh>
+                    className="px-3 py-3 text-left font-medium uppercase tracking-wider w-24">{t("table.potential")}</SortTh>
                   {STATS.map(({ key, label }) => (
                     <SortTh key={key} sortKey={key} sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                       className="px-1.5 py-3 text-center font-medium w-14">{label}</SortTh>
@@ -317,7 +325,8 @@ export default function RidersPage() {
                     isInAuction={activeAuctionRiders.has(r.id)}
                     compareActive={compareIds.includes(r.id)}
                     compareDisabled={compareIds.length >= MAX_COMPARE}
-                    onToggleCompare={toggleCompare} />
+                    onToggleCompare={toggleCompare}
+                    t={t} />
                 ))}
               </tbody>
             </table>
@@ -328,20 +337,24 @@ export default function RidersPage() {
       {/* Pagination */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
         <span className="text-cz-3 text-xs">
-          Viser {Math.min((filters.page - 1) * 50 + 1, total)}–{Math.min(filters.page * 50, total)} af {total.toLocaleString("da-DK")}
+          {t("pagination.showing", {
+            from: Math.min((filters.page - 1) * 50 + 1, total),
+            to: Math.min(filters.page * 50, total),
+            total: formatNumber(total),
+          })}
         </span>
         <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
           <button disabled={filters.page <= 1}
             onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}
             className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
               hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed">
-            ← Forrige
+            {t("pagination.prev")}
           </button>
           <button disabled={filters.page * 50 >= total}
             onClick={() => setFilters(f => ({ ...f, page: f.page + 1 }))}
             className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
               hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed">
-            Næste →
+            {t("pagination.next")}
           </button>
         </div>
       </div>

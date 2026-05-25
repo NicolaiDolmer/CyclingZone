@@ -1,0 +1,55 @@
+{
+  "panel": {
+    "label": "Filter",
+    "reset": "Reset"
+  },
+  "fields": {
+    "name": "Name",
+    "namePlaceholder": "Search rider...",
+    "country": "Country",
+    "countryAll": "All countries",
+    "valueRange": "Value CZ$ (min-max)",
+    "salaryRange": "Salary CZ$ (min-max)",
+    "ageRange": "Age (min-max)",
+    "bidRange": "Highest bid CZ$ (min-max)",
+    "potentialRange": "Potential (min-max)",
+    "team": "Team",
+    "teamAll": "All teams",
+    "min": "Min",
+    "max": "Max"
+  },
+  "toggles": {
+    "freeAgent": "Free agent",
+    "u25": "U25",
+    "u23": "U23"
+  },
+  "stats": {
+    "section": "Stat filters",
+    "active": "{count} active"
+  },
+  "chips": {
+    "value": {
+      "min": "Value ≥ {amount} CZ$",
+      "max": "Value ≤ {amount} CZ$"
+    },
+    "salary": {
+      "min": "Salary ≥ {amount} CZ$",
+      "max": "Salary ≤ {amount} CZ$"
+    },
+    "age": {
+      "min": "Age ≥ {value}",
+      "max": "Age ≤ {value}"
+    },
+    "potential": {
+      "min": "Pot. ≥ {value}",
+      "max": "Pot. ≤ {value}"
+    },
+    "bid": {
+      "min": "Bid ≥ {amount} CZ$",
+      "max": "Bid ≤ {amount} CZ$"
+    },
+    "teamSelected": "Team selected",
+    "statRange": "{label} {min}-{max}",
+    "remove": "Remove filter: {label}"
+  }
+}

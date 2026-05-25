@@ -1,0 +1,48 @@
+{
+  "page": {
+    "title": "Rytterdatabase",
+    "subtitle": "{count} ryttere",
+    "watchlistLink": "⭐ Min ønskeliste ({count})",
+    "loadingAria": "Indlæser ryttere"
+  },
+  "table": {
+    "rider": "Rytter",
+    "value": "Værdi",
+    "salary": "Løn",
+    "potential": "Potentiale",
+    "compareTooltip": "Vælg til sammenligning",
+    "teamFree": "Fri",
+    "auctionBadge": "⚡ Auktion"
+  },
+  "pagination": {
+    "showing": "Viser {from}-{to} af {total}",
+    "prev": "← Forrige",
+    "next": "Næste →"
+  },
+  "tour": {
+    "filters": {
+      "title": "Filtrér listen til dit budget",
+      "body": "Sæt 'Værdi max' til din balance for kun at se ryttere du har råd til. U25 / Fri agent-knapperne åbner billigere veje."
+    },
+    "list": {
+      "title": "Klik på en rytter",
+      "body": "Detaljesiden viser fulde stats, kontraktstatus og købs- eller auktionsmuligheder. Du kan starte en auktion eller sende et tilbud derfra."
+    },
+    "watchlist": {
+      "title": "Brug ønskelisten",
+      "body": "Stjernen tilføjer rytteren til din ønskeliste, så du nemt kan vende tilbage. Listen findes også i menuen under Marked: Ønskeliste."
+    }
+  },
+  "emptyState": {
+    "title": "Byg dit første hold",
+    "intro": "Du har endnu ingen ryttere. Brug filtrene nedenfor til at finde rytterne der passer til din strategi og dit budget.",
+    "balance": "Din balance",
+    "squadMin": "Squad-minimum (Division {division})",
+    "squadMinRiders": "{count} ryttere",
+    "tipValue": "<strong>Værdi-filtre</strong> = pris-loft i CZ$. Sæt max under din balance for at se kun overkommelige ryttere.",
+    "tipStats": "<strong>Stat-filtre</strong> = sportsegenskaber (BJ, SP, TT...). Start bredt og indsnævr senere.",
+    "tipBudget": "<strong>U25 / Fri agent</strong> = budget-venlige veje: yngre potentiale eller ryttere uden kontrakt.",
+    "ctaFindFirst": "Find din første rytter (≤ {balance} CZ$)",
+    "ctaTour": "💡 Vis mig rundt"
+  }
+}

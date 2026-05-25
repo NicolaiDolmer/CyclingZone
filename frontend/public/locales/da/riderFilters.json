@@ -1,0 +1,55 @@
+{
+  "panel": {
+    "label": "Filtrér",
+    "reset": "Nulstil"
+  },
+  "fields": {
+    "name": "Navn",
+    "namePlaceholder": "Søg rytter...",
+    "country": "Land",
+    "countryAll": "Alle lande",
+    "valueRange": "Værdi CZ$ (min-max)",
+    "salaryRange": "Løn CZ$ (min-max)",
+    "ageRange": "Alder (min-max)",
+    "bidRange": "Højeste bud CZ$ (min-max)",
+    "potentialRange": "Potentiale (min-max)",
+    "team": "Hold",
+    "teamAll": "Alle hold",
+    "min": "Min",
+    "max": "Max"
+  },
+  "toggles": {
+    "freeAgent": "Fri agent",
+    "u25": "U25",
+    "u23": "U23"
+  },
+  "stats": {
+    "section": "Evne-filtre",
+    "active": "{count} aktive"
+  },
+  "chips": {
+    "value": {
+      "min": "Værdi ≥ {amount} CZ$",
+      "max": "Værdi ≤ {amount} CZ$"
+    },
+    "salary": {
+      "min": "Løn ≥ {amount} CZ$",
+      "max": "Løn ≤ {amount} CZ$"
+    },
+    "age": {
+      "min": "Alder ≥ {value}",
+      "max": "Alder ≤ {value}"
+    },
+    "potential": {
+      "min": "Pot. ≥ {value}",
+      "max": "Pot. ≤ {value}"
+    },
+    "bid": {
+      "min": "Bud ≥ {amount} CZ$",
+      "max": "Bud ≤ {amount} CZ$"
+    },
+    "teamSelected": "Hold valgt",
+    "statRange": "{label} {min}-{max}",
+    "remove": "Fjern filter: {label}"
+  }
+}
