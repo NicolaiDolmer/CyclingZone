@@ -1,9 +1,11 @@
 import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import PotentialeStars from "../components/PotentialeStars";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { RacePriceModal } from "../components/RacePriceModal";
@@ -23,22 +25,29 @@ import TeamLink from "../components/TeamLink";
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazy(() => import("../components/RiderDevelopmentTab"));
 
+// Skill-rows konstanteres med en stabil i18n-`slug` der mapper til `rider.skills.<slug>.short/long`.
+// `key` er DB-kolonnen (stat_fl ...), `icon` er ASCII/unicode-symbolet vi viser foran labelen.
+// Holder samme rækkefølge som tidligere så bestStat/typeLabel-arithmetic ikke ændres.
 const STATS = [
-  { key: "stat_fl",  label: "Flad",              icon: "═" },
-  { key: "stat_bj",  label: "Bjerg",             icon: "▲" },
-  { key: "stat_kb",  label: "Mellembjerg",        icon: "△" },
-  { key: "stat_bk",  label: "Bakke",             icon: "∧" },
-  { key: "stat_tt",  label: "Enkeltstart",        icon: "⏱" },
-  { key: "stat_prl", label: "Prolog",             icon: "◷" },
-  { key: "stat_bro", label: "Brosten",            icon: "⬡" },
-  { key: "stat_sp",  label: "Sprint",             icon: "⚡" },
-  { key: "stat_acc", label: "Acceleration",       icon: "▶" },
-  { key: "stat_ned", label: "Nedkørsel",          icon: "↓" },
-  { key: "stat_udh", label: "Udholdenhed",        icon: "◎" },
-  { key: "stat_mod", label: "Modstandsdygtighed", icon: "◈" },
-  { key: "stat_res", label: "Restituering",       icon: "↺" },
-  { key: "stat_ftr", label: "Fighter",            icon: "★" },
+  { key: "stat_fl",  slug: "fl",  icon: "═" },
+  { key: "stat_bj",  slug: "bj",  icon: "▲" },
+  { key: "stat_kb",  slug: "kb",  icon: "△" },
+  { key: "stat_bk",  slug: "bk",  icon: "∧" },
+  { key: "stat_tt",  slug: "tt",  icon: "⏱" },
+  { key: "stat_prl", slug: "prl", icon: "◷" },
+  { key: "stat_bro", slug: "bro", icon: "⬡" },
+  { key: "stat_sp",  slug: "sp",  icon: "⚡" },
+  { key: "stat_acc", slug: "acc", icon: "▶" },
+  { key: "stat_ned", slug: "ned", icon: "↓" },
+  { key: "stat_udh", slug: "udh", icon: "◎" },
+  { key: "stat_mod", slug: "mod", icon: "◈" },
+  { key: "stat_res", slug: "res", icon: "↺" },
+  { key: "stat_ftr", slug: "ftr", icon: "★" },
 ];
+
+function buildSkillsLocalized(t) {
+  return STATS.map(s => ({ ...s, label: t(`skills.${s.slug}.long`) }));
+}
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -55,12 +64,13 @@ function StatRow({ label, icon, value }) {
       <div className="flex-1 bg-cz-subtle rounded-full h-2">
         <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
-      <span className="font-mono text-sm font-bold w-8 text-right flex-shrink-0" style={{ color }}>{value ?? "—"}</span>
+      <span className="font-mono text-sm font-bold w-8 text-right flex-shrink-0" style={{ color }}>{value ?? "-"}</span>
     </div>
   );
 }
 
 function SwapOfferButton({ rider, myTeamId }) {
+  const { t } = useTranslation("rider");
   const [show, setShow]         = useState(false);
   const [myRiders, setMyRiders] = useState([]);
   const [offeredId, setOfferedId] = useState("");
@@ -104,8 +114,8 @@ function SwapOfferButton({ rider, myTeamId }) {
       body: JSON.stringify({ offered_rider_id: offeredId, requested_rider_id: rider.id, cash_adjustment: cash }),
     });
     const data = await res.json();
-    if (res.ok) { setResult({ ok: true, msg: "✅ Byttehandel foreslået!" }); setShow(false); }
-    else        { setResult({ ok: false, msg: `❌ ${data.error}` }); }
+    if (res.ok) { setResult({ ok: true, msg: t("swapOffer.toast.success") }); setShow(false); }
+    else        { setResult({ ok: false, msg: `${t("swapOffer.toast.errorPrefix")} ${data.error}` }); }
     setLoading(false);
     setTimeout(() => setResult(null), 4000);
   }
@@ -125,26 +135,26 @@ function SwapOfferButton({ rider, myTeamId }) {
             : show
               ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
-        {windowOpen ? "⇄ Foreslå byttehandel" : "Transfervindue lukket"}
+        {windowOpen ? t("swapOffer.buttonOpen") : t("swapOffer.windowClosed")}
       </button>
       {show && windowOpen && (
         <div className="mt-3 flex flex-col gap-2">
           <select value={offeredId} onChange={e => setOfferedId(e.target.value)}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent">
-            <option value="">Vælg rytter du tilbyder</option>
+            <option value="">{t("swapOffer.selectRider")}</option>
             {myRiders.map(r => (
-              <option key={r.id} value={r.id}>{r.firstname} {r.lastname} ({getRiderMarketValue(r).toLocaleString("da-DK")} CZ$)</option>
+              <option key={r.id} value={r.id}>{r.firstname} {r.lastname} ({formatNumber(getRiderMarketValue(r))} CZ$)</option>
             ))}
           </select>
           <div className="flex items-center gap-2">
-            <label className="text-cz-3 text-xs flex-shrink-0">Kontantbetaling (CZ$)</label>
+            <label className="text-cz-3 text-xs flex-shrink-0">{t("swapOffer.cashLabel")}</label>
             <input type="number" value={cash} onChange={e => setCash(parseInt(e.target.value) || 0)}
               className="flex-1 min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           </div>
-          <p className="text-cz-3 text-xs">Positiv = du betaler, negativ = du modtager</p>
+          <p className="text-cz-3 text-xs">{t("swapOffer.cashHint")}</p>
           <button onClick={sendSwap} disabled={loading || !offeredId}
             className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
-            {loading ? "Sender..." : "Send byttehandel"}
+            {loading ? t("swapOffer.sending") : t("swapOffer.submit")}
           </button>
         </div>
       )}
@@ -153,6 +163,7 @@ function SwapOfferButton({ rider, myTeamId }) {
 }
 
 function LoanOfferButton({ rider }) {
+  const { t } = useTranslation("rider");
   const [show, setShow]         = useState(false);
   const [loanFee, setLoanFee]   = useState(0);
   const [season, setSeason]     = useState("");
@@ -187,8 +198,8 @@ function LoanOfferButton({ rider }) {
       }),
     });
     const data = await res.json();
-    if (res.ok) { setResult({ ok: true, msg: "✅ Lejeforslag sendt!" }); setShow(false); }
-    else        { setResult({ ok: false, msg: `❌ ${data.error}` }); }
+    if (res.ok) { setResult({ ok: true, msg: t("loanOffer.toast.success") }); setShow(false); }
+    else        { setResult({ ok: false, msg: `${t("loanOffer.toast.errorPrefix")} ${data.error}` }); }
     setLoading(false);
     setTimeout(() => setResult(null), 4000);
   }
@@ -208,22 +219,22 @@ function LoanOfferButton({ rider }) {
             : show
               ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
-        {windowOpen ? "📋 Foreslå lejeaftale" : "Transfervindue lukket"}
+        {windowOpen ? t("loanOffer.buttonOpen") : t("loanOffer.windowClosed")}
       </button>
       {show && windowOpen && (
         <div className="mt-3 flex flex-col gap-2">
           <input type="number" value={season} onChange={e => setSeason(e.target.value)}
-            placeholder="Sæsonnummer (fx. 3)"
+            placeholder={t("loanOffer.seasonPlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           <input type="number" value={loanFee} onChange={e => setLoanFee(parseInt(e.target.value) || 0)}
-            placeholder="Lejegebyr (CZ$)"
+            placeholder={t("loanOffer.feePlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           <input type="number" value={buyOption} onChange={e => setBuyOption(e.target.value)}
-            placeholder="Købsoption (CZ$) — valgfri"
+            placeholder={t("loanOffer.buyOptionPlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           <button onClick={sendLoan} disabled={loading || !season}
             className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
-            {loading ? "Sender..." : "Send lejeforslag"}
+            {loading ? t("loanOffer.sending") : t("loanOffer.submit")}
           </button>
         </div>
       )}
@@ -232,6 +243,7 @@ function LoanOfferButton({ rider }) {
 }
 
 function DirectOfferButton({ rider }) {
+  const { t } = useTranslation("rider");
   const [show, setShow]       = useState(false);
   const [amount, setAmount]   = useState(getRiderMarketValue(rider));
   const [message, setMessage] = useState("");
@@ -262,9 +274,9 @@ function DirectOfferButton({ rider }) {
     const data = await res.json();
     if (res.ok) {
       logEvent("transfer_offer_sent", { rider_id: rider.id, amount });
-      setResult({ ok: true, msg: "✅ Tilbud sendt!" }); setShow(false);
+      setResult({ ok: true, msg: t("directOffer.toast.success") }); setShow(false);
     }
-    else        { setResult({ ok: false, msg: `❌ ${data.error}` }); }
+    else        { setResult({ ok: false, msg: `${t("directOffer.toast.errorPrefix")} ${data.error}` }); }
     setLoading(false);
     setConfirmOpen(false);
     setTimeout(() => setResult(null), 4000);
@@ -289,19 +301,19 @@ function DirectOfferButton({ rider }) {
             : show
               ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
-        {windowOpen ? "↔ Send transfertilbud" : "Transfervindue lukket"}
+        {windowOpen ? t("directOffer.buttonOpen") : t("directOffer.windowClosed")}
       </button>
       {show && windowOpen && (
         <div className="mt-3 flex flex-col gap-2">
           <input type="number" value={amount} min={1} onChange={e => setAmount(parseInt(e.target.value) || 0)}
-            placeholder="Tilbudsbeløb i CZ$"
+            placeholder={t("directOffer.amountPlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           <input type="text" value={message} onChange={e => setMessage(e.target.value)}
-            placeholder="Besked (valgfri)"
+            placeholder={t("directOffer.messagePlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
           <button onClick={sendOffer} disabled={loading || amount <= 0}
             className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
-            {loading ? "Sender..." : "Send tilbud"}
+            {loading ? t("directOffer.sending") : t("directOffer.submit")}
           </button>
         </div>
       )}
@@ -322,23 +334,24 @@ function DirectOfferButton({ rider }) {
 // matching AuctionCard. Bruger samme useAuctionBidding-hook som AuctionRow + AuctionCard
 // så bid-flowet er identisk: balance-gate → confirm-modal → race-confirm ved 409.
 function AuctionCountdown({ end, status }) {
+  const { t } = useTranslation("rider");
   const [text, setText] = useState("");
   const [urgent, setUrgent] = useState(false);
   useEffect(() => {
-    if (status === "completed") { setText("Afsluttet"); return; }
+    if (status === "completed") { setText(t("countdown.completed")); return; }
     function update() {
       const diff = new Date(end) - new Date();
-      if (diff <= 0) { setText("Udløbet"); return; }
+      if (diff <= 0) { setText(t("countdown.expired")); return; }
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
       const s = Math.floor((diff % 60000) / 1000);
       setUrgent(diff < 600000);
-      setText(h > 0 ? `${h}t ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`);
+      setText(h > 0 ? t("countdown.hoursMinutes", { h, m }) : m > 0 ? t("countdown.minutesSeconds", { m, s }) : t("countdown.seconds", { s }));
     }
     update();
-    const t = setInterval(update, 1000);
-    return () => clearInterval(t);
-  }, [end, status]);
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [end, status, t]);
   return (
     <span className={`font-mono font-bold text-base tabular-nums ${urgent ? "text-cz-danger animate-pulse" : "text-cz-2"}`}>
       {text}
@@ -347,6 +360,7 @@ function AuctionCountdown({ end, status }) {
 }
 
 function RiderBidPanel({ auction, myTeamId, myAvailableBalance, riderName, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFlashing }) {
+  const { t } = useTranslation("rider");
   const r = auction?.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller  = isManagerSeller(auction, myTeamId);
@@ -362,42 +376,42 @@ function RiderBidPanel({ auction, myTeamId, myAvailableBalance, riderName, onBid
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
     auction, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, requestBidConfirm,
-    riderName: riderName || "rytter",
+    riderName: riderName || t("auctionPanel.riderNameFallback"),
   });
 
   return (
     <div className={`rounded-xl border p-4 ${imWinning ? "border-cz-accent/40 bg-cz-accent/[0.04]" : "border-cz-border bg-cz-subtle"}`}>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-        <p className="text-cz-3 text-xs uppercase tracking-widest">⚡ Aktiv auktion</p>
+        <p className="text-cz-3 text-xs uppercase tracking-widest">{t("auctionPanel.activeLabel")}</p>
         <div className="flex items-center gap-1.5 flex-wrap">
-          {imWinning && <span className="text-[10px] uppercase bg-cz-accent/15 text-cz-accent-t px-2 py-0.5 rounded font-semibold">Du leder</span>}
-          {isSeller && <span className="text-[10px] uppercase bg-cz-info-bg text-cz-info px-2 py-0.5 rounded font-semibold">Du sælger</span>}
-          {wasOverbid && <span className="text-[10px] uppercase bg-cz-danger-bg text-cz-danger px-2 py-0.5 rounded font-semibold">Du er overbudt</span>}
-          {auction.status === "extended" && <span className="text-[10px] uppercase bg-cz-warning-bg text-cz-warning px-2 py-0.5 rounded">⚡ Forlænget</span>}
-          {auction.is_flash && <span className="text-[10px] uppercase bg-cz-danger-bg text-cz-danger px-2 py-0.5 rounded">⚡ Flash</span>}
+          {imWinning && <span className="text-[10px] uppercase bg-cz-accent/15 text-cz-accent-t px-2 py-0.5 rounded font-semibold">{t("auctionPanel.badges.leading")}</span>}
+          {isSeller && <span className="text-[10px] uppercase bg-cz-info-bg text-cz-info px-2 py-0.5 rounded font-semibold">{t("auctionPanel.badges.selling")}</span>}
+          {wasOverbid && <span className="text-[10px] uppercase bg-cz-danger-bg text-cz-danger px-2 py-0.5 rounded font-semibold">{t("auctionPanel.badges.outbid")}</span>}
+          {auction.status === "extended" && <span className="text-[10px] uppercase bg-cz-warning-bg text-cz-warning px-2 py-0.5 rounded">{t("auctionPanel.badges.extended")}</span>}
+          {auction.is_flash && <span className="text-[10px] uppercase bg-cz-danger-bg text-cz-danger px-2 py-0.5 rounded">{t("auctionPanel.badges.flash")}</span>}
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className={`bg-cz-card rounded-lg px-3 py-2 ${isFlashing ? "cz-pulse-flash" : ""}`}>
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Højeste bud</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctionPanel.highestBid")}</p>
           <p className="text-cz-1 font-mono font-bold text-base">
-            {auction.current_price?.toLocaleString("da-DK")} CZ$
+            {formatNumber(auction.current_price)} CZ$
           </p>
           {getAuctionLeaderName(auction) && !imWinning && (
             <p className="text-cz-3 text-[10px] truncate">{getAuctionLeaderName(auction)}</p>
           )}
         </div>
         <div className="bg-cz-card rounded-lg px-3 py-2">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">Tid tilbage</p>
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctionPanel.timeLeft")}</p>
           <AuctionCountdown end={auction.calculated_end} status={auction.status} />
-          <p className="text-cz-3 text-[10px] truncate">Sælger: {getAuctionSellerLabel(auction)}</p>
+          <p className="text-cz-3 text-[10px] truncate">{t("auctionPanel.sellerPrefix", { name: getAuctionSellerLabel(auction) })}</p>
         </div>
       </div>
 
       {!canBid ? (
         <p className="text-cz-3 text-xs text-center py-2">
-          {isSeller ? "Du sælger denne auktion — kan ikke byde på egen rytter" : "—"}
+          {isSeller ? t("auctionPanel.cannotBidOwn") : t("auctionPanel.fallbackDash")}
         </p>
       ) : (
         <div className="flex flex-col gap-2">
@@ -407,22 +421,22 @@ function RiderBidPanel({ auction, myTeamId, myAvailableBalance, riderName, onBid
               value={bidAmount}
               min={minBid}
               onChange={e => { const v = parseInt(e.target.value, 10); setBidAmount(isNaN(v) ? 0 : v); }}
-              aria-label="Dit bud i CZ$"
+              aria-label={t("auctionPanel.bidInputAria")}
               className="min-w-0 min-h-[44px] bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
             />
             <button
               onClick={handleBid}
               disabled={bidStatus === "loading" || bidAmount < minBid}
-              aria-label={imWinning ? "Hæv dit bud" : "Afgiv bud"}
+              aria-label={imWinning ? t("auctionPanel.bidRaiseAria") : t("auctionPanel.bidPlaceAria")}
               className={`min-h-[44px] px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
                 ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                   bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                   imWinning ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}
                 disabled:opacity-50`}>
-              {bidStatus === "loading" ? "..." : bidStatus === "error" ? "Fejl" : bidStatus === "success" ? "✓" : imWinning ? "Hæv" : "Byd"}
+              {bidStatus === "loading" ? "..." : bidStatus === "error" ? t("auctionPanel.bidError") : bidStatus === "success" ? "✓" : imWinning ? t("auctionPanel.bidRaise") : t("auctionPanel.bidPlace")}
             </button>
           </div>
-          <p className="text-[10px] text-cz-3">Min. bud: {minBid.toLocaleString("da-DK")} CZ$</p>
+          <p className="text-[10px] text-cz-3">{t("auctionPanel.minBid", { amount: formatNumber(minBid) })}</p>
           {bidStatus === "error" && errorText && <p className="text-[11px] text-cz-danger">{errorText}</p>}
           {warningText && <p className="text-[11px] text-cz-warning leading-snug">{warningText}</p>}
 
@@ -431,30 +445,30 @@ function RiderBidPanel({ auction, myTeamId, myAvailableBalance, riderName, onBid
             {myProxy && !proxyExpanded ? (
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] bg-cz-success-bg text-cz-success px-2 py-1 rounded-lg">
-                  Autobud: max {myProxy.toLocaleString("da-DK")} CZ$
+                  {t("auctionPanel.proxy.display", { amount: formatNumber(myProxy) })}
                 </span>
                 <button
                   onClick={() => setProxyExpanded(true)}
-                  aria-label="Ændr autobud-loft"
+                  aria-label={t("auctionPanel.proxy.editAria")}
                   className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-2"
                 >
-                  Ændr
+                  {t("auctionPanel.proxy.edit")}
                 </button>
                 <button
                   onClick={handleRemoveProxy}
-                  aria-label="Fjern autobud"
+                  aria-label={t("auctionPanel.proxy.removeAria")}
                   className="min-h-[44px] px-3 text-xs text-cz-3 hover:text-cz-danger"
                 >
-                  Fjern
+                  {t("auctionPanel.proxy.remove")}
                 </button>
               </div>
             ) : !proxyExpanded ? (
               <button
                 onClick={() => setProxyExpanded(true)}
-                aria-label="Sæt autobud-loft"
+                aria-label={t("auctionPanel.proxy.addAria")}
                 className="min-h-[44px] rounded-lg border border-cz-accent/50 bg-cz-accent/10 px-3 text-xs font-bold text-cz-accent-t hover:bg-cz-accent/20"
               >
-                + Sæt autobud loft
+                {t("auctionPanel.proxy.addButton")}
               </button>
             ) : (
               <div className="flex flex-col gap-1">
@@ -464,24 +478,24 @@ function RiderBidPanel({ auction, myTeamId, myAvailableBalance, riderName, onBid
                     value={proxyInput}
                     min={minBid}
                     onChange={e => { const v = parseInt(e.target.value, 10); setProxyInput(isNaN(v) ? 0 : v); }}
-                    placeholder="Max-loft"
-                    aria-label="Autobud-loft i CZ$"
+                    placeholder={t("auctionPanel.proxy.inputPlaceholder")}
+                    aria-label={t("auctionPanel.proxy.inputAria")}
                     className="min-w-0 w-32 min-h-[44px] bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
                   />
                   <button
                     onClick={handleSaveProxy}
                     disabled={proxyStatus === "loading" || proxyInput < minBid}
-                    aria-label="Gem autobud-loft"
+                    aria-label={t("auctionPanel.proxy.saveAria")}
                     className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap
                       ${proxyStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                         proxyStatus === "saved" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                         "bg-cz-card border border-cz-border text-cz-2 hover:border-cz-accent hover:text-cz-accent-t"}
                       disabled:opacity-50`}>
-                    {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? "Fejl" : proxyStatus === "saved" ? "✓" : "Gem"}
+                    {proxyStatus === "loading" ? "..." : proxyStatus === "error" ? t("auctionPanel.proxy.error") : proxyStatus === "saved" ? t("auctionPanel.proxy.saved") : t("auctionPanel.proxy.save")}
                   </button>
                   <button
                     onClick={() => setProxyExpanded(false)}
-                    aria-label="Annullér autobud-redigering"
+                    aria-label={t("auctionPanel.proxy.cancelAria")}
                     className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-cz-3 hover:text-cz-2"
                   >
                     ✕
@@ -500,6 +514,7 @@ function RiderBidPanel({ auction, myTeamId, myAvailableBalance, riderName, onBid
 }
 
 function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
+  const { t } = useTranslation("rider");
   const riderValue      = getRiderMarketValue(rider);
   const [guaranteed, setGuaranteed] = useState(false);
   const [price, setPrice]           = useState(riderValue);
@@ -519,9 +534,9 @@ function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
         <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
           <input type="checkbox" checked={guaranteed} onChange={e => setGuaranteed(e.target.checked)}
             className="rounded accent-amber-600" />
-          <span className="text-sm text-cz-2 font-medium">Garanteret salg</span>
+          <span className="text-sm text-cz-2 font-medium">{t("auctionStart.guaranteed.label")}</span>
           <span className="text-xs text-cz-3">
-            (startpris {guaranteedPrice.toLocaleString("da-DK")} CZ$ — 50% af Værdi)
+            {t("auctionStart.guaranteed.hint", { amount: formatNumber(guaranteedPrice) })}
           </span>
         </label>
       )}
@@ -530,9 +545,9 @@ function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
               className="rounded accent-red-600" />
-            <span className="text-sm text-cz-danger font-medium">⚡ Flash Auktion (30 min)</span>
+            <span className="text-sm text-cz-danger font-medium">{t("auctionStart.flash.label")}</span>
           </div>
-          <span className="text-xs text-cz-3 sm:ml-0 ml-6">Deadline Day — afsluttes præcis 30 min efter start</span>
+          <span className="text-xs text-cz-3 sm:ml-0 ml-6">{t("auctionStart.flash.hint")}</span>
         </label>
       )}
       <div className="flex flex-col sm:flex-row gap-2">
@@ -554,12 +569,12 @@ function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
           disabled={loading || (!guaranteed && priceError)}
           className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
             ${flash ? "bg-red-600 text-white hover:bg-red-700" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
-          {loading ? "..." : flash ? "⚡ Start Flash Auktion" : "Start auktion"}
+          {loading ? t("auctionStart.buttons.loading") : flash ? t("auctionStart.buttons.startFlash") : t("auctionStart.buttons.start")}
         </button>
       </div>
       {priceError && (
         <p className="text-red-500 text-xs mt-1.5">
-          Startpris skal mindst matche Værdi ({riderValue.toLocaleString("da-DK")} CZ$)
+          {t("auctionStart.priceError", { amount: formatNumber(riderValue) })}
         </p>
       )}
     </div>
@@ -569,6 +584,7 @@ function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
 export default function RiderStatsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation("rider");
 
   const [rider, setRider]                   = useState(null);
   const [onWatchlist, setOnWatchlist]       = useState(false);
@@ -806,8 +822,8 @@ export default function RiderStatsPage() {
           const mergedForLeader = { ...(prev || {}), ...updated, rider: prev?.rider };
           if (myTeam && getAuctionLeaderId(mergedForLeader) === myTeam) {
             setCelebration({
-              title: "Du vandt auktionen! 🏆",
-              subtitle: "Rytteren er nu på dit hold",
+              title: t("celebration.title"),
+              subtitle: t("celebration.subtitle"),
               amount: updated.current_price,
             });
           }
@@ -859,7 +875,7 @@ export default function RiderStatsPage() {
     }
     let data = {};
     try { data = await res.json(); } catch { /* ignore */ }
-    return { ok: false, error: data.error || "Buddet kunne ikke placeres" };
+    return { ok: false, error: data.error || t("auctionPanel.errorFallback") };
   }
 
   async function handleConfirmRaceBid() {
@@ -879,7 +895,7 @@ export default function RiderStatsPage() {
     if (res.ok) { loadActiveAuctionFull(rider); return { ok: true }; }
     let data = {};
     try { data = await res.json(); } catch { /* ignore */ }
-    return { ok: false, error: data.error || "Fejl ved sæt autobud" };
+    return { ok: false, error: data.error || t("auctionPanel.proxyErrorFallback") };
   }
 
   async function handleRemoveProxy(auctionId) {
@@ -921,26 +937,33 @@ export default function RiderStatsPage() {
       if (warning) {
         const fine = warning.finePerRider * warning.exceedBy;
         const points = warning.penaltyPointsPerRider * warning.exceedBy;
-        alert(`Auktion startet.\n\nOBS: leder nu auktioner svarende til ${warning.totalAfter} ryttere (max ${warning.maxRiders}). ` +
-          `Hvis du stadig er ${warning.exceedBy} over ved vindue-luk: auto-salg + ${fine.toLocaleString("da-DK")} CZ$ bøde + ${points} fradrag-points.`);
+        alert(t("auctionStart.squadWarning", {
+          total: warning.totalAfter,
+          max: warning.maxRiders,
+          exceedBy: warning.exceedBy,
+          fine: formatNumber(fine),
+          points,
+        }));
       }
       navigate("/auctions");
     } else {
       const data = await res.json();
-      setAuctionError(data.error || "Noget gik galt");
+      setAuctionError(data.error || t("blocked.errorFallback"));
       setTimeout(() => setAuctionError(null), 5000);
     }
   }
 
   if (loading) return (
-    <div className="flex justify-center py-16">
+    <div className="flex justify-center py-16" aria-label={t("page.loadingAria")}>
       <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
     </div>
   );
 
-  if (!rider) return <div className="text-cz-3 text-center py-16">Rytter ikke fundet</div>;
+  if (!rider) return <div className="text-cz-3 text-center py-16">{t("page.notFound")}</div>;
 
-  const bestStat = STATS.map(s => ({ ...s, val: rider[s.key] || 0 })).sort((a, b) => b.val - a.val)[0];
+  // Lokaliserede skill-labels — bruges til bestStat/typeLabel + StatRow rendering.
+  const localizedSkills = buildSkillsLocalized(t);
+  const bestStat = localizedSkills.map(s => ({ ...s, val: rider[s.key] || 0 })).sort((a, b) => b.val - a.val)[0];
   const isMyRider  = rider.team_id === myTeamId;
   const isFreeAgent = !rider.team_id;
   const isBankRider = Boolean(rider.team?.is_bank);
@@ -950,24 +973,24 @@ export default function RiderStatsPage() {
   const canAuction  = (isFreeAgent || isMyRider || isBankRider || isAiRider) && !isPendingTransfer && !isRetired;
   const canDirectOffer = rider.team_id && rider.team_id !== myTeamId && !isBankRider && !isAiRider && !isPendingTransfer && !isRetired;
   const auctionLabel = isMyRider
-    ? "Sæt til auktion"
+    ? t("auctionStart.label.myRider")
     : isBankRider
-      ? "Start auktion (AI-rytter)"
+      ? t("auctionStart.label.bank")
       : isAiRider
-        ? "Start auktion (AI-rytter)"
-        : "Start auktion (fri rytter)";
+        ? t("auctionStart.label.ai")
+        : t("auctionStart.label.free");
   // Racing-age (year-arithmetic) — matches U25/filter-logik andre steder i appen.
   // Ellers kunne profil vise "24 år" mens max_age=25-filteret tæller rytteren som 25.
   const age = rider.birthdate
     ? new Date().getFullYear() - new Date(rider.birthdate).getFullYear()
     : null;
   const typeLabel = (() => {
-    const vals = STATS.map(s => rider[s.key] || 0);
+    const vals = localizedSkills.map(s => rider[s.key] || 0);
     const max = Math.max(...vals);
-    return STATS[vals.indexOf(max)]?.label || "Allround";
+    return localizedSkills[vals.indexOf(max)]?.label || t("header.typeDefault");
   })();
   const bySeason = results.reduce((acc, r) => {
-    const yr = r.race?.start_date?.slice(0, 4) || "—";
+    const yr = r.race?.start_date?.slice(0, 4) || "-";
     if (!acc[yr]) acc[yr] = { wins: 0, top3: 0, totalPrize: 0 };
     if (r.position === 1) acc[yr].wins++;
     if (r.position <= 3) acc[yr].top3++;
@@ -1004,64 +1027,64 @@ export default function RiderStatsPage() {
       />
       <OverbidToast toasts={toasts} onDismiss={dismissToast} />
 
-      <button onClick={() => navigate(-1)} className="text-cz-3 hover:text-cz-1 text-sm mb-4 flex items-center gap-1">← Tilbage</button>
+      <button onClick={() => navigate(-1)} className="text-cz-3 hover:text-cz-1 text-sm mb-4 flex items-center gap-1">{t("page.back")}</button>
 
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-3">
               <h1 className="text-2xl font-bold text-cz-1 break-words">{rider.firstname} {rider.lastname}</h1>
-              <button onClick={toggleWatchlist} title={onWatchlist ? "Fjern fra ønskeliste" : "Tilføj til ønskeliste"}
+              <button onClick={toggleWatchlist} title={onWatchlist ? t("header.watchlistRemove") : t("header.watchlistAdd")}
                 className={`text-2xl flex-shrink-0 transition-all hover:scale-110 ${onWatchlist ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"}`}>
                 {onWatchlist ? "★" : "☆"}
               </button>
-              <button onClick={() => navigate(`/compare?ids=${rider.id}`)} title="Sammenlign med andre ryttere"
+              <button onClick={() => navigate(`/compare?ids=${rider.id}`)} title={t("header.compareTitle")}
                 className="flex-shrink-0 px-2 py-1 rounded-lg text-xs font-medium border border-cz-border text-cz-2 hover:text-cz-1 hover:border-cz-accent/40 transition-all">
-                ⇄ Sammenlign
+                {t("header.compare")}
               </button>
             </div>
             {watchlistCount > 0 && (
-              <p className="text-cz-3 text-xs mt-1">👁 {watchlistCount} manager{watchlistCount !== 1 ? "s" : ""} følger denne rytter</p>
+              <p className="text-cz-3 text-xs mt-1">{t("header.watchlistCount", { count: watchlistCount })}</p>
             )}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {rider.is_u25 && <span className="text-xs uppercase bg-cz-info-bg0/20 text-cz-info px-2 py-0.5 rounded">U25</span>}
-              {isRetired && <span className="text-xs uppercase bg-cz-danger-bg0/20 text-cz-danger px-2 py-0.5 rounded">Pensioneret</span>}
+              {rider.is_u25 && <span className="text-xs uppercase bg-cz-info-bg0/20 text-cz-info px-2 py-0.5 rounded">{t("header.u25")}</span>}
+              {isRetired && <span className="text-xs uppercase bg-cz-danger-bg0/20 text-cz-danger px-2 py-0.5 rounded">{t("header.retired")}</span>}
               <span className="text-xs uppercase bg-cz-subtle text-cz-2 px-2 py-0.5 rounded font-medium">{typeLabel}</span>
               {rider.nationality_code && (
                 <span className="text-cz-2 text-sm inline-flex items-center gap-1">
                   <Flag code={rider.nationality_code} /> {getCountryName(rider.nationality_code)}
                 </span>
               )}
-              {age && <span className="text-cz-3 text-sm">{age} år</span>}
-              {rider.height && <span className="text-cz-3 text-sm">{rider.height} cm</span>}
-              {rider.weight && <span className="text-cz-3 text-sm">{rider.weight} kg</span>}
+              {age && <span className="text-cz-3 text-sm">{t("header.ageYears", { age })}</span>}
+              {rider.height && <span className="text-cz-3 text-sm">{t("header.heightCm", { height: rider.height })}</span>}
+              {rider.weight && <span className="text-cz-3 text-sm">{t("header.weightKg", { weight: rider.weight })}</span>}
             </div>
             {rider.potentiale != null && (
               <div className="flex items-center gap-2 mt-2">
-                <span className="text-cz-3 text-xs uppercase tracking-wider">Potentiale</span>
+                <span className="text-cz-3 text-xs uppercase tracking-wider">{t("header.potential")}</span>
                 <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} large showValue />
               </div>
             )}
             <p className="text-cz-2 text-sm mt-2">
               {rider.team
-                ? <span>Hold: <TeamLink id={rider.team.id} className="hover:text-cz-accent-t transition-colors">{rider.team.name}</TeamLink></span>
-                : "Fri agent"}
+                ? <span>{t("header.teamPrefix")} <TeamLink id={rider.team.id} className="hover:text-cz-accent-t transition-colors">{rider.team.name}</TeamLink></span>
+                : t("header.freeAgent")}
             </p>
             {activeAuction && (
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-xs bg-cz-accent/100/15 text-cz-accent-t px-2 py-0.5 rounded font-medium">
-                  ⚡ Aktiv auktion
+                  {t("header.activeAuctionBadge")}
                 </span>
                 <span className="text-xs text-cz-3">
-                  Højeste bud: {activeAuction.current_price?.toLocaleString("da-DK")} CZ$
+                  {t("header.highestBidLabel", { amount: formatNumber(activeAuction.current_price) })}
                 </span>
               </div>
             )}
           </div>
           <div className="sm:text-right bg-cz-subtle sm:bg-transparent rounded-lg sm:rounded-none px-3 py-2 sm:p-0">
           <p className="text-cz-accent-t font-mono font-bold text-xl sm:text-2xl break-all">{formatCz(getRiderMarketValue(rider)).replace(" CZ$", "")}</p>
-            <p className="text-cz-3 text-xs mt-0.5">Værdi CZ$</p>
-            {bestStat && <p className="text-cz-2 text-xs mt-2">Bedste: <span className="text-cz-accent-t">{bestStat.label} ({rider[bestStat.key]})</span></p>}
+            <p className="text-cz-3 text-xs mt-0.5">{t("header.valueLabel")}</p>
+            {bestStat && <p className="text-cz-2 text-xs mt-2">{t("header.bestStat", { label: bestStat.label, value: rider[bestStat.key] })}</p>}
           </div>
         </div>
         {auctionError && (
@@ -1072,12 +1095,12 @@ export default function RiderStatsPage() {
         <div className="mt-5 pt-5 border-t border-cz-border flex flex-col gap-3">
           {isPendingTransfer && (
             <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
-              🔒 Rytteren er vundet på auktion og afventer overførsel til det nye hold — kan ikke handles før overførslen er gennemført.
+              {t("blocked.pendingTransfer")}
             </p>
           )}
           {isRetired && (
             <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
-              Rytteren er pensioneret og kan ikke handles.
+              {t("blocked.retired")}
             </p>
           )}
           {canAuction && !activeAuction && <AuctionButton rider={rider} isMyRider={isMyRider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} />}
@@ -1101,14 +1124,21 @@ export default function RiderStatsPage() {
       </div>
 
       <div className="flex gap-2 mb-4 flex-wrap">
-        {[{ key: "stats", label: "Evner" }, { key: "season", label: "Sæsonhistorik" }, { key: "results", label: "Løbsresultater" }, { key: "bids", label: "Bud-historik" }, { key: "history", label: "Historik" }, { key: "development", label: "Udvikling" }].map(t => (
-          <button key={t.key} onClick={() => {
-            setTab(t.key);
-            if (t.key === "development") logEvent("feature_rider_development_tab_opened", { rider_id: rider.id });
+        {[
+          { key: "stats", label: t("tabs.stats") },
+          { key: "season", label: t("tabs.season") },
+          { key: "results", label: t("tabs.results") },
+          { key: "bids", label: t("tabs.bids") },
+          { key: "history", label: t("tabs.history") },
+          { key: "development", label: t("tabs.development") },
+        ].map(tabDef => (
+          <button key={tabDef.key} onClick={() => {
+            setTab(tabDef.key);
+            if (tabDef.key === "development") logEvent("feature_rider_development_tab_opened", { rider_id: rider.id });
           }}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${tab === t.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1 hover:border-cz-border"}`}>
-            {t.label}
+              ${tab === tabDef.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1 hover:border-cz-border"}`}>
+            {tabDef.label}
           </button>
         ))}
       </div>
@@ -1118,26 +1148,26 @@ export default function RiderStatsPage() {
           {rider.potentiale != null && (
             <div className="flex items-center gap-3 py-2 mb-1 border-b border-cz-border">
               <span className="text-cz-3 w-4 text-center text-sm">◆</span>
-              <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">Potentiale</span>
+              <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{t("stats.potentialRow")}</span>
               <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} showValue />
             </div>
           )}
-          {STATS.map(s => <StatRow key={s.key} label={s.label} icon={s.icon} value={rider[s.key]} />)}
+          {localizedSkills.map(s => <StatRow key={s.key} label={s.label} icon={s.icon} value={rider[s.key]} />)}
         </div>
       )}
 
       {tab === "season" && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
           {Object.keys(bySeason).length === 0 ? (
-            <p className="text-cz-3 text-center py-8">Ingen historik endnu</p>
+            <p className="text-cz-3 text-center py-8">{t("season.empty")}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-cz-border">
-                  <th className="py-2 text-left text-cz-3 text-xs uppercase">År</th>
-                  <th className="py-2 text-right text-cz-3 text-xs uppercase">Sejre</th>
-                  <th className="py-2 text-right text-cz-3 text-xs uppercase">Top 3</th>
-                  <th className="py-2 text-right text-cz-3 text-xs uppercase">Præmier</th>
+                  <th className="py-2 text-left text-cz-3 text-xs uppercase">{t("season.table.year")}</th>
+                  <th className="py-2 text-right text-cz-3 text-xs uppercase">{t("season.table.wins")}</th>
+                  <th className="py-2 text-right text-cz-3 text-xs uppercase">{t("season.table.top3")}</th>
+                  <th className="py-2 text-right text-cz-3 text-xs uppercase">{t("season.table.prizes")}</th>
                 </tr></thead>
                 <tbody>
                   {Object.entries(bySeason).map(([yr, d]) => (
@@ -1145,7 +1175,7 @@ export default function RiderStatsPage() {
                       <td className="py-2 text-cz-2">{yr}</td>
                       <td className="py-2 text-right text-cz-accent-t font-mono">{d.wins}</td>
                       <td className="py-2 text-right text-cz-2 font-mono">{d.top3}</td>
-                      <td className="py-2 text-right text-cz-success font-mono text-xs">+{d.totalPrize.toLocaleString("da-DK")}</td>
+                      <td className="py-2 text-right text-cz-success font-mono text-xs">+{formatNumber(d.totalPrize)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1158,31 +1188,31 @@ export default function RiderStatsPage() {
       {tab === "results" && (
         <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
           {results.length === 0 ? (
-            <p className="text-cz-3 text-center py-8">Ingen løbsresultater endnu</p>
+            <p className="text-cz-3 text-center py-8">{t("results.empty")}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead><tr className="border-b border-cz-border">
-                  <th className="px-4 py-3 text-left text-cz-3 text-[10px] uppercase">Løb</th>
-                  <th className="px-4 py-3 text-center text-cz-3 text-[10px] uppercase">Type</th>
-                  <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">Plac.</th>
-                  <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">Præmie</th>
+                  <th className="px-4 py-3 text-left text-cz-3 text-[10px] uppercase">{t("results.table.race")}</th>
+                  <th className="px-4 py-3 text-center text-cz-3 text-[10px] uppercase">{t("results.table.type")}</th>
+                  <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">{t("results.table.position")}</th>
+                  <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">{t("results.table.prize")}</th>
                 </tr></thead>
                 <tbody>
                   {results.map(r => (
                     <tr key={r.id} className="border-b border-cz-border last:border-0">
                       <td className="px-4 py-3">
-                        <p className="text-cz-1 text-sm">{r.race?.name || "—"}</p>
-                        <p className="text-cz-3 text-xs">{r.race?.start_date?.slice(0, 4) || "—"}</p>
+                        <p className="text-cz-1 text-sm">{r.race?.name || t("results.fallbackDash")}</p>
+                        <p className="text-cz-3 text-xs">{r.race?.start_date?.slice(0, 4) || t("results.fallbackDash")}</p>
                       </td>
-                      <td className="px-4 py-3 text-center text-cz-2 text-xs">{r.result_type || "—"}</td>
+                      <td className="px-4 py-3 text-center text-cz-2 text-xs">{r.result_type || t("results.fallbackDash")}</td>
                       <td className="px-4 py-3 text-right">
                         <span className={`font-mono font-bold text-sm ${r.position === 1 ? "text-cz-accent-t" : r.position <= 3 ? "text-cz-1" : "text-cz-2"}`}>
                           #{r.position}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right text-cz-success font-mono text-xs">
-                        {r.prize_money ? `+${r.prize_money.toLocaleString("da-DK")}` : "—"}
+                        {r.prize_money ? `+${formatNumber(r.prize_money)}` : t("results.fallbackDash")}
                       </td>
                     </tr>
                   ))}
@@ -1200,7 +1230,7 @@ export default function RiderStatsPage() {
       {tab === "history" && (
         <div className="bg-cz-card border border-cz-border rounded-xl divide-y divide-cz-border">
           {history.length === 0 ? (
-            <p className="text-cz-3 text-center py-8">Ingen handelshistorik endnu</p>
+            <p className="text-cz-3 text-center py-8">{t("history.empty")}</p>
           ) : history.map((e, i) => (
             <HistoryEvent key={i} event={e} />
           ))}
@@ -1208,8 +1238,8 @@ export default function RiderStatsPage() {
       )}
 
       {tab === "development" && (
-        <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-xl p-5 text-cz-3 text-center py-8">Indlæser udvikling...</div>}>
-          <RiderDevelopmentTab uciHistory={uciHistory} statHistory={statHistory} stats={STATS} />
+        <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-xl p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
+          <RiderDevelopmentTab uciHistory={uciHistory} statHistory={statHistory} stats={localizedSkills} />
         </Suspense>
       )}
     </div>
@@ -1217,36 +1247,35 @@ export default function RiderStatsPage() {
 }
 
 function BidTimelineTab({ timeline }) {
+  const { t } = useTranslation("rider");
   if (!timeline || timeline.auction_id === null) {
     return (
       <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-        <p className="text-cz-3 text-center py-8">Ingen aktuel auktion for denne rytter</p>
+        <p className="text-cz-3 text-center py-8">{t("bids.noAuction")}</p>
       </div>
     );
   }
 
   if (timeline.status === "completed") {
     const completedDate = timeline.completed_at
-      ? new Date(timeline.completed_at).toLocaleString("da-DK", {
-          day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-        })
-      : "—";
+      ? formatDateTime(timeline.completed_at)
+      : t("bids.fallbackDash");
     return (
       <div className="bg-cz-card border border-cz-border rounded-xl p-5">
         <div className="flex items-start gap-3">
           <span className="text-cz-accent-t text-2xl mt-0.5">🏆</span>
           <div className="flex-1 min-w-0">
-            <p className="text-xs uppercase tracking-wider text-cz-accent-t font-medium mb-1">Solgt</p>
+            <p className="text-xs uppercase tracking-wider text-cz-accent-t font-medium mb-1">{t("bids.soldLabel")}</p>
             <p className="text-cz-1 text-base">
-              <TeamLink id={timeline.winner_team_id} className="font-semibold hover:text-cz-accent-t transition-colors">{timeline.winner_name || "Ukendt køber"}</TeamLink>
-              <span className="text-cz-3"> for </span>
+              <TeamLink id={timeline.winner_team_id} className="font-semibold hover:text-cz-accent-t transition-colors">{timeline.winner_name || t("bids.winnerFallback")}</TeamLink>
+              <span className="text-cz-3"> {t("bids.soldFor")} </span>
               <span className="font-mono font-bold text-cz-accent-t">
-                {timeline.final_bid?.toLocaleString("da-DK")} CZ$
+                {formatNumber(timeline.final_bid)} CZ$
               </span>
             </p>
             {timeline.seller_name && (
               <p className="text-cz-2 text-sm mt-1">
-                <span className="text-cz-3">Sælger: </span>
+                <span className="text-cz-3">{t("bids.sellerPrefix")} </span>
                 <TeamLink id={timeline.seller_team_id} className="hover:text-cz-accent-t transition-colors">{timeline.seller_name}</TeamLink>
               </p>
             )}
@@ -1264,15 +1293,15 @@ function BidTimelineTab({ timeline }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
       <div className="px-5 py-3 border-b border-cz-border flex items-center justify-between">
-        <span className="text-xs uppercase tracking-wider text-cz-accent-t font-medium">⚡ Aktiv auktion</span>
+        <span className="text-xs uppercase tracking-wider text-cz-accent-t font-medium">{t("bids.activeAuction")}</span>
         {timeline.current_price != null && (
           <span className="text-cz-1 font-mono font-bold text-sm">
-            {timeline.current_price.toLocaleString("da-DK")} CZ$
+            {formatNumber(timeline.current_price)} CZ$
           </span>
         )}
       </div>
       {ordered.length === 0 ? (
-        <p className="text-cz-3 text-center py-8">Ingen bud endnu</p>
+        <p className="text-cz-3 text-center py-8">{t("bids.noBids")}</p>
       ) : (
         <ul className="divide-y divide-cz-border">
           {ordered.map((b, i) => (
@@ -1285,43 +1314,47 @@ function BidTimelineTab({ timeline }) {
 }
 
 function BidTimelineRow({ bid, isLatest }) {
+  const { t } = useTranslation("rider");
   const time = bid.bid_time
-    ? new Date(bid.bid_time).toLocaleString("da-DK", {
-        day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-      })
-    : "—";
+    ? formatDateTime(bid.bid_time, { dateStyle: "medium", timeStyle: "short" })
+    : t("bids.fallbackDash");
   return (
     <li className={`px-5 py-3 flex items-center justify-between gap-3 ${isLatest ? "bg-cz-accent/[0.04]" : ""}`}>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <TeamLink id={bid.team_id} stopPropagation className="text-cz-1 text-sm font-medium truncate hover:text-cz-accent-t transition-colors">{bid.team_name || "Ukendt"}</TeamLink>
+          <TeamLink id={bid.team_id} stopPropagation className="text-cz-1 text-sm font-medium truncate hover:text-cz-accent-t transition-colors">{bid.team_name || t("bids.row.teamFallback")}</TeamLink>
           {bid.is_proxy && (
             <span className="text-[10px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">
-              Autobud
+              {t("bids.row.autoBidTag")}
             </span>
           )}
           {isLatest && (
             <span className="text-[10px] uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">
-              Højest
+              {t("bids.row.highestTag")}
             </span>
           )}
         </div>
         <p className="text-cz-3 text-xs mt-0.5">{time}</p>
       </div>
       <span className="text-cz-1 font-mono font-bold text-sm whitespace-nowrap">
-        {bid.amount?.toLocaleString("da-DK")} CZ$
+        {formatNumber(bid.amount)} CZ$
       </span>
     </li>
   );
 }
 
 function HistoryEvent({ event }) {
+  const { t } = useTranslation("rider");
   const date = event.date
-    ? new Date(event.date).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" })
-    : "—";
+    ? formatDate(event.date)
+    : t("history.fallbackDash");
 
   if (event.type === "auction") {
-    const typeLabel = event.is_ai_sale ? "AI-salg" : event.is_guaranteed_sale ? "Garanteret salg" : "Auktion";
+    const typeLabel = event.is_ai_sale
+      ? t("history.auction.labelAi")
+      : event.is_guaranteed_sale
+        ? t("history.auction.labelGuaranteed")
+        : t("history.auction.labelDefault");
     return (
       <div className="px-4 py-3 flex items-start gap-3">
         <span className="text-cz-accent-t text-lg mt-0.5">🏆</span>
@@ -1331,12 +1364,12 @@ function HistoryEvent({ event }) {
             <span className="text-cz-3 text-xs">{date}</span>
           </div>
           <p className="text-cz-2 text-sm mt-0.5">
-            <TeamLink id={event.buyer?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.buyer?.name || "Ukendt"}</TeamLink>
-            <span className="text-cz-3"> vandt af </span>
-            <TeamLink id={event.seller?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.seller?.name || (event.is_ai_sale ? "AI-hold" : "Ukendt")}</TeamLink>
+            <TeamLink id={event.buyer?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.buyer?.name || t("history.auction.buyerFallback")}</TeamLink>
+            <span className="text-cz-3"> {t("history.auction.wonBy")} </span>
+            <TeamLink id={event.seller?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.seller?.name || (event.is_ai_sale ? t("history.auction.sellerFallbackAi") : t("history.auction.sellerFallback"))}</TeamLink>
           </p>
           {event.price != null && (
-            <p className="text-cz-accent-t font-mono text-xs mt-0.5">{event.price.toLocaleString("da-DK")} CZ$</p>
+            <p className="text-cz-accent-t font-mono text-xs mt-0.5">{formatNumber(event.price)} CZ$</p>
           )}
         </div>
       </div>
@@ -1349,16 +1382,16 @@ function HistoryEvent({ event }) {
         <span className="text-blue-500 text-lg mt-0.5">↔</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-cz-info font-medium">Transfer</span>
+            <span className="text-xs uppercase tracking-wider text-cz-info font-medium">{t("history.transfer.label")}</span>
             <span className="text-cz-3 text-xs">{date}</span>
           </div>
           <p className="text-cz-2 text-sm mt-0.5">
-            <TeamLink id={event.buyer?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.buyer?.name || "Ukendt"}</TeamLink>
-            <span className="text-cz-3"> køber af </span>
-            <TeamLink id={event.seller?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.seller?.name || "Ukendt"}</TeamLink>
+            <TeamLink id={event.buyer?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.buyer?.name || t("history.transfer.buyerFallback")}</TeamLink>
+            <span className="text-cz-3"> {t("history.transfer.buys")} </span>
+            <TeamLink id={event.seller?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.seller?.name || t("history.transfer.sellerFallback")}</TeamLink>
           </p>
           {event.price != null && (
-            <p className="text-cz-accent-t font-mono text-xs mt-0.5">{event.price.toLocaleString("da-DK")} CZ$</p>
+            <p className="text-cz-accent-t font-mono text-xs mt-0.5">{formatNumber(event.price)} CZ$</p>
           )}
         </div>
       </div>
@@ -1371,17 +1404,17 @@ function HistoryEvent({ event }) {
         <span className="text-purple-500 text-lg mt-0.5">⇄</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-purple-700 font-medium">Bytte</span>
+            <span className="text-xs uppercase tracking-wider text-purple-700 font-medium">{t("history.swap.label")}</span>
             <span className="text-cz-3 text-xs">{date}</span>
           </div>
           <p className="text-cz-2 text-sm mt-0.5">
-            <TeamLink id={event.proposing_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.proposing_team?.name || "Ukendt"}</TeamLink>
+            <TeamLink id={event.proposing_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.proposing_team?.name || t("history.swap.teamFallback")}</TeamLink>
             <span className="text-cz-3"> ↔ </span>
-            <TeamLink id={event.receiving_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.receiving_team?.name || "Ukendt"}</TeamLink>
+            <TeamLink id={event.receiving_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.receiving_team?.name || t("history.swap.teamFallback")}</TeamLink>
           </p>
           {event.cash_adjustment !== 0 && event.cash_adjustment != null && (
             <p className="text-cz-2 font-mono text-xs mt-0.5">
-              Kontantjustering: {event.cash_adjustment > 0 ? "+" : ""}{event.cash_adjustment.toLocaleString("da-DK")} CZ$
+              {t("history.swap.cashAdjustment", { amount: `${event.cash_adjustment > 0 ? "+" : ""}${formatNumber(event.cash_adjustment)}` })}
             </p>
           )}
         </div>
@@ -1398,23 +1431,25 @@ function HistoryEvent({ event }) {
       cancelled: "text-red-500",
       rejected: "text-red-400",
     };
+    const statusKey = event.status && `history.loan.status.${event.status}`;
+    const statusLabel = statusKey ? t(statusKey, { defaultValue: event.status }) : "";
     return (
       <div className="px-4 py-3 flex items-start gap-3">
         <span className="text-cz-3 text-lg mt-0.5">📋</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-cz-2 font-medium">Lån</span>
-            <span className={`text-xs font-medium ${statusColors[event.status] || "text-cz-3"}`}>{event.status}</span>
+            <span className="text-xs uppercase tracking-wider text-cz-2 font-medium">{t("history.loan.label")}</span>
+            <span className={`text-xs font-medium ${statusColors[event.status] || "text-cz-3"}`}>{statusLabel}</span>
             <span className="text-cz-3 text-xs">{date}</span>
           </div>
           <p className="text-cz-2 text-sm mt-0.5">
-            <TeamLink id={event.to_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.to_team?.name || "Ukendt"}</TeamLink>
-            <span className="text-cz-3"> lejer af </span>
-            <TeamLink id={event.from_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.from_team?.name || "Ukendt"}</TeamLink>
+            <TeamLink id={event.to_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.to_team?.name || t("history.loan.toFallback")}</TeamLink>
+            <span className="text-cz-3"> {t("history.loan.borrows")} </span>
+            <TeamLink id={event.from_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.from_team?.name || t("history.loan.fromFallback")}</TeamLink>
           </p>
           <p className="text-cz-3 text-xs mt-0.5">
-            Sæson {event.start_season}–{event.end_season}
-            {event.loan_fee ? ` · ${event.loan_fee.toLocaleString("da-DK")} CZ$ gebyr` : ""}
+            {t("history.loan.seasonRange", { start: event.start_season, end: event.end_season })}
+            {event.loan_fee ? ` ${t("history.loan.feeSuffix", { amount: formatNumber(event.loan_fee) })}` : ""}
           </p>
         </div>
       </div>
