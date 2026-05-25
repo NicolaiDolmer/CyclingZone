@@ -1,0 +1,84 @@
+{
+  "page": {
+    "title": "Inbox",
+    "subtitleMine": "{count, plural, =0 {All read} one {1 unread} other {# unread}}",
+    "subtitleHandle": "{count, plural, =0 {Nothing to handle right now} one {1 waiting for you} other {# waiting for you}}",
+    "subtitleLeague": "What's happening in the league"
+  },
+  "actions": {
+    "markAllRead": "Mark all read",
+    "markingAll": "Marking…",
+    "deleteRead": "Delete read",
+    "deleteAria": "Delete",
+    "deleteAllAria": "Delete all",
+    "viewAuction": "View auction"
+  },
+  "tabs": {
+    "mine": "Mine",
+    "handle": "To handle",
+    "league": "League"
+  },
+  "filter": {
+    "all": "All ({count})",
+    "unread": "Unread ({count})",
+    "auctions": "Auctions",
+    "transfers": "Transfers",
+    "board": "Board",
+    "finance": "Finance",
+    "season": "Season"
+  },
+  "empty": {
+    "noneUnread": "No unread notifications",
+    "noneInCategory": "No notifications in this category",
+    "noPending": "Nothing waiting on your decision",
+    "noPendingHint": "Offers, swaps and loan offers that need your response will show up here",
+    "noFeed": "No activity yet",
+    "noFeedHint": "Start auctions and trades to see activity here"
+  },
+  "aggregate": {
+    "countSuffix": "(×{count})",
+    "firstLatest": "First {first} · Latest {latest}",
+    "expand": "Expand",
+    "collapse": "Collapse"
+  },
+  "relativeTime": {
+    "justNow": "Just now",
+    "minutes": "{n}m ago",
+    "hours": "{n}h ago",
+    "days": "{n}d ago"
+  },
+  "pending": {
+    "role": {
+      "sellerDecide": "Accept / reject offer",
+      "buyerDecide": "Reply to counter-offer",
+      "sellerConfirm": "Confirm trade",
+      "buyerConfirm": "Confirm trade",
+      "receivingDecide": "Accept / reject swap",
+      "proposingDecide": "Reply to counter-offer",
+      "receivingConfirm": "Confirm swap",
+      "proposingConfirm": "Confirm swap",
+      "borrowerDecide": "Accept / reject loan offer",
+      "actionRequired": "Action required"
+    },
+    "unknownTeam": "unknown team",
+    "transferPrimary": "{rider}, {price} CZ$",
+    "transferUnknownPrice": "{rider}, ? CZ$",
+    "transferSecondary": "From {team} · {role}",
+    "swapPrimary": "{offered} ↔ {requested}",
+    "swapSecondaryWithCash": "{team} · Cash {cash} CZ$ · {role}",
+    "swapSecondaryNoCash": "{team} · {role}",
+    "loanPrimary": "{rider}, loan {fee} CZ$",
+    "loanSecondarySingleSeason": "From {team} · Season {start} · {role}",
+    "loanSecondaryMultiSeason": "From {team} · Season {start} to {end} · {role}"
+  },
+  "feed": {
+    "auctionWon": "{team} won auction",
+    "auctionStarted": "{team} started auction",
+    "transferAccepted": "Transfer completed",
+    "riderListed": "{team} listed rider for sale",
+    "seasonStarted": "Season {number} started",
+    "seasonEnded": "Season {number} ended",
+    "raceResultsApproved": "Results approved: {race}",
+    "fallbackLabel": "{type}"
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "page": {
+    "title": "Indbakke",
+    "subtitleMine": "{count, plural, =0 {Alle er læst} one {1 ulæst} other {# ulæste}}",
+    "subtitleHandle": "{count, plural, =0 {Intet at handle på lige nu} one {1 venter på dig} other {# venter på dig}}",
+    "subtitleLeague": "Hvad sker der i ligaen"
+  },
+  "actions": {
+    "markAllRead": "Marker alle læst",
+    "markingAll": "Markerer…",
+    "deleteRead": "Slet læste",
+    "deleteAria": "Slet",
+    "deleteAllAria": "Slet alle",
+    "viewAuction": "Vis auktion"
+  },
+  "tabs": {
+    "mine": "Mine",
+    "handle": "Skal handles",
+    "league": "Ligaen"
+  },
+  "filter": {
+    "all": "Alle ({count})",
+    "unread": "Ulæste ({count})",
+    "auctions": "Auktioner",
+    "transfers": "Transfers",
+    "board": "Bestyrelse",
+    "finance": "Finans",
+    "season": "Sæson"
+  },
+  "empty": {
+    "noneUnread": "Ingen ulæste notifikationer",
+    "noneInCategory": "Ingen notifikationer i denne kategori",
+    "noPending": "Intet venter på din beslutning",
+    "noPendingHint": "Tilbud, byttehandler og lånetilbud du skal svare på dukker op her",
+    "noFeed": "Ingen aktivitet endnu",
+    "noFeedHint": "Start auktioner og handler for at se aktivitet her"
+  },
+  "aggregate": {
+    "countSuffix": "(×{count})",
+    "firstLatest": "Først {first} · Senest {latest}",
+    "expand": "Udvid",
+    "collapse": "Skjul"
+  },
+  "relativeTime": {
+    "justNow": "Lige nu",
+    "minutes": "{n}m siden",
+    "hours": "{n}t siden",
+    "days": "{n}d siden"
+  },
+  "pending": {
+    "role": {
+      "sellerDecide": "Accepter / afvis tilbud",
+      "buyerDecide": "Svar på modbud",
+      "sellerConfirm": "Bekræft handel",
+      "buyerConfirm": "Bekræft handel",
+      "receivingDecide": "Accepter / afvis byttehandel",
+      "proposingDecide": "Svar på modbud",
+      "receivingConfirm": "Bekræft byttehandel",
+      "proposingConfirm": "Bekræft byttehandel",
+      "borrowerDecide": "Accepter / afvis lånetilbud",
+      "actionRequired": "Handling påkrævet"
+    },
+    "unknownTeam": "ukendt hold",
+    "transferPrimary": "{rider}, {price} CZ$",
+    "transferUnknownPrice": "{rider}, ? CZ$",
+    "transferSecondary": "Fra {team} · {role}",
+    "swapPrimary": "{offered} ↔ {requested}",
+    "swapSecondaryWithCash": "{team} · Cash {cash} CZ$ · {role}",
+    "swapSecondaryNoCash": "{team} · {role}",
+    "loanPrimary": "{rider}, lån {fee} CZ$",
+    "loanSecondarySingleSeason": "Fra {team} · Sæson {start} · {role}",
+    "loanSecondaryMultiSeason": "Fra {team} · Sæson {start} til {end} · {role}"
+  },
+  "feed": {
+    "auctionWon": "{team} vandt auktion",
+    "auctionStarted": "{team} startede auktion",
+    "transferAccepted": "Transfer gennemført",
+    "riderListed": "{team} satte rytter til salg",
+    "seasonStarted": "Sæson {number} startet",
+    "seasonEnded": "Sæson {number} afsluttet",
+    "raceResultsApproved": "Resultater godkendt: {race}",
+    "fallbackLabel": "{type}"
+  }
+}
