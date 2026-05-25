@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.95",
+    date: "2026-05-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Language · EN/DA support extended to rider detail, inbox, riders database",
+        items: [
+          "EN · Three large pages now render in both English and Danish via the language switcher: Rider detail (full skill breakdown across 14 attributes, bid and transfer flows, season history, tabs), Inbox (filters, all notification types with proper plurals, time-relative strings), and Riders database (search, all 14 skill filters, watchlist toggle, onboarding tour, empty-state). Bonus: the shared rider-filter component used across Auctions, Transfers, Watchlist, Team and Riders also picks up its translations. Numbers, currency and dates follow the active language. Phase 3.5 of the i18n rollout (#483). Refs #485 #486 #487.",
+          "DA · Tre store sider rendres nu på både engelsk og dansk via sprog-vælgeren: Rytter-detail (skill-overblik på 14 attributter, bud- og transfer-flows, sæsonhistorik, faner), Indbakke (filtre, alle notifikationstyper med korrekt flertal, relativ tid) og Rytter-database (søgning, alle 14 skill-filtre, ønskeliste-toggle, onboarding-tur, tom-state). Bonus: den delte filter-komponent som bruges på Auktioner, Transfers, Ønskeliste, Hold og Ryttere får også oversættelser med. Tal, valuta og datoer følger aktivt sprog. Fase 3.5 i i18n-udrulningen (#483). Refs #485 #486 #487.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.94",
     date: "2026-05-25",
     label: "Beta",
