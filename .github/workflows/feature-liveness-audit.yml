@@ -78,8 +78,11 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          export SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
-          export SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
+          # Declare-and-assign-separately satisfies shellcheck SC2155
+          # (return value of $() would otherwise be masked by export's exit code).
+          SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
+          SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
+          export SUPABASE_URL SUPABASE_SERVICE_KEY
           # PR-runs skipper Detector C og E:
           # - C (migration-drift) ville falsk-positivt flage hver ny migration
           #   som "committed men ikke applied" fordi auto-migrate først kører
