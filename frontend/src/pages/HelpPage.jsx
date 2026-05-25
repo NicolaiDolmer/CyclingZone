@@ -408,7 +408,7 @@ export default function HelpPage() {
                       >
                         <p className="text-cz-1 text-sm font-medium">{f.q}</p>
                         <span
-                          className={`text-cz-3 text-xs ml-3 flex-shrink-0 transition-transform ${
+                          className={`text-cz-3 text-xs ms-3 flex-shrink-0 transition-transform ${
                             faqOpen === i ? "rotate-180" : ""
                           }`}
                         >

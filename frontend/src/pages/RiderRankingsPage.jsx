@@ -171,7 +171,7 @@ export default function RiderRankingsPage() {
                       <span className="hidden lg:inline">{col.label}</span>
                       <span className="lg:hidden">{col.shortLabel}</span>
                       {sortKey === col.key && (
-                        <span className="ml-1">{sortAsc ? "↑" : "↓"}</span>
+                        <span className="ms-1">{sortAsc ? "↑" : "↓"}</span>
                       )}
                     </th>
                   ))}
@@ -236,7 +236,7 @@ export default function RiderRankingsPage() {
             <span>PKL = pointklassement</span>
             <span>Bjerg = bjergklassement</span>
             <span>U25 = ungdomsklassement</span>
-            <span className="ml-auto">Klik kolonne for at sortere</span>
+            <span className="ms-auto">Klik kolonne for at sortere</span>
           </div>
         </div>
       )}

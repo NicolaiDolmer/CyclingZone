@@ -108,7 +108,7 @@ export default function DeadlineReadinessSection({ getAuth, onMsg }) {
                 check.ok ? "bg-cz-success" : check.critical ? "bg-cz-danger" : "bg-cz-warning"
               }`} />
               <span className="text-cz-2">{labelForCheck(key)}</span>
-              <span className="text-cz-3 text-xs ml-auto">
+              <span className="text-cz-3 text-xs ms-auto">
                 {check.ok ? "✓" : check.critical ? "kritisk fejl" : "advarsel"}
               </span>
             </li>

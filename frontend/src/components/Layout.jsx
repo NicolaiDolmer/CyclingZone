@@ -333,7 +333,7 @@ export default function Layout() {
       )}
 
       {/* Main content */}
-      <main className="flex-1 md:ml-52 min-h-screen">
+      <main className="flex-1 md:ms-52 min-h-screen">
         {/* Mobile topbar */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border sticky top-0 z-20">
           <button onClick={() => setMobileOpen(true)} className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-xl">☰</button>

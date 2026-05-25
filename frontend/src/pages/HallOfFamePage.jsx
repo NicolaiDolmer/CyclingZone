@@ -171,7 +171,7 @@ export default function HallOfFamePage() {
                             <span className="font-mono font-bold text-lg" style={{ color: cat.color }}>
                               {e.value?.toLocaleString("da-DK")}
                             </span>
-                            <span className="text-cz-3 text-xs ml-1">{cat.unit}</span>
+                            <span className="text-cz-3 text-xs ms-1">{cat.unit}</span>
                           </td>
                         </tr>
                       ))}

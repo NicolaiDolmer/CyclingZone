@@ -172,10 +172,10 @@ export default function RiderComparePage() {
                 style={{ borderColor: `${COLORS[i]}30` }}>
                 <button
                   onClick={() => removeRider(r.id)}
-                  className="float-right text-cz-3 hover:text-cz-2 text-sm -mt-1 -mr-1">×</button>
+                  className="float-right text-cz-3 hover:text-cz-2 text-sm -mt-1 -me-1">×</button>
                 <RiderLink id={r.id}
                   className="font-bold text-cz-1 text-sm cursor-pointer hover:text-cz-accent-t block">
-                  {r.nationality_code && <Flag code={r.nationality_code} className="mr-1" />}{r.firstname} {r.lastname}
+                  {r.nationality_code && <Flag code={r.nationality_code} className="me-1" />}{r.firstname} {r.lastname}
                 </RiderLink>
                 <p className="text-cz-3 text-xs mt-1">{r.team?.name || "Fri agent"}</p>
                 <p className="font-mono font-bold mt-2 text-sm" style={{ color: COLORS[i] }}>

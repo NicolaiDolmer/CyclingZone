@@ -89,7 +89,7 @@ export default function DeadlineDayBanner() {
           Deadline Day
         </span>
         {status.override === "on" && (
-          <span className="text-[9px] text-cz-3 uppercase tracking-wider ml-1">TEST</span>
+          <span className="text-[9px] text-cz-3 uppercase tracking-wider ms-1">TEST</span>
         )}
       </div>
       {countdown && (

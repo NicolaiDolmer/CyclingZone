@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.99",
+    date: "2026-05-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Infrastructure · RTL-readiness foundation (no visible LTR change)",
+        items: [
+          "EN · Internal refactor: 88 Tailwind `ml-*/mr-*` margin classes across 43 files migrated to logical-property equivalents `ms-*/me-*` (margin-inline-start/end). In English and Danish (left-to-right) the layout is pixel-identical — no user-visible change. This is a foundation step that lets future right-to-left languages (Arabic, Hebrew) mirror correctly without per-component fixes. An ESLint rule blocks future regressions back to the old left/right classes. Refs #438 #409.",
+          "DA · Intern refaktor: 88 Tailwind `ml-*/mr-*` margin-klasser på tværs af 43 filer migreret til logical-property-varianterne `ms-*/me-*` (margin-inline-start/end). På engelsk og dansk (venstre-til-højre) er layoutet pixel-identisk — ingen brugerrettet ændring. Det er et fundamentsskridt der gør at fremtidige højre-til-venstre-sprog (arabisk, hebraisk) kan spejles korrekt uden per-komponent-fixes. En ESLint-regel blokerer fremtidig regression tilbage til de gamle venstre/højre-klasser. Refs #438 #409.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.98",
     date: "2026-05-25",
     label: "Beta",
@@ -4885,7 +4899,7 @@ export default function PatchNotesPage() {
                           {section.category}
                         </span>
                       </div>
-                      <ul className="flex flex-col gap-1.5 ml-3.5">
+                      <ul className="flex flex-col gap-1.5 ms-3.5">
                         {section.items.map((item, j) => (
                           <li key={j} className="flex items-start gap-2">
                             <div className={`w-1 h-1 rounded-full flex-shrink-0 mt-1.5

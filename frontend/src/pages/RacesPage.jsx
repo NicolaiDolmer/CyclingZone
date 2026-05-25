@@ -471,7 +471,7 @@ export default function RacesPage() {
                                     <RiderLink id={r.rider?.id}
                                       className="cursor-pointer hover:text-cz-accent-t transition-colors block">
                                       <span className="text-cz-1">{r.rider?.firstname} {r.rider?.lastname}</span>
-                                      <span className="text-cz-3 ml-2">{r.rider?.team?.name || "Fri"}</span>
+                                      <span className="text-cz-3 ms-2">{r.rider?.team?.name || "Fri"}</span>
                                     </RiderLink>
                                   </td>
                                   <td className="py-1.5 text-right text-cz-success font-mono">
@@ -650,7 +650,7 @@ export default function RacesPage() {
                             : "border-cz-border text-cz-2 hover:bg-cz-subtle"}`}
                       >
                         <span className="truncate">{opt.label}</span>
-                        <span className="text-cz-3 text-xs whitespace-nowrap ml-2">
+                        <span className="text-cz-3 text-xs whitespace-nowrap ms-2">
                           {s.count} løb · {s.raceDays} dage
                         </span>
                       </button>

@@ -177,7 +177,7 @@ export default function RaceHistoryPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-cz-1 text-xs font-medium truncate">
                       {s.rider?.nationality_code && (
-                        <Flag code={s.rider.nationality_code} className="mr-1" />
+                        <Flag code={s.rider.nationality_code} className="me-1" />
                       )}
                       {s.rider_name}
                     </p>
@@ -213,7 +213,7 @@ export default function RaceHistoryPage() {
                 <div key={s.rider?.id || s.rider_name} className="flex items-center gap-3">
                   <div className="w-28 text-xs text-cz-2 truncate text-right flex-shrink-0">
                     {s.rider?.nationality_code && (
-                      <Flag code={s.rider.nationality_code} className="mr-0.5" />
+                      <Flag code={s.rider.nationality_code} className="me-0.5" />
                     )}
                     {lastName}
                   </div>

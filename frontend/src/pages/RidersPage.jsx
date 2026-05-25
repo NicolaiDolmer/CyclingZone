@@ -64,7 +64,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   return (
     <th onClick={() => onSort(sortKey)}
       className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
-      {children}{active && <span className="ml-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
+      {children}{active && <span className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
     </th>
   );
 }
@@ -90,7 +90,7 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, 
         <div>
           <RiderLink id={rider.id} stopPropagation
             className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors block">
-            {rider.nationality_code && <Flag code={rider.nationality_code} className="mr-1" />}
+            {rider.nationality_code && <Flag code={rider.nationality_code} className="me-1" />}
             {rider.firstname} {rider.lastname}
           </RiderLink>
           <div className="flex items-center gap-1.5 mt-0.5">

@@ -300,7 +300,7 @@ export default function AdminWaitlistPage() {
             <ul className="mt-2 space-y-1">
               {kpis.topSources.map(([src, count]) => (
                 <li key={src} className="text-cz-1 text-sm flex justify-between">
-                  <span className="truncate mr-2">{src}</span>
+                  <span className="truncate me-2">{src}</span>
                   <span className="text-cz-accent font-bold">{count}</span>
                 </li>
               ))}
@@ -340,7 +340,7 @@ export default function AdminWaitlistPage() {
                   title={INTENT_SCORE_TOOLTIP}
                 >
                   Score <span className="text-cz-accent">{sort.key === "intent_score" ? (sort.dir === "asc" ? "▲" : "▼") : ""}</span>
-                  <span className="text-cz-3 ml-1 cursor-help" title={INTENT_SCORE_TOOLTIP}>ⓘ</span>
+                  <span className="text-cz-3 ms-1 cursor-help" title={INTENT_SCORE_TOOLTIP}>ⓘ</span>
                 </th>
                 <SortableHeader label="Follow-up" sortKey="follow_up_consent" currentSort={sort} onSort={handleSort} />
                 <SortableHeader label="Kilde" sortKey="source" currentSort={sort} onSort={handleSort} />

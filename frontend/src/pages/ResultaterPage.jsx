@@ -158,7 +158,7 @@ export default function ResultaterPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-cz-1 text-sm truncate">
                         {a.rider.nationality_code && (
-                          <Flag code={a.rider.nationality_code} className="mr-1" />
+                          <Flag code={a.rider.nationality_code} className="me-1" />
                         )}
                         {a.rider.firstname} {a.rider.lastname}
                       </p>

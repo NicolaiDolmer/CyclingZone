@@ -89,7 +89,7 @@ function KpiCard({ label, value, delta, tooltip }) {
         )}
       </div>
       <p className="text-cz-1 text-2xl font-bold mt-1">{value}</p>
-      {delta && <p className={`text-xs mt-1 ${deltaClass}`}>{delta.text}<span className="text-cz-3 ml-1">vs 7d</span></p>}
+      {delta && <p className={`text-xs mt-1 ${deltaClass}`}>{delta.text}<span className="text-cz-3 ms-1">vs 7d</span></p>}
     </div>
   );
 }
@@ -185,7 +185,7 @@ export default function AdminSprintMetricsPage() {
           <h1 className="text-cz-1 text-xl font-bold mt-1">Sprint-metrics</h1>
           <p className="text-cz-3 text-sm">
             Live DAU/WAU/MAU/D7/session-length + top-features. Refs sprint-validation #365.
-            {lastFetched && <span className="ml-2">· Sidst opdateret {lastFetched.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} (auto-refresh hver 5 min)</span>}
+            {lastFetched && <span className="ms-2">· Sidst opdateret {lastFetched.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} (auto-refresh hver 5 min)</span>}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">

@@ -109,7 +109,7 @@ export default function CookieBanner() {
                     />
                   </label>
                   <div className="flex-1">
-                    <div className="text-cz-1 text-sm font-semibold">{cat.label}{cat.locked && <span className="ml-2 text-cz-3 text-xs font-normal">(altid på)</span>}</div>
+                    <div className="text-cz-1 text-sm font-semibold">{cat.label}{cat.locked && <span className="ms-2 text-cz-3 text-xs font-normal">(altid på)</span>}</div>
                     <div className="text-cz-3 text-xs">{cat.desc}</div>
                   </div>
                 </li>
@@ -146,7 +146,7 @@ export default function CookieBanner() {
           <button
             type="button"
             onClick={acceptAll}
-            className="bg-cz-accent-t text-white font-semibold text-sm rounded-lg px-4 py-2 hover:opacity-90 sm:ml-auto"
+            className="bg-cz-accent-t text-white font-semibold text-sm rounded-lg px-4 py-2 hover:opacity-90 sm:ms-auto"
           >
             Accepter alle
           </button>

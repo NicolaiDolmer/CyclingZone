@@ -345,7 +345,7 @@ function OverviewView({ getAuth, onMsg }) {
             onChange={(e) => setFilters((f) => ({ ...f, include_frozen: e.target.checked }))} />
           Inkludér frosne hold
         </label>
-        <span className="ml-auto text-cz-2">
+        <span className="ms-auto text-cz-2">
           {totals.count} hold · Σ balance {formatCz(totals.bal)} · Σ gæld {formatCz(totals.debt)}
         </span>
       </div>
@@ -377,8 +377,8 @@ function OverviewView({ getAuth, onMsg }) {
                 <tr key={r.id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/50">
                   <td className="px-3 py-2 text-cz-1 font-medium">
                     {r.name}
-                    {r.is_ai && <span className="ml-2 text-[10px] text-cz-3 uppercase">AI</span>}
-                    {r.is_frozen && <span className="ml-2 text-[10px] text-cz-warning uppercase">frosset</span>}
+                    {r.is_ai && <span className="ms-2 text-[10px] text-cz-3 uppercase">AI</span>}
+                    {r.is_frozen && <span className="ms-2 text-[10px] text-cz-warning uppercase">frosset</span>}
                   </td>
                   <td className="px-3 py-2 text-cz-2">D{r.division}</td>
                   <td className="px-3 py-2 text-right font-mono text-cz-1">{formatCz(r.balance)}</td>
@@ -474,7 +474,7 @@ function TransactionDetailModal({ tx, onClose }) {
                 <dd className="text-cz-1 break-all">
                   {value}
                   {rawValue && rawValue !== value && (
-                    <span className="ml-2 text-cz-3 text-[10px] font-mono" title="Teknisk værdi i databasen">
+                    <span className="ms-2 text-cz-3 text-[10px] font-mono" title="Teknisk værdi i databasen">
                       ({rawValue})
                     </span>
                   )}
@@ -626,7 +626,7 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
           className="px-3 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-card disabled:opacity-50">
           Nulstil
         </button>
-        <span className="ml-auto text-xs text-cz-3">
+        <span className="ms-auto text-xs text-cz-3">
           {total === 0 ? "Ingen rows" : `Viser ${pageStart}–${pageEnd} af ${total.toLocaleString("da-DK")}`}
         </span>
       </div>
@@ -714,7 +714,7 @@ function AdminLogDetailModal({ entry, onClose }) {
           <dt className="text-cz-3 sm:text-right">Handling</dt>
           <dd className="text-cz-1">
             {adminActionLabel(entry.action_type)}
-            <span className="ml-2 text-cz-3 text-[10px]" title="Teknisk værdi">({entry.action_type})</span>
+            <span className="ms-2 text-cz-3 text-[10px]" title="Teknisk værdi">({entry.action_type})</span>
           </dd>
           <dt className="text-cz-3 sm:text-right">Admin (bruger-ID)</dt>
           <dd className="text-cz-1 break-all">{entry.admin_user_id}</dd>
@@ -839,7 +839,7 @@ function AdminLogView({ getAuth, onMsg }) {
           className="px-3 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-card disabled:opacity-50">
           Nulstil
         </button>
-        <span className="ml-auto text-xs text-cz-3">
+        <span className="ms-auto text-xs text-cz-3">
           {total === 0 ? "Ingen rows" : `Viser ${pageStart}–${pageEnd} af ${total.toLocaleString("da-DK")}`}
         </span>
       </div>
@@ -982,7 +982,7 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
           className="px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
           {loading ? "..." : "Anvend filtre"}
         </button>
-        <span className="ml-auto text-xs text-cz-3">
+        <span className="ms-auto text-xs text-cz-3">
           {runs.length} runs · {totalTx.toLocaleString("da-DK")} tx i vinduet
         </span>
       </div>
