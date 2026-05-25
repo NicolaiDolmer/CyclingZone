@@ -60,4 +60,4 @@ COMMENT ON COLUMN transfer_windows.squad_enforcement_started_at IS
 COMMENT ON CONSTRAINT transfer_windows_squad_enforcement_started_requires_closed ON transfer_windows IS
   'Racing-windows (closed_at IS NULL) må aldrig få squad_enforcement_started_at sat. Konsistent med final_whistle/completed_at racing-guard fra 2026-05-21.';
 COMMENT ON CONSTRAINT transfer_windows_squad_enforcement_completed_requires_started ON transfer_windows IS
-  'Completed_at kræver started_at — sikrer at fase-rækkefølge er korrekt og at completed_at ikke kan sættes uden at have claim'et.';
+  'Completed_at kræver started_at — sikrer at fase-rækkefølge er korrekt og at completed_at ikke kan sættes uden at have claim''et.';
