@@ -215,6 +215,41 @@ For afviste ændringer: append til `## Rejected suggestions` (med dato + grund).
 
 Output efter retro: 1 linje per accepted/rejected. Hvis ingen ændringer foreslået: "Skill kørte rent, ingen forbedringer denne gang."
 
+## Routine integration — weekly auto-pass (#627)
+
+Denne skill bliver fyret ugentligt mandag 05:00 UTC (07:00 CEST / 06:00 CET) af scheduled CCR-routinen `cyclingzone-github-housekeeping-weekly` (trigger-id resolvable via `RemoteTrigger action=list`). Routine-prompten ligger i `.codex.local/routines-tmp/housekeeping-prompt.md` (gitignored — single source of truth, brugt af både test- og scheduled-routinen).
+
+**Forskelle mellem manuel kørsel og auto-pass:**
+
+| Aspekt | Manuel (denne SKILL.md) | Auto-pass (routine) |
+|---|---|---|
+| Trigger | `github audit` / `issue cleanup` / etc. | Cron `0 5 * * 1` (Monday 05:00 UTC) |
+| Trin 0-8 | Fuld kørsel | Fuld kørsel — IDENTICAL workflow |
+| Trin 7 (konfirmér + udfør) | `AskUserQuestion` per kategori → bruger godkender → batch-close | **SKIPPED — NO auto-close.** Routinen poster KUN summary-issue + max 1 "Recommended for close"-comment pr. STRONG-kandidat (≥24h + ingen NUA/manual:user label) |
+| Trin 8 (artifact) | `.claude/audits/audit-<dato>.md` written | Summary-issue posted: `Weekly housekeeping <dato>` (cat:ai-ops + type:investigation + epic:ai-workflow). Skip-create hvis 0 actions → comment på #627 i stedet |
+| Trin 9 (retro) | Run interaktivt med bruger | SKIPPED i routine (kræver interactive feedback) — kør manuel skill efter behov for at fange retro-lessons |
+| GitHub-adgang | `gh` CLI lokalt | `mcp__github__*`-tools (gh ikke tilgængelig i CMA sandbox) |
+| Permissions | Lokal git-config (Nicolai) | Explicit `permitted_tools` i routine-config (per `feedback_remote_routines`) |
+
+**Hvornår skal man stadig køre skill manuelt?**
+
+1. **Efter routinens summary-issue lander mandag morgen** — bruger fyrer skill manuelt med summary-issue som input → executes Trin 7 (konfirmér + udfør) → batch-close eller follow-up actions. Routine producerer KUN anbefalinger; manuel skill producerer state-ændringer.
+2. **Ad-hoc audit mellem ugentlige runs** — hvis backlog vokser hurtigt eller en specifik PR-batch skal verifyies.
+3. **Retro + self-improvement** (Trin 9) — kun manuel skill gør dette. Hvis routine producerer 3 ugers worth af useful patterns, planlæg manuel skill-kørsel med eksplicit retro-fokus.
+
+**Hvis routine fejler stille** (per `feedback_remote_routines`):
+
+- Sandbox er ephemeral — write-fejl = arbejde tabt
+- Verificér mandag morgen: `gh issue list --label cat:ai-ops --state open --search "Weekly housekeeping" --limit 5` (skal vise ny issue) ELLER `gh issue view 627 --comments` (skip-create comment hvis 0 actions)
+- Hvis hverken summary-issue eller skip-comment: routinen fejlede stille. Check `https://claude.ai/code/routines/<trigger-id>` for transcript, OG `permitted_tools` i routine-config (`RemoteTrigger action=get`)
+- Recovery: fyr manuel skill samme dag — den dækker samme workflow
+
+**Edge cases dokumenteret 2026-05-25 ved implementation:**
+
+- **Routine kan ikke læse `~/.claude/projects/.../memory/`** (cloud sandbox-begrænsning). Skill antager HOT/WARM-tier disciplin men kan ikke verificere tier-flow fra cloud. Routine arbejder derfor kun ud fra SKILL.md + helper-scripts i repo.
+- **Discord-bridge close-protocol** (per `feedback_discord_bridge_after_close`) kræver Discord-kanal-access. Routine har p.t. IKKE Discord-MCP attached (kun GitHub + Sentry). Hvis Discord-integration ønskes i fremtidige iterationer, tilføj Discord MCP til `mcp_connections` med eksplicit `permitted_tools`.
+- **Cron kører i UTC**: 05:00 UTC = 07:00 CEST (apr-okt) / 06:00 CET (okt-mar). Acceptér som "Monday morning" eller opdatér cron ved DST-flip i sen oktober.
+
 ## Baked-in lessons (procedural — opdateres via retro)
 
 - Brug `--limit 300` på open issues (repo har 150+, 100 er for snævert) — Lektion 2026-05-17

@@ -1072,7 +1072,7 @@ export default function RiderStatsPage() {
             </p>
             {activeAuction && (
               <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs bg-cz-accent/100/15 text-cz-accent-t px-2 py-0.5 rounded font-medium">
+                <span className="text-xs bg-cz-accent/15 text-cz-accent-t px-2 py-0.5 rounded font-medium">
                   {t("header.activeAuctionBadge")}
                 </span>
                 <span className="text-xs text-cz-3">
