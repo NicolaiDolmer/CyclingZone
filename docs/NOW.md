@@ -5,6 +5,7 @@
 > **🆕 Næste session-kandidater:** **🔴 Anbefalet:** review + merge PR [#640](https://github.com/NicolaiDolmer/CyclingZone/pull/640) (Sentry.setUser, kræver post-deploy verify) + PR [#641](https://github.com/NicolaiDolmer/CyclingZone/pull/641) (SQL-lint, backend-only). Derefter [#638](https://github.com/NicolaiDolmer/CyclingZone/issues/638) hook-trace med fil-baseret instrumentering (blokerer #385 close). Andre: secret-rotation per #634, [#621](https://github.com/NicolaiDolmer/CyclingZone/issues/621) item #1 Discord-alert (natural follow-up til #640), [#623](https://github.com/NicolaiDolmer/CyclingZone/issues/623) PatchNotes Guard, [#632](https://github.com/NicolaiDolmer/CyclingZone/issues/632) Discord-memory-pilot, [#532](https://github.com/NicolaiDolmer/CyclingZone/issues/532) manual sæson 0→1.
 
 > **⚠️ Pending bruger-actions:**
+> - **🆕 #621 item #2 post-deploy verify:** Login på cycling-zone.vercel.app efter Vercel-deploy af `43ef582`. Trigger Sentry-fejl fra DevTools console (steps i PR [#640](https://github.com/NicolaiDolmer/CyclingZone/pull/640) body). Verify Sentry-event har `user.id` matchende Supabase-UUID + "Users affected" ≥ 1.
 > - **#385 NY session BEGGE PCs:** kør `pwsh -File scripts/install-user-hooks.ps1` efter merge — migration fjerner legacy combined matchers + installerer split-versioner. Verificér derefter at hooks fyrer (trigger Write til `docs/archive/*`).
 > - **#385 OneDrive cleanup (manuel):** `~/OneDrive/CyclingZone-context/claude-settings/skills/github-housekeeping/` er nu i repo'et (`.claude/skills/`). Slet OneDrive-mappen manuelt efter verifikation.
 > - **🟡 Secret rotation (efter #634):** Rotér SUPABASE_SERVICE_KEY + SENTRY_DSN + DISCORD_BOT_TOKEN. Verify: `pwsh -File scripts/verify-deploy.ps1`. Detaljer: [archive/NOW-2026-05-25.md](archive/NOW-2026-05-25.md).
@@ -14,7 +15,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** Review + merge PR [#640](https://github.com/NicolaiDolmer/CyclingZone/pull/640) (Sentry.setUser, user-rettet → post-deploy verify) + PR [#641](https://github.com/NicolaiDolmer/CyclingZone/pull/641) (SQL-lint, backend-only). Derefter [#638](https://github.com/NicolaiDolmer/CyclingZone/issues/638) fil-baseret hook-trace (blokerer #385 close).
+> **🎯 Next action:** Post-deploy verify [#621](https://github.com/NicolaiDolmer/CyclingZone/issues/621) item #2 — login på cycling-zone.vercel.app, trigger Sentry-fejl fra console, verify `user.id` populates + "Users affected" tikker fra 0 (steps i merged PR [#640](https://github.com/NicolaiDolmer/CyclingZone/pull/640) body). Derefter [#638](https://github.com/NicolaiDolmer/CyclingZone/issues/638) fil-baseret hook-trace (blokerer #385 close).
 >
 > _Format (max 2 linjer): `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
