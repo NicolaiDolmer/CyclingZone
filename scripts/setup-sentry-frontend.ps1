@@ -27,13 +27,20 @@
   Overskriv eksisterende env vars uden at spoerge.
 
 .PARAMETER Dsn
-  VITE_SENTRY_DSN value. Hvis ikke angivet, secure-promptes for det.
+  VITE_SENTRY_DSN value. Hvis ikke angivet, laeses fra $env:VITE_SENTRY_DSN
+  (hvis sat), ellers promptes der for det. DSN er public-by-design (embedded
+  i frontend bundle), saa ingen secure-prompt — men hardcodes ALDRIG i scripts
+  (jf. #620 / #634, hvor en hardcoded DSN-default leakede til transcript).
 
 .EXAMPLE
   pwsh -File scripts/setup-sentry-frontend.ps1
 
 .EXAMPLE
   pwsh -File scripts/setup-sentry-frontend.ps1 -SkipRedeploy
+
+.EXAMPLE
+  $env:VITE_SENTRY_DSN = "https://<key>@<host>.ingest.sentry.io/<id>"
+  pwsh -File scripts/setup-sentry-frontend.ps1
 #>
 
 param(
@@ -135,17 +142,21 @@ try {
 Write-Step 1 4 "Hent / bekraeft Sentry DSN"
 
 if (-not $Dsn) {
-  Write-Host "  DSN er publicly embedded i frontend bundle - ingen secret-prompt noedvendig."
-  Write-Host "  Fra Sentry MCP: https://66cac82b4b7e9c636d627b6b7c3d492f@o4511389088874496.ingest.de.sentry.io/4511389114105936"
-  Write-Host ""
-  $confirm = Read-Host "  Brug denne DSN? (Y/n eller paste anden DSN)"
-  if ($confirm -match '^[nN]$') {
-    $Dsn = Read-SecureValue "Paste alternativ DSN her (input skjules)"
-  } elseif ($confirm -match '^https://') {
-    $Dsn = $confirm
+  if ($env:VITE_SENTRY_DSN) {
+    $Dsn = $env:VITE_SENTRY_DSN
+    Write-Host "  Bruger VITE_SENTRY_DSN fra environment." -ForegroundColor Gray
   } else {
-    $Dsn = "https://66cac82b4b7e9c636d627b6b7c3d492f@o4511389088874496.ingest.de.sentry.io/4511389114105936"
+    Write-Host "  DSN er public-by-design (embedded i frontend bundle) - men hardcodes IKKE i scripts."
+    Write-Host "  Find DSN i Sentry UI: Settings -> Projects -> cyclingzone -> Client Keys (DSN)"
+    Write-Host "  (eller saet `$env:VITE_SENTRY_DSN foer du koerer scriptet)"
+    Write-Host ""
+    $Dsn = Read-Host "  Paste DSN her"
   }
+}
+
+if (-not $Dsn) {
+  Write-Host "[FEJL] Tom DSN - afbryder" -ForegroundColor Red
+  exit 1
 }
 
 if ($Dsn -notmatch '^https://\w+@[\w.]+\.sentry\.io/\d+$') {
