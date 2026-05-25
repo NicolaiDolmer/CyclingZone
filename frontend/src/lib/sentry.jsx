@@ -39,3 +39,16 @@ export function SentryBoundary({ children }) {
     </Sentry.ErrorBoundary>
   );
 }
+
+// User-context helpers (#621 item 2). Tag hver event med user.id så Sentry
+// "Affected users"-counter virker. KUN UUID — ingen email, ingen team-navn,
+// ingen PII (GDPR-safe).
+export function setSentryUser(userId) {
+  if (!ENABLED || !userId) return;
+  Sentry.setUser({ id: userId });
+}
+
+export function clearSentryUser() {
+  if (!ENABLED) return;
+  Sentry.setUser(null);
+}

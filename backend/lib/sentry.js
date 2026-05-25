@@ -52,3 +52,14 @@ export function setupSentryExpressErrorHandler(app) {
   if (!enabled || typeof Sentry.setupExpressErrorHandler !== "function") return;
   Sentry.setupExpressErrorHandler(app);
 }
+
+// #621 item 2 — tag request-scoped Sentry-events med user.id efter auth-validation.
+// KUN UUID (req.user.id) — ingen email, ingen team-navn, ingen PII (GDPR-safe).
+// Sentry v8+ Node-SDK bruger OpenTelemetry-context-isolation per request, så
+// Sentry.setUser() inden for en request scopes til den request alene; den
+// lækker ikke til parallelle requests. Refs:
+// https://docs.sentry.io/platforms/javascript/guides/node/enriching-events/identify-user/
+export function setSentryUser(userId) {
+  if (!enabled || !userId) return;
+  Sentry.setUser({ id: userId });
+}

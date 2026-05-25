@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import CookieBanner from "./components/CookieBanner.jsx";
 import { logEvent } from "./lib/logEvent";
+import { setSentryUser, clearSentryUser } from "./lib/sentry.jsx";
 
 // Layout + analytics integrations lazy-loaded for #479: public routes
 // (/founder-supporter, /login, /privacy-*) ikke betaler for app-shell + Clarity/Vercel
@@ -85,11 +86,25 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) logEvent("session_started");
+      if (session) {
+        // #621 item 2 — tag Sentry-events med user.id (UUID, ingen PII) så
+        // "Affected users"-counter virker. Initial session-restore-path.
+        setSentryUser(session.user?.id);
+        logEvent("session_started");
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
-      if (event === "SIGNED_IN") logEvent("session_started");
+      if (event === "SIGNED_IN") {
+        setSentryUser(session?.user?.id);
+        logEvent("session_started");
+      } else if (event === "TOKEN_REFRESHED" && session?.user?.id) {
+        // Token-refresh kan ske efter cold-start uden SIGNED_IN — sørg for at
+        // user-context aldrig taber sig pga. en refresh.
+        setSentryUser(session.user.id);
+      } else if (event === "SIGNED_OUT") {
+        clearSentryUser();
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
