@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.94",
+    date: "2026-05-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Observability · Improved error tracking (user-context)",
+        items: [
+          "EN · Improved error tracking: we can now see how many unique users are affected by a given error. After login (both fresh sign-in and session-restore) and on token-refresh, the frontend tags every Sentry event with your account ID (UUID only — no email, no team name, no personal data). The backend does the same on every authenticated API request. On logout, the user-context is cleared. Until now, Sentry's \"Affected users\" counter was stuck at 0 on every issue because no user identity was attached, so we couldn't tell whether a bug hit one tester or twenty. Refs #621 #348.",
+          "DA · Forbedret fejl-tracking: vi kan nu se hvor mange unikke brugere der rammes af en given fejl. Efter login (både fresh sign-in og session-restore) samt ved token-refresh tagger frontend hver Sentry-event med dit konto-ID (KUN UUID — ingen email, ingen holdnavn, ingen personlige data). Backend gør det samme på hvert authenticated API-kald. Ved logout ryddes user-context. Indtil nu sad Sentry's \"Affected users\"-counter på 0 for hver issue fordi ingen bruger-identitet var attached, så vi kunne ikke se om en bug ramte én tester eller tyve. Refs #621 #348.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.93",
     date: "2026-05-24",
     label: "Beta",

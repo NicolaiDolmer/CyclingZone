@@ -159,7 +159,7 @@ import {
 import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
 import { adminImportUploadSingleFile } from "../lib/adminImportUpload.js";
 import { checkAchievements } from "../lib/achievementEngine.js";
-import { captureException } from "../lib/sentry.js";
+import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { parseRacePoolCsv, summarizePool, WORLD_TOUR_CLASSES } from "../lib/racePoolImport.js";
 import {
@@ -377,6 +377,10 @@ async function requireAuth(req, res, next) {
 
   req.user = user;
   req.team = team;
+  // #621 item 2 — tag eventuelle Sentry-events i resten af request-livscyklen
+  // med user.id (UUID, ingen PII). Sentry v8+ Node-SDK scope'r per
+  // OpenTelemetry-context, så dette lækker ikke til parallelle requests.
+  setSentryUser(user.id);
   next();
 }
 

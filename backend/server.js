@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, ".env"), quiet: true });
 
-import { initSentry, setupSentryExpressErrorHandler } from "./lib/sentry.js";
+import { initSentry, setupSentryExpressErrorHandler, setSentryUser } from "./lib/sentry.js";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -46,6 +46,8 @@ async function requireAdmin(req, res, next) {
   const { data: u } = await supabase.from("users").select("role").eq("id", user.id).single();
   if (u?.role !== "admin") return res.status(403).json({ error: "Admin only" });
   req.user = user;
+  // #621 item 2 — tag Sentry-events fra admin-endpoints med user.id.
+  setSentryUser(user.id);
   next();
 }
 
