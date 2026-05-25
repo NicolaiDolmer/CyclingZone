@@ -65,7 +65,7 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
                   {isNext && (
                     <Link
                       to={target}
-                      className="ml-auto text-cz-accent-t text-xs hover:underline font-medium"
+                      className="ms-auto text-cz-accent-t text-xs hover:underline font-medium"
                     >
                       {t(`onboardingProgress.ctas.${step.key}`, { defaultValue: "→" })}
                     </Link>

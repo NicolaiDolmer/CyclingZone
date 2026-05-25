@@ -547,7 +547,7 @@ function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
               className="rounded accent-red-600" />
             <span className="text-sm text-cz-danger font-medium">{t("auctionStart.flash.label")}</span>
           </div>
-          <span className="text-xs text-cz-3 sm:ml-0 ml-6">{t("auctionStart.flash.hint")}</span>
+          <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("auctionStart.flash.hint")}</span>
         </label>
       )}
       <div className="flex flex-col sm:flex-row gap-2">

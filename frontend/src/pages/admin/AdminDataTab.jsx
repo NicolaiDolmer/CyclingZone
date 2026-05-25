@@ -337,7 +337,7 @@ export default function AdminDataTab() {
           <div className="relative">
             <label className="block text-cz-3 text-xs mb-1">
               Løbsnavn
-              <span className="text-cz-3 normal-case ml-1">— søg i katalog eller skriv frihånd</span>
+              <span className="text-cz-3 normal-case ms-1">— søg i katalog eller skriv frihånd</span>
             </label>
             <input type="text" required placeholder="Skriv for at søge i race-katalog..." value={raceForm.name}
               onChange={e => { setRaceForm(f => ({ ...f, name: e.target.value })); setPoolSearchOpen(true); }}

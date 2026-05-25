@@ -655,7 +655,7 @@ export default function NotificationsPage() {
                             {event.rider_name}
                           </RiderLink>
                           {event.amount > 0 && (
-                            <span className="text-cz-accent-t font-mono ml-2">
+                            <span className="text-cz-accent-t font-mono ms-2">
                               {formatNumber(event.amount)} CZ$
                             </span>
                           )}

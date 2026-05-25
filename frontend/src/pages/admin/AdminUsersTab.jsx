@@ -70,7 +70,7 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
                 <p className="text-cz-1 text-sm">{r.firstname} {r.lastname}</p>
                 <p className="text-cz-3 text-xs">
                   {r.team?.name || "Fri agent"} — {formatCz(getRiderMarketValue(r))}
-                  {r.is_retired && <span className="ml-2 text-cz-danger">Pensioneret</span>}
+                  {r.is_retired && <span className="ms-2 text-cz-danger">Pensioneret</span>}
                 </p>
               </div>
             ))}

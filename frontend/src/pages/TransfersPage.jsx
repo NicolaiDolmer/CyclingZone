@@ -86,7 +86,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
         <div className="min-w-0">
           <RiderLink id={offer.rider?.id}
             className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors block">
-            {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
+            {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="me-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
           </RiderLink>
           <p className="text-cz-3 text-xs">{t("offerCard.from")}: <TeamLink id={offer.buyer?.id} className="hover:text-cz-accent-t transition-colors">{offer.buyer?.name || "—"}</TeamLink> · {t("offerCard.round", { round: offer.round || 1 })} · {timeAgo(offer.created_at)}</p>
         </div>
@@ -244,7 +244,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
         <div className="min-w-0">
           <RiderLink id={offer.rider?.id}
             className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors block">
-            {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="mr-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
+            {offer.rider?.nationality_code && <Flag code={offer.rider.nationality_code} className="me-1" />}{offer.rider?.firstname} {offer.rider?.lastname}
           </RiderLink>
           <p className="text-cz-3 text-xs">{t("offerCard.to")}: <TeamLink id={offer.seller?.id} className="hover:text-cz-accent-t transition-colors">{offer.seller?.name || "—"}</TeamLink> · {t("offerCard.round", { round: offer.round || 1 })} · {timeAgo(offer.updated_at)}</p>
         </div>
@@ -430,7 +430,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
             </RiderLink>
             <div className="flex gap-2 mt-1">
               {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"]].map(([l, k]) => (
-                <span key={k} className="text-[10px] text-cz-3">{l}<span className="text-cz-2 ml-0.5">{rider?.[k] ?? "—"}</span></span>
+                <span key={k} className="text-[10px] text-cz-3">{l}<span className="text-cz-2 ms-0.5">{rider?.[k] ?? "—"}</span></span>
               ))}
             </div>
           </div>
@@ -440,7 +440,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
       <div className={`rounded-lg px-3 py-2 mb-3 text-xs text-center font-medium
         ${effectiveCash === 0 ? "bg-cz-subtle text-cz-2" : "bg-cz-accent/10 text-cz-accent-t/80"}`}>
         {cashLabel}
-        {isCountered && <span className="text-cz-warning ml-2">{t("swapCard.counterTag")}</span>}
+        {isCountered && <span className="text-cz-warning ms-2">{t("swapCard.counterTag")}</span>}
       </div>
 
       {swap.message && (
@@ -633,7 +633,7 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
                 <button key={r.id} onClick={() => pickRequested(r)}
                   className="w-full text-left px-3 py-2 hover:bg-cz-subtle text-cz-1 text-sm border-b border-cz-border last:border-0">
                   {r.firstname} {r.lastname}
-                        <span className="text-cz-3 text-xs ml-2">{r.team?.name} · {formatCz(getRiderMarketValue(r))}</span>
+                        <span className="text-cz-3 text-xs ms-2">{r.team?.name} · {formatCz(getRiderMarketValue(r))}</span>
                 </button>
               ))}
             </div>
@@ -843,7 +843,7 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
                 <button key={r.id} onClick={() => { setSelectedRider(r); setSearch(`${r.firstname} ${r.lastname}`); setSearchResults([]); }}
                   className="w-full text-left px-3 py-2 hover:bg-cz-subtle text-cz-1 text-sm border-b border-cz-border last:border-0">
                   {r.firstname} {r.lastname}
-                    <span className="text-cz-3 text-xs ml-2">{r.team?.name} · {formatCz(getRiderMarketValue(r))}</span>
+                    <span className="text-cz-3 text-xs ms-2">{r.team?.name} · {formatCz(getRiderMarketValue(r))}</span>
                 </button>
               ))}
             </div>
@@ -923,7 +923,7 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
         <div>
           <RiderLink id={listing.rider?.id} className="cursor-pointer block">
             <p className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors">
-              {listing.rider?.nationality_code && <Flag code={listing.rider.nationality_code} className="mr-1" />}{listing.rider?.firstname} {listing.rider?.lastname}
+              {listing.rider?.nationality_code && <Flag code={listing.rider.nationality_code} className="me-1" />}{listing.rider?.firstname} {listing.rider?.lastname}
             </p>
           </RiderLink>
           <p className="text-cz-3 text-xs mt-0.5">
@@ -1293,7 +1293,7 @@ export default function TransfersPage() {
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
             {tt.label}
             {tt.badge > 0 && (
-              <span className="ml-2 bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full">
+              <span className="ms-2 bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full">
                 {tt.badge}
               </span>
             )}

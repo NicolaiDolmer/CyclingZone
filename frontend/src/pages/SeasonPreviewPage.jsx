@@ -154,7 +154,7 @@ export default function SeasonPreviewPage() {
                   <span className="text-cz-1 text-xs font-medium">
                     {t.topRider.firstname} {t.topRider.lastname}
                   </span>
-                  <span className="text-cz-accent-t font-mono text-xs ml-auto">
+                  <span className="text-cz-accent-t font-mono text-xs ms-auto">
                     {formatCz(getRiderMarketValue(t.topRider))}
                   </span>
                 </div>

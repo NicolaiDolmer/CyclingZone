@@ -261,7 +261,7 @@ export default function AdminSeasonTab() {
               <div key={s.id} className="flex items-center justify-between bg-cz-subtle rounded-lg px-4 py-3">
                 <div>
                   <span className="text-cz-1 font-medium text-sm">Sæson {s.number}</span>
-                  <span className={`ml-3 text-xs ${statusColor[s.status]}`}>{statusLabel[s.status]}</span>
+                  <span className={`ms-3 text-xs ${statusColor[s.status]}`}>{statusLabel[s.status]}</span>
                   <p className="text-cz-3 text-xs mt-0.5 font-mono truncate">{s.id}</p>
                 </div>
                 <div className="flex gap-2">
@@ -326,12 +326,12 @@ export default function AdminSeasonTab() {
                   <div className="min-w-0">
                     <p className="text-cz-1 text-sm font-medium">
                       {riderName}
-                      {a.is_flash && <span className="ml-2 text-cz-3 text-xs">(flash)</span>}
-                      {a.is_guaranteed_sale && <span className="ml-2 text-cz-3 text-xs">(garanteret)</span>}
+                      {a.is_flash && <span className="ms-2 text-cz-3 text-xs">(flash)</span>}
+                      {a.is_guaranteed_sale && <span className="ms-2 text-cz-3 text-xs">(garanteret)</span>}
                     </p>
                     <p className="text-cz-3 text-xs">
                       Sælger: {sellerName} · Pris: {formatCz(a.current_price)} · Bud: {a.unique_bidder_count} · Slutter: {endTxt}
-                      {a.status === "extended" && <span className="ml-2 text-cz-warn">forlænget</span>}
+                      {a.status === "extended" && <span className="ms-2 text-cz-warn">forlænget</span>}
                     </p>
                   </div>
                   <button

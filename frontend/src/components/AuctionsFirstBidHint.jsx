@@ -27,7 +27,7 @@ export default function AuctionsFirstBidHint({ onDismiss, onStartTour }) {
         </div>
         <button
           onClick={onDismiss}
-          className="text-cz-3 hover:text-cz-1 text-lg leading-none flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2"
+          className="text-cz-3 hover:text-cz-1 text-lg leading-none flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center -me-2"
           aria-label={t("common:actions.hide")}
         >
           ×

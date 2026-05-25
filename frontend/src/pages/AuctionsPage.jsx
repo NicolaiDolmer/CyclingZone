@@ -68,7 +68,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   return (
     <th onClick={() => onSort(sortKey)}
       className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
-      {children}{active && <span className="ml-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
+      {children}{active && <span className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
     </th>
   );
 }
@@ -205,7 +205,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
           <span className="text-cz-1 font-mono font-bold text-sm">
             {formatNumber(auction.current_price ?? 0)}
           </span>
-          <span className="text-cz-3 text-xs ml-1">CZ$</span>
+          <span className="text-cz-3 text-xs ms-1">CZ$</span>
         </span>
         {getAuctionLeaderName(auction) && !imWinning && (
           <p className="text-cz-3 text-[10px] truncate max-w-[100px]">
@@ -381,7 +381,7 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggl
           <div className="min-w-0">
             <RiderLink id={r?.id}
               className="text-left text-cz-1 font-semibold text-sm hover:text-cz-accent-t transition-colors">
-              {r?.nationality_code && <Flag code={r.nationality_code} className="mr-1" />}
+              {r?.nationality_code && <Flag code={r.nationality_code} className="me-1" />}
               {r?.firstname} {r?.lastname}
             </RiderLink>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -1095,7 +1095,7 @@ export default function AuctionsPage() {
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
               {projectedRiderCount ?? "—"}
               {projectedRiderCount !== null && projectedRiderCount !== currentRiderCount && (
-                <span className={`text-xs ml-1.5 font-medium ${projectedRiderCount > currentRiderCount ? "text-cz-success" : "text-cz-danger"}`}>
+                <span className={`text-xs ms-1.5 font-medium ${projectedRiderCount > currentRiderCount ? "text-cz-success" : "text-cz-danger"}`}>
                   {projectedRiderCount > currentRiderCount ? "+" : ""}{projectedRiderCount - currentRiderCount}
                 </span>
               )}

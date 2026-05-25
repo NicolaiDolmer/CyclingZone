@@ -320,7 +320,7 @@ export default function DashboardPage() {
             limit: squadWarning.limit,
             division: squadWarning.division,
           })}</span>
-          <Link to="/team" className="ml-auto text-xs underline opacity-70 hover:opacity-100">{t("dashboard:squadWarning.ctaMyTeam")}</Link>
+          <Link to="/team" className="ms-auto text-xs underline opacity-70 hover:opacity-100">{t("dashboard:squadWarning.ctaMyTeam")}</Link>
         </div>
       )}
 
@@ -440,7 +440,7 @@ export default function DashboardPage() {
           )}
 
           {transferWindow && (
-            <span className={`ml-auto text-[10px] px-2 py-1 rounded-full border font-medium
+            <span className={`ms-auto text-[10px] px-2 py-1 rounded-full border font-medium
               ${transferWindow.status === "open"
                 ? "bg-cz-success-bg text-cz-success border-cz-success/30"
                 : "bg-cz-subtle text-cz-2 border-cz-border"}`}>
@@ -505,7 +505,7 @@ export default function DashboardPage() {
                           {isSelling && !isWinning && <span className="text-[9px] bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded-full">{t("dashboard:cards.auctions.selling")}</span>}
                         </div>
                       </div>
-                      <div className="text-right ml-3">
+                      <div className="text-right ms-3">
                         <p className="text-cz-accent-t font-mono text-sm font-bold">{formatNumber(a.current_price)} CZ$</p>
                         <p className={`text-xs font-mono ${urgent ? "text-cz-danger animate-pulse" : "text-cz-3"}`}>{timeLeft}</p>
                       </div>
@@ -530,7 +530,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-3 py-2 border-b border-cz-border">
                   <span className="text-cz-success text-lg">↓</span>
                   <p className="text-cz-1 text-sm">{t("dashboard:cards.transfers.incomingCount", { count: pendingIncoming })}</p>
-                  <span className="ml-auto text-[9px] bg-cz-success-bg text-cz-success border border-cz-success/30 px-2 py-0.5 rounded-full">{t("dashboard:cards.transfers.awaitingWindow")}</span>
+                  <span className="ms-auto text-[9px] bg-cz-success-bg text-cz-success border border-cz-success/30 px-2 py-0.5 rounded-full">{t("dashboard:cards.transfers.awaitingWindow")}</span>
                 </div>
               )}
               {activeMarketOffers.slice(0, 4).map(o => {

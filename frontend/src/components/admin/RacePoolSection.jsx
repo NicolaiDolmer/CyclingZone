@@ -407,9 +407,9 @@ export default function RacePoolSection({ getAuth, onMsg }) {
               >
                 <span className="text-cz-2 truncate">
                   {cls.label}
-                  {isWt && <span className="ml-1 text-cz-3 text-xs">[WT]</span>}
+                  {isWt && <span className="ms-1 text-cz-3 text-xs">[WT]</span>}
                 </span>
-                <span className="text-cz-3 text-xs whitespace-nowrap ml-2">
+                <span className="text-cz-3 text-xs whitespace-nowrap ms-2">
                   {s.count} løb · {s.raceDays} dage
                 </span>
               </div>
@@ -464,7 +464,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
                     onChange={() => toggleClass(cls.key)}
                   />
                   <span className="text-cz-2 truncate">{cls.label}</span>
-                  <span className="text-cz-3 text-xs ml-auto">
+                  <span className="text-cz-3 text-xs ms-auto">
                     {s.count}/{s.raceDays}d
                   </span>
                 </label>
@@ -784,7 +784,7 @@ function WhitelistEditor({
       >
         <span>
           🎯 Prioritets-lister (per sæson)
-          {dirty && <span className="ml-2 text-cz-accent text-xs">● ugemte ændringer</span>}
+          {dirty && <span className="ms-2 text-cz-accent text-xs">● ugemte ændringer</span>}
         </span>
         <span className="text-cz-3 text-xs">
           {stagePriorityIds.length} etape · {singleBoostIds.length} singles · {open ? "▾" : "▸"}

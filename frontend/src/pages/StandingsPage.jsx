@@ -138,7 +138,7 @@ export default function StandingsPage() {
                 : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}
             style={divTab === div ? { backgroundColor: `${DIV_COLORS[div]}15`, borderColor: `${DIV_COLORS[div]}40`, color: DIV_COLORS[div] } : {}}>
             Division {div}
-            <span className="ml-2 text-[10px] opacity-60">({count})</span>
+            <span className="ms-2 text-[10px] opacity-60">({count})</span>
           </button>
         ))}
       </div>
@@ -219,7 +219,7 @@ export default function StandingsPage() {
                           </span>
                           {penalty > 0 && (
                             <span
-                              className="ml-1.5 font-mono text-[10px] text-cz-danger"
+                              className="ms-1.5 font-mono text-[10px] text-cz-danger"
                               title={`Trupstørrelse-fradrag: ${penalty} point (${(s.total_points || 0).toLocaleString("da-DK")} optjent − ${penalty} fradrag)`}
                             >
                               (−{penalty})
@@ -257,7 +257,7 @@ export default function StandingsPage() {
                 Nedrykningszone (bund 2)
               </div>
             )}
-            <div className="ml-auto text-xs text-cz-3">
+            <div className="ms-auto text-xs text-cz-3">
               {races.length} løb spillet
             </div>
           </div>

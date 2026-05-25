@@ -32,7 +32,7 @@ export default function PotentialeStars({ value, birthdate, showValue = false, l
         <StarIcon key={i} type={type} color={color} emptyColor={emptyColor} />
       ))}
       {showValue && (
-        <span className="ml-1 text-[10px] font-mono text-cz-3">{value}</span>
+        <span className="ms-1 text-[10px] font-mono text-cz-3">{value}</span>
       )}
     </span>
   );

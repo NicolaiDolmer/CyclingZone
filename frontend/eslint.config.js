@@ -59,9 +59,6 @@ export default [
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
     rules: {
-      // TODO i18n Fase 5 (#414): aktivér ml-*/mr-* → ms-*/me-* warn-regel når de
-      // ~59 eksisterende sites er migreret. Tailwind 3.4 har ms-*/me-* default
-      // siden v3.3. Refs #410, #414.
       "no-restricted-syntax": [
         "error",
         {
@@ -79,6 +76,17 @@ export default [
         {
           selector: "TemplateElement[value.raw=/(?:text|border|ring|divide|outline)-(?:white|black)\\/\\d+\\b/]",
           message: "Dark mode S3: text/border-(white|black)/N antager fast tema-baggrund og bryder light mode. Brug cz-tokens (text-cz-1/2/3, border-cz-border, …). bg-(white|black)/N er tilladt for modal-scrims.",
+        },
+        // i18n RTL-readiness (#438, prereq for #414): margin-inline-start/end er
+        // logical properties som spejler korrekt i RTL. Tailwind 3.4 har ms-*/me-*
+        // siden v3.3. Negative margins (-ml-, -mr-) er også dækket via \b.
+        {
+          selector: "Literal[value=/\\b(?:ml|mr)-(?:\\d+(?:\\.\\d+)?|auto)\\b/]",
+          message: "i18n RTL: brug logical-property ms-*/me-* i stedet for ml-*/mr-* (Tailwind 3.3+). Refs #438 #409.",
+        },
+        {
+          selector: "TemplateElement[value.raw=/\\b(?:ml|mr)-(?:\\d+(?:\\.\\d+)?|auto)\\b/]",
+          message: "i18n RTL: brug logical-property ms-*/me-* i stedet for ml-*/mr-* (Tailwind 3.3+). Refs #438 #409.",
         },
       ],
     },

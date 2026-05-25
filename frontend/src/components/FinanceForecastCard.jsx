@@ -204,7 +204,7 @@ export default function FinanceForecastCard({
                       <td className="py-1 pr-2 text-cz-1 font-medium">
                         S{row.season_number}
                         {row.is_estimate && (
-                          <span className="text-cz-3 text-[10px] ml-1" title="Estimat — antager status quo">~</span>
+                          <span className="text-cz-3 text-[10px] ms-1" title="Estimat — antager status quo">~</span>
                         )}
                       </td>
                       <td className="py-1 px-2 text-right font-mono text-cz-success">

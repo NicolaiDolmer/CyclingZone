@@ -121,10 +121,10 @@ export default function SurveyBanner() {
     >
       <div className="flex flex-wrap items-center gap-3">
         <p className="flex-1 min-w-0 text-sm text-cz-1">
-          <span className="mr-1" aria-hidden="true">📋</span>
+          <span className="me-1" aria-hidden="true">📋</span>
           {t("survey.message")}
           {isAdminPreview && (
-            <span className="ml-2 text-xs text-cz-3 italic">{t("survey.adminPreviewHint")}</span>
+            <span className="ms-2 text-xs text-cz-3 italic">{t("survey.adminPreviewHint")}</span>
           )}
         </p>
         <div className="flex items-center gap-2 shrink-0">

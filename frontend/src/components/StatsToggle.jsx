@@ -36,7 +36,7 @@ export default function StatsToggle({ visibleStats, onToggleStat, onShowAll, onH
             ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
             : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}
       >
-        Vis stats {count > 0 && <span className="text-[11px] font-mono ml-1">({count}/{total})</span>}
+        Vis stats {count > 0 && <span className="text-[11px] font-mono ms-1">({count}/{total})</span>}
       </button>
 
       {open && (

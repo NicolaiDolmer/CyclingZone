@@ -27,7 +27,7 @@ export function CompareBar({ ids, onClear }) {
       rounded-xl shadow-2xl px-4 py-2.5 flex items-center gap-3">
       <span className="text-cz-2 text-sm">
         <span className="text-cz-accent-t font-bold">{ids.length}</span>/{MAX_COMPARE} valgt
-        {!canCompare && <span className="text-cz-3 text-xs ml-2">(vælg mindst 2)</span>}
+        {!canCompare && <span className="text-cz-3 text-xs ms-2">(vælg mindst 2)</span>}
       </span>
       <button onClick={() => navigate(`/compare?ids=${ids.join(",")}`)}
         disabled={!canCompare}

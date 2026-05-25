@@ -22,7 +22,7 @@ export default function AdminTabs() {
                 : "border-transparent text-cz-3 hover:text-cz-2"
             }`}
         >
-          <span className="mr-1.5">{t.icon}</span>{t.label}
+          <span className="me-1.5">{t.icon}</span>{t.label}
         </NavLink>
       ))}
     </nav>

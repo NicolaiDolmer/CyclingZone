@@ -347,7 +347,7 @@ function TierCard({ tier, highlighted = false }) {
           <div className="text-cz-1 text-xl font-bold">
             {tier.price}
             {tier.priceSuffix && (
-              <span className="text-cz-3 text-xs font-normal ml-1">{tier.priceSuffix}</span>
+              <span className="text-cz-3 text-xs font-normal ms-1">{tier.priceSuffix}</span>
             )}
           </div>
           {tier.altYear && <div className="text-cz-3 text-[11px]">{tier.altYear}</div>}

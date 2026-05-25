@@ -111,7 +111,7 @@ export default function ManagerProfilePage() {
               </Link>
             )}
           </div>
-          <div className="flex gap-3 ml-4">
+          <div className="flex gap-3 ms-4">
             <div className="bg-cz-subtle border border-cz-border rounded-xl px-4 py-3 text-center">
               <p className="text-lg">🔥</p>
               <p className="text-cz-1 font-bold text-sm">{user.login_streak || 0}</p>

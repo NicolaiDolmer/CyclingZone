@@ -12,7 +12,7 @@ function SortTh({ children, sortKey, current, dir, onSort, align = "left" }) {
   return (
     <th onClick={() => onSort(sortKey)}
       className={`cursor-pointer select-none py-2 text-${align} transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"}`}>
-      {children}{active && <span className="ml-0.5 text-[10px]">{dir === "desc" ? "↓" : "↑"}</span>}
+      {children}{active && <span className="ms-0.5 text-[10px]">{dir === "desc" ? "↓" : "↑"}</span>}
     </th>
   );
 }
@@ -175,7 +175,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
                     {ev.counterparty?.id ? (
                       <TeamLink id={ev.counterparty.id} className="text-cz-1 hover:text-cz-accent-t">
                         {ev.counterparty.name}
-                        {ev.counterparty.is_ai && <span className="ml-1 text-cz-3 text-[10px]">{t("history.aiTag")}</span>}
+                        {ev.counterparty.is_ai && <span className="ms-1 text-cz-3 text-[10px]">{t("history.aiTag")}</span>}
                       </TeamLink>
                     ) : <span className="text-cz-3">—</span>}
                   </td>
@@ -185,7 +185,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
                           {ev.direction === "out" ? "-" : ev.direction === "in" ? "+" : ""}{formatNumber(ev.amount)} CZ$
                         </span>
                       : <span className="text-cz-3">{ev.type === "swap" ? t("history.swapZero") : "—"}</span>}
-                    {ev.type === "loan" && <span className="text-cz-3 ml-1">{t("history.loanTag")}</span>}
+                    {ev.type === "loan" && <span className="text-cz-3 ms-1">{t("history.loanTag")}</span>}
                   </td>
                 </tr>
               ))}
