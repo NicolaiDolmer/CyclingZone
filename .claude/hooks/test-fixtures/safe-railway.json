@@ -1,0 +1,1 @@
+{"tool_name":"Bash","tool_input":{"command":"pwsh -File scripts/probe-railway-keys.ps1"},"session_id":"test"}

@@ -1,15 +1,80 @@
-# gitleaks projekt-config — udvider default-rules, tilføjer allowlist.
+# gitleaks projekt-config — udvider default-rules, tilføjer custom secret-patterns + allowlist.
+#
+# Bruges af:
+#   1. Lokal pre-commit hook (.githooks/pre-commit via gitleaks protect --staged)
+#   2. CI workflow (.github/workflows/secret-scan.yml via gitleaks-action@v2)
+#
+# Sync med .claude/hooks/sanitize-secrets.sh patterns. Når ny vektor opdages:
+# tilføj her + i sanitize-secrets.sh + dokumentér i docs/SECRET_LEAK_VECTORS.md.
 #
 # Allowlist-strategi: `sb_publishable_*` Supabase-keys er public-by-design
 # (se postmortem .claude/learnings/2026-05-11-supabase-key-rotation.md).
 # Default gitleaks "generic-api-key"-regel flagger dem som høj-entropi-secrets,
 # men de er rotation-safe og bevidst exponeret i frontend-bundles.
+#
+# Refs: #634 AC5.
 
 [extend]
 useDefault = true
 
+# --- Custom rules: provider-specifikke formater (sync med sanitize-secrets.sh) ---
+
+[[rules]]
+id = "supabase-secret-key"
+description = "Supabase service_role key (post-2026 sb_secret_ format)"
+regex = '''sb_secret_[A-Za-z0-9_-]{30,}'''
+tags = ["supabase", "key", "secret"]
+keywords = ["sb_secret_"]
+
+[[rules]]
+id = "supabase-legacy-jwt"
+description = "Supabase legacy service_role JWT (eyJh prefix — roden af #296)"
+regex = '''eyJh[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}'''
+tags = ["supabase", "jwt", "legacy", "critical"]
+keywords = ["eyJh"]
+
+[[rules]]
+id = "sentry-dsn"
+description = "Sentry DSN (32-char project-id hex + ingest.sentry.io endpoint)"
+regex = '''https://[a-f0-9]{32}@[a-z0-9.\-]+\.ingest(?:\.[a-z]{2})?\.sentry\.io/[0-9]+'''
+tags = ["sentry", "dsn"]
+keywords = ["ingest.sentry.io"]
+
+[[rules]]
+id = "discord-bot-token-cyclingzone"
+description = "Discord bot token (eksponeret i #620)"
+regex = '''[MN][A-Za-z0-9_-]{23,28}\.[A-Za-z0-9_-]{6,7}\.[A-Za-z0-9_-]{27,38}'''
+tags = ["discord", "bot", "token"]
+
+# --- Global allowlist ---
+
 [allowlist]
-description = "Supabase publishable keys er public-by-design (Refs #296)"
+description = "Public-by-design keys + paths gitleaks ikke skal scanne"
 regexes = [
+  # Supabase publishable keys er public per Supabase model (frontend bundles indeholder dem)
   '''sb_publishable_[A-Za-z0-9_-]+''',
+  # Test fixture markers (deliberate fake-secrets til AC6 test)
+  '''FIXTURE_DO_NOT_USE''',
+  '''TEST_SECRET_NOT_REAL''',
+  # Common placeholder-tokens
+  '''(replace-me|your-key-here|XXXXXXXX|placeholder|example-only)''',
+]
+paths = [
+  '''node_modules/''',
+  '''dist/''',
+  '''build/''',
+  '''coverage/''',
+  '''frontend/playwright-report/''',
+  '''frontend/test-results/''',
+  '''package-lock\.json$''',
+  '''pnpm-lock\.yaml$''',
+  # Dokumentation om secret-vektorer indeholder patterns men er ikke selv secrets
+  '''docs/SECRET_LEAK_VECTORS\.md$''',
+  '''docs/archive/.*\.md$''',
+  '''\.claude/secret-leak-incidents\.log$''',
+  '''\.claude/hooks/test-fixtures/''',
+  '''scripts/test-sanitize-secrets\.(ps1|sh)$''',
+  # Postmortem og memory-filer beskriver historiske leaks (redacted)
+  '''\.claude/learnings/.*-secret.*\.md$''',
+  '''\.claude/learnings/.*-supabase-key-rotation\.md$''',
 ]

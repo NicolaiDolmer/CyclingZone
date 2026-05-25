@@ -1,7 +1,113 @@
-#!/usr/bin/env sh
-# Pre-commit lint-gate via lint-staged.
-# Kører kun lint på den side (frontend/backend) der har staged ændringer.
-# Aktiveres automatisk via core.hooksPath=.githooks (sat af scripts/setup-local.ps1).
+#!/usr/bin/env bash
+# Pre-commit gate:
+#   1. Secret-leak scan (gitleaks primary, python fallback) — #634 AC5
+#   2. lint-staged (frontend/backend lint på staged changes)
+# Aktiveres via core.hooksPath=.githooks (sat af scripts/setup-local.ps1).
 set -e
 
+# Skip ved merge/rebase commits (gitleaks ville få false positives på conflict-markers)
+if [ -f .git/MERGE_HEAD ] || [ -f .git/REBASE_HEAD ] || [ -f .git/CHERRY_PICK_HEAD ]; then
+  exec npx lint-staged
+fi
+
+# Skip hvis ingen staged ændringer
+if git diff --cached --quiet; then
+  exit 0
+fi
+
+# --- (1) Secret-leak scan ---
+if command -v gitleaks >/dev/null 2>&1; then
+  # gitleaks protect --staged scanner kun staged hunks. Matches CI workflow.
+  if ! gitleaks protect --staged --redact --no-banner 2>&1; then
+    cat >&2 <<'EOF'
+
+🔴 PRE-COMMIT BLOCKED: gitleaks found secret in staged changes.
+
+What to do:
+1. Identify the leaked value in output above (gitleaks redacts to last 4 chars).
+2. Remove from file (use env-var or config-store instead).
+3. If already exposed historically -> rotate per #634 protocol (rotation blocked
+   until permanent prevention shipped; this hook IS the prevention).
+4. Re-stage + re-commit.
+
+Override (LAST RESORT — CI gitleaks still catches): git commit --no-verify
+
+Refs: #634 AC5, docs/SECRET_LEAK_VECTORS.md.
+EOF
+    exit 1
+  fi
+else
+  # Fallback: python regex scan med samme patterns som .claude/hooks/sanitize-secrets.sh
+  echo "⚠️  gitleaks not installed — running fallback python regex scan." >&2
+  echo "   Recommended: scripts/install-git-hooks.ps1 -InstallGitleaks" >&2
+
+  PY=""
+  command -v python3 >/dev/null 2>&1 && PY=python3
+  [ -z "$PY" ] && command -v python >/dev/null 2>&1 && PY=python
+
+  if [ -z "$PY" ]; then
+    echo "🔴 PRE-COMMIT BLOCKED: neither gitleaks nor python available." >&2
+    echo "   Install gitleaks: scripts/install-git-hooks.ps1 -InstallGitleaks" >&2
+    exit 1
+  fi
+
+  STAGED_DIFF=$(git diff --cached -U0 --no-color)
+  if [ -n "$STAGED_DIFF" ]; then
+    export _SECRET_SCAN_DIFF="$STAGED_DIFF"
+    RESULT=$("$PY" <<'PYEOF' 2>/dev/null
+import os, re, sys
+diff = os.environ.get("_SECRET_SCAN_DIFF", "")
+PATTERNS = [
+    ("supabase-secret",      re.compile(r"sb_secret_[A-Za-z0-9_-]{30,}")),
+    ("jwt-supabase-legacy",  re.compile(r"eyJh[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}")),
+    ("jwt",                  re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")),
+    ("sentry-dsn",           re.compile(r"https://[a-f0-9]{32}@[a-z0-9.\-]+\.ingest(?:\.[a-z]{2})?\.sentry\.io/[0-9]+")),
+    ("discord-bot-token",    re.compile(r"\b[MN][A-Za-z0-9_-]{23,28}\.[A-Za-z0-9_-]{6,7}\.[A-Za-z0-9_-]{27,38}\b")),
+    ("github-pat",           re.compile(r"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,}\b")),
+    ("aws-access-key",       re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
+    ("slack-token",          re.compile(r"\bxox[abprs]-[0-9]{10,}-[0-9]{10,}-[A-Za-z0-9]{24,}\b")),
+    ("anthropic-key",        re.compile(r"\bsk-ant-[A-Za-z0-9_-]{90,}\b")),
+    ("stripe-key",           re.compile(r"\b(?:sk|pk|rk)_(?:test|live)_[A-Za-z0-9]{24,}\b")),
+]
+findings = []
+current_file = ""
+for line in diff.split("\n"):
+    if line.startswith("+++ b/"):
+        current_file = line[6:]
+        continue
+    if line.startswith("---") or line.startswith("+++") or line.startswith("@@") or line.startswith("diff "):
+        continue
+    if not line.startswith("+"):
+        continue
+    content = line[1:]
+    for type_name, pattern in PATTERNS:
+        for m in pattern.finditer(content):
+            value = m.group(0)
+            preview = value[:8] + "..." + value[-4:] if len(value) > 16 else value[:4] + "..."
+            findings.append((current_file, type_name, preview))
+if findings:
+    print(f"Fundet {len(findings)} secret-like pattern(s):")
+    for fname, type_name, preview in findings[:20]:
+        print(f"  {fname}: {type_name} ({preview})")
+    sys.exit(1)
+sys.exit(0)
+PYEOF
+    ) || PY_EXIT=$?
+    unset _SECRET_SCAN_DIFF
+
+    if [ "${PY_EXIT:-0}" -ne 0 ]; then
+      cat >&2 <<EOF
+
+🔴 PRE-COMMIT BLOCKED: secret-pattern in staged changes (python fallback scan).
+
+$RESULT
+
+Refs: #634 AC5, docs/SECRET_LEAK_VECTORS.md.
+EOF
+      exit 1
+    fi
+  fi
+fi
+
+# --- (2) lint-staged ---
 npx lint-staged

@@ -38,3 +38,8 @@ audit-output/
 
 # Personlig planlægning (Emmas kalender, ADHD-profil, familietid) — lever i OneDrive/CyclingZone-context/
 docs/WEEKLY_PLANNING_GUIDE.md
+
+# Secret-leak incidents log (#634) — append-only metadata om hook-detections.
+# Indeholder type-navne + 8-char prefix/4-char suffix previews; ikke ægte secrets,
+# men forsigtig: keep local.
+.claude/secret-leak-incidents.log

@@ -88,6 +88,16 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/block-dangerous-secret-commands.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -110,6 +120,28 @@
           {
             "type": "command",
             "command": "bash scripts/hooks/block-archived-edit.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/sanitize-secrets.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/sanitize-secrets.sh",
+            "timeout": 10
           }
         ]
       }
