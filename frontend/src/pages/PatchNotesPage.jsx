@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.00",
+    date: "2026-05-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Language · EN/DA support extended to Finance page",
+        items: [
+          "EN · The Finance page now renders in both English and Danish via the language switcher. This covers the balance, debt and prize-money KPIs, the season forecast card (including the 1-5 season horizon selector and the multi-season table), the first-visit explainer card with the four cashflow streams, the onboarding tour for balance/debt-ceiling/transaction history, the active-loans list (principal, interest, seasons remaining, repayment flow), the take-out-loan form (fee, interest, total preview), the loan-terms table per division, and the full transaction history with all 12 transaction types (sponsor, salary, transfer in/out, loan received/repayment/interest, emergency loan, prize, bonus, admin adjustment, interest). Numbers follow the active language (1,500 in EN, 1.500 in DA). Em-dashes replaced with sentences per tone-of-voice guide. Phase 3.5 of the i18n rollout (#483). Refs #489.",
+          "DA · Finanser-siden rendres nu på både engelsk og dansk via sprog-vælgeren. Det dækker balance-, gæld- og præmiepenge-KPI'erne, sæsonprognose-kortet (inkl. 1-5 sæsons-horisont-vælgeren og multi-sæson-tabellen), første-besøgs-explainerkortet med de fire pengestrømme, onboarding-touren for balance/gældsloft/transaktionshistorik, aktive-lån-listen (hovedstol, rente, sæsoner tilbage, tilbagebetalings-flow), optag-lån-formularen (gebyr, rente, total-preview), lånebetingelser-tabellen pr. division, og fuld transaktionshistorik med alle 12 transaktionstyper (sponsor, løn, transfer ind/ud, lån modtaget/rate/renter, nødlån, præmie, bonus, admin justering, renter). Tal følger aktivt sprog (1,500 i EN, 1.500 i DA). Em-dashes erstattet med sætninger jf. tone-of-voice-guide. Fase 3.5 i i18n-udrulningen (#483). Refs #489.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.99",
     date: "2026-05-25",
     label: "Beta",

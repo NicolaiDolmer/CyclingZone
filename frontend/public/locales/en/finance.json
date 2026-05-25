@@ -1,0 +1,144 @@
+{
+  "page": {
+    "title": "Finance",
+    "subtitle": "Balance, loans, and transaction history",
+    "seasonReport": "Season report"
+  },
+  "balance": {
+    "label": "Balance",
+    "division": "Division {division}",
+    "available": "{value} CZ$ available",
+    "lockedInBids": "{value} CZ$ locked in bids"
+  },
+  "debt": {
+    "label": "Total debt",
+    "ceiling": "Cap: {value} CZ$"
+  },
+  "prize": {
+    "label": "Prize money",
+    "raceCount": "{count, plural, one {1 race} other {# races}}"
+  },
+  "prizeList": {
+    "title": "Race prizes",
+    "fallbackName": "Prize money"
+  },
+  "loans": {
+    "types": {
+      "short": "Short-term loan",
+      "long": "Long-term loan",
+      "emergency": "Emergency loan"
+    },
+    "active": {
+      "title": "Active loans",
+      "empty": "No active loans",
+      "createdAt": "Taken {when}",
+      "remaining": "remaining",
+      "principal": "Principal",
+      "interestPerSeason": "Interest/season",
+      "seasonsRemaining": "Seasons left",
+      "startRepay": "Pay installment →",
+      "startRepayMaxPlaceholder": "Max {value}",
+      "repayPlaceholder": "0",
+      "repayBtn": "Pay",
+      "repayingBtn": "...",
+      "cancelRepayAria": "Cancel"
+    },
+    "take": {
+      "title": "Take out a loan",
+      "noConfig": "No loan configuration available for Division {division}",
+      "typeLabel": "Loan type",
+      "amountLabel": "Amount (CZ$)",
+      "amountPlaceholder": "e.g. 500",
+      "feeLabel": "Fee ({pct}%)",
+      "feeValue": "{value} CZ$",
+      "interestLabel": "Interest/season",
+      "interestValue": "{pct}%",
+      "totalLabel": "Total repayment",
+      "totalValue": "{value} CZ$",
+      "submit": "Take loan",
+      "processing": "Processing..."
+    },
+    "terms": {
+      "title": "Loan terms, Division {division}",
+      "headers": {
+        "type": "Type",
+        "fee": "Fee",
+        "interest": "Interest/season",
+        "seasons": "Seasons",
+        "debtCeiling": "Debt cap"
+      }
+    }
+  },
+  "transactions": {
+    "history": {
+      "title": "Transaction history",
+      "empty": "No transactions yet"
+    },
+    "type": {
+      "sponsor": "Sponsor income",
+      "salary": "Salaries",
+      "transfer_out": "Transfer (bought)",
+      "transfer_in": "Transfer (sold)",
+      "loan_received": "Loan received",
+      "loan_repayment": "Loan installment",
+      "loan_interest": "Loan interest",
+      "emergency_loan": "Emergency loan",
+      "prize": "Prize money",
+      "bonus": "Division bonus",
+      "admin_adjustment": "Admin adjustment",
+      "interest": "Interest"
+    }
+  },
+  "timeAgo": {
+    "unknown": "—",
+    "now": "Just now",
+    "minutes": "{m}m ago",
+    "hours": "{h}h ago",
+    "days": "{d}d ago"
+  },
+  "msg": {
+    "loanCreated": "✅ Loan of {amount} CZ$ created",
+    "loanRepaidFull": "✅ Loan fully repaid!",
+    "loanRepaidPartial": "✅ {paid} CZ$ paid, {remaining} CZ$ remaining",
+    "errorPrefix": "❌ "
+  },
+  "tour": {
+    "balance": {
+      "title": "Your balance and cashflow",
+      "body": "Balance changes from sponsor (income at season start), salaries (paid at the start of the next season after sponsor lands), transfers, and prize money (ongoing). Red numbers mean negative balance, and the emergency-loan mechanism kicks in at the next season start if sponsor and balance cannot cover salary and interest."
+    },
+    "debtCeiling": {
+      "title": "Debt cap per division",
+      "body": "Each division has a cap on total debt (D1 1,200K · D2 900K · D3 600K). Once the cap is reached, new loans are blocked, and the board also penalises overspending at season evaluation."
+    },
+    "txHistory": {
+      "title": "Follow the cashflow",
+      "body": "Sponsor and salary are one-off per season (both at season start: sponsor first, then salary), while prize money and transfers come in continuously. Here you see every transaction, use it to track whether the finances are heading the right way."
+    }
+  },
+  "hint": {
+    "title": "How your finances work",
+    "subtitle": "Four income and expense streams drive your balance. Understand them, and you can prioritise sport, growth, and debt.",
+    "dismissAria": "Hide",
+    "sponsor": {
+      "title": "Sponsor income",
+      "before": "Base 240,000 CZ$ per season × your ",
+      "linkText": "board modifier",
+      "after": ". Paid as a lump sum at season start."
+    },
+    "salary": {
+      "title": "Rider salaries",
+      "body": "10% of rider value per season (uci_points × 4000). Deducted as a lump sum at the start of the next season, right after the sponsor lands. Star riders are expensive to keep."
+    },
+    "debt": {
+      "title": "Debt cap per division",
+      "body": "D1 1,200K · D2 900K · D3 600K. Break the cap and new loans are blocked, and the board punishes overspending."
+    },
+    "loans": {
+      "title": "Loans, short vs long",
+      "body": "Short loan: low fee, fast repayment. Long loan: larger amount across several seasons. Use them for transfer peaks, not operating gaps."
+    },
+    "showTour": "💡 Show me around",
+    "skip": "Skip"
+  }
+}

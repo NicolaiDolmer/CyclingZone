@@ -1,0 +1,144 @@
+{
+  "page": {
+    "title": "Finanser",
+    "subtitle": "Balance, lån og transaktionshistorik",
+    "seasonReport": "Sæsonsrapport"
+  },
+  "balance": {
+    "label": "Balance",
+    "division": "Division {division}",
+    "available": "{value} CZ$ tilgængelig",
+    "lockedInBids": "{value} CZ$ låst i bud"
+  },
+  "debt": {
+    "label": "Total gæld",
+    "ceiling": "Loft: {value} CZ$"
+  },
+  "prize": {
+    "label": "Præmiepenge",
+    "raceCount": "{count, plural, one {1 løb} other {# løb}}"
+  },
+  "prizeList": {
+    "title": "Løbspræmier",
+    "fallbackName": "Præmiepenge"
+  },
+  "loans": {
+    "types": {
+      "short": "Kort lån",
+      "long": "Langt lån",
+      "emergency": "Nødlån"
+    },
+    "active": {
+      "title": "Aktive lån",
+      "empty": "Ingen aktive lån",
+      "createdAt": "Oprettet {when}",
+      "remaining": "resterende",
+      "principal": "Hovedstol",
+      "interestPerSeason": "Rente/sæson",
+      "seasonsRemaining": "Sæsoner tilbage",
+      "startRepay": "Betal rate →",
+      "startRepayMaxPlaceholder": "Max {value}",
+      "repayPlaceholder": "0",
+      "repayBtn": "Betal",
+      "repayingBtn": "...",
+      "cancelRepayAria": "Annullér"
+    },
+    "take": {
+      "title": "Optag lån",
+      "noConfig": "Ingen lånekonfiguration fundet for Division {division}",
+      "typeLabel": "Låntype",
+      "amountLabel": "Beløb (CZ$)",
+      "amountPlaceholder": "f.eks. 500",
+      "feeLabel": "Gebyr ({pct}%)",
+      "feeValue": "{value} CZ$",
+      "interestLabel": "Rente/sæson",
+      "interestValue": "{pct}%",
+      "totalLabel": "Total tilbagebetaling",
+      "totalValue": "{value} CZ$",
+      "submit": "Optag lån",
+      "processing": "Behandler..."
+    },
+    "terms": {
+      "title": "Lånebetingelser, Division {division}",
+      "headers": {
+        "type": "Type",
+        "fee": "Gebyr",
+        "interest": "Rente/sæson",
+        "seasons": "Sæsoner",
+        "debtCeiling": "Gældsloft"
+      }
+    }
+  },
+  "transactions": {
+    "history": {
+      "title": "Transaktionshistorik",
+      "empty": "Ingen transaktioner endnu"
+    },
+    "type": {
+      "sponsor": "Sponsorindtægt",
+      "salary": "Løn",
+      "transfer_out": "Transfer (købt)",
+      "transfer_in": "Transfer (solgt)",
+      "loan_received": "Lån modtaget",
+      "loan_repayment": "Lånrate",
+      "loan_interest": "Lånerenter",
+      "emergency_loan": "Nødlån",
+      "prize": "Præmiepenge",
+      "bonus": "Divisionsbonus",
+      "admin_adjustment": "Admin justering",
+      "interest": "Renter"
+    }
+  },
+  "timeAgo": {
+    "unknown": "—",
+    "now": "Lige nu",
+    "minutes": "{m}m siden",
+    "hours": "{h}t siden",
+    "days": "{d}d siden"
+  },
+  "msg": {
+    "loanCreated": "✅ Lån på {amount} CZ$ oprettet",
+    "loanRepaidFull": "✅ Lån fuldt tilbagebetalt!",
+    "loanRepaidPartial": "✅ {paid} CZ$ betalt, {remaining} CZ$ resterende",
+    "errorPrefix": "❌ "
+  },
+  "tour": {
+    "balance": {
+      "title": "Din balance og pengestrømme",
+      "body": "Balance ændrer sig ved sponsor (ind, ved sæsonstart), løn (ud, ved næste sæsonstart efter sponsor), transfers og præmier (løbende). Røde tal = negativ balance, og nødlån-mekanismen kicker ind ved næste sæsonstart hvis sponsor og balance ikke dækker løn og renter."
+    },
+    "debtCeiling": {
+      "title": "Gældsloft pr. division",
+      "body": "Hver division har et loft for total gæld (D1 1.200K · D2 900K · D3 600K). Når loftet er nået, spærres nye lån, og bestyrelsen straffer også overforbrug ved sæsonevaluering."
+    },
+    "txHistory": {
+      "title": "Følg pengestrømmene",
+      "body": "Sponsor og løn er sæson-engangs (begge ved sæsonstart: sponsor først, så løn), mens præmier og transfers tikker ind løbende. Her ser du hver transaktion, brug den til at spore om økonomien går den rigtige vej."
+    }
+  },
+  "hint": {
+    "title": "Sådan fungerer din økonomi",
+    "subtitle": "Fire indtægts- og udgiftsstrømme styrer din balance. Forstå dem, og du kan prioritere mellem sportsligt fokus, vækst og gæld.",
+    "dismissAria": "Skjul",
+    "sponsor": {
+      "title": "Sponsor-indkomst",
+      "before": "Base 240.000 CZ$ pr. sæson × din ",
+      "linkText": "bestyrelses-modifier",
+      "after": ". Udbetales som engangsbeløb ved sæsonstart."
+    },
+    "salary": {
+      "title": "Løn til ryttere",
+      "body": "10% af rytterværdien pr. sæson (uci_points × 4000). Trækkes som engangsbeløb ved næste sæsons start, lige efter sponsor lander. Stjerneryttere er dyre at holde på."
+    },
+    "debt": {
+      "title": "Gældsloft pr. division",
+      "body": "D1 1.200K · D2 900K · D3 600K. Brydes loftet, spærres nye lån, og bestyrelsen straffer overforbrug."
+    },
+    "loans": {
+      "title": "Lån, kort vs. langt",
+      "body": "Kort lån: lavt gebyr, hurtig tilbagebetaling. Langt lån: større beløb over flere sæsoner. Brug dem til transferspidser, ikke driftshuller."
+    },
+    "showTour": "💡 Vis mig rundt",
+    "skip": "Spring over"
+  }
+}
