@@ -12,7 +12,7 @@ const CORE_PAGES = [
   // instant på first paint, ingen race med HttpBackend lazy-load.
   { path: "/auctions", heading: /^(Auktioner|Auctions)$/, snapshot: "auctions.png" },
   { path: "/team", heading: "E2E Racing", snapshot: "team.png" },
-  { path: "/finance", heading: "Finanser", snapshot: "finance.png" },
+  { path: "/finance", heading: /^(Finanser|Finance)$/, snapshot: "finance.png" },
   { path: "/board", heading: "Bestyrelse", snapshot: "board.png" },
   { path: "/seasons", heading: /Sæson/, snapshot: "seasons.png" },
   // Inbox har meget dynamisk indhold (notifikations-list med timestamps, count-

@@ -99,21 +99,22 @@ export default function FinanceForecastCard({
       {/* 2026-05-21: Sæsons-horisont selector (1-5) */}
       {typeof onSeasonsAheadChange === "function" && (
         <div className="flex items-center gap-2 mb-3">
-          <label className="text-cz-3 text-xs">Forecast-horisont:</label>
+          <label className="text-cz-3 text-xs">{t("forecast.horizon.label")}</label>
           <select
             value={seasonsAhead}
             onChange={(e) => onSeasonsAheadChange(Number.parseInt(e.target.value, 10))}
             className="bg-cz-subtle border border-cz-border text-cz-1 text-xs rounded-md px-2 py-1"
           >
-            <option value={1}>1 sæson</option>
-            <option value={2}>2 sæsoner</option>
-            <option value={3}>3 sæsoner</option>
-            <option value={4}>4 sæsoner</option>
-            <option value={5}>5 sæsoner</option>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <option key={n} value={n}>{t("forecast.horizon.option", { count: n })}</option>
+            ))}
           </select>
           {multiSeason && forecast.summary && (
             <span className="text-cz-3 text-xs">
-              ({forecast.summary.from_season ?? "?"}–{forecast.summary.to_season ?? "?"})
+              {t("forecast.horizon.rangeSuffix", {
+                from: forecast.summary.from_season ?? "?",
+                to: forecast.summary.to_season ?? "?",
+              })}
             </span>
           )}
         </div>
@@ -180,20 +181,20 @@ export default function FinanceForecastCard({
       {multiSeason && (
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 mb-3">
           <p className="text-cz-2 font-medium text-xs mb-2">
-            Sæson-for-sæson (estimat fra sæson {forecast.forecasts[1]?.season_number ?? "?"} →)
+            {t("forecast.multiSeason.title", { from: forecast.forecasts[1]?.season_number ?? "?" })}
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-cz-3 text-left">
-                  <th className="py-1 pr-2">Sæson</th>
-                  <th className="py-1 px-2 text-right">Sponsor</th>
-                  <th className="py-1 px-2 text-right">Præmie</th>
-                  <th className="py-1 px-2 text-right">Løn</th>
-                  <th className="py-1 px-2 text-right">Rente</th>
-                  <th className="py-1 px-2 text-right">Net</th>
-                  <th className="py-1 px-2 text-right">Saldo slut</th>
-                  <th className="py-1 pl-2 text-right">Risiko</th>
+                <tr className="text-cz-3 text-start">
+                  <th className="py-1 pe-2">{t("forecast.multiSeason.headers.season")}</th>
+                  <th className="py-1 px-2 text-end">{t("forecast.multiSeason.headers.sponsor")}</th>
+                  <th className="py-1 px-2 text-end">{t("forecast.multiSeason.headers.prize")}</th>
+                  <th className="py-1 px-2 text-end">{t("forecast.multiSeason.headers.salary")}</th>
+                  <th className="py-1 px-2 text-end">{t("forecast.multiSeason.headers.interest")}</th>
+                  <th className="py-1 px-2 text-end">{t("forecast.multiSeason.headers.net")}</th>
+                  <th className="py-1 px-2 text-end">{t("forecast.multiSeason.headers.endBalance")}</th>
+                  <th className="py-1 ps-2 text-end">{t("forecast.multiSeason.headers.risk")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -201,31 +202,31 @@ export default function FinanceForecastCard({
                   const rowTier = getTierMeta(t, row.risk_tier);
                   return (
                     <tr key={row.season_number} className="border-t border-cz-border">
-                      <td className="py-1 pr-2 text-cz-1 font-medium">
+                      <td className="py-1 pe-2 text-cz-1 font-medium">
                         S{row.season_number}
                         {row.is_estimate && (
-                          <span className="text-cz-3 text-[10px] ms-1" title="Estimat — antager status quo">~</span>
+                          <span className="text-cz-3 text-[10px] ms-1" title={t("forecast.multiSeason.estimateTooltip")}>{t("forecast.multiSeason.estimateMark")}</span>
                         )}
                       </td>
-                      <td className="py-1 px-2 text-right font-mono text-cz-success">
+                      <td className="py-1 px-2 text-end font-mono text-cz-success">
                         {formatSigned(row.projected_sponsor)}
                       </td>
-                      <td className="py-1 px-2 text-right font-mono text-cz-success">
+                      <td className="py-1 px-2 text-end font-mono text-cz-success">
                         {formatSigned(row.projected_prize)}
                       </td>
-                      <td className="py-1 px-2 text-right font-mono text-cz-danger">
+                      <td className="py-1 px-2 text-end font-mono text-cz-danger">
                         {formatSigned(row.projected_salary)}
                       </td>
-                      <td className="py-1 px-2 text-right font-mono text-cz-danger">
+                      <td className="py-1 px-2 text-end font-mono text-cz-danger">
                         {formatSigned(row.projected_loan_interest)}
                       </td>
-                      <td className={`py-1 px-2 text-right font-mono font-bold ${row.projected_net >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
+                      <td className={`py-1 px-2 text-end font-mono font-bold ${row.projected_net >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
                         {formatSigned(row.projected_net)}
                       </td>
-                      <td className="py-1 px-2 text-right font-mono text-cz-1">
+                      <td className="py-1 px-2 text-end font-mono text-cz-1">
                         {formatNumber(row.ending_balance)} CZ$
                       </td>
-                      <td className="py-1 pl-2 text-right" title={rowTier.summary}>
+                      <td className="py-1 ps-2 text-end" title={rowTier.summary}>
                         {rowTier.icon}
                       </td>
                     </tr>
@@ -234,15 +235,15 @@ export default function FinanceForecastCard({
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-cz-border font-semibold">
-                  <td className="py-1 pr-2 text-cz-1">Total</td>
+                  <td className="py-1 pe-2 text-cz-1">{t("forecast.multiSeason.total")}</td>
                   <td colSpan={4}></td>
-                  <td className={`py-1 px-2 text-right font-mono ${forecast.summary?.total_net >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
+                  <td className={`py-1 px-2 text-end font-mono ${forecast.summary?.total_net >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
                     {formatSigned(forecast.summary?.total_net ?? 0)}
                   </td>
-                  <td className="py-1 px-2 text-right font-mono text-cz-1">
+                  <td className="py-1 px-2 text-end font-mono text-cz-1">
                     {formatNumber(forecast.summary?.ending_balance ?? 0)} CZ$
                   </td>
-                  <td className="py-1 pl-2 text-right">
+                  <td className="py-1 ps-2 text-end">
                     {getTierMeta(t, forecast.summary?.worst_risk_tier).icon}
                   </td>
                 </tr>
@@ -250,7 +251,7 @@ export default function FinanceForecastCard({
             </table>
           </div>
           <p className="text-cz-3 text-[11px] mt-2">
-            ~ = estimat baseret på &ldquo;intet ændrer sig&rdquo;-antagelse (samme roster, sponsor og lån-decay 25% per sæson).
+            {t("forecast.multiSeason.estimateNote")}
           </p>
         </div>
       )}

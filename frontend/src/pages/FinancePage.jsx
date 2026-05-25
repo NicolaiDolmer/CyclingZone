@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { formatNumber } from "../lib/intl";
 import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
 import FinanceForecastCard from "../components/FinanceForecastCard";
 import OnboardingTour from "../components/OnboardingTour";
@@ -9,56 +11,24 @@ import { logEvent } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
 
-const LOAN_TYPE_LABELS = { short: "Kort lån", long: "Langt lån", emergency: "Nødlån" };
-
-// Onboarding v2 Slice 3 — tour-trin på /finance (aktiveres fra FinanceFirstVisitHint
-// "Vis mig rundt"-knap). Pegger på balance-grid, gældsloft og transaktionshistorik.
-const FINANCE_TOUR_STEPS = [
-  {
-    target: "[data-tour='finance-balance']",
-    title: "Din balance og pengestrømme",
-    body: "Balance ændrer sig ved sponsor (ind, ved sæsonstart), løn (ud, ved næste sæsonstart efter sponsor), transfers og præmier (løbende). Røde tal = negativ balance — nødlån-mekanismen kicker ind ved næste sæsonstart hvis sponsor+balance ikke dækker løn+renter.",
-  },
-  {
-    target: "[data-tour='finance-debt-ceiling']",
-    title: "Gældsloft pr. division",
-    body: "Hver division har et loft for total gæld (D1 1.200K · D2 900K · D3 600K). Når loftet er nået, spærres nye lån — bestyrelsen straffer også overforbrug ved sæsonevaluering.",
-  },
-  {
-    target: "[data-tour='finance-tx-history']",
-    title: "Følg pengestrømmene",
-    body: "Sponsor og løn er sæson-engangs (begge ved sæsonstart — sponsor først, så løn), mens præmier og transfers tikker ind løbende. Her ser du hver transaktion — brug den til at spore om økonomien går den rigtige vej.",
-  },
-];
-
-const TX_CONFIG = {
-  sponsor:          { label: "Sponsorindtægt",    color: "text-cz-success" },
-  salary:           { label: "Løn",                color: "text-cz-danger" },
-  transfer_out:     { label: "Transfer (købt)",   color: "text-cz-danger" },
-  transfer_in:      { label: "Transfer (solgt)",  color: "text-cz-success" },
-  loan_received:    { label: "Lån modtaget",       color: "text-cz-info" },
-  loan_repayment:   { label: "Lånrate",            color: "text-cz-warning" },
-  loan_interest:    { label: "Lånerenter",         color: "text-cz-danger" },
-  emergency_loan:   { label: "Nødlån",             color: "text-cz-danger" },
-  prize:            { label: "Præmiepenge",        color: "text-cz-success" },
-  bonus:            { label: "Divisionsbonus",     color: "text-cz-success" },
-  admin_adjustment: { label: "Admin justering",   color: "text-cz-2" },
-  interest:         { label: "Renter",             color: "text-cz-danger" },
-};
-
-function timeAgo(d) {
-  if (!d) return "—";
-  const diff = new Date() - new Date(d);
-  const m = Math.floor(diff / 60000);
-  const h = Math.floor(diff / 3600000);
-  const day = Math.floor(diff / 86400000);
-  if (m < 1) return "Lige nu";
-  if (m < 60) return `${m}m siden`;
-  if (h < 24) return `${h}t siden`;
-  return `${day}d siden`;
+function useTimeAgo(t) {
+  return (d) => {
+    if (!d) return t("timeAgo.unknown");
+    const diff = new Date() - new Date(d);
+    const m = Math.floor(diff / 60000);
+    const h = Math.floor(diff / 3600000);
+    const day = Math.floor(diff / 86400000);
+    if (m < 1) return t("timeAgo.now");
+    if (m < 60) return t("timeAgo.minutes", { m });
+    if (h < 24) return t("timeAgo.hours", { h });
+    return t("timeAgo.days", { d: day });
+  };
 }
 
 export default function FinancePage() {
+  const { t } = useTranslation("finance");
+  const timeAgo = useTimeAgo(t);
+
   const [loanData, setLoanData] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [team, setTeam] = useState(null);
@@ -68,6 +38,27 @@ export default function FinancePage() {
   const [forecast, setForecast] = useState(null);
   const [forecastLoading, setForecastLoading] = useState(true);
   const [seasonsAhead, setSeasonsAhead] = useState(1);
+
+  // Onboarding v2 Slice 3 — tour-trin på /finance (aktiveres fra FinanceFirstVisitHint
+  // "Vis mig rundt"-knap). Pegger på balance-grid, gældsloft og transaktionshistorik.
+  const tourSteps = useMemo(() => [
+    {
+      target: "[data-tour='finance-balance']",
+      title: t("tour.balance.title"),
+      body: t("tour.balance.body"),
+    },
+    {
+      target: "[data-tour='finance-debt-ceiling']",
+      title: t("tour.debtCeiling.title"),
+      body: t("tour.debtCeiling.body"),
+    },
+    {
+      target: "[data-tour='finance-tx-history']",
+      title: t("tour.txHistory.title"),
+      body: t("tour.txHistory.body"),
+    },
+  ], [t]);
+
   useEffect(() => {
     if (!forecastLoading && forecast) logEvent("feature_finance_forecast_card_viewed");
   }, [forecastLoading, forecast]);
@@ -213,11 +204,11 @@ export default function FinancePage() {
     });
     const result = await res.json();
     if (res.ok) {
-      showMsg(`✅ Lån på ${parseInt(loanAmount).toLocaleString("da-DK")} CZ$ oprettet`);
+      showMsg(t("msg.loanCreated", { amount: formatNumber(parseInt(loanAmount)) }));
       setLoanAmount("");
       loadAll();
     } else {
-      showMsg(`❌ ${result.error}`, "error");
+      showMsg(`${t("msg.errorPrefix")}${result.error}`, "error");
     }
     setTakingLoan(false);
   }
@@ -234,13 +225,16 @@ export default function FinancePage() {
     const result = await res.json();
     if (res.ok) {
       showMsg(result.paid_off
-        ? "✅ Lån fuldt tilbagebetalt!"
-        : `✅ ${result.paid?.toLocaleString("da-DK")} CZ$ betalt — resterende: ${result.remaining?.toLocaleString("da-DK")} CZ$`);
+        ? t("msg.loanRepaidFull")
+        : t("msg.loanRepaidPartial", {
+            paid: formatNumber(result.paid ?? 0),
+            remaining: formatNumber(result.remaining ?? 0),
+          }));
       setRepayId(null);
       setRepayAmount("");
       loadAll();
     } else {
-      showMsg(`❌ ${result.error}`, "error");
+      showMsg(`${t("msg.errorPrefix")}${result.error}`, "error");
     }
     setRepaying(false);
   }
@@ -255,22 +249,24 @@ export default function FinancePage() {
   const configs = (loanData?.configs || []).filter(c => c.loan_type !== "emergency");
   const selectedConfig = configs.find(c => c.loan_type === loanType);
   const loanAmountNum = parseInt(loanAmount) || 0;
+  const loanLabel = (type) => t(`loans.types.${type}`, { defaultValue: type });
+  const txLabel = (type) => t(`transactions.type.${type}`, { defaultValue: type });
 
   return (
     <div className="max-w-3xl mx-auto">
-      <OnboardingTour pageKey="finance" steps={FINANCE_TOUR_STEPS} />
+      <OnboardingTour pageKey="finance" steps={tourSteps} />
 
       <div className="mb-5 flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold text-cz-1">Finanser</h1>
-          <p className="text-cz-3 text-sm">Balance, lån og transaktionshistorik</p>
+          <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
+          <p className="text-cz-3 text-sm">{t("page.subtitle")}</p>
         </div>
         {activeSeasonId && team?.id && (
           <Link
             to={`/seasons/${activeSeasonId}/finance/${team.id}`}
             className="text-sm bg-cz-card border border-cz-border hover:border-cz-accent rounded-lg px-3 py-2 text-cz-2 hover:text-cz-1 transition-colors"
           >
-            📊 Sæsonsrapport
+            📊 {t("page.seasonReport")}
           </Link>
         )}
       </div>
@@ -289,35 +285,35 @@ export default function FinancePage() {
       {/* Balance + gæld + præmier */}
       <div data-tour="finance-balance" className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Balance</p>
+          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("balance.label")}</p>
           <p className={`font-mono font-bold text-2xl ${(team?.balance || 0) >= 0 ? "text-cz-accent-t" : "text-cz-danger"}`}>
-            {(team?.balance || 0).toLocaleString("da-DK")} CZ$
+            {formatNumber(team?.balance || 0)} CZ$
           </p>
-          <p className="text-cz-3 text-xs mt-1">Division {team?.division}</p>
+          <p className="text-cz-3 text-xs mt-1">{t("balance.division", { division: team?.division })}</p>
           {reservedBalance > 0 && (
             <p className="text-cz-3 text-xs mt-2 leading-snug">
-              {Math.max(0, (team?.balance || 0) - reservedBalance).toLocaleString("da-DK")} CZ$ tilgængelig<br />
-              <span className="text-cz-3/70">{reservedBalance.toLocaleString("da-DK")} CZ$ låst i bud</span>
+              {t("balance.available", { value: formatNumber(Math.max(0, (team?.balance || 0) - reservedBalance)) })}<br />
+              <span className="text-cz-3/70">{t("balance.lockedInBids", { value: formatNumber(reservedBalance) })}</span>
             </p>
           )}
         </div>
         <div data-tour="finance-debt-ceiling" className="bg-cz-card border border-cz-border rounded-xl p-5">
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Total gæld</p>
+          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("debt.label")}</p>
           <p className={`font-mono font-bold text-2xl ${(loanData?.total_debt || 0) > 0 ? "text-cz-danger" : "text-cz-3"}`}>
-            {(loanData?.total_debt || 0).toLocaleString("da-DK")} CZ$
+            {formatNumber(loanData?.total_debt || 0)} CZ$
           </p>
           {loanData?.debt_ceiling && (
             <p className="text-cz-3 text-xs mt-1">
-              Loft: {loanData.debt_ceiling.toLocaleString("da-DK")} CZ$
+              {t("debt.ceiling", { value: formatNumber(loanData.debt_ceiling) })}
             </p>
           )}
         </div>
         <div className="col-span-2 md:col-span-1 bg-cz-card border border-cz-border rounded-xl p-5">
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">Præmiepenge</p>
+          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("prize.label")}</p>
           <p className={`font-mono font-bold text-2xl ${prizeTotal > 0 ? "text-cz-success" : "text-cz-3"}`}>
-            {prizeTotal > 0 ? "+" : ""}{prizeTotal.toLocaleString("da-DK")} CZ$
+            {prizeTotal > 0 ? "+" : ""}{formatNumber(prizeTotal)} CZ$
           </p>
-          <p className="text-cz-3 text-xs mt-1">{prizeRows.length} løb</p>
+          <p className="text-cz-3 text-xs mt-1">{t("prize.raceCount", { count: prizeRows.length })}</p>
         </div>
       </div>
 
@@ -335,18 +331,18 @@ export default function FinancePage() {
       {/* Løbspræmier */}
       {prizeRows.length > 0 && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
-          <h2 className="text-cz-1 font-semibold text-sm mb-3">Løbspræmier</h2>
+          <h2 className="text-cz-1 font-semibold text-sm mb-3">{t("prizeList.title")}</h2>
           <div className="flex flex-col divide-y divide-cz-border">
             {prizeRows.map(tx => (
               <div key={tx.id} className="flex items-center justify-between py-2">
-                <div className="flex-1 min-w-0 pr-3">
+                <div className="flex-1 min-w-0 pe-3">
                   <p className="text-cz-2 text-xs font-medium truncate">
-                    {tx.raceName || tx.description || "Præmiepenge"}
+                    {tx.raceName || tx.description || t("prizeList.fallbackName")}
                   </p>
                   <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
                 </div>
                 <p className="font-mono text-sm font-bold text-cz-success flex-shrink-0">
-                  +{(tx.amount || 0).toLocaleString("da-DK")} CZ$
+                  +{formatNumber(tx.amount || 0)} CZ$
                 </p>
               </div>
             ))}
@@ -356,9 +352,9 @@ export default function FinancePage() {
 
       {/* Aktive lån */}
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
-        <h2 className="text-cz-1 font-semibold text-sm mb-4">Aktive lån</h2>
+        <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("loans.active.title")}</h2>
         {activeLoans.length === 0 ? (
-          <p className="text-cz-3 text-sm">Ingen aktive lån</p>
+          <p className="text-cz-3 text-sm">{t("loans.active.empty")}</p>
         ) : (
           <div className="flex flex-col gap-3">
             {activeLoans.map(loan => {
@@ -372,30 +368,30 @@ export default function FinancePage() {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <p className="text-cz-1 font-medium text-sm">
-                        {LOAN_TYPE_LABELS[loan.loan_type] || loan.loan_type}
+                        {loanLabel(loan.loan_type)}
                       </p>
-                      <p className="text-cz-3 text-xs mt-0.5">Oprettet {timeAgo(loan.created_at)}</p>
+                      <p className="text-cz-3 text-xs mt-0.5">{t("loans.active.createdAt", { when: timeAgo(loan.created_at) })}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-cz-danger font-mono font-bold text-sm">
-                        {loan.amount_remaining?.toLocaleString("da-DK")} CZ$
+                        {formatNumber(loan.amount_remaining || 0)} CZ$
                       </p>
-                      <p className="text-cz-3 text-xs">resterende</p>
+                      <p className="text-cz-3 text-xs">{t("loans.active.remaining")}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 mb-3 text-center">
                     <div>
-                      <p className="text-cz-2 font-mono text-xs">{loan.principal?.toLocaleString("da-DK")}</p>
-                      <p className="text-cz-3 text-xs">Hovedstol</p>
+                      <p className="text-cz-2 font-mono text-xs">{formatNumber(loan.principal || 0)}</p>
+                      <p className="text-cz-3 text-xs">{t("loans.active.principal")}</p>
                     </div>
                     <div>
                       <p className="text-cz-2 font-mono text-xs">{(loan.interest_rate * 100).toFixed(0)}%</p>
-                      <p className="text-cz-3 text-xs">Rente/sæson</p>
+                      <p className="text-cz-3 text-xs">{t("loans.active.interestPerSeason")}</p>
                     </div>
                     <div>
                       <p className="text-cz-2 font-mono text-xs">{loan.seasons_remaining}</p>
-                      <p className="text-cz-3 text-xs">Sæsoner tilbage</p>
+                      <p className="text-cz-3 text-xs">{t("loans.active.seasonsRemaining")}</p>
                     </div>
                   </div>
 
@@ -409,16 +405,19 @@ export default function FinancePage() {
                     <div className="flex gap-2">
                       <input type="number" value={repayAmount}
                         onChange={e => setRepayAmount(e.target.value)}
-                        placeholder={maxRepay > 0 ? `Max ${maxRepay.toLocaleString("da-DK")}` : "0"}
+                        placeholder={maxRepay > 0
+                          ? t("loans.active.startRepayMaxPlaceholder", { value: formatNumber(maxRepay) })
+                          : t("loans.active.repayPlaceholder")}
                         className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-1.5
                           text-cz-1 text-sm focus:outline-none focus:border-cz-accent" />
                       <button onClick={() => handleRepay(loan.id, repayAmount)}
                         disabled={repaying || !repayAmount || parseInt(repayAmount) < 1}
                         className="px-3 py-1.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-xs
                           hover:brightness-110 disabled:opacity-50">
-                        {repaying ? "..." : "Betal"}
+                        {repaying ? t("loans.active.repayingBtn") : t("loans.active.repayBtn")}
                       </button>
                       <button onClick={() => { setRepayId(null); setRepayAmount(""); }}
+                        aria-label={t("loans.active.cancelRepayAria")}
                         className="px-3 py-1.5 bg-cz-subtle text-cz-2 rounded-lg text-xs hover:bg-cz-subtle">
                         ✕
                       </button>
@@ -429,7 +428,7 @@ export default function FinancePage() {
                       disabled={maxRepay <= 0}
                       className="w-full py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg
                         text-xs hover:bg-cz-subtle hover:text-cz-1 transition-all disabled:opacity-30">
-                      Betal rate →
+                      {t("loans.active.startRepay")}
                     </button>
                   )}
                 </div>
@@ -441,27 +440,27 @@ export default function FinancePage() {
 
       {/* Optag lån */}
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
-        <h2 className="text-cz-1 font-semibold text-sm mb-4">Optag lån</h2>
+        <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("loans.take.title")}</h2>
         {configs.length === 0 ? (
-          <p className="text-cz-3 text-sm">Ingen lånekonfiguration fundet for Division {team?.division}</p>
+          <p className="text-cz-3 text-sm">{t("loans.take.noConfig", { division: team?.division })}</p>
         ) : (
           <form onSubmit={handleTakeLoan}>
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div>
-                <label className="block text-cz-3 text-xs mb-1">Låntype</label>
+                <label className="block text-cz-3 text-xs mb-1">{t("loans.take.typeLabel")}</label>
                 <select value={loanType} onChange={e => setLoanType(e.target.value)}
                   className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2
                     text-cz-1 text-sm focus:outline-none">
                   {configs.map(c => (
-                    <option key={c.loan_type} value={c.loan_type}>{LOAN_TYPE_LABELS[c.loan_type]}</option>
+                    <option key={c.loan_type} value={c.loan_type}>{loanLabel(c.loan_type)}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-cz-3 text-xs mb-1">Beløb (CZ$)</label>
+                <label className="block text-cz-3 text-xs mb-1">{t("loans.take.amountLabel")}</label>
                 <input type="number" required min={1} value={loanAmount}
                   onChange={e => setLoanAmount(e.target.value)}
-                  placeholder="f.eks. 500"
+                  placeholder={t("loans.take.amountPlaceholder")}
                   className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2
                     text-cz-1 text-sm focus:outline-none" />
               </div>
@@ -471,19 +470,19 @@ export default function FinancePage() {
               <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 mb-4">
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <div>
-                    <p className="text-cz-3">Gebyr ({(selectedConfig.origination_fee_pct * 100).toFixed(0)}%)</p>
+                    <p className="text-cz-3">{t("loans.take.feeLabel", { pct: (selectedConfig.origination_fee_pct * 100).toFixed(0) })}</p>
                     <p className="text-cz-2 font-mono mt-0.5">
-                      {Math.round(loanAmountNum * selectedConfig.origination_fee_pct).toLocaleString("da-DK")} CZ$
+                      {t("loans.take.feeValue", { value: formatNumber(Math.round(loanAmountNum * selectedConfig.origination_fee_pct)) })}
                     </p>
                   </div>
                   <div>
-                    <p className="text-cz-3">Rente/sæson</p>
-                    <p className="text-cz-2 font-mono mt-0.5">{(selectedConfig.interest_rate_pct * 100).toFixed(0)}%</p>
+                    <p className="text-cz-3">{t("loans.take.interestLabel")}</p>
+                    <p className="text-cz-2 font-mono mt-0.5">{t("loans.take.interestValue", { pct: (selectedConfig.interest_rate_pct * 100).toFixed(0) })}</p>
                   </div>
                   <div>
-                    <p className="text-cz-3">Total tilbagebetaling</p>
+                    <p className="text-cz-3">{t("loans.take.totalLabel")}</p>
                     <p className="text-cz-accent-t font-mono mt-0.5">
-                      {Math.round(loanAmountNum * (1 + selectedConfig.origination_fee_pct)).toLocaleString("da-DK")} CZ$
+                      {t("loans.take.totalValue", { value: formatNumber(Math.round(loanAmountNum * (1 + selectedConfig.origination_fee_pct))) })}
                     </p>
                   </div>
                 </div>
@@ -493,7 +492,7 @@ export default function FinancePage() {
             <button type="submit" disabled={takingLoan || !loanAmount}
               className="w-full py-2.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm
                 hover:brightness-110 disabled:opacity-50 transition-all">
-              {takingLoan ? "Behandler..." : "Optag lån"}
+              {takingLoan ? t("loans.take.processing") : t("loans.take.submit")}
             </button>
           </form>
         )}
@@ -503,28 +502,28 @@ export default function FinancePage() {
       {loanData?.configs?.length > 0 && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
           <h2 className="text-cz-1 font-semibold text-sm mb-3">
-            Lånebetingelser — Division {team?.division}
+            {t("loans.terms.title", { division: team?.division })}
           </h2>
           <div className="overflow-hidden rounded-lg border border-cz-border">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
-                  <th className="px-3 py-2 text-left text-cz-3">Type</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Gebyr</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Rente/sæson</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Sæsoner</th>
-                  <th className="px-3 py-2 text-right text-cz-3">Gældsloft</th>
+                  <th className="px-3 py-2 text-start text-cz-3">{t("loans.terms.headers.type")}</th>
+                  <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.fee")}</th>
+                  <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.interest")}</th>
+                  <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.seasons")}</th>
+                  <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.debtCeiling")}</th>
                 </tr>
               </thead>
               <tbody>
                 {loanData.configs.map(c => (
                   <tr key={`${c.division}-${c.loan_type}`} className="border-b border-cz-border">
-                    <td className="px-3 py-2 text-cz-1 font-medium">{LOAN_TYPE_LABELS[c.loan_type] || c.loan_type}</td>
-                    <td className="px-3 py-2 text-right text-cz-2">{(c.origination_fee_pct * 100).toFixed(0)}%</td>
-                    <td className="px-3 py-2 text-right text-cz-2">{(c.interest_rate_pct * 100).toFixed(0)}%</td>
-                    <td className="px-3 py-2 text-right text-cz-2">{c.seasons}</td>
-                    <td className="px-3 py-2 text-right text-cz-accent-t font-mono">
-                      {c.debt_ceiling?.toLocaleString("da-DK")} CZ$
+                    <td className="px-3 py-2 text-cz-1 font-medium">{loanLabel(c.loan_type)}</td>
+                    <td className="px-3 py-2 text-end text-cz-2">{(c.origination_fee_pct * 100).toFixed(0)}%</td>
+                    <td className="px-3 py-2 text-end text-cz-2">{(c.interest_rate_pct * 100).toFixed(0)}%</td>
+                    <td className="px-3 py-2 text-end text-cz-2">{c.seasons}</td>
+                    <td className="px-3 py-2 text-end text-cz-accent-t font-mono">
+                      {formatNumber(c.debt_ceiling || 0)} CZ$
                     </td>
                   </tr>
                 ))}
@@ -536,25 +535,22 @@ export default function FinancePage() {
 
       {/* Transaktionshistorik */}
       <div data-tour="finance-tx-history" className="bg-cz-card border border-cz-border rounded-xl p-5">
-        <h2 className="text-cz-1 font-semibold text-sm mb-4">Transaktionshistorik</h2>
+        <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("transactions.history.title")}</h2>
         {transactions.length === 0 ? (
-          <p className="text-cz-3 text-sm">Ingen transaktioner endnu</p>
+          <p className="text-cz-3 text-sm">{t("transactions.history.empty")}</p>
         ) : (
           <div className="flex flex-col divide-y divide-cz-border">
-            {transactions.map(tx => {
-              const cfg = TX_CONFIG[tx.type] || { label: tx.type, color: "text-cz-2" };
-              return (
-                <div key={tx.id} className="flex items-center justify-between py-2.5">
-                  <div className="flex-1 min-w-0 pr-3">
-                    <p className="text-cz-2 text-xs truncate">{tx.description || cfg.label}</p>
-                    <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
-                  </div>
-                  <p className={`font-mono text-sm font-bold flex-shrink-0 ${tx.amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
-                    {tx.amount >= 0 ? "+" : ""}{tx.amount?.toLocaleString("da-DK")} CZ$
-                  </p>
+            {transactions.map(tx => (
+              <div key={tx.id} className="flex items-center justify-between py-2.5">
+                <div className="flex-1 min-w-0 pe-3">
+                  <p className="text-cz-2 text-xs truncate">{tx.description || txLabel(tx.type)}</p>
+                  <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
                 </div>
-              );
-            })}
+                <p className={`font-mono text-sm font-bold flex-shrink-0 ${tx.amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
+                  {tx.amount >= 0 ? "+" : ""}{formatNumber(tx.amount || 0)} CZ$
+                </p>
+              </div>
+            ))}
           </div>
         )}
       </div>

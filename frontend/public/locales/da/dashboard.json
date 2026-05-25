@@ -137,6 +137,28 @@
     "footnoteLink": "Hvordan beregnes prognosen?",
     "badge": {
       "label": "Forecast næste sæson"
+    },
+    "horizon": {
+      "label": "Forecast-horisont:",
+      "option": "{count, plural, one {1 sæson} other {# sæsoner}}",
+      "rangeSuffix": "({from}–{to})"
+    },
+    "multiSeason": {
+      "title": "Sæson for sæson (estimat fra sæson {from} →)",
+      "headers": {
+        "season": "Sæson",
+        "sponsor": "Sponsor",
+        "prize": "Præmie",
+        "salary": "Løn",
+        "interest": "Rente",
+        "net": "Net",
+        "endBalance": "Saldo slut",
+        "risk": "Risiko"
+      },
+      "estimateMark": "~",
+      "estimateTooltip": "Estimat, antager status quo",
+      "total": "Total",
+      "estimateNote": "~ = estimat baseret på en status quo-antagelse (samme roster, sponsor og 25% lån-decay per sæson)."
     }
   },
   "onboardingProgress": {

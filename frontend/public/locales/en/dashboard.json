@@ -137,6 +137,28 @@
     "footnoteLink": "How is the forecast calculated?",
     "badge": {
       "label": "Forecast next season"
+    },
+    "horizon": {
+      "label": "Forecast horizon:",
+      "option": "{count, plural, one {1 season} other {# seasons}}",
+      "rangeSuffix": "({from}–{to})"
+    },
+    "multiSeason": {
+      "title": "Season by season (estimate from season {from} →)",
+      "headers": {
+        "season": "Season",
+        "sponsor": "Sponsor",
+        "prize": "Prize",
+        "salary": "Salary",
+        "interest": "Interest",
+        "net": "Net",
+        "endBalance": "End balance",
+        "risk": "Risk"
+      },
+      "estimateMark": "~",
+      "estimateTooltip": "Estimate, assumes status quo",
+      "total": "Total",
+      "estimateNote": "~ = estimate based on a status-quo assumption (same roster, sponsor, and 25% loan-decay per season)."
     }
   },
   "onboardingProgress": {
