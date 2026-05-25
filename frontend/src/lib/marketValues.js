@@ -1,3 +1,5 @@
+import { formatNumber } from "./intl";
+
 export const RIDER_VALUE_FACTOR = 4000;
 export const MIN_RIDER_UCI_POINTS = 5;
 
@@ -13,7 +15,7 @@ export function getRiderMarketValue(rider = {}) {
 
 export function formatCz(value) {
   if (value == null || Number.isNaN(Number(value))) return "-";
-  return `${Number(value).toLocaleString("da-DK")} CZ$`;
+  return `${formatNumber(Number(value))} CZ$`;
 }
 
 // Min-step = +1 CZ$ over current price når der allerede er bud.
