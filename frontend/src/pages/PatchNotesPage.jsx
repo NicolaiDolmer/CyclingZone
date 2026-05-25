@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "3.96",
+    date: "2026-05-25",
+    label: "Beta",
+    changes: [
+      {
+        category: "Language · EN/DA support extended to Team page",
+        items: [
+          "EN · The Team page now renders in both English and Danish via the language switcher. This covers the squad table (14 rider attributes, transfer/loan tags, action buttons), the Economy tab (KPI cards, season forecast, transaction breakdown, full history table with all transaction types: prize money, sponsor income, sales, purchases, salaries, interest), the rider action modal (auction, transfer list, guaranteed sale with full descriptions), and the transfer-window status badge. Numbers and dates follow the active language. Em-dashes replaced with sentences per tone-of-voice guide. Phase 3.5 of the i18n rollout (#483). Refs #488.",
+          "DA · Hold-siden rendres nu på både engelsk og dansk via sprog-vælgeren. Det dækker trup-tabellen (14 rytter-attributter, transfer/leje-tags, handlingsknapper), Økonomi-fanen (KPI-kort, sæsonprognose, transaktions-fordeling, fuld historik-tabel med alle transaktionstyper: præmiepenge, sponsorindtægt, salg, køb, lønninger, renter), rytter-handlingsmodalen (auktion, transferliste, garanteret salg med fulde beskrivelser) og transfervindue-status-badge. Tal og datoer følger aktivt sprog. Em-dashes erstattet med sætninger jf. tone-of-voice-guide. Fase 3.5 i i18n-udrulningen (#483). Refs #488.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.95",
     date: "2026-05-25",
     label: "Beta",

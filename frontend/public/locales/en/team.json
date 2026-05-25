@@ -1,0 +1,110 @@
+{
+  "page": {
+    "fallbackTitle": "My Team",
+    "managerLabel": "Manager: {name}",
+    "windowOpen": "🟢 Transfer window open",
+    "windowClosed": "🔒 Transfer window closed",
+    "ridersCount": "{count} riders",
+    "incomingCount": "+{count} incoming",
+    "outgoingCount": "-{count} outgoing",
+    "salaryPerSeason": "Salary/season: {value} CZ$",
+    "teamValue": "Team value: {value} CZ$",
+    "division": "Division {n}",
+    "balance": "{value} CZ$"
+  },
+  "tabs": {
+    "squad": "Squad ({count})",
+    "economy": "Economy",
+    "transfers": "Transfer history"
+  },
+  "squad": {
+    "incomingTransfers": "Incoming transfers ({count})",
+    "outgoingTransfers": "Outgoing transfers ({count})",
+    "loanedIn": "Loaned riders ({count})",
+    "loanedOut": "Riders on loan out ({count})",
+    "windowClosedHint": "🔒 Transfer window closed. Changes take effect at the next opening",
+    "emptyState": "No riders on the team yet",
+    "headers": {
+      "rider": "Rider",
+      "value": "Value",
+      "salary": "Salary",
+      "potential": "Potential",
+      "action": "Action"
+    },
+    "tags": {
+      "u25": "U25",
+      "incoming": "Incoming",
+      "outgoing": "Outgoing",
+      "loanedIn": "On loan",
+      "loanedOut": "Loaned out"
+    },
+    "tooltips": {
+      "loanedFrom": "Loaned from {team} · season {start}–{end}",
+      "loanedTo": "Loaned to {team} · season {start}–{end}"
+    },
+    "actionButton": "Sell / Auction"
+  },
+  "economy": {
+    "kpi": {
+      "balance": "Balance",
+      "teamValue": "Team value",
+      "salaryPerSeason": "Salary/season",
+      "sponsorPerSeason": "Sponsor/season"
+    },
+    "forecast": {
+      "title": "Season forecast",
+      "sponsorIncome": "Sponsor income",
+      "salaries": "Salaries ({count} riders)",
+      "net": "Net (excl. prize money)",
+      "warning": "⚠️ Salaries exceed sponsor income. You depend on prize money."
+    },
+    "breakdown": {
+      "title": "Breakdown this season"
+    },
+    "history": {
+      "title": "Transaction history",
+      "empty": "No transactions yet",
+      "headers": {
+        "date": "Date",
+        "type": "Type",
+        "description": "Description",
+        "amount": "Amount"
+      }
+    },
+    "txType": {
+      "prize": "Prize money",
+      "sponsor": "Sponsor income",
+      "transfer_in": "Sale",
+      "transfer_out": "Purchase",
+      "salary": "Salaries",
+      "interest": "Interest"
+    },
+    "amount": "{value} CZ$",
+    "amountSigned": "{sign}{value} CZ$"
+  },
+  "actionModal": {
+    "potentialLabel": "Potential",
+    "tabs": {
+      "auction": "⚡ Auction",
+      "transfer": "↔ Transfer list",
+      "bank": "🏦 Guaranteed sale"
+    },
+    "auction": {
+      "description": "Start auction. Other managers can bid.",
+      "startButton": "Start",
+      "successMsg": "✅ Auction started!"
+    },
+    "transfer": {
+      "description": "List for sale at a fixed price.",
+      "listButton": "List for sale",
+      "successMsg": "✅ Listed for sale!"
+    },
+    "bank": {
+      "description": "Starts an auction at {price} CZ$ (50% of value). If no manager bids higher, the AI buys the rider at this price. You're always guaranteed the amount.",
+      "sellButton": "Guaranteed sale: {price} CZ$",
+      "successMsg": "✅ Auction started! You're guaranteed {price} CZ$."
+    },
+    "loadingShort": "...",
+    "errorPrefix": "❌ "
+  }
+}

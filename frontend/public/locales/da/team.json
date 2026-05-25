@@ -1,0 +1,110 @@
+{
+  "page": {
+    "fallbackTitle": "Mit Hold",
+    "managerLabel": "Manager: {name}",
+    "windowOpen": "🟢 Transfervindue åbent",
+    "windowClosed": "🔒 Transfervindue lukket",
+    "ridersCount": "{count} ryttere",
+    "incomingCount": "+{count} indgående",
+    "outgoingCount": "-{count} udgående",
+    "salaryPerSeason": "Løn/sæson: {value} CZ$",
+    "teamValue": "Holdværdi: {value} CZ$",
+    "division": "Division {n}",
+    "balance": "{value} CZ$"
+  },
+  "tabs": {
+    "squad": "Trup ({count})",
+    "economy": "Økonomi",
+    "transfers": "Transferhistorik"
+  },
+  "squad": {
+    "incomingTransfers": "Indgående transfers ({count})",
+    "outgoingTransfers": "Udgående transfers ({count})",
+    "loanedIn": "Lejede ryttere ({count})",
+    "loanedOut": "Udlejede ryttere ({count})",
+    "windowClosedHint": "🔒 Transfervindue lukket. Skift træder i kraft ved næste åbning",
+    "emptyState": "Ingen ryttere på holdet endnu",
+    "headers": {
+      "rider": "Rytter",
+      "value": "Værdi",
+      "salary": "Løn",
+      "potential": "Potentiale",
+      "action": "Handling"
+    },
+    "tags": {
+      "u25": "U25",
+      "incoming": "Indgående",
+      "outgoing": "Udgående",
+      "loanedIn": "På leje",
+      "loanedOut": "Udlejet"
+    },
+    "tooltips": {
+      "loanedFrom": "Lejet fra {team} · sæson {start}–{end}",
+      "loanedTo": "Udlejet til {team} · sæson {start}–{end}"
+    },
+    "actionButton": "Sælg / Auktion"
+  },
+  "economy": {
+    "kpi": {
+      "balance": "Balance",
+      "teamValue": "Holdværdi",
+      "salaryPerSeason": "Løn/sæson",
+      "sponsorPerSeason": "Sponsor/sæson"
+    },
+    "forecast": {
+      "title": "Sæsonprognose",
+      "sponsorIncome": "Sponsorindtægt",
+      "salaries": "Lønninger ({count} ryttere)",
+      "net": "Netto (ekskl. præmiepenge)",
+      "warning": "⚠️ Lønninger overstiger sponsorindtægten. Du er afhængig af præmiepenge."
+    },
+    "breakdown": {
+      "title": "Fordeling denne sæson"
+    },
+    "history": {
+      "title": "Transaktionshistorik",
+      "empty": "Ingen transaktioner endnu",
+      "headers": {
+        "date": "Dato",
+        "type": "Type",
+        "description": "Beskrivelse",
+        "amount": "Beløb"
+      }
+    },
+    "txType": {
+      "prize": "Præmiepenge",
+      "sponsor": "Sponsorindtægt",
+      "transfer_in": "Salg",
+      "transfer_out": "Køb",
+      "salary": "Lønninger",
+      "interest": "Renter"
+    },
+    "amount": "{value} CZ$",
+    "amountSigned": "{sign}{value} CZ$"
+  },
+  "actionModal": {
+    "potentialLabel": "Potentiale",
+    "tabs": {
+      "auction": "⚡ Auktion",
+      "transfer": "↔ Transferliste",
+      "bank": "🏦 Garanteret salg"
+    },
+    "auction": {
+      "description": "Start auktion. Andre managers kan byde.",
+      "startButton": "Start",
+      "successMsg": "✅ Auktion startet!"
+    },
+    "transfer": {
+      "description": "Sæt til salg med fast pris.",
+      "listButton": "Sæt til salg",
+      "successMsg": "✅ Sat på transferlisten!"
+    },
+    "bank": {
+      "description": "Starter en auktion til {price} CZ$ (50% af værdien). Hvis ingen manager byder højere, køber AI rytteren til denne pris. Du er altid garanteret beløbet.",
+      "sellButton": "Garanteret salg: {price} CZ$",
+      "successMsg": "✅ Auktion startet! Du er garanteret {price} CZ$."
+    },
+    "loadingShort": "...",
+    "errorPrefix": "❌ "
+  }
+}
