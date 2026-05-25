@@ -1,5 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
+> **🟢 Session 2026-05-25-T — TdF 2026 strategi-pakke leveret:** 4 nye docs i `docs/strategy/` (BUSINESS_MODEL, TDF_2026_LAUNCH_PLAN, PARKED_QUESTIONS, ASSUMPTIONS_TO_VALIDATE) + 11 GitHub-issues #667-#677 + 6 nye labels (slice:tdf-launch, slice:season-1, slice:race-engine, slice:fictional-riders, slice:monetization, slice:retention). Hård beta-deadline: 2026-06-20 (TdF − 14). TdF-acquisition: 4-26 juli. Claude Code memory opdateret: 4 nye project-memories + fulltime-validation-port udskudt fra 17/6 til post-TdF august. Cross-links: #671→#481 (brand subset), #668→#242, #672→#479.
+
 > **🟢 Session 2026-05-25-S — Claude chat project setup + memory-system reverse-engineering:** Audit + cleanup af CyclingZone-projectet i Claude chat (claude.ai) inden første strategi-interview. Project Knowledge-upload-pakke (17 filer, 206 KB) bygget i `C:\dev\CyclingZone-claude-chat-upload\`. Instructions sat. Memory pending edit submittet — applies natligt (regenerate-baseret, ingen Apply-knap). Ny playbook: `docs/CLAUDE_CHAT_PROJECT_PLAYBOOK.md`. Læring: `.claude/learnings/2026-05-25-claude-chat-project-memory-not-fritext.md`. Re-verify memory 2026-05-26.
 
 > **🟢 Session 2026-05-25-R — #489 merged + prod-verified:** Rebase af PR [#665](https://github.com/NicolaiDolmer/CyclingZone/pull/665) (single-file conflict i NOW.md), squash-merge til main (`e9f3f7f`). Prod-deploy READY. Chrome MCP-verify: h1 "Finance", 24 numbers comma-format, 0 daTerms i UI. Opdagede 3 DA-leaks i backend-genererede strings (debt-warning + transaction history) — **out of scope for #489**, opfølgning i [#666](https://github.com/NicolaiDolmer/CyclingZone/issues/666) (~25 strings i 10 backend-lib-filer). Verificerede også session-O leverancer: #647 accent-typo, #650 EN comma-format, #438 ms-*/me-* — alle live. Cleanup: fjernede stale `claude:todo` fra #647/#650/#438.
@@ -18,7 +20,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** [#666](https://github.com/NicolaiDolmer/CyclingZone/issues/666) backend message-codes refactor (~25 strings, multi-file, kræver DB-migration overvejelse) ELLER næste i18n-sub-issue af #483.
+> **🎯 Next action:** [#667](https://github.com/NicolaiDolmer/CyclingZone/issues/667) `dyn_cyclist` Excel-sync — **deadline 2026-05-26** (sæson 1 starter onsdag-fredag). Afventer eksempel-Excel fra Nicolai. Parallelt: [#674](https://github.com/NicolaiDolmer/CyclingZone/issues/674) retention-cohort 8-15 maj (Codex-task, samme deadline). Fallback hvis #667 blokeret: [#666](https://github.com/NicolaiDolmer/CyclingZone/issues/666) backend message-codes ELLER næste i18n-sub-issue af #483.
 >
 > _Format: `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
