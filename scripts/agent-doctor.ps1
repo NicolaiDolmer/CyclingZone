@@ -505,11 +505,20 @@ if ($auditPrefix.Count -eq 0 -and (Test-Path $envPath) -and -not $env:SUPABASE_U
     }
   }
 }
+function Extract-AuditJson {
+  param([string]$Text)
+  if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+  $idx = $Text.IndexOf('{')
+  if ($idx -lt 0) { return $null }
+  return $Text.Substring($idx)
+}
+
 if ($auditPrefix.Count -gt 0 -or ($env:SUPABASE_URL -and $env:SUPABASE_SERVICE_KEY)) {
   $rlsResult = Try-Run ($auditPrefix + @("node", "backend/scripts/audit-rls-coverage.js", "--json"))
   if ($rlsResult.Ok) {
+    $rlsJson = Extract-AuditJson $rlsResult.Text
     try {
-      $rlsData = $rlsResult.Text | ConvertFrom-Json
+      $rlsData = $rlsJson | ConvertFrom-Json
       $crit = [int]$rlsData.critical_count
       $detail = if ($crit -eq 0) { "no frontend-blocked tables" } else { "critical: $(($rlsData.critical | ForEach-Object { $_.table }) -join ', ')" }
       Add-Check "rls-coverage" ($(if ($crit -eq 0) { "OK" } else { "FAIL" })) $detail
@@ -522,8 +531,9 @@ if ($auditPrefix.Count -gt 0 -or ($env:SUPABASE_URL -and $env:SUPABASE_SERVICE_K
 
   $livenessResult = Try-Run ($auditPrefix + @("node", "backend/scripts/audit-feature-liveness.js", "--json"))
   if ($livenessResult.Ok) {
+    $livenessJson = Extract-AuditJson $livenessResult.Text
     try {
-      $livenessData = $livenessResult.Text | ConvertFrom-Json
+      $livenessData = $livenessJson | ConvertFrom-Json
       $total = [int]$livenessData.total_findings
       $by = $livenessData.by_detector
       $detail = if ($total -eq 0) { "no drift findings" } else { "$total finding(s): A=$($by.A) B=$($by.B) C=$($by.C) D=$($by.D)" }
