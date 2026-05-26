@@ -46,9 +46,10 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          export SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
-          export SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
-          export GOOGLE_SHEET_ID=$(printf '%s' "$GOOGLE_SHEET_ID" | tr -d '[:space:]')
+          SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
+          SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
+          GOOGLE_SHEET_ID=$(printf '%s' "$GOOGLE_SHEET_ID" | tr -d '[:space:]')
+          export SUPABASE_URL SUPABASE_SERVICE_KEY GOOGLE_SHEET_ID
           python scripts/uci_scraper.py
 
       - name: Recalculate rider salaries
@@ -56,8 +57,9 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          export SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
-          export SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
+          SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
+          SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
+          export SUPABASE_URL SUPABASE_SERVICE_KEY
           node backend/scripts/recalculateRiderSalaries.js
 
       - name: Upload log on failure
