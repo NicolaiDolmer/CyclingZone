@@ -7,9 +7,9 @@
 //   formatDate(new Date())       // da: "16. maj 2026"  · en: "May 16, 2026"
 //   formatNumber(1234.5)         // da: "1.234,5"       · en: "1,234.5"
 //
-// Lazy import af i18next for at undgå cirkulær reference med language.jsx.
+// Brug i18next-singleton direkte så pure helper-tests ikke skal loade Vite JSON imports.
 
-import i18n from "../i18n";
+import i18n from "i18next";
 
 function currentLocale() {
   // i18next bruger ISO 639-1 ("en", "da"). Intl-API kræver BCP 47 — disse

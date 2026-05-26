@@ -1,4 +1,4 @@
-import { formatNumber } from "./intl";
+import { formatNumber } from "./intl.js";
 
 export const RIDER_VALUE_FACTOR = 4000;
 export const MIN_RIDER_UCI_POINTS = 5;
