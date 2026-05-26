@@ -1,5 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
+> **🟢 Session 2026-05-26-E — #688 actionlint cleanup audit-close:** Verificeret at PR [#686](https://github.com/NicolaiDolmer/CyclingZone/pull/686) (`fd54c96d`, merged 11:23) dækker alle 4 workflows (auto-migrate SC2001+SC2012, drift-monitor SC2086, rls-audit SC2155, uci_sync SC2155 ×2). YAML validate post-merge run `26443857038` success. Doctor `recent-actions OK — 0 failures in last 20`. [#688](https://github.com/NicolaiDolmer/CyclingZone/issues/688) `claude:done` (oprettet 10:37, fix 11:23 — issue stale ved pickup).
+
 > **🟢 Session 2026-05-26-D — Phase 5 EmmaPC runtime verify + #687 closeout:** `infisical run --env=dev --recursive -- node backend/scripts/verify-infisical-injection.js` → `INF Injecting 7 Infisical secrets` + 4/5 expected keys present. Nyt genbrugelig verify-script (`backend/scripts/verify-infisical-injection.js`) til NICOLAIPC bootstrap. [#687](https://github.com/NicolaiDolmer/CyclingZone/issues/687) `claude:done` (Phase 5 E NICOLAIPC bootstrap stadig pending).
 
 > **🟢 Session 2026-05-26-C — Infisical Phase 5 + #337 rotation DONE:** PR [#690](https://github.com/NicolaiDolmer/CyclingZone/pull/690) (`feat/infisical-phase-2-5`). Backend dev + audit-scripts via `infisical run --env=dev`. Auto-rotation script `scripts/rotate-supabase-key-dev-from-prod.ps1`. Doctor: `infisical-cli OK`, `rls-coverage OK`, `feature-liveness OK`. #337 `claude:done`. Follow-up [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) tracker fuld rotation per ADR Phase 5.D.
@@ -24,6 +26,6 @@
 >
 > _Format: `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
-> **🤖 Working agent:** _Ingen aktiv session._
+> **🤖 Working agent:** _Ingen aktiv session._ (Session 2026-05-26-E closed på EmmaPC — #688 audit-close)
 >
 > _Nulstil til "Ingen aktiv session" ved close-out._
