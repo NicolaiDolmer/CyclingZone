@@ -35,6 +35,28 @@ if (-not (Test-Path $hookPath)) {
   exit 1
 }
 
+$bashCandidates = @(
+  "bash",
+  "C:\Program Files\Git\bin\bash.exe",
+  "C:\Program Files\Git\usr\bin\bash.exe"
+)
+$bashPath = $null
+foreach ($candidate in $bashCandidates) {
+  $cmd = Get-Command $candidate -ErrorAction SilentlyContinue
+  if ($cmd) {
+    $bashPath = $cmd.Source
+    break
+  }
+  if (Test-Path $candidate) {
+    $bashPath = $candidate
+    break
+  }
+}
+if (-not $bashPath) {
+  Write-Host "❌ bash not found (needed to run .claude/hooks/*.sh). Install Git Bash or add bash to PATH." -ForegroundColor Red
+  exit 1
+}
+
 # Construct fake-secrets at runtime — string concatenation undgår at source
 # selv matcher patterns. Hver fixture er pattern-valid men 100% fake.
 function New-FakeSecret([string]$Type) {
@@ -110,8 +132,8 @@ function Invoke-HookTest {
   $tmpFile = [System.IO.Path]::GetTempFileName()
   Set-Content -Path $tmpFile -Value $Payload -NoNewline -Encoding utf8
 
-  $bashCmd = "cat '$tmpFile' | bash '$hookPath' 2>&1; echo EXIT=`$?"
-  $result = & bash -c $bashCmd 2>&1 | Out-String
+  $bashCmd = "cat '$tmpFile' | '$hookPath' 2>&1; echo EXIT=`$?"
+  $result = & $bashPath -c $bashCmd 2>&1 | Out-String
   Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
 
   # Parse exit code
@@ -169,7 +191,9 @@ $controlTests = @(
   @{ Label = "control-clean"; Stdout = "completely safe output with normal text " + ("y" * 250) },
   @{ Label = "control-github-urls"; Stdout = "Issues: https://github.com/NicolaiDolmer/CyclingZone/issues/634 and https://github.com/NicolaiDolmer/CyclingZone/issues/296 and https://github.com/NicolaiDolmer/CyclingZone/issues/620" },
   @{ Label = "control-file-paths"; Stdout = "Files: /c/Users/emmas/.claude/projects/C--dev-CyclingZone/memory/feedback_secret_leak_prevention.md and C:/dev/CyclingZone/scripts/probe-railway-keys.ps1" },
-  @{ Label = "control-git-sha"; Stdout = "Recent commit: 94e0e5520123456789abcdef0123456789abcdef chore(security): #634 blocker — secret rotation pauses" }
+  @{ Label = "control-git-sha"; Stdout = "Recent commit: 94e0e5520123456789abcdef0123456789abcdef chore(security): #634 blocker — secret rotation pauses" },
+  @{ Label = "control-short-hex"; Stdout = "openssl rand -hex 2 output: cd4d " + ("z" * 250) },
+  @{ Label = "control-short-hex-json"; Stdout = '{"command":"openssl rand -hex 2","stdout":"cd4d","exit_code":0}' + ("z" * 250) }
 )
 
 foreach ($ct in $controlTests) {
@@ -259,8 +283,8 @@ function Invoke-BlockerTest {
   param([string]$Payload, [int]$ExpectedExit, [string]$Label)
   $tmpFile = [System.IO.Path]::GetTempFileName()
   Set-Content -Path $tmpFile -Value $Payload -NoNewline -Encoding utf8
-  $bashCmd = "bash '$blockerPath' < '$tmpFile' 2>&1; echo EXIT=`$?"
-  $result = & bash -c $bashCmd 2>&1 | Out-String
+  $bashCmd = "'$blockerPath' < '$tmpFile' 2>&1; echo EXIT=`$?"
+  $result = & $bashPath -c $bashCmd 2>&1 | Out-String
   Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
   $actualExit = -1
   if ($result -match 'EXIT=(\d+)') { $actualExit = [int]$Matches[1] }
