@@ -20,14 +20,16 @@ Grundig audit af GitHub-issues. **PRIMÆRT MÅL: LUK verificerede issues.** Seku
 ## Trin 1 — Data (parallelt, ét batch)
 
 ```bash
-gh issue list --state open --limit 300 --json number,title,labels,updatedAt
-gh issue list --state open --label "claude:done" --limit 100 --json number,title,labels,comments,updatedAt
-gh issue list --state open --label "claude:blocked" --limit 50 --json number,title,labels,comments
-gh issue list --state open --label "needs-user-action" --limit 50 --json number,title,updatedAt
-gh issue list --state closed --limit 100 --json number,title,labels,closedAt
-gh pr list --state merged --limit 200 --json number,title,mergedAt,body
-gh pr list --state open --limit 30 --json number,title,isDraft,body
+gh issue list --state open --limit 300 --json number,title,labels,updatedAt > "$TEMP/audit-open-all.json"
+gh issue list --state open --label "claude:done" --limit 100 --json number,title,labels,comments,updatedAt > "$TEMP/audit-done.json"
+gh issue list --state open --label "claude:blocked" --limit 50 --json number,title,labels,comments > "$TEMP/audit-blocked-issues.json"
+gh issue list --state open --label "needs-user-action" --limit 50 --json number,title,updatedAt > "$TEMP/audit-nua.json"
+gh issue list --state closed --limit 100 --json number,title,labels,closedAt > "$TEMP/audit-closed.json"
+gh pr list --state merged --limit 200 --json number,title,mergedAt,body > "$TEMP/audit-pr-merged.json"
+gh pr list --state open --limit 30 --json number,title,isDraft,body > "$TEMP/audit-prs-open.json"
 ```
+
+Filnavne matcher script-forventninger direkte (lektion 2026-05-26: 3 `cp`-kald per audit eliminerede). Scripts i `.claude/skills/github-housekeeping/scripts/*.py` læser fra `$TEMP/audit-open-all.json`, `audit-done.json`, `audit-pr-merged.json`, `audit-blocked-issues.json`.
 
 Limits: 300 åbne (repo har 150+; margin). 200 merged PRs (lektion 2026-05-23: 5 audits i træk ramte 100/100 inden for 14d — pace højere end antaget; 200 giver fuld dækning med marginal extra runtime).
 
@@ -301,6 +303,11 @@ Denne skill bliver fyret ugentligt mandag 05:00 UTC (07:00 CEST / 06:00 CET) af 
   - **Baked-in lesson (Persistent scoring-scripts):** Tilføjet. Scoring/cross-ref/label/stale Python-scripts genskrives ~120 linjer hver audit (token-kostbart). Nu persistent i `.claude/skills/github-housekeeping/scripts/`: `score_done.py`, `crossref.py`, `labelcheck.py`, `staleblocked.py`. Workflow: `gh ... > $TEMP/file.json && PYTHONUTF8=1 python <path>`. Edit script-filer ved retro for at tune patterns/lists.
   - **Brugerverifikation adoption-skift:** 46→73 PRs har sektion (+27, +59%). i18n Fase 3.5 epic kører PR-template konsekvent. Forfatter-disciplin er på vej op.
 
+- **2026-05-26 — Audit-housekeeping retro.** Lessons fra 9. kørsel — **15 closes** (største batch til dato): 5 NOW.md-kandidater + 7 backend strong evidens + 3 label-cleanup. Codex' weekly housekeeping routine pre-screened via summary-issue #660.
+  - **Trin 1 (Standardisér filnavne):** Match script-forventninger direkte i fetch-batch. Brug `audit-open-all.json`/`audit-pr-merged.json`/`audit-blocked-issues.json` fra første fetch (ikke `audit-open.json`/`audit-prs.json`). Sparer 3 `cp`-kald per audit. Bidt mig denne kørsel da scripts crashede med `FileNotFoundError` indtil rename.
+  - **Co-orchestration validated:** Routine #627 producerede summary-issue #660 + recommended close på #578 mandag 2026-05-25 → manuel skill udførte close i dag. Routine pre-screening + manuel skill udførelse virker som designet. Bekræfter division-of-labor i Routine integration sektionen.
+  - **Largest close-batch til dato (15):** Forrige rekord var 17 i 2026-05-24 (var ren batch); 2026-05-26 leverede 15 med mixed kategorier (NOW.md flagged + backend strong + label-cleanup). Aggressive default + persistent scripts + NOW.md pre-flagging optimerer flow-rate uden konfidens-tab. Afviste 2 retro-edits (Multi-phase issue detection + Scope-flow detection) — kun 1 issue (#327) matchede mønsteret denne audit.
+
 - **2026-05-24 — Audit-housekeeping retro.** Lessons fra 7. kørsel — **17 closes** (største batch til dato), 1 label-cleanup (#521 todo+done), 1 escalation-ping (#505). 0 STRONG ≥24h (3 STRONG <24h vent), 5 carry-forward.
   - **Trin 3 (Author-tracking begrænset signal i denne repo):** Tilføjet undtagelse. Alle commits + de fleste comments er forfattet som `NicolaiDolmer` (AI-agenter committer via lokal git-config). Author-login KAN derfor ikke bruges til at skelne "bruger vs AI". 2026-05-24-audit lukkede 17 issues uden author-tracking — close-grundlag var commit-på-main + ingen UI-label. Skill bør ikke gate aggressive close på author-tracking når backend/docs/CI-evidens er stærk. Trin 3-tekst sagde "afvise STRONG hvis author er AI-agent" — denne regel filtrerer i praksis kun rene bot-comments (`github-actions[bot]`, `dependabot[bot]`).
   - **Trin 3 (NO_COMMENTS + merged PR + backend-label → auto-suggest close):** Nyt afsnit. 10/25 done-issues i dag havde 0 comments (typisk hurtig direct-close workflow hvor PR-merge + auto-labeling ikke producerede comment). Alle 10 havde merged PR via `Refs #N` og backend/docs/CI-label. Behandl som direkte close-eligible uden at re-score per STRONG/MEDIUM/WEAK. Score-script bør markere `NO_COMMENTS + merged_pr + backend_label = AUTO_CLOSE`.
@@ -331,3 +338,5 @@ Denne skill bliver fyret ugentligt mandag 05:00 UTC (07:00 CEST / 06:00 CET) af 
 - **2026-05-20-pass2 — Whitelist permanent trackers i Kategori D.** Foreslået: ekskludér issues med `docs-only` + `cat:ai-ops`-labels fra "no claude:* state"-rapportering (eksempel: #499 Weekly time-reports cron-tracker). Afvist fordi: kun 1 issue i hele backloggen matcher mønstret → lavt signal, høj brittleness-risiko hvis labels ændrer sig. Hvis flere permanente trackers dukker op senere, re-introducer som ny whitelist-mekanisme.
 
 - **2026-05-25 — NO_COMMENTS-rule 4h min-wait.** Foreslået: tilføj 4h min-wait til `NO_COMMENTS + merged PR + backend-label = AUTO_CLOSE`-rule for at give bruger chance for at se PR før auto-close. Bidt: lukkede #485/#486/#487 ~1h efter merge. Bruger afviste: direct-close samme dag som merge er normal procedure for backend/i18n; bruger valgte "Ja, luk alle 3" uden tøven. Hvis dette muster bider tilbage (close-back-out, regression-fund) → re-introducer som conservative wait-period.
+
+- **2026-05-26 — Multi-phase issue detection (Trin 4) + Scope-flow detection (Trin 3).** Foreslået: (1) Markér issues med Phase X + spin-off comments som `MULTI_PHASE_LEGIT_CARRY_FORWARD` for at forhindre false-close-suggest på #327-lignende; (2) Flag scope-vandring info-only når issue modtager "B11-merge fra #555". Afvist denne kørsel: kun 1 issue (#327) matchede multi-phase-mønsteret + 1 issue (#449) matchede scope-flow. Lavt signal-volume + skill håndterer korrekt via NOW.md `manual:user`-label + carry-forward. Hvis flere multi-phase eller scope-mergede issues vokser frem, re-introducer som ny kategori.
