@@ -128,30 +128,44 @@ function Get-VercelSentryProdState {
   }
 
   $result = Try-Run @("vercel", "env", "ls", "production", "--format", "json")
-  if (-not $result.Ok) {
+  if (-not $result.Ok -and ($result.Text -notmatch "(?m)^\s*[\{\[]")) {
     $first = (($result.Text -split "`n") | Where-Object { $_.Trim() } | Select-Object -First 1)
     return (New-SentryProbeUnavailable -Reason "vercel env ls failed: $first")
   }
 
-  # Vercel CLI prints "Retrieving project..." to stderr before JSON; 2>&1 merges
-  # that into the captured text, so strip everything before the first "{".
-  $jsonStart = $result.Text.IndexOf("{")
-  if ($jsonStart -lt 0) {
+  # Vercel CLI may print progress text before JSON, and versions differ between
+  # returning an array and wrapping it as { envs: [...] }. Strip non-JSON lines
+  # and handle both shapes; only key names are retained below.
+  $lines = @($result.Text -split "`n")
+  $jsonStartLine = -1
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i].Trim() -match "^[\{\[]") {
+      $jsonStartLine = $i
+      break
+    }
+  }
+  if ($jsonStartLine -lt 0) {
     return (New-SentryProbeUnavailable -Reason "vercel output had no JSON body")
   }
-  $jsonText = $result.Text.Substring($jsonStart)
+  $jsonText = @($lines[$jsonStartLine..($lines.Count - 1)]) -join "`n"
   try {
     $parsed = $jsonText | ConvertFrom-Json
   } catch {
     return (New-SentryProbeUnavailable -Reason "vercel JSON parse failed")
   }
-  if (-not ($parsed.PSObject.Properties.Name -contains "envs")) {
-    return (New-SentryProbeUnavailable -Reason "vercel JSON unexpected shape (no .envs)")
+
+  $envEntries = if ($parsed -is [array]) {
+    @($parsed)
+  } elseif ($parsed.PSObject.Properties.Name -contains "envs") {
+    @($parsed.envs)
+  } else {
+    return (New-SentryProbeUnavailable -Reason "vercel JSON unexpected shape (no array/.envs)")
   }
 
-  # vercel env ls --format json returns {envs: [{key, type, target, ...}, ...]}.
+  # vercel env ls --format json returns [{key, type, target, ...}, ...] or
+  # {envs: [{key, type, target, ...}, ...]} depending on CLI version.
   # We extract ONLY .key (name); values are encrypted server-side and never in this output.
-  $prodKeys = @($parsed.envs | Where-Object { $_.target -contains "production" } | ForEach-Object { $_.key })
+  $prodKeys = @($envEntries | Where-Object { $_.target -contains "production" } | ForEach-Object { $_.key })
   $state = [PSCustomObject]@{
     Available = $true
     Reason = $null
@@ -359,13 +373,24 @@ if ($issues.Ok) {
   $missing = @()
   foreach ($issue in $parsedIssues) {
     $labels = @($issue.labels | ForEach-Object { $_.name })
-    if (-not ($labels | Where-Object { $_ -like "priority:*" }) -or
-        -not ($labels | Where-Object { $_ -like "type:*" }) -or
-        -not ($labels | Where-Object { $_ -like "claude:*" })) {
+    $hasPriority = [bool]($labels | Where-Object { $_ -like "priority:*" })
+    $hasType = [bool]($labels | Where-Object { $_ -like "type:*" })
+    $hasClaude = [bool]($labels | Where-Object { $_ -like "claude:*" })
+    $hasOtherAgent = [bool]($labels | Where-Object { $_ -in @("agent:codex", "agent:manus") })
+    $hasDocsOnly = $labels -contains "docs-only"
+    $hasEpic = [bool]($labels | Where-Object { $_ -like "epic:*" }) -or ($issue.title -match "^\s*\[Epic\]")
+    $isInvestigation = $labels -contains "type:investigation"
+
+    $requiresPriority = -not ($hasEpic -or $isInvestigation)
+    $requiresClaude = -not ($hasOtherAgent -or $hasDocsOnly)
+
+    if (($requiresPriority -and -not $hasPriority) -or
+        -not $hasType -or
+        ($requiresClaude -and -not $hasClaude)) {
       $missing += "#$($issue.number)"
     }
   }
-  Add-Check "issue-label-schema" ($(if ($missing.Count -eq 0) { "OK" } else { "WARN" })) ($(if ($missing.Count) { "missing: $($missing -join ', ')" } else { "all open issues have priority/type/claude labels" }))
+  Add-Check "issue-label-schema" ($(if ($missing.Count -eq 0) { "OK" } else { "WARN" })) ($(if ($missing.Count) { "missing after exemptions: $($missing -join ', ')" } else { "all open issues satisfy priority/type/claude schema after exemptions" }))
 }
 
 $qualityIssues = Try-Run @("gh", "issue", "list", "--repo", $Repo, "--state", "open", "--label", "claude:todo", "--limit", "100", "--json", "number,title,labels,url")
