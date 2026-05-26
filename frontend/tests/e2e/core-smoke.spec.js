@@ -10,7 +10,17 @@ const CORE_PAGES = [
   { path: "/riders", heading: "Rytterdatabase", snapshot: "riders.png" },
   // auctions namespace bundles inline i `i18n/index.js` (Refs #412) → t() resolver
   // instant på first paint, ingen race med HttpBackend lazy-load.
-  { path: "/auctions", heading: /^(Auktioner|Auctions)$/, snapshot: "auctions.png" },
+  {
+    path: "/auctions",
+    heading: /^(Auktioner|Auctions)$/,
+    snapshot: "auctions.png",
+    ready: async page => {
+      await expect(page.locator('[role="status"]')).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /^(Aktive|Active) \(1\)$/ })).toBeVisible();
+      await expect(page.getByRole("button", { name: /^(Min situation|My situation) \(0\)$/ })).toBeVisible();
+      await expect(page.getByText(/Du er ikke involveret|not involved in any active auctions/i)).toBeVisible();
+    },
+  },
   { path: "/team", heading: "E2E Racing", snapshot: "team.png" },
   { path: "/finance", heading: /^(Finanser|Finance)$/, snapshot: "finance.png" },
   { path: "/board", heading: "Bestyrelse", snapshot: "board.png" },
@@ -69,6 +79,7 @@ test("core manager pages render without blank screens", async ({ page }, testInf
     await expect(page.getByRole("heading", { name: spec.heading }).first()).toBeVisible();
     await expect(page.locator("main")).toBeVisible();
     await expect(page.locator("body")).not.toContainText("VITE_API_URL is not set");
+    if (spec.ready) await spec.ready(page);
     await expect(page).toHaveScreenshot(spec.snapshot, {
       animations: "disabled",
       caret: "hide",
