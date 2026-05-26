@@ -6,7 +6,8 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "node --import ./instrument.mjs --watch server.js",
+    "dev": "infisical run --env=dev --recursive -- node --import ./instrument.mjs --watch server.js",
+    "dev:envfile": "node --import ./instrument.mjs --watch server.js",
     "start": "node --import ./instrument.mjs server.js",
     "seed:uci-race-points": "node scripts/seedUciMenRacePoints.js",
     "economy:baseline": "node scripts/economyBaselineSimulation.js",

@@ -10,7 +10,10 @@
     "test:setup": "node scripts/setup-test-accounts.mjs",
     "test:smoke": "node scripts/smoke-test-prod.mjs",
     "test:token": "node scripts/get-test-token.mjs",
-    "sync-deps": "npm ci && npm ci --prefix backend && npm ci --prefix frontend"
+    "sync-deps": "npm ci && npm ci --prefix backend && npm ci --prefix frontend",
+    "dev:backend": "npm --prefix backend run dev",
+    "audit:rls": "infisical run --env=dev -- node backend/scripts/audit-rls-coverage.js",
+    "audit:liveness": "infisical run --env=dev -- node backend/scripts/audit-feature-liveness.js"
   },
   "devDependencies": {
     "lint-staged": "^17.0.5"

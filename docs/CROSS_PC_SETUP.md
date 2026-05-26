@@ -148,16 +148,19 @@ pwsh -File scripts/setup-new-pc.ps1
 
 ### Manuelle skridt der ikke kan automatiseres
 
-**Produktionssecrets via Infisical** (erstatter OneDrive-hardlinks efter #327):
+**Produktionssecrets via Infisical** (erstatter OneDrive-hardlinks efter #327; runtime-injection efter Phase 5):
 
-1. **Infisical CLI installeret?** `winget install Infisical.infisical` (eller `npm i -g @infisical/cli`)
-2. **Log ind:** `infisical login`
-3. **Generer backend/.env:** `infisical export --env=dev > backend/.env`
-4. **Generer frontend/.env:** `infisical export --env=dev > frontend/.env`
-5. **`.mcp.json`** auto-genereres af `setup-discord-mcp.ps1` hvis Railway CLI er logget ind
-6. **`.codex.local/`** mappe — opretter Codex selv ved første session
+1. **Infisical CLI installeret?** `winget install Infisical.infisical` (eller `npm i -g @infisical/cli`). Restart shell efter winget-install så `infisical` resolver i PATH.
+2. **Log ind:** `infisical login` (browser-OAuth)
+3. **Verificér projekt-link:** `Test-Path .infisical.json` skal være `True` (committet til repo, peger på workspace `681fe0be-...`).
+4. **Test runtime-injection:** `infisical run --env=dev -- node -e "console.log('SUPABASE_URL set:', !!process.env.SUPABASE_URL)"` → skal printe `true`.
+5. **Start backend lokalt:** `npm run dev:backend` (wrapper omkring `infisical run --env=dev --recursive -- node ...`). Backend behøver IKKE `backend/.env`-fil længere — env vars injiceres ved runtime.
+6. **`.mcp.json`** auto-genereres af `setup-discord-mcp.ps1` hvis Railway CLI er logget ind.
+7. **`.codex.local/`** mappe — opretter Codex selv ved første session.
 
-> **Nicolai:** Secrets skal være indtastet i Infisical-dashboardet (infisical.com) for at ovenstående fungerer. Se [secret-management-adr.md](decisions/secret-management-adr.md) for migrationstrinnene.
+> **Nicolai:** Secrets skal være indtastet i Infisical-dashboardet (infisical.com) for at ovenstående fungerer. Phase 1 (#339) er allerede komplet — alle dev/preview/prod miljøer populated via `scripts/seed-infisical.ps1`. Se [secret-management-adr.md](decisions/secret-management-adr.md) for fuld migration-historik.
+
+> **Bemærk:** Hvis du har en eksisterende `backend/.env` med secret-værdier (fra før Phase 5), kan du slette dem — `infisical run` injicerer ved runtime. `dotenv.config()` i kode bevarer Infisical-værdierne (dotenv v17+ overskriver ikke eksisterende env vars).
 
 ---
 
@@ -246,7 +249,7 @@ Trust-entryen i `~/.codex/config.toml` betyder Codex ikke spørger om tilladelse
 |---|---|---|
 | Kode | Git | `git push` / `git pull` |
 | Docs i repo (NOW.md, AGENTS.md, etc.) | Git | Same |
-| `backend/.env`, `frontend/.env*` | Lokal, gitignored | **Infisical** → `infisical export --env=dev > <fil>` (erstatter OneDrive-hardlinks, #327) |
+| `backend/.env`, `frontend/.env*` | Lokal, gitignored (kan være tom efter Phase 5) | **Infisical runtime-injection** → `npm run dev:backend` wrapper bruger `infisical run --env=dev --recursive -- node ...`; ingen secret-værdier på disk (#327 Phase 5) |
 | `.mcp.json` | Lokal, gitignored | Auto-genereres af `setup-discord-mcp.ps1` (token fra Railway) |
 | `.codex.local/SUPABASE_CONTEXT.md`, `.codex.local/supabase-readonly.env` | Lokal, gitignored | **OneDrive-context hardlink** — `~/OneDrive/CyclingZone-context/codex-local/` (midlertidig hybrid — readonly AI-context) |
 | Claude auto-memory | `~/.claude/projects/<encoded>/memory/` | **OneDrive-context junction** — `~/OneDrive/CyclingZone-context/memory/` |
