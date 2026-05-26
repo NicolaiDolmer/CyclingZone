@@ -51,7 +51,7 @@ function Get-AuditFailureDetail {
     [string]$MigrationHint
   )
   if ($Text -match "auth-failure|Legacy API keys are disabled|Invalid API key|JWT expired|Invalid JWT|401|403") {
-    return "auth-failure: rotate local backend/.env SUPABASE_SERVICE_KEY to sb_secret_* (#337)"
+    return "auth-failure: update SUPABASE_SERVICE_KEY in Infisical (env=dev or prod) to a valid sb_secret_* — backend/.env fallback only if not using infisical run (#337)"
   }
   if ($Text -match "rpc-missing|function .* does not exist|Could not find the function|relation .* does not exist|schema cache|404") {
     return "rpc-missing: $MigrationHint"
@@ -483,9 +483,19 @@ if ($tokenHygiene.Ok) {
 }
 
 # RLS coverage audit — fanger slice 14 / #279 bug-mønstret lokalt før push.
-# Springes hvis SUPABASE_URL eller SUPABASE_SERVICE_KEY ikke er sat.
+# Post-Phase-5 (#327): foretrækker `infisical run --env=dev` for at hente secrets
+# fra Infisical ved runtime, falder tilbage til backend/.env loading hvis CLI
+# ikke er logget ind eller projektet ikke er linket.
 $envPath = Join-Path $root "backend/.env"
-if ((Test-Path $envPath) -and -not $env:SUPABASE_URL) {
+$infisicalExe = if ($infisicalCmd) { $infisicalCmd.Source } elseif ($infisicalWinget) { $infisicalWinget.FullName } else { $null }
+$auditPrefix = @()
+if ($infisicalExe -and (Test-Path (Join-Path $root ".infisical.json"))) {
+  $null = & $infisicalExe user get token 2>$null
+  if ($LASTEXITCODE -eq 0) {
+    $auditPrefix = @($infisicalExe, "run", "--env=dev", "--")
+  }
+}
+if ($auditPrefix.Count -eq 0 -and (Test-Path $envPath) -and -not $env:SUPABASE_URL) {
   Get-Content $envPath | ForEach-Object {
     if ($_ -match "^\s*([^=#\s]+)\s*=\s*(.*)$") {
       $name = $Matches[1]; $value = $Matches[2].Trim()
@@ -495,8 +505,8 @@ if ((Test-Path $envPath) -and -not $env:SUPABASE_URL) {
     }
   }
 }
-if ($env:SUPABASE_URL -and $env:SUPABASE_SERVICE_KEY) {
-  $rlsResult = Try-Run @("node", "backend/scripts/audit-rls-coverage.js", "--json")
+if ($auditPrefix.Count -gt 0 -or ($env:SUPABASE_URL -and $env:SUPABASE_SERVICE_KEY)) {
+  $rlsResult = Try-Run ($auditPrefix + @("node", "backend/scripts/audit-rls-coverage.js", "--json"))
   if ($rlsResult.Ok) {
     try {
       $rlsData = $rlsResult.Text | ConvertFrom-Json
@@ -510,7 +520,7 @@ if ($env:SUPABASE_URL -and $env:SUPABASE_SERVICE_KEY) {
     Add-Check "rls-coverage" "WARN" (Get-AuditFailureDetail $rlsResult.Text "apply database/2026-05-10-audit-rls-helper.sql")
   }
 
-  $livenessResult = Try-Run @("node", "backend/scripts/audit-feature-liveness.js", "--json")
+  $livenessResult = Try-Run ($auditPrefix + @("node", "backend/scripts/audit-feature-liveness.js", "--json"))
   if ($livenessResult.Ok) {
     try {
       $livenessData = $livenessResult.Text | ConvertFrom-Json
@@ -525,8 +535,9 @@ if ($env:SUPABASE_URL -and $env:SUPABASE_SERVICE_KEY) {
     Add-Check "feature-liveness" "WARN" (Get-AuditFailureDetail $livenessResult.Text "apply database/2026-05-10-feature-liveness-helper.sql")
   }
 } else {
-  Add-Check "rls-coverage" "WARN" "skipped (SUPABASE_URL/SERVICE_KEY missing)"
-  Add-Check "feature-liveness" "WARN" "skipped (SUPABASE_URL/SERVICE_KEY missing)"
+  $skipHint = if ($infisicalExe) { "infisical login + ensure .infisical.json (or populate backend/.env)" } else { "install Infisical CLI (winget install Infisical.infisical) or populate backend/.env" }
+  Add-Check "rls-coverage" "WARN" "skipped (no auth — $skipHint)"
+  Add-Check "feature-liveness" "WARN" "skipped (no auth — $skipHint)"
 }
 
 $failures = @($results | Where-Object { $_.Status -eq "FAIL" })

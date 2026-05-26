@@ -1,5 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
+> **🟡 Session 2026-05-26-C — Infisical Phase 5 code-changes klar, rotation tilbage:** Branch `feat/infisical-phase-2-5`. Infisical CLI installeret på EmmaPC (v0.43.86). Phase 1 verificeret KOMPLET (#339): 7 dev-keys injicerer korrekt via `infisical run --env=dev`. Phase 5 kode: `npm run dev:backend` wrapper (root + backend/), `npm run audit:rls`, `audit:liveness`, `agent-doctor.ps1` bruger `infisical run` når CLI logged in. Audit RPC fejler med `Legacy API keys are disabled` → bekræfter Infisical dev's `SUPABASE_SERVICE_KEY` er den disabled JWT fra 2026-05-22 seed. **Resterende:** rotation i Supabase + Infisical UI (bruger), så PR + #337 close.
+
 > **🟢 Session 2026-05-26-B — PR #682/#683 merged + #684 + Infisical Phase 2+5 spawned:** #682 actionlint-fix squash-merged (`182ff14b`). #683 squash-merged (`e0eab317`). #684 PR [#685](https://github.com/NicolaiDolmer/CyclingZone/pull/685) instrumenterer 7 hooks; EmmaPC live-verify ALLE 7 fyrer. sync-deps PC2 verificeret OK. `dependency-review` tilføjet som required check på main. Doctor audit → #337 rotation **blokeret** indtil Infisical Phase 2+5 done (per ADR `docs/decisions/secret-management-adr.md`). Spawn-task ready for fresh session.
 
 > **🟢 Session 2026-05-26-A — TdF speed-sprint #681 sektion A+B:** #346 sync-deps PC1 clean. #621 item 3 source-map guardrail PR #682. #634 AC2+AC6 fixture-test PR #683 (14/14 pass). #385 status-audit: 6/7 AC done, AC6 spawned til #684 → #385 `claude:done`. Live-bevis at PreToolUse + PostToolUse hooks blokerede mig in-session.
@@ -16,10 +18,10 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** Start **Infisical Phase 2+5 fresh-session** (spawned, ~2-3 timer) — lukker #337 rotation som del af migration uden at secret rører lokal disk. Parallelt: merge [#685](https://github.com/NicolaiDolmer/CyclingZone/pull/685) + bruger-actions (#355, #621 item 1). YAML actionlint chore også spawned. Fallback hvis kort tid: [#666](https://github.com/NicolaiDolmer/CyclingZone/issues/666), [#667](https://github.com/NicolaiDolmer/CyclingZone/issues/667), [#674](https://github.com/NicolaiDolmer/CyclingZone/issues/674).
+> **🎯 Next action:** **Rotér `SUPABASE_SERVICE_KEY` i Infisical dev (+ prod hvis stale):** Supabase Dashboard → Settings → API → kopier eksisterende `sb_secret_*` → Infisical Dashboard → dev/prod environments → opdatér `SUPABASE_SERVICE_KEY`. Derefter verify: `npm run audit:rls` returnerer OK → close #337. PR for kode-delen: åbnes når denne session committer (`feat/infisical-phase-2-5`).
 >
 > _Format: `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
-> **🤖 Working agent:** _Ingen aktiv session._
+> **🤖 Working agent:** Claude EmmaPC — Session 2026-05-26-C (Infisical Phase 5 code + PR draft). Tager #327/#337 mod close.
 >
 > _Nulstil til "Ingen aktiv session" ved close-out._

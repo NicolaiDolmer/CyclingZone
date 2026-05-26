@@ -7,7 +7,7 @@ export function classifySupabaseAuditError(error) {
   if (/legacy api keys are disabled|invalid api key|jwt expired|invalid jwt|invalid claim|401|403/i.test(text)) {
     return {
       kind: "auth-failure",
-      detail: "Supabase auth failed. Rotate local backend/.env SUPABASE_SERVICE_KEY to sb_secret_* and rerun.",
+      detail: "Supabase auth failed. Update SUPABASE_SERVICE_KEY in Infisical (env=dev or prod) to a valid sb_secret_* — backend/.env fallback only if not using infisical run. See #337.",
     };
   }
 
