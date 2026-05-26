@@ -1347,7 +1347,7 @@ test("processSeasonEnd sends mid-review notification and skips processReplacemen
 
   assert.equal(replacementCalled, false, "processReplacementTrigger must not be called mid-cycle");
   const midReviewNotif = supabase.state.inserts.notifications.find(
-    (n) => n.title === "Halvvejsevaluering"
+    (n) => n.title === "Mid-plan review"
   );
   assert.ok(midReviewNotif, "mid-review notification must be sent for 3yr plan at season 1");
 });
@@ -1366,7 +1366,7 @@ test("processSeasonEnd sends replacement notification when processReplacementTri
   });
 
   const replacementNotif = supabase.state.inserts.notifications.find(
-    (n) => n.title === "Bestyrelsen har valgt en ny formand"
+    (n) => n.title === "The board has chosen a new chairman"
   );
   assert.ok(replacementNotif, "replacement notification must be sent when replaced=true");
   assert.ok(replacementNotif.message.includes("Resultatjægeren"), "notification must include new chairman label");

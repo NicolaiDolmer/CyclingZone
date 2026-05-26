@@ -1168,7 +1168,9 @@ test("processBoardAutoAcceptCron sends T-3 reminder at race_days_completed=2", a
   assert.equal(summary.auto_accepted, 0);
   assert.equal(notifications.length, 1);
   assert.equal(notifications[0].type, "board_update");
-  assert.match(notifications[0].title, /5-aarsplan/);
+  // #666: title nu EN ("5-year plan"); locale-rendering via metadata.titleParams.planLabelKey.
+  assert.match(notifications[0].title, /5-year plan/);
+  assert.equal(notifications[0].metadata?.titleParams?.planLabelKey, "planLabel.5yr");
 });
 
 test("processBoardAutoAcceptCron sends T-1 critical reminder at race_days_completed=4", async () => {
@@ -1187,7 +1189,9 @@ test("processBoardAutoAcceptCron sends T-1 critical reminder at race_days_comple
   assert.equal(summary.reminders_sent, 1);
   assert.equal(summary.auto_accepted, 0);
   assert.equal(notifications[0].type, "board_critical");
-  assert.match(notifications[0].title, /Sidste chance/);
+  // #666: title nu EN ("Last chance: 5-year plan").
+  assert.match(notifications[0].title, /Last chance/);
+  assert.equal(notifications[0].metadata?.titleCode, "notif.boardT1Reminder.title");
 });
 
 test("processBoardAutoAcceptCron auto-signs default plan at race_days_completed=5 using identity-derived focus", async () => {

@@ -112,7 +112,7 @@ export async function processLoanAgreementSeasonFees(
       payload: {
         type: "transfer_out",
         amount: -loan.loan_fee,
-        description: `Lejegebyr: ${riderName} (sæson ${seasonNumber})`,
+        description: null,
         season_id: seasonId,
         actor_type: actorType,
         actor_id: actorId,
@@ -121,6 +121,10 @@ export async function processLoanAgreementSeasonFees(
         related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
         related_entity_id: loan.id,
         idempotency_key: `loan_fee_paid:${loan.id}:${seasonId}`,
+        metadata: {
+          code: "tx.loanFeePaid",
+          params: { riderName, season: seasonNumber },
+        },
       },
     }, { allowDuplicate: true });
     await incrementBalanceWithAudit(client, {
@@ -129,7 +133,7 @@ export async function processLoanAgreementSeasonFees(
       payload: {
         type: "transfer_in",
         amount: loan.loan_fee,
-        description: `Lejegebyr modtaget: ${riderName} (sæson ${seasonNumber})`,
+        description: null,
         season_id: seasonId,
         actor_type: actorType,
         actor_id: actorId,
@@ -138,6 +142,10 @@ export async function processLoanAgreementSeasonFees(
         related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
         related_entity_id: loan.id,
         idempotency_key: `loan_fee_received:${loan.id}:${seasonId}`,
+        metadata: {
+          code: "tx.loanFeeReceived",
+          params: { riderName, season: seasonNumber },
+        },
       },
     }, { allowDuplicate: true });
   }
@@ -195,7 +203,12 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
     });
     if (rpcError) {
       if (rpcError.code === "check_violation" || /Gældsloft/.test(rpcError.message || "")) {
-        throw new Error(`Gældsloft på ${config.debt_ceiling} CZ$ nået for denne division`);
+        {
+        const err = new Error(`Debt cap of ${config.debt_ceiling} CZ$ reached for this division`);
+        err.code = "error.debtCapReached";
+        err.params = { ceiling: config.debt_ceiling };
+        throw err;
+      }
       }
       // PostgREST returnerer 404 (PGRST202) hvis funktionen mangler — fald tilbage.
       if (rpcError.code !== "PGRST202" && !/function .* does not exist/i.test(rpcError.message || "")) {
@@ -209,7 +222,12 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
   if (!loan) {
     const currentDebt = await getTotalDebt(teamId, client);
     if (currentDebt + totalOwed > config.debt_ceiling) {
-      throw new Error(`Gældsloft på ${config.debt_ceiling} CZ$ nået for denne division`);
+      {
+        const err = new Error(`Debt cap of ${config.debt_ceiling} CZ$ reached for this division`);
+        err.code = "error.debtCapReached";
+        err.params = { ceiling: config.debt_ceiling };
+        throw err;
+      }
     }
 
     const { data: insertedLoan, error } = await client.from("loans").insert({
@@ -235,7 +253,7 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
     payload: {
       type: "loan_received",
       amount: principalAmount,
-      description: `${loanType === "short" ? "Kort" : "Langt"} lån optaget (gebyr: ${fee} CZ$)`,
+      description: null,
       season_id: activeSeasonId,
       actor_type: auditCtx?.actorType || FINANCE_ACTOR_TYPE.API,
       actor_id: auditCtx?.actorId || null,
@@ -243,13 +261,23 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
       reason_code: FINANCE_REASON.LOAN_PRINCIPAL_RECEIVED,
       related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
       related_entity_id: loan.id,
+      metadata: {
+        code: loanType === "short" ? "tx.loanReceivedShort" : "tx.loanReceivedLong",
+        params: { fee },
+      },
     },
   });
 
   await notifyManager(teamId, "loan_created",
-    "Lån oprettet",
-    `Du har optaget et ${loanType === "short" ? "kort" : "langt"} lån på ${principalAmount} CZ$. Gebyr: ${fee} CZ$. Samlet tilbagebetaling: ${totalOwed} CZ$.`,
-    client
+    "Loan created",
+    `You took out a ${loanType === "short" ? "short-term" : "long-term"} loan of ${principalAmount} CZ$. Fee: ${fee} CZ$. Total repayment: ${totalOwed} CZ$.`,
+    client,
+    {
+      titleCode: loanType === "short" ? "notif.loanCreatedShort.title" : "notif.loanCreatedLong.title",
+      titleParams: {},
+      messageCode: loanType === "short" ? "notif.loanCreatedShort.message" : "notif.loanCreatedLong.message",
+      messageParams: { principal: principalAmount, fee, totalOwed },
+    }
   );
 
   return loan;
@@ -309,7 +337,7 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
     payload: {
       type: "emergency_loan",
       amount: amountNeeded,
-      description: `Nødlån oprettet automatisk (gebyr: ${fee} CZ$, rente: ${(interestRate * 100).toFixed(0)}%/sæson)`,
+      description: null,
       season_id: seasonId,
       actor_type: auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON,
       actor_id: auditCtx?.actorId || null,
@@ -317,20 +345,44 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
       reason_code: FINANCE_REASON.EMERGENCY_LOAN_RECEIVED,
       related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
       related_entity_id: loan.id,
+      metadata: {
+        code: "tx.emergencyLoan",
+        params: {
+          feeRate: Math.round(feeRate * 100),
+          interestRate: Math.round(interestRate * 100),
+        },
+      },
     },
   });
 
   await notifyManager(teamId, "emergency_loan",
-    "⚠️ Nødlån oprettet",
-    `Dit hold havde ikke midler til at betale løn. Der er automatisk oprettet et nødlån på ${amountNeeded} CZ$ med ${(feeRate * 100).toFixed(0)}% gebyr og ${(interestRate * 100).toFixed(0)}% rente. Samlet gæld: ${totalOwed} CZ$.`,
-    client
+    "⚠️ Emergency loan opened",
+    `Your team couldn't cover wages. An emergency loan of ${amountNeeded} CZ$ was opened automatically with a ${(feeRate * 100).toFixed(0)}% fee and ${(interestRate * 100).toFixed(0)}% interest. Total debt: ${totalOwed} CZ$.`,
+    client,
+    {
+      titleCode: "notif.emergencyLoan.title",
+      titleParams: {},
+      messageCode: "notif.emergencyLoan.message",
+      messageParams: {
+        amount: amountNeeded,
+        feeRate: Math.round(feeRate * 100),
+        interestRate: Math.round(interestRate * 100),
+        totalOwed,
+      },
+    }
   );
 
   if (breachAmount > 0) {
     await notifyManager(teamId, "emergency_loan_breach",
-      "🚨 Gældsloft overskredet",
-      `Dit nødlån presser holdets gæld ${breachAmount} CZ$ over divisions-loftet på ${config.debt_ceiling} CZ$. Du kan stadig drive klubben videre, men du SKAL reducere udgifterne (sælg ryttere, fyr stjernekontrakter) inden næste sæsonslut for at undgå spiral.`,
-      client
+      "🚨 Debt cap exceeded",
+      `Your emergency loan pushes the team's debt ${breachAmount} CZ$ over the division cap of ${config.debt_ceiling} CZ$. You can keep operating, but you MUST cut costs (sell riders, drop star contracts) before the next season ends to avoid a debt spiral.`,
+      client,
+      {
+        titleCode: "notif.emergencyLoanBreach.title",
+        titleParams: {},
+        messageCode: "notif.emergencyLoanBreach.message",
+        messageParams: { breachAmount, ceiling: config.debt_ceiling },
+      }
     );
   }
 
@@ -355,9 +407,15 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
   const commitment = await fetchTeamCommitment(client, teamId);
   const availableForRepay = Math.max(0, team.balance - commitment);
   if (amount > availableForRepay) {
-    throw new Error(
-      `Du har kun ${availableForRepay.toLocaleString("da-DK")} CZ$ tilgængelig — resten er låst i aktive bud eller autobud`,
+    // #666: throw'en boble til api.js der mapper code → http response. Frontend
+    // viser via t() i errors-namespace. Behold EN fallback i Error.message så
+    // logs + ikke-coded clients ser noget meningsfuldt.
+    const err = new Error(
+      `You only have ${availableForRepay} CZ$ available — the rest is locked in active bids or autobids`,
     );
+    err.code = "error.repayInsufficient";
+    err.params = { available: availableForRepay };
+    throw err;
   }
 
   const actualAmount = Math.min(amount, loan.amount_remaining);
@@ -377,7 +435,7 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
     payload: {
       type: "loan_repayment",
       amount: -actualAmount,
-      description: `Lånrate betalt${isPaidOff ? " — lån fuldt tilbagebetalt! 🎉" : ` (resterende: ${newRemaining} CZ$)`}`,
+      description: null,
       season_id: repaySeasonId,
       actor_type: auditCtx?.actorType || FINANCE_ACTOR_TYPE.API,
       actor_id: auditCtx?.actorId || null,
@@ -385,14 +443,23 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
       reason_code: FINANCE_REASON.LOAN_REPAYMENT,
       related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
       related_entity_id: loanId,
+      metadata: isPaidOff
+        ? { code: "tx.loanRepaymentFinal", params: {} }
+        : { code: "tx.loanRepaymentRemaining", params: { remaining: newRemaining } },
     },
   });
 
   if (isPaidOff) {
     await notifyManager(teamId, "loan_paid_off",
-      "✅ Lån tilbagebetalt",
-      "Tillykke! Du har fuldt tilbagebetalt dit lån.",
-      client
+      "✅ Loan repaid",
+      "Congratulations! You've fully repaid your loan.",
+      client,
+      {
+        titleCode: "notif.loanPaidOff.title",
+        titleParams: {},
+        messageCode: "notif.loanPaidOff.message",
+        messageParams: {},
+      }
     );
   }
 
@@ -425,9 +492,13 @@ export async function processLoanInterest(teamId, seasonId, supabaseClient = nul
       team_id: teamId,
       type: "loan_interest",
       amount: -interest,
-      description: `Lånerenter tilskrevet (${(loan.interest_rate * 100).toFixed(0)}%)`,
+      description: null,
       season_id: seasonId,
       related_loan_id: loan.id,
+      metadata: {
+        code: "tx.loanInterest",
+        params: { rate: Math.round(loan.interest_rate * 100) },
+      },
     });
     if (transactionError) {
       if (transactionError.code === "23505") {
@@ -458,7 +529,7 @@ export async function processLoanInterest(teamId, seasonId, supabaseClient = nul
 
 // ── Intern helper ─────────────────────────────────────────────────────────────
 
-async function notifyManager(teamId, type, title, message, supabaseClient = null) {
+async function notifyManager(teamId, type, title, message, supabaseClient = null, metadata = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
   await notifyTeamOwnerShared({
     supabase: client,
@@ -466,5 +537,6 @@ async function notifyManager(teamId, type, title, message, supabaseClient = null
     type,
     title,
     message,
+    metadata,
   });
 }

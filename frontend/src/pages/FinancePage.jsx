@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
+import { renderBackendMessage } from "../lib/backendMessage";
 import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
 import FinanceForecastCard from "../components/FinanceForecastCard";
 import OnboardingTour from "../components/OnboardingTour";
@@ -27,6 +28,8 @@ function useTimeAgo(t) {
 
 export default function FinancePage() {
   const { t } = useTranslation("finance");
+  // #666: tx.metadata.{code,params} renderes via backendMessages-namespace.
+  const { t: tBackend } = useTranslation("backendMessages");
   const timeAgo = useTimeAgo(t);
 
   const [loanData, setLoanData] = useState(null);
@@ -543,7 +546,13 @@ export default function FinancePage() {
             {transactions.map(tx => (
               <div key={tx.id} className="flex items-center justify-between py-2.5">
                 <div className="flex-1 min-w-0 pe-3">
-                  <p className="text-cz-2 text-xs truncate">{tx.description || txLabel(tx.type)}</p>
+                  <p className="text-cz-2 text-xs truncate">{
+                    /* #666: nye rows har tx.metadata (renderes via i18n);
+                       legacy rows har tx.description (vises som DA fallback). */
+                    tx.metadata?.code
+                      ? renderBackendMessage(tx.metadata, tBackend, tx.description || txLabel(tx.type))
+                      : (tx.description || txLabel(tx.type))
+                  }</p>
                   <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
                 </div>
                 <p className={`font-mono text-sm font-bold flex-shrink-0 ${tx.amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>

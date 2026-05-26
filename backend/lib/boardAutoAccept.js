@@ -208,14 +208,21 @@ async function sendT3InfoReminder({
 }) {
   if (!team.user_id) return false;
 
-  const planLabel = formatPlanLabel(planType);
+  const planLabelEn = formatPlanLabelEn(planType);
+  const planLabelKey = planLabelI18nKey(planType);
   const raceDaysLeft = AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT - raceDaysCompleted;
   const result = await notifyUser({
     userId: team.user_id,
     type: "board_update",
-    title: `Bestyrelsen venter pa din ${planLabel}`,
-    message: `Du har ${raceDaysLeft} race-days tilbage til at forhandle din ${planLabel}. Hvis du ikke gor noget, vaelger bestyrelsen selv.`,
+    title: `The board is waiting for your ${planLabelEn}`,
+    message: `You have ${raceDaysLeft} race days left to negotiate your ${planLabelEn}. If you don't act, the board will decide.`,
     relatedId: pendingBoard?.id ?? null,
+    metadata: {
+      titleCode: "notif.boardT3Reminder.title",
+      titleParams: { planLabelKey },
+      messageCode: "notif.boardT3Reminder.message",
+      messageParams: { raceDaysLeft, planLabelKey },
+    },
     now,
   });
   return Boolean(result?.delivered);
@@ -226,14 +233,22 @@ async function sendT1CriticalReminder({
 }) {
   if (!team.user_id) return false;
 
-  const planLabel = formatPlanLabel(planType);
+  const planLabelEn = formatPlanLabelEn(planType);
+  const planLabelKey = planLabelI18nKey(planType);
   const raceDaysLeft = Math.max(1, AUTO_ACCEPT_THRESHOLDS.AUTO_ACCEPT - raceDaysCompleted);
+  const isSingle = raceDaysLeft === 1;
   const result = await notifyUser({
     userId: team.user_id,
     type: "board_critical",
-    title: `Sidste chance: ${planLabel}`,
-    message: `Bestyrelsen tager over om ${raceDaysLeft} race-day${raceDaysLeft === 1 ? "" : "s"}. Aabn Bestyrelse-siden og forhandl din ${planLabel} nu.`,
+    title: `Last chance: ${planLabelEn}`,
+    message: `The board takes over in ${raceDaysLeft} race day${isSingle ? "" : "s"}. Open the Board page and negotiate your ${planLabelEn} now.`,
     relatedId: pendingBoard?.id ?? null,
+    metadata: {
+      titleCode: "notif.boardT1Reminder.title",
+      titleParams: { planLabelKey },
+      messageCode: isSingle ? "notif.boardT1Reminder.messageSingle" : "notif.boardT1Reminder.messageMulti",
+      messageParams: { raceDaysLeft, planLabelKey },
+    },
     now,
   });
   return Boolean(result?.delivered);
@@ -299,14 +314,21 @@ async function autoAcceptPendingPlan({
     .upsert(upsertData, { onConflict: "team_id,plan_type" });
   if (upsertError) throw upsertError;
 
-  const planLabel = formatPlanLabel(planType);
+  const planLabelEn = formatPlanLabelEn(planType);
+  const planLabelKey = planLabelI18nKey(planType);
   if (team.user_id) {
     await notifyUser({
       userId: team.user_id,
       type: "board_update",
-      title: `Bestyrelsen valgte ${planLabel} for dig`,
-      message: `Du naaede ikke at forhandle ${planLabel} — bestyrelsen valgte focus "${focus}" og standardmaal. Du kan stadig anmode om aendringer naar planen kører.`,
+      title: `The board chose ${planLabelEn} for you`,
+      message: `You didn't negotiate your ${planLabelEn} in time — the board picked focus "${focus}" and default goals. You can still request changes once the plan is running.`,
       relatedId: null,
+      metadata: {
+        titleCode: "notif.boardAutoAccepted.title",
+        titleParams: { planLabelKey },
+        messageCode: "notif.boardAutoAccepted.message",
+        messageParams: { planLabelKey, focus },
+      },
       now,
     });
   }
@@ -314,9 +336,17 @@ async function autoAcceptPendingPlan({
   return true;
 }
 
-function formatPlanLabel(planType) {
-  if (planType === "5yr") return "5-aarsplan";
-  if (planType === "3yr") return "3-aarsplan";
-  if (planType === "1yr") return "1-aarsplan";
+// #666: EN fallback brugt i title/message — i18n-key driver fuld locale.
+function formatPlanLabelEn(planType) {
+  if (planType === "5yr") return "5-year plan";
+  if (planType === "3yr") return "3-year plan";
+  if (planType === "1yr") return "1-year plan";
   return planType;
+}
+
+function planLabelI18nKey(planType) {
+  if (planType === "1yr" || planType === "3yr" || planType === "5yr") {
+    return `planLabel.${planType}`;
+  }
+  return "planLabel.unknown";
 }

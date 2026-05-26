@@ -137,7 +137,8 @@ test("processLoanAgreementSeasonFees charges only continuing active rider loans"
       team_id: "borrower-team",
       type: "transfer_out",
       amount: -50,
-      description: "Lejegebyr: Anna Bjerg (sæson 4)",
+      // #666: description null for nye rows; metadata.code+params driver i18n.
+      description: null,
       season_id: "season-4",
       actor_type: "cron",
       actor_id: null,
@@ -146,12 +147,13 @@ test("processLoanAgreementSeasonFees charges only continuing active rider loans"
       related_entity_type: "loan",
       related_entity_id: "loan-1",
       idempotency_key: "loan_fee_paid:loan-1:season-4",
+      metadata: { code: "tx.loanFeePaid", params: { riderName: "Anna Bjerg", season: 4 } },
     },
     {
       team_id: "lender-team",
       type: "transfer_in",
       amount: 50,
-      description: "Lejegebyr modtaget: Anna Bjerg (sæson 4)",
+      description: null,
       season_id: "season-4",
       actor_type: "cron",
       actor_id: null,
@@ -160,6 +162,7 @@ test("processLoanAgreementSeasonFees charges only continuing active rider loans"
       related_entity_type: "loan",
       related_entity_id: "loan-1",
       idempotency_key: "loan_fee_received:loan-1:season-4",
+      metadata: { code: "tx.loanFeeReceived", params: { riderName: "Anna Bjerg", season: 4 } },
     },
   ]);
 });
@@ -300,7 +303,8 @@ test("createEmergencyLoan tags the finance transaction with the season id", asyn
       team_id: "team-1",
       type: "emergency_loan",
       amount: 100,
-      description: "Nødlån oprettet automatisk (gebyr: 15 CZ$, rente: 15%/sæson)",
+      // #666: description nu null for nye tx; rendering kommer fra metadata.code+params.
+      description: null,
       season_id: "season-6",
       actor_type: "cron",
       actor_id: null,
@@ -308,6 +312,10 @@ test("createEmergencyLoan tags the finance transaction with the season id", asyn
       reason_code: "emergency_loan_received",
       related_entity_type: "loan",
       related_entity_id: "loan-1",
+      metadata: {
+        code: "tx.emergencyLoan",
+        params: { feeRate: 15, interestRate: 15 },
+      },
     },
   ]);
 });
@@ -434,9 +442,15 @@ test("createLoan rejects when principal+fee would exceed debt ceiling (off-by-fe
   // Pre-fix bug: 598479 + 1500 = 599979 ≤ 600000 → passed, but actual debt becomes 600054 (54 over)
   const supabase = createCeilingSupabase({ existingDebt: 598479 });
 
+  // #666: error.message er nu EN ("Debt cap of ... reached"); assert i stedet
+  // på den stabile err.code som frontend-i18n-mappet er nøglet på.
   await assert.rejects(
     () => createLoan("team-1", "long", 1500, supabase.client),
-    /Gældsloft/
+    (err) => {
+      assert.equal(err.code, "error.debtCapReached");
+      assert.equal(err.params?.ceiling, 600000);
+      return true;
+    },
   );
   assert.equal(supabase.state.loans.length, 0, "no loan should be inserted when ceiling+fee would be breached");
 });

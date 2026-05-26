@@ -197,6 +197,10 @@ function computeRiskTier({ projectedNet, debtRatio, trendBreaches2Seasons }) {
   return "green";
 }
 
+// #666: warnings emitter { code, messageKey, params } i stedet for færdig-
+// formaterede DA-strings. Frontend renderer via i18next-namespace
+// `backendMessages` med locale-aware tal-formattering. Legacy `code`-felt
+// beholdes uændret for snapshot-tests + backwards-compat.
 function buildWarnings({
   projectedNet,
   totalDebt,
@@ -211,7 +215,9 @@ function buildWarnings({
     warnings.push({
       severity: "high",
       code: "negative_net",
-      message: `Forventet underskud: ${formatSigned(projectedNet)} CZ$ næste sæson — sælg en rytter, reducér aktive lån eller forhandl bedre sponsor.`,
+      messageKey: "forecast.warning.negativeNet",
+      // value er altid negativ her — formatNumber() rammer minus-prefix natively.
+      params: { value: projectedNet },
     });
   }
   if (debtCeiling && debtCeiling > 0) {
@@ -219,13 +225,19 @@ function buildWarnings({
       warnings.push({
         severity: "high",
         code: "debt_near_ceiling",
-        message: `Gæld er ${Math.round(debtRatio * 100)}% af loftet (${totalDebt.toLocaleString("da-DK")} / ${debtCeiling.toLocaleString("da-DK")} CZ$) — bestyrelsen er bekymret.`,
+        messageKey: "forecast.warning.debtNearCeiling",
+        params: {
+          ratio: Math.round(debtRatio * 100),
+          totalDebt,
+          ceiling: debtCeiling,
+        },
       });
     } else if (debtRatio >= RISK_DEBT_GREEN_RATIO) {
       warnings.push({
         severity: "med",
         code: "debt_growing",
-        message: `Gæld er ${Math.round(debtRatio * 100)}% af loftet — hold øje med rente-byrden.`,
+        messageKey: "forecast.warning.debtGrowing",
+        params: { ratio: Math.round(debtRatio * 100) },
       });
     }
   }
@@ -233,8 +245,8 @@ function buildWarnings({
     warnings.push({
       severity: "high",
       code: "debt_trend",
-      message:
-        "Med det nuværende underskud rammer du gældsloftet inden for 2 sæsoner — handl nu.",
+      messageKey: "forecast.warning.debtTrend",
+      params: {},
     });
   }
   // Lønbyrde > sponsor er et klassisk varselstegn — manageren tjener mindre på
@@ -243,15 +255,16 @@ function buildWarnings({
     warnings.push({
       severity: "med",
       code: "salary_exceeds_sponsor",
-      message: `Løn (${Math.abs(projectedSalary).toLocaleString("da-DK")} CZ$) overstiger sponsor (${projectedSponsor.toLocaleString("da-DK")} CZ$) — rolig drift dækker ikke længere lønnen.`,
+      messageKey: "forecast.warning.salaryExceedsSponsor",
+      params: {
+        salary: Math.abs(projectedSalary),
+        sponsor: projectedSponsor,
+      },
     });
   }
   return warnings;
 }
 
-function formatSigned(value) {
-  return (value >= 0 ? "+" : "") + value.toLocaleString("da-DK");
-}
 
 export const FORECAST_THRESHOLDS = Object.freeze({
   RISK_NET_GREEN_THRESHOLD,

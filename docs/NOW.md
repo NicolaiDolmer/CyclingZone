@@ -24,6 +24,6 @@
 >
 > _Format: `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
-> **🤖 Working agent:** _Ingen aktiv session._ (Session 2026-05-26-F closed på EmmaPC — #621 verify + #692 i18n cleanup merged + deployed)
+> **🤖 Working agent:** Claude (NicolaiDolmer) — Session 2026-05-26-G EmmaPC, picking up [#666](https://github.com/NicolaiDolmer/CyclingZone/issues/666) backend message-codes (focused scope: 8 message-pattern lib-files, ~40 strings; boardArchetypes/Dna spawned to follow-up issues).
 >
 > _Nulstil til "Ingen aktiv session" ved close-out._

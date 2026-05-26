@@ -504,10 +504,18 @@ test("notifyTeamOwner: sælger får bid_received-notif når rider.team_id === se
   const sellerNotif = ownerCalls.find(c => c[1] === "bid_received");
   assert.ok(sellerNotif, "skal sende bid_received til seller_team_id");
   assert.equal(sellerNotif[0], "team-seller");
-  assert.equal(sellerNotif[2], "Nyt bud modtaget");
+  // #666: title nu EN ("New bid received") med metadata-driven i18n. Message er
+  // også EN fallback uden tusind-separator (formatNumber skubbes til frontend).
+  assert.equal(sellerNotif[2], "New bid received");
   assert.match(sellerNotif[3], /Jonas Vingegaard/);
-  assert.match(sellerNotif[3], /80\.001/);
+  assert.match(sellerNotif[3], /80001/);
   assert.equal(sellerNotif[4], "auc-seller-notif");
+  // metadata sikrer locale-rendering i frontend
+  const metadata = sellerNotif[5];
+  assert.equal(metadata?.titleCode, "notif.autoBidPlaced.title");
+  assert.equal(metadata?.messageCode, "notif.autoBidPlaced.message");
+  assert.equal(metadata?.messageParams?.amount, 80001);
+  assert.equal(metadata?.messageParams?.riderName, "Jonas Vingegaard");
 });
 
 test("bidderName: falder tilbage til \"Autobud\" når team-rækken mangler", async () => {

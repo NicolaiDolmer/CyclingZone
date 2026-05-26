@@ -60,6 +60,9 @@ export function groupNotifications(notifications) {
         any_unread: sorted.some((i) => !i.is_read),
         sample_title: latest.title,
         sample_message: latest.message,
+        // #666: carry metadata so aggregate-rendering can use i18n via
+        // renderBackendMessage. Falls back to title/message if absent.
+        sample_metadata: latest.metadata ?? null,
       });
     }
   }
