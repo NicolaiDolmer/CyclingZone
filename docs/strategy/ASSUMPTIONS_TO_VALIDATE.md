@@ -37,6 +37,11 @@
 **Validation-metode:** Analyse af session-frequency gennem sæson 1 (27/5-10/6). Spørg testere direkte under interviews.
 **Hvornår:** Post-sæson-1 (juni)
 
+### A6b: D7 retention ≥ 30% er nåbar post-TdF
+**Sandsynlighed:** Lav baseret på open-beta-cohort 8-15 maj (5 brugere, D7 = 20% — under target). Cohort er dog for lille til hård konklusion + instrumentation hul (kun 2/5 har `session_started`).
+**Validation-metode:** Gentag retention-audit på TdF-cohort med større N + presence-based fallback + Clarity cross-check (se [`retention-cohort-may-2026.md`](../research/retention-cohort-may-2026.md), refs [#670](https://github.com/NicolaiDolmer/CyclingZone/issues/670), [#674](https://github.com/NicolaiDolmer/CyclingZone/issues/674)).
+**Hvornår:** Under og post-TdF (juli-august 2026)
+
 ### A7: Cycling-zones + watt-tal vil føles relevant for målgruppen
 **Sandsynlighed:** Mellem-høj for hardcore-niche (Strava/Zwift-nørder). Mellem for casual-fantasy-spillere.
 **Validation-metode:** A/B-test efter race engine V1: vis cycling-zones-detalje vs traditional-abilities-only; mål engagement.
