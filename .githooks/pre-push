@@ -70,7 +70,13 @@ while IFS= read -r range; do
     exit_code=1
   fi
 
-  if git diff "$range" -- 2>/dev/null | grep -E '^\+.*(SUPABASE_SERVICE_KEY|CLAUDE_CODE_OAUTH_TOKEN|ANTHROPIC_API_KEY)=' | grep -Ev '(replace-me|example|dummy|your-|<[^>]+>)' >/dev/null; then
+  # Allowlist:
+  #   - placeholders (replace-me, example, dummy, your-, <...>)
+  #   - shell-expansion RHS: VAR=$(...), VAR=${...}, VAR=$ref, VAR="$..."
+  #     Real secret tokens are A-Za-z0-9+/=._- so a literal `$` next to `=`
+  #     is a strong signal it's a command substitution / variable reference,
+  #     not a leaked secret value. Lets SC2155-style refactors push cleanly.
+  if git diff "$range" -- 2>/dev/null | grep -E '^\+.*(SUPABASE_SERVICE_KEY|CLAUDE_CODE_OAUTH_TOKEN|ANTHROPIC_API_KEY)=' | grep -Ev '(replace-me|example|dummy|your-|<[^>]+>|=\$\(|=\$\{|=\$[A-Za-z_]|="\$|='"'"'\$)' >/dev/null; then
     echo ""
     echo "❌ Pre-push blokeret: diffen ligner en secret-læk."
     exit_code=1
