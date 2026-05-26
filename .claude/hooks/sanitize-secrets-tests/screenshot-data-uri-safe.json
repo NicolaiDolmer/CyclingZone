@@ -1,0 +1,13 @@
+{
+  "_marker": "FIXTURE_DO_NOT_USE — sanitize-secrets-tests marker-detection case",
+  "_purpose": "tool_name is plain Bash so the tool_name regex doesn't fire — but the payload contains a data:image/png base64 URI with PNG signature (iVBORw0KG...). The marker-based image-mode path must catch this; otherwise high-entropy false-positive returns. Includes >40-char base64-like chunk to force HIGH_ENTROPY to match if image-mode were broken.",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "cat /tmp/profile-card.html"
+  },
+  "tool_response": {
+    "stdout": "<html><body><img alt=\"avatar\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAABKpJREFUeNrUl11oHFUUx//3zuzObGY3STZpkjZJG9q0iWlT26q0RVQQRRBFEEH8eFAfRBBE8MUH8UV9EHwQfFB8EHwQfBBBEH0QfFAQRBFFEEUR1Iqlxao1bdMmTbLZ3WSzu5OdmZ17ru/uzM7sJptUaqXgubn3nHvuOWfOOff8z1Eqip5+9pZQa/k5d7vDhEFvDLLpKKABrAEswFKgKEAJEFQAlAGcAUgARgFOAcMAJgAFNQFKFFAB6AdwHsAlAJsBmABMAswD2AbgcgC3AJgEcBnAlQAuBnAdgF0AvgRwO4DLAEwCmABwGoAJoAvAcgC3ApgF8DyABwFcAmAOwBKAOICzAGYBOM57c+R0ZuYBLABwBaABYAUgD2AB4DiABQAOgB8BHADgegB3A1gB4D4ABwHcA+BSAOcCXIDwfwHwAAA= unicode\" /></body></html>",
+    "stderr": "",
+    "interrupted": false
+  }
+}

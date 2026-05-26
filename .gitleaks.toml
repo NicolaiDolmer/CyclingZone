@@ -72,7 +72,9 @@ paths = [
   '''docs/SECRET_LEAK_VECTORS\.md$''',
   '''docs/archive/.*\.md$''',
   '''\.claude/secret-leak-incidents\.log$''',
+  '''\.claude/secret-leak-stats\.log$''',
   '''\.claude/hooks/test-fixtures/''',
+  '''\.claude/hooks/sanitize-secrets-tests/''',
   '''scripts/test-sanitize-secrets\.(ps1|sh)$''',
   # Postmortem og memory-filer beskriver historiske leaks (redacted)
   '''\.claude/learnings/.*-secret.*\.md$''',

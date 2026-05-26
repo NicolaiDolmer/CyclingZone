@@ -44,3 +44,9 @@ docs/WEEKLY_PLANNING_GUIDE.md
 # Indeholder type-navne + 8-char prefix/4-char suffix previews; ikke ægte secrets,
 # men forsigtig: keep local.
 .claude/secret-leak-incidents.log
+
+# Secret-leak stats log (forward-guard for #634 screenshot false-positive).
+# Append-only image-mode + leak telemetry. Local-only — same pattern as
+# secret-leak-incidents.log above. Gitleaks allowlist eksisterer som
+# defensiv backup hvis logfilen alligevel ender staged.
+.claude/secret-leak-stats.log

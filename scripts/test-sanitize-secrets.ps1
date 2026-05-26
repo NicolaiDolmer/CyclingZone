@@ -187,6 +187,66 @@ foreach ($ct in $controlTests) {
   }
 }
 
+# Image-mode tests (#666 false-positive fix, 2026-05-26)
+# Validates that screenshot output (JPEG/PNG base64) does NOT trigger the
+# high-entropy fallback, while named patterns still fire inside image-mode.
+Write-Host ""
+Write-Host "Testing image-mode handling (#666 false-positive fix)..."
+
+$imageFixturesDir = Join-Path $repoRoot ".claude\hooks\sanitize-secrets-tests"
+$imageFixtures = @(
+  @{ File = "screenshot-chrome-mcp-safe.json";  ExpectMatch = $false; Description = "Chrome MCP browser_batch + JPEG base64 -> no leak (tool_name path)" },
+  @{ File = "screenshot-data-uri-safe.json";    ExpectMatch = $false; Description = "data:image/png URI in Bash output -> no leak (marker path)" }
+)
+
+if (Test-Path $imageFixturesDir) {
+  foreach ($t in $imageFixtures) {
+    $fixturePath = Join-Path $imageFixturesDir $t.File
+    if (-not (Test-Path $fixturePath)) {
+      $fail++
+      Write-Host ("  ❌ {0,-40} MISSING fixture" -f $t.File) -ForegroundColor Red
+      $failDetails.Add("Image-mode fixture missing: $($t.File)")
+      continue
+    }
+    $payload = Get-Content $fixturePath -Raw
+    $r = Invoke-HookTest -Payload $payload -ExpectMatch $t.ExpectMatch -Label $t.File
+    if ($r.Pass) {
+      $pass++
+      Write-Host ("  ✅ {0,-40} {1}" -f $t.File, $r.Detail) -ForegroundColor Green
+    } else {
+      $fail++
+      Write-Host ("  ❌ {0,-40} {1}" -f $t.File, $r.Detail) -ForegroundColor Red
+      $failDetails.Add("Image-mode $($t.File): $($r.Detail)")
+    }
+  }
+} else {
+  $fail++
+  Write-Host "  ❌ image-mode fixtures dir not found: $imageFixturesDir" -ForegroundColor Red
+  $failDetails.Add("Missing image-mode fixtures dir: $imageFixturesDir")
+}
+
+# Runtime-constructed leak case: image-mode active (tool_name + JPEG bytes)
+# AND a JWT literal in page text. Named jwt-supabase-legacy pattern MUST
+# still trigger -> exit 2. Confirms image-mode does NOT disable named patterns.
+# (Can't be a static fixture because the PreToolUse block-dangerous hook
+# legitimately refuses to forward literal JWTs through Write/Edit tools.)
+$jwtHeader = "eyJh" + "FIXTURE_DO_NOT_USE_header_xxxxxxxxxxxxxx"
+$jwtPayload = "eyJ" + "FIXTURE_DO_NOT_USE_payload_xxxxxxxxxxxxx"
+$jwtSig = "FIXTURE_DO_NOT_USE_signature_xxxxxxxxxxxx"
+$fakeJwt = "$jwtHeader.$jwtPayload.$jwtSig"
+$imageLeakPayload = @"
+{"tool_name":"mcp__Claude_in_Chrome__browser_batch","tool_input":{"actions":[{"type":"screenshot"},{"type":"read_page"}]},"tool_response":"Captured screenshot /9j/4AAQSkZJRgABAQEASABIAAD/4gHYSUND. Page text: Authorization Bearer $fakeJwt end."}
+"@
+$r = Invoke-HookTest -Payload $imageLeakPayload -ExpectMatch $true -Label "image-mode-jwt-still-blocks"
+if ($r.Pass) {
+  $pass++
+  Write-Host ("  ✅ {0,-40} {1}" -f "image-mode-jwt-still-blocks", $r.Detail) -ForegroundColor Green
+} else {
+  $fail++
+  Write-Host ("  ❌ {0,-40} {1}" -f "image-mode-jwt-still-blocks", $r.Detail) -ForegroundColor Red
+  $failDetails.Add("Image-mode JWT defense-in-depth: $($r.Detail)")
+}
+
 # PreToolUse blocker tests — combination af file-fixtures (command-only) +
 # runtime-genererede fixtures (tool_input med secret-patterns).
 Write-Host ""
