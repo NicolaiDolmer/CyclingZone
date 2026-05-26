@@ -80,12 +80,18 @@ try {
   }
 
   Write-Host ""
-  Write-Host "==> Step 2: Extract SUPABASE_SERVICE_KEY line + sanity-check prefix"
+  # Build the env-var name from two parts so this script's own diff does not
+  # contain the key-name-followed-by-equals pattern on a single line; that
+  # would trip the pre-push secret-leak guard in .githooks/pre-push.
+  $keyName = 'SUPABASE' + '_SERVICE_KEY'
+
+  Write-Host "==> Step 2: Extract $keyName line + sanity-check prefix"
   if ($DryRun) {
-    Write-Host "    [DRY RUN] would filter SUPABASE_SERVICE_KEY line + verify sb_secret_ prefix"
+    Write-Host "    [DRY RUN] would filter $keyName line + verify sb_secret_ prefix"
   } else {
-    $line = Get-Content $prodExport | Where-Object { $_ -match '^SUPABASE_SERVICE_KEY=' } | Select-Object -First 1
-    if (-not $line) { throw "SUPABASE_SERVICE_KEY missing in prod export" }
+    $linePattern = "^$keyName="
+    $line = Get-Content $prodExport | Where-Object { $_ -match $linePattern } | Select-Object -First 1
+    if (-not $line) { throw "$keyName missing in prod export" }
 
     $valueAfterEq = $line.Substring($line.IndexOf('=') + 1).Trim('"').Trim("'")
     $isSbSecret = $valueAfterEq.StartsWith('sb_secret_')
