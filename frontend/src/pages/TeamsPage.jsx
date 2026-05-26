@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { formatNumber } from "../lib/intl";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
 const DIV_NAMES  = { 1: "Division 1", 2: "Division 2", 3: "Division 3" };
@@ -154,7 +155,7 @@ export default function TeamsPage() {
                       <div className="bg-cz-subtle rounded-lg p-2 text-center">
                         <p className="text-cz-3 text-[9px] uppercase tracking-wider">Point</p>
                         <p className="text-cz-1 font-mono font-bold text-xs mt-0.5">
-                          {standing?.total_points?.toLocaleString("da-DK") || 0}
+                          {formatNumber(standing?.total_points) || 0}
                         </p>
                       </div>
                       <div className="bg-cz-subtle rounded-lg p-2 text-center">

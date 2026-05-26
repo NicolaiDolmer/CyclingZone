@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useConsent } from "../lib/consent.jsx";
+import { formatDateTime } from "../lib/intl";
 
 export default function PrivacyPolicyPage() {
   const { openBanner, consent } = useConsent();
@@ -126,7 +127,7 @@ export default function PrivacyPolicyPage() {
             <li>Analyse: <strong className="text-cz-1">{consent.analytics ? "accepteret" : "afvist"}</strong></li>
             <li>Marketing: <strong className="text-cz-1">{consent.marketing ? "accepteret" : "afvist"}</strong></li>
             <li>E-mail: <strong className="text-cz-1">{consent.email_marketing ? "accepteret" : "afvist"}</strong></li>
-            {consent.updated_at && <li className="text-xs">Sidst opdateret: {new Date(consent.updated_at).toLocaleString("da-DK")}</li>}
+            {consent.updated_at && <li className="text-xs">Sidst opdateret: {formatDateTime(consent.updated_at)}</li>}
           </ul>
         </Section>
 

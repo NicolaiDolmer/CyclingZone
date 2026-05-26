@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
+import { formatNumber } from "../lib/intl";
 
 export default function RaceHistoryPage() {
   const { raceSlug } = useParams();
@@ -190,7 +191,7 @@ export default function RaceHistoryPage() {
                     </p>
                   </div>
                   <span className="text-cz-accent-t font-mono text-xs font-bold flex-shrink-0">
-                    {s.total_points.toLocaleString("da-DK")} pt
+                    {formatNumber(s.total_points)} pt
                   </span>
                 </RiderLink>
               ))}
@@ -224,7 +225,7 @@ export default function RaceHistoryPage() {
                     />
                   </div>
                   <div className="w-16 text-xs font-mono text-cz-2 text-right flex-shrink-0">
-                    {s.total_points.toLocaleString("da-DK")}
+                    {formatNumber(s.total_points)}
                   </div>
                 </div>
               );

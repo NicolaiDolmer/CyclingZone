@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
+import { formatNumber } from "../lib/intl";
 
 function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
   const [q, setQ] = useState("");
@@ -74,11 +75,11 @@ function StatCompare({ labelA, valueA, valueB, labelB, unit = "", higherIsBetter
     <div className="py-3 border-b border-cz-border last:border-0">
       <div className="flex items-center justify-between mb-2">
         <span className={`font-mono font-bold text-sm ${aWins ? "text-cz-accent-t" : "text-cz-2"}`}>
-          {valueA?.toLocaleString("da-DK")}{unit}
+          {formatNumber(valueA)}{unit}
         </span>
         <span className="text-cz-3 text-xs uppercase tracking-wider">{labelA || labelB}</span>
         <span className={`font-mono font-bold text-sm ${bWins ? "text-cz-accent-t" : "text-cz-2"}`}>
-          {valueB?.toLocaleString("da-DK")}{unit}
+          {formatNumber(valueB)}{unit}
         </span>
       </div>
       <div className="flex gap-1 h-2">
@@ -228,7 +229,7 @@ export default function HeadToHeadPage() {
                   {stats.aBoughtFromB.map(a => (
                     <div key={a.id} className="flex justify-between py-1.5 border-b border-cz-border last:border-0">
                       <span className="text-cz-1 text-sm">{a.rider?.firstname} {a.rider?.lastname}</span>
-                      <span className="text-cz-accent-t font-mono text-sm">{a.current_price?.toLocaleString("da-DK")} CZ$</span>
+                      <span className="text-cz-accent-t font-mono text-sm">{formatNumber(a.current_price)} CZ$</span>
                     </div>
                   ))}
                 </div>
@@ -239,7 +240,7 @@ export default function HeadToHeadPage() {
                   {stats.bBoughtFromA.map(a => (
                     <div key={a.id} className="flex justify-between py-1.5 border-b border-cz-border last:border-0">
                       <span className="text-cz-1 text-sm">{a.rider?.firstname} {a.rider?.lastname}</span>
-                      <span className="text-cz-info font-mono text-sm">{a.current_price?.toLocaleString("da-DK")} CZ$</span>
+                      <span className="text-cz-info font-mono text-sm">{formatNumber(a.current_price)} CZ$</span>
                     </div>
                   ))}
                 </div>
@@ -268,7 +269,7 @@ export default function HeadToHeadPage() {
                         {i + 1}. {r.nationality_code && <Flag code={r.nationality_code} />} {r.firstname} {r.lastname}
                       </RiderLink>
                       <span className="font-mono text-xs" style={{ color }}>
-                        {r.uci_points?.toLocaleString("da-DK")}
+                        {formatNumber(r.uci_points)}
                       </span>
                     </div>
                   ))

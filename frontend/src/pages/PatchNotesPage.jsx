@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.01",
+    date: "2026-05-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "Language · Numbers and dates now follow the active language across 21 player-facing screens",
+        items: [
+          "EN · Across 21 player-facing screens (auction history, head-to-head, standings, season-end, rider rankings, race history, race points, results, manager profile, team profile, watchlist, races, hall of fame, activity, season preview, season finance report, teams, privacy policy, plus the price-change modal and the auction confetti), every number and date was previously hard-coded to Danish formatting (`1.234.567` thousand-separators, `26-05-2026` date order). Now they delegate to the locale-aware `formatNumber()`, `formatDate()` and `formatDateTime()` helpers and follow the active i18next language. In English you now see `1,234,567` and `May 26, 2026`; in Danish it still renders `1.234.567` and `26. maj 2026`. Foundation step toward the Tour de France 2026 EN-mode launch on June 20. Refs #678.",
+          "DA · På tværs af 21 spiller-rettede skærme (auktionshistorik, head-to-head, ranglister, sæson-slut, rytter-ranglister, løbshistorik, point-side, resultater, manager-profil, hold-profil, ønskeliste, løbsoversigt, hall of fame, aktivitet, sæson-preview, sæson-finansrapport, holdoversigt, privatlivspolitik plus pris-ændrings-modalen og auktions-konfetti) var hvert tal og hver dato hard-kodet til dansk format (`1.234.567` tusind-separatorer, `26-05-2026` dato-rækkefølge). Nu kalder de de locale-aware `formatNumber()`, `formatDate()` og `formatDateTime()`-helpers og følger aktivt i18next-sprog. På engelsk ser du nu `1,234,567` og `May 26, 2026`; på dansk renderer det stadig `1.234.567` og `26. maj 2026`. Fundamentskridt frem mod Tour de France 2026 EN-mode-launch 20. juni. Refs #678.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.00",
     date: "2026-05-25",
     label: "Beta",

@@ -6,6 +6,7 @@ import { statBg } from "../lib/statBg";
 import { Flag } from "../components/Flag";
 import OnlineBadge from "../components/OnlineBadge";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import { formatNumber } from "../lib/intl";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
@@ -138,7 +139,7 @@ export default function TeamProfilePage() {
             { label: "Ryttere nu", value: currentRiders.length },
             { label: "Indgående", value: incomingRiders.length, color: incomingRiders.length > 0 ? "text-cz-success" : "text-cz-1" },
             { label: "Udgående", value: outgoingRiders.length, color: outgoingRiders.length > 0 ? "text-cz-danger" : "text-cz-1" },
-            { label: "Holdværdi", value: `${totalValue.toLocaleString("da-DK")} CZ$`, color: "text-cz-accent-t" }, // value shown, balance hidden
+            { label: "Holdværdi", value: `${formatNumber(totalValue)} CZ$`, color: "text-cz-accent-t" }, // value shown, balance hidden
           ].map(s => (
             <div key={s.label} className="bg-cz-subtle rounded-lg p-3 text-center">
               <p className="text-cz-3 text-[9px] uppercase tracking-wider mb-1">{s.label}</p>
@@ -154,7 +155,7 @@ export default function TeamProfilePage() {
           <h2 className="text-cz-1 font-semibold text-sm mb-3">Sæsonresultater</h2>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Point", value: standing.total_points?.toLocaleString("da-DK") || 0, color: "text-cz-accent-t" },
+              { label: "Point", value: formatNumber(standing.total_points) || 0, color: "text-cz-accent-t" },
               { label: "Etapesejre", value: standing.stage_wins || 0 },
               { label: "GC-sejre", value: standing.gc_wins || 0 },
             ].map(s => (

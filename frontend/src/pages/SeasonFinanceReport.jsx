@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { supabase } from "../lib/supabase";
+import { formatNumber, formatDate as formatDateIntl } from "../lib/intl";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -28,12 +29,12 @@ const DONUT_COLORS = [
 
 function formatCZ(amount) {
   const n = Math.round(amount || 0);
-  return `${n.toLocaleString("da-DK")} CZ$`;
+  return `${formatNumber(n)} CZ$`;
 }
 
 function formatDate(iso) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("da-DK", {
+  return formatDateIntl(iso, null, {
     day: "numeric",
     month: "short",
     year: "numeric",

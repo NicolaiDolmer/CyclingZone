@@ -1,3 +1,5 @@
+import { formatNumber } from "../lib/intl";
+
 // #194 race-confirm-modal: vises når server returnerer 409 price_changed —
 // dvs. prisen er steget mellem manager's fetch og POST. Manager kan annullere
 // eller bekræfte et nyt bud på det opdaterede min-niveau.
@@ -15,10 +17,10 @@ export function RacePriceModal({ show, newPrice, newMinBid, onCancel, onConfirm 
         <div className="text-4xl mb-3">⚠️</div>
         <h2 className="text-cz-1 font-bold text-lg mb-2">Prisen er ændret</h2>
         <p className="text-cz-2 text-sm mb-1">
-          Prisen er nu <span className="font-mono font-bold text-cz-1">{newPrice.toLocaleString("da-DK")} CZ$</span>.
+          Prisen er nu <span className="font-mono font-bold text-cz-1">{formatNumber(newPrice)} CZ$</span>.
         </p>
         <p className="text-cz-2 text-sm mb-5">
-          Min. bud er nu <span className="font-mono font-bold text-cz-1">{newMinBid.toLocaleString("da-DK")} CZ$</span>.
+          Min. bud er nu <span className="font-mono font-bold text-cz-1">{formatNumber(newMinBid)} CZ$</span>.
           Vil du byde stadig?
         </p>
         <div className="flex gap-2">
@@ -34,7 +36,7 @@ export function RacePriceModal({ show, newPrice, newMinBid, onCancel, onConfirm 
             className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold
               bg-cz-accent text-cz-on-accent hover:brightness-110 transition-all"
           >
-            Byd {newMinBid.toLocaleString("da-DK")} CZ$
+            Byd {formatNumber(newMinBid)} CZ$
           </button>
         </div>
         <style>{`

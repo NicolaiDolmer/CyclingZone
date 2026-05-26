@@ -2,6 +2,7 @@
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import { formatNumber } from "../lib/intl";
 
 export default function SeasonPreviewPage() {
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ export default function SeasonPreviewPage() {
                         style={{ width: `${t.strengthPct}%`, backgroundColor: color }} />
                     </div>
                     <span className="text-cz-2 font-mono text-xs w-20 text-right flex-shrink-0">
-                      {t.totalValue.toLocaleString("da-DK")} CZ$
+                      {formatNumber(t.totalValue)} CZ$
                     </span>
                   </div>
                 </div>
