@@ -76,7 +76,7 @@ jobs:
           SHA: ${{ steps.pr.outputs.sha }}
         run: |
           DEADLINE=$(($(date +%s) + 600))  # 10 min timeout
-          while [ $(date +%s) -lt $DEADLINE ]; do
+          while [[ "$(date +%s)" -lt "$DEADLINE" ]]; do
             DEPLOYMENTS=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20")
             VERCEL_OK=false
             RAILWAY_OK=false
@@ -111,9 +111,11 @@ jobs:
           BACKEND_AUTH=$(curl -s -o /dev/null -w "%{http_code}" https://cyclingzone-production.up.railway.app/api/auctions)
           FRONTEND=$(curl -s -o /dev/null -w "%{http_code}" -L https://cycling-zone.vercel.app/)
 
-          echo "backend_health=$BACKEND_HEALTH" >> "$GITHUB_OUTPUT"
-          echo "backend_auth=$BACKEND_AUTH" >> "$GITHUB_OUTPUT"
-          echo "frontend=$FRONTEND" >> "$GITHUB_OUTPUT"
+          {
+            echo "backend_health=$BACKEND_HEALTH"
+            echo "backend_auth=$BACKEND_AUTH"
+            echo "frontend=$FRONTEND"
+          } >> "$GITHUB_OUTPUT"
 
           # Acceptkriterier:
           # - /health returnerer 200
