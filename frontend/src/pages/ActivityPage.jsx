@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { getRiderMarketValue } from "../lib/marketValues";
 import WatchlistStar from "../components/WatchlistStar";
@@ -135,6 +136,7 @@ function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, 
 
 export default function ActivityPage() {
   const navigate = useNavigate();
+  const { t: tCommon } = useTranslation("common");
   const [tab, setTab] = useState("action");
   const [myTeamId, setMyTeamId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -252,12 +254,12 @@ export default function ActivityPage() {
   );
 
   const TABS = [
-    { key: "action",    label: "Kræver handling", count: actionCount },
-    { key: "auctions",  label: "Auktioner",       count: activeAuctions.length },
-    { key: "transfers", label: "Transfers",        count: activeReceivedOffers.length + activeSentOffers.length },
-    { key: "loans",     label: "Lån",              count: lendingLoans.length + borrowingLoans.length },
-    { key: "watchlist", label: "Ønskeliste",       count: watchlist.length },
-    { key: "history",   label: "Historik",         count: 0 },
+    { key: "action",    label: "Kræver handling",           count: actionCount },
+    { key: "auctions",  label: tCommon("nav.item.auctions"), count: activeAuctions.length },
+    { key: "transfers", label: "Transfers",                  count: activeReceivedOffers.length + activeSentOffers.length },
+    { key: "loans",     label: "Lån",                        count: lendingLoans.length + borrowingLoans.length },
+    { key: "watchlist", label: tCommon("nav.item.watchlist"),count: watchlist.length },
+    { key: "history",   label: "Historik",                   count: 0 },
   ];
 
   if (loading) return (

@@ -1,11 +1,15 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
 
 export default function SeasonPreviewPage() {
   const navigate = useNavigate();
+  // Alias `tCommon` — inner `.map(t => ...)` iterators bruger `t` som team-objekt
+  // og ville shadow translation-hookets `t` (kender bug ved i18n sweep #678 followup).
+  const { t: tCommon } = useTranslation("common");
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [season, setSeason] = useState(null);
@@ -137,7 +141,7 @@ export default function SeasonPreviewPage() {
 
               <div className="grid grid-cols-4 gap-2 mb-4">
                 {[
-                  { label: "Ryttere", value: t.riderCount },
+                  { label: tCommon("nav.item.riders"), value: t.riderCount },
                   { label: "U25", value: t.u25Count, color: "#60a5fa" },
                   { label: "Avg BJ", value: t.avgBj, color: t.avgBj >= 75 ? "#e8c547" : undefined },
                   { label: "Avg SP", value: t.avgSp, color: t.avgSp >= 75 ? "#e8c547" : undefined },

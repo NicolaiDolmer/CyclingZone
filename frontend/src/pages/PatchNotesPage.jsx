@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.03",
+    date: "2026-05-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "Language · Mobile bottom-nav + 6 player-facing screens now switch labels with the language toggle",
+        items: [
+          "EN · The mobile bottom-nav (Inbox / Market / Riders / My Team) stayed hard-coded Danish even when the language was set to English — it was the parallel mobile-version of the desktop sidebar but never got migrated when the rest of the navigation was. Fixed. Plus a sweep of six other screens that still had a few hard-coded Danish labels: the Manager Profile's rider-count stat, the Auction History page heading, the Deadline Day table's column header, the Activity page's Auctions + Watchlist filter tabs, the Season Preview's per-team rider-count stat, and the Admin area's Finance tab. All of them now follow the active language. A new CI guard (`i18n-check-nav-strings.mjs`) blocks future regressions: any new label literal in a Nav / Sidebar / Layout component fails the build until it's wired through i18n. Refs #678.",
+          "DA · Mobile bottom-nav'en (Indbakke / Marked / Ryttere / Mit Hold) forblev hard-kodet dansk selv når sproget var sat til engelsk — det var den parallelle mobile-version af desktop-sidebaren, men blev aldrig migreret da resten af navigationen blev oversat. Rettet. Plus en oprydning af seks andre skærme der stadig havde nogle få hard-kodede danske labels: Manager-profilens rytter-antal-stat, Auktionshistorik-sidens overskrift, Deadline Day-tabellens kolonne-header, Aktivitet-sidens Auktioner + Ønskeliste-filterfaner, Sæson Preview's pr-hold rytter-antal-stat, og Admin-områdets Økonomi-fane. Alle følger nu aktivt sprog. En ny CI-guard (`i18n-check-nav-strings.mjs`) blokerer fremtidige regressioner: enhver ny label-literal i en Nav / Sidebar / Layout-komponent fejler bygget indtil den er wired igennem i18n. Refs #678.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.02",
     date: "2026-05-26",
     label: "Beta",
