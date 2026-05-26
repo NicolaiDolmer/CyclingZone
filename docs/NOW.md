@@ -12,13 +12,13 @@
 
 > **🟢 Seneste merged i18n:** #488 TeamPage direct-to-main. #485/#486/#487 via PR #642/#643/#644. #489 via PR #665. Detalje i archive.
 
-> **⚠️ Pending bruger-actions:** #355 disconnect 7 MCP-connectors (claude.ai/settings/connectors). #621 item 1 Sentry Discord-alert (Sentry UI). PR-merge: [#685](https://github.com/NicolaiDolmer/CyclingZone/pull/685) + [#690](https://github.com/NicolaiDolmer/CyclingZone/pull/690). Efter #685: NICOLAIPC trace-verify for #684. Efter #690: NICOLAIPC `winget install Infisical.infisical` + `infisical login`. **Fresh sessions klar:** YAML actionlint chore + [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) (full sb_secret_* rotation, low priority).
+> **⚠️ Pending bruger-actions:** #355 disconnect 7 MCP-connectors (claude.ai/settings/connectors). #621 item 1 Sentry Discord-alert (Sentry UI). NICOLAIPC trace-verify for #684 (efter #685 merge). NICOLAIPC Infisical bootstrap: `winget install Infisical.infisical` + `infisical login` (efter #690 merge). **Fresh sessions klar:** [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) (full sb_secret_* rotation, low priority).
 
 > **📚 Arkiv:** Tidligere detaljer ligger i `docs/archive/NOW-2026-05-22.md` til `docs/archive/NOW-2026-05-25.md` samt relevante GitHub issues/PRs.
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Merge PR [#690](https://github.com/NicolaiDolmer/CyclingZone/pull/690)** efter review + restart shell (PATH refresh for `infisical` alias) → verify `npm run dev:backend` virker. Derefter NICOLAIPC bootstrap-replicat (`winget install Infisical.infisical` + login). Parallelt fortsat: PR-merge [#685](https://github.com/NicolaiDolmer/CyclingZone/pull/685), bruger-actions (#355, #621 item 1), follow-up [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) når tid.
+> **🎯 Next action:** **Restart shell på EmmaPC** (PATH refresh for `infisical` alias) → verify `npm run dev:backend` viser `Injecting N Infisical secrets`. Derefter **NICOLAIPC bootstrap:** `winget install Infisical.infisical` + `infisical login` + verify samme. Parallelt: NICOLAIPC trace-verify for #684, bruger-actions (#355, #621 item 1), follow-up [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) når tid.
 >
 > _Format: `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
