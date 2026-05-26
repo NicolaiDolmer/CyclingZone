@@ -83,3 +83,92 @@ test("core manager pages render without blank screens", async ({ page }, testInf
 
   expect(pageErrors).toEqual([]);
 });
+
+test("rider profile value header stays contained on mobile", async ({ page }) => {
+  await page.route("**/rest/v1/riders?**", async route => {
+    const request = route.request();
+    const origin = request.headers().origin || "*";
+    const url = request.url();
+    if (!url.includes("id=eq.rider-1")) {
+      await route.fallback();
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: {
+        "access-control-allow-origin": origin,
+        "access-control-allow-credentials": "true",
+        "access-control-expose-headers": "Content-Range",
+        "Content-Range": "0-0/1",
+      },
+      body: JSON.stringify({
+        id: "rider-1",
+        firstname: "Ada",
+        lastname: "Pedersen",
+        team_id: "team-e2e",
+        team: { id: "team-e2e", name: "E2E Racing" },
+        nationality_code: "dk",
+        birthdate: "2002-04-12",
+        uci_points: 420,
+        market_value: 123456789012,
+        salary: 42000,
+        prize_earnings_bonus: 0,
+        is_u25: true,
+        potentiale: 82,
+        stat_fl: 74,
+        stat_bj: 68,
+        stat_kb: 70,
+        stat_bk: 72,
+        stat_tt: 66,
+        stat_prl: 64,
+        stat_bro: 58,
+        stat_sp: 76,
+        stat_acc: 78,
+        stat_ned: 71,
+        stat_udh: 73,
+        stat_mod: 69,
+        stat_res: 67,
+        stat_ftr: 75,
+      }),
+    });
+  });
+
+  await login(page);
+  await page.goto("/riders/rider-1");
+
+  const value = page.getByTestId("rider-value-amount");
+  await expect(page.getByRole("heading", { name: "Ada Pedersen" })).toBeVisible();
+  await expect(value).toBeVisible();
+  await expect(value).toHaveText("123.456.789.012");
+  await expect(value).toHaveAttribute("title", "123.456.789.012 CZ$");
+
+  const layout = await value.evaluate(el => {
+    const rect = el.getBoundingClientRect();
+    const styles = window.getComputedStyle(el);
+    return {
+      viewportWidth: window.innerWidth,
+      left: rect.left,
+      right: rect.right,
+      width: rect.width,
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+      textOverflow: styles.textOverflow,
+      whiteSpace: styles.whiteSpace,
+      wordBreak: styles.wordBreak,
+    };
+  });
+
+  expect(layout.right).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.left).toBeGreaterThanOrEqual(0);
+  expect(layout.width).toBeGreaterThan(0);
+  expect(layout.clientWidth).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.textOverflow).toBe("ellipsis");
+  expect(layout.whiteSpace).toBe("nowrap");
+  expect(layout.wordBreak).not.toBe("break-all");
+
+  await page.evaluate(() => window.__i18n.changeLanguage("en"));
+  await expect(value).toHaveText("123,456,789,012");
+  await expect(value).toHaveAttribute("title", "123,456,789,012 CZ$");
+});

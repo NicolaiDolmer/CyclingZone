@@ -989,6 +989,8 @@ export default function RiderStatsPage() {
     const max = Math.max(...vals);
     return localizedSkills[vals.indexOf(max)]?.label || t("header.typeDefault");
   })();
+  const riderValueLabel = formatCz(getRiderMarketValue(rider));
+  const riderValueAmount = riderValueLabel.replace(" CZ$", "");
   const bySeason = results.reduce((acc, r) => {
     const yr = r.race?.start_date?.slice(0, 4) || "-";
     if (!acc[yr]) acc[yr] = { wins: 0, top3: 0, totalPrize: 0 };
@@ -1081,8 +1083,14 @@ export default function RiderStatsPage() {
               </div>
             )}
           </div>
-          <div className="sm:text-right bg-cz-subtle sm:bg-transparent rounded-lg sm:rounded-none px-3 py-2 sm:p-0">
-          <p className="text-cz-accent-t font-mono font-bold text-xl sm:text-2xl break-all">{formatCz(getRiderMarketValue(rider)).replace(" CZ$", "")}</p>
+          <div className="min-w-0 sm:text-right bg-cz-subtle sm:bg-transparent rounded-lg sm:rounded-none px-3 py-2 sm:p-0">
+            <p
+              className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-cz-accent-t font-mono font-bold tabular-nums text-lg sm:text-2xl"
+              data-testid="rider-value-amount"
+              title={riderValueLabel}
+            >
+              {riderValueAmount}
+            </p>
             <p className="text-cz-3 text-xs mt-0.5">{t("header.valueLabel")}</p>
             {bestStat && <p className="text-cz-2 text-xs mt-2">{t("header.bestStat", { label: bestStat.label, value: rider[bestStat.key] })}</p>}
           </div>

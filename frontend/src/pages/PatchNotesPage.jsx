@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.04",
+    date: "2026-05-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "UI · Rider value header no longer breaks awkwardly on mobile",
+        items: [
+          "EN · The rider detail header no longer uses character-by-character wrapping for the value number on narrow screens. Long locale-formatted values now stay on one tidy line with overflow protection, while the full CZ$ value remains available on hover/title. Refs #655.",
+          "DA · Rytter-detail-headeren bruger ikke længere tegn-for-tegn linjeskift for værdien på smalle skærme. Lange locale-formaterede værdier bliver nu på én ryddelig linje med overflow-beskyttelse, mens den fulde CZ$-værdi stadig findes i hover/title. Refs #655.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.03",
     date: "2026-05-26",
     label: "Beta",
