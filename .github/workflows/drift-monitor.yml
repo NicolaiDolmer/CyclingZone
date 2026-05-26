@@ -45,4 +45,4 @@ jobs:
           fi
           curl -X POST -H "Content-Type: application/json" \
             -d '{"content": "⚠️ **Drift Monitor failed in CyclingZone**\nDet kan være reel data-drift ELLER monitor-infra. Tjek GitHub Action logs først: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
-            $DISCORD_WEBHOOK
+            "$DISCORD_WEBHOOK"
