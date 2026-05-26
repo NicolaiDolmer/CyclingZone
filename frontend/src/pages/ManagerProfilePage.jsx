@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
 import OnlineBadge from "../components/OnlineBadge";
@@ -39,6 +40,7 @@ function AchievementBadge({ achievement }) {
 export default function ManagerProfilePage() {
   const { teamId } = useParams();
   const navigate   = useNavigate();
+  const { t } = useTranslation("common");
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab]         = useState("overblik");
@@ -155,7 +157,7 @@ export default function ManagerProfilePage() {
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-cz-card border border-cz-border rounded-xl p-4 text-center">
-              <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">Ryttere</p>
+              <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("nav.item.riders")}</p>
               <p className="text-cz-1 font-bold text-xl">{riders.length}</p>
             </div>
             <div className="bg-cz-card border border-cz-border rounded-xl p-4 text-center">

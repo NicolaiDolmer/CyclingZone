@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
@@ -11,6 +12,7 @@ const STATUS = {
 };
 
 function SquadTable({ rows, dimmed, captionId }) {
+  const { t } = useTranslation("common");
   return (
     <div className={`rounded-xl border border-cz-border overflow-x-auto${dimmed ? " opacity-60" : ""}`}>
       <table className="w-full text-sm" aria-labelledby={captionId}>
@@ -18,7 +20,7 @@ function SquadTable({ rows, dimmed, captionId }) {
           <tr className="border-b border-cz-border text-[10px] text-cz-3 uppercase tracking-wider">
             <th scope="col" className="px-4 py-2 text-left font-medium">Hold</th>
             <th scope="col" className="px-4 py-2 text-center font-medium">Div</th>
-            <th scope="col" className="px-4 py-2 text-center font-medium">Ryttere</th>
+            <th scope="col" className="px-4 py-2 text-center font-medium">{t("nav.item.riders")}</th>
             <th scope="col" className="px-4 py-2 text-center font-medium">Min</th>
             <th scope="col" className="px-4 py-2 text-center font-medium">Status</th>
           </tr>

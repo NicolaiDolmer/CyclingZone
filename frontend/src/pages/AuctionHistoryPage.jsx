@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate, NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
@@ -41,6 +42,7 @@ function getAuctionLeaderId(auction) {
 
 export default function AuctionHistoryPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation("common");
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [myTeamId, setMyTeamId] = useState(null);
@@ -138,7 +140,7 @@ export default function AuctionHistoryPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-cz-1 mb-3">Auktioner</h1>
+        <h1 className="text-xl font-bold text-cz-1 mb-3">{t("nav.item.auctions")}</h1>
         <div className="flex gap-2">
           <NavLink to="/auctions" end
             className={({ isActive }) =>

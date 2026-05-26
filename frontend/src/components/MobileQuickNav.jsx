@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 function pathMatches(pathname, to) {
   return pathname === to || pathname.startsWith(`${to}/`);
@@ -7,7 +8,7 @@ function pathMatches(pathname, to) {
 const TABS = [
   {
     to: "/dashboard",
-    label: "Dashboard",
+    labelKey: "nav.item.dashboard",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -18,7 +19,7 @@ const TABS = [
   },
   {
     to: "/notifications",
-    label: "Indbakke",
+    labelKey: "nav.item.notifications",
     badge: true,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -30,7 +31,9 @@ const TABS = [
   },
   {
     to: "/auctions",
-    label: "Marked",
+    // Mobile tab er gateway til hele "Market"-sektionen (auctions/transfers/riders/...),
+    // ikke kun auctions-listen — derfor gruppe-label, ikke item-label.
+    labelKey: "nav.group.marked",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -42,7 +45,7 @@ const TABS = [
   },
   {
     to: "/riders",
-    label: "Ryttere",
+    labelKey: "nav.item.riders",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -55,7 +58,7 @@ const TABS = [
   },
   {
     to: "/team",
-    label: "Mit Hold",
+    labelKey: "nav.item.team",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -67,6 +70,7 @@ const TABS = [
 
 export default function MobileQuickNav({ unread, tickerActive }) {
   const location = useLocation();
+  const { t } = useTranslation("common");
 
   return (
     <nav
@@ -75,7 +79,7 @@ export default function MobileQuickNav({ unread, tickerActive }) {
       style={{ height: "56px" }}
     >
       <div className="flex h-full">
-        {TABS.map(({ to, label, icon, badge }) => {
+        {TABS.map(({ to, labelKey, icon, badge }) => {
           const isActive = pathMatches(location.pathname, to);
           const showBadge = badge && unread > 0;
           return (
@@ -93,7 +97,7 @@ export default function MobileQuickNav({ unread, tickerActive }) {
                   </span>
                 )}
               </div>
-              <span>{label}</span>
+              <span>{t(labelKey)}</span>
             </NavLink>
           );
         })}

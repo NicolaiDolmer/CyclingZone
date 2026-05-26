@@ -7,6 +7,7 @@ on:
       - 'frontend/src/**'
       - 'scripts/i18n-check-keys.mjs'
       - 'scripts/i18n-check-namespace-inline.mjs'
+      - 'scripts/i18n-check-nav-strings.mjs'
       - '.github/workflows/i18n-check.yml'
   push:
     branches: [main]
@@ -15,6 +16,7 @@ on:
       - 'frontend/src/**'
       - 'scripts/i18n-check-keys.mjs'
       - 'scripts/i18n-check-namespace-inline.mjs'
+      - 'scripts/i18n-check-nav-strings.mjs'
   workflow_dispatch:
 
 permissions:
@@ -58,3 +60,23 @@ jobs:
 
       - name: Run i18n namespace-inline guard
         run: node scripts/i18n-check-namespace-inline.mjs
+
+  nav-strings:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # REQUIRED — fanger hardkodede label-strings i navigation/sidebar/layout-
+    # komponenter. Bug-klassen: MobileQuickNav.jsx havde `label: "Indbakke"`
+    # mens desktop sidebar brugte `label: t("nav.item.notifications")` —
+    # parallelle nav-strukturer drifter ud af sync når kun den ene migreres
+    # til i18n (#689, postmortem 2026-05-26).
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Run i18n nav-strings guard
+        run: node scripts/i18n-check-nav-strings.mjs
