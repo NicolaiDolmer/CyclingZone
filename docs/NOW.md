@@ -1,6 +1,6 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🟡 2026-05-27 in-progress (#649):** Country names on rider surfaces now follow active i18next locale via `Intl.DisplayNames`; `/riders` filter dropdown/chip and `/riders/:id` nationality line fixed, plus localized sort and regression coverage. Verification so far: `countryUtils` targeted 11/11, frontend tests 116/116, frontend build green, lint exit 0 with existing warnings; browser smoke blocked by local auth redirect to `/login`.
+> **🟢 2026-05-27 close-out (#649):** Country names on rider surfaces now follow active i18next locale via `Intl.DisplayNames`; `/riders` filter dropdown/chip and `/riders/:id` nationality line fixed, plus localized sort and regression coverage. PR [#699](https://github.com/NicolaiDolmer/CyclingZone/pull/699) klar til review. Verification: `countryUtils` targeted 11/11, frontend tests 116/116, frontend build green, lint exit 0. Lokal Playwright `mobile-webkit auctions` snapshot fejler — vurderet pre-existing Windows-only flake (urelateret AuctionsPage, postmortem #646 fix'ede kun mobile-chromium-baseline).
 
 > **🟢 2026-05-27 close-out (#638):** `sanitize-secrets` regression guard tilføjet for `openssl rand -hex 2`/kort hex-output, og PowerShell-testen resolver nu Git Bash eksplicit. Verification: sanitizer-suite 32/32 grøn + hook-suite 16/16 grøn. PatchNotes/FEATURE_STATUS ikke opdateret: intern agent-tooling.
 
