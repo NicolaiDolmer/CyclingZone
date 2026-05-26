@@ -13,6 +13,19 @@
 
 set -u
 
+# --- #684 TRACE (cross-PC hook-firing investigation) ---
+{
+  mkdir -p "$HOME/.claude" 2>/dev/null
+  printf '%s hook=%s pid=%s host=%s cwd=%s\n' \
+    "$(date '+%Y-%m-%dT%H:%M:%S%z')" \
+    "$(basename "$0")" \
+    "$$" \
+    "${COMPUTERNAME:-${HOSTNAME:-unknown}}" \
+    "$(pwd 2>/dev/null)" \
+    >> "$HOME/.claude/hook-trace.log" 2>/dev/null
+} 2>/dev/null || true
+# --- /#684 TRACE ---
+
 # Use python for JSON parsing — it's available on the user's Windows machines
 # (3.14+) and handles escaped quotes correctly. jq is NOT installed by default
 # on Git Bash for Windows.

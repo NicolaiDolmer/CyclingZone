@@ -18,6 +18,19 @@
 
 set -u
 
+# --- #684 TRACE (cross-PC hook-firing investigation) ---
+{
+  mkdir -p "$HOME/.claude" 2>/dev/null
+  printf '%s hook=%s pid=%s host=%s cwd=%s\n' \
+    "$(date '+%Y-%m-%dT%H:%M:%S%z')" \
+    "$(basename "$0")" \
+    "$$" \
+    "${COMPUTERNAME:-${HOSTNAME:-unknown}}" \
+    "$(pwd 2>/dev/null)" \
+    >> "$HOME/.claude/hook-trace.log" 2>/dev/null
+} 2>/dev/null || true
+# --- /#684 TRACE ---
+
 # Læs stdin (PostToolUse JSON payload). Hvis ingen stdin -> exit 0 (fail open).
 INPUT=$(cat 2>/dev/null || true)
 if [ -z "$INPUT" ]; then
