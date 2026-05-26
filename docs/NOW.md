@@ -1,5 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
+> **🟢 2026-05-26 close-out (#652):** Codex tilføjede frontend `auctionLogic` regression coverage (7 cases) for manager-seller detection, leader fallback, seller labels og squad-cap warning-format. Verification: targeted `node --test frontend/src/lib/auctionLogic.test.js` grøn, `frontend npm test` 98/98 grøn, `frontend npm run lint` exit 0 med eksisterende warnings. PatchNotes ikke opdateret: test-only, ingen player-facing adfærd.
+
 > **🟢 2026-05-26 close-out (PC1 audit):** Housekeeping-pass `audit-2026-05-26` lukkede **15 issues** (største batch til dato): 5 NOW.md-kandidater (#578/#688/#666/#635/#627) + 7 backend strong evidens (#687/#385/#438/#488/#489/#647/#650) + 3 label-cleanup (#454/#405/#348). Co-orchestration validated: Codex' weekly routine pre-screenede via #660, manuel skill udførte closes. Carry-forward stabil ved 6 (#327/#449/#505/#529/#563/#634 — alle legit-wait). 207 åbne issues (-15 net). Detalje: [`.claude/audits/audit-2026-05-26.md`](../.claude/audits/audit-2026-05-26.md).
 
 > **📚 Arkiv:** Tidligere detaljer ligger i `docs/archive/NOW-2026-05-22.md` til `docs/archive/NOW-2026-05-26.md` samt relevante GitHub issues/PRs.

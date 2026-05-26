@@ -2,7 +2,7 @@
 // Bruges af både AuctionsPage (table-row + card) og RiderStatsPage (rytter-profil bid-panel)
 // så der er én kilde til sandhed for "hvem leder", "er jeg sælger", warnings osv.
 
-import { formatNumber } from "./intl";
+import { formatNumber } from "./intl.js";
 
 export function isManagerSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
