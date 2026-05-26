@@ -30,6 +30,51 @@ if ($inputText.Length -gt $maxBytes) {
   $inputText = $inputText.Substring(0, $maxBytes)
 }
 
+# Best-effort JSON parse of the PostToolUse payload to extract tool_name.
+# Falls back to text-only scanning if stdin isn't valid JSON.
+$toolName = ""
+try {
+  $payload = $inputText | ConvertFrom-Json -ErrorAction Stop
+  if ($payload -and $payload.PSObject.Properties.Name -contains "tool_name") {
+    $toolName = [string]$payload.tool_name
+  }
+} catch {
+  # Not JSON — that's fine, text-only scan.
+}
+
+# --- Image-mode detection (parity med .sh) ----------------------------------
+# Why: HIGH_ENTROPY regex matches any 40+-char base64-like string. JPEG/PNG
+# bytes encoded as base64 trip it for HUNDREDS of fragments per screenshot
+# (#666 false-positive incident 2026-05-26: count=587 on Chrome MCP
+# browser_batch). Skip the high-entropy fallback when output is clearly an
+# image; named patterns still run for defense-in-depth.
+$imageToolRegex = '(?i)^mcp__Claude_in_Chrome__(?:browser_batch|computer|gif_creator|upload_image|read_page)$|^mcp__Claude_Preview__preview_screenshot$|screenshot'
+$isImageTool = $false
+if ($toolName) {
+  $isImageTool = [regex]::IsMatch($toolName, $imageToolRegex)
+}
+
+$imageMarkers = @(
+  'data:image/',
+  '"type":"image"',
+  "'type': 'image'",
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  '/9j/4AA',        # base64 JPEG SOI + JFIF
+  'iVBORw0KG',      # base64 PNG signature
+  'R0lGODlh',       # base64 GIF87a/89a header
+  'UklGR',          # base64 WebP RIFF
+  'Successfully captured screenshot'
+)
+$hasImageMarker = $false
+foreach ($marker in $imageMarkers) {
+  if ($inputText.Contains($marker)) { $hasImageMarker = $true; break }
+}
+$imageMode = $isImageTool -or $hasImageMarker
+$imageModeReason = if ($isImageTool) { "tool_name" } elseif ($hasImageMarker) { "marker" } else { "" }
+
 # Patterns — parity med .sh version
 $patterns = @(
   @{ Name = "supabase-secret";       Regex = "sb_secret_[A-Za-z0-9_-]{30,}" },
@@ -65,6 +110,7 @@ foreach ($p in $patterns) {
 
 # High-entropy fallback. Scan AFTER named patterns (på redacted text).
 # CRITICAL: `/` ekskluderet fra char-class (URLs matcher ellers — sync med .sh).
+# Skipped entirely in image-mode (#666 false-positive fix).
 $highEntropy = [regex]::Matches($redacted, '\b(?=(?:[A-Za-z0-9_+=-]*[A-Z]){2,})(?=(?:[A-Za-z0-9_+=-]*[a-z]){2,})(?=(?:[A-Za-z0-9_+=-]*[0-9]){2,})[A-Za-z0-9_+=-]{40,}\b')
 $allow = @(
   '^[a-f0-9]{40}$',                              # Git SHA
@@ -72,26 +118,26 @@ $allow = @(
   '(?:FIXTURE_DO_NOT_USE|TEST_SECRET_NOT_REAL)'  # Fixture markers
 )
 
-foreach ($m in $highEntropy) {
-  $value = $m.Value
-  if ($value -like "*REDACTED:*") { continue }
-  $isAllowed = $false
-  foreach ($a in $allow) {
-    if ($value -match $a) { $isAllowed = $true; break }
+$highEntropySkipped = 0
+if ($imageMode) {
+  $highEntropySkipped = $highEntropy.Count
+} else {
+  foreach ($m in $highEntropy) {
+    $value = $m.Value
+    if ($value -like "*REDACTED:*") { continue }
+    $isAllowed = $false
+    foreach ($a in $allow) {
+      if ($value -match $a) { $isAllowed = $true; break }
+    }
+    if ($isAllowed) { continue }
+    $preview = $value.Substring(0, 8) + "..." + $value.Substring($value.Length - 4)
+    $findings.Add([PSCustomObject]@{ Type = "high-entropy"; Preview = $preview })
+    $redacted = $redacted.Replace($value, "[REDACTED:high-entropy]")
   }
-  if ($isAllowed) { continue }
-  $preview = $value.Substring(0, 8) + "..." + $value.Substring($value.Length - 4)
-  $findings.Add([PSCustomObject]@{ Type = "high-entropy"; Preview = $preview })
-  $redacted = $redacted.Replace($value, "[REDACTED:high-entropy]")
 }
 
-if ($findings.Count -eq 0) {
-  exit 0
-}
-
-# Leak detected. Log + alert + block.
+# Resolve repo root (used for both stats + incident logs).
 $repoRoot = (Get-Location).Path
-# Find repo-root ved at gå op til .claude/
 $dir = $PSScriptRoot
 while ($dir -and -not (Test-Path (Join-Path $dir ".claude"))) {
   $parent = Split-Path -Parent $dir
@@ -99,9 +145,31 @@ while ($dir -and -not (Test-Path (Join-Path $dir ".claude"))) {
   $dir = $parent
 }
 if ($dir) { $repoRoot = $dir }
-
-$logFile = Join-Path $repoRoot ".claude\secret-leak-incidents.log"
 $ts = Get-Date -Format "yyyy-MM-ddTHH:mm:sszzz"
+
+# Forward-guard stats log: write a line whenever image-mode triggered OR a
+# leak fired. Quiet on the (vast majority) of plain text tool-calls.
+if ($imageMode -or $findings.Count -gt 0) {
+  $statsFile = Join-Path $repoRoot ".claude\secret-leak-stats.log"
+  $leakFlag = if ($findings.Count -gt 0) { "True" } else { "False" }
+  $reasonField = if ($imageModeReason) { $imageModeReason } else { "-" }
+  $toolField = if ($toolName) { $toolName } else { "-" }
+  $statsLine = "$ts image_mode=$imageMode reason=$reasonField skipped_he=$highEntropySkipped leak=$leakFlag count=$($findings.Count) tool=$toolField"
+  try {
+    $statsDir = Split-Path -Parent $statsFile
+    if (-not (Test-Path $statsDir)) { New-Item -ItemType Directory -Path $statsDir -Force | Out-Null }
+    Add-Content -Path $statsFile -Value $statsLine -ErrorAction SilentlyContinue
+  } catch {
+    # Non-fatal — stats are observability, not security.
+  }
+}
+
+if ($findings.Count -eq 0) {
+  exit 0
+}
+
+# Leak detected. Log + alert + block. ($repoRoot + $ts already resolved above.)
+$logFile = Join-Path $repoRoot ".claude\secret-leak-incidents.log"
 
 $types = ($findings | Select-Object -ExpandProperty Type -Unique | Sort-Object) -join ","
 $count = $findings.Count

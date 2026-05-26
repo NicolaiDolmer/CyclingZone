@@ -74,6 +74,60 @@ text = os.environ.get("_SECRET_SCAN_INPUT", "")
 if not text:
     sys.exit(0)
 
+# Best-effort JSON parse of the PostToolUse payload to extract tool_name.
+# Falls back to text-only scanning if stdin isn't valid JSON (e.g. legacy
+# hook callers or tests that pipe raw text).
+tool_name = ""
+try:
+    payload = json.loads(text)
+    if isinstance(payload, dict):
+        tool_name = str(payload.get("tool_name", "") or "")
+except Exception:
+    pass
+
+# --- Image-mode detection ------------------------------------------------
+# Why: high-entropy fallback regex matches any 40+-char base64-like string
+# with mixed case + digits. JPEG/PNG bytes encoded as base64 trip it for
+# HUNDREDS of fragments per screenshot (count=241 on 2026-05-25, count=587
+# on 2026-05-26 — both Chrome MCP browser_batch with screenshot action).
+# Suppressing the entire tool_response breaks downstream verify flows.
+#
+# Fix: detect image-output context and skip the high-entropy fallback.
+# Named patterns (sb_secret_, eyJ, ghp_, AKIA, ...) still run because they
+# have distinct prefixes that random image bytes won't accidentally match.
+#
+# Two detection paths (either is enough):
+#   1. tool_name matches a known image-producing MCP tool.
+#   2. The payload contains an image magic-byte marker (JPEG SOI / PNG
+#      signature / data URI / MCP image content type).
+IMAGE_TOOL_RE = re.compile(
+    r"^mcp__Claude_in_Chrome__(?:browser_batch|computer|gif_creator|upload_image|read_page)$"
+    r"|^mcp__Claude_Preview__preview_screenshot$"
+    r"|screenshot",
+    re.IGNORECASE,
+)
+is_image_tool = bool(IMAGE_TOOL_RE.search(tool_name)) if tool_name else False
+
+# Magic-byte / MIME / data-URI markers. Highly distinctive — vanishingly
+# unlikely to appear in real secret-bearing output.
+IMAGE_MARKERS = (
+    "data:image/",
+    '"type":"image"',
+    "'type': 'image'",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "/9j/4AA",            # base64-encoded JPEG SOI + JFIF header
+    "iVBORw0KG",          # base64-encoded PNG signature
+    "R0lGODlh",           # base64-encoded GIF87a/89a header
+    "UklGR",              # base64-encoded WebP RIFF header
+    "Successfully captured screenshot",  # Chrome MCP success line
+)
+has_image_marker = any(marker in text for marker in IMAGE_MARKERS)
+
+image_mode = is_image_tool or has_image_marker
+
 # Pattern definitions. Order matters: mere-specifikke FØRST så vi får
 # præcise typer (sb_secret_ scannes før generic-high-entropy).
 PATTERNS = [
@@ -134,28 +188,35 @@ for type_name, pattern in PATTERNS:
         findings.append({"type": type_name, "preview": value[:8] + "..." + value[-4:] if len(value) > 16 else value[:4] + "..."})
         redacted = redacted.replace(value, f"[REDACTED:{type_name}]")
 
-# High-entropy scan AFTER named patterns (så vi ikke double-flag)
-for m in HIGH_ENTROPY.finditer(redacted):  # Scan redacted (named patterns already replaced)
-    value = m.group(0)
-    # Skip allow-listed
-    if any(a.match(value) for a in ALLOW):
-        continue
-    # Skip hvis allerede del af en REDACTED-marker
-    if "[REDACTED:" in value:
-        continue
-    findings.append({"type": "high-entropy", "preview": value[:8] + "..." + value[-4:]})
-    redacted = redacted.replace(value, "[REDACTED:high-entropy]")
-
-if findings:
-    result = {
-        "leak_detected": True,
-        "count": len(findings),
-        "types": sorted(set(f["type"] for f in findings)),
-        "findings": findings[:10],  # Cap til 10 for at undgå log-bloat
-    }
-    print(json.dumps(result))
+# High-entropy scan AFTER named patterns (så vi ikke double-flag).
+# Skipped entirely in image-mode to avoid the JPEG/PNG base64 false-positive
+# storm. We still count would-be matches for the forward-guard stats log.
+high_entropy_skipped = 0
+if image_mode:
+    high_entropy_skipped = sum(1 for _ in HIGH_ENTROPY.finditer(redacted))
 else:
-    print(json.dumps({"leak_detected": False}))
+    for m in HIGH_ENTROPY.finditer(redacted):  # Scan redacted (named patterns already replaced)
+        value = m.group(0)
+        # Skip allow-listed
+        if any(a.match(value) for a in ALLOW):
+            continue
+        # Skip hvis allerede del af en REDACTED-marker
+        if "[REDACTED:" in value:
+            continue
+        findings.append({"type": "high-entropy", "preview": value[:8] + "..." + value[-4:]})
+        redacted = redacted.replace(value, "[REDACTED:high-entropy]")
+
+result = {
+    "leak_detected": bool(findings),
+    "count": len(findings),
+    "types": sorted(set(f["type"] for f in findings)),
+    "findings": findings[:10],  # Cap til 10 for at undgå log-bloat
+    "image_mode": image_mode,
+    "image_mode_reason": "tool_name" if is_image_tool else ("marker" if has_image_marker else ""),
+    "high_entropy_skipped": high_entropy_skipped,
+    "tool_name": tool_name,
+}
+print(json.dumps(result))
 PYEOF
 )
 
@@ -166,6 +227,34 @@ if [ -z "$SCAN_RESULT" ]; then
   exit 0
 fi
 
+REPO_ROOT=$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd || pwd)
+TS=$(date '+%Y-%m-%dT%H:%M:%S%z')
+
+# Forward-guard: log a stats line whenever image-mode triggered OR a leak
+# fired. Quiet on the (vast majority) of plain text tool-calls. The stats
+# log lets us measure FP-rate after the image-mode fix and tighten patterns
+# if image-mode still misses cases.
+STATS_FILE="$REPO_ROOT/.claude/secret-leak-stats.log"
+STATS_LINE=$(printf '%s' "$SCAN_RESULT" | "$PY" -c '
+import sys, json
+d = json.load(sys.stdin)
+if not (d.get("image_mode") or d.get("leak_detected")):
+    sys.exit(0)
+fields = [
+    "image_mode={}".format(d.get("image_mode", False)),
+    "reason={}".format(d.get("image_mode_reason", "") or "-"),
+    "skipped_he={}".format(d.get("high_entropy_skipped", 0)),
+    "leak={}".format(d.get("leak_detected", False)),
+    "count={}".format(d.get("count", 0)),
+    "tool={}".format(d.get("tool_name", "") or "-"),
+]
+print(" ".join(fields))
+' 2>/dev/null || true)
+if [ -n "$STATS_LINE" ]; then
+  mkdir -p "$(dirname "$STATS_FILE")" 2>/dev/null || true
+  echo "$TS $STATS_LINE" >> "$STATS_FILE" 2>/dev/null || true
+fi
+
 LEAK=$(printf '%s' "$SCAN_RESULT" | "$PY" -c 'import sys,json; d=json.load(sys.stdin); print("yes" if d.get("leak_detected") else "no")' 2>/dev/null || echo "no")
 
 if [ "$LEAK" != "yes" ]; then
@@ -173,9 +262,7 @@ if [ "$LEAK" != "yes" ]; then
 fi
 
 # Leak detected. Log incident + alert via stderr + exit 2 (block).
-REPO_ROOT=$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd || pwd)
 LOG_FILE="$REPO_ROOT/.claude/secret-leak-incidents.log"
-TS=$(date '+%Y-%m-%dT%H:%M:%S%z')
 
 # Extract types and counts via Python (avoid f-string backslash escapes — Python forbidder).
 SUMMARY=$(printf '%s' "$SCAN_RESULT" | "$PY" -c '

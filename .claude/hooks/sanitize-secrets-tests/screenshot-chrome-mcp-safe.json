@@ -1,0 +1,11 @@
+{
+  "_marker": "FIXTURE_DO_NOT_USE — sanitize-secrets-tests image-mode case",
+  "_purpose": "Pre-fix: HIGH_ENTROPY regex flagged JPEG-byte base64 hundreds of times. Post-fix: tool_name triggers image-mode -> high-entropy skipped -> exit 0. Bytes below are taken verbatim from .claude/secret-leak-incidents.log entries dated 2026-05-25T18:08:13 + 2026-05-26T14:46:06 (Chrome MCP browser_batch screenshot during #666 prod verify).",
+  "tool_name": "mcp__Claude_in_Chrome__browser_batch",
+  "tool_input": {
+    "actions": [
+      {"type": "screenshot"}
+    ]
+  },
+  "tool_response": "Successfully captured screenshot at https://cycling-zone.vercel.app/. Image data follows (image/jpeg, base64-encoded, truncated for fixture): /9j/4AAQSkZJRgABAQEASABIAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwTVNGVAAAAAAAAQAAAQAAAEZIRldDPABNQUNJTlRPU0gAAAAAA2NwcnQAAAFsAAAAJGRlc2MAAAEMAAAAZ3d0cHQAAAGYAAAAFGJrcHQAAAGsAAAAFHJYWVoAAAHAAAAAFGdYWVoAAAHU2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAACAAIDASIAAhEBAxEB8QAUEADwAAAAAAAAAAAAAAAAAAAAA/9k= Done."
+}
