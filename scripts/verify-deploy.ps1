@@ -196,6 +196,53 @@ function Test-LiveSmoke {
   Write-Host "[ok] Frontend alias svarer = $($frontend.StatusCode)"
 }
 
+function Test-SentrySourceMaps {
+  $authToken = $env:SENTRY_AUTH_TOKEN
+  $org = $env:SENTRY_ORG
+  $project = $env:SENTRY_PROJECT
+
+  if (-not $authToken -or -not $org -or -not $project) {
+    Write-Warning "[skip] Sentry source-map guard - SENTRY_AUTH_TOKEN/SENTRY_ORG/SENTRY_PROJECT ikke sat. Saet dem for at aktivere upload-verify (#621 item 3)."
+    return
+  }
+
+  $release = $script:Sha
+  $uri = "https://sentry.io/api/0/projects/$org/$project/releases/$release/files/?per_page=1"
+  $headers = @{
+    "Authorization" = "Bearer $authToken"
+    "Accept" = "application/json"
+    "User-Agent" = "CyclingZone-deploy-verify"
+  }
+
+  try {
+    $response = Invoke-WebRequest -Uri $uri -Headers $headers -TimeoutSec 30 -UseBasicParsing
+  } catch {
+    $statusCode = $null
+    if ($_.Exception.Response) {
+      $statusCode = [int]$_.Exception.Response.StatusCode
+    }
+    if ($statusCode -eq 404) {
+      throw "Sentry release '$($release.Substring(0,7))' findes ikke (404) i $org/$project. Source-map upload fejlede stille - tjek Vercel build-log for sentryVitePlugin output."
+    }
+    if ($statusCode -eq 401 -or $statusCode -eq 403) {
+      throw "Sentry source-map check unauthorized ($statusCode). SENTRY_AUTH_TOKEN mangler 'project:releases' scope eller er udloebet."
+    }
+    throw "Sentry source-map check fejlede ($statusCode): $($_.Exception.Message)"
+  }
+
+  # Sentry returns array. Tom array = 0 files = source-map upload failed silently.
+  $body = $response.Content | ConvertFrom-Json
+  $count = @($body).Count
+
+  # If we got items, also check X-Hits header (Sentry returns total via Link header in pagination)
+  # but counting the result of per_page=1 is enough: 0 = leak detected, >=1 = at least some uploaded.
+  if ($count -eq 0) {
+    throw "Sentry release '$($release.Substring(0,7))' har 0 source-map files. Vercel build skippede sentryVitePlugin - source-maps mangler i prod. Tjek SENTRY_AUTH_TOKEN/ORG/PROJECT i Vercel project env."
+  }
+
+  Write-Host "[ok] Sentry release $($release.Substring(0,7)) har source-map files uploaded (>=1 file)"
+}
+
 $script:RepoRoot = (Resolve-Path (Split-Path -Parent $PSScriptRoot)).Path
 $script:GitPath = Resolve-GitPath
 $resolvedRoot = Invoke-Git @("rev-parse", "--show-toplevel")
@@ -220,4 +267,5 @@ Write-Host "Verificerer deploy for $($script:GitHub.FullName)@$($script:Sha.Subs
 Wait-Until -Label "GitHub Actions" -Probe { Test-CiStatus } -TimeoutMinutes $TimeoutMinutes | Out-Null
 Wait-Until -Label "GitHub deployments" -Probe { Test-DeploymentStatus } -TimeoutMinutes $TimeoutMinutes | Out-Null
 Test-LiveSmoke
+Test-SentrySourceMaps
 Write-Host "[done] Deploy verificeret for $($script:Sha.Substring(0, 7))"
