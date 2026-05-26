@@ -1,5 +1,11 @@
+import i18n from "i18next";
+
 function normalizeCountryCode(code) {
   return typeof code === "string" ? code.trim().toUpperCase() : "";
+}
+
+function currentLocale(locale) {
+  return locale || i18n.language || "da-DK";
 }
 
 export function getFlagEmoji(code) {
@@ -11,18 +17,18 @@ export function getFlagEmoji(code) {
     .join("");
 }
 
-export function getCountryName(code, locale = "da-DK") {
+export function getCountryName(code, locale) {
   const normalizedCode = normalizeCountryCode(code);
   if (!normalizedCode) return "";
 
   try {
-    return new Intl.DisplayNames([locale, "en"], { type: "region" }).of(normalizedCode) || normalizedCode;
+    return new Intl.DisplayNames([currentLocale(locale), "en"], { type: "region" }).of(normalizedCode) || normalizedCode;
   } catch {
     return normalizedCode;
   }
 }
 
-export function getCountryDisplay(code, locale = "da-DK") {
+export function getCountryDisplay(code, locale) {
   const normalizedCode = normalizeCountryCode(code);
   const flag = getFlagEmoji(normalizedCode);
   const name = getCountryName(normalizedCode, locale);

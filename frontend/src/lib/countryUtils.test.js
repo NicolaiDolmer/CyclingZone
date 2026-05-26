@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import i18n from "i18next";
 import {
   getCountryDisplay,
   getCountryName,
@@ -12,6 +13,35 @@ test("getCountryName — returnerer engelsk landenavn for EN-locale", () => {
 
 test("getCountryName — returnerer dansk landenavn for DA-locale", () => {
   assert.equal(getCountryName("DK", "da-DK"), "Danmark");
+});
+
+test("getCountryName — dækker flere regioner på EN og DA", () => {
+  const cases = [
+    ["AE", "United Arab Emirates", "De Forenede Arabiske Emirater"],
+    ["AL", "Albania", "Albanien"],
+    ["AO", "Angola", "Angola"],
+    ["AT", "Austria", "Østrig"],
+    ["SI", "Slovenia", "Slovenien"],
+  ];
+
+  for (const [code, enName, daName] of cases) {
+    assert.equal(getCountryName(code, "en-US"), enName);
+    assert.equal(getCountryName(code, "da-DK"), daName);
+  }
+});
+
+test("getCountryName — default følger aktiv i18next-locale", () => {
+  const originalLanguage = i18n.language;
+
+  try {
+    i18n.language = "en-US";
+    assert.equal(getCountryName("SI"), "Slovenia");
+
+    i18n.language = "da-DK";
+    assert.equal(getCountryName("SI"), "Slovenien");
+  } finally {
+    i18n.language = originalLanguage;
+  }
 });
 
 test("getCountryName — normaliserer whitespace og casing", () => {

@@ -1,5 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
+> **🟡 2026-05-27 in-progress (#649):** Country names on rider surfaces now follow active i18next locale via `Intl.DisplayNames`; `/riders` filter dropdown/chip and `/riders/:id` nationality line fixed, plus localized sort and regression coverage. Verification so far: `countryUtils` targeted 11/11, frontend tests 116/116, frontend build green, lint exit 0 with existing warnings; browser smoke blocked by local auth redirect to `/login`.
+
 > **🟢 2026-05-27 close-out (#638):** `sanitize-secrets` regression guard tilføjet for `openssl rand -hex 2`/kort hex-output, og PowerShell-testen resolver nu Git Bash eksplicit. Verification: sanitizer-suite 32/32 grøn + hook-suite 16/16 grøn. PatchNotes/FEATURE_STATUS ikke opdateret: intern agent-tooling.
 
 > **🟢 2026-05-26 close-out (#656):** Authenticated prod i18n-smoke på `/riders`, `/riders/:id`, `/notifications`, `/team`: EN/DA toggle grøn på desktop + mobile, ingen synlige raw keys; issue lukket med matrix; screenshots flyttet fra `.codex.local` til OneDrive-context `codex-local/issue-656-i18n-smoke/`. PatchNotes/FEATURE_STATUS ikke opdateret: runtime-verificering only.
