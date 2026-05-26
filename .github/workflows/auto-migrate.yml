@@ -52,8 +52,8 @@ jobs:
           psql "$DB_URL" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS schema_migrations (filename TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());"
 
           # Pending = local files - applied filenames
-          ALL_LOCAL=$(ls database/2026-*.sql 2>/dev/null | sort)
-          ALL_APPLIED=$(psql "$DB_URL" -tAc "SELECT filename FROM schema_migrations" | sort)
+          ALL_LOCAL=$(find database -maxdepth 1 -type f -name '2026-*.sql' 2>/dev/null | LC_ALL=C sort)
+          ALL_APPLIED=$(psql "$DB_URL" -tAc "SELECT filename FROM schema_migrations" | LC_ALL=C sort)
           PENDING=$(comm -23 <(echo "$ALL_LOCAL") <(echo "$ALL_APPLIED"))
 
           if [ -z "$PENDING" ]; then
@@ -62,7 +62,10 @@ jobs:
           fi
 
           echo "📋 Pending migrations:"
-          echo "$PENDING" | sed 's/^/  - /'
+          while IFS= read -r pending_file; do
+            [ -z "$pending_file" ] && continue
+            echo "  - $pending_file"
+          done <<< "$PENDING"
           echo ""
 
           while IFS= read -r file; do
