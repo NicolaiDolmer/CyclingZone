@@ -231,20 +231,22 @@ export async function processSeasonStart(seasonId, deps = {}) {
     });
     const sponsorPayout = Math.round(sponsorBreakdown.gross_sponsor * modifier);
 
-    const description = pulloutFactor < 1.0
-      ? `Sponsorindtægt — Sæson start (${formatSponsorBreakdown(sponsorBreakdown)} ×${modifier.toFixed(2)} · sponsor-pullout aktiv)`
-      : `Sponsorindtægt — Sæson start (${formatSponsorBreakdown(sponsorBreakdown)} ×${modifier.toFixed(2)})`;
+    // #666: description holdes null for nye rows — frontend renderer fra
+    // metadata via backendMessages-i18n. Legacy rows beholder DA-description
+    // som fallback.
+    const sponsorMetadata = buildSponsorMetadata(sponsorBreakdown, modifier, pulloutFactor < 1.0);
 
     // Pay sponsor income (idempotent: cron-retry må ikke double-pay)
     await creditTeam(
       team.id,
       sponsorPayout,
       "sponsor",
-      description,
+      null,
       seasonId,
       supabaseClient,
       {
         idempotent: true,
+        metadata: sponsorMetadata,
         audit: {
           sourcePath: "economyEngine.processSeasonStart.sponsor",
           reasonCode: FINANCE_REASON.SEASON_START_SPONSOR,
@@ -444,11 +446,15 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
       team.id,
       totalSalary,
       "salary",
-      `Sæsonlønninger — ${(team.riders || []).length} ryttere`,
+      null,
       seasonId,
       supabaseClient,
       {
         idempotent: true,
+        metadata: {
+          code: "tx.salary",
+          params: { count: (team.riders || []).length },
+        },
         audit: {
           sourcePath: "economyEngine.processSeasonStart.salary",
           reasonCode: FINANCE_REASON.SEASON_END_SALARY,
@@ -469,11 +475,15 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
       team.id,
       negativeInterestCharged,
       "interest",
-      `Renter på gæld (10% af ${Math.abs(postSalaryTeam.balance).toLocaleString()} pts)`,
+      null,
       seasonId,
       supabaseClient,
       {
         idempotent: true,
+        metadata: {
+          code: "tx.interest",
+          params: { amount: Math.abs(postSalaryTeam.balance) },
+        },
         audit: {
           sourcePath: "economyEngine.processSeasonStart.negativeInterest",
           reasonCode: FINANCE_REASON.SEASON_END_NEGATIVE_INTEREST,
@@ -527,14 +537,25 @@ async function loadSponsorStandingsContextForSeason(supabaseClient, seasonNumber
   return buildSponsorStandingsContext(standings || []);
 }
 
-function formatSponsorBreakdown(breakdown) {
-  if (breakdown.mode === "variable") {
-    return `base ${breakdown.base.toLocaleString("da-DK")} + variabel ${breakdown.variable.toLocaleString("da-DK")}`;
+// #666: build metadata for season-start sponsor transaction. Each (mode, pullout)
+// combination maps to a distinct i18n key — keeps the keys readable instead of
+// nesting ICU select inside select.
+function buildSponsorMetadata(breakdown, modifier, pulloutActive) {
+  const mode = breakdown.mode || "intro";
+  const params = { modifier };
+  let codeKey;
+  if (mode === "variable") {
+    codeKey = pulloutActive ? "tx.sponsor.seasonStartVariablePullout" : "tx.sponsor.seasonStartVariable";
+    params.base = breakdown.base;
+    params.variable = breakdown.variable;
+  } else if (mode === "fallback") {
+    codeKey = pulloutActive ? "tx.sponsor.seasonStartFallbackPullout" : "tx.sponsor.seasonStartFallback";
+    params.amount = breakdown.gross_sponsor;
+  } else {
+    codeKey = pulloutActive ? "tx.sponsor.seasonStartIntroPullout" : "tx.sponsor.seasonStartIntro";
+    params.amount = breakdown.gross_sponsor;
   }
-  if (breakdown.mode === "fallback") {
-    return `fallback ${breakdown.gross_sponsor.toLocaleString("da-DK")}`;
-  }
-  return `intro ${breakdown.gross_sponsor.toLocaleString("da-DK")}`;
+  return { code: codeKey, params };
 }
 
 // ─── Division Bonuses ────────────────────────────────────────────────────────
@@ -562,11 +583,15 @@ export async function payDivisionBonuses(standings, seasonId, supabaseClient) {
       standing.team_id,
       amount,
       "bonus",
-      `Divisionsbonus — Division ${standing.division}, plads ${rank}`,
+      null,
       seasonId,
       supabaseClient,
       {
         idempotent: true,
+        metadata: {
+          code: "tx.bonus",
+          params: { division: standing.division, rank },
+        },
         audit: {
           sourcePath: "economyEngine.payDivisionBonuses",
           reasonCode: FINANCE_REASON.SEASON_END_DIVISION_BONUS,
@@ -928,13 +953,27 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       }).eq("id", board.id);
       throwIfSupabaseError(boardUpdateError, `Could not update completed board plan for ${team.name}`);
 
-      const planLabel = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" }[board.plan_type] || "plan";
+      // #666: title/message er DA fallback for legacy + dedup-signatur.
+      // metadata.{titleCode, messageCode, *Params} driver locale-rendering.
+      // feedback.headline/summary stammer fra boardEngine.evaluateBoardSeason
+      // og er stadig DA-narrative — full board-feedback-i18n er ude af #666's
+      // scope (spawnes som follow-up).
       await notifyManager(
         team.id,
         "board_update",
-        "Bestyrelsesplan udløbet",
-        `${feedback.headline}. ${feedback.summary} Tilfredshed: ${newSatisfaction}%. Forhandl en ny plan med bestyrelsen.`,
-        notificationDeps
+        "Board plan expired",
+        `${feedback.headline}. ${feedback.summary} Satisfaction: ${newSatisfaction}%. Negotiate a new plan with the board.`,
+        notificationDeps,
+        {
+          titleCode: "notif.boardPlanExpired.title",
+          titleParams: {},
+          messageCode: "notif.boardPlanExpired.message",
+          messageParams: {
+            headline: feedback.headline,
+            summary: feedback.summary,
+            satisfaction: newSatisfaction,
+          },
+        }
       );
 
       // S-02c · Replacement-trigger: 2× plan-udløb i træk under 30% sat → ny formand.
@@ -952,9 +991,15 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
           await notifyManager(
             team.id,
             "board_update",
-            "Bestyrelsen har valgt en ny formand",
-            `Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. ${replacementInfo.new_chairman_label} overtager — forvent ny tone i de kommende forhandlinger.`,
-            notificationDeps
+            "The board has chosen a new chairman",
+            `After two disappointing plan seasons, the board has replaced the chairman. ${replacementInfo.new_chairman_label} takes over — expect a new tone in upcoming negotiations.`,
+            notificationDeps,
+            {
+              titleCode: "notif.boardChairmanReplaced.title",
+              titleParams: {},
+              messageCode: "notif.boardChairmanReplaced.message",
+              messageParams: { chairmanLabel: replacementInfo.new_chairman_label },
+            }
           );
         }
       } catch (error) {
@@ -973,27 +1018,56 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       throwIfSupabaseError(boardUpdateError, `Could not update active board plan for ${team.name}`);
 
       if (isMidReview) {
-        const midMsg = newSatisfaction >= 60
-          ? "Bestyrelsen er tilfreds med din fremgang."
+        const midMessageKey = newSatisfaction >= 60
+          ? "notif.boardMidMessage.good"
           : newSatisfaction >= 40
-          ? "Bestyrelsen er moderat tilfreds med din fremgang."
-          : "Bestyrelsen er bekymret for fremgangen i din plan.";
+          ? "notif.boardMidMessage.moderate"
+          : "notif.boardMidMessage.bad";
+        const midMsg = newSatisfaction >= 60
+          ? "The board is pleased with your progress."
+          : newSatisfaction >= 40
+          ? "The board is moderately pleased with your progress."
+          : "The board is worried about your progress in the plan.";
         await notifyManager(
           team.id,
           "board_update",
-          "Halvvejsevaluering",
-          `Halvvejsevaluering: ${midMsg} ${feedback.summary} Tilfredshed: ${newSatisfaction}%.`,
-          notificationDeps
+          "Mid-plan review",
+          `Mid-plan review: ${midMsg} ${feedback.summary} Satisfaction: ${newSatisfaction}%.`,
+          notificationDeps,
+          {
+            titleCode: "notif.boardMidReview.title",
+            titleParams: {},
+            messageCode: "notif.boardMidReview.message",
+            messageParams: {
+              midMessageKey,
+              summary: feedback.summary,
+              satisfaction: newSatisfaction,
+            },
+          }
         );
       } else {
-        const planLabel = { "1yr": "1-årsplan", "3yr": "3-årsplan", "5yr": "5-årsplan" }[board.plan_type] || "plan";
+        const planLabelKey = planLabelKey_(board.plan_type);
         const delta = newSatisfaction - board.satisfaction;
+        const planLabelEn = { "1yr": "1-year plan", "3yr": "3-year plan", "5yr": "5-year plan" }[board.plan_type] || "plan";
         await notifyManager(
           team.id,
           "board_update",
-          "Sæsonrapport",
-          `Sæson ${seasonsCompleted}/${planDuration} af din ${planLabel} afsluttet. ${feedback.summary} Tilfredshed: ${newSatisfaction}% (${delta >= 0 ? "+" : ""}${delta}).`,
-          notificationDeps
+          "Season report",
+          `Season ${seasonsCompleted}/${planDuration} of your ${planLabelEn} complete. ${feedback.summary} Satisfaction: ${newSatisfaction}% (${delta >= 0 ? "+" : ""}${delta}).`,
+          notificationDeps,
+          {
+            titleCode: "notif.boardSeasonReport.title",
+            titleParams: {},
+            messageCode: delta >= 0 ? "notif.boardSeasonReport.messageGain" : "notif.boardSeasonReport.messageLoss",
+            messageParams: {
+              seasonsCompleted,
+              planDuration,
+              planLabelKey,
+              summary: feedback.summary,
+              satisfaction: newSatisfaction,
+              delta,
+            },
+          }
         );
       }
     }
@@ -1015,7 +1089,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         planIsComplete,
         seasonId,
         consecutiveLowExpirations: triggerDoublePlanLapse ? 2 : 0,
-        notify: ({ type, title, message }) => notifyManager(team.id, type, title, message, notificationDeps),
+        notify: ({ type, title, message, metadata }) => notifyManager(team.id, type, title, message, notificationDeps, metadata ?? null),
       });
     } catch (error) {
       console.error(`  ⚠️  board consequences failed for ${team.name}:`, error.message);
@@ -1185,9 +1259,15 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
         await notifyManager(
           s.team_id,
           "board_update",
-          "Nedrykning",
-          `Dit hold rykker ned til Division ${division + 1}`,
-          notificationDeps
+          "Relegation",
+          `Your team drops to Division ${division + 1}.`,
+          notificationDeps,
+          {
+            titleCode: "notif.divisionRelegated.title",
+            titleParams: {},
+            messageCode: "notif.divisionRelegated.message",
+            messageParams: { division: division + 1 },
+          }
         );
       }
     }
@@ -1346,6 +1426,7 @@ async function creditTeam(teamId, amount, type, description, seasonId, supabaseC
         related_entity_type: audit.relatedEntityType || FINANCE_RELATED_ENTITY.SEASON,
         related_entity_id: audit.relatedEntityId || seasonId || null,
         idempotency_key: audit.idempotencyKey,
+        metadata: options.metadata ?? null,
       },
     },
     { allowDuplicate: !!options.idempotent }
@@ -1380,6 +1461,7 @@ async function debitTeam(teamId, amount, type, description, seasonId, supabaseCl
         related_entity_type: audit.relatedEntityType || FINANCE_RELATED_ENTITY.SEASON,
         related_entity_id: audit.relatedEntityId || seasonId || null,
         idempotency_key: audit.idempotencyKey,
+        metadata: options.metadata ?? null,
       },
     },
     { allowDuplicate: !!options.idempotent }
@@ -1393,7 +1475,7 @@ async function debitTeam(teamId, amount, type, description, seasonId, supabaseCl
   return { skipped: result.skipped };
 }
 
-async function notifyManager(teamId, type, title, message, deps = {}) {
+async function notifyManager(teamId, type, title, message, deps = {}, metadata = null) {
   const client = deps.supabase ?? await getDefaultSupabaseClient();
   await notifyTeamOwnerShared({
     supabase: client,
@@ -1401,6 +1483,17 @@ async function notifyManager(teamId, type, title, message, deps = {}) {
     type,
     title,
     message,
+    metadata,
     now: deps.now,
   });
+}
+
+// #666: build per-plan-type i18n key (1yr/3yr/5yr) — used in board notifications
+// where the message references "din 3-årsplan" / "your 3-year plan". Backend can't
+// localise — so we emit the key and let frontend resolve via planLabel.<key>.
+function planLabelKey_(planType) {
+  if (planType === "1yr" || planType === "3yr" || planType === "5yr") {
+    return `planLabel.${planType}`;
+  }
+  return "planLabel.unknown";
 }

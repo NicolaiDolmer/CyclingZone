@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.02",
+    date: "2026-05-26",
+    label: "Beta",
+    changes: [
+      {
+        category: "Language · Backend-generated messages now follow the active language (finance warnings, transactions, board notifications)",
+        items: [
+          "EN · The finance forecast card's warnings (debt-near-cap, salary-exceeds-sponsor, debt-trend), the transaction history rows (sponsor income, salaries, interest, division bonus, loans received and repaid, emergency loan, loan fees, loan interest, squad fines) and the in-app notifications (board plan expired, mid-plan review, season report, chairman replaced, forced rider listing, sponsor pullout, bonus offer, division promotion/relegation, T-3/T-1 plan reminders, auto-accept, autobid placed, loan created, emergency loan, loan paid off) used to be hard-coded Danish strings in the backend libraries, which leaked through to EN-mode players on the Finance page and in the inbox. Backend now emits a structured `{ code, params }` payload per event; the frontend renders it via the new `backendMessages` i18n namespace with locale-aware number formatting. Same content, properly translated. Closes the final blocker for the Tour de France 2026 EN-mode launch on June 20. Refs #666.",
+          "DA · Finansprognose-kortets advarsler (gæld-tæt-på-loft, løn-overstiger-sponsor, gælds-trend), transaktionshistorikkens rækker (sponsorindtægt, lønninger, renter, divisionsbonus, lån modtaget og tilbagebetalt, nødlån, lejegebyrer, lånerenter, trupbøder) og in-app-notifikationerne (bestyrelsesplan udløbet, halvvejs-evaluering, sæsonrapport, formand udskiftet, tvunget rytter-listing, sponsor-pullout, bonus-tilbud, op-/nedrykning, T-3/T-1 plan-påmindelser, auto-accept, autobud afgivet, lån oprettet, nødlån, lån tilbagebetalt) var hard-kodede danske strenge i backend-bibliotekerne, hvilket lækkede igennem til EN-mode-spillere på Finanser-siden og i indbakken. Backend udsender nu en struktureret `{ code, params }`-payload pr. event; frontend renderer via den nye `backendMessages` i18n-namespace med locale-aware tal-formattering. Samme indhold, korrekt oversat. Lukker den sidste blocker for Tour de France 2026 EN-mode-launch 20. juni. Refs #666.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.01",
     date: "2026-05-26",
     label: "Beta",

@@ -122,7 +122,11 @@ export function computeSponsorForSeason({
     variable: computed.variable,
     gross_sponsor: computed.total,
     capped: computed.variable >= VARIABLE_SPONSOR_POOL,
-    explanation: `Base ${computed.base.toLocaleString("da-DK")} + variabel ${computed.variable.toLocaleString("da-DK")} baseret på sidste sæsons point/rang.`,
+    // #666: EN fallback string; consumers may render via sponsor.explanation.variable
+    // i18n-key med params { base, variable } for fuld locale-rendering.
+    explanation: `Base ${computed.base} + variable ${computed.variable} based on last season's points/rank.`,
+    explanationCode: "sponsor.explanation.variable",
+    explanationParams: { base: computed.base, variable: computed.variable },
     last_season_points: lastSeasonStanding.total_points || 0,
     last_season_rank: lastSeasonStanding.rank_in_division ?? null,
     last_season_division: lastSeasonStanding.division ?? null,

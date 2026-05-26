@@ -1,0 +1,149 @@
+{
+  "tx": {
+    "sponsor": {
+      "seasonStartIntro": "Sponsor income — Season start (intro {amount} ×{modifier})",
+      "seasonStartIntroPullout": "Sponsor income — Season start (intro {amount} ×{modifier} · sponsor pullout active)",
+      "seasonStartVariable": "Sponsor income — Season start (base {base} + variable {variable} ×{modifier})",
+      "seasonStartVariablePullout": "Sponsor income — Season start (base {base} + variable {variable} ×{modifier} · sponsor pullout active)",
+      "seasonStartFallback": "Sponsor income — Season start (fallback {amount} ×{modifier})",
+      "seasonStartFallbackPullout": "Sponsor income — Season start (fallback {amount} ×{modifier} · sponsor pullout active)"
+    },
+    "salary": "Season salaries — {count} riders",
+    "interest": "Interest on debt (10% of {amount} pts)",
+    "bonus": "Division bonus — Division {division}, rank {rank}",
+    "loanReceivedShort": "Short-term loan taken out (fee: {fee} CZ$)",
+    "loanReceivedLong": "Long-term loan taken out (fee: {fee} CZ$)",
+    "loanRepayment": "Loan installment paid",
+    "loanRepaymentFinal": "Loan installment paid — loan fully repaid! 🎉",
+    "loanRepaymentRemaining": "Loan installment paid (remaining: {remaining} CZ$)",
+    "loanInterest": "Loan interest charged ({rate}%)",
+    "emergencyLoan": "Emergency loan opened automatically (fee: {feeRate}%, interest: {interestRate}%/season)",
+    "loanFeePaid": "Loan fee: {riderName} (season {season})",
+    "loanFeeReceived": "Loan fee received: {riderName} (season {season})",
+    "squadFineSingle": "Squad-size fine: {count} excess rider × {amount} CZ$",
+    "squadFineMulti": "Squad-size fine: {count} excess riders × {amount} CZ$"
+  },
+  "forecast": {
+    "warning": {
+      "negativeNet": "Expected deficit: {value} CZ$ next season — sell a rider, reduce active loans, or negotiate a better sponsor.",
+      "debtNearCeiling": "Debt is {ratio}% of cap ({totalDebt} / {ceiling} CZ$) — the board is worried.",
+      "debtGrowing": "Debt is {ratio}% of cap — watch the interest burden.",
+      "debtTrend": "At the current deficit you'll hit the debt cap within 2 seasons — act now.",
+      "salaryExceedsSponsor": "Salaries ({salary} CZ$) exceed sponsor ({sponsor} CZ$) — quiet operations no longer cover the wages."
+    }
+  },
+  "notif": {
+    "loanCreatedShort": {
+      "title": "Loan created",
+      "message": "You took out a short-term loan of {principal} CZ$. Fee: {fee} CZ$. Total repayment: {totalOwed} CZ$."
+    },
+    "loanCreatedLong": {
+      "title": "Loan created",
+      "message": "You took out a long-term loan of {principal} CZ$. Fee: {fee} CZ$. Total repayment: {totalOwed} CZ$."
+    },
+    "emergencyLoan": {
+      "title": "⚠️ Emergency loan opened",
+      "message": "Your team couldn't cover wages. An emergency loan of {amount} CZ$ was opened automatically with a {feeRate}% fee and {interestRate}% interest. Total debt: {totalOwed} CZ$."
+    },
+    "emergencyLoanBreach": {
+      "title": "🚨 Debt cap exceeded",
+      "message": "Your emergency loan pushes the team's debt {breachAmount} CZ$ over the division cap of {ceiling} CZ$. You can keep operating, but you MUST cut costs (sell riders, drop star contracts) before the next season ends to avoid a debt spiral."
+    },
+    "loanPaidOff": {
+      "title": "✅ Loan repaid",
+      "message": "Congratulations! You've fully repaid your loan."
+    },
+    "boardPlanExpired": {
+      "title": "Board plan expired",
+      "message": "{headline}. {summary} Satisfaction: {satisfaction}%. Negotiate a new plan with the board."
+    },
+    "boardMidReview": {
+      "title": "Mid-plan review",
+      "message": "Mid-plan review: {midMsg} {summary} Satisfaction: {satisfaction}%."
+    },
+    "boardSeasonReport": {
+      "title": "Season report",
+      "messageGain": "Season {seasonsCompleted}/{planDuration} of your {planLabel} complete. {summary} Satisfaction: {satisfaction}% (+{delta}).",
+      "messageLoss": "Season {seasonsCompleted}/{planDuration} of your {planLabel} complete. {summary} Satisfaction: {satisfaction}% ({delta})."
+    },
+    "boardMidMessage": {
+      "good": "The board is pleased with your progress.",
+      "moderate": "The board is moderately pleased with your progress.",
+      "bad": "The board is worried about your progress in the plan."
+    },
+    "boardChairmanReplaced": {
+      "title": "The board has chosen a new chairman",
+      "message": "After two disappointing plan seasons, the board has replaced the chairman. {chairmanLabel} takes over — expect a new tone in upcoming negotiations."
+    },
+    "boardForcedListing": {
+      "title": "The board demands a sale",
+      "message": "Satisfaction is at {satisfaction}%. The board has force-listed {riderName} at {askingPrice} CZ$."
+    },
+    "boardSponsorPullout": {
+      "title": "Sponsor pulls out",
+      "message": "The board reports that a main sponsor has pulled out after the season. Sponsor income drops by 10% next season."
+    },
+    "boardBonusOffer": {
+      "title": "Bonus offer from the board",
+      "message": "The board is impressed ({satisfaction}% satisfaction, {goalsMet}/{goalsTotal} goals met). They offer +{bonusAmount} CZ$ for an extra goal: {goalLabel}. Accept or decline on the Board page."
+    },
+    "divisionPromoted": {
+      "title": "Promoted! 🎉",
+      "message": "Congratulations! Your team moves up to Division {division}."
+    },
+    "divisionRelegated": {
+      "title": "Relegation",
+      "message": "Your team drops to Division {division}."
+    },
+    "boardT3Reminder": {
+      "title": "The board is waiting for your {planLabel}",
+      "message": "You have {raceDaysLeft} race days left to negotiate your {planLabel}. If you don't act, the board will decide."
+    },
+    "boardT1Reminder": {
+      "title": "Last chance: {planLabel}",
+      "messageSingle": "The board takes over in {raceDaysLeft} race day. Open the Board page and negotiate your {planLabel} now.",
+      "messageMulti": "The board takes over in {raceDaysLeft} race days. Open the Board page and negotiate your {planLabel} now."
+    },
+    "boardAutoAccepted": {
+      "title": "The board chose {planLabel} for you",
+      "message": "You didn't negotiate your {planLabel} in time — the board picked focus \"{focus}\" and default goals. You can still request changes once the plan is running."
+    },
+    "autoBidPlaced": {
+      "title": "Autobid placed",
+      "message": "{bidderName}'s autobid placed {amount} CZ$ on {riderName}"
+    }
+  },
+  "error": {
+    "repayInsufficient": "You only have {available} CZ$ available — the rest is locked in active bids or autobids",
+    "boardSigningRestriction": "The board blocks purchases above {threshold} CZ$ (satisfaction below {satisfaction}%).",
+    "boardSalaryCap": "Salary cap set by the board ({cap} CZ$). You cannot increase the team's total salary — sell a rider first.",
+    "squadFineDeducted": "Fine: {fineAmount} CZ$ · Deduction: {penaltyPoints} points",
+    "debtCapReached": "Debt cap of {ceiling} CZ$ reached for this division"
+  },
+  "consequence": {
+    "layer": {
+      "salaryCap": "Salary cap",
+      "signingRestriction": "Signing restriction",
+      "forcedListing": "Forced listing",
+      "sponsorPullout": "Sponsor pullout",
+      "bonusOffer": "Bonus offer"
+    },
+    "layerFallback": "Layer {layer}",
+    "bonusGoal": {
+      "signatureRider": "Sign 1 star (popularity ≥75)",
+      "monumentPodium": "Top 3 in at least 1 monument"
+    },
+    "unknownRider": "Rider {id}"
+  },
+  "planLabel": {
+    "1yr": "1-year plan",
+    "3yr": "3-year plan",
+    "5yr": "5-year plan",
+    "unknown": "plan"
+  },
+  "sponsor": {
+    "explanation": {
+      "variable": "Base {base} + variable {variable} based on last season's points/rank."
+    }
+  }
+}

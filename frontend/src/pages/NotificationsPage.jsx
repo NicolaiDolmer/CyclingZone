@@ -7,6 +7,7 @@ import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 import { groupNotifications } from "../lib/groupNotifications";
 import { formatNumber, formatDate } from "../lib/intl";
+import { renderBackendMessage } from "../lib/backendMessage";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -133,9 +134,37 @@ function pendingRoleLabel(t, role) {
   return t("pending.role.actionRequired");
 }
 
+// #666: notification.metadata.{titleCode, titleParams, messageCode, messageParams}
+// renderes via backendMessages-namespace; falder tilbage til n.title/n.message
+// for legacy rows uden metadata. Helper holdes ren funktion for genbrug.
+function renderNotificationTitle(notification, tBackend) {
+  const meta = notification?.metadata;
+  if (meta?.titleCode) {
+    return renderBackendMessage(
+      { code: meta.titleCode, params: meta.titleParams },
+      tBackend,
+      notification.title,
+    );
+  }
+  return notification.title;
+}
+
+function renderNotificationMessage(notification, tBackend) {
+  const meta = notification?.metadata;
+  if (meta?.messageCode) {
+    return renderBackendMessage(
+      { code: meta.messageCode, params: meta.messageParams },
+      tBackend,
+      notification.message,
+    );
+  }
+  return notification.message;
+}
+
 export default function NotificationsPage() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation("notifications");
+  const { t: tBackend } = useTranslation("backendMessages");
   const timeAgo = buildTimeAgo(t, i18n);
   const [tab, setTab] = useState("mine");
 
@@ -477,9 +506,9 @@ export default function NotificationsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium ${n.is_read ? "text-cz-2" : "text-cz-1"}`}>
-                          {n.title}
+                          {renderNotificationTitle(n, tBackend)}
                         </p>
-                        <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{n.message}</p>
+                        <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{renderNotificationMessage(n, tBackend)}</p>
                         <p className="text-cz-3 text-xs mt-1.5">{timeAgo(n.created_at)}</p>
                       </div>
                       <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
@@ -522,9 +551,9 @@ export default function NotificationsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium ${allRead ? "text-cz-2" : "text-cz-1"}`}>
-                          {entry.sample_title} <span className="text-cz-3 font-normal">{t("aggregate.countSuffix", { count: entry.count })}</span>
+                          {renderNotificationTitle({ metadata: entry.sample_metadata, title: entry.sample_title }, tBackend)} <span className="text-cz-3 font-normal">{t("aggregate.countSuffix", { count: entry.count })}</span>
                         </p>
-                        <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{entry.sample_message}</p>
+                        <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{renderNotificationMessage({ metadata: entry.sample_metadata, message: entry.sample_message }, tBackend)}</p>
                         <p className="text-cz-3 text-xs mt-1.5">
                           {t("aggregate.firstLatest", { first: timeAgo(entry.earliest_at), latest: timeAgo(entry.latest_at) })}
                         </p>
@@ -550,7 +579,7 @@ export default function NotificationsPage() {
                           {entry.items.map(item => (
                             <li key={item.id} className="flex items-start gap-2 text-xs">
                               <span className="text-cz-3 whitespace-nowrap min-w-[5rem]">{timeAgo(item.created_at)}</span>
-                              <span className="text-cz-2 flex-1">{item.message}</span>
+                              <span className="text-cz-2 flex-1">{renderNotificationMessage(item, tBackend)}</span>
                             </li>
                           ))}
                         </ul>

@@ -249,9 +249,19 @@ export async function resolveProxyBids({
         await notifyTeamOwner(
           auction.seller_team_id,
           "bid_received",
-          "Nyt bud modtaget",
-          `${bidderName}'s autobud bød ${autoBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
-          auctionId
+          "New bid received",
+          `${bidderName}'s autobid placed ${autoBidAmount} CZ$ on ${riderName}`,
+          auctionId,
+          {
+            titleCode: "notif.autoBidPlaced.title",
+            titleParams: {},
+            messageCode: "notif.autoBidPlaced.message",
+            messageParams: {
+              bidderName,
+              amount: autoBidAmount,
+              riderName,
+            },
+          }
         ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
       }
     }

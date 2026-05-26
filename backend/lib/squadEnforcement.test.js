@@ -445,9 +445,10 @@ test("enforceTeamSquadCompliance: D3 hold med 5 ryttere → auto-køb 3 + 300K b
   // En notifikation til manager
   assert.equal(notifications.length, 1);
   assert.equal(notifications[0].type, "squad_enforced");
-  assert.match(notifications[0].message, /Auto-købt 3 ryttere/);
-  assert.match(notifications[0].message, /300\.000 CZ\$/);
-  assert.match(notifications[0].message, /600 point/);
+  // #666: EN strings, no thousands separator (frontend formatNumber adds locale-aware separator).
+  assert.match(notifications[0].message, /Auto-purchased 3 riders/);
+  assert.match(notifications[0].message, /300000 CZ\$/);
+  assert.match(notifications[0].message, /600 points/);
 });
 
 test("enforceTeamSquadCompliance: D3 hold med 12 ryttere → auto-sælg 2 + 200K bøde + 400p fradrag", async () => {

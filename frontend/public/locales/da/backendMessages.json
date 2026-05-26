@@ -1,0 +1,149 @@
+{
+  "tx": {
+    "sponsor": {
+      "seasonStartIntro": "Sponsorindtægt — Sæson start (intro {amount} ×{modifier})",
+      "seasonStartIntroPullout": "Sponsorindtægt — Sæson start (intro {amount} ×{modifier} · sponsor-pullout aktiv)",
+      "seasonStartVariable": "Sponsorindtægt — Sæson start (base {base} + variabel {variable} ×{modifier})",
+      "seasonStartVariablePullout": "Sponsorindtægt — Sæson start (base {base} + variabel {variable} ×{modifier} · sponsor-pullout aktiv)",
+      "seasonStartFallback": "Sponsorindtægt — Sæson start (fallback {amount} ×{modifier})",
+      "seasonStartFallbackPullout": "Sponsorindtægt — Sæson start (fallback {amount} ×{modifier} · sponsor-pullout aktiv)"
+    },
+    "salary": "Sæsonlønninger — {count} ryttere",
+    "interest": "Renter på gæld (10% af {amount} pts)",
+    "bonus": "Divisionsbonus — Division {division}, plads {rank}",
+    "loanReceivedShort": "Kort lån optaget (gebyr: {fee} CZ$)",
+    "loanReceivedLong": "Langt lån optaget (gebyr: {fee} CZ$)",
+    "loanRepayment": "Lånrate betalt",
+    "loanRepaymentFinal": "Lånrate betalt — lån fuldt tilbagebetalt! 🎉",
+    "loanRepaymentRemaining": "Lånrate betalt (resterende: {remaining} CZ$)",
+    "loanInterest": "Lånerenter tilskrevet ({rate}%)",
+    "emergencyLoan": "Nødlån oprettet automatisk (gebyr: {feeRate}%, rente: {interestRate}%/sæson)",
+    "loanFeePaid": "Lejegebyr: {riderName} (sæson {season})",
+    "loanFeeReceived": "Lejegebyr modtaget: {riderName} (sæson {season})",
+    "squadFineSingle": "Trupstørrelse-bøde: {count} afvigende rytter × {amount} CZ$",
+    "squadFineMulti": "Trupstørrelse-bøde: {count} afvigende ryttere × {amount} CZ$"
+  },
+  "forecast": {
+    "warning": {
+      "negativeNet": "Forventet underskud: {value} CZ$ næste sæson — sælg en rytter, reducér aktive lån eller forhandl bedre sponsor.",
+      "debtNearCeiling": "Gæld er {ratio}% af loftet ({totalDebt} / {ceiling} CZ$) — bestyrelsen er bekymret.",
+      "debtGrowing": "Gæld er {ratio}% af loftet — hold øje med rente-byrden.",
+      "debtTrend": "Med det nuværende underskud rammer du gældsloftet inden for 2 sæsoner — handl nu.",
+      "salaryExceedsSponsor": "Løn ({salary} CZ$) overstiger sponsor ({sponsor} CZ$) — rolig drift dækker ikke længere lønnen."
+    }
+  },
+  "notif": {
+    "loanCreatedShort": {
+      "title": "Lån oprettet",
+      "message": "Du har optaget et kort lån på {principal} CZ$. Gebyr: {fee} CZ$. Samlet tilbagebetaling: {totalOwed} CZ$."
+    },
+    "loanCreatedLong": {
+      "title": "Lån oprettet",
+      "message": "Du har optaget et langt lån på {principal} CZ$. Gebyr: {fee} CZ$. Samlet tilbagebetaling: {totalOwed} CZ$."
+    },
+    "emergencyLoan": {
+      "title": "⚠️ Nødlån oprettet",
+      "message": "Dit hold havde ikke midler til at betale løn. Der er automatisk oprettet et nødlån på {amount} CZ$ med {feeRate}% gebyr og {interestRate}% rente. Samlet gæld: {totalOwed} CZ$."
+    },
+    "emergencyLoanBreach": {
+      "title": "🚨 Gældsloft overskredet",
+      "message": "Dit nødlån presser holdets gæld {breachAmount} CZ$ over divisions-loftet på {ceiling} CZ$. Du kan stadig drive klubben videre, men du SKAL reducere udgifterne (sælg ryttere, fyr stjernekontrakter) inden næste sæsonslut for at undgå spiral."
+    },
+    "loanPaidOff": {
+      "title": "✅ Lån tilbagebetalt",
+      "message": "Tillykke! Du har fuldt tilbagebetalt dit lån."
+    },
+    "boardPlanExpired": {
+      "title": "Bestyrelsesplan udløbet",
+      "message": "{headline}. {summary} Tilfredshed: {satisfaction}%. Forhandl en ny plan med bestyrelsen."
+    },
+    "boardMidReview": {
+      "title": "Halvvejsevaluering",
+      "message": "Halvvejsevaluering: {midMsg} {summary} Tilfredshed: {satisfaction}%."
+    },
+    "boardSeasonReport": {
+      "title": "Sæsonrapport",
+      "messageGain": "Sæson {seasonsCompleted}/{planDuration} af din {planLabel} afsluttet. {summary} Tilfredshed: {satisfaction}% (+{delta}).",
+      "messageLoss": "Sæson {seasonsCompleted}/{planDuration} af din {planLabel} afsluttet. {summary} Tilfredshed: {satisfaction}% ({delta})."
+    },
+    "boardMidMessage": {
+      "good": "Bestyrelsen er tilfreds med din fremgang.",
+      "moderate": "Bestyrelsen er moderat tilfreds med din fremgang.",
+      "bad": "Bestyrelsen er bekymret for fremgangen i din plan."
+    },
+    "boardChairmanReplaced": {
+      "title": "Bestyrelsen har valgt en ny formand",
+      "message": "Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. {chairmanLabel} overtager — forvent ny tone i de kommende forhandlinger."
+    },
+    "boardForcedListing": {
+      "title": "Bestyrelsen kræver salg",
+      "message": "Tilfredsheden er på {satisfaction}%. Bestyrelsen har tvangs-listet {riderName} til {askingPrice} CZ$."
+    },
+    "boardSponsorPullout": {
+      "title": "Sponsor trækker sig",
+      "message": "Bestyrelsen melder, at en hovedsponsor har trukket sig efter sæsonen. Sponsorindtægten reduceres med 10% i den næste sæson."
+    },
+    "boardBonusOffer": {
+      "title": "Bonus-tilbud fra bestyrelsen",
+      "message": "Bestyrelsen er imponeret ({satisfaction}% tilfredshed, {goalsMet}/{goalsTotal} mål nået). De tilbyder +{bonusAmount} CZ$ mod ekstra-mål: {goalLabel}. Acceptér eller afvis på Bestyrelse-siden."
+    },
+    "divisionPromoted": {
+      "title": "Oprykket! 🎉",
+      "message": "Tillykke! Dit hold rykker op til Division {division}."
+    },
+    "divisionRelegated": {
+      "title": "Nedrykning",
+      "message": "Dit hold rykker ned til Division {division}."
+    },
+    "boardT3Reminder": {
+      "title": "Bestyrelsen venter på din {planLabel}",
+      "message": "Du har {raceDaysLeft} race-days tilbage til at forhandle din {planLabel}. Hvis du ikke gør noget, vælger bestyrelsen selv."
+    },
+    "boardT1Reminder": {
+      "title": "Sidste chance: {planLabel}",
+      "messageSingle": "Bestyrelsen tager over om {raceDaysLeft} race-day. Åbn Bestyrelse-siden og forhandl din {planLabel} nu.",
+      "messageMulti": "Bestyrelsen tager over om {raceDaysLeft} race-days. Åbn Bestyrelse-siden og forhandl din {planLabel} nu."
+    },
+    "boardAutoAccepted": {
+      "title": "Bestyrelsen valgte {planLabel} for dig",
+      "message": "Du nåede ikke at forhandle din {planLabel} — bestyrelsen valgte focus \"{focus}\" og standardmål. Du kan stadig anmode om ændringer når planen kører."
+    },
+    "autoBidPlaced": {
+      "title": "Autobud afgivet",
+      "message": "{bidderName}'s autobud bød {amount} CZ$ på {riderName}"
+    }
+  },
+  "error": {
+    "repayInsufficient": "Du har kun {available} CZ$ tilgængelig — resten er låst i aktive bud eller autobud",
+    "boardSigningRestriction": "Bestyrelsen blokerer køb over {threshold} CZ$ (tilfredshed under {satisfaction}%).",
+    "boardSalaryCap": "Lønloft pålagt af bestyrelsen ({cap} CZ$). Du kan ikke øge holdets samlede løn — sælg en rytter først.",
+    "squadFineDeducted": "Bøde: {fineAmount} CZ$ · Fradrag: {penaltyPoints} point",
+    "debtCapReached": "Gældsloft på {ceiling} CZ$ nået for denne division"
+  },
+  "consequence": {
+    "layer": {
+      "salaryCap": "Lønloft",
+      "signingRestriction": "Underskriv-restriktion",
+      "forcedListing": "Tvunget salg",
+      "sponsorPullout": "Sponsor-pull-out",
+      "bonusOffer": "Bonus-tilbud"
+    },
+    "layerFallback": "Lag {layer}",
+    "bonusGoal": {
+      "signatureRider": "Sign 1 stjerne (popularity ≥75)",
+      "monumentPodium": "Top-3 i mindst 1 monument"
+    },
+    "unknownRider": "Rytter {id}"
+  },
+  "planLabel": {
+    "1yr": "1-årsplan",
+    "3yr": "3-årsplan",
+    "5yr": "5-årsplan",
+    "unknown": "plan"
+  },
+  "sponsor": {
+    "explanation": {
+      "variable": "Base {base} + variabel {variable} baseret på sidste sæsons point/rang."
+    }
+  }
+}

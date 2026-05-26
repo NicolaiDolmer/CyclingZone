@@ -58,6 +58,8 @@ import teamDa from "../../public/locales/da/team.json";
 import teamEn from "../../public/locales/en/team.json";
 import financeDa from "../../public/locales/da/finance.json";
 import financeEn from "../../public/locales/en/finance.json";
+import backendMessagesDa from "../../public/locales/da/backendMessages.json";
+import backendMessagesEn from "../../public/locales/en/backendMessages.json";
 
 const PSEUDO_ENABLED = (() => {
   if (typeof window === "undefined") return false;
@@ -80,11 +82,11 @@ i18n
     supportedLngs: SUPPORTED,
     nonExplicitSupportedLngs: true,
     load: "languageOnly",
-    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help", "board", "rider", "riders", "riderFilters", "notifications", "team", "finance"],
+    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help", "board", "rider", "riders", "riderFilters", "notifications", "team", "finance", "backendMessages"],
     defaultNS: "common",
     resources: {
-      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, help: helpDa, board: boardDa, admin: adminDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, notifications: notificationsDa, team: teamDa, finance: financeDa },
-      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, help: helpEn, board: boardEn, admin: adminEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, notifications: notificationsEn, team: teamEn, finance: financeEn },
+      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, help: helpDa, board: boardDa, admin: adminDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, notifications: notificationsDa, team: teamDa, finance: financeDa, backendMessages: backendMessagesDa },
+      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, help: helpEn, board: boardEn, admin: adminEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, notifications: notificationsEn, team: teamEn, finance: financeEn, backendMessages: backendMessagesEn },
     },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
+import { renderBackendMessage } from "../lib/backendMessage";
 
 const TIER_BADGE_CLASS = {
   green: "bg-cz-success-bg text-cz-success border-cz-success/30",
@@ -53,6 +54,9 @@ export default function FinanceForecastCard({
   onSeasonsAheadChange,
 }) {
   const { t } = useTranslation("dashboard");
+  // #666: warnings emitter { messageKey, params } fra backend; renderes via
+  // backendMessages-namespace for fuld locale-rendering.
+  const { t: tBackend } = useTranslation("backendMessages");
 
   if (loading) {
     return (
@@ -258,18 +262,27 @@ export default function FinanceForecastCard({
 
       {(forecast.warnings || []).length > 0 && (
         <div className="flex flex-col gap-2">
-          {forecast.warnings.map((warn) => (
-            <div
-              key={warn.code}
-              className={`px-3 py-2 rounded-lg text-xs leading-snug border
-                ${warn.severity === "high"
-                  ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
-                  : "bg-cz-warning-bg text-cz-warning border-cz-warning/30"}`}
-            >
-              <span className="font-medium">⚠️ </span>
-              {warn.message}
-            </div>
-          ))}
+          {forecast.warnings.map((warn) => {
+            const text = warn.messageKey
+              ? renderBackendMessage(
+                  { code: warn.messageKey, params: warn.params },
+                  tBackend,
+                  warn.message,
+                )
+              : warn.message;
+            return (
+              <div
+                key={warn.code}
+                className={`px-3 py-2 rounded-lg text-xs leading-snug border
+                  ${warn.severity === "high"
+                    ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
+                    : "bg-cz-warning-bg text-cz-warning border-cz-warning/30"}`}
+              >
+                <span className="font-medium">⚠️ </span>
+                {text}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -285,6 +298,7 @@ export default function FinanceForecastCard({
 
 export function FinanceForecastBadge({ forecast, compact = false }) {
   const { t } = useTranslation("dashboard");
+  const { t: tBackend } = useTranslation("backendMessages");
   if (!forecast) return null;
   const tier = getTierMeta(t, forecast.risk_tier);
   const netAccent =
@@ -325,7 +339,13 @@ export function FinanceForecastBadge({ forecast, compact = false }) {
       </div>
       {forecast.warnings?.length > 0 && (
         <p className="text-cz-3 text-xs mt-1.5 truncate">
-          {forecast.warnings[0].message}
+          {forecast.warnings[0].messageKey
+            ? renderBackendMessage(
+                { code: forecast.warnings[0].messageKey, params: forecast.warnings[0].params },
+                tBackend,
+                forecast.warnings[0].message,
+              )
+            : forecast.warnings[0].message}
         </p>
       )}
     </Link>

@@ -24,6 +24,16 @@ function buildRecentDuplicateLookup({
   return query.limit(1);
 }
 
+/**
+ * Deliver a notification. Caller can pass either:
+ *   - title + message (legacy, formatted strings — sufficient on its own)
+ *   - title + message + metadata.{titleCode, titleParams, messageCode, messageParams}
+ *     for #666 locale-aware rendering (frontend prefers metadata via i18next).
+ *
+ * Dedup uses (type, title, message, related_id) — backend should keep title/message
+ * informative enough (typically an EN fallback) that distinct events produce
+ * distinct rows.
+ */
 export async function notifyUser({
   supabase,
   userId,
@@ -31,6 +41,7 @@ export async function notifyUser({
   title,
   message,
   relatedId = null,
+  metadata = null,
   dedupeWindowMs = RECENT_DUPLICATE_WINDOW_MS,
   now = new Date(),
 }) {
@@ -38,7 +49,6 @@ export async function notifyUser({
     return { delivered: false, deduped: false, reason: "missing_user" };
   }
 
-  // Identical recent payloads represent the same event and should not spam the user.
   const sinceIso = new Date(now.getTime() - dedupeWindowMs).toISOString();
   const { data: existing, error: lookupError } = await buildRecentDuplicateLookup({
     supabase,
@@ -58,13 +68,18 @@ export async function notifyUser({
     return { delivered: false, deduped: true, reason: "recent_duplicate" };
   }
 
-  const { error } = await supabase.from("notifications").insert({
+  const insertRow = {
     user_id: userId,
     type,
     title,
     message,
     related_id: relatedId,
-  });
+  };
+  if (metadata && typeof metadata === "object") {
+    insertRow.metadata = metadata;
+  }
+
+  const { error } = await supabase.from("notifications").insert(insertRow);
 
   if (error) {
     throw error;
@@ -80,6 +95,7 @@ export async function notifyTeamOwner({
   title,
   message,
   relatedId = null,
+  metadata = null,
   dedupeWindowMs = RECENT_DUPLICATE_WINDOW_MS,
   now = new Date(),
 }) {
@@ -104,6 +120,7 @@ export async function notifyTeamOwner({
     title,
     message,
     relatedId,
+    metadata,
     dedupeWindowMs,
     now,
   });

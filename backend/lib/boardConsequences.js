@@ -64,16 +64,31 @@ export const CONSEQUENCE_LAYERS = {
   BONUS_OFFER: 6,
 };
 
-const LAYER_LABELS = {
-  2: "Lønloft",
-  3: "Underskriv-restriktion",
-  4: "Tvunget salg",
-  5: "Sponsor-pull-out",
-  6: "Bonus-tilbud",
+// #666: layer-labels nu via i18n. Backend returnerer en kode-key så frontend
+// kan slå op via t() i backendMessages-namespace. EN/DA fallback for legacy-
+// kald af getLayerLabel returneres som plain EN.
+const LAYER_LABELS_EN = {
+  2: "Salary cap",
+  3: "Signing restriction",
+  4: "Forced listing",
+  5: "Sponsor pullout",
+  6: "Bonus offer",
+};
+
+const LAYER_LABEL_KEYS = {
+  2: "consequence.layer.salaryCap",
+  3: "consequence.layer.signingRestriction",
+  4: "consequence.layer.forcedListing",
+  5: "consequence.layer.sponsorPullout",
+  6: "consequence.layer.bonusOffer",
 };
 
 export function getLayerLabel(layer) {
-  return LAYER_LABELS[layer] || `Lag ${layer}`;
+  return LAYER_LABELS_EN[layer] || `Layer ${layer}`;
+}
+
+export function getLayerLabelKey(layer) {
+  return LAYER_LABEL_KEYS[layer] || "consequence.layerFallback";
 }
 
 function ensureSupabase(supabase) {
@@ -155,7 +170,12 @@ export async function assertSigningAllowed({ supabase, buyerTeamId, riderId, pur
       code: "board_signing_restriction",
       layer: CONSEQUENCE_LAYERS.SIGNING_RESTRICTION,
       threshold: restriction.severity,
-      reason: `Bestyrelsen blokerer køb over ${restriction.severity.toLocaleString("da-DK")} CZ$ (tilfredshed under ${SATISFACTION_THRESHOLDS.SIGNING_RESTRICTION}%).`,
+      reason: `The board blocks purchases above ${restriction.severity} CZ$ (satisfaction below ${SATISFACTION_THRESHOLDS.SIGNING_RESTRICTION}%).`,
+      reasonCode: "error.boardSigningRestriction",
+      reasonParams: {
+        threshold: restriction.severity,
+        satisfaction: SATISFACTION_THRESHOLDS.SIGNING_RESTRICTION,
+      },
     };
   }
 
@@ -186,7 +206,9 @@ export async function assertSigningAllowed({ supabase, buyerTeamId, riderId, pur
         code: "board_salary_cap",
         layer: CONSEQUENCE_LAYERS.SALARY_CAP,
         threshold: cap.severity,
-        reason: `Lønloft pålagt af bestyrelsen (${cap.severity.toLocaleString("da-DK")} CZ$). Du kan ikke øge holdets samlede løn — sælg en rytter først.`,
+        reason: `Salary cap set by the board (${cap.severity} CZ$). You cannot increase the team's total salary — sell a rider first.`,
+        reasonCode: "error.boardSalaryCap",
+        reasonParams: { cap: cap.severity },
       };
     }
   }
@@ -245,13 +267,16 @@ export function selectBonusExtraGoal(board) {
     return {
       type: "signature_rider",
       target: 75,
-      label: "Sign 1 stjerne (popularity ≥75)",
+      // EN fallback label for legacy callers; #666 prefers labelKey for i18n.
+      label: "Sign 1 star (popularity ≥75)",
+      labelKey: "consequence.bonusGoal.signatureRider",
     };
   }
   return {
     type: "monument_podium",
     target: 1,
-    label: "Top-3 i mindst 1 monument",
+    label: "Top 3 in at least 1 monument",
+    labelKey: "consequence.bonusGoal.monumentPodium",
   };
 }
 
@@ -382,7 +407,7 @@ export async function evaluateAndApplyConsequences({
         } else {
           const riderName = target.firstname && target.lastname
             ? `${target.firstname} ${target.lastname}`
-            : `Rytter ${target.id}`;
+            : `Rider ${target.id}`;
           await supabase.from("board_consequences").insert({
             ...baseRow,
             layer: CONSEQUENCE_LAYERS.FORCED_LISTING,
@@ -398,8 +423,18 @@ export async function evaluateAndApplyConsequences({
           if (notify) {
             await notify({
               type: "board_critical",
-              title: "Bestyrelsen kræver salg",
-              message: `Tilfredsheden er på ${newSatisfaction}%. Bestyrelsen har tvangs-listet ${riderName} til ${askingPrice.toLocaleString("da-DK")} CZ$.`,
+              title: "The board demands a sale",
+              message: `Satisfaction is at ${newSatisfaction}%. The board has force-listed ${riderName} at ${askingPrice} CZ$.`,
+              metadata: {
+                titleCode: "notif.boardForcedListing.title",
+                titleParams: {},
+                messageCode: "notif.boardForcedListing.message",
+                messageParams: {
+                  satisfaction: newSatisfaction,
+                  riderName,
+                  askingPrice,
+                },
+              },
             });
           }
         }
@@ -434,8 +469,14 @@ export async function evaluateAndApplyConsequences({
       if (notify) {
         await notify({
           type: "board_critical",
-          title: "Sponsor trækker sig",
-          message: `Bestyrelsen melder, at en hovedsponsor har trukket sig efter sæsonen. Sponsorindtægten reduceres med 10% i den næste sæson.`,
+          title: "Sponsor pulls out",
+          message: "The board reports that a main sponsor has pulled out after the season. Sponsor income drops by 10% next season.",
+          metadata: {
+            titleCode: "notif.boardSponsorPullout.title",
+            titleParams: {},
+            messageCode: "notif.boardSponsorPullout.message",
+            messageParams: {},
+          },
         });
       }
     }
@@ -480,8 +521,20 @@ export async function evaluateAndApplyConsequences({
         if (notify) {
           await notify({
             type: "board_critical",
-            title: "Bonus-tilbud fra bestyrelsen",
-            message: `Bestyrelsen er imponeret (${newSatisfaction}% tilfredshed, ${goalsMet}/${goalsTotal} mål nået). De tilbyder +${BONUS_OFFER_AMOUNT.toLocaleString("da-DK")} CZ$ mod ekstra-mål: ${extraGoal.label}. Acceptér eller afvis på Bestyrelse-siden.`,
+            title: "Bonus offer from the board",
+            message: `The board is impressed (${newSatisfaction}% satisfaction, ${goalsMet}/${goalsTotal} goals met). They offer +${BONUS_OFFER_AMOUNT} CZ$ for an extra goal: ${extraGoal.label}. Accept or decline on the Board page.`,
+            metadata: {
+              titleCode: "notif.boardBonusOffer.title",
+              titleParams: {},
+              messageCode: "notif.boardBonusOffer.message",
+              messageParams: {
+                satisfaction: newSatisfaction,
+                goalsMet,
+                goalsTotal,
+                bonusAmount: BONUS_OFFER_AMOUNT,
+                goalLabelKey: extraGoal.labelKey || null,
+              },
+            },
           });
         }
       }

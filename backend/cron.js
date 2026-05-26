@@ -120,7 +120,7 @@ export async function checkDebtWarnings({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function notifyTeamOwner(teamId, type, title, message, relatedId = null) {
+async function notifyTeamOwner(teamId, type, title, message, relatedId = null, metadata = null) {
   await notifyTeamOwnerShared({
     supabase,
     teamId,
@@ -128,6 +128,7 @@ async function notifyTeamOwner(teamId, type, title, message, relatedId = null) {
     title,
     message,
     relatedId,
+    metadata,
   });
 }
 

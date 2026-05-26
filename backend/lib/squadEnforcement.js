@@ -247,7 +247,7 @@ async function applyFinesAndPenalty({
     payload: {
       type: "squad_violation_fine",
       amount: -fineAmount,
-      description: `Trupstørrelse-bøde: ${deviatingCount} afvigende rytter${deviatingCount === 1 ? "" : "e"} × ${SQUAD_FINE_AMOUNT.toLocaleString("da-DK")} CZ$`,
+      description: null,
       season_id: seasonId,
       actor_type: FINANCE_ACTOR_TYPE.CRON,
       actor_id: null,
@@ -256,6 +256,10 @@ async function applyFinesAndPenalty({
       related_entity_type: FINANCE_RELATED_ENTITY.SEASON,
       related_entity_id: seasonId || null,
       idempotency_key: idempotencyKey,
+      metadata: {
+        code: deviatingCount === 1 ? "tx.squadFineSingle" : "tx.squadFineMulti",
+        params: { count: deviatingCount, amount: SQUAD_FINE_AMOUNT },
+      },
     },
   }, { allowDuplicate: Boolean(idempotencyKey) });
 
@@ -387,25 +391,27 @@ export async function enforceTeamSquadCompliance({
   });
 
   // Notifikation til ramt manager (ikke spam — én pr. enforcement).
+  // #666: alle strenge bygges på EN; full structured i18n via metadata på
+  // selve notif-kaldet nedenfor (squad_enforced.* keys i backendMessages).
   const summaryLines = [];
   if (purchases.length) {
     summaryLines.push(
-      `Auto-købt ${purchases.length} rytter${purchases.length === 1 ? "" : "e"}: ${purchases.map(p => p.riderName).join(", ")}`
+      `Auto-purchased ${purchases.length} rider${purchases.length === 1 ? "" : "s"}: ${purchases.map(p => p.riderName).join(", ")}`
     );
   }
   if (sales.length) {
     summaryLines.push(
-      `Auto-solgt ${sales.length} rytter${sales.length === 1 ? "" : "e"}: ${sales.map(s => s.riderName).join(", ")}`
+      `Auto-sold ${sales.length} rider${sales.length === 1 ? "" : "s"}: ${sales.map(s => s.riderName).join(", ")}`
     );
   }
   summaryLines.push(
-    `Bøde: ${fineAmount.toLocaleString("da-DK")} CZ$ · Fradrag: ${penaltyPoints} point`
+    `Fine: ${fineAmount} CZ$ · Deduction: ${penaltyPoints} points`
   );
 
   await notifyTeamOwner(
     teamId,
     "squad_enforced",
-    "Trupstørrelse-håndhævet",
+    "Squad size enforced",
     summaryLines.join("\n"),
     null
   );

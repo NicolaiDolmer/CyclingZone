@@ -35,10 +35,11 @@ test("CONSEQUENCE_LAYERS maps lag 2-6 to numeric values", () => {
   assert.equal(CONSEQUENCE_LAYERS.BONUS_OFFER, 6);
 });
 
-test("getLayerLabel returns Danish labels for known lag", () => {
-  assert.equal(getLayerLabel(2), "Lønloft");
-  assert.equal(getLayerLabel(4), "Tvunget salg");
-  assert.equal(getLayerLabel(99), "Lag 99");
+test("getLayerLabel returns EN labels for known lag (i18n via getLayerLabelKey)", () => {
+  // #666: getLayerLabel returnerer EN; locale-rendering kommer fra getLayerLabelKey via i18n.
+  assert.equal(getLayerLabel(2), "Salary cap");
+  assert.equal(getLayerLabel(4), "Forced listing");
+  assert.equal(getLayerLabel(99), "Layer 99");
 });
 
 test("CONSEQUENCE_CONSTANTS lock Q-batch 1B Q11 thresholds", () => {
@@ -263,9 +264,12 @@ test("evaluateAndApplyConsequences inserts forced_listing at sat<15 + sends noti
   assert.equal(consequence.payload.rider_id, "r-cheap");
   assert.equal(consequence.payload.listing_id, listing.id);
 
-  const notif = notifications.find((n) => n.title === "Bestyrelsen kræver salg");
+  const notif = notifications.find((n) => n.title === "The board demands a sale");
   assert.ok(notif);
   assert.equal(notif.type, "board_critical");
+  // #666: metadata sikrer locale-rendering i frontend
+  assert.equal(notif.metadata?.titleCode, "notif.boardForcedListing.title");
+  assert.equal(notif.metadata?.messageCode, "notif.boardForcedListing.message");
 });
 
 test("evaluateAndApplyConsequences skips forced_listing when no eligible rider exists", async () => {
@@ -313,9 +317,10 @@ test("evaluateAndApplyConsequences inserts sponsor_pullout at sat<10", async () 
   assert.equal(pullout.expires_at_season_id, "season-1");
   assert.equal(pullout.payload.trigger, "low_satisfaction");
 
-  const notif = notifications.find((n) => n.title === "Sponsor trækker sig");
+  const notif = notifications.find((n) => n.title === "Sponsor pulls out");
   assert.ok(notif);
   assert.equal(notif.type, "board_critical");
+  assert.equal(notif.metadata?.titleCode, "notif.boardSponsorPullout.title");
 });
 
 test("evaluateAndApplyConsequences inserts sponsor_pullout via 2x plan-lapse trigger", async () => {
@@ -378,8 +383,10 @@ test("evaluateAndApplyConsequences inserts bonus_offer at sat>75 + ≥75% goals 
   assert.equal(offer.payload.extra_goal_type, "monument_podium");
   assert.equal(offer.expires_at_season_id, "season-1");
 
-  const notif = notifications.find((n) => n.title === "Bonus-tilbud fra bestyrelsen");
+  const notif = notifications.find((n) => n.title === "Bonus offer from the board");
   assert.ok(notif);
+  assert.equal(notif.metadata?.titleCode, "notif.boardBonusOffer.title");
+  assert.equal(notif.metadata?.messageCode, "notif.boardBonusOffer.message");
 });
 
 test("evaluateAndApplyConsequences uses signature_rider extra-goal for star_signing focus", async () => {
