@@ -41,7 +41,10 @@ import {
 } from "../lib/auctionFinalization.js";
 import {
   buildTransitionPlan,
+  closePrevTransferWindow,
   computeSeasonUuid,
+  computeTransferWindowUuid,
+  insertTransferWindowIfMissing,
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
@@ -3318,12 +3321,34 @@ router.post("/admin/seasons/:id/start", requireAdmin, adminWriteLimiter, async (
     const seasonStartResult = await processSeasonStart(seasonId);
     const sponsorPayouts = (seasonStartResult?.sponsor || []).length;
 
+    // #532 — konvergér manual flow med seasonTransition-engine:
+    // Eksisterende manual flow oprettede ikke transfer_windows-rows; det betød
+    // forrige sæsons window forblev "open" efter manuel sæsonstart, og den nye
+    // sæson havde 0 windows. Engine bruger deterministisk UUID-mønster (`...XXXXaaaa`).
+    const transitionAtIso = startedSeason.start_date
+      ? `${startedSeason.start_date}T00:00:00.000Z`
+      : new Date().toISOString();
+
+    let prevWindowResult = { skipped: true, reason: "no previous season (sæson 0)" };
+    if (startedSeason.number > 0) {
+      const prevSeasonId = computeSeasonUuid(startedSeason.number - 1);
+      prevWindowResult = await closePrevTransferWindow(supabase, prevSeasonId, transitionAtIso);
+    }
+    const newWindowResult = await insertTransferWindowIfMissing(
+      supabase,
+      computeTransferWindowUuid(startedSeason.number),
+      startedSeason.id,
+      transitionAtIso,
+    );
+
     await logActivity("season_started", {
       meta: {
         season_id: startedSeason.id,
         season_number: startedSeason.number,
         standings_initialized: standings.created,
         sponsor_payouts: sponsorPayouts,
+        transfer_window_inserted: !!newWindowResult.inserted,
+        prev_transfer_window_closed: !!prevWindowResult.updated,
       },
     });
 
@@ -3335,6 +3360,8 @@ router.post("/admin/seasons/:id/start", requireAdmin, adminWriteLimiter, async (
       number: startedSeason.number,
       standings_initialized: standings.created,
       sponsor_payouts: sponsorPayouts,
+      transfer_window: newWindowResult,
+      prev_transfer_window: prevWindowResult,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -3376,13 +3403,30 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
       }
     }
 
-    await ensureSeasonStandings(seasonId);
-    await updateStandings(seasonId);
-    await processSeasonEnd(seasonId);
+    // #532 — skip processSeasonEnd for sæson 0 (open-beta-fase uden løb/standings/lønninger).
+    // seasonTransition-engine har samme special-case (se backend/lib/seasonTransition.js linje 17-21).
+    // Hvis vi kører processSeasonEnd på sæson 0 ville ensureSeasonStandings oprette 24 tomme
+    // 0-point standings-rows, processSeasonEnd ville loope dem gennem processTeamSeasonEnd
+    // (salary, division-logic, payDivisionBonuses, processDivisionEnd) — formentlig harmløst
+    // men IKKE verificeret. Lige som engine sætter vi blot status='completed' direkte.
+    if (season.number === 0) {
+      // Sæson 0: ingen processSeasonEnd, ingen standings-init.
+    } else {
+      await ensureSeasonStandings(seasonId);
+      await updateStandings(seasonId);
+      await processSeasonEnd(seasonId);
+    }
 
+    // #532 — eksplicit status='completed' i seasons.update():
+    // For sæson ≥ 1 sætter processSeasonEnd det allerede; vores re-set er idempotent.
+    // For sæson 0 er denne update den eneste source af completed-flagget — uden den
+    // ville sæson 0 forblive i status='active' efter manuel ⏹ Afslut (pre-#532-bug).
     const { data: endedSeason, error: endError } = await supabase
       .from("seasons")
-      .update({ end_date: season.end_date || today })
+      .update({
+        status: "completed",
+        end_date: season.end_date || today,
+      })
       .eq("id", seasonId)
       .select("*")
       .single();

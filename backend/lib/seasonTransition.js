@@ -224,7 +224,14 @@ async function markSeasonCompleted(supabase, seasonId, transitionAtIso) {
   return { updated: true };
 }
 
-async function closePrevTransferWindow(supabase, fromSeasonId, transitionAtIso) {
+/**
+ * Lukker tidligere sæsons transfer_window (status='closed', closed_at sat).
+ * Idempotent: skipper hvis intet vindue eller allerede lukket.
+ *
+ * Eksporteret i #532 så manuel admin-flow (`POST /admin/seasons/:id/start`)
+ * kan konvergere med engine — manual flow åbnede ikke nye windows.
+ */
+export async function closePrevTransferWindow(supabase, fromSeasonId, transitionAtIso) {
   const { data: window } = await supabase
     .from("transfer_windows")
     .select("id, status")
@@ -249,7 +256,15 @@ async function closePrevTransferWindow(supabase, fromSeasonId, transitionAtIso) 
   return { updated: true, window_id: window.id };
 }
 
-async function insertTransferWindowIfMissing(supabase, windowId, seasonId, transitionAtIso) {
+/**
+ * Indsætter nyt transfer_window for kommende sæson hvis ikke allerede tilstede.
+ * Status='closed' fordi racing-sæsoner starter med lukket transfer-window
+ * (åbnes manuelt/cron senere ved deadline-day-flow).
+ *
+ * Eksporteret i #532 så manuel admin-flow (`POST /admin/seasons/:id/start`)
+ * kan oprette deterministisk UUID-window matching engine's pattern.
+ */
+export async function insertTransferWindowIfMissing(supabase, windowId, seasonId, transitionAtIso) {
   const { data: existing } = await supabase
     .from("transfer_windows").select("id, status").eq("id", windowId).maybeSingle();
 

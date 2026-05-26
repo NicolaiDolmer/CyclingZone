@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 
 import {
   buildTransitionPlan,
+  closePrevTransferWindow,
   computeSeasonUuid,
   computeTransferWindowUuid,
+  insertTransferWindowIfMissing,
   transitionToNextSeason,
 } from "./seasonTransition.js";
 
@@ -646,3 +648,104 @@ test("transitionToNextSeason — sæson 1's transfer_window oprettes som 'closed
   assert.ok(sæson1Window, "Sæson 1's transfer_window skal oprettes");
   assert.equal(sæson1Window.status, "closed", "Racing-sæson har lukket transfervindue");
 });
+
+// ─── #532 — exported transfer-window helpers (manual admin flow) ─────────────
+//
+// Disse helpers var tidligere private til transitionToNextSeason. De er
+// eksporteret som del af #532 så `POST /admin/seasons/:id/start` kan opnå samme
+// transfer_window-plumbing som engine-flowet. Unit-tests her verificerer at
+// helperne fungerer korrekt når de kaldes standalone fra api.js.
+
+test("closePrevTransferWindow — lukker eksisterende open window for prev season", async () => {
+  const supabase = createMockSupabase({
+    transfer_windows: [
+      { id: "win-prev", season_id: "season-prev", status: "open", created_at: "2026-05-01T00:00:00Z" },
+    ],
+  });
+
+  const result = await closePrevTransferWindow(supabase, "season-prev", "2026-05-26T00:00:00Z");
+
+  assert.equal(result.updated, true);
+  assert.equal(result.window_id, "win-prev");
+  const updated = supabase.__state.transfer_windows.find((w) => w.id === "win-prev");
+  assert.equal(updated.status, "closed");
+  assert.equal(updated.closed_at, "2026-05-26T00:00:00Z");
+});
+
+test("closePrevTransferWindow — idempotent: skipper hvis window allerede lukket", async () => {
+  const supabase = createMockSupabase({
+    transfer_windows: [
+      { id: "win-prev", season_id: "season-prev", status: "closed", created_at: "2026-05-01T00:00:00Z" },
+    ],
+  });
+
+  const result = await closePrevTransferWindow(supabase, "season-prev", "2026-05-26T00:00:00Z");
+
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, "already closed");
+  assert.equal(result.window_id, "win-prev");
+});
+
+test("closePrevTransferWindow — skipper hvis intet window findes (e.g. sæson 0 først)", async () => {
+  const supabase = createMockSupabase({ transfer_windows: [] });
+
+  const result = await closePrevTransferWindow(supabase, "season-prev", "2026-05-26T00:00:00Z");
+
+  assert.equal(result.skipped, true);
+  assert.match(result.reason, /no transfer_window/);
+});
+
+test("insertTransferWindowIfMissing — opretter nyt closed window når ikke til stede", async () => {
+  const supabase = createMockSupabase({ transfer_windows: [] });
+
+  const result = await insertTransferWindowIfMissing(
+    supabase,
+    "00000000-0000-0000-0000-00000002aaaa",
+    "season-2",
+    "2026-05-26T00:00:00Z",
+  );
+
+  assert.equal(result.inserted, true);
+  assert.equal(result.window_id, "00000000-0000-0000-0000-00000002aaaa");
+  const inserted = supabase.__state.transfer_windows[0];
+  assert.equal(inserted.id, "00000000-0000-0000-0000-00000002aaaa");
+  assert.equal(inserted.season_id, "season-2");
+  assert.equal(inserted.status, "closed", "Racing-sæson har lukket window from start");
+  assert.equal(inserted.created_at, "2026-05-26T00:00:00Z");
+});
+
+test("insertTransferWindowIfMissing — idempotent: skipper hvis window allerede eksisterer", async () => {
+  const supabase = createMockSupabase({
+    transfer_windows: [
+      { id: "00000000-0000-0000-0000-00000002aaaa", season_id: "season-2", status: "open", created_at: "2026-05-26T00:00:00Z" },
+    ],
+  });
+
+  const result = await insertTransferWindowIfMissing(
+    supabase,
+    "00000000-0000-0000-0000-00000002aaaa",
+    "season-2",
+    "2026-05-27T00:00:00Z",
+  );
+
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, "window already exists");
+  assert.equal(result.status, "open", "rapporterer eksisterende status så caller kan reagere");
+  assert.equal(supabase.__state.transfer_windows.length, 1, "ingen ny row indsat");
+});
+
+test("insertTransferWindowIfMissing — manual flow på sæson 1 matcher engine's deterministiske UUID", async () => {
+  const supabase = createMockSupabase({ transfer_windows: [] });
+
+  // Simulér api.js manual flow: kalder helperen med computeTransferWindowUuid(1)
+  await insertTransferWindowIfMissing(
+    supabase,
+    computeTransferWindowUuid(1),
+    "00000000-0000-0000-0000-000000000001",
+    "2026-05-26T00:00:00Z",
+  );
+
+  const window = supabase.__state.transfer_windows[0];
+  assert.equal(window.id, "00000000-0000-0000-0000-00000001aaaa", "matcher engine's UUID-mønster");
+});
+
