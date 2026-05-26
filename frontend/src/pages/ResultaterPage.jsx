@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
+import { formatNumber } from "../lib/intl";
 
 const HUB_LINKS = [
   { to: "/standings",          label: "Ranglisten",      desc: "Holdranglisten for aktiv sæson",              icon: "🏆" },
@@ -130,7 +131,7 @@ export default function ResultaterPage() {
                       </p>
                     </div>
                     <span className="font-mono font-bold text-cz-accent-t text-sm">
-                      {(s.total_points || 0).toLocaleString("da-DK")} pt
+                      {formatNumber(s.total_points || 0)} pt
                     </span>
                   </div>
                 ))}
@@ -169,7 +170,7 @@ export default function ResultaterPage() {
                       </p>
                     </div>
                     <span className="font-mono font-bold text-cz-accent-t text-sm">
-                      {(a.points || 0).toLocaleString("da-DK")} pt
+                      {formatNumber(a.points || 0)} pt
                     </span>
                   </RiderLink>
                 ))}

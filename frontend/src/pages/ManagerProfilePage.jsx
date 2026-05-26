@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
 import OnlineBadge from "../components/OnlineBadge";
+import { formatNumber, formatDate } from "../lib/intl";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -27,7 +28,7 @@ function AchievementBadge({ achievement }) {
         )}
         {achievement.unlocked_at && (
           <p className="text-cz-accent-t/60 text-[9px] mt-1">
-            {new Date(achievement.unlocked_at).toLocaleDateString("da-DK")}
+            {formatDate(achievement.unlocked_at)}
           </p>
         )}
       </div>
@@ -187,7 +188,7 @@ export default function ManagerProfilePage() {
                         </p>
                       </div>
                       <span className={`font-mono font-bold text-sm ${isBuyer ? "text-cz-danger" : "text-cz-success"}`}>
-                        {isBuyer ? "-" : "+"}{t.offer_amount?.toLocaleString("da-DK")} CZ$
+                        {isBuyer ? "-" : "+"}{formatNumber(t.offer_amount)} CZ$
                       </span>
                     </div>
                   );
@@ -222,7 +223,7 @@ export default function ManagerProfilePage() {
                       </RiderLink>
                       {r.is_u25 && <span className="text-[9px] bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>}
                     </td>
-                    <td className="px-4 py-3 text-right text-cz-accent-t font-mono text-sm">{r.uci_points?.toLocaleString("da-DK")}</td>
+                    <td className="px-4 py-3 text-right text-cz-accent-t font-mono text-sm">{formatNumber(r.uci_points)}</td>
                     <td className="px-4 py-3 text-right text-cz-2 text-sm hidden sm:table-cell">{r.stat_bj || "—"}</td>
                     <td className="px-4 py-3 text-right text-cz-2 text-sm hidden sm:table-cell">{r.stat_sp || "—"}</td>
                     <td className="px-4 py-3 text-right text-cz-2 text-sm hidden sm:table-cell">{r.stat_tt || "—"}</td>
@@ -251,7 +252,7 @@ export default function ManagerProfilePage() {
                   <tr key={s.id} className="border-b border-cz-border last:border-0">
                     <td className="px-4 py-3 text-cz-1 text-sm">Sæson {s.season?.number}</td>
                     <td className="px-4 py-3 text-center text-cz-2 text-sm">Div. {s.division}</td>
-                    <td className="px-4 py-3 text-right text-cz-accent-t font-mono text-sm">{s.total_points?.toLocaleString("da-DK")}</td>
+                    <td className="px-4 py-3 text-right text-cz-accent-t font-mono text-sm">{formatNumber(s.total_points)}</td>
                     <td className="px-4 py-3 text-right">
                       {s.final_rank === 1
                         ? <span className="text-cz-accent-t font-bold text-sm">🏆 #1</span>

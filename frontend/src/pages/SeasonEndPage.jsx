@@ -2,6 +2,7 @@
 import { supabase } from "../lib/supabase";
 import { useNavigate, useParams } from "react-router-dom";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
+import { formatNumber } from "../lib/intl";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
 
@@ -12,7 +13,7 @@ const RACE_STATUS_LABEL = {
 };
 
 function formatCZ(amount) {
-  return `${(amount || 0).toLocaleString("da-DK")} CZ$`;
+  return `${formatNumber(amount || 0)} CZ$`;
 }
 
 function MiniLineChart({ data, color }) {
@@ -414,7 +415,7 @@ export default function SeasonEndPage() {
                             </td>
                             <td className="px-4 py-3 text-right">
                               <span className="font-mono font-bold" style={{ color }}>
-                                {s.total_points?.toLocaleString("da-DK") || 0}
+                                {formatNumber(s.total_points) || 0}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right hidden md:table-cell">
@@ -518,7 +519,7 @@ function PointChart({ data, labels, color }) {
         {data.map((v, i) => (
           <span key={i} className="text-[9px] font-mono text-center"
             style={{ color, width: `${100 / data.length}%` }}>
-            {v > 0 ? v.toLocaleString("da-DK") : ""}
+            {v > 0 ? formatNumber(v) : ""}
           </span>
         ))}
       </div>

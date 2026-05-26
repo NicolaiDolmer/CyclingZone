@@ -4,6 +4,7 @@ import { useNavigate, NavLink } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
+import { formatNumber, formatDate } from "../lib/intl";
 
 function timeAgo(dateStr) {
   if (!dateStr) return "—";
@@ -15,7 +16,7 @@ function timeAgo(dateStr) {
   if (m < 60) return `${m}m siden`;
   if (h < 24) return `${h}t siden`;
   if (d < 7) return `${d}d siden`;
-  return new Date(dateStr).toLocaleDateString("da-DK");
+  return formatDate(dateStr);
 }
 
 function isAuctionSeller(auction, teamId) {
@@ -163,8 +164,8 @@ export default function AuctionHistoryPage() {
         {[
           { label: "Købt", value: myWins, color: "text-cz-accent-t" },
           { label: "Solgt", value: mySales, color: "text-cz-info" },
-          { label: "Brugt", value: `${totalSpent.toLocaleString("da-DK")} CZ$`, color: "text-cz-danger" },
-          { label: "Tjent", value: `${totalEarned.toLocaleString("da-DK")} CZ$`, color: "text-cz-success" },
+          { label: "Brugt", value: `${formatNumber(totalSpent)} CZ$`, color: "text-cz-danger" },
+          { label: "Tjent", value: `${formatNumber(totalEarned)} CZ$`, color: "text-cz-success" },
         ].map(s => (
           <div key={s.label} className="bg-cz-card border border-cz-border rounded-xl p-3 text-center">
             <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{s.label}</p>
@@ -246,7 +247,7 @@ export default function AuctionHistoryPage() {
                           </>
                         )}
                       </div>
-                      <p className="text-cz-3 text-xs mt-0.5">UCI: {a.rider?.uci_points?.toLocaleString("da-DK")} pt — Løn: {a.rider?.salary ? `${a.rider.salary.toLocaleString("da-DK")} CZ$` : "—"}</p>
+                      <p className="text-cz-3 text-xs mt-0.5">UCI: {formatNumber(a.rider?.uci_points)} pt — Løn: {a.rider?.salary ? `${formatNumber(a.rider.salary)} CZ$` : "—"}</p>
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <TeamLink id={a.seller?.id} stopPropagation className="text-cz-2">{a.seller?.name || "—"}</TeamLink>
@@ -265,12 +266,12 @@ export default function AuctionHistoryPage() {
                         // #244: self-purchase = ingen netto-flow (selv→selv).
                         // Vis neutral pris uden +/- prefix og uden danger/success-farve.
                         <span className="font-mono font-bold text-cz-2">
-                          {a.current_price?.toLocaleString("da-DK")} CZ$
+                          {formatNumber(a.current_price)} CZ$
                         </span>
                       ) : (
                         <span className={`font-mono font-bold
                           ${iWon ? "text-cz-danger" : iSold ? "text-cz-success" : "text-cz-accent-t"}`}>
-                          {iWon ? "-" : iSold ? "+" : ""}{a.current_price?.toLocaleString("da-DK")} CZ$
+                          {iWon ? "-" : iSold ? "+" : ""}{formatNumber(a.current_price)} CZ$
                         </span>
                       )}
                     </td>

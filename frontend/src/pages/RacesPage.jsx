@@ -5,6 +5,7 @@ import RiderLink from "../components/RiderLink";
 import RacePointsPage from "./RacePointsPage";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
+import { formatDateTime } from "../lib/intl";
 
 const RESULT_TYPES = [
   { key: "stage", label: "Etape" },
@@ -870,7 +871,7 @@ function PendingSubmission({ submission, onApprove, onReject }) {
         <div>
           <p className="text-cz-1 font-semibold">{submission.race?.name}</p>
           <p className="text-cz-3 text-xs mt-0.5">
-            Indsendt af {submission.submitter?.username} · {new Date(submission.submitted_at).toLocaleString("da-DK")}
+            Indsendt af {submission.submitter?.username} · {formatDateTime(submission.submitted_at)}
           </p>
         </div>
         <div className="flex gap-2">

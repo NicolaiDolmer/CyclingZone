@@ -2,6 +2,7 @@
 import { supabase } from "../lib/supabase";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
+import { formatNumber } from "../lib/intl";
 
 const CATEGORIES = [
   { key: "most_points_season", label: "Flest point i én sæson", icon: "🏆", unit: "point", color: "#e8c547" },
@@ -169,7 +170,7 @@ export default function HallOfFamePage() {
                           </td>
                           <td className="px-5 py-3 text-right">
                             <span className="font-mono font-bold text-lg" style={{ color: cat.color }}>
-                              {e.value?.toLocaleString("da-DK")}
+                              {formatNumber(e.value)}
                             </span>
                             <span className="text-cz-3 text-xs ms-1">{cat.unit}</span>
                           </td>
@@ -272,7 +273,7 @@ export default function HallOfFamePage() {
                             </TeamLink>
                           </td>
                           <td className="px-5 py-2.5 text-right text-cz-accent-t font-mono font-bold">
-                            {s.total_points?.toLocaleString("da-DK")} pt
+                            {formatNumber(s.total_points)} pt
                           </td>
                           <td className="px-5 py-2.5 text-right text-cz-2 text-xs">
                             {s.stage_wins || 0} etapesejre

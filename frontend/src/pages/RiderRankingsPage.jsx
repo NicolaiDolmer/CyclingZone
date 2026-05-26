@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
+import { formatNumber } from "../lib/intl";
 
 const SORT_COLS = [
   { key: "points",      label: "Point",              shortLabel: "Pt" },
@@ -215,7 +216,7 @@ export default function RiderRankingsPage() {
                     {/* Point — bold, sorted col highlighted */}
                     <td className={`px-3 py-3 text-right font-mono font-bold
                       ${sortKey === "points" ? "text-cz-accent-t" : "text-cz-1"}`}>
-                      {(rider.points || 0).toLocaleString("da-DK")}
+                      {formatNumber(rider.points || 0)}
                     </td>
                     <StatCell value={rider.total_wins}  active={sortKey === "total_wins"} />
                     <StatCell value={rider.stage_wins}  active={sortKey === "stage_wins"} />

@@ -7,6 +7,7 @@ import RiderLink from "../components/RiderLink";
 import { statBg } from "../lib/statBg";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import { formatNumber } from "../lib/intl";
 import PotentialeStars from "../components/PotentialeStars";
 import WatchlistStar from "../components/WatchlistStar";
 import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSelection";
@@ -91,7 +92,7 @@ export default function WatchlistPage() {
         const fine = warning.finePerRider * warning.exceedBy;
         const points = warning.penaltyPointsPerRider * warning.exceedBy;
         alert(`Auktion startet.\n\nOBS: leder nu auktioner svarende til ${warning.totalAfter} ryttere (max ${warning.maxRiders}). ` +
-          `Hvis du stadig er ${warning.exceedBy} over ved vindue-luk: auto-salg + ${fine.toLocaleString("da-DK")} CZ$ bøde + ${points} fradrag-points.`);
+          `Hvis du stadig er ${warning.exceedBy} over ved vindue-luk: auto-salg + ${formatNumber(fine)} CZ$ bøde + ${points} fradrag-points.`);
       }
       navigate("/auctions");
     } else { const d = await res.json(); alert(d.error); }
@@ -217,7 +218,7 @@ export default function WatchlistPage() {
                           {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
                         </td>
                         <td className="px-3 py-2.5 text-right text-cz-2 font-mono">
-                          {r.salary ? r.salary.toLocaleString("da-DK") : "—"}
+                          {r.salary ? formatNumber(r.salary) : "—"}
                         </td>
                         <td className="px-3 py-2.5">
                           <PotentialeStars value={r.potentiale} birthdate={r.birthdate} />
@@ -271,7 +272,7 @@ export default function WatchlistPage() {
           {/* Pagination */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
             <span className="text-cz-3 text-xs">
-              Viser {total === 0 ? 0 : pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, total)} af {total.toLocaleString("da-DK")}
+              Viser {total === 0 ? 0 : pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, total)} af {formatNumber(total)}
             </span>
             <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
               <button disabled={safePage <= 1}

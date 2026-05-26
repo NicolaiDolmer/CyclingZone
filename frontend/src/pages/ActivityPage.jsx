@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import { getRiderMarketValue } from "../lib/marketValues";
 import WatchlistStar from "../components/WatchlistStar";
+import { formatNumber, formatDate } from "../lib/intl";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -17,7 +18,7 @@ function timeAgo(dateStr) {
   if (m < 60) return `${m}m siden`;
   if (h < 24) return `${h}t siden`;
   if (d < 7) return `${d}d siden`;
-  return new Date(dateStr).toLocaleDateString("da-DK");
+  return formatDate(dateStr);
 }
 
 function isAuctionSeller(auction, teamId) {
@@ -123,7 +124,7 @@ function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, 
       {children}
       {amount != null && (
         <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap flex-shrink-0">
-          {amount.toLocaleString("da-DK")} CZ$
+          {formatNumber(amount)} CZ$
         </span>
       )}
       {time && <span className="text-xs text-cz-3 whitespace-nowrap flex-shrink-0">{time}</span>}
@@ -561,7 +562,7 @@ export default function ActivityPage() {
                       </span>
                     )}
                     <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap flex-shrink-0">
-                      {getRiderMarketValue(r).toLocaleString("da-DK")} CZ$
+                      {formatNumber(getRiderMarketValue(r))} CZ$
                     </span>
                     <RiderLink id={r?.id}
                       className="text-cz-3 hover:text-cz-accent-t text-sm transition-colors flex-shrink-0">

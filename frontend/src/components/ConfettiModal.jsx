@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react";
+import { formatNumber } from "../lib/intl";
 
 export function ConfettiModal({ show, onClose, title, subtitle, amount, icon = "🏆" }) {
   const [particles, setParticles] = useState([]);
@@ -62,7 +63,7 @@ export function ConfettiModal({ show, onClose, title, subtitle, amount, icon = "
         {subtitle && <p className="text-cz-2 text-sm mb-3">{subtitle}</p>}
         {amount > 0 && (
           <p className="text-cz-accent-t font-mono font-bold text-xl mb-4">
-            {amount.toLocaleString("da-DK")} CZ$
+            {formatNumber(amount)} CZ$
           </p>
         )}
         <p className="text-cz-3 text-xs">Klik for at lukke</p>

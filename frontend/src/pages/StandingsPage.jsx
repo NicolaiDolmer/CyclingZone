@@ -2,6 +2,7 @@
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import TeamLink from "../components/TeamLink";
+import { formatNumber } from "../lib/intl";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
 
@@ -215,12 +216,12 @@ export default function StandingsPage() {
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden md:table-cell font-mono">{s.podiums || 0}</td>
                         <td className="px-4 py-3.5 text-right">
                           <span className="font-mono font-bold" style={{ color: isMe ? "#e8c547" : color }}>
-                            {eff.toLocaleString("da-DK")}
+                            {formatNumber(eff)}
                           </span>
                           {penalty > 0 && (
                             <span
                               className="ms-1.5 font-mono text-[10px] text-cz-danger"
-                              title={`Trupstørrelse-fradrag: ${penalty} point (${(s.total_points || 0).toLocaleString("da-DK")} optjent − ${penalty} fradrag)`}
+                              title={`Trupstørrelse-fradrag: ${penalty} point (${formatNumber(s.total_points || 0)} optjent − ${penalty} fradrag)`}
                             >
                               (−{penalty})
                             </span>

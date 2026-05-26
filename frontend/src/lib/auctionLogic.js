@@ -2,6 +2,8 @@
 // Bruges af både AuctionsPage (table-row + card) og RiderStatsPage (rytter-profil bid-panel)
 // så der er én kilde til sandhed for "hvem leder", "er jeg sælger", warnings osv.
 
+import { formatNumber } from "./intl";
+
 export function isManagerSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
 }
@@ -34,7 +36,7 @@ export function formatBidWarning(warning) {
     const fine = warning.finePerRider * warning.exceedBy;
     const points = warning.penaltyPointsPerRider * warning.exceedBy;
     return `OBS: leder nu auktioner svarende til ${warning.totalAfter} ryttere (max ${warning.maxRiders}). ` +
-      `Hvis du stadig er ${warning.exceedBy} over ved vindue-luk: auto-salg + ${fine.toLocaleString("da-DK")} CZ$ bøde + ${points} fradrag-points.`;
+      `Hvis du stadig er ${warning.exceedBy} over ved vindue-luk: auto-salg + ${formatNumber(fine)} CZ$ bøde + ${points} fradrag-points.`;
   }
   return null;
 }

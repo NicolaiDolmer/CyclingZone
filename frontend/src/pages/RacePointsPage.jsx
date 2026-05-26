@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { formatNumber } from "../lib/intl";
 
 const PRIZE_PER_POINT = 1_500;
 
@@ -50,11 +51,11 @@ const PRIZE_EXAMPLES = [
 ];
 
 function fmt(n) {
-  return n.toLocaleString("da-DK");
+  return formatNumber(n);
 }
 
 function fmtPrize(pts) {
-  return (pts * PRIZE_PER_POINT).toLocaleString("da-DK") + " CZ$";
+  return formatNumber(pts * PRIZE_PER_POINT) + " CZ$";
 }
 
 export default function RacePointsPage() {
