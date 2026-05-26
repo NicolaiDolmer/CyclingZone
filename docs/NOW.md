@@ -1,6 +1,8 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🟢 Session 2026-05-26-C — Infisical Phase 5 + #337 rotation DONE:** PR [#690](https://github.com/NicolaiDolmer/CyclingZone/pull/690) (`feat/infisical-phase-2-5`). Backend dev + audit-scripts via `infisical run --env=dev`. Auto-rotation script `scripts/rotate-supabase-key-dev-from-prod.ps1` synkroniserede Infisical dev fra prod's `sb_secret_*` (legacy disabled JWT erstattet). Doctor: `infisical-cli OK`, `rls-coverage OK`, `feature-liveness OK`. #337 `claude:done`. Follow-up [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) tracker fuld rotation (generér ny key + sync 4 surfaces) per ADR Phase 5.D.
+> **🟢 Session 2026-05-26-D — Phase 5 EmmaPC runtime verify + #687 closeout:** `infisical run --env=dev --recursive -- node backend/scripts/verify-infisical-injection.js` → `INF Injecting 7 Infisical secrets` + 4/5 expected keys present. Nyt genbrugelig verify-script (`backend/scripts/verify-infisical-injection.js`) til NICOLAIPC bootstrap. [#687](https://github.com/NicolaiDolmer/CyclingZone/issues/687) `claude:done` (Phase 5 E NICOLAIPC bootstrap stadig pending).
+
+> **🟢 Session 2026-05-26-C — Infisical Phase 5 + #337 rotation DONE:** PR [#690](https://github.com/NicolaiDolmer/CyclingZone/pull/690) (`feat/infisical-phase-2-5`). Backend dev + audit-scripts via `infisical run --env=dev`. Auto-rotation script `scripts/rotate-supabase-key-dev-from-prod.ps1`. Doctor: `infisical-cli OK`, `rls-coverage OK`, `feature-liveness OK`. #337 `claude:done`. Follow-up [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) tracker fuld rotation per ADR Phase 5.D.
 
 > **🟢 Session 2026-05-26-B — PR #682/#683 merged + #684 + Infisical Phase 2+5 spawned:** #682 actionlint-fix squash-merged (`182ff14b`). #683 squash-merged (`e0eab317`). #684 PR [#685](https://github.com/NicolaiDolmer/CyclingZone/pull/685) instrumenterer 7 hooks; EmmaPC live-verify ALLE 7 fyrer. sync-deps PC2 verificeret OK. `dependency-review` tilføjet som required check på main. Doctor audit → #337 rotation **blokeret** indtil Infisical Phase 2+5 done (per ADR `docs/decisions/secret-management-adr.md`). Spawn-task ready for fresh session.
 
@@ -12,13 +14,13 @@
 
 > **🟢 Seneste merged i18n:** #488 TeamPage direct-to-main. #485/#486/#487 via PR #642/#643/#644. #489 via PR #665. Detalje i archive.
 
-> **⚠️ Pending bruger-actions:** #355 disconnect 7 MCP-connectors (claude.ai/settings/connectors). #621 item 1 Sentry Discord-alert (Sentry UI). NICOLAIPC trace-verify for #684 (efter #685 merge). NICOLAIPC Infisical bootstrap: `winget install Infisical.infisical` + `infisical login` (efter #690 merge). **Fresh sessions klar:** [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) (full sb_secret_* rotation, low priority).
+> **⚠️ Pending bruger-actions:** #355 disconnect 7 MCP-connectors (claude.ai/settings/connectors). #621 item 1 Sentry Discord-alert (Sentry UI). NICOLAIPC trace-verify for #684 (efter #685 merge). NICOLAIPC Infisical bootstrap: `winget install Infisical.infisical` + `infisical login` + `infisical run --env=dev --recursive -- node backend/scripts/verify-infisical-injection.js`. **Fresh sessions klar:** [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) (full sb_secret_* rotation, low priority).
 
 > **📚 Arkiv:** Tidligere detaljer ligger i `docs/archive/NOW-2026-05-22.md` til `docs/archive/NOW-2026-05-25.md` samt relevante GitHub issues/PRs.
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Restart shell på EmmaPC** (PATH refresh for `infisical` alias) → verify `npm run dev:backend` viser `Injecting N Infisical secrets`. Derefter **NICOLAIPC bootstrap:** `winget install Infisical.infisical` + `infisical login` + verify samme. Parallelt: NICOLAIPC trace-verify for #684, bruger-actions (#355, #621 item 1), follow-up [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) når tid.
+> **🎯 Next action:** **NICOLAIPC Infisical bootstrap** — `winget install Infisical.infisical` + `infisical login` + `infisical run --env=dev --recursive -- node backend/scripts/verify-infisical-injection.js` (forventet: 7 secrets injected, 4/5 keys present). Lukker #687 Phase 5 E. Parallelt: NICOLAIPC trace-verify for #684, bruger-actions (#355, #621 item 1), follow-up [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) når tid. **TdF launch sprint:** [#681](https://github.com/NicolaiDolmer/CyclingZone/issues/681) kick-off issue eller direkte slice-issues (#676 race engine, #678 EN-translation closeout).
 >
 > _Format: `<#issue eller fil-path> — <1-sætnings opgave>`. Cross-device handoff PC1↔mobil↔PC2._
 
