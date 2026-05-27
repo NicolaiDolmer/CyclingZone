@@ -1,5 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
+> **🟢 2026-05-27 close-out (PR [#700](https://github.com/NicolaiDolmer/CyclingZone/pull/700)):** UCI scraper decimal-points fix — `procyclingstats` library returnerede stille `points: 0` for top-ryttere med decimaltal (Vingegaard 6885.1 → 0, etc.), hvilket downgraded 319 ryttere til 5 UCI-point i morges scheduled sync. Patch parser nu rå PCS-HTML for at recovere decimaler; fix-sync via workflow_dispatch genopretede 296 ryttere. PR merged til main med admin override (kendt mobile-webkit auctions flake urelateret). PatchNotes 4.05 + postmortem `.claude/learnings/2026-05-27-uci-scraper-decimal-points-bug.md`. **Spillerne kan byde igen.** Følge-up: backup-trigger + stale-data monitoring (åbn issue) så vi fanger skipped/forsinkede scheduled runs.
+
 > **🟢 2026-05-27 close-out (#638):** `sanitize-secrets` regression guard tilføjet for `openssl rand -hex 2`/kort hex-output, og PowerShell-testen resolver nu Git Bash eksplicit. Verification: sanitizer-suite 32/32 grøn + hook-suite 16/16 grøn. PatchNotes/FEATURE_STATUS ikke opdateret: intern agent-tooling.
 
 > **🟢 2026-05-26 close-out (#656):** Authenticated prod i18n-smoke på `/riders`, `/riders/:id`, `/notifications`, `/team`: EN/DA toggle grøn på desktop + mobile, ingen synlige raw keys; issue lukket med matrix; screenshots flyttet fra `.codex.local` til OneDrive-context `codex-local/issue-656-i18n-smoke/`. PatchNotes/FEATURE_STATUS ikke opdateret: runtime-verificering only.
