@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.08",
+    date: "2026-05-27",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Achievements sync no longer fails for teams with multiple board plans",
+        items: [
+          "EN · Achievement sync now handles the parallel board-plan model correctly. Managers with 5yr/3yr/1yr board plans no longer get `/api/achievements/check` failures from the old single-board-profile assumption, so bids, transfers, watchlist actions and login-triggered achievement checks can unlock normally again.",
+          "DA · Achievement-syncen håndterer nu den parallelle bestyrelsesplan-model korrekt. Managers med 5yr/3yr/1yr-planer får ikke længere `/api/achievements/check`-fejl fra den gamle antagelse om én board-profile pr. hold, så bud, transfers, ønskeliste-handlinger og login-triggerede achievement-checks kan låse op normalt igen.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.07",
     date: "2026-05-27",
     label: "Beta",
