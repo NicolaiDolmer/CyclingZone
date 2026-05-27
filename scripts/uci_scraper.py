@@ -15,6 +15,7 @@ Kan også køres manuelt:
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import unicodedata
@@ -174,12 +175,69 @@ def rider_name(rider: dict) -> str:
     return str(rider.get("rider_name", rider.get("name", "")) or "").strip()
 
 
+# procyclingstats library returnerer points=0 for ryttere med decimal-points
+# (PCS-format ændret ~2026-05). Vi parser rå HTML for at recovere decimaler.
+# Bekræftet 2026-05-27: HTML viser 6885.1, library returnerer 0.
+_HTML_POINTS_ROW_RE = re.compile(
+    r'<tr[^>]*>\s*<td[^>]*>(\d+)</td>'
+    r'.*?'
+    r'<td[^>]*><a\s+href="rider\.php\?id=\d+[^"]*">([\d.]+)</a></td>\s*</tr>',
+    re.DOTALL,
+)
+_CLOUDSCRAPER = None
+
+
+def _get_scraper():
+    global _CLOUDSCRAPER
+    if _CLOUDSCRAPER is None:
+        import cloudscraper
+        _CLOUDSCRAPER = cloudscraper.create_scraper()
+    return _CLOUDSCRAPER
+
+
+def _fetch_page_html_points_by_rank(offset: int) -> dict[int, float]:
+    """Parse rå PCS HTML og returnér rank → points (float)."""
+    url = f"https://www.procyclingstats.com/{RANKING_PATH}&offset={offset}"
+    resp = _get_scraper().get(url, timeout=30)
+    resp.raise_for_status()
+    pts_by_rank: dict[int, float] = {}
+    for m in _HTML_POINTS_ROW_RE.finditer(resp.text):
+        try:
+            pts_by_rank[int(m.group(1))] = float(m.group(2))
+        except ValueError:
+            continue
+    return pts_by_rank
+
+
 def _fetch_page_from_pcs(offset: int) -> list[dict]:
     # Lazy import gør unit tests mulige uden scraperens eksterne runtime-deps.
     from procyclingstats import Ranking
 
     url = f"{RANKING_PATH}&offset={offset}"
-    return Ranking(url).individual_ranking()
+    data = Ranking(url).individual_ranking()
+
+    try:
+        pts_by_rank = _fetch_page_html_points_by_rank(offset)
+    except Exception as exc:
+        print(f"  WARN: HTML-points patch fejlede ved offset {offset}: {exc}")
+        return data
+
+    patched = 0
+    for r in data:
+        try:
+            rank = int(r.get("rank", 0))
+        except (TypeError, ValueError):
+            continue
+        html_pts = pts_by_rank.get(rank)
+        if html_pts is None:
+            continue
+        lib_pts = float(r.get("points") or 0)
+        if html_pts > lib_pts:
+            r["points"] = html_pts
+            patched += 1
+    if patched:
+        print(f"  Patchede {patched} ryttere på offset {offset} med decimal-points fra HTML")
+    return data
 
 
 def validate_ranking_page(

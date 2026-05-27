@@ -108,6 +108,81 @@ class UciScraperValidationTests(unittest.TestCase):
             self.assertEqual(fake.get_ranges, [(0, 999), (1000, 1999), (2000, 2999)])
 
 
+class HtmlPointsParserTests(unittest.TestCase):
+    """Forward-guard mod regression 2026-05-27: procyclingstats library returnerede
+    points=0 for top-ryttere med decimal-points (Vingegaard 6885.1 → 0). Vi parser
+    rå HTML for at recovere decimaler — denne test sikrer regex'en holder."""
+
+    SAMPLE_HTML = (
+        '<table>'
+        '<tr><td>1</td><td><a href="rider/tadej-pogacar">POGAČAR Tadej</a></td>'
+        '<td><a href="team/uae">UAE</a></td>'
+        '<td><a href="rider.php?id=123&p=results">11630</a></td></tr>'
+        '<tr><td>2</td><td><a href="rider/jonas-vingegaard">VINGEGAARD Jonas</a></td>'
+        '<td><a href="team/visma">Visma</a></td>'
+        '<td><a href="rider.php?id=196424&p=results">6885.1</a></td></tr>'
+        '<tr><td>3</td><td><a href="rider/remco-evenepoel">EVENEPOEL Remco</a></td>'
+        '<td><a href="team/bora">Bora</a></td>'
+        '<td><a href="rider.php?id=212377&p=results">5717.9</a></td></tr>'
+        '</table>'
+    )
+
+    def test_html_regex_extracts_integer_and_decimal_points(self):
+        matches = {
+            int(m.group(1)): float(m.group(2))
+            for m in uci_scraper._HTML_POINTS_ROW_RE.finditer(self.SAMPLE_HTML)
+        }
+        self.assertEqual(matches[1], 11630.0)
+        self.assertEqual(matches[2], 6885.1)
+        self.assertEqual(matches[3], 5717.9)
+
+    def test_fetch_page_from_pcs_overrides_library_zero_with_html_decimal(self):
+        """End-to-end: hvis library returnerer 0 og HTML har decimal, brug HTML."""
+        library_output = [
+            {"rank": 1, "rider_name": "POGAČAR Tadej", "points": 11630},
+            {"rank": 2, "rider_name": "VINGEGAARD Jonas", "points": 0},  # library bug
+            {"rank": 3, "rider_name": "EVENEPOEL Remco", "points": 0},  # library bug
+        ]
+
+        import sys
+        fake_pcs_module = type(sys)("procyclingstats")
+
+        class FakeRanking:
+            def __init__(self, _url):
+                pass
+
+            def individual_ranking(self):
+                return [dict(r) for r in library_output]
+
+        fake_pcs_module.Ranking = FakeRanking
+        sys.modules["procyclingstats"] = fake_pcs_module
+        try:
+            original_get_scraper = uci_scraper._get_scraper
+
+            class FakeResponse:
+                text = HtmlPointsParserTests.SAMPLE_HTML
+
+                def raise_for_status(self):
+                    pass
+
+            class FakeScraper:
+                def get(self, _url, **_kwargs):
+                    return FakeResponse()
+
+            uci_scraper._get_scraper = lambda: FakeScraper()
+            try:
+                result = uci_scraper._fetch_page_from_pcs(0)
+            finally:
+                uci_scraper._get_scraper = original_get_scraper
+        finally:
+            del sys.modules["procyclingstats"]
+
+        by_rank = {r["rank"]: r["points"] for r in result}
+        self.assertEqual(by_rank[1], 11630)  # integer unchanged
+        self.assertEqual(by_rank[2], 6885.1)  # decimal recovered from HTML
+        self.assertEqual(by_rank[3], 5717.9)  # decimal recovered from HTML
+
+
 class NormalizeNameTests(unittest.TestCase):
     """Sikrer at normalisering håndterer kendte mismatch-kilder ensartet."""
 
