@@ -1,5 +1,7 @@
 # NOW — Aktuel arbejdsstatus
 
+> **🟢 2026-05-27 close-out (#657):** Lockfile drift check workflow tilføjet på `main` pushes der rører root/backend/frontend `package.json` eller `package-lock.json`: kører `npm ci` i alle tre workspaces, parser `agent-doctor` `install-parity`, og opretter/opdaterer markeret GitHub issue ved drift. Verification: actionlint grøn; `npm ci` root/backend/frontend grøn uden lockfile-diff; lokal `agent-doctor.ps1 -Json` viser `install-parity=OK` (unrelated eksisterende doctor-fails: `main-protection`, `feature-liveness`). PatchNotes ikke opdateret: intern CI/agent-infra.
+
 > **🟢 2026-05-27 close-out (#695):** Klub-DNA på BoardPage renderes nu via DA/EN `board.json` i stedet for backend-DA strings: DNA labels/descriptions, suggestion rationales og tradition-goal labels. Verification: targeted `boardClubDna` 19/19, backend pattern-suite 79/79, frontend build grøn, i18n checks grønne, lint uden nye errors (kun eksisterende warnings). PatchNotes v4.07 + FEATURE_STATUS opdateret.
 
 > **🟢 2026-05-27 close-out (PR [#700](https://github.com/NicolaiDolmer/CyclingZone/pull/700)):** UCI scraper decimal-points fix restored 296 riders after PCS returned decimal point totals as `0`; raw PCS HTML parsing now recovers values. PatchNotes 4.05 + postmortem done. Follow-ups: [#701](https://github.com/NicolaiDolmer/CyclingZone/issues/701), [#702](https://github.com/NicolaiDolmer/CyclingZone/issues/702).
