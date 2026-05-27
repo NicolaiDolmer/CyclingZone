@@ -39,6 +39,7 @@ Før kodning på systemer der kræver kravafklaring (flow-redesign, ny automatis
 ## Release hygiene (obligatorisk ved enhver brugerrettet ændring)
 - `frontend/src/pages/PatchNotesPage.jsx` — opdatér eller skriv eksplicit hvorfor ikke
 - `frontend/src/pages/HelpPage.jsx` — opdatér hvis regler/flow/FAQ/onboarding påvirkes
+- **Postmortem:** Tilføj entry i `.claude/learnings/` hvis denne slice fiksede en bug (Loop C)
 - **Doc-drift sweep:** før close-out, grep for nye env vars, deploy-targets, route-navne og tabel-navne mod `ARCHITECTURE.md` og åbne GitHub-issues (`gh issue list --label "claude:todo"`). Drift fundet → ret i samme commit. (Backlog-migration: `docs/PRODUCT_BACKLOG.md` arkiveret 2026-05-06 til `docs/archive/PRODUCT_BACKLOG-2026-05-06.md`; task-laget bor nu i GitHub issues per [#68](https://github.com/NicolaiDolmer/CyclingZone/issues/68).)
 - **Branch cleanup efter ship:** efter fast-forward push til main fra en feature-branch, slet branchen på origin samme session (`git push origin --delete <branch>`). Stale branches koster recurring investigation-tokens i fremtidige sessions (Claude OG Codex), forvirrer worktree-state og fylder `list_branches`. Gælder ikke branches med åben PR.
 - **Local worktree cleanup efter ship:** når en session-worktree i `.claude/worktrees/` ikke længere skal bruges (branchen er merged eller forladt), kør `git worktree remove <path>` + `git branch -D <branch>` på den PC du arbejder på. Per-PC handling — gentages på den anden PC ved næste session der.

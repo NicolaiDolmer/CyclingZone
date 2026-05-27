@@ -6,6 +6,7 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import ws from 'ws';
+import fetch from 'node-fetch';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -80,6 +81,24 @@ async function runAudit() {
     if (issues.length > 0) {
       console.error('❌ Drift detected:');
       issues.forEach(msg => console.error(` - ${msg}`));
+      
+      // Discord Notifikation
+      if (process.env.DISCORD_WEBHOOK_URL) {
+        const message = {
+          embeds: [{
+            title: "🚨 DRIFT DETECTED - CyclingZone Audit",
+            description: issues.map(i => `• ${i}`).join('\n'),
+            color: 16711680, // Rød
+            timestamp: new Date().toISOString()
+          }]
+        };
+        await fetch(process.env.DISCORD_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(message)
+        });
+      }
+      
       process.exit(1);
     } else {
       console.log('✅ No drift detected. System is consistent.');
