@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.05",
+    date: "2026-05-27",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Rider values are accurate again — 296 riders restored after broken UCI sync",
+        items: [
+          "EN · This morning's scheduled UCI value-update accidentally reset 319 riders to the minimum (5 UCI points / 20.000 CZ$), including stars like Vingegaard, Evenepoel, Pidcock, Pedersen, Bernal and Almeida. Root cause: the upstream PCS library silently returns `0` instead of decimal points (e.g. Vingegaard's `6885.1` became `0`), and our safety-gate didn't catch it because the riders WERE matched — just to a zero. We now also parse the raw PCS HTML to recover decimal points, so Vingegaard is back to 6885 and the other 295 affected riders are restored. Forward-guard: two new unit tests verify decimal parsing won't regress. Refs PR #700.",
+          "DA · Værdi-opdateringen i morges nullstillede ved et uheld 319 ryttere til minimum (5 UCI-point / 20.000 CZ$), inkl. stjerner som Vingegaard, Evenepoel, Pidcock, Pedersen, Bernal og Almeida. Rod-årsag: PCS-biblioteket returnerer stille `0` i stedet for decimaltal-points (fx Vingegaards `6885.1` blev til `0`), og vores safety-gate fangede det ikke fordi rytterne BLEV matched — bare mod et nul. Vi parser nu også rå PCS-HTML for at recovere decimaltal, så Vingegaard er tilbage på 6885 og de andre 295 berørte ryttere er gendannet. Forward-guard: to nye unit-tests sikrer decimal-parsingen ikke regresserer. Refs PR #700.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.04",
     date: "2026-05-26",
     label: "Beta",
