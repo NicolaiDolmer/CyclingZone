@@ -2,6 +2,34 @@
 
 const PATCHES = [
   {
+    version: "4.08",
+    date: "2026-05-27",
+    label: "Beta",
+    changes: [
+      {
+        category: "Bugfix · Achievements sync no longer fails for teams with multiple board plans",
+        items: [
+          "EN · Achievement sync now handles the parallel board-plan model correctly. Managers with 5yr/3yr/1yr board plans no longer get `/api/achievements/check` failures from the old single-board-profile assumption, so bids, transfers, watchlist actions and login-triggered achievement checks can unlock normally again.",
+          "DA · Achievement-syncen håndterer nu den parallelle bestyrelsesplan-model korrekt. Managers med 5yr/3yr/1yr-planer får ikke længere `/api/achievements/check`-fejl fra den gamle antagelse om én board-profile pr. hold, så bud, transfers, ønskeliste-handlinger og login-triggerede achievement-checks kan låse op normalt igen.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.07",
+    date: "2026-05-27",
+    label: "Beta",
+    changes: [
+      {
+        category: "Language · Club DNA text now follows EN/DA on the board page",
+        items: [
+          "EN · Club DNA names, descriptions, suggestion rationales and tradition-goal labels on the Board page now render through the board translation namespace instead of backend Danish strings. English mode now shows the season-2 DNA choices fully in English while Danish keeps the original tone. Refs #695.",
+          "DA · Klub-DNA-navne, beskrivelser, forslagstekster og tradition-mål på Bestyrelse-siden renderes nu via board-oversættelser i stedet for danske backend-strenge. Engelsk mode viser nu sæson-2 DNA-valgene fuldt på engelsk, mens dansk bevarer den oprindelige tone. Refs #695.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.06",
     date: "2026-05-27",
     label: "Beta",

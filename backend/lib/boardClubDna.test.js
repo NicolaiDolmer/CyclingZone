@@ -43,6 +43,7 @@ test("BOARD_CLUB_DNA seedes med præcis 5 arketyper", () => {
     assert.ok(dna.member_alignment_bonus && typeof dna.member_alignment_bonus === "object");
     assert.ok(dna.goal_weighting && typeof dna.goal_weighting === "object");
     assert.ok(dna.tradition_goal && typeof dna.tradition_goal === "object");
+    assert.equal(dna.tradition_goal.label_key, `dna.${key}.traditionGoalLabel`);
   }
 });
 
@@ -109,6 +110,9 @@ test("computeDnaSuggestions falder tilbage til defaults uden identityBasis", () 
   const suggestions = computeDnaSuggestions(null);
   assert.equal(suggestions.length, 3);
   assert.ok(suggestions.every((s) => s.key && s.label));
+  assert.ok(suggestions.every((s) => s.label_key === `dna.${s.key}.label`));
+  assert.ok(suggestions.every((s) => s.short_description_key === `dna.${s.key}.shortDescription`));
+  assert.ok(suggestions.every((s) => s.long_description_key === `dna.${s.key}.longDescription`));
 });
 
 test("computeDnaSuggestions slot-tags er udfyldt korrekt", () => {
@@ -121,6 +125,29 @@ test("computeDnaSuggestions slot-tags er udfyldt korrekt", () => {
   });
   const slots = suggestions.map((s) => s.suggestion_slot);
   assert.deepEqual(slots, ["national_match", "specialization_match", "wildcard"]);
+});
+
+test("computeDnaSuggestions returnerer rationale i i18n-key format", () => {
+  const suggestions = computeDnaSuggestions({
+    rider_count: 8,
+    primary_specialization: "gc",
+    youth_level: "medium",
+    national_core: { code: "FR", count: 4, share_pct: 50, strength: "medium", established: true },
+    star_profile: { level: "medium" },
+  });
+
+  const national = suggestions.find((s) => s.suggestion_slot === "national_match");
+  const specialization = suggestions.find((s) => s.suggestion_slot === "specialization_match");
+  const wildcard = suggestions.find((s) => s.suggestion_slot === "wildcard");
+
+  assert.equal(national.rationale_key, "dna.suggestionRationale.nationalMatch");
+  assert.equal(national.rationaleKey, "dna.suggestionRationale.nationalMatch");
+  assert.equal(national.rationale_params.nationalCode, "FR");
+  assert.equal(specialization.rationale_key, "dna.suggestionRationale.specializationMatch");
+  assert.equal(specialization.rationaleKey, "dna.suggestionRationale.specializationMatch");
+  assert.equal(specialization.rationale_params.primarySpec, "gc");
+  assert.equal(wildcard.rationale_key, "dna.suggestionRationale.wildcard");
+  assert.equal(wildcard.rationaleKey, "dna.suggestionRationale.wildcard");
 });
 
 // =============================================================
@@ -199,6 +226,7 @@ test("buildDnaTraditionGoal returnerer markeret club_dna mål", () => {
   assert.equal(goal.nationality_code, "FR");
   assert.equal(goal.source, "club_dna");
   assert.equal(goal.dna_key, "fransk_klatrer");
+  assert.equal(goal.label_key, "dna.fransk_klatrer.traditionGoalLabel");
   assert.equal(goal.importance, "bonus");
   assert.ok(goal.satisfaction_bonus > 0);
 });

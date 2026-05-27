@@ -196,14 +196,18 @@ CREATE TABLE IF NOT EXISTS public.transfer_offers (
 -- ── BOARD PROFILES ────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.board_profiles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  team_id UUID UNIQUE NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
-  plan_type TEXT DEFAULT '1yr' CHECK (plan_type IN ('1yr','3yr','5yr')),
+  team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+  plan_type TEXT DEFAULT '1yr' CHECK (plan_type IN ('1yr','3yr','5yr','baseline')),
   focus TEXT DEFAULT 'balanced' CHECK (focus IN ('youth_development','star_signing','balanced')),
   satisfaction INTEGER DEFAULT 50 CHECK (satisfaction >= 0 AND satisfaction <= 100),
   budget_modifier FLOAT DEFAULT 1.0,
   current_goals JSONB DEFAULT '[]',
   season_id UUID REFERENCES public.seasons(id),
   negotiation_status TEXT NOT NULL DEFAULT 'pending' CHECK (negotiation_status IN ('pending', 'completed')),
+  is_baseline BOOLEAN NOT NULL DEFAULT FALSE,
+  tradeoff_active_until_season_id UUID REFERENCES public.seasons(id),
+  tradeoff_payload JSONB,
+  major_pivot_used_at TIMESTAMPTZ,
   plan_start_season_number INTEGER,
   plan_end_season_number INTEGER,
   seasons_completed INTEGER NOT NULL DEFAULT 0,
@@ -212,7 +216,8 @@ CREATE TABLE IF NOT EXISTS public.board_profiles (
   plan_start_balance BIGINT,
   plan_start_sponsor_income BIGINT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (team_id, plan_type)
 );
 
 CREATE TABLE IF NOT EXISTS public.board_plan_snapshots (

@@ -372,7 +372,7 @@ swap_offers        id, offered_rider_id, requested_rider_id, proposing_team_id,
 loan_agreements    id, rider_id, from_team_id, to_team_id, loan_fee, start_season,
                    end_season, buy_option_price,
                    status(pending|active|completed|rejected|cancelled|buyout)
-board_profiles     id, team_id(unique), plan_type(1yr|3yr|5yr|baseline),
+board_profiles     id, team_id, plan_type(1yr|3yr|5yr|baseline), UNIQUE(team_id, plan_type),
                    focus(youth_development|star_signing|balanced), satisfaction(0-100),
                    budget_modifier, current_goals(JSONB), season_id,
                    negotiation_status(pending|completed), plan_start_season_number,

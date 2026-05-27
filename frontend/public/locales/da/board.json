@@ -160,6 +160,49 @@
     "badge": {
       "label": "Klubbens DNA"
     },
+    "skandinavisk_udvikling": {
+      "label": "Skandinavisk udviklingshold",
+      "shortDescription": "Ungdom, balance og nordisk arv",
+      "longDescription": "Vi bygger ryttere op fra grunden — tålmodighed, struktur og nordisk arbejdsmoral. Sponsorerne forventer udvikling, ikke fyrværkeri.",
+      "traditionGoalLabel": "Klub-DNA: udvikl talenterne — gnsn. +3 stat-pts/sæson på U25"
+    },
+    "italiensk_klassiker": {
+      "label": "Italiensk klassiker-traditionalist",
+      "shortDescription": "Foråret er hellig — monumenter er målet",
+      "longDescription": "Klubben er bygget på asfalt fra Lombardiet og Strade Bianche. Vores fans drømmer om Sanremo og Lombardia — ikke om Tour de France-podier.",
+      "traditionGoalLabel": "Klub-DNA: mindst ét Monument-podie pr. plan-cyklus"
+    },
+    "sprint_kommerciel": {
+      "label": "Sprint-fokuseret kommerciel",
+      "shortDescription": "Sejre i mål — sponsorer i ryggen",
+      "longDescription": "Vores rytter skal være den første over stregen og foran kameraerne. Sponsorvækst kommer fra synlighed, og synlighed kommer fra etapesejre.",
+      "traditionGoalLabel": "Klub-DNA: vind mindst 2 etape-trøjer pr. sæson (sprint-fokus)"
+    },
+    "fransk_klatrer": {
+      "label": "Fransk klatrer-arv",
+      "shortDescription": "Tour-bjerge er klubbens hjem",
+      "longDescription": "Vi har klatret med Anquetil, Hinault og Pinot. Bjergene definerer os — og Tour de France er stadig kalenderens vigtigste søndag.",
+      "traditionGoalLabel": "Klub-DNA: min. 4 franske ryttere i truppen"
+    },
+    "britisk_allrounder": {
+      "label": "Britisk all-rounder",
+      "shortDescription": "Disciplin på tværs — datadrevet og bredt",
+      "longDescription": "Sky-skolen lever videre. Vi vinder på struktur, marginal gains og bredde — fra Roubaix til Andorra. Ingen disciplin er klubbens, men alle er.",
+      "traditionGoalLabel": "Klub-DNA: top-3 i division (bred præstation)"
+    },
+    "suggestionRationale": {
+      "nationalMatch": "Matcher din {nationalCode}-kerne fra sæson 1",
+      "specializationMatch": "Matcher dit {specLabel}",
+      "wildcard": "Et nyt spor — bestyrelsen vil følge med uanset retning"
+    },
+    "specLabel": {
+      "gc": "GC-fokus",
+      "sprint": "sprint-fokus",
+      "classics": "klassiker-fokus",
+      "breakaway": "breakaway-stil",
+      "youth": "ungdomsaftryk",
+      "balanced": "balancerede profil"
+    },
     "errorFallback": "Kunne ikke vælge DNA"
   },
   "identity": {

@@ -32,6 +32,12 @@ function createAchievementSupabase(initialState) {
         return query;
       },
       maybeSingle() {
+        if (filtered.length > 1) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "JSON object requested, multiple (or no) rows returned" },
+          });
+        }
         return Promise.resolve({ data: filtered[0] || null, error: null });
       },
       single() {
@@ -177,7 +183,7 @@ test("checkAchievements unlocks team and board achievements and cascades team_5_
       },
     ],
     transfer_offers: [],
-    board_profiles: [{ team_id: "team-1", satisfaction: 100 }],
+    board_profiles: [{ team_id: "team-1", plan_type: "1yr", negotiation_status: "completed", satisfaction: 100 }],
   });
 
   const unlocked = await checkAchievements({
@@ -198,6 +204,37 @@ test("checkAchievements unlocks team and board achievements and cascades team_5_
       "team_star",
       "team_youth",
     ]
+  );
+});
+
+test("checkAchievements tolerates parallel board plans and uses completed non-baseline max satisfaction", async () => {
+  const supabase = createAchievementSupabase({
+    achievements: [
+      { id: "season_board_100" },
+    ],
+    teams: [{ id: "team-1", user_id: "user-1" }],
+    users: [{ id: "user-1", login_streak: 0 }],
+    rider_watchlist: [],
+    riders: [],
+    auction_bids: [],
+    auctions: [],
+    transfer_offers: [],
+    board_profiles: [
+      { team_id: "team-1", plan_type: "baseline", is_baseline: true, negotiation_status: "completed", satisfaction: 100 },
+      { team_id: "team-1", plan_type: "5yr", is_baseline: false, negotiation_status: "completed", satisfaction: 78 },
+      { team_id: "team-1", plan_type: "3yr", is_baseline: false, negotiation_status: "completed", satisfaction: 100 },
+      { team_id: "team-1", plan_type: "1yr", is_baseline: false, negotiation_status: "pending", satisfaction: 100 },
+    ],
+  });
+
+  const unlocked = await checkAchievements({
+    supabase,
+    userId: "user-1",
+  });
+
+  assert.deepEqual(
+    unlocked.map(achievement => achievement.id),
+    ["season_board_100"]
   );
 });
 

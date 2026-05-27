@@ -83,9 +83,9 @@ _Intern master-plan. Opdateret 2026-05-05 efter runtime status-afstemning. Launc
 | Task | Estimat | Note |
 |---|---|---|
 | dyn_cyclist write-back ved rytter team-skifte | 1 session | Google Sheets API-write; eliminerer manuelt DB-arbejde |
-| Drift-monitor cron (loop A) | 1 session | Forhindrer salary-bug i at vende tilbage |
-| Pre-push hook: blokér push uden PatchNotes-update (loop B) | 0.25 session | |
-| Postmortem-skabelon (loop C) | 0.25 session | `.claude/learnings/`-mappe + skabelon |
+| Drift-monitor cron (loop A) | ✅ Leveret | Runtime-verificeret 2026-05-27: `backend/scripts/driftMonitor.js` + `.github/workflows/drift-monitor.yml` |
+| Pre-push hook: blokér push uden PatchNotes-update (loop B) | ✅ Leveret | Runtime-verificeret 2026-05-27: `scripts/pre-push-hook.ps1` + lokal `.git/hooks/pre-push` |
+| Postmortem-skabelon (loop C) | ✅ Leveret | Runtime-verificeret 2026-05-27: `.claude/learnings/_TEMPLATE.md` + UCI scraper postmortem |
 
 ---
 
@@ -109,14 +109,16 @@ _Intern master-plan. Opdateret 2026-05-05 efter runtime status-afstemning. Launc
 ## Aktuel anbefalet session-rækkefølge
 
 ```
-Session 1: P1 smoke/audit
-  → Onboarding v2 e2e-smoke + Admin-/FAQ-audit, fordi P0 nu er lukket
+Session 1: Akut infra & data-safety
+  → #705 Supabase service-key verification
+  → #702 UCI matched-with-zero safety-gate
+  → #701 UCI backup-trigger + stale-data monitor
 
-Session 2: Cykling-fokuseret product slice
+Session 2: P1 smoke/audit
+  → Onboarding v2 e2e-smoke + Admin-/FAQ-audit + TeamPage/TeamProfilePage audit
+
+Session 3: Cykling-fokuseret product slice
   → Rytter-arketyper (1 session) eller Race Day Live-ticker (2 sessioner)
-
-Session 3: P1 tooling/ops
-  → Drift-monitor + pre-push hook + postmortem-skabelon (loops A+B+C)
 
 Session 4: P1 transfer-historik
   → Dedikeret side + team/rytter historik-visninger
@@ -127,7 +129,7 @@ Post-launch session 12+: Clarity setup → ugentlig review-loop
 Post-launch sessions 13+: P2-spor i prioriteret rækkefølge (afhænger af manager-feedback)
 ```
 
-**Status 2026-05-05:** P0 er grønt. Næste beslutning er P1 smoke/audit vs. første post-launch product-slice.
+**Status 2026-05-27:** P0 er grønt. Loop A/B/C er leveret. Næste anbefalede rækkefølge er #705 → #702 → #701, derefter P1 Tier 1A smoke/audit.
 
 ---
 

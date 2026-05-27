@@ -1,0 +1,222 @@
+name: Lockfile drift check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  lockfile-drift:
+    name: npm ci + install-parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install root dependencies
+        id: ci_root
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee npm-ci-root.log
+
+      - name: Install backend dependencies
+        id: ci_backend
+        continue-on-error: true
+        working-directory: backend
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee ../npm-ci-backend.log
+
+      - name: Install frontend dependencies
+        id: ci_frontend
+        continue-on-error: true
+        working-directory: frontend
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee ../npm-ci-frontend.log
+
+      - name: Capture lockfile diff
+        run: |
+          git diff -- package-lock.json backend/package-lock.json frontend/package-lock.json > lockfile-diff.txt
+          if [ -s lockfile-diff.txt ]; then
+            cat lockfile-diff.txt
+          else
+            echo "No lockfile diff after npm ci."
+          fi
+
+      - name: Run install-parity doctor check
+        id: doctor
+        continue-on-error: true
+        shell: pwsh
+        env:
+          DOCTOR_NO_CACHE: "1"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pwsh -NoProfile -File scripts/agent-doctor.ps1 -Json | Out-File -Encoding utf8 agent-doctor.json
+          Get-Content agent-doctor.json
+
+      - name: Open or update lockfile drift issue
+        uses: actions/github-script@v9
+        env:
+          CI_ROOT_OUTCOME: ${{ steps.ci_root.outcome }}
+          CI_BACKEND_OUTCOME: ${{ steps.ci_backend.outcome }}
+          CI_FRONTEND_OUTCOME: ${{ steps.ci_frontend.outcome }}
+        with:
+          script: |
+            const fs = require('fs');
+
+            const readFile = (path) => {
+              try {
+                return fs.readFileSync(path, 'utf8');
+              } catch {
+                return '';
+              }
+            };
+            const tail = (text, maxLines = 80) => {
+              const lines = String(text || '').trimEnd().split(/\r?\n/);
+              return lines.slice(-maxLines).join('\n');
+            };
+
+            const outcomes = {
+              root: process.env.CI_ROOT_OUTCOME,
+              backend: process.env.CI_BACKEND_OUTCOME,
+              frontend: process.env.CI_FRONTEND_OUTCOME,
+            };
+            const failedInstalls = Object.entries(outcomes)
+              .filter(([, outcome]) => outcome !== 'success')
+              .map(([workspace]) => workspace);
+
+            const diff = readFile('lockfile-diff.txt').trim();
+            const doctorRaw = readFile('agent-doctor.json');
+            let installParity = null;
+            try {
+              const doctor = JSON.parse(doctorRaw);
+              installParity = (doctor.checks || []).find((check) => check.Check === 'install-parity') || null;
+            } catch {
+              installParity = {
+                Check: 'install-parity',
+                Status: 'WARN',
+                Detail: 'agent-doctor JSON could not be parsed',
+              };
+            }
+
+            const installParityDrift = installParity && installParity.Status !== 'OK';
+            const driftDetected = failedInstalls.length > 0 || Boolean(diff) || installParityDrift;
+            if (!driftDetected) {
+              core.info('No lockfile drift detected.');
+              return;
+            }
+
+            fs.writeFileSync('lockfile-drift-detected.txt', '1\n');
+
+            const sha = context.sha;
+            const shortSha = sha.slice(0, 7);
+            const marker = `<!-- lockfile-drift:${sha} -->`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = `Lockfile drift after ${shortSha}`;
+            const suggestedFix = failedInstalls.length > 0
+              ? `npm ci failed in ${failedInstalls.join(', ')}. Run \`npm install\` in the affected workspace(s), commit the resulting lockfile, then rerun \`npm run sync-deps\`.`
+              : 'Run `npm run sync-deps`, inspect `git diff -- package-lock.json backend/package-lock.json frontend/package-lock.json`, and commit any intended lockfile changes.';
+
+            const sections = [
+              marker,
+              '',
+              '## Summary',
+              '',
+              `Commit: \`${sha}\``,
+              `Run: ${runUrl}`,
+              '',
+              '| Check | Result |',
+              '|---|---|',
+              `| root \`npm ci\` | ${outcomes.root} |`,
+              `| backend \`npm ci\` | ${outcomes.backend} |`,
+              `| frontend \`npm ci\` | ${outcomes.frontend} |`,
+              `| \`install-parity\` | ${installParity ? `${installParity.Status}: ${String(installParity.Detail || '').replace(/\|/g, '\\|')}` : 'missing'} |`,
+              `| lockfile diff after \`npm ci\` | ${diff ? 'present' : 'none'} |`,
+              '',
+              '## Suggested fix',
+              '',
+              suggestedFix,
+              '',
+              '## Lockfile diff',
+              '',
+              diff ? `\`\`\`diff\n${diff.slice(0, 60000)}\n\`\`\`` : '_No lockfile diff was produced._',
+              '',
+              '## npm ci logs',
+              '',
+              '<details><summary>root</summary>',
+              '',
+              `\`\`\`text\n${tail(readFile('npm-ci-root.log'))}\n\`\`\``,
+              '</details>',
+              '',
+              '<details><summary>backend</summary>',
+              '',
+              `\`\`\`text\n${tail(readFile('npm-ci-backend.log'))}\n\`\`\``,
+              '</details>',
+              '',
+              '<details><summary>frontend</summary>',
+              '',
+              `\`\`\`text\n${tail(readFile('npm-ci-frontend.log'))}\n\`\`\``,
+              '</details>',
+              '',
+              'Refs #657',
+            ];
+            const body = sections.join('\n');
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'cat:infra',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.body && issue.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                title,
+                body,
+                labels: ['cat:infra', 'priority:high', 'type:bug'],
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['cat:infra', 'priority:high', 'type:bug'],
+              });
+            }
+
+      - name: Fail when lockfile drift is detected
+        run: |
+          if [ -f lockfile-drift-detected.txt ]; then
+            echo "Lockfile drift detected. See the generated GitHub issue for details."
+            exit 1
+          fi
+          echo "Lockfile drift check passed."

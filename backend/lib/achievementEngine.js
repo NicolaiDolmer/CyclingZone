@@ -138,20 +138,32 @@ async function loadTeamStats({ supabase, teamId }) {
     };
   }
 
-  const [riders, boardProfile] = await Promise.all([
+  const [riders, boardProfiles] = await Promise.all([
     readMany(
       supabase.from("riders").select("id, is_u25, uci_points").eq("team_id", teamId)
     ),
-    readMaybeSingle(
-      supabase.from("board_profiles").select("satisfaction").eq("team_id", teamId).maybeSingle()
+    readMany(
+      supabase
+        .from("board_profiles")
+        .select("satisfaction, plan_type, negotiation_status, is_baseline")
+        .eq("team_id", teamId)
     ),
   ]);
+  const eligibleBoardProfiles = boardProfiles.filter(board =>
+    !board.is_baseline
+    && board.plan_type !== "baseline"
+    && board.negotiation_status === "completed"
+  );
+  const boardSatisfaction = eligibleBoardProfiles.reduce(
+    (max, board) => Math.max(max, toNumber(board.satisfaction)),
+    0
+  );
 
   return {
     riderCount: riders.length,
     u25RiderCount: riders.filter(rider => rider.is_u25).length,
     hasStarRider: riders.some(rider => toNumber(rider.uci_points) > 50000),
-    boardSatisfaction: toNumber(boardProfile?.satisfaction),
+    boardSatisfaction,
   };
 }
 

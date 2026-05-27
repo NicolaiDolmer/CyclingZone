@@ -68,6 +68,7 @@ export const BOARD_CLUB_DNA = {
       type: "u25_development_delta",
       target: 3,
       label: "Klub-DNA: udvikl talenterne — gnsn. +3 stat-pts/sæson på U25",
+      label_key: "dna.skandinavisk_udvikling.traditionGoalLabel",
       satisfaction_bonus: 16,
       satisfaction_penalty: 8,
     },
@@ -107,6 +108,7 @@ export const BOARD_CLUB_DNA = {
       type: "monument_podium",
       target: 1,
       label: "Klub-DNA: mindst ét Monument-podie pr. plan-cyklus",
+      label_key: "dna.italiensk_klassiker.traditionGoalLabel",
       satisfaction_bonus: 22,
       satisfaction_penalty: 12,
     },
@@ -146,6 +148,7 @@ export const BOARD_CLUB_DNA = {
       type: "jersey_wins",
       target: 2,
       label: "Klub-DNA: vind mindst 2 etape-trøjer pr. sæson (sprint-fokus)",
+      label_key: "dna.sprint_kommerciel.traditionGoalLabel",
       satisfaction_bonus: 18,
       satisfaction_penalty: 10,
     },
@@ -186,6 +189,7 @@ export const BOARD_CLUB_DNA = {
       target: 4,
       nationality_code: "FR",
       label: "Klub-DNA: min. 4 franske ryttere i truppen",
+      label_key: "dna.fransk_klatrer.traditionGoalLabel",
       satisfaction_bonus: 18,
       satisfaction_penalty: 10,
     },
@@ -225,6 +229,7 @@ export const BOARD_CLUB_DNA = {
       type: "relative_rank",
       target: 3,
       label: "Klub-DNA: top-3 i division (bred præstation)",
+      label_key: "dna.britisk_allrounder.traditionGoalLabel",
       satisfaction_bonus: 16,
       satisfaction_penalty: 8,
     },
@@ -304,31 +309,55 @@ function annotateSlot(scoredEntry, slot, ctx) {
   return {
     key: dna.key,
     label: dna.label,
+    label_key: `dna.${dna.key}.label`,
     emoji: dna.emoji,
     short_description: dna.short_description,
+    short_description_key: `dna.${dna.key}.shortDescription`,
     long_description: dna.long_description,
+    long_description_key: `dna.${dna.key}.longDescription`,
     suggestion_slot: slot,
-    rationale: buildSuggestionRationale(slot, dna, ctx),
+    ...buildSuggestionRationale(slot, dna, ctx),
     score: scoredEntry.score,
   };
 }
 
 function buildSuggestionRationale(slot, dna, ctx) {
   if (slot === "national_match" && ctx.nationalCode && dna.national_affinity.includes(ctx.nationalCode)) {
-    return `Matcher din ${ctx.nationalCode}-kerne fra sæson 1`;
+    return {
+      rationale_key: "dna.suggestionRationale.nationalMatch",
+      rationaleKey: "dna.suggestionRationale.nationalMatch",
+      rationale_params: { nationalCode: ctx.nationalCode },
+      rationaleParams: { nationalCode: ctx.nationalCode },
+      rationale: `Matcher din ${ctx.nationalCode}-kerne fra sæson 1`,
+    };
   }
   if (slot === "specialization_match" && dna.specialization_affinity.includes(ctx.primarySpec)) {
-    const specLabel = {
-      gc: "GC-fokus",
-      sprint: "sprint-fokus",
-      classics: "klassiker-fokus",
-      breakaway: "breakaway-stil",
-      youth: "ungdomsaftryk",
-      balanced: "balancerede profil",
-    }[ctx.primarySpec] || ctx.primarySpec;
-    return `Matcher dit ${specLabel}`;
+    return {
+      rationale_key: "dna.suggestionRationale.specializationMatch",
+      rationaleKey: "dna.suggestionRationale.specializationMatch",
+      rationale_params: { primarySpec: ctx.primarySpec },
+      rationaleParams: { primarySpec: ctx.primarySpec },
+      rationale: `Matcher dit ${getLegacySpecLabel(ctx.primarySpec)}`,
+    };
   }
-  return "Et nyt spor — bestyrelsen vil følge med uanset retning";
+  return {
+    rationale_key: "dna.suggestionRationale.wildcard",
+    rationaleKey: "dna.suggestionRationale.wildcard",
+    rationale_params: {},
+    rationaleParams: {},
+    rationale: "Et nyt spor — bestyrelsen vil følge med uanset retning",
+  };
+}
+
+function getLegacySpecLabel(primarySpec) {
+  return {
+    gc: "GC-fokus",
+    sprint: "sprint-fokus",
+    classics: "klassiker-fokus",
+    breakaway: "breakaway-stil",
+    youth: "ungdomsaftryk",
+    balanced: "balancerede profil",
+  }[primarySpec] || primarySpec;
 }
 
 function defaultSuggestions() {

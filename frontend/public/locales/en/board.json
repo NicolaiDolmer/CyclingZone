@@ -160,6 +160,49 @@
     "badge": {
       "label": "Club DNA"
     },
+    "skandinavisk_udvikling": {
+      "label": "Scandinavian development team",
+      "shortDescription": "Youth, balance and Nordic heritage",
+      "longDescription": "We build riders from the ground up: patience, structure and Nordic work ethic. Sponsors expect development, not fireworks.",
+      "traditionGoalLabel": "Club DNA: develop the talents — average +3 stat points per season for U25 riders"
+    },
+    "italiensk_klassiker": {
+      "label": "Italian classics traditionalist",
+      "shortDescription": "Spring is sacred. Monuments are the goal",
+      "longDescription": "The club is built on the roads of Lombardia and Strade Bianche. Our fans dream of Sanremo and Lombardia, not Tour de France podiums.",
+      "traditionGoalLabel": "Club DNA: at least one Monument podium per plan cycle"
+    },
+    "sprint_kommerciel": {
+      "label": "Sprint-focused commercial team",
+      "shortDescription": "Wins at the line, sponsors on the wheel",
+      "longDescription": "Our rider should be first across the line and first in front of the cameras. Sponsor growth comes from visibility, and visibility comes from stage wins.",
+      "traditionGoalLabel": "Club DNA: win at least 2 stage-race jerseys per season (sprint focus)"
+    },
+    "fransk_klatrer": {
+      "label": "French climbing heritage",
+      "shortDescription": "The Tour mountains are the club's home",
+      "longDescription": "We have climbed with Anquetil, Hinault and Pinot. The mountains define us, and the Tour de France is still the most important Sunday on the calendar.",
+      "traditionGoalLabel": "Club DNA: at least 4 French riders in the squad"
+    },
+    "britisk_allrounder": {
+      "label": "British all-rounder",
+      "shortDescription": "Discipline across the board, data-led and broad",
+      "longDescription": "The Sky school lives on. We win through structure, marginal gains and depth, from Roubaix to Andorra. No discipline owns the club, but every discipline belongs here.",
+      "traditionGoalLabel": "Club DNA: top 3 in the division (broad performance)"
+    },
+    "suggestionRationale": {
+      "nationalMatch": "Matches your {nationalCode} core from season 1",
+      "specializationMatch": "Matches your {specLabel}",
+      "wildcard": "A new path. The board will follow wherever it leads"
+    },
+    "specLabel": {
+      "gc": "GC focus",
+      "sprint": "sprint focus",
+      "classics": "classics focus",
+      "breakaway": "breakaway style",
+      "youth": "youth imprint",
+      "balanced": "balanced profile"
+    },
     "errorFallback": "Could not select DNA"
   },
   "identity": {
