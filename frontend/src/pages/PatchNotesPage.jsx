@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.10",
+    date: "2026-05-28",
+    label: "Beta",
+    changes: [
+      {
+        category: "Reliability · UCI safety-gate also catches zero-point matches",
+        items: [
+          "EN · The weekly UCI value sync now protects high-value riders even when the upstream ranking matches their name but reports 0 points. That case now reuses the existing safety-gate instead of overwriting stars to the minimum value, adding another guard after the May 27 PCS decimal-points incident. Refs #702.",
+          "DA · Den ugentlige UCI-værdi-sync beskytter nu high-value ryttere selv når upstream-ranglisten matcher navnet men returnerer 0 point. Den situation genbruger nu den eksisterende safety-gate i stedet for at overskrive stjerner til minimumsværdi, som ekstra værn efter PCS-decimaltal-hændelsen 27. maj. Refs #702.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.09",
     date: "2026-05-27",
     label: "Beta",
