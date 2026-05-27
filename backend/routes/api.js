@@ -5780,9 +5780,12 @@ router.get("/board/status", requireAuth, async (req, res) => {
       team_dna: dnaArchetype ? {
         key: dnaArchetype.key,
         label: dnaArchetype.label,
+        label_key: `dna.${dnaArchetype.key}.label`,
         emoji: dnaArchetype.emoji,
         short_description: dnaArchetype.short_description,
+        short_description_key: `dna.${dnaArchetype.key}.shortDescription`,
         long_description: dnaArchetype.long_description,
+        long_description_key: `dna.${dnaArchetype.key}.longDescription`,
         chosen_at: teamRes.data?.team_dna_chosen_at || null,
       } : null,
       dna_suggestions: dnaSuggestions,
@@ -5923,7 +5926,14 @@ router.get("/board/dna-suggestions", requireAuth, async (req, res) => {
       const dna = getDnaByKey(team.team_dna_key);
       return res.json({
         already_chosen: true,
-        team_dna: dna ? { key: dna.key, label: dna.label, emoji: dna.emoji, short_description: dna.short_description } : null,
+        team_dna: dna ? {
+          key: dna.key,
+          label: dna.label,
+          label_key: `dna.${dna.key}.label`,
+          emoji: dna.emoji,
+          short_description: dna.short_description,
+          short_description_key: `dna.${dna.key}.shortDescription`,
+        } : null,
         suggestions: [],
       });
     }
@@ -5989,9 +5999,12 @@ router.post("/board/dna-choose", requireAuth, boardWriteLimiter, async (req, res
       team_dna: dna ? {
         key: dna.key,
         label: dna.label,
+        label_key: `dna.${dna.key}.label`,
         emoji: dna.emoji,
         short_description: dna.short_description,
+        short_description_key: `dna.${dna.key}.shortDescription`,
         long_description: dna.long_description,
+        long_description_key: `dna.${dna.key}.longDescription`,
       } : null,
     });
   } catch (e) {

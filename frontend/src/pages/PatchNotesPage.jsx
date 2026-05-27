@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.07",
+    date: "2026-05-27",
+    label: "Beta",
+    changes: [
+      {
+        category: "Language · Club DNA text now follows EN/DA on the board page",
+        items: [
+          "EN · Club DNA names, descriptions, suggestion rationales and tradition-goal labels on the Board page now render through the board translation namespace instead of backend Danish strings. English mode now shows the season-2 DNA choices fully in English while Danish keeps the original tone. Refs #695.",
+          "DA · Klub-DNA-navne, beskrivelser, forslagstekster og tradition-mål på Bestyrelse-siden renderes nu via board-oversættelser i stedet for danske backend-strenge. Engelsk mode viser nu sæson-2 DNA-valgene fuldt på engelsk, mens dansk bevarer den oprindelige tone. Refs #695.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.06",
     date: "2026-05-27",
     label: "Beta",

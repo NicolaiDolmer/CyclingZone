@@ -61,11 +61,43 @@ function getFocusLabel(t, focus) {
 
 function getBoardGoalLabel(t, goal) {
   if (!goal) return "";
+  if (goal.label_key) {
+    const translated = t(goal.label_key, { defaultValue: "" });
+    if (translated) return translated;
+  }
   if (goal.type === "min_national_riders" && goal.nationality_code) {
     const country = getCountryDisplay(goal.nationality_code);
     return t("goal.minNationalRiders", { target: goal.target, country: country.name || country.code });
   }
   return goal.label || "";
+}
+
+function getDnaCopy(t, dna, field) {
+  if (!dna?.key) return "";
+  const keyByField = {
+    label: dna.label_key || `dna.${dna.key}.label`,
+    shortDescription: dna.short_description_key || `dna.${dna.key}.shortDescription`,
+    longDescription: dna.long_description_key || `dna.${dna.key}.longDescription`,
+  };
+  const fallbackByField = {
+    label: dna.label,
+    shortDescription: dna.short_description,
+    longDescription: dna.long_description,
+  };
+  return t(keyByField[field], { defaultValue: fallbackByField[field] || "" });
+}
+
+function getDnaRationale(t, suggestion) {
+  const rationaleKey = suggestion?.rationale_key || suggestion?.rationaleKey;
+  if (!rationaleKey) return suggestion?.rationale || "";
+  const params = suggestion.rationale_params || suggestion.rationaleParams || {};
+  return t(rationaleKey, {
+    ...params,
+    specLabel: params.primarySpec
+      ? t(`dna.specLabel.${params.primarySpec}`, { defaultValue: params.primarySpec })
+      : "",
+    defaultValue: suggestion.rationale || "",
+  });
 }
 
 function formatBoardCopy(text) {
@@ -160,17 +192,17 @@ function ClubDnaSelectionCard({ suggestions = [], onChoose, busy = false, error 
                 <p className="text-cz-3 text-[10px] uppercase tracking-wider">
                   {t(`dna.slot.${suggestion.suggestion_slot}`, { defaultValue: t("dna.slot.fallback") })}
                 </p>
-                <p className="text-cz-1 font-semibold text-sm leading-tight">{suggestion.label}</p>
+                <p className="text-cz-1 font-semibold text-sm leading-tight">{getDnaCopy(t, suggestion, "label")}</p>
               </div>
             </div>
-            <p className="text-cz-2 text-xs leading-relaxed">{suggestion.short_description}</p>
-            {suggestion.long_description && (
+            <p className="text-cz-2 text-xs leading-relaxed">{getDnaCopy(t, suggestion, "shortDescription")}</p>
+            {getDnaCopy(t, suggestion, "longDescription") && (
               <p className="text-cz-3 text-[11px] italic leading-relaxed line-clamp-3">
-                {suggestion.long_description}
+                {getDnaCopy(t, suggestion, "longDescription")}
               </p>
             )}
-            {suggestion.rationale && (
-              <p className="text-cz-accent-t text-[11px]">{suggestion.rationale}</p>
+            {getDnaRationale(t, suggestion) && (
+              <p className="text-cz-accent-t text-[11px]">{getDnaRationale(t, suggestion)}</p>
             )}
             <button
               type="button"
@@ -200,10 +232,10 @@ function ClubDnaBadge({ dna }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-cz-3 text-xs uppercase tracking-wider">{t("dna.badge.label")}</p>
-        <p className="text-cz-1 font-semibold text-sm">{dna.label}</p>
-        <p className="text-cz-2 text-xs mt-1 leading-relaxed">{dna.short_description}</p>
-        {dna.long_description && (
-          <p className="text-cz-3 text-[11px] mt-1 italic leading-relaxed">{dna.long_description}</p>
+        <p className="text-cz-1 font-semibold text-sm">{getDnaCopy(t, dna, "label")}</p>
+        <p className="text-cz-2 text-xs mt-1 leading-relaxed">{getDnaCopy(t, dna, "shortDescription")}</p>
+        {getDnaCopy(t, dna, "longDescription") && (
+          <p className="text-cz-3 text-[11px] mt-1 italic leading-relaxed">{getDnaCopy(t, dna, "longDescription")}</p>
         )}
       </div>
     </div>
