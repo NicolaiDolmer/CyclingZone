@@ -64,6 +64,59 @@ const WEBKIT_DEV_NOISE = [
 // `.claude/learnings/2026-05-17-visual-snapshots-layout-only.md`.
 const TEXT_MASK_SELECTOR = "main :is(h1,h2,h3,h4,h5,h6,p,span,a,button,li,td,th,label,time,strong,em,dt,dd)";
 
+const TRANSLATED_PAGE_SMOKE = [
+  {
+    path: "/dashboard",
+    en: [/Active auctions/i, /Transfers & Offers/i],
+    da: [/Aktive auktioner/i, /Transfers & tilbud/i],
+    rawKeys: ["dashboard:stats.balance", "stats.balance", "cards.auctions.title"],
+  },
+  {
+    path: "/riders",
+    en: [/Rider Database/i, /Value/i],
+    da: [/Rytterdatabase/i, /Værdi/i],
+    rawKeys: ["riders:page.title", "page.title", "table.value"],
+  },
+  {
+    path: "/auctions",
+    en: [/Auctions/i, /not involved in any active auctions/i],
+    da: [/Auktioner/i, /Du er ikke involveret/i],
+    rawKeys: ["auctions:page.title", "page.title", "empty.notInvolved"],
+  },
+  {
+    path: "/team",
+    en: [/Transfer window open/i, /Squad \(/i],
+    da: [/Transfervindue åbent/i, /Trup \(/i],
+    rawKeys: ["team:page.windowOpen", "page.windowOpen", "tabs.squad"],
+  },
+  {
+    path: "/finance",
+    en: [/Finance/i, /Active loans/i],
+    da: [/Finanser/i, /Aktive lån/i],
+    rawKeys: ["finance:page.title", "page.title", "loans.active.title"],
+  },
+  {
+    path: "/board",
+    en: [/Board/i, /The board is observing your first season/i],
+    da: [/Bestyrelse/i, /Bestyrelsen observerer din første sæson/i],
+    rawKeys: ["board:page.title", "page.title", "baseline.title"],
+  },
+  {
+    path: "/notifications",
+    en: [/Inbox/i, /No notifications in this category/i],
+    da: [/Indbakke/i, /Ingen notifikationer i denne kategori/i],
+    rawKeys: ["notifications:page.title", "page.title", "empty.noneUnread"],
+  },
+];
+
+async function forceEnglish(page) {
+  await page.evaluate(async () => {
+    window.localStorage.setItem("cz_lang", "en");
+    if (window.__i18n) await window.__i18n.changeLanguage("en");
+  });
+  await expect.poll(() => page.evaluate(() => window.__i18n?.language)).toBe("en");
+}
+
 test("core manager pages render without blank screens", async ({ page }, testInfo) => {
   const isWebkit = testInfo.project.name.includes("webkit");
   const pageErrors = [];
@@ -93,6 +146,28 @@ test("core manager pages render without blank screens", async ({ page }, testInf
   }
 
   expect(pageErrors).toEqual([]);
+});
+
+test("translated manager pages do not leak raw i18n keys or hardcoded Danish in English", async ({ page }) => {
+  await login(page);
+
+  for (const spec of TRANSLATED_PAGE_SMOKE) {
+    await page.goto(spec.path);
+    await forceEnglish(page);
+    await expect(page.locator("main")).toBeVisible();
+
+    for (const canary of spec.en) {
+      await expect(page.locator("main")).toContainText(canary);
+    }
+
+    const mainText = await page.locator("main").innerText();
+    for (const rawKey of spec.rawKeys) {
+      expect(mainText, `${spec.path} leaked raw i18n key "${rawKey}"`).not.toContain(rawKey);
+    }
+    for (const hardcodedDanish of spec.da) {
+      expect(mainText, `${spec.path} leaked hardcoded Danish ${hardcodedDanish}`).not.toMatch(hardcodedDanish);
+    }
+  }
 });
 
 test("rider profile value header stays contained on mobile", async ({ page }) => {
