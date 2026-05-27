@@ -43,7 +43,7 @@ _Token-disciplin: Loops er beskrevet kompakt. Ved implementering: læs slice-doc
    - Skriv `docs/drift-reports/<dato>.md` med detaljer
    - GitHub Action opretter automatisk issue på drift hvis CI er konfigureret
 
-3. GitHub Action `.github/workflows/drift_monitor.yml`:
+3. GitHub Action `.github/workflows/drift-monitor.yml`:
    - Daily cron 03:00 UTC
    - Kør `node backend/scripts/driftMonitor.js`
    - On failure: notify Discord
