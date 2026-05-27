@@ -415,6 +415,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **Glossary** (`docs/i18n/GLOSSARY.md`) — 20+ domæne-termer + pluraliseringsregler. **Deferred til Fase 5 (#414):** lint-guard mod hardcoded strings + `ml-*`/`mr-*` → `ms-*`/`me-*` migration prereq [#438](https://github.com/NicolaiDolmer/CyclingZone/issues/438).
 
 ### Observabilitet & Analytics (v3.20, 2026-05-11, #137)
+- **Frontend crash recovery (v4.09, 2026-05-27, #711)** — Global Sentry ErrorBoundary viser nu DA/EN fejlside med reload-knap og event-id i stedet for blank skærm. Stale Vite lazy-chunk errors detekteres som `chunk_load_error`, tagges i Sentry, og forsøger højst én sessionStorage-gated reload pr. release.
 - **Microsoft Clarity** — UI-heatmaps, session-replays, drop-off-rapporter; konsent-gated via `analytics`-kategori (#297). Tags `manager_id`/`division`/`season_number` stamped per session.
 - **player_events** — Supabase-tabel (`team_id, user_id, event_name, event_data jsonb, created_at`) m. RLS-policies så managers kun ser egne rows. 3 indices (pkey + `event_name+created_at` + `team_id+created_at`).
 - **logEvent helper** — `frontend/src/lib/logEvent.js`. Consent-gated (samme `analytics`-flag som Clarity), fire-and-forget, swallow-errors så instrumentation aldrig bryder user flow. `KNOWN_EVENTS`-frozen-array er single source of truth for hvilke events der bør være impressions for.

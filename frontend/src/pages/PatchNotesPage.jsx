@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.09",
+    date: "2026-05-27",
+    label: "Beta",
+    changes: [
+      {
+        category: "Reliability · Blank crash screens now explain what happened",
+        items: [
+          "EN · If the frontend crashes, Cycling Zone no longer leaves you on an empty beige screen. The global error screen now explains that something went wrong, gives you a reload action, and includes an error ID when Sentry provides one. Stale-tab deploy errors are handled separately: if your browser still has an older app version open and a lazy-loaded page chunk can no longer be fetched, the app attempts one safe reload instead of trapping you on a blank page. Refs #711.",
+          "DA · Hvis frontend'en crasher, efterlader Cycling Zone dig ikke længere på en tom beige skærm. Den globale fejlside forklarer nu at noget gik galt, giver dig en genindlæs-knap, og viser et fejl-id når Sentry leverer et. Stale-tab deploy-fejl håndteres særskilt: hvis din browser stadig har en ældre app-version åben og en lazy-loaded side-chunk ikke længere kan hentes, prøver appen én sikker genindlæsning i stedet for at fange dig på en blank side. Refs #711.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.08",
     date: "2026-05-27",
     label: "Beta",
