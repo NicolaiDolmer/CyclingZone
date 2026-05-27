@@ -584,7 +584,7 @@ function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
 export default function RiderStatsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation("rider");
+  const { t, i18n } = useTranslation("rider");
 
   const [rider, setRider]                   = useState(null);
   const [onWatchlist, setOnWatchlist]       = useState(false);
@@ -1054,7 +1054,7 @@ export default function RiderStatsPage() {
               <span className="text-xs uppercase bg-cz-subtle text-cz-2 px-2 py-0.5 rounded font-medium">{typeLabel}</span>
               {rider.nationality_code && (
                 <span className="text-cz-2 text-sm inline-flex items-center gap-1">
-                  <Flag code={rider.nationality_code} /> {getCountryName(rider.nationality_code)}
+                  <Flag code={rider.nationality_code} /> {getCountryName(rider.nationality_code, i18n.language)}
                 </span>
               )}
               {age && <span className="text-cz-3 text-sm">{t("header.ageYears", { age })}</span>}

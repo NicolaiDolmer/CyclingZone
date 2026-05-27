@@ -13,7 +13,7 @@
  * Stat-labels (FL/BJ/...) er internationale forkortelser — oversættes ikke.
  * Refs #487.
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "./Flag";
@@ -109,8 +109,13 @@ export default function RiderFilters({
   showTeamFilter = true, compact = false, teams = [], nationalities = [],
   showAuctionPriceFilter = false,
 }) {
-  const { t } = useTranslation("riderFilters");
+  const { t, i18n } = useTranslation("riderFilters");
   const [statsOpen, setStatsOpen] = useState(false);
+  const countryLocale = i18n.language;
+  const sortedNationalities = useMemo(
+    () => [...nationalities].sort((a, b) => getCountryName(a, countryLocale).localeCompare(getCountryName(b, countryLocale), countryLocale)),
+    [nationalities, countryLocale],
+  );
 
   const activeStatKeys = STAT_KEYS.filter(k => isStatActive(filters, k));
   const hasActiveStats = activeStatKeys.length > 0;
@@ -161,8 +166,8 @@ export default function RiderFilters({
               className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                 text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
               <option value="">{t("fields.countryAll")}</option>
-              {nationalities.map(code => (
-                <option key={code} value={code}>{getCountryName(code)}</option>
+              {sortedNationalities.map(code => (
+                <option key={code} value={code}>{getCountryName(code, countryLocale)}</option>
               ))}
             </select>
           </div>
@@ -307,7 +312,7 @@ export default function RiderFilters({
           {filters.nationality_code && (
             <Chip
               t={t}
-              label={<><Flag code={filters.nationality_code} /> {getCountryName(filters.nationality_code)}</>}
+              label={<><Flag code={filters.nationality_code} /> {getCountryName(filters.nationality_code, countryLocale)}</>}
               onRemove={() => onChange("nationality_code", "")}
             />
           )}

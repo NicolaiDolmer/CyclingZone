@@ -17,7 +17,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ### Hold & Ryttere
 - Holdoversigt og holdprofil-sider
-- Nationalitetsflag: alle 8.699 ryttere har ISO 2-bogstavs kode fra PCM `fkIDregion` → 138 lande, vises som SVG-flag via `<Flag>`-komponenten (flag-icons sprite, v2.18 — cross-browser inkl. Chrome på Windows); `import_riders.py` sætter kode automatisk ved fremtidige imports
+- Nationalitetsflag og landenavne: alle 8.699 ryttere har ISO 2-bogstavs kode fra PCM `fkIDregion` → 138 lande, vises som SVG-flag via `<Flag>`-komponenten (flag-icons sprite, v2.18 — cross-browser inkl. Chrome på Windows). Landenavne renderes locale-aware via `Intl.DisplayNames`, så `/riders`-filtre og rytterdetaljer følger aktiv DA/EN-language (v4.05, #649). `import_riders.py` sætter kode automatisk ved fremtidige imports
 - **Potentiale** (v1.83): `potentiale DECIMAL(3,1)` på riders-tabellen, synkroniseret fra PCM `dyn_cyclist.value_f_potentiel`. Vises med guldstjerner (< 30 år) / sølvstjerner (≥ 30 år), halvstjerner understøttet. Tilgængeligt på alle rytteroversigter med filter (min/max 1–6) og sortering. 8.416/8.699 ryttere har data (283 uden — formentlig ryttere uden PCM-match).
 - **Pensionerede ryttere** (v3.16): `riders.is_retired` markerer ryttere der skal bevares til historik, men skjules fra almindelige rytter-/handelssøgninger. Admin kan toggle status under `/admin` → Manuel override. Backend blokerer nye auktioner, transferlistinger, direkte tilbud, byttehandler og lejeaftaler hvis en involveret rytter er pensioneret.
 - Rytterbibliotek med søgning + filtre (nation, UCI, U25, ledig, evne-min/max, osv.) + løn-kolonne og lønfilter (v1.47)

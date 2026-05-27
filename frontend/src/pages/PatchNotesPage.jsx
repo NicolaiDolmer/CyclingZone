@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.06",
+    date: "2026-05-27",
+    label: "Beta",
+    changes: [
+      {
+        category: "Language · Country names now follow EN/DA on rider screens",
+        items: [
+          "EN · Country names in the rider filter dropdown, active country filter chip, rider detail nationality line and flag tooltips now follow the active language. English mode now shows names like Slovenia, Austria and United Arab Emirates instead of the Danish labels, and the country dropdown sorts by the visible localized names. Refs #649.",
+          "DA · Landenavne i rytter-filterets dropdown, aktivt land-filter, rytter-detailens nationalitetslinje og flag-tooltips følger nu aktivt sprog. Engelsk mode viser nu navne som Slovenia, Austria og United Arab Emirates i stedet for danske labels, og land-dropdownen sorterer efter de synlige lokaliserede navne. Refs #649.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.05",
     date: "2026-05-27",
     label: "Beta",
