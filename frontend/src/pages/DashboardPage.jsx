@@ -8,7 +8,7 @@ import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
 import SurveyBanner from "../components/SurveyBanner";
 import { computeDashboardSquadStats } from "../lib/dashboardSquadStats";
-import { formatNumber, formatDate } from "../lib/intl";
+import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 
 const API = import.meta.env.VITE_API_URL;

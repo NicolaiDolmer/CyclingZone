@@ -277,7 +277,7 @@ export default function AdminPage() {
       const res = await fetch(`${API}/api/admin/auctions/active`, { headers: await getAuth() });
       const data = await res.json();
       if (res.ok) setActiveAuctions(data.auctions || []);
-    } catch (_e) { /* silent */ }
+    } catch { /* silent */ }
   }
 
   useEffect(() => { loadAll(); }, []);
