@@ -44,18 +44,10 @@ Ingen lokal-only handoff: projekt-state, beslutninger og næste skridt skal vær
 - Tjekliste før commit; ÉN issue pr. session
 - Foreslå "Næste session starter med #N..." ved close-out
 
-## Token-budget (målt 2026-05-15 — #382 verificeret)
+## Token-budget
 
-| Komponent | Faktisk | Target | Auto-load af | Note |
-|---|---|---|---|---|
-| MEMORY.md (HOT auto) | 1,171 | <1,200 | Claude+Codex | OK efter Phase 1 |
-| SESSION_CONTEXT.md | 465 | <500 | Codex only | Bounded prefetch |
-| CLAUDE.md (denne) | 917 | <1,200 | Claude+Codex | OK |
-| NOW.md | 711 | <900 | Claude+Codex | OK efter #379 trim |
-| AGENTS.md | 4,099 | <4,500 | **Codex only** | OpenAI Codex-konvention; Claude Code loader IKKE denne (#382 finding) |
-| GUARDRAILS_CORE.md | 1,111 | <1,300 | Conditional | Kun ~20% af sessioner |
-| MCP+skills harness | **14,782** | <10,000 | Begge | #382 verificeret: code-modernization disabled, -203 tok (26→19 skills); projeret -490 var overestimat. Se [`HARNESS_MEASUREMENT.md`](docs/metrics/HARNESS_MEASUREMENT.md) |
-| **Claude cold-start** | **18,687** | <8,000 verdens-klasse | — | -203 tok post-#382 |
-| **Codex cold-start** | **23,251** | <12,000 | — | Inkluderer AGENTS.md + SESSION_CONTEXT.md som Claude ikke loader |
+Master: [`docs/AI_OPS_TOKEN_BUDGET.md`](docs/AI_OPS_TOKEN_BUDGET.md) + [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605).
+
+Aktuel P0-baseline 2026-05-28: Claude cold-start ~19.6K tok, Codex ~24.3K, harness/tool schemas ~14.8K, on-demand memory-dir ~69K. Næste praktiske target i #605: Claude <15K og Codex <18K uden quality-canary regression.
 
 Per-PC harness-snapshot: `docs/metrics/harness-snapshot-<COMPUTERNAME>.json`. Refresh ved connector/plugin-ændring.

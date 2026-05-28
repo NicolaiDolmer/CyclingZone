@@ -9,7 +9,7 @@ CyclingZone har drevet **to parallelle "verdensklasse"-spor** uden konsistent cr
 
 1. **Track A — Token-reduktion + cross-PC reproducibility** ("Step 1-7" / Phase 0-5)
    - Kilde-plan: [`docs/archive/plans/2026-05-14-ai-setup-world-class-plan.md`](archive/plans/2026-05-14-ai-setup-world-class-plan.md)
-   - Mål: cold-start <8K tok + ny PC ready-to-work fra `git clone` på <30 min
+   - P0 2026-05-28: [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605) samler AI World-Class v2 + token-friendly agent setup. Aktuel måling: Claude ~19.6K tok, Codex ~24.3K tok, harness ~14.8K tok, memory-dir ~69K tok.
 2. **Track B — [Epic #323](https://github.com/NicolaiDolmer/CyclingZone/issues/323) 4-fase skalerings-roadmap**
    - Mål: produktion klar til 5.000-10.000 brugere + fuldtidsdrift fra 2026-06-01
 
@@ -26,8 +26,8 @@ Step-numrene stammer fra `2026-05-15`-planlægning refereret i issue-bodies (#38
 | Step | Issue | Titel | Status | Owner | Effort | Blocker |
 |---|---|---|---|---|---|---|
 | 1 | [#356](https://github.com/NicolaiDolmer/CyclingZone/issues/356) | AI Ops: Disable ubrugte plugins/skills | ✅ CLOSED | Claude | S | — |
-| 2 | [#385](https://github.com/NicolaiDolmer/CyclingZone/issues/385) | Settings.json 3-lag split + path-audit forward-guard | 🟡 OPEN, høj-prio | Claude | M (~1h) | Afhænger af #383 |
-| 3 | [#385](https://github.com/NicolaiDolmer/CyclingZone/issues/385) | (samme issue som Step 2 — path-audit del) | 🟡 OPEN | Claude | (M, inkl.) | — |
+| 2 | [#385](https://github.com/NicolaiDolmer/CyclingZone/issues/385) | Settings.json 3-lag split + path-audit forward-guard | ✅ CLOSED, `claude:done` | Claude | M (~1h) | — |
+| 3 | [#385](https://github.com/NicolaiDolmer/CyclingZone/issues/385) | (samme issue som Step 2 — path-audit del) | ✅ CLOSED, `claude:done` | Claude | (M, inkl.) | — |
 | 4 | [#386](https://github.com/NicolaiDolmer/CyclingZone/issues/386) | Bootstrap-script til ny PC | 🟡 OPEN, lav-prio | Claude | M (~2h + VM-test) | Afhænger af #385 |
 | 5 | — | (ikke nummereret) | n/a | n/a | n/a | n/a |
 | 6 | — | (ikke nummereret) | n/a | n/a | n/a | n/a |
@@ -37,11 +37,12 @@ Step-numrene stammer fra `2026-05-15`-planlægning refereret i issue-bodies (#38
 
 | Issue | Titel | Status | Owner | Effort | Blocker |
 |---|---|---|---|---|---|
-| [#383](https://github.com/NicolaiDolmer/CyclingZone/issues/383) | Cross-PC settings.json reconciliation + hook scripts commit (pc1) | 🟡 OPEN, med-prio | Claude | M (~2h) | Skal køres på pc1-session |
+| [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605) | P0 AI World-Class v2 — token-friendly agent setup | 🔴 P0 OPEN | Claude/Codex | M-L | Samler #357/#355/#388/#658 |
+| [#383](https://github.com/NicolaiDolmer/CyclingZone/issues/383) | Cross-PC settings.json reconciliation + hook scripts commit (pc1) | ✅ CLOSED, `claude:done` | Claude | M (~2h) | — |
 | [#455](https://github.com/NicolaiDolmer/CyclingZone/issues/455) | DX: live-verifikation af nye hooks på begge PCs (efter #453) | 🟡 OPEN, med-prio | Codex/Claude | S (~30min) | Kræver brugerens test på begge PCs |
 | [#357](https://github.com/NicolaiDolmer/CyclingZone/issues/357) | Verificér Phase 1-3 cold-start <8K + canary-regression | 🟡 OPEN | Claude | S (~30min) | Phase 2+3 disables færdige |
 
-**Track A — overordnet status:** ~50% færdig. Token-reduktion (Phase 1-3) gennemført; cross-PC reproducibility-del (Step 2-4) er det resterende kritiske arbejde.
+**Track A — overordnet status:** P0 token-sporet er genåbnet via #605, fordi runtime-baseline 2026-05-28 stadig fejler cold-start: Claude ~19.6K, Codex ~24.3K, harness ~14.8K, memory-dir ~69K. Cross-PC settings #383/#385 er runtime-verificeret lukket; #386/#455 står tilbage.
 
 ---
 
@@ -85,13 +86,13 @@ Identificerede berørings-punkter hvor arbejde i ét spor blokerer eller acceler
 
 **Overlap:** Intern Track A-overlap. Step 1 (statisk disable) er foundation; Step 7 (dynamisk per-slice) er evolution. Begge bidrager til cold-start-mål.
 
-**Beslutning:** Step 7 (#388) DEFER indtil Step 4 (#386 bootstrap) er done OG cold-start fortsat ligger >8K efter Phase 1-3 verifikation (#357). Workflow-analyse anti-forslag C6 anbefaler **dropped** hvis ROI er lav.
+**Beslutning:** Step 7 (#388) styres nu af #605. Dynamic skills skal kun bygges hvis P0-baselinen viser >500 tok realistisk gevinst efter lavere-risiko trims.
 
-### 4. Cold-start verifikation — Track A #357 ↔ alt andet
+### 4. Cold-start verifikation — Track A #357/#605 ↔ alt andet
 
-**Overlap:** #357 er Track A's leverance-bevis. Hvis cold-start ≥8K efter alle disables, er Track A Phase 1-3-arbejde **ikke færdigt** — og Step 7 (#388) bliver høj-prio igen.
+**Overlap:** #357 var Track A's leverance-bevis, men #605 er nu P0-masteren der både måler, prioriterer og lukker gap'et. Baseline 2026-05-28 viser at <8K ikke er et realistisk close-out-gate, fordi harness alene er ~14.8K.
 
-**Beslutning:** **Kør #357 NU.** Det er en S-effort task der låser op for resten af Track A's prioritering.
+**Beslutning:** **Kør #605 NU.** #357, #355, #388 og #658 er child/follow-up spor under #605 og skal ikke eksekveres uafhængigt.
 
 ---
 
@@ -99,12 +100,17 @@ Identificerede berørings-punkter hvor arbejde i ét spor blokerer eller acceler
 
 Prioriteret rækkefølge efter blocker-analyse + ROI:
 
+### Fase P0 — AI World-Class v2 token-friendly setup (nu)
+
+1. **[#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605)** — Mål baseline, trim HOT context, reducer user-controllable harness/load, etabler watchdog og kør quality-canaries.
+2. **[#357](https://github.com/NicolaiDolmer/CyclingZone/issues/357)** / **[#355](https://github.com/NicolaiDolmer/CyclingZone/issues/355)** / **[#388](https://github.com/NicolaiDolmer/CyclingZone/issues/388)** / **[#658](https://github.com/NicolaiDolmer/CyclingZone/issues/658)** — behandles som child-spor under #605.
+
 ### Fase X1 — Cross-PC stabilitet (denne uge, blokerer det meste)
 
-1. **[#383](https://github.com/NicolaiDolmer/CyclingZone/issues/383)** — Cross-PC settings reconciliation (kræver pc1-session, ~2h)
-2. **[#385](https://github.com/NicolaiDolmer/CyclingZone/issues/385)** — Settings 3-lag split + path-audit (efter #383, ~1h)
+1. **[#383](https://github.com/NicolaiDolmer/CyclingZone/issues/383)** — Closed, afventer kun evt. bruger-verifikation
+2. **[#385](https://github.com/NicolaiDolmer/CyclingZone/issues/385)** — Closed, afventer kun evt. bruger-verifikation
 3. **[#455](https://github.com/NicolaiDolmer/CyclingZone/issues/455)** — Live-verifikation hooks begge PCs (~30 min, kræver brugerens test)
-4. **[#357](https://github.com/NicolaiDolmer/CyclingZone/issues/357)** — Verificér Phase 1-3 cold-start <8K (~30 min)
+4. **[#386](https://github.com/NicolaiDolmer/CyclingZone/issues/386)** — Bootstrap-script ny PC (~2h + VM-test) — DEFER hvis ingen ny PC venter
 
 Når disse er færdige, kan #324 (Track B Phase 0) sandsynligvis også lukkes (overlap-punkt 1).
 
@@ -116,8 +122,7 @@ Når disse er færdige, kan #324 (Track B Phase 0) sandsynligvis også lukkes (o
 
 ### Fase X3 — Bootstrap-script + nice-to-have (efter X1+X2)
 
-8. **[#386](https://github.com/NicolaiDolmer/CyclingZone/issues/386)** — Bootstrap-script ny PC (~2h + VM-test) — DEFER hvis ingen ny PC venter
-9. **[#388](https://github.com/NicolaiDolmer/CyclingZone/issues/388)** — Skill-portefølje per slice (~3h) — DROP hvis #357 viser cold-start <8K
+8. **[#388](https://github.com/NicolaiDolmer/CyclingZone/issues/388)** — Skill-portefølje per slice (~3h) — kun hvis #605 viser ROI nok
 
 ### Fase X4 — Skalerings-spor (post-MVP-validation, primært Q3 2026)
 
