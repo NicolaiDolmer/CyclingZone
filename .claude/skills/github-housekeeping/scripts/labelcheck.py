@@ -6,14 +6,24 @@ Usage:
 Reads $TEMP/audit-open-all.json.
 
 Output: 4-state-machine conflicts (todo+done, todo+blocked, in_progress+done, in_progress+blocked),
-plus in_progress list (for >24h-after-merge cleanup check) and no_claude_state list.
+plus in_progress list (with idle-hours since updatedAt; >48h flagged STALE) and no_claude_state list.
 """
 import json, os
+from datetime import datetime, timezone
 
 TMP = os.environ.get('TEMP', '/tmp')
+STALE_INPROGRESS_HOURS = 48
 
 with open(os.path.join(TMP, 'audit-open-all.json'), encoding='utf-8') as f:
     issues = json.load(f)
+
+now = datetime.now(timezone.utc)
+
+
+def hours_since(iso):
+    if not iso: return None
+    t = datetime.fromisoformat(iso.replace('Z', '+00:00'))
+    return (now - t).total_seconds() / 3600
 
 conflicts = {
     'todo_done': [],
@@ -39,8 +49,15 @@ for i in issues:
 
 print("=== Label-konflikter ===")
 for k, v in conflicts.items():
-    if k in ('in_progress', 'no_claude_state'):
-        print(f"  {k}: {len(v)}")
+    if k == 'in_progress':
+        print(f"  in_progress: {len(v)}")
+        for num, upd, title in v[:10]:
+            h = hours_since(upd)
+            hs = f"{h:.1f}h" if h is not None else "—"
+            stale = "  ⚠️ STALE (resume/re-triage?)" if (h is not None and h > STALE_INPROGRESS_HOURS) else ""
+            print(f"    (#{num}, idle {hs}, '{title}'){stale}")
+    elif k == 'no_claude_state':
+        print(f"  no_claude_state: {len(v)}")
         for x in v[:10]:
             print(f"    {x}")
     else:

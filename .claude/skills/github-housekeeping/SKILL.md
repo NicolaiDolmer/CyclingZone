@@ -44,6 +44,8 @@ Limits: 300 åbne (repo har 150+; margin). 200 merged PRs (lektion 2026-05-23: 5
 
 **Per `claude:done`-issue:** find seneste comment EFTER claude:done-label, score per Trin 3. _(Note: `claude:done` blev un-deprecated 2026-05-22 per workflow-revision. 2026-05-23-audit observerede 20 åbne done-issues (var 4 dagen før, +16 fra B-series + security batch). Label er aktiv del af state-maskine igen.)_
 
+**Per `claude:done`-issue der citerer en PR — verify PR ER merged (lektion 2026-05-28):** Hvis seneste comment citerer `PR #N` / `pull/N` (især "## Leveret — PR #N" / "leveret i PR #N"-patterns), kør `gh pr view N --json state,mergedAt`. Hvis PR'en er `OPEN`/draft → **flag "claims delivered but PR #N still open — NOT close-eligible, carry-forward"** uanset hvor stærk comment-evidensen ellers er. Dette er den omvendte check af Trin 3's "Post-comment work-completion check" (comment siger pending, men PR merged efter): her siger comment _done_, men koden er ikke merget. Eksempel #706: comment "## Leveret — PR #713  Migration anvendt: … DB har nu 19/19" mens PR #713 var `OPEN` (not draft) — migration evt. live i DB, men close-protokol ufuldstændig til PR merges. Sparer manuel `gh pr view` per done-issue.
+
 **Per `claude:blocked`-issue:** `gh issue view <blocker-N> --json state` — hvis blocker lukket → Kategori I.
 
 **Per Kategori B-kandidat (STRONG, ≥24h) — uafhængig MCP cross-verify (lektion 2026-05-22):**
@@ -112,7 +114,7 @@ Begrundelse: "verificeret prod" kan referere til _deploy-verification_ ("HTTP 20
 - **C. Awaiting verify** — claude:done + MEDIUM/WEAK/BLOCKED (begrundelse per issue)
 
 **Bonus:**
-- **D. Label-konflikter** — `claude:todo+done`, `claude:todo+blocked`, eller helt uden `claude:*`. **4-state-machine (lektion 2026-05-23):** Repo har de-facto 4 states (`claude:todo`, `claude:in-progress`, `claude:done`, `claude:blocked`). Hvis `claude:in-progress` persistent >24h efter en `Refs #N` PR er merged → label-cleanup-action (flyt til `claude:done`). Eksempel #558/#559: comment "venter på CI-grønt før merge" 15:47:28Z, PR #573 merged 15:47:48Z (20 sekunder senere), men `claude:in-progress` stadig sat dagen efter. Skill skal også tjekke 2-state-konflikter med in-progress (fx `claude:in-progress+done`).
+- **D. Label-konflikter** — `claude:todo+done`, `claude:todo+blocked`, eller helt uden `claude:*`. **4-state-machine (lektion 2026-05-23):** Repo har de-facto 4 states (`claude:todo`, `claude:in-progress`, `claude:done`, `claude:blocked`). Hvis `claude:in-progress` persistent >24h efter en `Refs #N` PR er merged → label-cleanup-action (flyt til `claude:done`). Eksempel #558/#559: comment "venter på CI-grønt før merge" 15:47:28Z, PR #573 merged 15:47:48Z (20 sekunder senere), men `claude:in-progress` stadig sat dagen efter. Skill skal også tjekke 2-state-konflikter med in-progress (fx `claude:in-progress+done`). **Idle in-progress (lektion 2026-05-28):** `labelcheck.py` printer nu idle-timer (siden `updatedAt`) per in-progress issue og flagger >48h som `⚠️ STALE (resume/re-triage?)` — info-only, ingen auto-action. Genuint mid-flight sessioner kan parkere et par dage; men idle high-priority/launch-issues bør surfaces så de ikke stille staller. Eksempel #684 (55.7h) + #678 (49.8h, priority:high + slice:tdf-launch, lister selv remaining closeout-blockers). Nudge brugeren eller foreslå re-triage til sub-issues; flyt KUN til `claude:done` hvis en `Refs #N` PR faktisk repræsenterer completion (ikke når investigation/closeout genuint fortsætter).
 - **E. Forfaldne pendings** — `claude:done` >14 dage uden bruger-interaktion
 - **F. Stale backlog** — `claude:todo` >30 dage uden `updatedAt`-bevægelse (close/downgrade-kandidat)
 - **H. `needs-user-action` reality-check** — sample 3-5, er handlingen muligvis udført?
@@ -268,6 +270,11 @@ Denne skill bliver fyret ugentligt mandag 05:00 UTC (07:00 CEST / 06:00 CET) af 
 - **Persistent scoring-scripts (lektion 2026-05-25):** Scoring/cross-ref/label/stale Python-scripts ligger nu i `.claude/skills/github-housekeeping/scripts/*.py`. Brug dem direkte i stedet for at inline ~120 linjer Python hver audit. Workflow: `gh issue list ... > $TEMP/audit-done.json && PYTHONUTF8=1 python .claude/skills/github-housekeeping/scripts/score_done.py`. Scripts: `score_done.py`, `crossref.py`, `labelcheck.py`, `staleblocked.py`. Tune STRONG_PATTERNS/NEG_KEYWORDS direkte i script-fil ved retro.
 
 ## Changelog
+
+- **2026-05-28 — Audit-housekeeping retro.** Lessons fra 10. kørsel — **1 close (#649)**, ren lille batch (0 label-konflikter, 0 stale backlog, 4 legit blockers). 2 accepterede edits:
+  - **Trin 2 (delivered-claim vs PR-open cross-check):** Nyt afsnit. For done-issues hvis seneste comment citerer `PR #N` (især "## Leveret — PR #N"): kør `gh pr view N --json state` → hvis OPEN/draft, flag "claims delivered but PR still open — NOT close-eligible". Omvendt check af Trin 3's post-comment work-completion. Citat #706: comment "## Leveret — PR #713  Migration anvendt: … DB har nu 19/19" mens PR #713 var OPEN — måtte manuelt `gh pr view 713` for at fange det. Automatiserer nu.
+  - **Trin 4 Kategori D + labelcheck.py (idle in-progress flag):** `labelcheck.py` beregner nu idle-timer (siden `updatedAt`) per in-progress issue + flagger >48h som `⚠️ STALE (resume/re-triage?)`, info-only. #684 (55.7h) + #678 (49.8h, priority:high + slice:tdf-launch, lister selv remaining blockers) var begge idle 2 dage — forrige audit kaldte dem "legit aktive i dag", men idle-duration var ikke trackét. Flyt KUN til done hvis Refs-PR = completion; ellers nudge/re-triage.
+  - **Standardiserede filnavne (2026-05-26 edit) gav 0 friction:** scripts kørte direkte uden rename.
 
 - **2026-05-17 — Initial version.** Baseret på første audit-kørsel + retro. Lessons baked in:
   - `--limit 100` ramte loftet på repo med 150+ issues
