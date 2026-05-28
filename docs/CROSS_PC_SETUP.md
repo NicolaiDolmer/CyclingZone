@@ -134,7 +134,7 @@ Invoke-RestMethod $u | Out-File "$env:TEMP\bootstrap-pc.ps1"
 pwsh -File "$env:TEMP\bootstrap-pc.ps1"          # tilføj -WithDocker hvis du vil køre Supabase lokalt
 ```
 
-`bootstrap-pc.ps1` installerer: Git, GitHub CLI, PowerShell 7, Windows Terminal, VS Code (+ extensions), Node.js LTS (≥22), Python, Infisical CLI, Bitwarden, Chrome, samt npm-globale CLI'er (Vercel, Railway, Codex) og Claude Code. Det rører **aldrig** secrets. Idempotent — kan køres igen.
+`bootstrap-pc.ps1` installerer: Git, GitHub CLI, PowerShell 7, Windows Terminal, VS Code (+ extensions), Node.js LTS (≥22), Python, Infisical CLI (via Scoop — winget-pakken er pt. død), Bitwarden, Chrome, samt npm-globale CLI'er (Vercel, Railway, Codex) og Claude Code. Det sætter desuden ExecutionPolicy `CurrentUser=RemoteSigned` tidligt og tilføjer `~/.local/bin` til User-PATH (så `claude` resolver i nye terminaler). Det rører **aldrig** secrets. Idempotent — kan køres igen.
 
 > **Node-version:** `backend/package.json` kræver Node **≥ 22**. `OpenJS.NodeJS.LTS` (som bootstrap installerer) giver den nyeste LTS = 22.x.
 
@@ -180,7 +180,12 @@ Installerer root-deps (lint-staged) og aktiverer git pre-commit/pre-push hooks (
 
 **Produktionssecrets via Infisical** (erstatter OneDrive-hardlinks efter #327; runtime-injection efter Phase 5):
 
-1. **Infisical CLI installeret?** `winget install Infisical.infisical` (eller `npm i -g @infisical/cli`). Restart shell efter winget-install så `infisical` resolver i PATH.
+1. **Infisical CLI installeret?** Installeres normalt af `bootstrap-pc.ps1` via Scoop. Manuelt (winget-pakken `Infisical.infisical` er pt. død):
+   ```powershell
+   scoop bucket add infisical https://github.com/Infisical/scoop-infisical.git
+   scoop install infisical
+   ```
+   (Scoop kræver `ExecutionPolicy CurrentUser=RemoteSigned` — sættes af bootstrap.) Restart shell så `infisical` resolver i PATH. Fallback: `npm i -g @infisical/cli`.
 2. **Log ind:** `infisical login` (browser-OAuth)
 3. **Verificér projekt-link:** `Test-Path .infisical.json` skal være `True` (committet til repo, peger på workspace `681fe0be-...`).
 4. **Test runtime-injection:** `infisical run --env=dev -- node -e "console.log('SUPABASE_URL set:', !!process.env.SUPABASE_URL)"` → skal printe `true`.

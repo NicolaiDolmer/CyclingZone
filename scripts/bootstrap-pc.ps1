@@ -63,6 +63,47 @@ function Install-Winget {
   if ($LASTEXITCODE -ne 0) { Write-Warning "  $Name returnerede exit $LASTEXITCODE - fortsaetter." }
 }
 
+function Install-Scoop {
+  # Per-bruger pakkemanager. Maa IKKE koeres som admin (scriptet enforcer det
+  # allerede i sektion 0). Kraever RemoteSigned ExecutionPolicy (sat tidligt).
+  if (Get-Command scoop -ErrorAction SilentlyContinue) {
+    Write-Host "  [skip]    Scoop (allerede installeret)"
+    return
+  }
+  Write-Host "  [install] Scoop (per-bruger pakkemanager)"
+  Invoke-RestMethod -Uri 'https://get.scoop.sh' | Invoke-Expression
+  Update-SessionPath
+  $scoopShims = Join-Path $env:USERPROFILE 'scoop\shims'
+  if ((Test-Path $scoopShims) -and ($env:Path -notlike "*$scoopShims*")) {
+    $env:Path = "$scoopShims;$env:Path"
+  }
+}
+
+function Install-Infisical {
+  # Infisical CLI via Scoop. winget-pakken 'Infisical.infisical' er pt. doed
+  # (tom/uvedligeholdt manifest), saa vi bruger Infisicals officielle Scoop-bucket.
+  if (Get-Command infisical -ErrorAction SilentlyContinue) {
+    Write-Host "  [skip]    Infisical CLI (allerede installeret)"
+    return
+  }
+  Install-Scoop
+  if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+    Write-Warning "  Scoop ikke tilgaengelig - kan ikke installere Infisical. Manuelt: https://infisical.com/docs/cli/overview"
+    return
+  }
+  # 'scoop bucket add' fejler hvis bucket'en allerede findes -> guard (idempotent).
+  $bucketList = (scoop bucket list 6>&1 | Out-String)
+  if ($bucketList -notmatch '(?im)^\s*infisical\b') {
+    scoop bucket add infisical https://github.com/Infisical/scoop-infisical.git
+  } else {
+    Write-Host "  [skip]    scoop bucket 'infisical' findes allerede"
+  }
+  scoop install infisical
+  if ($LASTEXITCODE -ne 0) { Write-Warning "  Infisical CLI install via Scoop fejlede." }
+  else { Write-Host "  [ok]      Infisical CLI (Scoop)" }
+  Update-SessionPath
+}
+
 # --- 0. Forudsaetninger ----------------------------------------------------
 
 if ($PSVersionTable.PSVersion.Major -lt 7) {
@@ -80,9 +121,21 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
 
 Write-Host "=== CyclingZone PC-bootstrap ===`n"
 
-# --- 1. winget: apps og runtimes ------------------------------------------
+# Saet ExecutionPolicy TIDLIGT (CurrentUser, ikke admin-kraevende). Uden dette
+# blokerer en frisk Windows 11 baade Scoop-installeren og de efterfoelgende
+# child-scripts (setup-new-pc.ps1 m.fl.) - selve dette script slipper kun fordi
+# 'pwsh -File' bypasser policy for én fil. Idempotent: kun naar noedvendigt.
+$cuPolicy = Get-ExecutionPolicy -Scope CurrentUser
+if ($cuPolicy -notin @('RemoteSigned', 'Unrestricted', 'Bypass')) {
+  Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
+  Write-Host "  [ok]      ExecutionPolicy CurrentUser -> RemoteSigned"
+} else {
+  Write-Host "  [skip]    ExecutionPolicy CurrentUser allerede '$cuPolicy'"
+}
 
-Write-Host "[1/8] winget-pakker (apps + runtimes)"
+# --- 1. winget + Scoop: apps og runtimes ----------------------------------
+
+Write-Host "`n[1/8] Pakker (winget + Scoop)"
 Install-Winget -Id 'Git.Git'                    -Name 'Git'
 Install-Winget -Id 'GitHub.cli'                 -Name 'GitHub CLI'
 Install-Winget -Id 'Microsoft.PowerShell'       -Name 'PowerShell 7'
@@ -90,10 +143,12 @@ Install-Winget -Id 'Microsoft.WindowsTerminal'  -Name 'Windows Terminal'
 Install-Winget -Id 'Microsoft.VisualStudioCode' -Name 'VS Code'
 Install-Winget -Id 'OpenJS.NodeJS.LTS'          -Name 'Node.js LTS (22.x - repo kraever >=22)'
 Install-Winget -Id 'Python.Python.3.12'         -Name 'Python 3.12 (uci-scraper, import-scripts, skills)'
-Install-Winget -Id 'Infisical.infisical'        -Name 'Infisical CLI (secrets)'
 Install-Winget -Id 'Bitwarden.Bitwarden'        -Name 'Bitwarden (personlige logins + 2FA)'
 Install-Winget -Id 'Google.Chrome'              -Name 'Google Chrome (web-dev + Chrome MCP)'
 Update-SessionPath
+
+# Infisical CLI via Scoop (winget-pakken er pt. doed) - se Install-Infisical.
+Install-Infisical
 
 # --- 2. npm globale CLI'er (Vercel, Railway, Codex) -----------------------
 
@@ -119,6 +174,20 @@ if (Get-Command claude -ErrorAction SilentlyContinue) {
 } else {
   Invoke-RestMethod -Uri 'https://claude.ai/install.ps1' | Invoke-Expression
   Update-SessionPath
+}
+
+# Claude Code's native installer lander i ~/.local/bin, men tilfoejer ikke altid
+# mappen til den persistente User-PATH (kun session). Sikr den permanent saa
+# 'claude' resolver i nye terminaler. Idempotent.
+$localBin  = Join-Path $env:USERPROFILE '.local\bin'
+$userPath  = [Environment]::GetEnvironmentVariable('Path', 'User')
+if ($userPath -notlike "*$localBin*") {
+  $newUserPath = (@($userPath, $localBin) | Where-Object { $_ }) -join ';'
+  [Environment]::SetEnvironmentVariable('Path', $newUserPath, 'User')
+  Write-Host "  [ok]      ~/.local/bin tilfoejet til User-PATH"
+  Update-SessionPath
+} else {
+  Write-Host "  [skip]    ~/.local/bin allerede i User-PATH"
 }
 
 # --- 4. VS Code-extensions -------------------------------------------------
