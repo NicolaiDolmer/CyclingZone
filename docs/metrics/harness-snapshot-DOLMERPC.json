@@ -1,0 +1,59 @@
+{
+  "host": "DOLMERPC",
+  "pc_label": "PC3",
+  "user_profile": "Nicolai",
+  "captured": "2026-05-29T00:15:00+02:00",
+  "captured_via": "manuel optælling fra session-start system-reminders (#721 PC3 onboarding)",
+  "methodology": "Se docs/metrics/HARNESS_MEASUREMENT.md. Refresh ved enhver connector- eller plugin-ændring.",
+  "components": {
+    "system_prompt_preamble_tokens": 2500,
+    "auto_memory_block_tokens": 2000,
+    "top_level_tool_schemas_tokens": 7500,
+    "deferred_tools_count": 217,
+    "deferred_tools_tokens": 3255,
+    "skills_count": 49,
+    "skills_tokens": 1838
+  },
+  "deferred_tools_breakdown": {
+    "builtin_cron_plus_misc": 19,
+    "supabase_mcp": 29,
+    "github_mcp": 43,
+    "google_calendar": 8,
+    "google_drive": 8,
+    "sentry_mcp": 25,
+    "claude_preview": 13,
+    "claude_in_chrome": 22,
+    "ccd_directory": 1,
+    "ccd_session_mgmt": 3,
+    "vercel": 18,
+    "mcp_registry": 3,
+    "scheduled_tasks": 3,
+    "discord": 22
+  },
+  "deferred_tools_breakdown_notes": {
+    "github_mcp": "CONNECTED på DolmerPC (43 tools). På NicolaiPC blev GitHub MCP disconnected i Phase B 2026-05-15 — divergens.",
+    "sentry_mcp": "CONNECTED på DolmerPC (25 tools). Ikke til stede i NicolaiPC-snapshot (2026-05-15) — ny connector siden da.",
+    "gmail": "Ikke connected (0 tools) — matcher NicolaiPC Phase-B-cut."
+  },
+  "enabled_plugins": [
+    "vercel@claude-plugins-official",
+    "claude-code-setup@claude-plugins-official"
+  ],
+  "enabled_plugins_notes": {
+    "vercel": "User-level enabled (~/.claude/settings.json). Eksponerer ~33 vercel:* skills — hovedårsag til at skills_count (49) er ~2.6x NicolaiPC (19). Cross-PC divergens; overvej disable hvis Vercel-skills ikke bruges aktivt på denne PC.",
+    "project_level_disabled": "product-management, marketing, design, productivity disabled via .claude/settings.json (#356) — gælder alle PCs."
+  },
+  "total_harness_tokens": 17093,
+  "cross_pc_parity_vs_NicolaiPC": {
+    "nicolaipc_total_harness_tokens": 14782,
+    "nicolaipc_deferred_tools_count": 149,
+    "nicolaipc_skills_count": 19,
+    "delta_tokens": 2311,
+    "primary_drivers": [
+      "github_mcp connected (+43 deferred tools / ~645 tok)",
+      "sentry_mcp connected (+25 deferred tools / ~375 tok)",
+      "vercel plugin enabled (+~30 skills / ~1100 tok)"
+    ],
+    "note": "DolmerPC er ~2,300 tok tungere end den optimerede NicolaiPC. Ikke blokerende for onboarding, men relevant for #605 token-budget. Cuts kan adressere via connector-disable (claude.ai/settings/connectors) + plugin-disable (/plugin)."
+  }
+}
