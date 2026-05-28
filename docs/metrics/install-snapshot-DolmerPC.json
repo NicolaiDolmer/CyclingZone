@@ -1,0 +1,104 @@
+{
+  "_schema_version": 1,
+  "_purpose": "Per-PC baseline af installed dependencies + tooling. Bruges til cross-PC parity-check (PC1 ↔ PC2 ↔ PC3). Refresh efter hver dep-bump eller hver `npm ci`. Compare-script: scripts/agent-doctor.ps1 (install-parity check, #618).",
+  "host": "DolmerPC",
+  "pc_label": "PC3",
+  "captured": "2026-05-29T00:05+02:00",
+  "captured_via": "PC3 onboarding verifikation (#721) — agent-doctor install-parity OK + verify-infisical grøn + frontend build grøn",
+  "git": {
+    "branch": "main",
+    "head_sha": "68b36d1",
+    "head_subject": "chore(ops): add new-PC bootstrap script + align cross-PC setup"
+  },
+  "tooling": {
+    "node": "v24.16.0",
+    "npm": "11.13.0",
+    "git": "2.54.0.windows.1",
+    "gh": "2.93.0",
+    "pwsh": "7.6.2"
+  },
+  "lockfile_sha256": {
+    "package-lock.json": "77075f26199b346e005404342f8deeebb88389a0056d5fc1ff02fb6f1b28501c",
+    "backend/package-lock.json": "1c3cb850623f7e471caf0e6f718cfe8d1cf9daa21319d9405d3ad674a89d30cc",
+    "frontend/package-lock.json": "1325e57be9e9bd64fad81ac394be6269ff13ba59f9b0b6e66d784a101c431974"
+  },
+  "direct_deps_installed": {
+    "root": {
+      "@supabase/supabase-js": "2.106.1",
+      "dotenv": "16.6.1",
+      "lint-staged": "17.0.5"
+    },
+    "backend": {
+      "@eslint/js": "10.0.1",
+      "@sentry/node": "10.53.1",
+      "@supabase/supabase-js": "2.106.1",
+      "cors": "2.8.6",
+      "dotenv": "17.4.2",
+      "eslint": "10.4.0",
+      "exceljs": "4.4.0",
+      "express": "4.22.2",
+      "express-rate-limit": "8.5.2",
+      "globals": "17.6.0",
+      "helmet": "8.2.0",
+      "multer": "2.1.1",
+      "node-fetch": "3.3.2",
+      "prettier": "3.8.3",
+      "ws": "8.20.1"
+    },
+    "frontend": {
+      "@e965/xlsx": "0.20.3",
+      "@eslint/js": "10.0.1",
+      "@microsoft/clarity": "1.0.2",
+      "@playwright/test": "1.60.0",
+      "@sentry/react": "10.53.1",
+      "@sentry/vite-plugin": "5.3.0",
+      "@supabase/supabase-js": "2.106.1",
+      "@vercel/analytics": "2.0.1",
+      "@vercel/speed-insights": "2.0.0",
+      "@vitejs/plugin-react": "6.0.2",
+      "autoprefixer": "10.5.0",
+      "eslint": "10.4.0",
+      "eslint-plugin-react": "7.37.5",
+      "eslint-plugin-react-hooks": "7.1.1",
+      "flag-icons": "7.5.0",
+      "globals": "17.6.0",
+      "i18next": "26.2.0",
+      "i18next-browser-languagedetector": "8.2.1",
+      "i18next-http-backend": "4.0.0",
+      "i18next-icu": "2.4.3",
+      "intl-messageformat": "11.2.6",
+      "postcss": "8.5.15",
+      "prettier": "3.8.3",
+      "react": "18.3.1",
+      "react-dom": "18.3.1",
+      "react-i18next": "17.0.8",
+      "react-is": "19.2.6",
+      "react-router-dom": "6.30.3",
+      "recharts": "3.8.1",
+      "tailwindcss": "3.4.19",
+      "vite": "8.0.14"
+    }
+  },
+  "parity_status": {
+    "root": "OK — all direct deps match lockfile",
+    "backend": "OK — all direct deps match lockfile",
+    "frontend": "OK — all direct deps match lockfile"
+  },
+  "cross_pc_parity_vs_NicolaiPC": {
+    "lockfile_sha256_match": {
+      "package-lock.json": true,
+      "backend/package-lock.json": false,
+      "frontend/package-lock.json": true
+    },
+    "direct_dep_diffs": {
+      "backend.node-fetch": "DolmerPC=3.3.2, ikke til stede i NicolaiPC-snapshot (2026-05-24) — backend lockfile er bumpet siden; install-parity OK mod current lockfile"
+    },
+    "tooling_diffs": {
+      "node": "DolmerPC=v24.16.0 vs NicolaiPC=v24.14.1 — DolmerPC nyere patch",
+      "npm": "DolmerPC=11.13.0 vs NicolaiPC=11.4.1",
+      "git": "DolmerPC=2.54.0 vs NicolaiPC=2.53.0",
+      "gh": "DolmerPC=2.93.0 vs NicolaiPC=2.90.0",
+      "pwsh": "match (7.6.2)"
+    }
+  }
+}
