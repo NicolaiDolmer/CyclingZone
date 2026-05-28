@@ -49,8 +49,13 @@ $gitPath = Resolve-GitPath
 Write-Host "  [ok] git: $(& $gitPath --version)"
 
 $nodeCommand = Get-Command node -ErrorAction SilentlyContinue
-if (-not $nodeCommand) { throw "Node ikke fundet. Installer Node.js (anbefalet 20.x eller 22.x)." }
-Write-Host "  [ok] node: $(& $nodeCommand.Source --version)"
+if (-not $nodeCommand) { throw "Node ikke fundet. Installer Node.js LTS (repoet kraever >= 22) - se scripts/bootstrap-pc.ps1." }
+$nodeVersion = (& $nodeCommand.Source --version)
+Write-Host "  [ok] node: $nodeVersion"
+$nodeMajor = [int](($nodeVersion -replace '^v', '') -split '\.')[0]
+if ($nodeMajor -lt 22) {
+  Write-Host "  [warn] Node $nodeVersion er for gammel. backend/package.json kraever >= 22 (LTS). Opgradér foer du arbejder." -ForegroundColor Yellow
+}
 
 $ghCommand = Get-Command gh -ErrorAction SilentlyContinue
 if (-not $ghCommand) {
@@ -119,6 +124,20 @@ try {
     Write-Host "         Setup fortsaetter, men du skal fixe det inden du arbejder." -ForegroundColor Yellow
   } else {
     Write-Host "  [ok] Frontend build lykkedes"
+  }
+} finally { Pop-Location }
+
+# --- 5b. Playwright-browsers (kraeves af den obligatoriske core-smoke pre-flight) ---
+Write-Section "Installer Playwright-browsers"
+
+Push-Location (Join-Path $Target "frontend")
+try {
+  Write-Host "  Henter browser-binaries (kan tage et par minutter)..."
+  & npx --yes playwright install
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "  [warn] 'npx playwright install' fejlede. Koer den manuelt foer e2e-tests." -ForegroundColor Yellow
+  } else {
+    Write-Host "  [ok] Playwright-browsers installeret"
   }
 } finally { Pop-Location }
 
@@ -214,6 +233,7 @@ Write-Section "Setup faerdig"
 Write-Host "  Repo placeret: $Target" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Tjek folgende efter setup:" -ForegroundColor Yellow
+Write-Host "    0. Aktivér git hooks + root-deps (goer klon commit-klar): pwsh -File scripts/setup-local.ps1"
 Write-Host "    1. Memory + AI-context sync'es via OneDrive (CyclingZone-context\memory)"
 Write-Host "       Hvis OneDrive ikke var synket endnu: kor 'pwsh -File scripts/link-onedrive-context.ps1' senere"
 Write-Host ""

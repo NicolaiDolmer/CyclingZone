@@ -118,19 +118,44 @@ Remove-Item -Path "<gammel-sti>" -Recurse -Force
 
 Brug dette når du får en ny computer eller har slettet alt.
 
-### Forudsætninger
+### Trin 0 — Toolchain (installer alle programmer)
+
+En frisk Windows 11 har kun Windows PowerShell 5.1. Installer pwsh 7 i en **almindelig PowerShell eller cmd**:
 
 ```powershell
-# Installer:
-winget install Git.Git
-winget install OpenJS.NodeJS.LTS
-winget install GitHub.cli
-gh auth login
+winget install --id Microsoft.PowerShell --source winget
 ```
 
-### Setup
+Åbn derefter en **ny "PowerShell 7"-terminal** og kør bootstrap-scriptet (henter sig selv fra GitHub):
 
-Hent setup-scriptet direkte fra GitHub (uden at have repo'et endnu):
+```powershell
+$u = "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/scripts/bootstrap-pc.ps1"
+Invoke-RestMethod $u | Out-File "$env:TEMP\bootstrap-pc.ps1"
+pwsh -File "$env:TEMP\bootstrap-pc.ps1"          # tilføj -WithDocker hvis du vil køre Supabase lokalt
+```
+
+`bootstrap-pc.ps1` installerer: Git, GitHub CLI, PowerShell 7, Windows Terminal, VS Code (+ extensions), Node.js LTS (≥22), Python, Infisical CLI, Bitwarden, Chrome, samt npm-globale CLI'er (Vercel, Railway, Codex) og Claude Code. Det rører **aldrig** secrets. Idempotent — kan køres igen.
+
+> **Node-version:** `backend/package.json` kræver Node **≥ 22**. `OpenJS.NodeJS.LTS` (som bootstrap installerer) giver den nyeste LTS = 22.x.
+
+### Trin 1 — Log ind på dine konti
+
+Genstart pwsh efter Trin 0. Log derefter ind — **Bitwarden og OneDrive først:**
+
+| Konto | Kommando / handling | Hvorfor |
+|---|---|---|
+| Bitwarden | Lås din vault op | Alle andre logins + 2FA ligger her |
+| OneDrive | Log ind, vent på `CyclingZone-context`-sync | Claude-memory + AI-context kommer derfra (kritisk) |
+| GitHub | `gh auth login` | Clone + push |
+| Infisical | `infisical login` | Secrets (browser-OAuth) |
+| Vercel | `vercel login` | Frontend-deploy |
+| Railway | `railway login` | Backend-deploy + Discord-MCP-token |
+| Claude | `claude` (OAuth ved første kørsel) | AI-dev |
+| Codex | `codex` (login ved første kørsel) | AI-dev |
+
+### Trin 2 — Clone + repo-opsætning
+
+Hent setup-scriptet direkte fra GitHub (det cloner selv til `C:\dev\CyclingZone`):
 
 ```powershell
 $url = "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/scripts/setup-new-pc.ps1"
@@ -138,15 +163,20 @@ Invoke-RestMethod $url | Out-File "$env:TEMP\setup-new-pc.ps1"
 pwsh -File "$env:TEMP\setup-new-pc.ps1"
 ```
 
-Eller — efter du har clone'et selv:
+Scriptet cloner, kører npm install (backend + frontend), verificerer build, installerer Playwright-browsers, og sætter Codex-trust + user-hooks + OneDrive-links + Discord-MCP.
+
+> **Bemærk:** `setup-new-pc.ps1` afviser et target der allerede findes og ikke er tomt — clone derfor **ikke** manuelt først. Lad scriptet gøre det.
+
+### Trin 3 — Gør repoet commit-klart
 
 ```powershell
-git clone https://github.com/NicolaiDolmer/CyclingZone.git C:\dev\CyclingZone
 cd C:\dev\CyclingZone
-pwsh -File scripts/setup-new-pc.ps1
+pwsh -File scripts/setup-local.ps1
 ```
 
-### Manuelle skridt der ikke kan automatiseres
+Installerer root-deps (lint-staged) og aktiverer git pre-commit/pre-push hooks (`core.hooksPath .githooks`).
+
+### Trin 4 — Produktionssecrets via Infisical (manuelt)
 
 **Produktionssecrets via Infisical** (erstatter OneDrive-hardlinks efter #327; runtime-injection efter Phase 5):
 
