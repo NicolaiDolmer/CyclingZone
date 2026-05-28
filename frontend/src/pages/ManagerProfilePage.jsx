@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
@@ -46,22 +46,22 @@ export default function ManagerProfilePage() {
   const [tab, setTab]         = useState("overblik");
   const [myTeamId, setMyTeamId] = useState(null);
 
-  async function loadMyTeam() {
+  const loadMyTeam = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: t } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
     if (t) setMyTeamId(t.id);
-  }
+  }, []);
 
-  async function loadProfile() {
+  const loadProfile = useCallback(async () => {
     setLoading(true);
     const h = await authHeaders();
     const res = await fetch(`${API}/api/managers/${teamId}`, { headers: h });
     const json = await res.json();
     if (res.ok) setData(json);
     setLoading(false);
-  }
+  }, [teamId]);
 
-  useEffect(() => { loadProfile(); loadMyTeam(); }, [teamId]);
+  useEffect(() => { loadProfile(); loadMyTeam(); }, [loadProfile, loadMyTeam]);
 
   if (loading) return (
     <div className="flex justify-center py-16">

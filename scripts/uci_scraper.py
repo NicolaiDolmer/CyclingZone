@@ -493,15 +493,25 @@ def sync_supabase(riders: list[dict], synced_at: str, dry_run: bool, complete_ra
 
     for rider in db_riders:
         new_pts = find_uci_match(rider, uci_token_map)
+        rider_name_normalized = normalize_name(
+            f"{rider.get('firstname','')} {rider.get('lastname','')}"
+        )
+        force_minimum = rider_name_normalized in UCI_FORCE_MINIMUM
+
+        if (
+            new_pts is not None
+            and new_pts <= MIN_UCI_POINTS
+            and not force_minimum
+            and _is_high_value_rider(rider)
+            and rider["uci_points"] > MIN_UCI_POINTS
+        ):
+            new_pts = None
 
         if new_pts is None:
             not_found += 1
             if not complete_ranking:
                 # Ufuldstændige scrapes må aldrig nedskrive eksisterende data.
                 continue
-            force_minimum = normalize_name(
-                f"{rider.get('firstname','')} {rider.get('lastname','')}"
-            ) in UCI_FORCE_MINIMUM
             # High-value safety-gate: aldrig auto-downgrade kendte/værdifulde ryttere
             # til MIN udelukkende pga. name-mismatch. Bevar nuværende værdi og log.
             if (

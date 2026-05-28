@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
@@ -14,7 +14,7 @@ export default function RaceHistoryPage() {
   const [riderStats, setRiderStats] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  async function loadAll() {
+  const loadAll = useCallback(async () => {
     setLoading(true);
 
     const { data: races } = await supabase
@@ -84,9 +84,9 @@ export default function RaceHistoryPage() {
     );
 
     setLoading(false);
-  }
+  }, [raceName]);
 
-  useEffect(() => { loadAll(); }, [raceSlug]);
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   if (loading) return (
     <div className="flex justify-center py-16">

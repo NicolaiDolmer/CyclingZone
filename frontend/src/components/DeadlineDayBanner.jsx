@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
@@ -43,7 +43,7 @@ export default function DeadlineDayBanner() {
   const tickRef = useRef(null);
   const pollRef = useRef(null);
 
-  async function fetchStatus() {
+  const fetchStatus = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -55,18 +55,21 @@ export default function DeadlineDayBanner() {
       setStatus(data);
       setSecs(data.seconds_remaining !== null ? Math.floor(data.seconds_remaining) : null);
     } catch { /* best-effort polling: tolerate transient fetch failures */ }
-  }
+  }, []);
 
   useEffect(() => {
     fetchStatus();
     pollRef.current = setInterval(fetchStatus, 30000);
     return () => clearInterval(pollRef.current);
-  }, []);
+  }, [fetchStatus]);
 
   // Lokal nedtælling hvert sekund
+  const countdownActive = secs !== null && secs > 0;
+  const countdownMinute = countdownActive ? Math.floor(secs / 60) : secs;
+
   useEffect(() => {
     clearInterval(tickRef.current);
-    if (!secs || secs <= 0) return;
+    if (!countdownActive) return;
     tickRef.current = setInterval(() => {
       setSecs(prev => {
         if (prev <= 1) { clearInterval(tickRef.current); fetchStatus(); return 0; }
@@ -74,7 +77,7 @@ export default function DeadlineDayBanner() {
       });
     }, 1000);
     return () => clearInterval(tickRef.current);
-  }, [secs !== null && secs > 0 ? Math.floor(secs / 60) : secs]); // genstart kun ved minutskift
+  }, [countdownActive, countdownMinute, fetchStatus]); // genstart kun ved minutskift
 
   if (!status?.active) return null;
 

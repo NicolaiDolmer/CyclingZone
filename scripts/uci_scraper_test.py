@@ -305,6 +305,25 @@ class HighValueProtectionTests(unittest.TestCase):
             )
             self.assertEqual(fake.patches, [])
 
+    def test_high_value_rider_matched_with_zero_falls_to_protection(self):
+        fake_riders = [{
+            "id": 5,
+            "firstname": "Jonas",
+            "lastname": "Vingegaard",
+            "uci_points": 6885,
+            "popularity": 95,
+        }]
+        with _supabase_fake(fake_riders) as fake:
+            uci_scraper.sync_supabase(
+                [{"rider_name": "VINGEGAARD Jonas", "points": 0}],
+                "2026-05-28T00:00:00Z",
+                dry_run=False,
+                complete_ranking=True,
+            )
+            self.assertEqual(fake.patches, [])
+            self.assertEqual(len(fake.posts), 1)
+            self.assertEqual(fake.posts[0][0]["uci_points"], 6885)
+
     def test_low_value_unmatched_rider_downgrades_to_min(self):
         fake_riders = [{
             "id": 3,

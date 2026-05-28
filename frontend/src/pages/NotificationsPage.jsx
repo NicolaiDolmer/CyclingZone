@@ -268,7 +268,7 @@ export default function NotificationsPage() {
         const data = await res.json();
         setPending(data);
       }
-    } catch (e) { /* silent — UI viser tom-state */ }
+    } catch { /* silent — UI viser tom-state */ }
     setPendingLoading(false);
     setPendingLoaded(true);
   }
