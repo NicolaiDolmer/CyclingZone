@@ -10,6 +10,7 @@
 | Error tracking | Sentry (`@sentry/node`, `@sentry/react`) | Railway + Vercel |
 | Realtime sync | Cron (backend/cron.js, 60s interval) | Railway (via backend-processen) |
 | UCI sync (automatisk) | GitHub Actions cron (onsdag 06:17 UTC) → scripts/uci_scraper.py → ProCyclingStats → Google Sheets + Supabase | GitHub Actions |
+| UCI stale-data monitor | Daglig `backend/cron.js` safety-net → `rider_uci_history.synced_at` freshness alert (>8 dage) | Railway (via backend-processen) |
 | UCI sync (manuel) | Admin: POST /api/admin/sync-uci → sheetsSync.js → Google Sheets CSV | — |
 | Stats sync (dyn_cyclist) | Admin: POST /api/admin/sync-dyn-cyclist → dynCyclistSync.js → Google Sheets | — |
 

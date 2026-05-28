@@ -29,14 +29,12 @@ import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
+import { processUciStaleDataCheck } from "./lib/uciStaleDataCheck.js";
 import { captureException as sentryCapture } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: join(__envdir, '../.env'), quiet: true });
+dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 const XP_REWARDS = {
   auction_won: 15,
@@ -66,7 +64,9 @@ async function finalizeExpiredAuctions() {
 
   if (!results.length) return;
 
-  console.log(`⚡ Finalized ${results.filter(result => result.ok).length}/${results.length} expired auctions`);
+  console.log(
+    `⚡ Finalized ${results.filter((result) => result.ok).length}/${results.length} expired auctions`
+  );
 }
 
 // ─── Debt Warnings ────────────────────────────────────────────────────────────
@@ -193,7 +193,9 @@ async function runDeadlineDayCron() {
     console.log(`📣 Deadline Day: ${result.warnings} advarsel(er) afsendt`);
   }
   if (result.errors) {
-    console.error(`❌ Deadline Day: ${result.errors} advarsel(er) fejlede (per-team try/catch isolerede)`);
+    console.error(
+      `❌ Deadline Day: ${result.errors} advarsel(er) fejlede (per-team try/catch isolerede)`
+    );
   }
   if (result.whistleSent) {
     console.log("🏁 Deadline Day: Final Whistle-rapport sendt til Discord");
@@ -257,7 +259,9 @@ async function runSeasonAutoTransitionCron() {
       now: new Date(),
     });
     if (result.transitioned) {
-      console.log(`🌅 Sæson-transition: sæson ${result.fromSeason} → ${result.toSeason} udført automatisk`);
+      console.log(
+        `🌅 Sæson-transition: sæson ${result.fromSeason} → ${result.toSeason} udført automatisk`
+      );
     }
   } catch (err) {
     console.error("Cron error (season auto-transition):", err.message);
@@ -278,7 +282,29 @@ async function runDailySeasonCountCheck() {
     captureExceptionFn: sentryCapture,
   });
   if (result.alerted) {
-    console.error(`🚨 Daily season-count check: ${result.transitionCount} transitions seneste 24h (>1 alert fyret)`);
+    console.error(
+      `🚨 Daily season-count check: ${result.transitionCount} transitions seneste 24h (>1 alert fyret)`
+    );
+  }
+}
+
+// ─── Daily UCI Stale-Data Safety-Net ─────────────────────────────────────────
+// GitHub Actions scheduled UCI syncs can be skipped/delayed. This monitor checks
+// the latest rider_uci_history.synced_at and alerts after 8 days without a sync.
+// Pure read + notify; backup/secondary sync trigger lives in a separate slice.
+
+async function runUciStaleDataCheck() {
+  const result = await processUciStaleDataCheck({
+    supabase,
+    now: new Date(),
+    sendWebhookFn: sendWebhook,
+    getDefaultWebhookFn: getDefaultWebhook,
+    captureExceptionFn: sentryCapture,
+  });
+  if (result.alerted) {
+    console.error(
+      `🚨 UCI stale-data check: latest synced_at=${result.latestSyncedAt || "none"} (>8d alert fired)`
+    );
   }
 }
 
@@ -296,7 +322,9 @@ async function runSquadEnforcementCron() {
     },
   });
   if (result.claimed) {
-    console.log(`🛂 Squad enforcement: window ${result.windowId} — ${result.enforced} hold håndhævet`);
+    console.log(
+      `🛂 Squad enforcement: window ${result.windowId} — ${result.enforced} hold håndhævet`
+    );
   }
 }
 
@@ -364,13 +392,20 @@ export function startCron() {
   setInterval(trackedTick("board mid-season", runMidSeasonReviewCron), 30 * 60 * 1000);
 
   // Every 24 hours: daily season-count safety-net (forward-guard mod cron-loop).
-  setInterval(trackedTick("daily season-count check", runDailySeasonCountCheck), 24 * 60 * 60 * 1000);
+  setInterval(
+    trackedTick("daily season-count check", runDailySeasonCountCheck),
+    24 * 60 * 60 * 1000
+  );
+
+  // Every 24 hours: UCI stale-data safety-net (forward-guard mod skipped GitHub Actions schedule).
+  setInterval(trackedTick("uci stale-data check", runUciStaleDataCheck), 24 * 60 * 60 * 1000);
 
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();
   trackedTick("board auto-accept", runBoardAutoAcceptCron)();
   trackedTick("board mid-season", runMidSeasonReviewCron)();
   trackedTick("daily season-count check", runDailySeasonCountCheck)();
+  trackedTick("uci stale-data check", runUciStaleDataCheck)();
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────
