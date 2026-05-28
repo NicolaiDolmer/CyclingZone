@@ -1,0 +1,110 @@
+{
+  "timestamp": "2026-05-28T19:54:00+02:00",
+  "host": "NICOLAIPC",
+  "cold_start_total_est": 24328.0,
+  "claude_cold_start_est": 19624.0,
+  "codex_cold_start_est": 24328.0,
+  "file_context_total": 9546.0,
+  "claude_file_total": 3085.0,
+  "codex_file_total": 7789.0,
+  "harness_blob_value": 14782,
+  "harness_blob_source": "measured-snapshot (docs/metrics/harness-snapshot-NICOLAIPC.json)",
+  "memory_dir_total": 69068.0,
+  "checks": [
+    {
+      "Check": "CLAUDE.md",
+      "Status": "WARN",
+      "Detail": "1250 approx tokens, 37 lines"
+    },
+    {
+      "Check": "AGENTS.md",
+      "Status": "OK",
+      "Detail": "4237 approx tokens, 205 lines [Codex-only]"
+    },
+    {
+      "Check": "NOW.md",
+      "Status": "OK",
+      "Detail": "700 approx tokens, 10 lines"
+    },
+    {
+      "Check": "GUARDRAILS_CORE.md",
+      "Status": "OK",
+      "Detail": "1135 approx tokens, 55 lines"
+    },
+    {
+      "Check": "SESSION_CONTEXT.md",
+      "Status": "OK",
+      "Detail": "467 approx tokens, 25 lines [Codex-only]"
+    },
+    {
+      "Check": "claude-context-files",
+      "Status": "OK",
+      "Detail": "3085 approx tokens (Claude Code auto-load: CLAUDE.md + NOW.md + GUARDRAILS_CORE.md)"
+    },
+    {
+      "Check": "codex-context-files",
+      "Status": "WARN",
+      "Detail": "7789 approx tokens (Codex auto-load: ovenstaaende + AGENTS.md + SESSION_CONTEXT.md)"
+    },
+    {
+      "Check": "claude-memory",
+      "Status": "WARN",
+      "Detail": "1757 approx tokens in MEMORY.md (HOT auto-load)"
+    },
+    {
+      "Check": "latest-transcript",
+      "Status": "WARN",
+      "Detail": "939.5 KB, d079d40f-9b47-47c4-b3df-b31f706a5a90.jsonl"
+    },
+    {
+      "Check": "issue-prefetch-bounds",
+      "Status": "OK",
+      "Detail": "bounded"
+    },
+    {
+      "Check": "memory-dir-total",
+      "Status": "INFO",
+      "Detail": "69068 approx tokens across 135 memory files (on-demand)"
+    },
+    {
+      "Check": "memory-dir-growth",
+      "Status": "WARN",
+      "Detail": "+20182 tok (41.3% vs previous baseline 05/16/2026 18:52:54)"
+    },
+    {
+      "Check": "memory-hot-budget",
+      "Status": "OK",
+      "Detail": "MEMORY.md 38 lines (target <40, fail >50)"
+    },
+    {
+      "Check": "claude-md-budget",
+      "Status": "OK",
+      "Detail": "CLAUDE.md 37 lines (target <60, fail >80)"
+    },
+    {
+      "Check": "now-md-budget",
+      "Status": "OK",
+      "Detail": "docs/NOW.md 10 lines (target <30, fail >40)"
+    },
+    {
+      "Check": "harness-blob-estimate",
+      "Status": "INFO",
+      "Detail": "14782 approx tokens (source: measured-snapshot (docs/metrics/harness-snapshot-NICOLAIPC.json))"
+    },
+    {
+      "Check": "claude-cold-start-est",
+      "Status": "FAIL",
+      "Detail": "19624 approx tokens (Claude files + memory + harness)"
+    },
+    {
+      "Check": "codex-cold-start-est",
+      "Status": "FAIL",
+      "Detail": "24328 approx tokens (Codex files + memory + harness)"
+    },
+    {
+      "Check": "cold-start-total-est",
+      "Status": "FAIL",
+      "Detail": "24328 approx tokens (legacy alias = codex cold-start)"
+    }
+  ]
+}

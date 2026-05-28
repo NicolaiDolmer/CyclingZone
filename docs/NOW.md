@@ -14,6 +14,6 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** [#705](https://github.com/NicolaiDolmer/CyclingZone/issues/705) Supabase Key verification (Railway/Vercel) → [#701](https://github.com/NicolaiDolmer/CyclingZone/issues/701) backup-trigger split (Railway/Supabase, separat infra-slice) → [#706](https://github.com/NicolaiDolmer/CyclingZone/issues/706) Chris/Vestas mapping.
+> **🎯 Next action:** [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605) P0 AI World-Class v2 token-friendly setup → [#705](https://github.com/NicolaiDolmer/CyclingZone/issues/705) Supabase Key verification (Railway/Vercel) → [#701](https://github.com/NicolaiDolmer/CyclingZone/issues/701) backup-trigger split.
 
 > **🤖 Working agent:** _Ingen aktiv session._
