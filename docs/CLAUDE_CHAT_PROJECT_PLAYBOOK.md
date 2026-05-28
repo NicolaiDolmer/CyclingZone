@@ -20,6 +20,18 @@ Et Claude chat project har tre uafhængige context-lag. At blande dem giver toke
 - **Communication style** → Instructions (ikke Memory)
 - **Claude Code-specifikke detaljer** (slash-commands, MCP-IDs, /clear-quota) → IKKE i Claude chat memory — Claude chat skriver ikke kode
 
+## Live-first for state (hård regel)
+
+Project Knowledge er snapshot, ikke sync. Disse er IKKE snapshot-egnede og må aldrig læses derfra — de ændrer sig hurtigere end re-upload-disciplinen kan følge med:
+
+- `docs/NOW.md` — aktiv status (ændrer sig hver session)
+- `docs/FEATURE_STATUS.md` — runtime-state
+- Åbne issues / beslutninger truffet siden sidste upload
+
+**Regel:** Før chat/Cowork udtaler sig om projekt-state (status, hvad er bygget, næste skridt), fetch `docs/NOW.md` LIVE via GitHub-connector først, derefter relevant doc. Uenighed mellem snapshot og live → live vinder, og driften nævnes for brugeren.
+
+**Konsekvens for upload-pakken:** Læg ikke `NOW.md`, `FEATURE_STATUS.md` eller issue-lister i Project Knowledge. Behold kun snapshot-stabilt: Manus-research, `VERDENSKLASSE_ROADMAP.md`-baseline, `TONE_OF_VOICE.md`, `AI_COUNCIL.md`, `00_INDEX.md`.
+
 ## Opsætnings-flow for nyt project
 
 ### 1. Project Knowledge (Files) — typisk 100-300 KB
@@ -28,7 +40,7 @@ Forbered en samlet upload-folder lokalt, fx `C:\dev\CyclingZone-claude-chat-uplo
 
 **Hvad skal med (typisk for et CyclingZone-strategi-project):**
 - Research-pakke fra Manus (markedsanalyse, freemium-model, validation-plan, metrics)
-- Repo's strategi-docs (`docs/NOW.md`, `docs/FEATURE_STATUS.md`, `docs/VERDENSKLASSE_ROADMAP.md`, `docs/AI_COUNCIL.md`, `docs/TONE_OF_VOICE.md`)
+- Repo's strategi-docs (`docs/VERDENSKLASSE_ROADMAP.md`, `docs/AI_COUNCIL.md`, `docs/TONE_OF_VOICE.md`). IKKE `docs/NOW.md`/`docs/FEATURE_STATUS.md` — de læses live (se "Live-first for state")
 - `CLAUDE.md` for ramme-konvention
 - `00_INDEX.md` (lavet specifikt til projectet) der forklarer hver fil
 
@@ -145,10 +157,10 @@ START NU MED: din top-10 evidens-hul-rangliste, derefter første spørgsmål.
 
 Project Knowledge er en **snapshot**, ikke en sync. Re-upload pakken hvis:
 - Manus-research / ekstern data opdateres
-- VERDENSKLASSE_ROADMAP, NOW eller FEATURE_STATUS ændrer sig væsentligt
+- VERDENSKLASSE_ROADMAP-baseline ændrer sig væsentligt
 - Forretningsmodel pivotes
 
-For aktuel kode/issues: brug GitHub-connector mod repo'et.
+For aktuel kode, `NOW.md`, `FEATURE_STATUS.md` og issues: brug GitHub-connector mod repo'et (live, ikke upload — se "Live-first for state").
 
 ## Cross-refs
 
