@@ -14,11 +14,15 @@ const CORE_PAGES = [
     path: "/auctions",
     heading: /^(Auktioner|Auctions)$/,
     snapshot: "auctions.png",
-    ready: async page => {
+    ready: async (page) => {
       await expect(page.locator('[role="status"]')).toHaveCount(0);
       await expect(page.getByRole("link", { name: /^(Aktive|Active) \(1\)$/ })).toBeVisible();
-      await expect(page.getByRole("button", { name: /^(Min situation|My situation) \(0\)$/ })).toBeVisible();
-      await expect(page.getByText(/Du er ikke involveret|not involved in any active auctions/i)).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: /^(Min situation|My situation) \(0\)$/ })
+      ).toBeVisible();
+      await expect(
+        page.getByText(/Du er ikke involveret|not involved in any active auctions/i)
+      ).toBeVisible();
     },
   },
   { path: "/team", heading: "E2E Racing", snapshot: "team.png" },
@@ -52,17 +56,50 @@ test("root path redirects to dashboard", async ({ page }) => {
 // WebKit + Vite HMR + Playwright route-mocks producerer dev-only-noise (dynamic
 // module imports, mock-CORS-quirks) der ikke reproducerer på prod iOS Safari.
 // Filtrér dem fra page-errors så vi stadig fanger ægte JS-exceptions.
-const WEBKIT_DEV_NOISE = [
-  /Importing a module script failed/i,
-  /due to access control checks/i,
-];
+const WEBKIT_DEV_NOISE = [/Importing a module script failed/i, /due to access control checks/i];
 
 // Tekst-elementer maskeres i pixel-snapshots så testen fanger LAYOUT-regressions
 // (cards forsvinder, kolonner kollapser, billeder mangler) uden at fejle på copy-
 // eller i18n-ændringer. Indhold valideres via expect-assertions + i18n-key-coverage,
 // ikke pixel-diff. Forward-guard mod #412 i18n-snapshot-treadmill — se
 // `.claude/learnings/2026-05-17-visual-snapshots-layout-only.md`.
-const TEXT_MASK_SELECTOR = "main :is(h1,h2,h3,h4,h5,h6,p,span,a,button,li,td,th,label,time,strong,em,dt,dd)";
+const TEXT_MASK_SELECTOR =
+  "main :is(h1,h2,h3,h4,h5,h6,p,span,a,button,li,td,th,label,time,strong,em,dt,dd)";
+
+async function waitForStableSnapshotTarget(page) {
+  await page.evaluate(async () => {
+    if (document.fonts?.ready) await document.fonts.ready;
+  });
+
+  await page.waitForFunction(
+    async ({ maskSelector }) => {
+      const target = document.querySelector("main");
+      if (!target) return false;
+
+      const measure = () => {
+        const rect = target.getBoundingClientRect();
+        return [
+          Math.round(rect.width),
+          Math.round(rect.height),
+          document.querySelectorAll(maskSelector).length,
+        ].join(":");
+      };
+
+      let previous = measure();
+      let stableFrames = 0;
+      while (stableFrames < 4) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        const next = measure();
+        stableFrames = next === previous ? stableFrames + 1 : 0;
+        previous = next;
+      }
+
+      return true;
+    },
+    { maskSelector: TEXT_MASK_SELECTOR },
+    { timeout: 3000 }
+  );
+}
 
 const TRANSLATED_PAGE_SMOKE = [
   {
@@ -120,8 +157,8 @@ async function forceEnglish(page) {
 test("core manager pages render without blank screens", async ({ page }, testInfo) => {
   const isWebkit = testInfo.project.name.includes("webkit");
   const pageErrors = [];
-  page.on("pageerror", error => {
-    if (isWebkit && WEBKIT_DEV_NOISE.some(p => p.test(error.message))) return;
+  page.on("pageerror", (error) => {
+    if (isWebkit && WEBKIT_DEV_NOISE.some((p) => p.test(error.message))) return;
     pageErrors.push(error.message);
   });
 
@@ -133,6 +170,7 @@ test("core manager pages render without blank screens", async ({ page }, testInf
     await expect(page.locator("main")).toBeVisible();
     await expect(page.locator("body")).not.toContainText("VITE_API_URL is not set");
     if (spec.ready) await spec.ready(page);
+    await waitForStableSnapshotTarget(page);
     await expect(page).toHaveScreenshot(spec.snapshot, {
       animations: "disabled",
       caret: "hide",
@@ -148,7 +186,9 @@ test("core manager pages render without blank screens", async ({ page }, testInf
   expect(pageErrors).toEqual([]);
 });
 
-test("translated manager pages do not leak raw i18n keys or hardcoded Danish in English", async ({ page }) => {
+test("translated manager pages do not leak raw i18n keys or hardcoded Danish in English", async ({
+  page,
+}) => {
   await login(page);
 
   for (const spec of TRANSLATED_PAGE_SMOKE) {
@@ -165,13 +205,15 @@ test("translated manager pages do not leak raw i18n keys or hardcoded Danish in 
       expect(mainText, `${spec.path} leaked raw i18n key "${rawKey}"`).not.toContain(rawKey);
     }
     for (const hardcodedDanish of spec.da) {
-      expect(mainText, `${spec.path} leaked hardcoded Danish ${hardcodedDanish}`).not.toMatch(hardcodedDanish);
+      expect(mainText, `${spec.path} leaked hardcoded Danish ${hardcodedDanish}`).not.toMatch(
+        hardcodedDanish
+      );
     }
   }
 });
 
 test("rider profile value header stays contained on mobile", async ({ page }) => {
-  await page.route("**/rest/v1/riders?**", async route => {
+  await page.route("**/rest/v1/riders?**", async (route) => {
     const request = route.request();
     const origin = request.headers().origin || "*";
     const url = request.url();
@@ -230,7 +272,7 @@ test("rider profile value header stays contained on mobile", async ({ page }) =>
   await expect(value).toHaveText("123.456.789.012");
   await expect(value).toHaveAttribute("title", "123.456.789.012 CZ$");
 
-  const layout = await value.evaluate(el => {
+  const layout = await value.evaluate((el) => {
     const rect = el.getBoundingClientRect();
     const styles = window.getComputedStyle(el);
     return {
