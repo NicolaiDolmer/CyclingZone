@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
@@ -41,7 +41,7 @@ export default function TeamProfilePage() {
     setTableSort(s => ({ key, dir: s.key === key ? (s.dir === "desc" ? "asc" : "desc") : "desc" }));
   }
 
-  async function loadAll() {
+  const loadAll = useCallback(async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
@@ -73,9 +73,9 @@ export default function TeamProfilePage() {
     setRiders([...current, ...incoming]);
     setStanding(standingRes.data);
     setLoading(false);
-  }
+  }, [id]);
 
-  useEffect(() => { loadAll(); }, [id]);
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   if (loading) return (
     <div className="flex justify-center py-16">

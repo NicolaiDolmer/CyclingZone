@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
@@ -11,19 +11,19 @@ function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
   const [searched, setSearched] = useState(false);
   const [focused, setFocused] = useState(false);
 
-  async function fetchTeams(pattern) {
+  const fetchTeams = useCallback(async (pattern) => {
     const { data } = await supabase.from("teams")
       .select("id, name, division").eq("is_ai", false).eq("is_test_account", false).eq("is_frozen", false)
       .ilike("name", `%${pattern}%`).order("name").limit(6);
     setResults((data || []).filter(t => t.id !== excluded));
     setSearched(true);
-  }
+  }, [excluded]);
 
   useEffect(() => {
     if (q.length < 1) { setResults([]); setSearched(false); return; }
     const t = setTimeout(() => fetchTeams(q), 200);
     return () => clearTimeout(t);
-  }, [q, excluded]);
+  }, [q, fetchTeams]);
 
   function handleFocus() {
     setFocused(true);
@@ -113,7 +113,7 @@ export default function HeadToHeadPage() {
 
   const [error, setError] = useState(null);
 
-  async function loadStats() {
+  const loadStats = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -159,11 +159,11 @@ export default function HeadToHeadPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [teamA, teamB]);
 
   useEffect(() => {
     if (teamA && teamB) loadStats();
-  }, [teamA, teamB]);
+  }, [teamA, teamB, loadStats]);
 
   return (
     <div className="max-w-4xl mx-auto">

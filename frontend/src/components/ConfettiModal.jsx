@@ -23,7 +23,7 @@ export function ConfettiModal({ show, onClose, title, subtitle, amount, icon = "
     // Auto-close after 4 seconds
     const t = setTimeout(onClose, 4000);
     return () => clearTimeout(t);
-  }, [show]);
+  }, [show, onClose]);
 
   if (!show) return null;
 
