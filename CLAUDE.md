@@ -2,6 +2,10 @@
 
 > **GitHub-first start-rutine** (indført 2026-05-06 per [#70](https://github.com/NicolaiDolmer/CyclingZone/issues/70)). Token-baseline 2026-05-14: see `docs/metrics/token-baseline-before.json` (pre-Phase-1-4) og `docs/metrics/token-baseline-after-phase-1-4.json`.
 
+## Hard rules (fælles — fuld tekst i AGENTS.md)
+
+Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér repo-root (`git rev-parse --show-toplevel`) før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før du lister noget som TODO/bug · spørg ved tvivl (70-95%) · patch notes ved enhver brugerrettet ændring · auto-push efter commit · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst + slice-close-out-reglen: [`AGENTS.md`](AGENTS.md).
+
 ## Auto-loaded (intet at gøre)
 
 - `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (~1,100 tok efter Phase 1 reduktion). Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).
@@ -46,8 +50,6 @@ Ingen lokal-only handoff: projekt-state, beslutninger og næste skridt skal vær
 
 ## Token-budget
 
-Master: [`docs/AI_OPS_TOKEN_BUDGET.md`](docs/AI_OPS_TOKEN_BUDGET.md) + [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605).
-
-Aktuel P0-baseline 2026-05-28: Claude cold-start ~19.6K tok, Codex ~24.3K, harness/tool schemas ~14.8K, on-demand memory-dir ~69K. Næste praktiske target i #605: Claude <15K og Codex <18K uden quality-canary regression.
+Master (inkl. aktuel baseline + #605-targets): [`docs/AI_OPS_TOKEN_BUDGET.md`](docs/AI_OPS_TOKEN_BUDGET.md) + [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605).
 
 Per-PC harness-snapshot: `docs/metrics/harness-snapshot-<COMPUTERNAME>.json`. Refresh ved connector/plugin-ændring.
