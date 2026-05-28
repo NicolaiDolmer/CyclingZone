@@ -19,7 +19,7 @@
     "lint-staged": "^17.0.5"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.1",
+    "@supabase/supabase-js": "^2.106.2",
     "dotenv": "^16.4.5"
   }
 }
