@@ -48,3 +48,19 @@ Hvis disse holder: det er **ikke** en kode-fejl, en quota-overskridelse, eller e
 ## Memory-reference
 
 Tilføjet WARM-tier memory: `feedback_vercel_provisioning_integration_transient.md` peger på denne læring som første-tjek når Vercel-deployments fejler med 0 build events.
+
+## Permanent resolution (2026-05-29)
+
+Fejlen var **ikke** transient anden gang den ramte (~2 uger senere). Diagnose viste root cause: der lå **to** Supabase-integrationer på `cycling-zone`-projektet i Vercel:
+
+1. **Supabase (uden badge)** — OAuth-forbindelse til den rigtige selv-oprettede DB `ghwvkxzhsbbltzfnuhhz`. **Beholdt.**
+2. **Supabase "Billed Via Vercel"** — Marketplace-provisioneret resource `supabase-orange-ferry` (Free Plan). Appen brugte den aldrig; den pausede af inaktivitet → Vercel's "Provision integrations"-step kunne ikke synke env fra et pauset projekt → **alle prod-deploys fejlede før build** (0 build events, <1 s ERROR). En redeploy reproducerede fejlen øjeblikkeligt — bekræftede ikke-transient.
+
+**Bevis for sikker fjernelse (verificeret før sletning):**
+- Live prod-bundle talte med `ghwvkxzhsbbltzfnuhhz`, ikke orange-ferry.
+- App læser kun manuelt-satte vars: `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` (Railway-backend) + `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` (frontend).
+- Integration-injicerede vars (`POSTGRES_URL_NON_POOLING_*`, `NEXT_PUBLIC_*`): nul referencer i kode/CI/config. `NEXT_PUBLIC_*` er endda inert i en Vite-app.
+
+**Fix:** slettede orange-ferry-integrationen i Vercel (Settings → Integrations → Supabase "Billed Via Vercel" → Delete). Redeploy gik READY på 37 s, prod 200, bundle peger stadig på `ghwvkxzhsbbltzfnuhhz`. Ryddede 3 forældreløse `NEXT_PUBLIC_SUPABASE_*`-vars (de ~22 `POSTGRES_URL_NON_POOLING_*` blev auto-fjernet ved sletningen).
+
+**Forward-guard:** fejl-typen kan ikke længere opstå — den flaky provisioning-afhængighed er fjernet permanent. Hvis "Provisioning integrations failed" nogensinde ses igen, betyder det at en NY marketplace-integration er blevet tilføjet; tjek Vercel → Integrations for uventede "Billed Via Vercel"-resources.
