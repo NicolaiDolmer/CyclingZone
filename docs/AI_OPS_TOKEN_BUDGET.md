@@ -14,6 +14,23 @@ Målt 2026-05-28 på NICOLAIPC via `scripts/check-agent-token-hygiene.ps1 -Basel
 
 Aktuelle største drivers: harness/tool schemas ~14,800 tok, Codex-only `AGENTS.md` + cache bringer Codex context til ~7,800 tok, HOT memory ~1,800 tok, on-demand memory-dir ~69,000 tok (+41% vs baseline).
 
+## Per-PC harness sammenligning (2026-05-29)
+
+Kilde: `docs/metrics/harness-snapshot-NICOLAIPC.json` + `docs/metrics/harness-snapshot-DOLMERPC.json`.
+
+| Komponent | NicolaiPC | DolmerPC | Delta |
+|---|---:|---:|---:|
+| Harness total | 14,782 tok | 17,093 tok | +2,311 |
+| Deferred tools (antal) | 149 | 217 | +68 |
+| Skills (antal) | 19 | 49 | +30 |
+
+**DolmerPC-divergens — 3 drivers:**
+- vercel-plugin enabled (~33 Next.js-skills) → ~1,100 tok overhead
+- GitHub MCP connected (43 deferred tools) → ~645 tok (NicolaiPC disconnectede i Phase B)
+- Sentry MCP connected (25 deferred tools) → ~375 tok (ny connector siden NicolaiPC-snapshot)
+
+Cut-kandidater og procedure: `docs/AI_OPS_DISABLE_PLAYBOOK.md` → "DolmerPC-specifikke cuts".
+
 ## Budget pr. fil-kategori
 
 | Fil | Kategori | Tier | Mål | FAIL ved |

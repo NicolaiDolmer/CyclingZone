@@ -89,6 +89,32 @@ Alternativt: `/plugin` slash-command åbner plugin-management UI'en (kun synlige
 
 ---
 
+## DolmerPC-specifikke cuts (2026-05-29, #605)
+
+Baseret på `docs/metrics/harness-snapshot-DOLMERPC.json` (17,093 tok, ~2,311 tungere end NicolaiPC).
+Reelle målinger — ikke estimater. Estimat-forbeholdet i DOLMERPC-kommentaren fra 2026-05-28 er ophævet.
+
+| # | Handling | Besparelse | Sikkerhed | Mekanisme |
+|---|---|---:|---|---|
+| 1 | Disable vercel-plugin | ~1,100 tok | 🟢 Safe — Next.js-skills bruges ikke i Vite+React-repo | `/plugin` → disable `vercel@claude-plugins-official` |
+| 2 | Disconnect GitHub MCP | ~645 tok | 🟢 Safe — `gh` CLI dækker workflow; NicolaiPC kører allerede uden | claude.ai/settings/connectors |
+| 3 | Disconnect Sentry MCP | ~375 tok | 🟡 Medium — kun hvis ingen MCP-baseret Sentry-triage; UCI-monitor alerting påvirkes ikke | claude.ai/settings/connectors |
+| 4 | Disconnect Google Calendar + Drive | ~240 tok | 🟡 Medium — lav brug, men bevidst beholdt på NicolaiPC | claude.ai/settings/connectors |
+
+**Behold uanset:** Claude_in_Chrome (22 tools) — UI-verifikation. Claude_Preview (13) — `/preview`.
+
+**Forventet effekt:**
+- #1+#2 (🟢 safe): 17,093 → ~15,350 tok (~parity med NicolaiPC)
+- #1–#4: → ~14,700 tok (under NicolaiPC, under P0-target)
+
+**Verificér efter cuts:** Start ny session og kør:
+```
+pwsh -File scripts/check-agent-token-hygiene.ps1 -BaselineOut docs/metrics/harness-snapshot-DOLMERPC.json
+```
+Sammenlign `total_harness_tokens` med 17,093.
+
+---
+
 ## Hvis noget mangler efter cuts
 
 Tegn at en disable var for aggressiv:
