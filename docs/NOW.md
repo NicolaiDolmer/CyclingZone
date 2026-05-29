@@ -6,6 +6,6 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** Verify-kø på [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) — 4 done-issues (#505/#449/#563/#327) afventer din UI-/beslutnings-opfølgning (#529 lukket 29. maj). Pickbare follow-ups: #761 (PR #531-restfund, low). AI-spor: #605 P0.3 leveret (HOT-trim −2.144 tok/tur); resterende cold-start-løftestang er harness-cut (jf. #741), ikke memory.
+> **🎯 Next action:** Verify-kø på [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) — 4 done-issues (#505/#449/#563/#327) afventer din UI-/beslutnings-opfølgning (#529 lukket 29. maj). #761 (PR #531-restfund): PR [#762](https://github.com/NicolaiDolmer/CyclingZone/pull/762) **grøn + mergeable** (alle 15 checks) — afventer dit øjekik på PatchNotes-kronologi (auth-gated) + merge. AI-spor: #605 P0.3 leveret (HOT-trim −2.144 tok/tur); resterende cold-start-løftestang er harness-cut (jf. #741), ikke memory.
 
 > **🤖 Working agent:** _Ingen aktiv session._
