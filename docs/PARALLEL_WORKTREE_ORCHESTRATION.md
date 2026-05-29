@@ -121,7 +121,7 @@ Squash holder main-historik flad. Hver merge auto-skubber main → næste PR reb
 
 Kombinér i én commit:
 - NOW.md Session-X bullet (kort: hvilke 3 PRs + hovedfund)
-- Eventuelt: arkivér gamle session-bullets til `docs/archive/NOW-YYYY-MM-DD.md` hvis NOW.md overstiger token-budget
+- NOW.md trimmes **direkte** når den overstiger token-budget (historik bevares i git-log + issue-tråde); opret IKKE separate `docs/archive/NOW-*.md` — `docs/archive/**` er hard-beskyttet af #684-deny ([#750](https://github.com/NicolaiDolmer/CyclingZone/issues/750))
 - Reset `🤖 Working agent` til `_Ingen aktiv session._`
 
 Derefter:
