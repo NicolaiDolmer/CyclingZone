@@ -266,6 +266,7 @@ I rækkefølge før jeg foreslår commit:
 - Manuel fallback hvis hook fejler: `git worktree remove <path>` + `git branch -D <branch>` på PC'en der oprettede worktreen
 - Per-PC handling — gentages på den anden PC ved næste session der
 - **Parallel-sessions samme PC:** se [`docs/AGENT_ARCHITECTURE.md §Parallel-session-safety`](docs/AGENT_ARCHITECTURE.md#parallel-session-safety-samme-pc-flere-claude-sessions-samtidigt) for kollisions-matrix + worktree-recipe
+- ⚠️ **PreToolUse hard-blocks afvæbnet for allow-listede tools (#684):** På Claude Code ≥2.1.154 bypasser `permissions.allow` PreToolUse-hookenes `exit 2` ([anthropics/claude-code#18312](https://github.com/anthropics/claude-code/issues/18312)). Da `Write`/`Edit`/`NotebookEdit` er allow-listede (#591), er `block-archived-edit` + `check-now-md-edit` IKKE håndhævede for subagents. Kør ikke autonom parallel-orchestration før fix-sti er verificeret — se [`docs/PARALLEL_WORKTREE_ORCHESTRATION.md`](docs/PARALLEL_WORKTREE_ORCHESTRATION.md) top-note.
 
 ---
 

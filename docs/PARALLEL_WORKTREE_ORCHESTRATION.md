@@ -9,6 +9,12 @@
 
 Master-session spawner 3 parallelle subagents (1 pr. worktree) → 3 PRs merges sekventielt med rebase → én samlet close-out. Token-cost: roughly neutral vs. sekventielt. Wall-clock-besparelse: ~4-6×.
 
+## ⚠️ KRITISK forudsætning (2026-05-29, #684): hook-guardrails kan være afvæbnede
+
+PreToolUse hard-block-hooks (`block-archived-edit`, `check-now-md-edit`, `block-dangerous-secret`) håndhæves **ikke** for tools der står i `permissions.allow`. På Claude Code ≥2.1.154 bypasser en allow-entry hookens `exit 2` ([anthropics/claude-code#18312](https://github.com/anthropics/claude-code/issues/18312)) — hooken fyrer, men blokeringen ignoreres. Da `Write`/`Edit`/`NotebookEdit` ligger i `permissions.allow` (tilføjet her i [#591](https://github.com/NicolaiDolmer/CyclingZone/issues/591) for at lade subagents skrive uden prompts), er netop de guardrails subagents skal hegnes af **afvæbnede**. Verificeret på DolmerPC med ren modtest (ikke-allow-listet `env`-kald blev blokeret; allow-listet `Write`/`cat` slap igennem) — se [#684](https://github.com/NicolaiDolmer/CyclingZone/issues/684).
+
+**Konsekvens:** En autonom subagent kan redigere arkiverede docs, sprænge NOW.md's 30-linjers-grænse, og køre allow-listede secret-dump-kommandoer uden at hard-blocken griber ind. **Kør IKKE parallel-orchestration med autonome subagents før dette er adresseret** (fix-sti: fjern Write/Edit fra allow + verificér `acceptEdits`-mode i en frisk session). Brug solo-sessioner — menneske i loopet — i mellemtiden.
+
 ## Hvornår bruge denne workflow
 
 ✅ **JA** når der ligger 3+ åbne `claude:todo` issues der opfylder:
