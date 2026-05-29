@@ -6,9 +6,26 @@ import { ThemeProvider } from "./lib/theme.jsx";
 import { ConsentProvider } from "./lib/consent.jsx";
 import { LanguageProvider } from "./lib/language.jsx";
 import { initSentry, SentryBoundary } from "./lib/sentry.jsx";
+import { getChunkReloadKey } from "./lib/chunkErrors.js";
 import i18n from "./i18n";
 import "./index.css";
 import "flag-icons/css/flag-icons.min.css";
+
+// Stale-chunk recovery: fires when a dynamic import fails after a deploy
+// (before React's error boundary can intercept it). Reuses the same
+// per-release sessionStorage key as the error boundary to prevent loops.
+const _release = import.meta.env.VITE_SENTRY_RELEASE || import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA;
+window.addEventListener("vite:preloadError", (event) => {
+  event.preventDefault();
+  const key = getChunkReloadKey(_release);
+  try {
+    if (window.sessionStorage.getItem(key) === "1") return;
+    window.sessionStorage.setItem(key, "1");
+    window.location.reload();
+  } catch {
+    window.location.reload();
+  }
+});
 
 initSentry();
 
