@@ -548,6 +548,20 @@ const PATCHES = [
     ],
   },
   {
+    version: "3.74",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Tab-based navigation kom kort frem (utilsigtet, rullet tilbage i v3.75)",
+        items: [
+          "EN · The 5-tab /admin layout (Sæson & Løb, Økonomi, Brugere, Data/Import, System & Debug) first appeared here, but it was committed before it was ready and the new tab URLs returned 404. It was rolled back the same evening (see v3.75) and re-applied cleanly in v3.76. No data was affected and no admin actions were blocked.",
+          "DA · Det 5-fanede /admin-layout (Sæson & Løb, Økonomi, Brugere, Data/Import, System & Debug) dukkede først op her, men blev committet før det var klar, og de nye fane-URLs returnerede 404. Det blev rullet tilbage samme aften (se v3.75) og re-applied rent i v3.76. Ingen data blev påvirket og ingen admin-handlinger var blokeret.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.73",
     date: "2026-05-20",
     label: "Beta",
