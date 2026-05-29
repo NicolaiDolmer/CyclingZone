@@ -1,17 +1,20 @@
 """Label conflict check per Trin 4 Kategori D.
 
 Usage:
-    PYTHONUTF8=1 python labelcheck.py
+    PYTHONUTF8=1 python labelcheck.py            # menneskelæsbar (default)
+    PYTHONUTF8=1 python labelcheck.py --json       # maskinlæsbar JSON til digest Tier-3-sektioner
 
 Reads $TEMP/audit-open-all.json.
 
 Output: 4-state-machine conflicts (todo+done, todo+blocked, in_progress+done, in_progress+blocked),
 plus in_progress list (with idle-hours since updatedAt; >48h flagged STALE) and no_claude_state list.
+Disse er Tier-3-signaler — label-drift ryddes (ikke lukkes); idle in-progress nudges, lukkes aldrig.
 """
-import json, os
+import json, os, sys
 from datetime import datetime, timezone
 
 TMP = os.environ.get('TEMP', '/tmp')
+AS_JSON = '--json' in sys.argv
 STALE_INPROGRESS_HOURS = 48
 
 with open(os.path.join(TMP, 'audit-open-all.json'), encoding='utf-8') as f:
@@ -47,18 +50,33 @@ for i in issues:
     if has_inprog: conflicts['in_progress'].append((i['number'], i.get('updatedAt'), i['title'][:70]))
     if not has_any: conflicts['no_claude_state'].append((i['number'], i['title'][:70]))
 
-print("=== Label-konflikter ===")
-for k, v in conflicts.items():
-    if k == 'in_progress':
-        print(f"  in_progress: {len(v)}")
-        for num, upd, title in v[:10]:
-            h = hours_since(upd)
-            hs = f"{h:.1f}h" if h is not None else "—"
-            stale = "  ⚠️ STALE (resume/re-triage?)" if (h is not None and h > STALE_INPROGRESS_HOURS) else ""
-            print(f"    (#{num}, idle {hs}, '{title}'){stale}")
-    elif k == 'no_claude_state':
-        print(f"  no_claude_state: {len(v)}")
-        for x in v[:10]:
-            print(f"    {x}")
-    else:
-        print(f"  {k}: {v}")
+if AS_JSON:
+    out = {
+        'todo_done': conflicts['todo_done'],
+        'todo_blocked': conflicts['todo_blocked'],
+        'in_progress_done': conflicts['in_progress_done'],
+        'in_progress_blocked': conflicts['in_progress_blocked'],
+        'no_claude_state': [{'number': n, 'title': t} for n, t in conflicts['no_claude_state']],
+        'in_progress': [
+            {'number': n, 'idle_hours': hours_since(upd), 'title': t,
+             'stale': (hours_since(upd) or 0) > STALE_INPROGRESS_HOURS}
+            for n, upd, t in conflicts['in_progress']
+        ],
+    }
+    print(json.dumps(out, ensure_ascii=False, indent=2))
+else:
+    print("=== Label-konflikter ===")
+    for k, v in conflicts.items():
+        if k == 'in_progress':
+            print(f"  in_progress: {len(v)}")
+            for num, upd, title in v[:10]:
+                h = hours_since(upd)
+                hs = f"{h:.1f}h" if h is not None else "—"
+                stale = "  ⚠️ STALE (resume/re-triage?)" if (h is not None and h > STALE_INPROGRESS_HOURS) else ""
+                print(f"    (#{num}, idle {hs}, '{title}'){stale}")
+        elif k == 'no_claude_state':
+            print(f"  no_claude_state: {len(v)}")
+            for x in v[:10]:
+                print(f"    {x}")
+        else:
+            print(f"  {k}: {v}")

@@ -28,4 +28,4 @@
 
 > **🎯 Next action:** [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605) P0.3 — memory/context-trim er nu den eneste resterende cold-start-løftestang (#741 harness-cut done, paritet opnået). Store poster: memory-dir 69K on-demand + HOT-memory 1.78K + context-filer 4.2K. Derefter → [#701](https://github.com/NicolaiDolmer/CyclingZone/issues/701) backup-trigger split.
 
-> **🤖 Working agent:** _Ingen aktiv session._
+> **🤖 Working agent:** Claude Code (NicolaiPC) — [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) daglig autonom auto-close (housekeeping-routine recommend-only → Tier 1+2 selv-close). Branch `claude/627-auto-close-housekeeping`.
