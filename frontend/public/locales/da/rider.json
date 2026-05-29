@@ -244,5 +244,14 @@
   "celebration": {
     "title": "Du vandt auktionen! 🏆",
     "subtitle": "Rytteren er nu på dit hold"
+  },
+  "compare": {
+    "title": "Sammenlign Ryttere",
+    "subtitle": "Tilføj op til 3 ryttere for at sammenligne stats",
+    "searchPlaceholder": "Søg rytter at tilføje...",
+    "searching": "Søger...",
+    "teamFree": "Fri agent",
+    "empty": "Søg efter en rytter ovenfor for at starte sammenligning",
+    "potential": "Potentiale"
   }
 }

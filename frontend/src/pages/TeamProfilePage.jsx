@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
@@ -26,6 +27,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
 export default function TeamProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation("team");
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [standing, setStanding] = useState(null);
@@ -83,7 +85,7 @@ export default function TeamProfilePage() {
     </div>
   );
 
-  if (!team) return <div className="text-center py-16 text-cz-3">Hold ikke fundet</div>;
+  if (!team) return <div className="text-center py-16 text-cz-3">{t("profile.notFound")}</div>;
 
   const currentRiders = riders.filter(r => !r._isIncoming);
   const incomingRiders = riders.filter(r => r._isIncoming);
@@ -112,7 +114,7 @@ export default function TeamProfilePage() {
     <div className="max-w-4xl mx-auto">
       <button onClick={() => navigate(-1)}
         className="text-cz-2 hover:text-cz-1 text-sm mb-5 flex items-center gap-2 transition-colors">
-        ← Tilbage
+        {t("profile.back")}
       </button>
 
       {/* Header */}
@@ -121,25 +123,25 @@ export default function TeamProfilePage() {
           <div>
             <div className="flex items-center gap-3 mb-1 flex-wrap">
               <h1 className="text-xl font-bold text-cz-1">{team.name}</h1>
-              {isMyTeam && <span className="text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-full">Dit hold</span>}
+              {isMyTeam && <span className="text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-full">{t("profile.yourTeam")}</span>}
             </div>
             {team.manager_name && (
               <p className="text-cz-2 text-sm flex items-center gap-2">
-                <span>Manager: {team.manager_name}</span>
+                <span>{t("profile.managerLabel", { name: team.manager_name })}</span>
                 <OnlineBadge isOnline={managerStatus.isOnline} lastSeen={managerStatus.lastSeen} />
               </p>
             )}
-            <p className="text-cz-2 text-sm">Division {team.division}</p>
+            <p className="text-cz-2 text-sm">{t("profile.division", { n: team.division })}</p>
           </div>
 
         </div>
 
         <div className="grid grid-cols-4 gap-3 mt-5">
           {[
-            { label: "Ryttere nu", value: currentRiders.length },
-            { label: "Indgående", value: incomingRiders.length, color: incomingRiders.length > 0 ? "text-cz-success" : "text-cz-1" },
-            { label: "Udgående", value: outgoingRiders.length, color: outgoingRiders.length > 0 ? "text-cz-danger" : "text-cz-1" },
-            { label: "Holdværdi", value: `${formatNumber(totalValue)} CZ$`, color: "text-cz-accent-t" }, // value shown, balance hidden
+            { label: t("profile.statRidersNow"), value: currentRiders.length },
+            { label: t("profile.statIncoming"), value: incomingRiders.length, color: incomingRiders.length > 0 ? "text-cz-success" : "text-cz-1" },
+            { label: t("profile.statOutgoing"), value: outgoingRiders.length, color: outgoingRiders.length > 0 ? "text-cz-danger" : "text-cz-1" },
+            { label: t("profile.statTeamValue"), value: `${formatNumber(totalValue)} CZ$`, color: "text-cz-accent-t" }, // value shown, balance hidden
           ].map(s => (
             <div key={s.label} className="bg-cz-subtle rounded-lg p-3 text-center">
               <p className="text-cz-3 text-[9px] uppercase tracking-wider mb-1">{s.label}</p>
@@ -152,12 +154,12 @@ export default function TeamProfilePage() {
       {/* Season standing */}
       {standing && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
-          <h2 className="text-cz-1 font-semibold text-sm mb-3">Sæsonresultater</h2>
+          <h2 className="text-cz-1 font-semibold text-sm mb-3">{t("profile.seasonResults")}</h2>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Point", value: formatNumber(standing.total_points) || 0, color: "text-cz-accent-t" },
-              { label: "Etapesejre", value: standing.stage_wins || 0 },
-              { label: "GC-sejre", value: standing.gc_wins || 0 },
+              { label: t("profile.seasonPoints"), value: formatNumber(standing.total_points) || 0, color: "text-cz-accent-t" },
+              { label: t("profile.seasonStageWins"), value: standing.stage_wins || 0 },
+              { label: t("profile.seasonGcWins"), value: standing.gc_wins || 0 },
             ].map(s => (
               <div key={s.label} className="bg-cz-subtle rounded-lg p-3 text-center">
                 <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{s.label}</p>
@@ -171,13 +173,13 @@ export default function TeamProfilePage() {
       {/* Tabs */}
       <div className="flex gap-2 mb-4">
         {[
-          { key: "squad", label: `Trup (${currentRiders.length})` },
-          { key: "transfers", label: "Transferhistorik" },
-        ].map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
+          { key: "squad", label: t("profile.tabSquad", { count: currentRiders.length }) },
+          { key: "transfers", label: t("profile.tabTransfers") },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${activeTab === t.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {t.label}
+              ${activeTab === tab.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+            {tab.label}
           </button>
         ))}
       </div>
@@ -190,7 +192,7 @@ export default function TeamProfilePage() {
       {activeTab === "squad" && (
       <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
         <div className="px-5 py-4 border-b border-cz-border flex items-center justify-between flex-wrap gap-3">
-          <h2 className="text-cz-1 font-semibold text-sm">Trup ({currentRiders.length} ryttere)</h2>
+          <h2 className="text-cz-1 font-semibold text-sm">{t("profile.squadTitle", { count: currentRiders.length })}</h2>
           {hasTransfers && (
             <div className="flex gap-2 flex-wrap">
               {incomingRiders.length > 0 && (
@@ -198,7 +200,7 @@ export default function TeamProfilePage() {
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all
                     ${showIncoming ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                  Indgående ({incomingRiders.length})
+                  {t("profile.incomingToggle", { count: incomingRiders.length })}
                 </button>
               )}
               {outgoingRiders.length > 0 && (
@@ -206,23 +208,23 @@ export default function TeamProfilePage() {
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all
                     ${showOutgoing ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30" : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
                   <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                  Udgående ({outgoingRiders.length})
+                  {t("profile.outgoingToggle", { count: outgoingRiders.length })}
                 </button>
               )}
             </div>
           )}
         </div>
         {displayRiders.length === 0 ? (
-          <div className="text-center py-12 text-cz-3"><p>Ingen ryttere</p></div>
+          <div className="text-center py-12 text-cz-3"><p>{t("profile.noRiders")}</p></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
                   <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                    className="px-4 py-3 text-left font-medium uppercase">Rytter</SortTh>
+                    className="px-4 py-3 text-left font-medium uppercase">{t("profile.thRider")}</SortTh>
                   <SortTh sortKey="uci_points" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                    className="px-4 py-3 text-right font-medium">Værdi</SortTh>
+                    className="px-4 py-3 text-right font-medium">{t("profile.thValue")}</SortTh>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key} sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                       className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
@@ -245,8 +247,8 @@ export default function TeamProfilePage() {
                           {r.firstname} {r.lastname}
                         </RiderLink>
                         {r.is_u25 && <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>}
-                        {r._isIncoming && <span className="text-[9px] uppercase bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded">Indgående</span>}
-                        {r._isOutgoing && <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">Udgående</span>}
+                        {r._isIncoming && <span className="text-[9px] uppercase bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded">{t("profile.tagIncoming")}</span>}
+                        {r._isOutgoing && <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">{t("profile.tagOutgoing")}</span>}
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-right text-cz-accent-t font-mono font-bold">

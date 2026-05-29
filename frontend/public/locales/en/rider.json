@@ -244,5 +244,14 @@
   "celebration": {
     "title": "You won the auction! 🏆",
     "subtitle": "The rider is now on your team"
+  },
+  "compare": {
+    "title": "Compare Riders",
+    "subtitle": "Add up to 3 riders to compare stats",
+    "searchPlaceholder": "Search rider to add...",
+    "searching": "Searching...",
+    "teamFree": "Free agent",
+    "empty": "Search for a rider above to start comparing",
+    "potential": "Potential"
   }
 }

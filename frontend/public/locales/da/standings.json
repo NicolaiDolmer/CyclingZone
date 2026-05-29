@@ -1,0 +1,19 @@
+{
+  "title": "Rangliste",
+  "season": "Sæson {n}",
+  "noActiveSeason": "Ingen aktiv sæson",
+  "division": "Division {n}",
+  "noData": "Ingen data for Division {n} endnu",
+  "thTeam": "Hold",
+  "thStageWins": "Etapesejre",
+  "thPodiums": "Podier",
+  "thPoints": "Point",
+  "thProgress": "Udvikling",
+  "youBadge": "Dig",
+  "promotionBadge": "↑ Op",
+  "relegationBadge": "↓ Ned",
+  "penaltyTooltip": "Trupstørrelse-fradrag: {penalty} point ({earned} optjent − {penalty} fradrag)",
+  "legendPromotion": "Oprykningszone (top 2)",
+  "legendRelegation": "Nedrykningszone (bund 2)",
+  "racesPlayed": "{count} løb spillet"
+}
