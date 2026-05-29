@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.14",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Localization · Hall of Fame now switches fully to English",
+        items: [
+          "EN · The Hall of Fame page — record categories, manager titles, the division-history view and all table labels — now displays fully in English when the app language is set to English. Previously these showed Danish text regardless of the selected language. Refs #678.",
+          "DA · Hall of Fame-siden — rekordkategorier, manager-titler, divisionshistorik-visningen og alle tabel-labels — vises nu fuldt på engelsk når appens sprog er sat til engelsk. Tidligere viste disse dansk tekst uanset det valgte sprog. Refs #678.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.13",
     date: "2026-05-29",
     label: "Beta",
