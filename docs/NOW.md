@@ -6,6 +6,6 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** Verify-kø på [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) — 4 done-issues (#505/#449/#563/#327) afventer din UI-/beslutnings-opfølgning (#529 lukket 29. maj). #761 (PR #531-restfund): PR [#762](https://github.com/NicolaiDolmer/CyclingZone/pull/762) **merged + live på prod** (29. maj) — session null-guard + PatchNotes-kronologi (3.73-3.77) + backfill af manglende v3.74-entry; afventer kun din lukning af #761. AI-spor: #605 P0.3 leveret (HOT-trim −2.144 tok/tur); resterende cold-start-løftestang er harness-cut (jf. #741), ikke memory.
+> **🎯 Next action:** Verify-kø på [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) — #761 **lukket** 29. maj (PR #762 merged + live). Rest = 4 done-issues der kræver DIN handling: **#505** (race_points editor) kode-verificeret 29. maj (backend 7/7 tests + migration + komplet komponent + 16/16 i18n EN/DA) → mangler kun 60-sek admin-klik i prod (`/admin` → ret én værdi → Gem holder) før lukning · **#449** (Discord-DM): fix landede i #550, kræver du rotér webhooks + verificér `DISCORD_BOT_TOKEN` på Railway + test DM · **#563** (OneDrive secret-decommission): Phase 3 OIDC ❌ ikke done, `needs-decision` · **#327** (secret mgmt Phase 2): `risk:high`/`manual:user`, remote/CI-dele udestår. AI-spor: #605 P0.3 leveret (HOT-trim −2.144 tok/tur); resterende cold-start-løftestang er harness-cut (jf. #741), ikke memory.
 
 > **🤖 Working agent:** _Ingen aktiv session._
