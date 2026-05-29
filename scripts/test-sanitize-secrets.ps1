@@ -99,6 +99,11 @@ function New-FakeSecret([string]$Type) {
     "stripe-key" {
       return ("sk" + "_test_" + "TESTONLYxxxxxxxxxxxxxxxxxxxxxx")
     }
+    "high-entropy-raw" {
+      # #752-guard: random base64-agtig UDEN ord-segmenter -> high-entropy
+      # fallback SKAL stadig blokere (path/identifier-skip maa ikke svaekke det).
+      return ("aB3" + "xZ9qK7" + "mP2wR8" + "nT4vL6" + "yC1jH5" + "gF0dS2" + "bN8kM4pQ7")
+    }
     default {
       throw "Unknown type: $Type"
     }
@@ -115,7 +120,8 @@ $tests = @(
   @{ Type = "github-pat";            ExpectMatch = $true  },
   @{ Type = "aws-access-key";        ExpectMatch = $true  },
   @{ Type = "anthropic-key";         ExpectMatch = $true  },
-  @{ Type = "stripe-key";            ExpectMatch = $true  }
+  @{ Type = "stripe-key";            ExpectMatch = $true  },
+  @{ Type = "high-entropy-raw";      ExpectMatch = $true  }
 )
 
 # Also: clean control case (no secret patterns) — should NOT trigger
@@ -193,7 +199,9 @@ $controlTests = @(
   @{ Label = "control-file-paths"; Stdout = "Files: /c/Users/emmas/.claude/projects/C--dev-CyclingZone/memory/feedback_secret_leak_prevention.md and C:/dev/CyclingZone/scripts/probe-railway-keys.ps1" },
   @{ Label = "control-git-sha"; Stdout = "Recent commit: 94e0e5520123456789abcdef0123456789abcdef chore(security): #634 blocker — secret rotation pauses" },
   @{ Label = "control-short-hex"; Stdout = "openssl rand -hex 2 output: cd4d " + ("z" * 250) },
-  @{ Label = "control-short-hex-json"; Stdout = '{"command":"openssl rand -hex 2","stdout":"cd4d","exit_code":0}' + ("z" * 250) }
+  @{ Label = "control-short-hex-json"; Stdout = '{"command":"openssl rand -hex 2","stdout":"cd4d","exit_code":0}' + ("z" * 250) },
+  @{ Label = "control-worktree-flat"; Stdout = "Active session C--Dev-CyclingZone-worktrees-agent-ab3e0ab629c91e667 ready " + ("z" * 250) },
+  @{ Label = "control-archive-fname"; Stdout = "Trimmed NOW_HISTORICAL_ARCHIVE_consolidation_record entry " + ("z" * 250) }
 )
 
 foreach ($ct in $controlTests) {

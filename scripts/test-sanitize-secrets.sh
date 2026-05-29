@@ -149,6 +149,26 @@ run "safe text passes through" \
   "Build completed successfully in 4.2s. No warnings reported. $PAD$PAD" \
   0 ""
 
+# ===== #752: path/identifier high-entropy false-positive skip =====
+
+# Flad worktree-/session-sti (C:\ -> C--, mange ord-segmenter) SKAL passere.
+run "worktree-flat-path skipped (#752)" \
+  "Active session C--Dev-CyclingZone-worktrees-agent-ab3e0ab629c91e667 ready. $PAD" \
+  0 ""
+
+# Arkiv-filnavn med ord-segmenter SKAL passere.
+run "archive-filename skipped (#752)" \
+  "Trimmed NOW_HISTORICAL_ARCHIVE_consolidation_record entry. $PAD" \
+  0 ""
+
+# KONTROL: raw high-entropy UDEN ord-segmenter SKAL stadig blokere (beskyttelse intakt).
+mk_random_highentropy() {
+  printf '%s%s%s%s%s%s%s' 'aB3' 'xZ9qK7' 'mP2wR8' 'nT4vL6' 'yC1jH5' 'gF0dS2' 'bN8kM4pQ7'
+}
+run "raw high-entropy still blocks (#752 guard)" \
+  "Value: $(mk_random_highentropy) $PAD" \
+  2 "high-entropy"
+
 # ===== Performance optimization tests =====
 
 # <100 char input skipper hook scan (perf opt). Selv match-streng slipper.
