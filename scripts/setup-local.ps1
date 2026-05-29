@@ -46,6 +46,14 @@ Push-Location $repoRoot
 try {
   & git config core.hooksPath .githooks
   if ($LASTEXITCODE -ne 0) { throw "Kunne ikke saette core.hooksPath." }
+
+  # Forward-guard (#717/#726): pre-commit foretraekker gitleaks; uden den
+  # bruges en python-fallback. Fallbacken er nu robust, men gitleaks er den
+  # paalidelige primaere scanner. Advar hvis den mangler paa en frisk PC.
+  if (-not (Get-Command gitleaks -ErrorAction SilentlyContinue)) {
+    Write-Host "      [advarsel] gitleaks ikke installeret - pre-commit bruger python-fallback." -ForegroundColor Yellow
+    Write-Host "                 Anbefalet: scoop install gitleaks  (eller: pwsh -File scripts/install-git-hooks.ps1 -InstallGitleaks)" -ForegroundColor Yellow
+  }
 } finally { Pop-Location }
 
 Write-Host "`n[ok] Lokal opsaetning faerdig."
