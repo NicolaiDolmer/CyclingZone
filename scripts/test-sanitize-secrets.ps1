@@ -356,6 +356,72 @@ if ($r.Pass) {
   $failDetails.Add("Blocker safe-mcp-input: exit=$($r.ActualExit) expected=0")
 }
 
+# --- Lag A: PreToolUse Read/Grep secret-path block (#634 follow-up) --------
+# Verificerer at Read/Grep mod secret-fil-stier blokeres (exit 2), og at
+# normal kode + whitelisted filer IKKE blokeres (exit 0, anti-FP).
+Write-Host ""
+Write-Host "Testing Read/Grep secret-path block (lag A)..."
+
+$pathBlockTests = @(
+  @{ Label = "read-mcp-json";       Payload = '{"tool_name":"Read","tool_input":{"file_path":".mcp.json"},"session_id":"t"}';                       ExpectedExit = 2 },
+  @{ Label = "read-mcp-json-abs";   Payload = '{"tool_name":"Read","tool_input":{"file_path":"C:\\Dev\\CyclingZone\\.mcp.json"},"session_id":"t"}'; ExpectedExit = 2 },
+  @{ Label = "read-backend-env";    Payload = '{"tool_name":"Read","tool_input":{"file_path":"backend/.env"},"session_id":"t"}';                     ExpectedExit = 2 },
+  @{ Label = "read-env-production"; Payload = '{"tool_name":"Read","tool_input":{"file_path":"frontend/.env.production"},"session_id":"t"}';         ExpectedExit = 2 },
+  @{ Label = "read-secrets-dir";    Payload = '{"tool_name":"Read","tool_input":{"file_path":"config/secrets/db.json"},"session_id":"t"}';           ExpectedExit = 2 },
+  @{ Label = "grep-path-env";       Payload = '{"tool_name":"Grep","tool_input":{"pattern":"KEY","path":"backend/.env"},"session_id":"t"}';          ExpectedExit = 2 },
+  # Anti-FP: disse SKAL passere (exit 0)
+  @{ Label = "read-env-example";    Payload = '{"tool_name":"Read","tool_input":{"file_path":"backend/.env.example"},"session_id":"t"}';             ExpectedExit = 0 },
+  @{ Label = "read-source-jsx";     Payload = '{"tool_name":"Read","tool_input":{"file_path":"frontend/src/App.jsx"},"session_id":"t"}';             ExpectedExit = 0 },
+  @{ Label = "read-doc-md";         Payload = '{"tool_name":"Read","tool_input":{"file_path":"docs/DISCORD_MCP_SETUP.md"},"session_id":"t"}';        ExpectedExit = 0 },
+  @{ Label = "grep-no-path";        Payload = '{"tool_name":"Grep","tool_input":{"pattern":"foo"},"session_id":"t"}';                                ExpectedExit = 0 }
+)
+foreach ($t in $pathBlockTests) {
+  $r = Invoke-BlockerTest -Payload $t.Payload -ExpectedExit $t.ExpectedExit -Label $t.Label
+  if ($r.Pass) {
+    $pass++
+    Write-Host ("  ✅ {0,-22} exit={1} (expected)" -f $t.Label, $r.ActualExit) -ForegroundColor Green
+  } else {
+    $fail++
+    Write-Host ("  ❌ {0,-22} exit={1} expected={2}" -f $t.Label, $r.ActualExit, $t.ExpectedExit) -ForegroundColor Red
+    $failDetails.Add("PathBlock $($t.Label): exit=$($r.ActualExit) expected=$($t.ExpectedExit)")
+  }
+}
+
+# --- Lag B: PostToolUse sanitizer fyrer paa Read tool_response (#634 follow-up)
+# Verificerer at sanitize-secrets fanger et secret-pattern i Read-output (det
+# var ikke daekket foer Read blev tilfoejet til PostToolUse-matcheren), og at
+# normal kode-Read-output IKKE trigger (anti-FP).
+Write-Host ""
+Write-Host "Testing sanitizer on Read tool_response (lag B)..."
+
+$readToken = New-FakeSecret -Type "discord-bot-token"
+$readFiller = "x" * 250
+$readLeakPayload = @"
+{"tool_name":"Read","tool_input":{"file_path":".mcp.json"},"tool_response":{"type":"text","file":{"filePath":".mcp.json","content":"{ \"DISCORD_TOKEN\": \"$readToken\" } $readFiller"}}}
+"@
+$r = Invoke-HookTest -Payload $readLeakPayload -ExpectMatch $true -Label "read-response-discord-token"
+if ($r.Pass) {
+  $pass++
+  Write-Host ("  ✅ {0,-30} {1}" -f "read-response-discord-token", $r.Detail) -ForegroundColor Green
+} else {
+  $fail++
+  Write-Host ("  ❌ {0,-30} {1}" -f "read-response-discord-token", $r.Detail) -ForegroundColor Red
+  $failDetails.Add("Sanitize read-response: $($r.Detail)")
+}
+
+$readCleanPayload = @"
+{"tool_name":"Read","tool_input":{"file_path":"frontend/src/App.jsx"},"tool_response":{"type":"text","file":{"filePath":"App.jsx","content":"import React from 'react'; export default function App(){ return cycling-zone; } $readFiller"}}}
+"@
+$r = Invoke-HookTest -Payload $readCleanPayload -ExpectMatch $false -Label "read-response-clean"
+if ($r.Pass) {
+  $pass++
+  Write-Host ("  ✅ {0,-30} {1}" -f "read-response-clean", $r.Detail) -ForegroundColor Green
+} else {
+  $fail++
+  Write-Host ("  ❌ {0,-30} {1}" -f "read-response-clean", $r.Detail) -ForegroundColor Red
+  $failDetails.Add("Sanitize read-clean: $($r.Detail)")
+}
+
 # Wrapper-scripts smoke (verify they EXIST + can be invoked with -h, not full run)
 Write-Host ""
 Write-Host "Wrapper scripts presence-check..."
