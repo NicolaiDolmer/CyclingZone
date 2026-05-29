@@ -188,6 +188,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Read|Write|Edit|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/sanitize-secrets.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "Stop": [

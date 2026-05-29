@@ -114,6 +114,84 @@ EOF
   fi
 fi
 
+# --- Lag A (#634 follow-up): block Read/Grep mod secret-fil-stier ----------
+# Read/Grep tool_response indeholder filindhold; for secret-filer = leak til
+# transcript. Input-scan ovenfor fanger det IKKE (tool_input er kun en sti),
+# og PostToolUse-sanitizer dækkede det først efter Read/Grep blev tilføjet til
+# matcheren. Denne block er proaktiv + indholds-uafhængig (fanger også custom
+# secrets uden genkendeligt format). Vektoren bed 2026-05-29 (.mcp.json).
+if [ -n "${PY:-}" ]; then
+  export _PATHSCAN_INPUT="$INPUT"
+  SECRET_PATH=$("$PY" <<'PYEOF' 2>/dev/null
+import os, json, re, sys
+text = os.environ.get("_PATHSCAN_INPUT", "")
+try:
+    d = json.loads(text)
+except Exception:
+    sys.exit(0)
+tn = str(d.get("tool_name", "") or "")
+if tn not in ("Read", "Grep"):
+    sys.exit(0)
+ti = d.get("tool_input", {}) or {}
+paths = []
+if tn == "Read":
+    p = ti.get("file_path")
+    if p:
+        paths.append(str(p))
+elif tn == "Grep":
+    # Grep uden 'path' = cwd-bred soegning; kan ikke pinnes til een fil ->
+    # overlades til PostToolUse-sanitizer (lag B). Kun eksplicit fil/sti her.
+    p = ti.get("path")
+    if p:
+        paths.append(str(p))
+
+whitelist = re.compile(r"\.(example|sample|template)$", re.IGNORECASE)
+
+def is_secret_path(p):
+    pl = p.replace("\\", "/")
+    base = pl.rsplit("/", 1)[-1]
+    if whitelist.search(base):
+        return False
+    if base == ".mcp.json":
+        return True
+    if re.match(r"^\.env(\..+)?$", base):
+        return True
+    if "/secrets/" in pl.lower():
+        return True
+    return False
+
+hits = [p for p in paths if is_secret_path(p)]
+if hits:
+    print(hits[0])
+PYEOF
+  )
+  unset _PATHSCAN_INPUT
+
+  if [ -n "$SECRET_PATH" ]; then
+    cat >&2 <<EOF
+🔴 BLOCKED by block-dangerous-secret-commands.sh
+
+Read/Grep mod secret-fil: $SECRET_PATH
+
+Filen indeholder secrets i klartekst. Tool-output ville dumpe dem til
+transcript (vektoren der bed 2026-05-29 paa .mcp.json). Selv gitignored filer
+laekker denne vej.
+
+Hvad goer du nu:
+1. Behoever du kun KEY-NAVNE (ikke values)?
+     grep -oE '^[A-Z_][A-Z0-9_]*' backend/.env     # via Bash — kun keys
+2. Behoever du strukturen i .mcp.json? Laes docs/DISCORD_MCP_SETUP.md (har
+   redacted eksempel) i stedet for selve filen.
+3. Skal du se en value? Aaben filen i en editor UDENFOR Claude Code.
+
+Catalog: docs/SECRET_LEAK_VECTORS.md tabel B.
+
+Refs: #634.
+EOF
+    exit 2
+  fi
+fi
+
 # Quick bail-out hvis ikke Bash/PowerShell tool-call for command-specifikke checks nedenfor
 case "$INPUT" in
   *'"tool_name":"Bash"'*|*'"tool_name": "Bash"'*) ;;
