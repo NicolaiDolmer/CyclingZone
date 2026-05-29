@@ -177,6 +177,14 @@ ALLOW = [
     re.compile(r"-[A-Za-z0-9]{8}\.(?:js|css|woff2?|map)$"),
     # Fixture markers (sync med .gitleaks.toml allowlist)
     re.compile(r"(?:FIXTURE_DO_NOT_USE|TEST_SECRET_NOT_REAL)"),
+    # Google Drive/Sheets fileId (44-char moderne format, starter med "1",
+    # kun [A-Za-z0-9_-]). IDENTIFIKATORER, ikke secrets — adgang styres af
+    # deling, ikke hemmeligholdelse. memory/reference_uci_sheet*.md refererer
+    # UCI-sheet fileId'er; uden denne allow tripper de high-entropy hver gang
+    # filens indhold passerer et tool-output og blokerer Read af WARM-index.
+    # Named secret-patterns (sb_secret_/eyJ/ghp_/AKIA/...) koeres FOER denne
+    # fallback, saa aegte prefix-baerende secrets fanges stadig. (#743, 2026-05-29)
+    re.compile(r"^1[A-Za-z0-9_-]{43}$"),
 ]
 
 findings = []
