@@ -185,6 +185,11 @@ ALLOW = [
     # Named secret-patterns (sb_secret_/eyJ/ghp_/AKIA/...) koeres FOER denne
     # fallback, saa aegte prefix-baerende secrets fanges stadig. (#743, 2026-05-29)
     re.compile(r"^1[A-Za-z0-9_-]{43}$"),
+    # Windows-path slugs: Windows-stier med \ og : erstattet af -, fx
+    # "C--Dev-CyclingZone--claude--worktrees--mystifying-ride-bad850".
+    # Fil-system-stier er ikke secrets. Trigger: worktree-navne der dukker op i
+    # tool-output JSON (cwd-felt, Read-path, etc.). (#719, 2026-05-29)
+    re.compile(r"^[A-Z]--[A-Za-z]"),
 ]
 
 findings = []
