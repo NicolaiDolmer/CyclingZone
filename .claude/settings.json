@@ -12,6 +12,9 @@
     "allow": [
       "Bash(git *)",
       "WebSearch",
+      "Write",
+      "Edit",
+      "NotebookEdit",
       "Bash(node --test)",
       "Bash(node --test *)",
       "Bash(npm run *)",
@@ -68,8 +71,10 @@
     "deny": [
       "Write(docs/archive/**)",
       "Edit(docs/archive/**)",
+      "NotebookEdit(docs/archive/**)",
       "Write(./docs/archive/**)",
-      "Edit(./docs/archive/**)"
+      "Edit(./docs/archive/**)",
+      "NotebookEdit(./docs/archive/**)"
     ]
   },
   "hooks": {
