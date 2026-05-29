@@ -5,22 +5,9 @@ import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { getRiderMarketValue } from "../lib/marketValues";
 import WatchlistStar from "../components/WatchlistStar";
-import { formatNumber, formatDate } from "../lib/intl";
+import { formatNumber, formatDate, formatRelativeTime } from "../lib/intl";
 
 const API = import.meta.env.VITE_API_URL;
-
-function timeAgo(dateStr) {
-  if (!dateStr) return "—";
-  const diff = new Date() - new Date(dateStr);
-  const m = Math.floor(diff / 60000);
-  const h = Math.floor(diff / 3600000);
-  const d = Math.floor(diff / 86400000);
-  if (m < 1) return "Lige nu";
-  if (m < 60) return `${m}m siden`;
-  if (h < 24) return `${h}t siden`;
-  if (d < 7) return `${d}d siden`;
-  return formatDate(dateStr);
-}
 
 function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
@@ -42,12 +29,13 @@ function getAuctionLeaderName(auction) {
 }
 
 function Countdown({ end, status }) {
+  const { t } = useTranslation("activity");
   const [text, setText] = useState("");
   const [urgent, setUrgent] = useState(false);
   useEffect(() => {
     function update() {
       const diff = new Date(end) - new Date();
-      if (diff <= 0) { setText("Afsluttet"); return; }
+      if (diff <= 0) { setText(t("countdown.ended")); return; }
       setUrgent(diff < 600000);
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
@@ -59,7 +47,7 @@ function Countdown({ end, status }) {
     update();
     const iv = setInterval(update, 1000);
     return () => clearInterval(iv);
-  }, [end]);
+  }, [end, t]);
   return (
     <span className={`font-mono text-xs font-bold tabular-nums whitespace-nowrap
       ${status === "extended" ? "text-cz-warning" : urgent ? "text-cz-danger" : "text-cz-2"}`}>
@@ -68,23 +56,24 @@ function Countdown({ end, status }) {
   );
 }
 
+// Status → badge styling. Labels resolved via t(labelKey) at render.
 const OFFER_STATUS = {
-  pending:               { label: "Afventer svar",    cls: "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" },
-  countered:             { label: "Modbud modtaget",  cls: "bg-cz-warning-bg text-cz-warning border-cz-warning/30" },
-  awaiting_confirmation: { label: "Bekræft handel",          cls: "bg-cz-info-bg text-cz-info border-cz-info/30" },
-  window_pending:        { label: "Aftalt — afventer vindue", cls: "bg-violet-50 text-violet-700 border-violet-200" },
-  accepted:              { label: "Accepteret",               cls: "bg-cz-success-bg text-cz-success border-cz-success/30" },
-  rejected:              { label: "Afvist",            cls: "bg-cz-danger-bg text-cz-danger border-cz-danger/30" },
-  withdrawn:             { label: "Trukket tilbage",   cls: "bg-cz-subtle text-cz-3 border-cz-border" },
+  pending:               { labelKey: "offerStatus.pending",               cls: "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" },
+  countered:             { labelKey: "offerStatus.countered",             cls: "bg-cz-warning-bg text-cz-warning border-cz-warning/30" },
+  awaiting_confirmation: { labelKey: "offerStatus.awaiting_confirmation", cls: "bg-cz-info-bg text-cz-info border-cz-info/30" },
+  window_pending:        { labelKey: "offerStatus.window_pending",        cls: "bg-violet-50 text-violet-700 border-violet-200" },
+  accepted:              { labelKey: "offerStatus.accepted",              cls: "bg-cz-success-bg text-cz-success border-cz-success/30" },
+  rejected:              { labelKey: "offerStatus.rejected",              cls: "bg-cz-danger-bg text-cz-danger border-cz-danger/30" },
+  withdrawn:             { labelKey: "offerStatus.withdrawn",             cls: "bg-cz-subtle text-cz-3 border-cz-border" },
 };
 
 const LOAN_STATUS = {
-  pending:   { label: "Afventer",   cls: "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" },
-  active:    { label: "Aktiv",      cls: "bg-cz-success-bg text-cz-success border-cz-success/30" },
-  completed: { label: "Afsluttet", cls: "bg-cz-subtle text-cz-2 border-cz-border" },
-  rejected:  { label: "Afvist",    cls: "bg-cz-danger-bg text-cz-danger border-cz-danger/30" },
-  cancelled: { label: "Annulleret", cls: "bg-cz-subtle text-cz-3 border-cz-border" },
-  buyout:    { label: "Købt ud",    cls: "bg-purple-50 text-purple-700 border-purple-200" },
+  pending:   { labelKey: "loanStatus.pending",   cls: "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" },
+  active:    { labelKey: "loanStatus.active",    cls: "bg-cz-success-bg text-cz-success border-cz-success/30" },
+  completed: { labelKey: "loanStatus.completed", cls: "bg-cz-subtle text-cz-2 border-cz-border" },
+  rejected:  { labelKey: "loanStatus.rejected",  cls: "bg-cz-danger-bg text-cz-danger border-cz-danger/30" },
+  cancelled: { labelKey: "loanStatus.cancelled", cls: "bg-cz-subtle text-cz-3 border-cz-border" },
+  buyout:    { labelKey: "loanStatus.buyout",    cls: "bg-purple-50 text-purple-700 border-purple-200" },
 };
 
 function SectionHeader({ title, count }) {
@@ -136,6 +125,7 @@ function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, 
 
 export default function ActivityPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation("activity");
   const { t: tCommon } = useTranslation("common");
   const [tab, setTab] = useState("action");
   const [myTeamId, setMyTeamId] = useState(null);
@@ -151,6 +141,9 @@ export default function ActivityPage() {
   const [borrowingLoans, setBorrowingLoans]     = useState([]);
   const [historicalLoans, setHistoricalLoans]   = useState([]);
   const [watchlist, setWatchlist]               = useState([]);
+
+  // Loan/offer counterparty + season detail line.
+  const seasonDetail = (l) => t("detail.season", { start: l.start_season, end: l.end_season });
 
   async function loadAll({ silent = false } = {}) {
     if (silent) setRefreshing(true); else setLoading(true);
@@ -226,7 +219,7 @@ export default function ActivityPage() {
     setWatchlist(prev => prev.filter(e => e.rider?.id !== riderId));
   }
 
-  // "Kræver handling" — items that require the user's action
+  // "Needs action" — items that require the user's action
   const actionTransfers = [
     ...receivedOffers.filter(o => o.status === "pending"),
     ...sentOffers.filter(o => o.status === "countered"),
@@ -254,12 +247,12 @@ export default function ActivityPage() {
   );
 
   const TABS = [
-    { key: "action",    label: "Kræver handling",           count: actionCount },
-    { key: "auctions",  label: tCommon("nav.item.auctions"), count: activeAuctions.length },
-    { key: "transfers", label: "Transfers",                  count: activeReceivedOffers.length + activeSentOffers.length },
-    { key: "loans",     label: "Lån",                        count: lendingLoans.length + borrowingLoans.length },
-    { key: "watchlist", label: tCommon("nav.item.watchlist"),count: watchlist.length },
-    { key: "history",   label: "Historik",                   count: 0 },
+    { key: "action",    label: t("tabs.action"),              count: actionCount },
+    { key: "auctions",  label: tCommon("nav.item.auctions"),  count: activeAuctions.length },
+    { key: "transfers", label: t("tabs.transfers"),           count: activeReceivedOffers.length + activeSentOffers.length },
+    { key: "loans",     label: t("tabs.loans"),               count: lendingLoans.length + borrowingLoans.length },
+    { key: "watchlist", label: tCommon("nav.item.watchlist"), count: watchlist.length },
+    { key: "history",   label: t("tabs.history"),             count: 0 },
   ];
 
   if (loading) return (
@@ -272,69 +265,69 @@ export default function ActivityPage() {
     <div className="max-w-4xl mx-auto">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-cz-1">Min Aktivitet</h1>
-          <p className="text-cz-3 text-sm">Dine markedshandlinger samlet ét sted</p>
+          <h1 className="text-xl font-bold text-cz-1">{t("header.title")}</h1>
+          <p className="text-cz-3 text-sm">{t("header.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {lastLoaded && (
             <span className="text-cz-3 text-xs hidden sm:inline">
-              Sidst opdateret {lastLoaded.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}
+              {t("lastUpdated", { time: formatDate(lastLoaded, null, { hour: "2-digit", minute: "2-digit" }) })}
             </span>
           )}
           <button onClick={() => loadAll({ silent: true })} disabled={refreshing}
             className="px-3 py-1.5 text-xs text-cz-2 hover:text-cz-1
               bg-cz-card hover:bg-cz-subtle rounded-lg border border-cz-border
               transition-all disabled:opacity-50 flex items-center gap-1.5"
-            title="Opdater data">
+            title={t("refreshTitle")}>
             <span className={refreshing ? "inline-block animate-spin" : "inline-block"}>↻</span>
-            {refreshing ? "Opdaterer..." : "Opdater"}
+            {refreshing ? t("refreshing") : t("refresh")}
           </button>
         </div>
       </div>
 
       {/* Tab bar */}
       <div className="flex gap-1 mb-5 overflow-x-auto pb-px">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+        {TABS.map(tabItem => (
+          <button key={tabItem.key} onClick={() => setTab(tabItem.key)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all border flex-shrink-0
-              ${tab === t.key
+              ${tab === tabItem.key
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {t.label}
-            {t.count > 0 && (
+            {tabItem.label}
+            {tabItem.count > 0 && (
               <span className={`text-xs font-mono rounded-full px-1.5 min-w-[18px] text-center leading-5
-                ${tab === t.key
-                  ? (t.key === "action" ? "bg-cz-accent-t text-white" : "bg-cz-accent/20 text-cz-accent-t")
+                ${tab === tabItem.key
+                  ? (tabItem.key === "action" ? "bg-cz-accent-t text-white" : "bg-cz-accent/20 text-cz-accent-t")
                   : "bg-cz-subtle text-cz-2"}`}>
-                {t.count}
+                {tabItem.count}
               </span>
             )}
           </button>
         ))}
       </div>
 
-      {/* ── KRÆVER HANDLING ── */}
+      {/* ── NEEDS ACTION ── */}
       {tab === "action" && (
         <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
           {actionCount === 0 && urgentAuctions.length === 0 ? (
-            <EmptyState icon="✓" title="Intet der kræver handling" sub="Du er opdateret på alle tilbud og aftaler" />
+            <EmptyState icon="✓" title={t("empty.actionTitle")} sub={t("empty.actionSub")} />
           ) : (
             <>
               {actionTransfers.length > 0 && (
                 <>
-                  <SectionHeader title="Tilbud der kræver svar" count={actionTransfers.length} />
+                  <SectionHeader title={t("section.offersNeedResponse")} count={actionTransfers.length} />
                   {actionTransfers.map(o => {
                     const isSent = sentOffers.some(s => s.id === o.id);
                     const cfg = OFFER_STATUS[o.status] || OFFER_STATUS.pending;
                     const counterpart = isSent ? o.seller?.name : o.buyer?.name;
                     return (
                       <Row key={o.id}
-                        badge={cfg.label} badgeCls={cfg.cls}
+                        badge={t(cfg.labelKey)} badgeCls={cfg.cls}
                         rider={`${o.rider?.firstname} ${o.rider?.lastname}`}
                         riderId={o.rider?.id}
-                        detail={isSent ? `Til: ${counterpart}` : `Fra: ${counterpart}`}
+                        detail={isSent ? t("detail.to", { name: counterpart }) : t("detail.from", { name: counterpart })}
                         amount={o.counter_amount ?? o.offer_amount}
-                        time={timeAgo(o.updated_at)}
+                        time={formatRelativeTime(o.updated_at)}
                         onClick={() => navigate("/transfers")} />
                     );
                   })}
@@ -343,15 +336,15 @@ export default function ActivityPage() {
 
               {actionLoans.length > 0 && (
                 <>
-                  <SectionHeader title="Lejeforslag der afventer dit svar" count={actionLoans.length} />
+                  <SectionHeader title={t("section.loanProposals")} count={actionLoans.length} />
                   {actionLoans.map(l => (
                     <Row key={l.id}
-                      badge="Lejeforslag" badgeCls="bg-purple-50 text-purple-700 border-purple-200"
+                      badge={t("badge.loanProposal")} badgeCls="bg-purple-50 text-purple-700 border-purple-200"
                       rider={`${l.rider?.firstname} ${l.rider?.lastname}`}
                       riderId={l.rider?.id}
-                      detail={`Fra: ${l.to_team?.name} · Sæson ${l.start_season}–${l.end_season}`}
+                      detail={`${t("detail.from", { name: l.to_team?.name })} · ${seasonDetail(l)}`}
                       amount={l.loan_fee || null}
-                      time={timeAgo(l.updated_at)}
+                      time={formatRelativeTime(l.updated_at)}
                       onClick={() => navigate("/transfers")} />
                   ))}
                 </>
@@ -359,24 +352,24 @@ export default function ActivityPage() {
 
               {urgentAuctions.length > 0 && (
                 <>
-                  <SectionHeader title="Auktioner der slutter inden for 1 time" count={urgentAuctions.length} />
+                  <SectionHeader title={t("section.auctionsEndingSoon")} count={urgentAuctions.length} />
                   {urgentAuctions.map(a => {
                     const isSelling = isAuctionSeller(a, myTeamId);
                     const isWinning = getAuctionLeaderId(a) === myTeamId;
                     const leaderName = getAuctionLeaderName(a);
                     return (
                       <Row key={a.id}
-                        badge={isSelling ? "Sælger" : isWinning ? "Vinder" : "Byder"}
+                        badge={isSelling ? t("badge.seller") : isWinning ? t("badge.winner") : t("badge.bidder")}
                         badgeCls={isSelling ? "bg-cz-info-bg text-cz-info border-cz-info/30"
                           : isWinning ? "bg-cz-success-bg text-cz-success border-cz-success/30"
                           : "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"}
                         rider={`${a.rider?.firstname} ${a.rider?.lastname}`}
                         riderId={a.rider?.id}
                         detail={isSelling
-                          ? (a.current_bidder ? `Højeste byder: ${a.current_bidder.name}` : "Ingen bud endnu")
+                          ? (a.current_bidder ? t("detail.highestBidder", { name: a.current_bidder.name }) : t("detail.noBidsYet"))
                           : leaderName
-                            ? `Fører: ${leaderName}`
-                            : "Ingen fører endnu"}
+                            ? t("detail.leader", { name: leaderName })
+                            : t("detail.noLeaderYet")}
                         amount={a.current_price}
                         time={null}
                         onClick={() => navigate("/auctions")}>
@@ -391,31 +384,31 @@ export default function ActivityPage() {
         </div>
       )}
 
-      {/* ── AUKTIONER ── */}
+      {/* ── AUCTIONS ── */}
       {tab === "auctions" && (
         <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
           {activeAuctions.length === 0 ? (
-            <EmptyState icon="⚡" title="Ingen aktive auktioner" sub="Du byder ikke på nogen auktioner og sælger intet" />
+            <EmptyState icon="⚡" title={t("empty.auctionsTitle")} sub={t("empty.auctionsSub")} />
           ) : (
             <>
-              <SectionHeader title="Aktive auktioner" count={activeAuctions.length} />
+              <SectionHeader title={t("section.activeAuctions")} count={activeAuctions.length} />
               {activeAuctions.map(a => {
                 const isSelling = isAuctionSeller(a, myTeamId);
                 const isWinning = getAuctionLeaderId(a) === myTeamId;
                 const leaderName = getAuctionLeaderName(a);
                 return (
                   <Row key={a.id}
-                    badge={isSelling ? "Sælger" : isWinning ? "Vinder" : "Byder"}
+                    badge={isSelling ? t("badge.seller") : isWinning ? t("badge.winner") : t("badge.bidder")}
                     badgeCls={isSelling ? "bg-cz-info-bg text-cz-info border-cz-info/30"
                       : isWinning ? "bg-cz-success-bg text-cz-success border-cz-success/30"
                       : "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"}
                     rider={`${a.rider?.firstname} ${a.rider?.lastname}`}
                     riderId={a.rider?.id}
                     detail={isSelling
-                      ? (a.current_bidder ? `Højeste byder: ${a.current_bidder.name}` : "Ingen bud endnu")
+                      ? (a.current_bidder ? t("detail.highestBidder", { name: a.current_bidder.name }) : t("detail.noBidsYet"))
                       : leaderName
-                        ? `Fører: ${leaderName}`
-                        : "Ingen fører endnu"}
+                        ? t("detail.leader", { name: leaderName })
+                        : t("detail.noLeaderYet")}
                     amount={a.current_price}
                     time={null}
                     onClick={() => navigate("/auctions")}>
@@ -433,23 +426,23 @@ export default function ActivityPage() {
         <div className="space-y-4">
           {activeReceivedOffers.length + activeSentOffers.length === 0 && (
             <div className="bg-cz-card border border-cz-border rounded-xl">
-              <EmptyState icon="↔" title="Ingen aktive transfers" sub="Tilbud du sender eller modtager vises her" />
+              <EmptyState icon="↔" title={t("empty.transfersTitle")} sub={t("empty.transfersSub")} />
             </div>
           )}
 
           {activeReceivedOffers.length > 0 && (
             <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-              <SectionHeader title="Modtaget tilbud" count={activeReceivedOffers.length} />
+              <SectionHeader title={t("section.receivedOffers")} count={activeReceivedOffers.length} />
               {activeReceivedOffers.map(o => {
                 const cfg = OFFER_STATUS[o.status] || OFFER_STATUS.pending;
                 return (
                   <Row key={o.id}
-                    badge={cfg.label} badgeCls={cfg.cls}
+                    badge={t(cfg.labelKey)} badgeCls={cfg.cls}
                     rider={`${o.rider?.firstname} ${o.rider?.lastname}`}
                     riderId={o.rider?.id}
-                    detail={`Fra: ${o.buyer?.name}`}
+                    detail={t("detail.from", { name: o.buyer?.name })}
                     amount={o.counter_amount ?? o.offer_amount}
-                    time={timeAgo(o.updated_at)}
+                    time={formatRelativeTime(o.updated_at)}
                     onClick={() => navigate("/transfers")} />
                 );
               })}
@@ -458,17 +451,17 @@ export default function ActivityPage() {
 
           {activeSentOffers.length > 0 && (
             <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-              <SectionHeader title="Sendt tilbud" count={activeSentOffers.length} />
+              <SectionHeader title={t("section.sentOffers")} count={activeSentOffers.length} />
               {activeSentOffers.map(o => {
                 const cfg = OFFER_STATUS[o.status] || OFFER_STATUS.pending;
                 return (
                   <Row key={o.id}
-                    badge={cfg.label} badgeCls={cfg.cls}
+                    badge={t(cfg.labelKey)} badgeCls={cfg.cls}
                     rider={`${o.rider?.firstname} ${o.rider?.lastname}`}
                     riderId={o.rider?.id}
-                    detail={`Til: ${o.seller?.name}`}
+                    detail={t("detail.to", { name: o.seller?.name })}
                     amount={o.counter_amount ?? o.offer_amount}
-                    time={timeAgo(o.updated_at)}
+                    time={formatRelativeTime(o.updated_at)}
                     onClick={() => navigate("/transfers")} />
                 );
               })}
@@ -477,28 +470,28 @@ export default function ActivityPage() {
         </div>
       )}
 
-      {/* ── LÅN ── */}
+      {/* ── LOANS ── */}
       {tab === "loans" && (
         <div className="space-y-4">
           {lendingLoans.length + borrowingLoans.length === 0 ? (
             <div className="bg-cz-card border border-cz-border rounded-xl">
-              <EmptyState icon="⇄" title="Ingen aktive lejeaftaler" sub="Lejeaftaler du indgår vises her" />
+              <EmptyState icon="⇄" title={t("empty.loansTitle")} sub={t("empty.loansSub")} />
             </div>
           ) : (
             <>
               {lendingLoans.length > 0 && (
                 <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-                  <SectionHeader title="Jeg udlåner" count={lendingLoans.length} />
+                  <SectionHeader title={t("section.iLend")} count={lendingLoans.length} />
                   {lendingLoans.map(l => {
                     const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.active;
                     return (
                       <Row key={l.id}
-                        badge={cfg.label} badgeCls={cfg.cls}
+                        badge={t(cfg.labelKey)} badgeCls={cfg.cls}
                         rider={`${l.rider?.firstname} ${l.rider?.lastname}`}
                         riderId={l.rider?.id}
-                        detail={`Til: ${l.to_team?.name} · Sæson ${l.start_season}–${l.end_season}`}
+                        detail={`${t("detail.to", { name: l.to_team?.name })} · ${seasonDetail(l)}`}
                         amount={l.loan_fee || null}
-                        time={timeAgo(l.updated_at)}
+                        time={formatRelativeTime(l.updated_at)}
                         onClick={() => navigate("/transfers")} />
                     );
                   })}
@@ -507,17 +500,17 @@ export default function ActivityPage() {
 
               {borrowingLoans.length > 0 && (
                 <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-                  <SectionHeader title="Jeg låner" count={borrowingLoans.length} />
+                  <SectionHeader title={t("section.iBorrow")} count={borrowingLoans.length} />
                   {borrowingLoans.map(l => {
                     const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.active;
                     return (
                       <Row key={l.id}
-                        badge={cfg.label} badgeCls={cfg.cls}
+                        badge={t(cfg.labelKey)} badgeCls={cfg.cls}
                         rider={`${l.rider?.firstname} ${l.rider?.lastname}`}
                         riderId={l.rider?.id}
-                        detail={`Fra: ${l.from_team?.name} · Sæson ${l.start_season}–${l.end_season}`}
+                        detail={`${t("detail.from", { name: l.from_team?.name })} · ${seasonDetail(l)}`}
                         amount={l.loan_fee || null}
-                        time={timeAgo(l.updated_at)}
+                        time={formatRelativeTime(l.updated_at)}
                         onClick={() => navigate("/transfers")} />
                     );
                   })}
@@ -528,19 +521,19 @@ export default function ActivityPage() {
         </div>
       )}
 
-      {/* ── ØNSKELISTE ── */}
+      {/* ── WATCHLIST ── */}
       {tab === "watchlist" && (
         <div>
           <div className="flex justify-end mb-3">
             <button onClick={() => navigate("/watchlist")}
               className="text-sm text-cz-accent-t hover:text-cz-accent-t font-medium transition-colors">
-              Gå til fuld Ønskeliste →
+              {t("watchlist.goToFull")}
             </button>
           </div>
           <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
             {watchlist.length === 0 ? (
-              <EmptyState icon="⭐" title="Din ønskeliste er tom"
-                sub="Tilføj ryttere fra rytterdatabasen ved at klikke ⭐" />
+              <EmptyState icon="⭐" title={t("empty.watchlistTitle")}
+                sub={t("empty.watchlistSub")} />
             ) : (
               watchlist.map(entry => {
                 const r = entry.rider;
@@ -556,11 +549,11 @@ export default function ActivityPage() {
                         </RiderLink>
                         <WatchlistStar active onToggle={() => removeFromWatchlist(r?.id)} />
                       </div>
-                      <p className="text-xs text-cz-3 truncate">{r?.team?.name || "Fri agent"}</p>
+                      <p className="text-xs text-cz-3 truncate">{r?.team?.name || t("watchlist.freeAgent")}</p>
                     </div>
                     {inAuction && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 whitespace-nowrap flex-shrink-0">
-                        I auktion
+                        {t("badge.inAuction")}
                       </span>
                     )}
                     <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap flex-shrink-0">
@@ -578,23 +571,23 @@ export default function ActivityPage() {
         </div>
       )}
 
-      {/* ── HISTORIK ── */}
+      {/* ── HISTORY ── */}
       {tab === "history" && (
         <div className="space-y-4">
           {completedAuctions.length + histSentOffers.length + histReceivedOffers.length + historicalLoans.length === 0 ? (
             <div className="bg-cz-card border border-cz-border rounded-xl">
-              <EmptyState icon="◎" title="Ingen historik endnu" sub="Afsluttede handler vises her" />
+              <EmptyState icon="◎" title={t("empty.historyTitle")} sub={t("empty.historySub")} />
             </div>
           ) : (
             <>
               {completedAuctions.length > 0 && (
                 <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-                  <SectionHeader title="Auktioner" count={completedAuctions.length} />
+                  <SectionHeader title={t("section.auctions")} count={completedAuctions.length} />
                   {completedAuctions.map(a => {
                     const iWon  = getAuctionLeaderId(a) === myTeamId;
                     const iSold = isAuctionSeller(a, myTeamId);
                     const noSale = !a.current_bidder_id;
-                    const badge = iWon ? "Købt" : iSold && !noSale ? "Solgt" : iSold && noSale ? "Ingen bud" : "Tabt";
+                    const badge = iWon ? t("badge.bought") : iSold && !noSale ? t("badge.sold") : iSold && noSale ? t("badge.noBids") : t("badge.lost");
                     const badgeCls = iWon
                       ? "bg-cz-success-bg text-cz-success border-cz-success/30"
                       : iSold && !noSale ? "bg-cz-info-bg text-cz-info border-cz-info/30"
@@ -604,9 +597,9 @@ export default function ActivityPage() {
                         badge={badge} badgeCls={badgeCls}
                         rider={`${a.rider?.firstname} ${a.rider?.lastname}`}
                         riderId={a.rider?.id}
-                        detail={iWon ? `Fra: ${a.seller?.name}` : iSold && !noSale ? `Til: ${a.winner?.name}` : ""}
+                        detail={iWon ? t("detail.from", { name: a.seller?.name }) : iSold && !noSale ? t("detail.to", { name: a.winner?.name }) : ""}
                         amount={noSale ? null : a.current_price}
-                        time={timeAgo(a.actual_end)}
+                        time={formatRelativeTime(a.actual_end)}
                         onClick={() => a.rider?.id && navigate(`/riders/${a.rider.id}`)} />
                     );
                   })}
@@ -615,7 +608,7 @@ export default function ActivityPage() {
 
               {(histReceivedOffers.length + histSentOffers.length) > 0 && (
                 <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-                  <SectionHeader title="Transfers" count={histReceivedOffers.length + histSentOffers.length} />
+                  <SectionHeader title={t("section.transfers")} count={histReceivedOffers.length + histSentOffers.length} />
                   {[
                     ...histReceivedOffers.map(o => ({ ...o, _dir: "received" })),
                     ...histSentOffers.map(o => ({ ...o, _dir: "sent" })),
@@ -626,12 +619,12 @@ export default function ActivityPage() {
                       const isSent = o._dir === "sent";
                       return (
                         <Row key={`${o._dir}-${o.id}`}
-                          badge={cfg.label} badgeCls={cfg.cls}
+                          badge={t(cfg.labelKey)} badgeCls={cfg.cls}
                           rider={`${o.rider?.firstname} ${o.rider?.lastname}`}
                           riderId={o.rider?.id}
-                          detail={isSent ? `Til: ${o.seller?.name}` : `Fra: ${o.buyer?.name}`}
+                          detail={isSent ? t("detail.to", { name: o.seller?.name }) : t("detail.from", { name: o.buyer?.name })}
                           amount={o.offer_amount}
-                          time={timeAgo(o.updated_at)}
+                          time={formatRelativeTime(o.updated_at)}
                           onClick={() => o.rider?.id && navigate(`/riders/${o.rider.id}`)} />
                       );
                     })}
@@ -640,20 +633,20 @@ export default function ActivityPage() {
 
               {historicalLoans.length > 0 && (
                 <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-                  <SectionHeader title="Lån" count={historicalLoans.length} />
+                  <SectionHeader title={t("section.loans")} count={historicalLoans.length} />
                   {historicalLoans.map(l => {
                     const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.completed;
                     const isLender = l.from_team?.id === myTeamId;
                     return (
                       <Row key={l.id}
-                        badge={cfg.label} badgeCls={cfg.cls}
+                        badge={t(cfg.labelKey)} badgeCls={cfg.cls}
                         rider={`${l.rider?.firstname} ${l.rider?.lastname}`}
                         riderId={l.rider?.id}
                         detail={isLender
-                          ? `Udlånt til: ${l.to_team?.name} · Sæson ${l.start_season}–${l.end_season}`
-                          : `Lånt fra: ${l.from_team?.name} · Sæson ${l.start_season}–${l.end_season}`}
+                          ? `${t("detail.loanedTo", { name: l.to_team?.name })} · ${seasonDetail(l)}`
+                          : `${t("detail.loanedFrom", { name: l.from_team?.name })} · ${seasonDetail(l)}`}
                         amount={l.loan_fee || null}
-                        time={timeAgo(l.updated_at)}
+                        time={formatRelativeTime(l.updated_at)}
                         onClick={() => l.rider?.id && navigate(`/riders/${l.rider.id}`)} />
                     );
                   })}

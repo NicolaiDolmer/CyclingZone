@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { supabase } from "../lib/supabase";
 import { formatNumber, formatDate as formatDateIntl } from "../lib/intl";
@@ -56,6 +57,7 @@ function DonutTooltip({ active, payload, total }) {
 }
 
 function Donut({ title, data, emptyLabel }) {
+  const { t } = useTranslation("finance");
   const total = data.reduce((sum, d) => sum + d.value, 0);
   if (!data.length) {
     return (
@@ -91,7 +93,7 @@ function Donut({ title, data, emptyLabel }) {
             </PieChart>
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-cz-3 text-xs uppercase tracking-wide">I alt</span>
+            <span className="text-cz-3 text-xs uppercase tracking-wide">{t("report.total")}</span>
             <span className="text-cz-1 font-mono font-bold">{formatCZ(total)}</span>
           </div>
         </div>
@@ -121,6 +123,7 @@ function Donut({ title, data, emptyLabel }) {
 }
 
 function HeroCard({ hero, season }) {
+  const { t } = useTranslation("finance");
   const netClass =
     hero.net > 0 ? "text-cz-success" : hero.net < 0 ? "text-cz-danger" : "text-cz-2";
   return (
@@ -128,35 +131,35 @@ function HeroCard({ hero, season }) {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <p className="text-cz-3 text-xs uppercase tracking-wide">
-            Sæson {season?.number ?? "—"}
-            {season?.status === "active" && " · live preview"}
+            {t("report.season", { n: season?.number ?? "—" })}
+            {season?.status === "active" && t("report.livePreview")}
           </p>
-          <h2 className="text-cz-1 text-2xl font-bold">Cashflow-overblik</h2>
+          <h2 className="text-cz-1 text-2xl font-bold">{t("report.cashflowOverview")}</h2>
           <p className="text-cz-3 text-xs mt-1">
             {formatDate(season?.start_date)}
-            {season?.end_date ? ` – ${formatDate(season.end_date)}` : " – løbende"}
+            {season?.end_date ? ` – ${formatDate(season.end_date)}` : t("report.ongoing")}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-cz-3 text-xs uppercase tracking-wide">Net cashflow</p>
+          <p className="text-cz-3 text-xs uppercase tracking-wide">{t("report.netCashflow")}</p>
           <p className={`text-3xl font-mono font-bold ${netClass}`}>
             {hero.net > 0 ? "+" : ""}
             {formatCZ(hero.net)}
           </p>
           <p className="text-cz-3 text-xs">
-            {hero.transaction_count} transaktioner
+            {t("report.transactionCount", { count: hero.transaction_count })}
           </p>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-cz-border">
         <div>
-          <p className="text-cz-3 text-xs uppercase tracking-wide">Indtægt</p>
+          <p className="text-cz-3 text-xs uppercase tracking-wide">{t("report.income")}</p>
           <p className="text-cz-success text-xl font-mono font-bold">
             +{formatCZ(hero.total_in)}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-cz-3 text-xs uppercase tracking-wide">Udgift</p>
+          <p className="text-cz-3 text-xs uppercase tracking-wide">{t("report.expense")}</p>
           <p className="text-cz-danger text-xl font-mono font-bold">
             {formatCZ(hero.total_out)}
           </p>
@@ -198,31 +201,32 @@ function TopTransactionsCard({ title, items, emptyLabel, isPositive }) {
   );
 }
 
-const LOAN_TYPE_LABELS = { short: "Kort lån", long: "Langt lån", emergency: "Nødlån" };
+const LOAN_TYPE_KEYS = { short: "report.loanShort", long: "report.loanLong", emergency: "report.loanEmergency" };
 
 function LoanPortfolioCard({ loans }) {
+  const { t } = useTranslation("finance");
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-6">
-      <h3 className="text-cz-1 font-semibold mb-4">Aktive lån</h3>
+      <h3 className="text-cz-1 font-semibold mb-4">{t("report.activeLoans")}</h3>
       {loans.length === 0 ? (
-        <p className="text-cz-3 text-sm">Ingen aktive lån.</p>
+        <p className="text-cz-3 text-sm">{t("report.noActiveLoans")}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-cz-3 text-xs uppercase tracking-wide border-b border-cz-border">
-                <th className="text-left py-2">Type</th>
-                <th className="text-right py-2">Restgæld</th>
-                <th className="text-right py-2">Rente</th>
-                <th className="text-right py-2">Sæsoner</th>
-                <th className="text-right py-2">Næste sæsons rente</th>
+                <th className="text-left py-2">{t("report.loanType")}</th>
+                <th className="text-right py-2">{t("report.loanRemaining")}</th>
+                <th className="text-right py-2">{t("report.loanInterest")}</th>
+                <th className="text-right py-2">{t("report.loanSeasons")}</th>
+                <th className="text-right py-2">{t("report.loanNextInterest")}</th>
               </tr>
             </thead>
             <tbody>
               {loans.map((l) => (
                 <tr key={l.id} className="border-b border-cz-border/50 last:border-0">
                   <td className="py-2 text-cz-2">
-                    {LOAN_TYPE_LABELS[l.loan_type] || l.loan_type}
+                    {LOAN_TYPE_KEYS[l.loan_type] ? t(LOAN_TYPE_KEYS[l.loan_type]) : l.loan_type}
                   </td>
                   <td className="py-2 text-right text-cz-1 font-mono">
                     {formatCZ(l.amount_remaining)}
@@ -249,6 +253,7 @@ function LoanPortfolioCard({ loans }) {
 export default function SeasonFinanceReport() {
   const { seasonId, teamId } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation("finance");
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -263,7 +268,7 @@ export default function SeasonFinanceReport() {
       } = await supabase.auth.getSession();
       if (!session) {
         if (!cancelled) {
-          setError("Du skal være logget ind.");
+          setError(t("report.mustLogin"));
           setLoading(false);
         }
         return;
@@ -275,7 +280,7 @@ export default function SeasonFinanceReport() {
       if (cancelled) return;
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.error || `Fejl ${res.status}`);
+        setError(body.error || t("report.errorStatus", { status: res.status }));
         setLoading(false);
         return;
       }
@@ -287,7 +292,7 @@ export default function SeasonFinanceReport() {
     return () => {
       cancelled = true;
     };
-  }, [seasonId, teamId]);
+  }, [seasonId, teamId, t]);
 
   if (loading) {
     return (
@@ -301,13 +306,13 @@ export default function SeasonFinanceReport() {
     return (
       <div className="max-w-3xl mx-auto p-6">
         <div className="bg-cz-card border border-cz-danger/30 rounded-xl p-6">
-          <h2 className="text-cz-danger font-semibold mb-2">Kunne ikke indlæse rapport</h2>
+          <h2 className="text-cz-danger font-semibold mb-2">{t("report.loadError")}</h2>
           <p className="text-cz-2 text-sm">{error}</p>
           <button
             onClick={() => navigate(-1)}
             className="mt-4 text-cz-accent text-sm hover:underline"
           >
-            ← Tilbage
+            {t("report.back")}
           </button>
         </div>
       </div>
@@ -324,15 +329,15 @@ export default function SeasonFinanceReport() {
             {report.team.name}
           </h1>
           <p className="text-cz-3 text-xs">
-            Finansrapport · sæson {report.season.number}
-            {report.viewer?.is_admin && !report.viewer?.is_owner && " · admin-view"}
+            {t("report.title", { n: report.season.number })}
+            {report.viewer?.is_admin && !report.viewer?.is_owner && t("report.adminView")}
           </p>
         </div>
         <button
           onClick={() => navigate(-1)}
           className="text-cz-accent text-sm hover:underline"
         >
-          ← Tilbage
+          {t("report.back")}
         </button>
       </div>
 
@@ -340,28 +345,28 @@ export default function SeasonFinanceReport() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Donut
-          title="Indtægt fordelt på kilde"
+          title={t("report.donutIncomeTitle")}
           data={report.donuts.income}
-          emptyLabel="Ingen indtægter registreret i denne sæson."
+          emptyLabel={t("report.donutIncomeEmpty")}
         />
         <Donut
-          title="Udgift fordelt på kategori"
+          title={t("report.donutExpenseTitle")}
           data={report.donuts.expense}
-          emptyLabel="Ingen udgifter registreret i denne sæson."
+          emptyLabel={t("report.donutExpenseEmpty")}
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TopTransactionsCard
-          title="Top 3 indtægter"
+          title={t("report.topInTitle")}
           items={report.top.top_in}
-          emptyLabel="Ingen indtægter registreret."
+          emptyLabel={t("report.topInEmpty")}
           isPositive={true}
         />
         <TopTransactionsCard
-          title="Top 3 udgifter"
+          title={t("report.topOutTitle")}
           items={report.top.top_out}
-          emptyLabel="Ingen udgifter registreret."
+          emptyLabel={t("report.topOutEmpty")}
           isPositive={false}
         />
       </div>
@@ -372,9 +377,9 @@ export default function SeasonFinanceReport() {
           (sæson 2 og frem). Vi viser eksplicit placeholder så vi ikke render'er
           vildledende eller tom-data widget. */}
       <div className="bg-cz-card border border-cz-border border-dashed rounded-xl p-6">
-        <h3 className="text-cz-2 font-semibold mb-2">Sponsor-modifier-kurve</h3>
+        <h3 className="text-cz-2 font-semibold mb-2">{t("report.sponsorTitle")}</h3>
         <p className="text-cz-3 text-sm">
-          Tilgængelig fra sæson 2 — kræver bestyrelsesplan-historik fra mindst én lukket sæson.
+          {t("report.sponsorBody")}
         </p>
       </div>
     </div>

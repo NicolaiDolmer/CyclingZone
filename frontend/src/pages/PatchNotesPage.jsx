@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.13",
+    date: "2026-05-29",
+    label: "Beta",
+    changes: [
+      {
+        category: "Localization · More pages now switch fully to English",
+        items: [
+          "EN · Profile, Activity, Watchlist, Standings, Head-to-Head, the team and manager pages, rider rankings and comparison, and the season finance report now display fully in English when the app language is set to English. Previously these pages showed Danish labels regardless of the selected language. Refs #678.",
+          "DA · Profil, Aktivitet, Ønskeliste, Rangliste, Head-to-Head, hold- og managersiderne, rytterrangliste og -sammenligning samt sæson-finansrapporten vises nu fuldt på engelsk når appens sprog er sat til engelsk. Tidligere viste disse sider danske labels uanset det valgte sprog. Refs #678.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.12",
     date: "2026-05-29",
     label: "Beta",
