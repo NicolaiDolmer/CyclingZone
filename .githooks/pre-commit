@@ -41,12 +41,24 @@ else
   echo "⚠️  gitleaks not installed — running fallback python regex scan." >&2
   echo "   Recommended: scripts/install-git-hooks.ps1 -InstallGitleaks" >&2
 
+  # Vælg en interpreter der FAKTISK kan eksekvere Python. På en frisk Windows
+  # er `python3` ofte Microsoft Store app-execution-aliaset: `command -v` ser
+  # det som en fil, men i hook-subprocessen kører det ikke noget (printer
+  # "Python was not found", exit 9009). Derfor verificeres hver kandidat med
+  # en triviel `-c pass` før den accepteres — det filtrerer aliaset fra
+  # uanset rækkefølge. `python` prøves først (peger typisk på rigtig CPython
+  # på Windows), så `py` (launcher), så `python3`. (#717/#726)
   PY=""
-  command -v python3 >/dev/null 2>&1 && PY=python3
-  [ -z "$PY" ] && command -v python >/dev/null 2>&1 && PY=python
+  for cand in python py python3; do
+    if command -v "$cand" >/dev/null 2>&1 && "$cand" -c "pass" >/dev/null 2>&1; then
+      PY="$cand"
+      break
+    fi
+  done
 
   if [ -z "$PY" ]; then
-    echo "🔴 PRE-COMMIT BLOCKED: neither gitleaks nor python available." >&2
+    echo "🔴 PRE-COMMIT BLOCKED: no working python interpreter for the fallback scan." >&2
+    echo "   (gitleaks is not installed either — it's the preferred primary scanner.)" >&2
     echo "   Install gitleaks: scripts/install-git-hooks.ps1 -InstallGitleaks" >&2
     exit 1
   fi
@@ -54,7 +66,9 @@ else
   STAGED_DIFF=$(git diff --cached -U0 --no-color)
   if [ -n "$STAGED_DIFF" ]; then
     export _SECRET_SCAN_DIFF="$STAGED_DIFF"
-    RESULT=$("$PY" <<'PYEOF' 2>/dev/null
+    PY_EXIT=0
+    # 2>&1: fang scanner-stderr så en crash er diagnosticerbar (ikke skjult).
+    RESULT=$("$PY" <<'PYEOF' 2>&1
 import os, re, sys
 diff = os.environ.get("_SECRET_SCAN_DIFF", "")
 PATTERNS = [
@@ -89,13 +103,14 @@ if findings:
     print(f"Fundet {len(findings)} secret-like pattern(s):")
     for fname, type_name, preview in findings[:20]:
         print(f"  {fname}: {type_name} ({preview})")
-    sys.exit(1)
+    sys.exit(2)  # 2 = secret fundet (skelnes fra crash); 0 = rent
 sys.exit(0)
 PYEOF
     ) || PY_EXIT=$?
     unset _SECRET_SCAN_DIFF
 
-    if [ "${PY_EXIT:-0}" -ne 0 ]; then
+    if [ "$PY_EXIT" -eq 2 ]; then
+      # Reelt fund: scanneren kørte og matchede et secret-pattern.
       cat >&2 <<EOF
 
 🔴 PRE-COMMIT BLOCKED: secret-pattern in staged changes (python fallback scan).
@@ -103,6 +118,23 @@ PYEOF
 $RESULT
 
 Refs: #634 AC5, docs/SECRET_LEAK_VECTORS.md.
+EOF
+      exit 1
+    elif [ "$PY_EXIT" -ne 0 ]; then
+      # Scanneren crashede (non-zero, men ikke 2) — dette er IKKE et fund.
+      # Blokér stadig (fail-safe), men sig tydeligt at det er en scanner-fejl.
+      cat >&2 <<EOF
+
+🔴 PRE-COMMIT BLOCKED: fallback secret-scanner crashed (exit $PY_EXIT).
+   This is a SCANNER FAILURE, not a detected secret. Output:
+
+$RESULT
+
+   Fix: install gitleaks (the reliable primary scanner):
+     scripts/install-git-hooks.ps1 -InstallGitleaks
+   If you've confirmed the diff is clean: git commit --no-verify
+
+Refs: #634 AC5, #717/#726.
 EOF
       exit 1
     fi
