@@ -1,6 +1,6 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🟢 2026-05-29 verifikation ([#727](https://github.com/NicolaiDolmer/CyclingZone/issues/727) lukket + [#705](https://github.com/NicolaiDolmer/CyclingZone/issues/705) verificeret):** Prod live-sund: seneste prod-deploy `a3d6d0b` READY, 4/4 prod-deploys efter fix `c6d686d` grønne, frontend + backend `/health` HTTP 200. #727 (deploy-blokade) lukket `completed` — chunk-load-fejl (CYCLINGZONE-6/A/B) aftaget (last seen 10-12t siden, ingen nye). #705: prod-backend service-key VIRKER (`/api/race-pool` 200 + 97 rækker via `SUPABASE_SERVICE_KEY`, nul Supabase-fejl i Sentry 24t) → akut "Legacy keys disabled"-risiko IKKE til stede; proaktiv rotation afventer brugerbeslutning (#634-gated).
+> **🟢 2026-05-29 verifikation ([#727](https://github.com/NicolaiDolmer/CyclingZone/issues/727) lukket + [#705](https://github.com/NicolaiDolmer/CyclingZone/issues/705) verificeret):** Prod live-sund: seneste prod-deploy `a3d6d0b` READY, 4/4 prod-deploys efter fix `c6d686d` grønne, frontend + backend `/health` HTTP 200. #727 (deploy-blokade) lukket `completed` — chunk-load-fejl (CYCLINGZONE-6/A/B) aftaget (last seen 10-12t siden, ingen nye). #705: prod-backend service-key VIRKER (`/api/race-pool` 200 + 97 rækker via `SUPABASE_SERVICE_KEY`, nul Supabase-fejl i Sentry 24t) → akut "Legacy keys disabled"-risiko IKKE til stede. Beslutning: down-prioriteret (`priority:low` + `claude:blocked`), proaktiv format-audit/rotation #634-gated.
 
 > **🟢 2026-05-29 ops-fix (Vercel deploy-blokade, intet issue):** Prod-deploys fejlede 2 uger i træk på "Provisioning integrations failed" (0 build events, <1 s ERROR). Root cause: en 2. Supabase-integration på `cycling-zone` — "Billed Via Vercel" Marketplace-resource `supabase-orange-ferry` (ubrugt Free-Plan-projekt) pausede af inaktivitet og blokerede provisioning-steppet før build. Slettet efter verifikation af at appen kun bruger manuelt-satte vars + at live bundle taler med rigtige DB `ghwvkxzhsbbltzfnuhhz`. Redeploy → READY 37 s, prod 200. Ryddede 3 forældreløse `NEXT_PUBLIC_SUPABASE_*`-vars. Postmortem: `.claude/learnings/2026-05-21-vercel-supabase-provisioning-transient.md`. PatchNotes ikke opdateret: infra-only. (NB: relaterer til #705 Supabase Key verification.)
 
@@ -22,6 +22,6 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605) P0 AI World-Class v2 token-friendly setup → [#701](https://github.com/NicolaiDolmer/CyclingZone/issues/701) backup-trigger split. ([#705](https://github.com/NicolaiDolmer/CyclingZone/issues/705) verificeret — prod sund, afventer din rotation-beslutning (#634-gated); [#727](https://github.com/NicolaiDolmer/CyclingZone/issues/727) lukket.)
+> **🎯 Next action:** [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605) P0 AI World-Class v2 token-friendly setup → [#701](https://github.com/NicolaiDolmer/CyclingZone/issues/701) backup-trigger split. ([#705](https://github.com/NicolaiDolmer/CyclingZone/issues/705) verificeret + down-prioriteret til `priority:low`, #634-gated; [#727](https://github.com/NicolaiDolmer/CyclingZone/issues/727) lukket.)
 
 > **🤖 Working agent:** _Ingen aktiv session._
