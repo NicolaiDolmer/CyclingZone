@@ -185,6 +185,12 @@ ALLOW = [
     # Named secret-patterns (sb_secret_/eyJ/ghp_/AKIA/...) koeres FOER denne
     # fallback, saa aegte prefix-baerende secrets fanges stadig. (#743, 2026-05-29)
     re.compile(r"^1[A-Za-z0-9_-]{43}$"),
+    # Claude Code worktree session-IDs — PostToolUse JSON payload indeholder
+    # session_id paa formen <project-slug>-<adjektiv>-<substantiv>-<6-8hexchars>,
+    # fx C--Dev-CyclingZone-youthful-dijkstra-577ad9 (44 tegn, trigger HIGH_ENTROPY).
+    # Navngivning styres af Claude Code internt; kan ikke aendres fra repo-siden.
+    # Named secrets (eyJ/sk-ant-/ghp_/AKIA/...) fanges af PATTERNS FOER fallback.
+    re.compile(r"^[A-Za-z0-9_+=-]+-[a-z]+-[a-z]+-[0-9a-f]{6,8}$"),
 ]
 
 findings = []
