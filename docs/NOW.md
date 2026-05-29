@@ -24,6 +24,6 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** [#684](https://github.com/NicolaiDolmer/CyclingZone/issues/684)-fix-verifikation (acceptEdits-mode i frisk session — parallel-orchestration blokeret til da) → [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605) P0 token-friendly setup ([#741](https://github.com/NicolaiDolmer/CyclingZone/issues/741) DolmerPC-harness-cut = konkret sub) → [#701](https://github.com/NicolaiDolmer/CyclingZone/issues/701) backup-trigger split. Retro-issues #741/#742/#743 afventer brugerbedømmelse.
+> **🎯 Next action:** [#684](https://github.com/NicolaiDolmer/CyclingZone/issues/684) fix B-test — **sat op, afventer frisk acceptEdits-session**: branch `fix/684-acceptedits-hook-enforcement` (commit `804e5bc`, IKKE pushet) fjerner Write/Edit/NotebookEdit fra allow. Genstart i acceptEdits-mode → probe Write→`docs/archive/` + Edit→NOW.md skal blokeres. Protokol: [#684-kommentar](https://github.com/NicolaiDolmer/CyclingZone/issues/684#issuecomment-4572594022). Derefter → [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605) P0 token-friendly setup ([#741](https://github.com/NicolaiDolmer/CyclingZone/issues/741) DolmerPC-harness-cut = konkret sub) → [#701](https://github.com/NicolaiDolmer/CyclingZone/issues/701) backup-trigger split. Retro-issues #741/#742/#743 afventer brugerbedømmelse.
 
 > **🤖 Working agent:** _Ingen aktiv session._
