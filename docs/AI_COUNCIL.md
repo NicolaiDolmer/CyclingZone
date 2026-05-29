@@ -7,7 +7,7 @@
 
 ## Hvorfor docen findes
 
-`AGENTS.md` har en kort rolle-fordeling, og `AI_CHANNEL_ROUTING.md` matcher tasks til kanaler. Men ingen samlet doc svarer på:
+`AI_OPS_REFERENCE.md` har en kort rolle-fordeling (udfaset fra AGENTS.md 2026-05-29, [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)), og `AI_CHANNEL_ROUTING.md` matcher tasks til kanaler. Men ingen samlet doc svarer på:
 
 1. **Hvem ejer hvilken beslutnings-type?** (kontrakt-design, ADR, hurtige fixes, audits)
 2. **Hvor længe må en leverance vente før reassign?** (#327 har stået åben i 10+ dage uden ADR-leverance — det er signalet B12 fanger).
@@ -127,7 +127,7 @@ Denne doc opdateres når:
 
 ## Cross-refs
 
-- Rolle-grundlag (kort version): [`AGENTS.md` §Rolle-fordeling](../AGENTS.md#rolle-fordeling-mellem-ai-assistenter-verdensklasse-ai-standard).
+- Rolle-grundlag (kort version): [`AI_OPS_REFERENCE.md` §Rolle-fordeling](AI_OPS_REFERENCE.md#rolle-fordeling-mellem-ai-assistenter-verdensklasse-ai-standard) (udfaset fra AGENTS.md 2026-05-29, [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)).
 - Kanal-til-task matrix (hvilken kanal en task hører i): [`docs/AI_CHANNEL_ROUTING.md`](AI_CHANNEL_ROUTING.md).
 - Dispatch safe/forbidden tasks (mobil→PC agentic): [`docs/DISPATCH_PLAYBOOK.md`](DISPATCH_PLAYBOOK.md).
 - Session-prompt templates (når en agent picker en task): [`docs/prompts/`](prompts/).
