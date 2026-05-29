@@ -2,25 +2,23 @@
   "host": "DOLMERPC",
   "pc_label": "PC3",
   "user_profile": "Nicolai",
-  "captured": "2026-05-29T00:15:00+02:00",
-  "captured_via": "manuel optælling fra session-start system-reminders (#721 PC3 onboarding)",
+  "captured": "2026-05-29T11:30:00+02:00",
+  "captured_via": "manuel optælling efter #741 harness-cut (Vercel-plugin disabled + GitHub MCP + Sentry MCP disconnected). Deferred-cut bekræftet live af session-reminder (68 tools væk); skills/plugin-cut bekræftet via /plugin-UI (Vercel = Disabled) + ~/.claude/settings.json. Delta fra forrige verificerede snapshot (cd67035).",
   "methodology": "Se docs/metrics/HARNESS_MEASUREMENT.md. Refresh ved enhver connector- eller plugin-ændring.",
   "components": {
     "system_prompt_preamble_tokens": 2500,
     "auto_memory_block_tokens": 2000,
     "top_level_tool_schemas_tokens": 7500,
-    "deferred_tools_count": 217,
-    "deferred_tools_tokens": 3255,
-    "skills_count": 49,
-    "skills_tokens": 1838
+    "deferred_tools_count": 149,
+    "deferred_tools_tokens": 2235,
+    "skills_count": 19,
+    "skills_tokens": 713
   },
   "deferred_tools_breakdown": {
     "builtin_cron_plus_misc": 19,
     "supabase_mcp": 29,
-    "github_mcp": 43,
     "google_calendar": 8,
     "google_drive": 8,
-    "sentry_mcp": 25,
     "claude_preview": 13,
     "claude_in_chrome": 22,
     "ccd_directory": 1,
@@ -31,29 +29,28 @@
     "discord": 22
   },
   "deferred_tools_breakdown_notes": {
-    "github_mcp": "CONNECTED på DolmerPC (43 tools). På NicolaiPC blev GitHub MCP disconnected i Phase B 2026-05-15 — divergens.",
-    "sentry_mcp": "CONNECTED på DolmerPC (25 tools). Ikke til stede i NicolaiPC-snapshot (2026-05-15) — ny connector siden da.",
+    "github_mcp": "CUT 2026-05-29 (#741). Var 43 tools på DolmerPC; disconnected på claude.ai/connectors. `gh` CLI dækker 1:1 — kanonisk vej i CLAUDE.md close-protokol. Matcher nu NicolaiPC (også cut).",
+    "sentry_mcp": "CUT 2026-05-29 (#741). Var 25 tools; disconnected på claude.ai/connectors. Episodisk brug (<10% sessioner); re-connect ad hoc ved prod-incident.",
+    "vercel": "Vercel MCP-connector (18 tools) BEHOLDT — faktiske deploy/log/deployment-operationer, matcher reelt workflow (#727). Adskilt fra Vercel-PLUGINET (skills), som blev disabled.",
     "gmail": "Ikke connected (0 tools) — matcher NicolaiPC Phase-B-cut."
   },
   "enabled_plugins": [
-    "vercel@claude-plugins-official",
     "claude-code-setup@claude-plugins-official"
   ],
   "enabled_plugins_notes": {
-    "vercel": "User-level enabled (~/.claude/settings.json). Eksponerer ~33 vercel:* skills — hovedårsag til at skills_count (49) er ~2.6x NicolaiPC (19). Cross-PC divergens; overvej disable hvis Vercel-skills ikke bruges aktivt på denne PC.",
+    "vercel": "DISABLED 2026-05-29 (#741) via ~/.claude/settings.json (enabledPlugins.vercel=false). Eksponerede ~30 vercel:* skills (Next.js/App-Router/AI-SDK-orienterede) — dødvægt på React+Vite/Express-stack. De få deploy/env-relevante dækkes af `vercel` CLI + Vercel MCP-connector. Re-enable med /plugin hvis stack senere migrerer til Next.js.",
     "project_level_disabled": "product-management, marketing, design, productivity disabled via .claude/settings.json (#356) — gælder alle PCs."
   },
-  "total_harness_tokens": 17093,
+  "total_harness_tokens": 14948,
   "cross_pc_parity_vs_NicolaiPC": {
     "nicolaipc_total_harness_tokens": 14782,
     "nicolaipc_deferred_tools_count": 149,
     "nicolaipc_skills_count": 19,
-    "delta_tokens": 2311,
+    "delta_tokens": 166,
     "primary_drivers": [
-      "github_mcp connected (+43 deferred tools / ~645 tok)",
-      "sentry_mcp connected (+25 deferred tools / ~375 tok)",
-      "vercel plugin enabled (+~30 skills / ~1100 tok)"
+      "Efter #741-cut er DolmerPC i praksis paritet med NicolaiPC: deferred_tools_count 149 = 149, skills_count 19 = 19.",
+      "Resterende ~166 tok delta er måle-støj i manuel optælling, ikke en strukturel divergens."
     ],
-    "note": "DolmerPC er ~2,300 tok tungere end den optimerede NicolaiPC. Ikke blokerende for onboarding, men relevant for #605 token-budget. Cuts kan adressere via connector-disable (claude.ai/settings/connectors) + plugin-disable (/plugin)."
+    "note": "Pre-#741 var DolmerPC ~2.311 tok tungere (17.093 vs 14.782) pga. github_mcp + sentry_mcp + vercel-plugin. Alle tre cut 2026-05-29 → cross-PC harness-paritet opnået."
   }
 }
