@@ -52,6 +52,8 @@ PYTHONUTF8=1 python .claude/skills/github-housekeeping/scripts/staleblocked.py -
 
 # Trin 3 — Auto-close-gate (det 100%-sikre subset)
 
+**`score_done.py --json` er AUTORITATIVT for tier.** Du må KUN auto-lukke et issue hvor scriptet returnerer `auto_close_candidate: true`. Et issue scriptet markerer Tier 3 (`auto_close_candidate: false` — fx score WEAK/MEDIUM, work-pending, forbidden label) **må du ALDRIG lukke**, uanset hvad din egen cross-verify finder. Cross-verify kan kun **nedgradere** en kandidat til eskalering (hvis et claim ikke holder), ALDRIG **opgradere** en ikke-kandidat til close. Din rolle er at bekræfte scriptets kandidater — ikke at finde nye lukke-grunde det afviste.
+
 For hver `auto_close_candidate: true` fra score_done **OG** hvert `close_intent_open`-element: **cross-verificér ALT i `needs_xverify` før du lukker.** Spring `auto-close-veto`/forbidden-labels over (scriptet markerer dem allerede Tier 3).
 
 ### Tier 1 — backend/docs/CI/security (mekanisk vandtæt)
@@ -62,14 +64,17 @@ Luk **kun** hvis ALLE er sande:
 → **Luk.**
 
 ### Tier 2 — cat:user-feature (kræver uafhængigt maskinsignal)
+Kun relevant for issues scriptet allerede markerer `tier: 2, auto_close_candidate: true` (dvs. score = STRONG ≥24h). Et user-feature med score WEAK/MEDIUM eller work-pending er Tier 3 — luk det ALDRIG (se autoritativ-regel ovenfor).
+
 Luk **kun** hvis `TIER2_PAUSED` er false OG ALLE er sande:
 - Tier 1's `pr_merged` + `commit_on_main`, OG
-- **`vercel_or_supabase_match` (OBLIGATORISK):** Et uafhængigt signal der MATCHER comment-claimet:
-  - Vercel: comment nævner commit-hash → `get_deployment`/`list_deployments` på cycling-zone.vercel.app viser deployment med samme hash = `READY`. ELLER
-  - Supabase: comment har SQL-resultat/"X af Y rows" → `execute_sql` (read-only) reproducerer samme tal. ELLER
-  - Sentry: comment claimer "error væk" → `search_issues`/`search_events` bekræfter resolved/0 events.
-- **Kan matchet ikke gennemføres** (ingen hash, claim for vag, eller MCP viser mismatch/ERROR) → **eskalér, luk IKKE.** En routine kan ikke se om en UI-feature virker; uden maskinbekræftelse er du ikke 100% sikker.
-→ **Luk** (kun ved match).
+- **`vercel_or_supabase_match` (OBLIGATORISK) — matchet skal bekræfte selve FEATURE-CLAIMET, ikke bare at koden er deployet:**
+  - **Supabase** (stærkest): comment har konkret data-claim ("X af Y rows", "DB har nu N") → `execute_sql` (read-only) reproducerer samme tal. ELLER
+  - **Sentry:** comment claimer "fejl X væk" → `search_issues`/`search_events` bekræfter resolved / 0 nye events. ELLER
+  - **Vercel:** KUN gyldigt hvis comment-claimet i sig selv handler om deployment-status (fx "200 OK på prod-URL"). En `READY` deployment med matchende commit-hash beviser **kun at koden er live — IKKE at user-feature'en virker.** "Leveret (commit X)" / "PR merged" + Vercel READY er et DEPLOYMENT-bevis, **IKKE** et feature-bevis → eskalér. _(Lektion 2026-05-29: routinen lukkede #505/#529 forkert netop sådan.)_
+- **Tommelfingerregel:** Kan claimet kun bekræftes ved at et MENNESKE åbner UI'en og ser at feature'en gør det rigtige → **eskalér, luk IKKE.** Maskinen kan verificere data + fravær-af-fejl, aldrig "UI'en gør det rigtige".
+- **Kan matchet ikke gennemføres** (ingen konkret data-/fejl-claim, claim for vag, eller MCP viser mismatch/ERROR) → **eskalér, luk IKKE.**
+→ **Luk** (kun ved konkret data-/fejl-match — aldrig deployment-alene).
 
 ### Forbidden zones — auto-luk ALDRIG (uanset evidens)
 `needs-user-action`, `manual:user`, `needs-decision`, `manual-review`, `auto-close-veto`, `epic:*`, åbne `- [ ]`/`🟡`/`⚠️` i seneste comment, eller en citeret "## Leveret — PR #N" hvor `pull_request_read` viser PR'en stadig OPEN/draft. Alle → Tier 3.
