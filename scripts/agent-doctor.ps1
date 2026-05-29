@@ -507,6 +507,50 @@ if ($tokenHygiene.Ok) {
   Add-Check "token-hygiene" "WARN" "run scripts/check-agent-token-hygiene.ps1"
 }
 
+# memory-refs — mekanisk forward-guard mod stale konsoliderings-baseline (#753).
+# check-memory-refs.ps1 gemmer en baseline-snapshot (#N + (*.md)-pegepinde per
+# memory-fil) FØR konsolidering og verificerer EFTER. Faldgrube: hvis snapshotten
+# er ældre end den nyeste memory-fil, beskriver den et forældet state — et
+# efterfølgende -Verify ville sammenligne mod en stale baseline og kunne både
+# misse reelle tab OG flagge falske. Denne check fanger det:
+#   - ingen snapshot          -> OK (intet under konsolidering, ikke relevant)
+#   - snapshot >= memory-mtime -> OK (frisk baseline)
+#   - snapshot <  memory-mtime -> WARN (stale: re-snapshot eller verificér nu)
+# Default-stier matcher check-memory-refs.ps1 så de to scripts deler baseline.
+$memoryDir = Join-Path $env:USERPROFILE ".claude\projects\C--Dev-CyclingZone\memory"
+$memoryRoot = if (Get-Variable -Name root -Scope 0 -ErrorAction SilentlyContinue) { $root } else { (Get-Location).Path }
+$memoryBaseline = Join-Path $memoryRoot "docs/metrics/memory-refs-snapshot.json"
+if (-not (Test-Path $memoryDir)) {
+  Add-Check "memory-refs" "OK" "memory-dir not present on this PC — check not applicable"
+} elseif (-not (Test-Path $memoryBaseline)) {
+  Add-Check "memory-refs" "OK" "no baseline snapshot — nothing mid-consolidation (run check-memory-refs.ps1 -Snapshot before consolidating)"
+} else {
+  try {
+    $snap = Get-Content $memoryBaseline -Raw | ConvertFrom-Json
+    # ConvertFrom-Json (PS7) auto-deserialiserer ISO-8601-strenge til [datetime].
+    # Hvis ikke (ren streng) -> parse invariant/roundtrip, så vi ikke rammer
+    # da-DK-locale (US-format "MM/dd/yyyy" fejler ellers på dansk culture).
+    $snapTime = if ($snap.generated -is [datetime]) {
+      $snap.generated
+    } else {
+      [datetime]::Parse([string]$snap.generated, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::RoundtripKind)
+    }
+    $newest = Get-ChildItem -Path $memoryDir -Filter "*.md" -File -ErrorAction SilentlyContinue |
+      Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if (-not $newest) {
+      Add-Check "memory-refs" "OK" "no *.md files in memory-dir"
+    } elseif ($newest.LastWriteTime -gt $snapTime) {
+      $newestLocal = $newest.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
+      $snapLocal = $snapTime.ToString("yyyy-MM-dd HH:mm:ss")
+      Add-Check "memory-refs" "WARN" "stale baseline: $($newest.Name) ($newestLocal) er nyere end snapshot ($snapLocal) — kør 'check-memory-refs.ps1 -Verify' nu (eller -Snapshot igen hvis konsolidering ikke er i gang)"
+    } else {
+      Add-Check "memory-refs" "OK" "baseline fresh (snapshot $($snapTime.ToString('yyyy-MM-dd HH:mm:ss')) >= newest memory-file)"
+    }
+  } catch {
+    Add-Check "memory-refs" "WARN" "baseline unreadable: $($_.Exception.Message)"
+  }
+}
+
 # RLS coverage audit — fanger slice 14 / #279 bug-mønstret lokalt før push.
 # Post-Phase-5 (#327): foretrækker `infisical run --env=dev` for at hente secrets
 # fra Infisical ved runtime, falder tilbage til backend/.env loading hvis CLI
