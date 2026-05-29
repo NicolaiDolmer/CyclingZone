@@ -6,6 +6,6 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** Verify-kø på [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) — 5 done-issues (#505/#529/#449/#563/#327) afventer din UI-/beslutnings-opfølgning. AI-spor: #605 P0.3 leveret (HOT-trim −2.144 tok/tur); resterende cold-start-løftestang er harness-cut (jf. #741), ikke memory.
+> **🎯 Next action:** Verify-kø på [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) — 5 done-issues (#505/#529/#449/#563/#327) afventer din UI-/beslutnings-opfølgning. AI-spor: #605 P0.3 leveret (HOT-trim −2.144 tok/tur); resterende cold-start-løftestang er harness-cut (jf. #741), ikke memory. **29. maj** — #719 .vscode/+.editorconfig i PR [#754](https://github.com/NicolaiDolmer/CyclingZone/pull/754) (afventer merge).
 
 > **🤖 Working agent:** _Ingen aktiv session._
