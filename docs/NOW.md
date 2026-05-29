@@ -6,6 +6,6 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** #605 P0.3 memory/context-trim IGANG (NOW.md + HOT MEMORY.md + memory-dir-konsolidering #743). Efter denne session: verify-kø på [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) — 5 done-issues (#505/#529/#449/#563/#327) afventer din UI-/beslutnings-opfølgning.
+> **🎯 Next action:** Verify-kø på [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) — 5 done-issues (#505/#529/#449/#563/#327) afventer din UI-/beslutnings-opfølgning. AI-spor: #605 P0.3 leveret (HOT-trim −2.144 tok/tur); resterende cold-start-løftestang er harness-cut (jf. #741), ikke memory.
 
-> **🤖 Working agent:** Claude Code — #605 P0.3 / #743 memory-context-trim (DOLMERPC, startet 2026-05-29).
+> **🤖 Working agent:** _Ingen aktiv session._
