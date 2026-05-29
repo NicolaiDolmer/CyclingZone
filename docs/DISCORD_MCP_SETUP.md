@@ -188,10 +188,10 @@ To grant on the bot's role: enable in Discord, no token rotation needed.
 
 ## Security notes
 
-- The bot token has been visible in chat-transcripts during initial setup (2026-05-06). **Rotate before next session.**
+- **`.mcp.json` is git-safe:** gitignored (`.gitignore:27`, re-verified 2026-05-29) AND never committed to history (`git log --all -S '<token-prefix>'` empty). No history scrub needed.
+- **⏳ OPEN: token rotation deferred (2026-05-29).** The bot token has been exposed in chat-transcripts at least twice: initial setup (2026-05-06) and again 2026-05-29 (sanitize-hook detection + an agent Grep). Rotation was consciously deferred by the owner on 2026-05-29 — git exposure is zero and the transcript-leak vector is being closed separately. **When you next rotate:** Discord Developer Portal → Bot → Reset Token, update Railway `DISCORD_BOT_TOKEN` first, then regenerate local `.mcp.json` (`pwsh -File scripts/setup-discord-mcp.ps1`), restart Claude Code, verify with `/mcp`. Old token keeps working until reset. Do env-injection (`${DISCORD_TOKEN}`) at the same time if adopted.
 - The Supabase service key was also briefly exposed in a tool result. **Rotate too:** Supabase Dashboard → Settings → API → "Reset service_role key", then update Railway `SUPABASE_SERVICE_KEY`.
-- `.mcp.json` MUST stay gitignored. The file `.gitignore` has `.mcp.json` listed (verified 2026-05-06).
-- Token rotations: update Railway env first, THEN local `.mcp.json` — old token keeps working until you reset.
+- **Sanitizer gap (2026-05-29):** the PostToolUse sanitize-hook only covers `Bash`/`PowerShell`/`mcp__.*` — NOT `Read`/`Grep`, which is how `.mcp.json` gets read. Tracked in `docs/SECRET_LEAK_VECTORS.md` (table B). Reading this file in an agent session will leak the raw token to the transcript until that gap is closed.
 
 ---
 
