@@ -67,6 +67,14 @@
       "mcp__dba1ab87-9334-4be3-b3cf-b638c78f62d6__get_deployment",
       "mcp__dba1ab87-9334-4be3-b3cf-b638c78f62d6__list_projects",
       "mcp__dba1ab87-9334-4be3-b3cf-b638c78f62d6__get_project"
+    ],
+    "deny": [
+      "Write(docs/archive/**)",
+      "Edit(docs/archive/**)",
+      "NotebookEdit(docs/archive/**)",
+      "Write(./docs/archive/**)",
+      "Edit(./docs/archive/**)",
+      "NotebookEdit(./docs/archive/**)"
     ]
   },
   "hooks": {
