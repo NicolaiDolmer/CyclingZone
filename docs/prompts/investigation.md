@@ -18,8 +18,11 @@ Mål: <hvad skal forstås — ikke fixes>
 Issue: #<nr>
 Hypoteser-at-teste: <kort liste, eller "ingen forhåndshypoteser">
 Out-of-scope: <hvad du IKKE skal grave i selv om det er fristende>
+Dybde/time-box: <quick-scan (~15 min, konklusion-only) · fuld investigation (hypotese-trail) · investigation→fix> — aftal FØR du graver
 Deliverable: <postmortem · fix-plan · ADR · kommentar på issue — vælg én>
 ```
+
+> **Eskalerings-gate (FØR Fase 1).** Hvis sessionen startede som et *analyse-spørgsmål* ("hvilke X egner sig til Y?", "hvorfor er Z sådan?") og du opdager at et ærligt svar kræver en fuld investigation eller et fix — gør det eksplicit op front og lad brugeren sætte dybde/time-box, i stedet for stille at eskalere. Et spørgsmål er ikke en blank-check til en flere-timers investigation. Bidt 2026-05-29 ([#684](https://github.com/NicolaiDolmer/CyclingZone/issues/684)-retro → [#742](https://github.com/NicolaiDolmer/CyclingZone/issues/742)).
 
 Gennemløb 4 faser:
 
@@ -41,6 +44,7 @@ H1: <hypotese> — Status: untested · testing · falsified · confirmed
 
 - Start med 2-4 hypoteser. Hvis du har 8+, splittes investigation.
 - En hypotese der ikke kan falsificeres er ikke en hypotese — det er en mavefornemmelse. Skip eller omformulér.
+- **Batch-diagnostik:** design 2-3 *brede, diskriminerende* tests up front der hver afkræfter flere hypoteser på én gang — ikke 8 sekventielle enkelt-prober hvor hver kun rører én confound. Spørg "hvilken enkelt test deler hypotese-rummet mest?" før du kører noget. Sekventiel probe-for-probe er langsomt OG brænder context.
 - **Gate:** hvis ALLE hypoteser bliver falsificeret → STOP. Du leder forkert sted. Gå tilbage til Fase 1 med ny indsigt.
 
 ### Fase 3 — Evidens-baseret konklusion
@@ -59,11 +63,23 @@ H1: <hypotese> — Status: untested · testing · falsified · confirmed
 
 Tilføj altid: NOW.md opdateret + 🤖 Working agent nulstillet + issue-kommentar med 🟢 + `Refs #N`.
 
+## Token-disciplin
+
+Investigation er context-tung — research, logs og issue-tråde fylder hurtigt hoved-context op uden at bringe dig tættere på rod-årsagen. Tre regler:
+
+- **Grep > Read for store filer/logs.** En log på 50K+ tokens (fx `hook-trace.log`) læses *målrettet* med `Grep` (mønster + `-C` kontekst), ikke side-for-side med `Read`. Du leder efter et signal, ikke hele filen.
+- **Delegér bred research til en `Explore`-subagent.** Skal du sweepe 5+ docs eller mange issue-bodies for at finde *hvor* noget er, så send det til en `Explore`-subagent der returnerer konklusionen — ikke fil-dumps i hoved-context. Læs kun de filer dybt som subagenten peger på.
+- **Læs kun det du skal bruge.** Kender du allerede linje-intervallet, så `Read` med `offset`/`limit`. Hele-fil-reads "for en sikkerheds skyld" er den dyreste vane i en investigation.
+
+Bidt 2026-05-29: en investigation læste `hook-trace.log` (~65K tok) i sider + 5 docs + 11 issue-bodies i hoved-context, hvor `Grep` + en `Explore`-subagent havde gjort det samme for en brøkdel ([#742](https://github.com/NicolaiDolmer/CyclingZone/issues/742)).
+
 ## Anti-patterns
 
 - **"Investigation done, fix incoming"** uden hypotese-trail — du har sprunget Fase 2. Fix-forslaget er gætteri pakket som konklusion.
 - **Fix midt i investigation** — selv "lille" fix flytter dig fra investigation til implementation. Det er en anden session-type (`bugfix.md`).
 - **Investigation der vokser** — du startede med "hvorfor crasher cron søndag aften" og ender med "hele finalization-pipelinen er rådden". Stop ved første rod-årsag; større tema får sit eget issue.
+- **Analyse-spørgsmål der bliver til en investigation uden gate** — du blev spurgt om noget og endte i en flere-timers grav uden at brugeren bad om dybden. Se eskalerings-gaten øverst.
+- **Sekventiel probe-spam** — 8 enkelt-prober hvor 2-3 brede batch-tests havde delt hypotese-rummet hurtigere. Se batch-diagnostik i Fase 2.
 - **Konklusion uden falsified hypoteser** — hvis alt du undersøgte bekræftede din første hypotese, har du sandsynligvis confirmation-bias'et. Test mindst én alternativ.
 
 ## Eksempel — udfyldt brief
