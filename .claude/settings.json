@@ -12,9 +12,6 @@
     "allow": [
       "Bash(git *)",
       "WebSearch",
-      "Write",
-      "Edit",
-      "NotebookEdit",
       "Bash(node --test)",
       "Bash(node --test *)",
       "Bash(npm run *)",
