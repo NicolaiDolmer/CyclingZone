@@ -120,6 +120,12 @@ export default function AdminDataTab() {
     setLoad("import", true);
     showMsg("⏳ Importerer...", "info");
     const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      showMsg("❌ Din session er udløbet — log ind igen og prøv import på ny", "error");
+      setLoad("import", false);
+      e.target.value = "";
+      return;
+    }
     const formData = new FormData();
     formData.append("file", file);
     formData.append("race_id", importRaceId);
