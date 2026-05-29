@@ -136,7 +136,7 @@ _Token-disciplin: Loops er beskrevet kompakt. Ved implementering: læs slice-doc
 
 **Trigger:** Opdatering ved hver session-end hvis arbejdsdeling ændres.
 
-**Implementation:** Se `docs/AGENTS.md` (opdateret separat).
+**Implementation:** Se `AGENTS.md` (repo-root, opdateret separat).
 
 **Estimat:** Allerede skrevet — vedligeholdes inkrementelt.
 
