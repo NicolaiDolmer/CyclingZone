@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.12",
+    date: "2026-05-29",
+    label: "Beta",
+    changes: [
+      {
+        category: "Reliability · Admin result import no longer crashes on an expired session",
+        items: [
+          "EN · Importing race results from the admin panel now shows a clear \"session expired — log in again\" message if your login expired mid-upload, instead of throwing a silent error and leaving the import stuck. Admin-only; no change for managers. Refs #761.",
+          "DA · Import af løbsresultater fra admin-panelet viser nu en tydelig \"session udløbet — log ind igen\"-besked hvis dit login udløb midt i en upload, i stedet for at kaste en stille fejl og efterlade importen hængende. Kun admin; ingen ændring for managers. Refs #761.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.11",
     date: "2026-05-29",
     label: "Beta",
@@ -507,7 +521,7 @@ const PATCHES = [
   },
   {
     version: "3.76",
-    date: "2026-05-20",
+    date: "2026-05-21",
     label: "Beta",
     changes: [
       {
@@ -521,7 +535,7 @@ const PATCHES = [
   },
   {
     version: "3.75",
-    date: "2026-05-21",
+    date: "2026-05-20",
     label: "Beta",
     changes: [
       {
@@ -534,8 +548,22 @@ const PATCHES = [
     ],
   },
   {
+    version: "3.74",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Tab-based navigation kom kort frem (utilsigtet, rullet tilbage i v3.75)",
+        items: [
+          "EN · The 5-tab /admin layout (Sæson & Løb, Økonomi, Brugere, Data/Import, System & Debug) first appeared here, but it was committed before it was ready and the new tab URLs returned 404. It was rolled back the same evening (see v3.75) and re-applied cleanly in v3.76. No data was affected and no admin actions were blocked.",
+          "DA · Det 5-fanede /admin-layout (Sæson & Løb, Økonomi, Brugere, Data/Import, System & Debug) dukkede først op her, men blev committet før det var klar, og de nye fane-URLs returnerede 404. Det blev rullet tilbage samme aften (se v3.75) og re-applied rent i v3.76. Ingen data blev påvirket og ingen admin-handlinger var blokeret.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.73",
-    date: "2026-05-21",
+    date: "2026-05-20",
     label: "Beta",
     changes: [
       {
