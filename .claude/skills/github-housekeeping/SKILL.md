@@ -7,6 +7,8 @@ description: Grundig GitHub-issue-audit + state-maskine-cleanup. Trigger med "gi
 
 Grundig audit af GitHub-issues. **PRIMÆRT MÅL: LUK verificerede issues.** Sekundært: ren label-state-maskine, fang forfaldne, opdag dependency-kæder.
 
+**Autonom auto-close (2026-05-29, #627):** Den daglige cloud-routine **lukker nu selv** Tier 1+2 (se `## Routine integration` + `routine-prompt.md`). Den manuelle skill håndterer primært **Tier 3-eskaleringer** (dømmekraftsager), reopen-veto-review og Trin 9-retro. Tier-modellen er den fælles kontrakt — defineret i `routine-prompt.md` Trin 3, scoret af `score_done.py --json`.
+
 **Audit-success kriterium (lektion 2026-05-23):** En audit hvor 20 claude:done-issues blev scored men 0 lukket er en fejlet audit. Hvis arbejdet kan verificeres uafhængigt (commit på main, migration live via Supabase MCP, PR merged), skal det lukkes — IKKE udskydes pga. "skill regel kræver user-comment". Default: aggressive close, ikke defensive scoring.
 
 **Konfirmér før mass-handling** (>5 closes). Slutter med self-improvement retro (Trin 9 — ALTID).
@@ -148,6 +150,8 @@ Brug `[#N](https://github.com/NicolaiDolmer/CyclingZone/issues/N)` for alle issu
 
 ## Trin 7 — Konfirmér + udfør
 
+**Rollefordeling efter auto-close (#627):** Tier 1+2 (`score_done.py --json` → `auto_close_candidate: true` + bestået cross-verify) lukkes **autonomt af den daglige routine** — den manuelle skill behøver ikke re-bekræfte dem. Manuel skill fokuserer på: (a) **Tier 3-eskaleringer** fra digesten (dømmekraftsager: PR-open, user-feature uden maskin-verify, NUA), (b) **reopen-veto-review** (issues med `auto-close-veto` — var de reelt false-positives, eller skal kriteriet strammes?), (c) ad-hoc-close af ting routinen ikke nåede (cap). Tier-gates: se `routine-prompt.md` Trin 3.
+
 Per memory `feedback_confirm_before_state_change.md`: pause før >5 handlinger.
 
 Separate `AskUserQuestion` per kategori-gruppe (ikke alt-i-én):
@@ -219,34 +223,38 @@ For afviste ændringer: append til `## Rejected suggestions` (med dato + grund).
 
 Output efter retro: 1 linje per accepted/rejected. Hvis ingen ændringer foreslået: "Skill kørte rent, ingen forbedringer denne gang."
 
-## Routine integration — weekly auto-pass (#627)
+## Routine integration — daily autonomous auto-close (#627)
 
-Denne skill bliver fyret ugentligt mandag 05:00 UTC (07:00 CEST / 06:00 CET) af scheduled CCR-routinen `cyclingzone-github-housekeeping-weekly` (trigger-id resolvable via `RemoteTrigger action=list`). Routine-prompten ligger i `.codex.local/routines-tmp/housekeeping-prompt.md` (gitignored — single source of truth, brugt af både test- og scheduled-routinen).
+Denne skill bliver fyret **dagligt 05:00 UTC** (07:00 CEST / 06:00 CET) af scheduled CCR-routinen `cyclingzone-github-housekeeping-weekly` (navnet er historisk — den kører dagligt nu; trigger-id `trig_01S278iyGt4HtoydKb2JP3AR`, resolvable via `RemoteTrigger action=list`). Routine-prompten er **single source of truth** i [`routine-prompt.md`](routine-prompt.md) (git-tracked — flyttet 2026-05-29 fra gitignored `.codex.local/routines-tmp/housekeeping-prompt.md` så cloud-routine + begge PC'er læser samme fil). **Når `routine-prompt.md` ændres → opdatér routine-config** via `RemoteTrigger action=update` (`job_config.ccr.events[0].data.message.content`).
+
+**Routinen auto-lukker nu** (ikke recommend-only længere). Den udfører selv Tier 1+2-close, reopen-veto, label-drift og daglig digest — og eskalerer kun Tier 3.
 
 **Forskelle mellem manuel kørsel og auto-pass:**
 
 | Aspekt | Manuel (denne SKILL.md) | Auto-pass (routine) |
 |---|---|---|
-| Trigger | `github audit` / `issue cleanup` / etc. | Cron `0 5 * * 1` (Monday 05:00 UTC) |
-| Trin 0-8 | Fuld kørsel | Fuld kørsel — IDENTICAL workflow |
-| Trin 7 (konfirmér + udfør) | `AskUserQuestion` per kategori → bruger godkender → batch-close | **SKIPPED — NO auto-close.** Routinen poster KUN summary-issue + max 1 "Recommended for close"-comment pr. STRONG-kandidat (≥24h + ingen NUA/manual:user label) |
-| Trin 8 (artifact) | `.claude/audits/audit-<dato>.md` written | Summary-issue posted: `Weekly housekeeping <dato>` (cat:ai-ops + type:investigation + epic:ai-workflow). Skip-create hvis 0 actions → comment på #627 i stedet |
-| Trin 9 (retro) | Run interaktivt med bruger | SKIPPED i routine (kræver interactive feedback) — kør manuel skill efter behov for at fange retro-lessons |
-| GitHub-adgang | `gh` CLI lokalt | `mcp__github__*`-tools (gh ikke tilgængelig i CMA sandbox) |
-| Permissions | Lokal git-config (Nicolai) | Explicit `permitted_tools` i routine-config (per `feedback_remote_routines`) |
+| Trigger | `github audit` / `issue cleanup` / etc. | Cron `0 5 * * *` (dagligt 05:00 UTC) |
+| Reopen-loop | Manuel review af `auto-close-veto` | **Trin 0 — ALTID først.** Reopenede auto-closed = false-positives → `auto-close-veto` + circuit-breaker ved ≥3 |
+| Close-handling | `AskUserQuestion` per kategori → bruger godkender → batch-close | **AUTO-CLOSE Tier 1+2** efter cross-verify (PR merged + commit på main; Tier 2 kræver Vercel/Supabase-match). Cap 20/run. Tier 3 → digest |
+| Artifact | `.claude/audits/audit-<dato>.md` | Daglig digest-comment på ledger-issue **#627** (skip-create hvis 0 actions) |
+| Trin 9 (retro) | Run interaktivt med bruger | SKIPPED i routine — kør manuel skill efter behov for retro-lessons + reopen-veto-review |
+| GitHub-adgang | `gh` CLI lokalt | `mcp__github__*`-tools (gh ikke i CMA sandbox) |
+| Connectors | Lokal (alle MCP) | GitHub + Vercel + Supabase + Sentry (read-only cross-verify) per routine-config |
 
 **Hvornår skal man stadig køre skill manuelt?**
 
-1. **Efter routinens summary-issue lander mandag morgen** — bruger fyrer skill manuelt med summary-issue som input → executes Trin 7 (konfirmér + udfør) → batch-close eller follow-up actions. Routine producerer KUN anbefalinger; manuel skill producerer state-ændringer.
-2. **Ad-hoc audit mellem ugentlige runs** — hvis backlog vokser hurtigt eller en specifik PR-batch skal verifyies.
-3. **Retro + self-improvement** (Trin 9) — kun manuel skill gør dette. Hvis routine producerer 3 ugers worth af useful patterns, planlæg manuel skill-kørsel med eksplicit retro-fokus.
+1. **Tier 3-eskaleringer fra digesten** — de issues routinen IKKE var 100% sikker på (PR-open, user-feature uden maskin-verify, NUA, cap-overskydende). Fyr skill manuelt → vurder + luk dem der reelt er færdige.
+2. **Reopen-veto-review** — issues med `auto-close-veto` (routinen lukkede, du reopenede). Var det en ægte false-positive? → stram tier-gates i `routine-prompt.md`/`score_done.py`. Eller var det bevidst (du ville selv gøre noget)? → fjern veto igen.
+3. **Ad-hoc audit** — hvis backlog vokser hurtigt eller en specifik PR-batch skal verificeres straks.
+4. **Retro + self-improvement** (Trin 9) — kun manuel skill gør dette.
 
 **Hvis routine fejler stille** (per `feedback_remote_routines`):
 
 - Sandbox er ephemeral — write-fejl = arbejde tabt
-- Verificér mandag morgen: `gh issue list --label cat:ai-ops --state open --search "Weekly housekeeping" --limit 5` (skal vise ny issue) ELLER `gh issue view 627 --comments` (skip-create comment hvis 0 actions)
-- Hvis hverken summary-issue eller skip-comment: routinen fejlede stille. Check `https://claude.ai/code/routines/<trigger-id>` for transcript, OG `permitted_tools` i routine-config (`RemoteTrigger action=get`)
-- Recovery: fyr manuel skill samme dag — den dækker samme workflow
+- Verificér om morgenen: `gh issue view 627 --comments` (skal vise dagens digest-comment ELLER `0 actions, backlog clean`)
+- Hvis ingen digest-comment: routinen fejlede stille. Check `https://claude.ai/code/routines/<trigger-id>` for transcript (grep efter `=== HOUSEKEEPING START ===` … `=== END ===`), OG `permitted_tools`/`mcp_connections` i routine-config (`RemoteTrigger action=get`). Tjek især `close_permission_failed` i metadata.
+- Recovery: fyr manuel skill samme dag — den dækker samme workflow (med `gh` CLI close i stedet for MCP).
+- **Auto-close sanity-check:** `gh issue list --state closed --label auto-closed-by-routine --limit 20` viser hvad routinen har lukket — scan for fejl, reopen hvis nødvendigt (fanges automatisk næste kørsel).
 
 **Edge cases dokumenteret 2026-05-25 ved implementation:**
 
@@ -270,6 +278,13 @@ Denne skill bliver fyret ugentligt mandag 05:00 UTC (07:00 CEST / 06:00 CET) af 
 - **Persistent scoring-scripts (lektion 2026-05-25):** Scoring/cross-ref/label/stale Python-scripts ligger nu i `.claude/skills/github-housekeeping/scripts/*.py`. Brug dem direkte i stedet for at inline ~120 linjer Python hver audit. Workflow: `gh issue list ... > $TEMP/audit-done.json && PYTHONUTF8=1 python .claude/skills/github-housekeeping/scripts/score_done.py`. Scripts: `score_done.py`, `crossref.py`, `labelcheck.py`, `staleblocked.py`. Tune STRONG_PATTERNS/NEG_KEYWORDS direkte i script-fil ved retro.
 
 ## Changelog
+
+- **2026-05-29 — Autonom auto-close (#627).** Routinen gik fra recommend-only til at **lukke selv**. Bruger-mål: "Jeg er træt af selv at gennemgå og lukke — det skal ske af sig selv." Ændringer:
+  - **3-tier tillidsmodel** (`routine-prompt.md` Trin 3): Tier 1 = backend/docs/CI/security + merged PR + commit på main + ≥24h → auto-close. Tier 2 = user-feature STRONG ≥24h + OBLIGATORISK Vercel/Supabase/Sentry-match → auto-close (ellers eskalér). Tier 3 = alt andet → digest. Forbidden zones: NUA/manual:user/needs-decision/manual-review/epic:*/åbne checkboxes/PR-open.
+  - **Helper-scripts fik `--json`-mode** + `tier`/`auto_close_candidate`/`needs_xverify`/`blockers`/`reason` (score_done) + `close_intent_open` (crossref). Print-mode bevaret som default for manuel brug.
+  - **Stateless reopen-loop** (Trin 0): `search_issues label:auto-closed-by-routine state:open` finder false-positives → `auto-close-veto` (filtreres permanent af score_done's FORBIDDEN_LABELS) + circuit-breaker ved ≥3 reopens (pauser Tier 2). GitHub er state — intet at miste i ephemeral sandbox.
+  - **Cap 20/run** + audit-trail-comment per close + daglig digest på #627. Kadence ugentlig→dagligt.
+  - **`routine-prompt.md` flyttet ind i repo** (git-tracked single-source) fra gitignored `.codex.local/...` så cloud + begge PC'er er i sync.
 
 - **2026-05-28 — Audit-housekeeping retro.** Lessons fra 10. kørsel — **1 close (#649)**, ren lille batch (0 label-konflikter, 0 stale backlog, 4 legit blockers). 2 accepterede edits:
   - **Trin 2 (delivered-claim vs PR-open cross-check):** Nyt afsnit. For done-issues hvis seneste comment citerer `PR #N` (især "## Leveret — PR #N"): kør `gh pr view N --json state` → hvis OPEN/draft, flag "claims delivered but PR still open — NOT close-eligible". Omvendt check af Trin 3's post-comment work-completion. Citat #706: comment "## Leveret — PR #713  Migration anvendt: … DB har nu 19/19" mens PR #713 var OPEN — måtte manuelt `gh pr view 713` for at fange det. Automatiserer nu.

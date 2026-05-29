@@ -124,6 +124,22 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 
 > **Note 2026-05-22 (revideret):** En audit 2026-05-18 markerede `claude:done` som deprecated (38/100 closed issues sprang step over), men faktisk opførsel post-audit viser fortsat ~60% brug af labelen. Den er derfor **valgfri, ikke deprecated** — AI sætter den efter PR-merge som signal til brugeren om at PR er klar til verifikation, men direct-close er også gyldigt. Claude lukker fortsat kun sine egne `not_planned`-issues (fx duplikater, scope-ændringer).
 
+## Autonom close-policy (#627, fra 2026-05-29)
+
+`github-housekeeping`-routinen kører **dagligt 05:00 UTC** og **lukker selv** de issues den kan verificere uafhængigt — du gennemgår ikke længere alt manuelt. Den arbejder efter en 3-tier tillidsmodel (fuld spec: [`.claude/skills/github-housekeeping/routine-prompt.md`](../.claude/skills/github-housekeeping/routine-prompt.md)):
+
+| Tier | Hvad lukkes selv | Krav |
+|---|---|---|
+| **1** | Backend/docs/CI/security (uden `cat:user-feature`) | merged PR (`Refs/Closes #N`) + merge-commit på `main` + ≥24t + ingen forbidden label |
+| **2** | `cat:user-feature` m. STRONG prod-evidens | Tier 1 + **uafhængigt maskin-match** (Vercel deployment READY / Supabase-query / Sentry resolved). Uden match → eskaleres |
+| **3** | Alt usikkert | Eskaleres i daglig digest på #627 — du afgør |
+
+**Forbidden zones (lukkes ALDRIG automatisk):** `needs-user-action`, `manual:user`, `needs-decision`, `manual-review`, `auto-close-veto`, `epic:*`, åbne `- [ ]`/`🟡`/`⚠️` i seneste comment, eller en "leveret"-PR der stadig er OPEN.
+
+**Sikkerhedsnet:** Hver auto-close får en evidens-comment + label `auto-closed-by-routine` og lukkes med `state_reason=completed`. **Fejlede den?** Reopen issuet — næste kørsel opdager det (stateless `search_issues label:auto-closed-by-routine state:open`), sætter `auto-close-veto` (lukkes så aldrig automatisk igen) og rapporterer det i digesten. ≥3 reopens → circuit-breaker pauser Tier 2. Cap: max 20 closes/run. Alt er reversibelt (`gh issue reopen N`).
+
+**Daglig digest:** comment på ledger-issue [#627](https://github.com/NicolaiDolmer/CyclingZone/issues/627) (auto-lukket / reopened / eskaleret / label-drift). Scan den om morgenen; håndtér kun Tier 3. Skip-create ved 0 actions.
+
 ## Commit/PR-konvention
 - Commit-besked nævner issue: `Fix: gæld vises i Min aktivitet (#42)`
 - PR-body har `Refs #42` — brugeren lukker selv issuet efter manuel verifikation
