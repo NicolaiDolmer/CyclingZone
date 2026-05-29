@@ -1,26 +1,27 @@
 ﻿import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 import { formatNumber } from "../lib/intl";
 
 const CATEGORIES = [
-  { key: "most_points_season", label: "Flest point i én sæson", icon: "🏆", unit: "point", color: "#e8c547" },
-  { key: "most_stage_wins_season", label: "Flest etapesejre i én sæson", icon: "⚡", unit: "sejre", color: "#60a5fa" },
-  { key: "most_div1_titles", label: "Flest Division 1 titler", icon: "👑", unit: "titler", color: "#a78bfa" },
+  { key: "most_points_season", icon: "🏆", unitKey: "points", color: "#e8c547" },
+  { key: "most_stage_wins_season", icon: "⚡", unitKey: "wins", color: "#60a5fa" },
+  { key: "most_div1_titles", icon: "👑", unitKey: "titles", color: "#a78bfa" },
 ];
 
 const LEVEL_TITLES = [
-  { min: 1,  max: 4,  title: "Rookie",      color: "#9ca3af" },
-  { min: 5,  max: 9,  title: "Amateur",     color: "#6b7280" },
-  { min: 10, max: 14, title: "Continental", color: "#34d399" },
-  { min: 15, max: 19, title: "Pro",         color: "#60a5fa" },
-  { min: 20, max: 24, title: "Pro Team",    color: "#818cf8" },
-  { min: 25, max: 29, title: "WorldTour",   color: "#e8c547" },
-  { min: 30, max: 34, title: "Monument",    color: "#f97316" },
-  { min: 35, max: 39, title: "GC Contender",color: "#ef4444" },
-  { min: 40, max: 44, title: "Grand Tour",  color: "#ec4899" },
-  { min: 45, max: 50, title: "Legende",     color: "#e8c547" },
+  { min: 1,  max: 4,  key: "rookie",      color: "#9ca3af" },
+  { min: 5,  max: 9,  key: "amateur",     color: "#6b7280" },
+  { min: 10, max: 14, key: "continental", color: "#34d399" },
+  { min: 15, max: 19, key: "pro",         color: "#60a5fa" },
+  { min: 20, max: 24, key: "proTeam",     color: "#818cf8" },
+  { min: 25, max: 29, key: "worldTour",   color: "#e8c547" },
+  { min: 30, max: 34, key: "monument",    color: "#f97316" },
+  { min: 35, max: 39, key: "gcContender", color: "#ef4444" },
+  { min: 40, max: 44, key: "grandTour",   color: "#ec4899" },
+  { min: 45, max: 50, key: "legend",      color: "#e8c547" },
 ];
 
 export function getLevelInfo(level) {
@@ -28,6 +29,7 @@ export function getLevelInfo(level) {
 }
 
 export default function HallOfFamePage() {
+  const { t } = useTranslation("halloffame");
   const [records, setRecords] = useState({});
   const [standings, setStandings] = useState([]);
   const [managers, setManagers] = useState([]);
@@ -114,21 +116,21 @@ export default function HallOfFamePage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-cz-1">Hall of Fame</h1>
-        <p className="text-cz-3 text-sm">Historiske rekorder og manager statistik</p>
+        <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
+        <p className="text-cz-3 text-sm">{t("subtitle")}</p>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         {[
-          { key: "hof", label: "🏆 Rekorder" },
-          { key: "managers", label: "👤 Managers" },
-          { key: "divhistory", label: "◉ Divisionshistorik" },
-        ].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          { key: "hof", label: t("tabRecords") },
+          { key: "managers", label: t("tabManagers") },
+          { key: "divhistory", label: t("tabDivHistory") },
+        ].map(tabItem => (
+          <button key={tabItem.key} onClick={() => setTab(tabItem.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${tab === t.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {t.label}
+              ${tab === tabItem.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+            {tabItem.label}
           </button>
         ))}
       </div>
@@ -143,11 +145,11 @@ export default function HallOfFamePage() {
                 <div className="flex items-center gap-3 px-5 py-4 border-b border-cz-border"
                   style={{ borderLeft: `3px solid ${cat.color}` }}>
                   <span className="text-xl">{cat.icon}</span>
-                  <h2 className="text-cz-1 font-semibold text-sm">{cat.label}</h2>
+                  <h2 className="text-cz-1 font-semibold text-sm">{t(`categories.${cat.key}`)}</h2>
                 </div>
                 {entries.length === 0 ? (
                   <div className="px-5 py-8 text-center text-cz-3 text-sm">
-                    Ingen rekorder endnu — spil sæsoner for at sætte rekorder
+                    {t("noRecords")}
                   </div>
                 ) : (
                   <table className="w-full text-sm">
@@ -165,14 +167,14 @@ export default function HallOfFamePage() {
                               {e.team_name || e.team?.name || "—"}
                             </TeamLink>
                             {e.season_number && (
-                              <p className="text-cz-3 text-xs">Sæson {e.season_number}</p>
+                              <p className="text-cz-3 text-xs">{t("season", { n: e.season_number })}</p>
                             )}
                           </td>
                           <td className="px-5 py-3 text-right">
                             <span className="font-mono font-bold text-lg" style={{ color: cat.color }}>
                               {formatNumber(e.value)}
                             </span>
-                            <span className="text-cz-3 text-xs ms-1">{cat.unit}</span>
+                            <span className="text-cz-3 text-xs ms-1">{t(`units.${cat.unitKey}`)}</span>
                           </td>
                         </tr>
                       ))}
@@ -192,10 +194,10 @@ export default function HallOfFamePage() {
             <thead>
               <tr className="border-b border-cz-border">
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">#</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">Manager</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">Titel</th>
-                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">Niveau</th>
-                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">XP</th>
+                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("thManager")}</th>
+                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("thTitle")}</th>
+                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("thLevel")}</th>
+                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("thXp")}</th>
               </tr>
             </thead>
             <tbody>
@@ -216,7 +218,7 @@ export default function HallOfFamePage() {
                     <td className="px-4 py-3">
                       <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-cz-subtle"
                         style={{ color: levelInfo.color }}>
-                        {levelInfo.title}
+                        {t(`level.${levelInfo.key}`)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -247,16 +249,16 @@ export default function HallOfFamePage() {
           {Object.keys(divHistory).length === 0 ? (
             <div className="text-center py-16 text-cz-3">
               <p className="text-4xl mb-3">◉</p>
-              <p>Ingen divisionshistorik endnu</p>
-              <p className="text-sm mt-2">Afslut sæsoner for at se historik</p>
+              <p>{t("noDivHistory")}</p>
+              <p className="text-sm mt-2">{t("noDivHistoryHint")}</p>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
               {Object.entries(divHistory).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([season, entries]) => (
                 <div key={season} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
                   <div className="px-5 py-3 border-b border-cz-border flex items-center gap-2">
-                    <span className="text-cz-accent-t font-bold text-sm">Sæson {season}</span>
-                    <span className="text-cz-3 text-xs">Division 1</span>
+                    <span className="text-cz-accent-t font-bold text-sm">{t("season", { n: season })}</span>
+                    <span className="text-cz-3 text-xs">{t("division1")}</span>
                   </div>
                   <table className="w-full text-sm">
                     <tbody>
@@ -273,10 +275,10 @@ export default function HallOfFamePage() {
                             </TeamLink>
                           </td>
                           <td className="px-5 py-2.5 text-right text-cz-accent-t font-mono font-bold">
-                            {formatNumber(s.total_points)} pt
+                            {formatNumber(s.total_points)} {t("ptSuffix")}
                           </td>
                           <td className="px-5 py-2.5 text-right text-cz-2 text-xs">
-                            {s.stage_wins || 0} etapesejre
+                            {t("stageWins", { count: s.stage_wins || 0 })}
                           </td>
                         </tr>
                       ))}

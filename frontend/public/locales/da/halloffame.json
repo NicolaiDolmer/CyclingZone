@@ -1,0 +1,40 @@
+{
+  "title": "Hall of Fame",
+  "subtitle": "Historiske rekorder og manager statistik",
+  "tabRecords": "🏆 Rekorder",
+  "tabManagers": "👤 Managers",
+  "tabDivHistory": "◉ Divisionshistorik",
+  "season": "Sæson {n}",
+  "categories": {
+    "most_points_season": "Flest point i én sæson",
+    "most_stage_wins_season": "Flest etapesejre i én sæson",
+    "most_div1_titles": "Flest Division 1 titler"
+  },
+  "units": {
+    "points": "point",
+    "wins": "sejre",
+    "titles": "titler"
+  },
+  "noRecords": "Ingen rekorder endnu — spil sæsoner for at sætte rekorder",
+  "thManager": "Manager",
+  "thTitle": "Titel",
+  "thLevel": "Niveau",
+  "thXp": "XP",
+  "division1": "Division 1",
+  "noDivHistory": "Ingen divisionshistorik endnu",
+  "noDivHistoryHint": "Afslut sæsoner for at se historik",
+  "stageWins": "{count} etapesejre",
+  "ptSuffix": "pt",
+  "level": {
+    "rookie": "Rookie",
+    "amateur": "Amateur",
+    "continental": "Continental",
+    "pro": "Pro",
+    "proTeam": "Pro Team",
+    "worldTour": "WorldTour",
+    "monument": "Monument",
+    "gcContender": "GC Contender",
+    "grandTour": "Grand Tour",
+    "legend": "Legende"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "title": "Hall of Fame",
+  "subtitle": "Historical records and manager stats",
+  "tabRecords": "🏆 Records",
+  "tabManagers": "👤 Managers",
+  "tabDivHistory": "◉ Division history",
+  "season": "Season {n}",
+  "categories": {
+    "most_points_season": "Most points in a season",
+    "most_stage_wins_season": "Most stage wins in a season",
+    "most_div1_titles": "Most Division 1 titles"
+  },
+  "units": {
+    "points": "points",
+    "wins": "wins",
+    "titles": "titles"
+  },
+  "noRecords": "No records yet — play seasons to set records",
+  "thManager": "Manager",
+  "thTitle": "Title",
+  "thLevel": "Level",
+  "thXp": "XP",
+  "division1": "Division 1",
+  "noDivHistory": "No division history yet",
+  "noDivHistoryHint": "Finish seasons to see history",
+  "stageWins": "{count} stage wins",
+  "ptSuffix": "pt",
+  "level": {
+    "rookie": "Rookie",
+    "amateur": "Amateur",
+    "continental": "Continental",
+    "pro": "Pro",
+    "proTeam": "Pro Team",
+    "worldTour": "WorldTour",
+    "monument": "Monument",
+    "gcContender": "GC Contender",
+    "grandTour": "Grand Tour",
+    "legend": "Legend"
+  }
+}
