@@ -24,6 +24,6 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** [#684](https://github.com/NicolaiDolmer/CyclingZone/issues/684) fix D landet på main ([PR #744](https://github.com/NicolaiDolmer/CyclingZone/pull/744) squash `af193f9`) — `permissions.deny` genopretter arkiv-guardrail i acceptEdits; `claude:done` (afventer bruger-close). **Udestående:** brugeren beslutter om indholds-gap (NOW.md-linjer + secret-pattern, upstream-blokeret) skal eskaleres mod anthropics/claude-code#18312. Næste slice → [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605) P0 ([#741](https://github.com/NicolaiDolmer/CyclingZone/issues/741)) → [#701](https://github.com/NicolaiDolmer/CyclingZone/issues/701) backup-trigger split.
+> **🎯 Next action:** [#684](https://github.com/NicolaiDolmer/CyclingZone/issues/684) fix D landet på main ([PR #744](https://github.com/NicolaiDolmer/CyclingZone/pull/744) squash `af193f9`) — `permissions.deny` genopretter arkiv-guardrail i acceptEdits; `claude:done` (afventer bruger-close). Indholds-gap (NOW.md-linjer + secret-pattern) holdes i menneske-review; ingen upstream-eskalering (bruger-beslutning 2026-05-29: lav gevinst). Næste slice → [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605) P0 ([#741](https://github.com/NicolaiDolmer/CyclingZone/issues/741)) → [#701](https://github.com/NicolaiDolmer/CyclingZone/issues/701) backup-trigger split.
 
 > **🤖 Working agent:** _Ingen aktiv session._
