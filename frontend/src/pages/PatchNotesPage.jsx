@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.11",
+    date: "2026-05-29",
+    label: "Beta",
+    changes: [
+      {
+        category: "Reliability · Stale-chunk recovery now covers initial page load",
+        items: [
+          "EN · The stale-tab reload guard (added in 4.09) now also fires when a chunk fails to load before React itself has initialised — for example when the Layout or a large top-level module cannot be fetched after a deploy. Previously that case could leave the page blank with no recovery attempt. Refs #728.",
+          "DA · Stale-tab genindlæs-sikringen (tilføjet i 4.09) aktiveres nu også når en chunk fejler inden React selv er initialiseret — fx når Layout eller et stort top-level modul ikke kan hentes efter et deploy. Tidligere kunne den situation efterlade siden blank uden genindlæsningsforsøg. Refs #728.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.10",
     date: "2026-05-28",
     label: "Beta",
