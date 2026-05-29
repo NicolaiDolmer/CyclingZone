@@ -64,7 +64,7 @@ flowchart LR
 | Loop-implementering | Claude (kompleks) / Codex (simpel) | Spec i [`AI_LOOPS.md`](./AI_LOOPS.md) |
 | UX-data → slice | Clarity → Claude/Codex | [Loop I](./AI_LOOPS.md) |
 
-Fuldt regelsæt: [`AGENTS.md §Rolle-fordeling`](../AGENTS.md#rolle-fordeling-mellem-ai-assistenter-verdensklasse-ai-standard).
+Fuldt regelsæt: [`AI_OPS_REFERENCE.md §Rolle-fordeling`](./AI_OPS_REFERENCE.md#rolle-fordeling-mellem-ai-assistenter-verdensklasse-ai-standard) (udfaset fra AGENTS.md 2026-05-29, [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)).
 
 ## Parallel-session-safety (samme PC, flere Claude-sessions samtidigt)
 
