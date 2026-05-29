@@ -1,0 +1,110 @@
+{
+  "timestamp": "2026-05-29T14:22:15+02:00",
+  "host": "DOLMERPC",
+  "cold_start_total_est": 26024.0,
+  "claude_cold_start_est": 21087.0,
+  "codex_cold_start_est": 26024.0,
+  "file_context_total": 11076.0,
+  "claude_file_total": 4307.0,
+  "codex_file_total": 9244.0,
+  "harness_blob_value": 14948,
+  "harness_blob_source": "measured-snapshot (docs/metrics/harness-snapshot-DOLMERPC.json)",
+  "memory_dir_total": 70450.0,
+  "checks": [
+    {
+      "Check": "CLAUDE.md",
+      "Status": "WARN",
+      "Detail": "1338 approx tokens, 38 lines"
+    },
+    {
+      "Check": "AGENTS.md",
+      "Status": "OK",
+      "Detail": "4477 approx tokens, 206 lines [Codex-only]"
+    },
+    {
+      "Check": "NOW.md",
+      "Status": "FAIL",
+      "Detail": "1834 approx tokens, 16 lines"
+    },
+    {
+      "Check": "GUARDRAILS_CORE.md",
+      "Status": "OK",
+      "Detail": "1135 approx tokens, 55 lines"
+    },
+    {
+      "Check": "SESSION_CONTEXT.md",
+      "Status": "OK",
+      "Detail": "460 approx tokens, 25 lines [Codex-only]"
+    },
+    {
+      "Check": "claude-context-files",
+      "Status": "OK",
+      "Detail": "4307 approx tokens (Claude Code auto-load: CLAUDE.md + NOW.md + GUARDRAILS_CORE.md)"
+    },
+    {
+      "Check": "codex-context-files",
+      "Status": "WARN",
+      "Detail": "9244 approx tokens (Codex auto-load: ovenstaaende + AGENTS.md + SESSION_CONTEXT.md)"
+    },
+    {
+      "Check": "claude-memory",
+      "Status": "WARN",
+      "Detail": "1832 approx tokens in MEMORY.md (HOT auto-load)"
+    },
+    {
+      "Check": "latest-transcript",
+      "Status": "OK",
+      "Detail": "231.9 KB, 40703e86-65eb-499f-8839-6cb0f65948b9.jsonl"
+    },
+    {
+      "Check": "issue-prefetch-bounds",
+      "Status": "OK",
+      "Detail": "bounded"
+    },
+    {
+      "Check": "memory-dir-total",
+      "Status": "INFO",
+      "Detail": "70450 approx tokens across 135 memory files (on-demand)"
+    },
+    {
+      "Check": "memory-dir-growth",
+      "Status": "WARN",
+      "Detail": "+21564 tok (44.1% vs previous baseline 05/16/2026 18:52:54)"
+    },
+    {
+      "Check": "memory-hot-budget",
+      "Status": "OK",
+      "Detail": "MEMORY.md 39 lines (target <40, fail >50)"
+    },
+    {
+      "Check": "claude-md-budget",
+      "Status": "OK",
+      "Detail": "CLAUDE.md 38 lines (target <60, fail >80)"
+    },
+    {
+      "Check": "now-md-budget",
+      "Status": "OK",
+      "Detail": "docs/NOW.md 16 lines (target <30, fail >40)"
+    },
+    {
+      "Check": "harness-blob-estimate",
+      "Status": "INFO",
+      "Detail": "14948 approx tokens (source: measured-snapshot (docs/metrics/harness-snapshot-DOLMERPC.json))"
+    },
+    {
+      "Check": "claude-cold-start-est",
+      "Status": "FAIL",
+      "Detail": "21087 approx tokens (Claude files + memory + harness)"
+    },
+    {
+      "Check": "codex-cold-start-est",
+      "Status": "FAIL",
+      "Detail": "26024 approx tokens (Codex files + memory + harness)"
+    },
+    {
+      "Check": "cold-start-total-est",
+      "Status": "FAIL",
+      "Detail": "26024 approx tokens (legacy alias = codex cold-start)"
+    }
+  ]
+}
