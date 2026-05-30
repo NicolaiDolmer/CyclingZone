@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
+import TeamCell from "../components/rider/TeamCell";
 import { statBg } from "../lib/statBg";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
@@ -57,7 +58,7 @@ export default function WatchlistPage() {
       .select(`id, note, created_at,
         rider:rider_id(id, firstname, lastname, birthdate, uci_points, is_u25,
           salary, team_id, nationality_code, prize_earnings_bonus, potentiale, ${STATS.join(", ")},
-          team:team_id(name))`)
+          team:team_id(id, name))`)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     setEntries(data || []);
@@ -217,9 +218,7 @@ export default function WatchlistPage() {
                           <WatchlistStar active onToggle={() => removeFromWatchlist(r.id)} />
                         </td>
                         <td className="px-3 py-2.5 hidden sm:table-cell">
-                          {isFree
-                            ? <span className="text-cz-accent-t/70 text-xs">{t("teamFree")}</span>
-                            : <span className="text-cz-2 text-xs">{r.team?.name}</span>}
+                          <TeamCell team={r.team} freeLabel={t("teamFree")} />
                         </td>
                         <td className="px-3 py-2.5 text-right text-cz-accent-t font-mono font-bold">
                           {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
