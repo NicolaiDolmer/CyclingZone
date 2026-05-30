@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { fetchAllRows } from "../lib/supabasePagination";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
@@ -47,12 +48,14 @@ export default function RiderRankingsPage() {
     if (!racesData?.length) { setLoading(false); return; }
 
     const raceIds = racesData.map(r => r.id);
-    const { data: results } = await supabase
+    // Paginér: PostgREST capper ved 1000 (også .range(0,9999)) → ellers
+    // underberegnes ranglisten for sæsoner med >1000 resultatrækker.
+    const results = await fetchAllRows(() => supabase
       .from("race_results")
       .select("rider_id, result_type, rank, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, is_u25, is_retired, team:team_id(id, name, is_ai))")
       .in("race_id", raceIds)
       .not("rider_id", "is", null)
-      .range(0, 9999);
+      .order("id", { ascending: true }));
 
     const agg = {};
     (results || []).forEach(r => {

@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, Fragment, useMemo } from "react";
 import { supabase } from "../lib/supabase";
+import { fetchAllRows } from "../lib/supabasePagination";
 import { useNavigate, useParams } from "react-router-dom";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { formatNumber } from "../lib/intl";
@@ -90,11 +91,12 @@ export default function SeasonEndPage() {
     // Build point progression + winners per race
     let resultsData = [];
     if (racesRes.data?.length) {
-      const { data: results } = await supabase
+      // Paginér: PostgREST capper ved 1000 → ellers undertælles progression + vindere.
+      resultsData = await fetchAllRows(() => supabase
         .from("race_results")
         .select("rider:rider_id(id, firstname, lastname, team_id, team:team_id(id, name, is_ai)), prize_money, race_id, result_type, rank")
-        .in("race_id", racesRes.data.map(r => r.id));
-      resultsData = results || [];
+        .in("race_id", racesRes.data.map(r => r.id))
+        .order("id", { ascending: true }));
 
       const prog = {};
       standings.forEach(s => { prog[s.team_id] = []; });
