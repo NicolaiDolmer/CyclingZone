@@ -5,8 +5,11 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import TeamLink from "../components/TeamLink";
 import { formatNumber } from "../lib/intl";
+import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
+// Realtime: opdatér ranglisten live når en resultat-import skriver nye rækker (#783).
+const REALTIME_TABLES = ["season_standings", "race_results"];
 
 function MiniSparkline({ points, color }) {
   if (!points || points.length < 2) return <span className="text-cz-3 text-xs">—</span>;
@@ -102,6 +105,7 @@ export default function StandingsPage() {
   }
 
   useEffect(() => { loadAll(); }, []);
+  useRealtimeRefetch("standings-live", REALTIME_TABLES, loadAll);
 
   const effectivePts = (s) => ((s?.total_points || 0) - (s?.penalty_points || 0));
   const divStandings = standings

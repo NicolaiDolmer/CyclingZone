@@ -5,6 +5,10 @@ import { Link, useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
+import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
+
+// Realtime: opdatér top-hold/-ryttere live efter en resultat-import (#783).
+const REALTIME_TABLES = ["season_standings", "race_results"];
 
 const HUB_LINKS = [
   { to: "/standings",          label: "Ranglisten",      desc: "Holdranglisten for aktiv sæson",              icon: "🏆" },
@@ -75,6 +79,7 @@ export default function ResultaterPage() {
   }
 
   useEffect(() => { loadAll(); }, []);
+  useRealtimeRefetch("resultater-live", REALTIME_TABLES, loadAll);
 
   if (loading) return (
     <div className="flex justify-center py-16">

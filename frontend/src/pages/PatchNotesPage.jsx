@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.16",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Results · Standings, results and dashboard now update live",
+        items: [
+          "EN · The standings, results hub and dashboard now refresh on their own when new race results come in — no more hard reload to see updated points, season progress or top riders. Previously these pages only loaded once when opened, so they could show stale numbers after a race was finalized. Refs #783.",
+          "DA · Ranglisten, resultat-hubben og dashboardet opdaterer nu af sig selv når nye løbsresultater kommer ind — ingen hård genindlæsning mere for at se opdaterede point, sæson-fremskridt eller top-ryttere. Tidligere indlæste siderne kun data én gang ved åbning, så de kunne vise gamle tal efter et løb var finaliseret. Refs #783.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.15",
     date: "2026-05-30",
     label: "Beta",

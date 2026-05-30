@@ -10,8 +10,12 @@ import SurveyBanner from "../components/SurveyBanner";
 import { computeDashboardSquadStats } from "../lib/dashboardSquadStats";
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
+import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 
 const API = import.meta.env.VITE_API_URL;
+// Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
+// opdatere uden hård reload når et løb finaliseres (#783).
+const REALTIME_TABLES = ["seasons", "race_results"];
 
 function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
@@ -238,6 +242,7 @@ export default function DashboardPage() {
   }
 
   useEffect(() => { loadAll(); }, []);
+  useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
 
   function dismissDiscordNudge() {
     localStorage.setItem("cz-dashboard-discord-nudge-dismissed", "1");
