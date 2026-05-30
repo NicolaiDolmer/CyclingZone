@@ -11,7 +11,8 @@ import {
   buildPcmImportEmbed,
 } from "./pcmResultsImport.js";
 import { resolvePcmTeamName, normalizePcmTeamName } from "./pcmTeamAliases.js";
-import { foldName } from "./pcmRiderMatcher.js";
+import { foldName, foldNameNordic, buildRiderMatcher } from "./pcmRiderMatcher.js";
+import { resolvePcmRiderName, normalizePcmRiderName, PCM_RIDER_ALIASES } from "./pcmRiderAliases.js";
 import { PRIZE_PER_POINT } from "./raceResultsEngine.js";
 
 // ── Parser helpers ────────────────────────────────────────────────
@@ -105,6 +106,106 @@ test("foldName fjerner diakritik", () => {
   assert.equal(foldName("Maël Guégan"), "mael guegan");
   assert.equal(foldName("Lukáš Kubiš"), "lukas kubis");
   assert.equal(foldName("Nélson Oliveira"), "nelson oliveira");
+});
+
+test("foldNameNordic folder ø/æ/å oven på accent-fold", () => {
+  // å dekomponerer allerede i NFD; ø/æ gør IKKE → kræver eksplicit fold
+  assert.equal(foldNameNordic("Søren Wærenskjold"), "soren waerenskjold");
+  assert.equal(foldNameNordic("Magnus Bøgh"), "magnus bogh");
+  assert.equal(foldNameNordic("Kasper Asgreen"), "kasper asgreen"); // uændret
+  // bevarer accent-fold for ikke-nordiske tegn
+  assert.equal(foldNameNordic("Lukáš Kubiš"), "lukas kubis");
+});
+
+// ── Rytter-alias (#770) ───────────────────────────────────────────
+
+test("resolvePcmRiderName er identitet for navne uden alias", () => {
+  assert.equal(resolvePcmRiderName("Tadej Pogacar"), "Tadej Pogacar");
+  assert.equal(normalizePcmRiderName("  Tadej   Pogacar "), "Tadej Pogacar");
+});
+
+test("PCM_RIDER_ALIASES er en ren PCM→DB-streng-map (ingen tomme værdier)", () => {
+  for (const [k, v] of Object.entries(PCM_RIDER_ALIASES)) {
+    assert.equal(typeof k, "string");
+    assert.equal(typeof v, "string");
+    assert.ok(v.trim().length > 0, `alias for "${k}" må ikke være tom`);
+  }
+});
+
+// Mock-supabase: buildRiderMatcher kalder .from(t).select(...).range(from,to).
+// Håndhæver PostgREST's 1000-row-loft pr. kald, så en test fanger det hvis
+// matcheren holder op med at paginere.
+function fakeSupabase(riders, { maxRows = 1000 } = {}) {
+  return {
+    from: () => ({
+      select: () => ({
+        range: async (from, to) => {
+          const end = Math.min(to, from + maxRows - 1);
+          return { data: riders.slice(from, end + 1), error: null };
+        },
+      }),
+    }),
+  };
+}
+
+test("buildRiderMatcher: exact, accent-fold, nordisk-fold og missing", async () => {
+  const m = await buildRiderMatcher(
+    fakeSupabase([
+      { id: "r1", firstname: "Tadej", lastname: "Pogačar", team_id: "t1" },
+      { id: "r2", firstname: "Søren", lastname: "Wærenskjold", team_id: "t2" },
+    ]),
+  );
+  // exact (med accenter)
+  assert.deepEqual(m.match("Tadej Pogačar"), { riderId: "r1", teamId: "t1", status: "exact" });
+  // accent-foldet variant
+  assert.equal(m.match("Tadej Pogacar").status, "folded");
+  assert.equal(m.match("Tadej Pogacar").riderId, "r1");
+  // nordisk variant (ø/æ uden fold-dekomposition)
+  assert.deepEqual(m.match("Soren Waerenskjold"), { riderId: "r2", teamId: "t2", status: "nordic" });
+  // ukendt → missing (ingen falsk positiv)
+  assert.deepEqual(m.match("Ukendt Rytter"), { riderId: null, teamId: null, status: "missing" });
+});
+
+test("buildRiderMatcher: ægte dublet → ambiguous, aldrig gæt", async () => {
+  const m = await buildRiderMatcher(
+    fakeSupabase([
+      { id: "a", firstname: "Jakob", lastname: "Nielsen", team_id: "t1" },
+      { id: "b", firstname: "Jakob", lastname: "Nielsen", team_id: "t2" },
+    ]),
+  );
+  assert.equal(m.match("Jakob Nielsen").status, "ambiguous");
+  assert.equal(m.match("Jakob Nielsen").riderId, null);
+});
+
+test("buildRiderMatcher: paginerer forbi 1000-row-loftet (rod-årsag, #770)", async () => {
+  // 2500 fyld-ryttere + én target langt forbi første side. Uden paginering
+  // ville matcheren kun se de første 1000 og flagge target som missing.
+  const riders = [];
+  for (let i = 0; i < 2500; i += 1) {
+    riders.push({ id: `fill-${i}`, firstname: `Fill${i}`, lastname: `Rider${i}`, team_id: null });
+  }
+  riders.splice(1800, 0, { id: "target", firstname: "Julian", lastname: "Alaphilippe", team_id: "t9" });
+  const m = await buildRiderMatcher(fakeSupabase(riders));
+  assert.equal(m.riderCount, riders.length); // alle sider hentet
+  assert.deepEqual(m.match("Julian Alaphilippe"), { riderId: "target", teamId: "t9", status: "exact" });
+});
+
+test("buildRiderMatcher: verificeret alias matcher; alias mod ukendt DB-navn forbliver missing", async () => {
+  const riders = [{ id: "r1", firstname: "Tobias", lastname: "Johannessen", team_id: "t1" }];
+  // Injicér et midlertidigt alias for at teste forrangs-stien uden at låse til tabellens indhold
+  PCM_RIDER_ALIASES["Tobias Halland Johannessen"] = "Tobias Johannessen";
+  PCM_RIDER_ALIASES["Alias Til Ingenting"] = "Findes Ikke I Db";
+  try {
+    const m = await buildRiderMatcher(fakeSupabase(riders));
+    const hit = m.match("Tobias Halland Johannessen");
+    assert.equal(hit.riderId, "r1");
+    assert.equal(hit.status, "exact"); // alias-resolved navn rammer exact-indekset
+    // alias der peger på et navn DB ikke har → ingen falsk attribution
+    assert.equal(m.match("Alias Til Ingenting").status, "missing");
+  } finally {
+    delete PCM_RIDER_ALIASES["Tobias Halland Johannessen"];
+    delete PCM_RIDER_ALIASES["Alias Til Ingenting"];
+  }
 });
 
 // ── GC-timing-pipeline (kernen) ───────────────────────────────────
