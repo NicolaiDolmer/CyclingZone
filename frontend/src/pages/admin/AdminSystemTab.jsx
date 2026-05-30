@@ -4,6 +4,7 @@ import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { useAdminAuth } from "../../components/admin/shared/useAdminAuth";
 import BetaToolsSection from "../../components/admin/sections/BetaToolsSection";
+import BoardTestModeSection from "../../components/admin/sections/BoardTestModeSection";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -239,6 +240,12 @@ export default function AdminSystemTab() {
             ))}
           </div>
         )}
+      </AdminSection>
+
+      {/* #805 · Board-test-tilstand: admin-handling for en live feature — altid
+          synlig for admin (uden for BETA_ENABLED-gaten, modsat de destruktive resets). */}
+      <AdminSection title="Bestyrelse — test med frosset økonomi">
+        <BoardTestModeSection getAuth={getAuth} onMsg={showMsg} />
       </AdminSection>
 
       {BETA_ENABLED && (
