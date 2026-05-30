@@ -14,4 +14,6 @@
 >
 > **Verify-kø (#627, baggrund — kræver DIN hånd):** **#505** race_points editor kode-verificeret → mangler 60-sek admin-klik i prod · **#449** Discord-DM: rotér webhooks + verificér `DISCORD_BOT_TOKEN` på Railway · **#563** OneDrive secret-decommission `needs-decision` · **#327** secret mgmt Phase 2 `manual:user`.
 
+> **📥 Discord-triage 30. maj:** 90 aktive feedback-tråde scannet (ny tooling i `scripts/discord/`: list-active-threads + dedupe + dump), dedupet mod 512 issues → 14 nye oprettet **#775-788** (feedback 16.-30. maj, hver kode-verificeret før oprettelse). Dup-feedback kommenteret på #19/#21. Bekræftede bugs: #777 ejer-filter (`!undefined===true`), #781/#782 sejr-klassifikation (race_type ikke brugt), #776 zombie market-status, #783 dashboard stale. Skærmbilleder synket (commit `dcb64ec`).
+>
 > **🤖 Working agent:** _Ingen aktiv session._ Sæson-1 PCM-import gennemført + verificeret (10 løb, 0 umatchede scorende, standings = 7.118 ✓, rytterrangliste korrekt). **Afventer din hånd når du vil:** Admin → Økonomi → Præmieudbetaling — **11.899.500 CZ$ udestående til ejede hold, 0 udbetalt** (med confirm-dialog). **i18n-spor blokeret indtil race-engine [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676):** eneste rest = Race/Results-klynge (~320 strenge), bevidst udskudt; #678 forbliver åben.
