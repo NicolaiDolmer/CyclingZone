@@ -25,6 +25,7 @@
     "windowClosedHint": "🔒 Transfervindue lukket. Skift træder i kraft ved næste åbning",
     "emptyState": "Ingen ryttere på holdet endnu",
     "headers": {
+      "nation": "Nation",
       "rider": "Rytter",
       "value": "Værdi",
       "salary": "Løn",
@@ -142,6 +143,7 @@
     "incomingToggle": "Indgående ({count})",
     "outgoingToggle": "Udgående ({count})",
     "noRiders": "Ingen ryttere",
+    "thNation": "Nation",
     "thRider": "Rytter",
     "thValue": "Værdi",
     "tagIncoming": "Indgående",

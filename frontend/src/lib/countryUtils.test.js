@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import i18n from "i18next";
 import {
+  getCountryCode3,
   getCountryDisplay,
   getCountryName,
   getFlagEmoji,
@@ -46,6 +47,35 @@ test("getCountryName — default følger aktiv i18next-locale", () => {
 
 test("getCountryName — normaliserer whitespace og casing", () => {
   assert.equal(getCountryName(" dk ", "en-US"), "Denmark");
+});
+
+test("getCountryCode3 — mapper ISO2 til IOC-kode (også hvor IOC ≠ ISO3)", () => {
+  const cases = [
+    ["fr", "FRA"],
+    ["dk", "DEN"],
+    ["ch", "SUI"],
+    ["nl", "NED"],
+    ["de", "GER"],
+    ["gb", "GBR"],
+    ["us", "USA"],
+  ];
+  for (const [code, ioc] of cases) {
+    assert.equal(getCountryCode3(code), ioc);
+  }
+});
+
+test("getCountryCode3 — normaliserer casing og whitespace", () => {
+  assert.equal(getCountryCode3(" FR "), "FRA");
+});
+
+test("getCountryCode3 — ukendt kode falder tilbage til 2-bogstav uppercase", () => {
+  assert.equal(getCountryCode3("zz"), "ZZ");
+});
+
+test("getCountryCode3 — manglende/ugyldig kode giver tom streng", () => {
+  assert.equal(getCountryCode3(null), "");
+  assert.equal(getCountryCode3(""), "");
+  assert.equal(getCountryCode3("x"), "");
 });
 
 test("getCountryName — manglende country code giver tom streng", () => {

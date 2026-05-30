@@ -6,7 +6,9 @@
     "loadingAria": "Indlæser ryttere"
   },
   "table": {
+    "nation": "Nation",
     "rider": "Rytter",
+    "team": "Hold",
     "value": "Værdi",
     "salary": "Løn",
     "potential": "Potentiale",
@@ -53,6 +55,7 @@
     "searchPlaceholder": "Søg rytternavn…",
     "noResults": "Ingen resultater fundet",
     "noResultsFor": "Ingen resultater fundet for \"{q}\"",
+    "thNation": "Nation",
     "thRider": "Rytter",
     "thTeam": "Hold",
     "teamFree": "Fri agent",

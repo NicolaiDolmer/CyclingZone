@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.19",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · Nation now has its own column",
+        items: [
+          "EN · In rider tables the flag and name used to share one wide column. The nation (flag plus 3-letter code) now sits in its own column next to the name across the rider database, your squad, other teams' squads, the watchlist, the rider rankings and the auction history. Where a rider's owning team is shown, it stays in its own column too. The name column is now narrower and the tables are easier to scan. On small screens the nation and team columns are hidden to keep the table compact.",
+          "DA · I ryttertabeller delte flag og navn før én bred kolonne. Nationen (flag plus 3-bogstavskode) ligger nu i sin egen kolonne ved siden af navnet på rytterdatabasen, din trup, andre holds trupper, ønskelisten, rytterranglisten og auktionshistorikken. Hvor en rytters ejer-hold vises, bliver det også i sin egen kolonne. Navnekolonnen er nu smallere, og tabellerne er nemmere at skanne. På små skærme skjules nation- og hold-kolonnerne for at holde tabellen kompakt.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.18",
     date: "2026-05-30",
     label: "Beta",

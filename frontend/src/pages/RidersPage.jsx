@@ -10,8 +10,9 @@ import {
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import RiderLink from "../components/RiderLink";
-import { Flag } from "../components/Flag";
+import NationCell from "../components/rider/NationCell";
+import RiderNameCell from "../components/rider/RiderNameCell";
+import TeamCell from "../components/rider/TeamCell";
 import { getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
 import RidersEmptyState from "../components/RidersEmptyState";
@@ -86,29 +87,27 @@ function StatBar({ value }) {
 function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, compareActive, compareDisabled, onToggleCompare, t }) {
   return (
     <tr className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors ${compareActive ? "bg-cz-accent/[0.04]" : ""}`}>
+      <td className="px-2 py-2.5 w-12 hidden sm:table-cell" onClick={() => onSelect(rider)}>
+        <NationCell code={rider.nationality_code} />
+      </td>
       <td className="px-3 py-2.5" onClick={() => onSelect(rider)}>
-        <div>
-          <RiderLink id={rider.id} stopPropagation
-            className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors block">
-            {rider.nationality_code && <Flag code={rider.nationality_code} className="me-1" />}
-            {rider.firstname} {rider.lastname}
-          </RiderLink>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            {rider.is_u25 && (
-              <span className="text-[9px] uppercase bg-cz-info/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
-            )}
-            {isInAuction && (
-              <span className="text-[9px] uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("table.auctionBadge")}</span>
-            )}
-            <span className="text-cz-3 text-xs">{rider.team?.name || t("table.teamFree")}</span>
-          </div>
-        </div>
+        <RiderNameCell id={rider.id} firstname={rider.firstname} lastname={rider.lastname} stopPropagation>
+          {rider.is_u25 && (
+            <span className="text-[9px] uppercase bg-cz-info/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
+          )}
+          {isInAuction && (
+            <span className="text-[9px] uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("table.auctionBadge")}</span>
+          )}
+        </RiderNameCell>
       </td>
       <td className="px-1 py-2.5 w-8">
         <CompareToggle active={compareActive} disabled={compareDisabled} onToggle={() => onToggleCompare(rider.id)} />
       </td>
       <td className="px-2 py-2.5 w-8">
         <WatchlistStar active={watchlist.has(rider.id)} onToggle={() => onToggleWatchlist(rider.id)} />
+      </td>
+      <td className="px-3 py-2.5 hidden sm:table-cell" onClick={() => onSelect(rider)}>
+        <TeamCell team={rider.team} freeLabel={t("table.teamFree")} stopPropagation />
       </td>
       <td className="px-3 py-2.5 text-right" onClick={() => onSelect(rider)}>
         <span className="text-cz-accent-t font-mono text-sm font-bold">
@@ -300,10 +299,13 @@ export default function RidersPage() {
             <table className="w-full text-xs">
               <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
                 <tr className="border-b border-cz-border">
+                  <SortTh sortKey="nationality_code" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
+                    className="px-2 py-3 text-left font-medium uppercase tracking-wider w-12 hidden sm:table-cell">{t("table.nation")}</SortTh>
                   <SortTh sortKey="firstname" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium uppercase tracking-wider w-48">{t("table.rider")}</SortTh>
+                    className="px-3 py-3 text-left font-medium uppercase tracking-wider w-40">{t("table.rider")}</SortTh>
                   <th className="px-1 py-3 w-8" title={t("table.compareTooltip")}>⇄</th>
                   <th className="px-2 py-3 w-8" />
+                  <th className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.team")}</th>
                   <SortTh sortKey="uci_points" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">{t("table.value")}</SortTh>
                   <SortTh sortKey="salary" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}

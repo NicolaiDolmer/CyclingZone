@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
-import { Flag } from "../components/Flag";
+import NationCell from "../components/rider/NationCell";
 import OnlineBadge from "../components/OnlineBadge";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
@@ -221,6 +221,7 @@ export default function TeamProfilePage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
+                  <th className="px-2 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thNation")}</th>
                   <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                     className="px-4 py-3 text-left font-medium uppercase">{t("profile.thRider")}</SortTh>
                   <SortTh sortKey="uci_points" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
@@ -237,11 +238,13 @@ export default function TeamProfilePage() {
                     className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer
                       ${r._isIncoming ? "bg-cz-success-bg0/3" : r._isOutgoing ? "bg-cz-danger-bg0/3" : ""}`}
                     onClick={() => navigate(`/riders/${r.id}`)}>
+                    <td className="px-2 py-2.5 hidden sm:table-cell">
+                      <NationCell code={r.nationality_code} />
+                    </td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         {r._isIncoming && <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />}
                         {r._isOutgoing && <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />}
-                        {r.nationality_code && <Flag code={r.nationality_code} className="flex-shrink-0" />}
                         <RiderLink id={r.id} stopPropagation
                           className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
                           {r.firstname} {r.lastname}
