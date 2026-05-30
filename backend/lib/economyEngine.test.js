@@ -597,10 +597,21 @@ function createStandingsSupabase({ teams, races, results }) {
               in(column, value) {
                 assert.equal(column, "race_id");
                 assert.deepEqual(value, state.races.map(race => race.id));
-                return Promise.resolve({
-                  data: clone(state.results),
-                  error: null,
-                });
+                // updateStandings paginerer nu (fetchAllRows → .order().range()).
+                return {
+                  order(orderCol, opts) {
+                    assert.equal(orderCol, "id");
+                    assert.deepEqual(opts, { ascending: true });
+                    return {
+                      range(from, to) {
+                        return Promise.resolve({
+                          data: clone(state.results).slice(from, to + 1),
+                          error: null,
+                        });
+                      },
+                    };
+                  },
+                };
               },
             };
           },
@@ -1714,6 +1725,26 @@ test("updateStandings stores division ranks and keeps zero-point teams in the ca
       updated_at: supabase.state.upserts[0].rows[2].updated_at,
     },
   ]);
+});
+
+test("updateStandings paginerer race_results forbi 1000-row-loftet", async () => {
+  // 2500 scorende rækker for ét hold (1 point hver). Uden paginering ville kun
+  // de første 1000 tælle → total_points=1000 i stedet for 2500 (rod-årsag til
+  // 38% manglende standings-point i sæson 1, 2026-05-30).
+  const results = [];
+  for (let i = 0; i < 2500; i += 1) {
+    results.push({ race_id: "race-1", team_id: "team-a", result_type: "stage", rank: 50, points_earned: 1, rider: null });
+  }
+  const supabase = createStandingsSupabase({
+    teams: [{ id: "team-a", division: 1 }],
+    races: [{ id: "race-1" }],
+    results,
+  });
+
+  const summary = await updateStandings("season-1", null, { supabase });
+
+  assert.equal(summary.rowsUpdated, 1);
+  assert.equal(supabase.state.upserts[0].rows[0].total_points, 2500); // alle sider talt
 });
 
 test("updateRiderValues recomputes prize_earnings_bonus from the last 3 seasons", async () => {
