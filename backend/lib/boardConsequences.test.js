@@ -295,6 +295,60 @@ test("evaluateAndApplyConsequences skips forced_listing when no eligible rider e
   assert.equal(supabase.state.board_consequences.filter((c) => c.layer === 4).length, 0);
 });
 
+// #805 · Board test-mode: lag 4/5 (reelle økonomiske konsekvenser) suppress.
+test("evaluateAndApplyConsequences suppresses forced_listing in board test-mode", async () => {
+  const supabase = makeFakeSupabase({ board_consequences: [], transfer_listings: [] });
+  const notifications = [];
+  const team = {
+    id: "team-1",
+    name: "Test Team",
+    riders: [
+      { id: "r-cheap", market_value: 40_000, popularity: 30, uci_points: 50, firstname: "Cheap", lastname: "Rider", salary: 4_000 },
+    ],
+  };
+
+  const result = await evaluateAndApplyConsequences({
+    supabase,
+    team,
+    board: makeBaseBoard(),
+    newSatisfaction: 12,
+    goalsMet: 0,
+    goalsTotal: 3,
+    planIsComplete: false,
+    seasonId: "season-1",
+    boardTestMode: true,
+    notify: (payload) => notifications.push(payload),
+  });
+
+  // Ingen reel listing, ingen lag-4-row, ingen notify (ærlig player-facing copy).
+  assert.equal(supabase.state.transfer_listings.length, 0);
+  assert.equal(supabase.state.board_consequences.filter((c) => c.layer === 4).length, 0);
+  assert.equal(notifications.length, 0);
+  assert.ok(result.skipped.some((s) => s.layer === 4 && s.reason === "test_mode_suppressed"));
+});
+
+test("evaluateAndApplyConsequences suppresses sponsor_pullout in board test-mode", async () => {
+  const supabase = makeFakeSupabase({ board_consequences: [] });
+  const notifications = [];
+
+  const result = await evaluateAndApplyConsequences({
+    supabase,
+    team: makeBaseTeam({ riders: [{ market_value: 50_000, popularity: 30, uci_points: 30 }] }),
+    board: makeBaseBoard(),
+    newSatisfaction: 8,
+    goalsMet: 0,
+    goalsTotal: 3,
+    planIsComplete: false,
+    seasonId: "season-1",
+    boardTestMode: true,
+    notify: (p) => notifications.push(p),
+  });
+
+  assert.equal(supabase.state.board_consequences.filter((c) => c.layer === 5).length, 0);
+  assert.equal(notifications.length, 0);
+  assert.ok(result.skipped.some((s) => s.layer === 5 && s.reason === "test_mode_suppressed"));
+});
+
 test("evaluateAndApplyConsequences inserts sponsor_pullout at sat<10", async () => {
   const supabase = makeFakeSupabase({ board_consequences: [] });
   const notifications = [];

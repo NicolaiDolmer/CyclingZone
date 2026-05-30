@@ -31,6 +31,7 @@ import {
   getActiveSponsorPulloutFactor,
 } from "./boardConsequences.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
+import { isBoardTestModeActive } from "./boardTestMode.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -209,6 +210,11 @@ export async function processSeasonStart(seasonId, deps = {}) {
     pulloutFactorByTeamId.set(row.team_id, (row.severity || 1000) / 1000);
   }
 
+  // #805 · Board test-mode: lag 1 sponsor-modifier tvinges 1.0 så board-bidraget
+  // til økonomien er neutralt mens testere forhandler planer. Sikkerhedsnet hvis
+  // en season-start kører mens den aktive sæsons window er i test-mode.
+  const boardTestMode = await isBoardTestModeActive(supabaseClient);
+
   const results = [];
 
   for (const team of teams || []) {
@@ -219,7 +225,7 @@ export async function processSeasonStart(seasonId, deps = {}) {
       : 1.0;
     // Lag 5 stacker MULTIPLIKATIVT med lag 1 (budget_modifier).
     const pulloutFactor = pulloutFactorByTeamId.get(team.id) ?? 1.0;
-    const modifier = baseModifier * pulloutFactor;
+    const modifier = boardTestMode ? 1.0 : baseModifier * pulloutFactor;
     const lastSeasonStanding = sponsorStandingsContext.standingByTeamId.get(team.id) || null;
     const sponsorBreakdown = computeSponsorForSeason({
       seasonNumber,
@@ -640,11 +646,16 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   // trigger division movement and then skip the finance loop.
   const teams = await loadHumanSeasonEndTeams(supabaseClient);
 
+  // #805 · board test-mode hentes én gang her og videregives til hver
+  // processTeamSeasonEnd så lag 4/5-konsekvenser suppress under test-perioden.
+  const boardTestMode = deps.boardTestMode ?? await isBoardTestModeActive(supabaseClient);
+
   for (const team of teams || []) {
     await processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumber, {
       ...deps,
       supabase: supabaseClient,
       now: notificationNow,
+      boardTestMode,
     });
   }
 
@@ -832,6 +843,9 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processReplacementTriggerFn = deps.processReplacementTrigger ?? processReplacementTrigger;
   const evaluateAndApplyConsequencesFn = deps.evaluateAndApplyConsequences ?? evaluateAndApplyConsequences;
+  // #805 · forudhentet af processSeasonEnd (én query), fallback til egen lookup
+  // hvis kaldt direkte (fx repair-stien).
+  const boardTestMode = deps.boardTestMode ?? await isBoardTestModeActive(supabaseClient);
   const notificationDeps = { supabase: supabaseClient, now: deps.now };
   const teamStanding = standings.find(s => s.team_id === team.id);
   const boards = team.board_profiles || [];
@@ -1089,6 +1103,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         planIsComplete,
         seasonId,
         consecutiveLowExpirations: triggerDoublePlanLapse ? 2 : 0,
+        boardTestMode,
         notify: ({ type, title, message, metadata }) => notifyManager(team.id, type, title, message, notificationDeps, metadata ?? null),
       });
     } catch (error) {

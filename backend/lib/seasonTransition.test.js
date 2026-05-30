@@ -346,6 +346,61 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(adminEntry.meta.to_season_number, 1);
 });
 
+// #805 · Board-test-exit: når afgående sæson kørte board_test_mode, nulstilles
+// board-data via resetBetaBoardProfiles FØR processSeasonStart, så test-perioden
+// ikke bærer økonomisk spor ind i den nye sæson.
+test("transitionToNextSeason — nulstiller board-data når afgående window er i test-mode", async () => {
+  const order = [];
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08", board_test_mode: true }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    adminUserId: "admin-uuid",
+    deps: {
+      resetBetaBoardProfiles: async () => { order.push("reset"); return { reset: 1, created: 1 }; },
+      processSeasonStart: async () => { order.push("seasonStart"); return { sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }; },
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true);
+  const resetPhase = result.log.find((p) => p.phase === "reset_board_test_data");
+  assert.ok(resetPhase, "reset_board_test_data-fasen skal være kørt");
+  assert.equal(resetPhase.reset, 1);
+  // Reset SKAL ske før season-start (ellers anvendes ikke-nulstillede modifiers).
+  assert.deepEqual(order, ["reset", "seasonStart"]);
+});
+
+test("transitionToNextSeason — springer board-reset over når window ikke er i test-mode", async () => {
+  const order = [];
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08", board_test_mode: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      resetBetaBoardProfiles: async () => { order.push("reset"); return { reset: 1 }; },
+      processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.log.find((p) => p.phase === "reset_board_test_data"), undefined);
+  assert.deepEqual(order, [], "resetBetaBoardProfiles må ikke kaldes uden test-mode");
+});
+
 test("transitionToNextSeason — re-run efter delvis fejl skipper allerede-gjort arbejde", async () => {
   // Simuler: sæson 1 er allerede insertet, men transfer_window mangler.
   const supabase = createMockSupabase({

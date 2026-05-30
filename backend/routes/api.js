@@ -148,6 +148,8 @@ import {
   declineBonusOffer,
   getActiveConsequencesForTeam,
 } from "../lib/boardConsequences.js";
+import { isBoardTestModeActive } from "../lib/boardTestMode.js";
+import { openBoardTestMode, closeBoardTestMode } from "../lib/boardTestModeService.js";
 import {
   getIncomingSquadViolation,
   getTeamMarketState,
@@ -5874,9 +5876,14 @@ router.post("/board/bonus-offer/accept", requireAuth, boardWriteLimiter, async (
       return res.status(404).json({ error: "Tilbud ikke fundet eller allerede behandlet" });
     }
 
+    // #805 · Board test-mode: tilbuddet markeres accepteret + ekstra-mål tilføjes
+    // (UI-flowet bevares), men ingen rigtige penge krediteres → ingen
+    // BOARD_BONUS_ACCEPTED finance_transactions-row i test-perioden.
+    const boardTestMode = await isBoardTestModeActive(supabase);
+
     // Krediter holdets balance via samme finance-kontrakt som sponsor (type='bonus').
     const { data: team } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
-    if (team) {
+    if (team && !boardTestMode) {
       const { data: activeSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
       // Slice 07c: balance + finance_transactions atomic via RPC.
       // 07d Fase B: api-actor — manager accepterer bonus-tilbud.
@@ -5928,8 +5935,9 @@ router.post("/board/bonus-offer/accept", requireAuth, boardWriteLimiter, async (
 
     res.json({
       success: true,
-      bonus_amount: result.bonus_amount,
+      bonus_amount: boardTestMode ? 0 : result.bonus_amount,
       extra_goal: result.extra_goal,
+      test_mode: boardTestMode,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -6449,6 +6457,34 @@ router.post("/admin/beta/reset-divisions", requireAdmin, adminWriteLimiter, asyn
 router.post("/admin/beta/reset-board", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json({ ok: true, board_profiles: await resetBetaBoardProfiles(supabase) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/board/open-test — #805: åbn bestyrelsen for test med frosset
+// økonomi. Atomisk: reset til baseline → onboarding (pending_5yr) → board_test_mode=true.
+router.post("/admin/board/open-test", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    res.json(await openBoardTestMode(supabase));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/board/close-test — #805: idempotent rollback af test-tilstanden.
+router.post("/admin/board/close-test", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    res.json(await closeBoardTestMode(supabase));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/board/test-status — #805: nuværende test-tilstand til admin-UI.
+router.get("/admin/board/test-status", requireAdmin, async (req, res) => {
+  try {
+    res.json({ board_test_mode: await isBoardTestModeActive(supabase) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
