@@ -162,6 +162,7 @@ import {
 import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
 import { adminImportUploadSingleFile, adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
 import { getDefaultWebhook, sendWebhook } from "../lib/discordNotifier.js";
+import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.js";
 import { checkAchievements } from "../lib/achievementEngine.js";
 import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
