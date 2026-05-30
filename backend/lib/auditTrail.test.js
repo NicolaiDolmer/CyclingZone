@@ -460,12 +460,15 @@ test("paySeasonPrizesToDate populerer admin auditCtx + idempotency_key", async (
         };
       }
       if (table === "race_results") {
+        // getSeasonPrizePreview paginerer nu (fetchAllRows → .order().range()).
+        const rows = [{ race_id: "race-1", team_id: "team-P", prize_money: 5000 }];
         return {
           select: () => ({
             in: () => ({
-              gt: () => Promise.resolve({
-                data: [{ race_id: "race-1", team_id: "team-P", prize_money: 5000 }],
-                error: null,
+              gt: () => ({
+                order: () => ({
+                  range: (from, to) => Promise.resolve({ data: rows.slice(from, to + 1), error: null }),
+                }),
               }),
             }),
           }),

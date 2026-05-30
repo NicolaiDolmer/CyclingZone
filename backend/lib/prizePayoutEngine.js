@@ -1,4 +1,5 @@
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { fetchAllRows } from "./supabasePagination.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -16,25 +17,26 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
 
   const raceIds = races.map(r => r.id);
 
-  // Batch-fetch all relevant race_results in one query
-  const { data: allResults, error: resultsError } = await supabase
+  // Batch-fetch all relevant race_results. Paginér (PostgREST capper ved 1000) —
+  // ellers underberegnes præmie-previewet stille for sæsoner med >1000 præmie-
+  // rækker, og udbetalingen ville mangle nogle hold. .order("id") for stabile sider.
+  const allResults = await fetchAllRows(() => supabase
     .from("race_results")
     .select("race_id, team_id, prize_money")
     .in("race_id", raceIds)
-    .gt("prize_money", 0);
-  if (resultsError) throw new Error(resultsError.message);
+    .gt("prize_money", 0)
+    .order("id", { ascending: true }));
 
-  // Batch-fetch existing prize transactions for paid races
+  // Batch-fetch existing prize transactions for paid races (også pagineret).
   const paidRaceIds = races.filter(r => r.prize_paid_at).map(r => r.id);
   let paidTransactions = [];
   if (paidRaceIds.length) {
-    const { data: txs, error: txError } = await supabase
+    paidTransactions = await fetchAllRows(() => supabase
       .from("finance_transactions")
       .select("race_id, team_id, amount")
       .in("race_id", paidRaceIds)
-      .eq("type", "prize");
-    if (txError) throw new Error(txError.message);
-    paidTransactions = txs || [];
+      .eq("type", "prize")
+      .order("id", { ascending: true }));
   }
 
   // Batch-fetch team names

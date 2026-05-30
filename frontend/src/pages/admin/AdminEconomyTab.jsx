@@ -92,6 +92,10 @@ export default function AdminEconomyTab() {
 
   async function handlePayPrizes() {
     if (!prizePayoutSeason) { showMsg("❌ Vælg en sæson", "error"); return; }
+    const pendingRaces = prizePreview?.pending_payment?.length ?? 0;
+    const pendingTotal = prizePreview?.total_pending ?? 0;
+    if (pendingRaces === 0) { showMsg("❌ Ingen udestående præmier — kør forhåndsvisning først", "error"); return; }
+    if (!confirm(`Udbetal ${pendingTotal.toLocaleString("da-DK")} CZ$ i præmiepenge til hold på tværs af ${pendingRaces} løb?\n\nDette krediterer holdenes balance med det samme og kan ikke fortrydes.`)) return;
     setLoad("prize_pay", true);
     const res = await fetch(`${API}/api/admin/pay-prizes-to-date`, {
       method: "POST", headers: await getAuth(),
