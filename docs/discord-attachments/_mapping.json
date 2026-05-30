@@ -380,7 +380,7 @@
       "messageContent": "",
       "author": "cybersimon",
       "timestamp": "2026-05-07T19:27:52.872000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1502029625986125905": [
@@ -391,7 +391,7 @@
       "messageContent": "Når man fjerner beskeder i indbakken, opdateres det ikke i siden, før man klikker F5. Forbliver der, når man flytter sig rundt på sitet",
       "author": "jeppek",
       "timestamp": "2026-05-07T19:29:30.276000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1502042565988450384": [
@@ -402,7 +402,7 @@
       "messageContent": "Jeg får fejl ved at byde på: Ruslan Mustafayev\nMen mangler fejlmeddelse, så jeg ved hvad jeg gør galt.",
       "author": "bobby2106",
       "timestamp": "2026-05-07T20:20:55.752000+00:00",
-      "cached": false
+      "cached": true
     }
   ],
   "1502043822841135116": [
@@ -413,6 +413,147 @@
       "messageContent": "",
       "author": "cybersimon",
       "timestamp": "2026-05-07T20:25:55.238000+00:00",
+      "cached": true
+    }
+  ],
+  "1510269165255135263": [
+    {
+      "filename": "1510269165255135263-1510269169718001814.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1510269165255135263-1510269169718001814.png",
+      "messageId": "1510269170053419209",
+      "messageContent": "På ranglisten bliver man vist, som om at man har vundet en samlet sejr, hvis man vinder et endagsløb\nDet er en fejl. Man skal stå som om, at man har vundet en klassiker. Hvis man vinder en samlet sejr, så må man noteres som samlet sejr.",
+      "author": "bobby2106",
+      "timestamp": "2026-05-30T13:10:29.585000+00:00",
+      "cached": false
+    }
+  ],
+  "1510268058420383824": [
+    {
+      "filename": "1510268058420383824-1510268063763796089.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1510268058420383824-1510268063763796089.png",
+      "messageId": "1510268064057528373",
+      "messageContent": "Der er en fejl her i dashboardet, hvor den ikke opdatere fremskridt i sæsonen",
+      "author": "bobby2106",
+      "timestamp": "2026-05-30T13:06:05.895000+00:00",
+      "cached": false
+    }
+  ],
+  "1510266246116151436": [
+    {
+      "filename": "1510266246116151436-1510266253376491611.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1510266246116151436-1510266253376491611.png",
+      "messageId": "1510266253724487721",
+      "messageContent": "",
+      "author": ".sredna",
+      "timestamp": "2026-05-30T12:58:54.278000+00:00",
+      "cached": false
+    }
+  ],
+  "1510263255757754660": [
+    {
+      "filename": "1510263255757754660-1510263655445434378.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1510263255757754660-1510263655445434378.png",
+      "messageId": "1510263655709806723",
+      "messageContent": "Knapperne her.\nTrykker man på Manager-ejede kommer der stadig \"Fri agent\" ryttere op",
+      "author": "soren1207",
+      "timestamp": "2026-05-30T12:48:34.863000+00:00",
+      "cached": false
+    }
+  ],
+  "1507078529282605106": [
+    {
+      "filename": "1507078529282605106-1507078532600430723.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1507078529282605106-1507078532600430723.png",
+      "messageId": "1507078532554035320",
+      "messageContent": "",
+      "author": ".sredna",
+      "timestamp": "2026-05-21T17:52:02.326000+00:00",
+      "cached": false
+    }
+  ],
+  "1510242164226134236": [
+    {
+      "filename": "1510242164226134236-1510242169204641802.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1510242164226134236-1510242169204641802.png",
+      "messageId": "1510242169129271367",
+      "messageContent": "Man kan kun se sig selv i Hall of Fame\n\nhttps://cycling-zone.vercel.app/hall-of-fame",
+      "author": "jeppek",
+      "timestamp": "2026-05-30T11:23:12.063000+00:00",
+      "cached": false
+    }
+  ],
+  "1507075204008906822": [
+    {
+      "filename": "1507075204008906822-1507075209679605860.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1507075204008906822-1507075209679605860.png",
+      "messageId": "1507075209453371583",
+      "messageContent": "Ikke muligt at lave flashauktion på egne ryttere via knappen til højre på egen holdside.\n\nhttps://cycling-zone.vercel.app/team",
+      "author": "jeppek",
+      "timestamp": "2026-05-21T17:38:50.037000+00:00",
+      "cached": false
+    }
+  ],
+  "1507072644862972057": [
+    {
+      "filename": "1507072644862972057-1507072649350877297.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1507072644862972057-1507072649350877297.png",
+      "messageId": "1507072649212199092",
+      "messageContent": "Når man sætter en rytter på garanteret salg (måske også auktion) uden det er flash ved deadline day, følger den reglerne for almindelig auktion.\n\nhttps://cycling-zone.vercel.app/auctions",
+      "author": "jeppek",
+      "timestamp": "2026-05-21T17:28:39.628000+00:00",
+      "cached": false
+    }
+  ],
+  "1506780095275204608": [
+    {
+      "filename": "1506780095275204608-1506780100132212907.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1506780095275204608-1506780100132212907.png",
+      "messageId": "1506780099842932909",
+      "messageContent": "Tænker, at billedet fra PB forklarer min forvirring 😄",
+      "author": ".sredna",
+      "timestamp": "2026-05-20T22:06:10.423000+00:00",
+      "cached": false
+    }
+  ],
+  "1506222527591088198": [
+    {
+      "filename": "1506222527591088198-1506222532972253325.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1506222527591088198-1506222532972253325.png",
+      "messageId": "1506222532582178887",
+      "messageContent": "Synes det ser ud til, at han burde være solgt til ikke nogen, men han er stadig på holdet?",
+      "author": ".sredna",
+      "timestamp": "2026-05-19T09:10:36.029000+00:00",
+      "cached": false
+    },
+    {
+      "filename": "1506222527591088198-1506222533517508719.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1506222527591088198-1506222533517508719.png",
+      "messageId": "1506222532582178887",
+      "messageContent": "Synes det ser ud til, at han burde være solgt til ikke nogen, men han er stadig på holdet?",
+      "author": ".sredna",
+      "timestamp": "2026-05-19T09:10:36.029000+00:00",
+      "cached": false
+    }
+  ],
+  "1506046994051891210": [
+    {
+      "filename": "1506046994051891210-1506046996996423752.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1506046994051891210-1506046996996423752.png",
+      "messageId": "1506046996895764520",
+      "messageContent": "Ham her er blevet solgt til AI, men står fortsat som om han er til salg på markedet 🙂",
+      "author": ".sredna",
+      "timestamp": "2026-05-18T21:33:05.060000+00:00",
+      "cached": false
+    }
+  ],
+  "1505613603217084487": [
+    {
+      "filename": "1505613603217084487-1505613608128741496.png",
+      "githubUrl": "https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments/1505613603217084487-1505613608128741496.png",
+      "messageId": "1505613608028213289",
+      "messageContent": "man kan ikke rulle ned og se hvad der står i drop-down menuen når man trykker på sproget",
+      "author": "cybersimon",
+      "timestamp": "2026-05-17T16:50:57.102000+00:00",
       "cached": false
     }
   ]
