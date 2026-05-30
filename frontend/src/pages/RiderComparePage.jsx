@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink";
+import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
@@ -103,7 +104,7 @@ export default function RiderComparePage() {
     (async () => {
       const { data } = await supabase
         .from("riders")
-        .select(`*, team:team_id(name)`)
+        .select(`*, team:team_id(id, name)`)
         .in("id", ids);
       if (cancelled || !data) return;
       const ordered = ids.map(id => data.find(r => r.id === id)).filter(Boolean);
@@ -181,7 +182,9 @@ export default function RiderComparePage() {
                   className="font-bold text-cz-1 text-sm cursor-pointer hover:text-cz-accent-t block">
                   {r.nationality_code && <Flag code={r.nationality_code} className="me-1" />}{r.firstname} {r.lastname}
                 </RiderLink>
-                <p className="text-cz-3 text-xs mt-1">{r.team?.name || t("compare.teamFree")}</p>
+                <p className="text-cz-3 text-xs mt-1">
+                  <TeamLink id={r.team?.id} className="hover:text-cz-accent-t transition-colors">{r.team?.name || t("compare.teamFree")}</TeamLink>
+                </p>
                 <p className="font-mono font-bold mt-2 text-sm" style={{ color: COLORS[i] }}>
                   {formatCz(getRiderMarketValue(r))}
                 </p>

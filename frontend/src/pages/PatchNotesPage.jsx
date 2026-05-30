@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.21",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · Team name is now clickable everywhere",
+        items: [
+          "EN · A rider's owning team is now a clickable link in more places. On the watchlist and the rider comparison view the team name used to be plain text; it now links straight to the team's profile, the same way it already does in the rider database and other tables. Free agents stay as plain text. Refs #800.",
+          "DA · En rytters ejer-hold er nu et klikbart link flere steder. På ønskelisten og i rytter-sammenligningen var holdnavnet før ren tekst; det linker nu direkte til holdets profil, ligesom det allerede gør i rytterdatabasen og andre tabeller. Fri-agenter forbliver ren tekst. Refs #800.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.20",
     date: "2026-05-30",
     label: "Beta",
