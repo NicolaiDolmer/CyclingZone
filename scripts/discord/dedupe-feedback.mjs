@@ -73,9 +73,19 @@ if (fs.existsSync(ghPath)) {
     ghIssues = JSON.parse(fs.readFileSync(ghPath, 'utf8'));
     for (const iss of ghIssues) {
       const body = iss.body || '';
+      // (a) direct thread links: discord.com/channels/<guild>/<threadId>
       for (const m of body.matchAll(/channels\/\d+\/(\d+)/g)) {
         filed.add(m[1]);
         if (!filedReason.has(m[1])) filedReason.set(m[1], `#${iss.number} (${iss.state})`);
+      }
+      // (b) BLINDSPOT FIX (#batch7 dup-incident 2026-05-31): attachment links
+      //     embedded as raw.githubusercontent/.../<threadId>-<attId>.<ext>.
+      //     A thread referenced ONLY via its screenshot was missed by (a) and
+      //     re-filed as a false-NEW candidate. Match the filename's leading
+      //     snowflake (17-20 digits) so image-only references count as filed.
+      for (const m of body.matchAll(/discord-attachments\/(\d{17,20})-\d+\.(?:png|jpe?g|webp|gif)/gi)) {
+        filed.add(m[1]);
+        if (!filedReason.has(m[1])) filedReason.set(m[1], `#${iss.number} (${iss.state}, via billede)`);
       }
     }
   } catch (e) {

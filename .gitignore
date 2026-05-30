@@ -37,6 +37,14 @@ audit-output/
 *.tmp.md
 *.tmp-*.json
 
+# Discord-triage caches — regenererbare via scripts/discord/*.mjs (intet source of truth).
+# .gh-issues.json kan indeholde issue-bodies; hold local. Sandheden er GitHub.
+scripts/discord/.gh-issues.json
+scripts/discord/.candidates.md
+scripts/discord/.thread-dump.md
+scripts/discord/.thread-dumps.txt
+scripts/discord/.gh-err.txt
+
 # Personlig planlægning (Emmas kalender, ADHD-profil, familietid) — lever i OneDrive/CyclingZone-context/
 docs/WEEKLY_PLANNING_GUIDE.md
 
