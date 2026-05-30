@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import TeamLink from "../components/TeamLink";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
+import RiderBadges from "../components/rider/RiderBadges";
 import { formatNumber } from "../lib/intl";
 
 const SORT_COLS = [
@@ -201,16 +202,7 @@ export default function RiderRankingsPage() {
                     <td className="px-3 py-3 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
                       <RiderNameCell id={rider.id} firstname={rider.firstname} lastname={rider.lastname} stopPropagation
                         className="font-medium text-cz-1 hover:text-cz-accent-t transition-colors">
-                        {rider.is_u25 && (
-                          <span className="text-[9px] uppercase bg-cz-info-bg text-blue-600 border border-cz-info/30 px-1 py-0.5 rounded hidden sm:inline flex-shrink-0">
-                            U25
-                          </span>
-                        )}
-                        {rider.team?.is_ai && (
-                          <span className="text-[9px] uppercase bg-cz-subtle text-cz-2 border border-cz-border px-1 py-0.5 rounded hidden sm:inline flex-shrink-0">
-                            AI
-                          </span>
-                        )}
+                        <RiderBadges badges={[rider.is_u25 && "u25", rider.team?.is_ai && "ai"]} className="hidden sm:inline-flex" />
                       </RiderNameCell>
                     </td>
                     <td className="px-3 py-3 text-xs hidden md:table-cell">

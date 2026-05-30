@@ -145,9 +145,7 @@
     "noRiders": "Ingen ryttere",
     "thNation": "Nation",
     "thRider": "Rytter",
-    "thValue": "Værdi",
-    "tagIncoming": "Indgående",
-    "tagOutgoing": "Udgående"
+    "thValue": "Værdi"
   },
   "manager": {
     "back": "← Tilbage",

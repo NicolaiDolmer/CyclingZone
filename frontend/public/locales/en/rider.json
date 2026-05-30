@@ -1,4 +1,14 @@
 {
+  "badges": {
+    "u25": "Under 25 (U25)",
+    "auction": "Active auction",
+    "ai": "AI team",
+    "incoming": "Incoming transfer",
+    "outgoing": "Outgoing transfer",
+    "self": "Internal trade (own team)",
+    "bought": "You bought this rider",
+    "sold": "You sold this rider"
+  },
   "page": {
     "back": "← Back",
     "notFound": "Rider not found",

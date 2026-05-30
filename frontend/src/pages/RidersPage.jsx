@@ -12,6 +12,7 @@ import { statBg } from "../lib/statBg";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
+import RiderBadges from "../components/rider/RiderBadges";
 import TeamCell from "../components/rider/TeamCell";
 import { getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
@@ -92,12 +93,7 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, 
       </td>
       <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]" onClick={() => onSelect(rider)}>
         <RiderNameCell id={rider.id} firstname={rider.firstname} lastname={rider.lastname} stopPropagation>
-          {rider.is_u25 && (
-            <span className="text-[9px] uppercase bg-cz-info/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
-          )}
-          {isInAuction && (
-            <span className="text-[9px] uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("table.auctionBadge")}</span>
-          )}
+          <RiderBadges badges={[rider.is_u25 && "u25", isInAuction && "auction"]} />
         </RiderNameCell>
       </td>
       <td className="px-1 py-2.5 w-8">
