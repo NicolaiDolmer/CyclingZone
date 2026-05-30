@@ -113,3 +113,14 @@ tr:hover .auction-rider-cell-winning {
   animation: cz-pulse-flash 1.5s ease-out;
   border-radius: 4px;
 }
+
+/* #799: sticky navne-kolonne i de brede rytter-tabeller (RidersPage, TeamPage,
+   TeamProfilePage, WatchlistPage, RiderRankingsPage). Solid bg så stat-celler
+   ikke skinner igennem ved horisontal scroll; tr:hover bevarer række-feedback.
+   Samme recept som .auction-rider-cell (AuctionsPage). */
+.sticky-name-cell {
+  background-color: var(--bg-card);
+}
+tr:hover .sticky-name-cell {
+  background-color: var(--bg-subtle);
+}

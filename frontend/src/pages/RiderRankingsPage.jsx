@@ -168,7 +168,7 @@ export default function RiderRankingsPage() {
                 <tr className="border-b border-cz-border bg-cz-subtle">
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 w-8">#</th>
                   <th className="px-2 py-3 text-left text-xs font-medium text-cz-3 hidden sm:table-cell">{t("rankings.thNation")}</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 min-w-[120px]">{t("rankings.thRider")}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 min-w-[120px] sticky left-0 z-20 bg-cz-subtle border-r border-cz-border">{t("rankings.thRider")}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden md:table-cell">{t("rankings.thTeam")}</th>
                   {SORT_COLS.map(col => (
                     <th key={col.key}
@@ -198,7 +198,7 @@ export default function RiderRankingsPage() {
                     <td className="px-2 py-3 hidden sm:table-cell">
                       <NationCell code={rider.nationality_code} />
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
                       <RiderNameCell id={rider.id} firstname={rider.firstname} lastname={rider.lastname} stopPropagation
                         className="font-medium text-cz-1 hover:text-cz-accent-t transition-colors">
                         {rider.is_u25 && (

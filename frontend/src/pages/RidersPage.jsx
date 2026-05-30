@@ -90,7 +90,7 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, 
       <td className="px-2 py-2.5 w-12 hidden sm:table-cell" onClick={() => onSelect(rider)}>
         <NationCell code={rider.nationality_code} />
       </td>
-      <td className="px-3 py-2.5" onClick={() => onSelect(rider)}>
+      <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]" onClick={() => onSelect(rider)}>
         <RiderNameCell id={rider.id} firstname={rider.firstname} lastname={rider.lastname} stopPropagation>
           {rider.is_u25 && (
             <span className="text-[9px] uppercase bg-cz-info/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
@@ -302,7 +302,7 @@ export default function RidersPage() {
                   <SortTh sortKey="nationality_code" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-2 py-3 text-left font-medium uppercase tracking-wider w-12 hidden sm:table-cell">{t("table.nation")}</SortTh>
                   <SortTh sortKey="firstname" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium uppercase tracking-wider w-40">{t("table.rider")}</SortTh>
+                    className="px-3 py-3 text-left font-medium uppercase tracking-wider w-40 sticky left-0 z-30 bg-cz-card border-r border-cz-border">{t("table.rider")}</SortTh>
                   <th className="px-1 py-3 w-8" title={t("table.compareTooltip")}>⇄</th>
                   <th className="px-2 py-3 w-8" />
                   <th className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.team")}</th>
