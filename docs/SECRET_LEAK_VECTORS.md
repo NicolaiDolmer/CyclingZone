@@ -41,6 +41,7 @@ Bekræftede store leaks:
 |---|---|---|---|---|
 | 1 | 2026-04-17 → 2026-05-11 | Hardcoded i `setup.py` commit `bc9204d`, line 27 | Supabase service_role JWT (legacy) | [#296](https://github.com/NicolaiDolmer/CyclingZone/issues/296) |
 | 2 | 2026-05-25 (Session B) | `railway variables --json` × 2 i transcript | SENTRY_DSN + SUPABASE_SERVICE_KEY + DISCORD_BOT_TOKEN | [#620](https://github.com/NicolaiDolmer/CyclingZone/issues/620) |
+| 3 | 2026-05-30 | `infisical secrets --plain` i transcript (deny-list-hul: hook matchede kun `list --format json`) | SUPABASE_SERVICE_KEY + TEST_ACCOUNT_PASSWORD | [#634](https://github.com/NicolaiDolmer/CyclingZone/issues/634) follow-up |
 
 Mindre instances (verificeret ved gennemgang af `settings.local.json` allow-list — commands der har været approved og kørt minst én gang):
 
@@ -86,7 +87,7 @@ Anbefaling: #634 ships nu. #563 prioriteres i sprint 18 maj-17 juni som "P1 sikk
 | Vercel env-dump (decrypt) | `vercel env pull .env.production --yes` | Ingen kendt | ALDRIG kør på agent-session. Manuel kun. |
 | Supabase secrets-list | `supabase secrets list` | Ingen kendt | CLI printer aldrig values i list-mode — safe. Men `--format json` printer keys-only ifgl. docs; verificér før brug. |
 | GitHub secrets-list | `gh secret list` | Ingen kendt | Safe — gh secret list printer ALDRIG values (kun navne + opdateringstid). |
-| Infisical secrets-list | `infisical secrets list` | Ingen kendt | `infisical secrets list --format json` printer values per default. Brug `infisical secrets list --raw=false`. |
+| Infisical secrets-dump | `infisical secrets`, `infisical secrets --plain`, `infisical secrets get <KEY>`, `infisical export` | **2026-05-30** — `infisical secrets --plain` printede SUPABASE_SERVICE_KEY + TEST_ACCOUNT_PASSWORD til transcript. Gammel hook-regel matchede kun `list --format json` (deny-list-hul). | ✅ **LUKKET 2026-05-30:** `block-dangerous-secret-commands.{sh,ps1}` blokerer nu **kategorisk** `infisical (secrets\|export)` i alle former (ingen allow-pipe-undtagelse). Kun `infisical run -- <cmd>` (runtime-injection, printer intet) + `infisical login` slipper igennem. Tjek om en key er sat: `infisical run --env=dev -- node backend/scripts/verify-infisical-injection.js` (printer navne/antal, ingen values). |
 
 ### B. Lokal env-file reads
 

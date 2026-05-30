@@ -42,12 +42,15 @@ async function main() {
     process.exit(2);
   }
 
-  const url = process.env.SUPABASE_URL;
-  const anonKey = process.env.SUPABASE_ANON_KEY;
+  // Infisical (env=dev) har anon-key/URL under frontend-prefikset
+  // VITE_SUPABASE_*; fald tilbage til dem så scriptet virker både med en
+  // backend/.env og med `infisical run --env=dev` (#767 follow-up 2026-05-30).
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
   const password = process.env.TEST_ACCOUNT_PASSWORD;
 
   if (!url || !anonKey) {
-    console.error("Mangler SUPABASE_URL eller SUPABASE_ANON_KEY i backend/.env");
+    console.error("Mangler SUPABASE_URL/VITE_SUPABASE_URL eller SUPABASE_ANON_KEY/VITE_SUPABASE_ANON_KEY (backend/.env eller Infisical)");
     process.exit(3);
   }
   if (!password) {
