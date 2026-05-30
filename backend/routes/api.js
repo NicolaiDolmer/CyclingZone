@@ -160,7 +160,8 @@ import {
   buildRaceResultsFromPending,
 } from "../lib/raceResultsEngine.js";
 import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
-import { adminImportUploadSingleFile } from "../lib/adminImportUpload.js";
+import { adminImportUploadSingleFile, adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
+import { getDefaultWebhook, sendWebhook } from "../lib/discordNotifier.js";
 import { checkAchievements } from "../lib/achievementEngine.js";
 import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
@@ -4828,6 +4829,51 @@ router.post("/admin/import-results-sheets", requireAdmin, adminWriteLimiter, asy
     res.status(500).json({ error: err.message });
   }
 });
+
+// POST /api/admin/import-results-pcm — importer PCM-resultatfiler (SpreadsheetML 2003).
+// Multi-fil pr. løb; body.dry_run="true" giver preview uden DB-writes. Felt-navn: "files".
+// GC-timing + hold-alias + eksakt navne-match håndteres i pcmResultsImport-pipelinen.
+router.post(
+  "/admin/import-results-pcm",
+  requireAdmin,
+  adminWriteLimiter,
+  adminImportUploadMultipleFiles,
+  async (req, res) => {
+    const files = (req.files || []).map((f) => ({
+      filename: f.originalname,
+      buffer: f.buffer,
+    }));
+    if (!files.length) {
+      return res.status(400).json({ error: "Ingen filer uploadet" });
+    }
+    const dryRun = req.body?.dry_run === "true" || req.body?.dry_run === true;
+
+    // Detaljeret Discord-notifikation pr. importeret løb (kun ved rigtig import).
+    const notifyDiscord = dryRun
+      ? null
+      : async ({ race, preview, resultRows }) => {
+          const url = await getDefaultWebhook();
+          if (!url) return;
+          const embed = buildPcmImportEmbed({ race, preview, resultRows });
+          await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+        };
+
+    try {
+      const result = await importPcmResults({
+        supabase,
+        files,
+        dryRun,
+        ensureSeasonStandings,
+        updateStandings,
+        notifyDiscord,
+        adminUserId: req.user.id,
+      });
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+);
 
 // GET /api/admin/prize-payout-preview — vis betalte og udestående præmier for en sæson
 router.get("/admin/prize-payout-preview", requireAdmin, async (req, res) => {

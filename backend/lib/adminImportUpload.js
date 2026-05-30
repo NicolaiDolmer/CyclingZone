@@ -31,25 +31,40 @@ export function createAdminImportUpload() {
 
 export const adminImportUpload = createAdminImportUpload();
 
+function handleUploadError(error, res) {
+  if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+    res.status(400).json({
+      error: "File too large",
+      code: "upload_file_too_large",
+      max_file_size_bytes: ADMIN_IMPORT_MAX_FILE_SIZE_BYTES,
+    });
+    return;
+  }
+  res.status(400).json({
+    error: "Invalid upload",
+    code: "upload_invalid",
+  });
+}
+
 export function adminImportUploadSingleFile(req, res, next) {
   adminImportUpload.single("file")(req, res, (error) => {
     if (!error) {
       next();
       return;
     }
+    handleUploadError(error, res);
+  });
+}
 
-    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
-      res.status(400).json({
-        error: "File too large",
-        code: "upload_file_too_large",
-        max_file_size_bytes: ADMIN_IMPORT_MAX_FILE_SIZE_BYTES,
-      });
+// Flere filer pr. løb (PCM-etaper). Felt-navn "files", maks 30 filer.
+export const ADMIN_IMPORT_MAX_FILES = 30;
+
+export function adminImportUploadMultipleFiles(req, res, next) {
+  adminImportUpload.array("files", ADMIN_IMPORT_MAX_FILES)(req, res, (error) => {
+    if (!error) {
+      next();
       return;
     }
-
-    res.status(400).json({
-      error: "Invalid upload",
-      code: "upload_invalid",
-    });
+    handleUploadError(error, res);
   });
 }

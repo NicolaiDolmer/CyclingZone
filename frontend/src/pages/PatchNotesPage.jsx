@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.15",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · PCM-resultatimport (sæson 1)",
+        items: [
+          "EN · Admins can now import race results directly from Pro Cycling Manager export files. For stage races you select all stage files at once — the pipeline orders the stages itself, awards stage-finish points every stage, jersey-leader points on intermediate stages (for holding the leader's jersey that day), and pays out the full general classification, jerseys and team result only on the final stage. One-day races are just one file. Riders are matched to their owner team by exact name (accent-tolerant); team results map through a manually verified PCM→game team-name table. Always dry-run preview first — it shows points, prize money and flags any unmatched riders that would otherwise score. Re-import cleanly replaces a race's results. Player-facing results pages are unchanged; this is an admin import tool.",
+          "DA · Admins kan nu importere løbsresultater direkte fra Pro Cycling Manager-eksportfiler. For etapeløb vælger du alle etape-filer på én gang — pipelinen finder selv etape-rækkefølgen, giver etape-point hver etape, trøje-leder-point på mellemetaper (for at holde førertrøjen den dag), og udbetaler først hele klassementet, trøjerne og holdresultatet på sidste etape. Endagsløb er bare én fil. Ryttere matches til deres ejer-hold på præcist navn (accent-tolerant); holdresultater mappes via en manuelt verificeret PCM→game-holdnavn-tabel. Forhåndsvis altid først — det viser point, præmiepenge og markerer evt. umatchede ryttere der ellers ville score. Re-import erstatter et løbs resultater rent. Spillervendte resultatsider er uændrede; dette er et admin-importværktøj.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.14",
     date: "2026-05-30",
     label: "Beta",

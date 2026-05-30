@@ -27,6 +27,9 @@ export default function AdminDataTab() {
   const [sheetsUrl, setSheetsUrl] = useState("");
   const [sheetsResult, setSheetsResult] = useState(null);
   const [sheetsPreview, setSheetsPreview] = useState(null);
+  const [pcmFiles, setPcmFiles] = useState([]);
+  const [pcmPreview, setPcmPreview] = useState(null);
+  const [pcmResult, setPcmResult] = useState(null);
   const [loading, setLoading] = useState({});
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
@@ -197,6 +200,61 @@ export default function AdminDataTab() {
 
   function handleSheetsCancelPreview() {
     setSheetsPreview(null);
+    showMsg("Forhåndsvisning annulleret", "info");
+  }
+
+  // ── PCM-resultatimport (multi-fil pr. løb, SpreadsheetML 2003) ──────────────
+  async function postPcm({ dryRun }) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      showMsg("❌ Din session er udløbet — log ind igen og prøv på ny", "error");
+      return null;
+    }
+    const formData = new FormData();
+    for (const f of pcmFiles) formData.append("files", f);
+    if (dryRun) formData.append("dry_run", "true");
+    const res = await fetch(`${API}/api/admin/import-results-pcm`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showMsg(`❌ ${data.error}`, "error");
+      return null;
+    }
+    return data;
+  }
+
+  async function handlePcmPreview() {
+    if (!pcmFiles.length) { showMsg("❌ Vælg mindst én PCM-fil", "error"); return; }
+    setLoad("pcm_preview", true);
+    setPcmResult(null);
+    setPcmPreview(null);
+    showMsg("⏳ Henter forhåndsvisning...", "info");
+    const data = await postPcm({ dryRun: true });
+    if (data) {
+      setPcmPreview(data);
+      showMsg(`✅ Forhåndsvisning klar — ${data.races.length} løb matchet, ${data.skipped.length} skipped`);
+    }
+    setLoad("pcm_preview", false);
+  }
+
+  async function handlePcmConfirm() {
+    if (!pcmFiles.length || !pcmPreview) return;
+    setLoad("pcm_import", true);
+    showMsg("⏳ Importerer PCM-resultater...", "info");
+    const data = await postPcm({ dryRun: false });
+    if (data) {
+      setPcmResult(data);
+      setPcmPreview(null);
+      showMsg(`✅ Import fuldført — ${data.rows_written} rækker fra ${data.races.length} løb`);
+    }
+    setLoad("pcm_import", false);
+  }
+
+  function handlePcmCancel() {
+    setPcmPreview(null);
     showMsg("Forhåndsvisning annulleret", "info");
   }
 
@@ -466,6 +524,113 @@ export default function AdminDataTab() {
             </label>
           </div>
         </div>
+      </AdminSection>
+
+      <AdminSection title="Importer PCM-resultater (etape- + endagsløb)">
+        <p className="text-cz-3 text-xs mb-4 leading-relaxed">
+          Upload PCM-eksportfiler (<span className="font-mono text-cz-2">.xls</span>) for ÉT eller flere løb.
+          For etapeløb vælges <strong className="text-cz-1">alle etape-filer samlet</strong> — pipelinen finder selv etape-rækkefølgen
+          og giver kun fuldt klassement på sidste etape (mellemetaper giver trøje-leder-point). Endagsløb = bare 1 fil.
+          Ryttere matches på navn → ejer-hold; hold-resultater matches via PCM-alias.
+          <strong className="text-cz-1"> Forhåndsvis altid før du bekræfter.</strong> Re-import erstatter eksisterende resultater for løbet (idempotent).
+        </p>
+        <div className="flex gap-2 flex-wrap items-end mb-3">
+          <div className="flex-1">
+            <label className="block text-cz-3 text-xs mb-1">PCM-filer (.xls)</label>
+            <input type="file" accept=".xls,.xlsx" multiple
+              onChange={e => { setPcmFiles(Array.from(e.target.files || [])); setPcmPreview(null); setPcmResult(null); }}
+              className="w-full text-cz-2 text-sm file:me-3 file:px-3 file:py-1.5 file:rounded-lg file:border file:border-cz-border file:bg-cz-subtle file:text-cz-2 file:text-xs file:cursor-pointer" />
+          </div>
+          <button onClick={handlePcmPreview} disabled={loading.pcm_preview || loading.pcm_import || !pcmFiles.length}
+            className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50 transition-all">
+            {loading.pcm_preview ? "Henter..." : "Forhåndsvis"}
+          </button>
+        </div>
+        {pcmFiles.length > 0 && (
+          <p className="text-cz-3 text-xs mb-3">{pcmFiles.length} fil(er) valgt: {pcmFiles.map(f => f.name).join(", ")}</p>
+        )}
+
+        {pcmPreview && (
+          <div className="bg-cz-subtle border border-cz-border rounded-lg p-4 text-xs space-y-3 mb-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-cz-1 font-semibold">
+                Forhåndsvisning — {pcmPreview.races.length} løb klar, {pcmPreview.skipped.length} skipped, {pcmPreview.parse_errors.length} parse-fejl
+              </p>
+              <div className="flex gap-2">
+                <button onClick={handlePcmCancel} disabled={loading.pcm_import}
+                  className="px-3 py-1.5 bg-cz-subtle text-cz-3 border border-cz-border rounded-lg text-xs hover:text-cz-1 disabled:opacity-50">
+                  Annullér
+                </button>
+                <button onClick={handlePcmConfirm} disabled={loading.pcm_import || pcmPreview.races.length === 0}
+                  className="px-3 py-1.5 bg-cz-success text-white border border-cz-success rounded-lg text-xs hover:opacity-90 disabled:opacity-50">
+                  {loading.pcm_import ? "Importerer..." : "Bekræft import"}
+                </button>
+              </div>
+            </div>
+
+            {pcmPreview.skipped.length > 0 && (
+              <div className="bg-cz-accent-t-bg border border-cz-accent-t/30 rounded p-2">
+                <p className="text-cz-accent-t font-semibold mb-1">Skipped løb ({pcmPreview.skipped.length}) — match ikke fundet i DB:</p>
+                <p className="text-cz-2">{pcmPreview.skipped.map(s => `${s.race_name} (${s.reason})`).join(", ")}</p>
+              </div>
+            )}
+            {pcmPreview.parse_errors.length > 0 && (
+              <div className="bg-cz-danger-bg border border-cz-danger/30 rounded p-2">
+                <p className="text-cz-danger font-semibold mb-1">Parse-fejl ({pcmPreview.parse_errors.length}):</p>
+                <p className="text-cz-2">{pcmPreview.parse_errors.map(e => `${e.filename}: ${e.error}`).join(", ")}</p>
+              </div>
+            )}
+
+            {pcmPreview.races.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-cz-3 border-b border-cz-border">
+                      <th className="text-left py-1 px-2">PCM-navn</th>
+                      <th className="text-left py-1 px-2">DB-navn</th>
+                      <th className="text-left py-1 px-2">Type</th>
+                      <th className="text-right py-1 px-2">Etaper</th>
+                      <th className="text-right py-1 px-2">Rækker</th>
+                      <th className="text-right py-1 px-2">Umatch. scorende ⚠</th>
+                      <th className="text-right py-1 px-2">Total points</th>
+                      <th className="text-right py-1 px-2">Præmie (CZ$)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pcmPreview.races.map((p, i) => (
+                      <tr key={i} className="border-b border-cz-border/50 align-top">
+                        <td className="py-1 px-2 text-cz-1">{p.pcm_race_name}</td>
+                        <td className="py-1 px-2 text-cz-2">{p.db_race_name}</td>
+                        <td className="py-1 px-2 text-cz-2">{p.race_type === "stage_race" ? "Etapeløb" : "Endagsløb"}{p.has_final_stage ? "" : " (uafsluttet)"}</td>
+                        <td className="py-1 px-2 text-cz-2 text-right">{p.stages_seen.join(", ") || "1"}</td>
+                        <td className="py-1 px-2 text-cz-1 text-right">{p.rows}</td>
+                        <td className="py-1 px-2 text-right" title={p.unmatched_scoring_names.join(", ")}>
+                          <span className={p.unmatched_scoring > 0 ? "text-cz-accent-t font-semibold" : "text-cz-3"}>
+                            {p.unmatched_scoring}
+                          </span>
+                        </td>
+                        <td className="py-1 px-2 text-cz-1 text-right">{p.total_points.toLocaleString("da-DK")}</td>
+                        <td className="py-1 px-2 text-cz-1 text-right">{p.total_prize.toLocaleString("da-DK")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="text-cz-3 text-xs mt-2 italic">Hover over ⚠-tal for at se navne på umatchede ryttere der ellers ville score point.</p>
+              </div>
+            ) : (
+              <p className="text-cz-accent-t">Ingen løb klar til import — alle blev skipped.</p>
+            )}
+          </div>
+        )}
+
+        {pcmResult && (
+          <div className="bg-cz-success-bg border border-cz-success/30 rounded-lg px-4 py-3 text-xs space-y-2">
+            <p className="text-cz-success font-semibold">Import fuldført — {pcmResult.rows_written} rækker skrevet fra {pcmResult.races.length} løb (sæson {pcmResult.season})</p>
+            {pcmResult.skipped.length > 0 && (
+              <p className="text-cz-accent-t">Skipped ({pcmResult.skipped.length}): {pcmResult.skipped.map(s => s.race_name).join(", ")}</p>
+            )}
+          </div>
+        )}
       </AdminSection>
 
       <AdminSection title="Importer løbsresultater fra Google Sheets">

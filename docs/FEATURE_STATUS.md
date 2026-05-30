@@ -94,6 +94,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 ### Sæson & Løb
 - Sæsonoversigt med race-kalender
 - Løbsresultater-import (xlsx) og approve via delt backend result-path
+- PCM-resultatimport (`/admin/import-results-pcm`, v4.15/#668): parser PCM SpreadsheetML-2003-eksport direkte med `fast-xml-parser` (exceljs kan ikke læse formatet); multi-fil pr. løb med automatisk etape-rækkefølge + GC-timing (fuldt klassement + trøjer + hold kun på sidste etape; trøje-leder-point på mellemetaper); eksakt rytternavn-match med accent-fold til ejer-hold (ikke den usikre lastname-substring); PCM→game holdnavn-alias (`pcmTeamAliases.js`, manuelt verificeret sæson 1); dry-run-preview med umatchede-scorende-flag + idempotent re-import (slet→insert pr. løb); detaljeret Discord-notifikation pr. resultat-type. Genbruger `applyRaceResults` + `buildRacePointsLookup` + `updateStandings` + point×1500
 - Google Sheets-resultatimport matcher løbsnavne robust på accenter, tegnsætning og kendte kalenderaliaser
 - Google Sheets-resultatimport er idempotent for prize finance: gamle prize-transaktioner for samme løb reverseres før re-import
 - Adminens `race_points`-editor bruger moderne herre-UCI-klasser og seedede UCI-point for klassement, klassikere, etaper, pointtrøje, bjergtrøje og førertrøje
