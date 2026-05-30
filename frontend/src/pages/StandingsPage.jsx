@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, Fragment } from "react";
 import { supabase } from "../lib/supabase";
+import { fetchAllRows } from "../lib/supabasePagination";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import TeamLink from "../components/TeamLink";
@@ -73,10 +74,12 @@ export default function StandingsPage() {
 
     // Build race-by-race point progression
     if (racesRes.data?.length && merged.length) {
-      const { data: results } = await supabase
+      // Paginér: PostgREST capper ved 1000 → ellers undertæller progression-grafen.
+      const results = await fetchAllRows(() => supabase
         .from("race_results")
         .select("rider:rider_id(team_id), prize_money, race_id")
-        .in("race_id", racesRes.data.map(r => r.id));
+        .in("race_id", racesRes.data.map(r => r.id))
+        .order("id", { ascending: true }));
 
       const prog = {};
       const cumul = {};
