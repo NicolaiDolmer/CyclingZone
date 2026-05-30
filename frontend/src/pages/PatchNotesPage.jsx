@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.20",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Season · Season progress now counts completed race days",
+        items: [
+          "EN · Season progress now reflects how many race days have actually been ridden. The counter was never advanced when results were imported, so it stayed at 0 even after races were finalized — and the board's plan-negotiation reminders, which key off that counter, never fired. It is now recomputed from the completed races (a one-day race counts 1 day, a stage race counts its stages) every time results are imported, and Season 1 has been backfilled. Refs #804.",
+          "DA · Sæson-fremgangen afspejler nu hvor mange løbsdage der faktisk er kørt. Tælleren blev aldrig talt op når resultater blev importeret, så den blev stående på 0 selv efter løb var afviklet — og bestyrelsens påmindelser om planforhandling, der bygger på den tæller, blev derfor aldrig udløst. Den genberegnes nu ud fra de afviklede løb (et endagsløb tæller 1 dag, et etapeløb tæller sine etaper) hver gang resultater importeres, og Sæson 1 er rettet med tilbagevirkende kraft. Refs #804.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.19",
     date: "2026-05-30",
     label: "Beta",

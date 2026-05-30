@@ -40,6 +40,7 @@ import {
 import { parsePcmWorkbook, headerIndex } from "./pcmResultsParser.js";
 import { resolvePcmTeamName, PCM_TEAMS_WITHOUT_OWNER } from "./pcmTeamAliases.js";
 import { buildRiderMatcher, buildTeamMatcher } from "./pcmRiderMatcher.js";
+import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 
 // Normalisér løbsnavn til match mod DB-`races`.name. Folder accenter, sænker,
 // erstatter tegnsætning med mellemrum. "Hauts-de-France" == "Hauts de France".
@@ -484,6 +485,10 @@ export async function importPcmResults({
   }
 
   if (!dryRun) {
+    // #804 — opdatér seasons.race_days_completed nu hvor løb er sat completed.
+    // Recompute (ikke increment) → idempotent ved re-import.
+    await recomputeSeasonRaceDays({ supabase, seasonId: season.id });
+
     await supabase.from("import_log").insert({
       import_type: "race_results_pcm",
       rows_processed: files.length,

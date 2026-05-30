@@ -19,6 +19,10 @@ function createSheetSyncSupabase({ raceResultDeletes, raceUpdates, importLogs, p
               },
             };
           },
+          // #804 — recomputeSeasonRaceDays opdaterer race_days_completed efter import.
+          update() {
+            return { eq() { return Promise.resolve({ error: null }); } };
+          },
         };
       }
 
@@ -28,7 +32,7 @@ function createSheetSyncSupabase({ raceResultDeletes, raceUpdates, importLogs, p
             return {
               eq() {
                 return Promise.resolve({
-                  data: [{ id: "race-1", name: "Test Race", race_class: "WT", race_type: "stage_race" }],
+                  data: [{ id: "race-1", name: "Test Race", race_class: "WT", race_type: "stage_race", stages: 1, status: "completed" }],
                   error: null,
                 });
               },
