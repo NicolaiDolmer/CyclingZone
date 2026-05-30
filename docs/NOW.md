@@ -6,11 +6,11 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** Vælg næste session: **[#770](https://github.com/NicolaiDolmer/CyclingZone/issues/770)** PCM rytter-alias (forebyggende, a/b-beslutning i issue) · **[#767](https://github.com/NicolaiDolmer/CyclingZone/issues/767)** test-login i preview (afblokerer pre-merge-verify) · eller roadmap (2) backlog-nedbringning.
+> **🎯 Next action:** **[#770](https://github.com/NicolaiDolmer/CyclingZone/issues/770)** PCM rytter-alias ✅ bygget (PR [#771](https://github.com/NicolaiDolmer/CyclingZone/pull/771), alle checks grønne, `backend-only`, afventer merge). Vælg næste: **[#767](https://github.com/NicolaiDolmer/CyclingZone/issues/767)** test-login i preview (afblokerer pre-merge-verify) · eller roadmap (2) backlog-nedbringning.
 >
 > **🗓️ Session-roadmap (brugerens plan 30. maj):** (1) #668 ✅ merged + live · (2) **backlog-nedbringnings-session** — kom til bunds i de mange åbne opgaver, få dem lavet + fulgt op på ALLE, så de ikke hober sig op · (3) derefter: workflow-professionalisering — sessioner der gør os mere optimale/professionelle · (4) bagefter løbende: prioritér de mest værdiskabende opgaver der sikrer fremdrift, så spillet snart kan **testes + lanceres**.
 >
-> **#668 follow-ups (opstået 30. maj):** **[#770](https://github.com/NicolaiDolmer/CyclingZone/issues/770)** rytter-alias (0 huller i testfiler — byg når live-import viser ⚠, eller forebyggende ø/æ/å-fix) · **[#767](https://github.com/NicolaiDolmer/CyclingZone/issues/767)** kunne logge ind i preview/test-version.
+> **#668 follow-ups (opstået 30. maj):** **[#770](https://github.com/NicolaiDolmer/CyclingZone/issues/770)** rytter-alias ✅ (PR [#771](https://github.com/NicolaiDolmer/CyclingZone/pull/771): tom alias-tabel + nordisk-fold ø/æ/å, udvides fra live-importens ⚠-kolonne) · **[#767](https://github.com/NicolaiDolmer/CyclingZone/issues/767)** kunne logge ind i preview/test-version.
 >
 > **Verify-kø (#627, baggrund — kræver DIN hånd):** **#505** race_points editor kode-verificeret → mangler 60-sek admin-klik i prod · **#449** Discord-DM: rotér webhooks + verificér `DISCORD_BOT_TOKEN` på Railway · **#563** OneDrive secret-decommission `needs-decision` · **#327** secret mgmt Phase 2 `manual:user`.
 
