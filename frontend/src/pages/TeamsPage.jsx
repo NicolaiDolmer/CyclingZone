@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
-const DIV_NAMES  = { 1: "Division 1", 2: "Division 2", 3: "Division 3" };
 
 export default function TeamsPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation("team");
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [myTeamId, setMyTeamId] = useState(null);
@@ -76,13 +77,13 @@ export default function TeamsPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-cz-1">Hold</h1>
-        <p className="text-cz-3 text-sm">{teams.length} managere</p>
+        <h1 className="text-xl font-bold text-cz-1">{t("list.title")}</h1>
+        <p className="text-cz-3 text-sm">{t("list.managerCount", { count: teams.length })}</p>
       </div>
 
       {/* Filters */}
       <div className="flex gap-2 mb-5 flex-wrap">
-        <input type="text" placeholder="Søg hold..." value={search}
+        <input type="text" placeholder={t("list.searchPlaceholder")} value={search}
           onChange={e => setSearch(e.target.value)}
           className="bg-cz-card border border-cz-border rounded-lg px-3 py-2
             text-cz-1 text-sm placeholder-cz-3 w-48
@@ -93,7 +94,7 @@ export default function TeamsPage() {
               ${divFilter === d
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40"
                 : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}>
-            {d === "all" ? "Alle" : `Div ${d}`}
+            {d === "all" ? t("list.filterAll") : t("list.divisionShort", { n: d })}
           </button>
         ))}
       </div>
@@ -108,9 +109,9 @@ export default function TeamsPage() {
               <div className="w-2 h-2 rounded-full" style={{ background: DIV_COLORS[div] }} />
               <span className="text-xs uppercase tracking-widest font-medium"
                 style={{ color: DIV_COLORS[div] }}>
-                {DIV_NAMES[div]}
+                {t("list.divisionName", { n: div })}
               </span>
-              <span className="text-cz-3 text-xs">— {divTeams.length} hold</span>
+              <span className="text-cz-3 text-xs">— {t("list.teamsCount", { count: divTeams.length })}</span>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               {divTeams.map(team => {
@@ -136,7 +137,7 @@ export default function TeamsPage() {
                           </p>
                           {isMe && (
                             <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t
-                              px-1.5 py-0.5 rounded-full border border-cz-accent/30">Dig</span>
+                              px-1.5 py-0.5 rounded-full border border-cz-accent/30">{t("list.youBadge")}</span>
                           )}
                         </div>
                         {team.manager_name && (
@@ -144,7 +145,7 @@ export default function TeamsPage() {
                         )}
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOnline ? "bg-green-400 shadow-[0_0_4px_rgba(74,222,128,0.8)]" : "bg-cz-subtle"}`} />
-                          <p className="text-cz-3 text-xs">{riderCount} ryttere</p>
+                          <p className="text-cz-3 text-xs">{t("list.ridersCount", { count: riderCount })}</p>
                         </div>
                       </div>
             
@@ -153,19 +154,19 @@ export default function TeamsPage() {
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-2">
                       <div className="bg-cz-subtle rounded-lg p-2 text-center">
-                        <p className="text-cz-3 text-[9px] uppercase tracking-wider">Point</p>
+                        <p className="text-cz-3 text-[9px] uppercase tracking-wider">{t("list.statPoints")}</p>
                         <p className="text-cz-1 font-mono font-bold text-xs mt-0.5">
                           {formatNumber(standing?.total_points) || 0}
                         </p>
                       </div>
                       <div className="bg-cz-subtle rounded-lg p-2 text-center">
-                        <p className="text-cz-3 text-[9px] uppercase tracking-wider">Etapesejre</p>
+                        <p className="text-cz-3 text-[9px] uppercase tracking-wider">{t("list.statStageWins")}</p>
                         <p className="text-cz-1 font-mono font-bold text-xs mt-0.5">
                           {standing?.stage_wins || 0}
                         </p>
                       </div>
                       <div className="bg-cz-subtle rounded-lg p-2 text-center">
-                        <p className="text-cz-3 text-[9px] uppercase tracking-wider">GC-sejre</p>
+                        <p className="text-cz-3 text-[9px] uppercase tracking-wider">{t("list.statGcWins")}</p>
                         <p className="text-cz-1 font-mono font-bold text-xs mt-0.5">
                           {standing?.gc_wins || 0}
                         </p>
@@ -182,7 +183,7 @@ export default function TeamsPage() {
       {filtered.length === 0 && (
         <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">◈</p>
-          <p>Ingen hold matcher din søgning</p>
+          <p>{t("list.noMatch")}</p>
         </div>
       )}
     </div>

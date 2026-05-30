@@ -1,29 +1,32 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { fetchAllRows } from "../lib/supabasePagination";
 import { useNavigate } from "react-router-dom";
-import RiderLink from "../components/RiderLink";
+import { useTranslation } from "react-i18next";
 import TeamLink from "../components/TeamLink";
-import { Flag } from "../components/Flag";
+import NationCell from "../components/rider/NationCell";
+import RiderNameCell from "../components/rider/RiderNameCell";
 import { formatNumber } from "../lib/intl";
 
 const SORT_COLS = [
-  { key: "points",      label: "Point",              shortLabel: "Pt" },
-  { key: "total_wins",  label: "Samlede sejre",       shortLabel: "Sejre" },
-  { key: "stage_wins",  label: "Etapesejre",          shortLabel: "Etape" },
-  { key: "gc_wins",     label: "GC-sejre",            shortLabel: "GC" },
-  { key: "pts_wins",    label: "Pointklassement",     shortLabel: "PKL" },
-  { key: "mtn_wins",    label: "Bjergklassement",     shortLabel: "Bjerg" },
-  { key: "young_wins",  label: "Ungdomsklassement",   shortLabel: "U25" },
+  { key: "points",      labelKey: "rankings.colPoints",     shortKey: "rankings.shortPoints" },
+  { key: "total_wins",  labelKey: "rankings.colTotalWins",  shortKey: "rankings.shortTotalWins" },
+  { key: "stage_wins",  labelKey: "rankings.colStageWins",  shortKey: "rankings.shortStageWins" },
+  { key: "gc_wins",     labelKey: "rankings.colGcWins",     shortKey: "rankings.shortGcWins" },
+  { key: "pts_wins",    labelKey: "rankings.colPtsWins",    shortKey: "rankings.shortPtsWins" },
+  { key: "mtn_wins",    labelKey: "rankings.colMtnWins",    shortKey: "rankings.shortMtnWins" },
+  { key: "young_wins",  labelKey: "rankings.colYoungWins",  shortKey: "rankings.shortYoungWins" },
 ];
 
 const OWNER_FILTERS = [
-  { key: "all",     label: "Alle" },
-  { key: "manager", label: "Manager-ejede" },
-  { key: "ai",      label: "AI-ejede" },
+  { key: "all",     labelKey: "rankings.ownerAll" },
+  { key: "manager", labelKey: "rankings.ownerManager" },
+  { key: "ai",      labelKey: "rankings.ownerAi" },
 ];
 
 export default function RiderRankingsPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation("riders");
   const [riders, setRiders] = useState([]);
   const [season, setSeason] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,12 +48,14 @@ export default function RiderRankingsPage() {
     if (!racesData?.length) { setLoading(false); return; }
 
     const raceIds = racesData.map(r => r.id);
-    const { data: results } = await supabase
+    // Paginér: PostgREST capper ved 1000 (også .range(0,9999)) → ellers
+    // underberegnes ranglisten for sæsoner med >1000 resultatrækker.
+    const results = await fetchAllRows(() => supabase
       .from("race_results")
       .select("rider_id, result_type, rank, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, is_u25, is_retired, team:team_id(id, name, is_ai))")
       .in("race_id", raceIds)
       .not("rider_id", "is", null)
-      .range(0, 9999);
+      .order("id", { ascending: true }));
 
     const agg = {};
     (results || []).forEach(r => {
@@ -117,15 +122,15 @@ export default function RiderRankingsPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-cz-1">Rytterrangliste</h1>
+          <h1 className="text-xl font-bold text-cz-1">{t("rankings.title")}</h1>
           <p className="text-cz-3 text-sm">
-            {season ? `Sæson ${season.number}` : "Ingen aktiv sæson"}
-            {filtered.length > 0 && ` · ${filtered.length} ryttere`}
+            {season ? t("rankings.season", { n: season.number }) : t("rankings.noActiveSeason")}
+            {filtered.length > 0 && ` · ${t("rankings.ridersCount", { count: filtered.length })}`}
           </p>
         </div>
         <input
           type="text"
-          placeholder="Søg rytternavn…"
+          placeholder={t("rankings.searchPlaceholder")}
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="px-3 py-2 text-sm border border-cz-border rounded-lg bg-cz-subtle text-cz-1 placeholder-cz-3 focus:outline-none focus:ring-1 focus:ring-cz-accent w-48"
@@ -140,7 +145,7 @@ export default function RiderRankingsPage() {
               ${ownerFilter === f.key
                 ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t"
                 : "bg-cz-card border-cz-border text-cz-2 hover:text-cz-1"}`}>
-            {f.label}
+            {t(f.labelKey)}
           </button>
         ))}
       </div>
@@ -148,12 +153,12 @@ export default function RiderRankingsPage() {
       {!season ? (
         <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">◉</p>
-          <p>Ingen aktiv sæson</p>
+          <p>{t("rankings.noActiveSeason")}</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">◉</p>
-          <p>Ingen resultater fundet{search && ` for "${search}"`}</p>
+          <p>{search ? t("rankings.noResultsFor", { q: search }) : t("rankings.noResults")}</p>
         </div>
       ) : (
         <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
@@ -162,15 +167,16 @@ export default function RiderRankingsPage() {
               <thead>
                 <tr className="border-b border-cz-border bg-cz-subtle">
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 w-8">#</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 min-w-[160px]">Rytter</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden md:table-cell">Hold</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-cz-3 hidden sm:table-cell">{t("rankings.thNation")}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 min-w-[120px]">{t("rankings.thRider")}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden md:table-cell">{t("rankings.thTeam")}</th>
                   {SORT_COLS.map(col => (
                     <th key={col.key}
                       onClick={() => handleSort(col.key)}
                       className={`px-3 py-3 text-right text-xs font-medium cursor-pointer hover:text-cz-1 select-none transition-colors whitespace-nowrap
                         ${sortKey === col.key ? "text-cz-accent-t" : "text-cz-3"}`}>
-                      <span className="hidden lg:inline">{col.label}</span>
-                      <span className="lg:hidden">{col.shortLabel}</span>
+                      <span className="hidden lg:inline">{t(col.labelKey)}</span>
+                      <span className="lg:hidden">{t(col.shortKey)}</span>
                       {sortKey === col.key && (
                         <span className="ms-1">{sortAsc ? "↑" : "↓"}</span>
                       )}
@@ -189,15 +195,12 @@ export default function RiderRankingsPage() {
                         {i + 1}
                       </span>
                     </td>
+                    <td className="px-2 py-3 hidden sm:table-cell">
+                      <NationCell code={rider.nationality_code} />
+                    </td>
                     <td className="px-3 py-3">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {rider.nationality_code && (
-                          <Flag code={rider.nationality_code} className="flex-shrink-0" />
-                        )}
-                        <RiderLink id={rider.id} stopPropagation
-                          className="font-medium text-cz-1 hover:text-cz-accent-t transition-colors">
-                          {rider.firstname} {rider.lastname}
-                        </RiderLink>
+                      <RiderNameCell id={rider.id} firstname={rider.firstname} lastname={rider.lastname} stopPropagation
+                        className="font-medium text-cz-1 hover:text-cz-accent-t transition-colors">
                         {rider.is_u25 && (
                           <span className="text-[9px] uppercase bg-cz-info-bg text-blue-600 border border-cz-info/30 px-1 py-0.5 rounded hidden sm:inline flex-shrink-0">
                             U25
@@ -208,10 +211,10 @@ export default function RiderRankingsPage() {
                             AI
                           </span>
                         )}
-                      </div>
+                      </RiderNameCell>
                     </td>
                     <td className="px-3 py-3 text-xs hidden md:table-cell">
-                      <TeamLink id={rider.team?.id} stopPropagation className="text-cz-2 hover:text-cz-accent-t transition-colors">{rider.team?.name || "Fri agent"}</TeamLink>
+                      <TeamLink id={rider.team?.id} stopPropagation className="text-cz-2 hover:text-cz-accent-t transition-colors">{rider.team?.name || t("rankings.teamFree")}</TeamLink>
                     </td>
                     {/* Point — bold, sorted col highlighted */}
                     <td className={`px-3 py-3 text-right font-mono font-bold
@@ -232,12 +235,12 @@ export default function RiderRankingsPage() {
 
           {/* Legend */}
           <div className="px-4 py-3 border-t border-cz-border flex items-center gap-4 flex-wrap text-xs text-cz-3">
-            <span>Etape = etapesejre</span>
-            <span>GC = klassementssejre</span>
-            <span>PKL = pointklassement</span>
-            <span>Bjerg = bjergklassement</span>
-            <span>U25 = ungdomsklassement</span>
-            <span className="ms-auto">Klik kolonne for at sortere</span>
+            <span>{t("rankings.legendStage")}</span>
+            <span>{t("rankings.legendGc")}</span>
+            <span>{t("rankings.legendPcl")}</span>
+            <span>{t("rankings.legendMtn")}</span>
+            <span>{t("rankings.legendU25")}</span>
+            <span className="ms-auto">{t("rankings.legendSort")}</span>
           </div>
         </div>
       )}

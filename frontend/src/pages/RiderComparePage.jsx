@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
@@ -8,24 +9,26 @@ import PotentialeStars from "../components/PotentialeStars";
 
 const MAX_COMPARE = 3;
 
+// Skill labels reuse the shared rider:skills.{slug}.long translations (same as RiderStatsPage).
 const STATS = [
-  { key: "stat_fl",  label: "Flad",             icon: "═" },
-  { key: "stat_bj",  label: "Bjerg",            icon: "▲" },
-  { key: "stat_kb",  label: "Mellembjerg",       icon: "△" },
-  { key: "stat_bk",  label: "Bakke",            icon: "∧" },
-  { key: "stat_tt",  label: "Enkeltstart",       icon: "⏱" },
-  { key: "stat_prl", label: "Prolog",            icon: "◷" },
-  { key: "stat_bro", label: "Brosten",           icon: "⬡" },
-  { key: "stat_sp",  label: "Sprint",            icon: "⚡" },
-  { key: "stat_acc", label: "Acceleration",      icon: "▶" },
-  { key: "stat_ned", label: "Nedkørsel",         icon: "↓" },
-  { key: "stat_udh", label: "Udholdenhed",       icon: "◎" },
-  { key: "stat_mod", label: "Modstandsdygtighed",icon: "◈" },
-  { key: "stat_res", label: "Restituering",      icon: "↺" },
-  { key: "stat_ftr", label: "Fighter",           icon: "★" },
+  { key: "stat_fl",  slug: "fl",  icon: "═" },
+  { key: "stat_bj",  slug: "bj",  icon: "▲" },
+  { key: "stat_kb",  slug: "kb",  icon: "△" },
+  { key: "stat_bk",  slug: "bk",  icon: "∧" },
+  { key: "stat_tt",  slug: "tt",  icon: "⏱" },
+  { key: "stat_prl", slug: "prl", icon: "◷" },
+  { key: "stat_bro", slug: "bro", icon: "⬡" },
+  { key: "stat_sp",  slug: "sp",  icon: "⚡" },
+  { key: "stat_acc", slug: "acc", icon: "▶" },
+  { key: "stat_ned", slug: "ned", icon: "↓" },
+  { key: "stat_udh", slug: "udh", icon: "◎" },
+  { key: "stat_mod", slug: "mod", icon: "◈" },
+  { key: "stat_res", slug: "res", icon: "↺" },
+  { key: "stat_ftr", slug: "ftr", icon: "★" },
 ];
 
 function RiderSearch({ onSelect, excluded }) {
+  const { t } = useTranslation("rider");
   const [q, setQ] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -53,7 +56,7 @@ function RiderSearch({ onSelect, excluded }) {
         type="text"
         value={q}
         onChange={e => setQ(e.target.value)}
-        placeholder="Søg rytter at tilføje..."
+        placeholder={t("compare.searchPlaceholder")}
         className="w-full bg-cz-subtle border border-cz-border rounded-lg px-4 py-2.5
           text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent"
       />
@@ -61,7 +64,7 @@ function RiderSearch({ onSelect, excluded }) {
         <div className="absolute top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border
           rounded-xl shadow-2xl z-20 overflow-hidden">
           {loading ? (
-            <div className="p-3 text-center text-cz-3 text-sm">Søger...</div>
+            <div className="p-3 text-center text-cz-3 text-sm">{t("compare.searching")}</div>
           ) : (
             results.map(r => (
               <div key={r.id}
@@ -70,7 +73,7 @@ function RiderSearch({ onSelect, excluded }) {
                 onClick={() => { onSelect(r); setQ(""); setResults([]); }}>
                 <div>
                   <p className="text-cz-1 text-sm font-medium">{r.firstname} {r.lastname}</p>
-                  <p className="text-cz-3 text-xs">{r.team?.name || "Fri agent"}</p>
+                  <p className="text-cz-3 text-xs">{r.team?.name || t("compare.teamFree")}</p>
                 </div>
                 <span className="text-cz-accent-t font-mono text-xs">
                   {formatCz(getRiderMarketValue(r))}
@@ -85,6 +88,7 @@ function RiderSearch({ onSelect, excluded }) {
 }
 
 export default function RiderComparePage() {
+  const { t } = useTranslation("rider");
   const [searchParams, setSearchParams] = useSearchParams();
   const [fullRiders, setFullRiders] = useState([]);
   const initialIdsRef = useRef(searchParams.get("ids") || "");
@@ -146,8 +150,8 @@ export default function RiderComparePage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-cz-1">Sammenlign Ryttere</h1>
-        <p className="text-cz-3 text-sm">Tilføj op til 3 ryttere for at sammenligne stats</p>
+        <h1 className="text-xl font-bold text-cz-1">{t("compare.title")}</h1>
+        <p className="text-cz-3 text-sm">{t("compare.subtitle")}</p>
       </div>
 
       {/* Search */}
@@ -160,7 +164,7 @@ export default function RiderComparePage() {
       {fullRiders.length === 0 ? (
         <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">◈</p>
-          <p>Søg efter en rytter ovenfor for at starte sammenligning</p>
+          <p>{t("compare.empty")}</p>
         </div>
       ) : (
         <>
@@ -177,7 +181,7 @@ export default function RiderComparePage() {
                   className="font-bold text-cz-1 text-sm cursor-pointer hover:text-cz-accent-t block">
                   {r.nationality_code && <Flag code={r.nationality_code} className="me-1" />}{r.firstname} {r.lastname}
                 </RiderLink>
-                <p className="text-cz-3 text-xs mt-1">{r.team?.name || "Fri agent"}</p>
+                <p className="text-cz-3 text-xs mt-1">{r.team?.name || t("compare.teamFree")}</p>
                 <p className="font-mono font-bold mt-2 text-sm" style={{ color: COLORS[i] }}>
                   {formatCz(getRiderMarketValue(r))}
                 </p>
@@ -197,7 +201,7 @@ export default function RiderComparePage() {
                 style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
                 <div className="flex items-center gap-2">
                   <span className="text-cz-3 w-4 text-center">◆</span>
-                  <span className="text-cz-2 text-sm font-medium">Potentiale</span>
+                  <span className="text-cz-2 text-sm font-medium">{t("compare.potential")}</span>
                 </div>
                 {fullRiders.map(r => (
                   <div key={r.id} className="px-2">
@@ -215,7 +219,7 @@ export default function RiderComparePage() {
                   style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
                   <div className="flex items-center gap-2">
                     <span className="text-cz-3 w-4 text-center">{stat.icon}</span>
-                    <span className="text-cz-2 text-sm">{stat.label}</span>
+                    <span className="text-cz-2 text-sm">{t(`skills.${stat.slug}.long`)}</span>
                   </div>
                   {fullRiders.map((r, i) => {
                     const val = r[stat.key];

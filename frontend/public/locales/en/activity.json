@@ -1,0 +1,89 @@
+{
+  "header": {
+    "title": "My Activity",
+    "subtitle": "Your market actions in one place"
+  },
+  "lastUpdated": "Last updated {time}",
+  "refresh": "Refresh",
+  "refreshing": "Refreshing...",
+  "refreshTitle": "Refresh data",
+  "countdown": {
+    "ended": "Ended"
+  },
+  "tabs": {
+    "action": "Needs action",
+    "transfers": "Transfers",
+    "loans": "Loans",
+    "history": "History"
+  },
+  "offerStatus": {
+    "pending": "Awaiting response",
+    "countered": "Counter received",
+    "awaiting_confirmation": "Confirm deal",
+    "window_pending": "Agreed — awaiting window",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "withdrawn": "Withdrawn"
+  },
+  "loanStatus": {
+    "pending": "Pending",
+    "active": "Active",
+    "completed": "Completed",
+    "rejected": "Rejected",
+    "cancelled": "Cancelled",
+    "buyout": "Bought out"
+  },
+  "badge": {
+    "seller": "Seller",
+    "winner": "Winner",
+    "bidder": "Bidder",
+    "loanProposal": "Loan offer",
+    "bought": "Bought",
+    "sold": "Sold",
+    "noBids": "No bids",
+    "lost": "Lost",
+    "inAuction": "In auction"
+  },
+  "section": {
+    "offersNeedResponse": "Offers awaiting your response",
+    "loanProposals": "Loan offers awaiting your response",
+    "auctionsEndingSoon": "Auctions ending within 1 hour",
+    "activeAuctions": "Active auctions",
+    "receivedOffers": "Received offers",
+    "sentOffers": "Sent offers",
+    "iLend": "I'm lending out",
+    "iBorrow": "I'm borrowing",
+    "auctions": "Auctions",
+    "transfers": "Transfers",
+    "loans": "Loans"
+  },
+  "empty": {
+    "actionTitle": "Nothing needs your action",
+    "actionSub": "You're up to date on all offers and deals",
+    "auctionsTitle": "No active auctions",
+    "auctionsSub": "You're not bidding on any auctions and selling nothing",
+    "transfersTitle": "No active transfers",
+    "transfersSub": "Offers you send or receive show up here",
+    "loansTitle": "No active loan agreements",
+    "loansSub": "Loan agreements you make show up here",
+    "watchlistTitle": "Your watchlist is empty",
+    "watchlistSub": "Add riders from the rider database by clicking ⭐",
+    "historyTitle": "No history yet",
+    "historySub": "Completed deals show up here"
+  },
+  "detail": {
+    "to": "To: {name}",
+    "from": "From: {name}",
+    "season": "Season {start}–{end}",
+    "highestBidder": "Highest bidder: {name}",
+    "noBidsYet": "No bids yet",
+    "leader": "Leader: {name}",
+    "noLeaderYet": "No leader yet",
+    "loanedTo": "Loaned to: {name}",
+    "loanedFrom": "Loaned from: {name}"
+  },
+  "watchlist": {
+    "goToFull": "Go to full watchlist →",
+    "freeAgent": "Free agent"
+  }
+}

@@ -1,11 +1,12 @@
 ﻿import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
-import RiderLink from "../components/RiderLink";
+import NationCell from "../components/rider/NationCell";
+import RiderNameCell from "../components/rider/RiderNameCell";
 import { statBg } from "../lib/statBg";
-import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
 import PotentialeStars from "../components/PotentialeStars";
@@ -30,6 +31,7 @@ const PAGE_SIZE = 50;
 
 export default function WatchlistPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation("watchlist");
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
@@ -91,8 +93,13 @@ export default function WatchlistPage() {
       if (warning) {
         const fine = warning.finePerRider * warning.exceedBy;
         const points = warning.penaltyPointsPerRider * warning.exceedBy;
-        alert(`Auktion startet.\n\nOBS: leder nu auktioner svarende til ${warning.totalAfter} ryttere (max ${warning.maxRiders}). ` +
-          `Hvis du stadig er ${warning.exceedBy} over ved vindue-luk: auto-salg + ${formatNumber(fine)} CZ$ bøde + ${points} fradrag-points.`);
+        alert(t("auctionStarted", {
+          total: warning.totalAfter,
+          max: warning.maxRiders,
+          exceed: warning.exceedBy,
+          fine: formatNumber(fine),
+          points,
+        }));
       }
       navigate("/auctions");
     } else { const d = await res.json(); alert(d.error); }
@@ -131,26 +138,26 @@ export default function WatchlistPage() {
     <div className="max-w-full">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-cz-1">Talentspejder</h1>
+          <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
           <p className="text-cz-3 text-sm">
-            {entries.length} ryttere på din ønskeliste — kun synlig for dig
+            {t("subtitle", { count: entries.length })}
           </p>
         </div>
         <button onClick={() => navigate("/riders")}
           className="px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
             rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
-          + Tilføj ryttere
+          {t("addRiders")}
         </button>
       </div>
 
       {entries.length === 0 ? (
         <div className="text-center py-20 text-cz-3">
           <p className="text-5xl mb-4">⭐</p>
-          <p className="text-lg font-medium text-cz-3">Din ønskeliste er tom</p>
-          <p className="text-sm mt-2">Klik på ⭐ ved siden af en rytter i rytterdatabasen for at tilføje dem her</p>
+          <p className="text-lg font-medium text-cz-3">{t("emptyTitle")}</p>
+          <p className="text-sm mt-2">{t("emptyBody")}</p>
           <button onClick={() => navigate("/riders")}
             className="mt-5 px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110">
-            Gå til Ryttere
+            {t("emptyCta")}
           </button>
         </div>
       ) : (
@@ -163,23 +170,24 @@ export default function WatchlistPage() {
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
                   <tr className="border-b border-cz-border">
+                    <th className="px-2 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("thNation")}</th>
                     <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-left font-medium uppercase tracking-wider">Rytter</SortTh>
-                    <th className="px-1 py-3 w-8" title="Vælg til sammenligning">⇄</th>
+                      className="px-3 py-3 text-left font-medium uppercase tracking-wider">{t("thRider")}</SortTh>
+                    <th className="px-1 py-3 w-8" title={t("compareTooltip")}>⇄</th>
                     <th className="px-2 py-3 w-8" />
-                    <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">Hold</th>
+                    <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">{t("thTeam")}</th>
                     <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-right font-medium">Værdi</SortTh>
+                      className="px-3 py-3 text-right font-medium">{t("thValue")}</SortTh>
                     <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-right font-medium">Løn</SortTh>
+                      className="px-3 py-3 text-right font-medium">{t("thSalary")}</SortTh>
                     <SortTh sortKey="potentiale" sort={sort} sortDir={sortDir} onSort={handleSort}
-                      className="px-3 py-3 text-left font-medium">Potentiale</SortTh>
+                      className="px-3 py-3 text-left font-medium">{t("thPotential")}</SortTh>
                     {STATS.map((key, i) => (
                       <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
                         className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
                     ))}
-                    <th className="px-3 py-3 text-center text-cz-3">Note</th>
-                    <th className="px-3 py-3 text-center text-cz-3">Handling</th>
+                    <th className="px-3 py-3 text-center text-cz-3">{t("thNote")}</th>
+                    <th className="px-3 py-3 text-center text-cz-3">{t("thAction")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -189,17 +197,16 @@ export default function WatchlistPage() {
                     const compareActive = compareIds.includes(r.id);
                     return (
                       <tr key={entry.id} className={`border-b border-cz-border hover:bg-cz-subtle ${compareActive ? "bg-cz-accent/[0.04]" : ""}`}>
+                        <td className="px-2 py-2.5 hidden sm:table-cell">
+                          <NationCell code={r.nationality_code} />
+                        </td>
                         <td className="px-3 py-2.5">
-                          <div className="flex items-center gap-2">
-                            {r.nationality_code && <Flag code={r.nationality_code} className="flex-shrink-0" />}
-                            <RiderLink id={r.id}
-                              className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left">
-                              {r.firstname} {r.lastname}
-                            </RiderLink>
+                          <RiderNameCell id={r.id} firstname={r.firstname} lastname={r.lastname}
+                            className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left">
                             {r.is_u25 && (
                               <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
                             )}
-                          </div>
+                          </RiderNameCell>
                         </td>
                         <td className="px-1 py-2.5 w-8">
                           <CompareToggle active={compareActive}
@@ -211,7 +218,7 @@ export default function WatchlistPage() {
                         </td>
                         <td className="px-3 py-2.5 hidden sm:table-cell">
                           {isFree
-                            ? <span className="text-cz-accent-t/70 text-xs">Fri agent</span>
+                            ? <span className="text-cz-accent-t/70 text-xs">{t("teamFree")}</span>
                             : <span className="text-cz-2 text-xs">{r.team?.name}</span>}
                         </td>
                         <td className="px-3 py-2.5 text-right text-cz-accent-t font-mono font-bold">
@@ -237,14 +244,14 @@ export default function WatchlistPage() {
                                 onKeyDown={e => e.key === "Enter" && saveNote(entry.id)}
                                 className="flex-1 bg-cz-subtle border border-cz-border rounded px-2 py-1
                                   text-cz-1 text-xs focus:outline-none focus:border-cz-accent w-20"
-                                autoFocus placeholder="Note..." />
+                                autoFocus placeholder={t("notePlaceholder")} />
                               <button onClick={() => saveNote(entry.id)}
                                 className="text-cz-success text-xs px-1">✓</button>
                             </div>
                           ) : (
                             <button onClick={() => { setEditingNote(entry.id); setNoteText(entry.note || ""); }}
                               className="text-cz-3 hover:text-cz-2 text-xs truncate max-w-24 block mx-auto transition-colors">
-                              {entry.note || "+ note"}
+                              {entry.note || t("addNote")}
                             </button>
                           )}
                         </td>
@@ -254,7 +261,7 @@ export default function WatchlistPage() {
                               <button onClick={() => startAuction(r)}
                                 className="px-2 py-1 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
                                   rounded text-xs hover:bg-cz-accent/10 transition-all whitespace-nowrap">
-                                Start auktion
+                                {t("startAuction")}
                               </button>
                             ) : (
                               <span className="text-cz-3 text-xs">—</span>
@@ -272,20 +279,20 @@ export default function WatchlistPage() {
           {/* Pagination */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
             <span className="text-cz-3 text-xs">
-              Viser {total === 0 ? 0 : pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, total)} af {formatNumber(total)}
+              {t("pagination", { from: total === 0 ? 0 : pageStart + 1, to: Math.min(pageStart + PAGE_SIZE, total), total: formatNumber(total) })}
             </span>
             <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
               <button disabled={safePage <= 1}
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
                   hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed">
-                ← Forrige
+                {t("prev")}
               </button>
               <button disabled={safePage >= pageCount}
                 onClick={() => setPage(p => Math.min(pageCount, p + 1))}
                 className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
                   hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed">
-                Næste →
+                {t("next")}
               </button>
             </div>
           </div>

@@ -286,10 +286,21 @@ if printf '%s' "$CMDLO" | grep -Eq 'vercel[[:space:]]+env[[:space:]]+decrypt'; t
     "  Brug probe-vercel-keys.ps1 til at se key-navne."
 fi
 
-# --- Infisical secrets-list med values ---
-if printf '%s' "$CMDLO" | grep -Eq 'infisical[[:space:]]+secrets[[:space:]]+list.*--format[[:space:]]+json'; then
-  block "infisical secrets list --format json (printer values)" \
-    "  infisical secrets list --raw=false   # kun key-navne"
+# --- Infisical secrets-dump (ALLE former printer values) ---
+# `infisical secrets` (tabel m. value-kolonne), `infisical secrets --plain`
+# (KEY=VALUE), `infisical secrets get <KEY>`, og `infisical export` (dotenv)
+# printer ALLE secret-values. Kun `infisical run -- <cmd>` (runtime-injection,
+# printer intet) er safe og rammes IKKE af mønstret nedenfor.
+#
+# Blokeres KATEGORISK — ingen allow-pipe-undtagelse. Det var præcis en sådan
+# snæver undtagelse (kun `list --format json`) der lækkede SUPABASE_SERVICE_KEY
+# 2026-05-30: `infisical secrets --plain` matchede ikke den gamle form.
+if printf '%s' "$CMDLO" | grep -Eq '(^|[^a-z])infisical[[:space:]]+(secrets|export)([[:space:]]|$)'; then
+  block "infisical secrets/export (printer secret-values til transcript)" \
+    "  # Tjek om en key er sat (uden at printe value):
+  infisical run --env=dev -- node backend/scripts/verify-infisical-injection.js
+  # Brug værdier via runtime-injection: infisical run --env=dev -- <cmd>
+  # Se key-navne i Infisical-dashboardet. ALDRIG 'infisical secrets'/'--plain'/'export' i agent-session."
 fi
 
 # --- Cat / Get-Content på .env-filer ---

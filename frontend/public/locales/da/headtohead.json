@@ -1,0 +1,21 @@
+{
+  "title": "Head-to-Head",
+  "subtitle": "Sammenlign to managers historik",
+  "searchPlaceholder": "Søg hold...",
+  "division": "Division {n}",
+  "noTeamsFound": "Ingen hold fundet for “{q}”",
+  "teamA": "Hold A",
+  "teamB": "Hold B",
+  "errorLoad": "Kunne ikke hente sammenligningsdata. Prøv igen.",
+  "retry": "Prøv igen",
+  "seasonStats": "Sæsonstatistik (alle sæsoner)",
+  "statPoints": "Point",
+  "statStageWins": "Etapesejre",
+  "statGcWins": "GC-sejre",
+  "statSeasons": "Sæsoner",
+  "transferHistory": "Transferhistorik mellem holdene",
+  "boughtFrom": "{buyer} har købt fra {seller}:",
+  "topFive": "{team} — Top 5",
+  "noRiders": "Ingen ryttere",
+  "selectOther": "Vælg et andet hold for at starte sammenligningen"
+}

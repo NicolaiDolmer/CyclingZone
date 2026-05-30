@@ -4,7 +4,7 @@ import { useNavigate, NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
-import { Flag } from "../components/Flag";
+import NationCell from "../components/rider/NationCell";
 import { formatNumber, formatDate } from "../lib/intl";
 
 function timeAgo(dateStr) {
@@ -212,6 +212,7 @@ export default function AuctionHistoryPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-cz-border">
+                <th className="px-2 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">Nation</th>
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">Rytter</th>
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">Sælger</th>
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">Vinder</th>
@@ -230,9 +231,11 @@ export default function AuctionHistoryPage() {
                     className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer
                       ${iSelf ? "bg-cz-subtle/40" : iWon ? "bg-cz-success-bg0/3" : iSold && !noSale ? "bg-cz-info-bg0/3" : ""}`}
                     onClick={() => a.rider?.id && navigate(`/riders/${a.rider.id}`)}>
+                    <td className="px-2 py-3 hidden sm:table-cell">
+                      <NationCell code={a.rider?.nationality_code} />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        {a.rider?.nationality_code && <Flag code={a.rider.nationality_code} className="flex-shrink-0" />}
                         <RiderLink id={a.rider?.id} stopPropagation
                           className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
                           {a.rider?.firstname} {a.rider?.lastname}

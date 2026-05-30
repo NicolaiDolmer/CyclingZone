@@ -42,29 +42,72 @@
     "loadingDevelopment": "Indlæser udvikling..."
   },
   "skills": {
-    "fl": { "short": "FL", "long": "Flad" },
-    "bj": { "short": "BJ", "long": "Bjerg" },
-    "kb": { "short": "KB", "long": "Mellembjerg" },
-    "bk": { "short": "BAK", "long": "Bakke" },
-    "tt": { "short": "TT", "long": "Enkeltstart" },
-    "prl": { "short": "PRL", "long": "Prolog" },
-    "bro": { "short": "BRO", "long": "Brosten" },
-    "sp": { "short": "SP", "long": "Sprint" },
-    "acc": { "short": "ACC", "long": "Acceleration" },
-    "ned": { "short": "NED", "long": "Nedkørsel" },
-    "udh": { "short": "UDH", "long": "Udholdenhed" },
-    "mod": { "short": "MOD", "long": "Modstandsdygtighed" },
-    "res": { "short": "RES", "long": "Restituering" },
-    "ftr": { "short": "FTR", "long": "Fighter" }
+    "fl": {
+      "short": "FL",
+      "long": "Flad"
+    },
+    "bj": {
+      "short": "BJ",
+      "long": "Bjerg"
+    },
+    "kb": {
+      "short": "KB",
+      "long": "Mellembjerg"
+    },
+    "bk": {
+      "short": "BAK",
+      "long": "Bakke"
+    },
+    "tt": {
+      "short": "TT",
+      "long": "Enkeltstart"
+    },
+    "prl": {
+      "short": "PRL",
+      "long": "Prolog"
+    },
+    "bro": {
+      "short": "BRO",
+      "long": "Brosten"
+    },
+    "sp": {
+      "short": "SP",
+      "long": "Sprint"
+    },
+    "acc": {
+      "short": "ACC",
+      "long": "Acceleration"
+    },
+    "ned": {
+      "short": "NED",
+      "long": "Nedkørsel"
+    },
+    "udh": {
+      "short": "UDH",
+      "long": "Udholdenhed"
+    },
+    "mod": {
+      "short": "MOD",
+      "long": "Modstandsdygtighed"
+    },
+    "res": {
+      "short": "RES",
+      "long": "Restituering"
+    },
+    "ftr": {
+      "short": "FTR",
+      "long": "Fighter"
+    }
   },
   "season": {
     "empty": "Ingen historik endnu",
     "table": {
-      "year": "År",
       "wins": "Sejre",
       "top3": "Top 3",
-      "prizes": "Præmier"
-    }
+      "prizes": "Præmier",
+      "season": "Sæson"
+    },
+    "row": "Sæson {{n}}"
   },
   "results": {
     "empty": "Ingen løbsresultater endnu",
@@ -244,5 +287,14 @@
   "celebration": {
     "title": "Du vandt auktionen! 🏆",
     "subtitle": "Rytteren er nu på dit hold"
+  },
+  "compare": {
+    "title": "Sammenlign Ryttere",
+    "subtitle": "Tilføj op til 3 ryttere for at sammenligne stats",
+    "searchPlaceholder": "Søg rytter at tilføje...",
+    "searching": "Søger...",
+    "teamFree": "Fri agent",
+    "empty": "Søg efter en rytter ovenfor for at starte sammenligning",
+    "potential": "Potentiale"
   }
 }

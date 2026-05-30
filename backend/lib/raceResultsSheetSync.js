@@ -1,5 +1,6 @@
 import { applyRaceResults as applyRaceResultsShared, PRIZE_PER_POINT } from "./raceResultsEngine.js";
 import { buildGoogleSheetCsvUrl, parseGoogleSheetUrl } from "./urlSafety.js";
+import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 
 
 // Maps Google Sheet "Benævnelse" → race_results.result_type
@@ -367,6 +368,11 @@ export async function syncRaceResultsFromSheets({
 
       seasonImported += importResult.rowsImported;
       seasonRaces.push(løbName);
+    }
+
+    if (!dryRun) {
+      // #804 — opdatér seasons.race_days_completed for denne sæson efter import.
+      await recomputeSeasonRaceDays({ supabase, seasonId: season.id });
     }
 
     totalImported += seasonImported;

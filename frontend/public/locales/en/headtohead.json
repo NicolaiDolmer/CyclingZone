@@ -1,0 +1,21 @@
+{
+  "title": "Head-to-Head",
+  "subtitle": "Compare two managers' history",
+  "searchPlaceholder": "Search teams...",
+  "division": "Division {n}",
+  "noTeamsFound": "No teams found for “{q}”",
+  "teamA": "Team A",
+  "teamB": "Team B",
+  "errorLoad": "Could not load comparison data. Please try again.",
+  "retry": "Try again",
+  "seasonStats": "Season stats (all seasons)",
+  "statPoints": "Points",
+  "statStageWins": "Stage wins",
+  "statGcWins": "GC wins",
+  "statSeasons": "Seasons",
+  "transferHistory": "Transfer history between the teams",
+  "boughtFrom": "{buyer} has bought from {seller}:",
+  "topFive": "{team} — Top 5",
+  "noRiders": "No riders",
+  "selectOther": "Select another team to start the comparison"
+}

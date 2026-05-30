@@ -53,6 +53,19 @@ const THREADS = [
   '1502029625986125905', // jeppek Ulæste beskeder fjernes ikke i indbakken
   '1502042565988450384', // bobby2106 Autobud på managerejet rytter — fejl uden besked
   '1502043822841135116', // cybersimon Autobud overholder ikke afrundingsregl
+  // Batch 6 (2026-05-30 triage — feedback 2026-05-16 → 2026-05-30)
+  '1510269165255135263', // bobby2106 Rangliste: endagsløb vises som samlet sejr
+  '1510268058420383824', // bobby2106 Dashboard: sæson-fremskridt opdateres ikke
+  '1510266246116151436', // .sredna/bobby Løbsresultat-historik per rytter virker ikke
+  '1510263255757754660', // soren1207 Ejer-filter: fri-agenter under Manager-ejede
+  '1507078529282605106', // .sredna AI-ryttere ikke frie agenter ved filter
+  '1510242164226134236', // jeppek Hall of Fame — kan kun se sig selv
+  '1507075204008906822', // jeppek Flash-auktion på egne ryttere
+  '1507072644862972057', // jeppek Garanteret salg under deadline day
+  '1506780095275204608', // .sredna Transferliste med mange actions
+  '1506222527591088198', // .sredna Forvirrende historik (uafsluttet auktion)
+  '1506046994051891210', // .sredna Rytter solgt til AI står stadig til salg
+  '1505613603217084487', // cybersimon Sprog-dropdown kan ikke scrolles
 ];
 
 function getJSON(url, headers) {

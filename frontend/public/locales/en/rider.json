@@ -42,29 +42,72 @@
     "loadingDevelopment": "Loading development..."
   },
   "skills": {
-    "fl": { "short": "FL", "long": "Flat" },
-    "bj": { "short": "BJ", "long": "Mountain" },
-    "kb": { "short": "KB", "long": "Mid-mountain" },
-    "bk": { "short": "BAK", "long": "Hill" },
-    "tt": { "short": "TT", "long": "Time trial" },
-    "prl": { "short": "PRL", "long": "Prologue" },
-    "bro": { "short": "BRO", "long": "Cobbles" },
-    "sp": { "short": "SP", "long": "Sprint" },
-    "acc": { "short": "ACC", "long": "Acceleration" },
-    "ned": { "short": "NED", "long": "Descent" },
-    "udh": { "short": "UDH", "long": "Endurance" },
-    "mod": { "short": "MOD", "long": "Resilience" },
-    "res": { "short": "RES", "long": "Recovery" },
-    "ftr": { "short": "FTR", "long": "Fighter" }
+    "fl": {
+      "short": "FL",
+      "long": "Flat"
+    },
+    "bj": {
+      "short": "BJ",
+      "long": "Mountain"
+    },
+    "kb": {
+      "short": "KB",
+      "long": "Mid-mountain"
+    },
+    "bk": {
+      "short": "BAK",
+      "long": "Hill"
+    },
+    "tt": {
+      "short": "TT",
+      "long": "Time trial"
+    },
+    "prl": {
+      "short": "PRL",
+      "long": "Prologue"
+    },
+    "bro": {
+      "short": "BRO",
+      "long": "Cobbles"
+    },
+    "sp": {
+      "short": "SP",
+      "long": "Sprint"
+    },
+    "acc": {
+      "short": "ACC",
+      "long": "Acceleration"
+    },
+    "ned": {
+      "short": "NED",
+      "long": "Descent"
+    },
+    "udh": {
+      "short": "UDH",
+      "long": "Endurance"
+    },
+    "mod": {
+      "short": "MOD",
+      "long": "Resilience"
+    },
+    "res": {
+      "short": "RES",
+      "long": "Recovery"
+    },
+    "ftr": {
+      "short": "FTR",
+      "long": "Fighter"
+    }
   },
   "season": {
     "empty": "No history yet",
     "table": {
-      "year": "Year",
       "wins": "Wins",
       "top3": "Top 3",
-      "prizes": "Prizes"
-    }
+      "prizes": "Prizes",
+      "season": "Season"
+    },
+    "row": "Season {{n}}"
   },
   "results": {
     "empty": "No race results yet",
@@ -244,5 +287,14 @@
   "celebration": {
     "title": "You won the auction! 🏆",
     "subtitle": "The rider is now on your team"
+  },
+  "compare": {
+    "title": "Compare Riders",
+    "subtitle": "Add up to 3 riders to compare stats",
+    "searchPlaceholder": "Search rider to add...",
+    "searching": "Searching...",
+    "teamFree": "Free agent",
+    "empty": "Search for a rider above to start comparing",
+    "potential": "Potential"
   }
 }

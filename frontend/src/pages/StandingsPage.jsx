@@ -1,10 +1,15 @@
 ﻿import { useState, useEffect, Fragment } from "react";
 import { supabase } from "../lib/supabase";
+import { fetchAllRows } from "../lib/supabasePagination";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import TeamLink from "../components/TeamLink";
 import { formatNumber } from "../lib/intl";
+import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
+// Realtime: opdatér ranglisten live når en resultat-import skriver nye rækker (#783).
+const REALTIME_TABLES = ["season_standings", "race_results"];
 
 function MiniSparkline({ points, color }) {
   if (!points || points.length < 2) return <span className="text-cz-3 text-xs">—</span>;
@@ -24,6 +29,7 @@ function MiniSparkline({ points, color }) {
 
 export default function StandingsPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation("standings");
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [divTab, setDivTab] = useState(1);
@@ -71,10 +77,12 @@ export default function StandingsPage() {
 
     // Build race-by-race point progression
     if (racesRes.data?.length && merged.length) {
-      const { data: results } = await supabase
+      // Paginér: PostgREST capper ved 1000 → ellers undertæller progression-grafen.
+      const results = await fetchAllRows(() => supabase
         .from("race_results")
         .select("rider:rider_id(team_id), prize_money, race_id")
-        .in("race_id", racesRes.data.map(r => r.id));
+        .in("race_id", racesRes.data.map(r => r.id))
+        .order("id", { ascending: true }));
 
       const prog = {};
       const cumul = {};
@@ -97,6 +105,7 @@ export default function StandingsPage() {
   }
 
   useEffect(() => { loadAll(); }, []);
+  useRealtimeRefetch("standings-live", REALTIME_TABLES, loadAll);
 
   const effectivePts = (s) => ((s?.total_points || 0) - (s?.penalty_points || 0));
   const divStandings = standings
@@ -122,9 +131,9 @@ export default function StandingsPage() {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-cz-1">Rangliste</h1>
+          <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
           <p className="text-cz-3 text-sm">
-            {season ? `Sæson ${season.number}` : "Ingen aktiv sæson"}
+            {season ? t("season", { n: season.number }) : t("noActiveSeason")}
           </p>
         </div>
       </div>
@@ -138,7 +147,7 @@ export default function StandingsPage() {
                 ? "border-opacity-30 text-cz-1"
                 : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}
             style={divTab === div ? { backgroundColor: `${DIV_COLORS[div]}15`, borderColor: `${DIV_COLORS[div]}40`, color: DIV_COLORS[div] } : {}}>
-            Division {div}
+            {t("division", { n: div })}
             <span className="ms-2 text-[10px] opacity-60">({count})</span>
           </button>
         ))}
@@ -147,7 +156,7 @@ export default function StandingsPage() {
       {divStandings.length === 0 ? (
         <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">◉</p>
-          <p>Ingen data for Division {divTab} endnu</p>
+          <p>{t("noData", { n: divTab })}</p>
         </div>
       ) : (
         <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
@@ -156,11 +165,11 @@ export default function StandingsPage() {
               <thead>
                 <tr className="border-b border-cz-border">
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs w-8">#</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs">Hold</th>
-                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden sm:table-cell">Etapesejre</th>
-                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden md:table-cell">Podier</th>
-                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs">Point</th>
-                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden lg:table-cell w-20">Udvikling</th>
+                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs">{t("thTeam")}</th>
+                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden sm:table-cell">{t("thStageWins")}</th>
+                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden md:table-cell">{t("thPodiums")}</th>
+                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs">{t("thPoints")}</th>
+                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden lg:table-cell w-20">{t("thProgress")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -203,9 +212,9 @@ export default function StandingsPage() {
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2 flex-wrap">
                             <TeamLink id={s.team_id} stopPropagation className={`font-medium ${isMe ? "text-cz-accent-t" : "text-cz-1"}`}>{s.team?.name}</TeamLink>
-                            {isMe && <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-1.5 py-0.5 rounded-full">Dig</span>}
-                            {isPromotion && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">↑ Op</span>}
-                            {isRelegation && <span className="text-[9px] bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded font-medium">↓ Ned</span>}
+                            {isMe && <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-1.5 py-0.5 rounded-full">{t("youBadge")}</span>}
+                            {isPromotion && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">{t("promotionBadge")}</span>}
+                            {isRelegation && <span className="text-[9px] bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded font-medium">{t("relegationBadge")}</span>}
                           </div>
                           {/* Mini progress bar */}
                           <div className="mt-1.5 bg-cz-subtle rounded-full h-1 w-full max-w-32">
@@ -221,7 +230,7 @@ export default function StandingsPage() {
                           {penalty > 0 && (
                             <span
                               className="ms-1.5 font-mono text-[10px] text-cz-danger"
-                              title={`Trupstørrelse-fradrag: ${penalty} point (${formatNumber(s.total_points || 0)} optjent − ${penalty} fradrag)`}
+                              title={t("penaltyTooltip", { penalty, earned: formatNumber(s.total_points || 0) })}
                             >
                               (−{penalty})
                             </span>
@@ -250,16 +259,16 @@ export default function StandingsPage() {
           <div className="px-4 py-3 border-t border-cz-border flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-1.5 text-xs text-cz-success/70">
               <span className="w-2 h-2 rounded-sm bg-cz-success-bg border border-cz-success/30" />
-              Oprykningszone (top 2)
+              {t("legendPromotion")}
             </div>
             {canRelegate && (
               <div className="flex items-center gap-1.5 text-xs text-cz-danger/70">
                 <span className="w-2 h-2 rounded-sm bg-cz-danger-bg border border-cz-danger/30" />
-                Nedrykningszone (bund 2)
+                {t("legendRelegation")}
               </div>
             )}
             <div className="ms-auto text-xs text-cz-3">
-              {races.length} løb spillet
+              {t("racesPlayed", { count: races.length })}
             </div>
           </div>
         </div>

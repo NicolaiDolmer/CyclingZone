@@ -81,9 +81,17 @@ if ($cmdLo -match 'vercel\s+env\s+decrypt') {
   Block-Command "vercel env decrypt (printer values)" "  Brug probe-vercel-keys.ps1 til at se key-navne."
 }
 
-# --- Infisical secrets-list med values ---
-if ($cmdLo -match 'infisical\s+secrets\s+list.*--format\s+json') {
-  Block-Command "infisical secrets list --format json (printer values)" "  infisical secrets list --raw=false   # kun key-navne"
+# --- Infisical secrets-dump (ALLE former printer values) ---
+# Blokeres kategorisk: `infisical secrets` (+ `--plain`, `get`), `infisical
+# export`. Kun `infisical run -- <cmd>` (runtime-injection) er safe og rammes
+# ikke. Hullet der lækkede SERVICE_KEY 2026-05-30 var den gamle snævre
+# `list --format json`-form der ikke fangede `--plain`.
+if ($cmdLo -match '(^|[^a-z])infisical\s+(secrets|export)(\s|$)') {
+  Block-Command "infisical secrets/export (printer secret-values til transcript)" @"
+  # Tjek om en key er sat (uden at printe value):
+  infisical run --env=dev -- node backend/scripts/verify-infisical-injection.js
+  # ALDRIG 'infisical secrets'/'--plain'/'export' i agent-session.
+"@
 }
 
 # --- Cat / Get-Content / gc på .env-filer ---

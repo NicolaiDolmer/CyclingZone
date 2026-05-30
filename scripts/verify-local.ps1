@@ -48,7 +48,7 @@ if ($normalizedResolvedRoot -ne $repoRoot) {
   throw "Scriptet kores ikke fra den forventede repo-root. Forventet: $repoRoot. Git siger: $resolvedRoot."
 }
 
-Write-Host "[1/2] Backend tests"
+Write-Host "[1/3] Backend tests"
 Push-Location (Join-Path $repoRoot "backend")
 try {
   & $nodePath --test
@@ -61,11 +61,26 @@ try {
 
 $vitePath = Join-Path $repoRoot "frontend\node_modules\vite\bin\vite.js"
 if (-not (Test-Path $vitePath)) {
-  Write-Warning "Frontend-build blev sprunget over, fordi frontend/node_modules mangler. Koer npm install i frontend eller stol pa GitHub Actions for build-gaten."
+  Write-Warning "Frontend-tests + build blev sprunget over, fordi frontend/node_modules mangler. Koer npm install i frontend eller stol pa GitHub Actions for gaten."
   exit 0
 }
 
-Write-Host "[2/2] Frontend build"
+# Frontend unit-tests (node --test) koeres FOER build: Vite/esbuild tilgiver
+# extensionless relative imports, men Node's ESM-loader i node --test goer ikke.
+# Uden dette step slipper sadanne imports forbi lokalt og fejler foerst i CI
+# (frontend-build-jobbets "Run frontend tests"). Refs #803.
+Write-Host "[2/3] Frontend tests"
+Push-Location (Join-Path $repoRoot "frontend")
+try {
+  & $nodePath --test
+  if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+  }
+} finally {
+  Pop-Location
+}
+
+Write-Host "[3/3] Frontend build"
 Push-Location (Join-Path $repoRoot "frontend")
 try {
   & $nodePath $vitePath build

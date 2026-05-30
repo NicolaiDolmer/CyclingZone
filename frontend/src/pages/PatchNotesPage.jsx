@@ -2,6 +2,132 @@
 
 const PATCHES = [
   {
+    version: "4.20",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Season · Season progress now counts completed race days",
+        items: [
+          "EN · Season progress now reflects how many race days have actually been ridden. The counter was never advanced when results were imported, so it stayed at 0 even after races were finalized — and the board's plan-negotiation reminders, which key off that counter, never fired. It is now recomputed from the completed races (a one-day race counts 1 day, a stage race counts its stages) every time results are imported, and Season 1 has been backfilled. Refs #804.",
+          "DA · Sæson-fremgangen afspejler nu hvor mange løbsdage der faktisk er kørt. Tælleren blev aldrig talt op når resultater blev importeret, så den blev stående på 0 selv efter løb var afviklet — og bestyrelsens påmindelser om planforhandling, der bygger på den tæller, blev derfor aldrig udløst. Den genberegnes nu ud fra de afviklede løb (et endagsløb tæller 1 dag, et etapeløb tæller sine etaper) hver gang resultater importeres, og Sæson 1 er rettet med tilbagevirkende kraft. Refs #804.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.19",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · Nation now has its own column",
+        items: [
+          "EN · In rider tables the flag and name used to share one wide column. The nation (flag plus 3-letter code) now sits in its own column next to the name across the rider database, your squad, other teams' squads, the watchlist, the rider rankings and the auction history. Where a rider's owning team is shown, it stays in its own column too. The name column is now narrower and the tables are easier to scan. On small screens the nation and team columns are hidden to keep the table compact.",
+          "DA · I ryttertabeller delte flag og navn før én bred kolonne. Nationen (flag plus 3-bogstavskode) ligger nu i sin egen kolonne ved siden af navnet på rytterdatabasen, din trup, andre holds trupper, ønskelisten, rytterranglisten og auktionshistorikken. Hvor en rytters ejer-hold vises, bliver det også i sin egen kolonne. Navnekolonnen er nu smallere, og tabellerne er nemmere at skanne. På små skærme skjules nation- og hold-kolonnerne for at holde tabellen kompakt.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.18",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · Season history now groups by game season",
+        items: [
+          "EN · The Season tab on a rider's page now groups results by game season (Season 1, Season 2, ...) instead of by the race's calendar edition year. The result list under each race also shows the game season. Wins, top-3s and prize money are now totalled per season the way the standings work. Refs #793.",
+          "DA · Sæson-fanen på en rytters side grupperer nu resultater efter spil-sæson (Sæson 1, Sæson 2, ...) i stedet for løbets kalender-udgaveår. Resultatlisten under hvert løb viser også spil-sæsonen. Sejre, top-3 og præmiepenge tælles nu sammen pr. sæson på samme måde som ranglisten. Refs #793.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.17",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · Race result history now shows on the rider page",
+        items: [
+          "EN · The Results tab on a rider's page now lists that rider's race results again, and the Season tab counts their wins, top-3s and prize money. The query was asking for a race date field that no longer exists, which made the whole request fail and left both tabs empty. It now reads the race edition year and finishing rank correctly. Refs #780.",
+          "DA · Resultat-fanen på en rytters side viser nu rytterens løbsresultater igen, og Sæson-fanen tæller sejre, top-3 og præmiepenge. Forespørgslen bad om et løbsdato-felt der ikke længere findes, hvilket fik hele kaldet til at fejle og efterlod begge faner tomme. Den læser nu løbets udgaveår og placering korrekt. Refs #780.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.16",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Results · Standings, results and dashboard now update live",
+        items: [
+          "EN · The standings, results hub and dashboard now refresh on their own when new race results come in — no more hard reload to see updated points, season progress or top riders. Previously these pages only loaded once when opened, so they could show stale numbers after a race was finalized. Refs #783.",
+          "DA · Ranglisten, resultat-hubben og dashboardet opdaterer nu af sig selv når nye løbsresultater kommer ind — ingen hård genindlæsning mere for at se opdaterede point, sæson-fremskridt eller top-ryttere. Tidligere indlæste siderne kun data én gang ved åbning, så de kunne vise gamle tal efter et løb var finaliseret. Refs #783.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.15",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · PCM-resultatimport (sæson 1)",
+        items: [
+          "EN · Admins can now import race results directly from Pro Cycling Manager export files. For stage races you select all stage files at once — the pipeline orders the stages itself, awards stage-finish points every stage, jersey-leader points on intermediate stages (for holding the leader's jersey that day), and pays out the full general classification, jerseys and team result only on the final stage. One-day races are just one file. Riders are matched to their owner team by exact name (accent-tolerant); team results map through a manually verified PCM→game team-name table. Always dry-run preview first — it shows points, prize money and flags any unmatched riders that would otherwise score. Re-import cleanly replaces a race's results. Player-facing results pages are unchanged; this is an admin import tool.",
+          "DA · Admins kan nu importere løbsresultater direkte fra Pro Cycling Manager-eksportfiler. For etapeløb vælger du alle etape-filer på én gang — pipelinen finder selv etape-rækkefølgen, giver etape-point hver etape, trøje-leder-point på mellemetaper (for at holde førertrøjen den dag), og udbetaler først hele klassementet, trøjerne og holdresultatet på sidste etape. Endagsløb er bare én fil. Ryttere matches til deres ejer-hold på præcist navn (accent-tolerant); holdresultater mappes via en manuelt verificeret PCM→game-holdnavn-tabel. Forhåndsvis altid først — det viser point, præmiepenge og markerer evt. umatchede ryttere der ellers ville score. Re-import erstatter et løbs resultater rent. Spillervendte resultatsider er uændrede; dette er et admin-importværktøj.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.14",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Localization · Hall of Fame now switches fully to English",
+        items: [
+          "EN · The Hall of Fame page — record categories, manager titles, the division-history view and all table labels — now displays fully in English when the app language is set to English. Previously these showed Danish text regardless of the selected language. Refs #678.",
+          "DA · Hall of Fame-siden — rekordkategorier, manager-titler, divisionshistorik-visningen og alle tabel-labels — vises nu fuldt på engelsk når appens sprog er sat til engelsk. Tidligere viste disse dansk tekst uanset det valgte sprog. Refs #678.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.13",
+    date: "2026-05-29",
+    label: "Beta",
+    changes: [
+      {
+        category: "Localization · More pages now switch fully to English",
+        items: [
+          "EN · Profile, Activity, Watchlist, Standings, Head-to-Head, the team and manager pages, rider rankings and comparison, and the season finance report now display fully in English when the app language is set to English. Previously these pages showed Danish labels regardless of the selected language. Refs #678.",
+          "DA · Profil, Aktivitet, Ønskeliste, Rangliste, Head-to-Head, hold- og managersiderne, rytterrangliste og -sammenligning samt sæson-finansrapporten vises nu fuldt på engelsk når appens sprog er sat til engelsk. Tidligere viste disse sider danske labels uanset det valgte sprog. Refs #678.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.12",
+    date: "2026-05-29",
+    label: "Beta",
+    changes: [
+      {
+        category: "Reliability · Admin result import no longer crashes on an expired session",
+        items: [
+          "EN · Importing race results from the admin panel now shows a clear \"session expired — log in again\" message if your login expired mid-upload, instead of throwing a silent error and leaving the import stuck. Admin-only; no change for managers. Refs #761.",
+          "DA · Import af løbsresultater fra admin-panelet viser nu en tydelig \"session udløbet — log ind igen\"-besked hvis dit login udløb midt i en upload, i stedet for at kaste en stille fejl og efterlade importen hængende. Kun admin; ingen ændring for managers. Refs #761.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.11",
     date: "2026-05-29",
     label: "Beta",
@@ -507,7 +633,7 @@ const PATCHES = [
   },
   {
     version: "3.76",
-    date: "2026-05-20",
+    date: "2026-05-21",
     label: "Beta",
     changes: [
       {
@@ -521,7 +647,7 @@ const PATCHES = [
   },
   {
     version: "3.75",
-    date: "2026-05-21",
+    date: "2026-05-20",
     label: "Beta",
     changes: [
       {
@@ -534,8 +660,22 @@ const PATCHES = [
     ],
   },
   {
+    version: "3.74",
+    date: "2026-05-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Tab-based navigation kom kort frem (utilsigtet, rullet tilbage i v3.75)",
+        items: [
+          "EN · The 5-tab /admin layout (Sæson & Løb, Økonomi, Brugere, Data/Import, System & Debug) first appeared here, but it was committed before it was ready and the new tab URLs returned 404. It was rolled back the same evening (see v3.75) and re-applied cleanly in v3.76. No data was affected and no admin actions were blocked.",
+          "DA · Det 5-fanede /admin-layout (Sæson & Løb, Økonomi, Brugere, Data/Import, System & Debug) dukkede først op her, men blev committet før det var klar, og de nye fane-URLs returnerede 404. Det blev rullet tilbage samme aften (se v3.75) og re-applied rent i v3.76. Ingen data blev påvirket og ingen admin-handlinger var blokeret.",
+        ],
+      },
+    ],
+  },
+  {
     version: "3.73",
-    date: "2026-05-21",
+    date: "2026-05-20",
     label: "Beta",
     changes: [
       {

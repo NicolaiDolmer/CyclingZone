@@ -185,7 +185,34 @@ ALLOW = [
     # Named secret-patterns (sb_secret_/eyJ/ghp_/AKIA/...) koeres FOER denne
     # fallback, saa aegte prefix-baerende secrets fanges stadig. (#743, 2026-05-29)
     re.compile(r"^1[A-Za-z0-9_-]{43}$"),
+    # Claude Code worktree session-IDs — PostToolUse JSON payload indeholder
+    # session_id paa formen <project-slug>-<adjektiv>-<substantiv>-<6-8hexchars>,
+    # fx C--Dev-CyclingZone-youthful-dijkstra-577ad9 (44 tegn, trigger HIGH_ENTROPY).
+    # Navngivning styres af Claude Code internt; kan ikke aendres fra repo-siden.
+    # Named secrets (eyJ/sk-ant-/ghp_/AKIA/...) fanges af PATTERNS FOER fallback.
+    re.compile(r"^[A-Za-z0-9_+=-]+-[a-z]+-[a-z]+-[0-9a-f]{6,8}$"),
 ]
+
+# Path/identifier detector (#752). Claude Code flader fil-stier og worktree-/
+# session-navne til separator-strenge (C:\Dev\... -> C--Dev-CyclingZone-...,
+# worktrees-agent-<hex>, arkiv-filnavne NOW_HIST...). De tripper high-entropy
+# (40+ tegn, blandet case + digits) men er IKKE secrets. Den eksisterende
+# ALLOW-liste fanger kun specifikke former (session-id, drive fileId); denne
+# detektor er den generelle regel. To signaler — enten er nok:
+#   1. Windows drev-flad-form: starter med <bogstav>-- (fra "C:\").
+#   2. Ord-sammensat: >=3 rene alfabetiske segmenter (>=3 tegn) naar splittet
+#      paa [-_+=]. Tilfaeldige base64-secrets har ikke rigtige ord-graenser;
+#      paths/identifiers goer ("Dev", "CyclingZone", "worktrees", "agent", ...).
+# SIKKERHED: kaldes KUN i high-entropy-fallback'en, EFTER named patterns
+# (sb_secret_/eyJ/ghp_/AKIA/Sentry/Discord/Stripe/...) allerede har koert og
+# fuld-blokeret. En aegte KENDT secret kan derfor ikke slippe igennem her.
+_WORD_SEG = re.compile(r"[A-Za-z]{3,}")
+_DRIVE_FLAT = re.compile(r"^[A-Za-z]--")
+def looks_like_path_or_identifier(value):
+    if _DRIVE_FLAT.match(value):
+        return True
+    word_segments = [s for s in re.split(r"[-_+=]", value) if _WORD_SEG.fullmatch(s)]
+    return len(word_segments) >= 3
 
 findings = []
 redacted = text
@@ -200,6 +227,7 @@ for type_name, pattern in PATTERNS:
 # Skipped entirely in image-mode to avoid the JPEG/PNG base64 false-positive
 # storm. We still count would-be matches for the forward-guard stats log.
 high_entropy_skipped = 0
+path_like_skipped = 0
 if image_mode:
     high_entropy_skipped = sum(1 for _ in HIGH_ENTROPY.finditer(redacted))
 else:
@@ -207,6 +235,11 @@ else:
         value = m.group(0)
         # Skip allow-listed
         if any(a.match(value) for a in ALLOW):
+            continue
+        # Skip path/identifier-like strings (#752) — flade file-paths,
+        # worktree-/session-navne. Safe: named patterns har allerede koert.
+        if looks_like_path_or_identifier(value):
+            path_like_skipped += 1
             continue
         # Skip hvis allerede del af en REDACTED-marker
         if "[REDACTED:" in value:
@@ -222,6 +255,7 @@ result = {
     "image_mode": image_mode,
     "image_mode_reason": "tool_name" if is_image_tool else ("marker" if has_image_marker else ""),
     "high_entropy_skipped": high_entropy_skipped,
+    "path_like_skipped": path_like_skipped,
     "tool_name": tool_name,
 }
 print(json.dumps(result))
@@ -246,12 +280,13 @@ STATS_FILE="$REPO_ROOT/.claude/secret-leak-stats.log"
 STATS_LINE=$(printf '%s' "$SCAN_RESULT" | "$PY" -c '
 import sys, json
 d = json.load(sys.stdin)
-if not (d.get("image_mode") or d.get("leak_detected")):
+if not (d.get("image_mode") or d.get("leak_detected") or d.get("path_like_skipped")):
     sys.exit(0)
 fields = [
     "image_mode={}".format(d.get("image_mode", False)),
     "reason={}".format(d.get("image_mode_reason", "") or "-"),
     "skipped_he={}".format(d.get("high_entropy_skipped", 0)),
+    "skipped_path={}".format(d.get("path_like_skipped", 0)),
     "leak={}".format(d.get("leak_detected", False)),
     "count={}".format(d.get("count", 0)),
     "tool={}".format(d.get("tool_name", "") or "-"),

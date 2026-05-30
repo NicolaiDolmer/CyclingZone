@@ -1,9 +1,14 @@
 ﻿import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { fetchAllRows } from "../lib/supabasePagination";
 import { Link, useNavigate } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
+import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
+
+// Realtime: opdatér top-hold/-ryttere live efter en resultat-import (#783).
+const REALTIME_TABLES = ["season_standings", "race_results"];
 
 const HUB_LINKS = [
   { to: "/standings",          label: "Ranglisten",      desc: "Holdranglisten for aktiv sæson",              icon: "🏆" },
@@ -42,12 +47,14 @@ export default function ResultaterPage() {
 
     if (racesRes.data?.length) {
       const raceIds = racesRes.data.map(r => r.id);
-      const { data: results } = await supabase
+      // Paginér: PostgREST capper ved 1000 (også .range(0,9999)) → ellers
+      // underberegnes resultat-aggregeringen for >1000 resultatrækker.
+      const results = await fetchAllRows(() => supabase
         .from("race_results")
         .select("rider_id, result_type, rank, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(name, is_ai))")
         .in("race_id", raceIds)
         .not("rider_id", "is", null)
-        .range(0, 9999);
+        .order("id", { ascending: true }));
 
       const agg = {};
       (results || []).forEach(r => {
@@ -72,6 +79,7 @@ export default function ResultaterPage() {
   }
 
   useEffect(() => { loadAll(); }, []);
+  useRealtimeRefetch("resultater-live", REALTIME_TABLES, loadAll);
 
   if (loading) return (
     <div className="flex justify-center py-16">
