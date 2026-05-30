@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.18",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · Season history now groups by game season",
+        items: [
+          "EN · The Season tab on a rider's page now groups results by game season (Season 1, Season 2, ...) instead of by the race's calendar edition year. The result list under each race also shows the game season. Wins, top-3s and prize money are now totalled per season the way the standings work. Refs #793.",
+          "DA · Sæson-fanen på en rytters side grupperer nu resultater efter spil-sæson (Sæson 1, Sæson 2, ...) i stedet for løbets kalender-udgaveår. Resultatlisten under hvert løb viser også spil-sæsonen. Sejre, top-3 og præmiepenge tælles nu sammen pr. sæson på samme måde som ranglisten. Refs #793.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.17",
     date: "2026-05-30",
     label: "Beta",
