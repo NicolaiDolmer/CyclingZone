@@ -132,9 +132,20 @@ test("PCM_RIDER_ALIASES er en ren PCM→DB-streng-map (ingen tomme værdier)", (
   }
 });
 
-// Mock-supabase: buildRiderMatcher kalder .from("riders").select(...)
-function fakeSupabase(riders) {
-  return { from: () => ({ select: async () => ({ data: riders, error: null }) }) };
+// Mock-supabase: buildRiderMatcher kalder .from(t).select(...).range(from,to).
+// Håndhæver PostgREST's 1000-row-loft pr. kald, så en test fanger det hvis
+// matcheren holder op med at paginere.
+function fakeSupabase(riders, { maxRows = 1000 } = {}) {
+  return {
+    from: () => ({
+      select: () => ({
+        range: async (from, to) => {
+          const end = Math.min(to, from + maxRows - 1);
+          return { data: riders.slice(from, end + 1), error: null };
+        },
+      }),
+    }),
+  };
 }
 
 test("buildRiderMatcher: exact, accent-fold, nordisk-fold og missing", async () => {
@@ -164,6 +175,19 @@ test("buildRiderMatcher: ægte dublet → ambiguous, aldrig gæt", async () => {
   );
   assert.equal(m.match("Jakob Nielsen").status, "ambiguous");
   assert.equal(m.match("Jakob Nielsen").riderId, null);
+});
+
+test("buildRiderMatcher: paginerer forbi 1000-row-loftet (rod-årsag, #770)", async () => {
+  // 2500 fyld-ryttere + én target langt forbi første side. Uden paginering
+  // ville matcheren kun se de første 1000 og flagge target som missing.
+  const riders = [];
+  for (let i = 0; i < 2500; i += 1) {
+    riders.push({ id: `fill-${i}`, firstname: `Fill${i}`, lastname: `Rider${i}`, team_id: null });
+  }
+  riders.splice(1800, 0, { id: "target", firstname: "Julian", lastname: "Alaphilippe", team_id: "t9" });
+  const m = await buildRiderMatcher(fakeSupabase(riders));
+  assert.equal(m.riderCount, riders.length); // alle sider hentet
+  assert.deepEqual(m.match("Julian Alaphilippe"), { riderId: "target", teamId: "t9", status: "exact" });
 });
 
 test("buildRiderMatcher: verificeret alias matcher; alias mod ukendt DB-navn forbliver missing", async () => {

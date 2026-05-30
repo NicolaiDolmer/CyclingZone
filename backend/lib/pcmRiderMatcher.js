@@ -37,17 +37,38 @@ export function foldNameNordic(s) {
     .replace(/å/g, "a");
 }
 
-// Byg et matcher-objekt fra alle riders. Loader hele riders-tabellen én gang
-// (8.7k rækker, ét kald) og indekserer på fuldt navn + accent-foldet navn.
+// Supabase/PostgREST returnerer maks 1000 rækker pr. select uden eksplicit
+// .range(). riders har ~8.7k rækker, så et naivt .select() indekserer KUN de
+// første 1000 og flagger fejlagtigt de resterende ~7.7k som "missing" — selv
+// stjernerytter der beviseligt er i DB (rod-årsagen til de 34 umatchede
+// scorende i live-importen 2026-05-30, #770). Paginér derfor altid fulde
+// tabel-loads. Samme mønster som dynCyclistSync.js.
+async function fetchAllRows(label, buildRangeQuery) {
+  const PAGE = 1000;
+  const all = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await buildRangeQuery(offset, offset + PAGE - 1);
+    if (error) throw new Error(`Kunne ikke hente ${label}: ${error.message}`);
+    if (!data?.length) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+    offset += PAGE;
+  }
+  return all;
+}
+
+// Byg et matcher-objekt fra alle riders. Loader HELE riders-tabellen (pagineret
+// — ellers kun de første 1000, se fetchAllRows) og indekserer på fuldt navn +
+// accent-foldet + nordisk-foldet navn.
 //
 // Returnerer: { match(fullName) -> { riderId, teamId, status } }
 //   status: "exact" | "folded" | "nordic" | "ambiguous" | "missing"
 //   ("exact"/"folded"/"nordic" kan også være ramt via et verificeret alias)
 export async function buildRiderMatcher(supabase) {
-  const { data: riders, error } = await supabase
-    .from("riders")
-    .select("id, firstname, lastname, team_id");
-  if (error) throw new Error(`Kunne ikke hente riders: ${error.message}`);
+  const riders = await fetchAllRows("riders", (from, to) =>
+    supabase.from("riders").select("id, firstname, lastname, team_id").range(from, to),
+  );
 
   // Indeks: exact (med accenter), folded (accent-fold) og nordic (ø/æ/å-fold).
   // Værdi-arrays for at fange ægte dubletter → tvetydighed.
@@ -115,8 +136,10 @@ export async function buildRiderMatcher(supabase) {
 // PCM-holdnavne resolves først via pcmTeamAliases.resolvePcmTeamName, og det
 // resulterende game-navn slås op her (eksakt, case-insensitivt).
 export async function buildTeamMatcher(supabase) {
-  const { data: teams, error } = await supabase.from("teams").select("id, name, is_ai, is_bank");
-  if (error) throw new Error(`Kunne ikke hente teams: ${error.message}`);
+  // teams er pt. langt under 1000, men paginér for samme robusthed som riders.
+  const teams = await fetchAllRows("teams", (from, to) =>
+    supabase.from("teams").select("id, name, is_ai, is_bank").range(from, to),
+  );
 
   const byName = new Map(); // lower(name) -> team
   for (const t of teams || []) {
