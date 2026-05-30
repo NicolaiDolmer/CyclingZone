@@ -223,7 +223,7 @@ export default function TeamProfilePage() {
                 <tr className="border-b border-cz-border">
                   <th className="px-2 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thNation")}</th>
                   <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                    className="px-4 py-3 text-left font-medium uppercase">{t("profile.thRider")}</SortTh>
+                    className="px-4 py-3 text-left font-medium uppercase sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("profile.thRider")}</SortTh>
                   <SortTh sortKey="uci_points" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                     className="px-4 py-3 text-right font-medium">{t("profile.thValue")}</SortTh>
                   {STATS.map((key, i) => (
@@ -241,7 +241,7 @@ export default function TeamProfilePage() {
                     <td className="px-2 py-2.5 hidden sm:table-cell">
                       <NationCell code={r.nationality_code} />
                     </td>
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
                       <div className="flex items-center gap-2">
                         {r._isIncoming && <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />}
                         {r._isOutgoing && <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />}

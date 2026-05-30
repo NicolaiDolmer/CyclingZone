@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.23",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · Rider name stays visible while scrolling wide tables",
+        items: [
+          "EN · On the stat-heavy rider tables (rider database, your squad, other squads, watchlist and the rider rankings) the name column now stays pinned to the left edge while you scroll sideways through the stat columns. You no longer lose track of which rider a value belongs to when a table is wider than the screen. Refs #799.",
+          "DA · På de stat-tunge rytter-tabeller (rytterdatabase, dit hold, andres hold, ønskeliste og rytterranglisten) bliver navne-kolonnen nu stående i venstre kant, mens du scroller vandret gennem stat-kolonnerne. Du mister ikke længere overblikket over, hvilken rytter en værdi hører til, når en tabel er bredere end skærmen. Refs #799.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.22",
     date: "2026-05-30",
     label: "Beta",
