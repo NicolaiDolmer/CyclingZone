@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.17",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · Race result history now shows on the rider page",
+        items: [
+          "EN · The Results tab on a rider's page now lists that rider's race results again, and the Season tab counts their wins, top-3s and prize money. The query was asking for a race date field that no longer exists, which made the whole request fail and left both tabs empty. It now reads the race edition year and finishing rank correctly. Refs #780.",
+          "DA · Resultat-fanen på en rytters side viser nu rytterens løbsresultater igen, og Sæson-fanen tæller sejre, top-3 og præmiepenge. Forespørgslen bad om et løbsdato-felt der ikke længere findes, hvilket fik hele kaldet til at fejle og efterlod begge faner tomme. Den læser nu løbets udgaveår og placering korrekt. Refs #780.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.16",
     date: "2026-05-30",
     label: "Beta",
