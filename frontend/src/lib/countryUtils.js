@@ -1,7 +1,16 @@
 import i18n from "i18next";
+import { ISO2_TO_IOC } from "./countryCodes";
 
 function normalizeCountryCode(code) {
   return typeof code === "string" ? code.trim().toUpperCase() : "";
+}
+
+// 2-bogstavs ISO (fx "fr") → IOC 3-bogstavskode (fx "FRA") til kompakt nation-kolonne.
+// Falder tilbage til 2-bogstav uppercase hvis koden ikke er i ISO2_TO_IOC-tabellen.
+export function getCountryCode3(code) {
+  const normalized = normalizeCountryCode(code);
+  if (!/^[A-Z]{2}$/.test(normalized)) return "";
+  return ISO2_TO_IOC[normalized.toLowerCase()] || normalized;
 }
 
 function currentLocale(locale) {

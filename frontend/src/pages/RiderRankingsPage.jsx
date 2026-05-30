@@ -3,9 +3,9 @@ import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
-import { Flag } from "../components/Flag";
+import NationCell from "../components/rider/NationCell";
+import RiderNameCell from "../components/rider/RiderNameCell";
 import { formatNumber } from "../lib/intl";
 
 const SORT_COLS = [
@@ -167,7 +167,8 @@ export default function RiderRankingsPage() {
               <thead>
                 <tr className="border-b border-cz-border bg-cz-subtle">
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 w-8">#</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 min-w-[160px]">{t("rankings.thRider")}</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-cz-3 hidden sm:table-cell">{t("rankings.thNation")}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 min-w-[120px]">{t("rankings.thRider")}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden md:table-cell">{t("rankings.thTeam")}</th>
                   {SORT_COLS.map(col => (
                     <th key={col.key}
@@ -194,15 +195,12 @@ export default function RiderRankingsPage() {
                         {i + 1}
                       </span>
                     </td>
+                    <td className="px-2 py-3 hidden sm:table-cell">
+                      <NationCell code={rider.nationality_code} />
+                    </td>
                     <td className="px-3 py-3">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {rider.nationality_code && (
-                          <Flag code={rider.nationality_code} className="flex-shrink-0" />
-                        )}
-                        <RiderLink id={rider.id} stopPropagation
-                          className="font-medium text-cz-1 hover:text-cz-accent-t transition-colors">
-                          {rider.firstname} {rider.lastname}
-                        </RiderLink>
+                      <RiderNameCell id={rider.id} firstname={rider.firstname} lastname={rider.lastname} stopPropagation
+                        className="font-medium text-cz-1 hover:text-cz-accent-t transition-colors">
                         {rider.is_u25 && (
                           <span className="text-[9px] uppercase bg-cz-info-bg text-blue-600 border border-cz-info/30 px-1 py-0.5 rounded hidden sm:inline flex-shrink-0">
                             U25
@@ -213,7 +211,7 @@ export default function RiderRankingsPage() {
                             AI
                           </span>
                         )}
-                      </div>
+                      </RiderNameCell>
                     </td>
                     <td className="px-3 py-3 text-xs hidden md:table-cell">
                       <TeamLink id={rider.team?.id} stopPropagation className="text-cz-2 hover:text-cz-accent-t transition-colors">{rider.team?.name || t("rankings.teamFree")}</TeamLink>

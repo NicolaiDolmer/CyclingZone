@@ -4,9 +4,9 @@ import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
-import RiderLink from "../components/RiderLink";
+import NationCell from "../components/rider/NationCell";
+import RiderNameCell from "../components/rider/RiderNameCell";
 import { statBg } from "../lib/statBg";
-import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
 import PotentialeStars from "../components/PotentialeStars";
@@ -170,6 +170,7 @@ export default function WatchlistPage() {
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
                   <tr className="border-b border-cz-border">
+                    <th className="px-2 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("thNation")}</th>
                     <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-left font-medium uppercase tracking-wider">{t("thRider")}</SortTh>
                     <th className="px-1 py-3 w-8" title={t("compareTooltip")}>⇄</th>
@@ -196,17 +197,16 @@ export default function WatchlistPage() {
                     const compareActive = compareIds.includes(r.id);
                     return (
                       <tr key={entry.id} className={`border-b border-cz-border hover:bg-cz-subtle ${compareActive ? "bg-cz-accent/[0.04]" : ""}`}>
+                        <td className="px-2 py-2.5 hidden sm:table-cell">
+                          <NationCell code={r.nationality_code} />
+                        </td>
                         <td className="px-3 py-2.5">
-                          <div className="flex items-center gap-2">
-                            {r.nationality_code && <Flag code={r.nationality_code} className="flex-shrink-0" />}
-                            <RiderLink id={r.id}
-                              className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left">
-                              {r.firstname} {r.lastname}
-                            </RiderLink>
+                          <RiderNameCell id={r.id} firstname={r.firstname} lastname={r.lastname}
+                            className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left">
                             {r.is_u25 && (
                               <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
                             )}
-                          </div>
+                          </RiderNameCell>
                         </td>
                         <td className="px-1 py-2.5 w-8">
                           <CompareToggle active={compareActive}

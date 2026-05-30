@@ -25,6 +25,7 @@
     "windowClosedHint": "🔒 Transfer window closed. Changes take effect at the next opening",
     "emptyState": "No riders on the team yet",
     "headers": {
+      "nation": "Nation",
       "rider": "Rider",
       "value": "Value",
       "salary": "Salary",
@@ -142,6 +143,7 @@
     "incomingToggle": "Incoming ({count})",
     "outgoingToggle": "Outgoing ({count})",
     "noRiders": "No riders",
+    "thNation": "Nation",
     "thRider": "Rider",
     "thValue": "Value",
     "tagIncoming": "Incoming",

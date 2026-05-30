@@ -4,7 +4,7 @@ import RiderLink from "../components/RiderLink";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
-import { Flag } from "../components/Flag";
+import NationCell from "../components/rider/NationCell";
 import { getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber, formatDate } from "../lib/intl";
 import PotentialeStars from "../components/PotentialeStars";
@@ -249,6 +249,7 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
+                  <th className="px-2 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("squad.headers.nation")}</th>
                   <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider">{t("squad.headers.rider")}</SortTh>
                   <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
@@ -271,13 +272,15 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                         r._isOutgoing  ? "bg-cz-danger-bg0/3"    :
                         r._isLoanedIn  ? "bg-purple-500/3" :
                         r._isLoanedOut ? "bg-cz-warning/10" : ""}`}>
+                    <td className="px-2 py-2.5 hidden sm:table-cell">
+                      <NationCell code={r.nationality_code} />
+                    </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         {r._isIncoming  && <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />}
                         {r._isOutgoing  && <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />}
                         {r._isLoanedIn  && <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />}
                         {r._isLoanedOut && <span className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0" />}
-                        {r.nationality_code && <Flag code={r.nationality_code} className="flex-shrink-0" />}
                         <RiderLink id={r.id}
                           className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors">
                           {r.firstname} {r.lastname}

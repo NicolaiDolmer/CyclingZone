@@ -6,7 +6,9 @@
     "loadingAria": "Loading riders"
   },
   "table": {
+    "nation": "Nation",
     "rider": "Rider",
+    "team": "Team",
     "value": "Value",
     "salary": "Salary",
     "potential": "Potential",
@@ -53,6 +55,7 @@
     "searchPlaceholder": "Search rider name…",
     "noResults": "No results found",
     "noResultsFor": "No results found for \"{q}\"",
+    "thNation": "Nation",
     "thRider": "Rider",
     "thTeam": "Team",
     "teamFree": "Free agent",
