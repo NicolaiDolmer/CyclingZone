@@ -735,7 +735,7 @@ export default function RiderStatsPage() {
     const [riderRes, resultsRes] = await Promise.all([
       supabase.from("riders").select(`*, team:team_id(id, name, is_ai, is_bank)`).eq("id", id).single(),
       supabase.from("race_results")
-        .select(`*, race:race_id(name, race_type, edition_year)`)
+        .select(`*, race:race_id(name, race_type, season:season_id(number))`)
         .eq("rider_id", id).order("imported_at", { ascending: false }).limit(20),
     ]);
     setRider(riderRes.data);
@@ -992,11 +992,12 @@ export default function RiderStatsPage() {
   const riderValueLabel = formatCz(getRiderMarketValue(rider));
   const riderValueAmount = riderValueLabel.replace(" CZ$", "");
   const bySeason = results.reduce((acc, r) => {
-    const yr = r.race?.edition_year || "-";
-    if (!acc[yr]) acc[yr] = { wins: 0, top3: 0, totalPrize: 0 };
-    if (r.rank === 1) acc[yr].wins++;
-    if (r.rank <= 3) acc[yr].top3++;
-    acc[yr].totalPrize += r.prize_money || 0;
+    const sn = r.race?.season?.number ?? null;
+    const key = sn ?? "-";
+    if (!acc[key]) acc[key] = { wins: 0, top3: 0, totalPrize: 0, season: sn };
+    if (r.rank === 1) acc[key].wins++;
+    if (r.rank <= 3) acc[key].top3++;
+    acc[key].totalPrize += r.prize_money || 0;
     return acc;
   }, {});
 
@@ -1172,15 +1173,17 @@ export default function RiderStatsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-cz-border">
-                  <th className="py-2 text-left text-cz-3 text-xs uppercase">{t("season.table.year")}</th>
+                  <th className="py-2 text-left text-cz-3 text-xs uppercase">{t("season.table.season")}</th>
                   <th className="py-2 text-right text-cz-3 text-xs uppercase">{t("season.table.wins")}</th>
                   <th className="py-2 text-right text-cz-3 text-xs uppercase">{t("season.table.top3")}</th>
                   <th className="py-2 text-right text-cz-3 text-xs uppercase">{t("season.table.prizes")}</th>
                 </tr></thead>
                 <tbody>
-                  {Object.entries(bySeason).map(([yr, d]) => (
-                    <tr key={yr} className="border-b border-cz-border">
-                      <td className="py-2 text-cz-2">{yr}</td>
+                  {Object.entries(bySeason)
+                    .sort((a, b) => (b[1].season ?? -1) - (a[1].season ?? -1))
+                    .map(([key, d]) => (
+                    <tr key={key} className="border-b border-cz-border">
+                      <td className="py-2 text-cz-2">{d.season != null ? t("season.row", { n: d.season }) : t("results.fallbackDash")}</td>
                       <td className="py-2 text-right text-cz-accent-t font-mono">{d.wins}</td>
                       <td className="py-2 text-right text-cz-2 font-mono">{d.top3}</td>
                       <td className="py-2 text-right text-cz-success font-mono text-xs">+{formatNumber(d.totalPrize)}</td>
@@ -1211,7 +1214,7 @@ export default function RiderStatsPage() {
                     <tr key={r.id} className="border-b border-cz-border last:border-0">
                       <td className="px-4 py-3">
                         <p className="text-cz-1 text-sm">{r.race?.name || t("results.fallbackDash")}</p>
-                        <p className="text-cz-3 text-xs">{r.race?.edition_year || t("results.fallbackDash")}</p>
+                        <p className="text-cz-3 text-xs">{r.race?.season?.number != null ? t("season.row", { n: r.race.season.number }) : t("results.fallbackDash")}</p>
                       </td>
                       <td className="px-4 py-3 text-center text-cz-2 text-xs">{r.result_type || t("results.fallbackDash")}</td>
                       <td className="px-4 py-3 text-right">
