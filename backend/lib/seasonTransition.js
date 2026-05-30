@@ -41,6 +41,16 @@ async function getProcessSeasonStart() {
   return processSeasonStartImpl;
 }
 
+// #805 · lazy import (betaResetService → economyEngine; samme cyklus-undgåelse
+// som getProcessSeasonStart) til board-test-exit-oprydning.
+let resetBetaBoardProfilesImpl;
+async function getResetBetaBoardProfiles() {
+  if (!resetBetaBoardProfilesImpl) {
+    resetBetaBoardProfilesImpl = (await import("./betaResetService.js")).resetBetaBoardProfiles;
+  }
+  return resetBetaBoardProfilesImpl;
+}
+
 // ─── UUID helpers ─────────────────────────────────────────────────────────────
 
 /**
@@ -401,6 +411,28 @@ export async function transitionToNextSeason({
       supabase, plan.to_season.transfer_window_id, plan.to_season.id, transitionAtIso
     )),
   });
+
+  // #805 · Board-test-exit: hvis den afgående sæson kørte board_test_mode, nulstil
+  // board-data så test-perioden ikke bærer økonomisk spor (modificerede
+  // budget_modifiers / consequences) ind i den nye sæson. Det nye window har
+  // board_test_mode=false (default fra insertTransferWindowIfMissing) → bestyrelsen
+  // tæller rigtigt fra sæson 2. Kører FØR processSeasonStart så de genskabte
+  // baseline-rows (modifier 1.0) anvendes i sponsor-payout. Sæson 2 er allerede
+  // 'active' efter insert_next_season, så resetBetaBoardProfiles rammer den rigtigt.
+  const { data: prevWindow } = await supabase
+    .from("transfer_windows")
+    .select("board_test_mode")
+    .eq("season_id", fromSeasonId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (prevWindow?.board_test_mode === true) {
+    const resetBetaBoardProfilesFn = deps.resetBetaBoardProfiles ?? (await getResetBetaBoardProfiles());
+    log.push({
+      phase: "reset_board_test_data",
+      ...(await resetBetaBoardProfilesFn(supabase)),
+    });
+  }
 
   // Phase 6: sponsor-payout + payroll (idempotent via partial UNIQUE-indices
   // på sponsor:team:season + salary/negative_interest:team:season +

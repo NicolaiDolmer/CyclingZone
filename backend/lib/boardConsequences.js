@@ -303,6 +303,7 @@ export async function evaluateAndApplyConsequences({
   seasonId,
   notify,
   consecutiveLowExpirations = 0,
+  boardTestMode = false,
 }) {
   ensureSupabase(supabase);
   if (!team?.id || !board?.id) {
@@ -383,7 +384,13 @@ export async function evaluateAndApplyConsequences({
   }
 
   // ── Lag 4: Tvunget listing (sat<15) — vælg + insert listing + create row
-  if (newSatisfaction < SATISFACTION_THRESHOLDS.FORCED_LISTING) {
+  // #805 test-mode: tvangssalg er en reel økonomisk konsekvens (kan føre til salg),
+  // så det suppress fuldt — ingen transfer_listing, ingen consequence-row, ingen
+  // notify (en "rytter force-listed"-besked uden faktisk listing ville være
+  // misvisende player-facing copy). Satisfaction-presset er fortsat synligt i UI.
+  if (boardTestMode && newSatisfaction < SATISFACTION_THRESHOLDS.FORCED_LISTING) {
+    skipped.push({ layer: 4, reason: "test_mode_suppressed" });
+  } else if (newSatisfaction < SATISFACTION_THRESHOLDS.FORCED_LISTING) {
     const existing = byLayer.get(CONSEQUENCE_LAYERS.FORCED_LISTING);
     if (existing) {
       skipped.push({ layer: 4, reason: "already_active" });
@@ -450,7 +457,11 @@ export async function evaluateAndApplyConsequences({
     newSatisfaction < PULLOUT_PLAN_LAPSE_SATISFACTION &&
     consecutiveLowExpirations >= PULLOUT_PLAN_LAPSE_TRIGGER;
 
-  if (pulloutTriggerA || pulloutTriggerB) {
+  if (boardTestMode && (pulloutTriggerA || pulloutTriggerB)) {
+    // #805 test-mode: pullout fryser sponsor-modifier (-10%) næste sæson → suppress
+    // (ingen consequence-row → effektiv modifier 1.0). Dækket transitivt af lag 1-override.
+    skipped.push({ layer: 5, reason: "test_mode_suppressed" });
+  } else if (pulloutTriggerA || pulloutTriggerB) {
     const existing = byLayer.get(CONSEQUENCE_LAYERS.SPONSOR_PULLOUT);
     if (existing) {
       skipped.push({ layer: 5, reason: "already_active" });

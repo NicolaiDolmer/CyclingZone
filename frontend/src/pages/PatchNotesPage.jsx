@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.22",
+    date: "2026-05-30",
+    label: "Beta",
+    changes: [
+      {
+        category: "Board · Open for testing with a frozen economy",
+        items: [
+          "EN · The board (\"bestyrelsen\") is now open for everyone to try. You can negotiate and sign your multi-year plans (5yr, then 3yr, then 1yr), make requests, and see goals and consequences play out — exactly as it will work in production. During this test period the board's effect on your economy is frozen: sponsor income is unaffected, bonus offers pay nothing real, and forced sales and sponsor pull-outs are held back, so you can explore freely without real financial consequences. The board's hard limits (salary cap and signing restrictions) do still apply on real transfers. The test data is cleared automatically at the next season change. Refs #805.",
+          "DA · Bestyrelsen er nu åben for alle at prøve. Du kan forhandle og underskrive dine flerårsplaner (5 år, så 3 år, så 1 år), sende forespørgsler og se mål og konsekvenser udspille sig — præcis som det kommer til at fungere i drift. I denne testperiode er bestyrelsens effekt på din økonomi frosset: sponsorindtægten påvirkes ikke, bonustilbud udbetaler ingen rigtige penge, og tvangssalg og sponsorexit holdes tilbage, så du kan udforske frit uden reelle økonomiske konsekvenser. Bestyrelsens hårde grænser (lønloft og indkøbsrestriktioner) gælder dog stadig på rigtige transfers. Testdataene ryddes automatisk ved næste sæsonskifte. Refs #805.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.21",
     date: "2026-05-30",
     label: "Beta",

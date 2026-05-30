@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -6,6 +6,7 @@ export default function BetaToolsSection({ getAuth, onMsg }) {
   const [betaResult, setBetaResult] = useState(null);
   const [betaClearTransactions, setBetaClearTransactions] = useState(false);
   const [loading, setLoading] = useState({});
+  const [boardTestMode, setBoardTestMode] = useState(null); // null = ukendt
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
 
@@ -26,11 +27,76 @@ export default function BetaToolsSection({ getAuth, onMsg }) {
     setLoad(`beta_${endpoint}`, false);
   }
 
+  // #805 · Board-test-mode status + toggle (egen route-prefix /api/admin/board/).
+  async function loadBoardTestStatus() {
+    try {
+      const res = await fetch(`${API}/api/admin/board/test-status`, { headers: await getAuth() });
+      const data = await res.json();
+      if (res.ok) setBoardTestMode(data.board_test_mode === true);
+    } catch { /* status er best-effort */ }
+  }
+
+  useEffect(() => { loadBoardTestStatus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleBoardTest(action, confirmMsg) {
+    if (!confirm(confirmMsg)) return;
+    setLoad(`board_${action}`, true);
+    setBetaResult(null);
+    try {
+      const res = await fetch(`${API}/api/admin/board/${action}`, {
+        method: "POST", headers: await getAuth(), body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBetaResult({ endpoint: `board/${action}`, ...data });
+        setBoardTestMode(data.board_test_mode === true);
+        onMsg(`✅ board/${action} udført`);
+      } else {
+        onMsg(`❌ ${data.error}`, "error");
+      }
+    } catch (e) {
+      onMsg(`❌ Netværksfejl: ${e.message}`, "error");
+    }
+    setLoad(`board_${action}`, false);
+  }
+
   return (
     <>
       <div className="mb-4 flex items-start gap-2 bg-cz-accent/10 border border-cz-accent/30 rounded-lg p-3 text-xs text-cz-accent-t">
         <span className="text-base leading-none mt-0.5">⚠️</span>
         <span>Disse handlinger er destruktive og irreversible. Brug kun under testperioden. AI-holds, bank-hold og frosne hold påvirkes ikke af manager-resettene.</span>
+      </div>
+      {/* #805 · Board-test-tilstand: åbn bestyrelsen for test med frosset økonomi */}
+      <div className="mb-4 bg-cz-subtle border border-cz-border rounded-lg p-3">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <p className="text-xs font-semibold text-cz-2">Bestyrelse — test med frosset økonomi</p>
+          <span className={`text-xs px-2 py-0.5 rounded-full border ${
+            boardTestMode === true
+              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40"
+              : "bg-cz-subtle text-cz-3 border-cz-border"
+          }`}>
+            {boardTestMode === null ? "status ukendt" : boardTestMode ? "TEST AKTIV" : "test inaktiv"}
+          </span>
+        </div>
+        <p className="text-xs text-cz-3 mb-3">
+          Åbner bestyrelsen for alle testere uden reelle pengekonsekvenser (sponsor-modifier
+          tvinges 1.0, ingen board-bonus-udbetalinger, tvangssalg/pullout suppress). Hard-blocks
+          (salary cap / signing restriction) håndhæves stadig. Ryddes automatisk ved sæson-skift.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => handleBoardTest("open-test", "Åbn bestyrelsen for test med frosset økonomi?\n\n• Nulstiller board-profiler til ren baseline (signerede planer ryddes)\n• Åbner onboarding-forhandling (5yr→3yr→1yr) for alle testere\n• Fryser board-økonomien (ingen rigtige penge flytter sig)\n\nHandlingen kan ikke fortrydes (board-profiler nulstilles).")}
+            disabled={loading["board_open-test"]}
+            className="px-3 py-2 text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 rounded-lg hover:bg-cz-accent/20 disabled:opacity-50 transition-all">
+            {loading["board_open-test"] ? "..." : "Åbn board for test"}
+          </button>
+          <button
+            onClick={() => handleBoardTest("close-test", "Luk board-test-tilstanden?\n\nØkonomi-frysningen ophæves (board_test_mode=false). Board-data og window-state efterlades urørt.")}
+            disabled={loading["board_close-test"]}
+            className="px-3 py-2 text-xs bg-cz-subtle text-cz-2 border border-cz-border rounded-lg hover:bg-cz-hover disabled:opacity-50 transition-all">
+            {loading["board_close-test"] ? "..." : "Luk board-test"}
+          </button>
+        </div>
       </div>
       <label className="mb-4 inline-flex items-center gap-2 text-xs text-cz-2 select-none">
         <input

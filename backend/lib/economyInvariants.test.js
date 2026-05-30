@@ -648,6 +648,73 @@ test("processSeasonStart bruger variabel sponsor fra forrige sæsons standings f
   assert.equal(result.sponsor[0].sponsor_breakdown.mode, "variable");
 });
 
+// ── #805 invariant: board test-mode tvinger sponsor-modifier til 1.0 ───────────
+//
+// Et completed board med budget_modifier=1.2 ville normalt løfte sponsor-payout 20%.
+// I board test-mode skal payout være præcis som med modifier 1.0 (board-bidraget
+// til økonomien er neutralt mens testere forhandler planer).
+test("processSeasonStart tvinger sponsor-modifier til 1.0 i board test-mode", async () => {
+  async function runWithBoard({ budgetModifier, boardTestMode }) {
+    const financeRows = [];
+    const supabase = {
+      rpc(name, params) {
+        financeRows.push({ team_id: params.p_team_id, delta: params.p_delta, ...params.p_finance_payload });
+        return Promise.resolve({ data: params.p_delta, error: null });
+      },
+      from(table) {
+        if (table === "seasons") {
+          return { select() { return { eq() { return { single: () => Promise.resolve({ data: { number: 1 }, error: null }) }; } }; } };
+        }
+        if (table === "teams") {
+          return {
+            select() {
+              return { eq() { return { eq() { return Promise.resolve({
+                data: [{
+                  id: "team-1", name: "TestMode Team", balance: 0, sponsor_income: 240_000,
+                  board_profiles: [{ negotiation_status: "completed", budget_modifier: budgetModifier }],
+                  is_frozen: false,
+                }],
+                error: null,
+              }); } }; } };
+            },
+          };
+        }
+        if (table === "board_consequences") {
+          return { select() { return { eq() { return { eq() { return Promise.resolve({ data: [], error: null }); } }; } }; } };
+        }
+        if (table === "transfer_windows") {
+          // isBoardTestModeActive læser seneste window.
+          return {
+            select() { return { order() { return { limit() { return {
+              maybeSingle: () => Promise.resolve({ data: { board_test_mode: boardTestMode }, error: null }),
+            }; } }; } }; },
+          };
+        }
+        if (table === "board_profiles") {
+          return { insert() { return Promise.resolve({ error: null }); } };
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      },
+    };
+
+    const result = await processSeasonStart("season-1", {
+      supabase,
+      processLoanAgreementSeasonFees: async () => [],
+      runSeasonPayroll: async () => [],
+    });
+    return { delta: financeRows[0].delta, sponsor: result.sponsor[0].sponsor };
+  }
+
+  const testMode = await runWithBoard({ budgetModifier: 1.2, boardTestMode: true });
+  const neutral = await runWithBoard({ budgetModifier: 1.0, boardTestMode: false });
+  const boosted = await runWithBoard({ budgetModifier: 1.2, boardTestMode: false });
+
+  // Test-mode med modifier 1.2 == normal med modifier 1.0 (frosset).
+  assert.equal(testMode.delta, neutral.delta);
+  // ... og strengt mindre end den boostede non-test payout, så vi ved 1.2 faktisk gør noget.
+  assert.ok(boosted.delta > testMode.delta, "modifier 1.2 skal hæve payout uden for test-mode");
+});
+
 // ── v3.78 invariant: sponsor pass A er FÆRDIG for alle hold før payroll (pass B) starter ───
 //
 // Beskytter mod regression hvor renter/løn ved et uheld interleaves med sponsor-loopet
