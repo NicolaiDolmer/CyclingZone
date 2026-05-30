@@ -44,6 +44,37 @@ Alle har `is_test_account=true` så de udelukkes fra:
 
 Ægte managere er uændret — `is_test_account` defaulter til `false`.
 
+### Manuel preview/test-login (UI-verify før merge) — #767
+
+PR-previews (`cycling-zone-git-<branch>-…vercel.app`) bygges med Vercel
+`Preview`-target, som peger på **samme Supabase som prod** — der findes kun ét
+Supabase-projekt (`ghwvkxzhsbbltzfnuhhz`), ingen separat staging. Konsekvens:
+
+- Login i en preview bruger prod-auth. Enhver prod-konto (inkl. de 3 test-konti)
+  virker i preview med samme credentials.
+- Preview-deploys er **ikke** SSO-beskyttede (HTTP 200 direkte), og
+  `Preview`-target har `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` /
+  `VITE_API_URL`. Login-infrastrukturen er altså intakt ud af boksen.
+
+**Sådan logger du ind i en preview for at verificere PR-features:**
+
+1. Åbn PR-preview-URL'en (Vercel-kommentaren på PR'en, eller en hvilken som helst
+   `…vercel.app`-deploy).
+2. Email: `test-a@cyclingzone.dev` · password: `TEST_ACCOUNT_PASSWORD`
+   (hentes fra Infisical / `backend/.env`, aldrig committet — repo er publicly
+   viewable).
+3. Du lander på `/dashboard` som authenticated manager (test-a, Division 3,
+   800K balance) og kan klikke featuren igennem.
+
+> ⚠️ Test-handlinger i en preview rører **prod-data** (delt DB). test-a er
+> `is_test_account=true`, så den udelukkes fra ranglister/board-events, men
+> undgå destruktive admin-handlinger via en test-konto i preview.
+
+Hvis login fejler med "invalid credentials": passwordet på test-konti er ikke
+synket. Læg `TEST_ACCOUNT_PASSWORD` i `backend/.env` (fra Infisical) og kør
+`node scripts/setup-test-accounts.mjs` — idempotent, sætter samme password på
+alle 3 konti.
+
 ## Required env (`backend/.env`, ikke i Git)
 
 ```
