@@ -6,7 +6,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **[#770](https://github.com/NicolaiDolmer/CyclingZone/issues/770)** PCM rytter-alias ✅ bygget (PR [#771](https://github.com/NicolaiDolmer/CyclingZone/pull/771), alle checks grønne, `backend-only`, afventer merge). Vælg næste: **[#767](https://github.com/NicolaiDolmer/CyclingZone/issues/767)** test-login i preview (afblokerer pre-merge-verify) · eller roadmap (2) backlog-nedbringning.
+> **🎯 Next action:** **[#770](https://github.com/NicolaiDolmer/CyclingZone/issues/770)** ✅ — live-importen afslørede **rod-årsag**: pagineringsbug i #668-matcheren (`buildRiderMatcher` uden `.range()` → kun 1000 af 8.699 ryttere → 34 scorende stjerner fejlagtigt umatchede). Fikset i PR [#771](https://github.com/NicolaiDolmer/CyclingZone/pull/771) (paginér + nordisk-fold/alias-forebyggelse, verificeret 34→0, `backend-only`, afventer merge + din prod-reverify). Vælg næste: **[#767](https://github.com/NicolaiDolmer/CyclingZone/issues/767)** test-login i preview · eller roadmap (2) backlog-nedbringning.
 >
 > **🗓️ Session-roadmap (brugerens plan 30. maj):** (1) #668 ✅ merged + live · (2) **backlog-nedbringnings-session** — kom til bunds i de mange åbne opgaver, få dem lavet + fulgt op på ALLE, så de ikke hober sig op · (3) derefter: workflow-professionalisering — sessioner der gør os mere optimale/professionelle · (4) bagefter løbende: prioritér de mest værdiskabende opgaver der sikrer fremdrift, så spillet snart kan **testes + lanceres**.
 >
