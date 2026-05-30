@@ -735,7 +735,7 @@ export default function RiderStatsPage() {
     const [riderRes, resultsRes] = await Promise.all([
       supabase.from("riders").select(`*, team:team_id(id, name, is_ai, is_bank)`).eq("id", id).single(),
       supabase.from("race_results")
-        .select(`*, race:race_id(name, race_type, start_date)`)
+        .select(`*, race:race_id(name, race_type, edition_year)`)
         .eq("rider_id", id).order("imported_at", { ascending: false }).limit(20),
     ]);
     setRider(riderRes.data);
@@ -992,10 +992,10 @@ export default function RiderStatsPage() {
   const riderValueLabel = formatCz(getRiderMarketValue(rider));
   const riderValueAmount = riderValueLabel.replace(" CZ$", "");
   const bySeason = results.reduce((acc, r) => {
-    const yr = r.race?.start_date?.slice(0, 4) || "-";
+    const yr = r.race?.edition_year || "-";
     if (!acc[yr]) acc[yr] = { wins: 0, top3: 0, totalPrize: 0 };
-    if (r.position === 1) acc[yr].wins++;
-    if (r.position <= 3) acc[yr].top3++;
+    if (r.rank === 1) acc[yr].wins++;
+    if (r.rank <= 3) acc[yr].top3++;
     acc[yr].totalPrize += r.prize_money || 0;
     return acc;
   }, {});
@@ -1211,12 +1211,12 @@ export default function RiderStatsPage() {
                     <tr key={r.id} className="border-b border-cz-border last:border-0">
                       <td className="px-4 py-3">
                         <p className="text-cz-1 text-sm">{r.race?.name || t("results.fallbackDash")}</p>
-                        <p className="text-cz-3 text-xs">{r.race?.start_date?.slice(0, 4) || t("results.fallbackDash")}</p>
+                        <p className="text-cz-3 text-xs">{r.race?.edition_year || t("results.fallbackDash")}</p>
                       </td>
                       <td className="px-4 py-3 text-center text-cz-2 text-xs">{r.result_type || t("results.fallbackDash")}</td>
                       <td className="px-4 py-3 text-right">
-                        <span className={`font-mono font-bold text-sm ${r.position === 1 ? "text-cz-accent-t" : r.position <= 3 ? "text-cz-1" : "text-cz-2"}`}>
-                          #{r.position}
+                        <span className={`font-mono font-bold text-sm ${r.rank === 1 ? "text-cz-accent-t" : r.rank <= 3 ? "text-cz-1" : "text-cz-2"}`}>
+                          #{r.rank}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right text-cz-success font-mono text-xs">
