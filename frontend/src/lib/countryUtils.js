@@ -1,5 +1,5 @@
 import i18n from "i18next";
-import { ISO2_TO_IOC } from "./countryCodes";
+import { ISO2_TO_IOC } from "./countryCodes.js";
 
 function normalizeCountryCode(code) {
   return typeof code === "string" ? code.trim().toUpperCase() : "";
