@@ -13,8 +13,7 @@
     "salary": "Salary",
     "potential": "Potential",
     "compareTooltip": "Select for comparison",
-    "teamFree": "Free",
-    "auctionBadge": "⚡ Auction"
+    "teamFree": "Free"
   },
   "pagination": {
     "showing": "Showing {from}-{to} of {total}",

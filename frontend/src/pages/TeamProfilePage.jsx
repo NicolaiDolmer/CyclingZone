@@ -5,6 +5,7 @@ import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
 import { statBg } from "../lib/statBg";
 import NationCell from "../components/rider/NationCell";
+import RiderBadges from "../components/rider/RiderBadges";
 import OnlineBadge from "../components/OnlineBadge";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
@@ -243,15 +244,11 @@ export default function TeamProfilePage() {
                     </td>
                     <td className="px-4 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
                       <div className="flex items-center gap-2">
-                        {r._isIncoming && <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />}
-                        {r._isOutgoing && <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />}
                         <RiderLink id={r.id} stopPropagation
                           className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
                           {r.firstname} {r.lastname}
                         </RiderLink>
-                        {r.is_u25 && <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>}
-                        {r._isIncoming && <span className="text-[9px] uppercase bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded">{t("profile.tagIncoming")}</span>}
-                        {r._isOutgoing && <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">{t("profile.tagOutgoing")}</span>}
+                        <RiderBadges badges={[r.is_u25 && "u25", r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-right text-cz-accent-t font-mono font-bold">

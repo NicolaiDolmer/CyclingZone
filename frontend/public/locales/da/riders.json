@@ -13,8 +13,7 @@
     "salary": "Løn",
     "potential": "Potentiale",
     "compareTooltip": "Vælg til sammenligning",
-    "teamFree": "Fri",
-    "auctionBadge": "⚡ Auktion"
+    "teamFree": "Fri"
   },
   "pagination": {
     "showing": "Viser {from}-{to} af {total}",

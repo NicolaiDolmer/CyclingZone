@@ -1,4 +1,14 @@
 {
+  "badges": {
+    "u25": "Under 25 (U25)",
+    "auction": "Aktiv auktion",
+    "ai": "AI-hold",
+    "incoming": "Indgående transfer",
+    "outgoing": "Udgående transfer",
+    "self": "Intern handel (eget hold)",
+    "bought": "Du købte denne rytter",
+    "sold": "Du solgte denne rytter"
+  },
   "page": {
     "back": "← Tilbage",
     "notFound": "Rytter ikke fundet",

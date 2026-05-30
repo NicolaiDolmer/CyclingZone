@@ -145,9 +145,7 @@
     "noRiders": "No riders",
     "thNation": "Nation",
     "thRider": "Rider",
-    "thValue": "Value",
-    "tagIncoming": "Incoming",
-    "tagOutgoing": "Outgoing"
+    "thValue": "Value"
   },
   "manager": {
     "back": "← Back",

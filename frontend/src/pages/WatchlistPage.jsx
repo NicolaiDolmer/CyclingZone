@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
+import RiderBadges from "../components/rider/RiderBadges";
 import TeamCell from "../components/rider/TeamCell";
 import { statBg } from "../lib/statBg";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
@@ -204,9 +205,7 @@ export default function WatchlistPage() {
                         <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
                           <RiderNameCell id={r.id} firstname={r.firstname} lastname={r.lastname}
                             className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left">
-                            {r.is_u25 && (
-                              <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
-                            )}
+                            <RiderBadges badges={[r.is_u25 && "u25"]} />
                           </RiderNameCell>
                         </td>
                         <td className="px-1 py-2.5 w-8">

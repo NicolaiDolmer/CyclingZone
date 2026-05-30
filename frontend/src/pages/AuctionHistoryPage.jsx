@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import NationCell from "../components/rider/NationCell";
+import RiderBadges from "../components/rider/RiderBadges";
 import { formatNumber, formatDate } from "../lib/intl";
 
 function timeAgo(dateStr) {
@@ -240,17 +241,11 @@ export default function AuctionHistoryPage() {
                           className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
                           {a.rider?.firstname} {a.rider?.lastname}
                         </RiderLink>
-                        {a.rider?.is_u25 && (
-                          <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>
-                        )}
-                        {iSelf ? (
-                          <span className="text-[9px] uppercase bg-cz-subtle text-cz-2 border border-cz-border px-1.5 py-0.5 rounded">Selv</span>
-                        ) : (
-                          <>
-                            {iWon && <span className="text-[9px] uppercase bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded">Købt</span>}
-                            {iSold && !noSale && <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">Solgt</span>}
-                          </>
-                        )}
+                        <RiderBadges badges={[
+                          a.rider?.is_u25 && "u25",
+                          iSelf ? "self" : iWon && "bought",
+                          !iSelf && iSold && !noSale && "sold",
+                        ]} />
                       </div>
                       <p className="text-cz-3 text-xs mt-0.5">UCI: {formatNumber(a.rider?.uci_points)} pt — Løn: {a.rider?.salary ? `${formatNumber(a.rider.salary)} CZ$` : "—"}</p>
                     </td>

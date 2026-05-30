@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.24",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · Status badges are now compact icons with tooltips",
+        items: [
+          "EN · The small labels next to a rider's name (U25, auction, AI team, incoming/outgoing transfer, and the bought/sold/internal markers in your auction history) are now compact icons instead of words. Hover or focus an icon to see what it means, and screen readers announce the full label. This keeps the name column clean and uniform now that nation and team have their own columns. Refs #801.",
+          "DA · De små mærkater ved siden af en rytters navn (U25, auktion, AI-hold, indgående/udgående transfer og købt/solgt/intern-markeringerne i din auktionshistorik) er nu kompakte ikoner i stedet for ord. Hold musen over eller fokusér et ikon for at se, hvad det betyder, og skærmlæsere læser den fulde tekst op. Det holder navne-kolonnen ren og ensartet, nu hvor nation og hold har deres egne kolonner. Refs #801.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.23",
     date: "2026-05-31",
     label: "Beta",
