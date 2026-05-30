@@ -1307,11 +1307,17 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
 
   const raceIds = (races || []).map(race => race.id);
   if (raceIds.length > 0) {
-    const { data: results, error: resultsError } = await supabaseClient
-      .from("race_results")
-      .select("race_id, team_id, result_type, rank, points_earned, rider:rider_id(team_id)")
-      .in("race_id", raceIds);
-    if (resultsError) throw new Error(resultsError.message);
+    // race_results kan overstige PostgREST's 1000-row-loft (sæson 1 har ~2.2k
+    // rækker). Et naivt .select().in() returnerer KUN de første 1000 → standings
+    // underberegnes systematisk (point tabt for hold hvis rækker falder uden for
+    // første side). fetchAllRows paginerer; .order("id") gør siderne stabile.
+    const results = await fetchAllRows(() => (
+      supabaseClient
+        .from("race_results")
+        .select("race_id, team_id, result_type, rank, points_earned, rider:rider_id(team_id)")
+        .in("race_id", raceIds)
+        .order("id", { ascending: true })
+    ));
 
     for (const result of results || []) {
       const teamId = result.team_id || result.rider?.team_id;
