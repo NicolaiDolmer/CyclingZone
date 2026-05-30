@@ -49,12 +49,12 @@ $gitPath = Resolve-GitPath
 Write-Host "  [ok] git: $(& $gitPath --version)"
 
 $nodeCommand = Get-Command node -ErrorAction SilentlyContinue
-if (-not $nodeCommand) { throw "Node ikke fundet. Installer Node.js LTS (repoet kraever >= 22) - se scripts/bootstrap-pc.ps1." }
+if (-not $nodeCommand) { throw "Node ikke fundet. Installer Node.js LTS (repoet kraever >=24 <25) - se scripts/bootstrap-pc.ps1." }
 $nodeVersion = (& $nodeCommand.Source --version)
 Write-Host "  [ok] node: $nodeVersion"
 $nodeMajor = [int](($nodeVersion -replace '^v', '') -split '\.')[0]
-if ($nodeMajor -lt 22) {
-  Write-Host "  [warn] Node $nodeVersion er for gammel. backend/package.json kraever >= 22 (LTS). Opgradér foer du arbejder." -ForegroundColor Yellow
+if ($nodeMajor -lt 24 -or $nodeMajor -ge 25) {
+  Write-Host "  [warn] Node $nodeVersion matcher ikke pinnet major. .node-version kraever 24 (>=24 <25). Brug fnm/nvm til at skifte." -ForegroundColor Yellow
 }
 
 $ghCommand = Get-Command gh -ErrorAction SilentlyContinue

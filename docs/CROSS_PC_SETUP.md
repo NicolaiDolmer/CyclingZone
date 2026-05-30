@@ -136,7 +136,7 @@ pwsh -File "$env:TEMP\bootstrap-pc.ps1"          # tilføj -WithDocker hvis du v
 
 `bootstrap-pc.ps1` installerer: Git, GitHub CLI, PowerShell 7, Windows Terminal, VS Code (+ extensions), Node.js LTS (≥22), Python, Infisical CLI (via Scoop — winget-pakken er pt. død), Bitwarden, Chrome, samt npm-globale CLI'er (Vercel, Railway, Codex) og Claude Code. Det sætter desuden ExecutionPolicy `CurrentUser=RemoteSigned` tidligt og tilføjer `~/.local/bin` til User-PATH (så `claude` resolver i nye terminaler). Det rører **aldrig** secrets. Idempotent — kan køres igen.
 
-> **Node-version:** `backend/package.json` kræver Node **≥ 22**. `OpenJS.NodeJS.LTS` (som bootstrap installerer) giver den nyeste LTS = 22.x.
+> **Node-version:** Repoet pinner Node **24** via `.node-version` i repo-roden. `engines.node` i alle tre `package.json`-filer er sat til `>=24.0.0 <25`. Brug **fnm** (Fast Node Manager) som versionsmanager — den læser `.node-version` automatisk ved `cd` ind i repoet og skifter version uden manuel handling. Se afsnittet [Node-version (fnm + .node-version)](#node-version-fnm--node-version) nedenfor.
 
 ### Trin 1 — Log ind på dine konti
 
@@ -227,6 +227,50 @@ Før du skifter PC, telefon eller agent: sørg for at alle beslutninger, næste 
 ### Auto-push efter commit
 
 Allerede etableret regel (`AGENTS.md` punkt 6 + `feedback_push_after_commit.md`): commit → push uden at spørge.
+
+---
+
+## Node-version (fnm + .node-version)
+
+Repoet pinner Node **24** via `.node-version` i repo-roden. Alle tre `package.json`-filer har `"engines": { "node": ">=24.0.0 <25" }` — npm advarer ved forkert version.
+
+**Anbefalede versionsmanager: fnm (Fast Node Manager)**
+
+fnm læser `.node-version` automatisk ved `cd` ind i repoet og skifter Node-version uden manuel handling.
+
+### Installer fnm
+
+```powershell
+winget install Schniz.fnm
+```
+
+Genstart pwsh efter installation.
+
+### Aktiver auto-switch i PowerShell-profil
+
+Tilføj til din `$PROFILE` (åbn med `code $PROFILE`):
+
+```powershell
+fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
+```
+
+Herefter sker versionsswitch automatisk når du `cd` ind i repoet.
+
+### Installer Node 24 via fnm
+
+```powershell
+fnm install 24
+fnm use 24
+```
+
+### Verificér
+
+```powershell
+cd C:\dev\CyclingZone
+node --version   # skal printe v24.x.x
+```
+
+> **PC2-bemærkning:** PC2 kørte Node v25 — `fnm use 24` (eller automatisk via `.node-version`) bringer den i pari med PC1 + CI uden at afinstallere noget.
 
 ---
 
