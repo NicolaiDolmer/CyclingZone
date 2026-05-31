@@ -99,10 +99,6 @@
           "Auktionen er nu synlig for alle under Auktioner."
         ]
       },
-      "guaranteedSale": {
-        "title": "Garanteret salg",
-        "text": "Garanteret salg er en særlig auktionstype du kun kan bruge på dine egne ryttere. Startprisen sættes automatisk til 50% af Værdi, og auktionen fungerer derefter som en normal auktion. Garanteret salg er den eneste undtagelse fra minimumsprisen."
-      },
       "bidding": {
         "title": "Byde på auktioner",
         "text": "Gå til Auktioner og find en auktion du vil byde på. Indtast dit bud og klik 'Byd'. Du kan se om du vinder (🏆 Vinder) eller om du har budt men er overbudt (⚡ Du har budt). Minimumsbuddet er 1 CZ$ over nuværende pris (eller match af asking-pris hvis ingen har budt endnu)."
@@ -429,7 +425,7 @@
       "label": "Ryttere",
       "valueAndPrice": {
         "title": "Værdi og pris",
-        "text": "En rytters markedsværdi er baseværdien (minimum 5 UCI-point × 4.000 CZ$) plus gennemsnittet af rytterens præmiepenge i de seneste op til 3 afsluttede sæsoner. Startprisen på en auktion skal minimum svare til rytterens Værdi. Eneste undtagelse er Garanteret salg, som låser startprisen til 50% af Værdi."
+        "text": "En rytters markedsværdi er baseværdien (minimum 5 UCI-point × 4.000 CZ$) plus gennemsnittet af rytterens præmiepenge i de seneste op til 3 afsluttede sæsoner. Startprisen på en auktion skal minimum svare til rytterens Værdi."
       },
       "salary": {
         "title": "Løn",
@@ -510,7 +506,7 @@
     },
     "minBidAmount": {
       "q": "Hvor meget skal jeg byde over i en auktion?",
-      "a": "Dit bud skal være mindst 1 CZ$ over den nuværende pris. Hvis ingen har budt endnu (fx på et garanteret salg), kan du matche asking-prisen. Aktive auktioner hvor du fører, tæller samtidig som reserveret balance og potentiel trupplads."
+      "a": "Dit bud skal være mindst 1 CZ$ over den nuværende pris. Hvis ingen har budt endnu, kan du matche asking-prisen. Aktive auktioner hvor du fører, tæller samtidig som reserveret balance og potentiel trupplads."
     },
     "loansInSquadLimit": {
       "q": "Tæller lejede ryttere med i holdgrænsen?",
@@ -543,10 +539,6 @@
     "watchlistSaleNotificationFaq": {
       "q": "Får jeg besked når en rytter på min ønskeliste sættes til salg?",
       "a": "Ja. Hvis en rytter du følger sættes på transferlisten eller sættes til auktion, modtager du automatisk en notifikation i Indbakken med pris og type. Du behøver altså ikke aktivt tjekke markedet for dine favoritter."
-    },
-    "guaranteedSaleFaq": {
-      "q": "Hvad er Garanteret salg, og hvornår kan jeg bruge det?",
-      "a": "Garanteret salg er en særlig auktionsform der kun kan bruges på dine egne ryttere. Startprisen låses til 50% af rytterens Værdi, og auktionen kører derefter normalt. Det er den eneste undtagelse fra reglen om, at startprisen mindst skal svare til rytterens fulde Værdi."
     },
     "riderSalaryView": {
       "q": "Hvordan ser jeg en rytters løn?",

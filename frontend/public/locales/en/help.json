@@ -99,10 +99,6 @@
           "The auction is now visible to everyone under Auctions."
         ]
       },
-      "guaranteedSale": {
-        "title": "Guaranteed sale",
-        "text": "Guaranteed sale is a special auction type you can only use on your own riders. The starting price is automatically set to 50% of Value, and the auction then works like a normal auction. Guaranteed sale is the only exception to the minimum starting price."
-      },
       "bidding": {
         "title": "Bidding on auctions",
         "text": "Go to Auctions and find an auction you want to bid on. Enter your bid and click 'Bid'. You can see whether you're winning (🏆 Winning) or whether you've bid but been outbid (⚡ You bid). The minimum bid is 1 CZ$ above the current price (or matching the asking price if no one has bid yet)."
@@ -429,7 +425,7 @@
       "label": "Riders",
       "valueAndPrice": {
         "title": "Value and price",
-        "text": "A rider's market value is the base value (minimum 5 UCI points × 4,000 CZ$) plus the average of the rider's prize money over the last up to 3 completed seasons. The starting price on an auction must at minimum equal the rider's Value. The only exception is Guaranteed sale, which locks the starting price to 50% of Value."
+        "text": "A rider's market value is the base value (minimum 5 UCI points × 4,000 CZ$) plus the average of the rider's prize money over the last up to 3 completed seasons. The starting price on an auction must at minimum equal the rider's Value."
       },
       "salary": {
         "title": "Salary",
@@ -510,7 +506,7 @@
     },
     "minBidAmount": {
       "q": "How much do I need to bid above the current price?",
-      "a": "Your bid must be at least 1 CZ$ above the current price. If no one has bid yet (e.g. on a guaranteed sale), you can match the asking price. Active auctions where you lead count as reserved balance and potential squad slot at the same time."
+      "a": "Your bid must be at least 1 CZ$ above the current price. If no one has bid yet, you can match the asking price. Active auctions where you lead count as reserved balance and potential squad slot at the same time."
     },
     "loansInSquadLimit": {
       "q": "Do loaned riders count towards the squad limit?",
@@ -543,10 +539,6 @@
     "watchlistSaleNotificationFaq": {
       "q": "Do I get notified when a rider on my watchlist is listed for sale?",
       "a": "Yes. If a rider you're tracking is listed on the transfer list or put up for auction, you automatically get a notification in the inbox with price and type. You don't need to actively check the market for your favourites."
-    },
-    "guaranteedSaleFaq": {
-      "q": "What is Guaranteed sale, and when can I use it?",
-      "a": "Guaranteed sale is a special auction form that can only be used on your own riders. The starting price is locked to 50% of the rider's Value, and the auction then runs normally. It's the only exception to the rule that the starting price must at minimum equal the rider's full Value."
     },
     "riderSalaryView": {
       "q": "How do I see a rider's salary?",

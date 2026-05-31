@@ -32,7 +32,6 @@ function RiderActionModal({ rider, onClose, onAction }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [activeTab, setActiveTab] = useState("auction");
-  const guaranteedPrice = Math.floor(riderValue * 0.5);
 
   async function startAuction() {
     setLoading(true);
@@ -44,20 +43,6 @@ function RiderActionModal({ rider, onClose, onAction }) {
     });
     const data = await res.json();
     if (res.ok) { setMsg(t("actionModal.auction.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
-    else setMsg(`${t("actionModal.errorPrefix")}${data.error}`);
-    setLoading(false);
-  }
-
-  async function sellToBank() {
-    setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auctions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ rider_id: rider.id, is_guaranteed_sale: true }),
-    });
-    const data = await res.json();
-    if (res.ok) { setMsg(t("actionModal.bank.successMsg", { price: formatNumber(guaranteedPrice) })); setTimeout(() => { onAction(); onClose(); }, 2000); }
     else setMsg(`${t("actionModal.errorPrefix")}${data.error}`);
     setLoading(false);
   }
@@ -79,7 +64,6 @@ function RiderActionModal({ rider, onClose, onAction }) {
   const tabLabels = {
     auction: t("actionModal.tabs.auction"),
     transfer: t("actionModal.tabs.transfer"),
-    bank: t("actionModal.tabs.bank"),
   };
 
   return (
@@ -113,7 +97,7 @@ function RiderActionModal({ rider, onClose, onAction }) {
         </div>
         <div className="p-5">
           <div className="flex gap-2 mb-4 flex-wrap">
-            {["auction","transfer","bank"].map(tab => (
+            {["auction","transfer"].map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
                   ${activeTab === tab ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1"}`}>
@@ -145,17 +129,6 @@ function RiderActionModal({ rider, onClose, onAction }) {
                   {loading ? t("actionModal.loadingShort") : t("actionModal.transfer.listButton")}
                 </button>
               </div>
-            </div>
-          )}
-          {activeTab === "bank" && (
-            <div>
-              <p className="text-cz-2 text-xs mb-3">
-                {t("actionModal.bank.description", { price: formatNumber(guaranteedPrice) })}
-              </p>
-              <button onClick={sellToBank} disabled={loading}
-                className="w-full px-4 py-2 bg-cz-info/20 text-cz-info border border-cz-info/30 font-bold rounded-lg text-sm hover:bg-cz-info/30 disabled:opacity-50">
-                {loading ? t("actionModal.loadingShort") : t("actionModal.bank.sellButton", { price: formatNumber(guaranteedPrice) })}
-              </button>
             </div>
           )}
           {msg && <p className={`text-sm mt-3 ${msg.startsWith("✅") ? "text-cz-success" : "text-cz-danger"}`}>{msg}</p>}

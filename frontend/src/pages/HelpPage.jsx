@@ -32,7 +32,6 @@ const SECTION_DEFS = [
     blocks: [
       { id: "whatAuctions", kind: "text" },
       { id: "howToStart", kind: "steps" },
-      { id: "guaranteedSale", kind: "text" },
       { id: "bidding", kind: "text" },
       { id: "autoBidCap", kind: "text" },
       { id: "whenExpires", kind: "text" },
@@ -187,7 +186,6 @@ const FAQ_KEYS = [
   "loginStreakFaq",
   "watchlistCounterFaq",
   "watchlistSaleNotificationFaq",
-  "guaranteedSaleFaq",
   "riderSalaryView",
   "riderDevelopment",
   "salaryShortfall",

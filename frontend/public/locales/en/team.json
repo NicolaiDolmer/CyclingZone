@@ -87,8 +87,7 @@
     "potentialLabel": "Potential",
     "tabs": {
       "auction": "⚡ Auction",
-      "transfer": "↔ Transfer list",
-      "bank": "🏦 Guaranteed sale"
+      "transfer": "↔ Transfer list"
     },
     "auction": {
       "description": "Start auction. Other managers can bid.",
@@ -99,11 +98,6 @@
       "description": "List for sale at a fixed price.",
       "listButton": "List for sale",
       "successMsg": "✅ Listed for sale!"
-    },
-    "bank": {
-      "description": "Starts an auction at {price} CZ$ (50% of value). If no manager bids higher, the AI buys the rider at this price. You're always guaranteed the amount.",
-      "sellButton": "Guaranteed sale: {price} CZ$",
-      "successMsg": "✅ Auction started! You're guaranteed {price} CZ$."
     },
     "loadingShort": "...",
     "errorPrefix": "❌ "

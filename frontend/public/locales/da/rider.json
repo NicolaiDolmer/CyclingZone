@@ -240,10 +240,6 @@
       "ai": "Start auktion (AI-rytter)",
       "free": "Start auktion (fri rytter)"
     },
-    "guaranteed": {
-      "label": "Garanteret salg",
-      "hint": "(startpris {amount} CZ$, 50% af Værdi)"
-    },
     "flash": {
       "label": "⚡ Flash Auktion (30 min)",
       "hint": "Deadline Day: afsluttes præcis 30 min efter start"
