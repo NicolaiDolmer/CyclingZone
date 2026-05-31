@@ -3,7 +3,7 @@ import { supabase } from "../../lib/supabase";
 import { formatCz, getRiderMarketValue } from "../../lib/marketValues";
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
-import { useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -27,32 +27,42 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
   async function moveRider() {
     if (!selectedRider) return;
     setLoading(true);
-    const res = await fetch(`${API}/api/admin/override-rider`, {
-      method: "POST", headers: await getAuth(),
-      body: JSON.stringify({ rider_id: selectedRider.id, team_id: selectedTeam || null }),
-    });
-    const data = await res.json();
-    if (res.ok) { onMsg(`✅ ${data.message}`); setSelectedRider(null); setQuery(""); onRefresh(); }
-    else onMsg(`❌ ${data.error}`, "error");
-    setLoading(false);
+    try {
+      const res = await fetch(`${API}/api/admin/override-rider`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({ rider_id: selectedRider.id, team_id: selectedTeam || null }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) { onMsg(`✅ ${data.message}`); setSelectedRider(null); setQuery(""); onRefresh(); }
+      else onMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      onMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function setRetirement(isRetired) {
     if (!selectedRider) return;
     setLoading(true);
-    const res = await fetch(`${API}/api/admin/riders/${selectedRider.id}/retirement`, {
-      method: "POST", headers: await getAuth(),
-      body: JSON.stringify({ is_retired: isRetired }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      onMsg(`✅ ${data.message}`);
-      setSelectedRider(r => r ? { ...r, is_retired: isRetired } : r);
-      onRefresh();
-    } else {
-      onMsg(`❌ ${data.error}`, "error");
+    try {
+      const res = await fetch(`${API}/api/admin/riders/${selectedRider.id}/retirement`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({ is_retired: isRetired }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) {
+        onMsg(`✅ ${data.message}`);
+        setSelectedRider(r => r ? { ...r, is_retired: isRetired } : r);
+        onRefresh();
+      } else {
+        onMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      }
+    } catch (e) {
+      onMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
@@ -135,26 +145,36 @@ export default function AdminUsersTab() {
   async function handleDeleteUser(userId, username) {
     if (!confirm(`Slet bruger "${username}" permanent?\n\nHoldet bevares, men mister sin ejer. Notifikationer slettes.`)) return;
     setLoad(`del_user_${userId}`, true);
-    const res = await fetch(`${API}/api/admin/users/${userId}`, {
-      method: "DELETE", headers: await getAuth(),
-    });
-    const data = await res.json();
-    if (res.ok) { showMsg(`✅ Bruger ${username} slettet`); loadData(); }
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad(`del_user_${userId}`, false);
+    try {
+      const res = await fetch(`${API}/api/admin/users/${userId}`, {
+        method: "DELETE", headers: await getAuth(),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) { showMsg(`✅ Bruger ${username} slettet`); loadData(); }
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`del_user_${userId}`, false);
+    }
   }
 
   async function handleChangeRole(userId, newRole, username) {
     if (!confirm(`Skift ${username} til ${newRole}?`)) return;
     setLoad(`role_${userId}`, true);
-    const res = await fetch(`${API}/api/admin/users/${userId}/role`, {
-      method: "PATCH", headers: await getAuth(),
-      body: JSON.stringify({ role: newRole }),
-    });
-    const data = await res.json();
-    if (res.ok) { showMsg(`✅ ${username} er nu ${newRole}`); loadData(); }
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad(`role_${userId}`, false);
+    try {
+      const res = await fetch(`${API}/api/admin/users/${userId}/role`, {
+        method: "PATCH", headers: await getAuth(),
+        body: JSON.stringify({ role: newRole }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) { showMsg(`✅ ${username} er nu ${newRole}`); loadData(); }
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`role_${userId}`, false);
+    }
   }
 
   return (

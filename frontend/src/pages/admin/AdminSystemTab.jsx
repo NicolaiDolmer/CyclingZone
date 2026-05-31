@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
-import { useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
 import BetaToolsSection from "../../components/admin/sections/BetaToolsSection";
 import BoardTestModeSection from "../../components/admin/sections/BoardTestModeSection";
 
@@ -57,30 +57,46 @@ export default function AdminSystemTab() {
     const reason = window.prompt(`Pause ${scopeText}?\n\nÅrsag (vises til managere):`, "");
     if (reason === null) return;
     setLoad(`pause_${level}`, true);
-    const res = await fetch(`${API}/api/admin/market/pause`, {
-      method: "POST", headers: await getAuth(),
-      body: JSON.stringify({ level, reason: reason || null }),
-    });
-    const data = await res.json();
-    if (res.ok) showMsg(`✅ ${level === "all" ? "Hele markedet pauset" : "Auktioner pauset"}`);
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad(`pause_${level}`, false);
-    loadData();
-    window.dispatchEvent(new Event("cz:market-pause-changed"));
+    try {
+      const res = await fetch(`${API}/api/admin/market/pause`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({ level, reason: reason || null }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) {
+        showMsg(`✅ ${level === "all" ? "Hele markedet pauset" : "Auktioner pauset"}`);
+        loadData();
+        window.dispatchEvent(new Event("cz:market-pause-changed"));
+      } else {
+        showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      }
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`pause_${level}`, false);
+    }
   }
 
   async function resumeMarket() {
     if (!confirm("Genoptag markedet?\n\nAuktioners slut-tid skubbes frem med pause-varigheden, så bydere får samme resterende tid som før.")) return;
     setLoad("market_resume", true);
-    const res = await fetch(`${API}/api/admin/market/resume`, {
-      method: "POST", headers: await getAuth(),
-    });
-    const data = await res.json();
-    if (res.ok) showMsg(`✅ Marked genoptaget · ${data.auctions_shifted} auktioner forlænget med ${data.elapsed_minutes} min`);
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad("market_resume", false);
-    loadData();
-    window.dispatchEvent(new Event("cz:market-pause-changed"));
+    try {
+      const res = await fetch(`${API}/api/admin/market/resume`, {
+        method: "POST", headers: await getAuth(),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) {
+        showMsg(`✅ Marked genoptaget · ${data.auctions_shifted} auktioner forlænget med ${data.elapsed_minutes} min`);
+        loadData();
+        window.dispatchEvent(new Event("cz:market-pause-changed"));
+      } else {
+        showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      }
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("market_resume", false);
+    }
   }
 
   async function addWebhook() {
@@ -99,13 +115,25 @@ export default function AdminSystemTab() {
 
   async function testWebhook(webhook) {
     setLoad(`test_${webhook.id}`, true);
-    const res = await fetch(`${API}/api/admin/discord/test`, {
-      method: "POST", headers: await getAuth(),
-      body: JSON.stringify({ webhook_url: webhook.webhook_url }),
-    });
-    const data = await res.json();
-    setWebhookTestResults(prev => ({ ...prev, [webhook.id]: data }));
-    setLoad(`test_${webhook.id}`, false);
+    try {
+      const res = await fetch(`${API}/api/admin/discord/test`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({ webhook_url: webhook.webhook_url }),
+      });
+      const data = await readAdminJson(res);
+      setWebhookTestResults(prev => ({
+        ...prev,
+        [webhook.id]: res.ok ? data : { ok: false, status: res.status, error: adminErrorMessage(data, res) },
+      }));
+    } catch (e) {
+      setWebhookTestResults(prev => ({
+        ...prev,
+        [webhook.id]: { ok: false, status: 0, error: e.message || "ukendt" },
+      }));
+      showMsg("❌ Forbindelsen fejlede", "error");
+    } finally {
+      setLoad(`test_${webhook.id}`, false);
+    }
   }
 
   function formatWebhookTest(result) {

@@ -3,7 +3,7 @@ import { supabase } from "../../lib/supabase";
 import EconomyAdminSection from "../../components/admin/EconomyAdminSection";
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
-import { useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -45,35 +45,49 @@ export default function AdminEconomyTab() {
   async function handleAdjustBalance() {
     if (!balTeam || !balAmount) { showMsg("❌ Vælg hold og angiv beløb", "error"); return; }
     setLoad("balance", true);
-    const res = await fetch(`${API}/api/admin/adjust-balance`, {
-      method: "POST", headers: await getAuth(),
-      body: JSON.stringify({ team_id: balTeam, amount: parseInt(balAmount), reason: balReason }),
-    });
-    const data = await res.json();
-    if (res.ok) { showMsg(`✅ Balance justeret med ${parseInt(balAmount).toLocaleString("da-DK")} CZ$`); setBalAmount(""); setBalReason(""); loadData(); }
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad("balance", false);
+    try {
+      const res = await fetch(`${API}/api/admin/adjust-balance`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({ team_id: balTeam, amount: parseInt(balAmount), reason: balReason }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) { showMsg(`✅ Balance justeret med ${parseInt(balAmount).toLocaleString("da-DK")} CZ$`); setBalAmount(""); setBalReason(""); loadData(); }
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("balance", false);
+    }
   }
 
   async function saveLoanConfig(cfg) {
-    const res = await fetch(`${API}/api/admin/loan-config`, {
-      method: "PATCH", headers: await getAuth(), body: JSON.stringify(cfg),
-    });
-    const data = await res.json();
-    if (res.ok) { showMsg("✅ Lånekonfiguration gemt"); setEditingLoan(null); loadData(); }
-    else showMsg(`❌ ${data.error}`, "error");
+    try {
+      const res = await fetch(`${API}/api/admin/loan-config`, {
+        method: "PATCH", headers: await getAuth(), body: JSON.stringify(cfg),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) { showMsg("✅ Lånekonfiguration gemt"); setEditingLoan(null); loadData(); }
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    }
   }
 
   async function saveAuctionConfig() {
     if (!editingAuctionConfig) return;
     setLoad("auctionCfg", true);
-    const res = await fetch(`${API}/api/admin/auction-config`, {
-      method: "PUT", headers: await getAuth(), body: JSON.stringify(editingAuctionConfig),
-    });
-    const data = await res.json();
-    if (res.ok) { showMsg("✅ Auktionsregler gemt"); setEditingAuctionConfig(null); loadData(); }
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad("auctionCfg", false);
+    try {
+      const res = await fetch(`${API}/api/admin/auction-config`, {
+        method: "PUT", headers: await getAuth(), body: JSON.stringify(editingAuctionConfig),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) { showMsg("✅ Auktionsregler gemt"); setEditingAuctionConfig(null); loadData(); }
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("auctionCfg", false);
+    }
   }
 
   async function loadPrizePreview() {
@@ -81,13 +95,18 @@ export default function AdminEconomyTab() {
     setLoad("prize_preview", true);
     setPrizePreview(null);
     setPrizePayResult(null);
-    const res = await fetch(`${API}/api/admin/prize-payout-preview?season_id=${prizePayoutSeason}`, {
-      headers: await getAuth(),
-    });
-    const data = await res.json();
-    if (res.ok) setPrizePreview(data);
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad("prize_preview", false);
+    try {
+      const res = await fetch(`${API}/api/admin/prize-payout-preview?season_id=${prizePayoutSeason}`, {
+        headers: await getAuth(),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) setPrizePreview(data);
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("prize_preview", false);
+    }
   }
 
   async function handlePayPrizes() {
@@ -97,19 +116,24 @@ export default function AdminEconomyTab() {
     if (pendingRaces === 0) { showMsg("❌ Ingen udestående præmier — kør forhåndsvisning først", "error"); return; }
     if (!confirm(`Udbetal ${pendingTotal.toLocaleString("da-DK")} CZ$ i præmiepenge til hold på tværs af ${pendingRaces} løb?\n\nDette krediterer holdenes balance med det samme og kan ikke fortrydes.`)) return;
     setLoad("prize_pay", true);
-    const res = await fetch(`${API}/api/admin/pay-prizes-to-date`, {
-      method: "POST", headers: await getAuth(),
-      body: JSON.stringify({ season_id: prizePayoutSeason }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setPrizePayResult(data);
-      setPrizePreview(null);
-      showMsg(`✅ ${data.races_paid} løb betalt — i alt ${data.total_paid.toLocaleString("da-DK")} CZ$`);
-    } else {
-      showMsg(`❌ ${data.error}`, "error");
+    try {
+      const res = await fetch(`${API}/api/admin/pay-prizes-to-date`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({ season_id: prizePayoutSeason }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) {
+        setPrizePayResult(data);
+        setPrizePreview(null);
+        showMsg(`✅ ${data.races_paid} løb betalt — i alt ${data.total_paid.toLocaleString("da-DK")} CZ$`);
+      } else {
+        showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      }
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("prize_pay", false);
     }
-    setLoad("prize_pay", false);
   }
 
   return (

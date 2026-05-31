@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.38",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Internal tools recover from connection errors",
+        items: [
+          "EN · Admin-only buttons for user management, race/result imports, season controls, economy actions, market pauses and webhook tests no longer get stuck if the API request fails or returns an unexpected non-JSON response. They now reset their loading state and show a clear connection or HTTP error so the action can be retried. Refs #861.",
+          "DA · Admin-knapper til brugerhåndtering, løbs-/resultatimport, sæsonstyring, økonomi-handlinger, markedspauser og webhook-tests hænger ikke længere fast, hvis API-kaldet fejler eller svarer med uventet non-JSON. De nulstiller nu loading-tilstanden og viser en tydelig forbindelses- eller HTTP-fejl, så handlingen kan prøves igen. Refs #861.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.37",
     date: "2026-05-31",
     label: "Beta",

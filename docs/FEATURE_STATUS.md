@@ -366,6 +366,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - **SECTIONS-array refaktoreret** fra hardcoded data-struktur til `SECTION_DEFS` (key/icon/blocks) + `buildSections(t)`-helper. **FAQ-array** → `FAQ_KEYS`-liste + `buildFaq(t)`-helper. Stabile semantic keys: `sections.<area>.<block>.title|text|steps|rows`, `faq.<id>.q|a`.
 - **Em-dash systematisk renset** i begge sprog jf. `docs/TONE_OF_VOICE.md` (2026-05-18 tone-guide). Erstattet med komma, kolon, parentes eller punktum efter kontekst. Tabel-celler kan beholde `—` som "tom celle"-indikator.
 - **Scope-korrektion:** AdminPage forbliver **dansk-only by design** — alle 23 sektioner er internal admin-tools (race-katalog, økonomi, sæsoner, manuel override, discord webhooks, beta-reset, præmieudbetaling, brugere osv.) bag admin-role gating. Ingen publik-facing flader = ingen ROI. Triage-kommentaren om "~71 t()-kald" var fejlbehæftet (faktisk 0). `admin.json` forbliver tom placeholder.
+- **Admin loading-state hardening (v4.38, #861):** Aktive admin-tabs bruger `try/catch/finally` + shared `readAdminJson`/`adminErrorMessage` for muterende API-kald, så non-JSON/network-fejl ikke efterlader interne knapper/spinnere låst. Dækker brugere/manual override, dataimport, sæson/marked, økonomi/præmier og webhook-test.
 - **`help` namespace keys:** ~520 per sprog (page, sections × 14, faq × 53).
 
 ### i18n Fase 3c — Transfers EN/DA (v3.53, 2026-05-17, #412)

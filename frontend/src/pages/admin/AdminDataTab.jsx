@@ -5,7 +5,7 @@ import RacePoolSection from "../../components/admin/RacePoolSection";
 import RacePointsAdminSection from "../../components/admin/RacePointsAdminSection";
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
-import { useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -49,19 +49,24 @@ export default function AdminDataTab() {
 
   async function handleCreateRace(e) {
     e.preventDefault(); setLoad("race", true);
-    const res = await fetch(`${API}/api/admin/races`, {
-      method: "POST", headers: await getAuth(),
-      body: JSON.stringify({
-        ...raceForm,
-        stages: parseInt(raceForm.stages),
-        edition_year: raceForm.edition_year ? parseInt(raceForm.edition_year, 10) : null,
-        race_class: raceForm.race_class || null,
-      }),
-    });
-    const data = await res.json();
-    if (res.ok) { showMsg(`✅ Løb "${data.name}" tilføjet`); loadData(); setRaceForm(f => ({ ...f, name: "", edition_year: "", race_class: "" })); }
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad("race", false);
+    try {
+      const res = await fetch(`${API}/api/admin/races`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({
+          ...raceForm,
+          stages: parseInt(raceForm.stages),
+          edition_year: raceForm.edition_year ? parseInt(raceForm.edition_year, 10) : null,
+          race_class: raceForm.race_class || null,
+        }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) { showMsg(`✅ Løb "${data.name}" tilføjet`); loadData(); setRaceForm(f => ({ ...f, name: "", edition_year: "", race_class: "" })); }
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("race", false);
+    }
   }
 
   function pickFromRacePool(poolRace) {
@@ -107,13 +112,18 @@ export default function AdminDataTab() {
   async function handleDeleteRace(raceId, raceName) {
     if (!confirm(`Slet "${raceName}"?\n\nAlle løbsresultater for dette løb slettes også.`)) return;
     setLoad(`del_race_${raceId}`, true);
-    const res = await fetch(`${API}/api/admin/races/${raceId}`, {
-      method: "DELETE", headers: await getAuth(),
-    });
-    const data = await res.json();
-    if (res.ok) { showMsg(`✅ ${raceName} slettet`); loadData(); }
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad(`del_race_${raceId}`, false);
+    try {
+      const res = await fetch(`${API}/api/admin/races/${raceId}`, {
+        method: "DELETE", headers: await getAuth(),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) { showMsg(`✅ ${raceName} slettet`); loadData(); }
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`del_race_${raceId}`, false);
+    }
   }
 
   async function handleImportResults(e) {
@@ -122,39 +132,47 @@ export default function AdminDataTab() {
     if (!importRaceId) { showMsg("❌ Vælg et løb først", "error"); return; }
     setLoad("import", true);
     showMsg("⏳ Importerer...", "info");
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      showMsg("❌ Din session er udløbet — log ind igen og prøv import på ny", "error");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        showMsg("❌ Din session er udløbet — log ind igen og prøv import på ny", "error");
+        return;
+      }
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("race_id", importRaceId);
+      formData.append("stage_number", importStage);
+      const res = await fetch(`${API}/api/admin/import-results`, {
+        method: "POST", headers: { Authorization: `Bearer ${session.access_token}` }, body: formData,
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) showMsg(`✅ ${data.records_imported} resultater importeret — ${data.teams_paid} holds fik præmiepenge`);
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
       setLoad("import", false);
       e.target.value = "";
-      return;
     }
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("race_id", importRaceId);
-    formData.append("stage_number", importStage);
-    const res = await fetch(`${API}/api/admin/import-results`, {
-      method: "POST", headers: { Authorization: `Bearer ${session.access_token}` }, body: formData,
-    });
-    const data = await res.json();
-    if (res.ok) showMsg(`✅ ${data.records_imported} resultater importeret — ${data.teams_paid} holds fik præmiepenge`);
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad("import", false);
-    e.target.value = "";
   }
 
   async function handleDynCyclistSync() {
     if (!dynCyclistUrl) { showMsg("❌ Indsæt Google Sheets URL", "error"); return; }
     setLoad("dyn_cyclist", true);
     showMsg("⏳ Synkroniserer rytterstats...", "info");
-    const res = await fetch(`${API}/api/admin/sync-dyn-cyclist`, {
-      method: "POST", headers: await getAuth(),
-      body: JSON.stringify({ spreadsheet_url: dynCyclistUrl }),
-    });
-    const data = await res.json();
-    if (res.ok) { setDynSyncResult(data); showMsg(`✅ Sync fuldført — ${data.rows_matched} ryttere opdateret`); }
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad("dyn_cyclist", false);
+    try {
+      const res = await fetch(`${API}/api/admin/sync-dyn-cyclist`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({ spreadsheet_url: dynCyclistUrl }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) { setDynSyncResult(data); showMsg(`✅ Sync fuldført — ${data.rows_matched} ryttere opdateret`); }
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("dyn_cyclist", false);
+    }
   }
 
   async function handleSheetsPreview() {
@@ -163,39 +181,49 @@ export default function AdminDataTab() {
     setSheetsResult(null);
     setSheetsPreview(null);
     showMsg("⏳ Henter forhåndsvisning...", "info");
-    const res = await fetch(`${API}/api/admin/import-results-sheets`, {
-      method: "POST", headers: await getAuth(),
-      body: JSON.stringify({ spreadsheet_url: sheetsUrl, dry_run: true }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setSheetsPreview(data);
-      const matchedRaces = data.preview?.length || 0;
-      const skipped = data.races_skipped?.length || 0;
-      showMsg(`✅ Forhåndsvisning klar — ${matchedRaces} løb matchet, ${skipped} skipped`);
-    } else {
-      showMsg(`❌ ${data.error}`, "error");
+    try {
+      const res = await fetch(`${API}/api/admin/import-results-sheets`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({ spreadsheet_url: sheetsUrl, dry_run: true }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) {
+        setSheetsPreview(data);
+        const matchedRaces = data.preview?.length || 0;
+        const skipped = data.races_skipped?.length || 0;
+        showMsg(`✅ Forhåndsvisning klar — ${matchedRaces} løb matchet, ${skipped} skipped`);
+      } else {
+        showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      }
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("sheets_preview", false);
     }
-    setLoad("sheets_preview", false);
   }
 
   async function handleSheetsConfirm() {
     if (!sheetsUrl || !sheetsPreview) return;
     setLoad("sheets_import", true);
     showMsg("⏳ Importerer løbsresultater...", "info");
-    const res = await fetch(`${API}/api/admin/import-results-sheets`, {
-      method: "POST", headers: await getAuth(),
-      body: JSON.stringify({ spreadsheet_url: sheetsUrl }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setSheetsResult(data);
-      setSheetsPreview(null);
-      showMsg(`✅ Import fuldført — ${data.rows_imported} resultater fra ${data.races_imported.length} løb`);
-    } else {
-      showMsg(`❌ ${data.error}`, "error");
+    try {
+      const res = await fetch(`${API}/api/admin/import-results-sheets`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({ spreadsheet_url: sheetsUrl }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) {
+        setSheetsResult(data);
+        setSheetsPreview(null);
+        showMsg(`✅ Import fuldført — ${data.rows_imported} resultater fra ${data.races_imported.length} løb`);
+      } else {
+        showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      }
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("sheets_import", false);
     }
-    setLoad("sheets_import", false);
   }
 
   function handleSheetsCancelPreview() {
@@ -205,25 +233,30 @@ export default function AdminDataTab() {
 
   // ── PCM-resultatimport (multi-fil pr. løb, SpreadsheetML 2003) ──────────────
   async function postPcm({ dryRun }) {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      showMsg("❌ Din session er udløbet — log ind igen og prøv på ny", "error");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        showMsg("❌ Din session er udløbet — log ind igen og prøv på ny", "error");
+        return null;
+      }
+      const formData = new FormData();
+      for (const f of pcmFiles) formData.append("files", f);
+      if (dryRun) formData.append("dry_run", "true");
+      const res = await fetch(`${API}/api/admin/import-results-pcm`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: formData,
+      });
+      const data = await readAdminJson(res);
+      if (!res.ok) {
+        showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+        return null;
+      }
+      return data;
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
       return null;
     }
-    const formData = new FormData();
-    for (const f of pcmFiles) formData.append("files", f);
-    if (dryRun) formData.append("dry_run", "true");
-    const res = await fetch(`${API}/api/admin/import-results-pcm`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${session.access_token}` },
-      body: formData,
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      showMsg(`❌ ${data.error}`, "error");
-      return null;
-    }
-    return data;
   }
 
   async function handlePcmPreview() {

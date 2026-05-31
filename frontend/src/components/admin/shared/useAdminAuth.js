@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 
+export async function readAdminJson(res) {
+  return res.json().catch(() => ({}));
+}
+
+export function adminErrorMessage(data, res, fallback = "Forbindelsen fejlede") {
+  return data?.error || data?.message || (res?.status ? `HTTP ${res.status}` : fallback);
+}
+
 export function useAdminAuth() {
   const [msg, setMsg] = useState({ text: "", type: "success" });
   const timeoutRef = useRef(null);

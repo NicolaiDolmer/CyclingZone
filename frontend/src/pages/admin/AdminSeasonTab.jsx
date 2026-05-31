@@ -5,7 +5,7 @@ import SeasonCycleSection from "../../components/admin/SeasonCycleSection";
 import DeadlineReadinessSection from "../../components/admin/DeadlineReadinessSection";
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
-import { useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -57,44 +57,59 @@ export default function AdminSeasonTab() {
 
   async function handleCreateSeason(e) {
     e.preventDefault(); setLoad("season", true);
-    const res = await fetch(`${API}/api/admin/seasons`, {
-      method: "POST", headers: await getAuth(),
-      body: JSON.stringify({ number: parseInt(seasonForm.number), race_days_total: parseInt(seasonForm.race_days_total) }),
-    });
-    const data = await res.json();
-    if (res.ok) { showMsg(`✅ Sæson ${data.number} oprettet`); loadData(); }
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad("season", false);
+    try {
+      const res = await fetch(`${API}/api/admin/seasons`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({ number: parseInt(seasonForm.number), race_days_total: parseInt(seasonForm.race_days_total) }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) { showMsg(`✅ Sæson ${data.number} oprettet`); loadData(); }
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("season", false);
+    }
   }
 
   async function handleSeasonAction(seasonId, action) {
     if (action === "end" && !confirm("Afslut sæson? Dette kører divisionsbonus, op/nedrykning (fra sæson 3) og board-eval. Løn + renter trækkes IKKE her — det er flyttet til næste sæsons start (v3.78).")) return;
     setLoad(`${action}_${seasonId}`, true);
-    const res = await fetch(`${API}/api/admin/seasons/${seasonId}/${action}`, {
-      method: "POST", headers: await getAuth(),
-    });
-    const data = await res.json();
-    if (res.ok) showMsg(`✅ ${action === "start" ? "Sæson startet" : "Sæson afsluttet"}`);
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad(`${action}_${seasonId}`, false);
-    loadData();
+    try {
+      const res = await fetch(`${API}/api/admin/seasons/${seasonId}/${action}`, {
+        method: "POST", headers: await getAuth(),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) showMsg(`✅ ${action === "start" ? "Sæson startet" : "Sæson afsluttet"}`);
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      loadData();
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`${action}_${seasonId}`, false);
+    }
   }
 
   async function handleRebuildStandings(seasonId) {
     if (!confirm("Genberegn standings for denne sæson ud fra gemte løbsresultater?")) return;
     setLoad(`rebuild_${seasonId}`, true);
-    const res = await fetch(`${API}/api/admin/seasons/${seasonId}/rebuild-standings`, {
-      method: "POST", headers: await getAuth(),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      const warning = data.start_date_missing ? " Advarsel: sæsonen mangler stadig startdato i databasen." : "";
-      showMsg(`✅ Standings genberegnet for ${data.rows_updated} hold.${warning}`);
-    } else {
-      showMsg(`❌ ${data.error}`, "error");
+    try {
+      const res = await fetch(`${API}/api/admin/seasons/${seasonId}/rebuild-standings`, {
+        method: "POST", headers: await getAuth(),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) {
+        const warning = data.start_date_missing ? " Advarsel: sæsonen mangler stadig startdato i databasen." : "";
+        showMsg(`✅ Standings genberegnet for ${data.rows_updated} hold.${warning}`);
+      } else {
+        showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      }
+      loadData();
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`rebuild_${seasonId}`, false);
     }
-    setLoad(`rebuild_${seasonId}`, false);
-    loadData();
   }
 
   async function toggleTransferWindow() {
@@ -105,41 +120,56 @@ export default function AdminSeasonTab() {
       ? {}
       : { season_id: seasons.find(s => s.status === "active")?.id, ...(closesAtInput ? { closes_at: new Date(closesAtInput).toISOString() } : {}) };
     if (!isOpen && !body.season_id) { showMsg("❌ Ingen aktiv sæson fundet", "error"); setLoad("window", false); return; }
-    const res = await fetch(`${API}/api/admin/transfer-window/${endpoint}`, {
-      method: "POST", headers: await getAuth(), body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (res.ok) showMsg(isOpen ? "✅ Transfervindue lukket" : `✅ Transfervindue åbnet — ${data.riders_processed} ryttere behandlet`);
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad("window", false);
-    loadData();
+    try {
+      const res = await fetch(`${API}/api/admin/transfer-window/${endpoint}`, {
+        method: "POST", headers: await getAuth(), body: JSON.stringify(body),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) showMsg(isOpen ? "✅ Transfervindue lukket" : `✅ Transfervindue åbnet — ${data.riders_processed} ryttere behandlet`);
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      loadData();
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("window", false);
+    }
   }
 
   async function updateClosesAt() {
     if (!closesAtInput) { showMsg("❌ Vælg en lukketid", "error"); return; }
     setLoad("closesAt", true);
-    const res = await fetch(`${API}/api/admin/transfer-window/closes-at`, {
-      method: "PUT", headers: await getAuth(),
-      body: JSON.stringify({ closes_at: new Date(closesAtInput).toISOString() }),
-    });
-    const data = await res.json();
-    if (res.ok) showMsg("✅ Lukketid gemt");
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad("closesAt", false);
-    loadData();
+    try {
+      const res = await fetch(`${API}/api/admin/transfer-window/closes-at`, {
+        method: "PUT", headers: await getAuth(),
+        body: JSON.stringify({ closes_at: new Date(closesAtInput).toISOString() }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) showMsg("✅ Lukketid gemt");
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      loadData();
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("closesAt", false);
+    }
   }
 
   async function updateDeadlineDayOverride(override) {
     setLoad(`dd_${override}`, true);
-    const res = await fetch(`${API}/api/admin/deadline-day/override`, {
-      method: "PUT", headers: await getAuth(),
-      body: JSON.stringify({ override }),
-    });
-    const data = await res.json();
-    if (res.ok) showMsg(`✅ Deadline Day: ${override}`);
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad(`dd_${override}`, false);
-    loadData();
+    try {
+      const res = await fetch(`${API}/api/admin/deadline-day/override`, {
+        method: "PUT", headers: await getAuth(),
+        body: JSON.stringify({ override }),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) showMsg(`✅ Deadline Day: ${override}`);
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      loadData();
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`dd_${override}`, false);
+    }
   }
 
   async function handleCancelAuction(auction) {
@@ -147,23 +177,33 @@ export default function AdminSeasonTab() {
     const bidderCount = auction.unique_bidder_count || 0;
     if (!confirm(`Annullér auktion på ${riderName}?\n\n${bidderCount} budgivere notificeres. Bud frigives automatisk.`)) return;
     setLoad(`cancel_auction_${auction.id}`, true);
-    const res = await fetch(`${API}/api/admin/auctions/${auction.id}/cancel`, {
-      method: "POST", headers: await getAuth(),
-    });
-    const data = await res.json();
-    if (res.ok) { showMsg(`✅ ${data.message}`); loadActiveAuctions(); }
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoad(`cancel_auction_${auction.id}`, false);
+    try {
+      const res = await fetch(`${API}/api/admin/auctions/${auction.id}/cancel`, {
+        method: "POST", headers: await getAuth(),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) { showMsg(`✅ ${data.message}`); loadActiveAuctions(); }
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`cancel_auction_${auction.id}`, false);
+    }
   }
 
   async function loadSeasonPreview() {
     if (!previewSeason) { showMsg("❌ Vælg en sæson", "error"); return; }
     setLoadingPreview(true);
-    const res = await fetch(`${API}/api/admin/season-end-preview/${previewSeason}`, { headers: await getAuth() });
-    const data = await res.json();
-    if (res.ok) setSeasonPreview(data.preview);
-    else showMsg(`❌ ${data.error}`, "error");
-    setLoadingPreview(false);
+    try {
+      const res = await fetch(`${API}/api/admin/season-end-preview/${previewSeason}`, { headers: await getAuth() });
+      const data = await readAdminJson(res);
+      if (res.ok) setSeasonPreview(data.preview);
+      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoadingPreview(false);
+    }
   }
 
   const windowOpen = window_?.status === "open";
