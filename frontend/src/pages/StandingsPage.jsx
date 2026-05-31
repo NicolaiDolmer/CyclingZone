@@ -192,7 +192,7 @@ export default function StandingsPage() {
                       {i === divStandings.length - 2 && canRelegate && divStandings.length > 4 && (
                         <tr aria-hidden="true">
                           <td colSpan={6} style={{ padding: 0, lineHeight: 0, border: 0 }}>
-                            <div style={{ height: 2, background: "linear-gradient(to right, #fca5a5 40%, transparent)" }} />
+                            <div style={{ height: 2, background: "linear-gradient(to right, rgb(var(--danger) / 0.6) 40%, transparent)" }} />
                           </td>
                         </tr>
                       )}
@@ -201,7 +201,7 @@ export default function StandingsPage() {
                         style={rowStyle}
                         className={`border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle transition-colors
                           ${isMe ? "bg-cz-accent/10/60" : ""}
-                          ${isPromotion && !isMe ? "bg-emerald-50" : ""}
+                          ${isPromotion && !isMe ? "bg-cz-success-bg" : ""}
                           ${isRelegation && !isMe ? "bg-cz-danger-bg" : ""}`}>
                         <td className="px-4 py-3.5">
                           <span className={`font-mono font-bold text-sm
@@ -213,18 +213,18 @@ export default function StandingsPage() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <TeamLink id={s.team_id} stopPropagation className={`font-medium ${isMe ? "text-cz-accent-t" : "text-cz-1"}`}>{s.team?.name}</TeamLink>
                             {isMe && <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-1.5 py-0.5 rounded-full">{t("youBadge")}</span>}
-                            {isPromotion && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">{t("promotionBadge")}</span>}
+                            {isPromotion && <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded font-medium">{t("promotionBadge")}</span>}
                             {isRelegation && <span className="text-[9px] bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded font-medium">{t("relegationBadge")}</span>}
                           </div>
                           {/* Mini progress bar */}
                           <div className="mt-1.5 bg-cz-subtle rounded-full h-1 w-full max-w-32">
-                            <div className="h-1 rounded-full" style={{ width: `${ptsWidth}%`, backgroundColor: isMe ? "#e8c547" : `${color}60` }} />
+                            <div className="h-1 rounded-full" style={{ width: `${ptsWidth}%`, backgroundColor: isMe ? "rgb(var(--accent-t))" : `${color}60` }} />
                           </div>
                         </td>
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden sm:table-cell font-mono">{s.stage_wins || 0}</td>
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden md:table-cell font-mono">{s.podiums || 0}</td>
                         <td className="px-4 py-3.5 text-right">
-                          <span className="font-mono font-bold" style={{ color: isMe ? "#e8c547" : color }}>
+                          <span className="font-mono font-bold" style={{ color: isMe ? "rgb(var(--accent-t))" : color }}>
                             {formatNumber(eff)}
                           </span>
                           {penalty > 0 && (
@@ -237,14 +237,14 @@ export default function StandingsPage() {
                           )}
                         </td>
                         <td className="px-4 py-3.5 text-right hidden lg:table-cell">
-                          <MiniSparkline points={prog} color={isMe ? "#e8c547" : color} />
+                          <MiniSparkline points={prog} color={isMe ? "rgb(var(--accent-t))" : color} />
                         </td>
                       </tr>
                       {/* Separator after promotion zone */}
                       {i === 1 && canPromote && divStandings.length > 2 && (
                         <tr aria-hidden="true">
                           <td colSpan={6} style={{ padding: 0, lineHeight: 0, border: 0 }}>
-                            <div style={{ height: 2, background: "linear-gradient(to right, #86efac 40%, transparent)" }} />
+                            <div style={{ height: 2, background: "linear-gradient(to right, rgb(var(--success) / 0.6) 40%, transparent)" }} />
                           </td>
                         </tr>
                       )}

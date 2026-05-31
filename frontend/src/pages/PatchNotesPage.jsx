@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.27",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Standings · Better colour contrast in light and dark mode",
+        items: [
+          "EN · On the standings the promotion zone (top rows) and the gold highlight for your own team used fixed colours that didn't adapt to the theme — leaving a harsh bright band on the runner-up rows in dark mode and a washed-out, hard-to-read gold in light mode. They now use the theme's own colours, so the promotion zone is subtle in dark mode (matching the relegation zone) and your team's gold stays legible in both modes. Refs #825.",
+          "DA · På ranglisten brugte promotion-zonen (de øverste rækker) og guld-fremhævningen af dit eget hold faste farver, der ikke tilpassede sig temaet — det gav et grelt lyst bånd på de næstbedste rækker i dark mode og en udvasket, sværtlæselig guld i light mode. De bruger nu temaets egne farver, så promotion-zonen er afdæmpet i dark mode (som nedrykningszonen), og dit holds guld forbliver læsbar i begge temaer. Refs #825.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.24",
     date: "2026-05-31",
     label: "Beta",
