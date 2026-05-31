@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.34",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Onboarding · Create-team step no longer hangs on a connection error",
+        items: [
+          "EN · When you set up your team for the first time, the 'Create team and start' button could get stuck on 'Saving…' with no message if the request failed to reach the server (for example on a flaky connection). It now shows a clear error and lets you try again instead of hanging. Refs #792.",
+          "DA · Når du opretter dit hold første gang, kunne 'Opret hold og start'-knappen sætte sig fast på 'Gemmer…' uden besked, hvis forespørgslen ikke nåede frem til serveren (for eksempel på en ustabil forbindelse). Den viser nu en tydelig fejl og lader dig prøve igen i stedet for at gå i stå. Refs #792.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.33",
     date: "2026-05-31",
     label: "Beta",
