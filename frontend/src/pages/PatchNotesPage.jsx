@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.32",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · Clear status labels in their own column",
+        items: [
+          "EN · Rider status now shows as short, readable text labels (U23, U25, AI, IN, OUT) in their own dedicated column, instead of the emoji icons used before. The labels are easy to scan down a list: U23 and U25 show a rider's age group (only the youngest one that applies), AI marks AI-run teams, and IN and OUT mark riders moving in or out on a transfer. The auction history also shows whether you bought, sold or kept a rider. Hover any label for the full description. Refs #837.",
+          "DA · Rytter-status vises nu som korte, læsbare tekst-labels (U23, U25, AI, IND, UD) i deres egen kolonne, i stedet for de emoji-ikoner der blev brugt før. Labelsene er nemme at skanne ned gennem en liste: U23 og U25 viser rytterens aldersgruppe (kun den yngste der gælder), AI markerer AI-styrede hold, og IND og UD markerer ryttere på vej ind eller ud i en transfer. Auktionshistorikken viser også, om du købte, solgte eller beholdt en rytter. Hold musen over et label for den fulde beskrivelse. Refs #837.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.31",
     date: "2026-05-31",
     label: "Beta",
