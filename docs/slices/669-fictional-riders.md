@@ -1,8 +1,8 @@
 # Slice — Fiktive ryttere ([#669](https://github.com/NicolaiDolmer/CyclingZone/issues/669))
 
-> **Status:** Fase 5 (admin-gated prod-intro til live-test) i gang på branch `feat/fictional-riders-admin-gate`. V1-generator merged til main (#847). RLS-synligheds-gate **anvendt + verificeret i prod**; backend auction-gate bygget. Afventer deploy + fuld test-batch.
+> **Status:** Fase 5 (admin-gated prod-intro til live-test) **LIVE**. Generator (#847) + admin-gate (#850) merged til main. **25 fiktive ryttere indsat i prod**, RLS-gated + verificeret via rolle-impersonation (anon/ikke-admin: 0 fiktive, admin: 25, alle ser stadig 8.699 PCM). Ejer-verify: ryttere ser fine ud ✅; **auktion-test pending** (ikke-admin skal få 403).
 > Single source of truth for opgaven. Alt state, beslutninger og næste skridt lever her + i issue #669.
-> **Worktree:** `C:\dev\CyclingZone-worktrees\feat-669-fictional-riders-generator` (parallel-session-isolation, #382-mønster).
+> **Reversibelt:** ét `DELETE FROM riders WHERE pcm_id IS NULL` + RLS tilbage til `USING (true)`. **Næste:** ejer auktion-test → evt. generator-kalibrering (star-rate/rolle-svagheder) → senere fuld PCM-udskiftning (#676).
 
 ## Mål (revideret scope — ejer-beslutning 2026-05-31)
 
@@ -21,7 +21,7 @@ Den oprindelige #669-framing ("erstat alle 8.699 navne nu") er bevidst forkastet
 | 2 | Design-RFC + ejer-beslutninger | ✅ |
 | 3 | Generator + oprettelses-vej på branch (deterministisk/seeded) | ✅ |
 | 4 | Lokal integrationsverifikation (PGlite, gratis — erstatter betalt preview-branch) | ✅ |
-| 5 | Admin-gated prod-intro til live-test (RLS-synlighed + backend auction-gate) | 🔄 **i gang** |
+| 5 | Admin-gated prod-intro til live-test (RLS-synlighed + backend auction-gate) | ✅ **live** (ejer auktion-test pending) |
 
 ---
 
