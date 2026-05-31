@@ -12,7 +12,7 @@
 //     fiktivt navn aldrig kolliderer med en ægte rytter (point-tab-fælden).
 
 import { writeFileSync } from "node:fs";
-import { generateFictionalRiders } from "../lib/fictionalRiderGenerator.js";
+import { generateFictionalRiders, toInsertPayload } from "../lib/fictionalRiderGenerator.js";
 import { foldNameNordic } from "../lib/pcmRiderMatcher.js";
 
 // Prod Supabase-projekt — dette script må ALDRIG skrive hertil.
@@ -71,11 +71,6 @@ function printSummary({ riders, coverage }) {
     const keystats = `bj${r.stat_bj} sp${r.stat_sp} tt${r.stat_tt}`;
     console.log(`  ${name}${r.nationality_code.padEnd(5)}${m.role.padEnd(13)}${m.tier.padEnd(12)}${String(m.age).padEnd(6)}${String(r.uci_points).padEnd(6)}${keystats}`);
   }
-}
-
-function toInsertPayload(riders) {
-  // Strip _meta (kun til audit/inspektion, ikke en DB-kolonne).
-  return riders.map(({ _meta, ...row }) => row);
 }
 
 async function applyToDb(args, riders) {

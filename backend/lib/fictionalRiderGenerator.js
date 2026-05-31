@@ -63,6 +63,12 @@ export const STAT_KEYS = [
   "stat_sp", "stat_acc", "stat_ned", "stat_udh", "stat_mod", "stat_res", "stat_ftr",
 ];
 
+// Fjern intern `_meta` (audit/inspektion, ikke en DB-kolonne) → ren INSERT-payload.
+// Delt af CLI'en og integrationstesten, så de tester præcis samme vej.
+export function toInsertPayload(riders) {
+  return riders.map(({ _meta, ...row }) => row);
+}
+
 // ── Rolle-arketyper: hvilke stats løftes over tier-basen ──────────────────────
 const ROLES = [
   { value: "sprinter",   weight: 14, primary: ["stat_sp", "stat_acc", "stat_fl"], secondary: ["stat_res", "stat_ftr"], heightMean: 182, bmi: 22.5 },

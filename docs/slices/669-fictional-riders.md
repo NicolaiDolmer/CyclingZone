@@ -1,7 +1,8 @@
 # Slice — Fiktive ryttere ([#669](https://github.com/NicolaiDolmer/CyclingZone/issues/669))
 
-> **Status:** Fase 3 (generator + tests) færdig på branch `feat/669-fictional-riders-generator` — afventer ejer-gate før Fase 4 (dry-run mod preview-DB).
+> **Status:** Fase 4 (lokal integrationsverifikation) færdig på branch `feat/669-fictional-riders-generator` (eget worktree) — afventer ejer-gate før Fase 5 (evt. prod-intro).
 > Single source of truth for opgaven. Alt state, beslutninger og næste skridt lever her + i issue #669.
+> **Worktree:** udvikles i `C:\dev\CyclingZone-worktrees\feat-669-fictional-riders-generator` (parallel-session-isolation, #382-mønster).
 
 ## Mål (revideret scope — ejer-beslutning 2026-05-31)
 
@@ -9,7 +10,7 @@ Byg kapaciteten til at oprette vores **egne** fiktive ryttere fra bunden — **u
 
 Den oprindelige #669-framing ("erstat alle 8.699 navne nu") er bevidst forkastet, fordi den ville bryde den kørende beta: løbene køres pt. via PCM-resultat-import, som matcher på **rytternavn** (se Koeksistens-analyse). PCM-rytterne forbliver derfor urørte indtil PCM udfases (kobler til egen race-engine [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676)). Den fulde udskiftning er en **senere** slice.
 
-**V1-leverance:** en verificeret generator + oprettelses-vej der kan producere komplette, spilbare fiktive ryttere, demonstreret på en isoleret Supabase preview-branch. **Intet i prod før eksplicit ejer-go.**
+**V1-leverance:** en verificeret generator + oprettelses-vej der kan producere komplette, spilbare fiktive ryttere, demonstreret via en lokal integrationsverifikation (PGlite — gratis, ingen betalt Supabase-branch). **Intet i prod før eksplicit ejer-go.**
 
 ## Fase-plan (gated — ejer godkender hver overgang)
 
@@ -18,8 +19,8 @@ Den oprindelige #669-framing ("erstat alle 8.699 navne nu") er bevidst forkastet
 | 0 | Denne doc (SSOT) | ✅ |
 | 1 | Discovery, read-only — "anatomi af en rytter" | ✅ |
 | 2 | Design-RFC + ejer-beslutninger | ✅ |
-| 3 | Generator + oprettelses-vej på branch (deterministisk/seeded) | ✅ → **ejer-gate (her nu)** |
-| 4 | Dry-run på Supabase preview-branch — fuld verifikation | ejer-gate (bevis) |
+| 3 | Generator + oprettelses-vej på branch (deterministisk/seeded) | ✅ |
+| 4 | Lokal integrationsverifikation (PGlite, gratis — erstatter betalt preview-branch) | ✅ → **ejer-gate (her nu)** |
 | 5 | (Valgfrit) begrænset prod-intro | ejer-go |
 
 ---
@@ -145,16 +146,9 @@ Nationalitets-fordeling i bevis-batchen: vægtet efter eksisterende felt (FR/IT/
 
 Determinisme (samme seed → samme output) · navne-unikhed mod mock eksisterende-liste · ingen generated-felt sat · `pcm_id===null` · alle NOT NULL-felter udfyldt · gyldig ISO2-nationalitet · stats i interval · arketype↔stat-konsistens.
 
-### Verifikationsplan (Fase 4 — preview-branch, gate-bevis)
+### Verifikationsmetode (Fase 4 — gratis, ejer-beslutning 2026-05-31)
 
-1. Opret isoleret Supabase preview-branch (MCP).
-2. Kør generator+insert (~100, fast seed).
-3. Assert: præcis +100 rækker med `pcm_id NULL`; **0 eksisterende rækker ændret** (snapshot før/efter).
-4. Navne-unikhed: 0 kollisioner mod eksisterende (foldet).
-5. Synlighed: en fiktiv rytter returneres af `/riders` + under `free_agent`.
-6. Spilbar: opret en testauktion på en fiktiv rytter → ingen fejl.
-7. Spot-check sample til ejer (profanity/realisme).
-8. Riv preview-branch ned.
+Den betalte Supabase preview-branch er **droppet** (ejer vil ikke bruge betalt funktion i V1). Erstattet af en **lokal PGlite-integrationstest** (`@electric-sql/pglite` — in-memory Postgres i Node, ingen Docker, ingen cost), der kører hele insert-vejen mod en `riders`-tabel med de *ægte* generated-column-udtryk fra prod. Kører i CI som en del af `node --test`.
 
 ## Fase 3 — leverance (branch `feat/669-fictional-riders-generator`)
 
@@ -165,6 +159,23 @@ Filer (alle nye, ingen eksisterende rørt):
 - `backend/scripts/generateFictionalRiders.js` — CLI. Default dry-run (ingen DB). `--apply` kræver eksplicit preview-credentials og **nægter prod-ref `ghwvkxzhsbbltzfnuhhz`** + pre-flight `pcm_id===null`-assert + henter eksisterende navne til unikheds-check.
 
 Verifikation: `npx eslint` rent · **822/822 backend-tests grønne** · dry-run (seed 669, 100 ryttere) producerer nationalitets-passende navne, alle ramte dedikeret pool (0 generisk fallback). Ingen DB rørt i Fase 3.
+
+## Fase 4 — leverance (lokal PGlite-integrationsverifikation)
+
+Filer:
+- `backend/lib/fictionalRiderGenerator.integration.test.js` — 6 integrationstests mod ægte Postgres (PGlite), delt DB + `TRUNCATE` mellem tests.
+- `backend/lib/fictionalRiderGenerator.js` — `toInsertPayload` flyttet hertil + eksporteret (delt af CLI + test → samme insert-vej).
+- `backend/package.json` — `@electric-sql/pglite` som **devDependency** (rammer aldrig prod-bundlen).
+
+Bevist (alt grønt):
+1. Generatorens payload **INSERT'es mod prod-schemaet uden fejl** (NOT NULL/kolonner/constraints OK).
+2. **Generated-kolonner beregnes korrekt af DB:** `price = uci·4000`, `market_value`, `salary` matcher prod-formlerne præcist.
+3. Fiktive ryttere er **synlige** (`is_retired=false`) og **frie agenter** (`team_id NULL`), alle med `pcm_id NULL`.
+4. En **eksisterende PCM-rytter er fuldstændig urørt** efter fiktiv insert (felter + antal uændret).
+5. En fiktiv rytter kan **refereres af en auktion** (FK-integritet — spilbar).
+6. Payload indeholder **ingen ukendte kolonner** og rører ingen generated-kolonner.
+
+Samlet: **828/828 backend-tests grønne**, `npx eslint` rent. Hele V1-kapaciteten er bevist lokalt uden at røre prod.
 
 ## Åbne punkter (ikke-blokerende — afklares senest ved Fase 5)
 
@@ -179,3 +190,5 @@ Verifikation: `npx eslint` rent · **822/822 backend-tests grønne** · dry-run 
 - **2026-05-31** — Arbejdsform: **godkend hver gate**. (ejer)
 - **2026-05-31 (Fase 2)** — V1-skala **~100**, **kun preview** (intet i prod), profil **rolle-arketyper + spredning**, navne **hybrid**. (ejer)
 - **2026-05-31 (Fase 2)** — Generator i **Node/JS** (genbrug af `foldName*` + `node --test`-dækning), kun-INSERT, audit-fil committes. (Claude — godkendes med RFC)
+- **2026-05-31 (Fase 4)** — Betalt Supabase preview-branch **droppet**; verifikation via lokal **PGlite**-integrationstest i stedet. (ejer)
+- **2026-05-31 (Fase 4)** — Arbejdet flyttet til eget **git worktree** for parallel-session-isolation; hovedmappe frigjort til `main`. (ejer)
