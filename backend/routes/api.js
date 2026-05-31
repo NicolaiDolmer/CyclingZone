@@ -1459,10 +1459,10 @@ router.get("/transfers", requireAuth, async (req, res) => {
 });
 
 // POST /api/transfers — list own rider for sale
+// #19: salgs-listinger kan oprettes uanset transfervindue. Selve handlen
+// (køb/accept) flyttes pengemæssigt ved aftale, men rytter-registreringen sker
+// først ved vindue-åbning (se transferExecution.js deferRegistration).
 router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
-  const { open } = await getTransferWindowStatus();
-  if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke oprette salgslistinger i denne periode." });
-
   const { rider_id, asking_price } = req.body;
   const { data: rider } = await supabase
     .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
@@ -1545,10 +1545,11 @@ router.delete("/transfers/:id", requireAuth, marketWriteLimiter, async (req, res
 });
 
 // POST /api/transfers/offer — direct offer on any rider (no listing needed)
+// #19: tilbud kan sendes uanset transfervindue. Ved bekræftelse betales der med
+// det samme, men rytter-registreringen udskydes til vinduet åbner (lukket vindue).
 router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
   const { open } = await getTransferWindowStatus();
-  if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke sende tilbud i denne periode." });
 
   const { rider_id, offer_amount, message } = req.body;
   if (!rider_id || !offer_amount) return res.status(400).json({ error: "rider_id og offer_amount kræves" });
@@ -1574,13 +1575,12 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
     return res.status(400).json({ error: "Du har ikke råd til dette tilbud" });
 
   // Check squad size limits for buyer.
-  // #267: under åbent transfervindue må køber gå +2 over division-cap.
-  // Endpoint har allerede gated på `open === true` ovenfor.
+  // #19/#267: +2 soft-cap buffer gælder kun i åbent vindue; lukket → hard-cap.
   const squadViolation = getIncomingSquadViolation(buyerState, {
-    softCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER,
+    softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
   });
   if (squadViolation)
-    return res.status(400).json({ error: `Dit hold er fyldt (${squadViolation.effectiveCap} ryttere — Div ${buyerState.division || 3} cap ${squadViolation.maxRiders} + ${squadViolation.softCapBuffer} buffer i transfervinduet)` });
+    return res.status(400).json({ error: `Dit hold er fyldt (${squadViolation.effectiveCap} ryttere — Div ${buyerState.division || 3} cap ${squadViolation.maxRiders}${squadViolation.softCapBuffer ? ` + ${squadViolation.softCapBuffer} buffer i transfervinduet` : ""})` });
 
   // S-02e · Hard-block ved aktivt lag 2 (salary cap) eller lag 3 (signing-restriktion).
   const signingBlock = await assertSigningAllowed({
@@ -1892,10 +1892,10 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
 });
 
 // POST /api/transfers/:id/offer — legacy route (listing-based offer)
+// #19: tilbud kan sendes uanset transfervindue (betal ved aftale, registrér ved åbning).
 router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
   const { open } = await getTransferWindowStatus();
-  if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke sende tilbud i denne periode." });
 
   const { offer_amount, message } = req.body;
   const { data: listing } = await supabase
@@ -1916,12 +1916,12 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
   const listingBuyerState = await getTeamMarketState(supabase, req.team.id);
   if (offer_amount > listingBuyerState.balance)
     return res.status(400).json({ error: "Du har ikke råd til dette tilbud" });
-  // #267: soft-cap buffer i åbent vindue (endpoint har gated på open ovenfor).
+  // #19/#267: +2 soft-cap buffer kun i åbent vindue; lukket → hard-cap.
   const listingSquadViolation = getIncomingSquadViolation(listingBuyerState, {
-    softCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER,
+    softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
   });
   if (listingSquadViolation)
-    return res.status(400).json({ error: `Dit hold er fyldt (${listingSquadViolation.effectiveCap} ryttere — Div ${listingBuyerState.division || 3} cap ${listingSquadViolation.maxRiders} + ${listingSquadViolation.softCapBuffer} buffer i transfervinduet)` });
+    return res.status(400).json({ error: `Dit hold er fyldt (${listingSquadViolation.effectiveCap} ryttere — Div ${listingBuyerState.division || 3} cap ${listingSquadViolation.maxRiders}${listingSquadViolation.softCapBuffer ? ` + ${listingSquadViolation.softCapBuffer} buffer i transfervinduet` : ""})` });
   const { data, error } = await supabase.from("transfer_offers")
     .insert({
       listing_id: listing.id,
@@ -1966,10 +1966,10 @@ router.get("/transfers/swaps", requireAuth, async (req, res) => {
 });
 
 // POST /api/transfers/swaps — propose a swap
+// #19: byttehandler kan foreslås uanset transfervindue (betal kontant-delta ved
+// aftale, registrér rytterskiftet ved vindue-åbning).
 router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
-  const { open } = await getTransferWindowStatus();
-  if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke foreslå byttehandler i denne periode." });
 
   const { offered_rider_id, requested_rider_id, cash_adjustment = 0, message } = req.body;
   if (!offered_rider_id || !requested_rider_id)

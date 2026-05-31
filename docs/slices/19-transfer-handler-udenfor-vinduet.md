@@ -1,6 +1,8 @@
 # Slice #19 · Handler udenfor transfervinduet (betal nu, registrér ved åbning)
 
-**Status:** 📋 Planlagt 2026-05-31. Afventer pick-up. Plan godkendt af ejer via AskUserQuestion-session.
+**Status:** 🟡 Del A leveret 2026-05-31 (offers + swaps + listing — "betal nu, registrér ved åbning"; ingen migration). **Del B (loans + buyout) udestår** — kræver prod-migration (`window_pending`-status på `loan_agreements`), kører som følge-PR i epicet. Plan godkendt af ejer via AskUserQuestion-session.
+
+> **Del A scope (PR `fix/19-auction-bids-outside-window`):** `transferExecution.js` refaktoreret så `confirmTransferOffer`/`confirmSwapOffer` betaler ved bekræftelse i begge modes og parkerer rytteren på `pending_team_id` (status `window_pending`) når vinduet er lukket; `flushWindowPendingOffers` reduceret til ren ikke-finansiel record-finalisering (rytter-registrering sker via den eksisterende generiske pending-flush). 4 oprettelses-403-gates fjernet (listing, direkte tilbud, legacy-tilbud, swap); soft-cap buffer gjort window-aware. Idempotency_key på alle park-betalinger. Tests: 4 nye integration-tests (in-memory supabase) for park-betaling + ingen-dobbeltbetaling-ved-flush + åbent-vindue-direkte-flyt + swap-park. Runtime-verificeret: prod havde 0 `window_pending` records + lukket vindue ved deploy (ingen transition-reconciliation nødvendig).
 
 **Issue:** [#19](https://github.com/NicolaiDolmer/CyclingZone/issues/19) (parent). Folder ind: [#827](https://github.com/NicolaiDolmer/CyclingZone/issues/827) (garanteret salg flytter rytter mens lukket). [#828](https://github.com/NicolaiDolmer/CyclingZone/issues/828) lukket som duplikat af #19.
 
