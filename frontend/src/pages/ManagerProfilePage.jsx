@@ -55,11 +55,14 @@ export default function ManagerProfilePage() {
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
-    const h = await authHeaders();
-    const res = await fetch(`${API}/api/managers/${teamId}`, { headers: h });
-    const json = await res.json();
-    if (res.ok) setData(json);
-    setLoading(false);
+    try {
+      const h = await authHeaders();
+      const res = await fetch(`${API}/api/managers/${teamId}`, { headers: h });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json) setData(json);
+    } finally {
+      setLoading(false);
+    }
   }, [teamId]);
 
   useEffect(() => { loadProfile(); loadMyTeam(); }, [loadProfile, loadMyTeam]);

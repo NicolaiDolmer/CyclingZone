@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.35",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Stability · Buttons no longer get stuck if the connection drops",
+        items: [
+          "EN · Across the game, buttons and forms that talk to the server (transfer offers, swaps and loans, board contracts and requests, taking and repaying loans, sending rider offers, and the manager and season finance screens) no longer get stuck on \"Working…\" if your connection drops or the server returns an unexpected response. They now reset and show a clear \"Connection failed. Check your internet and try again.\" message so you can try again. Refs #792.",
+          "DA · I hele spillet kan knapper og formularer, der taler med serveren (transfertilbud, bytter og lejeaftaler, bestyrelseskontrakter og -anmodninger, optag og tilbagebetaling af lån, afsendelse af ryttertilbud samt manager- og sæson-finansskærmene), ikke længere hænge fast på \"Arbejder…\", hvis forbindelsen ryger, eller serveren svarer uventet. De nulstiller nu og viser en tydelig \"Forbindelsen fejlede. Tjek din internetforbindelse og prøv igen.\"-besked, så du kan prøve igen. Refs #792.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.34",
     date: "2026-05-31",
     label: "Beta",

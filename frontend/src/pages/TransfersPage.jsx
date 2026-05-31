@@ -74,9 +74,12 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
 
   async function doAction(action, extra = {}) {
     setLoading(true);
-    await onAction(offer.id, action, extra);
-    setMode(null);
-    setLoading(false);
+    try {
+      await onAction(offer.id, action, extra);
+      setMode(null);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -232,9 +235,12 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
 
   async function doAction(action, extra = {}) {
     setLoading(true);
-    await onAction(offer.id, action, extra);
-    setMode(null);
-    setLoading(false);
+    try {
+      await onAction(offer.id, action, extra);
+      setMode(null);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -397,9 +403,12 @@ function SwapCard({ swap, myTeamId, onAction }) {
 
   async function doAction(action, extra = {}) {
     setLoading(true);
-    await onAction(swap.id, action, extra);
-    setMode(null);
-    setLoading(false);
+    try {
+      await onAction(swap.id, action, extra);
+      setMode(null);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -600,8 +609,11 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
   async function handleSubmit() {
     if (!offeredId || !requestedId) return;
     setLoading(true);
-    await onSubmit({ offered_rider_id: offeredId, requested_rider_id: requestedId, cash_adjustment: cash, message: msg });
-    setLoading(false);
+    try {
+      await onSubmit({ offered_rider_id: offeredId, requested_rider_id: requestedId, cash_adjustment: cash, message: msg });
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -815,14 +827,17 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
   async function handleSubmit() {
     if (!selectedRider || !startSeason) return;
     setLoading(true);
-    await onSubmit({
-      rider_id: selectedRider.id,
-      loan_fee: loanFee,
-      start_season: parseInt(startSeason),
-      end_season: parseInt(startSeason),
-      buy_option_price: buyOption ? parseInt(buyOption) : null,
-    });
-    setLoading(false);
+    try {
+      await onSubmit({
+        rider_id: selectedRider.id,
+        loan_fee: loanFee,
+        start_season: parseInt(startSeason),
+        end_season: parseInt(startSeason),
+        buy_option_price: buyOption ? parseInt(buyOption) : null,
+      });
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -903,18 +918,24 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
 
   async function performSendOffer() {
     setLoading(true);
-    await onOffer(listing.rider?.id, offerAmt, msg);
-    setShowOffer(false);
-    setConfirmOpen(false);
-    setLoading(false);
+    try {
+      await onOffer(listing.rider?.id, offerAmt, msg);
+      setShowOffer(false);
+      setConfirmOpen(false);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function performRemove() {
     if (!onRemove) return;
     if (!window.confirm(t("transferCard.removeConfirm", { riderName }))) return;
     setRemoving(true);
-    await onRemove(listing.id, riderName);
-    setRemoving(false);
+    try {
+      await onRemove(listing.id, riderName);
+    } finally {
+      setRemoving(false);
+    }
   }
 
   return (
@@ -1035,36 +1056,41 @@ export default function TransfersPage() {
 
   async function loadAll() {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: team } = await supabase.from("teams").select("id, balance").eq("user_id", user.id).single();
-    if (!team) { setLoading(false); return; }
-    setMyTeamId(team.id);
-    setMyBalance(team.balance);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: team } = await supabase.from("teams").select("id, balance").eq("user_id", user.id).single();
+      if (!team) return;
+      setMyTeamId(team.id);
+      setMyBalance(team.balance);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    const headers = { Authorization: `Bearer ${session.access_token}` };
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = { Authorization: `Bearer ${session.access_token}` };
 
-    const [listingsRes, offersRes, swapsRes, loansRes, ridersRes, windowRes] = await Promise.all([
-      fetch(`${API}/api/transfers`, { headers }).then(r => r.json()),
-      fetch(`${API}/api/transfers/my-offers`, { headers }).then(r => r.json()),
-      fetch(`${API}/api/transfers/swaps`, { headers }).then(r => r.json()),
-      fetch(`${API}/api/loans`, { headers }).then(r => r.json()),
-      supabase.from("riders").select("id, firstname, lastname, uci_points, prize_earnings_bonus").eq("team_id", team.id).eq("is_retired", false).order("lastname"),
-      fetch(`${API}/api/transfer-window`, { headers }).then(r => r.json()),
-    ]);
+      const [listingsRes, offersRes, swapsRes, loansRes, ridersRes, windowRes] = await Promise.all([
+        fetch(`${API}/api/transfers`, { headers }).then(r => r.json()),
+        fetch(`${API}/api/transfers/my-offers`, { headers }).then(r => r.json()),
+        fetch(`${API}/api/transfers/swaps`, { headers }).then(r => r.json()),
+        fetch(`${API}/api/loans`, { headers }).then(r => r.json()),
+        supabase.from("riders").select("id, firstname, lastname, uci_points, prize_earnings_bonus").eq("team_id", team.id).eq("is_retired", false).order("lastname"),
+        fetch(`${API}/api/transfer-window`, { headers }).then(r => r.json()),
+      ]);
 
-    setListings(Array.isArray(listingsRes) ? listingsRes : []);
-    setSentOffers(offersRes.sent || []);
-    setReceivedOffers(offersRes.received || []);
-    setArchivedSentOffers(offersRes.archivedSent || []);
-    setArchivedReceivedOffers(offersRes.archivedReceived || []);
-    setSentSwaps(swapsRes.sent || []);
-    setReceivedSwaps(swapsRes.received || []);
-    setLendingLoans(loansRes.lending || []);
-    setBorrowingLoans(loansRes.borrowing || []);
-    setMyRiders(ridersRes.data || []);
-    setTransferWindow(windowRes?.open !== undefined ? windowRes : { open: true, status: "open" });
-    setLoading(false);
+      setListings(Array.isArray(listingsRes) ? listingsRes : []);
+      setSentOffers(offersRes.sent || []);
+      setReceivedOffers(offersRes.received || []);
+      setArchivedSentOffers(offersRes.archivedSent || []);
+      setArchivedReceivedOffers(offersRes.archivedReceived || []);
+      setSentSwaps(swapsRes.sent || []);
+      setReceivedSwaps(swapsRes.received || []);
+      setLendingLoans(loansRes.lending || []);
+      setBorrowingLoans(loansRes.borrowing || []);
+      setMyRiders(ridersRes.data || []);
+      setTransferWindow(windowRes?.open !== undefined ? windowRes : { open: true, status: "open" });
+    } catch {
+      showMsg(t("auth:error.connectionFailed"), "error");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function getHeaders() {
@@ -1078,148 +1104,176 @@ export default function TransfersPage() {
   }
 
   async function handleOffer(riderId, amount, message) {
-    const res = await fetch(`${API}/api/transfers/offer`, {
-      method: "POST",
-      headers: await getHeaders(),
-      body: JSON.stringify({ rider_id: riderId, offer_amount: amount, message }),
-    });
-    const data = await res.json();
-    if (res.ok) { showMsg(t("toast.offerSent")); loadAll(); setTab("sent"); }
-    else showMsg(`❌ ${data.error}`, "error");
+    try {
+      const res = await fetch(`${API}/api/transfers/offer`, {
+        method: "POST",
+        headers: await getHeaders(),
+        body: JSON.stringify({ rider_id: riderId, offer_amount: amount, message }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) { showMsg(t("toast.offerSent")); loadAll(); setTab("sent"); }
+      else showMsg(`❌ ${data.error}`, "error");
+    } catch {
+      showMsg(t("auth:error.connectionFailed"), "error");
+    }
   }
 
   async function handleRemoveListing(listingId) {
-    const res = await fetch(`${API}/api/transfers/${listingId}`, {
-      method: "DELETE",
-      headers: await getHeaders(),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
-      showMsg(t("toast.listingRemoved"));
-      loadAll();
-    } else {
-      showMsg(`❌ ${data.error || t("toast.listingRemoveFailed")}`, "error");
+    try {
+      const res = await fetch(`${API}/api/transfers/${listingId}`, {
+        method: "DELETE",
+        headers: await getHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showMsg(t("toast.listingRemoved"));
+        loadAll();
+      } else {
+        showMsg(`❌ ${data.error || t("toast.listingRemoveFailed")}`, "error");
+      }
+    } catch {
+      showMsg(t("auth:error.connectionFailed"), "error");
     }
   }
 
   async function handleOfferAction(offerId, action, extra = {}) {
-    const res = await fetch(`${API}/api/transfers/offers/${offerId}`, {
-      method: "PATCH",
-      headers: await getHeaders(),
-      body: JSON.stringify({ action, ...extra }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      if (action === "confirm" && data.action === "accepted") {
-        setCelebration({
-          title: t("celebration.transferDone.title"),
-          subtitle: t("celebration.transferDone.subtitle"),
-          amount: data.price || 0,
-          icon: "↔",
-        });
-        fetch(`${API}/api/achievements/check`, {
-          method: "POST",
-          headers: await getHeaders(),
-          body: JSON.stringify({ context: "transfer_done", data: {} }),
-        }).catch(() => {});
+    try {
+      const res = await fetch(`${API}/api/transfers/offers/${offerId}`, {
+        method: "PATCH",
+        headers: await getHeaders(),
+        body: JSON.stringify({ action, ...extra }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        if (action === "confirm" && data.action === "accepted") {
+          setCelebration({
+            title: t("celebration.transferDone.title"),
+            subtitle: t("celebration.transferDone.subtitle"),
+            amount: data.price || 0,
+            icon: "↔",
+          });
+          fetch(`${API}/api/achievements/check`, {
+            method: "POST",
+            headers: await getHeaders(),
+            body: JSON.stringify({ context: "transfer_done", data: {} }),
+          }).catch(() => {});
+        } else {
+          const msgs = {
+            accept:          t("toast.offerAcceptedBuyer"),
+            accept_counter:  t("toast.offerAcceptedSeller"),
+            confirm:         t("toast.confirmedAwaiting"),
+            cancel:          t("toast.dealCancelled"),
+            reject:          t("toast.transferRejected"),
+            counter:         t("toast.counterSent"),
+            new_offer:       t("toast.newOfferSent"),
+            withdraw:        t("toast.offerWithdrawn"),
+            archive:         t("toast.offerArchived"),
+          };
+          showMsg(msgs[action] || t("toast.updated"));
+        }
+        loadAll();
       } else {
-        const msgs = {
-          accept:          t("toast.offerAcceptedBuyer"),
-          accept_counter:  t("toast.offerAcceptedSeller"),
-          confirm:         t("toast.confirmedAwaiting"),
-          cancel:          t("toast.dealCancelled"),
-          reject:          t("toast.transferRejected"),
-          counter:         t("toast.counterSent"),
-          new_offer:       t("toast.newOfferSent"),
-          withdraw:        t("toast.offerWithdrawn"),
-          archive:         t("toast.offerArchived"),
-        };
-        showMsg(msgs[action] || t("toast.updated"));
+        showMsg(`❌ ${data.error}`, "error");
       }
-      loadAll();
-    } else {
-      showMsg(`❌ ${data.error}`, "error");
+    } catch {
+      showMsg(t("auth:error.connectionFailed"), "error");
     }
   }
 
   async function handleSwapAction(swapId, action, extra = {}) {
-    const res = await fetch(`${API}/api/transfers/swaps/${swapId}`, {
-      method: "PATCH",
-      headers: await getHeaders(),
-      body: JSON.stringify({ action, ...extra }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      if (action === "confirm" && data.action === "accepted") {
-        setCelebration({
-          title: t("celebration.swapDone.title"),
-          subtitle: t("celebration.swapDone.subtitle"),
-          amount: 0,
-          icon: "↔",
-        });
+    try {
+      const res = await fetch(`${API}/api/transfers/swaps/${swapId}`, {
+        method: "PATCH",
+        headers: await getHeaders(),
+        body: JSON.stringify({ action, ...extra }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        if (action === "confirm" && data.action === "accepted") {
+          setCelebration({
+            title: t("celebration.swapDone.title"),
+            subtitle: t("celebration.swapDone.subtitle"),
+            amount: 0,
+            icon: "↔",
+          });
+        } else {
+          const msgs = {
+            accept:         t("toast.swapAccepted"),
+            accept_counter: t("toast.swapAccepted"),
+            confirm:        t("toast.swapConfirmedAwaiting"),
+            cancel:         t("toast.swapCancelled"),
+            reject:         t("toast.swapRejected"),
+            counter:        t("toast.counterSent"),
+            withdraw:       t("toast.proposalWithdrawn"),
+          };
+          showMsg(msgs[action] || t("toast.updated"));
+        }
+        loadAll();
       } else {
-        const msgs = {
-          accept:         t("toast.swapAccepted"),
-          accept_counter: t("toast.swapAccepted"),
-          confirm:        t("toast.swapConfirmedAwaiting"),
-          cancel:         t("toast.swapCancelled"),
-          reject:         t("toast.swapRejected"),
-          counter:        t("toast.counterSent"),
-          withdraw:       t("toast.proposalWithdrawn"),
-        };
-        showMsg(msgs[action] || t("toast.updated"));
+        showMsg(`❌ ${data.error}`, "error");
       }
-      loadAll();
-    } else {
-      showMsg(`❌ ${data.error}`, "error");
+    } catch {
+      showMsg(t("auth:error.connectionFailed"), "error");
     }
   }
 
   async function handleNewSwap(payload) {
-    const res = await fetch(`${API}/api/transfers/swaps`, {
-      method: "POST",
-      headers: await getHeaders(),
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      showMsg(t("toast.swapProposalSent"));
-      setShowNewSwap(false);
-      loadAll();
-    } else {
-      showMsg(`❌ ${data.error}`, "error");
+    try {
+      const res = await fetch(`${API}/api/transfers/swaps`, {
+        method: "POST",
+        headers: await getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showMsg(t("toast.swapProposalSent"));
+        setShowNewSwap(false);
+        loadAll();
+      } else {
+        showMsg(`❌ ${data.error}`, "error");
+      }
+    } catch {
+      showMsg(t("auth:error.connectionFailed"), "error");
     }
   }
 
   async function handleLoanAction(loanId, action) {
-    const res = await fetch(`${API}/api/loans/${loanId}`, {
-      method: "PATCH",
-      headers: await getHeaders(),
-      body: JSON.stringify({ action }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      if (action === "buyout") {
-        setCelebration({ title: t("celebration.buyoutDone.title"), subtitle: t("celebration.buyoutDone.subtitle"), amount: data.price || 0, icon: "📋" });
+    try {
+      const res = await fetch(`${API}/api/loans/${loanId}`, {
+        method: "PATCH",
+        headers: await getHeaders(),
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        if (action === "buyout") {
+          setCelebration({ title: t("celebration.buyoutDone.title"), subtitle: t("celebration.buyoutDone.subtitle"), amount: data.price || 0, icon: "📋" });
+        } else {
+          const msgs = { accept: t("toast.loanActivated"), reject: t("toast.loanRejected"), cancel: t("toast.loanCancelled") };
+          showMsg(msgs[action] || t("toast.updated"));
+        }
+        loadAll();
       } else {
-        const msgs = { accept: t("toast.loanActivated"), reject: t("toast.loanRejected"), cancel: t("toast.loanCancelled") };
-        showMsg(msgs[action] || t("toast.updated"));
+        showMsg(`❌ ${data.error}`, "error");
       }
-      loadAll();
-    } else {
-      showMsg(`❌ ${data.error}`, "error");
+    } catch {
+      showMsg(t("auth:error.connectionFailed"), "error");
     }
   }
 
   async function handleNewLoan(payload) {
-    const res = await fetch(`${API}/api/loans`, {
-      method: "POST",
-      headers: await getHeaders(),
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (res.ok) { showMsg(t("toast.loanProposalSent")); setShowNewLoan(false); loadAll(); }
-    else showMsg(`❌ ${data.error}`, "error");
+    try {
+      const res = await fetch(`${API}/api/loans`, {
+        method: "POST",
+        headers: await getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) { showMsg(t("toast.loanProposalSent")); setShowNewLoan(false); loadAll(); }
+      else showMsg(`❌ ${data.error}`, "error");
+    } catch {
+      showMsg(t("auth:error.connectionFailed"), "error");
+    }
   }
 
   const pendingReceived = receivedOffers.filter(o =>

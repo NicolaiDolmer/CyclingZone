@@ -263,30 +263,36 @@ export default function SeasonFinanceReport() {
     async function load() {
       setLoading(true);
       setError(null);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        if (!cancelled) {
-          setError(t("report.mustLogin"));
-          setLoading(false);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) {
+          if (!cancelled) setError(t("report.mustLogin"));
+          return;
         }
-        return;
+        const url = `${API}/api/teams/${teamId}/finance-report?seasonId=${seasonId}`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (cancelled) return;
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          setError(body.error || t("report.errorStatus", { status: res.status }));
+          return;
+        }
+        const data = await res.json().catch(() => null);
+        if (cancelled) return;
+        if (!data) {
+          setError(t("report.errorStatus", { status: res.status }));
+          return;
+        }
+        setReport(data);
+      } catch {
+        if (!cancelled) setError(t("auth:error.connectionFailed"));
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      const url = `${API}/api/teams/${teamId}/finance-report?seasonId=${seasonId}`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (cancelled) return;
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body.error || t("report.errorStatus", { status: res.status }));
-        setLoading(false);
-        return;
-      }
-      const data = await res.json();
-      setReport(data);
-      setLoading(false);
     }
     load();
     return () => {

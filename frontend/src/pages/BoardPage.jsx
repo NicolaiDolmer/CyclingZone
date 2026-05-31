@@ -1547,11 +1547,18 @@ export default function BoardPage() {
     const token = session?.access_token;
     if (!token) { setLoading(false); return; }
 
-    const res = await fetch(`${API}/api/board/status`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    let res;
+    try {
+      res = await fetch(`${API}/api/board/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      setLoading(false);
+      return;
+    }
     if (!res.ok) { setLoading(false); return; }
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
+    if (!data) { setLoading(false); return; }
 
     const newPlans = data.plans || { "5yr": null, "3yr": null, "1yr": null };
     setPlans(newPlans);
@@ -1708,39 +1715,44 @@ export default function BoardPage() {
       .filter(([, v]) => v)
       .map(([i]) => Number(i));
 
-    const res = await fetch(`${API}/api/board/sign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        focus: wizardFocus,
-        plan_type: wizardPlanType,
-        negotiations: negotiationIndexes,
-        goals: finalGoals,
-      }),
-    });
+    try {
+      const res = await fetch(`${API}/api/board/sign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          focus: wizardFocus,
+          plan_type: wizardPlanType,
+          negotiations: negotiationIndexes,
+          goals: finalGoals,
+        }),
+      });
 
-    setSaving(false);
-    if (res.ok) {
-      // S-02h: Multi-plan renewal queue — auto-advance to next expired plan
-      const nextIdx = renewalQueueIdx + 1;
-      if (!wizardIsSetup && renewalQueue.length > nextIdx) {
-        const nextPlanType = renewalQueue[nextIdx];
-        setRenewalQueueIdx(nextIdx);
-        const nextFocus = plans[nextPlanType]?.board?.focus || "balanced";
-        setWizardPlanType(nextPlanType);
-        setWizardFocus(nextFocus);
-        setWizardStep(1);
-        setPreviewGoals([]);
-        setPreviewError("");
-        setNegotiated({});
-        setPendingNegotiate(false);
-        loadAll();
-      } else {
-        setRenewalQueue([]);
-        setRenewalQueueIdx(0);
-        closeWizard();
-        loadAll();
+      if (res.ok) {
+        // S-02h: Multi-plan renewal queue — auto-advance to next expired plan
+        const nextIdx = renewalQueueIdx + 1;
+        if (!wizardIsSetup && renewalQueue.length > nextIdx) {
+          const nextPlanType = renewalQueue[nextIdx];
+          setRenewalQueueIdx(nextIdx);
+          const nextFocus = plans[nextPlanType]?.board?.focus || "balanced";
+          setWizardPlanType(nextPlanType);
+          setWizardFocus(nextFocus);
+          setWizardStep(1);
+          setPreviewGoals([]);
+          setPreviewError("");
+          setNegotiated({});
+          setPendingNegotiate(false);
+          loadAll();
+        } else {
+          setRenewalQueue([]);
+          setRenewalQueueIdx(0);
+          closeWizard();
+          loadAll();
+        }
       }
+    } catch {
+      setPreviewError(t("auth:error.connectionFailed"));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -1749,29 +1761,32 @@ export default function BoardPage() {
     setRequestingType(key);
     setRequestErrors(e => ({ ...e, [planType]: "" }));
 
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) {
-      setRequestErrors(e => ({ ...e, [planType]: t("errors.loginRequired") }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setRequestErrors(e => ({ ...e, [planType]: t("errors.loginRequired") }));
+        return;
+      }
+
+      const res = await fetch(`${API}/api/board/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ plan_type: planType, request_type: requestType }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setRequestErrors(e => ({ ...e, [planType]: data.error || t("errors.requestFallback") }));
+        return;
+      }
+
+      await loadAll();
+    } catch {
+      setRequestErrors(e => ({ ...e, [planType]: t("auth:error.connectionFailed") }));
+    } finally {
       setRequestingType("");
-      return;
     }
-
-    const res = await fetch(`${API}/api/board/request`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ plan_type: planType, request_type: requestType }),
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setRequestErrors(e => ({ ...e, [planType]: data.error || t("errors.requestFallback") }));
-      setRequestingType("");
-      return;
-    }
-
-    await loadAll();
-    setRequestingType("");
   }
 
   // S-02e · Bonus-offer accept/decline (lag 6)

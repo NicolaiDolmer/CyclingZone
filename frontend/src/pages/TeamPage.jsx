@@ -35,30 +35,40 @@ function RiderActionModal({ rider, onClose, onAction }) {
 
   async function startAuction() {
     setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auctions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ rider_id: rider.id, starting_price: auctionPrice }),
-    });
-    const data = await res.json();
-    if (res.ok) { setMsg(t("actionModal.auction.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
-    else setMsg(`${t("actionModal.errorPrefix")}${data.error}`);
-    setLoading(false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auctions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ rider_id: rider.id, starting_price: auctionPrice }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) { setMsg(t("actionModal.auction.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
+      else setMsg(`${t("actionModal.errorPrefix")}${data.error}`);
+    } catch {
+      setMsg(t("auth:error.connectionFailed"));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function listTransfer() {
     setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/transfers`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ rider_id: rider.id, asking_price: transferPrice }),
-    });
-    const data = await res.json();
-    if (res.ok) { setMsg(t("actionModal.transfer.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
-    else setMsg(`${t("actionModal.errorPrefix")}${data.error}`);
-    setLoading(false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/transfers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ rider_id: rider.id, asking_price: transferPrice }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) { setMsg(t("actionModal.transfer.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
+      else setMsg(`${t("actionModal.errorPrefix")}${data.error}`);
+    } catch {
+      setMsg(t("auth:error.connectionFailed"));
+    } finally {
+      setLoading(false);
+    }
   }
 
   const tabLabels = {
