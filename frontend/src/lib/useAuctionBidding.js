@@ -20,6 +20,7 @@ export function useAuctionBidding({
   onRemoveProxy,
   requestBidConfirm,
   riderName,
+  t,
 }) {
   const minBid = getMinimumAuctionBid(auction.current_price || 0, {
     hasActiveBid: Boolean(auction.current_bidder_id),
@@ -47,7 +48,7 @@ export function useAuctionBidding({
   function handleBid() {
     if (bidAmount > myAvailableBalance) {
       setBidStatus("error");
-      setErrorText("Buddet overstiger din tilgængelige balance (efter eksisterende bud)");
+      setErrorText(t("auctions:error.insufficientBalance"));
       setTimeout(() => setBidStatus(null), 3000);
       return;
     }

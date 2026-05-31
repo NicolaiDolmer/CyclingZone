@@ -140,7 +140,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
     proxyStatus, proxyErrorText,
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
-    auction, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName,
+    auction, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
   });
 
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
@@ -364,7 +364,7 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggl
     proxyStatus, proxyErrorText,
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
-    auction, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName,
+    auction, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
   });
 
   return (

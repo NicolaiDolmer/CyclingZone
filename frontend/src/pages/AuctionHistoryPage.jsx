@@ -9,16 +9,16 @@ import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber, formatDate } from "../lib/intl";
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, t) {
   if (!dateStr) return "—";
   const diff = new Date() - new Date(dateStr);
   const m = Math.floor(diff / 60000);
   const h = Math.floor(diff / 3600000);
   const d = Math.floor(diff / 86400000);
-  if (m < 1) return "Lige nu";
-  if (m < 60) return `${m}m siden`;
-  if (h < 24) return `${h}t siden`;
-  if (d < 7) return `${d}d siden`;
+  if (m < 1) return t("time.justNow");
+  if (m < 60) return t("time.minutesAgo", { m });
+  if (h < 24) return t("time.hoursAgo", { h });
+  if (d < 7) return t("time.daysAgo", { d });
   return formatDate(dateStr);
 }
 
@@ -280,7 +280,7 @@ export default function AuctionHistoryPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right text-cz-3 text-xs hidden md:table-cell">
-                      {timeAgo(a.actual_end)}
+                      {timeAgo(a.actual_end, t)}
                     </td>
                   </tr>
                 );
