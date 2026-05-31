@@ -339,6 +339,7 @@
     },
     "setupHeading": "Opsætning af bestyrelsesplaner ({step}/3)",
     "setupBody": "Forhandl din {plan} med bestyrelsen. Derefter fortsættes med næste plan.",
+    "setupSequence": "Første møde kører i fast rækkefølge: 5-årsplan først, derefter 3-årsplan og til sidst 1-årsplan.",
     "multiRenewalHeading": "Planfornyelse {current}/{total}, {plan}",
     "multiRenewalBodyNext": "Derefter fortsættes med {next}.",
     "multiRenewalBodyLast": "Sidste plan i køen.",

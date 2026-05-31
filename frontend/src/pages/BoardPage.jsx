@@ -2006,6 +2006,9 @@ export default function BoardPage() {
                 <p className="text-cz-accent-t/60 text-xs mt-1">
                   {t("wizard.setupBody", { plan: getPlanLabel(t, wizardPlanType) })}
                 </p>
+                <p className="text-cz-accent-t/70 text-xs mt-2">
+                  {t("wizard.setupSequence")}
+                </p>
               </div>
             )}
 

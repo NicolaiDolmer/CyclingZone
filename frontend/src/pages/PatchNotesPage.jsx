@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.36",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Board · First meeting sequence is clearer",
+        items: [
+          "EN · The board setup wizard now states the first meeting order directly: 5-year plan first, then 3-year plan and finally 1-year plan. Refs #818.",
+          "DA · Bestyrelses-wizard'en siger nu direkte, hvilken rækkefølge første møde følger: først 5-årsplan, derefter 3-årsplan og til sidst 1-årsplan. Refs #818.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.35",
     date: "2026-05-31",
     label: "Beta",

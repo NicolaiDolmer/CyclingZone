@@ -339,6 +339,7 @@
     },
     "setupHeading": "Board plan setup ({step}/3)",
     "setupBody": "Negotiate your {plan} with the board. Then continue with the next plan.",
+    "setupSequence": "The first meeting follows a fixed order: 5-year plan first, then 3-year plan and finally 1-year plan.",
     "multiRenewalHeading": "Plan renewal {current}/{total}, {plan}",
     "multiRenewalBodyNext": "Then continue with {next}.",
     "multiRenewalBodyLast": "Last plan in the queue.",
