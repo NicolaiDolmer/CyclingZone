@@ -1,6 +1,6 @@
 # Slice — Lande-system ([#844](https://github.com/NicolaiDolmer/CyclingZone/issues/844))
 
-> **Status:** Fase 0 (plan/SSOT) — afventer ejer-gate før Fase 1 (kode på branch).
+> **Status:** Fase 1 (Slice 1) leveret — `countries`-tabel + seed (138 nationer) + tests på branch/PR. Næste: Slice 2 (kræver #669, nu merged).
 > Single source of truth for opgaven. Alt state, beslutninger og næste skridt lever her + i issue #844.
 
 ## Mål
@@ -28,12 +28,18 @@ Lande-systemet bygger ovenpå eksisterende infrastruktur frem for at duplikere d
 | Fase | Indhold | Gate |
 |------|---------|------|
 | 0 | Denne doc (plan/SSOT) | ✅ → **ejer-gate (her nu)** |
-| 1 | Slice 1 — `countries`-tabel + seed (migration på branch) | — |
+| 1 | Slice 1 — `countries`-tabel + seed (migration på branch) | ✅ leveret |
 | 2 | Slice 2 — fødselsrate + talent-loft i #669-generatoren | ejer-gate · kræver #669 merged |
 | 3a | Slice 3a — omdømme-motor (read-only) + rangliste | ejer-gate |
 | 3b | Slice 3b — aktivér blød feedback (omdømme → generering) | ejer-gate · kræver observation |
 | 4a | Slice 4a — national-trup-visning | ejer-gate |
 | 4b | Slice 4b — landshold-LØB (VM/nationale) | ejer-gate · kræver race-engine #676 |
+
+### Slice 1 — leveret
+- Migration `database/2026-05-31-countries-table.sql`: `countries`-tabel (CHECK-constraints på akser + iso2-format), RLS (authenticated read, admin write — `app_config`-mønster), seed for alle **138** prod-nationer (verificeret = `DISTINCT riders.nationality_code`, 0 forældreløse mulige).
+- Seed genereret deterministisk af `backend/lib/countriesSeed.js` (+ CLI `backend/scripts/generateCountriesSeed.mjs`); navne via `Intl.DisplayNames`, IOC udvidet fra frontend `countryCodes.js`.
+- **Prestige-tiers er et redaktionelt udkast** (S/A/B/C/D → 3 akser). Tabellen er **inert indtil Slice 2** (ingen kode læser den endnu), så tier-tal kan frit justeres i `countriesSeed.js` + regenereres, eller via admin-write, før de påvirker gameplay.
+- Verificeret: 13 nye tests (unit + PGlite-integration mod prod-schema) + fuld backend-suite 848/848 + lint grøn.
 
 ---
 

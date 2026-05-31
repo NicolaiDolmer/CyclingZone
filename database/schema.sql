@@ -430,6 +430,25 @@ CREATE TABLE import_log (
 );
 
 -- ============================================================
+-- COUNTRIES (#844) — kanonisk lande-reference, 3 akser
+-- ============================================================
+
+CREATE TABLE countries (
+  iso2              TEXT PRIMARY KEY CHECK (iso2 ~ '^[A-Z]{2}$'),  -- matcher riders.nationality_code
+  name_en           TEXT NOT NULL,
+  name_da           TEXT,
+  ioc_code          TEXT,                                          -- cyklings IOC 3-bogstav (DEN/FRA)
+  continent         TEXT,
+  birth_weight      NUMERIC NOT NULL DEFAULT 0   CHECK (birth_weight >= 0),     -- akse 1: størrelse
+  talent_ceiling    NUMERIC NOT NULL DEFAULT 1.0 CHECK (talent_ceiling > 0),    -- akse 2: talent-loft
+  reputation        NUMERIC NOT NULL DEFAULT 50  CHECK (reputation BETWEEN 0 AND 100),       -- akse 3: dynamisk
+  reputation_seed   NUMERIC NOT NULL DEFAULT 50  CHECK (reputation_seed BETWEEN 0 AND 100),  -- akse 3: baseline
+  is_active         BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
 -- INDEXES
 -- ============================================================
 
@@ -489,5 +508,11 @@ CREATE POLICY "Own finances" ON finance_transactions FOR SELECT
   USING (team_id IN (SELECT id FROM teams WHERE user_id = auth.uid()));
 CREATE POLICY "Own board" ON board_profiles FOR SELECT
   USING (team_id IN (SELECT id FROM teams WHERE user_id = auth.uid()));
+
+-- Countries (#844): reference-data uden secrets — read for authenticated, write kun for admin.
+ALTER TABLE countries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "countries_select_authenticated" ON countries FOR SELECT TO authenticated USING (true);
+CREATE POLICY "countries_admin_write" ON countries FOR ALL TO authenticated
+  USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- Mutations handled via backend service role (bypasses RLS)
