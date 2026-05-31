@@ -11,6 +11,9 @@ name: Feature-liveness audit
 # Triggers:
 #   - PR der rører schema, backend-routes, frontend supabase/fetch eller scriptet selv
 #     → blokerer merge ved nye findings (bot-comment forklarer hvad)
+#   - workflow_run efter Auto-migrate er færdig → kører KUN Detector C
+#     (migration-drift) så en netop-applied migration verificeres uden at race
+#     auto-migrate's 3-min deploy-delay (#639 Option D; race-fix #790)
 #   - Weekly cron (mandage 04:00 UTC, før UCI-scraper og før RLS-audit) → catcher
 #     drift fra Studio-changes uden migration eller dead-code-akkumulering
 #   - Manual workflow_dispatch
@@ -25,18 +28,25 @@ on:
       - 'backend/scripts/audit-feature-liveness.js'
       - 'frontend/src/**'
       - '.github/workflows/feature-liveness-audit.yml'
-  # #639 (Option D): run Detector C (migration-drift) on push to main as well.
-  # Cron is once-weekly so a botched auto-migrate (like the #635 unescaped
-  # apostrophe) could sit drifted for up to 7 days. Running C on every push
-  # gives us mean-time-to-detect ~5 min instead. Detectors A, B, D, E stay
-  # cron-only — they either need accumulated event data (E) or only catch
-  # things a PR audit-run already covered (A, B, D).
-  push:
+  # #639 (Option D): run Detector C (migration-drift) after a migration lands,
+  # so a botched auto-migrate (like the #635 unescaped apostrophe) is caught in
+  # minutes instead of sitting drifted until the once-weekly cron.
+  #
+  # This previously triggered on push-to-main, but that RACED auto-migrate:
+  # auto-migrate deliberately sleeps ~3 min (Vercel deploy-timing workaround)
+  # before writing schema_migrations, while a push-triggered audit ran
+  # immediately — so Detector C read schema_migrations BEFORE the row existed
+  # and falsely flagged every just-merged migration as "committed men ikke
+  # applied" (#790 churned on every migration merge; #844/#853 was the trigger).
+  # Keying off auto-migrate's completion removes the race: we audit only once
+  # the migration is actually applied — or auto-migrate FAILED, in which case
+  # the missing schema_migrations row is a REAL finding worth surfacing.
+  # Detectors A, B, D, E stay cron-only — they either need accumulated event
+  # data (E) or only catch things a PR audit-run already covered (A, B, D).
+  workflow_run:
+    workflows: ['Auto-migrate']
+    types: [completed]
     branches: [main]
-    paths:
-      - 'database/**'
-      - 'backend/scripts/audit-feature-liveness.js'
-      - '.github/workflows/feature-liveness-audit.yml'
   schedule:
     - cron: '0 4 * * 1'
   workflow_dispatch:
@@ -86,18 +96,18 @@ jobs:
           # PR-runs skipper Detector C og E:
           # - C (migration-drift) ville falsk-positivt flage hver ny migration
           #   som "committed men ikke applied" fordi auto-migrate først kører
-          #   efter merge til main. Cron + workflow_dispatch fanger ægte drift.
+          #   efter merge til main. Cron + workflow_run fanger ægte drift.
           # - E (zero-impression-features) tager dage/uger at akkumulere events
           #   efter rollout — kun cron-runs evaluerer E.
-          # Push-til-main-runs (#639 Option D): kør KUN Detector C. A/B/D
-          # blev allerede tjekket af PR-runet og ville bare bruge ekstra
-          # Action-minutter; E er weekly-only. C er forward-guard mod den
-          # præcise klasse #635 bug ramte: failed auto-migrate → manglende
-          # schema_migrations-row.
+          # Post-migration-runs (#639 Option D, via workflow_run på auto-migrate):
+          # kør KUN Detector C. A/B/D blev allerede tjekket af PR-runet og ville
+          # bare bruge ekstra Action-minutter; E er weekly-only. C er forward-guard
+          # mod den præcise klasse #635 bug ramte: failed auto-migrate → manglende
+          # schema_migrations-row. Kører EFTER auto-migrate er færdig, så ingen race.
           SKIP_FLAG=""
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             SKIP_FLAG="--skip=C,E"
-          elif [ "${{ github.event_name }}" = "push" ]; then
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
             SKIP_FLAG="--skip=A,B,D,E"
           fi
           node backend/scripts/audit-feature-liveness.js $SKIP_FLAG --json > feature-liveness.json
@@ -139,16 +149,16 @@ jobs:
               body,
             });
 
-      - name: Open or update tracking issue (scheduled + push-to-main runs)
-        if: (github.event_name == 'schedule' || github.event_name == 'push') && steps.audit.outputs.total != '0'
+      - name: Open or update tracking issue (scheduled + post-migration runs)
+        if: (github.event_name == 'schedule' || github.event_name == 'workflow_run') && steps.audit.outputs.total != '0'
         uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
             const data = JSON.parse(fs.readFileSync('feature-liveness.json', 'utf8'));
             const report = fs.readFileSync('feature-liveness.txt', 'utf8');
-            const trigger = '${{ github.event_name }}' === 'push'
-              ? `push-to-main (commit ${'${{ github.sha }}'.slice(0, 7)})`
+            const trigger = '${{ github.event_name }}' === 'workflow_run'
+              ? `post-migration audit (commit ${'${{ github.event.workflow_run.head_sha }}'.slice(0, 7)})`
               : `weekly cron-run (${new Date().toISOString().slice(0,10)})`;
             const title = `[bot] Feature-liveness audit fandt ${data.total_findings} drift-finding(s)`;
             const body = [
