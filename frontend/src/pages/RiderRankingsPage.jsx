@@ -23,6 +23,7 @@ const OWNER_FILTERS = [
   { key: "all",     labelKey: "rankings.ownerAll" },
   { key: "manager", labelKey: "rankings.ownerManager" },
   { key: "ai",      labelKey: "rankings.ownerAi" },
+  { key: "free",    labelKey: "rankings.ownerFree" },
 ];
 
 export default function RiderRankingsPage() {
@@ -100,8 +101,9 @@ export default function RiderRankingsPage() {
 
   const filtered = riders
     .filter(r => {
-      if (ownerFilter === "manager") return !r.team?.is_ai;
-      if (ownerFilter === "ai")      return r.team?.is_ai;
+      if (ownerFilter === "manager") return r.team && !r.team.is_ai;
+      if (ownerFilter === "ai")      return !!r.team?.is_ai;
+      if (ownerFilter === "free")    return !r.team;
       return true;
     })
     .filter(r => {

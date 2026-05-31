@@ -30,6 +30,20 @@ const PATCHES = [
     ],
   },
   {
+    version: "4.25",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Rankings · Owner filter now separates free agents from managed teams",
+        items: [
+          "EN · On the rider rankings, the \"Manager-owned\" filter used to also include free agents (riders with no team). It now shows only riders on human-managed teams, and there is a new \"Free agents\" filter so unsigned riders have their own category alongside AI-owned. Refs #777.",
+          "DA · På rytterranglisten tog \"Manager-ejede\"-filteret før også fri-agenter med (ryttere uden hold). Det viser nu kun ryttere på menneske-managede hold, og der er et nyt \"Fri agenter\"-filter, så ryttere uden kontrakt har deres egen kategori ved siden af AI-ejede. Refs #777.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.24",
     date: "2026-05-31",
     label: "Beta",
