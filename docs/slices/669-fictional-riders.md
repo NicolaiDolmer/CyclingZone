@@ -196,7 +196,7 @@ Mål: lade fiktive ryttere "leve" i prod til en realistisk test, **uden at teste
 
 **To gates:**
 - **Synlighed (RLS):** [`database/2026-05-31-fictional-riders-admin-rls.sql`](../../database/2026-05-31-fictional-riders-admin-rls.sql) — `"Public read riders"` ændret fra `USING (true)` → `USING (pcm_id IS NOT NULL OR is_admin())`. Skjuler fiktive (pcm_id NULL) fra ikke-admin overalt i klient-UI'en; admin ser dem i den normale rytterdatabase. **Anvendt + verificeret i prod** (anon + ikke-admin: 0 fiktive; admin: ser dem; alle ser stadig 8.699 PCM). Inkl. `GRANT EXECUTE is_admin() TO anon` (manglede → anon-læsninger fejlede; fanget via impersonation før brugerpåvirkning).
-- **Økonomisk interaktion (backend):** `POST /api/auctions` afviser ikke-admin auktion på en fiktiv rytter (403). Defense-in-depth: `GET /api/riders` + `/api/riders/:id` filtrerer også fiktive for ikke-admin; nyt `GET /api/admin/riders` lister kun fiktive til admin. Helper `isViewerAdmin(req)`.
+- **Økonomisk interaktion (backend):** `POST /api/auctions` afviser ikke-admin auktion på en fiktiv rytter (403). Defense-in-depth: `GET /api/riders` + `/api/riders/:id` filtrerer også fiktive for ikke-admin. Helper `isViewerAdmin(req)`. (Admin ser fiktive i den normale rytterdatabase via RLS — intet separat endpoint nødvendigt; findbarhed via navne-søgning.)
 
 **Tests:** `fictionalRidersAdminGate.test.js` (PGlite) fastlåser NULL-filter-semantikken. Route-branching verificeret via prod-impersonation (repoet har ingen route-test-infra).
 
