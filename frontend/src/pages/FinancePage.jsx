@@ -199,47 +199,57 @@ export default function FinancePage() {
     e.preventDefault();
     if (!loanAmount || parseInt(loanAmount) < 1) return;
     setTakingLoan(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${API}/api/finance/loans`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ loan_type: loanType, amount: parseInt(loanAmount) }),
-    });
-    const result = await res.json();
-    if (res.ok) {
-      showMsg(t("msg.loanCreated", { amount: formatNumber(parseInt(loanAmount)) }));
-      setLoanAmount("");
-      loadAll();
-    } else {
-      showMsg(`${t("msg.errorPrefix")}${result.error}`, "error");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API}/api/finance/loans`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ loan_type: loanType, amount: parseInt(loanAmount) }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showMsg(t("msg.loanCreated", { amount: formatNumber(parseInt(loanAmount)) }));
+        setLoanAmount("");
+        loadAll();
+      } else {
+        showMsg(`${t("msg.errorPrefix")}${result.error}`, "error");
+      }
+    } catch {
+      showMsg(t("auth:error.connectionFailed"), "error");
+    } finally {
+      setTakingLoan(false);
     }
-    setTakingLoan(false);
   }
 
   async function handleRepay(loanId, amount) {
     if (!amount || parseInt(amount) < 1) return;
     setRepaying(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${API}/api/finance/loans/${loanId}/repay`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ amount: parseInt(amount) }),
-    });
-    const result = await res.json();
-    if (res.ok) {
-      showMsg(result.paid_off
-        ? t("msg.loanRepaidFull")
-        : t("msg.loanRepaidPartial", {
-            paid: formatNumber(result.paid ?? 0),
-            remaining: formatNumber(result.remaining ?? 0),
-          }));
-      setRepayId(null);
-      setRepayAmount("");
-      loadAll();
-    } else {
-      showMsg(`${t("msg.errorPrefix")}${result.error}`, "error");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API}/api/finance/loans/${loanId}/repay`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ amount: parseInt(amount) }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showMsg(result.paid_off
+          ? t("msg.loanRepaidFull")
+          : t("msg.loanRepaidPartial", {
+              paid: formatNumber(result.paid ?? 0),
+              remaining: formatNumber(result.remaining ?? 0),
+            }));
+        setRepayId(null);
+        setRepayAmount("");
+        loadAll();
+      } else {
+        showMsg(`${t("msg.errorPrefix")}${result.error}`, "error");
+      }
+    } catch {
+      showMsg(t("auth:error.connectionFailed"), "error");
+    } finally {
+      setRepaying(false);
     }
-    setRepaying(false);
   }
 
   if (loading) return (

@@ -108,17 +108,22 @@ function SwapOfferButton({ rider, myTeamId }) {
   async function sendSwap() {
     if (!offeredId) return;
     setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${API}/api/transfers/swaps`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ offered_rider_id: offeredId, requested_rider_id: rider.id, cash_adjustment: cash }),
-    });
-    const data = await res.json();
-    if (res.ok) { setResult({ ok: true, msg: t("swapOffer.toast.success") }); setShow(false); }
-    else        { setResult({ ok: false, msg: `${t("swapOffer.toast.errorPrefix")} ${data.error}` }); }
-    setLoading(false);
-    setTimeout(() => setResult(null), 4000);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API}/api/transfers/swaps`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ offered_rider_id: offeredId, requested_rider_id: rider.id, cash_adjustment: cash }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) { setResult({ ok: true, msg: t("swapOffer.toast.success") }); setShow(false); }
+      else        { setResult({ ok: false, msg: `${t("swapOffer.toast.errorPrefix")} ${data.error}` }); }
+    } catch {
+      setResult({ ok: false, msg: t("auth:error.connectionFailed") });
+    } finally {
+      setLoading(false);
+      setTimeout(() => setResult(null), 4000);
+    }
   }
 
   return (
@@ -186,23 +191,28 @@ function LoanOfferButton({ rider }) {
   async function sendLoan() {
     if (!season) return;
     setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${API}/api/loans`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({
-        rider_id: rider.id,
-        loan_fee: loanFee,
-        start_season: parseInt(season),
-        end_season: parseInt(season),
-        buy_option_price: buyOption ? parseInt(buyOption) : null,
-      }),
-    });
-    const data = await res.json();
-    if (res.ok) { setResult({ ok: true, msg: t("loanOffer.toast.success") }); setShow(false); }
-    else        { setResult({ ok: false, msg: `${t("loanOffer.toast.errorPrefix")} ${data.error}` }); }
-    setLoading(false);
-    setTimeout(() => setResult(null), 4000);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API}/api/loans`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          rider_id: rider.id,
+          loan_fee: loanFee,
+          start_season: parseInt(season),
+          end_season: parseInt(season),
+          buy_option_price: buyOption ? parseInt(buyOption) : null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) { setResult({ ok: true, msg: t("loanOffer.toast.success") }); setShow(false); }
+      else        { setResult({ ok: false, msg: `${t("loanOffer.toast.errorPrefix")} ${data.error}` }); }
+    } catch {
+      setResult({ ok: false, msg: t("auth:error.connectionFailed") });
+    } finally {
+      setLoading(false);
+      setTimeout(() => setResult(null), 4000);
+    }
   }
 
   return (
@@ -266,21 +276,26 @@ function DirectOfferButton({ rider }) {
 
   async function performSendOffer() {
     setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${API}/api/transfers/offer`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ rider_id: rider.id, offer_amount: amount, message }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      logEvent("transfer_offer_sent", { rider_id: rider.id, amount });
-      setResult({ ok: true, msg: t("directOffer.toast.success") }); setShow(false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API}/api/transfers/offer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ rider_id: rider.id, offer_amount: amount, message }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        logEvent("transfer_offer_sent", { rider_id: rider.id, amount });
+        setResult({ ok: true, msg: t("directOffer.toast.success") }); setShow(false);
+      }
+      else        { setResult({ ok: false, msg: `${t("directOffer.toast.errorPrefix")} ${data.error}` }); }
+    } catch {
+      setResult({ ok: false, msg: t("auth:error.connectionFailed") });
+    } finally {
+      setLoading(false);
+      setConfirmOpen(false);
+      setTimeout(() => setResult(null), 4000);
     }
-    else        { setResult({ ok: false, msg: `${t("directOffer.toast.errorPrefix")} ${data.error}` }); }
-    setLoading(false);
-    setConfirmOpen(false);
-    setTimeout(() => setResult(null), 4000);
   }
 
   function sendOffer() {
