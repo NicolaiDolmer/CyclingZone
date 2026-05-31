@@ -16,6 +16,20 @@ const PATCHES = [
     ],
   },
   {
+    version: "4.26",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Season Snapshot · Calendar is now sorted by date",
+        items: [
+          "EN · The race calendar on the Season Snapshot page was sorted alphabetically by race name. It is now sorted chronologically by race date, so the season reads top-to-bottom in the order the races are run. Your team's point-progression chart follows the same chronological order. Refs #823.",
+          "DA · Løbskalenderen på Sæson Snapshot-siden var sorteret alfabetisk efter løbsnavn. Den er nu sorteret kronologisk efter løbsdato, så sæsonen kan læses oppefra og ned i den rækkefølge løbene køres. Dit holds pointudviklings-graf følger den samme kronologiske rækkefølge. Refs #823.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.24",
     date: "2026-05-31",
     label: "Beta",
