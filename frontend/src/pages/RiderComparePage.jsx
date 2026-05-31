@@ -7,6 +7,7 @@ import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import PotentialeStars from "../components/PotentialeStars";
+import { statColor, statStyle } from "../lib/statColor";
 
 const MAX_COMPARE = 3;
 
@@ -139,8 +140,6 @@ export default function RiderComparePage() {
     setFullRiders(prev => prev.filter(r => r.id !== id));
   }
 
-  const COLORS = ["#e8c547", "#60a5fa", "#a78bfa"];
-
   function getBestForStat(statKey) {
     if (fullRiders.length < 2) return null;
     return fullRiders.reduce((best, r) =>
@@ -172,9 +171,8 @@ export default function RiderComparePage() {
           {/* Rider headers */}
           <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
             <div /> {/* Empty cell for label column */}
-            {fullRiders.map((r, i) => (
-              <div key={r.id} className="bg-cz-card border rounded-xl p-4 text-center"
-                style={{ borderColor: `${COLORS[i]}30` }}>
+            {fullRiders.map((r) => (
+              <div key={r.id} className="bg-cz-card border border-cz-border rounded-xl p-4 text-center">
                 <button
                   onClick={() => removeRider(r.id)}
                   className="float-right text-cz-3 hover:text-cz-2 text-sm -mt-1 -me-1">×</button>
@@ -185,7 +183,7 @@ export default function RiderComparePage() {
                 <p className="text-cz-3 text-xs mt-1">
                   <TeamLink id={r.team?.id} className="hover:text-cz-accent-t transition-colors">{r.team?.name || t("compare.teamFree")}</TeamLink>
                 </p>
-                <p className="font-mono font-bold mt-2 text-sm" style={{ color: COLORS[i] }}>
+                <p className="font-mono font-bold mt-2 text-sm text-cz-1">
                   {formatCz(getRiderMarketValue(r))}
                 </p>
                 {r.is_u25 && (
@@ -224,7 +222,7 @@ export default function RiderComparePage() {
                     <span className="text-cz-3 w-4 text-center">{stat.icon}</span>
                     <span className="text-cz-2 text-sm">{t(`skills.${stat.slug}.long`)}</span>
                   </div>
-                  {fullRiders.map((r, i) => {
+                  {fullRiders.map((r) => {
                     const val = r[stat.key];
                     const isBest = r.id === bestId;
                     return (
@@ -234,14 +232,21 @@ export default function RiderComparePage() {
                             <div className="h-2 rounded-full transition-all duration-500"
                               style={{
                                 width: `${Math.round(((val || 0) / 99) * 100)}%`,
-                                backgroundColor: isBest ? COLORS[i] : `${COLORS[i]}60`,
+                                backgroundColor: statColor(val),
+                                opacity: isBest ? 1 : 0.4,
                               }} />
                           </div>
-                          <span className={`font-mono text-xs font-bold w-6 text-right flex-shrink-0
-                            ${isBest ? "text-cz-1" : "text-cz-2"}`}
-                            style={{ color: isBest ? COLORS[i] : undefined }}>
-                            {val ?? "—"}
-                          </span>
+                          {isBest ? (
+                            <span className="font-mono text-xs font-extrabold flex-shrink-0 inline-block min-w-[28px] text-center rounded px-1 py-0.5"
+                              style={statStyle(val)}>
+                              {val ?? "—"}
+                            </span>
+                          ) : (
+                            <span className="font-mono text-xs font-medium w-7 text-right flex-shrink-0"
+                              style={{ color: statColor(val) }}>
+                              {val ?? "—"}
+                            </span>
+                          )}
                         </div>
                       </div>
                     );

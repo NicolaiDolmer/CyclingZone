@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import { statColor } from "../lib/statColor";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import PotentialeStars from "../components/PotentialeStars";
 import { BidConfirmModal } from "../components/BidConfirmModal";
@@ -56,7 +57,7 @@ async function authHeaders() {
 
 function StatRow({ label, icon, value }) {
   const pct = Math.round(((value || 0) / 99) * 100);
-  const color = value >= 80 ? "#e8c547" : value >= 70 ? "#60a5fa" : value >= 60 ? "rgba(100,99,122,0.7)" : "rgba(148,150,176,0.6)";
+  const color = statColor(value);
   return (
     <div className="flex items-center gap-3 py-2">
       <span className="text-cz-3 w-4 text-center text-sm">{icon}</span>

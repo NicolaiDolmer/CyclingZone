@@ -8,7 +8,7 @@ import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import TeamCell from "../components/rider/TeamCell";
-import { statBg } from "../lib/statBg";
+import { statStyle } from "../lib/statColor";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
 import PotentialeStars from "../components/PotentialeStars";
@@ -230,7 +230,7 @@ export default function WatchlistPage() {
                         </td>
                         {STATS.map(key => (
                           <td key={key} className="px-1.5 py-2.5 text-center">
-                            <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(r[key] || 0)}`}>
+                            <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
                               {r[key] || "—"}
                             </span>
                           </td>

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.31",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · One consistent colour scale for abilities everywhere",
+        items: [
+          "EN · Rider abilities now use one consistent colour scale everywhere you see them: rider lists, squad views, auctions, the transfer market, the watchlist, the rider page and the rider comparison. Each value gets the same colour wherever it appears, shifting smoothly from grey for low values through green, yellow and gold up to red for elite abilities. In the comparison the best rider for each ability is now highlighted as a bold, filled tag instead of being told apart by colour. Earlier the colours differed from page to page (and the rider page used a blue scale), so the same number could look different in two places. Refs #855.",
+          "DA · Rytter-evner bruger nu én ensartet farveskala alle steder du ser dem: rytterlister, trup-visninger, auktioner, transfermarkedet, overvågningslisten, rytter-siden og rytter-sammenligningen. Hver værdi får samme farve uanset hvor den vises, og skifter blødt fra grå for lave værdier gennem grøn, gul og guld op til rød for elite-evner. I sammenligningen fremhæves den bedste rytter for hver evne nu som et fedt, fyldt mærke i stedet for at blive skelnet på farve. Før var farverne forskellige fra side til side (og rytter-siden brugte en blå skala), så det samme tal kunne se forskelligt ud to steder. Refs #855.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.30",
     date: "2026-05-31",
     label: "Beta",

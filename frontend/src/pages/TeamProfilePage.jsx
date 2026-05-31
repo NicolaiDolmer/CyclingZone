@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
-import { statBg } from "../lib/statBg";
+import { statStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import OnlineBadge from "../components/OnlineBadge";
@@ -256,7 +256,7 @@ export default function TeamProfilePage() {
                     </td>
                     {STATS.map(key => (
                       <td key={key} className="px-1.5 py-2.5 text-center">
-                        <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(r[key] || 0)}`}>
+                        <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
                           {r[key] || "—"}
                         </span>
                       </td>
