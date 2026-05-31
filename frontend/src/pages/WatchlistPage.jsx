@@ -8,6 +8,7 @@ import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import TeamCell from "../components/rider/TeamCell";
+import { ageBadgeKey } from "../lib/riderAge";
 import { statStyle } from "../lib/statColor";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
@@ -178,6 +179,7 @@ export default function WatchlistPage() {
                     <th className="px-1 py-3 w-8" title={t("compareTooltip")}>⇄</th>
                     <th className="px-2 py-3 w-8" />
                     <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">{t("thTeam")}</th>
+                    <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">{t("thBadges")}</th>
                     <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-right font-medium">{t("thValue")}</SortTh>
                     <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
@@ -204,9 +206,7 @@ export default function WatchlistPage() {
                         </td>
                         <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
                           <RiderNameCell id={r.id} firstname={r.firstname} lastname={r.lastname}
-                            className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left">
-                            <RiderBadges badges={[r.is_u25 && "u25"]} />
-                          </RiderNameCell>
+                            className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left" />
                         </td>
                         <td className="px-1 py-2.5 w-8">
                           <CompareToggle active={compareActive}
@@ -218,6 +218,11 @@ export default function WatchlistPage() {
                         </td>
                         <td className="px-3 py-2.5 hidden sm:table-cell">
                           <TeamCell team={r.team} freeLabel={t("teamFree")} />
+                        </td>
+                        <td className="px-3 py-2.5 hidden sm:table-cell">
+                          <div className="flex flex-wrap items-center gap-1">
+                            <RiderBadges badges={[ageBadgeKey(r)]} />
+                          </div>
                         </td>
                         <td className="px-3 py-2.5 text-right text-cz-accent-t font-mono font-bold">
                           {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}

@@ -2,7 +2,7 @@
 
 const PATCHES = [
   {
-    version: "4.32",
+    version: "4.33",
     date: "2026-05-31",
     label: "Beta",
     changes: [
@@ -11,6 +11,20 @@ const PATCHES = [
         items: [
           "EN · In the Head-to-Head team comparison, the number next to each rider in the Top 5 squad lists now shows the race points that rider has actually earned across all seasons, instead of their static UCI strength rating. Earlier a rider who had raced and scored could still show 0, because the column was reading a fixed strength attribute that never updates from in-game results. The Top 5 is now ranked by those earned points (with the strength rating as a tie-breaker before any races have run). Refs #826.",
           "DA · I Head-to-Head-holdsammenligningen viser tallet ud for hver rytter i Top 5-truplisterne nu de løb-point, rytteren faktisk har optjent på tværs af alle sæsoner, i stedet for sin statiske UCI-styrkerating. Før kunne en rytter, der havde kørt og scoret, stadig stå med 0, fordi kolonnen læste et fast styrke-attribut, der aldrig opdateres fra resultater i spillet. Top 5 rangeres nu efter de optjente point (med styrkeratingen som tie-breaker, før der er kørt nogen løb). Refs #826.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.32",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · Clear status labels in their own column",
+        items: [
+          "EN · Rider status now shows as short, readable text labels (U23, U25, AI, IN, OUT) in their own dedicated column, instead of the emoji icons used before. The labels are easy to scan down a list: U23 and U25 show a rider's age group (only the youngest one that applies), AI marks AI-run teams, and IN and OUT mark riders moving in or out on a transfer. The auction history also shows whether you bought, sold or kept a rider. Hover any label for the full description. Refs #837.",
+          "DA · Rytter-status vises nu som korte, læsbare tekst-labels (U23, U25, AI, IND, UD) i deres egen kolonne, i stedet for de emoji-ikoner der blev brugt før. Labelsene er nemme at skanne ned gennem en liste: U23 og U25 viser rytterens aldersgruppe (kun den yngste der gælder), AI markerer AI-styrede hold, og IND og UD markerer ryttere på vej ind eller ud i en transfer. Auktionshistorikken viser også, om du købte, solgte eller beholdt en rytter. Hold musen over et label for den fulde beskrivelse. Refs #837.",
         ],
       },
     ],

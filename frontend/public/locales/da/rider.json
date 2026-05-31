@@ -1,5 +1,6 @@
 {
   "badges": {
+    "u23": "Under 23 (U23)",
     "u25": "Under 25 (U25)",
     "auction": "Aktiv auktion",
     "ai": "AI-hold",
@@ -7,7 +8,18 @@
     "outgoing": "Udgående transfer",
     "self": "Intern handel (eget hold)",
     "bought": "Du købte denne rytter",
-    "sold": "Du solgte denne rytter"
+    "sold": "Du solgte denne rytter",
+    "label": {
+      "u23": "U23",
+      "u25": "U25",
+      "auction": "AUK",
+      "ai": "AI",
+      "incoming": "IND",
+      "outgoing": "UD",
+      "self": "EGEN",
+      "bought": "KØBT",
+      "sold": "SOLGT"
+    }
   },
   "page": {
     "back": "← Tilbage",

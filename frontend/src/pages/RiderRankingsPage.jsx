@@ -7,6 +7,7 @@ import TeamLink from "../components/TeamLink";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
+import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber } from "../lib/intl";
 
 const SORT_COLS = [
@@ -54,7 +55,7 @@ export default function RiderRankingsPage() {
     // underberegnes ranglisten for sæsoner med >1000 resultatrækker.
     const results = await fetchAllRows(() => supabase
       .from("race_results")
-      .select("rider_id, result_type, rank, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, is_u25, is_retired, team:team_id(id, name, is_ai))")
+      .select("rider_id, result_type, rank, points_earned, rider:rider_id(id, firstname, lastname, birthdate, nationality_code, is_u25, is_retired, team:team_id(id, name, is_ai))")
       .in("race_id", raceIds)
       .not("rider_id", "is", null)
       .order("id", { ascending: true }));
@@ -172,6 +173,7 @@ export default function RiderRankingsPage() {
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 w-8">#</th>
                   <th className="px-2 py-3 text-left text-xs font-medium text-cz-3 hidden sm:table-cell">{t("rankings.thNation")}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 min-w-[120px] sticky left-0 z-20 bg-cz-subtle border-r border-cz-border">{t("rankings.thRider")}</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden sm:table-cell">{t("rankings.thBadges")}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden md:table-cell">{t("rankings.thTeam")}</th>
                   {SORT_COLS.map(col => (
                     <th key={col.key}
@@ -203,9 +205,12 @@ export default function RiderRankingsPage() {
                     </td>
                     <td className="px-3 py-3 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
                       <RiderNameCell id={rider.id} firstname={rider.firstname} lastname={rider.lastname} stopPropagation
-                        className="font-medium text-cz-1 hover:text-cz-accent-t transition-colors">
-                        <RiderBadges badges={[rider.is_u25 && "u25", rider.team?.is_ai && "ai"]} className="hidden sm:inline-flex" />
-                      </RiderNameCell>
+                        className="font-medium text-cz-1 hover:text-cz-accent-t transition-colors" />
+                    </td>
+                    <td className="px-3 py-3 hidden sm:table-cell">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <RiderBadges badges={[ageBadgeKey(rider), rider.team?.is_ai && "ai"]} />
+                      </div>
                     </td>
                     <td className="px-3 py-3 text-xs hidden md:table-cell">
                       <TeamLink id={rider.team?.id} stopPropagation className="text-cz-2 hover:text-cz-accent-t transition-colors">{rider.team?.name || t("rankings.teamFree")}</TeamLink>

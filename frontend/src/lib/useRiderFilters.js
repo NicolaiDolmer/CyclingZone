@@ -4,6 +4,7 @@
 import { useState, useMemo } from "react";
 import { DEFAULT_FILTERS, STAT_KEYS } from "../components/RiderFilters";
 import { getRiderMarketValue } from "./marketValues";
+import { getRiderAge } from "./riderAge";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -36,8 +37,8 @@ export function useClientRiderFilters(riders = []) {
 
     if (filters.min_age || filters.max_age) {
       result = result.filter(r => {
-        if (!r.birthdate) return true;
-        const age = CURRENT_YEAR - new Date(r.birthdate).getFullYear();
+        const age = getRiderAge(r.birthdate);
+        if (age == null) return true;
         if (filters.min_age && age < parseInt(filters.min_age)) return false;
         if (filters.max_age && age > parseInt(filters.max_age)) return false;
         return true;
@@ -46,8 +47,8 @@ export function useClientRiderFilters(riders = []) {
 
     if (filters.u25) result = result.filter(r => r.is_u25);
     if (filters.u23) result = result.filter(r => {
-      if (!r.birthdate) return false;
-      return CURRENT_YEAR - new Date(r.birthdate).getFullYear() <= 23;
+      const age = getRiderAge(r.birthdate);
+      return age != null && age <= 23;
     });
 
     if (filters.free_agent) result = result.filter(r => !r.team_id);
