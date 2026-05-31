@@ -182,6 +182,12 @@ Samlet: **828/828 backend-tests grønne**, `npx eslint` rent. Hele V1-kapacitete
 - Om/hvornår fiktive ryttere skal i prod, og i hvilket antal (parkeret til efter dry-run-bevis).
 - Hvordan fiktive ryttere senere skal *erstatte* PCM-ryttere ved PCM-udfasning (egen slice; uden for V1).
 
+### Kalibrerings-observationer fra spot-check (seed 669, 100 ryttere) — til produktions-generering
+
+- **Star-tier i små batches:** 4% star-rate × 100 ramte 0 stars, så batchen topper ved uci ~793 / ~3,2M (ikke det fulde spektrum op til ~14M). Selv-løser ved produktions-skala; overvej ellers et garanteret star-minimum.
+- **Roller mangler eksplicitte svagheder:** primær-stats løftes, men irrelevante stats dæmpes ikke (en sprinter kan tilfældigt få høj bjerg). Overvej rolle-svaghed-dæmpning når det rigtige felt genereres.
+- Navne-kvalitet + nationalitets-dækning: god (0 fald til generisk pool på tværs af 14 clusters).
+
 ## Beslutnings-log
 
 - **2026-05-31** — Scope vendt fra "omdøb alle 8.699" → "byg egen-rytter-kapacitet, rør ikke PCM". Begrundelse: resultat-import matcher på navn; den kørende beta må ikke brydes. (ejer)
