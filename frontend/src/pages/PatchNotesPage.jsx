@@ -2,6 +2,27 @@
 
 const PATCHES = [
   {
+    version: "4.37",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Riders · Season history now counts wins correctly",
+        items: [
+          "EN · A rider's Season history tab now counts wins correctly. It used to read only the rider's 20 most recently imported result rows, so season totals were off, and it counted every first place as a win, including days when a rider merely held a jersey. Wins now appear in their own columns (stage wins, GC wins, one-day wins, points jersey, mountain jersey) and are counted across the rider's full season. The 'Season {n}' label that showed a raw placeholder is fixed too. Refs #868.",
+          "DA · En rytters Sæsonhistorik-fane tæller nu sejre korrekt. Den læste før kun rytterens 20 senest importerede resultat-rækker, så sæson-totalerne var forkerte, og den talte hver førsteplads som en sejr, også dage hvor rytteren bare bar en trøje. Sejre vises nu i egne kolonner (etapesejre, GC-sejre, klassikersejre, pointtrøje, bjergtrøje) og tælles på tværs af hele rytterens sæson. 'Sæson {n}'-mærkaten, der viste en rå placeholder, er også rettet. Refs #868.",
+        ],
+      },
+      {
+        category: "Results · Spring stage races now show every stage",
+        items: [
+          "EN · A few stage races used to show only their final stage, so the intermediate stages' results, points and jersey-leader days were missing. Every stage is now imported, and rider and team season totals include them. Refs #866.",
+          "DA · Nogle få etapeløb viste før kun deres sidste etape, så mellem-etapernes resultater, point og trøje-leder-dage manglede. Alle etaper er nu importeret, og rytter- og hold-sæson-totaler tæller dem med. Refs #866.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.36",
     date: "2026-05-31",
     label: "Beta",

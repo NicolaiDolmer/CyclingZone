@@ -126,10 +126,15 @@
     "table": {
       "wins": "Wins",
       "top3": "Top 3",
+      "stageWins": "Stage wins",
+      "gcWins": "GC wins",
+      "classicWins": "Classic wins",
+      "pointsJersey": "Points jersey",
+      "mountainJersey": "Mountain jersey",
       "prizes": "Prizes",
       "season": "Season"
     },
-    "row": "Season {{n}}"
+    "row": "Season {n}"
   },
   "results": {
     "empty": "No race results yet",

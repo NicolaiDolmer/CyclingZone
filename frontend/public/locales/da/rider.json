@@ -126,10 +126,15 @@
     "table": {
       "wins": "Sejre",
       "top3": "Top 3",
+      "stageWins": "Etapesejre",
+      "gcWins": "GC-sejre",
+      "classicWins": "Klassikersejre",
+      "pointsJersey": "Pointtrøje",
+      "mountainJersey": "Bjergtrøje",
       "prizes": "Præmier",
       "season": "Sæson"
     },
-    "row": "Sæson {{n}}"
+    "row": "Sæson {n}"
   },
   "results": {
     "empty": "Ingen løbsresultater endnu",
