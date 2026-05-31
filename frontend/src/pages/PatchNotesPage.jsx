@@ -2,7 +2,7 @@
 
 const PATCHES = [
   {
-    version: "4.34",
+    version: "4.35",
     date: "2026-05-31",
     label: "Beta",
     changes: [
@@ -11,6 +11,20 @@ const PATCHES = [
         items: [
           "EN · Across the game, buttons and forms that talk to the server (transfer offers, swaps and loans, board contracts and requests, taking and repaying loans, sending rider offers, and the manager and season finance screens) no longer get stuck on \"Working…\" if your connection drops or the server returns an unexpected response. They now reset and show a clear \"Connection failed. Check your internet and try again.\" message so you can try again. Refs #792.",
           "DA · I hele spillet kan knapper og formularer, der taler med serveren (transfertilbud, bytter og lejeaftaler, bestyrelseskontrakter og -anmodninger, optag og tilbagebetaling af lån, afsendelse af ryttertilbud samt manager- og sæson-finansskærmene), ikke længere hænge fast på \"Arbejder…\", hvis forbindelsen ryger, eller serveren svarer uventet. De nulstiller nu og viser en tydelig \"Forbindelsen fejlede. Tjek din internetforbindelse og prøv igen.\"-besked, så du kan prøve igen. Refs #792.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.34",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Onboarding · Create-team step no longer hangs on a connection error",
+        items: [
+          "EN · When you set up your team for the first time, the 'Create team and start' button could get stuck on 'Saving…' with no message if the request failed to reach the server (for example on a flaky connection). It now shows a clear error and lets you try again instead of hanging. Refs #792.",
+          "DA · Når du opretter dit hold første gang, kunne 'Opret hold og start'-knappen sætte sig fast på 'Gemmer…' uden besked, hvis forespørgslen ikke nåede frem til serveren (for eksempel på en ustabil forbindelse). Den viser nu en tydelig fejl og lader dig prøve igen i stedet for at gå i stå. Refs #792.",
         ],
       },
     ],

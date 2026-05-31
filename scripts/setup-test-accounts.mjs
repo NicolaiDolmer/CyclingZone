@@ -24,9 +24,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../backend/.env"), quiet: true });
 
 const TEST_ACCOUNTS = [
-  { email: "test-a@cyclingzone.dev",      username: "test-a",      teamName: "Test A",      division: 3 },
-  { email: "test-b@cyclingzone.dev",      username: "test-b",      teamName: "Test B",      division: 3 },
-  { email: "test-seller@cyclingzone.dev", username: "test-seller", teamName: "Test Seller", division: 3 },
+  { email: "test-a@cyclingzone.dev",      username: "test-a",      teamName: "Test A",      managerName: "Test Manager A",      division: 3 },
+  { email: "test-b@cyclingzone.dev",      username: "test-b",      teamName: "Test B",      managerName: "Test Manager B",      division: 3 },
+  { email: "test-seller@cyclingzone.dev", username: "test-seller", teamName: "Test Seller", managerName: "Test Seller Manager", division: 3 },
 ];
 
 function parseArgs(argv) {
@@ -91,22 +91,25 @@ async function ensureUsersRow(admin, { authUser, username, dryRun }) {
   return { row: data, action: "inserted" };
 }
 
-async function ensureTeamRow(admin, { authUser, teamName, division, dryRun }) {
+async function ensureTeamRow(admin, { authUser, teamName, managerName, division, dryRun }) {
   const { data: existing, error: selErr } = await admin
     .from("teams")
-    .select("id, name, balance, is_test_account, is_ai, is_bank, is_frozen")
+    .select("id, name, manager_name, balance, is_test_account, is_ai, is_bank, is_frozen")
     .eq("user_id", authUser.id)
     .maybeSingle();
   if (selErr) throw new Error(`select teams: ${selErr.message}`);
 
   if (existing) {
     // Tving korrekte flags + balance — uden at overskrive name hvis allerede sat.
+    // manager_name SKAL være sat, ellers tvinges kontoen gennem onboarding-wizard'en
+    // ved login (#792) — så hvis det mangler, kører vi update-stien.
     if (
       existing.is_test_account &&
       !existing.is_ai &&
       !existing.is_bank &&
       !existing.is_frozen &&
-      existing.balance === 800000
+      existing.balance === 800000 &&
+      existing.manager_name
     ) {
       return { row: existing, action: "exists" };
     }
@@ -118,6 +121,7 @@ async function ensureTeamRow(admin, { authUser, teamName, division, dryRun }) {
         is_ai: false,
         is_bank: false,
         is_frozen: false,
+        manager_name: existing.manager_name || managerName,
         balance: 800000,
       })
       .eq("id", existing.id)
@@ -134,6 +138,7 @@ async function ensureTeamRow(admin, { authUser, teamName, division, dryRun }) {
     .insert({
       user_id: authUser.id,
       name: teamName,
+      manager_name: managerName,
       division,
       balance: 800000,
       sponsor_income: 240000,
@@ -184,6 +189,7 @@ async function main() {
     const { row, action: teamAct } = await ensureTeamRow(admin, {
       authUser: user,
       teamName: acct.teamName,
+      managerName: acct.managerName,
       division: acct.division,
       dryRun,
     });
