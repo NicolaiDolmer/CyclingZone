@@ -111,7 +111,7 @@ const AUCTIONS = [
 // WebKit håndhæver CORS strikst — echo origin + allow credentials, så Supabase-js
 // fetch (credentials: "include") accepterer mock-responses. Chromium er mere lempelig
 // og kører grønt selv uden disse headers, men WebKit blokerer.
-function corsHeaders(request) {
+export function corsHeaders(request) {
   const origin = request.headers().origin || "*";
   return {
     "access-control-allow-origin": origin,
@@ -122,7 +122,7 @@ function corsHeaders(request) {
   };
 }
 
-function json(route, data, status = 200) {
+export function json(route, data, status = 200) {
   const count = Array.isArray(data) ? data.length : data ? 1 : 0;
   return route.fulfill({
     status,
