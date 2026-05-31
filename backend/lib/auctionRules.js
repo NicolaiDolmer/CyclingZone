@@ -20,7 +20,7 @@ export function getAuctionStartIssue({ rider } = {}) {
 }
 
 // Min-step = +1 CZ$ over current price når der allerede er bud.
-// Hvis ingen har budt endnu (asking-price på guaranteed sale), tillad match-bud.
+// Hvis ingen har budt endnu (asking-price på egen-rytter-salg), tillad match-bud.
 export function getMinimumAuctionBid(currentPrice, { hasActiveBid = true } = {}) {
   const price = Number(currentPrice) || 0;
   return hasActiveBid ? price + 1 : price;
@@ -29,9 +29,8 @@ export function getMinimumAuctionBid(currentPrice, { hasActiveBid = true } = {})
 export function getAuctionInitialBidderId({
   riderTeamId,
   managerTeamId,
-  isGuaranteedSale = false,
 } = {}) {
-  if (!managerTeamId || isGuaranteedSale || riderTeamId === managerTeamId) {
+  if (!managerTeamId || riderTeamId === managerTeamId) {
     return null;
   }
 

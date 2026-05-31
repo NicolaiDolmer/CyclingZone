@@ -744,7 +744,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   if (!(await assertMarketOpen(req, res, "auction"))) return;
 
-  const { rider_id, starting_price, min_increment = 1, is_guaranteed_sale = false, flash_auction = false } = req.body;
+  const { rider_id, starting_price, min_increment = 1, flash_auction = false } = req.body;
   if (!rider_id) return res.status(400).json({ error: "rider_id required" });
 
   // Flash auction guard: only allowed during Deadline Day
@@ -813,18 +813,11 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
 
   const riderValue = Math.max(calculateRiderMarketValue(rider), 1);
 
-  if (is_guaranteed_sale && rider.team_id !== req.team.id) {
-    return res.status(403).json({ error: "Garanteret salg kan kun bruges på dine egne ryttere" });
-  }
-
-  if (!is_guaranteed_sale && starting_price && starting_price < riderValue) {
+  if (starting_price && starting_price < riderValue) {
     return res.status(400).json({ error: `Startpris skal mindst matche rytterens Værdi (${riderValue.toLocaleString("da-DK")} CZ$)` });
   }
 
-  const guaranteedPrice = is_guaranteed_sale ? Math.floor(riderValue * 0.5) : null;
-  const price = is_guaranteed_sale
-    ? guaranteedPrice
-    : (starting_price || riderValue);
+  const price = starting_price || riderValue;
   const auctionCfg = await getAuctionConfig();
   const calculatedEnd = flash_auction
     ? new Date(Date.now() + 30 * 60 * 1000)
@@ -832,7 +825,6 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   const initialBidderId = getAuctionInitialBidderId({
     riderTeamId: rider.team_id,
     managerTeamId: req.team.id,
-    isGuaranteedSale: is_guaranteed_sale,
   });
 
   let creationWarnings = [];
@@ -878,8 +870,6 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       current_bidder_id: initialBidderId,
       min_increment,
       calculated_end: calculatedEnd.toISOString(),
-      is_guaranteed_sale,
-      guaranteed_price: guaranteedPrice,
       is_flash: flash_auction,
     })
     .select()
