@@ -61,6 +61,7 @@
     "ownerAll": "All",
     "ownerManager": "Manager-owned",
     "ownerAi": "AI-owned",
+    "ownerFree": "Free agents",
     "colPoints": "Points",
     "colTotalWins": "Total wins",
     "colStageWins": "Stage wins",
