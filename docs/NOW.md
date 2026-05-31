@@ -23,3 +23,39 @@
 > **Verify-kø (#627, baggrund — kræver DIN hånd):** **#505** race_points editor (mangler 60-sek admin-klik i prod) · **#449** Discord-DM: rotér webhooks + verificér `DISCORD_BOT_TOKEN` på Railway · **#563** OneDrive secret-decommission `needs-decision` · **#327** secret mgmt Phase 2 `manual:user`.
 >
 > **🤖 Working agent:** _Ingen aktiv session._ **Afventer din hånd:** (1) **[#669](https://github.com/NicolaiDolmer/CyclingZone/issues/669) fiktive ryttere** — test bud på en af de 25 admin-gatede ryttere i prod (auktion-gate skal afvise ikke-admin med 403); ved feedback justeres generator-kalibrering (star-rate/rolle-svagheder, noteret i slice-doc). Fjern alle med ét `DELETE FROM riders WHERE pcm_id IS NULL`. · (2) Admin → Økonomi → Præmieudbetaling — **11.899.500 CZ$ udestående til ejede hold, 0 udbetalt** (med confirm-dialog). **i18n-spor:** kun Race/Results-klynge (~320 strenge) tilbage, bevidst udskudt til race-engine [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676); #678 forbliver åben.
+
+
+---
+
+## 🚀 Prioriteret Plan for de Næste 7 Dage (1. juni – 7. juni)
+
+Denne plan fokuserer på at lukke de sidste tekniske huller og gøre klar til Tour de France-kampagnen.
+
+| Dag | Fokus | Opgaver |
+| :--- | :--- | :--- |
+| **1 - 2** | **Stabilitet & Sikkerhed** | Fix af test-konto blokade ([#792](https://github.com/NicolaiDolmer/CyclingZone/issues/792)). Regenerering af Supabase-nøgler ([#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691)). Gennemførsel af udestående præmieudbetalinger via Admin-panel. |
+| **3 - 4** | **Handelsflow (Del B)** | Implementering af lejeaftaler (loans) uden for transfervinduet ([#19](https://github.com/NicolaiDolmer/CyclingZone/issues/19)). Test af auktioner med de nye fiktive ryttere ([#669](https://github.com/NicolaiDolmer/CyclingZone/issues/669)). |
+| **5 - 6** | **TdF Launch Prep** | Udvikling af ny Landing Page ([#672](https://github.com/NicolaiDolmer/CyclingZone/issues/672)) og opdatering af branding ([#671](https://github.com/NicolaiDolmer/CyclingZone/issues/671)). Opfølgning på UI/UX-audit fund ([#864](https://github.com/NicolaiDolmer/CyclingZone/issues/864)). |
+| **7** | **Triage & Polish** | Gennemgang af Discord-bugs ([#775](https://github.com/NicolaiDolmer/CyclingZone/issues/775)-[#788](https://github.com/NicolaiDolmer/CyclingZone/issues/788)). Beslutning om rework af RiderStatsPage ([#794](https://github.com/NicolaiDolmer/CyclingZone/issues/794)). |
+
+### 🚨 Vigtigste Prioriteter:
+
+1.  **Kritiske her-og-nu (Stabilitet & Sikkerhed):**
+    *   **#691: SUPABASE_SERVICE_KEY Rotation:** Kritisk for backend-sikkerhed.
+    *   **#792: Onboarding-blokade:** Blokerer nye brugere.
+    *   **#863 / #848: Lockfile drift:** Skaber ustabilitet i builds.
+
+2.  **TdF Launch-kritiske (Deadline 20. juni):**
+    *   **#676: Race Engine V1 Implementation:** Hjertet i spillet, stor teknisk risiko.
+    *   **#672: Landing Page Polish:** Første indtryk for nye brugere.
+    *   **#864: UI/UX-audit (Clarity data):** Fjerner friktion for brugere.
+    *   **#671: Brand Minimum:** Professionelt indtryk ved launch.
+
+3.  **Gameplay & Brugeroplevelse (Vigtige fejl):**
+    *   **#820: Bestyrelses-DNA mismatch:** Frustrerende for managers.
+    *   **#775: Hall of Fame mangler data:** Vigtig social feature.
+    *   **#776: Rytter-status "stuck":** Skaber forvirring på markedet.
+
+---
+
+_Opdateret af Manus AI den 1. juni 2026._
