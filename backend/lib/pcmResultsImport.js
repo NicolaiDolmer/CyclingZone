@@ -461,8 +461,18 @@ export async function importPcmResults({
     perRace.push(preview);
 
     if (!dryRun) {
-      // Idempotent: slet eksisterende resultater for løbet før insert.
-      await supabase.from("race_results").delete().eq("race_id", race.id);
+      // Idempotent PER ETAPE: slet kun de etaper denne upload faktisk indeholder,
+      // ikke hele løbet. Ellers wiper en genupload af én etape de øvrige etaper
+      // (slutetapen bærer stage_number = sidste etape, så dens gc/trøje-rækker
+      //  røres ikke når en mellem-etape lægges ind). Gør "én fil ad gangen" sikkert.
+      const stagesInUpload = [...new Set(built.resultRows.map((r) => r.stage_number))];
+      if (stagesInUpload.length) {
+        await supabase
+          .from("race_results")
+          .delete()
+          .eq("race_id", race.id)
+          .in("stage_number", stagesInUpload);
+      }
       const insertRows = stripInternal(built.resultRows);
       const applied = await applyRaceResults({
         supabase,

@@ -9,6 +9,7 @@ import {
   matchRaceName,
   buildPcmResultRows,
   buildPcmImportEmbed,
+  importPcmResults,
 } from "./pcmResultsImport.js";
 import { resolvePcmTeamName, normalizePcmTeamName } from "./pcmTeamAliases.js";
 import { foldName, foldNameNordic, buildRiderMatcher } from "./pcmRiderMatcher.js";
@@ -354,6 +355,76 @@ test("umatchede scorende ryttere flagges (men 0-point-ryttere ignoreres)", () =>
   // rank 1 har 200 point + umatchet → tæller; rank 50 har 0 point → tæller ikke
   assert.equal(built.unmatchedScoring, 1);
   assert.deepEqual(built.unmatchedScoringNames, ["Unknown Scorer"]);
+});
+
+// ── Per-etape-sletning ved import (genupload wiper ikke hele løbet) ─
+
+// Minimal PCM-eksport (SpreadsheetML 2003) for ÉN mellem-etape.
+function pcmStageXml({ raceName = "Test Tour", current = 2, total = 5 } = {}) {
+  return `<?xml version="1.0"?>
+<Workbook xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Worksheet ss:Name="Stage results">
+  <Table>
+   <Row><Cell><Data ss:Type="String">${raceName}: Stage results after stage ${current}/${total}: A - B</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="String">Rank</Data></Cell><Cell><Data ss:Type="String">Name</Data></Cell><Cell><Data ss:Type="String">Team</Data></Cell><Cell><Data ss:Type="String">Time</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="String">1</Data></Cell><Cell><Data ss:Type="String">Rider A</Data></Cell><Cell><Data ss:Type="String">Cofidis</Data></Cell><Cell><Data ss:Type="String">4h00</Data></Cell></Row>
+  </Table>
+ </Worksheet>
+</Workbook>`;
+}
+
+// Supabase-spion der registrerer race_results-delete-kald og svarer sensibelt
+// på de øvrige tabeller importPcmResults rører.
+function spySupabase({ season, dbRaces, deletes }) {
+  const page = (arr, from, to) => arr.slice(from, Math.min(to, from + 999) + 1);
+  return {
+    from(table) {
+      const ctx = { table, op: "select", filters: {} };
+      const b = {
+        select() { ctx.op = "select"; return b; },
+        update() { ctx.op = "update"; return b; },
+        delete() { ctx.op = "delete"; return b; },
+        insert() { return Promise.resolve({ data: null, error: null }); },
+        eq(c, v) { ctx.filters[c] = v; return b; },
+        in(c, v) {
+          ctx.filters[c] = v;
+          if (table === "race_results" && ctx.op === "delete") deletes.push({ ...ctx.filters });
+          return b;
+        },
+        range(from, to) { return Promise.resolve({ data: page([], from, to), error: null }); },
+        single() { return Promise.resolve({ data: table === "seasons" ? season : null, error: null }); },
+        then(res, rej) {
+          let out = { data: null, error: null };
+          if (ctx.op === "select" && table === "races") out = { data: dbRaces, error: null };
+          else if (ctx.op === "select" && table === "race_points") out = { data: [], error: null };
+          return Promise.resolve(out).then(res, rej);
+        },
+      };
+      return b;
+    },
+  };
+}
+
+test("importPcmResults: genupload af én etape sletter KUN den etape, ikke hele løbet", async () => {
+  const season = { id: "s1", number: 1 };
+  const dbRaces = [{ id: "r1", name: "Test Tour", race_type: "stage_race", race_class: "ProSeries", season_id: "s1", stages: 5, status: "completed" }];
+  const deletes = [];
+  const supabase = spySupabase({ season, dbRaces, deletes });
+
+  const report = await importPcmResults({
+    supabase,
+    files: [{ filename: "stage2.xml", buffer: Buffer.from(pcmStageXml({ current: 2, total: 5 })) }],
+    dryRun: false,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    ensureSeasonStandings: async () => {},
+    updateStandings: async () => {},
+  });
+
+  // Præcis ét delete-kald, scoped til race_id r1 + KUN stage_number [2].
+  assert.equal(deletes.length, 1);
+  assert.equal(deletes[0].race_id, "r1");
+  assert.deepEqual(deletes[0].stage_number, [2]);
+  assert.equal(report.success, true);
 });
 
 // ── Discord-embed ─────────────────────────────────────────────────
