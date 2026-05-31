@@ -4,6 +4,7 @@ import { fetchAllRows } from "../lib/supabasePagination";
 import { useNavigate, useParams } from "react-router-dom";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { formatNumber } from "../lib/intl";
+import { dateTextToDayOfYear } from "../lib/raceCalendar";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
 
@@ -86,7 +87,15 @@ export default function SeasonEndPage() {
     const standings = allStandings.filter(s => !s.team?.is_ai);
     const humanTeamIds = new Set(standings.map(s => s.team_id));
     setStandings(standings);
-    setRaces(racesRes.data || []);
+
+    // Kalenderen sorteres kronologisk (efter løbsdato), ikke alfabetisk (#823).
+    // Datoen ligger i pool_race.date_text ("D/M…") → sortér klient-side som på
+    // dashboardet. Samme rækkefølge bruges til pointudviklings-grafen nedenfor,
+    // så graf-labels (races.map(r => r.name)) ikke desynker fra data-punkterne.
+    const sortedRaces = [...(racesRes.data || [])].sort(
+      (a, b) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text)
+    );
+    setRaces(sortedRaces);
 
     // Build point progression + winners per race
     let resultsData = [];
@@ -104,7 +113,7 @@ export default function SeasonEndPage() {
       let cumulative = {};
       standings.forEach(s => { cumulative[s.team_id] = 0; });
 
-      racesRes.data.forEach(race => {
+      sortedRaces.forEach(race => {
         const raceResults = resultsData.filter(r => r.race_id === race.id);
         const racePoints = {};
         raceResults.forEach(r => {
