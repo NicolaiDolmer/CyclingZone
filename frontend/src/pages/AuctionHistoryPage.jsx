@@ -6,6 +6,7 @@ import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
+import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber, formatDate } from "../lib/intl";
 
 function timeAgo(dateStr) {
@@ -68,7 +69,7 @@ export default function AuctionHistoryPage() {
     let query = supabase
       .from("auctions")
       .select(`id, current_price, actual_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
-        rider:rider_id(id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, nationality_code, team_id),
+        rider:rider_id(id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, nationality_code, team_id),
         seller:seller_team_id(id, name),
         winner:current_bidder_id(id, name)`,
         { count: "exact" })
@@ -215,6 +216,7 @@ export default function AuctionHistoryPage() {
               <tr className="border-b border-cz-border">
                 <th className="px-2 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">Nation</th>
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">Rytter</th>
+                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">Status</th>
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">Sælger</th>
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">Vinder</th>
                 <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">Pris</th>
@@ -236,18 +238,20 @@ export default function AuctionHistoryPage() {
                       <NationCell code={a.rider?.nationality_code} />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <RiderLink id={a.rider?.id} stopPropagation
-                          className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
-                          {a.rider?.firstname} {a.rider?.lastname}
-                        </RiderLink>
+                      <RiderLink id={a.rider?.id} stopPropagation
+                        className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
+                        {a.rider?.firstname} {a.rider?.lastname}
+                      </RiderLink>
+                      <p className="text-cz-3 text-xs mt-0.5">UCI: {formatNumber(a.rider?.uci_points)} pt — Løn: {a.rider?.salary ? `${formatNumber(a.rider.salary)} CZ$` : "—"}</p>
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <div className="flex flex-wrap items-center gap-1">
                         <RiderBadges badges={[
-                          a.rider?.is_u25 && "u25",
+                          ageBadgeKey(a.rider),
                           iSelf ? "self" : iWon && "bought",
                           !iSelf && iSold && !noSale && "sold",
                         ]} />
                       </div>
-                      <p className="text-cz-3 text-xs mt-0.5">UCI: {formatNumber(a.rider?.uci_points)} pt — Løn: {a.rider?.salary ? `${formatNumber(a.rider.salary)} CZ$` : "—"}</p>
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <TeamLink id={a.seller?.id} stopPropagation className="text-cz-2">{a.seller?.name || "—"}</TeamLink>

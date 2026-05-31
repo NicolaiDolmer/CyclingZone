@@ -1,5 +1,6 @@
 {
   "badges": {
+    "u23": "Under 23 (U23)",
     "u25": "Under 25 (U25)",
     "auction": "Active auction",
     "ai": "AI team",
@@ -7,7 +8,18 @@
     "outgoing": "Outgoing transfer",
     "self": "Internal trade (own team)",
     "bought": "You bought this rider",
-    "sold": "You sold this rider"
+    "sold": "You sold this rider",
+    "label": {
+      "u23": "U23",
+      "u25": "U25",
+      "auction": "AUC",
+      "ai": "AI",
+      "incoming": "IN",
+      "outgoing": "OUT",
+      "self": "OWN",
+      "bought": "BUY",
+      "sold": "SOLD"
+    }
   },
   "page": {
     "back": "← Back",

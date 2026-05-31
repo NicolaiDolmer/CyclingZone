@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 import { statStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
+import { ageBadgeKey } from "../lib/riderAge";
 import OnlineBadge from "../components/OnlineBadge";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
@@ -53,11 +54,11 @@ export default function TeamProfilePage() {
     const [teamRes, ridersRes, pendingRes, standingRes] = await Promise.all([
       supabase.from("teams").select("*, manager:user_id(last_seen)").eq("id", id).single(),
       supabase.from("riders")
-        .select(`id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("team_id", id)
         .order("uci_points", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, ${STATS.join(", ")}`)
         .eq("pending_team_id", id)
         .order("uci_points", { ascending: false }),
       supabase.from("season_standings")
@@ -225,6 +226,7 @@ export default function TeamProfilePage() {
                   <th className="px-2 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thNation")}</th>
                   <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                     className="px-4 py-3 text-left font-medium uppercase sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("profile.thRider")}</SortTh>
+                  <th className="px-4 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thBadges")}</th>
                   <SortTh sortKey="uci_points" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                     className="px-4 py-3 text-right font-medium">{t("profile.thValue")}</SortTh>
                   {STATS.map((key, i) => (
@@ -243,12 +245,14 @@ export default function TeamProfilePage() {
                       <NationCell code={r.nationality_code} />
                     </td>
                     <td className="px-4 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
-                      <div className="flex items-center gap-2">
-                        <RiderLink id={r.id} stopPropagation
-                          className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
-                          {r.firstname} {r.lastname}
-                        </RiderLink>
-                        <RiderBadges badges={[r.is_u25 && "u25", r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+                      <RiderLink id={r.id} stopPropagation
+                        className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
+                        {r.firstname} {r.lastname}
+                      </RiderLink>
+                    </td>
+                    <td className="px-4 py-2.5 hidden sm:table-cell">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <RiderBadges badges={[ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-right text-cz-accent-t font-mono font-bold">
