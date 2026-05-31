@@ -132,8 +132,8 @@ export default function HeadToHeadPage() {
           .eq("status", "completed")
           .or(`and(seller_team_id.eq.${teamA.id},current_bidder_id.eq.${teamB.id}),and(seller_team_id.eq.${teamB.id},current_bidder_id.eq.${teamA.id})`),
 
-        supabase.from("riders").select("id, firstname, lastname, uci_points, nationality_code").eq("team_id", teamA.id).order("uci_points", { ascending: false }).limit(5),
-        supabase.from("riders").select("id, firstname, lastname, uci_points, nationality_code").eq("team_id", teamB.id).order("uci_points", { ascending: false }).limit(5),
+        supabase.from("riders").select("id, firstname, lastname, uci_points, nationality_code").eq("team_id", teamA.id),
+        supabase.from("riders").select("id, firstname, lastname, uci_points, nationality_code").eq("team_id", teamB.id),
       ]);
 
       const standingsA = standingsRes.data?.filter(s => s.team_id === teamA.id) || [];
@@ -142,6 +142,28 @@ export default function HeadToHeadPage() {
       const h2hAuctions = auctionsRes.data || [];
       const aBoughtFromB = h2hAuctions.filter(a => a.seller_team_id === teamB.id && a.current_bidder_id === teamA.id);
       const bBoughtFromA = h2hAuctions.filter(a => a.seller_team_id === teamA.id && a.current_bidder_id === teamB.id);
+
+      // #826 — squad "Top 5" must show points the rider actually earned racing in-game
+      // (summed from race_results), not the static PCM `uci_points` strength attribute
+      // (which is MIN/0 for many riders → "0 for a rider who has raced"). Tie-break on
+      // uci_points so pre-season (no results yet) still surfaces the strongest riders.
+      const ridersA = ridersARes.data || [];
+      const ridersB = ridersBRes.data || [];
+      const allRiderIds = [...ridersA, ...ridersB].map(r => r.id);
+      const pointsByRider = {};
+      if (allRiderIds.length > 0) {
+        const { data: resultRows } = await supabase
+          .from("race_results")
+          .select("rider_id, points_earned")
+          .in("rider_id", allRiderIds);
+        for (const row of resultRows || []) {
+          pointsByRider[row.rider_id] = (pointsByRider[row.rider_id] || 0) + (row.points_earned || 0);
+        }
+      }
+      const topFiveByPoints = (list) => list
+        .map(r => ({ ...r, pointsEarned: pointsByRider[r.id] || 0 }))
+        .sort((a, b) => b.pointsEarned - a.pointsEarned || (b.uci_points || 0) - (a.uci_points || 0))
+        .slice(0, 5);
 
       setStats({
         standingsA, standingsB,
@@ -152,8 +174,8 @@ export default function HeadToHeadPage() {
         gcWinsA: standingsA.reduce((s, r) => s + (r.gc_wins || 0), 0),
         gcWinsB: standingsB.reduce((s, r) => s + (r.gc_wins || 0), 0),
         aBoughtFromB, bBoughtFromA,
-        topRidersA: ridersARes.data || [],
-        topRidersB: ridersBRes.data || [],
+        topRidersA: topFiveByPoints(ridersA),
+        topRidersB: topFiveByPoints(ridersB),
       });
     } catch (e) {
       console.error("HeadToHead loadStats failed", e);
@@ -271,8 +293,8 @@ export default function HeadToHeadPage() {
                         className="text-cz-2 text-xs cursor-pointer hover:text-cz-1 flex items-center gap-1">
                         {i + 1}. {r.nationality_code && <Flag code={r.nationality_code} />} {r.firstname} {r.lastname}
                       </RiderLink>
-                      <span className="font-mono text-xs" style={{ color }}>
-                        {formatNumber(r.uci_points)}
+                      <span className="font-mono text-xs" style={{ color }} title={t("pointsEarnedTitle")}>
+                        {formatNumber(r.pointsEarned)}
                       </span>
                     </div>
                   ))
