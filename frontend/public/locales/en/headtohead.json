@@ -16,6 +16,7 @@
   "transferHistory": "Transfer history between the teams",
   "boughtFrom": "{buyer} has bought from {seller}:",
   "topFive": "{team} — Top 5",
+  "pointsEarnedTitle": "Race points earned (all seasons)",
   "noRiders": "No riders",
   "selectOther": "Select another team to start the comparison"
 }

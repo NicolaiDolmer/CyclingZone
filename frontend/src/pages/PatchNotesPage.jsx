@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.32",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Head-to-Head · Squad lists now show points riders earned racing",
+        items: [
+          "EN · In the Head-to-Head team comparison, the number next to each rider in the Top 5 squad lists now shows the race points that rider has actually earned across all seasons, instead of their static UCI strength rating. Earlier a rider who had raced and scored could still show 0, because the column was reading a fixed strength attribute that never updates from in-game results. The Top 5 is now ranked by those earned points (with the strength rating as a tie-breaker before any races have run). Refs #826.",
+          "DA · I Head-to-Head-holdsammenligningen viser tallet ud for hver rytter i Top 5-truplisterne nu de løb-point, rytteren faktisk har optjent på tværs af alle sæsoner, i stedet for sin statiske UCI-styrkerating. Før kunne en rytter, der havde kørt og scoret, stadig stå med 0, fordi kolonnen læste et fast styrke-attribut, der aldrig opdateres fra resultater i spillet. Top 5 rangeres nu efter de optjente point (med styrkeratingen som tie-breaker, før der er kørt nogen løb). Refs #826.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.31",
     date: "2026-05-31",
     label: "Beta",

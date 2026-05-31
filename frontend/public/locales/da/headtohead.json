@@ -16,6 +16,7 @@
   "transferHistory": "Transferhistorik mellem holdene",
   "boughtFrom": "{buyer} har købt fra {seller}:",
   "topFive": "{team} — Top 5",
+  "pointsEarnedTitle": "Løb-point optjent (alle sæsoner)",
   "noRiders": "Ingen ryttere",
   "selectOther": "Vælg et andet hold for at starte sammenligningen"
 }
