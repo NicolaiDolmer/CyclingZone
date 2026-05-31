@@ -8,7 +8,7 @@ import {
   saveFiltersToSession,
 } from "../lib/ridersUrlState";
 import { supabase } from "../lib/supabase";
-import { statBg } from "../lib/statBg";
+import { statColor, statStyle } from "../lib/statColor";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
@@ -76,9 +76,9 @@ function StatBar({ value }) {
   return (
     <div className="flex items-center gap-1.5">
       <div className="w-full bg-cz-subtle rounded-full h-1.5">
-        <div className="bg-cz-3 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
+        <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: statColor(value ?? 0) }} />
       </div>
-      <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded flex-shrink-0 ${statBg(value ?? 0)}`}>
+      <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded flex-shrink-0" style={statStyle(value ?? 0)}>
         {value ?? "-"}
       </span>
     </div>

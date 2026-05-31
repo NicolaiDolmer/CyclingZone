@@ -45,7 +45,7 @@ export default [
   },
   // Dark mode S3 color-guard: forhindrer regression af S2-token-migrering ved at fejle
   // hvis nogen introducerer Tailwind slate-*/gray-* i stedet for cz-tokens. Scoped til
-  // .jsx + .js (statBg.js returnerer className-strings).
+  // .jsx + .js (lib-helpers kan returnere className-strings).
   //
   // v2.10: udvidet til at fange text/border/ring/divide/outline-(white|black)/N opacity-
   // classes — disse antager mørk/lys baggrund og gav Panic Board light-mode contrast-bug

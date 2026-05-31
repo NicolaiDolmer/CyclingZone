@@ -5,7 +5,7 @@ import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
-import { statBg } from "../lib/statBg";
+import { statStyle } from "../lib/statColor";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { Flag } from "../components/Flag";
@@ -945,7 +945,7 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
         {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"]].map(([label, key]) => (
           <div key={key} className="text-center">
             <p className="text-cz-3 text-[9px] uppercase">{label}</p>
-            <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(listing.rider?.[key] || 0)}`}>
+            <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(listing.rider?.[key] || 0)}>
               {listing.rider?.[key] || "—"}
             </span>
           </div>

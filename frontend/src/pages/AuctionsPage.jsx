@@ -5,7 +5,7 @@ import { NavLink } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
-import { statBg } from "../lib/statBg";
+import { statStyle } from "../lib/statColor";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { RacePriceModal } from "../components/RacePriceModal";
 import { Flag } from "../components/Flag";
@@ -242,7 +242,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
       {/* Stats — kun de toggled */}
       {visibleStatsArr.map(key => (
         <td key={key} className="px-1 py-1.5 text-center">
-          <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(r?.[key] || 0)}`}>
+          <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r?.[key] || 0)}>
             {r?.[key] || "—"}
           </span>
         </td>
@@ -433,7 +433,7 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggl
           {visibleStatsArr.map(key => (
             <div key={key} className="text-center">
               <p className="text-cz-3 text-[9px] uppercase mb-0.5">{STAT_LABEL_BY_KEY[key]}</p>
-              <span className={`inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded ${statBg(r?.[key] || 0)}`}>
+              <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r?.[key] || 0)}>
                 {r?.[key] || "—"}
               </span>
             </div>
