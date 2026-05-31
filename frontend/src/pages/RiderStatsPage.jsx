@@ -22,9 +22,30 @@ import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent } from "../lib/logEvent";
 import TeamLink from "../components/TeamLink";
+import { aggregateRiderSeasons } from "../lib/riderSeasonStats";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazy(() => import("../components/RiderDevelopmentTab"));
+
+// Hent ALLE en rytters race_results (lette kolonner) til sæson-aggregeringen.
+// Pagineret fordi PostgREST capper ved 1000 rækker/side — uden det ville en
+// rytter med mange resultater få trunkerede sejrs-/præmie-totaler.
+async function fetchAllRiderSeasonRows(riderId) {
+  const PAGE = 1000;
+  const all = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("race_results")
+      .select("rank, prize_money, result_type, race:race_id(race_type, season:season_id(number))")
+      .eq("rider_id", riderId)
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error || !data) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return all;
+}
 
 // Skill-rows konstanteres med en stabil i18n-`slug` der mapper til `rider.skills.<slug>.short/long`.
 // `key` er DB-kolonnen (stat_fl ...), `icon` er ASCII/unicode-symbolet vi viser foran labelen.
@@ -591,6 +612,7 @@ export default function RiderStatsPage() {
   const [watchlistId, setWatchlistId]       = useState(null);
   const [watchlistCount, setWatchlistCount] = useState(0);
   const [results, setResults]               = useState([]);
+  const [seasonRows, setSeasonRows]         = useState([]);
   const [loading, setLoading]               = useState(true);
   const [tab, setTab]                       = useState("stats");
   const [myTeamId, setMyTeamId]             = useState(null);
@@ -732,14 +754,19 @@ export default function RiderStatsPage() {
   }
 
   async function loadRider() {
-    const [riderRes, resultsRes] = await Promise.all([
+    const [riderRes, resultsRes, seasonRowsAll] = await Promise.all([
       supabase.from("riders").select(`*, team:team_id(id, name, is_ai, is_bank)`).eq("id", id).single(),
+      // Seneste 20 til "Løbsresultater"-listen (visning).
       supabase.from("race_results")
         .select(`*, race:race_id(name, race_type, season:season_id(number))`)
         .eq("rider_id", id).order("imported_at", { ascending: false }).limit(20),
+      // ALLE rækker (lette kolonner, pagineret) til sæson-aggregeringen — ellers
+      // ville .limit(20) trunkere sejre/præmie-totalerne (PostgREST capper ved 1000).
+      fetchAllRiderSeasonRows(id),
     ]);
     setRider(riderRes.data);
     setResults(resultsRes.data || []);
+    setSeasonRows(seasonRowsAll);
     await loadActiveAuctionFull(riderRes.data);
     setLoading(false);
     loadWatchlistCount();
@@ -991,15 +1018,9 @@ export default function RiderStatsPage() {
   })();
   const riderValueLabel = formatCz(getRiderMarketValue(rider));
   const riderValueAmount = riderValueLabel.replace(" CZ$", "");
-  const bySeason = results.reduce((acc, r) => {
-    const sn = r.race?.season?.number ?? null;
-    const key = sn ?? "-";
-    if (!acc[key]) acc[key] = { wins: 0, top3: 0, totalPrize: 0, season: sn };
-    if (r.rank === 1) acc[key].wins++;
-    if (r.rank <= 3) acc[key].top3++;
-    acc[key].totalPrize += r.prize_money || 0;
-    return acc;
-  }, {});
+  // Sæson-totaler fra ALLE rytterens rækker (ikke kun de 20 i resultat-listen),
+  // med sejre opdelt pr. type. Se lib/riderSeasonStats.js.
+  const bySeason = aggregateRiderSeasons(seasonRows);
 
   return (
     <div className="max-w-2xl mx-auto min-w-0">
@@ -1173,20 +1194,26 @@ export default function RiderStatsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-cz-border">
-                  <th className="py-2 text-left text-cz-3 text-xs uppercase">{t("season.table.season")}</th>
-                  <th className="py-2 text-right text-cz-3 text-xs uppercase">{t("season.table.wins")}</th>
-                  <th className="py-2 text-right text-cz-3 text-xs uppercase">{t("season.table.top3")}</th>
-                  <th className="py-2 text-right text-cz-3 text-xs uppercase">{t("season.table.prizes")}</th>
+                  <th className="py-2 text-left text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.season")}</th>
+                  <th className="py-2 px-2 text-right text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.stageWins")}</th>
+                  <th className="py-2 px-2 text-right text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.gcWins")}</th>
+                  <th className="py-2 px-2 text-right text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.classicWins")}</th>
+                  <th className="py-2 px-2 text-right text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.pointsJersey")}</th>
+                  <th className="py-2 px-2 text-right text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.mountainJersey")}</th>
+                  <th className="py-2 pl-2 text-right text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.prizes")}</th>
                 </tr></thead>
                 <tbody>
                   {Object.entries(bySeason)
                     .sort((a, b) => (b[1].season ?? -1) - (a[1].season ?? -1))
                     .map(([key, d]) => (
                     <tr key={key} className="border-b border-cz-border">
-                      <td className="py-2 text-cz-2">{d.season != null ? t("season.row", { n: d.season }) : t("results.fallbackDash")}</td>
-                      <td className="py-2 text-right text-cz-accent-t font-mono">{d.wins}</td>
-                      <td className="py-2 text-right text-cz-2 font-mono">{d.top3}</td>
-                      <td className="py-2 text-right text-cz-success font-mono text-xs">+{formatNumber(d.totalPrize)}</td>
+                      <td className="py-2 text-cz-2 whitespace-nowrap">{d.season != null ? t("season.row", { n: d.season }) : t("results.fallbackDash")}</td>
+                      <td className="py-2 px-2 text-right text-cz-accent-t font-mono">{d.stageWins}</td>
+                      <td className="py-2 px-2 text-right text-cz-1 font-mono">{d.gcWins}</td>
+                      <td className="py-2 px-2 text-right text-cz-1 font-mono">{d.classicWins}</td>
+                      <td className="py-2 px-2 text-right text-cz-2 font-mono">{d.pointsJerseys}</td>
+                      <td className="py-2 px-2 text-right text-cz-2 font-mono">{d.mountainJerseys}</td>
+                      <td className="py-2 pl-2 text-right text-cz-success font-mono text-xs whitespace-nowrap">+{formatNumber(d.totalPrize)}</td>
                     </tr>
                   ))}
                 </tbody>
