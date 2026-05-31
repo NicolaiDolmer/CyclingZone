@@ -412,8 +412,8 @@
         "rows": [
           ["Division", "Minimum ryttere", "Maksimum ryttere"],
           ["Division 1", "20", "30"],
-          ["Division 2", "14", "20"],
-          ["Division 3", "8", "10"]
+          ["Division 2", "14", "30"],
+          ["Division 3", "8", "30"]
         ]
       },
       "promotionRelegation": {

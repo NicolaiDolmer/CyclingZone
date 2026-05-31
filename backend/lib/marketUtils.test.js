@@ -11,13 +11,13 @@ import {
 test("getIncomingSquadViolation includes pending riders in the max check", () => {
   const issue = getIncomingSquadViolation({
     division: 3,
-    total_count: 10,
-    squad_limits: { min: 8, max: 10 },
+    total_count: 30,
+    squad_limits: { min: 8, max: 30 },
   });
 
-  assert.equal(issue?.maxRiders, 10);
-  assert.equal(issue?.totalAfter, 11);
-  assert.equal(issue?.effectiveCap, 10);
+  assert.equal(issue?.maxRiders, 30);
+  assert.equal(issue?.totalAfter, 31);
+  assert.equal(issue?.effectiveCap, 30);
   assert.equal(issue?.softCapBuffer, 0);
 });
 
@@ -28,8 +28,8 @@ test("getIncomingSquadViolation tillader soft-cap buffer i åbent vindue", () =>
   const issue = getIncomingSquadViolation(
     {
       division: 3,
-      total_count: 10,
-      squad_limits: { min: 8, max: 10 },
+      total_count: 30,
+      squad_limits: { min: 8, max: 30 },
     },
     { softCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER }
   );
@@ -41,15 +41,15 @@ test("getIncomingSquadViolation blokerer over soft-cap selv i åbent vindue", ()
   const issue = getIncomingSquadViolation(
     {
       division: 3,
-      total_count: 12,
-      squad_limits: { min: 8, max: 10 },
+      total_count: 32,
+      squad_limits: { min: 8, max: 30 },
     },
     { softCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER }
   );
 
-  assert.equal(issue?.maxRiders, 10);
-  assert.equal(issue?.totalAfter, 13);
-  assert.equal(issue?.effectiveCap, 12);
+  assert.equal(issue?.maxRiders, 30);
+  assert.equal(issue?.totalAfter, 33);
+  assert.equal(issue?.effectiveCap, 32);
   assert.equal(issue?.softCapBuffer, 2);
 });
 
@@ -69,6 +69,7 @@ test("getIncomingSquadViolation hard-cap'er når softCapBuffer er 0 (closed wind
 });
 
 test("getIncomingSquadViolation skalerer soft-cap til alle divisioner", () => {
+  // #838: alle divisioner deler max 30 → soft-cap 30 + 2 = 32 overalt.
   // D1: max 30 + 2 = 32
   assert.equal(
     getIncomingSquadViolation(
@@ -77,18 +78,18 @@ test("getIncomingSquadViolation skalerer soft-cap til alle divisioner", () => {
     ),
     null
   );
-  // D2: max 20 + 2 = 22
+  // D2: max 30 + 2 = 32
   assert.equal(
     getIncomingSquadViolation(
-      { division: 2, total_count: 21, squad_limits: { min: 14, max: 20 } },
+      { division: 2, total_count: 31, squad_limits: { min: 14, max: 30 } },
       { softCapBuffer: 2 }
     ),
     null
   );
-  // D3: max 10 + 2 = 12
+  // D3: max 30 + 2 = 32
   assert.equal(
     getIncomingSquadViolation(
-      { division: 3, total_count: 11, squad_limits: { min: 8, max: 10 } },
+      { division: 3, total_count: 31, squad_limits: { min: 8, max: 30 } },
       { softCapBuffer: 2 }
     ),
     null
@@ -236,7 +237,7 @@ test("getTeamMarketState includes active loan agreements in the total squad coun
   assert.equal(teamState.active_loan_count, 2);
   assert.equal(teamState.total_count, 17);
   assert.equal(teamState.future_count, 17);
-  assert.deepEqual(teamState.squad_limits, { min: 14, max: 20 });
+  assert.deepEqual(teamState.squad_limits, { min: 14, max: 30 });
 });
 
 // #268: future_count skal trække outgoing-pending ryttere (team_id=mit,

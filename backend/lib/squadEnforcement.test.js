@@ -451,19 +451,19 @@ test("enforceTeamSquadCompliance: D3 hold med 5 ryttere → auto-køb 3 + 300K b
   assert.match(notifications[0].message, /600 points/);
 });
 
-test("enforceTeamSquadCompliance: D3 hold med 12 ryttere → auto-sælg 2 + 200K bøde + 400p fradrag", async () => {
+test("enforceTeamSquadCompliance: D3 hold med 32 ryttere → auto-sælg 2 + 200K bøde + 400p fradrag", async () => {
   const supabase = createMockSupabase({
     teams: [{ id: "t1", name: "Test", balance: 1_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
-    riders: Array.from({ length: 12 }, (_, i) => ({
+    riders: Array.from({ length: 32 }, (_, i) => ({
       id: `r${i}`,
       firstname: "Rider",
       lastname: `${i}`,
       team_id: "t1",
       market_value: 100_000,
       uci_points: 10,
-      ai_team_id: i < 10 ? null : "ai-team",
-      // Stigende acquired_at — hver rytter har unikt timestamp; r10 og r11 er nyest
-      acquired_at: `2026-01-${String(i + 1).padStart(2, "0")}T00:00:00Z`,
+      ai_team_id: i < 30 ? null : "ai-team",
+      // Stigende acquired_at — hver rytter har unikt timestamp; r30 og r31 er nyest
+      acquired_at: `2026-01-01T00:${String(i).padStart(2, "0")}:00Z`,
       created_at: "2026-01-01",
     })),
     seasonStandings: [
@@ -484,15 +484,15 @@ test("enforceTeamSquadCompliance: D3 hold med 12 ryttere → auto-sælg 2 + 200K
   assert.equal(result.code, "auto_sold");
   assert.equal(result.deviatingCount, 2);
   assert.equal(result.sales.length, 2);
-  // De nyeste (r10, r11) bliver solgt
+  // De nyeste (r30, r31) bliver solgt
   const soldIds = result.sales.map(s => s.riderId).sort();
-  assert.deepEqual(soldIds, ["r10", "r11"]);
+  assert.deepEqual(soldIds, ["r30", "r31"]);
   assert.equal(result.fineAmount, 200_000);
   assert.equal(result.penaltyPoints, 400);
 
-  // r10 og r11 har ai_team_id="ai-team" → returneret dér
-  const r10 = supabase.state.riders.find(r => r.id === "r10");
-  assert.equal(r10.team_id, "ai-team");
+  // r30 og r31 har ai_team_id="ai-team" → returneret dér
+  const r30 = supabase.state.riders.find(r => r.id === "r30");
+  assert.equal(r30.team_id, "ai-team");
 
   // Akkumuleret penalty (50 + 400 = 450)
   assert.equal(supabase.state.seasonStandings[0].penalty_points, 450);

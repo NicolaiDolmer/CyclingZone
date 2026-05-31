@@ -30,6 +30,7 @@ import {
   expectMaybeSingle,
   expectMutation,
   expectSingle,
+  getSquadLimits,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import {
@@ -71,14 +72,6 @@ async function getSquadSnapshot(supabase, teamId) {
     ownedRiders: ownedRiders || [],
     activeLoanCount: (activeLoans || []).length,
   };
-}
-
-function getSquadLimitsForDivision(division) {
-  switch (division) {
-    case 1: return { min: 20, max: 30 };
-    case 2: return { min: 14, max: 20 };
-    default: return { min: 8, max: 10 };
-  }
 }
 
 // Sælg-kandidater: ejede ryttere sorteret efter senest erhvervet (DESC).
@@ -325,7 +318,7 @@ export async function enforceTeamSquadCompliance({
     return { ok: true, code: "skipped_frozen", teamId };
   }
 
-  const limits = getSquadLimitsForDivision(team.division);
+  const limits = getSquadLimits(team.division);
   const effectiveCount = ownedRiders.length + activeLoanCount;
 
   let purchases = [];

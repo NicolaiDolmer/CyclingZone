@@ -7,10 +7,10 @@ const RIVAL = "team-rival";
 
 test("getSquadLimits — fallback til division 3 ved ukendt division", () => {
   assert.deepEqual(getSquadLimits(1), { min: 20, max: 30 });
-  assert.deepEqual(getSquadLimits(2), { min: 14, max: 20 });
-  assert.deepEqual(getSquadLimits(3), { min: 8, max: 10 });
-  assert.deepEqual(getSquadLimits(undefined), { min: 8, max: 10 });
-  assert.deepEqual(getSquadLimits(null), { min: 8, max: 10 });
+  assert.deepEqual(getSquadLimits(2), { min: 14, max: 30 });
+  assert.deepEqual(getSquadLimits(3), { min: 8, max: 30 });
+  assert.deepEqual(getSquadLimits(undefined), { min: 8, max: 30 });
+  assert.deepEqual(getSquadLimits(null), { min: 8, max: 30 });
 });
 
 test("computeDashboardSquadStats — ingen pending, ingen lån = ownedNow = futureRiderCount", () => {
@@ -97,7 +97,7 @@ test("computeDashboardSquadStats — pending-out som peger på MIT eget hold tæ
 
 test("computeDashboardSquadStats — pending-in + pending-out i samme hold (deadline day)", () => {
   // Klassisk deadline-day: 9 ejede inkl. 2 pending-out + 2 pending-in.
-  // Fremtidens hold = 9 - 2 + 2 = 9. På D3 max-1.
+  // Fremtidens hold = 9 - 2 + 2 = 9. Inden for D3-spændet (8-30), ingen warning.
   const riders = [
     ...Array.from({ length: 7 }, () => ({ pending_team_id: null })),
     { pending_team_id: RIVAL },
@@ -116,25 +116,25 @@ test("computeDashboardSquadStats — pending-in + pending-out i samme hold (dead
   assert.equal(stats.warning, null);
 });
 
-test("computeDashboardSquadStats — over-cap warning ved D3 cap=10", () => {
-  const riders = Array.from({ length: 9 }, () => ({ pending_team_id: null }));
+test("computeDashboardSquadStats — over-cap warning ved fælles cap=30", () => {
+  const riders = Array.from({ length: 29 }, () => ({ pending_team_id: null }));
   const stats = computeDashboardSquadStats({
     riders,
-    pendingIncomingCount: 2, // 9 + 2 = 11, over D3 max 10
+    pendingIncomingCount: 2, // 29 + 2 = 31, over fælles max 30
     activeLoanCount: 0,
     myTeamId: ME,
     division: 3,
   });
-  assert.equal(stats.futureRiderCount, 11);
+  assert.equal(stats.futureRiderCount, 31);
   assert.equal(stats.warning?.type, "over");
   assert.equal(stats.warning.count, 1, "skal sælge 1 rytter");
-  assert.equal(stats.warning.limit, 10);
+  assert.equal(stats.warning.limit, 30);
 });
 
 test("computeDashboardSquadStats — falsk over-warning fjernes når pending-out tager holdet ned i cap", () => {
-  // Før #250 fix: 11 ejede + 1 pending-out → riderCount=11, warning "over" trods at fremtidens hold er 10.
+  // Før #250 fix: 31 ejede + 1 pending-out → riderCount=31, warning "over" trods at fremtidens hold er 30.
   const riders = [
-    ...Array.from({ length: 10 }, () => ({ pending_team_id: null })),
+    ...Array.from({ length: 30 }, () => ({ pending_team_id: null })),
     { pending_team_id: RIVAL },
   ];
   const stats = computeDashboardSquadStats({
@@ -144,23 +144,23 @@ test("computeDashboardSquadStats — falsk over-warning fjernes når pending-out
     myTeamId: ME,
     division: 3,
   });
-  assert.equal(stats.ownedNow, 11);
+  assert.equal(stats.ownedNow, 31);
   assert.equal(stats.outgoingCount, 1);
-  assert.equal(stats.futureRiderCount, 10, "= D3 max, ingen warning");
+  assert.equal(stats.futureRiderCount, 30, "= fælles max, ingen warning");
   assert.equal(stats.warning, null);
 });
 
 test("computeDashboardSquadStats — aktive lån tæller med i squad-størrelsen", () => {
   // Lejede-ind-ryttere er squad-medlemmer ift. cap. Skal med i futureRiderCount.
-  const riders = Array.from({ length: 8 }, () => ({ pending_team_id: null }));
+  const riders = Array.from({ length: 28 }, () => ({ pending_team_id: null }));
   const stats = computeDashboardSquadStats({
     riders,
     pendingIncomingCount: 0,
-    activeLoanCount: 3, // 8 + 3 = 11, over D3 max 10
+    activeLoanCount: 3, // 28 + 3 = 31, over fælles max 30
     myTeamId: ME,
     division: 3,
   });
-  assert.equal(stats.futureRiderCount, 11);
+  assert.equal(stats.futureRiderCount, 31);
   assert.equal(stats.warning?.type, "over");
 });
 

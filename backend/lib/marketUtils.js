@@ -1,7 +1,11 @@
+// #838: ét fælles roster-loft for alle divisioner. Max er ensrettet til 30;
+// min-grænserne forbliver division-specifikke (prestige-optrapning opad).
+export const MAX_SQUAD_SIZE = 30;
+
 export const MARKET_SQUAD_LIMITS = {
-  1: { min: 20, max: 30 },
-  2: { min: 14, max: 20 },
-  3: { min: 8, max: 10 },
+  1: { min: 20, max: MAX_SQUAD_SIZE },
+  2: { min: 14, max: MAX_SQUAD_SIZE },
+  3: { min: 8, max: MAX_SQUAD_SIZE },
 };
 
 // #267: under et åbent transfervindue må manageren overskride division-cap
