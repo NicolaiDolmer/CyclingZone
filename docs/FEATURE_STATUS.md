@@ -48,7 +48,8 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Tilbud → accepter / afvis / modtilbud
 - Swap-forslag med kontantjustering + modtilbud
 - Delt backend confirm-path (ejerskab, saldo, squad-limit + oprydning ved gennemførelse)
-- Parkerede `window_pending` transfers/swaps kan ikke manager-annulleres efter begge parter har accepteret
+- **Handel udenfor transfervinduet (#19, Del A):** tilbud, swaps og salgs-listinger kan oprettes/bekræftes uanset vindue. Ved lukket vindue flyttes pengene ved bekræftelse (idempotency_key), rytteren parkeres på `pending_team_id`, status `window_pending`; den generiske pending-flush i `POST /admin/transfer-window/open` sætter `team_id` ved åbning, og `flushWindowPendingOffers` er nu ren ikke-finansiel record-finalisering (ingen dobbeltbetaling). Soft-cap buffer (+2) gælder kun i åbent vindue; lukket → hard-cap (auktions-paritet). **Loans er bevidst stadig vindue-gated** (kræver migration → følge-PR).
+- Parkerede `window_pending` transfers/swaps kan ikke manager-annulleres efter begge parter har accepteret (kun admin-cancel)
 - AI-ryttere skjules fra direkte tilbud på rytterprofilen og blokeres server-side fra direkte transfer/bytte
 - Tilbagetræk tilbud (withdraw, inkl. modtilbud)
 - Sendte og modtagne afsluttede tilbud kan arkiveres per manager-side uden at slette den anden parts historik; dashboardet viser nu konkrete tilbud der kræver handling (v1.77)

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.30",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Transfers · Trade while the window is closed",
+        items: [
+          "EN · You can now send and accept transfer offers, swaps and sale listings even when the transfer window is closed. The money moves as soon as both managers agree, but the rider only switches teams once the window opens again. Until then the deal is locked in and the rider is reserved. Direct loans still wait for the window to open, and that is coming in a follow-up. Refs #19.",
+          "DA · Du kan nu sende og acceptere transfertilbud, byttehandler og salgs-listinger, selvom transfervinduet er lukket. Pengene flyttes, så snart begge managere er enige, men rytteren skifter først hold, når vinduet åbner igen. Indtil da er handlen låst, og rytteren er reserveret. Lejeaftaler venter stadig på, at vinduet åbner, og det følger i en senere opdatering. Refs #19.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.29",
     date: "2026-05-31",
     label: "Beta",
