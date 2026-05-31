@@ -42,15 +42,24 @@ export default function ResetPasswordPage({ session }) {
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session: nextSession } }) => {
-      if (nextSession) resolve(true);
-    });
-
-    const timeout = setTimeout(() => resolve(false), 2000);
+    // Recovery-sessionen er ikke altid etableret med det samme efter redirect
+    // (langsom forbindelse). Vi poller op til 5s med 250ms-interval — samme
+    // mønster som LoginPage's waitForAuthHeaders — så et gyldigt link ikke
+    // fejlagtigt markeres som udløbet efter blot 2s.
+    let pollTimer = null;
+    const pollDeadline = Date.now() + 5000;
+    async function pollForSession() {
+      const { data: { session: nextSession } } = await supabase.auth.getSession();
+      if (!active || resolved) return;
+      if (nextSession) { resolve(true); return; }
+      if (Date.now() >= pollDeadline) { resolve(false); return; }
+      pollTimer = setTimeout(pollForSession, 250);
+    }
+    pollForSession();
 
     return () => {
       active = false;
-      clearTimeout(timeout);
+      if (pollTimer) clearTimeout(pollTimer);
       subscription.unsubscribe();
     };
   }, []);

@@ -59,5 +59,11 @@
     "loadingShort": "…",
     "success": "✓",
     "error": "Fejl"
+  },
+  "time": {
+    "justNow": "Lige nu",
+    "minutesAgo": "{m}m siden",
+    "hoursAgo": "{h}t siden",
+    "daysAgo": "{d}d siden"
   }
 }

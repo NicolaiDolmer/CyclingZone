@@ -59,5 +59,11 @@
     "loadingShort": "…",
     "success": "✓",
     "error": "Error"
+  },
+  "time": {
+    "justNow": "Just now",
+    "minutesAgo": "{m}m ago",
+    "hoursAgo": "{h}h ago",
+    "daysAgo": "{d}d ago"
   }
 }
