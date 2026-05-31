@@ -2,7 +2,7 @@
 
 > **Single source of truth** for `cyclingzone-github-housekeeping-weekly` routine-prompten.
 > Git-tracked her så begge PC'er + cloud-routinen + fremtidige edits læser samme fil.
-> Når denne fil ændres → opdatér routine-config via `RemoteTrigger action=update` (job_config.ccr.events[0].data.message.content = denne fils indhold).
+> Når denne fil ændres → **det er nok at committe + pushe til `main`.** Cloud-routinen (`trig_01S278iyGt4HtoydKb2JP3AR`) har en kort bootstrap-prompt der `Read`er denne fil fra det friskt-klonede repo ved hver kørsel; prompten er IKKE embedded i routine-config. Ingen `RemoteTrigger action=update` nødvendig (det beskrev et tidligere design hvor prompten lå i config; rettet 2026-05-31).
 > Erstatter den tidligere `.codex.local/routines-tmp/housekeeping-prompt.md` (gitignored, kun på én PC).
 
 Repo: NicolaiDolmer/CyclingZone (already cloned in your sandbox).
