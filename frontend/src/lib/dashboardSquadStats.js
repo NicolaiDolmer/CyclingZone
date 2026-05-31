@@ -7,10 +7,15 @@
 // max efter vinduet lukker). `futureRiderCount` bruger reglen som
 // squadEnforcement-cron håndhæver: ejede MINUS udgående PLUS indgående PLUS
 // aktive lån.
+// #838: max ensrettet til ét fælles loft på 30 for alle divisioner. Skal matche
+// backend MARKET_SQUAD_LIMITS (marketUtils.js) — frontend kan ikke importere
+// backend-bundlen, så værdierne dupes bevidst her.
+const MAX_SQUAD_SIZE = 30;
+
 export const DASHBOARD_SQUAD_LIMITS = {
-  1: { min: 20, max: 30 },
-  2: { min: 14, max: 20 },
-  3: { min: 8, max: 10 },
+  1: { min: 20, max: MAX_SQUAD_SIZE },
+  2: { min: 14, max: MAX_SQUAD_SIZE },
+  3: { min: 8, max: MAX_SQUAD_SIZE },
 };
 
 export function getSquadLimits(division) {

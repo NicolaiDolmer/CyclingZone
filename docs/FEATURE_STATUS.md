@@ -191,6 +191,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - `GET /api/deadline-day/squads` — returnerer aktive manager-holds squad-count vs. MARKET_SQUAD_LIMITS, med status ok/warning/critical. Filtrerer bank, AI-hold, frosne hold og hold uden manager (jf. v3.85 fix, samme mønster som v3.83 cron-filter — sikrer at ikke-deltagende hold ikke vises som "under minimum")
 
 ### Trupstørrelse-håndhævelse (S-03 v2.29, 2026-05-04)
+- **#838 (2026-05-31): max ensrettet til ét fælles loft på 30 for alle divisioner** (D2 20→30, D3 10→30); min uændret (20/14/8). Kilde: `MAX_SQUAD_SIZE` i `marketUtils.js`; `squadEnforcement` bruger nu `getSquadLimits` derfra (duplikeret switch fjernet)
 - `backend/lib/squadEnforcement.js` — `enforceTeamSquadCompliance` + `processSquadEnforcementCron`. Cron fyrer hver 5. min via `cron.js`, men kun aktiv på lukkede vinduer der ikke er enforced endnu (atomic claim på `transfer_windows.squad_enforcement_completed_at`)
 - Per-team logik: under min → auto-køb cheapeste fri-/AI-rytter til 150% × market_value (nødlån via `createEmergencyLoan` hvis utilstrækkelig balance); over max → auto-sælg senest-erhvervede til ai_team_id (eller NULL) for fuld market_value som kredit
 - Bøde: `squad_violation_fine` finance_transaction (-100K pr. afvigende rytter); fradrag: `season_standings.penalty_points += 200 × afvigende`

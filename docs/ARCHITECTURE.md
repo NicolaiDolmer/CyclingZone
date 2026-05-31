@@ -418,8 +418,8 @@ import_log         id, import_type, filename, rows_processed, rows_updated,
 ## Hardcoded Konstanter
 
 ```js
-// Squad limits per division
-{ 1: {min:20, max:30}, 2: {min:14, max:20}, 3: {min:8, max:10} }
+// Squad limits per division (#838: max ensrettet til ét fælles loft på 30)
+{ 1: {min:20, max:30}, 2: {min:14, max:30}, 3: {min:8, max:30} }
 MIN_RIDERS_FOR_RACE = 8
 
 // Salary = 10% af rider market_value, min 1 CZ$

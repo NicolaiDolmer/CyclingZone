@@ -328,8 +328,8 @@ function createFinalizeAuctionSupabase({
 
 // #267: i et åbent transfervindue må køber gå +TRANSFER_WINDOW_SOFT_CAP_BUFFER
 // over division-cap. Hard-blokade rammer kun hvis køber allerede er på
-// effective cap (D3 → 12, D2 → 22, D1 → 32). Auctioneer-cron og admin-finalize
-// matcher samme regel.
+// effective cap (#838: alle divisioner max 30 → soft-cap 32). Auctioneer-cron
+// og admin-finalize matcher samme regel.
 test("finalizeAuctionById blocks a winner whose squad already exceeds soft-cap (windowOpen=true)", async () => {
   const auctionUpdates = [];
   const riderUpdates = [];
@@ -360,7 +360,7 @@ test("finalizeAuctionById blocks a winner whose squad already exceeds soft-cap (
       },
       teamMarketCounts: {
         "buyer-team": {
-          riderCount: 10,
+          riderCount: 30,
           pendingCount: 1,
           activeLoanCount: 1,
         },
@@ -386,7 +386,7 @@ test("finalizeAuctionById blocks a winner whose squad already exceeds soft-cap (
   assert.equal(notifications.length, 2);
   assert.deepEqual(riderUpdates, []);
   assert.equal(notifications[0].teamId, "buyer-team");
-  assert.match(notifications[0].message, /12 ryttere/);
+  assert.match(notifications[0].message, /32 ryttere/);
   assert.match(notifications[0].message, /buffer i transfervinduet/);
 });
 
@@ -422,7 +422,7 @@ test("finalizeAuctionById hard-caps when transfer window is closed", async () =>
       },
       teamMarketCounts: {
         "buyer-team": {
-          riderCount: 8,
+          riderCount: 28,
           pendingCount: 1,
           activeLoanCount: 1,
         },
@@ -441,7 +441,7 @@ test("finalizeAuctionById hard-caps when transfer window is closed", async () =>
   assert.equal(result.ok, true);
   assert.equal(result.code, "squad_full");
   assert.equal(notifications.length, 2);
-  assert.match(notifications[0].message, /max have 10 ryttere/);
+  assert.match(notifications[0].message, /max have 30 ryttere/);
   assert.match(notifications[0].message, /uden for transfervinduet/);
   assert.deepEqual(riderUpdates, []);
 });
@@ -491,7 +491,7 @@ test("finalizeAuctionById allows winner +1 over hard-cap during open window", as
       },
       teamMarketCounts: {
         "buyer-team": {
-          riderCount: 10, // ved hard-cap, men under soft-cap (10+2=12)
+          riderCount: 30, // ved hard-cap, men under soft-cap (30+2=32)
           pendingCount: 0,
           activeLoanCount: 0,
         },

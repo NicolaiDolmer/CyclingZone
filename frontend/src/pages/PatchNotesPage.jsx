@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.29",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Squads · One shared roster cap of 30 for all divisions",
+        items: [
+          "EN · The maximum squad size is now 30 riders in every division. Previously the cap depended on your division (Division 1 allowed 30, Division 2 allowed 20, Division 3 allowed 10). The minimum squad sizes are unchanged (20 / 14 / 8), so Division 2 and 3 teams now have much more room to build a deeper squad. Refs #838.",
+          "DA · Det maksimale antal ryttere på holdet er nu 30 i alle divisioner. Før afhang loftet af din division (Division 1 tillod 30, Division 2 tillod 20, Division 3 tillod 10). Minimumsgrænserne er uændrede (20 / 14 / 8), så hold i Division 2 og 3 har nu markant mere plads til at bygge en dybere trup. Refs #838.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.27",
     date: "2026-05-31",
     label: "Beta",
