@@ -240,10 +240,6 @@
       "ai": "Start auction (AI rider)",
       "free": "Start auction (free agent)"
     },
-    "guaranteed": {
-      "label": "Guaranteed sale",
-      "hint": "(start price {amount} CZ$, 50% of Value)"
-    },
     "flash": {
       "label": "⚡ Flash auction (30 min)",
       "hint": "Deadline Day: ends exactly 30 minutes after start"

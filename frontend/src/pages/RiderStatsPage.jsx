@@ -513,33 +513,20 @@ function RiderBidPanel({ auction, myTeamId, myAvailableBalance, riderName, onBid
   );
 }
 
-function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
+function AuctionButton({ rider, auctionLabel, onStart, ddActive }) {
   const { t } = useTranslation("rider");
   const riderValue      = getRiderMarketValue(rider);
-  const [guaranteed, setGuaranteed] = useState(false);
   const [price, setPrice]           = useState(riderValue);
   const [loading, setLoading]       = useState(false);
   const [flash, setFlash]           = useState(false);
 
-  const guaranteedPrice = Math.floor(riderValue * 0.5);
-  const effectivePrice  = guaranteed ? guaranteedPrice : price;
-  const priceError      = !guaranteed && price < riderValue;
+  const priceError      = price < riderValue;
 
   return (
     <div>
       <p className="text-cz-3 text-xs uppercase tracking-widest mb-2">
         {auctionLabel}
       </p>
-      {isMyRider && (
-        <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
-          <input type="checkbox" checked={guaranteed} onChange={e => setGuaranteed(e.target.checked)}
-            className="rounded accent-amber-600" />
-          <span className="text-sm text-cz-2 font-medium">{t("auctionStart.guaranteed.label")}</span>
-          <span className="text-xs text-cz-3">
-            {t("auctionStart.guaranteed.hint", { amount: formatNumber(guaranteedPrice) })}
-          </span>
-        </label>
-      )}
       {ddActive && (
         <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 cursor-pointer select-none">
           <div className="flex items-center gap-2">
@@ -553,20 +540,17 @@ function AuctionButton({ rider, isMyRider, auctionLabel, onStart, ddActive }) {
       <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="number"
-          value={guaranteed ? guaranteedPrice : price}
-          min={guaranteed ? guaranteedPrice : riderValue}
-          disabled={guaranteed}
-          onChange={e => !guaranteed && setPrice(parseInt(e.target.value) || riderValue)}
+          value={price}
+          min={riderValue}
+          onChange={e => setPrice(parseInt(e.target.value) || riderValue)}
           className={`min-w-0 flex-1 min-h-[44px] bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
-            ${guaranteed
-              ? "opacity-50 cursor-not-allowed border-cz-border"
-              : priceError
-                ? "border-red-300 focus:border-red-400"
-                : "border-cz-border focus:border-cz-accent"}`}
+            ${priceError
+              ? "border-red-300 focus:border-red-400"
+              : "border-cz-border focus:border-cz-accent"}`}
         />
         <button
-          onClick={async () => { setLoading(true); await onStart(effectivePrice, guaranteed, flash); setLoading(false); }}
-          disabled={loading || (!guaranteed && priceError)}
+          onClick={async () => { setLoading(true); await onStart(price, flash); setLoading(false); }}
+          disabled={loading || priceError}
           className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
             ${flash ? "bg-red-600 text-white hover:bg-red-700" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
           {loading ? t("auctionStart.buttons.loading") : flash ? t("auctionStart.buttons.startFlash") : t("auctionStart.buttons.start")}
@@ -922,13 +906,13 @@ export default function RiderStatsPage() {
     }
   }
 
-  async function startAuction(startPrice, isGuaranteedSale = false, isFlash = false) {
+  async function startAuction(startPrice, isFlash = false) {
     setAuctionError(null);
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch(`${API}/api/auctions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify({ rider_id: id, starting_price: startPrice, is_guaranteed_sale: isGuaranteedSale, flash_auction: isFlash }),
+      body: JSON.stringify({ rider_id: id, starting_price: startPrice, flash_auction: isFlash }),
     });
     if (res.ok) {
       // Squad-cap-warning er non-blocking siden #29 — vis besked hvis manager går over max.
@@ -1112,7 +1096,7 @@ export default function RiderStatsPage() {
               {t("blocked.retired")}
             </p>
           )}
-          {canAuction && !activeAuction && <AuctionButton rider={rider} isMyRider={isMyRider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} />}
+          {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} />}
           {activeAuction && (
             <RiderBidPanel
               auction={activeAuction}

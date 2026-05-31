@@ -75,12 +75,6 @@ test("getAuctionInitialBidderId treats non-owned auction creation as the first b
     riderTeamId: "manager-team",
     managerTeamId: "manager-team",
   }), null);
-
-  assert.equal(getAuctionInitialBidderId({
-    riderTeamId: "manager-team",
-    managerTeamId: "manager-team",
-    isGuaranteedSale: true,
-  }), null);
 });
 
 test("getAuctionBidIssue blocks bids below currentPrice + 1 when active bidder exists", () => {

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.28",
+    date: "2026-05-31",
+    label: "Beta",
+    changes: [
+      {
+        category: "Auctions · Guaranteed 50% sale has been removed",
+        items: [
+          "EN · You can no longer start a guaranteed sale: an auction with the starting price locked to 50% of a rider's Value, where the AI bought the rider if no manager bid higher. The option has been removed from the rider page and the squad action menu, so a normal auction is now the way to put your own rider up for sale. Guaranteed sales you made earlier still show correctly in your auction history. Refs #839.",
+          "DA · Du kan ikke længere starte et garanteret salg: en auktion med startprisen låst til 50% af en rytters Værdi, hvor AI'en købte rytteren hvis ingen manager bød højere. Muligheden er fjernet fra rytter-siden og holdets handlingsmenu, så en normal auktion er nu vejen til at sætte din egen rytter til salg. Garanterede salg du har lavet tidligere vises stadig korrekt i din auktionshistorik. Refs #839.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.27",
     date: "2026-05-31",
     label: "Beta",
