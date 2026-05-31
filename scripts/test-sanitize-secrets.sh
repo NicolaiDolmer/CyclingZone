@@ -144,6 +144,12 @@ run "vite-asset-hash allowlisted" \
   "Loaded /assets/index-DXFG08rR.js successfully without errors. $PAD" \
   0 ""
 
+# GitHub GraphQL paginerings-cursor (base64 "cursor:v2:...") allow-listet —
+# starter med Y3Vyc29y, skal IKKE flagges som high-entropy (housekeeping FP 2026-05-31).
+run "github-graphql-cursor allowlisted" \
+  "Next page cursor: Y3Vyc29yOnYyOpK0NDU2Nzg5MDEyMzQ1Njc4OTBhYmNkZWZn done. $PAD" \
+  0 ""
+
 # Plain text uden patterns
 run "safe text passes through" \
   "Build completed successfully in 4.2s. No warnings reported. $PAD$PAD" \

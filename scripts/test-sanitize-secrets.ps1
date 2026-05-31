@@ -201,7 +201,8 @@ $controlTests = @(
   @{ Label = "control-short-hex"; Stdout = "openssl rand -hex 2 output: cd4d " + ("z" * 250) },
   @{ Label = "control-short-hex-json"; Stdout = '{"command":"openssl rand -hex 2","stdout":"cd4d","exit_code":0}' + ("z" * 250) },
   @{ Label = "control-worktree-flat"; Stdout = "Active session C--Dev-CyclingZone-worktrees-agent-ab3e0ab629c91e667 ready " + ("z" * 250) },
-  @{ Label = "control-archive-fname"; Stdout = "Trimmed NOW_HISTORICAL_ARCHIVE_consolidation_record entry " + ("z" * 250) }
+  @{ Label = "control-archive-fname"; Stdout = "Trimmed NOW_HISTORICAL_ARCHIVE_consolidation_record entry " + ("z" * 250) },
+  @{ Label = "control-graphql-cursor"; Stdout = "Next page cursor Y3Vyc29yOnYyOpK0NDU2Nzg5MDEyMzQ1Njc4OTBhYmNkZWZn done " + ("z" * 250) }
 )
 
 foreach ($ct in $controlTests) {

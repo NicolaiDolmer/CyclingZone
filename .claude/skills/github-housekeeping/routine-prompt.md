@@ -36,6 +36,14 @@ Scriptsene læser JSON fra `$TEMP`. Byg filerne via MCP (gh findes ikke). Match 
 
 Hvis en MCP-shape afviger: transformér til ovenstående før du skriver filen. Hvis et helper-script fejler trods korrekt shape → fald tilbage til inline scoring og notér `helpers_failed:[...]` i digest-metadata.
 
+## Trin 1 — fallback-strategi (store MCP-resultater + cursor-FP)
+
+Repoet har >200 åbne issues. `list_issues` (state=open, perPage=100) returnerer en `pageInfo`-blok med base64-paginerings-cursors (`Y3Vyc29y...`), og store outputs gemmes til disk i stedet for context. Begge ting bider routinen. Rækkefølge + fallbacks:
+
+1. **Hent `audit-done.json` FØR `audit-open-all.json`.** `claude:done`-listen er typisk kun ~20 issues, overskrider sjældent token-grænsen, og er det direkte input til `score_done.py`. Sikr den først, så scoringen kan køre selv hvis open-all-hentet kræver fallback. Filtrér på label: `search_issues` `repo:NicolaiDolmer/CyclingZone is:issue is:open label:claude:done`.
+2. **Hvis `list_issues` (state=open, perPage=100) giver >100 OG `hasNextPage=true`** — og paginerings-cursorene trigger sanitize-hooken (selv efter cursor-allowlist, fx ved en uventet cursor-form): **brug `search_issues` med `repo:NicolaiDolmer/CyclingZone is:issue is:open` i stedet.** `search_issues` returnerer items uden en `pageInfo`-blok med cursor-strenge, og kan filtreres per label (fx `label:cat:user-feature`, `label:auto-closed-by-routine`).
+3. **Alternativ batch-paginering uden cursors:** hent `audit-open-all.json` i batches á 100 ved at bruge `search_issues` med et `created:<DATO`-filter (fx `created:<2026-05-01`, dernæst `created:2026-05-01..2026-05-31`) fremfor cursor-baseret pagination. Saml batchene til den samlede open-all-fil før scoring.
+
 # Trin 2 — Scor + klassificér (kør scripts i --json)
 
 ```

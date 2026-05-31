@@ -185,6 +185,15 @@ ALLOW = [
     # Named secret-patterns (sb_secret_/eyJ/ghp_/AKIA/...) koeres FOER denne
     # fallback, saa aegte prefix-baerende secrets fanges stadig. (#743, 2026-05-29)
     re.compile(r"^1[A-Za-z0-9_-]{43}$"),
+    # GitHub GraphQL paginerings-cursors. mcp__github__list_issues returnerer
+    # pageInfo.endCursor paa formen Y3Vyc29yOnYyOpK0... (base64 for
+    # "cursor:v2:..."). Det er opaque pagination-tokens — afsloerer intet og
+    # roterer ikke; aldrig secrets. De starter ALTID med "Y3Vyc29y" (base64 for
+    # "cursor"). Uden denne allow tripper >100-issue-pages high-entropy og hele
+    # tool-outputtet tabes (housekeeping fik kun 100/264 issues 2026-05-31).
+    # Samme moenster som Google Drive fileId-allow ovenfor; named patterns koeres
+    # FOER denne fallback. (2026-05-31)
+    re.compile(r"^Y3Vyc29y[A-Za-z0-9_+=-]+$"),
     # Claude Code worktree session-IDs — PostToolUse JSON payload indeholder
     # session_id paa formen <project-slug>-<adjektiv>-<substantiv>-<6-8hexchars>,
     # fx C--Dev-CyclingZone-youthful-dijkstra-577ad9 (44 tegn, trigger HIGH_ENTROPY).
