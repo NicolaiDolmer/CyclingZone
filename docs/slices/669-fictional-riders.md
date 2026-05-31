@@ -1,8 +1,8 @@
 # Slice — Fiktive ryttere ([#669](https://github.com/NicolaiDolmer/CyclingZone/issues/669))
 
-> **Status:** Fase 4 (lokal integrationsverifikation) færdig på branch `feat/669-fictional-riders-generator` (eget worktree) — afventer ejer-gate før Fase 5 (evt. prod-intro).
+> **Status:** Fase 5 (admin-gated prod-intro til live-test) i gang på branch `feat/fictional-riders-admin-gate`. V1-generator merged til main (#847). RLS-synligheds-gate **anvendt + verificeret i prod**; backend auction-gate bygget. Afventer deploy + fuld test-batch.
 > Single source of truth for opgaven. Alt state, beslutninger og næste skridt lever her + i issue #669.
-> **Worktree:** udvikles i `C:\dev\CyclingZone-worktrees\feat-669-fictional-riders-generator` (parallel-session-isolation, #382-mønster).
+> **Worktree:** `C:\dev\CyclingZone-worktrees\feat-669-fictional-riders-generator` (parallel-session-isolation, #382-mønster).
 
 ## Mål (revideret scope — ejer-beslutning 2026-05-31)
 
@@ -20,8 +20,8 @@ Den oprindelige #669-framing ("erstat alle 8.699 navne nu") er bevidst forkastet
 | 1 | Discovery, read-only — "anatomi af en rytter" | ✅ |
 | 2 | Design-RFC + ejer-beslutninger | ✅ |
 | 3 | Generator + oprettelses-vej på branch (deterministisk/seeded) | ✅ |
-| 4 | Lokal integrationsverifikation (PGlite, gratis — erstatter betalt preview-branch) | ✅ → **ejer-gate (her nu)** |
-| 5 | (Valgfrit) begrænset prod-intro | ejer-go |
+| 4 | Lokal integrationsverifikation (PGlite, gratis — erstatter betalt preview-branch) | ✅ |
+| 5 | Admin-gated prod-intro til live-test (RLS-synlighed + backend auction-gate) | 🔄 **i gang** |
 
 ---
 
@@ -187,6 +187,20 @@ Samlet: **828/828 backend-tests grønne**, `npx eslint` rent. Hele V1-kapacitete
 - **Star-tier i små batches:** 4% star-rate × 100 ramte 0 stars, så batchen topper ved uci ~793 / ~3,2M (ikke det fulde spektrum op til ~14M). Selv-løser ved produktions-skala; overvej ellers et garanteret star-minimum.
 - **Roller mangler eksplicitte svagheder:** primær-stats løftes, men irrelevante stats dæmpes ikke (en sprinter kan tilfældigt få høj bjerg). Overvej rolle-svaghed-dæmpning når det rigtige felt genereres.
 - Navne-kvalitet + nationalitets-dækning: god (0 fald til generisk pool på tværs af 14 clusters).
+
+## Fase 5 — Admin-gated prod-intro (live-test)
+
+Mål: lade fiktive ryttere "leve" i prod til en realistisk test, **uden at testere ser eller kan handle dem** (de er endnu ukalibrerede — en tester må ikke kunne auktionere en).
+
+**Arkitektur-fund:** rytter-lister hentes **klient-side via supabase-js (RLS gælder)**, mens auktion-oprettelse går via **backend** (`POST /api/auctions`). Synlighed gates derfor i RLS, økonomisk interaktion i backend.
+
+**To gates:**
+- **Synlighed (RLS):** [`database/2026-05-31-fictional-riders-admin-rls.sql`](../../database/2026-05-31-fictional-riders-admin-rls.sql) — `"Public read riders"` ændret fra `USING (true)` → `USING (pcm_id IS NOT NULL OR is_admin())`. Skjuler fiktive (pcm_id NULL) fra ikke-admin overalt i klient-UI'en; admin ser dem i den normale rytterdatabase. **Anvendt + verificeret i prod** (anon + ikke-admin: 0 fiktive; admin: ser dem; alle ser stadig 8.699 PCM). Inkl. `GRANT EXECUTE is_admin() TO anon` (manglede → anon-læsninger fejlede; fanget via impersonation før brugerpåvirkning).
+- **Økonomisk interaktion (backend):** `POST /api/auctions` afviser ikke-admin auktion på en fiktiv rytter (403). Defense-in-depth: `GET /api/riders` + `/api/riders/:id` filtrerer også fiktive for ikke-admin. Helper `isViewerAdmin(req)`. (Admin ser fiktive i den normale rytterdatabase via RLS — intet separat endpoint nødvendigt; findbarhed via navne-søgning.)
+
+**Tests:** `fictionalRidersAdminGate.test.js` (PGlite) fastlåser NULL-filter-semantikken. Route-branching verificeret via prod-impersonation (repoet har ingen route-test-infra).
+
+**Reversibelt:** RLS tilbage til `USING (true)` (ét `ALTER`) + slet fiktive (`DELETE WHERE pcm_id IS NULL`). Midlertidigt test-/udrulnings-gate; fjernes når fiktive skal vises for alle (#676).
 
 ## Beslutnings-log
 

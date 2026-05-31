@@ -403,6 +403,20 @@ async function requireAdmin(req, res, next) {
   });
 }
 
+// Lightweight admin-check til endpoints der betjener BÅDE admin og ikke-admin
+// (modsat requireAdmin, som blokerer ikke-admin helt). Bruges til at gate fiktive
+// ryttere (#669, pcm_id IS NULL): kun synlige/auktionerbare for admin under
+// test/gradvis udrulning, så testere ikke ser eller kan handle dem.
+async function isViewerAdmin(req) {
+  if (!req.user?.id) return false;
+  const { data: u } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", req.user.id)
+    .single();
+  return u?.role === "admin";
+}
+
 // ── Auction config helper ─────────────────────────────────────────────────────
 
 async function getAuctionConfig() {
@@ -644,6 +658,10 @@ router.get("/riders", requireAuth, cached({ namespace: "riders", ttlMs: CACHE_TT
     `, { count: "exact" })
     .eq("is_retired", false);
 
+  // #669: fiktive ryttere (pcm_id NULL) er admin-only under test — skjult fra den
+  // brugervendte database. Admin inspicerer dem via GET /admin/riders.
+  query = query.not("pcm_id", "is", null);
+
   if (q) {
     query = query.or(
       `firstname.ilike.%${q}%,lastname.ilike.%${q}%`
@@ -677,6 +695,10 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
     .single();
 
   if (error || !data) return res.status(404).json({ error: "Rider not found" });
+  // #669: en fiktiv rytter (pcm_id NULL) findes kun for admin under test.
+  if (data.pcm_id === null && !(await isViewerAdmin(req))) {
+    return res.status(404).json({ error: "Rider not found" });
+  }
   res.json(data);
 });
 
@@ -767,11 +789,17 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // Verify rider belongs to this team
   const { data: rider } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, pending_team_id, is_retired, uci_points, prize_earnings_bonus")
+    .select("id, firstname, lastname, team_id, pending_team_id, is_retired, uci_points, prize_earnings_bonus, pcm_id")
     .eq("id", rider_id)
     .single();
 
   if (!rider) return res.status(404).json({ error: "Rider not found" });
+
+  // #669: fiktive ryttere (pcm_id NULL) kan kun auktioneres af admin under test —
+  // forhindrer at en tester trækker en endnu-ukalibreret rytter i spil økonomisk.
+  if (rider.pcm_id === null && !(await isViewerAdmin(req))) {
+    return res.status(403).json({ error: "Rytteren er ikke tilgængelig" });
+  }
 
   // Block: rider awaits transfer to a previous auction winner.
   const auctionStartIssue = getAuctionStartIssue({ rider });
