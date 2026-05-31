@@ -21,30 +21,41 @@ export default function SetupWizardModal({ onComplete }) {
       setError(t("error.managerNameTooShort"));
       return;
     }
+    if (!API) {
+      setError(t("error.connectionFailed"));
+      return;
+    }
+
     setSaving(true);
     setError("");
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError(t("error.sessionExpired"));
-      setSaving(false);
-      return;
-    }
-    const res = await fetch(`${API}/api/teams/my`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ name: teamName.trim(), manager_name: managerName.trim() }),
-    });
-    const data = await res.json();
-    setSaving(false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError(t("error.sessionExpired"));
+        return;
+      }
+      const res = await fetch(`${API}/api/teams/my`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ name: teamName.trim(), manager_name: managerName.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      setError(data.error || t("error.unknown"));
-    } else {
-      onComplete(data.team);
+      if (!res.ok) {
+        setError(data.error || t("error.unknown"));
+      } else {
+        onComplete(data.team);
+      }
+    } catch {
+      // Netværksfejl, CORS, eller backend nede — efterlad ALDRIG knappen
+      // hængende i loading-state uden besked (#792).
+      setError(t("error.connectionFailed"));
+    } finally {
+      setSaving(false);
     }
   }
 
