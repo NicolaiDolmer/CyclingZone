@@ -6,7 +6,7 @@
 
 > **🎯 Next action:** **[#792](https://github.com/NicolaiDolmer/CyclingZone/issues/792) test-konto-blokade** — test-konto går i stå ved opret hold/manager. Åbner test-/preview-verify-loopet. Alternativ: **[#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691)** SUPABASE_SERVICE_KEY rotation.
 >
-> **🤖 Working agent:** Manus AI (Architect & Coordinator). **Afventer din hånd:** (1) Tilføj manuelt "Auto PR review" som Required Status Check i GitHub branch protection rules for `main`. (2) Gennemførsel af udestående præmieudbetalinger via Admin-panel.
+> **🤖 Working agent:** Manus AI (Architect & Coordinator). **Afventer din hånd:** (1) Gennemførsel af udestående præmieudbetalinger via Admin-panel. (2) Verificering af AI-Autopilot Fase 2 i praksis ved næste PR.
 
 ---
 
