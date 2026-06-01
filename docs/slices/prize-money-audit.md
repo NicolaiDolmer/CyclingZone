@@ -1,6 +1,6 @@
 # Slice · Præmiepenge end-to-end-audit + brugbar preview
 
-**Status:** 🆕 Forslag/planlægning (2026-06-01). **Ingen kode skrevet** — denne fil er gennemgangs-planen. Kodning af præmie-ændringer starter først når audit-fund er bekræftet og scope er låst med ejer.
+**Status:** 🆕 Planlægning + Fase 1 kørt (2026-06-01). **Ingen kode skrevet** — denne fil er gennemgangs-planen. Epic: [#893](https://github.com/NicolaiDolmer/CyclingZone/issues/893) (Fase 1-fund dokumenteret der). Kodning af præmie-ændringer starter først når audit-fund er bekræftet og scope er låst med ejer.
 
 **Mål:** Sikre at *alt* under præmiepenge er korrekt — beregning, udbetaling, datakonsistens, notering — og at ProSeries-løbenes kategorier er rigtige. Plus en forbedret, brugbar post-import preview.
 
