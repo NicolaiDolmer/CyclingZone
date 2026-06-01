@@ -22,7 +22,8 @@
 **R3 — Værdi-opdatering skal ske SAMTIDIG med præmie-udbetaling (ejer 2026-06-01).**
 - **I dag:** `updateRiderValues` kører kun ved **sæson-slut** (`processDivisionEnd`) som snit af op til 3 *completed* sæsoner.
 - **Ønske:** rytter-værdier genberegnes i samme øjeblik admin udbetaler præmier (`paySeasonPrizesToDate`).
-- ⚠️ **Design-nuance der skal løses:** nuværende beregning ser kun *completed* sæsoner. Udbetaling sker midt i en **aktiv** sæson → for at værdien rent faktisk ændrer sig ved udbetaling skal den aktive sæsons optjente prize tælle med. Det ændrer hvad "værdi" betyder under en igangværende sæson — afklares i design-fasen.
+- **Afklaret (ejer 2026-06-01):** behold **gennemsnits-modellen** (snit over sæsoner) — den aktive sæson skal indgå i gennemsnittet løbende, **ikke** lægges oveni som en ekstra fuld sum. Den løbende opdatering må ikke bryde "gennemsnit af sæsoner"-princippet.
+- ⚠️ **Design-nuance:** nuværende beregning ser kun *completed* sæsoner. Den aktive sæson skal nu tælle som en (løbende voksende) sæson i snittet → præcis vægtning (tæller aktiv sæson som fuld divisor fra dag 1?) afklares i design.
 
 **R2 — Sammenkædet/relativ point-model med master-kategori (UX — gør det brugervenligt).**
 - **Problem i dag:** ~1.500-2.000 absolutte point-felter, redigeret **ét ad gangen** (PUT pr. id i `RacePointsAdminSection.jsx`). At ændre noget = mange manuelle handlinger.
@@ -124,10 +125,13 @@ Rettelser fra Fase 1-3 + preview-forbedringer fra Fase 4. **Kun her skrives kode
 
 ---
 
-## GitHub-issues
-**Strategi (ejer-besluttet):** kun epic oprettes nu; under-issues skæres efter de faktiske fund i Fase 1+2.
-- **[Epic] Præmiepenge end-to-end-audit + brugbar preview** — parent, linker dette dokument. ← oprettes nu.
-- Under-issues (fund-drevne): beregnings/data-fejl · payout-mismatch · ProSeries-rettelser · preview-build · notering-rettelser → oprettes når fundene er kendt.
+## GitHub-issues (oprettet 2026-06-01)
+- **Epic [#893](https://github.com/NicolaiDolmer/CyclingZone/issues/893)** — parent, linker dette dokument.
+- **[#894](https://github.com/NicolaiDolmer/CyclingZone/issues/894)** — R2: master-kategori relativ point-model (tungest; design FØR kode).
+- **[#895](https://github.com/NicolaiDolmer/CyclingZone/issues/895)** — R3: værdi opdateres ved udbetaling (gennemsnits-model).
+- **[#896](https://github.com/NicolaiDolmer/CyclingZone/issues/896)** — forbedret post-import preview.
+- **[#897](https://github.com/NicolaiDolmer/CyclingZone/issues/897)** — ProSeries vs UCI 2026 (web-udkast + ejer-validering).
+- **[#898](https://github.com/NicolaiDolmer/CyclingZone/issues/898)** — datakvalitet (PRIZE_PER_POINT single-source · manglende-rytter-rækker · result_type-ensretning).
 
 ## Åbne afklaringspunkter
 - Acceptkriterier (Fase 0) ikke fastlagt endnu — Claude foreslår, ejer godkender.
