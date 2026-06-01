@@ -294,7 +294,7 @@ Bestyrelsesstatus: pending → (forhandling accepteret) → active
 | `pending_race_results` | `status` (pending/approved) |
 | `board_profiles` | `negotiation_status` (pending/completed) |
 | `loans` | `status` (active/paid_off) |
-| `loan_agreements` | `status` (active/completed) |
+| `loan_agreements` | `status` (pending/active/window_pending/completed/rejected/cancelled/buyout) |
 
 **Finance transaction types (DB constraints):**  
 Contract-audit mod live/schema før økonomituning. Tracked schema kan være stale; runtime skriver bl.a. `sponsor`, `salary`, `prize`, `interest`, `transfer_in`, `transfer_out`, `loan_received`, `emergency_loan`, `loan_interest` og `loan_repayment`.

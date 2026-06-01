@@ -1487,10 +1487,10 @@ export default function TransfersPage() {
                   onCancel={() => setShowNewLoan(false)}
                 />
               ) : (
-                <button onClick={() => setShowNewLoan(true)} disabled={!transferWindow.open}
+                <button onClick={() => setShowNewLoan(true)}
                   className="w-full py-2.5 bg-purple-500/8 text-purple-400/80 border border-purple-500/15 rounded-xl text-sm font-medium
-                    hover:bg-purple-500/15 hover:text-purple-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                  {transferWindow.open ? t("newLoan.newButton") : t("newLoan.windowClosed")}
+                    hover:bg-purple-500/15 hover:text-purple-400 transition-all">
+                  {t("newLoan.newButton")}
                 </button>
               )}
 

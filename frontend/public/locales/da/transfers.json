@@ -7,7 +7,7 @@
   },
   "window": {
     "open": "Transfervinduet er åbent — du kan sende og acceptere tilbud",
-    "closed": "Transfervinduet er lukket — transfer- og bytteaftaler kan forhandles nu, men rytterskift gennemføres først ved næste åbning. Lejeaftaler er stadig låst.",
+    "closed": "Transfervinduet er lukket — transfer-, bytte- og lejeaftaler kan forhandles nu, men rytterregistreringer gennemføres først ved næste åbning.",
     "closedShort": "Transfervindue lukket",
     "windowClosed": "Vindue lukket"
   },
@@ -173,7 +173,6 @@
     "buyOptionLabel": "Købsoption (CZ$) — valgfri",
     "buyOptionPlaceholder": "Efterlad tom for ingen option",
     "sending": "Sender...",
-    "windowClosed": "Lejeaftaler låst",
     "submit": "Send forslag",
     "cancel": "Annuller",
     "newButton": "+ Foreslå ny lejeaftale"

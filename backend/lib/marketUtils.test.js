@@ -204,9 +204,9 @@ function createTeamMarketStateSupabase({
                 assert.equal(firstValue, team.id);
 
                 return {
-                  eq(secondColumn, secondValue) {
+                  in(secondColumn, secondValue) {
                     assert.equal(secondColumn, "status");
-                    assert.equal(secondValue, "active");
+                    assert.deepEqual(secondValue, ["active", "window_pending"]);
                     return Promise.resolve({ count: activeLoanCount, error: null });
                   },
                 };

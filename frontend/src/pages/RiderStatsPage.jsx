@@ -246,17 +246,20 @@ function LoanOfferButton({ rider }) {
           {result.msg}
         </div>
       )}
-      <button onClick={() => windowOpen && setShow(!show)} disabled={!windowOpen}
+      <button onClick={() => setShow(!show)}
         className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
-          ${!windowOpen
-            ? "bg-cz-subtle text-cz-3 border-cz-border cursor-not-allowed"
-            : show
+          ${show
               ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
-        {windowOpen ? t("loanOffer.buttonOpen") : t("loanOffer.windowClosed")}
+        {t("loanOffer.buttonOpen")}
       </button>
-      {show && windowOpen && (
+      {show && (
         <div className="mt-3 flex flex-col gap-2">
+          {!windowOpen && (
+            <p className="text-xs text-cz-3 bg-cz-warning-bg border border-cz-warning/25 rounded-lg px-3 py-2">
+              {t("loanOffer.windowPendingHint")}
+            </p>
+          )}
           <input type="number" value={season} onChange={e => setSeason(e.target.value)}
             placeholder={t("loanOffer.seasonPlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />

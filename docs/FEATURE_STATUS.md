@@ -6,6 +6,9 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ## ✅ Implementeret & live
 
+### Transfers & Lejeaftaler
+- **#19 Del B (2026-06-01):** Rider-lån kan foreslås, accepteres og buyoutes mens transfervinduet er lukket. `loan_fee`/buyout betales ved aftale; `loan_agreements.status='window_pending'` registreres ved næste `POST /api/admin/transfer-window/open` uden ekstra betaling. Squad-limit checks tæller aktive og `window_pending` indlån.
+
 ### Auth & Brugere
 - Login / logout (Supabase Auth)
 - Glemt password + reset-flow (`/reset-password`)

@@ -239,8 +239,9 @@ Season flow notes:
 ### Lån og markedsdomæner
 - Rider-lån bruger `loan_agreements` og `/api/loans`
 - Finance-lån bruger `loans` + `loan_config` og `/api/finance/loans`
+- Rider-lån kan aftales mens transfervinduet er lukket: `loan_fee`/buyout betales ved aftale, mens `window_pending` aktiveres/registreres ved næste åbning
 - Fortsatte rider-lån opkræver `loan_fee` ved sæsonstart for hver dækket sæson efter aktivering
-- `backend/lib/marketUtils.js` er shared market-state for squad-limit checks og tæller current riders, `pending_team_id` og aktive `loan_agreements` for lånerholdet
+- `backend/lib/marketUtils.js` er shared market-state for squad-limit checks og tæller current riders, `pending_team_id` og aktive/`window_pending` `loan_agreements` for lånerholdet
 - Transfer- og swap-bekræftelse går gennem `backend/lib/transferExecution.js`, som re-checker ejerskab, saldo og squad-limit ved commit-tid
 - Auktionsfinalisering bruger samme shared market-state ved squad-limit-vurdering, så cron/admin/API følger samme holdstørrelses-sandhed
 - Gennemførte markeds-handler rydder relaterede `transfer_listings`, `transfer_offers` og `swap_offers` op for de involverede ryttere
@@ -374,7 +375,7 @@ swap_offers        id, offered_rider_id, requested_rider_id, proposing_team_id,
                    proposing_confirmed, receiving_confirmed
 loan_agreements    id, rider_id, from_team_id, to_team_id, loan_fee, start_season,
                    end_season, buy_option_price,
-                   status(pending|active|completed|rejected|cancelled|buyout)
+                   status(pending|active|window_pending|completed|rejected|cancelled|buyout)
 board_profiles     id, team_id, plan_type(1yr|3yr|5yr|baseline), UNIQUE(team_id, plan_type),
                    focus(youth_development|star_signing|balanced), satisfaction(0-100),
                    budget_modifier, current_goals(JSONB), season_id,

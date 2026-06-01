@@ -82,6 +82,12 @@ import {
   sendTestDM,
 } from "../lib/discordNotifier.js";
 import { getPendingInboxItems } from "../lib/inboxPending.js";
+import {
+  getLoanAgreementAcceptedStatus,
+  getLoanBuyoutRiderUpdate,
+  getLoanBuyoutStatus,
+  getWindowPendingLoanFlushStatus,
+} from "../lib/loanAgreementWindowing.js";
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
@@ -486,6 +492,42 @@ async function getTransferWindowStatus() {
     .from("transfer_windows").select("status, season_id")
     .order("created_at", { ascending: false }).limit(1).single();
   return { open: tw?.status === "open", window: tw || null };
+}
+
+async function flushWindowPendingLoans() {
+  const { data: pendingLoans, error } = await supabase
+    .from("loan_agreements")
+    .select(`id, rider_id, from_team_id, to_team_id, loan_fee, buy_option_price,
+      rider:rider_id(id, firstname, lastname, team_id),
+      from_team:from_team_id(name),
+      to_team:to_team_id(name)`)
+    .eq("status", "window_pending");
+  if (error) throw error;
+
+  let loansProcessed = 0;
+  let loanBuyoutsProcessed = 0;
+  for (const loan of pendingLoans || []) {
+    const riderName = `${loan.rider?.firstname ?? ""} ${loan.rider?.lastname ?? ""}`.trim();
+    const nextStatus = getWindowPendingLoanFlushStatus(loan);
+
+    if (nextStatus === "buyout") {
+      await supabase.from("loan_agreements").update({ status: "buyout", updated_at: new Date().toISOString() }).eq("id", loan.id);
+      await notifyTeamOwner(loan.from_team_id, "transfer_offer_accepted", "Købsoption gennemført",
+        `${riderName} er nu skiftet permanent til ${loan.to_team?.name || "lejerholdet"}.`, loan.id);
+      await notifyTeamOwner(loan.to_team_id, "transfer_offer_accepted", "Købsoption gennemført",
+        `${riderName} er nu registreret permanent hos dit hold.`, loan.id);
+      loanBuyoutsProcessed++;
+    } else {
+      await supabase.from("loan_agreements").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", loan.id);
+      await notifyTeamOwner(loan.from_team_id, "transfer_offer_accepted", "Lejeaftale aktiveret",
+        `${riderName} er nu registreret som udlejet til ${loan.to_team?.name || "lejerholdet"}.`, loan.id);
+      await notifyTeamOwner(loan.to_team_id, "transfer_offer_accepted", "Lejeaftale aktiveret",
+        `${riderName} er nu registreret som lejet af dit hold.`, loan.id);
+      loansProcessed++;
+    }
+  }
+
+  return { loansProcessed, loanBuyoutsProcessed };
 }
 
 // GET /api/transfer-window — current window status (public, auth required)
@@ -2205,9 +2247,8 @@ router.get("/loans", requireAuth, async (req, res) => {
 router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
   const { open } = await getTransferWindowStatus();
-  if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Du kan ikke foreslå lejeaftaler i denne periode." });
 
-  const { rider_id, loan_fee = 0, start_season, end_season, buy_option_price, message } = req.body;
+  const { rider_id, loan_fee = 0, start_season, end_season, buy_option_price } = req.body;
   if (!rider_id || !start_season || !end_season)
     return res.status(400).json({ error: "rider_id, start_season og end_season kræves" });
   if (end_season < start_season)
@@ -2231,12 +2272,12 @@ router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
     return res.status(400).json({ error: "Rytteren er allerede udlejet eller har et afventende lejeforslag" });
 
   const borrowerState = await getTeamMarketState(supabase, req.team.id);
-  // #267: soft-cap buffer i åbent vindue.
+  // #19/#267: soft-cap buffer kun i åbent vindue; lukket vindue bruger hard-cap.
   const proposalSquadViolation = getIncomingSquadViolation(borrowerState, {
-    softCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER,
+    softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
   });
   if (proposalSquadViolation)
-    return res.status(400).json({ error: `Dit hold er fyldt (${proposalSquadViolation.effectiveCap} ryttere — Div ${borrowerState.division || 3} cap ${proposalSquadViolation.maxRiders} + ${proposalSquadViolation.softCapBuffer} buffer i transfervinduet). Lejeaftalen kan ikke oprettes.` });
+    return res.status(400).json({ error: `Dit hold er fyldt (${proposalSquadViolation.effectiveCap} ryttere — Div ${borrowerState.division || 3} cap ${proposalSquadViolation.maxRiders}${proposalSquadViolation.softCapBuffer ? ` + ${proposalSquadViolation.softCapBuffer} buffer i transfervinduet` : ""}). Lejeaftalen kan ikke oprettes.` });
 
   const { data, error } = await supabase.from("loan_agreements").insert({
     rider_id,
@@ -2269,11 +2310,6 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     if (!(await assertMarketOpen(req, res, "market"))) return;
   }
 
-  if (["accept", "buyout"].includes(action)) {
-    const { open } = await getTransferWindowStatus();
-    if (!open) return res.status(403).json({ error: "Transfervinduet er lukket. Lejeaftalen kan ikke accepteres eller udnyttes i denne periode." });
-  }
-
   const { data: loan } = await supabase
     .from("loan_agreements")
     .select(`*, rider:rider_id(id, firstname, lastname, team_id)`)
@@ -2287,18 +2323,18 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
 
   // ACCEPT — lending team accepts
   if (action === "accept" && isLender && loan.status === "pending") {
+    const { open } = await getTransferWindowStatus();
     const borrowerState = await getTeamMarketState(supabase, loan.to_team_id);
-    // #267: soft-cap buffer i åbent vindue (endpoint har gated på open ovenfor).
+    // #19/#267: lukket vindue parkerer aktivering, så brug hard-cap her.
     const activationSquadViolation = getIncomingSquadViolation(borrowerState, {
-      softCapBuffer: TRANSFER_WINDOW_SOFT_CAP_BUFFER,
+      softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
     });
     if (activationSquadViolation)
-      return res.status(400).json({ error: `Lejerens hold er fyldt (${activationSquadViolation.effectiveCap} ryttere — Div ${borrowerState.division || 3} cap ${activationSquadViolation.maxRiders} + ${activationSquadViolation.softCapBuffer} buffer i transfervinduet). Lejeaftalen kan ikke aktiveres.` });
+      return res.status(400).json({ error: `Lejerens hold er fyldt (${activationSquadViolation.effectiveCap} ryttere — Div ${borrowerState.division || 3} cap ${activationSquadViolation.maxRiders}${activationSquadViolation.softCapBuffer ? ` + ${activationSquadViolation.softCapBuffer} buffer i transfervinduet` : ""}). Lejeaftalen kan ikke aktiveres.` });
 
     // Deduct first season's loan fee from borrower if > 0
     if (loan.loan_fee > 0) {
       const { data: borrower } = await supabase.from("teams").select("balance").eq("id", loan.to_team_id).single();
-      const { data: lender }   = await supabase.from("teams").select("balance").eq("id", loan.from_team_id).single();
       if (!borrower)
         return res.status(400).json({ error: "Lejer-hold ikke fundet" });
       // #44: lejegebyret må ikke pushe lejer i underbalance ift. eksisterende auktioner.
@@ -2351,11 +2387,16 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
         },
       });
     }
-    await supabase.from("loan_agreements").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", loan.id);
+    const nextStatus = getLoanAgreementAcceptedStatus({ windowOpen: open });
+    await supabase.from("loan_agreements").update({ status: nextStatus, updated_at: new Date().toISOString() }).eq("id", loan.id);
+    const title = open ? "Lejeaftale aktiveret" : "Lejeaftale parkeret";
+    const message = open
+      ? `${req.team.name} har accepteret din lejeforespørgsel på ${loan.rider.firstname} ${loan.rider.lastname}`
+      : `${req.team.name} har accepteret og betalt din lejeforespørgsel på ${loan.rider.firstname} ${loan.rider.lastname}. Rytteren bliver registreret som lejet, når transfervinduet åbner.`;
     await notifyTeamOwner(loan.to_team_id, "transfer_offer_accepted",
-      "Lejeaftale aktiveret",
-      `${req.team.name} har accepteret din lejeforespørgsel på ${loan.rider.firstname} ${loan.rider.lastname}`, loan.id);
-    return res.json({ success: true, action: "active" });
+      title,
+      message, loan.id);
+    return res.json({ success: true, action: nextStatus });
   }
 
   // REJECT — lending team rejects
@@ -2386,9 +2427,9 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
 
   // BUYOUT — borrowing team exercises buy option
   if (action === "buyout" && isBorrower && loan.status === "active" && loan.buy_option_price) {
+    const { open } = await getTransferWindowStatus();
     const price = loan.buy_option_price;
     const { data: borrower } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
-    const { data: lender }   = await supabase.from("teams").select("balance").eq("id", loan.from_team_id).single();
     if (!borrower)
       return res.status(400).json({ error: "Hold ikke fundet" });
     // #44: købsoption må ikke pushe i underbalance ift. eksisterende auktioner.
@@ -2404,7 +2445,6 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
       });
     }
 
-    await supabase.from("riders").update({ team_id: req.team.id, acquired_at: new Date().toISOString() }).eq("id", loan.rider_id);
     // Slice 07c: balance + finance_transactions atomic via RPC.
     // 07d Fase B / #240: borrower aktiverer købsoption → req.user.id = køber.
     // season_id sættes eksplicit fra activeSeason.
@@ -2442,13 +2482,22 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
         related_entity_id: loan.id,
       },
     });
-    await supabase.from("loan_agreements").update({ status: "buyout" }).eq("id", loan.id);
+    const boughtAt = new Date().toISOString();
+    await supabase.from("riders")
+      .update(getLoanBuyoutRiderUpdate({ windowOpen: open, borrowerTeamId: req.team.id, timestamp: boughtAt }))
+      .eq("id", loan.rider_id);
+    const nextStatus = getLoanBuyoutStatus({ windowOpen: open });
+    await supabase.from("loan_agreements").update({ status: nextStatus, updated_at: boughtAt }).eq("id", loan.id);
+    const title = open ? "Købsoption udnyttet" : "Købsoption parkeret";
+    const message = open
+      ? `${req.team.name} har udnyttet købsoptionen på ${loan.rider.firstname} ${loan.rider.lastname} for ${price.toLocaleString()} CZ$`
+      : `${req.team.name} har udnyttet og betalt købsoptionen på ${loan.rider.firstname} ${loan.rider.lastname} for ${price.toLocaleString()} CZ$. Rytteren skifter hold, når transfervinduet åbner.`;
     await notifyTeamOwner(loan.from_team_id, "transfer_offer_accepted",
-      "Købsoption udnyttet",
-      `${req.team.name} har udnyttet købsoptionen på ${loan.rider.firstname} ${loan.rider.lastname} for ${price.toLocaleString()} CZ$`, loan.id);
-    // Buyout moves rider permanently; drop /api/riders cache.
+      title,
+      message, loan.id);
+    // Buyout moves rider permanently or parks a pending owner-change; drop /api/riders cache.
     invalidateNamespace("riders");
-    return res.json({ success: true, action: "buyout", price });
+    return res.json({ success: true, action: nextStatus, price });
   }
 
   return res.status(400).json({ error: "Ugyldig handling" });
@@ -4537,15 +4586,23 @@ router.post("/admin/transfer-window/open", requireAdmin, adminWriteLimiter, asyn
       ridersProcessed = pendingRiders.length;
     }
 
-    // Flush window_pending direct transfers and swaps
+    // Flush window_pending direct transfers, swaps, and rider-loans.
     const { transfersProcessed, swapsProcessed } = await flushWindowPendingOffers(supabase, {
       logActivity,
       notifyTeamOwner,
       notifyTransferCompleted,
       notifySwapCompleted,
     });
+    const { loansProcessed, loanBuyoutsProcessed } = await flushWindowPendingLoans();
 
-    res.json({ success: true, riders_processed: ridersProcessed, transfers_processed: transfersProcessed, swaps_processed: swapsProcessed });
+    res.json({
+      success: true,
+      riders_processed: ridersProcessed,
+      transfers_processed: transfersProcessed,
+      swaps_processed: swapsProcessed,
+      loans_processed: loansProcessed,
+      loan_buyouts_processed: loanBuyoutsProcessed,
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -10,13 +10,14 @@
 //   auctions:        status = "completed"
 //   transfer_offers: status in ("accepted", "window_pending")
 //   swap_offers:     status in ("accepted", "window_pending")
-//   loan_agreements: status in ("active", "completed", "buyout")
+//   loan_agreements: status in ("active", "window_pending", "completed", "buyout")
 //     - "active":    leje løber lige nu, offentlig handel
+//     - "window_pending": bindende loan/buyout aftale, registreres ved vindue-åbning
 //     - "completed": leje afsluttet ved sæsonslut (forward-compat — endnu
 //                    uden producent-kode, men inkluderet for fremtidig brug)
 //     - "buyout":    borrower udnyttede købsoption, permanent ejerskifte
 
-export const PUBLIC_LOAN_STATUSES = ["active", "completed", "buyout"];
+export const PUBLIC_LOAN_STATUSES = ["active", "window_pending", "completed", "buyout"];
 export const PUBLIC_OFFER_STATUSES = ["accepted", "window_pending"];
 
 export async function buildRiderHistory(supabase, riderId) {

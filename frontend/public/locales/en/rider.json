@@ -299,6 +299,7 @@
   "loanOffer": {
     "buttonOpen": "📋 Propose loan",
     "windowClosed": "Transfer window closed",
+    "windowPendingHint": "The transfer window is closed: You can propose the loan now. If the lender accepts, the fee is paid now and the loan starts when the window opens.",
     "seasonPlaceholder": "Season number (e.g. 3)",
     "feePlaceholder": "Loan fee (CZ$)",
     "buyOptionPlaceholder": "Buy option (CZ$), optional",
