@@ -121,7 +121,6 @@ function SwapOfferButton({ rider, myTeamId }) {
   }
 
   function openForm() {
-    if (!windowOpen) return;
     loadMyRiders();
     setShow(!show);
   }
@@ -155,17 +154,20 @@ function SwapOfferButton({ rider, myTeamId }) {
           {result.msg}
         </div>
       )}
-      <button onClick={openForm} disabled={!windowOpen}
+      <button onClick={openForm}
         className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
-          ${!windowOpen
-            ? "bg-cz-subtle text-cz-3 border-cz-border cursor-not-allowed"
-            : show
+          ${show
               ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
-        {windowOpen ? t("swapOffer.buttonOpen") : t("swapOffer.windowClosed")}
+        {t("swapOffer.buttonOpen")}
       </button>
-      {show && windowOpen && (
+      {show && (
         <div className="mt-3 flex flex-col gap-2">
+          {!windowOpen && (
+            <p className="rounded-lg border border-cz-border bg-cz-subtle px-3 py-2 text-xs text-cz-2">
+              {t("swapOffer.windowPendingHint")}
+            </p>
+          )}
           <select value={offeredId} onChange={e => setOfferedId(e.target.value)}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent">
             <option value="">{t("swapOffer.selectRider")}</option>
@@ -331,17 +333,20 @@ function DirectOfferButton({ rider }) {
           {result.msg}
         </div>
       )}
-      <button onClick={() => windowOpen && setShow(!show)} disabled={!windowOpen}
+      <button onClick={() => setShow(!show)}
         className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
-          ${!windowOpen
-            ? "bg-cz-subtle text-cz-3 border-cz-border cursor-not-allowed"
-            : show
+          ${show
               ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
-        {windowOpen ? t("directOffer.buttonOpen") : t("directOffer.windowClosed")}
+        {t("directOffer.buttonOpen")}
       </button>
-      {show && windowOpen && (
+      {show && (
         <div className="mt-3 flex flex-col gap-2">
+          {!windowOpen && (
+            <p className="rounded-lg border border-cz-border bg-cz-subtle px-3 py-2 text-xs text-cz-2">
+              {t("directOffer.windowPendingHint")}
+            </p>
+          )}
           <input type="number" value={amount} min={1} onChange={e => setAmount(parseInt(e.target.value) || 0)}
             placeholder={t("directOffer.amountPlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />

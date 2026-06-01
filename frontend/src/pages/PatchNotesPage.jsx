@@ -2,10 +2,17 @@
 
 const PATCHES = [
   {
-    version: "4.40",
+    version: "4.41",
     date: "2026-06-01",
     label: "Beta",
     changes: [
+      {
+        category: "Transfers · Offers work while the window is closed",
+        items: [
+          "EN · Direct transfer offers, listed-rider offers and swap proposals are no longer hidden behind a disabled 'transfer window closed' button. You can negotiate now; if both sides agree while the window is closed, the rider move is parked until the next opening. Loan agreements remain locked until the loan follow-up lands. Refs #19.",
+          "DA · Direkte transfertilbud, tilbud på transferlistede ryttere og bytteforslag er ikke længere gemt bag en deaktiveret 'transfervindue lukket'-knap. Du kan forhandle nu; hvis begge parter bliver enige mens vinduet er lukket, parkeres rytterskiftet til næste åbning. Lejeaftaler er stadig låst indtil loan-opfølgningen er leveret. Refs #19.",
+        ],
+      },
       {
         category: "AI · AI-Autopilot Phase 2: Mandatory AI Review",
         items: [

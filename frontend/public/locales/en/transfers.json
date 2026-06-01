@@ -7,7 +7,7 @@
   },
   "window": {
     "open": "Transfer window is open — you can send and accept offers",
-    "closed": "Transfer window is closed — you cannot create or accept deals. Negotiations can still be rejected or withdrawn.",
+    "closed": "Transfer window is closed — transfer and swap deals can still be negotiated now, but rider moves complete at the next opening. Loans are still locked.",
     "closedShort": "Transfer window closed",
     "windowClosed": "Window closed"
   },
@@ -138,6 +138,7 @@
     "valueLabel": "Value: {value}",
     "sendOffer": "Send offer",
     "hide": "Hide",
+    "windowPendingHint": "The window is closed: You can send the offer now, and an agreed deal completes when the window opens.",
     "send": "Send",
     "messagePlaceholder": "Message (optional)...",
     "removeListing": "🗑️ Remove from transfer list",
@@ -172,6 +173,7 @@
     "buyOptionLabel": "Buy option (CZ$) — optional",
     "buyOptionPlaceholder": "Leave blank for no option",
     "sending": "Sending...",
+    "windowClosed": "Loans locked",
     "submit": "Send proposal",
     "cancel": "Cancel",
     "newButton": "+ Propose new loan"

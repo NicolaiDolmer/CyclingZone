@@ -272,6 +272,7 @@
   "directOffer": {
     "buttonOpen": "↔ Send transfer offer",
     "windowClosed": "Transfer window closed",
+    "windowPendingHint": "The transfer window is closed: You can send the offer now. If the deal is agreed, the rider move completes when the window opens.",
     "amountPlaceholder": "Offer amount in CZ$",
     "messagePlaceholder": "Message (optional)",
     "submit": "Send offer",
@@ -284,6 +285,7 @@
   "swapOffer": {
     "buttonOpen": "⇄ Propose swap",
     "windowClosed": "Transfer window closed",
+    "windowPendingHint": "The transfer window is closed: You can propose the swap now. If both sides accept, the rider moves complete when the window opens.",
     "selectRider": "Select rider to offer",
     "cashLabel": "Cash payment (CZ$)",
     "cashHint": "Positive: you pay. Negative: you receive.",

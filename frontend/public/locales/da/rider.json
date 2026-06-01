@@ -272,6 +272,7 @@
   "directOffer": {
     "buttonOpen": "↔ Send transfertilbud",
     "windowClosed": "Transfervindue lukket",
+    "windowPendingHint": "Transfervinduet er lukket: Du kan sende tilbuddet nu. Hvis handlen bliver aftalt, gennemføres rytterskiftet når vinduet åbner.",
     "amountPlaceholder": "Tilbudsbeløb i CZ$",
     "messagePlaceholder": "Besked (valgfri)",
     "submit": "Send tilbud",
@@ -284,6 +285,7 @@
   "swapOffer": {
     "buttonOpen": "⇄ Foreslå byttehandel",
     "windowClosed": "Transfervindue lukket",
+    "windowPendingHint": "Transfervinduet er lukket: Du kan foreslå byttet nu. Hvis begge parter accepterer, gennemføres rytterskiftet når vinduet åbner.",
     "selectRider": "Vælg rytter du tilbyder",
     "cashLabel": "Kontantbetaling (CZ$)",
     "cashHint": "Positiv: du betaler. Negativ: du modtager.",

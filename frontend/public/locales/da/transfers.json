@@ -7,7 +7,7 @@
   },
   "window": {
     "open": "Transfervinduet er åbent — du kan sende og acceptere tilbud",
-    "closed": "Transfervinduet er lukket — du kan ikke oprette eller acceptere handler. Forhandlinger kan fortsat afvises eller trækkes tilbage.",
+    "closed": "Transfervinduet er lukket — transfer- og bytteaftaler kan forhandles nu, men rytterskift gennemføres først ved næste åbning. Lejeaftaler er stadig låst.",
     "closedShort": "Transfervindue lukket",
     "windowClosed": "Vindue lukket"
   },
@@ -138,6 +138,7 @@
     "valueLabel": "Værdi: {value}",
     "sendOffer": "Send tilbud",
     "hide": "Skjul",
+    "windowPendingHint": "Vinduet er lukket: Tilbuddet kan sendes nu, og en aftalt handel gennemføres når vinduet åbner.",
     "send": "Send",
     "messagePlaceholder": "Besked (valgfri)...",
     "removeListing": "🗑️ Fjern fra transferlisten",
@@ -172,6 +173,7 @@
     "buyOptionLabel": "Købsoption (CZ$) — valgfri",
     "buyOptionPlaceholder": "Efterlad tom for ingen option",
     "sending": "Sender...",
+    "windowClosed": "Lejeaftaler låst",
     "submit": "Send forslag",
     "cancel": "Annuller",
     "newButton": "+ Foreslå ny lejeaftale"

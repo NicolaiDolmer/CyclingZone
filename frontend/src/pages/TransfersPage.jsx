@@ -975,18 +975,21 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
 
       {!isOwn && (
         <div>
-          <button onClick={() => windowOpen && setShowOffer(!showOffer)} disabled={!windowOpen}
+          <button onClick={() => setShowOffer(!showOffer)}
             className={`w-full py-2 rounded-lg text-sm font-medium transition-all border
-              ${!windowOpen
-                ? "bg-cz-subtle text-cz-3 border-cz-border cursor-not-allowed"
-                : showOffer
+              ${showOffer
                   ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
-            {!windowOpen ? t("window.windowClosed") : showOffer ? t("transferCard.hide") : t("transferCard.sendOffer")}
+            {showOffer ? t("transferCard.hide") : t("transferCard.sendOffer")}
           </button>
 
           {showOffer && (
             <div className="mt-2 flex flex-col gap-2">
+              {!windowOpen && (
+                <p className="rounded-lg border border-cz-border bg-cz-subtle px-3 py-2 text-xs text-cz-2">
+                  {t("transferCard.windowPendingHint")}
+                </p>
+              )}
               <div className="flex gap-2">
                 <input type="number" value={offerAmt}
                   onChange={e => setOfferAmt(parseInt(e.target.value) || 0)}
@@ -1436,10 +1439,10 @@ export default function TransfersPage() {
                   onCancel={() => setShowNewSwap(false)}
                 />
               ) : (
-                <button onClick={() => setShowNewSwap(true)} disabled={!transferWindow.open}
+                <button onClick={() => setShowNewSwap(true)}
                   className="w-full py-2.5 bg-cz-accent/10 text-cz-accent-t/80 border border-[#e8c547]/15 rounded-xl text-sm font-medium
-                    hover:bg-cz-accent/10 hover:text-cz-accent-t transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                  {transferWindow.open ? t("newSwap.newButton") : t("window.closedShort")}
+                    hover:bg-cz-accent/10 hover:text-cz-accent-t transition-all">
+                  {t("newSwap.newButton")}
                 </button>
               )}
 
@@ -1487,7 +1490,7 @@ export default function TransfersPage() {
                 <button onClick={() => setShowNewLoan(true)} disabled={!transferWindow.open}
                   className="w-full py-2.5 bg-purple-500/8 text-purple-400/80 border border-purple-500/15 rounded-xl text-sm font-medium
                     hover:bg-purple-500/15 hover:text-purple-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                  {transferWindow.open ? t("newLoan.newButton") : t("window.closedShort")}
+                  {transferWindow.open ? t("newLoan.newButton") : t("newLoan.windowClosed")}
                 </button>
               )}
 
