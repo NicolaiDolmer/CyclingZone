@@ -16,9 +16,7 @@ The bridge reads Discord threads from `#bug-reports` and `#feature-request` (and
 - Discord bot already created at https://discord.com/developers/applications
   - Bot: **"Cycling Zone#8784"** (id: `1500376268825301033`)
   - Server: **"Cycling Career"** (id: `474142653529849886`)
-- Bot token — get from one of:
-  - Railway env var `DISCORD_BOT_TOKEN` (currently active production token)
-  - Reset via Discord Developer Portal → Bot → Reset Token (then update Railway too)
+- Bot token — inject through Infisical or the local parent process environment as `DISCORD_TOKEN`. Do not write it into `.mcp.json`.
 - Bot already invited to the server with permissions:
   - ✅ View Channels
   - ✅ Read Message History
@@ -30,21 +28,19 @@ The bridge reads Discord threads from `#bug-reports` and `#feature-request` (and
 
 ## Quickstart — automatiseret (anbefalet)
 
-Kør én kommando i en normal PowerShell — den henter tokenet fra Railway og skriver `.mcp.json` til main repo + alle worktrees:
+Kør én kommando i en normal PowerShell — den skriver non-secret `.mcp.json` til main repo + alle worktrees:
 
 ```powershell
 pwsh -File scripts/setup-discord-mcp.ps1
 ```
 
 Scriptet:
-1. Installerer Railway CLI globalt hvis den mangler
-2. Åbner browser for Railway-login (kun første gang pr. PC)
-3. Kører `railway link` for at vælge projekt + service (kun første gang pr. clone)
-4. Henter `DISCORD_BOT_TOKEN` fra Railway variables
-5. Skriver `.mcp.json` (gitignored) i main repo og hver eksisterende worktree
-6. Sikrer at `.claude/settings.local.json` har `enabledMcpjsonServers: ["discord"]`
+1. Verificerer Node/npm
+2. Advarer hvis `DISCORD_TOKEN` ikke er tilgængelig i den aktuelle shell
+3. Skriver `.mcp.json` (gitignored, uden inline secrets) i main repo og hver eksisterende worktree
+4. Sikrer at `.claude/settings.local.json` har `enabledMcpjsonServers: ["discord"]`
 
-Efter scriptet: **genstart Claude Code** (MCP loades kun ved opstart). Verificér med `/mcp` — `discord` skal stå som connected.
+Efter scriptet: sørg for at `DISCORD_TOKEN` injectes via Infisical eller user-env, og **genstart Claude Code/Codex** (MCP loades kun ved opstart). Verificér med `/mcp` — `discord` skal stå som connected.
 
 ---
 
@@ -54,17 +50,14 @@ Hvis scriptet ikke virker — eller du foretrækker manuelt:
 
 ### 1. Create `.mcp.json` in repo root
 
-This file is **gitignored** on purpose (contains secret). It must exist on each machine.
+This file is **gitignored** on purpose but must not contain secrets. It must exist on each machine.
 
 ```json
 {
   "mcpServers": {
     "discord": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "mcp-discord"],
-      "env": {
-        "DISCORD_TOKEN": "<paste-bot-token-here>"
-      }
+      "args": ["/c", "npx", "-y", "mcp-discord"]
     }
   }
 }
@@ -132,7 +125,7 @@ node scripts/sync-discord-attachments.js
 ```
 
 This script:
-1. Reads `.mcp.json` for the bot token
+1. Reads `DISCORD_TOKEN` from the process environment
 2. Fetches messages from each thread ID listed in `THREADS` (top of file — update as new threads appear)
 3. Downloads all attachments to `docs/discord-attachments/{thread-id}-{att-id}.png`
 4. Writes `docs/discord-attachments/_mapping.json` with metadata for each image
@@ -188,8 +181,8 @@ To grant on the bot's role: enable in Discord, no token rotation needed.
 
 ## Security notes
 
-- **`.mcp.json` is git-safe:** gitignored (`.gitignore:27`, re-verified 2026-05-29) AND never committed to history (`git log --all -S '<token-prefix>'` empty). No history scrub needed.
-- **⏳ OPEN: token rotation deferred (2026-05-29).** The bot token has been exposed in chat-transcripts at least twice: initial setup (2026-05-06) and again 2026-05-29 (sanitize-hook detection + an agent Grep). Rotation was consciously deferred by the owner on 2026-05-29 — git exposure is zero and the transcript-leak vector is being closed separately. **When you next rotate:** Discord Developer Portal → Bot → Reset Token, update Railway `DISCORD_BOT_TOKEN` first, then regenerate local `.mcp.json` (`pwsh -File scripts/setup-discord-mcp.ps1`), restart Claude Code, verify with `/mcp`. Old token keeps working until reset. Do env-injection (`${DISCORD_TOKEN}`) at the same time if adopted.
+- **`.mcp.json` is local config, not a secret store:** gitignored (`.gitignore:27`) and must contain no token values. Use `.mcp.example.json` as the template.
+- **Token rotation required after transcript exposure:** Discord Developer Portal → Bot → Reset Token, update Infisical/user-env `DISCORD_TOKEN`, restart Claude Code/Codex, verify with `/mcp`. Old token keeps working until reset.
 - The Supabase service key was also briefly exposed in a tool result. **Rotate too:** Supabase Dashboard → Settings → API → "Reset service_role key", then update Railway `SUPABASE_SERVICE_KEY`.
 - **✅ Read/Grep leak-vector closed (2026-05-29, #634 follow-up):** agents can no longer Read/Grep this file (or any `*.env` / `*/secrets/*`) — `block-dangerous-secret-commands.sh` blocks it (exit 2), and the PostToolUse sanitizer now also covers `Read`/`Grep` output as backup. Verified live + in `scripts/test-sanitize-secrets.ps1`. Details: `docs/SECRET_LEAK_VECTORS.md` (table B). To inspect `.mcp.json` structure, read this doc's redacted example instead of the file.
 
@@ -204,7 +197,7 @@ To grant on the bot's role: enable in Discord, no token rotation needed.
 - On Windows: ensure `command: "cmd"` and `args: ["/c", "npx", ...]` (not just `"npx"`)
 
 **Discord API returns 401 Unauthorized**
-- Token expired or rotated — get fresh from Railway env, update `.mcp.json`, restart Claude Code
+- Token expired or rotated — inject a fresh `DISCORD_TOKEN` via Infisical/user-env and restart Claude Code/Codex. Do not put the value in `.mcp.json`.
 
 **Discord API returns 403 Missing Access (50001)**
 - Bot lacks the permission for that operation in that channel/thread

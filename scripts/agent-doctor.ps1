@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$Repo = "NicolaiDolmer/CyclingZone",
   [switch]$FailOnWarning,
   [switch]$Json
@@ -559,9 +559,15 @@ $envPath = Join-Path $root "backend/.env"
 $infisicalExe = if ($infisicalCmd) { $infisicalCmd.Source } elseif ($infisicalWinget) { $infisicalWinget.FullName } else { $null }
 $auditPrefix = @()
 if ($infisicalExe -and (Test-Path (Join-Path $root ".infisical.json"))) {
-  $null = & $infisicalExe user get token 2>$null
-  if ($LASTEXITCODE -eq 0) {
-    $auditPrefix = @($infisicalExe, "run", "--env=dev", "--")
+  $previousErrorActionPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = "Continue"
+    $null = & $infisicalExe user get token 2>$null
+    if ($LASTEXITCODE -eq 0) {
+      $auditPrefix = @($infisicalExe, "run", "--env=dev", "--")
+    }
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
   }
 }
 if ($auditPrefix.Count -eq 0 -and (Test-Path $envPath) -and -not $env:SUPABASE_URL) {

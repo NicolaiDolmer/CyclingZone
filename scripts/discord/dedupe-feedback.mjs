@@ -4,14 +4,13 @@
  * have already been filed, so we only create issues for NEW (un-triaged) feedback.
  *
  * Inputs (all read internally, nothing secret printed):
- *   - Discord REST: active threads in the guild (token from .mcp.json)
+ *   - Discord REST: active threads in the guild (token from DISCORD_TOKEN/DISCORD_BOT_TOKEN env)
  *   - scripts/file-discord-issues-batch*.js  (thread IDs already batch-filed)
  *   - scripts/discord/.gh-issues.json        (all GH issues, for body link match)
  *
  * Output: scripts/discord/.candidates.md  (human-readable triage list)
  */
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 const GUILD = '474142653529849886';
@@ -20,20 +19,7 @@ const HERE = path.join(process.cwd(), 'scripts');
 const DISCORD_DIR = path.join(HERE, 'discord');
 
 function readToken() {
-  const candidates = [
-    path.join(process.cwd(), '.mcp.json'),
-    path.join(os.homedir(), 'OneDrive', 'CyclingZone-context', 'secrets', 'mcp.json'),
-  ];
-  for (const p of candidates) {
-    try {
-      if (!fs.existsSync(p)) continue;
-      const j = JSON.parse(fs.readFileSync(p, 'utf8'));
-      const env = j?.mcpServers?.discord?.env || j || {};
-      const t = env.DISCORD_TOKEN || env.DISCORD_BOT_TOKEN || j.DISCORD_TOKEN || j.DISCORD_BOT_TOKEN;
-      if (t) return t;
-    } catch {}
-  }
-  return null;
+  return process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN || null;
 }
 
 async function dapi(token, p) {

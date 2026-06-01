@@ -55,7 +55,7 @@ This inventory intentionally records **file paths and variable names only**, not
 | Frontend local runtime | `frontend/.env` | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL` | Infisical for local bootstrap; Vercel runtime copy for deploy | P1 |
 | Frontend production build | `frontend/.env.production` | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL`, `VITE_CLARITY_PROJECT_ID` | Infisical source; Vercel env delivery | P1 |
 | Codex Supabase readonly context | `.codex.local/supabase-readonly.env` | `SUPABASE_URL`, `SUPABASE_READONLY_DSN`, `SUPABASE_READONLY_KEY` | Infisical if still needed; otherwise regenerate per PC | P1 |
-| MCP configuration | `.mcp.json` | JSON object under `mcpServers`; values may include connector tokens or command args | Split: non-secret config in repo template; secrets in Infisical/manual connector stores | P1 |
+| MCP configuration | `.mcp.json`, `.mcp.example.json` | JSON object under `mcpServers`; local file must contain command/args only, never token values | Split: non-secret config in repo template; secrets in Infisical/manual connector stores | P1 |
 | GitHub Actions migrations | `.github/workflows/auto-migrate.yml` | `SUPABASE_DB_URL` | Infisical OIDC fetch in workflow | P0 |
 | GitHub Actions audits and drift monitor | `.github/workflows/drift-monitor.yml`, `feature-liveness-audit.yml`, `rls-audit.yml`, `uci_sync.yml` | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `DISCORD_WEBHOOK`, `UCI_GOOGLE_SERVICE_ACCOUNT_JSON`, `UCI_GOOGLE_SHEET_ID` | Infisical OIDC fetch in workflow | P0 |
 | GitHub Actions Claude automation | `.github/workflows/claude.yml`, `claude-review.yml`, `claude-triage.yml` | `CLAUDE_CODE_OAUTH_TOKEN` | Infisical if action supports env injection; otherwise GitHub secret as downstream copy | P0 |
@@ -97,6 +97,7 @@ The target architecture is a **hub-and-spoke secret model**. Infisical is the hu
 | Local backend/frontend development | Developers run an explicit bootstrap command that materializes `.env` files from Infisical into local gitignored files, or they use platform CLIs such as `vercel env pull` and `railway run` where appropriate. |
 | New PC setup | Git clone and tool login are enough for code. Production secrets are pulled from Infisical after explicit authentication, not from OneDrive. |
 | Agent memory and non-secret context | May remain local or OneDrive-synced temporarily, but must be physically separated from production secrets and documented as non-authoritative. |
+| MCP local config | `.mcp.json` is generated from `.mcp.example.json` without inline `env` secrets; provider tokens such as `DISCORD_TOKEN` are injected through Infisical or user environment. |
 
 ---
 

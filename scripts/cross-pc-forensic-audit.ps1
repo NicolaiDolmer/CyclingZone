@@ -1,4 +1,4 @@
-# cross-pc-forensic-audit.ps1
+﻿# cross-pc-forensic-audit.ps1
 #
 # Scanner for lokal-only AI-state som ikke kan ses fra anden PC.
 # Exit-code: 0 = clean, 1 = fund (skal handles), 2 = setup-fejl.
@@ -260,7 +260,7 @@ foreach ($settingsFile in $settingsFiles) {
     # saa hardcoded paths der er error.
     $isLocal = $settingsFile -like '*settings.local.json'
     $severity = if ($isLocal) { "warn" } else { "error" }
-    $note = if ($isLocal) { " (PC-local fil — accepteres men ryd op naar muligt)" } else { "" }
+    $note = if ($isLocal) { " (PC-local fil - accepteres men ryd op naar muligt)" } else { "" }
     Add-Finding -Severity $severity -Category "hardcoded-user-path" -Path $settingsFile `
       -Message "Hardcoded user path '$matchValue' i settings-fil${note}" `
       -Fix "Refactor til repo-relative path (fx 'bash scripts/hooks/X.sh'); ved user-level: kor 'pwsh -File scripts/install-user-hooks.ps1' for idempotent re-install"
@@ -297,6 +297,8 @@ foreach ($hooksDir in $hookDirs) {
 # --- 5. Git: uncommitted / unpushed ---
 Push-Location $RepoRoot
 try {
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
   $porcelain = git status --porcelain 2>$null
   if ($porcelain) {
     $count = ($porcelain -split "`n").Count
@@ -306,7 +308,7 @@ try {
   }
   $upstream = git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null
   if ($upstream) {
-    $ahead = (git rev-list --count "@{u}..HEAD" 2>$null) -as [int]
+    $ahead = (git rev-list --count '@{u}..HEAD' 2>$null) -as [int]
     if ($ahead -gt 0) {
       $branch = git rev-parse --abbrev-ref HEAD 2>$null
       Add-Finding -Severity "warn" -Category "git-unpushed" -Path $RepoRoot `
@@ -315,6 +317,7 @@ try {
     }
   }
 } finally {
+  $ErrorActionPreference = $previousErrorActionPreference
   Pop-Location
 }
 
@@ -423,10 +426,10 @@ if ($Json) {
     Write-Host ""
     Write-Host "AutoFix: $($autoFixApplied.Count) auto-rettet, $($autoFixSkipped.Count) sprunget over" -ForegroundColor Cyan
     foreach ($a in $autoFixApplied) {
-      Write-Host ("  [fixed] {0} — {1}" -f $a.path, $a.reason) -ForegroundColor Green
+      Write-Host ("  [fixed] {0} - {1}" -f $a.path, $a.reason) -ForegroundColor Green
     }
     foreach ($s in $autoFixSkipped) {
-      Write-Host ("  [skip]  {0} — {1}" -f $s.path, $s.reason) -ForegroundColor Yellow
+      Write-Host ("  [skip]  {0} - {1}" -f $s.path, $s.reason) -ForegroundColor Yellow
     }
     Write-Host ""
   }
