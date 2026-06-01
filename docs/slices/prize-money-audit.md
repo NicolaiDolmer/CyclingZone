@@ -16,14 +16,20 @@
 ## Krav-tilføjelser (ejer, 2026-06-01 runde 2)
 
 **R1 — AI/holdsløse ryttere skal stige i værdi + løn (uden at hold modtager penge).**
-- **Status: ✅ virker allerede for præmie-delen.** `updateRiderValues` ([economyEngine.js:1172-1208](backend/lib/economyEngine.js)) summerer `race_results.prize_money` pr. `rider_id` **uden team_id-filter** → `prize_earnings_bonus`. `market_value = max(5,uci_points)×4000 + prize_earnings_bonus` og `salary = round(market_value × 0.10)` er GENERATED kolonner der gælder *alle* ryttere. Så AI-ryttere stiger korrekt.
-- ⚠️ **Nuancer at afklare:** (a) `updateRiderValues` kører kun ved **sæson-slut** (snit af op til 3 completed sæsoner) — ikke løbende. (b) **`uci_points` opdateres IKKE fra race-resultater** — den styres af ekstern Google Sheets-sync (falder til MIN_UCI=5 hvis rytteren ikke er i sheet). Design-spørgsmål: skal race-point også drive `uci_points`, eller er det bevidst eksternt?
+- **Status: ✅ virker allerede for præmie-delen.** `updateRiderValues` ([economyEngine.js:1172-1208](backend/lib/economyEngine.js)) summerer `race_results.prize_money` pr. `rider_id` **uden team_id-filter** → `prize_earnings_bonus`. `market_value = max(5,uci_points)×4000 + prize_earnings_bonus` og `salary = round(market_value × 0.10)` er GENERATED kolonner der gælder *alle* ryttere.
+- **Afklaret (ejer 2026-06-01):** `uci_points` forbliver **kun virkeligheden** (Google Sheets) — race-point driver IKKE uci_points. Værdi-formlen er uændret: ægte uci_points + spil-bidrag. Fri/AI-præmie udbetales **ikke** (bekræftet), men tæller for værdi/løn.
 
-**R2 — Sammenkædet/relativ point-udregning (UX — gør det brugervenligt).**
-- **Problem i dag:** ~1.500-2.000 absolutte point-felter, redigeret **ét ad gangen** (PUT pr. id i `RacePointsAdminSection.jsx`). Eneste genvej er "reset to baseline" pr. række. At ændre noget = mange manuelle handlinger.
-- **Ønske:** definér point **relativt/sammenkædet** — fx "pointtrøje = 250% af etapesejr", "bjergtrøje = X% af etapesejr", evt. "ProSeries = Y% af WorldTour" — så ændringer propagerer automatisk.
-- **Eksisterende grundlag:** `uciRacePointDefaults.js` har *allerede* hardcoded ratio-logik (sekundære klassementer = ~% af GC) — konceptet findes, bare ikke bruger-styret/dynamisk.
-- **Foreløbigt omfang (ikke designet endnu):** DB (evt. ratio-felter eller derived-lag) · nyt bulk-/generate-endpoint · ny ratio-builder-UI. `expectedPrizeCalculator` + læse-siden uændret. → Egen design-runde + under-issue; sandsynligvis den tungeste del.
+**R3 — Værdi-opdatering skal ske SAMTIDIG med præmie-udbetaling (ejer 2026-06-01).**
+- **I dag:** `updateRiderValues` kører kun ved **sæson-slut** (`processDivisionEnd`) som snit af op til 3 *completed* sæsoner.
+- **Ønske:** rytter-værdier genberegnes i samme øjeblik admin udbetaler præmier (`paySeasonPrizesToDate`).
+- ⚠️ **Design-nuance der skal løses:** nuværende beregning ser kun *completed* sæsoner. Udbetaling sker midt i en **aktiv** sæson → for at værdien rent faktisk ændrer sig ved udbetaling skal den aktive sæsons optjente prize tælle med. Det ændrer hvad "værdi" betyder under en igangværende sæson — afklares i design-fasen.
+
+**R2 — Sammenkædet/relativ point-model med master-kategori (UX — gør det brugervenligt).**
+- **Problem i dag:** ~1.500-2.000 absolutte point-felter, redigeret **ét ad gangen** (PUT pr. id i `RacePointsAdminSection.jsx`). At ændre noget = mange manuelle handlinger.
+- **Ønske (ejer 2026-06-01):** Sæt **én master-kategori (fx Tour de France)** fuldt ud — point pr. placering **+ ratioer mellem result-typer** ("pointtrøje = 250% af etapesejr", "bjergtrøje = X% af etapesejr"). Definér derefter **per-kategori-skalering** så **alle andre kategorier kaskaderer automatisk nedad** efter deres niveau (Giro/Vuelta = a%, Monuments = b%, ProSeries = c% … af masteren). Ændrer man masteren, følger resten med.
+- **To ratio-akser:** (1) mellem result-typer inden for en kategori; (2) mellem kategorier (master → afledte).
+- **Eksisterende grundlag:** `uciRacePointDefaults.js` har *allerede* hardcoded begge slags ratio (sekundære klassementer = ~% af GC; kategorier afledt af hinanden) — konceptet findes, bare ikke bruger-styret/dynamisk.
+- **Foreløbigt omfang (ikke designet endnu):** DB (master-værdier + ratio-tabel/-felter, eller derived-lag) · nyt bulk-/generate-endpoint der kaskaderer · ny master+ratio-builder-UI med preview. `expectedPrizeCalculator` + læse-siden uændret. → Egen design-runde + under-issue; sandsynligvis den tungeste del.
 
 ---
 
