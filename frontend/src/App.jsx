@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+// #881: lazyWithRetry erstatter React.lazy så stale-chunk-fejl efter deploy bliver
+// recoverable (retry + genkendelig ChunkLoadError -> auto-reload via SentryBoundary).
+import { lazyWithRetry as lazy } from "./lib/lazyWithRetry.js";
 import { supabase } from "./lib/supabase";
 import CookieBanner from "./components/CookieBanner.jsx";
 import { logEvent } from "./lib/logEvent";
