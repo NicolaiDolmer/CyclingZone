@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.43",
+    date: "2026-06-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "Admin · Race points cascade editor",
+        items: [
+          "EN · Race ranking points can now be tuned with a cascade model instead of editing ~900 point cells one by one. Set the master category once (Tour de France for stage races, Monuments for one-day races) and every other category scales automatically by an editable per-category factor; changing a master anchor rescales all categories that share that classification. Per-category curve shapes stay fixed. The model is seeded to reproduce today's points exactly, and the old per-cell editor remains under 'Advanced (manual)'. Admin-only. Refs #894.",
+          "DA · Point pr. placering kan nu finjusteres med en kaskade-model i stedet for at redigere ~900 point-felter ét ad gangen. Sæt master-kategorien én gang (Tour de France for etapeløb, Monuments for endagsløb), og alle andre kategorier skaleres automatisk efter en redigerbar faktor pr. kategori; at ændre et master-anker omskalerer alle kategorier der deler den benævnelse. Kurveformer pr. kategori er fastlåste. Modellen er seedet til at reproducere dagens point præcist, og den gamle per-celle-editor findes stadig under 'Avanceret (manuel)'. Kun admin. Refs #894.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.42",
     date: "2026-06-01",
     label: "Beta",

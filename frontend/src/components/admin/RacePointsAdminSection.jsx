@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import RacePointModelSection from "./RacePointModelSection";
+
 const API = import.meta.env.VITE_API_URL;
 
 // #505 — Admin editor for race_points (UCI ranking points per race_class × result_type × rank).
@@ -13,6 +15,7 @@ const API = import.meta.env.VITE_API_URL;
 export default function RacePointsAdminSection({ getAuth, onMsg }) {
   const { t } = useTranslation("admin");
 
+  const [mode, setMode] = useState("model"); // "model" (kaskade) | "manual" (per-celle)
   const [rows, setRows] = useState([]);
   const [baseline, setBaseline] = useState([]);
   const [raceClasses, setRaceClasses] = useState([]);
@@ -25,6 +28,7 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
 
   // ── Initial load ─────────────────────────────────────────────────────────
   useEffect(() => {
+    if (mode !== "manual") return; // manuel data hentes først når fanen åbnes
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -52,7 +56,7 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [mode]);
 
   // ── Lookups ──────────────────────────────────────────────────────────────
   const rowByKey = useMemo(() => {
@@ -157,6 +161,30 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
 
   return (
     <div>
+      {/* Mode-toggle: model (kaskade) vs manuel (per-celle) */}
+      <div className="mb-4 flex gap-1">
+        {[
+          { key: "model", label: t("racePoints.model.tabModel") },
+          { key: "manual", label: t("racePoints.model.tabManual") },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setMode(tab.key)}
+            className={`px-3 py-1 rounded-md text-xs border transition-colors
+              ${mode === tab.key
+                ? "bg-cz-accent text-cz-bg border-cz-accent"
+                : "bg-cz-card text-cz-2 border-cz-border hover:border-cz-accent/50"}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {mode === "model" ? (
+        <RacePointModelSection getAuth={getAuth} onMsg={onMsg} />
+      ) : (
+      <>
       <p className="text-cz-3 text-xs mb-4 leading-relaxed">{t("racePoints.intro")}</p>
 
       {loading ? (
@@ -313,6 +341,8 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
             </div>
           )}
         </>
+      )}
+      </>
       )}
     </div>
   );

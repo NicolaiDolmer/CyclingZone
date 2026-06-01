@@ -4066,6 +4066,131 @@ router.put("/admin/race-points/:id", requireAdmin, adminWriteLimiter, async (req
   }
 });
 
+// ============================================================
+// #894 (epic #893) — race-point-model: master-anker + kaskade-faktorer + generate.
+// Design: docs/slices/prize-money-audit-r2-design.md
+// race_points forbliver materialiseret output; model-tabellerne styrer kaskaden.
+// ============================================================
+
+// GET /api/admin/race-point-model — master-ankre + faktorer + templates (kurveformer)
+// Frontend beregner live preview = round(factor × anchor × weight) uden round-trip.
+router.get("/admin/race-point-model", requireAdmin, async (req, res) => {
+  try {
+    const [mastersRes, cascadesRes, templatesRes] = await Promise.all([
+      supabase.from("race_point_master").select("result_type, master_class, anchor, ratio_ref, ratio").order("result_type"),
+      supabase.from("race_point_cascade").select("race_class, result_type, factor").order("race_class").order("result_type"),
+      supabase.from("race_point_template").select("race_class, result_type, rank, weight").order("race_class").order("result_type").order("rank"),
+    ]);
+    if (mastersRes.error) return res.status(500).json({ error: mastersRes.error.message });
+    if (cascadesRes.error) return res.status(500).json({ error: cascadesRes.error.message });
+    if (templatesRes.error) return res.status(500).json({ error: templatesRes.error.message });
+
+    res.json({
+      masters: mastersRes.data || [],
+      cascades: cascadesRes.data || [],
+      templates: templatesRes.data || [],
+      race_classes: UCI_MEN_RACE_CLASSES,
+      result_types: UCI_MEN_RESULT_TYPES,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT /api/admin/race-point-model/master/:result_type — sæt master-anker (eksplicit tal, v1)
+// Body: { anchor: number }
+router.put("/admin/race-point-model/master/:result_type", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { result_type } = req.params;
+    const { anchor } = req.body || {};
+    if (typeof anchor !== "number" || !Number.isFinite(anchor) || anchor < 0) {
+      return res.status(400).json({ error: "anchor skal være et ikke-negativt tal" });
+    }
+
+    const { data: existing, error: fetchError } = await supabase
+      .from("race_point_master").select("result_type, master_class, anchor").eq("result_type", result_type).single();
+    if (fetchError) return res.status(500).json({ error: fetchError.message });
+    if (!existing) return res.status(404).json({ error: "master-række ikke fundet" });
+
+    const { data: updated, error: updateError } = await supabase
+      .from("race_point_master")
+      .update({ anchor, updated_at: new Date().toISOString() })
+      .eq("result_type", result_type)
+      .select("result_type, master_class, anchor, ratio_ref, ratio")
+      .single();
+    if (updateError) return res.status(500).json({ error: updateError.message });
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: ADMIN_ACTION_TYPE.RACE_POINT_MODEL_EDITED,
+      description: `master-anker ${existing.master_class}/${result_type}: ${existing.anchor} → ${anchor}`,
+      meta: { kind: "master_anchor", result_type, before: existing.anchor, after: anchor },
+    });
+
+    res.json({ row: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT /api/admin/race-point-model/factor/:race_class/:result_type — sæt kaskade-faktor
+// Body: { factor: number }
+router.put("/admin/race-point-model/factor/:race_class/:result_type", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { race_class, result_type } = req.params;
+    const { factor } = req.body || {};
+    if (typeof factor !== "number" || !Number.isFinite(factor) || factor < 0) {
+      return res.status(400).json({ error: "factor skal være et ikke-negativt tal" });
+    }
+
+    const { data: existing, error: fetchError } = await supabase
+      .from("race_point_cascade").select("race_class, result_type, factor")
+      .eq("race_class", race_class).eq("result_type", result_type).single();
+    if (fetchError) return res.status(500).json({ error: fetchError.message });
+    if (!existing) return res.status(404).json({ error: "kaskade-række ikke fundet" });
+
+    const { data: updated, error: updateError } = await supabase
+      .from("race_point_cascade")
+      .update({ factor, updated_at: new Date().toISOString() })
+      .eq("race_class", race_class).eq("result_type", result_type)
+      .select("race_class, result_type, factor")
+      .single();
+    if (updateError) return res.status(500).json({ error: updateError.message });
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: ADMIN_ACTION_TYPE.RACE_POINT_MODEL_EDITED,
+      description: `kaskade-faktor ${race_class}/${result_type}: ${existing.factor} → ${factor}`,
+      meta: { kind: "cascade_factor", race_class, result_type, before: existing.factor, after: factor },
+    });
+
+    res.json({ row: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/race-point-model/generate — kaskadér model → race_points (atomisk RPC)
+// Returnerer antal ændrede rækker. race-points public-cache refresher via TTL (som per-celle-editor).
+router.post("/admin/race-point-model/generate", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const { data, error } = await supabase.rpc("regenerate_race_points");
+    if (error) return res.status(500).json({ error: error.message });
+    const changed = typeof data === "number" ? data : Number(data) || 0;
+
+    await supabase.from("admin_log").insert({
+      admin_user_id: req.user.id,
+      action_type: ADMIN_ACTION_TYPE.RACE_POINTS_REGENERATED,
+      description: `race_points regenereret fra model: ${changed} rækker ændret`,
+      meta: { changed },
+    });
+
+    res.json({ changed });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/admin/seasons/:seasonId/race-selection — gem udvalg som races-rows
 // Body: { pool_race_ids: string[], replace?: boolean }
 // replace=true: sletter eksisterende pool-bound races for sæsonen FØR insert
