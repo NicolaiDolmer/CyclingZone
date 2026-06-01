@@ -132,7 +132,7 @@ import {
   isValidBoardRequestType,
   isValidDnaKey,
   loadGoalContextForBoard,
-  regenerateBoardMembersForTeam,
+  chooseDnaForTeam,
   resolveBoardRequest,
 } from "../lib/boardEngine.js";
 import {
@@ -6056,38 +6056,16 @@ router.post("/board/dna-choose", requireAuth, boardWriteLimiter, async (req, res
       return res.status(400).json({ error: "Ukendt DNA-nøgle" });
     }
 
-    const { data: existing, error: existingError } = await supabase
-      .from("teams")
-      .select("id, team_dna_key, season_1_identity_basis")
-      .eq("id", req.team.id)
-      .single();
-    if (existingError) return res.status(500).json({ error: existingError.message });
-
-    if (existing.team_dna_key) {
-      return res.status(409).json({ error: "Klub-DNA er allerede valgt og kan ikke skiftes (drift kommer i senere slice)" });
+    let result;
+    try {
+      result = await chooseDnaForTeam({ supabase, teamId: req.team.id, dnaKey: dna_key });
+    } catch (e) {
+      const body = { error: e.message };
+      if (e.code) body.code = e.code;
+      return res.status(e.status || 500).json(body);
     }
 
-    if (!existing.season_1_identity_basis) {
-      return res.status(409).json({ error: "Du skal afslutte sæson 1 før DNA kan vælges" });
-    }
-
-    const { error: updateError } = await supabase
-      .from("teams")
-      .update({
-        team_dna_key: dna_key,
-        team_dna_chosen_at: new Date().toISOString(),
-      })
-      .eq("id", req.team.id);
-    if (updateError) return res.status(500).json({ error: updateError.message });
-
-    const membersResult = await regenerateBoardMembersForTeam({
-      supabase,
-      teamId: req.team.id,
-      identityBasis: existing.season_1_identity_basis,
-      dnaKey: dna_key,
-    });
-
-    const dna = getDnaByKey(dna_key);
+    const dna = getDnaByKey(result.dnaKey);
     res.json({
       ok: true,
       team_dna: dna ? {
@@ -6100,7 +6078,7 @@ router.post("/board/dna-choose", requireAuth, boardWriteLimiter, async (req, res
         long_description: dna.long_description,
         long_description_key: `dna.${dna.key}.longDescription`,
       } : null,
-      team_members: decorateTeamBoardMembers(membersResult.members || []),
+      team_members: decorateTeamBoardMembers(result.members || []),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

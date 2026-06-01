@@ -198,6 +198,110 @@ export async function regenerateBoardMembersForTeam({ supabase, teamId, identity
   };
 }
 
+/**
+ * Atomisk + idempotent valg af Klub-DNA (#878).
+ *
+ * Tidligere skrev route'en `team_dna_key` til teams-rækken FØR member-regenereringen.
+ * Hvis regenereringen fejlede midt i, stod teamet med DNA sat men nul board-members —
+ * og 409-guarden ("allerede valgt") låste manageren ude uden vej frem.
+ *
+ * Denne funktion lukker hullet på to måder:
+ *  1. Atomisk: ved første valg rulles `team_dna_key` tilbage hvis regenereringen kaster.
+ *  2. Idempotent recovery: er DNA allerede sat men board-listen tom (et team der allerede
+ *     nåede at blive låst før dette fix), kør regenereringen igen med den ALLEREDE valgte
+ *     nøgle — aldrig den ønskede — så stien ikke kan misbruges til at skifte DNA.
+ *
+ * Kaster fejl med `.status` (+ valgfri `.code`) som route'en kan mappe til HTTP.
+ */
+export async function chooseDnaForTeam({ supabase, teamId, dnaKey } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client is required");
+  if (!teamId) throw new Error("teamId is required");
+
+  const { data: existing, error: existingError } = await supabase
+    .from("teams")
+    .select("id, team_dna_key, season_1_identity_basis")
+    .eq("id", teamId)
+    .single();
+  if (existingError) {
+    const err = new Error(existingError.message);
+    err.status = 500;
+    throw err;
+  }
+  if (!existing) {
+    const err = new Error("No team");
+    err.status = 404;
+    throw err;
+  }
+
+  if (!existing.season_1_identity_basis) {
+    const err = new Error("Du skal afslutte sæson 1 før DNA kan vælges");
+    err.status = 409;
+    throw err;
+  }
+
+  // DNA er allerede sat: enten afvis (board findes) eller gen-generér (board tomt).
+  if (existing.team_dna_key) {
+    const { data: members, error: membersError } = await supabase
+      .from("team_board_members")
+      .select("id")
+      .eq("team_id", teamId);
+    if (membersError) {
+      const err = new Error(membersError.message);
+      err.status = 500;
+      throw err;
+    }
+
+    if ((members || []).length > 0) {
+      const err = new Error("Klub-DNA er allerede valgt og kan ikke skiftes (drift kommer i senere slice)");
+      err.status = 409;
+      err.code = "DNA_ALREADY_CHOSEN";
+      throw err;
+    }
+
+    // Recovery: DNA sat men board tomt → kør regenerering på den allerede valgte nøgle.
+    const membersResult = await regenerateBoardMembersForTeam({
+      supabase,
+      teamId,
+      identityBasis: existing.season_1_identity_basis,
+      dnaKey: existing.team_dna_key,
+    });
+    return { recovered: true, dnaKey: existing.team_dna_key, members: membersResult.members || [] };
+  }
+
+  // Førstegangsvalg: skriv DNA, gen-generér, rul tilbage ved fejl.
+  const { error: updateError } = await supabase
+    .from("teams")
+    .update({
+      team_dna_key: dnaKey,
+      team_dna_chosen_at: new Date().toISOString(),
+    })
+    .eq("id", teamId);
+  if (updateError) {
+    const err = new Error(updateError.message);
+    err.status = 500;
+    throw err;
+  }
+
+  let membersResult;
+  try {
+    membersResult = await regenerateBoardMembersForTeam({
+      supabase,
+      teamId,
+      identityBasis: existing.season_1_identity_basis,
+      dnaKey,
+    });
+  } catch (regenError) {
+    // Best-effort rollback så teamet ikke efterlades dna-sat-men-boardless (og dermed låst).
+    await supabase
+      .from("teams")
+      .update({ team_dna_key: null, team_dna_chosen_at: null })
+      .eq("id", teamId);
+    throw regenError;
+  }
+
+  return { recovered: false, dnaKey, members: membersResult.members || [] };
+}
+
 export async function repairBoardMembersAfterDna({ supabase } = {}) {
   if (!supabase?.from) throw new Error("Supabase client is required");
 
