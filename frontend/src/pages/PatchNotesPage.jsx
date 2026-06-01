@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.44",
+    date: "2026-06-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "Economy · Rider values update when prize money is paid",
+        items: [
+          "EN · Rider values and salaries used to only refresh at the end of a season. Now they also recalculate the moment prize money is paid out, so this season's race prizes feed into a rider's value while the season is still running. Value stays a rolling average across the last few seasons: a finished season counts in full, and the active season counts by how far it has progressed, so values rise smoothly instead of jumping when a new season starts. Refs #895.",
+          "DA · Rytter-værdier og lønninger blev før kun opdateret ved sæson-slut. Nu genberegnes de også i samme øjeblik præmiepengene udbetales, så denne sæsons løbspræmier tæller med i en rytters værdi mens sæsonen stadig kører. Værdien er stadig et rullende gennemsnit over de seneste sæsoner: en afsluttet sæson tæller fuldt, og den aktive sæson tæller efter hvor langt den er nået, så værdier stiger jævnt i stedet for at hoppe når en ny sæson starter. Refs #895.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.43",
     date: "2026-06-01",
     label: "Beta",

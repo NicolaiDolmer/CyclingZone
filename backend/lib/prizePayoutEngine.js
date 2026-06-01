@@ -1,5 +1,6 @@
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { updateRiderValues } from "./economyEngine.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -150,9 +151,23 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase) {
     imported_by: adminUserId,
   });
 
+  // R3 (#895): recalculate rider values now that this season's prizes are paid,
+  // so the active season's prize earnings feed the progress-weighted value
+  // average live — not only at season end. See economyEngine.updateRiderValues.
+  let riders_updated = 0;
+  try {
+    ({ ridersUpdated: riders_updated } = await updateRiderValues(supabase));
+  } catch (err) {
+    // A value-recalc failure must not roll back a successful payout; surface it
+    // in the response so the admin can re-run the recalc (idempotent) manually.
+    console.error("⚠️  Rider-value recalc efter præmie-udbetaling fejlede:", err.message);
+    riders_updated = null;
+  }
+
   return {
     races_paid: preview.pending_payment.length,
     total_paid: preview.total_pending,
+    riders_updated,
     by_race: preview.pending_payment.map(r => ({
       race_name: r.race_name,
       total_prize: r.total_prize,
