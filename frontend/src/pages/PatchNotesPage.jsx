@@ -2,6 +2,27 @@
 
 const PATCHES = [
   {
+    version: "4.40",
+    date: "2026-06-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "AI · AI-Autopilot Phase 2: Mandatory AI Review",
+        items: [
+          "EN · AI-Autopilot Phase 2 is now live. Loop D (Auto-PR-review) is upgraded from advisory to mandatory: every pull request must pass an automated AI review before merging. This ensures no code ships without checking for contract violations, secret leaks, and release hygiene. Loop F (Subagent-orchestration) is established for strategic coordination of large features. Refs #08.",
+          "DA · AI-Autopilot Fase 2 er nu live. Loop D (Auto-PR-review) er opgraderet fra rådgivende til obligatorisk: hver pull request skal passere et automatiseret AI-review før merge. Dette sikrer, at ingen kode udgives uden tjek for kontrakt-overtrædelser, secret-leaks og udgivelses-hygiejne. Loop F (Subagent-orkestrering) er etableret til strategisk koordinering af store features. Refs #08.",
+        ],
+      },
+      {
+        category: "Board · Club DNA now comes before board members",
+        items: [
+          "EN · After season 1, Club DNA is now the required first step before board members appear or the first board plan can be negotiated. Board members are assigned from both your season-1 identity snapshot and chosen DNA, so voices like the Classics Purist only become a strong fit when your club direction supports it. If auto-accept has to step in, it now picks the best-matching DNA first. Refs #820.",
+          "DA · Efter sæson 1 er Klub-DNA nu det obligatoriske første trin, før bestyrelsesmedlemmer vises, eller den første bestyrelsesplan kan forhandles. Bestyrelsen sammensættes ud fra både dit sæson-1 identity-snapshot og dit valgte DNA, så stemmer som Klassiker-purist kun bliver et stærkt match når klubretningen understøtter det. Hvis auto-accept må tage over, vælger den nu først det bedst matchede DNA. Refs #820.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.38",
     date: "2026-05-31",
     label: "Beta",
