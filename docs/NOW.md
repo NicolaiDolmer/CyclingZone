@@ -1,12 +1,12 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🟢 Seneste close-outs** (detaljer i git-historik + issues/PRs): **1. juni** — **Codex world-class setup**: Discord MCP-token flyttet ud af `.mcp.json`-flowet, `npm run codex:doctor` tilføjet, Codex-labels oprettet, og Browser/Vercel/Supabase/Sentry verification recipes dokumenteret. Patch notes ikke nødvendige: docs/tooling-only, ingen brugerrettet runtime/UI. · **AI-Autopilot Fase 2** (v4.40): Loop D (Auto-PR-review) opgraderet til obligatorisk statuscheck ved at fjerne `continue-on-error` i `claude-review.yml`. Loop F (Subagent-orkestrering) etableret som Manus-orkestreringsdisciplin.
+> **🟢 Seneste close-outs** (detaljer i git-historik + issues/PRs): **1. juni — Sundhedsaudit** (Sentry + GitHub code-scanning + sidste 24t live + AI-opsætning på ny PC DOLMERPC): lockfile-drift false-positive fixet ([#876](https://github.com/NicolaiDolmer/CyclingZone/pull/876); lukkede spam-issues #835/#848/#863/#871/#875), 18 rate-limiting code-scanning-alerts triaget + dismissed (admin-gated false-positives; writes allerede rate-limited), Sentry-læseadgang genoprettet (officiel MCP + token-backbone `npm run audit:sentry`), og Sentrys #1-prod-fejl (stale-chunk efter deploy) fixet via `lazyWithRetry` ([#883](https://github.com/NicolaiDolmer/CyclingZone/pull/883)). · **AI-Autopilot review-gate gjort advisory igen** ([#884](https://github.com/NicolaiDolmer/CyclingZone/pull/884), erstattede #880): den obligatoriske fail-closed gate (#877) blokerede legitime PR'er på Anthropic-kvote i launch-ugen — `continue-on-error: true`, så de deterministiske checks (backend-tests/frontend-build/dependency-review) er de hårde gates. Audit-follow-ups #878 (board/dna atomicitet) / #879 (pagination) / #882 (achievements `.single`) er i gang i separate sessioner.
 
 ## Aktiv styring
 
 > **🎯 Next action:** **[#792](https://github.com/NicolaiDolmer/CyclingZone/issues/792) test-konto-blokade** — test-konto går i stå ved opret hold/manager. Åbner test-/preview-verify-loopet. Alternativ: **[#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691)** SUPABASE_SERVICE_KEY rotation.
 >
-> **🤖 Working agent:** Manus AI (Architect & Coordinator). **Afventer din hånd:** (1) Gennemførsel af udestående præmieudbetalinger via Admin-panel. (2) Verificering af AI-Autopilot Fase 2 i praksis ved næste PR.
+> **🤖 Working agent:** Ingen aktiv session. **Afventer din hånd:** gennemførsel af udestående præmieudbetalinger via Admin-panel.
 
 ---
 
@@ -26,7 +26,7 @@ Denne plan fokuserer på at lukke de sidste tekniske huller og gøre klar til To
 1.  **Kritiske her-og-nu (Stabilitet & Sikkerhed):**
     *   **#691: SUPABASE_SERVICE_KEY Rotation:** Kritisk for backend-sikkerhed.
     *   **#792: Onboarding-blokade:** Blokerer nye brugere.
-    *   **#863 / #848: Lockfile drift:** Skaber ustabilitet i builds.
+    *   ~~**#863 / #848: Lockfile drift**~~ ✅ Løst 1. juni (#876 — var false-positive fra agent-doctor JSON-parse, ikke reel drift).
 
 2.  **TdF Launch-kritiske (Deadline 20. juni):**
     *   **#676: Race Engine V1 Implementation:** Hjertet i spillet, stor teknisk risiko.
@@ -41,4 +41,4 @@ Denne plan fokuserer på at lukke de sidste tekniske huller og gøre klar til To
 
 ---
 
-_Opdateret af Manus AI den 1. juni 2026._
+_Opdateret af Claude (Claude Code) den 1. juni 2026 — sundhedsaudit-session close-out._
