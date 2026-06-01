@@ -21,7 +21,9 @@ import {
   finalizeBoardGoals,
   getPlanDuration,
 } from "./boardGoals.js";
+import { computeDnaSuggestions } from "./boardClubDna.js";
 import { deriveDefaultFocusFromIdentity } from "./boardIdentity.js";
+import { regenerateBoardMembersForTeam } from "./boardMembers.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 
 // Tærskler — Q-bekræftelse C (2026-05-05).
@@ -88,7 +90,7 @@ export async function processBoardAutoAcceptCron({
 
   const { data: humanTeams, error: teamsError } = await supabase
     .from("teams")
-    .select("id, user_id, name, balance, sponsor_income, division, season_1_identity_basis")
+    .select("id, user_id, name, balance, sponsor_income, division, season_1_identity_basis, team_dna_key")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
@@ -261,6 +263,30 @@ async function autoAcceptPendingPlan({
   // existing focus (renewal-case) eller "balanced".
   const identityBasis = team.season_1_identity_basis || null;
   const focus = existingBoard?.focus || deriveDefaultFocusFromIdentity(identityBasis);
+  let dnaKey = team.team_dna_key || null;
+
+  if (identityBasis && !dnaKey) {
+    const suggestedDna = computeDnaSuggestions(identityBasis)[0] || null;
+    dnaKey = suggestedDna?.key || null;
+
+    if (dnaKey) {
+      const { error: dnaUpdateError } = await supabase
+        .from("teams")
+        .update({
+          team_dna_key: dnaKey,
+          team_dna_chosen_at: now.toISOString(),
+        })
+        .eq("id", team.id);
+      if (dnaUpdateError) throw dnaUpdateError;
+
+      await regenerateBoardMembersForTeam({
+        supabase,
+        teamId: team.id,
+        identityBasis,
+        dnaKey,
+      });
+    }
+  }
 
   // Load riders + standing til mål-generering.
   const [ridersRes, standingRes] = await Promise.all([
@@ -278,6 +304,7 @@ async function autoAcceptPendingPlan({
     riders: ridersRes.data || [],
     standing: standingRes.data || null,
     identityBasis,
+    dnaKey,
   });
 
   const planDuration = getPlanDuration(planType);

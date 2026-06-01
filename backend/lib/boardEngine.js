@@ -89,6 +89,8 @@ export {
   LOW_SATISFACTION_THRESHOLD,
   selectBoardMembers,
   assignBoardMembersForTeam,
+  regenerateBoardMembersForTeam,
+  repairBoardMembersAfterDna,
   selectDominantMember,
   sampleReactionForFeedback,
   sampleReactionForGoal,

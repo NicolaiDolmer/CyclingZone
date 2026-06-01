@@ -154,9 +154,9 @@ Præmie-/pointskalaen er seedet med moderne herre-UCI-kategorier i `race_points`
 
 ### Sæson-livscyklus (S-02a+)
 - **Sæson 1 = Baseline**: ingen mål, ingen evaluering, sponsor-modifier 1.0×. Bestyrelsen observerer holds national kerne, U25-andel, specialisering og stjerneprofil → gemmer `season_1_identity_basis` JSONB på `teams`.
-- **Sæson 2 = Sekventiel onboarding**: `startSequentialNegotiation` kører ved sæson-1-slut → sletter baseline-rows, åbner window i `pending_5yr`. Forhandlingerne sker 5yr→3yr→1yr i wizard. Clubs DNA vælges i samme onboarding.
+- **Sæson 2 = Sekventiel onboarding**: `startSequentialNegotiation` kører ved sæson-1-slut → persisterer `season_1_identity_basis`, sletter baseline-rows og åbner window i `pending_5yr`. Manageren skal vælge Club DNA før board-medlemmer vises og før 5yr→3yr→1yr-wizarden kan signeres.
 - **Sæson 3+**: 1yr fornyes hvert år, 3yr hvert 3., 5yr hvert 5. Aldrig alle tre på én gang igen.
-- **Auto-accept** (S-02b): Cron T-3/T-1/T-0 (race_days_completed 2/4/≥5) sender reminder → kritisk notif → auto-sign med identity-baseret default-fokus.
+- **Auto-accept** (S-02b): Cron T-3/T-1/T-0 (race_days_completed 2/4/≥5) sender reminder → kritisk notif → auto-vælger anbefalet Club DNA hvis manageren ikke har valgt → auto-sign med identity/DNA-baseret default-fokus.
 
 ### Plantyper
 | Type | Varighed | Mål-evalueringsperiode |
@@ -169,13 +169,13 @@ Præmie-/pointskalaen er seedet med moderne herre-UCI-kategorier i `race_points`
 Mid-season check fyrer automatisk ved race_days_completed >= floor(race_days_total/2) (S-02g).
 
 ### Navngivne bestyrelsesmedlemmer (S-02c)
-- 9 arketyper, hvert hold får 5: 3 identity-matched + 2 non-conflicting wildcards (friction-akser: debt_aversion, youth_focus, results_pressure).
+- 9 arketyper, hvert hold får 5 efter Club DNA er valgt: 3 identity/DNA-matched + 2 non-conflicting wildcards (friction-akser: debt_aversion, youth_focus, results_pressure).
 - Formand = højeste alignment-score. Taler ved tvivl. Udskiftes ved 2× plan-udløb i træk under 30% sat (`teams.consecutive_low_satisfaction_expirations`).
 - 30 reaktions-templates pr. arketype = 270 total.
 
 ### Klub-DNA (S-02f)
 5 arketyper i `team_dna`-tabel: skandinavisk_udvikling · italiensk_klassiker · sprint_kommerciel · fransk_klatrer · britisk_allrounder.
-DNA påvirker: (1) 5yr-tradition-mål som bonus-mål, (2) mål-satisfaction weighting, (3) chairman-alignment ved replacement.
+DNA påvirker: (1) hvilke board-medlemmer manageren får, (2) 5yr-tradition-mål som bonus-mål, (3) mål-satisfaction weighting, (4) chairman-alignment ved replacement.
 Vælges i sæson-2-onboarding — final indtil drift-mekanik (S-02f.1, ikke leveret endnu).
 
 ### Mål-typer (S-02d — extended)

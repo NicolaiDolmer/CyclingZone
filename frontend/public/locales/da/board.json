@@ -148,7 +148,7 @@
   "dna": {
     "sectionLabel": "Klub-DNA",
     "selectHeading": "Vælg klubbens identitet",
-    "selectIntro": "Bestyrelsen har observeret sæson 1 og foreslår tre retninger. DNA påvirker målvægtning, klub-tradition-mål og hvilke bestyrelses-medlemmer du tildeles ved fremtidige formandsskift.",
+    "selectIntro": "Bestyrelsen har observeret sæson 1 og foreslår tre retninger. DNA påvirker målvægtning, klub-tradition-mål og hvilke bestyrelsesmedlemmer du får fra første plan.",
     "slot": {
       "national_match": "National-match",
       "specialization_match": "Specialiserings-match",
@@ -203,7 +203,8 @@
       "youth": "ungdomsaftryk",
       "balanced": "balancerede profil"
     },
-    "errorFallback": "Kunne ikke vælge DNA"
+    "errorFallback": "Kunne ikke vælge DNA",
+    "requiredBeforePlan": "Vælg klubbens DNA, før du forhandler med bestyrelsen."
   },
   "identity": {
     "defaultTitle": "Holdidentitet",
@@ -315,6 +316,7 @@
     "requirementsHeading": "Bestyrelsens krav",
     "startNegotiation": "Start forhandling →",
     "errorProposal": "Kunne ikke hente bestyrelsens forslag.",
+    "errorSign": "Kunne ikke signere bestyrelsesplanen.",
     "step2Title": "Forhandling",
     "step2Subtitle": "Gennemgå bestyrelsens krav ét ad gangen",
     "goalCounter": "Mål {current}/{total}",

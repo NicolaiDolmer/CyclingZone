@@ -43,10 +43,10 @@
       "season2Onboarding": {
         "title": "Sequential onboarding in season 2",
         "steps": [
-          "When season 1 ends, the board opens sequentially: 5-year plan, 3-year plan, 1-year plan.",
+          "When season 1 ends, you pick Club DNA first. Then the board opens sequentially: 5-year plan, 3-year plan, 1-year plan.",
           "Pick a focus direction (Balanced, Youth Development, Star Signing) and negotiate each target once in the wizard.",
-          "In season 2 you also pick your Club DNA, one of 5 archetypes that colour target suggestions and the board composition.",
-          "If you forget to negotiate before race day 5, the board takes over and picks a plan with default focus derived from your identity snapshot.",
+          "Your Club DNA is required before the first plan: it colours both target suggestions and the board composition.",
+          "If you forget to pick DNA and negotiate before race day 5, the system picks the best-matching DNA suggestion, assigns the board and signs a plan with default focus derived from your identity snapshot.",
           "After that the 1-year plan renews every year, the 3-year plan every 3rd year and the 5-year plan every 5th year. Never all three at once again."
         ]
       },
@@ -56,11 +56,11 @@
       },
       "namedMembers": {
         "title": "Named board members",
-        "text": "Your team has 5 named board members from a pool of 9 archetypes: The Sponsor Pleaser 💰, The Traditionalist 🎩, The Talent Scout 🔭, The Result Hunter 🏆, The Pragmatist ⚖️, The Youth Idealist 🌱, The Nationalist Purist 🏳️, The Classics Purist 🪨 and The GC Lover ⛰️. Three are matched to your team's season 1 identity, two are wildcards that bring contrast. The member with the highest alignment is chairman (★) and speaks when in doubt. Two consecutive plan expirations below 30% satisfaction replace the chairman."
+        "text": "Your team has 5 named board members from a pool of 9 archetypes: The Sponsor Pleaser 💰, The Traditionalist 🎩, The Talent Scout 🔭, The Result Hunter 🏆, The Pragmatist ⚖️, The Youth Idealist 🌱, The Nationalist Purist 🏳️, The Classics Purist 🪨 and The GC Lover ⛰️. They are assigned only after Club DNA is chosen, so three match your team's season 1 identity and chosen DNA, while two wildcards bring contrast. The member with the highest alignment is chairman (★) and speaks when in doubt. Two consecutive plan expirations below 30% satisfaction replace the chairman."
       },
       "clubDna": {
         "title": "Club DNA",
-        "text": "In season 2 you pick one of 5 club DNA archetypes: 🌲 Scandinavian development team, 🪨 Italian classics traditionalist, ⚡ Sprint-focused commercial, ⛰️ French climber heritage, 🎯 British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. monuments for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) future chairman swaps tip the alignment score towards matching archetypes."
+        "text": "In season 2 you pick one of 5 club DNA archetypes before the board is assembled: 🌲 Scandinavian development team, 🪨 Italian classics traditionalist, ⚡ Sprint-focused commercial, ⛰️ French climber heritage, 🎯 British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. monuments for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) board members and future chairman swaps tip towards matching archetypes."
       },
       "consequenceTiers": {
         "title": "Consequence tiers (6 layers)",

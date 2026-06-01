@@ -14,8 +14,8 @@ import { setLatestWindowTestMode } from "./boardTestMode.js";
  *
  * Atomisk, idempotent sekvens der genbruger eksisterende byggeklodser:
  *   1. resetBetaBoardProfiles — B1: ryd signerede planer, genskab ren baseline.
- *   2. startSequentialNegotiation — slet baseline-rows + tildel board-medlemmer
- *      + sæt seneste window board_negotiation_state = 'pending_5yr' (genåbner
+ *   2. startSequentialNegotiation — slet baseline-rows + sæt seneste window
+ *      board_negotiation_state = 'pending_5yr' (genåbner
  *      UI + crons via den eksisterende sæson-2-onboarding-sti).
  *   3. board_test_mode = true på seneste window → økonomi-laget neutraliseres.
  *

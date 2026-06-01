@@ -43,10 +43,10 @@
       "season2Onboarding": {
         "title": "Sekventiel onboarding i sæson 2",
         "steps": [
-          "Når sæson 1 slutter, åbner bestyrelsen sekventielt: 5-årsplan, 3-årsplan, 1-årsplan.",
+          "Når sæson 1 slutter, vælger du først Klub-DNA. Derefter åbner bestyrelsen sekventielt: 5-årsplan, 3-årsplan, 1-årsplan.",
           "Vælg en fokus-retning (Balanceret, Ungdomsudvikling, Stjernesignering) og forhandl hvert mål én gang i wizard'en.",
-          "I sæson 2 vælger du også dit Klub-DNA, én af 5 arketyper der farver mål-forslag og bestyrelsens sammensætning.",
-          "Glemmer du at forhandle inden race-day 5, tager bestyrelsen over og vælger en plan med default-fokus afledt af dit identity-snapshot.",
+          "Dit Klub-DNA er obligatorisk før første plan: det farver både mål-forslag og bestyrelsens sammensætning.",
+          "Glemmer du at vælge DNA og forhandle inden race-day 5, vælger systemet det bedst matchede DNA-forslag, tildeler bestyrelsen og signer en plan med default-fokus afledt af dit identity-snapshot.",
           "Derefter fornyes 1yr-planen hvert år, 3yr-planen hvert 3. år og 5yr-planen hvert 5. år. Aldrig alle tre på én gang igen."
         ]
       },
@@ -56,11 +56,11 @@
       },
       "namedMembers": {
         "title": "Navngivne bestyrelsesmedlemmer",
-        "text": "Dit hold har 5 navngivne bestyrelsesmedlemmer fra en pool på 9 arketyper: Sponsoraten 💰, Traditionalisten 🎩, Talentspejderen 🔭, Resultatjægeren 🏆, Pragmatikeren ⚖️, Ungdoms-idealisten 🌱, Nationalist-purist 🏳️, Klassiker-purist 🪨 og GC-elsker ⛰️. Tre matches til dit holds sæson-1-identitet, to er wildcards der bringer kontrast. Medlemmet med højeste alignment er formand (★) og taler ved tvivl. 2× plan-udløb under 30% tilfredshed i træk udskifter formanden."
+        "text": "Dit hold har 5 navngivne bestyrelsesmedlemmer fra en pool på 9 arketyper: Sponsoraten 💰, Traditionalisten 🎩, Talentspejderen 🔭, Resultatjægeren 🏆, Pragmatikeren ⚖️, Ungdoms-idealisten 🌱, Nationalist-purist 🏳️, Klassiker-purist 🪨 og GC-elsker ⛰️. De tildeles først efter Klub-DNA er valgt, så tre matches til dit holds sæson-1-identitet og valgte DNA, mens to wildcards bringer kontrast. Medlemmet med højeste alignment er formand (★) og taler ved tvivl. 2× plan-udløb under 30% tilfredshed i træk udskifter formanden."
       },
       "clubDna": {
         "title": "Klub-DNA",
-        "text": "I sæson 2 vælger du én af 5 klub-DNA-arketyper: 🌲 Skandinavisk udviklingshold, 🪨 Italiensk klassiker-traditionalist, ⚡ Sprint-fokuseret kommerciel, ⛰️ Fransk klatrer-arv, 🎯 Britisk all-rounder. DNA påvirker tre ting: (1) 5-årsplaner får et ekstra tradition-mål (fx monumenter for italiensk_klassiker), (2) mål der matcher DNA-prioriteter får boosted satisfaction-bonus og -penalty, (3) ved fremtidige formandsskifter tipper DNA alignment-scoren mod passende arketyper."
+        "text": "I sæson 2 vælger du én af 5 klub-DNA-arketyper før bestyrelsen sammensættes: 🌲 Skandinavisk udviklingshold, 🪨 Italiensk klassiker-traditionalist, ⚡ Sprint-fokuseret kommerciel, ⛰️ Fransk klatrer-arv, 🎯 Britisk all-rounder. DNA påvirker tre ting: (1) 5-årsplaner får et ekstra tradition-mål (fx monumenter for italiensk_klassiker), (2) mål der matcher DNA-prioriteter får boosted satisfaction-bonus og -penalty, (3) board-medlemmer og fremtidige formandsskifter tipper mod passende arketyper."
       },
       "consequenceTiers": {
         "title": "Konsekvens-tier (6 lag)",

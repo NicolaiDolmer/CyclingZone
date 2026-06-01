@@ -1525,10 +1525,10 @@ export default function BoardPage() {
       setPreviewError("");
       const proposal = await fetchBoardProposal(wizardFocus, wizardPlanType);
       if (ignore) return;
-      if (!proposal) {
+      if (!proposal || proposal.error) {
         setPreviewGoals([]);
         setNegotiationOptions([]);
-        setPreviewError(t("wizard.errorProposal"));
+        setPreviewError(proposal?.error || t("wizard.errorProposal"));
         setPreviewLoading(false);
         return;
       }
@@ -1621,8 +1621,15 @@ export default function BoardPage() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ focus, plan_type: planType }),
     });
-    if (!res.ok) return null;
-    return res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        error: data?.code === "BOARD_DNA_REQUIRED"
+          ? data.error || t("dna.requiredBeforePlan")
+          : data.error || t("wizard.errorProposal"),
+      };
+    }
+    return data;
   }
 
   function openWizard(planType, isSetup = false) {
@@ -1663,8 +1670,8 @@ export default function BoardPage() {
     let goals = previewGoals;
     if (!goals.length) {
       const proposal = await fetchBoardProposal(wizardFocus, wizardPlanType);
-      if (!proposal) {
-        setPreviewError(t("wizard.errorProposal"));
+      if (!proposal || proposal.error) {
+        setPreviewError(proposal?.error || t("wizard.errorProposal"));
         return;
       }
       goals = proposal.goals || [];
@@ -1726,6 +1733,14 @@ export default function BoardPage() {
           goals: finalGoals,
         }),
       });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPreviewError(data?.code === "BOARD_DNA_REQUIRED"
+          ? data.error || t("dna.requiredBeforePlan")
+          : data.error || t("wizard.errorSign"));
+        return;
+      }
 
       if (res.ok) {
         // S-02h: Multi-plan renewal queue — auto-advance to next expired plan
@@ -1809,6 +1824,10 @@ export default function BoardPage() {
         setDnaError(data.error || t("dna.errorFallback"));
         return;
       }
+      const data = await res.json().catch(() => ({}));
+      setTeamDna(data.team_dna || null);
+      setTeamMembers(Array.isArray(data.team_members) ? data.team_members : []);
+      setDnaSuggestions([]);
       await loadAll();
     } finally {
       setDnaChooseBusy(false);
@@ -1896,7 +1915,7 @@ export default function BoardPage() {
         </div>
       )}
 
-      {!isBaselinePhase && !hasAnyPlan && setupNextPlanType && (
+      {!isBaselinePhase && !hasAnyPlan && setupNextPlanType && teamDna && (
         <BoardEmptyState
           onOpenWizard={() => openWizard(setupNextPlanType, true)}
           onStartTour={() => startTour("board")}
@@ -1913,11 +1932,6 @@ export default function BoardPage() {
 
       <BoardIdentityCard identityProfile={identityProfile} />
 
-      {/* S-02c · Bestyrelse-medlems-grid */}
-      {!isBaselinePhase && teamMembers.length > 0 && (
-        <BoardMembersGrid members={teamMembers} />
-      )}
-
       {/* S-02f · Klub-DNA */}
       {!isBaselinePhase && teamDna && <ClubDnaBadge dna={teamDna} />}
       {!isBaselinePhase && !teamDna && dnaSuggestions.length > 0 && (
@@ -1927,6 +1941,11 @@ export default function BoardPage() {
           busy={dnaChooseBusy}
           error={dnaError}
         />
+      )}
+
+      {/* S-02c · Bestyrelse-medlems-grid */}
+      {!isBaselinePhase && teamDna && teamMembers.length > 0 && (
+        <BoardMembersGrid members={teamMembers} />
       )}
 
       {/* S-02e · Bonus-tilbud (lag 6) */}

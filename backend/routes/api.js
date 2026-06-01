@@ -131,6 +131,7 @@ import {
   isValidBoardRequestType,
   isValidDnaKey,
   loadGoalContextForBoard,
+  regenerateBoardMembersForTeam,
   resolveBoardRequest,
 } from "../lib/boardEngine.js";
 import {
@@ -5583,6 +5584,30 @@ function serializeBoardRequest(requestRow) {
   };
 }
 
+function decorateTeamBoardMembers(teamBoardMembers = []) {
+  return (teamBoardMembers || [])
+    .map((member) => {
+      const archetype = getArchetypeByKey(member.archetype_key);
+      if (!archetype) return null;
+      return {
+        archetype_key: member.archetype_key,
+        selection_kind: member.selection_kind,
+        alignment_score: member.alignment_score,
+        is_chairman: member.is_chairman,
+        assigned_at: member.assigned_at,
+        label: archetype.label,
+        emoji: archetype.emoji,
+        short_description: archetype.short_description,
+        long_description: archetype.long_description,
+      };
+    })
+    .filter(Boolean);
+}
+
+function requiresBoardDnaChoice(team = null) {
+  return Boolean(team?.season_1_identity_basis && !team?.team_dna_key);
+}
+
 // GET /api/board/status — alle tre parallelle planer for det autentificerede hold
 router.get("/board/status", requireAuth, async (req, res) => {
   try {
@@ -5795,23 +5820,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
 
     // S-02c · Decorér team_board_members med arketype-data så frontend kan rendere
     // avatar-grid uden at importere boardArchetypes på frontend-side.
-    const teamMembersDecorated = teamBoardMembers
-      .map((member) => {
-        const archetype = getArchetypeByKey(member.archetype_key);
-        if (!archetype) return null;
-        return {
-          archetype_key: member.archetype_key,
-          selection_kind: member.selection_kind,
-          alignment_score: member.alignment_score,
-          is_chairman: member.is_chairman,
-          assigned_at: member.assigned_at,
-          label: archetype.label,
-          emoji: archetype.emoji,
-          short_description: archetype.short_description,
-          long_description: archetype.long_description,
-        };
-      })
-      .filter(Boolean);
+    const teamMembersDecorated = decorateTeamBoardMembers(teamBoardMembers);
 
     // S-02e · Aktive konsekvenser (lag 2-6) — frontend renderer
     // BoardConsequencesPanel og BonusOfferCard på baggrund af denne liste.
@@ -6066,6 +6075,13 @@ router.post("/board/dna-choose", requireAuth, boardWriteLimiter, async (req, res
       .eq("id", req.team.id);
     if (updateError) return res.status(500).json({ error: updateError.message });
 
+    const membersResult = await regenerateBoardMembersForTeam({
+      supabase,
+      teamId: req.team.id,
+      identityBasis: existing.season_1_identity_basis,
+      dnaKey: dna_key,
+    });
+
     const dna = getDnaByKey(dna_key);
     res.json({
       ok: true,
@@ -6079,6 +6095,7 @@ router.post("/board/dna-choose", requireAuth, boardWriteLimiter, async (req, res
         long_description: dna.long_description,
         long_description_key: `dna.${dna.key}.longDescription`,
       } : null,
+      team_members: decorateTeamBoardMembers(membersResult.members || []),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -6099,6 +6116,12 @@ router.post("/board/proposal", requireAuth, boardWriteLimiter, async (req, res) 
     }
 
     const context = await loadBoardPlanningContext(teamId);
+    if (requiresBoardDnaChoice(context.team)) {
+      return res.status(409).json({
+        error: "Klub-DNA skal vælges før bestyrelsesplanen kan forhandles",
+        code: "BOARD_DNA_REQUIRED",
+      });
+    }
     const board = context.boards.find(b => b.plan_type === plan_type) || null;
     const proposal = buildBoardProposal({
       focus,
@@ -6133,6 +6156,12 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
 
     const context = await loadBoardPlanningContext(teamId);
     const { activeSeason, boards, riders, standing, team } = context;
+    if (requiresBoardDnaChoice(team)) {
+      return res.status(409).json({
+        error: "Klub-DNA skal vælges før bestyrelsesplanen kan signeres",
+        code: "BOARD_DNA_REQUIRED",
+      });
+    }
     const existingBoard = boards.find(b => b.plan_type === plan_type) || null;
     const planDuration = getPlanDuration(plan_type);
     const startSeasonNumber = activeSeason?.number ?? 1;

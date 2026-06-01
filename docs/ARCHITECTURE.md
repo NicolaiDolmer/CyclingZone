@@ -218,6 +218,7 @@ Season flow notes:
 
 ### Board
 - Board wizard-preview, signering og kontraktfornyelse går gennem `/api/board/*` og den delte `backend/lib/boardEngine.js`
+- Første proposal/sign efter sæson-1-basis kræver valgt Club DNA; ellers returnerer API `409 BOARD_DNA_REQUIRED`.
 - Frontend vælger mellem server-genererede board-forslag og forhandlingsvarianter i stedet for selv at konstruere de endelige mål
 - `GET /api/board/status` er den kanoniske read-path for board-state; både Dashboard og Board-siden læser herfra i stedet for egne board-queries
 - Proposal- og request-logik tuner nu mål efter divisionens squad-limits, nuværende standings og en afledt holdprofil baseret på rytternes stats/U25-mix
@@ -293,9 +294,9 @@ Season flow notes:
 | `boardRequests.js` | `isValidBoardFocus`, `isValidBoardPlanType`, `isValidBoardRequestType`, `getBoardRequestDefinition`, `buildBoardRequestOptions`, `resolveBoardRequest`, `getBoardRequestAvailability`, `isMajorPivotRequest` |
 | `boardEvaluation.js` | `buildBoardOutlook`, `calculateBoardSatisfaction`, `satisfactionToModifier`, `evaluateBoardSeason`, `calculateBoardPerformance` |
 | `boardUtils.js` | `clamp`, `clampSatisfaction`, `roundNumber`, `safeJsonParse`, `averageNumbers`, `averageTopScores`, `clampToStep`, `scoreHigherBetter`, `scoreLowerBetter`, `scoreDebtGoal` |
-| `boardSequentialNegotiation.js` | `startSequentialNegotiation` — S-02a: sletter baseline-rows, åbner pending_5yr-window, assignerer board-members + DNA-forslag (S-02b+S-02c+S-02f) |
+| `boardSequentialNegotiation.js` | `startSequentialNegotiation` — S-02a/S-02b: sletter baseline-rows, persisterer `season_1_identity_basis` og åbner pending_5yr-window. Board-members tildeles først i DNA-valg/auto-accept. |
 | `boardArchetypes.js` | 9 arketyper (Sponsoraten, Traditionalisten, Talentspejderen, Resultatjægeren, Pragmatikeren, Ungdoms-idealisten, Nationalist-purist, Klassiker-purist, GC-elsker) — 30 reactions/arketype = 270 templates (S-02c) |
-| `boardMembers.js` | `selectBoardMembers`, `assignBoardMembersForTeam`, `selectDominantMember`, `sampleReactionForFeedback`, `sampleReactionForGoal`, `processReplacementTrigger` (S-02c) |
+| `boardMembers.js` | `selectBoardMembers`, `assignBoardMembersForTeam`, `regenerateBoardMembersForTeam`, `repairBoardMembersAfterDna`, `selectDominantMember`, `sampleReactionForFeedback`, `sampleReactionForGoal`, `processReplacementTrigger` (S-02c) |
 | `boardClubDna.js` | 5 DNA-arketyper + `computeDnaSuggestions`, `buildDnaTraditionGoal`, `applyDnaWeightingToGoals` (S-02f) |
 | `boardConsequences.js` | `evaluateAndApplyConsequences`, `assertSigningAllowed`, `selectForcedListingRider`, `getActiveSponsorPulloutFactor`, `expireSeasonScopedConsequences`, `acceptBonusOffer`, `declineBonusOffer`, `getActiveConsequencesForTeam` (S-02e) |
 | `boardAutoAccept.js` | `processBoardAutoAcceptCron` — T-3/T-1/auto-sign ved race_days_completed (S-02b) |

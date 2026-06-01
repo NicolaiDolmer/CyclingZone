@@ -12,6 +12,7 @@
     "seed:uci-race-points": "node scripts/seedUciMenRacePoints.js",
     "economy:baseline": "node scripts/economyBaselineSimulation.js",
     "season:end:verify-repair": "node scripts/verifySeasonEndRepair.js",
+    "board:repair-members-after-dna": "node scripts/repairBoardMembersAfterDna.js",
     "test": "node --test --import ./test-setup.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

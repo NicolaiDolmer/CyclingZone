@@ -148,7 +148,7 @@
   "dna": {
     "sectionLabel": "Club DNA",
     "selectHeading": "Choose your club identity",
-    "selectIntro": "The board has observed season 1 and suggests three directions. DNA shapes target weighting, club tradition targets and which board members you get at future chairman shifts.",
+    "selectIntro": "The board has observed season 1 and suggests three directions. DNA shapes target weighting, club tradition targets and which board members you get from the first plan.",
     "slot": {
       "national_match": "National match",
       "specialization_match": "Specialisation match",
@@ -203,7 +203,8 @@
       "youth": "youth imprint",
       "balanced": "balanced profile"
     },
-    "errorFallback": "Could not select DNA"
+    "errorFallback": "Could not select DNA",
+    "requiredBeforePlan": "Choose your club DNA before negotiating with the board."
   },
   "identity": {
     "defaultTitle": "Team identity",
@@ -315,6 +316,7 @@
     "requirementsHeading": "The board's requirements",
     "startNegotiation": "Start negotiation →",
     "errorProposal": "Could not fetch the board's proposal.",
+    "errorSign": "Could not sign the board plan.",
     "step2Title": "Negotiation",
     "step2Subtitle": "Review the board's requirements one at a time",
     "goalCounter": "Target {current}/{total}",

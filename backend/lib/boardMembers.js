@@ -4,7 +4,7 @@
 // Q-bekræftelser (2026-05-05 session):
 //   A1: 5 medlemmer fast pr. team
 //   A2: 3 identity-matched + 2 non-conflicting wildcards (debt_aversion/youth_focus/results_pressure)
-//   A3: tildeles ved sæson-1-slut i startSequentialNegotiation
+//   A3/v4.39: tildeles efter Club DNA er valgt, via dna-choose/auto-accept
 //   A6: kategori-match med fallback til chairman ved tvivl
 //   A7: udskift KUN formanden (=højeste alignment_score) ved replacement-trigger
 //   A8: per-team counter på teams.consecutive_low_satisfaction_expirations
@@ -34,7 +34,7 @@ function throwIfSupabaseError(error, message) {
 
 // Deterministisk seed-baseret pseudo-random fra string.
 // Bruges til at vælge wildcards stabilt fra (team_id + season_observed)-hash,
-// så replay af startSequentialNegotiation returnerer samme members.
+// så replay af DNA-valg/repair returnerer samme members.
 function seededShuffle(items, seed) {
   const numericSeed = Array.from(String(seed)).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
   const indexed = items.map((item, idx) => ({ item, sortKey: ((idx + 1) * numericSeed) % 9999 }));
@@ -68,9 +68,8 @@ export function selectBoardMembers({ identityBasis, teamId = "", seedExtra = "",
   // 1. Score alle 9 arketyper, sorter desc.
   // S-02f · DNA-bias: hvis manageren har valgt en klub-DNA, tilføjes
   // member_alignment_bonus[archetypeKey] til alignment_score så DNA påvirker
-  // hvilke 5 medlemmer der vælges. Tildeling sker først ved sæson-1-slut, så
-  // dnaKey er typisk null ved første assignment — bias slår først ind ved
-  // gen-tildeling efter chairman-replacement i senere sæsoner.
+  // hvilke 5 medlemmer der vælges. Første tildeling sker efter DNA-valg, så
+  // bias slår ind fra første board-plan.
   const scored = BOARD_ARCHETYPE_KEYS.map((key) => {
     const archetype = BOARD_ARCHETYPES[key];
     const baseScore = computeArchetypeAlignmentScore(archetype, identityBasis);
@@ -88,7 +87,6 @@ export function selectBoardMembers({ identityBasis, teamId = "", seedExtra = "",
 
   // 2. Top-3 identity-matches
   const identityPicks = scored.slice(0, IDENTITY_PICKS);
-  const identityKeys = new Set(identityPicks.map((p) => p.key));
 
   // 3. Wildcards: vælg blandt de 6 resterende, undgå conflict med identityPicks + valgte wildcards.
   const remaining = scored.slice(IDENTITY_PICKS);
@@ -174,6 +172,76 @@ export async function assignBoardMembersForTeam({ supabase, teamId, identityBasi
   throwIfSupabaseError(insertError, "Could not insert team board members");
 
   return { assigned: rows.length, skipped: false, members: selection };
+}
+
+export async function regenerateBoardMembersForTeam({ supabase, teamId, identityBasis, dnaKey = null } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client is required");
+  if (!teamId) throw new Error("teamId is required");
+  if (!identityBasis) {
+    return { assigned: 0, deleted: 0, skipped: true, reason: "missing_identity_basis", members: [] };
+  }
+  if (!dnaKey) {
+    return { assigned: 0, deleted: 0, skipped: true, reason: "missing_dna", members: [] };
+  }
+
+  const { data: deleted, error: deleteError } = await supabase
+    .from("team_board_members")
+    .delete()
+    .eq("team_id", teamId)
+    .select("id");
+  throwIfSupabaseError(deleteError, "Could not delete existing team board members");
+
+  const result = await assignBoardMembersForTeam({ supabase, teamId, identityBasis, dnaKey });
+  return {
+    ...result,
+    deleted: (deleted || []).length,
+  };
+}
+
+export async function repairBoardMembersAfterDna({ supabase } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client is required");
+
+  const { data: teams, error } = await supabase
+    .from("teams")
+    .select("id, season_1_identity_basis, team_dna_key")
+    .eq("is_ai", false)
+    .eq("is_bank", false)
+    .eq("is_frozen", false);
+  throwIfSupabaseError(error, "Could not load teams for board-member DNA repair");
+
+  const summary = {
+    teams_checked: 0,
+    teams_repaired: 0,
+    members_deleted: 0,
+    members_assigned: 0,
+    skipped: 0,
+  };
+
+  for (const team of teams || []) {
+    summary.teams_checked += 1;
+    if (!team.season_1_identity_basis || !team.team_dna_key) {
+      summary.skipped += 1;
+      continue;
+    }
+
+    const result = await regenerateBoardMembersForTeam({
+      supabase,
+      teamId: team.id,
+      identityBasis: team.season_1_identity_basis,
+      dnaKey: team.team_dna_key,
+    });
+
+    if (result.skipped) {
+      summary.skipped += 1;
+      continue;
+    }
+
+    summary.teams_repaired += 1;
+    summary.members_deleted += result.deleted || 0;
+    summary.members_assigned += result.assigned || 0;
+  }
+
+  return summary;
 }
 
 /**

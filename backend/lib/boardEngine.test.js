@@ -1226,6 +1226,8 @@ test("processBoardAutoAcceptCron auto-signs default plan at race_days_completed=
   assert.equal(created.focus, "youth_development", "Identity youth_level=high → youth_development focus");
   assert.equal(created.negotiation_status, "completed");
   assert.ok(created.current_goals?.length > 0, "Default-mål skal være populeret");
+  assert.equal(state.teams[0].team_dna_key, "skandinavisk_udvikling");
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
 });
 
 test("processBoardAutoAcceptCron: per-team fail kalder captureExceptionFn med teamId+seasonId+raceDaysCompleted (Refs #614 P2-A)", async () => {
@@ -1285,6 +1287,7 @@ function makeAutoAcceptState({
       sponsor_income: 240000,
       name: "Test Hold",
       season_1_identity_basis: identityBasis,
+      team_dna_key: null,
     }],
     riders: [],
     seasons: [{
@@ -1295,6 +1298,7 @@ function makeAutoAcceptState({
       race_days_total: 60,
     }],
     board_profiles: [],
+    team_board_members: [],
     season_standings: [],
     transfer_windows: [{
       id: "tw-1",
@@ -1315,6 +1319,8 @@ import {
   computeArchetypeAlignmentScore,
   selectBoardMembers,
   assignBoardMembersForTeam,
+  regenerateBoardMembersForTeam,
+  repairBoardMembersAfterDna,
   selectDominantMember,
   sampleReactionForFeedback,
   sampleReactionForGoal,
@@ -1593,7 +1599,7 @@ test("processReplacementTrigger skipper AI/bank/frozen teams (Q-batch 1A Q8 — 
   assert.equal(result.replaced, false);
 });
 
-test("startSequentialNegotiation tildeler 5 board-medlemmer pr. human team (S-02c)", async () => {
+test("startSequentialNegotiation waits to assign board members until DNA is chosen", async () => {
   const state = {
     teams: [
       {
@@ -1624,15 +1630,59 @@ test("startSequentialNegotiation tildeler 5 board-medlemmer pr. human team (S-02
   const result = await startSequentialNegotiation({ supabase });
 
   assert.equal(result.identity_bases_written, 1, "kun team-1 manglede basis");
-  assert.equal(result.board_members_assigned, 10, "5 medlemmer × 2 teams");
+  assert.equal(result.board_members_assigned, 0);
   assert.equal(result.window_state, BOARD_NEGOTIATION_STATES.PENDING_5YR);
 
   const team1Members = state.team_board_members.filter((m) => m.team_id === "team-1");
   const team2Members = state.team_board_members.filter((m) => m.team_id === "team-2");
-  assert.equal(team1Members.length, 5);
-  assert.equal(team2Members.length, 5);
-  assert.equal(team1Members.filter((m) => m.is_chairman).length, 1);
-  assert.equal(team2Members.filter((m) => m.is_chairman).length, 1);
+  assert.equal(team1Members.length, 0);
+  assert.equal(team2Members.length, 0);
+});
+
+test("regenerateBoardMembersForTeam rebuilds 5 members with selected DNA", async () => {
+  const state = {
+    team_board_members: [
+      { id: "old-1", team_id: "team-1", archetype_key: "gc_elsker", selection_kind: "identity", alignment_score: 4, is_chairman: true },
+    ],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  const result = await regenerateBoardMembersForTeam({
+    supabase,
+    teamId: "team-1",
+    identityBasis: FRENCH_GC_BASIS,
+    dnaKey: "italiensk_klassiker",
+  });
+
+  assert.equal(result.deleted, 1);
+  assert.equal(result.assigned, TEAM_BOARD_MEMBERS_COUNT);
+  const members = state.team_board_members.filter((m) => m.team_id === "team-1");
+  assert.equal(members.length, TEAM_BOARD_MEMBERS_COUNT);
+  assert.equal(members.filter((m) => m.is_chairman).length, 1);
+  assert.ok(members.some((m) => m.archetype_key === "klassiker_purist"));
+});
+
+test("repairBoardMembersAfterDna is idempotent and skips teams without DNA", async () => {
+  const state = {
+    teams: [
+      { id: "team-1", is_ai: false, is_bank: false, is_frozen: false, season_1_identity_basis: FRENCH_GC_BASIS, team_dna_key: "fransk_klatrer" },
+      { id: "team-2", is_ai: false, is_bank: false, is_frozen: false, season_1_identity_basis: FRENCH_GC_BASIS, team_dna_key: null },
+      { id: "team-ai", is_ai: true, is_bank: false, is_frozen: false, season_1_identity_basis: FRENCH_GC_BASIS, team_dna_key: "fransk_klatrer" },
+    ],
+    team_board_members: [
+      { id: "old-1", team_id: "team-1", archetype_key: "klassiker_purist", selection_kind: "identity", alignment_score: 4, is_chairman: true },
+    ],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  const summary = await repairBoardMembersAfterDna({ supabase });
+
+  assert.equal(summary.teams_checked, 2);
+  assert.equal(summary.teams_repaired, 1);
+  assert.equal(summary.skipped, 1);
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-2").length, 0);
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-ai").length, 0);
 });
 
 function makeFakeSupabase(state) {
