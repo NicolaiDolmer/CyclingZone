@@ -71,7 +71,7 @@
 - Guaranteed sale til AI sker kun for en ejet rytter med `is_guaranteed_sale = true` og ingen menneskelige bud (intern routing fortsat via `is_bank=true`-flaget)
 - Hvis transfervinduet er lukket ved auktionsafslutning, sættes rytteren på `pending_team_id` i stedet for at skifte hold med det samme
 - Squad limit kontrolleres ved auktionsafslutning, ikke kun ved budgivning
-- Squad-limit vurderes ud fra current riders + `pending_team_id` + aktive indlån (`loan_agreements` hvor holdet er låner)
+- Squad-limit vurderes ud fra current riders + `pending_team_id` + aktive/`window_pending` indlån (`loan_agreements` hvor holdet er låner)
 - Hvis vinderen ikke længere har råd eller ikke har plads på holdet, gennemføres ingen overdragelse og ingen forkert payout må ske
 
 ---
@@ -79,12 +79,12 @@
 ## Transfervindue
 
 - Status styres af admin-endpoints: `POST /api/admin/transfer-window/open` og `POST /api/admin/transfer-window/close`
-- Når ÅBENT: handlers aktiveres øjeblikkeligt. Når LUKKET: auktioner kan stadig parkeres via `pending_team_id`, og gensidigt accepterede direkte transfers/swaps kan lande som `window_pending` frem for øjeblikkeligt ejerskifte.
+- Når ÅBENT: handlers aktiveres øjeblikkeligt. Når LUKKET: auktioner kan stadig parkeres via `pending_team_id`, og gensidigt accepterede direkte transfers/swaps/loans kan lande som `window_pending` frem for øjeblikkelig registrering.
 - Auktioner: Når LUKKET → rider sættes som `pending_team_id`, aktiveres ved næste åbning af vinduet.
 - Transfers/swaps: Parkerede `window_pending` handler er låst mod manager-annullering efter gensidig accept og gennemføres først ved næste vindueåbning efter re-check af ejerskab, saldo og squad-limit.
-- Lån: Følg aktuel runtime/contract audit før regelændringer; rider-lån og finance-lån er separate domæner.
+- Lån: Rider-lån og finance-lån er separate domæner. Rider-lån kan accepteres/buyoutes mens vinduet er lukket; betaling sker ved aftale, og aktivering/permanent registrering sker ved næste vindueåbning.
 - Aktive lejeaftaler tæller mod lånerens holdgrænse, så squad-limit checks på markedet inkluderer både ventende handler og lånte ryttere
-- Rider-lån med `loan_fee` opkræver første dækkede sæson ved aktivering og senere dækkede sæsoner ved sæsonstart
+- Rider-lån med `loan_fee` opkræver første dækkede sæson ved accept og senere dækkede sæsoner ved sæsonstart
 - Reject, withdraw og cancel-handlinger er tilladt uanset vinduesstatus.
 - Swaps og lån følger samme vindueslogik
 

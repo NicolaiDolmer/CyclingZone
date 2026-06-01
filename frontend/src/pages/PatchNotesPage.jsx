@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.42",
+    date: "2026-06-01",
+    label: "Beta",
+    changes: [
+      {
+        category: "Transfers · Loan agreements work while the window is closed",
+        items: [
+          "EN · Rider loan proposals, loan acceptances and buy-option exercises now follow the same closed-window model as transfers: managers can agree the deal while the transfer window is closed, money moves immediately, and the loan or permanent rider registration is completed when the window opens. Refs #19.",
+          "DA · Rytter-lejeforslag, accept af lejeaftaler og udnyttelse af købsoption følger nu samme model som transfers udenfor vinduet: Managere kan aftale handlen mens transfervinduet er lukket, pengene flyttes med det samme, og lejen eller det permanente rytterskift registreres når vinduet åbner. Refs #19.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.41",
     date: "2026-06-01",
     label: "Beta",

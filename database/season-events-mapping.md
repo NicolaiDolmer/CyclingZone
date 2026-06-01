@@ -13,9 +13,9 @@ Manuelt via admin (ingen automatisk cron). Tabel: `transfer_windows`, felt: `sta
 | Hændelse | Placering | Status |
 |---|---|---|
 | Sæt `transfer_windows.status = 'open'` | Admin-handling i DB | ✅ Tabel eksisterer |
-| Aktiver ventende transfers: ryttere med `pending_team_id` sættes til `team_id = pending_team_id`, `pending_team_id = null` | Ingen kode fundet — sker ikke automatisk | ❌ Mangler endpoint |
+| Aktiver ventende transfers: ryttere med `pending_team_id` sættes til `team_id = pending_team_id`, `pending_team_id = null` | `backend/routes/api.js` `POST /api/admin/transfer-window/open` | ✅ Implementeret |
 | Notifikation til alle managers: "Transfervinduet er åbent" | Ingen kode fundet | ❌ Mangler |
-| Aktiver ventende lejeaftaler (`loan_agreements.status = 'pending'` → `active` hvis sæson passer) | Ingen kode fundet | ❌ Mangler |
+| Aktiver parkerede lejeaftaler (`loan_agreements.status = 'window_pending'` → `active`/`buyout`) | `backend/routes/api.js` `flushWindowPendingLoans` | ✅ Implementeret |
 | Aktiver ventende byttehandler (`swap_offers.status = 'awaiting_confirmation'`) | Ikke relevant — skifter omgående | — |
 
 ### Adfærd mens vinduet er åbent

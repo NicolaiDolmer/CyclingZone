@@ -253,7 +253,7 @@ CREATE TABLE loan_agreements (
   end_season    INTEGER NOT NULL,
   buy_option_price INTEGER,
   status TEXT NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending','active','completed','rejected','cancelled','buyout')),
+    CHECK (status IN ('pending','active','window_pending','completed','rejected','cancelled','buyout')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CHECK (end_season >= start_season)

@@ -112,7 +112,7 @@ export async function getTeamMarketState(supabase, teamId) {
         .from("loan_agreements")
         .select("id", { count: "exact", head: true })
         .eq("to_team_id", teamId)
-        .eq("status", "active")
+        .in("status", ["active", "window_pending"])
     ),
   ]);
 

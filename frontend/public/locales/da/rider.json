@@ -299,6 +299,7 @@
   "loanOffer": {
     "buttonOpen": "📋 Foreslå lejeaftale",
     "windowClosed": "Transfervindue lukket",
+    "windowPendingHint": "Transfervinduet er lukket: Du kan foreslå lejeaftalen nu. Hvis udlejeren accepterer, betales gebyret nu, og lejen starter når vinduet åbner.",
     "seasonPlaceholder": "Sæsonnummer (fx. 3)",
     "feePlaceholder": "Lejegebyr (CZ$)",
     "buyOptionPlaceholder": "Købsoption (CZ$), valgfri",
