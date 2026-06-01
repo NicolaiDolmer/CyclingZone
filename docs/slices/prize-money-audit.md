@@ -11,6 +11,19 @@
 4. **Reconciliation-scope:** Sæson 1 og frem (ingen ældre data — beta startede i sæson 1).
 5. **Issue-strategi:** Opret kun **epic nu**; under-issues skæres efter de faktiske fund i Fase 1+2 (ikke spekulativt).
 6. **ProSeries-tjek:** Claude laver **web-udkast** (UCI 2026-kalender side-by-side mod seed-CSV); ejer validerer.
+7. **Udbetaling:** Ingen præmier udbetales før hele gennemgangen er færdig og godkendt. (Korrektion 2026-06-01.)
+
+## Krav-tilføjelser (ejer, 2026-06-01 runde 2)
+
+**R1 — AI/holdsløse ryttere skal stige i værdi + løn (uden at hold modtager penge).**
+- **Status: ✅ virker allerede for præmie-delen.** `updateRiderValues` ([economyEngine.js:1172-1208](backend/lib/economyEngine.js)) summerer `race_results.prize_money` pr. `rider_id` **uden team_id-filter** → `prize_earnings_bonus`. `market_value = max(5,uci_points)×4000 + prize_earnings_bonus` og `salary = round(market_value × 0.10)` er GENERATED kolonner der gælder *alle* ryttere. Så AI-ryttere stiger korrekt.
+- ⚠️ **Nuancer at afklare:** (a) `updateRiderValues` kører kun ved **sæson-slut** (snit af op til 3 completed sæsoner) — ikke løbende. (b) **`uci_points` opdateres IKKE fra race-resultater** — den styres af ekstern Google Sheets-sync (falder til MIN_UCI=5 hvis rytteren ikke er i sheet). Design-spørgsmål: skal race-point også drive `uci_points`, eller er det bevidst eksternt?
+
+**R2 — Sammenkædet/relativ point-udregning (UX — gør det brugervenligt).**
+- **Problem i dag:** ~1.500-2.000 absolutte point-felter, redigeret **ét ad gangen** (PUT pr. id i `RacePointsAdminSection.jsx`). Eneste genvej er "reset to baseline" pr. række. At ændre noget = mange manuelle handlinger.
+- **Ønske:** definér point **relativt/sammenkædet** — fx "pointtrøje = 250% af etapesejr", "bjergtrøje = X% af etapesejr", evt. "ProSeries = Y% af WorldTour" — så ændringer propagerer automatisk.
+- **Eksisterende grundlag:** `uciRacePointDefaults.js` har *allerede* hardcoded ratio-logik (sekundære klassementer = ~% af GC) — konceptet findes, bare ikke bruger-styret/dynamisk.
+- **Foreløbigt omfang (ikke designet endnu):** DB (evt. ratio-felter eller derived-lag) · nyt bulk-/generate-endpoint · ny ratio-builder-UI. `expectedPrizeCalculator` + læse-siden uændret. → Egen design-runde + under-issue; sandsynligvis den tungeste del.
 
 ---
 
