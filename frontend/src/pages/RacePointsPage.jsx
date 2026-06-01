@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
-
-const PRIZE_PER_POINT = 1_500;
+// Frontend single source of truth for PRIZE_PER_POINT (mirrors backend economyConstants.js).
+import { PRIZE_PER_POINT } from "../lib/expectedPrizeCalculator";
 
 const CLASS_ORDER = [
   "TourFrance", "GiroVuelta", "Monuments",

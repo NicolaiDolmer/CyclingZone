@@ -7,6 +7,8 @@
 //
 // All sums multiplied by PRIZE_PER_POINT (1500 CZ$/point).
 
+// Frontend single source of truth for PRIZE_PER_POINT. Backend mirror: backend/lib/economyConstants.js
+// (separate codebases — the frontend bundle cannot import backend; keep both in sync). Ref #898.
 export const PRIZE_PER_POINT = 1_500;
 
 const STAGE_RACE_RESULT_TYPES = {

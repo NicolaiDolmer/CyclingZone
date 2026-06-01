@@ -131,7 +131,7 @@ Rettelser fra Fase 1-3 + preview-forbedringer fra Fase 4. **Kun her skrives kode
 - **[#895](https://github.com/NicolaiDolmer/CyclingZone/issues/895)** — R3: værdi opdateres ved udbetaling (gennemsnits-model).
 - **[#896](https://github.com/NicolaiDolmer/CyclingZone/issues/896)** — forbedret post-import preview.
 - **[#897](https://github.com/NicolaiDolmer/CyclingZone/issues/897)** — ProSeries vs UCI 2026 (web-udkast + ejer-validering).
-- **[#898](https://github.com/NicolaiDolmer/CyclingZone/issues/898)** — datakvalitet (PRIZE_PER_POINT single-source · manglende-rytter-rækker · result_type-ensretning).
+- **[#898](https://github.com/NicolaiDolmer/CyclingZone/issues/898)** — datakvalitet (PRIZE_PER_POINT single-source · manglende-rytter-rækker · result_type-ensretning). **✅ Adresseret (kode-PR):** backend SSOT = `economyConstants.js` (raceResultsEngine re-eksporterer), frontend SSOT = `expectedPrizeCalculator.js`; sheet-sync `Klassiker`→`gc`. **Data-fund (prod, read-only):** 0 forældreløse præmie-rækker — FK `race_results_rider_id_fkey ON DELETE SET NULL` gør dem strukturelt umulige, så Fase 1's "4 rækker / 60.000 CZ$" er ikke reproducerbart (alle 6711 rytter-rækker matcher; 360 NULL-rækker = legitime `team`-resultater). 0 inkonsistente single-race `result_type` (alle 1677 = `gc`). **→ ingen data-migration nødvendig.**
 
 ## Åbne afklaringspunkter
 - Acceptkriterier (Fase 0) ikke fastlagt endnu — Claude foreslår, ejer godkender.

@@ -10,7 +10,11 @@ function ensureRace(race) {
   }
 }
 
-export const PRIZE_PER_POINT = 1_500;
+// Single source of truth: economyConstants.js. Imported here for internal use AND re-exported
+// so the many existing import-paths (adminImportResultsHandler, pcmResultsImport,
+// raceResultsSheetSync, tests) keep one stable home without touching them.
+import { PRIZE_PER_POINT } from "./economyConstants.js";
+export { PRIZE_PER_POINT };
 
 const RESULT_TYPE_TO_RACE_POINTS = {
   stage_race: {
