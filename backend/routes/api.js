@@ -48,6 +48,7 @@ import {
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
+import { fetchAllRows } from "../lib/supabasePagination.js";
 import {
   PAUSE_LEVELS,
   buildPauseErrorBody,
@@ -4518,10 +4519,14 @@ router.post("/admin/transfer-window/open", requireAdmin, adminWriteLimiter, asyn
       });
     if (insertErr) return res.status(500).json({ error: insertErr.message });
 
-    // Flush auction winners (pending_team_id → team_id)
-    const { data: pendingRiders } = await supabase.from("riders")
+    // Flush auction winners (pending_team_id → team_id).
+    // Pagineret: et naivt .select() rammer PostgREST's 1000-row-loft og taber
+    // stille parkerede ryttere (samme klasse som #772/#774). .order("id") gør
+    // siderne stabile. Refs #879.
+    const pendingRiders = await fetchAllRows(() => supabase.from("riders")
       .select("id, pending_team_id")
-      .not("pending_team_id", "is", null);
+      .not("pending_team_id", "is", null)
+      .order("id"));
 
     let ridersProcessed = 0;
     if (pendingRiders && pendingRiders.length > 0) {
