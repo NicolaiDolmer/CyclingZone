@@ -1269,6 +1269,43 @@ test("processBoardAutoAcceptCron skips when window is locked (baseline phase)", 
   assert.equal(summary.auto_accepted, 0);
 });
 
+test("processBoardAutoAcceptCron rolls back team_dna_key when board regeneration fails (#878 atomicity)", async () => {
+  const state = makeAutoAcceptState({
+    raceDaysCompleted: 5,
+    identityBasis: {
+      youth_level: "high",
+      youth_share_pct: 60,
+      primary_specialization: "youth",
+      national_core: { code: "DK", count: 5, share_pct: 60, strength: "high", established: true },
+      star_profile: { level: "medium" },
+      rider_count: 8,
+      season_number_observed: 1,
+    },
+  });
+  // Lad insert i team_board_members fejle → regenerateBoardMembersForTeam kaster
+  // EFTER team-UPDATE (team_dna_key) er committet.
+  const supabase = makeFakeSupabase(state, { failInsertOn: "team_board_members" });
+
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    const summary = await processBoardAutoAcceptCron({
+      supabase,
+      notifyUser: async () => ({ delivered: true, deduped: false }),
+    });
+    assert.equal(summary.errors, 1, "regenererings-fejl skal tælles som per-team error");
+    assert.equal(summary.auto_accepted, 0, "auto-accept må ikke rapporteres når regenerering fejler");
+  } finally {
+    console.error = originalError;
+  }
+
+  // Teamet må IKKE efterlades dna-sat-men-boardless — ellers låser 409-guarden i
+  // POST /board/dna-choose manageren ude af onboarding (#878).
+  assert.equal(state.teams[0].team_dna_key, null, "team_dna_key skal være rullet tilbage");
+  assert.equal(state.teams[0].team_dna_chosen_at, null, "team_dna_chosen_at skal være rullet tilbage");
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, 0);
+});
+
 function makeAutoAcceptState({
   raceDaysCompleted = 0,
   windowState = "pending_5yr",
