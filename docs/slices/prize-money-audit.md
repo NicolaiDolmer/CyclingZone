@@ -106,6 +106,8 @@ C ovenfor. Leverer en reconciliations-tabel pr. sæson/løb + liste over evt. af
 ### Fase 3 — ProSeries-kategori-verifikation (delt)
 Claude leverer dataudtræk + tjek-skabelon (F). Ejer krydstjekker mod UCI 2026. Fund samles som rettelsesliste (seed-CSV / race_pool).
 
+**✅ AFSLUTTET 2026-06-01** ([#897-kommentar](https://github.com/NicolaiDolmer/CyclingZone/issues/897#issuecomment-4594442812)). Konklusion: alle 61 seed-ProSeries-løb matcher UCI 2026 ProSeries 1:1 — **0 fejlklassificerede, 0 manglende**. De 3 fundne afvigelser ((1) Maryland Cycling Classic reklassificeret endags→3-dages etapeløb · (2) Tour of Norway aflyst 2026 · (3) Surf Coast Classic 2026-udgave aflyst) **passer ikke ind i spillet og ignoreres bevidst** (ejer-beslutning 2026-06-01) — spillet kører sin egen kalender. **→ ingen seed-CSV-rettelse. #897 lukket.**
+
 ### Fase 4 — Preview-forbedring: design (sammen, ingen kode endnu)
 Konkrete kandidater til den forbedrede post-import preview:
 1. **Rytter/placerings-breakdown** pr. hold pr. løb (hvorfor får holdet beløbet — hvilke placeringer/trøjer).
