@@ -75,12 +75,22 @@ synket. Læg `TEST_ACCOUNT_PASSWORD` i `backend/.env` (fra Infisical) og kør
 `node scripts/setup-test-accounts.mjs` — idempotent, sætter samme password på
 alle 3 konti.
 
+> 🔑 **Hvis login fejler med "Legacy API keys are disabled":** Supabase har
+> deaktiveret de gamle JWT-baserede `anon`-keys (legacy). Den `VITE_SUPABASE_ANON_KEY`
+> der bruges er stadig den gamle legacy-key. Fix: udskift den med den **publishable
+> key** (`sb_publishable_…`, hentes i Supabase-dashboard → Project Settings → API Keys)
+> i **både** Vercel `Preview`-target **og** Infisical `dev`-env. Prod-target er
+> allerede migreret (key `cyclingzone_frontend_2026_05`). Publishable keys er
+> design-mæssigt offentlige (ligger i frontend-bundlen), men sættes via dashboardet
+> — agent-sessioner blokeres af `block-dangerous-secret-commands.sh` fra at røre
+> Infisical/Vercel-secrets direkte.
+
 ## Required env (`backend/.env`, ikke i Git)
 
 ```
 SUPABASE_URL=https://ghwvkxzhsbbltzfnuhhz.supabase.co
 SUPABASE_SERVICE_KEY=<service-role-key>
-SUPABASE_ANON_KEY=<legacy anon JWT eller publishable key>
+SUPABASE_ANON_KEY=<publishable key sb_publishable_… — legacy JWT er DISABLED>
 TEST_ACCOUNT_PASSWORD=<fælles password for de 3 test-konti>
 DISCORD_DM_TARGET=webhook    # default for prod-backend
 ```
