@@ -2,7 +2,10 @@ name: Auto PR review
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    # ready_for_review + reopened er nødvendige nu hvor review er et required check:
+    # en PR åbnet som draft kører ikke jobbet på 'opened', og uden 'ready_for_review'
+    # ville det required check forblive pending når draften markeres klar -> deadlock.
+    types: [opened, synchronize, ready_for_review, reopened]
 
 permissions:
   contents: read
@@ -15,7 +18,7 @@ jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Skip drafts og pure docs-PRs (advisory review giver lille værdi der)
+    # Skip drafts; review kører når draften markeres ready_for_review.
     if: github.event.pull_request.draft == false
     steps:
       - uses: actions/checkout@v6
@@ -55,5 +58,5 @@ jobs:
         run: |
           gh pr comment "$PR_NUMBER" --body "🤖 **Auto PR review fejlede** — [se log]($RUN_URL)
 
-          Auto-review er **advisory** (ikke gating) — denne PR kan stadig merges hvis required CI checks (backend-tests, frontend-build) er grønne.
+          Auto-review er et **required check** (gating) — denne PR kan ikke merges før review-jobbet er grønt. Hvis fejlen ikke handler om kodekvalitet (fx Anthropic-API/token/rate-limit), kan ejeren merge manuelt (enforce_admins: false).
           For at re-trigge review: push en tom commit eller comment \`@claude review denne PR\`."
