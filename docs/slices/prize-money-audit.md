@@ -1,0 +1,116 @@
+# Slice · Præmiepenge end-to-end-audit + brugbar preview
+
+**Status:** 🆕 Forslag/planlægning (2026-06-01). **Ingen kode skrevet** — denne fil er gennemgangs-planen. Kodning af præmie-ændringer starter først når audit-fund er bekræftet og scope er låst med ejer.
+
+**Mål:** Sikre at *alt* under præmiepenge er korrekt — beregning, udbetaling, datakonsistens, notering — og at ProSeries-løbenes kategorier er rigtige. Plus en forbedret, brugbar post-import preview.
+
+**Ejer-beslutninger (AskUserQuestion 2026-06-01):**
+1. **Preview:** Forbedre den *eksisterende* post-import preview (ikke nyt forhånds-værktøj).
+2. **Kategori-tjek:** Kun **ProSeries** vs. ægte **UCI 2026**-kalender.
+3. **Output:** Dette dokument + opdelte GitHub-issues.
+4. **Reconciliation-scope:** Sæson 1 og frem (ingen ældre data — beta startede i sæson 1).
+5. **Issue-strategi:** Opret kun **epic nu**; under-issues skæres efter de faktiske fund i Fase 1+2 (ikke spekulativt).
+6. **ProSeries-tjek:** Claude laver **web-udkast** (UCI 2026-kalender side-by-side mod seed-CSV); ejer validerer.
+
+---
+
+## Systemkortlægning (verificeret i kode 2026-06-01)
+
+**Kæden:**
+```
+race_pool (kategori) → seasonRaceSelection → races (sæson-instans)
+   → import resultater (XLSX / Google Sheets / PCM)
+   → race_results.prize_money = points × PRIZE_PER_POINT (1.500 CZ$)
+   → admin: preview → pay-prizes-to-date
+   → finance_transactions (type='prize') → teams.balance
+```
+
+**Nøglefiler:**
+| Område | Fil |
+|--------|-----|
+| Præmie-konstant | `backend/lib/raceResultsEngine.js:13` (+ dublet i `adminImportResultsHandler.js`) |
+| Point-defaults pr. klasse | `backend/lib/uciRacePointDefaults.js` |
+| Import → prize_money | `adminImportResultsHandler.js`, `raceResultsEngine.js`, `raceResultsSheetSync.js` |
+| Preview + payout | `backend/lib/prizePayoutEngine.js` |
+| Atomisk balance-skrivning | `backend/lib/balanceRpc.js` + `database/2026-05-09-balance-rpc.sql` |
+| Dobbeltudbetaling-gate | `database/2026-05-02-prize-payout-control.sql` (`prize_paid_at`) + `idempotency_key` |
+| Admin-UI | `frontend/src/pages/admin/AdminEconomyTab.jsx` ("Præmie-udbetaling") |
+| Kategori-data | `scripts/race_pool_seed.csv`, `database/2026-05-09-race-pool.sql`, `backend/lib/racePoolImport.js`, `frontend/src/lib/uciRaceClasses.js` |
+| Forhånds-estimat | `frontend/src/lib/expectedPrizeCalculator.js` (race-card badges) |
+
+**9 kategorier:** TourFrance · GiroVuelta · Monuments · OtherWorldTour A/B/C · **ProSeries** · Class1 · Class2.
+
+**Risici allerede synlige (skal verificeres, ikke antages):**
+- `PRIZE_PER_POINT` defineret **2 steder** → drift-risiko.
+- `race_class` denormaliseret i **race_pool + races + race_points + frontend** → konsistens-risiko.
+- Områdets bug-historik: v3.66 sheet-sync skrev `prize_money` **uden** ×1500.
+- Preview henter "pending" fra `race_results`, men "paid" fra `finance_transactions` — **to kilder, aldrig reconciled**.
+- Preview kræver `status='completed'` — løb i anden status er usynlige.
+- `GAME_INVARIANTS.md` nævner ikke `PRIZE_PER_POINT`.
+
+---
+
+## Arbejdsdeling
+
+### 🤖 Hvad Claude verificerer (objektivt — kode/data)
+- **A. Beregnings-korrekthed:** at `prize_money = points × 1500` i *alle* import-stier (XLSX, Google Sheets, PCM); at PRIZE_PER_POINT-dubletten har samme værdi; at v3.66-bug-typen ikke er tilbage.
+- **B. Datakonsistens:** `race_class` ens på tværs af de 4 kilder; at alle 9 klasser har komplette `race_points`-rækker for alle relevante result-typer (ingen huller → 0-præmie).
+- **C. Payout-reconciliation (prod, read-only):** for hvert betalt løb: matcher Σ`race_results.prize_money` Σ`finance_transactions(type=prize)`? Find mismatch, dobbeltbetalinger, eller løb med tomme udbetalinger.
+- **D. Notering-audit:** GAME_INVARIANTS / FEATURE_STATUS / ARCHITECTURE / DOMAIN_REFERENCE — ret det der er forkert/manglende.
+- **E. Preview-gap-analyse:** konkret liste over hvad nuværende preview ikke viser.
+- **F. ProSeries-dataudtræk:** komplet liste af alle ProSeries-løb i seed/race_pool (navn, dato, etaper, type) — **råmateriale til din UCI-verifikation.**
+
+### 🙋 Hvad ejer (Nicolai) verificerer (domæne / ekstern viden)
+- **ProSeries-kategori-korrekthed mod ægte UCI 2026:** er hvert løb i listen reelt ProSeries? Mangler der ProSeries-løb? Er nogen fejlklassificeret? (Claude leverer listen + en tjek-skabelon.)
+- **Præmie-NIVEAUER (game design):** er point-skalaen × 1500 de rigtige beløb?
+- **Faktiske prod-udbetalinger:** ser tallene rigtige ud i admin-panelet?
+- **Preview-scope:** vælg blandt de konkrete forbedrings-forslag (Fase 4).
+
+### 🤝 Sammen
+- Definere acceptkriterier for "korrekt præmiepenge".
+- Låse preview-forbedringernes scope før kodning.
+
+---
+
+## Faseopdelt plan
+
+### Fase 0 — Acceptkriterier (sammen, ingen kode)
+Definér hvad "korrekt" betyder, fx: *enhver completed race har prize_money>0 på de forventede placeringer · Σresults = Σfinance pr. betalt løb · ingen rytter får præmie for et hold de ikke var på · hver kategori har fuld point-tabel.*
+
+### Fase 1 — Beregnings- & datakonsistens-audit (Claude, read-only)
+A + B ovenfor. Leverer findings-liste (✅ korrekt / ⚠️ mistænkeligt / ❌ fejl) med fil:linje.
+
+### Fase 2 — Payout-reconciliation mod prod (Claude, read-only SQL via Supabase MCP)
+C ovenfor. Leverer en reconciliations-tabel pr. sæson/løb + liste over evt. afvigelser.
+
+### Fase 3 — ProSeries-kategori-verifikation (delt)
+Claude leverer dataudtræk + tjek-skabelon (F). Ejer krydstjekker mod UCI 2026. Fund samles som rettelsesliste (seed-CSV / race_pool).
+
+### Fase 4 — Preview-forbedring: design (sammen, ingen kode endnu)
+Konkrete kandidater til den forbedrede post-import preview:
+1. **Rytter/placerings-breakdown** pr. hold pr. løb (hvorfor får holdet beløbet — hvilke placeringer/trøjer).
+2. **Forventet-vs-faktisk:** vis beregnet pulje fra `race_points` ved siden af importeret `prize_money` → fanger import-fejl (fx ×1500-bug).
+3. **Reconciliation-kolonne:** Σresults vs. Σfinance for betalte løb, med ⚠️ ved mismatch.
+4. **Sanity-warnings:** løb hvor alle prize_money=0, manglende placeringer, eller skæv fordeling.
+5. **Sæson- + kategori-totaler:** samlet udbetalt/udestående pr. kategori.
+6. **Status-bredde:** vis også ikke-completed løb (med tydelig markering).
+7. (Evt.) **Eksport** til CSV.
+→ Ejer vælger hvilke der er i scope.
+
+### Fase 5 — Notering-audit (Claude)
+D ovenfor. Docs-only, kan landes løbende.
+
+### Fase 6 — Implementering (først efter scope-lås)
+Rettelser fra Fase 1-3 + preview-forbedringer fra Fase 4. **Kun her skrives kode.** PR-flow, tests, patch notes.
+
+---
+
+## GitHub-issues
+**Strategi (ejer-besluttet):** kun epic oprettes nu; under-issues skæres efter de faktiske fund i Fase 1+2.
+- **[Epic] Præmiepenge end-to-end-audit + brugbar preview** — parent, linker dette dokument. ← oprettes nu.
+- Under-issues (fund-drevne): beregnings/data-fejl · payout-mismatch · ProSeries-rettelser · preview-build · notering-rettelser → oprettes når fundene er kendt.
+
+## Åbne afklaringspunkter
+- Acceptkriterier (Fase 0) ikke fastlagt endnu — Claude foreslår, ejer godkender.
+- Preview-forbedringernes konkrete scope (Fase 4) ikke valgt — Claude-anbefaling: forventet-vs-faktisk + reconciliation-kolonne som kerne.
+- ~~Reconciliation-scope~~ ✅ afklaret: sæson 1 og frem.
