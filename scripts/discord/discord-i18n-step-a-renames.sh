@@ -2,8 +2,8 @@
 # Step A: Rename DA channels + categories to EN. Translate topics.
 set -uo pipefail
 
-TOKEN=$(grep -oP '"DISCORD_TOKEN":\s*"\K[^"]+' "$HOME/OneDrive/CyclingZone-context/secrets/mcp.json")
-[ -z "$TOKEN" ] && { echo "ERR: DISCORD_TOKEN not found"; exit 1; }
+TOKEN="${DISCORD_TOKEN:-${DISCORD_BOT_TOKEN:-}}"
+[ -z "$TOKEN" ] && { echo "ERR: DISCORD_TOKEN not found in environment"; exit 1; }
 
 API="https://discord.com/api/v10"
 H_AUTH="Authorization: Bot $TOKEN"

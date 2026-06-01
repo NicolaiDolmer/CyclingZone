@@ -2,7 +2,8 @@
 # Fix category names + 2 topics where emoji got mangled to "??".
 set -uo pipefail
 
-TOKEN=$(grep -oP '"DISCORD_TOKEN":\s*"\K[^"]+' "$HOME/OneDrive/CyclingZone-context/secrets/mcp.json")
+TOKEN="${DISCORD_TOKEN:-${DISCORD_BOT_TOKEN:-}}"
+if [ -z "$TOKEN" ]; then echo "ERR: DISCORD_TOKEN not found in environment"; exit 1; fi
 [ -z "$TOKEN" ] && exit 1
 
 API="https://discord.com/api/v10"

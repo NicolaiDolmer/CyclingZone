@@ -4,14 +4,18 @@
  *
  * Usage: node scripts/sync-discord-attachments.js
  *
- * Reads bot token from .mcp.json. Outputs _mapping.json with thread → [images] mapping
+ * Reads bot token from DISCORD_TOKEN/DISCORD_BOT_TOKEN env. Outputs _mapping.json with thread -> [images] mapping
  * for use when generating GitHub issues with embedded image references.
  */
 const fs = require('fs');
 const https = require('https');
 const path = require('path');
 
-const TOKEN = JSON.parse(fs.readFileSync('.mcp.json', 'utf8')).mcpServers.discord.env.DISCORD_TOKEN;
+const TOKEN = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
+if (!TOKEN) {
+  console.error('NO_TOKEN: set DISCORD_TOKEN via Infisical or parent process environment.');
+  process.exit(3);
+}
 const OUTDIR = path.join('docs', 'discord-attachments');
 const REPO_RAW_BASE = 'https://raw.githubusercontent.com/NicolaiDolmer/CyclingZone/main/docs/discord-attachments';
 

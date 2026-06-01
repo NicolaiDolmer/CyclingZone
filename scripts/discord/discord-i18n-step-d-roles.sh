@@ -3,8 +3,8 @@
 # Outputs role IDs (capture for step C).
 set -uo pipefail
 
-TOKEN=$(grep -oP '"DISCORD_TOKEN":\s*"\K[^"]+' "$HOME/OneDrive/CyclingZone-context/secrets/mcp.json")
-if [ -z "$TOKEN" ]; then echo "ERR: DISCORD_TOKEN not found"; exit 1; fi
+TOKEN="${DISCORD_TOKEN:-${DISCORD_BOT_TOKEN:-}}"
+if [ -z "$TOKEN" ]; then echo "ERR: DISCORD_TOKEN not found in environment"; exit 1; fi
 
 GUILD=1504615050831466669
 API="https://discord.com/api/v10"

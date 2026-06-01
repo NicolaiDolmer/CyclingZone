@@ -51,6 +51,7 @@ Når Manus forbereder et issue, skal der bruges dette format eller en kortere va
 **Scope:** Én klart afgrænset slice.
 **Do not touch:** Explicitte no-go områder, fx `#242`, DB schema, secrets, UI.
 **Verification:** Konkrete kommandoer, workflows eller runtime-checks.
+**Codex verification:** Hvis Codex er next agent: konkrete command/browser/connector-checks før close-out.
 **Ship policy:** PR only / auto-merge if green / manual review required.
 **Blockers:** Ingen / liste over beslutninger.
 ```
@@ -105,6 +106,21 @@ Claude skal derefter oprette branch, commit, PR og close-out efter eksisterende 
 Der er ikke dokumenteret en tilsvarende GitHub Action trigger for Codex i repoet. Codex skal derfor indtil videre arbejde ud fra issue body, handoff-kommentarer og docs, men startes manuelt/lokalt.
 
 Codex-instruktioner skal stadig skrives i GitHub issue, ikke sendes som lang chatbesked via brugeren. Brugeren skal højst sige: `Codex: tag #326 og følg handoff`.
+
+### Codex-labels
+
+Brug disse labels når Codex er bedste næste agent:
+
+| Label | Betydning |
+|---|---|
+| `agent:codex` | Codex ejer næste lokale handling/verifikation. |
+| `codex:good-first` | Lille lavrisiko-slice der er god til Codex. |
+| `codex:needs-browser` | Kræver Browser-verifikation. |
+| `codex:needs-supabase` | Kræver DB/schema/runtime-verifikation. |
+| `codex:needs-prod-verify` | Kræver preview/prod-verifikation efter deploy. |
+| `codex:blocked-access` | Blokeret af manglende connector, token, login eller manuel handling. |
+
+Se også [`docs/CODEX_WORKFLOWS.md`](CODEX_WORKFLOWS.md).
 
 ---
 

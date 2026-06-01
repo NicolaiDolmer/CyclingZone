@@ -14,6 +14,15 @@
 
 **Alt andet i `.codex.local/` er en fejl.** Tilsvarende for `~/.codex/AGENTS.md` (skal være tom eller hardlinket) og `~/.codex/memories/` (skal være tom eller junctioned). `~/.manus/` må kun have `logs/`.
 
+## Repo-root lokale Codex caches
+
+Disse repo-root artefakter er lokale, regenererbare caches og er gitignored:
+
+- `.agents/` — lokale Codex skill/plugin artefakter.
+- `issues.json`, `issues_list.txt`, `issues_summary.txt`, `open_issues.json` — snapshots af GitHub issue-state.
+
+De må aldrig være eneste sted en beslutning, status eller handoff findes. Hvis indholdet er vigtigt for næste session, flyt konklusionen til GitHub issue, `docs/NOW.md` eller en relevant repo-doc.
+
 ## Decision tree — hvor skal ad-hoc indhold hen?
 
 | Type | Destination | Kommando |

@@ -2,12 +2,11 @@
 /**
  * Dump full message content (all replies + attachment URLs) for a fixed list of
  * Discord thread IDs, so we can triage them into GitHub issues with full context.
- * Token read internally from .mcp.json; never printed.
+ * Token read from DISCORD_TOKEN/DISCORD_BOT_TOKEN env; never printed.
  *
  * Output: scripts/discord/.thread-dump.md
  */
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 const API = 'https://discord.com/api/v10';
@@ -37,20 +36,7 @@ const THREADS = [
 ];
 
 function readToken() {
-  const candidates = [
-    path.join(process.cwd(), '.mcp.json'),
-    path.join(os.homedir(), 'OneDrive', 'CyclingZone-context', 'secrets', 'mcp.json'),
-  ];
-  for (const p of candidates) {
-    try {
-      if (!fs.existsSync(p)) continue;
-      const j = JSON.parse(fs.readFileSync(p, 'utf8'));
-      const env = j?.mcpServers?.discord?.env || j || {};
-      const t = env.DISCORD_TOKEN || env.DISCORD_BOT_TOKEN || j.DISCORD_TOKEN || j.DISCORD_BOT_TOKEN;
-      if (t) return t;
-    } catch {}
-  }
-  return null;
+  return process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN || null;
 }
 
 async function dapi(token, p) {

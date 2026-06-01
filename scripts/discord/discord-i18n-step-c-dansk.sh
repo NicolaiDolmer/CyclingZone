@@ -3,7 +3,8 @@
 # Permission bits: VIEW_CHANNEL=1024, SEND_MESSAGES=2048
 set -uo pipefail
 
-TOKEN=$(grep -oP '"DISCORD_TOKEN":\s*"\K[^"]+' "$HOME/OneDrive/CyclingZone-context/secrets/mcp.json")
+TOKEN="${DISCORD_TOKEN:-${DISCORD_BOT_TOKEN:-}}"
+if [ -z "$TOKEN" ]; then echo "ERR: DISCORD_TOKEN not found in environment"; exit 1; fi
 [ -z "$TOKEN" ] && exit 1
 
 GUILD=1504615050831466669

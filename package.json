@@ -7,6 +7,7 @@
     "sync-docs": "node scripts/sync-docs.js",
     "check:patchnotes": "node scripts/check-patch-notes-version.js",
     "doctor": "pwsh -File scripts/agent-doctor.ps1",
+    "codex:doctor": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/codex-session-start.ps1",
     "check:warnings": "node scripts/check-eslint-warning-budget.mjs",
     "lint:sql": "node scripts/lint-sql-strings.mjs",
     "test:lint-sql": "node --test scripts/lint-sql-strings.test.mjs",

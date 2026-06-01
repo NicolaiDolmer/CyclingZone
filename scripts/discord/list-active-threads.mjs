@@ -6,35 +6,16 @@
  * Fills the gap noted in docs/DISCORD_MCP_SETUP.md: mcp-discord has no
  * "list active threads" tool — use REST `GET /guilds/{id}/threads/active`.
  *
- * The bot token is read internally from .mcp.json (or OneDrive secrets) and is
- * NEVER printed. Output is thread metadata + message snippets only.
+ * The bot token is read from DISCORD_TOKEN/DISCORD_BOT_TOKEN env and is NEVER
+ * printed. Output is thread metadata + message snippets only.
  *
  * Usage:  node scripts/discord/list-active-threads.mjs
  */
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-
 const GUILD = '474142653529849886'; // "Cycling Career"
 const API = 'https://discord.com/api/v10';
 
 function readToken() {
-  const candidates = [
-    path.join(process.cwd(), '.mcp.json'),
-    path.join(os.homedir(), 'OneDrive', 'CyclingZone-context', 'secrets', 'mcp.json'),
-  ];
-  for (const p of candidates) {
-    try {
-      if (!fs.existsSync(p)) continue;
-      const j = JSON.parse(fs.readFileSync(p, 'utf8'));
-      const env = j?.mcpServers?.discord?.env || j || {};
-      const t = env.DISCORD_TOKEN || env.DISCORD_BOT_TOKEN || j.DISCORD_TOKEN || j.DISCORD_BOT_TOKEN;
-      if (t) return t;
-    } catch (e) {
-      // keep trying other candidates
-    }
-  }
-  return null;
+  return process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN || null;
 }
 
 async function dapi(token, pathPart) {
@@ -56,7 +37,7 @@ function snip(s, n = 280) {
 async function main() {
   const token = readToken();
   if (!token) {
-    console.error('NO_TOKEN: could not find DISCORD_TOKEN in .mcp.json or OneDrive secrets.');
+    console.error('NO_TOKEN: set DISCORD_TOKEN via Infisical or parent process environment.');
     process.exit(3);
   }
 

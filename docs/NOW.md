@@ -1,6 +1,6 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🟢 Seneste close-outs** (detaljer i git-historik + issues/PRs): **1. juni** — **AI-Autopilot Fase 2** (v4.40): Loop D (Auto-PR-review) opgraderet til obligatorisk statuscheck ved at fjerne `continue-on-error` i `claude-review.yml`. Loop F (Subagent-orkestrering) etableret som Manus-orkestreringsdisciplin. PatchNotesPage og FEATURE_STATUS opdateret. Verificeret: `.github/workflows/claude-review.yml` opdateret. · **31. maj** — **[#861](https://github.com/NicolaiDolmer/CyclingZone/issues/861) admin loading-state hardening** (v4.38, PR pending): aktive admin-tabs nulstiller nu loading i `finally` og tåler non-JSON/network-fejl via shared `readAdminJson`/`adminErrorMessage`.
+> **🟢 Seneste close-outs** (detaljer i git-historik + issues/PRs): **1. juni** — **Codex world-class setup**: Discord MCP-token flyttet ud af `.mcp.json`-flowet, `npm run codex:doctor` tilføjet, Codex-labels oprettet, og Browser/Vercel/Supabase/Sentry verification recipes dokumenteret. Patch notes ikke nødvendige: docs/tooling-only, ingen brugerrettet runtime/UI. · **AI-Autopilot Fase 2** (v4.40): Loop D (Auto-PR-review) opgraderet til obligatorisk statuscheck ved at fjerne `continue-on-error` i `claude-review.yml`. Loop F (Subagent-orkestrering) etableret som Manus-orkestreringsdisciplin.
 
 ## Aktiv styring
 

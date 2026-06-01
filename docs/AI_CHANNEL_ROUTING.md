@@ -35,6 +35,9 @@ Du har 6 AI-kanaler i daglig drift (Claude Code PC1, Claude Code PC2, Claude cha
 | Audit memory drift ([#78](https://github.com/NicolaiDolmer/CyclingZone/issues/78)) | Dispatch (asynk) | PC-chat manuel | Mobil direkte |
 | Review PR | PC-chat | Mobil-chat (skim) | Claude Code |
 | Tjek deploy-status efter push | Mobil-chat (Vercel MCP) | PC-chat | Claude Code (overkill) |
+| Lokal Codex-verifikation af issue/PR | Codex | Claude Code | Mobil |
+| Browser-smoke af lokal frontend | Codex + Browser | Claude Code | Mobil |
+| Vercel/Supabase/Sentry connector-check | Codex | PC-chat | Mobil hvis beslutning kræver context |
 | Generér postmortem efter incident | PC-chat (kontekst-tung) | Claude Code (læser logs) | Mobil, Cowork |
 | Strategisk overvejelse (fx fuld-tid) | PC-chat (lang dialog) | Mobil-chat (tænk-arbejde) | Claude Code |
 | Doc-konsolidering (fx 3 epics → 1) | PC-chat (planning) + Claude Code (commits) | Claude Code direkte | Mobil |

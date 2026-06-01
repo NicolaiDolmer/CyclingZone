@@ -4,7 +4,7 @@ Bash-scripts der kalder Discord REST API direkte (når MCP `discord_*`-tools er 
 
 ## Forudsætning (alle PCs)
 
-Bot-token læses fra `$HOME/OneDrive/CyclingZone-context/secrets/mcp.json` (felt `DISCORD_TOKEN`). OneDrive-context skal være linket — se `scripts/link-onedrive-context.ps1`. Ingen lokal `.env` nødvendig.
+Bot-token læses fra `DISCORD_TOKEN` eller `DISCORD_BOT_TOKEN` i process environment. Inject via Infisical eller user-env før scriptet køres. Token må ikke læses fra `.mcp.json` eller OneDrive secret-filer.
 
 ## Filer
 
