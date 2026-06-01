@@ -279,12 +279,24 @@ async function autoAcceptPendingPlan({
         .eq("id", team.id);
       if (dnaUpdateError) throw dnaUpdateError;
 
-      await regenerateBoardMembersForTeam({
-        supabase,
-        teamId: team.id,
-        identityBasis,
-        dnaKey,
-      });
+      // Atomicitet (#878): rul team_dna_key/team_dna_chosen_at tilbage hvis member-
+      // regenereringen kaster efter team-UPDATE er committet. Ellers efterlades teamet
+      // dna-sat-men-boardless, og 409-guarden i POST /board/dna-choose ville låse
+      // manageren ude. Samme mønster som chooseDnaForTeam (boardMembers.js).
+      try {
+        await regenerateBoardMembersForTeam({
+          supabase,
+          teamId: team.id,
+          identityBasis,
+          dnaKey,
+        });
+      } catch (regenError) {
+        await supabase
+          .from("teams")
+          .update({ team_dna_key: null, team_dna_chosen_at: null })
+          .eq("id", team.id);
+        throw regenError;
+      }
     }
   }
 
