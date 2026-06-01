@@ -6,7 +6,7 @@
 
 > **🎯 Next action:** **Præmiepenge end-to-end-audit — epic [#893](https://github.com/NicolaiDolmer/CyclingZone/issues/893)** (ejer: nu vigtigste opgave). Fase 1 kørt; 5 under-issues klar til session-fordeling: [#894](https://github.com/NicolaiDolmer/CyclingZone/issues/894) R2 point-model · [#895](https://github.com/NicolaiDolmer/CyclingZone/issues/895) R3 værdi-ved-udbetaling · [#896](https://github.com/NicolaiDolmer/CyclingZone/issues/896) preview · [#897](https://github.com/NicolaiDolmer/CyclingZone/issues/897) ProSeries-tjek · [#898](https://github.com/NicolaiDolmer/CyclingZone/issues/898) datakvalitet. Plan: `docs/slices/prize-money-audit.md`. **Ingen kode/udbetaling før design godkendt.** Stabilitets-spor stadig åbne: [#792](https://github.com/NicolaiDolmer/CyclingZone/issues/792) test-konto-blokade · [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) SUPABASE_SERVICE_KEY rotation.
 >
-> **🤖 Working agent:** Ingen aktiv session. **Afventer din hånd:** gennemførsel af udestående præmieudbetalinger via Admin-panel.
+> **🤖 Working agent:** Ingen aktiv session. **Bemærk:** præmieudbetalinger er bevidst sat på pause indtil præmie-auditen (epic [#893](https://github.com/NicolaiDolmer/CyclingZone/issues/893)) er færdig — udbetal IKKE før da.
 
 ---
 
