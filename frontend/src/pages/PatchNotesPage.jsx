@@ -20,6 +20,13 @@ const PATCHES = [
           "DA · Efter sæson 1 er Klub-DNA nu det obligatoriske første trin, før bestyrelsesmedlemmer vises, eller den første bestyrelsesplan kan forhandles. Bestyrelsen sammensættes ud fra både dit sæson-1 identity-snapshot og dit valgte DNA, så stemmer som Klassiker-purist kun bliver et stærkt match når klubretningen understøtter det. Hvis auto-accept må tage over, vælger den nu først det bedst matchede DNA. Refs #820.",
         ],
       },
+      {
+        category: "Board · Choosing Club DNA can no longer lock you out",
+        items: [
+          "EN · Choosing your Club DNA is now safe even if something fails halfway through. Previously, a hiccup while building your board could leave you marked as having chosen a DNA but with no board members and no way to retry. The step is now atomic and self-healing: if board setup fails it rolls back so you can choose again, and if a club was already stuck it automatically rebuilds the board on your next attempt. Refs #878.",
+          "DA · Det er nu sikkert at vælge dit Klub-DNA, selv hvis noget fejler undervejs. Før kunne en fejl midt i opbygningen af din bestyrelse efterlade dig som havende valgt DNA, men uden bestyrelsesmedlemmer og uden mulighed for at prøve igen. Trinnet er nu atomisk og selv-helende: fejler opsætningen, rulles den tilbage så du kan vælge igen, og var en klub allerede låst fast, genopbygges bestyrelsen automatisk ved næste forsøg. Refs #878.",
+        ],
+      },
     ],
   },
   {

@@ -91,6 +91,7 @@ export {
   assignBoardMembersForTeam,
   regenerateBoardMembersForTeam,
   repairBoardMembersAfterDna,
+  chooseDnaForTeam,
   selectDominantMember,
   sampleReactionForFeedback,
   sampleReactionForGoal,

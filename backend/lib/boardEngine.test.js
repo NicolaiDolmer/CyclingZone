@@ -1321,6 +1321,7 @@ import {
   assignBoardMembersForTeam,
   regenerateBoardMembersForTeam,
   repairBoardMembersAfterDna,
+  chooseDnaForTeam,
   selectDominantMember,
   sampleReactionForFeedback,
   sampleReactionForGoal,
@@ -1685,7 +1686,101 @@ test("repairBoardMembersAfterDna is idempotent and skips teams without DNA", asy
   assert.equal(state.team_board_members.filter((m) => m.team_id === "team-ai").length, 0);
 });
 
-function makeFakeSupabase(state) {
+// ─── #878 · chooseDnaForTeam: atomisk + idempotent DNA-valg ──────────────────
+
+test("chooseDnaForTeam (first choice) assigns members and reports chosen key", async () => {
+  const state = {
+    teams: [{ id: "team-1", team_dna_key: null, team_dna_chosen_at: null, season_1_identity_basis: FRENCH_GC_BASIS }],
+    team_board_members: [],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  const result = await chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "italiensk_klassiker" });
+
+  assert.equal(result.recovered, false);
+  assert.equal(result.dnaKey, "italiensk_klassiker");
+  assert.equal(result.members.length, TEAM_BOARD_MEMBERS_COUNT);
+  assert.equal(state.teams[0].team_dna_key, "italiensk_klassiker");
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
+});
+
+test("chooseDnaForTeam rolls back team_dna_key when member regeneration fails (#878 atomicity)", async () => {
+  const state = {
+    teams: [{ id: "team-1", team_dna_key: null, team_dna_chosen_at: null, season_1_identity_basis: FRENCH_GC_BASIS }],
+    team_board_members: [],
+  };
+  // Lad insert i team_board_members fejle → regenerateBoardMembersForTeam kaster midt i.
+  const supabase = makeFakeSupabase(state, { failInsertOn: "team_board_members" });
+
+  await assert.rejects(
+    () => chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "italiensk_klassiker" }),
+    /insert blew up/,
+  );
+
+  // Teamet må IKKE efterlades dna-sat-men-boardless (ellers låser 409-guarden manageren ude).
+  assert.equal(state.teams[0].team_dna_key, null, "team_dna_key skal være rullet tilbage");
+  assert.equal(state.teams[0].team_dna_chosen_at, null, "team_dna_chosen_at skal være rullet tilbage");
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, 0);
+});
+
+test("chooseDnaForTeam is idempotent: recovers a dna-set-but-boardless team with the existing key", async () => {
+  const state = {
+    teams: [{ id: "team-1", team_dna_key: "fransk_klatrer", team_dna_chosen_at: "2026-06-01T00:00:00Z", season_1_identity_basis: FRENCH_GC_BASIS }],
+    team_board_members: [],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  // Selv om kalderen sender en ANDEN nøgle, skal recovery bruge den allerede valgte.
+  const result = await chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "italiensk_klassiker" });
+
+  assert.equal(result.recovered, true);
+  assert.equal(result.dnaKey, "fransk_klatrer", "recovery må ikke skifte DNA");
+  assert.equal(result.members.length, TEAM_BOARD_MEMBERS_COUNT);
+  assert.equal(state.teams[0].team_dna_key, "fransk_klatrer");
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
+});
+
+test("chooseDnaForTeam rejects re-choice when DNA is set and board already exists", async () => {
+  const state = {
+    teams: [{ id: "team-1", team_dna_key: "fransk_klatrer", team_dna_chosen_at: "2026-06-01T00:00:00Z", season_1_identity_basis: FRENCH_GC_BASIS }],
+    team_board_members: [
+      { id: "m-1", team_id: "team-1", archetype_key: "klassiker_purist", selection_kind: "identity", alignment_score: 4, is_chairman: true },
+    ],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  await assert.rejects(
+    () => chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "italiensk_klassiker" }),
+    (err) => {
+      assert.equal(err.status, 409);
+      assert.equal(err.code, "DNA_ALREADY_CHOSEN");
+      return true;
+    },
+  );
+  // Uændret: DNA og board står som før.
+  assert.equal(state.teams[0].team_dna_key, "fransk_klatrer");
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, 1);
+});
+
+test("chooseDnaForTeam refuses when season 1 identity basis is missing", async () => {
+  const state = {
+    teams: [{ id: "team-1", team_dna_key: null, team_dna_chosen_at: null, season_1_identity_basis: null }],
+    team_board_members: [],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  await assert.rejects(
+    () => chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "italiensk_klassiker" }),
+    (err) => {
+      assert.equal(err.status, 409);
+      return true;
+    },
+  );
+  assert.equal(state.teams[0].team_dna_key, null);
+});
+
+function makeFakeSupabase(state, options = {}) {
+  const { failInsertOn = null } = options;
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
   }
@@ -1746,6 +1841,9 @@ function makeFakeSupabase(state) {
       }
 
       if (action === "insert") {
+        if (failInsertOn && table === failInsertOn) {
+          return Promise.resolve({ data: null, error: { message: "insert blew up" } });
+        }
         const newRows = (Array.isArray(payload) ? payload : [payload]).map((row) => ({
           id: row.id || `${table}-${Math.random().toString(36).slice(2, 8)}`,
           ...clone(row),
