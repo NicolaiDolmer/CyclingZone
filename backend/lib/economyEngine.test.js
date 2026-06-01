@@ -662,11 +662,20 @@ function createRiderValuesSupabase({ seasons, races, results, riders }) {
     from(table) {
       if (table === "seasons") {
         return {
-          select(columns) {
-            assert.equal(columns, "id");
+          select() {
             return {
               eq(column, value) {
                 assert.equal(column, "status");
+                // Active-season query: .eq("status","active").maybeSingle()
+                if (value === "active") {
+                  return {
+                    maybeSingle() {
+                      const active = clone(state.seasons).find(s => s.status === "active") || null;
+                      return Promise.resolve({ data: active, error: null });
+                    },
+                  };
+                }
+                // Completed-season window: .eq("status","completed").order().limit()
                 assert.equal(value, "completed");
                 return {
                   order(orderColumn, orderOptions) {
@@ -675,10 +684,11 @@ function createRiderValuesSupabase({ seasons, races, results, riders }) {
                     return {
                       limit(limitValue) {
                         assert.equal(limitValue, 3);
-                        return Promise.resolve({
-                          data: clone(state.seasons).slice(0, limitValue),
-                          error: null,
-                        });
+                        const completed = clone(state.seasons)
+                          .filter(s => s.status === "completed")
+                          .sort((a, b) => b.number - a.number)
+                          .slice(0, limitValue);
+                        return Promise.resolve({ data: completed, error: null });
                       },
                     };
                   },
@@ -1747,12 +1757,14 @@ test("updateStandings paginerer race_results forbi 1000-row-loftet", async () =>
   assert.equal(supabase.state.upserts[0].rows[0].total_points, 2500); // alle sider talt
 });
 
-test("updateRiderValues recomputes prize_earnings_bonus from the last 3 seasons", async () => {
+test("updateRiderValues recomputes prize_earnings_bonus from the last 3 completed seasons (no active → legacy mean)", async () => {
+  // Backward-compat: with no active season the divisor = completed-season count,
+  // so the formula reduces bit-for-bit to the old equal-weight mean.
   const supabase = createRiderValuesSupabase({
     seasons: [
-      { id: "season-3" },
-      { id: "season-2" },
-      { id: "season-1" },
+      { id: "season-3", number: 3, status: "completed" },
+      { id: "season-2", number: 2, status: "completed" },
+      { id: "season-1", number: 1, status: "completed" },
     ],
     races: [
       { id: "race-1", season_id: "season-3" },
@@ -1773,18 +1785,78 @@ test("updateRiderValues recomputes prize_earnings_bonus from the last 3 seasons"
 
   assert.deepEqual(summary, { ridersUpdated: 2 });
   assert.deepEqual(supabase.state.riderUpdates, [
-    {
-      id: "rider-1",
-      payload: {
-        prize_earnings_bonus: 667,
-      },
-    },
-    {
-      id: "rider-2",
-      payload: {
-        prize_earnings_bonus: 167,
-      },
-    },
+    { id: "rider-1", payload: { prize_earnings_bonus: 667 } }, // (1200+800)/3
+    { id: "rider-2", payload: { prize_earnings_bonus: 167 } }, // 500/3
+  ]);
+});
+
+test("updateRiderValues: anchor + active season uses progress-weighted divisor", async () => {
+  // Completed S1 = 100k (weight 1); active S2 at 10% (6/60 race days), rider
+  // earned 8k so far. divisor = max(1 + 0.10, 1) = 1.10 → (100000+8000)/1.10 ≈ 98182.
+  const supabase = createRiderValuesSupabase({
+    seasons: [
+      { id: "season-2", number: 2, status: "active", race_days_completed: 6, race_days_total: 60 },
+      { id: "season-1", number: 1, status: "completed" },
+    ],
+    races: [
+      { id: "race-s1", season_id: "season-1" },
+      { id: "race-s2", season_id: "season-2" },
+    ],
+    results: [
+      { rider_id: "rider-1", race_id: "race-s1", prize_money: 100000 },
+      { rider_id: "rider-1", race_id: "race-s2", prize_money: 8000 },
+    ],
+    riders: [{ id: "rider-1" }],
+  });
+
+  await updateRiderValues(supabase);
+
+  assert.deepEqual(supabase.state.riderUpdates, [
+    { id: "rider-1", payload: { prize_earnings_bonus: 98182 } },
+  ]);
+});
+
+test("updateRiderValues: brand-new active season (0% progress) does not dip the value", async () => {
+  // Completed S1 = 100k; active S2 just started (0 race days, no prizes yet).
+  // Active weight 0 → divisor = max(1+0, 1) = 1 → value stays 100k (no dip).
+  const supabase = createRiderValuesSupabase({
+    seasons: [
+      { id: "season-2", number: 2, status: "active", race_days_completed: 0, race_days_total: 60 },
+      { id: "season-1", number: 1, status: "completed" },
+    ],
+    races: [{ id: "race-s1", season_id: "season-1" }],
+    results: [
+      { rider_id: "rider-1", race_id: "race-s1", prize_money: 100000 },
+    ],
+    riders: [{ id: "rider-1" }],
+  });
+
+  await updateRiderValues(supabase);
+
+  assert.deepEqual(supabase.state.riderUpdates, [
+    { id: "rider-1", payload: { prize_earnings_bonus: 100000 } },
+  ]);
+});
+
+test("updateRiderValues: lone active season floors the divisor at 1 (no annualization)", async () => {
+  // Open-beta season 1: only an active season, no completed anchor. At 10%
+  // progress a rider earned 8k. WITHOUT the floor this would annualize to
+  // 8000/0.10 = 80000; the max(Σw,1) floor keeps it at 8000/1 = 8000.
+  const supabase = createRiderValuesSupabase({
+    seasons: [
+      { id: "season-1", number: 1, status: "active", race_days_completed: 6, race_days_total: 60 },
+    ],
+    races: [{ id: "race-s1", season_id: "season-1" }],
+    results: [
+      { rider_id: "rider-1", race_id: "race-s1", prize_money: 8000 },
+    ],
+    riders: [{ id: "rider-1" }],
+  });
+
+  await updateRiderValues(supabase);
+
+  assert.deepEqual(supabase.state.riderUpdates, [
+    { id: "rider-1", payload: { prize_earnings_bonus: 8000 } },
   ]);
 });
 

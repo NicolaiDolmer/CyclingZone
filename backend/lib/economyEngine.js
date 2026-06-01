@@ -1135,23 +1135,65 @@ async function fetchAllRows(buildQuery, pageSize = SUPABASE_PAGE_SIZE) {
 }
 
 /**
- * Recalculates prize_earnings_bonus for every rider at season end.
+ * Recalculates prize_earnings_bonus for every rider.
  *
- * prize_earnings_bonus = average of the rider's total prize earnings across
- * the last 1-3 completed seasons. Seasons with no prize money count as 0.
+ * prize_earnings_bonus = progress-weighted average of the rider's total prize
+ * earnings across the rolling window of the up to 3 most recent seasons.
+ *
+ * Window: the up to 3 newest seasons by `number`. A `completed` season has
+ * weight 1; the single `active` season (if any) occupies the newest slot with
+ * weight = its progress (race_days_completed / race_days_total, clamped 0..1).
+ *
+ *   prize_earnings_bonus = round( Σ earnings_s / max( Σ w_s , 1 ) )
+ *
+ * The max(…, 1) floor keeps a lone partially-complete active season (e.g. open-
+ * beta season 1 with no completed seasons yet) from annualizing a single early
+ * prize into an inflated value. With ≥1 completed season anchoring the average
+ * the floor never binds → pure progress-weighting. With NO active season the
+ * formula reduces bit-for-bit to the legacy "mean over completed seasons".
+ *
+ * Called both at season end (processDivisionEnd) and at prize payout
+ * (paySeasonPrizesToDate) so values track the active season's prizes live (R3,
+ * issue #895). See docs/slices/prize-money-audit-r3-design.md.
  *
  * salary er en GENERATED STORED column (se database/2026-05-04-salary-generated-column.sql)
  * — DB genberegner automatisk når prize_earnings_bonus eller uci_points opdateres.
  */
 export async function updateRiderValues(supabaseClient) {
-  const { data: recentSeasons } = await supabaseClient
+  const { data: activeSeason } = await supabaseClient
     .from("seasons")
-    .select("id")
+    .select("id, number, race_days_completed, race_days_total")
+    .eq("status", "active")
+    .maybeSingle();
+
+  const { data: completedSeasons } = await supabaseClient
+    .from("seasons")
+    .select("id, number")
     .eq("status", "completed")
     .order("number", { ascending: false })
     .limit(3);
 
-  const seasonIds = (recentSeasons || []).map(s => s.id);
+  // Rolling window: active (newest slot) + completed, newest-first, up to 3.
+  const windowSeasons = [
+    ...(activeSeason ? [{ id: activeSeason.id, number: activeSeason.number, isActive: true }] : []),
+    ...(completedSeasons || []).map(s => ({ id: s.id, number: s.number, isActive: false })),
+  ]
+    .sort((a, b) => b.number - a.number)
+    .slice(0, 3);
+
+  // Per-season weight: completed = 1, active = progress (clamped 0..1).
+  const activeTotalDays = Number(activeSeason?.race_days_total) || 0;
+  const activeDoneDays = Number(activeSeason?.race_days_completed) || 0;
+  const activeProgress = activeTotalDays > 0
+    ? Math.min(1, Math.max(0, activeDoneDays / activeTotalDays))
+    : 0;
+
+  const seasonWeight = {};
+  for (const s of windowSeasons) {
+    seasonWeight[s.id] = s.isActive ? activeProgress : 1;
+  }
+
+  const seasonIds = windowSeasons.map(s => s.id);
 
   // Build per-rider per-season prize totals from race_results
   const riderSeasonEarnings = {};
@@ -1193,13 +1235,21 @@ export async function updateRiderValues(supabaseClient) {
       .select("id")
   ));
 
+  // Divisor = Σ season weights, floored at 1 (see JSDoc). With no active season
+  // this equals the completed-season count → identical to the legacy mean.
+  const divisor = Math.max(
+    seasonIds.reduce((sum, sid) => sum + (seasonWeight[sid] || 0), 0),
+    1
+  );
+
   const updates = [];
 
   for (const rider of allRiders || []) {
-    const seasonTotals = seasonIds.map(seasonId => riderSeasonEarnings[rider.id]?.[seasonId] || 0);
-    const newBonus = seasonTotals.length > 0
-      ? Math.round(seasonTotals.reduce((s, v) => s + v, 0) / seasonTotals.length)
-      : 0;
+    const earningsSum = seasonIds.reduce(
+      (sum, sid) => sum + (riderSeasonEarnings[rider.id]?.[sid] || 0),
+      0
+    );
+    const newBonus = Math.round(earningsSum / divisor);
 
     updates.push({
       id: rider.id,

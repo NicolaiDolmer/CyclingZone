@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { getSeasonPrizePreview } from "./prizePayoutEngine.js";
+import { getSeasonPrizePreview, paySeasonPrizesToDate } from "./prizePayoutEngine.js";
 
 // Mock-query-builder: thenable (for kæder der afsluttes uden .range(), fx races/
 // teams) OG med .range() der pager (for fetchAllRows på race_results/finance_tx).
@@ -84,4 +84,143 @@ test("getSeasonPrizePreview splitter betalte og udestående løb", async () => {
 test("getSeasonPrizePreview returnerer tomt ved ingen løb", async () => {
   const preview = await getSeasonPrizePreview("season-1", makeSupabase({ races: [] }));
   assert.deepEqual(preview, { already_paid: [], pending_payment: [], total_pending: 0 });
+});
+
+// ─── paySeasonPrizesToDate → rider-value recalc wiring (R3, #895) ──────────────
+
+// Stateful mock covering BOTH the payout path (rpc + races.update + import_log)
+// and the updateRiderValues recalc it now triggers (seasons + riders.update).
+function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, completedSeasons = [], failRecalc = false }) {
+  const state = { rpcCalls: [], racesPaidAt: [], importLogs: [], riderUpdates: [] };
+
+  const racesRows = [{ id: pendingRace.id, name: pendingRace.name, prize_paid_at: null, status: "completed", season_id: "season-1" }];
+  const resultRows = pendingRace.results; // { race_id, team_id, rider_id, prize_money }
+
+  const supabase = {
+    state,
+    rpc(name, params) {
+      state.rpcCalls.push({ name, params });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "races") {
+        return {
+          // Preview: .select(...).eq("season_id").eq("status") → thenable rows
+          // Recalc:  .select("id, season_id").in("season_id",[...]).range()
+          select(columns) {
+            const builder = {
+              eq: () => builder,
+              in: () => builder,
+              range: (from, to) => {
+                const rows = racesRows
+                  .map(r => (columns === "id, season_id" ? { id: r.id, season_id: r.season_id } : r))
+                  .slice(from, to + 1);
+                return Promise.resolve({ data: rows, error: null });
+              },
+              then: (resolve) => resolve({ data: racesRows, error: null }),
+            };
+            return builder;
+          },
+          update(payload) {
+            return { eq: (_c, id) => { state.racesPaidAt.push({ id, ...payload }); return Promise.resolve({ error: null }); } };
+          },
+        };
+      }
+      if (table === "race_results") {
+        const builder = {
+          select: () => builder,
+          eq: () => builder,
+          in: () => builder,
+          gt: () => builder,
+          order: () => builder,
+          range: (from, to) => Promise.resolve({ data: resultRows.slice(from, to + 1), error: null }),
+          then: (resolve) => resolve({ data: resultRows, error: null }),
+        };
+        return builder;
+      }
+      if (table === "finance_transactions") {
+        const builder = { select: () => builder, eq: () => builder, in: () => builder, order: () => builder, range: () => Promise.resolve({ data: [], error: null }), then: (r) => r({ data: [], error: null }) };
+        return builder;
+      }
+      if (table === "teams") {
+        const builder = { select: () => builder, in: () => builder, then: (r) => r({ data: [], error: null }) };
+        return builder;
+      }
+      if (table === "import_log") {
+        return { insert: (row) => { state.importLogs.push(row); return Promise.resolve({ error: null }); } };
+      }
+      if (table === "seasons") {
+        if (failRecalc) throw new Error("simuleret recalc-fejl");
+        return {
+          select() {
+            return {
+              eq(_col, value) {
+                if (value === "active") {
+                  return { maybeSingle: () => Promise.resolve({ data: activeSeason, error: null }) };
+                }
+                return { order: () => ({ limit: () => Promise.resolve({ data: completedSeasons, error: null }) }) };
+              },
+            };
+          },
+        };
+      }
+      if (table === "riders") {
+        return {
+          select: () => ({ range: (from, to) => Promise.resolve({ data: riders.slice(from, to + 1), error: null }) }),
+          update: (payload) => ({ eq: (_c, id) => { state.riderUpdates.push({ id, ...payload }); return Promise.resolve({ error: null }); } }),
+        };
+      }
+      throw new Error(`uventet tabel: ${table}`);
+    },
+  };
+  return supabase;
+}
+
+test("paySeasonPrizesToDate triggers progress-weighted rider-value recalc after paying", async () => {
+  const supabase = makePayoutSupabase({
+    pendingRace: {
+      id: "race-1",
+      name: "Tour Stage 1",
+      results: [
+        { race_id: "race-1", team_id: "team-1", rider_id: "rider-1", prize_money: 8000 },
+      ],
+    },
+    riders: [{ id: "rider-1" }],
+    // Open-beta season 1: lone active season at 10% → floor keeps bonus = 8000.
+    activeSeason: { id: "season-1", number: 1, race_days_completed: 6, race_days_total: 60 },
+    completedSeasons: [],
+  });
+
+  const result = await paySeasonPrizesToDate("season-1", "admin-1", supabase);
+
+  assert.equal(result.races_paid, 1);
+  assert.equal(result.total_paid, 8000);
+  assert.equal(result.riders_updated, 1);
+  // Payout happened...
+  assert.equal(supabase.state.rpcCalls.length, 1);
+  assert.equal(supabase.state.racesPaidAt.length, 1);
+  // ...and the rider value was recalculated with the floored divisor (no annualization).
+  assert.deepEqual(supabase.state.riderUpdates, [
+    { id: "rider-1", prize_earnings_bonus: 8000 },
+  ]);
+});
+
+test("paySeasonPrizesToDate still succeeds when the rider-value recalc throws", async () => {
+  const supabase = makePayoutSupabase({
+    pendingRace: {
+      id: "race-1",
+      name: "Tour Stage 1",
+      results: [{ race_id: "race-1", team_id: "team-1", rider_id: "rider-1", prize_money: 8000 }],
+    },
+    riders: [{ id: "rider-1" }],
+    failRecalc: true,
+  });
+
+  const result = await paySeasonPrizesToDate("season-1", "admin-1", supabase);
+
+  // Payout is committed; recalc failure is surfaced as riders_updated=null, not thrown.
+  assert.equal(result.races_paid, 1);
+  assert.equal(result.total_paid, 8000);
+  assert.equal(result.riders_updated, null);
+  assert.equal(supabase.state.racesPaidAt.length, 1);
 });
