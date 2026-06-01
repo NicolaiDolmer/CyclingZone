@@ -123,8 +123,14 @@ jobs:
               };
             }
 
-            const installParityDrift = installParity && installParity.Status !== 'OK';
-            const driftDetected = failedInstalls.length > 0 || Boolean(diff) || installParityDrift;
+            // install-parity (node_modules vs lockfile) er meningsløst i en frisk CI:
+            // npm ci installerer pr. definition præcis lockfilen, så node_modules matcher
+            // altid. En non-OK her stammer fra agent-doctor JSON-parse i CI-miljøet, IKKE
+            // reel lockfile-drift — og udløste falske high-prio bug-issues på hver
+            // main-commit (#835/#848/#863/#871/#875). De reelle drift-signaler er: npm ci
+            // fejlede ELLER git diff på lockfilerne er ikke-tom. install-parity vises stadig
+            // i issue-tabellen nedenfor som info, men gater ikke længere.
+            const driftDetected = failedInstalls.length > 0 || Boolean(diff);
             if (!driftDetected) {
               core.info('No lockfile drift detected.');
               return;
