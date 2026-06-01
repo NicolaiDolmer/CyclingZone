@@ -15,7 +15,10 @@ const BENÆVNELSE_TO_TYPE = {
   "Bjergtrøje per dag": "mountain_day",
   "Pointtrøje per dag": "points_day",
   "Ungdomstrøje per dag": "young_day",
-  "Klassiker": "stage",
+  // Canonical: single-race overall classification = "gc" (matches XLSX-path "general results"→gc
+  // and raceResultsEngine single-race lookup {gc: "Klassiker"}). Prize is unaffected — it derives
+  // from BENÆVNELSE_TO_POINTS_KEY, not result_type. Ensretning per #898.
+  "Klassiker": "gc",
   "Klassiker Hold": "team",
 };
 

@@ -16,8 +16,7 @@ import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
 import path from "node:path";
-
-const PRIZE_PER_POINT = 1_500;
+import { PRIZE_PER_POINT } from "../backend/lib/economyConstants.js";
 
 const STAGE_RACE_TYPES = {
   finals: ["Klassement", "Pointtroje", "Bjergtroje", "Ungdomstroje", "EtapelobHold"],
