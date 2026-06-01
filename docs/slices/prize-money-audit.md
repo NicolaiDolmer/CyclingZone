@@ -129,7 +129,7 @@ Rettelser fra Fase 1-3 + preview-forbedringer fra Fase 4. **Kun her skrives kode
 
 ## GitHub-issues (oprettet 2026-06-01)
 - **Epic [#893](https://github.com/NicolaiDolmer/CyclingZone/issues/893)** — parent, linker dette dokument.
-- **[#894](https://github.com/NicolaiDolmer/CyclingZone/issues/894)** — R2: master-kategori relativ point-model (tungest; design FØR kode).
+- **[#894](https://github.com/NicolaiDolmer/CyclingZone/issues/894)** — R2: master-kategori relativ point-model. **Design låst (Option B) + v1 implementeret** (i PR). Design: [`prize-money-audit-r2-design.md`](prize-money-audit-r2-design.md). Kaskade = anker + per-kategori-kurveform + faktor pr. (kategori × result-type); seed reproducerer dagens point bit-for-bit (bevist 900/900 mod prod). Akse-1 ratio-editor ("pointtrøje = 250%") = v1.1.
 - **[#895](https://github.com/NicolaiDolmer/CyclingZone/issues/895)** — R3: værdi opdateres ved udbetaling (gennemsnits-model).
 - **[#896](https://github.com/NicolaiDolmer/CyclingZone/issues/896)** — forbedret post-import preview.
 - **[#897](https://github.com/NicolaiDolmer/CyclingZone/issues/897)** — ProSeries vs UCI 2026 (web-udkast + ejer-validering).
