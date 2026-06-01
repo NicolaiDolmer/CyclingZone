@@ -341,6 +341,38 @@ export default function AdminEconomyTab() {
 
         {prizePreview && (
           <div className="space-y-4">
+            {prizePreview.totals && (
+              <div className="bg-cz-subtle border border-cz-border rounded-lg px-4 py-3 text-xs">
+                <p className="text-cz-2 font-semibold mb-2">Sæson-total (completed-løb)</p>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <div className="text-cz-3">Optjent</div>
+                    <div className="text-cz-1 font-mono font-semibold">{prizePreview.totals.earned.toLocaleString("da-DK")}</div>
+                  </div>
+                  <div>
+                    <div className="text-cz-3">Udbetalbar</div>
+                    <div className="text-cz-accent-t font-mono font-semibold">{prizePreview.totals.payable.toLocaleString("da-DK")}</div>
+                  </div>
+                  <div>
+                    <div className="text-cz-3">Fri/AI (udbetales aldrig)</div>
+                    <div className="text-cz-3 font-mono font-semibold">{prizePreview.totals.free_ai.toLocaleString("da-DK")}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {prizePreview.warnings?.length > 0 && (
+              <div className="bg-cz-warning-bg border border-cz-warning/30 rounded-lg px-4 py-3 text-xs space-y-1">
+                <p className="text-cz-warning font-semibold">⚠️ Advarsler — {prizePreview.warnings.length} løb</p>
+                {prizePreview.warnings.map(w => (
+                  <div key={w.race_id} className="flex justify-between gap-3 text-cz-warning">
+                    <span className="font-medium">{w.race_name}</span>
+                    <span className="text-right text-cz-3">{w.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {prizePreview.pending_payment.length > 0 && (
               <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-lg px-4 py-3 text-xs space-y-2">
                 <p className="text-cz-accent-t font-semibold">
@@ -363,12 +395,23 @@ export default function AdminEconomyTab() {
             {prizePreview.already_paid.length > 0 && (
               <div className="bg-cz-success-bg border border-cz-success/30 rounded-lg px-4 py-3 text-xs space-y-1">
                 <p className="text-cz-success font-semibold">Allerede udbetalt — {prizePreview.already_paid.length} løb</p>
-                {prizePreview.already_paid.map(r => (
-                  <div key={r.race_id} className="flex justify-between text-green-600">
-                    <span>{r.race_name}</span>
-                    <span className="font-mono">{r.total_paid.toLocaleString("da-DK")} CZ$</span>
-                  </div>
-                ))}
+                {prizePreview.already_paid.map(r => {
+                  const rec = prizePreview.reconciliation?.find(x => x.race_id === r.race_id);
+                  const mismatch = rec && !rec.ok;
+                  return (
+                    <div key={r.race_id} className={`flex justify-between ${mismatch ? "text-cz-warning" : "text-green-600"}`}>
+                      <span>{mismatch ? "⚠️ " : ""}{r.race_name}</span>
+                      <span className="font-mono">
+                        {r.total_paid.toLocaleString("da-DK")} CZ$
+                        {mismatch && (
+                          <span className="ms-2 text-cz-3" title={`Udbetalt ${rec.finance_total.toLocaleString("da-DK")} vs. resultat-sum ${rec.results_total.toLocaleString("da-DK")}`}>
+                            (afvigelse {rec.diff > 0 ? "+" : ""}{rec.diff.toLocaleString("da-DK")})
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {prizePreview.pending_payment.length === 0 && (

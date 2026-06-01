@@ -14,7 +14,16 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
     .eq("season_id", seasonId)
     .eq("status", "completed");
   if (racesError) throw new Error(racesError.message);
-  if (!races?.length) return { already_paid: [], pending_payment: [], total_pending: 0 };
+  if (!races?.length) {
+    return {
+      already_paid: [],
+      pending_payment: [],
+      total_pending: 0,
+      totals: { earned: 0, payable: 0, free_ai: 0 },
+      reconciliation: [],
+      warnings: [],
+    };
+  }
 
   const raceIds = races.map(r => r.id);
 
@@ -57,31 +66,80 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
   const resultsByRace = groupBy(allResults || [], r => r.race_id);
   const txByRace = groupBy(paidTransactions, t => t.race_id);
 
+  // Season-wide split (#896): "optjent" = alle præmie-rækker over completed-løb;
+  // "udbetalbar" = kun rækker med et hold (team_id). Differencen er fri/AI-præmie
+  // (holdsløse ryttere + forældreløse holdklassement-rækker) der tæller for
+  // rytter-værdi men ALDRIG udbetales. Skjult i dag → previewets total var
+  // misvisende (optjent vist som om det kunne udbetales).
+  const earned = (allResults || []).reduce((s, r) => s + r.prize_money, 0);
+  const payable = (allResults || []).reduce((s, r) => s + (r.team_id ? r.prize_money : 0), 0);
+
   const already_paid = [];
   const pending_payment = [];
+  const reconciliation = [];
+  const warnings = [];
 
   for (const race of races) {
     if (race.prize_paid_at) {
       const txs = txByRace.get(race.id) || [];
+      const finance_total = txs.reduce((s, t) => s + t.amount, 0);
       already_paid.push({
         race_id: race.id,
         race_name: race.name,
         paid_at: race.prize_paid_at,
-        total_paid: txs.reduce((s, t) => s + t.amount, 0),
+        total_paid: finance_total,
         by_team: txs.map(t => ({
           team_id: t.team_id,
           team_name: teamNameById.get(t.team_id) ?? null,
           amount: t.amount,
         })),
       });
+
+      // Reconciliation (#896): de udbetalte finance_transactions skal matche
+      // summen af de UDBETALBARE race_results (team_id != null) for løbet —
+      // ellers er der drift mellem de to kilder (dobbeltbetaling, delvis
+      // udbetaling, eller import-ændring efter udbetaling).
+      const results = resultsByRace.get(race.id) || [];
+      const results_total = results.reduce((s, r) => s + (r.team_id ? r.prize_money : 0), 0);
+      const diff = finance_total - results_total;
+      reconciliation.push({
+        race_id: race.id,
+        race_name: race.name,
+        results_total,
+        finance_total,
+        diff,
+        ok: diff === 0,
+      });
     } else {
       const results = resultsByRace.get(race.id) || [];
+      if (!results.length) {
+        // Completed-løb uden nogen præmie-rækker overhovedet → intet at udbetale.
+        warnings.push({
+          race_id: race.id,
+          race_name: race.name,
+          type: "no_prize_results",
+          message: "Ingen præmie-rækker — løbet udbetaler intet.",
+        });
+        continue;
+      }
+
       const byTeam = new Map();
       for (const r of results) {
         if (!r.team_id) continue;
         byTeam.set(r.team_id, (byTeam.get(r.team_id) || 0) + r.prize_money);
       }
-      if (!byTeam.size) continue;
+      if (!byTeam.size) {
+        // Hele puljen er fri/AI (ingen hold). Før droppet stille fra previewet —
+        // nu en eksplicit warning, så ejeren ved hvorfor løbet ikke udbetaler.
+        const free_ai = results.reduce((s, r) => s + r.prize_money, 0);
+        warnings.push({
+          race_id: race.id,
+          race_name: race.name,
+          type: "all_free_ai",
+          message: `Hele puljen (${free_ai.toLocaleString("da-DK")} CZ$) er fri/AI — intet udbetales til hold.`,
+        });
+        continue;
+      }
 
       const teamBreakdown = [...byTeam.entries()].map(([team_id, prize]) => ({
         team_id,
@@ -101,6 +159,9 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
     already_paid,
     pending_payment,
     total_pending: pending_payment.reduce((s, r) => s + r.total_prize, 0),
+    totals: { earned, payable, free_ai: earned - payable },
+    reconciliation,
+    warnings,
   };
 }
 
