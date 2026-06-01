@@ -83,7 +83,80 @@ test("getSeasonPrizePreview splitter betalte og udestående løb", async () => {
 
 test("getSeasonPrizePreview returnerer tomt ved ingen løb", async () => {
   const preview = await getSeasonPrizePreview("season-1", makeSupabase({ races: [] }));
-  assert.deepEqual(preview, { already_paid: [], pending_payment: [], total_pending: 0 });
+  assert.deepEqual(preview, {
+    already_paid: [],
+    pending_payment: [],
+    total_pending: 0,
+    totals: { earned: 0, payable: 0, free_ai: 0 },
+    reconciliation: [],
+    warnings: [],
+  });
+});
+
+test("getSeasonPrizePreview splitter optjent vs udbetalbar (#896)", async () => {
+  const supabase = makeSupabase({
+    races: [{ id: "r1", name: "Race 1", prize_paid_at: null, status: "completed" }],
+    results: [
+      { race_id: "r1", team_id: "t1", prize_money: 500 }, // udbetalbar
+      { race_id: "r1", team_id: "t2", prize_money: 300 }, // udbetalbar
+      { race_id: "r1", team_id: null, prize_money: 200 }, // fri/AI (holdsløs rytter)
+    ],
+    teams: [{ id: "t1", name: "Team 1" }, { id: "t2", name: "Team 2" }],
+  });
+
+  const preview = await getSeasonPrizePreview("season-1", supabase);
+
+  assert.deepEqual(preview.totals, { earned: 1000, payable: 800, free_ai: 200 });
+  // total_pending er kun det udbetalbare — fri/AI tæller IKKE med.
+  assert.equal(preview.total_pending, 800);
+  assert.equal(preview.warnings.length, 0);
+});
+
+test("getSeasonPrizePreview advarer ved løb hvor hele puljen er fri/AI (#896)", async () => {
+  const supabase = makeSupabase({
+    races: [{ id: "r1", name: "AI Race", prize_paid_at: null, status: "completed" }],
+    results: [
+      { race_id: "r1", team_id: null, prize_money: 1500 },
+    ],
+    teams: [],
+  });
+
+  const preview = await getSeasonPrizePreview("season-1", supabase);
+
+  // Løbet droppes IKKE stille — det bliver en eksplicit warning.
+  assert.equal(preview.pending_payment.length, 0);
+  assert.equal(preview.warnings.length, 1);
+  assert.equal(preview.warnings[0].type, "all_free_ai");
+  assert.equal(preview.warnings[0].race_id, "r1");
+  assert.equal(preview.totals.free_ai, 1500);
+});
+
+test("getSeasonPrizePreview reconcilerer betalt løb: results-sum vs finance-sum (#896)", async () => {
+  const supabase = makeSupabase({
+    races: [
+      { id: "ok", name: "Match", prize_paid_at: "2026-05-30T00:00:00Z", status: "completed" },
+      { id: "bad", name: "Mismatch", prize_paid_at: "2026-05-30T00:00:00Z", status: "completed" },
+    ],
+    results: [
+      // 'ok': results-sum (udbetalbar) = finance-sum
+      { race_id: "ok", team_id: "t1", prize_money: 800 },
+      { race_id: "ok", team_id: null, prize_money: 100 }, // fri/AI tæller IKKE i reconciliation
+      // 'bad': results-sum 500 ≠ finance 800
+      { race_id: "bad", team_id: "t1", prize_money: 500 },
+    ],
+    transactions: [
+      { race_id: "ok", team_id: "t1", amount: 800 },
+      { race_id: "bad", team_id: "t1", amount: 800 },
+    ],
+    teams: [{ id: "t1", name: "Team 1" }],
+  });
+
+  const preview = await getSeasonPrizePreview("season-1", supabase);
+
+  const ok = preview.reconciliation.find(r => r.race_id === "ok");
+  const bad = preview.reconciliation.find(r => r.race_id === "bad");
+  assert.deepEqual(ok, { race_id: "ok", race_name: "Match", results_total: 800, finance_total: 800, diff: 0, ok: true });
+  assert.deepEqual(bad, { race_id: "bad", race_name: "Mismatch", results_total: 500, finance_total: 800, diff: 300, ok: false });
 });
 
 // ─── paySeasonPrizesToDate → rider-value recalc wiring (R3, #895) ──────────────
