@@ -27,6 +27,11 @@ export function initSentry() {
       if (/ResizeObserver loop completed|NetworkError when attempting to fetch resource/i.test(value)) {
         return null;
       }
+      // #881: stale-chunk-fejl efter deploy er recoverable (appen auto-reloader til
+      // ny version) — drop dem som støj. Deploy-sundhed overvåges via Vercel, ikke her.
+      if (event.tags?.frontend_error_kind === "chunk_load_error" || isChunkLoadError({ message: value })) {
+        return null;
+      }
       return event;
     },
   });

@@ -32,6 +32,17 @@ test("isChunkLoadError — ignores ordinary render errors", () => {
   assert.equal(isChunkLoadError(new Error("Cannot read properties of null")), false);
 });
 
+test("isChunkLoadError — detects React.lazy internal-state failures (#881)", () => {
+  assert.equal(
+    isChunkLoadError(new TypeError('can\'t access property "default", e._result is undefined')),
+    true
+  );
+  assert.equal(
+    isChunkLoadError(new TypeError("undefined is not an object (evaluating 'e._result.default')")),
+    true
+  );
+});
+
 test("shouldAttemptChunkReload — allows exactly one reload per release", () => {
   const storage = memoryStorage();
   const error = new Error("Failed to fetch dynamically imported module");
