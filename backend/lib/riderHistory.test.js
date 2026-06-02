@@ -65,7 +65,7 @@ function loanRow({ id, status }) {
   };
 }
 
-const ALL_LOAN_STATUSES = ["active", "completed", "buyout", "pending", "rejected", "cancelled"];
+const ALL_LOAN_STATUSES = ["active", "window_pending", "buyout_pending", "completed", "buyout", "pending", "rejected", "cancelled"];
 
 test("riderHistory — rejected loan_agreements ekskluderes fra public history (#105)", async () => {
   const supabase = createRiderHistorySupabase({
@@ -146,11 +146,12 @@ test("riderHistory — pending loan er STADIG synlig for borrower i inboxPending
   assert.equal(inbox.loan_offers[0].role, "borrower_decide");
 });
 
-test("riderHistory — active, window_pending, completed, buyout returneres", async () => {
+test("riderHistory — active, window_pending, buyout_pending, completed, buyout returneres", async () => {
   const supabase = createRiderHistorySupabase({
     loanAgreements: [
       loanRow({ id: "L-active", status: "active" }),
       loanRow({ id: "L-window-pending", status: "window_pending" }),
+      loanRow({ id: "L-buyout-pending", status: "buyout_pending" }),
       loanRow({ id: "L-completed", status: "completed" }),
       loanRow({ id: "L-buyout", status: "buyout" }),
       loanRow({ id: "L-rejected", status: "rejected" }),
@@ -160,14 +161,14 @@ test("riderHistory — active, window_pending, completed, buyout returneres", as
   const events = await buildRiderHistory(supabase, RIDER);
   const loanStatuses = events.filter((e) => e.type === "loan").map((e) => e.status).sort();
 
-  assert.deepEqual(loanStatuses, ["active", "buyout", "completed", "window_pending"]);
-  assert.equal(events.filter((e) => e.type === "loan").length, 4);
+  assert.deepEqual(loanStatuses, ["active", "buyout", "buyout_pending", "completed", "window_pending"]);
+  assert.equal(events.filter((e) => e.type === "loan").length, 5);
 });
 
 test("riderHistory — PUBLIC_LOAN_STATUSES whitelist matcher kontrakten", () => {
   assert.deepEqual(
     [...PUBLIC_LOAN_STATUSES].sort(),
-    ["active", "buyout", "completed", "window_pending"],
+    ["active", "buyout", "buyout_pending", "completed", "window_pending"],
     "Whitelist må kun indeholde offentligt-synlige loan-statuses"
   );
   for (const privateStatus of ["pending", "rejected", "cancelled"]) {
