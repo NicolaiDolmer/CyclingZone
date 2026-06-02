@@ -8,8 +8,7 @@ import { logEvent } from "../lib/logEvent";
 import { groupNotifications } from "../lib/groupNotifications";
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
-
-const API = import.meta.env.VITE_API_URL;
+import { useActionSummary } from "../hooks/useActionSummary";
 
 // Role key for PENDING_ROLE — mapped to i18n via pending.role.<key>
 const PENDING_ROLE_KEYS = {
@@ -21,7 +20,7 @@ const PENDING_ROLE_KEYS = {
   proposing_decide: "proposingDecide",
   receiving_confirm: "receivingConfirm",
   proposing_confirm: "proposingConfirm",
-  borrower_decide: "borrowerDecide",
+  lender_decide: "lenderDecide",
 };
 
 const PENDING_KIND_ICON = {
@@ -182,21 +181,15 @@ export default function NotificationsPage() {
   const [feedLoaded, setFeedLoaded] = useState(false);
   const [feedFilter, setFeedFilter] = useState("all");
 
-  // Skal handles tab — pending decisions
-  const [pending, setPending] = useState({
-    transfer_offers: [],
-    swap_offers: [],
-    loan_offers: [],
-    counts: { transfer_offers: 0, swap_offers: 0, loan_offers: 0, total: 0 },
-  });
-  const [pendingLoading, setPendingLoading] = useState(false);
-  const [pendingLoaded, setPendingLoaded] = useState(false);
+  // Skal handles tab — kanonisk "kræver handling"-summary (#271 Slice A).
+  // Hook'en henter + realtime-opdaterer via /api/inbox/pending, så badge-tallet
+  // matcher Dashboard "Næste træk" og Min Aktivitet uden duplikeret logik.
+  const { pending, loading: pendingLoading, loaded: pendingLoaded } = useActionSummary();
 
-  useEffect(() => { loadNotifications(); loadPending(); }, []);
+  useEffect(() => { loadNotifications(); }, []);
 
   useEffect(() => {
     if (tab === "ligaen" && !feedLoaded) loadFeed();
-    if (tab === "skal_handles" && !pendingLoaded) loadPending();
   }, [tab]);
 
   // Realtime: personlige notifikationer
@@ -220,15 +213,7 @@ export default function NotificationsPage() {
     return () => supabase.removeChannel(channel);
   }, []);
 
-  // Realtime: pending decisions — refetch på hver ændring i de 3 kilde-tabeller
-  useEffect(() => {
-    const channel = supabase.channel("inbox-pending-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "transfer_offers" }, () => loadPending())
-      .on("postgres_changes", { event: "*", schema: "public", table: "swap_offers" }, () => loadPending())
-      .on("postgres_changes", { event: "*", schema: "public", table: "loan_agreements" }, () => loadPending())
-      .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, []);
+  // Pending decisions hentes + realtime-opdateres af useActionSummary (#271 Slice A).
 
   async function loadNotifications() {
     setNotifLoading(true);
@@ -256,22 +241,6 @@ export default function NotificationsPage() {
     setFeedLoaded(true);
   }
 
-  async function loadPending() {
-    setPendingLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setPendingLoading(false); return; }
-      const res = await fetch(`${API}/api/inbox/pending`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPending(data);
-      }
-    } catch { /* silent — UI viser tom-state */ }
-    setPendingLoading(false);
-    setPendingLoaded(true);
-  }
 
   async function markRead(id) {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));

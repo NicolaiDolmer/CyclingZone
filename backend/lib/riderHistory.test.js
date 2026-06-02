@@ -104,7 +104,7 @@ test("riderHistory — pending og cancelled loan_agreements ekskluderes (#105)",
   assert.equal(loanEvents[0].status, "active");
 });
 
-test("riderHistory — pending loan er STADIG synlig for borrower i inboxPending (#105 regression-guard)", async () => {
+test("riderHistory — pending loan er STADIG synlig for udlåner (lender) i inboxPending (#105 regression-guard)", async () => {
   const inboxSupabase = (() => {
     const tableData = {
       transfer_offers: [],
@@ -140,10 +140,10 @@ test("riderHistory — pending loan er STADIG synlig for borrower i inboxPending
     return { from(table) { return buildQuery(table); } };
   })();
 
-  const inbox = await getPendingInboxItems({ supabase: inboxSupabase, teamId: BORROWER });
-  assert.equal(inbox.counts.loan_offers, 1, "borrower SKAL stadig se pending loan i inbox");
+  const inbox = await getPendingInboxItems({ supabase: inboxSupabase, teamId: LENDER });
+  assert.equal(inbox.counts.loan_offers, 1, "udlåner SKAL stadig se pending loan i inbox (skjult fra public historik, men handlbar for den part der skal godkende)");
   assert.equal(inbox.loan_offers[0].id, "L-pending");
-  assert.equal(inbox.loan_offers[0].role, "borrower_decide");
+  assert.equal(inbox.loan_offers[0].role, "lender_decide");
 });
 
 test("riderHistory — active, window_pending, buyout_pending, completed, buyout returneres", async () => {

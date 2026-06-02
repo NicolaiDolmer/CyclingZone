@@ -57,7 +57,7 @@
       "proposingDecide": "Svar på modbud",
       "receivingConfirm": "Bekræft byttehandel",
       "proposingConfirm": "Bekræft byttehandel",
-      "borrowerDecide": "Accepter / afvis lånetilbud",
+      "lenderDecide": "Accepter / afvis leje-anmodning",
       "actionRequired": "Handling påkrævet"
     },
     "unknownTeam": "ukendt hold",
