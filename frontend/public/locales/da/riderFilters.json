@@ -1,7 +1,8 @@
 {
   "panel": {
     "label": "Filtrér",
-    "reset": "Nulstil"
+    "resetAll": "Nulstil alt",
+    "resetCount": "Nulstil alt ({count})"
   },
   "fields": {
     "name": "Navn",

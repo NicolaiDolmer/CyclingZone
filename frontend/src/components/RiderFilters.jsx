@@ -64,6 +64,14 @@ export const DEFAULT_FILTERS = {
   ...makeStatDefaults(),
 };
 
+// #960: alle ikke-stat filter-nøgler, i samme rækkefølge som chips'ene nedenfor.
+// Bruges både til "har aktivt filter"-tjek og til "Nulstil alt (N)"-tælleren.
+const BASIC_FILTER_KEYS = [
+  "q", "nationality_code", "min_uci", "max_uci", "min_salary", "max_salary",
+  "min_age", "max_age", "min_potentiale", "max_potentiale",
+  "min_auction_price", "max_auction_price", "u25", "u23", "free_agent", "team_id",
+];
+
 function isStatActive(filters, key) {
   return (
     (parseInt(filters[`${key}_min`]) ?? STAT_DEFAULT_MIN) > STAT_DEFAULT_MIN ||
@@ -120,16 +128,13 @@ export default function RiderFilters({
   const activeStatKeys = STAT_KEYS.filter(k => isStatActive(filters, k));
   const hasActiveStats = activeStatKeys.length > 0;
 
-  const hasBasicActive = filters.q || filters.nationality_code ||
-    filters.min_uci || filters.max_uci ||
-    filters.min_salary || filters.max_salary ||
-    filters.min_age || filters.max_age ||
-    filters.min_potentiale || filters.max_potentiale ||
-    filters.min_auction_price || filters.max_auction_price ||
-    filters.u25 || filters.u23 ||
-    filters.free_agent || filters.team_id;
+  const hasBasicActive = BASIC_FILTER_KEYS.some(k => filters[k]);
 
   const hasActiveFilters = hasBasicActive || hasActiveStats;
+
+  // #960: tæl aktive filtre (matcher antallet af chips nedenfor) til "Nulstil alt (N)".
+  const activeBasicCount = BASIC_FILTER_KEYS.filter(k => filters[k]).length;
+  const activeFilterCount = activeBasicCount + activeStatKeys.length;
 
   function resetStat(key) {
     onChange(`${key}_min`, STAT_DEFAULT_MIN);
@@ -142,18 +147,28 @@ export default function RiderFilters({
       <div className="bg-cz-card border border-cz-border rounded-xl p-4 mb-3">
         <div className="flex items-center justify-between gap-3 mb-3">
           <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">{t("panel.label")}</p>
-          {hasActiveFilters && (
-            <button onClick={onReset} className="text-xs text-cz-3 hover:text-cz-1 transition-colors flex-shrink-0">
-              {t("panel.reset")}
-            </button>
-          )}
+          {/* #960: altid synlig så brugeren lærer den findes; deaktiveret/grå
+              indtil mindst ét filter er sat, og viser så tælleren. */}
+          <button
+            type="button"
+            data-testid="filter-reset"
+            onClick={onReset}
+            disabled={!hasActiveFilters}
+            className={`text-xs transition-colors flex-shrink-0 ${
+              hasActiveFilters
+                ? "text-cz-3 hover:text-cz-1 cursor-pointer"
+                : "text-cz-3/40 cursor-not-allowed"
+            }`}
+          >
+            {hasActiveFilters ? t("panel.resetCount", { count: activeFilterCount }) : t("panel.resetAll")}
+          </button>
         </div>
 
         <div className={`grid gap-2 ${compact ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"}`}>
           {/* Name */}
           <div>
             <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.name")}</label>
-            <input type="text" value={filters.q} onChange={e => onChange("q", e.target.value)}
+            <input type="text" data-testid="filter-name" value={filters.q} onChange={e => onChange("q", e.target.value)}
               placeholder={t("fields.namePlaceholder")}
               className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2
                 text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
