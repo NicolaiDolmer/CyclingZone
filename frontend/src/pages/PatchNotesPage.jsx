@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.49",
+    date: "2026-06-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improvements · Divisions",
+        items: [
+          "EN · New teams now fill the highest division with room first (Division 1, then 2, then 3) instead of all starting in Division 3, so the early field meets at the top and the game feels alive from day one. Existing teams have been moved up to match. Refs #962.",
+          "DA · Nye hold fylder nu den højeste division med ledig plads først (Division 1, så 2, så 3) i stedet for at alle starter i Division 3, så det tidlige felt mødes i toppen og spillet føles levende fra dag ét. Eksisterende hold er rykket op tilsvarende. Refs #962.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.48",
     date: "2026-06-02",
     label: "Beta",

@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **[#962](https://github.com/NicolaiDolmer/CyclingZone/issues/962) Division-rework** (`priority:high`, `slice:tdf-launch`) — kort AskUserQuestion-design-session (kapacitet=20, afklar op/nedryknings-konflikt) før byg.
+> **🎯 Next action:** **Anvend migration `database/2026-06-02-division-fill-from-top.sql` i prod** når PR #962 merges (rykker nuværende 23 div-3-hold op: 20→div 1, 3→div 2). Derefter næste launch-issue: [#787](https://github.com/NicolaiDolmer/CyclingZone/issues/787) sprog eller [#271](https://github.com/NicolaiDolmer/CyclingZone/issues/271) dashboard.
 >
 > **🤖 Working agent:** Ingen aktiv session.
 >

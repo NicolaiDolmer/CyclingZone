@@ -33,10 +33,13 @@ import {
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
 import {
+  DIVISION_CAPACITY,
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
   FIRST_PROMOTION_RELEGATION_SEASON,
+  MAX_DIVISION,
+  MIN_DIVISION,
   SPONSOR_INCOME_BASE,
 } from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -65,8 +68,8 @@ async function getDefaultSupabaseClient() {
 const INTEREST_RATE = 0.10;        // 10% interest on negative balance per season
 const PROMOTION_SLOTS = 2;         // Top 2 promote
 const RELEGATION_SLOTS = 2;        // Bottom 2 relegate
-const MAX_DIVISION = 3;
-const MIN_DIVISION = 1;
+// MIN_DIVISION / MAX_DIVISION lever nu i economyConstants.js (#962) — delt med
+// fyld-fra-toppen i teamProfileEngine, så bounds ikke duplikeres.
 const SUPABASE_PAGE_SIZE = 1000;
 const RIDER_VALUE_PATCH_CONCURRENCY = 25;
 
@@ -670,6 +673,14 @@ export async function processSeasonEnd(seasonId, deps = {}) {
       now: notificationNow,
     });
   }
+
+  // #962 fyld-fra-toppen: komprimér aktive menneske-hold op i tomme topplads-
+  // huller efter op/nedrykning, så de øverste divisioner altid er fyldt til
+  // DIVISION_CAPACITY før en lavere division bruges.
+  await rebalanceDivisions(currentSeasonNumber, standings, {
+    supabase: supabaseClient,
+    now: notificationNow,
+  });
 
   // Mark season as completed
   const { error: completeError } = await supabaseClient.from("seasons")
@@ -1341,6 +1352,88 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
   if (promotions.length || relegations.length) {
     console.log(`  📈 Div ${division}: ${promotions.length} promoted, ${relegations.length} relegated`);
   }
+}
+
+/**
+ * #962 fyld-fra-toppen — re-balance ved sæson-slut.
+ *
+ * Komprimerer aktive menneske-hold op i tomme topplads-huller, så de øverste
+ * divisioner altid er fyldt til DIVISION_CAPACITY før en lavere division bruges.
+ * Huller opstår når hold fryses/forlader spillet mellem sæsoner.
+ *
+ * Kører EFTER op/nedrykning (processDivisionEnd) og er gated af samme
+ * FIRST_PROMOTION_RELEGATION_SEASON, så open-beta-sæsoner ikke flytter hold før
+ * divisionsfordelingen er moden. AI-hold tæller ikke med i kapaciteten og rykkes
+ * aldrig. Bund-divisionen (MAX_DIVISION) er overflow og trækkes aldrig op fra.
+ *
+ * Hold trækkes op efter sidste sæsons placering (bedst placeret først) for at
+ * gøre den ikke-sportslige flytning så fair som muligt.
+ */
+export async function rebalanceDivisions(seasonNumber, standings, deps = {}) {
+  const client = deps.supabase ?? await getDefaultSupabaseClient();
+  const notificationDeps = { supabase: client, now: deps.now };
+
+  if (seasonNumber < FIRST_PROMOTION_RELEGATION_SEASON) {
+    return { moved: [] };
+  }
+
+  const { data: teams, error } = await client
+    .from("teams")
+    .select("id, division")
+    .eq("is_ai", false)
+    .eq("is_frozen", false);
+  throwIfSupabaseError(error, "Could not load teams for division rebalance");
+
+  // Rank-lookup fra sidste sæsons standings (tidligere indeks = bedre placering).
+  // Hold uden standing sorteres bagest, så de rykkes sidst.
+  const rankByTeam = new Map();
+  let order = 0;
+  for (const s of standings || []) {
+    if (!rankByTeam.has(s.team_id)) rankByTeam.set(s.team_id, order++);
+  }
+  const rankOf = (id) => (rankByTeam.has(id) ? rankByTeam.get(id) : Number.MAX_SAFE_INTEGER);
+
+  // Hold pr. division, bedst placeret først.
+  const byDivision = new Map();
+  for (const team of teams || []) {
+    if (!byDivision.has(team.division)) byDivision.set(team.division, []);
+    byDivision.get(team.division).push(team.id);
+  }
+  for (const list of byDivision.values()) {
+    list.sort((a, b) => rankOf(a) - rankOf(b));
+  }
+
+  const moved = [];
+  for (let targetDiv = MIN_DIVISION; targetDiv < MAX_DIVISION; targetDiv++) {
+    if (!byDivision.has(targetDiv)) byDivision.set(targetDiv, []);
+    const targetList = byDivision.get(targetDiv);
+
+    for (let sourceDiv = targetDiv + 1; sourceDiv <= MAX_DIVISION && targetList.length < DIVISION_CAPACITY; sourceDiv++) {
+      const sourceList = byDivision.get(sourceDiv) || [];
+      while (targetList.length < DIVISION_CAPACITY && sourceList.length > 0) {
+        const teamId = sourceList.shift();
+        const { error: moveError } = await client
+          .from("teams")
+          .update({ division: targetDiv })
+          .eq("id", teamId);
+        throwIfSupabaseError(moveError, `Could not rebalance team ${teamId}`);
+        targetList.push(teamId);
+        moved.push({ team_id: teamId, from: sourceDiv, to: targetDiv });
+        await notifyManager(
+          teamId,
+          "board_update",
+          "Oprykket! 🎉",
+          `Tillykke! Dit hold rykker op til Division ${targetDiv}`,
+          notificationDeps
+        );
+      }
+    }
+  }
+
+  if (moved.length) {
+    console.log(`  🧩 Division-rebalance: ${moved.length} hold rykket op for at fylde toppen`);
+  }
+  return { moved };
 }
 
 // ─── Standing Updates ─────────────────────────────────────────────────────────

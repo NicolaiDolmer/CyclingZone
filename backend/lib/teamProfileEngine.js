@@ -1,8 +1,13 @@
 import { createInitialBoardProfile } from "./boardEngine.js";
-import { INITIAL_BALANCE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
+import {
+  DIVISION_CAPACITY,
+  INITIAL_BALANCE,
+  MAX_DIVISION,
+  MIN_DIVISION,
+  SPONSOR_INCOME_BASE,
+} from "./economyConstants.js";
 
 const DEFAULT_TEAM_VALUES = {
-  division: 3,
   balance: INITIAL_BALANCE,
   sponsor_income: SPONSOR_INCOME_BASE,
 };
@@ -34,6 +39,35 @@ function getEconomyRepairValues(team) {
   }
 
   return repair;
+}
+
+// #962 fyld-fra-toppen: nye hold tildeles den HØJESTE division (lavest nummer)
+// med ledig plads — div 1 fyldes før div 2 osv. Kun aktive menneske-hold tæller
+// mod kapaciteten (AI-hold ignoreres). Bund-divisionen (MAX_DIVISION) er overflow
+// og bruges når alle højere divisioner er fyldt til DIVISION_CAPACITY.
+async function pickDivisionForNewTeam(supabase) {
+  const { data: teams, error } = await supabase
+    .from("teams")
+    .select("division")
+    .eq("is_ai", false)
+    .eq("is_frozen", false);
+
+  if (error) {
+    throw createHttpError(500, error.message);
+  }
+
+  const counts = new Map();
+  for (const team of teams || []) {
+    counts.set(team.division, (counts.get(team.division) || 0) + 1);
+  }
+
+  for (let division = MIN_DIVISION; division < MAX_DIVISION; division++) {
+    if ((counts.get(division) || 0) < DIVISION_CAPACITY) {
+      return division;
+    }
+  }
+
+  return MAX_DIVISION;
 }
 
 async function ensureUniqueTeamName({ supabase, normalizedName, existingTeamId = null }) {
@@ -135,6 +169,7 @@ export async function upsertOwnTeamProfile({
 
     team = updatedTeam;
   } else {
+    const division = await pickDivisionForNewTeam(supabase);
     const { data: insertedTeam, error: insertError } = await supabase
       .from("teams")
       .insert({
@@ -142,6 +177,7 @@ export async function upsertOwnTeamProfile({
         name: normalizedName,
         manager_name: normalizedManagerName,
         ...DEFAULT_TEAM_VALUES,
+        division,
       })
       .select("*")
       .single();

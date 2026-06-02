@@ -9,10 +9,13 @@ const {
   payDivisionBonuses,
   processDivisionEnd,
   processSeasonEnd,
+  rebalanceDivisions,
   repairSeasonEndFinanceAndBoard,
   updateRiderValues,
   updateStandings,
 } = await import("./economyEngine.js");
+
+const { DIVISION_CAPACITY } = await import("./economyConstants.js");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -2008,4 +2011,101 @@ test("processDivisionEnd performs promotion + relegation for season 3 (gate clea
   const relegations = supabase.updates.filter(u => u.payload.division === 3).map(u => u.id).sort();
   assert.deepEqual(promotions, ["2-a", "2-b"]);
   assert.deepEqual(relegations, ["2-c", "2-d"]);
+});
+
+// ─── rebalanceDivisions (#962 fyld-fra-toppen) ────────────────────────────────
+
+function createRebalanceSupabase(teams) {
+  const updates = [];
+  return {
+    updates,
+    from(table) {
+      assert.equal(table, "teams", `Unexpected table in rebalance mock: ${table}`);
+      return {
+        select(cols) {
+          if (cols === "user_id") {
+            // notifyManager → notifyTeamOwner path. user_id=null early-exiter.
+            return {
+              eq() {
+                return { single() { return Promise.resolve({ data: { user_id: null }, error: null }); } };
+              },
+            };
+          }
+          // Load-path: .eq("is_ai", false).eq("is_frozen", false) derefter await.
+          const query = {
+            eq() { return query; },
+            then(resolve, reject) {
+              const rows = teams.map(t => ({ id: t.id, division: t.division }));
+              return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+            },
+          };
+          return query;
+        },
+        update(payload) {
+          return {
+            eq(column, value) {
+              assert.equal(column, "id");
+              updates.push({ id: value, division: payload.division });
+              return Promise.resolve({ error: null });
+            },
+          };
+        },
+      };
+    },
+  };
+}
+
+function buildRebalanceTeams({ div1 = 0, div2 = 0, div3 = 0 } = {}) {
+  const teams = [];
+  for (let i = 0; i < div1; i++) teams.push({ id: `d1-${i}`, division: 1 });
+  for (let i = 0; i < div2; i++) teams.push({ id: `d2-${i}`, division: 2 });
+  for (let i = 0; i < div3; i++) teams.push({ id: `d3-${i}`, division: 3 });
+  return teams;
+}
+
+test("rebalanceDivisions is gated by FIRST_PROMOTION_RELEGATION_SEASON (no moves before season 3)", async () => {
+  const supabase = createRebalanceSupabase(buildRebalanceTeams({ div1: 5, div2: 5, div3: 5 }));
+  const result = await rebalanceDivisions(2, [], { supabase, now: new Date("2026-06-21T23:00:00Z") });
+  assert.equal(supabase.updates.length, 0);
+  assert.deepEqual(result.moved, []);
+});
+
+test("rebalanceDivisions pulls the best-ranked team up to fill an empty top slot", async () => {
+  const teams = buildRebalanceTeams({ div1: DIVISION_CAPACITY - 1, div2: 2 });
+  const supabase = createRebalanceSupabase(teams);
+  // Standings: d2-1 placeret bedre end d2-0 → d2-1 skal trækkes op først.
+  const standings = [
+    { team_id: "d2-1" },
+    { team_id: "d2-0" },
+  ];
+
+  const result = await rebalanceDivisions(3, standings, { supabase, now: new Date("2026-07-21T23:00:00Z") });
+
+  // Kun 1 ledig plads i div 1 → den bedst placerede (d2-1) rykkes op.
+  assert.deepEqual(supabase.updates, [{ id: "d2-1", division: 1 }]);
+  assert.deepEqual(result.moved, [{ team_id: "d2-1", from: 2, to: 1 }]);
+});
+
+test("rebalanceDivisions cascades: fills div 1 from div 2, then div 2 from div 3", async () => {
+  const teams = buildRebalanceTeams({ div1: DIVISION_CAPACITY - 2, div2: 3, div3: 4 });
+  const supabase = createRebalanceSupabase(teams);
+
+  const result = await rebalanceDivisions(3, [], { supabase, now: new Date("2026-07-21T23:00:00Z") });
+
+  const toDiv1 = supabase.updates.filter(u => u.division === 1).length;
+  const toDiv2 = supabase.updates.filter(u => u.division === 2).length;
+  // 2 ledige i div 1 → 2 fra div 2 op. Div 2 har nu plads → de 4 i div 3 rykker op.
+  assert.equal(toDiv1, 2);
+  assert.equal(toDiv2, 4);
+  assert.equal(result.moved.length, 6);
+});
+
+test("rebalanceDivisions makes no moves when top divisions are already full (soft cap respected)", async () => {
+  const teams = buildRebalanceTeams({ div1: DIVISION_CAPACITY, div2: DIVISION_CAPACITY + 5, div3: 3 });
+  const supabase = createRebalanceSupabase(teams);
+
+  const result = await rebalanceDivisions(3, [], { supabase, now: new Date("2026-07-21T23:00:00Z") });
+
+  assert.equal(supabase.updates.length, 0);
+  assert.deepEqual(result.moved, []);
 });

@@ -24,6 +24,16 @@ export const NEGATIVE_BALANCE_INTEREST_RATE = 0.10;
 // Bruges som soft-tjek; loan_config er kanonisk runtime-værdi.
 export const DEBT_CEILING_BY_DIVISION = { 1: 1200000, 2: 900000, 3: 600000 };
 
+// Divisions-struktur. Div 1 = toppen (bedst), MAX_DIVISION = bunden.
+// Centraliseret her (#962) så fyld-fra-toppen og op/nedrykning deler samme bounds.
+export const MIN_DIVISION = 1;
+export const MAX_DIVISION = 3;
+
+// Mål-antal MENNESKE-hold pr. division for fyld-fra-toppen (#962). AI-hold tæller
+// IKKE med. Div 1..MAX_DIVISION-1 har hård cap; bund-divisionen (MAX_DIVISION) er
+// overflow og må vokse forbi dette tal (blød cap), så der altid er plads til nye hold.
+export const DIVISION_CAPACITY = 20;
+
 // Første sæson-slut hvor op/nedrykninger må ske. Aktiveret 2026-05-21 for at give
 // open-beta tid til at finde en sund langtids-fordeling af hold i divisioner før
 // vi flytter rundt på dem. Med værdi 3 betyder det: sæson 1 og 2 slutter uden
