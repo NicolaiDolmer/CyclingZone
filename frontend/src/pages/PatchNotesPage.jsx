@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.50",
+    date: "2026-06-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixes · Divisions",
+        items: [
+          "EN · Test accounts no longer take up division slots. They are hidden from the standings, but were still counting towards a division's capacity, which pushed real teams down a division. Capacity now counts only the real teams you see on the standings. Refs #962.",
+          "DA · Testkonti optager ikke længere pladser i en division. De er skjult på ranglisten, men talte alligevel med i en divisions kapacitet, hvilket skubbede rigtige hold en division ned. Kapaciteten tæller nu kun de rigtige hold du ser på ranglisten. Refs #962.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.49",
     date: "2026-06-02",
     label: "Beta",

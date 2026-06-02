@@ -1363,8 +1363,9 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
  *
  * Kører EFTER op/nedrykning (processDivisionEnd) og er gated af samme
  * FIRST_PROMOTION_RELEGATION_SEASON, så open-beta-sæsoner ikke flytter hold før
- * divisionsfordelingen er moden. AI-hold tæller ikke med i kapaciteten og rykkes
- * aldrig. Bund-divisionen (MAX_DIVISION) er overflow og trækkes aldrig op fra.
+ * divisionsfordelingen er moden. Kun aktive, ikke-test menneske-hold tæller med i
+ * kapaciteten og rykkes — AI-, test- og frosne hold ignoreres (samme filter som
+ * ranglisten). Bund-divisionen (MAX_DIVISION) er overflow og trækkes aldrig op fra.
  *
  * Hold trækkes op efter sidste sæsons placering (bedst placeret først) for at
  * gøre den ikke-sportslige flytning så fair som muligt.
@@ -1381,6 +1382,7 @@ export async function rebalanceDivisions(seasonNumber, standings, deps = {}) {
     .from("teams")
     .select("id, division")
     .eq("is_ai", false)
+    .eq("is_test_account", false)
     .eq("is_frozen", false);
   throwIfSupabaseError(error, "Could not load teams for division rebalance");
 

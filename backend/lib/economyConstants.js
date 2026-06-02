@@ -29,9 +29,11 @@ export const DEBT_CEILING_BY_DIVISION = { 1: 1200000, 2: 900000, 3: 600000 };
 export const MIN_DIVISION = 1;
 export const MAX_DIVISION = 3;
 
-// Mål-antal MENNESKE-hold pr. division for fyld-fra-toppen (#962). AI-hold tæller
-// IKKE med. Div 1..MAX_DIVISION-1 har hård cap; bund-divisionen (MAX_DIVISION) er
-// overflow og må vokse forbi dette tal (blød cap), så der altid er plads til nye hold.
+// Mål-antal "rigtige" hold pr. division for fyld-fra-toppen (#962). Kun aktive,
+// ikke-test menneske-hold tæller med — samme filter som ranglisten (AI, test og
+// frosne hold ignoreres). Div 1..MAX_DIVISION-1 har hård cap; bund-divisionen
+// (MAX_DIVISION) er overflow og må vokse forbi dette tal (blød cap), så der altid
+// er plads til nye hold.
 export const DIVISION_CAPACITY = 20;
 
 // Første sæson-slut hvor op/nedrykninger må ske. Aktiveret 2026-05-21 for at give

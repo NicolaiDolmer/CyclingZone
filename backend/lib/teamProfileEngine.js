@@ -42,14 +42,17 @@ function getEconomyRepairValues(team) {
 }
 
 // #962 fyld-fra-toppen: nye hold tildeles den HØJESTE division (lavest nummer)
-// med ledig plads — div 1 fyldes før div 2 osv. Kun aktive menneske-hold tæller
-// mod kapaciteten (AI-hold ignoreres). Bund-divisionen (MAX_DIVISION) er overflow
-// og bruges når alle højere divisioner er fyldt til DIVISION_CAPACITY.
+// med ledig plads — div 1 fyldes før div 2 osv. Kun "rigtige" hold tæller mod
+// kapaciteten — samme filter som ranglisten (StandingsPage): AI-, test- og frosne
+// hold ignoreres, ellers spiser de pladser uden at være synlige og skubber rigtige
+// hold ned. Bund-divisionen (MAX_DIVISION) er overflow og bruges når alle højere
+// divisioner er fyldt til DIVISION_CAPACITY.
 async function pickDivisionForNewTeam(supabase) {
   const { data: teams, error } = await supabase
     .from("teams")
     .select("division")
     .eq("is_ai", false)
+    .eq("is_test_account", false)
     .eq("is_frozen", false);
 
   if (error) {

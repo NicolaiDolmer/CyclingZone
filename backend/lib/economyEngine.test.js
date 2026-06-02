@@ -143,20 +143,26 @@ function createSeasonEndSupabase({
                 if (column === "is_ai") {
                   assert.equal(value, false);
                   assert.equal(columns.includes("riders("), false);
-                  // 2026-05-21: loadHumanSeasonEndTeams chainer .eq("is_frozen", false)
-                  // efter .eq("is_ai", false). Mocken understøtter begge chain-rækkefølger:
-                  // direkte Promise (legacy single-eq callers) eller .eq igen (ny dual-eq).
+                  // loadHumanSeasonEndTeams chainer .eq("is_frozen") efter .eq("is_ai").
+                  // rebalanceDivisions (#962) chainer .eq("is_test_account").eq("is_frozen").
+                  // Mocken understøtter vilkårlig længde af is_test_account/is_frozen-led
+                  // (samt legacy direkte-Promise single-eq callers).
                   const teamsResult = {
                     data: [clone(state.team)],
                     error: null,
                   };
-                  return Object.assign(Promise.resolve(teamsResult), {
+                  const makeChain = () => Object.assign(Promise.resolve(teamsResult), {
                     eq(innerCol, innerVal) {
-                      assert.equal(innerCol, "is_frozen");
+                      assert.equal(
+                        ["is_test_account", "is_frozen"].includes(innerCol),
+                        true,
+                        `uventet eq-kolonne i teams-chain: ${innerCol}`
+                      );
                       assert.equal(innerVal, false);
-                      return Promise.resolve(teamsResult);
+                      return makeChain();
                     },
                   });
+                  return makeChain();
                 }
 
                 assert.equal(column, "id");
