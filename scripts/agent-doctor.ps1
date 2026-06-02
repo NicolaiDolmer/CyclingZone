@@ -340,7 +340,11 @@ if ($branch -and $protection) {
   $checks = @($protection.required_status_checks.checks | ForEach-Object { $_.context })
   $strict = $protection.required_status_checks.strict
   $hasCoreChecks = ($checks -contains "backend-tests") -and ($checks -contains "frontend-build") -and ($checks -contains "dependency-review")
-  Add-Check "main-protection" ($(if ($branch.protected -and $hasCoreChecks -and $strict) { "OK" } else { "FAIL" })) "protected=$($branch.protected), strict=$strict, checks=$($checks -join ',')"
+  # FAIL kun ved reel breakage: ubeskyttet main eller manglende core-status-checks.
+  # strict=False ("require up-to-date before merge") er BEVIDST — strict=True serialiserer
+  # merges og bremser auto-merge-throughput (allow_auto_merge=True). Tidligere FAIL på
+  # strict=False var cry-wolf (sundhedsaudit 2026-06-02); strict vises kun i detail nu.
+  Add-Check "main-protection" ($(if ($branch.protected -and $hasCoreChecks) { "OK" } else { "FAIL" })) "protected=$($branch.protected), strict=$strict, checks=$($checks -join ',')"
 }
 
 $rulesets = Gh-Json "repos/$Repo/rulesets"

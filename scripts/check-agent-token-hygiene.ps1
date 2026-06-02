@@ -44,7 +44,12 @@ $results = New-Object System.Collections.Generic.List[object]
 $contextFiles = @(
   @{ Name = "CLAUDE.md"; Path = "CLAUDE.md"; Warn = 1200; Fail = 2000 },
   @{ Name = "AGENTS.md"; Path = "AGENTS.md"; Warn = 4500; Fail = 6500; CodexOnly = $true },
-  @{ Name = "NOW.md"; Path = "docs/NOW.md"; Warn = 900; Fail = 1500 },
+  # NOW.md governes kanonisk på LINJER (now-md-budget: warn 30 / fail 40, jf. CLAUDE.md close-out).
+  # Token-tærsklerne her er kun en sanity-ceiling mod ekstrem tæthed: en linje-compliant
+  # NOW.md med tætte tabel-rækker rammer ~1900-2400 tok ved 30-40 linjer, så Warn=900/Fail=1500
+  # fejlede en fil der overholdt linje-budgettet (cry-wolf, sundhedsaudit 2026-06-02). Hævet så
+  # kun reel density-bloat ud over linje-checken flagges.
+  @{ Name = "NOW.md"; Path = "docs/NOW.md"; Warn = 2000; Fail = 3000 },
   @{ Name = "GUARDRAILS_CORE.md"; Path = "docs/GUARDRAILS_CORE.md"; Warn = 1300; Fail = 2200 },
   @{ Name = "SESSION_CONTEXT.md"; Path = ".codex.local/SESSION_CONTEXT.md"; Warn = 800; Fail = 1200; OptionalCache = $true; CodexOnly = $true }
 )
@@ -97,15 +102,14 @@ if (Test-Path $projectDir) {
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
   if ($latestTranscript) {
-    $status = if ($latestTranscript.Length -gt ($MaxTranscriptBytes * 1.5)) {
-      "FAIL"
-    } elseif ($latestTranscript.Length -gt $MaxTranscriptBytes) {
-      "WARN"
-    } else {
-      "OK"
-    }
+    # Den AKTIVE sessions transcript vokser ubundet og kan ikke reduceres midt i en
+    # session — størrelsen siger intet om hvad der pushes og er ikke handlingsbar her.
+    # Et FAIL ramte derfor enhver lang session uanset kvalitet (cry-wolf, audit 2026-06-02).
+    # → Aldrig FAIL. Kun en blød WARN ved meget stor fil (nudge til /compact eller frisk session).
+    $status = if ($latestTranscript.Length -gt ($MaxTranscriptBytes * 3)) { "WARN" } else { "INFO" }
     $kb = [math]::Round($latestTranscript.Length / 1024, 1)
-    Add-Result $results "latest-transcript" $status "$kb KB, $($latestTranscript.Name)"
+    $note = if ($status -eq "WARN") { " — overvej /compact eller frisk session" } else { "" }
+    Add-Result $results "latest-transcript" $status "$kb KB, $($latestTranscript.Name)$note"
   } else {
     Add-Result $results "latest-transcript" "OK" "no transcripts found"
   }
@@ -187,15 +191,22 @@ Add-Result $results "harness-blob-estimate" "INFO" "$harnessValue approx tokens 
 # Cold-start split: Claude Code vs Codex CLI auto-loader forskellige filer (#382).
 $claudeColdStart = $claudeFileTotal + $memoryTokens + $harnessValue
 $codexColdStart = $codexFileTotal + $memoryTokens + $harnessValue
-$claudeColdStatus = if ($claudeColdStart -gt 12000) { "FAIL" } elseif ($claudeColdStart -gt 8000) { "WARN" } else { "OK" }
-$codexColdStatus = if ($codexColdStart -gt 16000) { "FAIL" } elseif ($codexColdStart -gt 12000) { "WARN" } else { "OK" }
-Add-Result $results "claude-cold-start-est" $claudeColdStatus "$claudeColdStart approx tokens (Claude files + memory + harness)"
-Add-Result $results "codex-cold-start-est" $codexColdStatus "$codexColdStart approx tokens (Codex files + memory + harness)"
+# Cold-start-aggregatet = controllable (docs+memory) + harness-blob. De HANDLINGSBARE
+# dele er allerede gated andetsteds: docs via claude/codex-context-files, memory via
+# claude-memory + memory-hot-budget. Harness-blobben ($harnessValue tok) er infrastruktur
+# (system-prompt + MCP/tool-schemas + skills) og kan IKKE reduceres ved at redigere docs —
+# kun ved at disconnecte connectors/plugins (docs/AI_OPS_DISABLE_PLAYBOOK.md). På denne PC
+# er harness alene ~15k tok, så et FAIL-gate på aggregatet (tærskel 12k/16k) var strukturelt
+# umuligt at tilfredsstille via doc-trimning = cry-wolf (sundhedsaudit 2026-06-02).
+# → Rapportér aggregatet som INFO til baseline-tracking; gating sker på de handlingsbare del-checks.
+$claudeControllable = $claudeFileTotal + $memoryTokens
+$codexControllable = $codexFileTotal + $memoryTokens
+Add-Result $results "claude-cold-start-est" "INFO" "$claudeColdStart approx tokens (controllable $claudeControllable docs+memory, gated separat; harness $harnessValue infra, ej doc-reducerbar)"
+Add-Result $results "codex-cold-start-est" "INFO" "$codexColdStart approx tokens (controllable $codexControllable docs+memory, gated separat; harness $harnessValue infra, ej doc-reducerbar)"
 
 # Legacy alias - matcher codex (worst case) for backward compat med eksisterende baselines.
 $coldStartTotal = $codexColdStart
-$coldStartStatus = $codexColdStatus
-Add-Result $results "cold-start-total-est" $coldStartStatus "$coldStartTotal approx tokens (legacy alias = codex cold-start)"
+Add-Result $results "cold-start-total-est" "INFO" "$coldStartTotal approx tokens (legacy alias = codex cold-start)"
 
 Write-Host ""
 Write-Host "Agent token hygiene"
