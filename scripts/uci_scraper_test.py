@@ -106,6 +106,12 @@ class UciScraperValidationTests(unittest.TestCase):
             )
             self.assertEqual(len(fake.get_ranges), 3)
             self.assertEqual(fake.get_ranges, [(0, 999), (1000, 1999), (2000, 2999)])
+            # Forward-guard #669: scraperen må kun hente ægte PCM-ryttere, aldrig
+            # fiktive (pcm_id NULL). Alle DB-fetch-URLs skal filtrere på pcm_id.
+            self.assertTrue(
+                all("pcm_id=not.is.null" in url for url in fake.get_urls),
+                f"DB-fetch mangler pcm_id-filter: {fake.get_urls}",
+            )
 
 
 class HtmlPointsParserTests(unittest.TestCase):
@@ -378,10 +384,12 @@ class _FakeRequests:
     def __init__(self, db_riders):
         self.db_riders = db_riders
         self.get_ranges: list[tuple[int, int] | None] = []
+        self.get_urls: list[str] = []
         self.patches: list[dict] = []
         self.posts: list[dict] = []
 
     def get(self, *_args, headers=None, **_kwargs):
+        self.get_urls.append(_args[0] if _args else "")
         range_header = (headers or {}).get("Range")
         if not range_header:
             self.get_ranges.append(None)
