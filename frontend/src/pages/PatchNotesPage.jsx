@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.53",
+    date: "2026-06-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixes · Inbox",
+        items: [
+          "EN · Pending loan requests now appear in the inbox \"To handle\" tab of the rider's owner — the manager who actually has to accept or reject them. Before, they were shown to the requesting team (who could only wait) and were missing for the owner, so requests were easy to overlook. The action counts in the inbox, My Activity and Transfers now come from one shared source so they always agree. Refs #271.",
+          "DA · Afventende leje-anmodninger vises nu i \"Skal handles\"-fanen i indbakken hos rytterens ejer — den manager der faktisk skal acceptere eller afvise dem. Før blev de vist til det anmodende hold (som kun kunne vente) og manglede hos ejeren, så anmodninger var nemme at overse. Handlings-tallene i indbakke, Min Aktivitet og Transfers kommer nu fra én fælles kilde, så de altid stemmer overens. Refs #271.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.52",
     date: "2026-06-02",
     label: "Beta",
