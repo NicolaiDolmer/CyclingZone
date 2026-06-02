@@ -2,7 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { upsertOwnTeamProfile } from "./teamProfileEngine.js";
-import { INITIAL_BALANCE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
+import { DIVISION_CAPACITY, INITIAL_BALANCE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
+
+function seedTeams({ division, count, is_ai = false, is_frozen = false }) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `seed-div${division}-${is_ai ? "ai" : is_frozen ? "frozen" : "human"}-${index}`,
+    user_id: `seed-user-${division}-${index}`,
+    name: `Seed ${division} ${is_ai ? "AI" : is_frozen ? "Frozen" : "Human"} ${index}`,
+    division,
+    is_ai,
+    is_frozen,
+  }));
+}
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -198,7 +209,80 @@ test("upsertOwnTeamProfile sætter sponsor_income og balance til de delte konsta
 
   assert.equal(result.team.sponsor_income, SPONSOR_INCOME_BASE);
   assert.equal(result.team.balance, INITIAL_BALANCE);
+  // #962 fyld-fra-toppen: uden eksisterende hold lander det første hold i div 1.
+  assert.equal(result.team.division, 1);
+});
+
+test("#962 fyld-fra-toppen: nyt hold lander i div 2 når div 1 er fyldt", async () => {
+  const supabase = createSupabaseDouble({
+    teams: seedTeams({ division: 1, count: DIVISION_CAPACITY }),
+  });
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-new",
+    name: "Overflow To Two",
+    managerName: "Manager",
+  });
+
+  assert.equal(result.team.division, 2);
+});
+
+test("#962 fyld-fra-toppen: nyt hold lander i div 3 (overflow) når div 1 og 2 er fyldt", async () => {
+  const supabase = createSupabaseDouble({
+    teams: [
+      ...seedTeams({ division: 1, count: DIVISION_CAPACITY }),
+      ...seedTeams({ division: 2, count: DIVISION_CAPACITY }),
+    ],
+  });
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-new",
+    name: "Overflow To Three",
+    managerName: "Manager",
+  });
+
   assert.equal(result.team.division, 3);
+});
+
+test("#962 fyld-fra-toppen: blød cap — div 3 må vokse forbi kapaciteten", async () => {
+  const supabase = createSupabaseDouble({
+    teams: [
+      ...seedTeams({ division: 1, count: DIVISION_CAPACITY }),
+      ...seedTeams({ division: 2, count: DIVISION_CAPACITY }),
+      ...seedTeams({ division: 3, count: DIVISION_CAPACITY }),
+    ],
+  });
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-new",
+    name: "Soft Cap Overflow",
+    managerName: "Manager",
+  });
+
+  assert.equal(result.team.division, 3);
+});
+
+test("#962 fyld-fra-toppen: AI- og frosne hold tæller ikke mod kapaciteten", async () => {
+  const supabase = createSupabaseDouble({
+    teams: [
+      ...seedTeams({ division: 1, count: DIVISION_CAPACITY, is_ai: true }),
+      ...seedTeams({ division: 1, count: DIVISION_CAPACITY, is_frozen: true }),
+      ...seedTeams({ division: 1, count: 5 }),
+    ],
+  });
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-new",
+    name: "Counts Humans Only",
+    managerName: "Manager",
+  });
+
+  // Kun 5 aktive menneske-hold i div 1 → der er stadig plads i toppen.
+  assert.equal(result.team.division, 1);
 });
 
 test("upsertOwnTeamProfile updates the existing team without duplicating the board profile", async () => {
