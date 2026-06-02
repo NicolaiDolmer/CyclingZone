@@ -10,6 +10,7 @@ import {
 export const REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT = 5;       // F5: requests umulige i sidste 5 race-days
 export const MID_CYCLE_PROGRESS_THRESHOLD_PCT = 50;          // F6: ≥50% plan-gennemført ELLER
 export const MID_CYCLE_SATISFACTION_DELTA_PCT = 30;          // >30% satisfaction-delta åbner re-orientering
+export const RENEGOTIATION_SEASON_PROGRESS_LOCK_PCT = 50;    // #915: gen-forhandling låst når ≥50% af sæsonen er kørt
 export const MAJOR_PIVOT_REQUEST_TYPES = new Set([           // F4: kun krydsninger youth↔star tæller
   "more_youth_focus",     // major hvis FRA star_signing
   "more_results_focus",   // major hvis FRA youth_development
@@ -341,6 +342,49 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     is_major_pivot: isMajorPivot,
     has_deferred_tradeoff: Boolean(tradeoffPayload),
   };
+}
+
+// #915 · Genforhandlings-lås. En allerede-signeret plan (negotiation_status ===
+// "completed") kan ikke gen-forhandles (renew → re-sign) når sæsonen er for langt
+// fremme. Samme princip som board-requests' slutfase-vindue (F5): tillader tidlig-
+// sæson justering, men lukker det vindue hvor en manager ellers kunne skifte til
+// lettere mål lige før plan-evaluering for at puste tilfredsheden op.
+//
+// Gælder KUN signerede planer for den igangværende sæson. Udløbne/pending planer
+// (incl. første signering og fornyelse af en udløbet plan ved sæsonstart) må altid
+// signeres — guarden returnerer { locked: false } for dem.
+export function getBoardRenegotiationLock({ board, activeSeason } = {}) {
+  if (!board || board.negotiation_status !== "completed") {
+    return { locked: false };
+  }
+
+  const total = Number(activeSeason?.race_days_total ?? 0);
+  const completed = Number(activeSeason?.race_days_completed ?? 0);
+
+  // Sæsonstart (ingen race-days kørt endnu) → ikke låst: legitim signering/fornyelse.
+  if (total <= 0 || completed <= 0) {
+    return { locked: false };
+  }
+
+  const raceDaysLeft = total - completed;
+  if (raceDaysLeft <= REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT) {
+    return {
+      locked: true,
+      code: "BOARD_RENEGOTIATION_LOCKED_WINDOW",
+      reason: `Saesonens slutfase er begyndt. Bestyrelsesplanen kan ikke gen-forhandles de sidste ${REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT} race-days.`,
+    };
+  }
+
+  const progressPct = (completed / total) * 100;
+  if (progressPct >= RENEGOTIATION_SEASON_PROGRESS_LOCK_PCT) {
+    return {
+      locked: true,
+      code: "BOARD_RENEGOTIATION_LOCKED_PROGRESS",
+      reason: `Bestyrelsesplanen kan ikke gen-forhandles midt i en igangvaerende saeson (efter ${RENEGOTIATION_SEASON_PROGRESS_LOCK_PCT}% af saesonen er koert). Vent til planen udloeber eller saesonen slutter.`,
+    };
+  }
+
+  return { locked: false };
 }
 
 function getBoardRequestAvailability({ requestType, board, goals = [], context = {} } = {}) {

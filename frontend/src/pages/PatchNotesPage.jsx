@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "4.46",
+    date: "2026-06-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixes · Dashboard and board plans",
+        items: [
+          "EN · The dashboard's Upcoming races list now only shows races from the current season. Races from other seasons no longer leak into the list. Refs #913.",
+          "DA · Dashboardets Kommende løb viser nu kun løb fra den nuværende sæson. Løb fra andre sæsoner lækker ikke længere ind på listen. Refs #913.",
+          "EN · Board plans can no longer be renegotiated once the season is more than halfway through, or in its final five race-days. You can still adjust a plan early in the season, but the option locks for the rest of the season so you cannot switch to easier targets right before the board's review. Refs #915.",
+          "DA · Bestyrelsesplaner kan ikke længere genforhandles når sæsonen er mere end halvvejs, eller i de sidste fem race-days. Du kan stadig justere en plan tidligt i sæsonen, men muligheden låses resten af sæsonen, så du ikke kan skifte til lettere mål lige før bestyrelsens evaluering. Refs #915.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.45",
     date: "2026-06-02",
     label: "Beta",
