@@ -40,9 +40,11 @@ Limits: 300 åbne (repo har 150+; margin). 200 merged PRs (lektion 2026-05-23: 5
 **Per merged PR sidste 14 dage — TO separate regex:**
 - `CLOSE_RE = (?:Closes|Fixes|Resolves)\s*#(\d+)` → close-intent (GitHub auto-close keywords)
 - `REF_RE = (?:Refs|Updates|Implements|See)\s*#(\d+)` → informativ kun (epic-tracker eller context)
-- Match mod åbne issues. **Kun CLOSE-refs flagger Kategori A** (mangler claude:done). REF-refs ignoreres for done-label-check fordi de er informative (typisk sub-PR mod epic).
+- Match mod åbne issues. **Kun CLOSE-refs flagger Kategori A** (mangler claude:done). REF-refs flagger IKKE A — men de er IKKE længere ignoreret: de fødes ind i **Kategori K (glemt-done)**, se eget pass nedenfor.
 - Parse PR-body Brugerverifikation-section: find `## Brugerverifikation`-header → tæl `- [x]` vs `- [ ]` checkboxes EFTER header → rapportér `X/Y checked`. _(Lektion 2026-05-20: tidligere regex `- [x] Brugerverifikation` matchede 0/100 PRs — real format er sektion-header med multiple underliggende boxes, ikke en enkelt checkbox-linje.)_
 - Flag PRs UDEN nogen `#N`-ref (heller ikke parentes-shorthand `(#N)`) som Kategori J: orphan. Filtrer dependabot/chore-PRs fra orphan-rapporten.
+
+**Glemt-done-pass — cross-ref ALLE åbne ikke-done-issues mod merged PR'er (lektion 2026-06-02 — REPO'ETS HYPPIGSTE BLIND VINKEL):** Tidligere audits cross-refede kun `claude:done`-issues + `Closes/Fixes`-intent. MEN dette repo bruger næsten altid `Refs #N` (per `feedback_github_close_protocol`), så et issue hvor kerne-arbejdet blev leveret via en merged `Refs #N`-PR, men hvor nogen glemte at markere done/lukke, **faldt igennem hver eneste audit**. Bruger flaggede direkte 2026-06-02: "Vi har ofte tit glemt at markere opgaver som done, selvom de faktisk allerede er lavet." `crossref.py` Kategori K surfacer nu kandidaterne: åbne ikke-done-issues (ekskl. epics + NUA/blocked) med ≥1 kvalificerende merged PR via enhver `#N`-ref, efter støj-filter (dependabot-changelog indeholder fremmede #-numre; `docs(now)`-close-outs nævner #N uden at levere; epic-milestone-PR'er lister sub-issues). **Scriptet kan IKKE skelne ægte levering fra delvis/incidentel** — for hver kandidat: dispatch parallelle sub-agenter der læser issuets AC mod PR'ens faktiske leverance. Falske positiver 2026-06-02: talkollision (#33↔PR #856 "Refs #855"), deferral ("→ deferred to #253"), dependency-note ("kobler til #266"), tracking-række i workflow-doc. Ægte fund: #532/#719/#646 (backend/tooling, lukket), #793/#19/#896 (dev-færdig user-feature/admin → claude:done + ejer-verify).
 
 **Per `claude:done`-issue:** find seneste comment EFTER claude:done-label, score per Trin 3. _(Note: `claude:done` blev un-deprecated 2026-05-22 per workflow-revision. 2026-05-23-audit observerede 20 åbne done-issues (var 4 dagen før, +16 fra B-series + security batch). Label er aktiv del af state-maskine igen.)_
 
@@ -113,12 +115,13 @@ Begrundelse: "verificeret prod" kan referere til _deploy-verification_ ("HTTP 20
 
 **Post-comment work-completion check (lektion 2026-05-20-pass2):** Hvis claude:done-issue's seneste comment matcher work-pending patterns (`Næste session`, `next session`, `bagudretter`, `efter merge`, `mangler X`) MEN der findes en merged PR med `Refs #N` til samme issue _efter_ comment-timestamp → flag som "comment likely outdated, work done via PR #M". Re-læs issue + PR #M for ægte status før scoring. Eksempel #508: comment 14:23Z sagde "Næste session bagudretter eksisterende ryttere", men PR #511 (Refs #508) merged 15:07Z udførte faktisk backwards-fix på 45 ryttere. Den outdated comment dictated WEAK-scoring; real state var "work done, awaiting user UI-verify".
 
-## Trin 4 — Kategorisér (9 dimensioner)
+## Trin 4 — Kategorisér (10 dimensioner)
 
 **Primær:**
-- **A. Mangler claude:done** — PR merged + bruger-verify findes, label glemt
+- **A. Mangler claude:done** — PR merged via Closes/Fixes + bruger-verify findes, label glemt
 - **B. Klar til lukning** — claude:done + STRONG + ≥24 timer (præcis time-diff, ikke rundede dage)
 - **C. Awaiting verify** — claude:done + MEDIUM/WEAK/BLOCKED (begrundelse per issue)
+- **K. Glemt-done** — ÅBNE ikke-done-issues hvor en merged PR via `Refs #N` (eller `(#N)`) leverede kerne-arbejdet, men nogen glemte at markere done/lukke. **DETTE ER REPO'ETS HYPPIGSTE BLIND VINKEL** (lektion 2026-06-02): A fanger kun `Closes/Fixes`, men repo'et bruger næsten altid `Refs #N` → dev-færdige issues hober sig op i `claude:todo`. `crossref.py` Kategori K surfacer kandidaterne (filtrerer dependabot-changelog-støj, `docs(now)`-close-outs, epic-milestone-PR'er, epics, NUA/blocked fra). **Hver kandidat KRÆVER scope-verify** (script skelner ikke levering fra delvis/incidentel — brug parallelle sub-agenter til at læse issue-AC mod PR-leverance). Resultat: backend/tooling/test uden UI → **close**; user-feature/admin dev-færdig men ikke renderbar → **flyt claude:todo→claude:done** (fjern claude:todo!) + comment "afventer ejer-verify". 2026-06-02: #532/#719/#646 lukket, #793/#19/#896 → done; 14+ andre verificeret legitimt åbne (incidentelle omtaler).
 
 **Bonus:**
 - **D. Label-konflikter** — `claude:todo+done`, `claude:todo+blocked`, eller helt uden `claude:*`. **4-state-machine (lektion 2026-05-23):** Repo har de-facto 4 states (`claude:todo`, `claude:in-progress`, `claude:done`, `claude:blocked`). Hvis `claude:in-progress` persistent >24h efter en `Refs #N` PR er merged → label-cleanup-action (flyt til `claude:done`). Eksempel #558/#559: comment "venter på CI-grønt før merge" 15:47:28Z, PR #573 merged 15:47:48Z (20 sekunder senere), men `claude:in-progress` stadig sat dagen efter. Skill skal også tjekke 2-state-konflikter med in-progress (fx `claude:in-progress+done`). **Idle in-progress (lektion 2026-05-28):** `labelcheck.py` printer nu idle-timer (siden `updatedAt`) per in-progress issue og flagger >48h som `⚠️ STALE (resume/re-triage?)` — info-only, ingen auto-action. Genuint mid-flight sessioner kan parkere et par dage; men idle high-priority/launch-issues bør surfaces så de ikke stille staller. Eksempel #684 (55.7h) + #678 (49.8h, priority:high + slice:tdf-launch, lister selv remaining closeout-blockers). Nudge brugeren eller foreslå re-triage til sub-issues; flyt KUN til `claude:done` hvis en `Refs #N` PR faktisk repræsenterer completion (ikke når investigation/closeout genuint fortsætter).
@@ -166,6 +169,7 @@ Separate `AskUserQuestion` per kategori-gruppe (ikke alt-i-én):
 4. Triage stale backlog F (close/downgrade/keep)?
 5. Unblock Kategori I (blocked → todo)?
 6. Comment på orphan PRs J?
+7. **Kategori K (glemt-done):** efter scope-verify — close backend/tooling-batch? + flyt dev-færdig user-feature til claude:done?
 
 Idempotente parallelle batches:
 ```bash
@@ -173,6 +177,8 @@ gh issue close N --reason completed --comment "<citat + PR-link>"
 gh issue edit N --add-label "claude:done"
 gh issue edit N --remove-label "claude:todo"
 gh issue edit N --add-label "claude:todo" --remove-label "claude:blocked"
+# Kategori K dev-færdig user-feature → done (HUSK begge: undgå todo+done-konflikt):
+gh issue edit N --add-label "claude:done" --remove-label "claude:todo"
 ```
 
 ## Trin 8 — Artifact + diff
@@ -283,6 +289,13 @@ Denne skill bliver fyret **dagligt 05:00 UTC** (07:00 CEST / 06:00 CET) af sched
 - **Persistent scoring-scripts (lektion 2026-05-25):** Scoring/cross-ref/label/stale Python-scripts ligger nu i `.claude/skills/github-housekeeping/scripts/*.py`. Brug dem direkte i stedet for at inline ~120 linjer Python hver audit. Workflow: `gh issue list ... > $TEMP/audit-done.json && PYTHONUTF8=1 python .claude/skills/github-housekeeping/scripts/score_done.py`. Scripts: `score_done.py`, `crossref.py`, `labelcheck.py`, `staleblocked.py`. Tune STRONG_PATTERNS/NEG_KEYWORDS direkte i script-fil ved retro.
 
 ## Changelog
+
+- **2026-06-02 (pass 2) — Glemt-done cross-ref (NY KATEGORI K).** Bruger flaggede direkte: "Kan du tjekke alle opgaver i github, også dem der ikke er markeret done... Vi har ofte tit glemt at markere opgaver som done, selvom de faktisk allerede er lavet. Hvis du har glemt det igen, så skal det ind i vores skill nu." Og jo — skillen HAVDE en systematisk blind vinkel: Kategori A + done-scoring cross-refede kun `claude:done`-issues + `Closes/Fixes`-intent, men repo'et bruger næsten altid `Refs #N` → dev-færdige issues hober sig op i `claude:todo` og falder igennem hver audit. Ændringer:
+  - **Trin 4: ny Kategori K (glemt-done)** — 9→10 dimensioner. Åbne ikke-done-issues hvor en merged `Refs #N`/`(#N)`-PR leverede kerne-arbejdet men done/close blev glemt.
+  - **Trin 2: nyt glemt-done-pass** — cross-ref ALLE åbne ikke-done-issues (ekskl. epics/NUA/blocked) mod alle 200 merged PR'er.
+  - **`crossref.py`: ny `forgotten_done`-analyse** (Kategori K i print + JSON). Filtrerer false-positive-kilder fundet i dag: dependabot-changelog (fremmede #-numre, fx brace-expansion's #33-#92 via PR #494), `docs(now)`-close-outs, epic-milestone-PR'er. Bruger ALLE merged PR'er (ikke 14d-cutoff — glemt-done akkumulerer). **Surface kun, auto-luk ALDRIG** — kræver scope-verify via sub-agenter (script skelner ikke levering fra incidentel/deferral/talkollision).
+  - **Trin 7: AskUserQuestion-punkt 7** for Kategori K + `--add-label done --remove-label todo` i ét (undgå todo+done-konflikt).
+  - **Resultat 2026-06-02:** fandt 8+ glemt-done i `claude:todo`. Lukket #532/#719/#646 (backend/tooling, ingen UI). Flyttet #793/#19/#896 til claude:done (dev-færdig user-feature/admin, ikke renderbar i mock, afventer ejer-verify). 14+ verificeret legitimt åbne af 4 parallelle sub-agenter (alle var incidentelle omtaler — bekræfter at scope-verify er nødvendig, ikke blind close).
 
 - **2026-06-02 — Audit-housekeeping retro.** Lessons fra 11. kørsel — **18 closes** (næststørste batch): 8 backend/data + 10 user-feature efter AI-verify. Bruger bad eksplicit om AI-verify frem for blind close af user-feature. 27 done-issues ophobet over 5 dage (alle merged, men ikke lukket). 2 accepterede edits, 1 afvist:
   - **Trin 3 (AI-verify via Playwright-mock-login):** Nyt afsnit. Dokumenterer metoden: engangs `audit-verify.spec.js` + `fixtures.js`-mocks + screenshots → visuelt screenshot på main = gyldig feature-verify. Med eksplicit begrænsning: `fixtures.js` har tomme `race_results`/`season_standings`/`races` + manager-rolle → data-afhængige/admin-sider renderer tomt og kan ikke verificeres (#505/#780/#823/#825 carry-forward), mens rytter-tabel/auktion-sider blev bekræftet + lukket (#670/#777/#796/#800/#801/#837/#855). Setup: `npm ci` i worktree-frontend (browsere globalt cachet), verificér port 4173 fri.
