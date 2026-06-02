@@ -1,6 +1,6 @@
 # NOW — Aktuel arbejdsstatus
 
-> **🟢 Seneste close-outs** (detaljer i git-historik + issues/PRs): **1. juni — Sundhedsaudit** lukkede #876 (lockfile false-positive), #882 (achievements multi-row), #878 (board/dna atomicitet, PR #889/#890), #879 (pagination, PR #885); 18 rate-limit code-scanning-alerts dismissed; Sentry-læseadgang + #1-prod-fejl (stale-chunk → `lazyWithRetry`, #883) fixet; review-gate gjort advisory igen (#884). Afledte follow-ups: #886, #887.
+> **🟢 Seneste close-outs** (detaljer i git-historik + issues/PRs): **2. juni — GitHub-audit** lukkede 21 issues (8 backend/data + 10 user-feature efter AI-verify via Playwright-mock + 3 glemt-done #532/#719/#646); flyttede #793/#19/#896 til claude:done (dev-færdig, afventer ejer-verify). **Ny skill-kapabilitet:** github-housekeeping Kategori K (glemt-done cross-ref via `Refs #N`) + `crossref.py forgotten_done` ([PR #947](https://github.com/NicolaiDolmer/CyclingZone/pull/947), docs/skill — afventer merge). · **1. juni — Sundhedsaudit:** #876/#882/#878/#879 lukket; 18 rate-limit-alerts dismissed; #1-prod-fejl (`lazyWithRetry`, #883) + review-gate advisory (#884) fixet.
 
 ## Aktiv styring
 
@@ -41,6 +41,6 @@ Denne plan fokuserer på at lukke de sidste tekniske huller og gøre klar til To
 
 ---
 
-_Opdateret af Claude (Claude Code) den 2. juni 2026 — #896 preview Kerne merged til main (PR #910). **Næste session:** afventer ejer-verify af #896-previewet (→ luk #896); derefter epic #893-rest = #896 #2/#5/#6 (udskudt) + #908 R2 v1.1, eller launch-kritisk (#676 race engine / #672 landing page)._
+_Opdateret af Claude (Claude Code) den 2. juni 2026 — GitHub-audit close-out (21 lukket + 3 → done + Kategori K skill-fix, PR #947). **Næste session:** (1) ejer-verify af #793/#19/#896 på prod → luk dem; (2) merge docs-PR #947; derefter epic #893-rest (#896 #2/#5/#6 + #908 R2 v1.1) eller launch-kritisk (#676 race engine / #672 landing page). **Afledte opgaver (chips/separate sessioner):** agent-doctor "5 fail/5 warn" oprydning · surface Kategori K i daglig routine-digest (routine-prompt.md + RemoteTrigger)._
 
 > **🗂️ Backlog-note (2. juni):** Founder-brain-dump trieret → #930–#946 oprettet. 7 vision-epics (#930–#936, `post-launch`), mobilapp-beslutning (#937), 3 pre-launch-kandidater (#938 søg / #939 vejr+vind / #940 NPS), 6 founder-issues (#941–#946, `cat:founder`). Bevidst lav prioritet — må IKKE fortrænge launch-backlog før 20. juni. #939 (vejr) bør behandles som sub-scope under race-engine #675/#676.
