@@ -42,3 +42,5 @@ Denne plan fokuserer på at lukke de sidste tekniske huller og gøre klar til To
 ---
 
 _Opdateret af Claude (Claude Code) den 2. juni 2026 — #896 preview Kerne merged til main (PR #910). **Næste session:** afventer ejer-verify af #896-previewet (→ luk #896); derefter epic #893-rest = #896 #2/#5/#6 (udskudt) + #908 R2 v1.1, eller launch-kritisk (#676 race engine / #672 landing page)._
+
+> **🗂️ Backlog-note (2. juni):** Founder-brain-dump trieret → #930–#946 oprettet. 7 vision-epics (#930–#936, `post-launch`), mobilapp-beslutning (#937), 3 pre-launch-kandidater (#938 søg / #939 vejr+vind / #940 NPS), 6 founder-issues (#941–#946, `cat:founder`). Bevidst lav prioritet — må IKKE fortrænge launch-backlog før 20. juni. #939 (vejr) bør behandles som sub-scope under race-engine #675/#676.
