@@ -16,7 +16,7 @@ function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
   const fetchTeams = useCallback(async (pattern) => {
     const { data } = await supabase.from("teams")
       .select("id, name, division").eq("is_ai", false).eq("is_test_account", false).eq("is_frozen", false)
-      .ilike("name", `%${pattern}%`).order("name").limit(6);
+      .ilike("name", `%${pattern}%`).order("name").limit(50);
     setResults((data || []).filter(t => t.id !== excluded));
     setSearched(true);
   }, [excluded]);
@@ -48,7 +48,7 @@ function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
           text-cz-1 placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
       {results.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border
-          rounded-xl z-20 overflow-hidden shadow-2xl">
+          rounded-xl z-20 overflow-y-auto max-h-72 shadow-2xl">
           {results.map(team => (
             <div key={team.id}
               className="px-4 py-3 hover:bg-cz-subtle cursor-pointer border-b border-cz-border last:border-0"

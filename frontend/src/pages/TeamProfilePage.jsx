@@ -58,7 +58,9 @@ export default function TeamProfilePage() {
         .eq("team_id", id)
         .order("uci_points", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, ${STATS.join(", ")}`)
+        // #922: incoming-ryttere manglede nationality_code (var med for current på
+        // linje 57), så NationCell fik undefined → intet flag på "se andet hold"-siden.
+        .select(`id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("pending_team_id", id)
         .order("uci_points", { ascending: false }),
       supabase.from("season_standings")

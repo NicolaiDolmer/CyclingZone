@@ -346,8 +346,8 @@ export default function Layout() {
             <NavLink to="/notifications" className="relative">
               <span className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-lg">🔔</span>
               {unread > 0 && (
-                <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
-                  {unread > 9 ? "9" : unread}
+                <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-[8px] font-black min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center leading-none">
+                  {unread > 9 ? "9+" : unread}
                 </span>
               )}
             </NavLink>

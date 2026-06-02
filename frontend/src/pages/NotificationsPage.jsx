@@ -498,7 +498,12 @@ export default function NotificationsPage() {
                           : config.bg}`}
                       onClick={() => {
                         if (!n.is_read) markRead(n.id);
-                        if (config.link) navigate(config.link);
+                        // #921: "Transferrygte" (nogen kigger på din rytter) deep-linker
+                        // til rytteren via related_id i stedet for den generiske /transfers.
+                        const link = n.type === "transfer_interest" && n.related_id
+                          ? `/riders/${n.related_id}`
+                          : config.link;
+                        if (link) navigate(link);
                       }}>
                       <div className="w-9 h-9 rounded-lg bg-cz-subtle flex items-center justify-center
                         text-base flex-shrink-0 mt-0.5">
