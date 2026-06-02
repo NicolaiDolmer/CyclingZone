@@ -1,7 +1,8 @@
 {
   "panel": {
     "label": "Filter",
-    "reset": "Reset"
+    "resetAll": "Reset all",
+    "resetCount": "Reset all ({count})"
   },
   "fields": {
     "name": "Name",

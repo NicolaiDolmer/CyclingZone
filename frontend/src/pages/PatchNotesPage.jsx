@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.48",
+    date: "2026-06-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improvements · Filters",
+        items: [
+          "EN · The filter reset button is now always visible (greyed out until you set a filter) and shows how many filters are active, for example \"Reset all (3)\". You no longer have to discover it only after you have already filtered. Refs #960.",
+          "DA · Nulstil-knappen i filtre er nu altid synlig (grå indtil du sætter et filter) og viser hvor mange filtre der er aktive, for eksempel \"Nulstil alt (3)\". Du skal ikke længere opdage den først efter du allerede har filtreret. Refs #960.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.47",
     date: "2026-06-02",
     label: "Beta",
