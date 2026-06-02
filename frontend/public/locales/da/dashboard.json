@@ -87,7 +87,9 @@
       "empty": "Ingen bestyrelsesdata",
       "satisfaction": "Tilfredshed",
       "focus": "Fokus",
-      "budgetMultiplier": "Budget multiplikator"
+      "budgetMultiplier": "Budget multiplikator",
+      "exceeds": "Overget",
+      "exceedsTitle": "Denne kategori scorede over 100% — du har overgået bestyrelsens forventninger her."
     }
   },
   "board": {

@@ -87,7 +87,9 @@
       "empty": "No board data",
       "satisfaction": "Satisfaction",
       "focus": "Focus",
-      "budgetMultiplier": "Budget multiplier"
+      "budgetMultiplier": "Budget multiplier",
+      "exceeds": "Exceeded",
+      "exceedsTitle": "This category scored above 100% — you exceeded the board's expectations here."
     }
   },
   "board": {

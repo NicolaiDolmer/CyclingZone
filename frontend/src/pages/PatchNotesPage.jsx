@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.52",
+    date: "2026-06-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improvements · Board",
+        items: [
+          "EN · Your board's category scores could show above 100% (for example 112%), which looked like a glitch. A score can pass 100% when you beat a goal by more than the board asked for, so the number now stops at 100% and shows a green \"Exceeded\" badge instead, making it clear you over-delivered. Refs #816.",
+          "DA · Bestyrelsens kategori-scorer kunne vise over 100% (for eksempel 112%), hvilket lignede en fejl. En score kan passere 100% når du slår et mål med mere end bestyrelsen bad om, så tallet stopper nu ved 100% og viser i stedet en grøn \"Overget\"-badge, så det er tydeligt at du leverede over forventning. Refs #816.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.51",
     date: "2026-06-02",
     label: "Beta",
