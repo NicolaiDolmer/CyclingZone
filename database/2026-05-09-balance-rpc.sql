@@ -37,7 +37,11 @@ CREATE OR REPLACE FUNCTION increment_balance_with_audit(
   p_team_id UUID,
   p_delta BIGINT,
   p_finance_payload JSONB
-) RETURNS BIGINT AS $$
+) RETURNS BIGINT
+  -- Forward-guard (#927): hold search_path sat så et re-run af denne migration
+  -- ikke nulstiller phase-a/phase-b-hærdningen (advisor 0011).
+  SET search_path = public, pg_catalog
+  AS $$
 DECLARE
   v_before_balance BIGINT;
   v_after_balance BIGINT;

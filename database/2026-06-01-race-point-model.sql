@@ -97,6 +97,9 @@ ON CONFLICT (race_class, result_type) DO NOTHING;
 CREATE OR REPLACE FUNCTION public.regenerate_race_points()
 RETURNS integer
 LANGUAGE plpgsql
+-- Forward-guard (#927): hold search_path sat så et re-run ikke regrederer
+-- advisor 0011-hærdningen fra phase-b.
+SET search_path = public, pg_catalog
 AS $$
 DECLARE
   changed_count integer;
