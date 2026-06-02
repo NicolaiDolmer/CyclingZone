@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** Næste launch-issue: [#787](https://github.com/NicolaiDolmer/CyclingZone/issues/787) sprog eller [#271](https://github.com/NicolaiDolmer/CyclingZone/issues/271) dashboard.
+> **🎯 Next action:** [#271](https://github.com/NicolaiDolmer/CyclingZone/issues/271) dashboard ([#787](https://github.com/NicolaiDolmer/CyclingZone/issues/787) sprog-dropdown nu i PR [#971](https://github.com/NicolaiDolmer/CyclingZone/pull/971) — afventer merge + ejer-verify).
 >
 > **🤖 Working agent:** Ingen aktiv session.
 >
