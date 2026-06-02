@@ -16,6 +16,20 @@ const PATCHES = [
     ],
   },
   {
+    version: "4.47",
+    date: "2026-06-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixes · Loans and transfers",
+        items: [
+          "EN · Buying out a loaned rider while the transfer window is closed no longer counts that rider twice against your squad size. Teams that did this could be wrongly blocked from agreeing further loans or transfers until the window reopened. Refs #19.",
+          "DA · At udnytte købsoptionen på en lejet rytter mens transfervinduet er lukket tæller ikke længere rytteren dobbelt mod din trupstørrelse. Hold der gjorde dette kunne fejlagtigt blive blokeret fra at indgå flere lejeaftaler eller handler indtil vinduet åbnede igen. Refs #19.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.46",
     date: "2026-06-02",
     label: "Beta",

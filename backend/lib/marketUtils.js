@@ -107,6 +107,12 @@ export async function getTeamMarketState(supabase, teamId) {
         .not("pending_team_id", "is", null)
         .neq("pending_team_id", teamId)
     ),
+    // #19 audit: count "active" (running loan) + "window_pending" (accept parked
+    // while window closed — rider stays on lender, so only this loan represents
+    // the incoming rider). "buyout_pending" is DELIBERATELY excluded: a parked
+    // buyout sets rider.pending_team_id = borrower, so it is already counted via
+    // pendingCount above. Adding it here would double-count the rider against the
+    // borrower's squad cap.
     expectCount(
       supabase
         .from("loan_agreements")
