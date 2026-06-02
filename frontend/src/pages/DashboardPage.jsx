@@ -129,8 +129,12 @@ export default function DashboardPage() {
       supabase.from("auctions")
         .select("id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname, team_id)")
         .in("status", ["active", "extended"]),
-      supabase.from("races").select("*, pool_race:pool_race_id(date_text)").not("status", "eq", "completed")
-        .order("name").limit(10),
+      activeSeason
+        ? supabase.from("races").select("*, pool_race:pool_race_id(date_text)")
+            .eq("season_id", activeSeason.id)
+            .not("status", "eq", "completed")
+            .order("name").limit(10)
+        : Promise.resolve({ data: [] }),
       activeSeason
         ? supabase.from("season_standings")
             .select("*, team:team_id(id, name, division, is_ai)")

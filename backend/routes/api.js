@@ -129,6 +129,7 @@ import {
   deriveTeamIdentityProfile,
   finalizeBoardGoals,
   getArchetypeByKey,
+  getBoardRenegotiationLock,
   getBoardRequestDefinition,
   getDnaByKey,
   getPlanDuration,
@@ -5983,6 +5984,9 @@ router.get("/board/status", requireAuth, async (req, res) => {
         },
         snapshots: boardSnapshots,
         is_expired: isExpired,
+        // #915 · Gen-forhandling låst når sæsonen er for langt fremme — frontend
+        // skjuler "Forny"-knappen så låsen ikke kun håndhæves server-side.
+        renew_locked: getBoardRenegotiationLock({ board, activeSeason }).locked,
         outlook,
         request_status: {
           supported: boardRequestsSupported,
@@ -6328,6 +6332,17 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
       });
     }
     const existingBoard = boards.find(b => b.plan_type === plan_type) || null;
+
+    // #915 · Bloker gen-forhandling af en allerede-signeret plan når sæsonen er
+    // for langt fremme (≥50% kørt eller i slutfasen) — ellers kunne en manager
+    // skifte til lettere mål lige før plan-evaluering. Første signering + fornyelse
+    // af en udløbet/pending plan passerer (getBoardRenegotiationLock returnerer da
+    // locked:false). Samme guard rammer /board/renew nedenfor.
+    const signLock = getBoardRenegotiationLock({ board: existingBoard, activeSeason });
+    if (signLock.locked) {
+      return res.status(409).json({ error: signLock.reason, code: signLock.code });
+    }
+
     const planDuration = getPlanDuration(plan_type);
     const startSeasonNumber = activeSeason?.number ?? 1;
     const endSeasonNumber = startSeasonNumber + planDuration - 1;
@@ -6606,6 +6621,17 @@ router.post("/board/renew", requireAuth, boardWriteLimiter, async (req, res) => 
     const { plan_type } = req.body || {};
     if (!isValidBoardPlanType(plan_type)) {
       return res.status(400).json({ error: "Invalid plan_type" });
+    }
+
+    // #915 · Samme gen-forhandlings-lås som /board/sign: en aktiv, signeret plan
+    // kan ikke sættes i renewal-tilstand midt i en igangværende sæson (≥50% kørt
+    // eller slutfase) — ellers er /board/renew → /board/sign en omvej uden om
+    // sign-guarden. Udløbne/pending planer + sæsonstart passerer.
+    const { activeSeason, boards } = await loadBoardPlanningContext(teamId);
+    const existingBoard = boards.find(b => b.plan_type === plan_type) || null;
+    const renewLock = getBoardRenegotiationLock({ board: existingBoard, activeSeason });
+    if (renewLock.locked) {
+      return res.status(409).json({ error: renewLock.reason, code: renewLock.code });
     }
 
     const { data: board, error } = await supabase.from("board_profiles")

@@ -288,7 +288,8 @@
     "planGoalsLabel": "Planmål",
     "seasonGoalsLabel": "Sæsonmål",
     "outlookHeading": "Bestyrelsens vurdering",
-    "renew": "Forny plan (status quo)"
+    "renew": "Forny plan (status quo)",
+    "renewLocked": "Genforhandling er låst resten af sæsonen."
   },
   "snapshot": {
     "heading": "Sæsonhistorik",

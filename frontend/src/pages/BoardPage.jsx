@@ -1034,7 +1034,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
   }
 
   const { board, plan_duration, seasons_remaining, seasons_completed, plan_progress_pct,
-    cumulative_stats, snapshots, is_expired, outlook, request_status, request_options } = planData;
+    cumulative_stats, snapshots, is_expired, renew_locked, outlook, request_status, request_options } = planData;
 
   const goals = typeof board.current_goals === "string"
     ? JSON.parse(board.current_goals) : (board.current_goals || []);
@@ -1235,11 +1235,14 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
             onRequest={onRequest}
           />
 
-          {!is_expired && (
+          {!is_expired && !renew_locked && (
             <button onClick={onRenew}
               className="w-full py-2 text-xs border border-cz-border text-cz-3 rounded-lg hover:text-cz-2 hover:border-cz-border/80 transition-all">
               {t("plan.renew")}
             </button>
+          )}
+          {!is_expired && renew_locked && (
+            <p className="text-cz-3 text-[10px] text-center">{t("plan.renewLocked")}</p>
           )}
         </div>
       )}

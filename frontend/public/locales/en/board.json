@@ -288,7 +288,8 @@
     "planGoalsLabel": "Plan targets",
     "seasonGoalsLabel": "Season targets",
     "outlookHeading": "The board's assessment",
-    "renew": "Renew plan (status quo)"
+    "renew": "Renew plan (status quo)",
+    "renewLocked": "Renegotiation is locked for the rest of the season."
   },
   "snapshot": {
     "heading": "Season history",
