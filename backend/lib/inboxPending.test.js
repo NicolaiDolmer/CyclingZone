@@ -194,13 +194,13 @@ test("getPendingInboxItems aggregates transfer + swap + loan with correct counts
         start_season: 7,
         end_season: 7,
         buy_option_price: null,
-        from_team_id: OTHER,
-        to_team_id: TEAM,
+        from_team_id: TEAM,
+        to_team_id: OTHER,
         rider_id: "rider-5",
         created_at: "2026-05-04T08:00:00Z",
         updated_at: "2026-05-04T08:00:00Z",
         rider: { id: "rider-5", firstname: "Remco", lastname: "Evenepoel" },
-        from_team: { id: OTHER, name: "Other Team" },
+        to_team: { id: OTHER, name: "Other Team" },
       },
     ],
   });
@@ -227,7 +227,8 @@ test("getPendingInboxItems aggregates transfer + swap + loan with correct counts
   assert.equal(result.swap_offers[0].cash_adjustment, 25000);
 
   assert.equal(result.loan_offers[0].id, "loan-1");
-  assert.equal(result.loan_offers[0].role, "borrower_decide");
+  assert.equal(result.loan_offers[0].role, "lender_decide");
+  assert.equal(result.loan_offers[0].counterparty_team_name, "Other Team");
   assert.equal(result.loan_offers[0].loan_fee, 30000);
 });
 

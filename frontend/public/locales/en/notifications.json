@@ -57,7 +57,7 @@
       "proposingDecide": "Reply to counter-offer",
       "receivingConfirm": "Confirm swap",
       "proposingConfirm": "Confirm swap",
-      "borrowerDecide": "Accept / reject loan offer",
+      "lenderDecide": "Accept / reject loan request",
       "actionRequired": "Action required"
     },
     "unknownTeam": "unknown team",

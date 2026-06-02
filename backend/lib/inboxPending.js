@@ -6,7 +6,10 @@
 //   - transfer_offers: pending modtaget, modbud modtaget, eller awaiting_confirmation
 //     hvor min side endnu ikke har bekræftet
 //   - swap_offers: samme principper
-//   - loan_agreements: pending lånetilbud sendt til mig
+//   - loan_agreements: pending låne-anmodninger PÅ mine ryttere, hvor jeg er
+//     udlåner (from_team) og skal acceptere/afvise. Det er kun udlåneren der kan
+//     handle på en pending lejeaftale (api.js PATCH /loans/:id → action=accept/reject
+//     kræver isLender); lejeren (to_team) har sendt anmodningen og venter.
 //
 // Auctions er IKKE inkluderet — de udløser ikke "pending decisions" i FM-forstand
 // (current_bidder kan vælge at bidde højere men er ikke under tidskrav).
@@ -159,9 +162,9 @@ async function fetchPendingLoanOffers(supabase, teamId) {
       from_team_id, to_team_id, rider_id,
       created_at, updated_at,
       rider:rider_id(id, firstname, lastname),
-      from_team:from_team_id(id, name)
+      to_team:to_team_id(id, name)
     `)
-    .eq("to_team_id", teamId)
+    .eq("from_team_id", teamId)
     .eq("status", "pending")
     .order("created_at", { ascending: false });
 
@@ -170,12 +173,12 @@ async function fetchPendingLoanOffers(supabase, teamId) {
   return (data || []).map((loan) => ({
     id: loan.id,
     kind: "loan_offer",
-    role: "borrower_decide",
+    role: "lender_decide",
     rider_id: loan.rider_id,
     rider_name: loan.rider
       ? `${loan.rider.firstname} ${loan.rider.lastname}`
       : "Ukendt rytter",
-    counterparty_team_name: loan.from_team?.name,
+    counterparty_team_name: loan.to_team?.name,
     loan_fee: loan.loan_fee,
     start_season: loan.start_season,
     end_season: loan.end_season,
