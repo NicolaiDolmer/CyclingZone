@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.54",
+    date: "2026-06-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improvements · Dashboard",
+        items: [
+          "EN · The dashboard now opens with a \"Next move\" panel at the top that gathers what's waiting for your decision — transfer offers, swap proposals, loan requests and auctions ending within the hour — each linking straight to where you act. When nothing needs you, it simply says you're all caught up. Refs #271.",
+          "DA · Dashboardet åbner nu med et \"Næste træk\"-panel øverst der samler det der venter på din beslutning — transfertilbud, bytteforslag, leje-anmodninger og auktioner der slutter inden for en time — hver med direkte link til hvor du handler. Når intet kræver dig, står der bare at du er på forkant. Refs #271.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.53",
     date: "2026-06-02",
     label: "Beta",

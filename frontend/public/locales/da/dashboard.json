@@ -5,6 +5,15 @@
     "outgoing": "−{count} ud",
     "loans": "+{count} leje"
   },
+  "nextActions": {
+    "title": "Næste træk",
+    "loading": "Tjekker hvad der venter…",
+    "allClear": "Du er på forkant — intet kræver din handling lige nu.",
+    "transferOffers": "{count, plural, one {1 transfertilbud venter på din beslutning} other {# transfertilbud venter på din beslutning}}",
+    "swapOffers": "{count, plural, one {1 bytteforslag venter på din beslutning} other {# bytteforslag venter på din beslutning}}",
+    "loanRequests": "{count, plural, one {1 leje-anmodning venter på din beslutning} other {# leje-anmodninger venter på din beslutning}}",
+    "urgentAuctions": "{count, plural, one {1 auktion slutter inden for en time} other {# auktioner slutter inden for en time}}"
+  },
   "squadWarning": {
     "over": "Hold er for stort — max {limit} i Division {division}. Sælg {count, plural, one {1 rytter} other {# ryttere}}.",
     "under": "Hold er for lille — min {limit} i Division {division}. Køb {count, plural, one {1 rytter} other {# ryttere}} mere.",
