@@ -11,6 +11,8 @@ import { computeDashboardSquadStats } from "../lib/dashboardSquadStats";
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
+import { useActionSummary } from "../hooks/useActionSummary";
+import NextActionsCard from "../components/NextActionsCard";
 
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
@@ -84,6 +86,9 @@ export default function DashboardPage() {
   const [completionDismissed, setCompletionDismissed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-onboarding-completion-dismissed") === "1"
   );
+
+  // Kanonisk "kræver handling"-summary til "Næste træk"-sektionen (#271 Slice B).
+  const { pending: actionSummary, loading: actionLoading } = useActionSummary();
 
   async function loadAll() {
     try {
@@ -272,6 +277,14 @@ export default function DashboardPage() {
 
   const winningAuctions = allAuctions.filter(a => getAuctionLeaderId(a) === team?.id);
   const myAuctions = allAuctions.filter(a => isAuctionSeller(a, team?.id));
+
+  // "Næste træk": auktioner jeg deltager i (sælger eller fører) som slutter < 1 time.
+  const urgentAuctionCount = allAuctions.filter(a => {
+    const involved = isAuctionSeller(a, team?.id) || getAuctionLeaderId(a) === team?.id;
+    if (!involved) return false;
+    const diff = new Date(a.calculated_end) - new Date();
+    return diff > 0 && diff < 3600000;
+  }).length;
   const satisfactionColor = board?.satisfaction >= 70 ? "text-cz-success" : board?.satisfaction >= 40 ? "text-cz-accent-t" : "text-cz-danger";
 
   // Squad warnings — bug #250: tæller skal forudsige fremtidens hold-størrelse
@@ -316,6 +329,9 @@ export default function DashboardPage() {
           <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
         </div>
       </div>
+
+      {/* Næste træk — prioriteret action-overblik (#271 Slice B) */}
+      <NextActionsCard pending={actionSummary} urgentAuctionCount={urgentAuctionCount} loading={actionLoading} />
 
       {/* Squad warning */}
       {squadWarning && (

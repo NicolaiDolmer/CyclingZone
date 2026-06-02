@@ -5,6 +5,15 @@
     "outgoing": "−{count} out",
     "loans": "+{count} loan"
   },
+  "nextActions": {
+    "title": "Next move",
+    "loading": "Checking what needs you…",
+    "allClear": "You're all caught up — nothing needs your action right now.",
+    "transferOffers": "{count, plural, one {1 transfer offer needs your decision} other {# transfer offers need your decision}}",
+    "swapOffers": "{count, plural, one {1 swap proposal needs your decision} other {# swap proposals need your decision}}",
+    "loanRequests": "{count, plural, one {1 loan request needs your decision} other {# loan requests need your decision}}",
+    "urgentAuctions": "{count, plural, one {1 auction ends within the hour} other {# auctions end within the hour}}"
+  },
   "squadWarning": {
     "over": "Squad too large — max {limit} in Division {division}. Sell {count, plural, one {1 rider} other {# riders}}.",
     "under": "Squad too small — min {limit} in Division {division}. Buy {count, plural, one {1 more rider} other {# more riders}}.",
