@@ -674,9 +674,19 @@ export default function DashboardPage() {
                   <div className="grid sm:grid-cols-4 gap-3 mt-3">
                     {Object.values(boardOutlook.score_breakdown?.categories || {}).map((category) => (
                       <div key={category.key} className="bg-cz-subtle rounded-lg p-3 border border-cz-border">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{category.label}</p>
-                          <span className="text-cz-2 text-[10px] font-mono">{category.score_pct}%</span>
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <p className="text-cz-3 text-[10px] uppercase tracking-wider truncate">{category.label}</p>
+                          <span className="flex items-center gap-1 flex-shrink-0">
+                            {category.score_pct > 100 && (
+                              <span
+                                className="text-[9px] font-medium text-cz-success bg-cz-success-bg/60 rounded px-1 leading-tight"
+                                title={t("dashboard:cards.board.exceedsTitle")}
+                              >
+                                ✓ {t("dashboard:cards.board.exceeds")}
+                              </span>
+                            )}
+                            <span className="text-cz-2 text-[10px] font-mono">{Math.min(100, category.score_pct)}%</span>
+                          </span>
                         </div>
                         <div className="bg-cz-subtle rounded-full h-1.5">
                           <div
