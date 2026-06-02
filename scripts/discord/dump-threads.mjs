@@ -12,27 +12,28 @@ import path from 'node:path';
 const API = 'https://discord.com/api/v10';
 const DISCORD_DIR = path.join(process.cwd(), 'scripts', 'discord');
 
-// 19 candidates in the 2026-05-16 → 2026-05-30 window (not already filed).
+// 20 NEW candidates from .candidates.md (2026-06-03 triage batch).
 const THREADS = [
-  ['1510273771901026375', 'Præmiepenge'],
-  ['1510273057355464885', 'Sejre tælles forkert på ranglisten'],
-  ['1510271780814585936', 'Transfertilbud udenfor transfervinduet'],
-  ['1510269165255135263', 'Rangliste fejl (endagsløb vs samlet sejr)'],
-  ['1510268423119310848', 'De kommende løb er slet ikke de kommende'],
-  ['1510268058420383824', 'Dashboard fejl - Løb opdateres ikke'],
-  ['1510266246116151436', 'Budhistorik virker ikke'],
-  ['1510263255757754660', 'Knapper i rytterranglisten virker ikke'],
-  ['1510242164226134236', 'Hall of Fame - kan kun se sig selv'],
-  ['1507246935625433138', 'Dobbelt rente på lån ved sæsonskift'],
-  ['1507078529282605106', 'AI-ryttere ikke frie agenter ved filter'],
-  ['1507075204008906822', 'Flash Auktion på egne ryttere'],
-  ['1507072644862972057', 'Garanteret salg 24t under deadline day'],
+  ['1511472183971676231', 'Etapesejre og bestyrelsen'],
+  ['1511441112815108157', 'Auktionsiden - fører opdateres ikke ved overbud'],
+  ['1511433829343166486', 'Forkert prognose under økonomifanen'],
+  ['1511432981330526278', 'Økonomisiden - rework'],
+  ['1511432800585388083', 'Fejl i forecast - konkurs truet'],
+  ['1511432754359832800', 'Sæson Preview farve problem'],
+  ['1511427545323802704', 'Transferhistorik - sortering + fortegn'],
+  ['1511426864961552577', 'Transferlisten - genvej'],
+  ['1511423873978208346', 'Rettelser til udleje af ryttere'],
+  ['1511413819728072907', 'Sæson snapshot fejl - graf'],
+  ['1510407394851557538', '3-årsplan - hvordan beregner man top i division'],
   ['1506925075876548690', 'Sæsonskifte - oprykninger ikke slået fra'],
-  ['1506780095275204608', 'Transferliste med mange actions'],
-  ['1506222527591088198', 'Forvirrende historik'],
-  ['1506046994051891210', 'Rytter til salg, der ikke er til salg'],
   ['1505629552020291675', 'Mistede overskrifter (dashboard)'],
-  ['1505613603217084487', 'Skifte sprog menue (scroll)'],
+  ['1504223818036805642', 'Navnesøgning på ryttere - mellemrum'],
+  ['1502731709366538482', 'Min managerprofil viser forkert managernavn'],
+  ['1502277902841155594', 'Vil du hjælpe med at teste? - Auktioner'],
+  ['1502258493418246154', 'Managernavn er ændret men viser hold/brugernavn'],
+  ['1501675887530217522', 'Kan ikke lukke onboarding-tingen'],
+  ['1501508000039436338', 'Fans - Merchandise - Omdømme - Løb/land'],
+  ['1501502756077178911', 'Gældsloft'],
 ];
 
 function readToken() {
