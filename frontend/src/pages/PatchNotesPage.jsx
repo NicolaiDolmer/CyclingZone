@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.57",
+    date: "2026-06-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixes · Season Preview",
+        items: [
+          "EN · On the Season Preview, the stat boxes on each team card (riders, U25, Avg BJ, Avg SP) were showing white numbers on a light background in light mode, which made them unreadable. The numbers now use the theme's text colour, so they're clear in both light and dark mode. Refs #983.",
+          "DA · På Sæson Preview viste stat-boksene på hvert holdkort (ryttere, U25, Avg BJ, Avg SP) hvide tal på lys baggrund i lyst tema, så de var ulæselige. Tallene bruger nu temaets tekstfarve og er tydelige i både lyst og mørkt tema. Refs #983.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.56",
     date: "2026-06-03",
     label: "Beta",

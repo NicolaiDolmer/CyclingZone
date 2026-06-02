@@ -148,7 +148,8 @@ export default function SeasonPreviewPage() {
                 ].map(s => (
                   <div key={s.label} className="bg-cz-subtle rounded-lg p-2 text-center">
                     <p className="text-[9px] text-cz-3 uppercase tracking-wider mb-0.5">{s.label}</p>
-                    <p className="font-mono font-bold text-sm" style={{ color: s.color || "white" }}>{s.value}</p>
+                    <p className={`font-mono font-bold text-sm ${s.color ? "" : "text-cz-1"}`}
+                      style={s.color ? { color: s.color } : undefined}>{s.value}</p>
                   </div>
                 ))}
               </div>
