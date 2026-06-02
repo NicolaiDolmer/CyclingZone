@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.55",
+    date: "2026-06-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixes · Dashboard",
+        items: [
+          "EN · The \"Active auctions\" stat on the dashboard now counts only the auctions you're actually in (selling or leading), matching the list below it — before it showed the whole market's count, which didn't line up. The auctions card also shows \"No active auctions\" correctly when you have none. And the board satisfaction card is now hidden until you've negotiated a board plan, instead of sitting empty with \"No data\". Refs #271.",
+          "DA · \"Aktive auktioner\"-tallet på dashboardet tæller nu kun de auktioner du faktisk er med i (sælger eller fører), så det passer med listen nedenunder — før viste det hele markedets antal, hvilket ikke stemte. Auktions-kortet viser også korrekt \"Ingen aktive auktioner\" når du ingen har. Og bestyrelsestilfredsheds-kortet er nu skjult indtil du har forhandlet en bestyrelsesplan, i stedet for at stå tomt med \"Ingen data\". Refs #271.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.54",
     date: "2026-06-02",
     label: "Beta",
