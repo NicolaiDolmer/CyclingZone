@@ -509,7 +509,10 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
 function PlanTimelineBar({ planDuration, seasonsCompleted, snapshots }) {
   if (planDuration <= 1) return null;
   return (
-    <div className="flex items-center justify-center gap-1 py-2">
+    // #920: scroll vandret når de N cirkler er bredere end kortet (lange planer /
+    // smalle viewports) — centreret når de kan være der (min-w-full), ellers scroll (w-max).
+    <div className="overflow-x-auto py-2">
+      <div className="flex items-center justify-center gap-1 w-max min-w-full mx-auto">
       {Array.from({ length: planDuration }, (_, i) => {
         const seasonNum = i + 1;
         const isCurrent = seasonNum === seasonsCompleted + 1;
@@ -534,6 +537,7 @@ function PlanTimelineBar({ planDuration, seasonsCompleted, snapshots }) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

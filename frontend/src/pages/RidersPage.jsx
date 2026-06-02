@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import RiderFilters, { DEFAULT_FILTERS } from "../components/RiderFilters";
 import { buildSupabaseQuery } from "../lib/useRiderFilters";
@@ -217,8 +217,8 @@ export default function RidersPage() {
     }
   }
 
-  async function loadRiders() {
-    setLoading(true);
+  async function loadRiders({ silent = false } = {}) {
+    if (!silent) setLoading(true);
     const statKeys = STATS.map(s => s.key).join(", ");
     let query = supabase
       .from("riders")
@@ -239,6 +239,23 @@ export default function RidersPage() {
   }
 
   useEffect(() => { loadRiders(); }, [filters]);
+
+  // #916: realtime — opdatér listen når en rytter ændres (fx solgt til AI-hold →
+  // team_id skifter), så TeamCell ikke bliver ved at vise "Fri" på stale data.
+  // Stille refetch (ingen spinner), debounced fordi auktions-finalisering kan
+  // opdatere mange ryttere i én burst. Ref undgår stale filters-closure.
+  const loadRidersRef = useRef(loadRiders);
+  useEffect(() => { loadRidersRef.current = loadRiders; });
+  useEffect(() => {
+    let timer;
+    const channel = supabase.channel("riders-page-live")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "riders" }, () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => loadRidersRef.current?.({ silent: true }), 400);
+      })
+      .subscribe();
+    return () => { clearTimeout(timer); supabase.removeChannel(channel); };
+  }, []);
 
   // #8 — sync filters → URL + sessionStorage så de persisterer på tværs af
   // navigation (klik på rytter → tilbage).

@@ -2,6 +2,28 @@
 
 const PATCHES = [
   {
+    version: "4.45",
+    date: "2026-06-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixes · UI and notifications",
+        items: [
+          "EN · The rider list now updates live when a rider changes team. When a rider is sold to an AI team, the list no longer keeps showing them as Free until you reload. Refs #916.",
+          "DA · Rytterlisten opdateres nu live når en rytter skifter hold. Når en rytter sælges til et AI-hold, viser listen ikke længere rytteren som Fri indtil du genindlæser. Refs #916.",
+          "EN · A rumor notification (someone is looking at one of your riders) now takes you to that rider's profile when you click it, instead of the general transfers page. Refs #921.",
+          "DA · En transferrygte-besked (nogen kigger på en af dine ryttere) fører dig nu til rytterens profil når du klikker, i stedet for den generelle transfer-side. Refs #921.",
+          "EN · Head-to-Head team search now lists every matching team with a scrollable dropdown, instead of stopping at the first six. Refs #919.",
+          "DA · Holdsøgningen i Head-to-Head viser nu alle hold der matcher i en dropdown du kan scrolle i, i stedet for at stoppe ved de første seks. Refs #919.",
+          "EN · The five-year plan timeline circles now stay inside their card on narrow screens and scroll sideways if the plan is long. Refs #920.",
+          "DA · De fem cirkler i femårsplanens tidslinje bliver nu inde i kortet på smalle skærme og kan scrolles sidelæns hvis planen er lang. Refs #920.",
+          "EN · The bell badge now consistently shows 9+ when you have ten or more unread messages. Refs #830.",
+          "DA · Klokke-badget viser nu konsekvent 9+ når du har ti eller flere ulæste beskeder. Refs #830.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.44",
     date: "2026-06-01",
     label: "Beta",
