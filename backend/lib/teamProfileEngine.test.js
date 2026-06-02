@@ -4,14 +4,16 @@ import assert from "node:assert/strict";
 import { upsertOwnTeamProfile } from "./teamProfileEngine.js";
 import { DIVISION_CAPACITY, INITIAL_BALANCE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
 
-function seedTeams({ division, count, is_ai = false, is_frozen = false }) {
+function seedTeams({ division, count, is_ai = false, is_frozen = false, is_test_account = false }) {
+  const kind = is_ai ? "ai" : is_frozen ? "frozen" : is_test_account ? "test" : "human";
   return Array.from({ length: count }, (_, index) => ({
-    id: `seed-div${division}-${is_ai ? "ai" : is_frozen ? "frozen" : "human"}-${index}`,
-    user_id: `seed-user-${division}-${index}`,
-    name: `Seed ${division} ${is_ai ? "AI" : is_frozen ? "Frozen" : "Human"} ${index}`,
+    id: `seed-div${division}-${kind}-${index}`,
+    user_id: `seed-user-${division}-${kind}-${index}`,
+    name: `Seed ${division} ${kind} ${index}`,
     division,
     is_ai,
     is_frozen,
+    is_test_account,
   }));
 }
 
@@ -265,11 +267,12 @@ test("#962 fyld-fra-toppen: blød cap — div 3 må vokse forbi kapaciteten", as
   assert.equal(result.team.division, 3);
 });
 
-test("#962 fyld-fra-toppen: AI- og frosne hold tæller ikke mod kapaciteten", async () => {
+test("#962 fyld-fra-toppen: AI-, test- og frosne hold tæller ikke mod kapaciteten", async () => {
   const supabase = createSupabaseDouble({
     teams: [
       ...seedTeams({ division: 1, count: DIVISION_CAPACITY, is_ai: true }),
       ...seedTeams({ division: 1, count: DIVISION_CAPACITY, is_frozen: true }),
+      ...seedTeams({ division: 1, count: DIVISION_CAPACITY, is_test_account: true }),
       ...seedTeams({ division: 1, count: 5 }),
     ],
   });
@@ -281,7 +284,28 @@ test("#962 fyld-fra-toppen: AI- og frosne hold tæller ikke mod kapaciteten", as
     managerName: "Manager",
   });
 
-  // Kun 5 aktive menneske-hold i div 1 → der er stadig plads i toppen.
+  // Kun 5 rigtige menneske-hold i div 1 → der er stadig plads i toppen.
+  assert.equal(result.team.division, 1);
+});
+
+test("#962 fyld-fra-toppen: test-konti fylder ikke en division (regression — ranglisten skjuler dem)", async () => {
+  // Bug fanget i prod: 3 test-konti + 17 rigtige hold i div 1 nåede cap=20 og
+  // skubbede rigtige hold til div 2, mens ranglisten kun viste 17 i div 1.
+  const supabase = createSupabaseDouble({
+    teams: [
+      ...seedTeams({ division: 1, count: 17 }),
+      ...seedTeams({ division: 1, count: 3, is_test_account: true }),
+    ],
+  });
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-new",
+    name: "Real Team Eighteen",
+    managerName: "Manager",
+  });
+
+  // 17 rigtige + 3 test = 20 rækker, men kun 17 tæller → der er plads i div 1.
   assert.equal(result.team.division, 1);
 });
 
