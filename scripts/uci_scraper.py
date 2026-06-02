@@ -407,8 +407,12 @@ def fetch_db_riders(headers: dict, page_size: int = DB_RIDER_PAGE_SIZE) -> list[
     offset = 0
     while True:
         end = offset + page_size - 1
+        # pcm_id=not.is.null: rør KUN ægte PCM-ryttere. Fiktive ryttere (pcm_id NULL,
+        # egne ryttere fra #669) findes aldrig på PCS og må aldrig matches/downgrades
+        # af scraperen — samme pcm_id-diskriminator som RLS'en der skjuler dem for
+        # ikke-admin. Indført 2026-06-02 efter cron gulvede 16 fiktive ryttere til MIN.
         resp = requests.get(
-            _sb_url("riders?select=id,firstname,lastname,uci_points,popularity&order=id.asc"),
+            _sb_url("riders?select=id,firstname,lastname,uci_points,popularity&pcm_id=not.is.null&order=id.asc"),
             headers={**headers, "Range-Unit": "items", "Range": f"{offset}-{end}"},
             timeout=30,
         )
