@@ -52,8 +52,7 @@
     "boardSatisfaction": "Board satisfaction",
     "winning": "{count} winning",
     "salaryOnly": "Salary: {amount} CZ$/season",
-    "nowAndSalary": "{now} now · Salary {amount} CZ$/season",
-    "noData": "No data"
+    "nowAndSalary": "{now} now · Salary {amount} CZ$/season"
   },
   "cards": {
     "auctions": {

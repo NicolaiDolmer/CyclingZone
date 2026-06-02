@@ -52,8 +52,7 @@
     "boardSatisfaction": "Bestyrelsestilfredshed",
     "winning": "{count} vinder jeg",
     "salaryOnly": "Løn: {amount} CZ$/sæson",
-    "nowAndSalary": "{now} nu · Løn {amount} CZ$/sæson",
-    "noData": "Ingen data"
+    "nowAndSalary": "{now} nu · Løn {amount} CZ$/sæson"
   },
   "cards": {
     "auctions": {

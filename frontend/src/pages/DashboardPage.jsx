@@ -278,10 +278,12 @@ export default function DashboardPage() {
   const winningAuctions = allAuctions.filter(a => getAuctionLeaderId(a) === team?.id);
   const myAuctions = allAuctions.filter(a => isAuctionSeller(a, team?.id));
 
-  // "Næste træk": auktioner jeg deltager i (sælger eller fører) som slutter < 1 time.
-  const urgentAuctionCount = allAuctions.filter(a => {
-    const involved = isAuctionSeller(a, team?.id) || getAuctionLeaderId(a) === team?.id;
-    if (!involved) return false;
+  // Auktioner jeg deltager i (sælger eller fører). allAuctions er markedsbredt,
+  // men stat-kortet + listen skal vise MINE auktioner — ellers mismatch (#271 Slice C).
+  const myActiveAuctions = allAuctions.filter(a => isAuctionSeller(a, team?.id) || getAuctionLeaderId(a) === team?.id);
+
+  // "Næste træk": af mine auktioner dem der slutter < 1 time.
+  const urgentAuctionCount = myActiveAuctions.filter(a => {
     const diff = new Date(a.calculated_end) - new Date();
     return diff > 0 && diff < 3600000;
   }).length;
@@ -490,8 +492,10 @@ export default function DashboardPage() {
           }
           icon="🚴"
         />
-        <StatCard label={t("dashboard:stats.activeAuctions")} value={allAuctions.length} sub={t("dashboard:stats.winning", { count: winningAuctions.length })} icon="⚡" accent={winningAuctions.length > 0 ? "text-cz-success" : "text-cz-1"} />
-        <StatCard label={t("dashboard:stats.boardSatisfaction")} value={board ? `${board.satisfaction}%` : "—"} sub={board?.focus ? t(`dashboard:board.focus.${board.focus}`, { defaultValue: board.focus }) : t("dashboard:stats.noData")} accent={satisfactionColor} icon="◉" />
+        <StatCard label={t("dashboard:stats.activeAuctions")} value={myActiveAuctions.length} sub={t("dashboard:stats.winning", { count: winningAuctions.length })} icon="⚡" accent={winningAuctions.length > 0 ? "text-cz-success" : "text-cz-1"} />
+        {board && (
+          <StatCard label={t("dashboard:stats.boardSatisfaction")} value={`${board.satisfaction}%`} sub={board.focus ? t(`dashboard:board.focus.${board.focus}`, { defaultValue: board.focus }) : ""} accent={satisfactionColor} icon="◉" />
+        )}
       </div>
 
       {/* Main grid */}
@@ -503,7 +507,7 @@ export default function DashboardPage() {
             <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.auctions.title")}</h2>
             <Link to="/auctions" className="text-xs text-cz-accent-t hover:underline">{t("dashboard:cards.auctions.linkAll")}</Link>
           </div>
-          {allAuctions.length === 0 ? (
+          {myActiveAuctions.length === 0 ? (
             <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.auctions.empty")}</p>
           ) : (
             <div className="flex flex-col gap-2">
