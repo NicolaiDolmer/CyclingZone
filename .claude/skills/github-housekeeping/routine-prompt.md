@@ -54,7 +54,7 @@ PYTHONUTF8=1 python .claude/skills/github-housekeeping/scripts/staleblocked.py -
 ```
 
 - `score_done.py` → per done-issue: `score`, `tier` (1/2/3), `auto_close_candidate`, `needs_xverify`, `blockers`, `reason`.
-- `crossref.py` → `close_intent_open` (åbne issues m. merged `Closes #N` PR — Tier-1-close-kandidater), `kategori_a_missing_done`, `orphan_prs`, `bv_stats`.
+- `crossref.py` → `close_intent_open` (åbne issues m. merged `Closes #N` PR — Tier-1-close-kandidater), `kategori_a_missing_done`, `kategori_k_forgotten_done` (**surface-only** — se Trin 5b), `orphan_prs`, `bv_stats`.
 - `labelcheck.py` → label-konflikter + idle in-progress (Tier 3).
 - `staleblocked.py` → stale done/todo (Tier 3 — eskalér, luk ALDRIG).
 
@@ -105,6 +105,12 @@ Luk **kun** hvis `TIER2_PAUSED` er false OG ALLE er sande:
 
 Fra `labelcheck.py`: ryd 2-state-konflikter via `issue_write` labels (fx `todo+done` → behold `done`; `in-progress+done` der har merged Refs-PR → `done`). Idle in-progress >48h: medtag i digest som nudge, rør ikke. Stale/dødt todo: eskalér til triage, luk aldrig.
 
+# Trin 5b — Kategori K (glemt-done): SURFACE-ONLY — luk/label ALDRIG
+
+`crossref.py --json` → `kategori_k_forgotten_done` = åbne ikke-done-issues hvor en merged PR (typisk `Refs #N`, repoets dominerende mønster) **kan** have leveret kerne-arbejdet, men done/close blev glemt. Scriptet har allerede filtreret støj (dependabot-changelogs, `docs(now)`-close-outs, epic-milestone-PR'er), men det kan **ikke** skelne ægte levering fra delvis/incidentel omtale — 2026-06-02 var 14+ af 23 kandidater incidentelle, ikke leverancer.
+
+**Derfor: routinen må ALDRIG auto-lukke, add-done eller label-ændre et Kategori K-issue.** Scope-verify (issue-AC vs PR-diff) kræver dømmekraft → sub-agent/manuel-skill-opgave, ikke en mekanisk gate. Routinens eneste handling er at **surface** kandidaterne i digesten (Trin 6) så de ikke kun fanges ved en manuel audit. Et issue der OGSÅ er ægte `auto_close_candidate`/`close_intent_open` lukkes udelukkende via Trin 3-gaten — aldrig pga. Kategori K-listen.
+
 # Trin 6 — Daglig digest
 
 Post ÉN comment på ledger-issue **#627** (ikke et nyt issue per dag):
@@ -127,17 +133,22 @@ Scannet: {N} åbne · Merged PRs 14d: {M} · closes: {X}/20 cap{ · ⚡TIER2 PAU
 ### 🏷️ Label-drift ryddet ({W})
 - #R — {todo+done → done}
 
+### 🔎 Glemt-done — Kategori K ({K}) — surface-only, kræver scope-verify (routinen lukker IKKE)
+- #N [{claude:state}] {titel ≤48 tegn} — PR {#M …}
+(cap visning til ~15; "+ {rest} flere — kør manuel audit" hvis flere)
+
 ### Stale/blocked (info)
 - F-todo >30d: {liste} · E-done >14d: {liste} · blocked: {liste}
 ```
 
-**Skip-create:** Hvis alle action-sektioner (auto-lukket, reopened, eskaleret, label-drift) er tomme → post i stedet 1 linje på #627: `Housekeeping {dato}: 0 actions, backlog clean.` og stop.
+**Skip-create:** Hvis alle action-sektioner (auto-lukket, reopened, eskaleret, label-drift) er tomme → post 1 linje på #627: `Housekeeping {dato}: 0 actions, backlog clean.` — men hæng altid Kategori K på hvis der er kandidater: `… · 🔎 Glemt-done (Kategori K, surface-only, kræver scope-verify): #N #M #… ({K}).` Så glemt-done er synlig dagligt, også på clean-backlog-dage. Er K også tom → kun 1-linjen. Stop derefter.
 
 # Hard constraints
 
 - **INGEN branches, commits, PRs, file-edits.** Read-only på git/kode. Eneste writes: `add_issue_comment`, `issue_write` (close + labels).
 - Luk aldrig en forbidden-zone (Trin 3). Overskrid aldrig cap. Re-close aldrig et vetoet issue.
 - Tier 2 kræver ALTID et matchende maskinsignal — pattern-match i en comment er ikke nok.
+- **Kategori K (glemt-done) er surface-only** — aldrig auto-close/add-done/label-ændring (Trin 5b). Kun digest-surface.
 - Ved tvivl → eskalér, luk ikke. False-eskalering koster maintaineren 10 sek; en forkert close koster tillid.
 
 # Failure handling
