@@ -2,7 +2,7 @@
 
 const PATCHES = [
   {
-    version: "4.56",
+    version: "4.57",
     date: "2026-06-03",
     label: "Beta",
     changes: [
@@ -11,6 +11,20 @@ const PATCHES = [
         items: [
           "EN · On the Season Preview, the stat boxes on each team card (riders, U25, Avg BJ, Avg SP) were showing white numbers on a light background in light mode, which made them unreadable. The numbers now use the theme's text colour, so they're clear in both light and dark mode. Refs #983.",
           "DA · På Sæson Preview viste stat-boksene på hvert holdkort (ryttere, U25, Avg BJ, Avg SP) hvide tal på lys baggrund i lyst tema, så de var ulæselige. Tallene bruger nu temaets tekstfarve og er tydelige i både lyst og mørkt tema. Refs #983.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.56",
+    date: "2026-06-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Race results",
+        items: [
+          "EN · Every race now has a full results page you can open with \"See full results\" from the race calendar. For stage races you can click between each stage to see the full finishing order, plus badges showing who wore the leader's, points, mountain and youth jerseys after that stage — and a \"Overall\" tab with the final classifications (GC, points, mountain, youth, teams). One-day races show the finishing order directly. Refs #959.",
+          "DA · Hvert løb har nu en fuld resultatside du kan åbne med \"Se fulde resultater\" fra løbskalenderen. For etapeløb kan du klikke rundt mellem hver etape og se den fulde målrækkefølge, plus badges der viser hvem der bar fører-, point-, bjerg- og ungdomstrøjen efter etapen — og en \"Samlet\"-fane med de endelige klassementer (GC, point, bjerg, ungdom, hold). Enkeltdagsløb viser målrækkefølgen direkte. Refs #959.",
         ],
       },
     ],

@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useMemo } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import RacePointsPage from "./RacePointsPage";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
@@ -457,6 +457,10 @@ export default function RacesPage() {
 
                 {!selectedRace.loading && selectedRace.results?.length > 0 && (
                   <div>
+                    <Link to={`/races/${selectedRace.id}`}
+                      className="inline-flex items-center gap-1 mb-4 text-xs font-medium text-cz-accent-t hover:underline">
+                      Se fulde resultater {selectedRace.race_type === "stage_race" ? "+ alle etaper " : ""}→
+                    </Link>
                     {RESULT_TYPES.map(rt => {
                       const rows = selectedRace.results.filter(r => r.result_type === rt.key).slice(0, 10);
                       if (!rows.length) return null;

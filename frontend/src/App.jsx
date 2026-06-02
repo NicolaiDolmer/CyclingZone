@@ -55,6 +55,7 @@ const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
 const RiderRankingsPage = lazy(() => import("./pages/RiderRankingsPage"));
 const RaceHistoryPage = lazy(() => import("./pages/RaceHistoryPage"));
+const RaceDetailPage = lazy(() => import("./pages/RaceDetailPage"));
 const ManagerProfilePage = lazy(() => import("./pages/ManagerProfilePage"));
 const FinancePage = lazy(() => import("./pages/FinancePage"));
 const SeasonFinanceReport = lazy(() => import("./pages/SeasonFinanceReport"));
@@ -158,6 +159,7 @@ export default function App() {
             <Route path="head-to-head" element={<HeadToHeadPage />} />
             <Route path="patch-notes" element={<PatchNotesPage />} />
             <Route path="races" element={<RacesPage />} />
+            <Route path="races/:raceId" element={<RaceDetailPage />} />
             <Route path="seasons" element={<SeasonEndPage />} />
             <Route path="seasons/:seasonId" element={<SeasonEndPage />} />
             <Route path="season-end" element={<Navigate to="/seasons" replace />} />
