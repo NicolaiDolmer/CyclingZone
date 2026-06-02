@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.51",
+    date: "2026-06-02",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixes · Language menu",
+        items: [
+          "EN · The language menu could be cut off at the bottom of the screen, so you couldn't see or pick the other language. It now always opens fully on screen and flips upward when there isn't room below. Refs #787.",
+          "DA · Sprog-menuen kunne blive skåret af i bunden af skærmen, så du ikke kunne se eller vælge det andet sprog. Den åbner nu altid helt på skærmen og vender opad når der ikke er plads nedenunder. Refs #787.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.50",
     date: "2026-06-02",
     label: "Beta",
