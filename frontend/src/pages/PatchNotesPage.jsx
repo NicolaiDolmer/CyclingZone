@@ -19,6 +19,8 @@ const PATCHES = [
           "DA · De fem cirkler i femårsplanens tidslinje bliver nu inde i kortet på smalle skærme og kan scrolles sidelæns hvis planen er lang. Refs #920.",
           "EN · The bell badge now consistently shows 9+ when you have ten or more unread messages. Refs #830.",
           "DA · Klokke-badget viser nu konsekvent 9+ når du har ti eller flere ulæste beskeder. Refs #830.",
+          "EN · Incoming riders now show their nationality flag when you view another team's squad, the same as the current riders. Refs #922.",
+          "DA · Indkommende ryttere viser nu deres nationalitetsflag når du ser et andet holds trup, ligesom de nuværende ryttere. Refs #922.",
         ],
       },
     ],
