@@ -9,7 +9,7 @@ const MARKET_RESET_STATUSES = {
   transfer_listings: ["open", "negotiating"],
   transfer_offers: ["pending", "accepted", "countered", "awaiting_confirmation", "window_pending"],
   swap_offers: ["pending", "accepted", "countered", "awaiting_confirmation", "window_pending"],
-  loan_agreements: ["pending", "active", "window_pending"],
+  loan_agreements: ["pending", "active", "window_pending", "buyout_pending"],
 };
 
 function assertSupabase(supabase) {

@@ -206,6 +206,10 @@ function createTeamMarketStateSupabase({
                 return {
                   in(secondColumn, secondValue) {
                     assert.equal(secondColumn, "status");
+                    // #19 audit guard: 'buyout_pending' must NEVER be in this
+                    // filter — a parked buyout is already counted via
+                    // rider.pending_team_id, so counting its loan here too would
+                    // double-count the rider against the borrower's squad cap.
                     assert.deepEqual(secondValue, ["active", "window_pending"]);
                     return Promise.resolve({ count: activeLoanCount, error: null });
                   },

@@ -87,6 +87,7 @@ import {
   getLoanBuyoutRiderUpdate,
   getLoanBuyoutStatus,
   getWindowPendingLoanFlushStatus,
+  PARKED_LOAN_STATUSES,
 } from "../lib/loanAgreementWindowing.js";
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
@@ -502,7 +503,7 @@ async function flushWindowPendingLoans() {
       rider:rider_id(id, firstname, lastname, team_id),
       from_team:from_team_id(name),
       to_team:to_team_id(name)`)
-    .eq("status", "window_pending");
+    .in("status", PARKED_LOAN_STATUSES);
   if (error) throw error;
 
   let loansProcessed = 0;
@@ -2446,6 +2447,23 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
       });
     }
 
+    // #19 audit (finding #3): claim the rider with the SAME atomicity guard the
+    // transfer/swap parking paths use, BEFORE moving any money. The rider must
+    // still be owned by the lender and not already parked for another deal; a
+    // 0-row result means a competing deal claimed the rider, so we abort before
+    // debiting. Open window → ownership moves now; closed → pending_team_id parks
+    // (status "buyout_pending", flushed at window-open).
+    const boughtAt = new Date().toISOString();
+    const { data: claimedRider, error: claimErr } = await supabase.from("riders")
+      .update(getLoanBuyoutRiderUpdate({ windowOpen: open, borrowerTeamId: req.team.id, timestamp: boughtAt }))
+      .eq("id", loan.rider_id)
+      .eq("team_id", loan.from_team_id)
+      .is("pending_team_id", null)
+      .select("id");
+    if (claimErr) return res.status(500).json({ error: claimErr.message });
+    if (!claimedRider || claimedRider.length === 0)
+      return res.status(409).json({ error: "Rytteren er ikke længere tilgængelig for købsoption — den er allerede involveret i en anden handel." });
+
     // Slice 07c: balance + finance_transactions atomic via RPC.
     // 07d Fase B / #240: borrower aktiverer købsoption → req.user.id = køber.
     // season_id sættes eksplicit fra activeSeason.
@@ -2483,10 +2501,6 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
         related_entity_id: loan.id,
       },
     });
-    const boughtAt = new Date().toISOString();
-    await supabase.from("riders")
-      .update(getLoanBuyoutRiderUpdate({ windowOpen: open, borrowerTeamId: req.team.id, timestamp: boughtAt }))
-      .eq("id", loan.rider_id);
     const nextStatus = getLoanBuyoutStatus({ windowOpen: open });
     await supabase.from("loan_agreements").update({ status: nextStatus, updated_at: boughtAt }).eq("id", loan.id);
     const title = open ? "Købsoption udnyttet" : "Købsoption parkeret";
