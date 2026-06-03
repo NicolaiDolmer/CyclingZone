@@ -1177,10 +1177,16 @@ export async function updateRiderValues(supabaseClient) {
     .eq("status", "active")
     .maybeSingle();
 
+  // Kun sæsoner der FAKTISK havde racing tæller i værdi-gennemsnittet. En tom
+  // placeholder/seed-sæson (fx sæson 0: status='completed', race_days_total=0,
+  // 0 løb) ville ellers indgå med vægt 1 og 0 optjening → den fortynder ALLE
+  // rytter-bonusser (her ~38%). race_days_total>0 er diskriminatoren (filtreres
+  // før .limit, så en placeholder ikke spiser en af de 3 pladser).
   const { data: completedSeasons } = await supabaseClient
     .from("seasons")
     .select("id, number")
     .eq("status", "completed")
+    .gt("race_days_total", 0)
     .order("number", { ascending: false })
     .limit(3);
 

@@ -241,7 +241,8 @@ function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, com
                 if (value === "active") {
                   return { maybeSingle: () => Promise.resolve({ data: activeSeason, error: null }) };
                 }
-                return { order: () => ({ limit: () => Promise.resolve({ data: completedSeasons, error: null }) }) };
+                // .eq("status","completed").gt("race_days_total",0).order().limit()
+                return { gt: () => ({ order: () => ({ limit: () => Promise.resolve({ data: completedSeasons, error: null }) }) }) };
               },
             };
           },
