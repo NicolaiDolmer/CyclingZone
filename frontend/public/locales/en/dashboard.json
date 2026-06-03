@@ -45,15 +45,6 @@
       "closed": "✗ Transfer window closed"
     }
   },
-  "stats": {
-    "balance": "Balance",
-    "riders": "Riders",
-    "activeAuctions": "Active auctions",
-    "boardSatisfaction": "Board satisfaction",
-    "winning": "{count} winning",
-    "salaryOnly": "Salary: {amount} CZ$/season",
-    "nowAndSalary": "{now} now · Salary {amount} CZ$/season"
-  },
   "cards": {
     "auctions": {
       "title": "Active Auctions",

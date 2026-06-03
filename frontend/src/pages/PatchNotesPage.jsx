@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "4.66",
+    date: "2026-06-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Dashboard",
+        items: [
+          "EN · Cleaned up the top of the dashboard. The four summary cards (balance, riders, active auctions, board satisfaction) are gone, since that information already appears in the header and in the cards below.",
+          "DA · Ryddet op i toppen af dashboardet. De fire oversigtskort (saldo, ryttere, aktive auktioner, bestyrelsestilfredshed) er fjernet, da den information allerede vises i headeren og i kortene nedenunder.",
+          "EN · The Customize button moved to the top-right corner as a gear icon, so it is easier to find.",
+          "DA · Tilpas-knappen er flyttet op i øverste højre hjørne som et tandhjuls-ikon, så den er lettere at finde.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.65",
     date: "2026-06-03",
     label: "Beta",
