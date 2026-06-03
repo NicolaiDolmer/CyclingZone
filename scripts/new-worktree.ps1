@@ -50,68 +50,13 @@ if ($DryRun) {
 }
 
 Write-Host ""
-Write-Host "=== .env hardlinks (direkte til OneDrive-secrets) ===" -ForegroundColor Cyan
-$secretsRoot = Join-Path $env:OneDrive "CyclingZone-context\secrets"
-if (Test-Path $secretsRoot) {
-  # OneDrive-secrets bruger '.' i navnet (backend.env), worktree bruger '\\.env'
-  $envMap = @{
-    'backend\.env'                = 'backend.env'
-    'frontend\.env'               = 'frontend.env'
-    'frontend\.env.production'    = 'frontend.env.production'
-    '.mcp.json'                   = 'mcp.json'
-  }
-  foreach ($k in $envMap.Keys) {
-    $dst = Join-Path $wt $k
-    $src = Join-Path $secretsRoot $envMap[$k]
-    if (-not (Test-Path $src)) {
-      Write-Host "  [skip] OneDrive-source mangler: $($envMap[$k])" -ForegroundColor Yellow
-      continue
-    }
-    $parent = Split-Path $dst -Parent
-    if ($parent -and -not (Test-Path $parent)) {
-      if ($DryRun) { Write-Host "  [would-mkdir] $parent" -ForegroundColor Cyan }
-      else { New-Item -ItemType Directory $parent -Force | Out-Null }
-    }
-    if (Test-Path $dst) {
-      if ($DryRun) { Write-Host "  [would-replace] $k" -ForegroundColor Cyan; continue }
-      Remove-Item $dst -Force
-    }
-    if ($DryRun) {
-      Write-Host "  [would-hardlink] $k -> $($envMap[$k])" -ForegroundColor Cyan
-    } else {
-      # cmd /c mklink /H: mere tolerant overfor OneDrive cloud-files end New-Item -HardLink
-      $out = & cmd /c mklink /H "$dst" "$src" 2>&1
-      if ($LASTEXITCODE -eq 0) {
-        Write-Host "  [ok] $k"
-      } else {
-        Write-Host "  [warn] mklink fejlede for $k`: $out" -ForegroundColor Yellow
-      }
-    }
-  }
-} else {
-  Write-Host "  [skip] OneDrive-secrets ikke fundet ($secretsRoot)" -ForegroundColor Yellow
-}
-
-Write-Host ""
-Write-Host "=== node_modules junctions (delt med main) ===" -ForegroundColor Cyan
-foreach ($nm in @('backend\node_modules', 'frontend\node_modules')) {
-  $src = Join-Path $RepoRoot $nm
-  $dst = Join-Path $wt $nm
-  if (-not (Test-Path $src)) {
-    Write-Host "  [skip] $nm mangler i main repo (k�r npm install i main f�rst)" -ForegroundColor Yellow
-    continue
-  }
-  if (Test-Path $dst) {
-    Write-Host "  [skip] $nm findes allerede"
-    continue
-  }
-  if ($DryRun) {
-    Write-Host "  [would-junction] $dst -> $src" -ForegroundColor Cyan
-  } else {
-    New-Item -ItemType Junction -Path $dst -Target $src | Out-Null
-    Write-Host "  [ok] $nm"
-  }
-}
+Write-Host "=== node_modules-junctions + .env-hardlinks (setup-worktree.ps1) ===" -ForegroundColor Cyan
+# Genbrug den idempotente setup-logik (junctions + OneDrive-.env-hardlinks).
+# Samme script kaldes af SessionStart-hooken for harness-oprettede worktrees (#994).
+$setupScript = Join-Path $RepoRoot "scripts\setup-worktree.ps1"
+$setupArgs = @('-NoProfile', '-File', $setupScript, '-WorktreeRoot', $wt, '-MainRepoRoot', $RepoRoot)
+if ($DryRun) { $setupArgs += '-DryRun' }
+& pwsh @setupArgs
 
 Write-Host ""
 Write-Host "=== Memory + codex-junctions for worktree ===" -ForegroundColor Cyan
