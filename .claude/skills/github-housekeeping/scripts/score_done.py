@@ -64,7 +64,12 @@ NEG_KEYWORDS = [
 ]
 
 WORK_PENDING_PATTERNS = [
-    r'N[æa]ste session', r'next session', r'bagudretter', r'efter merge', r'mangler'
+    r'N[æa]ste session', r'next session', r'bagudretter', r'efter merge', r'mangler',
+    # Eksplicitte ejer-verify-pending-markører (lektion 2026-06-03 #19): et type:bug/bar-label
+    # backend-close-kandidat med "afventer din manuelle spot-check" SKAL ned-grades til Tier3,
+    # ikke auto-lukkes — selvom backend-tests er grønne, er den brugervendte adfærd ikke ejer-verificeret.
+    r'afventer\s+(?:kun\s+)?(?:din|dit|ejer)', r'spot-?check', r'kun du kan',
+    r'manuel(?:t|le)?\s+(?:ejer-?)?verif',
 ]
 
 BACKEND_LABELS = ('cat:infra','cat:ai-ops','type:docs','type:ci','backend-only','docs-only','security','type:investigation','type:refactor')

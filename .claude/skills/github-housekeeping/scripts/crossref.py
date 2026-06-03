@@ -28,6 +28,24 @@ AS_JSON = '--json' in sys.argv
 now = datetime.now(timezone.utc)
 cutoff = now - timedelta(days=14)
 
+# === Kategori K carry-forward seen-cache (lektion 2026-06-03) ===
+# crossref bruger ALLE merged PRs (ingen cutoff), så de samme incidentelle omtaler dukker op hver dag
+# og koster sub-agent-runtime ved re-verify. Cachen husker issues der allerede er verificeret legitimt-åbne.
+# Format: {"<issue>": {"date": "YYYY-MM-DD", "prs": [pr-numre set ved verify-tidspunkt]}}
+# Et candidate markeres prev_legit hvis dets nuværende kvalificerende PR-sæt ⊆ det cachede sæt (intet nyt
+# siden sidst). Dukker en NY PR op → prev_legit_stale (re-verificér — der kan være leveret noget nyt).
+# Skriv cachen efter verify:  PYTHONUTF8=1 python crossref.py --mark-legit 33,253,266,...
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+LEGIT_CACHE = os.path.join(SCRIPT_DIR, 'k-legit-open.json')
+
+
+def load_legit_cache():
+    try:
+        with open(LEGIT_CACHE, encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
 with open(os.path.join(TMP, 'audit-pr-merged.json'), encoding='utf-8') as f:
     prs = json.load(f)
 with open(os.path.join(TMP, 'audit-open-all.json'), encoding='utf-8') as f:
@@ -129,6 +147,7 @@ def is_incidental_pr(title):
         return True  # epic-milestone-PR lister sub-issues uden at levere dem
     return False
 
+legit_cache = load_legit_cache()
 forgotten_done = []
 for n, labels in open_nums.items():
     if 'claude:done' in labels:
@@ -140,12 +159,44 @@ for n, labels in open_nums.items():
         continue
     quals = sorted(set(p for p in forgotten_refs.get(n, []) if not is_incidental_pr(pr_title.get(p, ''))))
     if quals:
+        # Carry-forward-diff: er dette allerede verificeret legitimt-åbent i en tidligere audit?
+        cached = legit_cache.get(str(n))
+        prev_legit = False
+        prev_date = None
+        prev_stale = False
+        if cached:
+            prev_date = cached.get('date')
+            seen_prs = set(cached.get('prs', []))
+            if set(quals) <= seen_prs:
+                prev_legit = True       # intet nyt siden verify → spring re-dispatch over
+            else:
+                prev_stale = True       # NY PR dukket op → re-verificér
         forgotten_done.append({
             'issue': n, 'title': title, 'labels': labels,
             'pr_candidates': quals,
+            'prev_legit': prev_legit, 'prev_legit_date': prev_date, 'prev_legit_stale': prev_stale,
             'note': 'VERIFICÉR scope mod PR — levering vs delvis/incidentel',
         })
 forgotten_done.sort(key=lambda x: -x['issue'])
+
+# Writer-mode: marker verificeret-legitimt-åbne issues i cachen efter audit.
+if '--mark-legit' in sys.argv:
+    idx = sys.argv.index('--mark-legit')
+    arg = sys.argv[idx + 1] if idx + 1 < len(sys.argv) else ''
+    nums = [int(x) for x in re.split(r'[,\s]+', arg.strip()) if x.strip().isdigit()]
+    today = now.strftime('%Y-%m-%d')
+    for n in nums:
+        quals = sorted(set(p for p in forgotten_refs.get(n, []) if not is_incidental_pr(pr_title.get(p, ''))))
+        legit_cache[str(n)] = {'date': today, 'prs': quals}
+    # Ryd cache-entries der ikke længere er åbne K-kandidater (lukket / nu claude:done).
+    still_open = {str(x['issue']) for x in forgotten_done}
+    for k in list(legit_cache.keys()):
+        if k not in still_open and k not in {str(n) for n in nums}:
+            del legit_cache[k]
+    with open(LEGIT_CACHE, 'w', encoding='utf-8') as f:
+        json.dump(legit_cache, f, ensure_ascii=False, indent=2, sort_keys=True)
+    print(f"Cache opdateret: {len(nums)} markeret legit-open ({today}); {len(legit_cache)} entries i alt.")
+    sys.exit(0)
 
 if AS_JSON:
     print(json.dumps({
@@ -164,12 +215,21 @@ else:
     print(f"\n=== Kategori A: CLOSE-intent vs open uden claude:done ({len(missing_done_label)}) ===")
     for x in missing_done_label[:20]:
         print(f"  PR #{x['pr']} closes #{x['issue']}: {x['title'][:70]}")
-    print(f"\n=== Kategori K: glemt-done — åbne ikke-done-issues m. kvalificerende merged PR ({len(forgotten_done)}) ===")
+    n_fresh = sum(1 for x in forgotten_done if not x['prev_legit'])
+    n_prev = sum(1 for x in forgotten_done if x['prev_legit'])
+    print(f"\n=== Kategori K: glemt-done — åbne ikke-done-issues m. kvalificerende merged PR ({len(forgotten_done)}; {n_fresh} til verify, {n_prev} prev-legit) ===")
     print("    (VERIFICÉR scope mod PR før close/done — script skelner ikke levering fra delvis/incidentel)")
-    for x in forgotten_done[:40]:
+    print("    [prev-legit]=allerede verificeret legit-åben i tidl. audit, spring re-dispatch over · [RE-VERIFY]=ny PR siden")
+    for x in forgotten_done[:50]:
+        if x['prev_legit']:
+            continue  # vises samlet nedenfor — fokus på det der kræver verify
         st = ','.join(l for l in x['labels'] if l.startswith('claude:')) or 'NO-STATE'
         prs_str = ' '.join(f"#{p}" for p in x['pr_candidates'])
-        print(f"  #{x['issue']} [{st}] {x['title'][:48]}\n       PRs: {prs_str}")
+        tag = ' [RE-VERIFY: ny PR]' if x['prev_legit_stale'] else ''
+        print(f"  #{x['issue']} [{st}]{tag} {x['title'][:48]}\n       PRs: {prs_str}")
+    if n_prev:
+        prev_list = ' '.join(f"#{x['issue']}" for x in forgotten_done if x['prev_legit'])
+        print(f"  --- prev-verified-legit (skip): {prev_list}")
     print(f"\n=== Kategori J: orphan PRs uden #N ({len(orphan_prs)}) ===")
     for x in orphan_prs[:30]:
         print(f"  PR #{x['pr']}: {x['title'][:70]}")
