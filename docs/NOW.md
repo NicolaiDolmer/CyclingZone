@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** Ejer-verify rangliste-rework i prod (3 sider — trin i PR [#993](https://github.com/NicolaiDolmer/CyclingZone/pull/993)-body). Evt. resten af #924 (separat podie-metrik + præmiepenge-pr.-klassement) efter verify. Ops-opfølgning: [#994](https://github.com/NicolaiDolmer/CyclingZone/issues/994) worktree auto-setup (node_modules+.env). Derefter [#959](https://github.com/NicolaiDolmer/CyclingZone/issues/959) V2-del (pr.-etape-klassementer i import) + [#961](https://github.com/NicolaiDolmer/CyclingZone/issues/961). Ejer-verify udestår også på #787/#816/#959-V1 + merge PR [#992](https://github.com/NicolaiDolmer/CyclingZone/pull/992).
+> **🎯 Next action:** Præmie-udbetaling sæson 1 (ejer vil udbetale i dag). Sekvens: merge PR [#998](https://github.com/NicolaiDolmer/CyclingZone/pull/998) → deploy → admin "↻ Point fra config" på sæson 1 (re-deriver race_results + rytterværdier — config var redigeret 76× uden re-derive) → ejer-verify per-hold-overblik (admin Økonomi + ny rangliste-kolonne) → udbetal → luk #893. Derefter resten af #924/#959-V2/#961.
 >
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude (Claude Code) — præmie-flow (PR #998), worktree nervous-mayer-e85549.
 >
 > **Launch-sprint TdF** (`slice:tdf-launch`): ✅ #787 sprog (PR #971 merged) · ✅ #960 nulstil · ✅ #816 >100% (#972) · ✅ #271 dashboard (lukket) · ✅ [#959](https://github.com/NicolaiDolmer/CyclingZone/issues/959) etape-V1 (frontend) — V2-import udestår · ✅ [#963](https://github.com/NicolaiDolmer/CyclingZone/issues/963) besøgs-log (PR [#992](https://github.com/NicolaiDolmer/CyclingZone/pull/992), afventer merge) · [#961](https://github.com/NicolaiDolmer/CyclingZone/issues/961) hjælp.
 >
@@ -16,7 +16,7 @@
 
 ## Standing context (launch-deadline 20. juni)
 
-- **Præmieudbetalinger på pause** indtil præmie-audit-epic [#893](https://github.com/NicolaiDolmer/CyclingZone/issues/893) er færdig — udbetal IKKE før da. Kerne-PRs #907/#909/#910 merged; #896-preview afventer ejer-verify (admin → Økonomi → Præmieudbetaling → sæson 1 → "Se status").
+- **Præmieudbetaling sæson 1 = i gang (3. juni).** Pausen ophæves bevidst af ejer i dette forløb. Audit-epic [#893](https://github.com/NicolaiDolmer/CyclingZone/issues/893) er kode-komplet (#894/#895/#897/#898 lukket; #896-preview merged); PR [#998](https://github.com/NicolaiDolmer/CyclingZone/pull/998) lukker sidste afkobling (re-derive opdaterer nu rytterværdier) + per-hold-overblik. Udbetal FØRST efter: re-derive kørt på sæson 1 + ejer-verify af overblik. Luk #893 efter udbetaling.
 - **Sikkerhed:** [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) SUPABASE_SERVICE_KEY-rotation åben · [#929](https://github.com/NicolaiDolmer/CyclingZone/issues/929) leaked-password = dashboard-toggle (ejer).
 - **TdF launch-prep:** [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676) Race Engine V1 (stor risiko) · [#672](https://github.com/NicolaiDolmer/CyclingZone/issues/672) landing page · [#671](https://github.com/NicolaiDolmer/CyclingZone/issues/671) brand · [#864](https://github.com/NicolaiDolmer/CyclingZone/issues/864) UI/UX-audit-fund.
 - **Ejer-verify udestår:** #793/#19/#896 (claude:done) · merge PR #947 (skill-docs) · #669 fiktive-rytter-auktionstest.
