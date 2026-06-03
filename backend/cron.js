@@ -21,7 +21,7 @@ import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
 } from "./lib/notificationService.js";
-import { notifyAuctionWon, getDefaultWebhook, sendWebhook } from "./lib/discordNotifier.js";
+import { notifyAuctionWon, getDefaultWebhook, sendWebhook, getBotToken } from "./lib/discordNotifier.js";
 import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
 import { processSeasonAutoTransitionCron } from "./lib/seasonAutoTransition.js";
@@ -30,6 +30,7 @@ import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
 import { processUciStaleDataCheck } from "./lib/uciStaleDataCheck.js";
+import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { captureException as sentryCapture } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
@@ -308,6 +309,24 @@ async function runUciStaleDataCheck() {
   }
 }
 
+// ─── Daily Discord bot-token safety-net ──────────────────────────────────────
+// Person-rettede DMs sendes via bot-token, der kan rotere/komme ud af sync uden
+// at nogen opdager det (2026-06-03: alle DMs fejlede tavst med openDm 401).
+// Validerer token mod Discord + alerter via Sentry/webhook hvis ugyldigt.
+
+async function runDiscordBotTokenCheck() {
+  const result = await processDiscordBotTokenCheck({
+    botToken: getBotToken(),
+    sendWebhookFn: sendWebhook,
+    getDefaultWebhookFn: getDefaultWebhook,
+    captureExceptionFn: sentryCapture,
+    now: new Date(),
+  });
+  if (result.alerted) {
+    console.error(`🚨 Discord bot-token check: ugyldigt/manglende token (status=${result.status ?? "n/a"})`);
+  }
+}
+
 // ─── Squad Enforcement ───────────────────────────────────────────────────────
 
 async function runSquadEnforcementCron() {
@@ -400,12 +419,16 @@ export function startCron() {
   // Every 24 hours: UCI stale-data safety-net (forward-guard mod skipped GitHub Actions schedule).
   setInterval(trackedTick("uci stale-data check", runUciStaleDataCheck), 24 * 60 * 60 * 1000);
 
+  // Every 24 hours: Discord bot-token safety-net (forward-guard mod tavs token-drift).
+  setInterval(trackedTick("discord bot-token check", runDiscordBotTokenCheck), 24 * 60 * 60 * 1000);
+
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();
   trackedTick("board auto-accept", runBoardAutoAcceptCron)();
   trackedTick("board mid-season", runMidSeasonReviewCron)();
   trackedTick("daily season-count check", runDailySeasonCountCheck)();
   trackedTick("uci stale-data check", runUciStaleDataCheck)();
+  trackedTick("discord bot-token check", runDiscordBotTokenCheck)();
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────
