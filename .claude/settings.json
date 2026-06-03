@@ -90,6 +90,11 @@
           {
             "type": "command",
             "command": "bash scripts/hooks/ensure-scheduled-tasks.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/setup-worktree-if-needed.sh",
+            "timeout": 60
           }
         ]
       }

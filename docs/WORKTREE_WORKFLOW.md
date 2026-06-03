@@ -32,11 +32,31 @@ pwsh -File scripts/new-worktree.ps1 -Branch fix/abc -FromBranch origin/develop
 
 Scriptet:
 1. Kører `git worktree add -b <branch> <path> <from>`.
-2. Hardlinker `.env`-filer + `.mcp.json` **direkte fra OneDrive-context\secrets\** (ikke cascade via main — det fejler pga. OneDrive cloud-file reparse-tag).
-3. Junction-linker `node_modules/` fra main (delt; sparer ~500 MB + install-tid).
-4. Kører `link-onedrive-context.ps1 -RepoRoot <new-path>` så memory-junction etableres for worktreets Claude-project-folder.
+2. Kører `setup-worktree.ps1` (se nedenfor), der junction-linker `node_modules/` fra main + hardlinker `.env`-filer + `.mcp.json` fra OneDrive-context\secrets\.
+3. Kører `link-onedrive-context.ps1 -RepoRoot <new-path>` så memory-junction etableres for worktreets Claude-project-folder.
 
 Åbn derefter en ny Claude Code-session med working dir `C:\dev\CyclingZone-worktrees\<slug>\`.
+
+### Harness-oprettede worktrees (auto-setup) — #994
+
+Claude Code-harnessen opretter sine egne worktrees under `.claude/worktrees/<navn>` **uden om** `new-worktree.ps1`. De mangler derfor `node_modules`-junctions + `.env`-filer → backend `node --test` fejler lokalt med `Error: supabaseUrl is required.` og frontend kræver manuel `npm ci`.
+
+To mekanismer lukker hullet:
+
+- **`scripts/setup-worktree.ps1`** — idempotent script der sætter et eksisterende worktree op:
+  - `node_modules`-junctions → main-repoets `node_modules` (sparer ~500 MB + install-tid).
+  - `.env`-hardlinks (`backend/.env`, `frontend/.env`, `frontend/.env.production`, `.mcp.json`) fra `OneDrive-context\secrets\` via `mklink /H`. **Læser aldrig secret-værdier** — kun filsystem-links (jf. #634). `link-onedrive-context.ps1` håndterer ikke `.env` længere (#327 Infisical), så `.env`-logikken bor her.
+  - Auto-detekterer worktree- + main-repo-sti via `git rev-parse` (CWD = worktreet); skip-if-exists på hvert trin → sikkert at køre igen, no-op i selve main-repoet.
+
+  Kør manuelt i en harness-worktree der mangler setup:
+  ```powershell
+  pwsh -File scripts/setup-worktree.ps1            # auto-detect
+  pwsh -File scripts/setup-worktree.ps1 -DryRun    # rapportér uden at skrive
+  ```
+
+- **SessionStart-hook** (`scripts/hooks/setup-worktree-if-needed.sh` i `.claude/settings.json`) — kører `setup-worktree.ps1` automatisk ved session-start **hvis** man er i et linked worktree (`.git` er en fil) med manglende `node_modules`/`.env`. Øjeblikkelig no-op i main-repoet og når alt er på plads. Dvs. en frisk harness-worktree er klar til `pwsh -File scripts/verify-local.ps1` uden manuelle trin.
+
+`new-worktree.ps1` genbruger samme `setup-worktree.ps1` (ingen duplikeret junction-/env-logik).
 
 ### Cleanup når branchen er merged eller forladt
 
