@@ -4,11 +4,11 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** [#959](https://github.com/NicolaiDolmer/CyclingZone/issues/959) V2-del: udvid resultat-importen så pr.-etape-klassementer (GC/point/bjerg/ungdom pr. etape) + tider/gaps gemmes (besluttet: før launch). Derefter [#961](https://github.com/NicolaiDolmer/CyclingZone/issues/961) hjælp. Ejer-verify udestår på #787/#816/#959-V1.
+> **🎯 Next action:** [#959](https://github.com/NicolaiDolmer/CyclingZone/issues/959) V2-del: udvid resultat-importen så pr.-etape-klassementer (GC/point/bjerg/ungdom pr. etape) + tider/gaps gemmes (besluttet: før launch). Derefter [#961](https://github.com/NicolaiDolmer/CyclingZone/issues/961) hjælp. Ejer-verify udestår på #787/#816/#959-V1 + merge PR [#992](https://github.com/NicolaiDolmer/CyclingZone/pull/992) (#963 besøgs-log).
 >
 > **🤖 Working agent:** Ingen aktiv session.
 >
-> **Launch-sprint TdF** (`slice:tdf-launch`): ✅ #787 sprog (PR #971 merged) · ✅ #960 nulstil · ✅ #816 >100% (#972) · ✅ #271 dashboard (lukket) · ✅ [#959](https://github.com/NicolaiDolmer/CyclingZone/issues/959) etape-V1 (denne session — frontend) — V2-import udestår · [#961](https://github.com/NicolaiDolmer/CyclingZone/issues/961) hjælp · [#963](https://github.com/NicolaiDolmer/CyclingZone/issues/963) besøgs-log.
+> **Launch-sprint TdF** (`slice:tdf-launch`): ✅ #787 sprog (PR #971 merged) · ✅ #960 nulstil · ✅ #816 >100% (#972) · ✅ #271 dashboard (lukket) · ✅ [#959](https://github.com/NicolaiDolmer/CyclingZone/issues/959) etape-V1 (frontend) — V2-import udestår · ✅ [#963](https://github.com/NicolaiDolmer/CyclingZone/issues/963) besøgs-log (PR [#992](https://github.com/NicolaiDolmer/CyclingZone/pull/992), afventer merge) · [#961](https://github.com/NicolaiDolmer/CyclingZone/issues/961) hjælp.
 >
 > **Epics (post-launch):** [#954](https://github.com/NicolaiDolmer/CyclingZone/issues/954) Transparens · [#955](https://github.com/NicolaiDolmer/CyclingZone/issues/955) Bestyrelse-UI · [#956](https://github.com/NicolaiDolmer/CyclingZone/issues/956) Deadline-hub · [#957](https://github.com/NicolaiDolmer/CyclingZone/issues/957) Popularitet · [#958](https://github.com/NicolaiDolmer/CyclingZone/issues/958) U23/Junior · [#959](https://github.com/NicolaiDolmer/CyclingZone/issues/959) Etape-resultater.
 
@@ -21,4 +21,4 @@
 - **TdF launch-prep:** [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676) Race Engine V1 (stor risiko) · [#672](https://github.com/NicolaiDolmer/CyclingZone/issues/672) landing page · [#671](https://github.com/NicolaiDolmer/CyclingZone/issues/671) brand · [#864](https://github.com/NicolaiDolmer/CyclingZone/issues/864) UI/UX-audit-fund.
 - **Ejer-verify udestår:** #793/#19/#896 (claude:done) · merge PR #947 (skill-docs) · #669 fiktive-rytter-auktionstest.
 
-_Opdateret af Claude (Claude Code) 3. juni 2026 — #959 etape-resultater V1 (ny `/races/:raceId` detaljeside: etape-faner + trøje-badges + Samlet-klassementer; data-akkurat — pr.-etape-klassementer + tider findes ikke endnu, V2-import udestår før launch)._
+_Opdateret af Claude (Claude Code) 3. juni 2026 — #963 besøgs-logging på ryttere (ny `rider_profile_views`-tabel, migration anvendt i prod; logges backend-side i `/api/riders/:id/view` for alle ryttere, daily-dedup pr. bruger/rytter/dag; ren data-opsamling, ingen UI — UI = #957). PR [#992](https://github.com/NicolaiDolmer/CyclingZone/pull/992) afventer merge._

@@ -97,6 +97,11 @@ const WHITELIST_EMPTY_TABLES = new Set([
   "board_consequences",
   "board_request_log",
   "team_board_members",
+  // Besøgs-log (#963) — bevidst tom ved oprettelse. Fyldes når PR #992-koden er
+  // deployet og rigtige brugere åbner rytter-profiler; hele pointen er at BEGYNDE
+  // at opsamle nu, så popularitet (#957) har historik. Skriv-path verificeret i
+  // POST /api/riders/:id/view. Fjern denne whitelist-entry når tabellen har rows.
+  "rider_profile_views",
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
