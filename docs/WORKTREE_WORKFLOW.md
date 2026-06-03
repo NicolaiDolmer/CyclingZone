@@ -68,6 +68,17 @@ pwsh -File scripts/remove-worktree.ps1 -Branch fix/abc -Force
 
 Scriptet checker for uncommitted/unpushed work, fjerner Claude-project-folder (memory-junction-parent), kører `git worktree remove`, og sletter lokal branch hvis merged til `origin/main`.
 
+### Bulk-oprydning (alle merged worktrees på én gang)
+
+`remove-worktree.ps1` rydder **én** branch og antager `CyclingZone-worktrees\<slug>`-layoutet — den ser derfor ikke Claude Codes auto-worktrees under `.claude/worktrees/<random-name>`. Disse hober sig op fordi close-out aldrig fjerner dem (43 stk. observeret 2026-06-03). Brug sweep'et til periodisk oprydning:
+
+```powershell
+pwsh -File scripts/prune-merged-worktrees.ps1            # dry-run: rapportér hvad der ville ryge
+pwsh -File scripts/prune-merged-worktrees.ps1 -Execute   # udfør
+```
+
+Det enumererer **alle** worktrees via `git worktree list` (layout-uafhængigt) og genbruger den delte, squash-bevidste merge-detektion (`scripts/lib/git-merge-detection.ps1`). Sletter kun når ancestry-merge **eller** en merged PR (via `gh`) bekræfter det — er `gh` ubestemt for en squash-branch, **beholdes** branchen. Springer altid primær checkout, aktiv session, locked worktrees, detached HEAD, branches der lever på origin, og worktrees med uncommitted changes (medmindre `-Force`) over. Default er dry-run; intet slettes uden `-Execute`.
+
 ## Gotchas
 
 ### Delt node_modules
