@@ -29,6 +29,7 @@ import {
   getAuctionBidWarnings,
   getAuctionInitialBidderId,
   getAuctionStartIssue,
+  getAuctionStartPriceIssue,
   getMinimumAuctionBid,
   getProxyMaxIssue,
   getProxyOpeningBidAmount,
@@ -888,12 +889,23 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   }
 
   const riderValue = Math.max(calculateRiderMarketValue(rider), 1);
+  const isOwnRider = Boolean(rider.team_id) && rider.team_id === req.team.id;
 
-  if (starting_price && starting_price < riderValue) {
-    return res.status(400).json({ error: `Startpris skal mindst matche rytterens Værdi (${riderValue.toLocaleString("da-DK")} CZ$)` });
+  const priceIssue = getAuctionStartPriceIssue({ startingPrice: starting_price, riderValue, isOwnRider });
+  if (priceIssue) {
+    if (priceIssue.code === "invalid_start_price") {
+      return res.status(400).json({ error: "Ugyldig startpris" });
+    }
+    const formatted = riderValue.toLocaleString("da-DK");
+    if (priceIssue.code === "own_price_out_of_range") {
+      return res.status(400).json({ error: `Startpris skal være mellem 0 og rytterens Værdi (${formatted} CZ$)` });
+    }
+    return res.status(400).json({ error: `Startpris skal mindst matche rytterens Værdi (${formatted} CZ$)` });
   }
 
-  const price = starting_price || riderValue;
+  const price = (starting_price === null || starting_price === undefined || starting_price === "")
+    ? riderValue
+    : Number(starting_price);
   const auctionCfg = await getAuctionConfig();
   const calculatedEnd = flash_auction
     ? new Date(Date.now() + 30 * 60 * 1000)

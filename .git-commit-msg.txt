@@ -1,0 +1,24 @@
+feat(auctions): live fører-opdatering + startpris under værdi for egne ryttere + valgfrit live-feed
+
+Tre auktions-ændringer fra Discord-feedback:
+
+- Fix (#980, P0): ledende hold opdateres nu live ved overbud. Realtime-payloaden
+  indeholder kun rå kolonner (current_bidder_id), ikke det joinede current_bidder-
+  objekt fører-navnet vises fra → navnet var stale til manuel reload. Handleren
+  genopbygger nu current_bidder fra en team-navn-cache (seedet i loadAll) + async
+  fetch ved cache-miss. Postmortem i .claude/learnings/.
+
+- Feature (#926): egne ryttere kan nu sættes til auktion mellem 0 og Værdi (frit
+  valgbart), ikke længere over Værdi. AI/fri rytter beholder ≥Værdi-gulvet.
+  Validering flyttet til ren, testet getAuctionStartPriceIssue() i auctionRules.js.
+
+- Feature (#814, #310): "Live bud"-panelet kan nu skjules (toggle, husket i
+  localStorage), og feed-vinduet er udvidet fra 30s til 15 min. Feeden backfilles
+  fra DB ved load, så den er fyldt med de seneste bud med det samme i stedet for tom.
+
+PatchNotes 4.62. FEATURE_STATUS startpris-kontrakt opdateret. Core-smoke
+auctions-snapshots (mobile) refreshet pga. ny toggle-knap.
+
+Refs #980 #926 #814 #310
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>

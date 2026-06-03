@@ -558,14 +558,15 @@ function RiderBidPanel({ auction, myTeamId, myAvailableBalance, riderName, onBid
   );
 }
 
-function AuctionButton({ rider, auctionLabel, onStart, ddActive }) {
+function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   const { t } = useTranslation("rider");
   const riderValue      = getRiderMarketValue(rider);
   const [price, setPrice]           = useState(riderValue);
   const [loading, setLoading]       = useState(false);
   const [flash, setFlash]           = useState(false);
 
-  const priceError      = price < riderValue;
+  // Egne ryttere: pris må være mellem 0 og Værdi (ikke over). AI/fri rytter: Værdi er gulvet.
+  const priceError      = isOwnRider ? (price > riderValue || price < 0) : (price < riderValue);
 
   return (
     <div>
@@ -586,8 +587,9 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive }) {
         <input
           type="number"
           value={price}
-          min={riderValue}
-          onChange={e => setPrice(parseInt(e.target.value) || riderValue)}
+          min={isOwnRider ? 0 : riderValue}
+          max={isOwnRider ? riderValue : undefined}
+          onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? (isOwnRider ? 0 : riderValue) : v); }}
           className={`min-w-0 flex-1 min-h-[44px] bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
             ${priceError
               ? "border-red-300 focus:border-red-400"
@@ -603,7 +605,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive }) {
       </div>
       {priceError && (
         <p className="text-red-500 text-xs mt-1.5">
-          {t("auctionStart.priceError", { amount: formatNumber(riderValue) })}
+          {t(isOwnRider ? "auctionStart.priceErrorOwn" : "auctionStart.priceError", { amount: formatNumber(riderValue) })}
         </p>
       )}
     </div>
@@ -1144,7 +1146,7 @@ export default function RiderStatsPage() {
               {t("blocked.retired")}
             </p>
           )}
-          {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} />}
+          {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />}
           {activeAuction && (
             <RiderBidPanel
               auction={activeAuction}

@@ -92,7 +92,8 @@
     "auction": {
       "description": "Start auction. Other managers can bid.",
       "startButton": "Start",
-      "successMsg": "✅ Auction started!"
+      "successMsg": "✅ Auction started!",
+      "priceError": "Start price must be between 0 and Value ({amount} CZ$)"
     },
     "transfer": {
       "description": "List for sale at a fixed price.",

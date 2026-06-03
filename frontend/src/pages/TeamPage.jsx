@@ -33,6 +33,9 @@ function RiderActionModal({ rider, onClose, onAction }) {
   const [msg, setMsg] = useState("");
   const [activeTab, setActiveTab] = useState("auction");
 
+  // Squad-fanen viser kun egne ryttere → auktion må sættes mellem 0 og Værdi (ikke over).
+  const auctionPriceError = auctionPrice > riderValue || auctionPrice < 0;
+
   async function startAuction() {
     setLoading(true);
     try {
@@ -119,13 +122,20 @@ function RiderActionModal({ rider, onClose, onAction }) {
             <div>
               <p className="text-cz-2 text-xs mb-3">{t("actionModal.auction.description")}</p>
               <div className="flex gap-2">
-                <input type="number" value={auctionPrice} min={riderValue} onChange={e => setAuctionPrice(parseInt(e.target.value))}
-                  className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm font-mono focus:outline-none focus:border-cz-accent" />
-                <button onClick={startAuction} disabled={loading}
+                <input type="number" value={auctionPrice} min={0} max={riderValue}
+                  onChange={e => { const v = parseInt(e.target.value, 10); setAuctionPrice(Number.isNaN(v) ? 0 : v); }}
+                  className={`flex-1 bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-sm font-mono focus:outline-none
+                    ${auctionPriceError ? "border-red-300 focus:border-red-400" : "border-cz-border focus:border-cz-accent"}`} />
+                <button onClick={startAuction} disabled={loading || auctionPriceError}
                   className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
                   {loading ? t("actionModal.loadingShort") : t("actionModal.auction.startButton")}
                 </button>
               </div>
+              {auctionPriceError && (
+                <p className="text-red-500 text-xs mt-1.5">
+                  {t("actionModal.auction.priceError", { amount: formatNumber(riderValue) })}
+                </p>
+              )}
             </div>
           )}
           {activeTab === "transfer" && (

@@ -267,6 +267,7 @@
       "loading": "..."
     },
     "priceError": "Startpris skal mindst matche Værdi ({amount} CZ$)",
+    "priceErrorOwn": "Startpris skal være mellem 0 og Værdi ({amount} CZ$)",
     "squadWarning": "Auktion startet.\n\nOBS: leder nu auktioner svarende til {total} ryttere (max {max}). Hvis du stadig er {exceedBy} over ved vindue-luk: auto-salg + {fine} CZ$ bøde + {points} fradrag-points."
   },
   "directOffer": {

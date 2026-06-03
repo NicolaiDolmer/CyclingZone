@@ -267,6 +267,7 @@
       "loading": "..."
     },
     "priceError": "Start price must at least match Value ({amount} CZ$)",
+    "priceErrorOwn": "Start price must be between 0 and Value ({amount} CZ$)",
     "squadWarning": "Auction started.\n\nNote: you are now running auctions equal to {total} riders (max {max}). If you are still {exceedBy} over when the window closes: auto-sale + {fine} CZ$ fine + {points} deduction points."
   },
   "directOffer": {

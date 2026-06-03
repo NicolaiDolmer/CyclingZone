@@ -19,6 +19,30 @@ export function getAuctionStartIssue({ rider } = {}) {
   return null;
 }
 
+// Startpris-gate for ny auktion (POST /api/auctions).
+// - Egen rytter: pris skal være mellem 0 og Værdi (sælg billigt hvis du vil, men
+//   ingen kunstig inflation over rytterens Værdi).
+// - AI/fri rytter: pris skal mindst matche Værdi (markedsgulv mod low-balling).
+// Tom/udeladt pris = intet issue (route defaulter til Værdi).
+export function getAuctionStartPriceIssue({ startingPrice, riderValue, isOwnRider = false } = {}) {
+  if (startingPrice === null || startingPrice === undefined || startingPrice === "") {
+    return null;
+  }
+  const price = Number(startingPrice);
+  const value = Number(riderValue) || 0;
+  if (!Number.isFinite(price)) {
+    return { code: "invalid_start_price" };
+  }
+  if (isOwnRider) {
+    if (price < 0 || price > value) {
+      return { code: "own_price_out_of_range", riderValue: value };
+    }
+  } else if (price < value) {
+    return { code: "below_value_floor", riderValue: value };
+  }
+  return null;
+}
+
 // Min-step = +1 CZ$ over current price når der allerede er bud.
 // Hvis ingen har budt endnu (asking-price på egen-rytter-salg), tillad match-bud.
 export function getMinimumAuctionBid(currentPrice, { hasActiveBid = true } = {}) {

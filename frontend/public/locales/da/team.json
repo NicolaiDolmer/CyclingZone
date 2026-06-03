@@ -92,7 +92,8 @@
     "auction": {
       "description": "Start auktion. Andre managers kan byde.",
       "startButton": "Start",
-      "successMsg": "✅ Auktion startet!"
+      "successMsg": "✅ Auktion startet!",
+      "priceError": "Startpris skal være mellem 0 og Værdi ({amount} CZ$)"
     },
     "transfer": {
       "description": "Sæt til salg med fast pris.",

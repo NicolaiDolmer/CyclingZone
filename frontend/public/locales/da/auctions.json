@@ -22,7 +22,7 @@
     "startTour": "💡 Vis mig rundt"
   },
   "ticker": {
-    "bidCount": "{count, plural, one {1 nyt bud} other {# nye bud}} i sidste 30s"
+    "bidCount": "{count, plural, one {1 nyt bud} other {# nye bud}} for nylig"
   },
   "stats": {
     "balance": "Balance",
@@ -40,7 +40,10 @@
     "otherManagers": "Andre managers ({count})",
     "wishlistButton": "Kun ønskeliste",
     "wishlistTitleOn": "Vis alle ryttere",
-    "wishlistTitleOff": "Vis kun ryttere på din ønskeliste"
+    "wishlistTitleOff": "Vis kun ryttere på din ønskeliste",
+    "feedButton": "Live bud",
+    "feedTitleOn": "Skjul live bud-panelet",
+    "feedTitleOff": "Vis live bud-panelet"
   },
   "nav": {
     "active": "Aktive ({count})",
