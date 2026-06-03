@@ -45,15 +45,6 @@
       "closed": "✗ Transfervindue lukket"
     }
   },
-  "stats": {
-    "balance": "Balance",
-    "riders": "Ryttere",
-    "activeAuctions": "Aktive auktioner",
-    "boardSatisfaction": "Bestyrelsestilfredshed",
-    "winning": "{count} vinder jeg",
-    "salaryOnly": "Løn: {amount} CZ$/sæson",
-    "nowAndSalary": "{now} nu · Løn {amount} CZ$/sæson"
-  },
   "cards": {
     "auctions": {
       "title": "Aktive Auktioner",

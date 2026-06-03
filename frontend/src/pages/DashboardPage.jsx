@@ -35,19 +35,6 @@ function getAuctionLeaderId(auction) {
   return null;
 }
 
-function StatCard({ label, value, sub, accent = "text-cz-1", icon }) {
-  return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-4">
-      <div className="flex items-start justify-between mb-2">
-        <p className="text-cz-3 text-xs uppercase tracking-wider">{label}</p>
-        <span className="text-base">{icon}</span>
-      </div>
-      <p className={`text-xl font-bold font-mono ${accent}`}>{value}</p>
-      {sub && <p className="text-cz-3 text-xs mt-1 truncate">{sub}</p>}
-    </div>
-  );
-}
-
 function MiniBar({ value, max, color = "rgb(var(--accent))" }) {
   const pct = Math.min(100, Math.round((value / Math.max(max, 1)) * 100));
   return (
@@ -340,13 +327,12 @@ export default function DashboardPage() {
     myTeamId: team?.id,
     division: team?.division,
   });
-  const { ownedNow, outgoingCount, futureRiderCount, warning: squadWarning } = squadStats;
+  const { ownedNow, outgoingCount, warning: squadWarning } = squadStats;
 
   // My division standings
   const divStandings = standings.filter(s => !s.team?.is_ai && s.division === team?.division)
     .sort((a, b) => b.total_points - a.total_points).slice(0, 5);
 
-  const totalSalary = riders.reduce((s, r) => s + (r.salary || 0), 0);
   const pendingIncoming = pendingIncomingCount;
   const activeMarketOffers = activeOffers.filter(o =>
     ["pending", "countered", "awaiting_confirmation", "window_pending"].includes(o.status)
@@ -356,7 +342,7 @@ export default function DashboardPage() {
     <div className="max-w-6xl mx-auto">
       <SurveyBanner />
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-start justify-between gap-3 mb-5">
         <div>
           <h1 className="text-xl font-bold text-cz-1">{team?.name}</h1>
           <p className="text-cz-3 text-sm">
@@ -366,9 +352,21 @@ export default function DashboardPage() {
             {activeLoanCount > 0 && <span className="text-purple-400"> {t("dashboard:header.loans", { count: activeLoanCount })}</span>}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-cz-accent-t font-mono font-bold text-xl">{formatNumber(team?.balance)} CZ$</p>
-          <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="text-right">
+            <p className="text-cz-accent-t font-mono font-bold text-xl">{formatNumber(team?.balance)} CZ$</p>
+            <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
+          </div>
+          {/* Customize-knap (#1005) — vis/skjul moduler. Top-højre = konventionel
+              placering for view-indstillinger, så den er let at finde (#957-follow-up). */}
+          <DashboardCustomizeMenu
+            open={customizeOpen}
+            onToggleOpen={() => setCustomizeOpen(o => !o)}
+            isVisible={isVisible}
+            toggleModule={toggleModule}
+            resetToDefault={resetToDefault}
+            t={t}
+          />
         </div>
       </div>
 
@@ -518,37 +516,6 @@ export default function DashboardPage() {
           )}
         </div>
       )}
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <StatCard label={t("dashboard:stats.balance")} value={formatNumber(team?.balance)} sub="CZ$" accent="text-cz-accent-t" icon="💰" />
-        <StatCard
-          label={t("dashboard:stats.riders")}
-          value={futureRiderCount}
-          sub={
-            pendingIncomingCount > 0 || outgoingCount > 0
-              ? t("dashboard:stats.nowAndSalary", { now: ownedNow, amount: formatNumber(totalSalary) })
-              : t("dashboard:stats.salaryOnly", { amount: formatNumber(totalSalary) })
-          }
-          icon="🚴"
-        />
-        <StatCard label={t("dashboard:stats.activeAuctions")} value={myActiveAuctions.length} sub={t("dashboard:stats.winning", { count: winningAuctions.length })} icon="⚡" accent={winningAuctions.length > 0 ? "text-cz-success" : "text-cz-1"} />
-        {board && (
-          <StatCard label={t("dashboard:stats.boardSatisfaction")} value={`${board.satisfaction}%`} sub={board.focus ? t(`dashboard:board.focus.${board.focus}`, { defaultValue: board.focus }) : ""} accent={satisfactionColor} icon="◉" />
-        )}
-      </div>
-
-      {/* Customize-knap (#1005) — vis/skjul moduler */}
-      <div className="flex justify-end mb-3">
-        <DashboardCustomizeMenu
-          open={customizeOpen}
-          onToggleOpen={() => setCustomizeOpen(o => !o)}
-          isVisible={isVisible}
-          toggleModule={toggleModule}
-          resetToDefault={resetToDefault}
-          t={t}
-        />
-      </div>
 
       {/* Main grid */}
       <div className="grid lg:grid-cols-2 gap-4">
