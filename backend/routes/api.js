@@ -81,6 +81,7 @@ import {
   notifySeasonEvent,
   sendTestEmbed,
   sendTestDM,
+  getBotToken,
 } from "../lib/discordNotifier.js";
 import { getPendingInboxItems } from "../lib/inboxPending.js";
 import {
@@ -2784,7 +2785,7 @@ router.get("/me/discord-status", requireAuth, async (req, res) => {
   res.json({
     discord_id: user?.discord_id || null,
     dm_enabled: user?.discord_dm_enabled !== false,
-    bot_configured: Boolean(process.env.DISCORD_BOT_TOKEN),
+    bot_configured: Boolean(getBotToken()),
   });
 });
 
