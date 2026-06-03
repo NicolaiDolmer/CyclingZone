@@ -98,6 +98,37 @@
       "budgetMultiplier": "Budget multiplier",
       "exceeds": "Exceeded",
       "exceedsTitle": "This category scored above 100% — you exceeded the board's expectations here."
+    },
+    "recentResults": {
+      "title": "Recent results",
+      "linkAll": "See all →",
+      "empty": "No completed races yet this season",
+      "gc": "Overall winner",
+      "stage": "Stage {n} winner",
+      "aiBadge": "AI"
+    },
+    "riderRanking": {
+      "title": "Rider ranking",
+      "linkAll": "Full ranking →",
+      "empty": "No results yet this season",
+      "stageWins": "{count, plural, one {1 stage win} other {# stage wins}}",
+      "gcWins": "{count} GC",
+      "points": "{points} pts",
+      "aiBadge": "AI"
+    }
+  },
+  "customize": {
+    "button": "Customize",
+    "heading": "Show modules",
+    "reset": "Reset to default",
+    "modules": {
+      "auctions": "Active auctions",
+      "transfers": "Transfers & offers",
+      "races": "Upcoming races",
+      "divStandings": "Division standings",
+      "board": "Board status",
+      "recentResults": "Recent results",
+      "riderRanking": "Rider ranking"
     }
   },
   "board": {

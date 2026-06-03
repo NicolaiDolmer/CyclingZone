@@ -232,6 +232,8 @@ const CACHE_TTL = {
   races: 600_000,
   racePool: 600_000,
   racePoints: 600_000,
+  dashboardRecentResults: 60_000,
+  dashboardRiderRanking: 60_000,
 };
 
 // Load .env from backend root
@@ -4430,6 +4432,132 @@ router.get("/races", requireAuth, cached({ namespace: "races", ttlMs: CACHE_TTL.
     const { data, error } = await query;
     if (error) return res.status(500).json({ error: error.message });
     res.json(data || []);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}));
+
+// ── Dashboard-moduler (#1005) ─────────────────────────────────────────────────
+// Aggregat-endpoints til de to nye dashboard-moduler. Aggregeringen sker server-
+// side (service_role + fetchAllRows) og caches 60s delt på tværs af alle brugere,
+// så browseren kun modtager top-5 i stedet for hele sæsonens race_results (8.500+
+// rækker og voksende mod TdF). Samme logik som ResultaterPage's topRiders, men
+// flyttet væk fra klienten.
+
+// GET /api/dashboard/recent-results — seneste 5 afsluttede løb + vinder
+router.get("/dashboard/recent-results", requireAuth, cached({ namespace: "dashboard-recent-results", ttlMs: CACHE_TTL.dashboardRecentResults }, async (req, res) => {
+  try {
+    const { data: season } = await supabase
+      .from("seasons").select("id").eq("status", "active").maybeSingle();
+    if (!season) return res.json({ races: [] });
+
+    const { data: races } = await supabase
+      .from("races")
+      .select("id, name, race_type, stages")
+      .eq("season_id", season.id)
+      .eq("status", "completed");
+    if (!races?.length) return res.json({ races: [] });
+
+    const raceIds = races.map(r => r.id);
+    // Kun vinder-rækker (rank=1, gc/stage) — lille datasæt. imported_at på disse
+    // rækker afspejler import-batchen og bruges til recency-ordering (date_text er
+    // en in-game-streng, ikke kronologisk sorterbar).
+    const winnerRows = await fetchAllRows(() => supabase
+      .from("race_results")
+      .select("race_id, rider_id, result_type, stage_number, rank, imported_at, rider:rider_id(firstname, lastname, nationality_code, team:team_id(name, is_ai))")
+      .in("race_id", raceIds)
+      .eq("rank", 1)
+      .in("result_type", ["gc", "stage"])
+      .not("rider_id", "is", null)
+      .order("id", { ascending: true }));
+
+    const byRace = new Map();
+    for (const row of winnerRows) {
+      let e = byRace.get(row.race_id);
+      if (!e) { e = { gc: null, latestStage: null, lastImport: null }; byRace.set(row.race_id, e); }
+      if (row.imported_at && (!e.lastImport || row.imported_at > e.lastImport)) e.lastImport = row.imported_at;
+      if (row.result_type === "gc") {
+        e.gc = row;
+      } else if (row.result_type === "stage") {
+        if (!e.latestStage || (row.stage_number ?? 0) > (e.latestStage.stage_number ?? 0)) e.latestStage = row;
+      }
+    }
+
+    const raceMeta = new Map(races.map(r => [r.id, r]));
+    const out = [];
+    for (const [raceId, e] of byRace) {
+      const meta = raceMeta.get(raceId);
+      if (!meta) continue;
+      // Headline = samlet vinder (gc); fallback til seneste etapevinder for
+      // afsluttede stage-races der mangler en gc-række.
+      const winner = e.gc || e.latestStage;
+      if (!winner || !winner.rider) continue;
+      out.push({
+        race_id: raceId,
+        name: meta.name,
+        race_type: meta.race_type,
+        stages: meta.stages,
+        last_import: e.lastImport,
+        winner: {
+          rider_id: winner.rider_id,
+          firstname: winner.rider.firstname,
+          lastname: winner.rider.lastname,
+          nationality_code: winner.rider.nationality_code,
+          team_name: winner.rider.team?.name || null,
+          is_ai: winner.rider.team?.is_ai || false,
+          result_type: winner.result_type,
+          stage_number: winner.stage_number,
+        },
+      });
+    }
+    out.sort((a, b) => String(b.last_import || "").localeCompare(String(a.last_import || "")));
+    res.json({ races: out.slice(0, 5) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}));
+
+// GET /api/dashboard/rider-ranking — sæsonens top-5 ryttere efter point
+router.get("/dashboard/rider-ranking", requireAuth, cached({ namespace: "dashboard-rider-ranking", ttlMs: CACHE_TTL.dashboardRiderRanking }, async (req, res) => {
+  try {
+    const { data: season } = await supabase
+      .from("seasons").select("id").eq("status", "active").maybeSingle();
+    if (!season) return res.json({ riders: [] });
+
+    const { data: races } = await supabase
+      .from("races").select("id").eq("season_id", season.id);
+    if (!races?.length) return res.json({ riders: [] });
+
+    const raceIds = races.map(r => r.id);
+    const rows = await fetchAllRows(() => supabase
+      .from("race_results")
+      .select("rider_id, result_type, rank, points_earned, rider:rider_id(id, firstname, lastname, nationality_code, is_retired, team:team_id(name, is_ai))")
+      .in("race_id", raceIds)
+      .not("rider_id", "is", null)
+      .order("id", { ascending: true }));
+
+    const agg = {};
+    for (const r of rows) {
+      if (!r.rider_id || !r.rider || r.rider.is_retired) continue;
+      if (!agg[r.rider_id]) {
+        agg[r.rider_id] = {
+          rider_id: r.rider_id,
+          firstname: r.rider.firstname,
+          lastname: r.rider.lastname,
+          nationality_code: r.rider.nationality_code,
+          team_name: r.rider.team?.name || null,
+          is_ai: r.rider.team?.is_ai || false,
+          points: 0, stage_wins: 0, gc_wins: 0,
+        };
+      }
+      const a = agg[r.rider_id];
+      a.points += r.points_earned || 0;
+      if (r.rank === 1 && r.result_type === "stage") a.stage_wins++;
+      if (r.rank === 1 && r.result_type === "gc") a.gc_wins++;
+    }
+
+    const top = Object.values(agg).sort((x, y) => y.points - x.points).slice(0, 5);
+    res.json({ riders: top });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

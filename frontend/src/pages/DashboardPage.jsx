@@ -13,6 +13,10 @@ import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
+import RiderLink from "../components/RiderLink";
+import { Flag } from "../components/Flag";
+import useDashboardLayout from "../lib/useDashboardLayout";
+import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
 
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
@@ -89,6 +93,14 @@ export default function DashboardPage() {
 
   // Kanonisk "kræver handling"-summary til "Næste træk"-sektionen (#271 Slice B).
   const { pending: actionSummary, loading: actionLoading } = useActionSummary();
+
+  // Dashboard-customize (#1005): vis/skjul moduler, persisteret i localStorage.
+  const { isVisible, toggleModule, resetToDefault } = useDashboardLayout();
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [recentResults, setRecentResults] = useState([]);
+  const [riderRanking, setRiderRanking] = useState([]);
+  const recentResultsVisible = isVisible("recentResults");
+  const riderRankingVisible = isVisible("riderRanking");
 
   async function loadAll() {
     try {
@@ -252,6 +264,34 @@ export default function DashboardPage() {
 
   useEffect(() => { loadAll(); }, []);
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
+
+  // #1005: hent de to nye moduler fra deres aggregat-endpoints — kun når modulet
+  // er synligt, så managere der har skjult dem ikke betaler omkostningen. Endpoints
+  // er cachede server-side (60s), så toggle on→off→on rammer cachen.
+  useEffect(() => {
+    let cancelled = false;
+    async function loadExtras() {
+      if (!recentResultsVisible && !riderRankingVisible) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      const headers = { Authorization: `Bearer ${token}` };
+      if (recentResultsVisible) {
+        try {
+          const r = await fetch(`${API}/api/dashboard/recent-results`, { headers });
+          if (r.ok && !cancelled) setRecentResults((await r.json()).races || []);
+        } catch { /* best-effort */ }
+      }
+      if (riderRankingVisible) {
+        try {
+          const r = await fetch(`${API}/api/dashboard/rider-ranking`, { headers });
+          if (r.ok && !cancelled) setRiderRanking((await r.json()).riders || []);
+        } catch { /* best-effort */ }
+      }
+    }
+    loadExtras();
+    return () => { cancelled = true; };
+  }, [recentResultsVisible, riderRankingVisible]);
 
   function dismissDiscordNudge() {
     localStorage.setItem("cz-dashboard-discord-nudge-dismissed", "1");
@@ -498,10 +538,23 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* Customize-knap (#1005) — vis/skjul moduler */}
+      <div className="flex justify-end mb-3">
+        <DashboardCustomizeMenu
+          open={customizeOpen}
+          onToggleOpen={() => setCustomizeOpen(o => !o)}
+          isVisible={isVisible}
+          toggleModule={toggleModule}
+          resetToDefault={resetToDefault}
+          t={t}
+        />
+      </div>
+
       {/* Main grid */}
       <div className="grid lg:grid-cols-2 gap-4">
 
         {/* My auctions + winning */}
+        {isVisible("auctions") && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.auctions.title")}</h2>
@@ -544,8 +597,10 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* Pending transfers + offers */}
+        {isVisible("transfers") && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.transfers.title")}</h2>
@@ -591,8 +646,10 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* Upcoming races */}
+        {isVisible("races") && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.races.title")}</h2>
@@ -626,8 +683,10 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* My division standings */}
+        {isVisible("divStandings") && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.standings.title", { division: team?.division })}</h2>
@@ -653,8 +712,10 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* Board status */}
+        {isVisible("board") && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.board.title")}</h2>
@@ -722,6 +783,78 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        )}
+
+        {/* Recent results (#1005) */}
+        {isVisible("recentResults") && (
+        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.recentResults.title")}</h2>
+            <Link to="/resultater" className="text-xs text-cz-accent-t hover:underline">{t("dashboard:cards.recentResults.linkAll")}</Link>
+          </div>
+          {recentResults.length === 0 ? (
+            <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.recentResults.empty")}</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {recentResults.map(race => (
+                <div key={race.race_id} className="flex items-center justify-between py-2 border-b border-cz-border last:border-0 gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-cz-1 text-sm truncate">{race.name}</p>
+                    <p className="text-cz-3 text-xs mt-0.5">
+                      {race.winner?.result_type === "gc"
+                        ? t("dashboard:cards.recentResults.gc")
+                        : t("dashboard:cards.recentResults.stage", { n: race.winner?.stage_number ?? 0 })}
+                    </p>
+                  </div>
+                  {race.winner && (
+                    <div className="text-right min-w-0">
+                      <RiderLink id={race.winner.rider_id} className="text-cz-1 text-sm hover:underline inline-flex items-center justify-end gap-1 max-w-full">
+                        {race.winner.nationality_code && <Flag code={race.winner.nationality_code} />}
+                        <span className="truncate">{race.winner.firstname} {race.winner.lastname}</span>
+                      </RiderLink>
+                      <p className="text-cz-3 text-xs truncate">{race.winner.is_ai ? t("dashboard:cards.recentResults.aiBadge") : (race.winner.team_name || "")}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        )}
+
+        {/* Rider ranking (#1005) */}
+        {isVisible("riderRanking") && (
+        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.riderRanking.title")}</h2>
+            <Link to="/rider-rankings" className="text-xs text-cz-accent-t hover:underline">{t("dashboard:cards.riderRanking.linkAll")}</Link>
+          </div>
+          {riderRanking.length === 0 ? (
+            <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.riderRanking.empty")}</p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {riderRanking.map((r, i) => (
+                <RiderLink key={r.rider_id} id={r.rider_id}
+                  className="flex items-center gap-3 py-1.5 hover:bg-cz-subtle rounded-lg -mx-2 px-2 transition-colors">
+                  <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>#{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-cz-1 text-sm truncate">
+                      {r.nationality_code && <Flag code={r.nationality_code} className="me-1" />}
+                      {r.firstname} {r.lastname}
+                    </p>
+                    <p className="text-cz-3 text-xs truncate">
+                      {r.is_ai ? t("dashboard:cards.riderRanking.aiBadge") : (r.team_name || "")}
+                      {r.stage_wins > 0 && ` · ${t("dashboard:cards.riderRanking.stageWins", { count: r.stage_wins })}`}
+                      {r.gc_wins > 0 && ` · ${t("dashboard:cards.riderRanking.gcWins", { count: r.gc_wins })}`}
+                    </p>
+                  </div>
+                  <span className="font-mono font-bold text-cz-accent-t text-sm flex-shrink-0">{t("dashboard:cards.riderRanking.points", { points: formatNumber(r.points || 0) })}</span>
+                </RiderLink>
+              ))}
+            </div>
+          )}
+        </div>
+        )}
 
       </div>
     </div>
