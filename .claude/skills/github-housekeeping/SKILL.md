@@ -22,7 +22,7 @@ Grundig audit af GitHub-issues. **PRIMÆRT MÅL: LUK verificerede issues.** Seku
 ## Trin 1 — Data (parallelt, ét batch)
 
 ```bash
-gh issue list --state open --limit 300 --json number,title,labels,updatedAt > "$TEMP/audit-open-all.json"
+gh issue list --state open --limit 500 --json number,title,labels,updatedAt > "$TEMP/audit-open-all.json"
 gh issue list --state open --label "claude:done" --limit 100 --json number,title,labels,comments,updatedAt > "$TEMP/audit-done.json"
 gh issue list --state open --label "claude:blocked" --limit 50 --json number,title,labels,comments > "$TEMP/audit-blocked-issues.json"
 gh issue list --state open --label "needs-user-action" --limit 50 --json number,title,updatedAt > "$TEMP/audit-nua.json"
@@ -33,7 +33,7 @@ gh pr list --state open --limit 30 --json number,title,isDraft,body > "$TEMP/aud
 
 Filnavne matcher script-forventninger direkte (lektion 2026-05-26: 3 `cp`-kald per audit eliminerede). Scripts i `.claude/skills/github-housekeeping/scripts/*.py` læser fra `$TEMP/audit-open-all.json`, `audit-done.json`, `audit-pr-merged.json`, `audit-blocked-issues.json`.
 
-Limits: 300 åbne (repo har 150+; margin). 200 merged PRs (lektion 2026-05-23: 5 audits i træk ramte 100/100 inden for 14d — pace højere end antaget; 200 giver fuld dækning med marginal extra runtime).
+Limits: **500 åbne** (lektion 2026-06-03: repo ramte 300-loftet med 313 åbne under TdF-launch-sprint → open-all cross-ref missede issues; 500 giver margin). 200 merged PRs (lektion 2026-05-23: 5 audits i træk ramte 100/100 inden for 14d — pace højere end antaget; 200 giver fuld dækning med marginal extra runtime).
 
 ## Trin 2 — Cross-reference (systematisk)
 
@@ -45,6 +45,8 @@ Limits: 300 åbne (repo har 150+; margin). 200 merged PRs (lektion 2026-05-23: 5
 - Flag PRs UDEN nogen `#N`-ref (heller ikke parentes-shorthand `(#N)`) som Kategori J: orphan. Filtrer dependabot/chore-PRs fra orphan-rapporten.
 
 **Glemt-done-pass — cross-ref ALLE åbne ikke-done-issues mod merged PR'er (lektion 2026-06-02 — REPO'ETS HYPPIGSTE BLIND VINKEL):** Tidligere audits cross-refede kun `claude:done`-issues + `Closes/Fixes`-intent. MEN dette repo bruger næsten altid `Refs #N` (per `feedback_github_close_protocol`), så et issue hvor kerne-arbejdet blev leveret via en merged `Refs #N`-PR, men hvor nogen glemte at markere done/lukke, **faldt igennem hver eneste audit**. Bruger flaggede direkte 2026-06-02: "Vi har ofte tit glemt at markere opgaver som done, selvom de faktisk allerede er lavet." `crossref.py` Kategori K surfacer nu kandidaterne: åbne ikke-done-issues (ekskl. epics + NUA/blocked) med ≥1 kvalificerende merged PR via enhver `#N`-ref, efter støj-filter (dependabot-changelog indeholder fremmede #-numre; `docs(now)`-close-outs nævner #N uden at levere; epic-milestone-PR'er lister sub-issues). **Scriptet kan IKKE skelne ægte levering fra delvis/incidentel** — for hver kandidat: dispatch parallelle sub-agenter der læser issuets AC mod PR'ens faktiske leverance. Falske positiver 2026-06-02: talkollision (#33↔PR #856 "Refs #855"), deferral ("→ deferred to #253"), dependency-note ("kobler til #266"), tracking-række i workflow-doc. Ægte fund: #532/#719/#646 (backend/tooling, lukket), #793/#19/#896 (dev-færdig user-feature/admin → claude:done + ejer-verify).
+
+**Glemt-done carry-forward-cache (lektion 2026-06-03):** `crossref.py` bruger ALLE merged PR'er (ingen 14d-cutoff — glemt-done akkumulerer), så de samme incidentelle omtaler (talkollision/deferral/dependency-note) dukker op i Kategori K **hver eneste dag** og koster sub-agent-runtime ved re-verify. Cachen `scripts/k-legit-open.json` (git-tracket) husker issues der allerede er verificeret legitimt-åbne. Print-mode separerer nu `N til verify` fra `N prev-legit` (sidstnævnte vises kun på en skip-linje). Et candidate re-flagges `[RE-VERIFY: ny PR]` hvis en NY kvalificerende PR er dukket op siden cache-verify (der kan være leveret noget nyt). **Efter audit:** kør `PYTHONUTF8=1 python crossref.py --mark-legit <kommasep. issues>` med dem du netop verificerede legitimt-åbne — så springer næste audit dem over. Writer-mode rydder selv cache-entries der er lukket / nu `claude:done`.
 
 **Per `claude:done`-issue:** find seneste comment EFTER claude:done-label, score per Trin 3. _(Note: `claude:done` blev un-deprecated 2026-05-22 per workflow-revision. 2026-05-23-audit observerede 20 åbne done-issues (var 4 dagen før, +16 fra B-series + security batch). Label er aktiv del af state-maskine igen.)_
 
@@ -275,7 +277,7 @@ Denne skill bliver fyret **dagligt 05:00 UTC** (07:00 CEST / 06:00 CET) af sched
 
 ## Baked-in lessons (procedural — opdateres via retro)
 
-- Brug `--limit 300` på open issues (repo har 150+, 100 er for snævert) — Lektion 2026-05-17
+- Brug `--limit 500` på open issues (repo ramte 300-loftet med 313 åbne 2026-06-03; 100 var for snævert 2026-05-17) — Lektion 2026-05-17 + 2026-06-03
 - STRONG kræver prod-evidens, ikke ✅-emoji alene — Lektion 2026-05-17
 - Skriv artifact selv ved 0 handlinger — næste audit har brug for diff-baseline
 - Bruger lukker normalt selv (`feedback_github_close_protocol.md`), MEN: STRONG + ≥24h = auto-close OK. _(Update 2026-05-23: `claude:done` blev un-deprecated; 20 åbne done-issues observeret. STRONG-auto-close er aktivt værktøj igen.)_
@@ -289,6 +291,11 @@ Denne skill bliver fyret **dagligt 05:00 UTC** (07:00 CEST / 06:00 CET) af sched
 - **Persistent scoring-scripts (lektion 2026-05-25):** Scoring/cross-ref/label/stale Python-scripts ligger nu i `.claude/skills/github-housekeeping/scripts/*.py`. Brug dem direkte i stedet for at inline ~120 linjer Python hver audit. Workflow: `gh issue list ... > $TEMP/audit-done.json && PYTHONUTF8=1 python .claude/skills/github-housekeeping/scripts/score_done.py`. Scripts: `score_done.py`, `crossref.py`, `labelcheck.py`, `staleblocked.py`. Tune STRONG_PATTERNS/NEG_KEYWORDS direkte i script-fil ved retro.
 
 ## Changelog
+
+- **2026-06-03 — Audit-housekeeping retro.** Lessons fra 12. kørsel — **13 handlinger** (5 closes: 4 Kategori K backend/data/tooling + 1 dup-close · 8 Kategori K todo→done). Kategori K leverede igen ALT (13/13). 3 accepterede edits:
+  - **Trin 1 (open-limit 300→500):** Repo ramte 300-loftet med 313 åbne issues under TdF-launch-sprint → `audit-open-all.json` missede issues i cross-ref. Bumpet til 500 (+ baked-in lesson opdateret).
+  - **crossref.py (glemt-done carry-forward-cache):** crossref bruger ALLE merged PRs (ingen cutoff), så de samme ~23 incidentelle K-omtaler (talkollision/deferral/dependency-note) dukkede op igen i dag og kostede sub-agent-runtime. Ny git-tracket cache `scripts/k-legit-open.json` + `--mark-legit`-writer husker verificeret-legitimt-åbne; print separerer nu `13 til verify` fra `23 prev-legit` (skip-linje) + `[RE-VERIFY: ny PR]` når en ny kvalificerende PR dukker op. Cache seedet med dagens 23 legit-open. Trin 2-note tilføjet.
+  - **score_done.py (work-pending-guard for ejer-verify-markører):** `#19` (loan-buyout, `cat:bug`) blev fejl-flagget **Tier1 auto-close** trods seneste kommentar "Afventer kun din manuelle buyout-spot-check ... så lukkes denne". Den nye `type:bug`/bar-label-backend-close-regel (2026-06-02) respekterede ikke owner-verify-pending-markøren. Tilføjet til `WORK_PENDING_PATTERNS`: `afventer (kun) din/dit/ejer`, `spot-check`, `kun du kan`, `manuel(t) (ejer-)verif` → ned-grader til Tier3. Verificeret: #19 nu `T3 work-pending [PEND]`.
 
 - **2026-06-02 (pass 2) — Glemt-done cross-ref (NY KATEGORI K).** Bruger flaggede direkte: "Kan du tjekke alle opgaver i github, også dem der ikke er markeret done... Vi har ofte tit glemt at markere opgaver som done, selvom de faktisk allerede er lavet. Hvis du har glemt det igen, så skal det ind i vores skill nu." Og jo — skillen HAVDE en systematisk blind vinkel: Kategori A + done-scoring cross-refede kun `claude:done`-issues + `Closes/Fixes`-intent, men repo'et bruger næsten altid `Refs #N` → dev-færdige issues hober sig op i `claude:todo` og falder igennem hver audit. Ændringer:
   - **Trin 4: ny Kategori K (glemt-done)** — 9→10 dimensioner. Åbne ikke-done-issues hvor en merged `Refs #N`/`(#N)`-PR leverede kerne-arbejdet men done/close blev glemt.
