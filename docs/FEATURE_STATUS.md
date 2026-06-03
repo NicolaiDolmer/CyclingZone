@@ -26,6 +26,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Rytterbibliotek med søgning + filtre (nation, UCI, U25, ledig, evne-min/max, osv.) + løn-kolonne og lønfilter (v1.47)
 - Rytterværdi i marked/visninger er dynamisk: `market_value = max(5, uci_points) × 4000 + prize_earnings_bonus`, hvor bonus er gennemsnit af seneste op til 3 afsluttede sæsoners præmiepenge (v1.77)
 - Rytterdetalje-side (stats, historik, watchlist-tæller, ryttertype-badge, ⚡-badge ved aktiv auktion)
+- Rytter-popularitet V1 (#957, v4.64): unikke besøgende seneste 24t + 7d + trend-% på ryttersiden. `GET /api/riders/:id/view-count` aggregerer `rider_profile_views` (#963) via service_role (`COUNT(DISTINCT user_id)`, ren funktion `backend/lib/riderProfileViews.js`); cold-start (<14d historik) viser "Ny"-badge i stedet for trend. Trending-liste + dashboard-widget forbliver på epic #957
 - Rytter-sammenligning (side-by-side)
 - Watchlist + notifikation når ønskeliste-rytter sættes til salg eller auktion (v1.35). Indbakke-routing adskiller nu auktion (`watchlist_rider_auction` → `/auctions`) fra salg (`watchlist_rider_listed` → `/transfers`) med legacy-fallback for gamle auktion-notifikationer (v2.45)
 - Stat-grid med farvekodning (statBg.js)
