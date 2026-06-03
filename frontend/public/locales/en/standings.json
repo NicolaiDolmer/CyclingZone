@@ -6,6 +6,8 @@
   "noData": "No data for Division {n} yet",
   "thTeam": "Team",
   "thStageWins": "Stage wins",
+  "thTeamComp": "Team classification",
+  "thTeamCompShort": "Team",
   "thPodiums": "Podiums",
   "thPoints": "Points",
   "thProgress": "Progress",

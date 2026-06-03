@@ -6,6 +6,8 @@
   "noData": "Ingen data for Division {n} endnu",
   "thTeam": "Hold",
   "thStageWins": "Etapesejre",
+  "thTeamComp": "Holdkonkurrence",
+  "thTeamCompShort": "Hold",
   "thPodiums": "Podier",
   "thPoints": "Point",
   "thProgress": "Udvikling",

@@ -58,6 +58,9 @@ regexes = [
   '''TEST_SECRET_NOT_REAL''',
   # Common placeholder-tokens
   '''(replace-me|your-key-here|XXXXXXXX|placeholder|example-only)''',
+  # i18n key-navne med cifre (fx rankings.colTop3 / shortTop10) trigger
+  # generic-api-key-heuristikken pga. key:-prefix + ciffer. Ikke secrets.
+  '''rankings\.(col|short)?Top\d+''',
 ]
 paths = [
   '''node_modules/''',
