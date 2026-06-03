@@ -12,19 +12,16 @@ import path from 'node:path';
 const API = 'https://discord.com/api/v10';
 const DISCORD_DIR = path.join(process.cwd(), 'scripts', 'discord');
 
-// 20 NEW candidates from .candidates.md (2026-06-03 triage batch).
+// 17 NEW candidates from .candidates.md (2026-06-03 triage batch 9).
 const THREADS = [
-  ['1511472183971676231', 'Etapesejre og bestyrelsen'],
-  ['1511441112815108157', 'Auktionsiden - fører opdateres ikke ved overbud'],
-  ['1511433829343166486', 'Forkert prognose under økonomifanen'],
-  ['1511432981330526278', 'Økonomisiden - rework'],
-  ['1511432800585388083', 'Fejl i forecast - konkurs truet'],
-  ['1511432754359832800', 'Sæson Preview farve problem'],
-  ['1511427545323802704', 'Transferhistorik - sortering + fortegn'],
-  ['1511426864961552577', 'Transferlisten - genvej'],
-  ['1511423873978208346', 'Rettelser til udleje af ryttere'],
-  ['1511413819728072907', 'Sæson snapshot fejl - graf'],
-  ['1510407394851557538', '3-årsplan - hvordan beregner man top i division'],
+  ['1511748952079339520', 'Ift farver af attributes'],
+  ['1511737196435214376', 'Rute/Etape-profil under løbsoversigt'],
+  ['1511735787408855230', 'Rating - sortér ryttere efter rating'],
+  ['1511734208199000164', 'achievements - progress mod mål'],
+  ['1511732272871772190', 'Skjul/vis stats knap'],
+  ['1511698543931293748', 'Mobil - generel bug (bjælke følger med)'],
+  ['1511659383694819421', 'Dashboard forbedringer - customize'],
+  ['1511657603183415316', 'Rytterranglisten filter - vælg hold'],
   ['1506925075876548690', 'Sæsonskifte - oprykninger ikke slået fra'],
   ['1505629552020291675', 'Mistede overskrifter (dashboard)'],
   ['1504223818036805642', 'Navnesøgning på ryttere - mellemrum'],
