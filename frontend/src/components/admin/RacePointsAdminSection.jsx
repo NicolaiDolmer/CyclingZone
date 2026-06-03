@@ -185,7 +185,8 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
         <RacePointModelSection getAuth={getAuth} onMsg={onMsg} />
       ) : (
       <>
-      <p className="text-cz-3 text-xs mb-4 leading-relaxed">{t("racePoints.intro")}</p>
+      <p className="text-cz-3 text-xs mb-2 leading-relaxed">{t("racePoints.intro")}</p>
+      <p className="text-cz-warn text-xs mb-4 leading-relaxed">{t("racePoints.appliesToFutureHint")}</p>
 
       {loading ? (
         <p className="text-cz-3 text-xs">…</p>

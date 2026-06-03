@@ -170,6 +170,7 @@ import {
   applyRaceResults,
   buildRacePointsLookup,
   buildRaceResultsFromPending,
+  rederiveSeasonRacePoints,
 } from "../lib/raceResultsEngine.js";
 import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
 import { adminImportUploadSingleFile, adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
@@ -3592,6 +3593,49 @@ router.post("/admin/seasons/:id/rebuild-standings", requireAdmin, adminWriteLimi
       rows_updated: result.rowsUpdated,
       teams_with_points: result.teamsWithPoints,
       start_date_missing: !season.start_date,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// #993-followup — re-derivér points_earned + prize_money på eksisterende
+// race_results ud fra den AKTUELLE race_points-config, og genberegn standings.
+// Lukker afkoblingen hvor admin-redigerede point ikke slog igennem på ranglisten.
+// Udbetalte løb (prize_paid_at != null) springes over så bogførte præmier står urørt.
+router.post("/admin/seasons/:id/rederive-points", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const seasonId = req.params.id;
+
+    const { data: season, error: seasonError } = await supabase
+      .from("seasons")
+      .select("id, number, status")
+      .eq("id", seasonId)
+      .single();
+    if (seasonError) return res.status(500).json({ error: seasonError.message });
+    if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+    if (season.status === "upcoming") {
+      return res.status(400).json({ error: "Kun aktive eller afsluttede sæsoner kan genberegnes" });
+    }
+
+    const result = await rederiveSeasonRacePoints({ supabase, seasonId, updateStandings });
+
+    await logActivity("season_points_rederived", {
+      meta: {
+        season_id: season.id,
+        season_number: season.number,
+        races_processed: result.racesProcessed,
+        races_skipped_paid: result.racesSkippedPaid,
+        races_skipped_no_class: result.racesSkippedNoClass,
+        rows_updated: result.rowsUpdated,
+      },
+    });
+
+    res.json({
+      success: true,
+      season_id: season.id,
+      number: season.number,
+      ...result,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

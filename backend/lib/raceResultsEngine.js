@@ -15,6 +15,7 @@ function ensureRace(race) {
 // raceResultsSheetSync, tests) keep one stable home without touching them.
 import { PRIZE_PER_POINT } from "./economyConstants.js";
 export { PRIZE_PER_POINT };
+import { fetchAllRows } from "./supabasePagination.js";
 
 const RESULT_TYPE_TO_RACE_POINTS = {
   stage_race: {
@@ -110,4 +111,89 @@ export async function applyRaceResults({
   return {
     rowsImported: normalizedRows.length,
   };
+}
+
+// #993-followup — Re-derivér points_earned + prize_money på eksisterende
+// race_results ud fra den AKTUELLE race_points-config, og genberegn standings.
+//
+// Baggrund: points_earned/prize_money fryses ind i race_results ved import
+// (buildRaceResultsFromPending). Når admin senere ændrer race_points slår det
+// derfor ikke igennem på ranglisten — kun config-visningen opdateres. Denne
+// funktion lukker afkoblingen: den re-mapper hver eksisterende resultatrække via
+// dens gemte (result_type, rank) gennem en frisk buildRacePointsLookup.
+//
+// Pengeregel: løb med prize_paid_at != null springes HELT over (hverken point
+// eller prize_money røres), så de udbetalte beløb fortsat matcher de allerede
+// bogførte finance_transactions (reconciliation i prizePayoutEngine holder).
+export async function rederiveSeasonRacePoints({
+  supabase,
+  seasonId,
+  updateStandings,
+} = {}) {
+  ensureSupabase(supabase);
+  if (!seasonId) throw new Error("seasonId is required");
+  if (typeof updateStandings !== "function") {
+    throw new Error("updateStandings is required");
+  }
+
+  const { data: races, error: racesError } = await supabase
+    .from("races")
+    .select("id, race_class, race_type, prize_paid_at")
+    .eq("season_id", seasonId);
+  if (racesError) throw new Error(racesError.message);
+
+  let racesProcessed = 0;
+  let racesSkippedPaid = 0;
+  let racesSkippedNoClass = 0;
+  let rowsUpdated = 0;
+
+  // race_points deles ofte af flere løb (samme race_class) → cache pr. klasse.
+  const pointsByClass = new Map();
+
+  for (const race of races || []) {
+    if (race.prize_paid_at) { racesSkippedPaid++; continue; }
+    if (!race.race_class) { racesSkippedNoClass++; continue; }
+
+    if (!pointsByClass.has(race.race_class)) {
+      const { data: pts, error: ptsError } = await supabase
+        .from("race_points")
+        .select("result_type, rank, points")
+        .eq("race_class", race.race_class);
+      if (ptsError) throw new Error(ptsError.message);
+      pointsByClass.set(race.race_class, pts || []);
+    }
+
+    const lookup = buildRacePointsLookup({
+      racePoints: pointsByClass.get(race.race_class),
+      raceType: race.race_type,
+    });
+
+    const results = await fetchAllRows(() => (
+      supabase
+        .from("race_results")
+        .select("id, result_type, rank, points_earned, prize_money")
+        .eq("race_id", race.id)
+        .order("id", { ascending: true })
+    ));
+
+    for (const row of results || []) {
+      const pts = lookup[`${row.result_type}__${row.rank}`] || 0;
+      const prize = pts * PRIZE_PER_POINT;
+      // Skip rækker der allerede matcher → undgå unødige writes.
+      if (row.points_earned === pts && row.prize_money === prize) continue;
+
+      const { error: updError } = await supabase
+        .from("race_results")
+        .update({ points_earned: pts, prize_money: prize })
+        .eq("id", row.id);
+      if (updError) throw new Error(updError.message);
+      rowsUpdated++;
+    }
+
+    racesProcessed++;
+  }
+
+  await updateStandings(seasonId);
+
+  return { racesProcessed, racesSkippedPaid, racesSkippedNoClass, rowsUpdated };
 }

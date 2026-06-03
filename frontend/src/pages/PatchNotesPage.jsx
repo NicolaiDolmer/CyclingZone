@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.59",
+    date: "2026-06-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixes · Rankings",
+        items: [
+          "EN · When we adjusted the ranking points awarded for a race class, the change only applied to races imported afterwards, so the points and prize money already shown on the rankings stayed on the old values. Admins can now apply updated points to a season's existing results in one step, so the rankings and prize totals match the current point setup. Races whose prizes have already been paid out are left untouched.",
+          "DA · Når vi justerede ranking-pointene for en løbsklasse, slog ændringen kun igennem på løb der blev importeret bagefter, så de point og præmiepenge der allerede stod på ranglisten blev på de gamle værdier. Admins kan nu slå opdaterede point igennem på en sæsons eksisterende resultater i ét trin, så ranglisten og præmiesummerne passer med den aktuelle pointopsætning. Løb hvor præmierne allerede er udbetalt, røres ikke.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.58",
     date: "2026-06-03",
     label: "Beta",
