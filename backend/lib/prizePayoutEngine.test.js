@@ -79,6 +79,15 @@ test("getSeasonPrizePreview splitter betalte og udestående løb", async () => {
   assert.equal(preview.total_pending, 800);
   // team-navne resolves
   assert.equal(preview.pending_payment[0].by_team.find(t => t.team_id === "t1").team_name, "Team 1");
+
+  // team_totals: per-hold-aggregering på tværs af pending + paid, sorteret desc
+  assert.equal(preview.team_totals.length, 2);
+  const t1 = preview.team_totals.find(t => t.team_id === "t1");
+  assert.deepEqual(t1, { team_id: "t1", team_name: "Team 1", pending: 500, paid: 800, total: 1300 });
+  const t2 = preview.team_totals.find(t => t.team_id === "t2");
+  assert.deepEqual(t2, { team_id: "t2", team_name: "Team 2", pending: 300, paid: 0, total: 300 });
+  // sorteret efter total desc → t1 (1300) før t2 (300)
+  assert.deepEqual(preview.team_totals.map(t => t.team_id), ["t1", "t2"]);
 });
 
 test("getSeasonPrizePreview returnerer tomt ved ingen løb", async () => {
@@ -88,6 +97,7 @@ test("getSeasonPrizePreview returnerer tomt ved ingen løb", async () => {
     pending_payment: [],
     total_pending: 0,
     totals: { earned: 0, payable: 0, free_ai: 0 },
+    team_totals: [],
     reconciliation: [],
     warnings: [],
   });

@@ -113,7 +113,7 @@ export default function AdminSeasonTab() {
   }
 
   async function handleRederivePoints(seasonId) {
-    if (!confirm("Genberegn point + præmiepenge på alle løbsresultater ud fra den aktuelle point-config? Allerede udbetalte løb røres ikke.")) return;
+    if (!confirm("Genberegn point + præmiepenge på alle løbsresultater ud fra den aktuelle point-config? Rytternes markedsværdi opdateres samtidig. Allerede udbetalte løb røres ikke.")) return;
     setLoad(`rederive_${seasonId}`, true);
     try {
       const res = await fetch(`${API}/api/admin/seasons/${seasonId}/rederive-points`, {
@@ -122,7 +122,8 @@ export default function AdminSeasonTab() {
       const data = await readAdminJson(res);
       if (res.ok) {
         const skipped = data.racesSkippedPaid ? ` ${data.racesSkippedPaid} udbetalte løb sprunget over.` : "";
-        showMsg(`✅ ${data.rowsUpdated} resultatrækker opdateret over ${data.racesProcessed} løb.${skipped}`);
+        const riders = data.ridersUpdated ? ` Rytterværdier opdateret (${data.ridersUpdated} ryttere).` : "";
+        showMsg(`✅ ${data.rowsUpdated} resultatrækker opdateret over ${data.racesProcessed} løb.${skipped}${riders}`);
       } else {
         showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
       }
@@ -329,7 +330,7 @@ export default function AdminSeasonTab() {
                 <div className="flex gap-2">
                   {s.status !== "upcoming" && (
                     <button onClick={() => handleRederivePoints(s.id)} disabled={loading[`rederive_${s.id}`]}
-                      title="Genberegn point + præmiepenge på løbsresultater ud fra den aktuelle point-config. Udbetalte løb røres ikke."
+                      title="Genberegn point + præmiepenge på løbsresultater ud fra den aktuelle point-config. Rytternes markedsværdi opdateres samtidig. Udbetalte løb røres ikke."
                       className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50 hover:bg-cz-subtle hover:text-cz-1">
                       {loading[`rederive_${s.id}`] ? "..." : "↻ Point fra config"}
                     </button>

@@ -37,6 +37,7 @@ export default function StandingsPage() {
   const [season, setSeason] = useState(null);
   const [racePoints, setRacePoints] = useState({});
   const [teamComp, setTeamComp] = useState({});
+  const [prizeEarned, setPrizeEarned] = useState({});
   const [races, setRaces] = useState([]);
 
   async function loadAll() {
@@ -111,6 +112,18 @@ export default function StandingsPage() {
         if (r.rank <= 3) c.podiums += 1;
       });
       setTeamComp(comp);
+
+      // Præmiepenge pr. hold: summér prize_money på race_results.team_id (det felt
+      // udbetalingen bogfører på — se prizePayoutEngine), så kolonnen viser præcis
+      // hvad holdet står til at få udbetalt. Inkluderer alle completed-løb.
+      const prize = {};
+      merged.forEach(s => { prize[s.team_id] = 0; });
+      (results || []).forEach(r => {
+        if (r.team_id != null && prize[r.team_id] !== undefined) {
+          prize[r.team_id] += (r.prize_money || 0);
+        }
+      });
+      setPrizeEarned(prize);
     }
     setLoading(false);
   }
@@ -183,6 +196,10 @@ export default function StandingsPage() {
                     <span className="xl:hidden">{t("thTeamCompShort")}</span>
                   </th>
                   <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden md:table-cell">{t("thPodiums")}</th>
+                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs">
+                    <span className="hidden sm:inline">{t("thPrize")}</span>
+                    <span className="sm:hidden">{t("thPrizeShort")}</span>
+                  </th>
                   <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs">{t("thPoints")}</th>
                   <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden lg:table-cell w-20">{t("thProgress")}</th>
                 </tr>
@@ -206,7 +223,7 @@ export default function StandingsPage() {
                       {/* Separator before relegation zone */}
                       {i === divStandings.length - 2 && canRelegate && divStandings.length > 4 && (
                         <tr aria-hidden="true">
-                          <td colSpan={7} style={{ padding: 0, lineHeight: 0, border: 0 }}>
+                          <td colSpan={8} style={{ padding: 0, lineHeight: 0, border: 0 }}>
                             <div style={{ height: 2, background: "linear-gradient(to right, rgb(var(--danger) / 0.6) 40%, transparent)" }} />
                           </td>
                         </tr>
@@ -239,6 +256,9 @@ export default function StandingsPage() {
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden sm:table-cell font-mono">{s.stage_wins || 0}</td>
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden lg:table-cell font-mono">{teamComp[s.team_id]?.wins || 0}</td>
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden md:table-cell font-mono">{s.podiums || 0}</td>
+                        <td className="px-4 py-3.5 text-right font-mono text-cz-2 whitespace-nowrap">
+                          {formatNumber(prizeEarned[s.team_id] || 0)} <span className="text-cz-3 text-[10px]">CZ$</span>
+                        </td>
                         <td className="px-4 py-3.5 text-right">
                           <span className="font-mono font-bold" style={{ color: isMe ? "rgb(var(--accent-t))" : color }}>
                             {formatNumber(eff)}
@@ -259,7 +279,7 @@ export default function StandingsPage() {
                       {/* Separator after promotion zone */}
                       {i === 1 && canPromote && divStandings.length > 2 && (
                         <tr aria-hidden="true">
-                          <td colSpan={7} style={{ padding: 0, lineHeight: 0, border: 0 }}>
+                          <td colSpan={8} style={{ padding: 0, lineHeight: 0, border: 0 }}>
                             <div style={{ height: 2, background: "linear-gradient(to right, rgb(var(--success) / 0.6) 40%, transparent)" }} />
                           </td>
                         </tr>

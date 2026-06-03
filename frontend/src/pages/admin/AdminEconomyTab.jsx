@@ -361,6 +361,34 @@ export default function AdminEconomyTab() {
               </div>
             )}
 
+            {prizePreview.team_totals?.length > 0 && (
+              <div className="bg-cz-subtle border border-cz-border rounded-lg px-4 py-3 text-xs">
+                <p className="text-cz-2 font-semibold mb-2">Pr. hold — hvad hvert hold står til at tjene</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-cz-3 border-b border-cz-border">
+                        <th className="text-left font-medium py-1 pe-2">Hold</th>
+                        <th className="text-right font-medium py-1 px-2">Udestående</th>
+                        <th className="text-right font-medium py-1 px-2">Udbetalt</th>
+                        <th className="text-right font-medium py-1 ps-2">I alt</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {prizePreview.team_totals.map(tt => (
+                        <tr key={tt.team_id} className="border-b border-cz-border/50 last:border-0">
+                          <td className="py-1 pe-2 text-cz-1">{tt.team_name ?? tt.team_id}</td>
+                          <td className="py-1 px-2 text-right font-mono text-cz-accent-t">{tt.pending.toLocaleString("da-DK")}</td>
+                          <td className="py-1 px-2 text-right font-mono text-cz-3">{tt.paid.toLocaleString("da-DK")}</td>
+                          <td className="py-1 ps-2 text-right font-mono font-semibold text-cz-1">{tt.total.toLocaleString("da-DK")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {prizePreview.warnings?.length > 0 && (
               <div className="bg-cz-warning-bg border border-cz-warning/30 rounded-lg px-4 py-3 text-xs space-y-1">
                 <p className="text-cz-warning font-semibold">⚠️ Advarsler — {prizePreview.warnings.length} løb</p>

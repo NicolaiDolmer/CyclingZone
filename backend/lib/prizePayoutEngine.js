@@ -20,6 +20,7 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
       pending_payment: [],
       total_pending: 0,
       totals: { earned: 0, payable: 0, free_ai: 0 },
+      team_totals: [],
       reconciliation: [],
       warnings: [],
     };
@@ -155,11 +156,36 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
     }
   }
 
+  // Per-team season overview: "hvad står hvert hold til at tjene". Aggregér på
+  // tværs af løb fra de breakdowns vi allerede har bygget — pending (udestående)
+  // + paid (allerede udbetalt) pr. hold. Ren additiv beregning, ingen nye queries.
+  const teamAgg = new Map();
+  const bumpTeam = (team_id, team_name, field, amount) => {
+    if (!team_id) return;
+    let row = teamAgg.get(team_id);
+    if (!row) {
+      row = { team_id, team_name: team_name ?? null, pending: 0, paid: 0 };
+      teamAgg.set(team_id, row);
+    }
+    if (team_name && !row.team_name) row.team_name = team_name;
+    row[field] += amount;
+  };
+  for (const race of pending_payment) {
+    for (const t of race.by_team) bumpTeam(t.team_id, t.team_name, "pending", t.prize);
+  }
+  for (const race of already_paid) {
+    for (const t of race.by_team) bumpTeam(t.team_id, t.team_name, "paid", t.amount);
+  }
+  const team_totals = [...teamAgg.values()]
+    .map(r => ({ ...r, total: r.pending + r.paid }))
+    .sort((a, b) => b.total - a.total);
+
   return {
     already_paid,
     pending_payment,
     total_pending: pending_payment.reduce((s, r) => s + r.total_prize, 0),
     totals: { earned, payable, free_ai: earned - payable },
+    team_totals,
     reconciliation,
     warnings,
   };
