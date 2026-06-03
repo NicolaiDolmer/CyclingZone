@@ -38,6 +38,11 @@ import { formatNumber } from "../lib/intl";
 
 const API = import.meta.env.VITE_API_URL;
 
+// Live bud-feed: hvor længe et bud bliver liggende i feed/ticker-bufferen.
+// Tidligere 30s — udvidet til 15 min (#1510406001751363584) så manageren kan se
+// "de seneste bud" over en brugbar periode, ikke kun de sidste sekunder.
+const BID_FEED_WINDOW_MS = 15 * 60 * 1000;
+
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
 const STAT_LABEL_BY_KEY = {
@@ -570,6 +575,18 @@ export default function AuctionsPage() {
       // localStorage kan være disabled (privacy mode); accepter tab af persistens
     }
   }, [wishlistOnly]);
+  // "Live bud"-feed kan slås fra (#1510406001751363584) — default synligt, husket i localStorage.
+  const [showFeed, setShowFeed] = useState(
+    () => typeof window === "undefined" || localStorage.getItem("cz-auctions-show-feed") !== "0",
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("cz-auctions-show-feed", showFeed ? "1" : "0");
+    } catch {
+      // localStorage kan være disabled (privacy mode); accepter tab af persistens
+    }
+  }, [showFeed]);
   const [celebration, setCelebration] = useState(null);
   // Stats toggle (persisted i localStorage) — default tomt, manageren vælger selv
   const { visibleStats, toggleStat, showAll, hideAll } = useStatsToggle();
@@ -596,6 +613,10 @@ export default function AuctionsPage() {
   const auctionsRef = useRef([]);
   const myTeamIdRef = useRef(null);
   const tRef = useRef(t);
+  // Cache af holdnavn pr. team-id. Realtime-payloaden for auctions-UPDATE indeholder
+  // kun rå kolonner (current_bidder_id), ikke det joinede current_bidder-objekt, så
+  // fører-NAVNET skal slås op herfra (eller hentes) når en ny byder overtager føringen.
+  const teamNameCacheRef = useRef(new Map());
   useEffect(() => { auctionsRef.current = auctions; }, [auctions]);
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
   useEffect(() => { tRef.current = t; }, [t]);
@@ -603,12 +624,12 @@ export default function AuctionsPage() {
   useEffect(() => { logEvent("auction_view"); }, []);
 
   // 1s tick: opdater "now" så ticker+sidebar relative-tid bevæger sig,
-  // og prune events ældre end 30s ud af bufferen.
+  // og prune events ældre end feed-vinduet ud af bufferen.
   useEffect(() => {
     const interval = setInterval(() => {
       const t = Date.now();
       setNow(t);
-      setRecentBidEvents(prev => pruneStaleBidEvents(prev, t, 30_000));
+      setRecentBidEvents(prev => pruneStaleBidEvents(prev, t, BID_FEED_WINDOW_MS));
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -701,11 +722,45 @@ export default function AuctionsPage() {
       });
       const myProxyMap = {};
       (myProxiesRes.data || []).forEach(p => { myProxyMap[p.auction_id] = p.max_amount; });
+      // Seed holdnavn-cachen så live fører-opdatering kan slå navne op uden ekstra fetch.
+      auctionsRes.data.forEach(a => {
+        if (a.seller?.id) teamNameCacheRef.current.set(a.seller.id, a.seller.name);
+        if (a.current_bidder?.id) teamNameCacheRef.current.set(a.current_bidder.id, a.current_bidder.name);
+      });
       setAuctions(auctionsRes.data.map(a => ({
         ...a,
         myHighestBid: myBidMap[a.id] || null,
         myProxyMax: myProxyMap[a.id] || null,
       })));
+
+      // Backfill: fyld feed-bufferen med de seneste bud på de auktioner manageren
+      // deltager i, så "Live bud"-panelet ikke er tomt ved frisk load (#1510406001751363584).
+      const participatingIds = [...new Set([...Object.keys(myBidMap), ...Object.keys(myProxyMap)])];
+      if (participatingIds.length) {
+        const cutoff = new Date(Date.now() - BID_FEED_WINDOW_MS).toISOString();
+        const { data: recentBids } = await supabase
+          .from("auction_bids")
+          .select("id, auction_id, team_id, amount, bid_time")
+          .in("auction_id", participatingIds)
+          .gte("bid_time", cutoff)
+          .order("bid_time", { ascending: true })
+          .limit(60);
+        if (recentBids?.length) {
+          setRecentBidEvents(prev => {
+            const seen = new Set(prev.map(e => e.id));
+            const backfilled = recentBids
+              .filter(b => !seen.has(b.id))
+              .map(b => ({
+                id: b.id,
+                auction_id: b.auction_id,
+                team_id: b.team_id,
+                amount: b.amount,
+                ts: new Date(b.bid_time).getTime(),
+              }));
+            return pruneStaleBidEvents([...backfilled, ...prev], Date.now(), BID_FEED_WINDOW_MS);
+          });
+        }
+      }
     }
     setLoading(false);
   }
@@ -780,8 +835,36 @@ export default function AuctionsPage() {
               });
               return prev.filter(a => a.id !== updated.id);
             }
-            return prev.map(a => a.id === updated.id ? { ...a, ...updated } : a);
+            return prev.map(a => {
+              if (a.id !== updated.id) return a;
+              const merged = { ...a, ...updated };
+              // Realtime-payloaden mangler det joinede current_bidder-objekt, så fører-
+              // navnet ville ellers forblive stale. Genopbyg det fra raw current_bidder_id.
+              if (updated.current_bidder_id == null) {
+                merged.current_bidder = null;
+              } else if (a.current_bidder?.id !== updated.current_bidder_id) {
+                merged.current_bidder = {
+                  id: updated.current_bidder_id,
+                  name: teamNameCacheRef.current.get(updated.current_bidder_id) || null,
+                };
+              }
+              return merged;
+            });
           });
+          // Ny fører hvis navn ikke er cachet → hent det og flet ind, så føringen
+          // opdateres live uden manuel reload (#1511441112815108157).
+          const newBidderId = updated.current_bidder_id;
+          if (newBidderId && !teamNameCacheRef.current.has(newBidderId)) {
+            supabase.from("teams").select("id, name").eq("id", newBidderId).single()
+              .then(({ data }) => {
+                if (!data) return;
+                teamNameCacheRef.current.set(data.id, data.name);
+                setAuctions(prev => prev.map(a =>
+                  a.id === updated.id && a.current_bidder_id === data.id
+                    ? { ...a, current_bidder: { id: data.id, name: data.name } }
+                    : a));
+              });
+          }
         })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "auction_bids" },
         payload => {
@@ -798,7 +881,7 @@ export default function AuctionsPage() {
               amount: bid.amount,
               ts: t,
             },
-          ], t, 30_000));
+          ], t, BID_FEED_WINDOW_MS));
         })
       .subscribe();
     return () => supabase.removeChannel(channel);
@@ -1141,6 +1224,17 @@ export default function AuctionsPage() {
             <span className={wishlistOnly ? "text-cz-accent-t" : "text-cz-3"}>{wishlistOnly ? "★" : "☆"}</span>
             {t("auctions:filter.wishlistButton")}
           </button>
+          <button
+            onClick={() => setShowFeed(v => !v)}
+            aria-pressed={showFeed}
+            title={showFeed ? t("auctions:filter.feedTitleOn") : t("auctions:filter.feedTitleOff")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+              ${showFeed
+                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+            <span className={showFeed ? "text-cz-accent-t" : "text-cz-3"}>📡</span>
+            {t("auctions:filter.feedButton")}
+          </button>
         </div>
         <StatsToggle
           visibleStats={visibleStats}
@@ -1191,6 +1285,7 @@ export default function AuctionsPage() {
           feedEvents={feedEvents}
           auctionsById={auctionsById}
           now={now}
+          showFeed={showFeed}
         />
       )}
     </div>
@@ -1327,7 +1422,7 @@ function AuctionsContent(props) {
   const { t } = useTranslation("auctions");
   const {
     filter, filtered, wishlistOnly, mySituationBuckets,
-    feedEvents, auctionsById, myTeamId, now,
+    feedEvents, auctionsById, myTeamId, now, showFeed,
     ...rest
   } = props;
   const sharedProps = { myTeamId, ...rest };
@@ -1338,7 +1433,7 @@ function AuctionsContent(props) {
     : filtered.length === 0;
 
   return (
-    <div className="md:grid md:grid-cols-[minmax(0,1fr)_280px] md:gap-4">
+    <div className={showFeed ? "md:grid md:grid-cols-[minmax(0,1fr)_280px] md:gap-4" : ""}>
       <div className="min-w-0">
         {isEmpty ? (
           <div className="text-center py-16 text-cz-3">
@@ -1382,14 +1477,16 @@ function AuctionsContent(props) {
           <AuctionList auctions={filtered} sectionId="main" sharedProps={sharedProps} />
         )}
       </div>
-      <div>
-        <AuctionsSidebarFeed
-          events={feedEvents}
-          auctionsById={auctionsById}
-          myTeamId={myTeamId}
-          now={now}
-        />
-      </div>
+      {showFeed && (
+        <div>
+          <AuctionsSidebarFeed
+            events={feedEvents}
+            auctionsById={auctionsById}
+            myTeamId={myTeamId}
+            now={now}
+          />
+        </div>
+      )}
     </div>
   );
 }

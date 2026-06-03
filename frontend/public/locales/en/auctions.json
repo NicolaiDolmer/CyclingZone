@@ -22,7 +22,7 @@
     "startTour": "💡 Show me around"
   },
   "ticker": {
-    "bidCount": "{count, plural, one {1 new bid} other {# new bids}} in last 30s"
+    "bidCount": "{count, plural, one {1 recent bid} other {# recent bids}}"
   },
   "stats": {
     "balance": "Balance",
@@ -40,7 +40,10 @@
     "otherManagers": "Other managers ({count})",
     "wishlistButton": "Wishlist only",
     "wishlistTitleOn": "Show all riders",
-    "wishlistTitleOff": "Show only wishlisted riders"
+    "wishlistTitleOff": "Show only wishlisted riders",
+    "feedButton": "Live bids",
+    "feedTitleOn": "Hide the live bids panel",
+    "feedTitleOff": "Show the live bids panel"
   },
   "nav": {
     "active": "Active ({count})",

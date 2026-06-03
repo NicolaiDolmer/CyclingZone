@@ -2,6 +2,29 @@
 
 const PATCHES = [
   {
+    version: "4.62",
+    date: "2026-06-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixes · Auctions",
+        items: [
+          "EN · On the auctions page, the leading team now updates live the moment someone places a higher bid. Before, you had to reload the page to see who was in front.",
+          "DA · På auktionssiden opdateres det ledende hold nu live i samme øjeblik nogen byder højere. Før skulle du genindlæse siden for at se hvem der førte.",
+        ],
+      },
+      {
+        category: "New · Auctions",
+        items: [
+          "EN · You can now list one of your own riders below their Value — set any starting price between 0 and the rider's Value. Listing above Value is no longer possible.",
+          "DA · Du kan nu sætte en af dine egne ryttere til auktion under deres Værdi — vælg en hvilken som helst startpris mellem 0 og rytterens Værdi. Det er ikke længere muligt at starte over Værdi.",
+          "EN · The live bids panel on the auctions page can now be hidden, and the bids it shows now cover a much longer window than the previous 30 seconds.",
+          "DA · Live bud-panelet på auktionssiden kan nu skjules, og de viste bud dækker nu en meget længere periode end de tidligere 30 sekunder.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.61",
     date: "2026-06-03",
     label: "Beta",

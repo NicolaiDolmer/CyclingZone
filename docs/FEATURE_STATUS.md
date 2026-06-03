@@ -34,7 +34,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Opret auktion med starttid + vindueslogik
 - Bud-placering med auto-forlængelse (10 min ved bud nær slut). Forlængelsen må overskride dagens vindueslukning med op til 1 time (grace), og ved overflow ruller den resterende tid videre til næste vindues åbning (v2.87)
 - ~~Garanteret salg (startpris = 50% af markedsværdi)~~ FJERNET v4.28 (#839): oprettelse lukket i UI + backend; DB-kolonner, finalization og historik bevaret
-- Minimum startpris håndhævet (backend + frontend): startbud ≥ rytterens Værdi (ingen undtagelser efter #839)
+- Startpris-regler håndhæves (backend `getAuctionStartPriceIssue` + frontend): **egen rytter** = startpris mellem 0 og rytterens Værdi (må sælges under Værdi, ikke over — #926); **AI/fri rytter** = startbud ≥ rytterens Værdi (markedsgulv bevaret)
 - Minimum overbud håndhæves som +1 CZ$ over nuværende pris; hvis ingen har budt endnu, må asking-prisen matches.
 - Auktionsbudfeltet forudfyldes med laveste gyldige bud, og UI viser konkrete backend-fejl ved for lavt bud, saldo eller reserveret squad-plads (v1.77)
 - Auktionslisten viser sælger som AI eller managerhold, så ikke-ejede auktioner ikke ligner managersalg (v1.77)

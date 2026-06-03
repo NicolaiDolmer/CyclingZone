@@ -9,6 +9,7 @@ import {
   getAuctionBidIssue,
   getAuctionBidWarnings,
   getAuctionStartIssue,
+  getAuctionStartPriceIssue,
   getMinimumAuctionBid,
   getProxyMaxIssue,
   getProxyOpeningBidAmount,
@@ -47,6 +48,49 @@ test("getAuctionStartIssue allows rider without pending transfer", () => {
   );
   assert.equal(getAuctionStartIssue({}), null);
   assert.equal(getAuctionStartIssue(), null);
+});
+
+test("getAuctionStartPriceIssue — egen rytter: 0..Værdi tilladt, over Værdi afvist", () => {
+  const value = 20000;
+  // Hele intervallet 0..Værdi er gyldigt for egne ryttere.
+  assert.equal(getAuctionStartPriceIssue({ startingPrice: 0, riderValue: value, isOwnRider: true }), null);
+  assert.equal(getAuctionStartPriceIssue({ startingPrice: 5000, riderValue: value, isOwnRider: true }), null);
+  assert.equal(getAuctionStartPriceIssue({ startingPrice: value, riderValue: value, isOwnRider: true }), null);
+  // Over Værdi afvises (det er ændringen denne PR indfører).
+  assert.deepEqual(
+    getAuctionStartPriceIssue({ startingPrice: value + 1, riderValue: value, isOwnRider: true }),
+    { code: "own_price_out_of_range", riderValue: value },
+  );
+  // Negativ pris afvises også.
+  assert.deepEqual(
+    getAuctionStartPriceIssue({ startingPrice: -1, riderValue: value, isOwnRider: true }),
+    { code: "own_price_out_of_range", riderValue: value },
+  );
+});
+
+test("getAuctionStartPriceIssue — AI/fri rytter: Værdi er gulvet", () => {
+  const value = 20000;
+  // Under Værdi afvises for ikke-egne ryttere (markedsgulv bevares).
+  assert.deepEqual(
+    getAuctionStartPriceIssue({ startingPrice: value - 1, riderValue: value, isOwnRider: false }),
+    { code: "below_value_floor", riderValue: value },
+  );
+  // Værdi og derover er OK.
+  assert.equal(getAuctionStartPriceIssue({ startingPrice: value, riderValue: value, isOwnRider: false }), null);
+  assert.equal(getAuctionStartPriceIssue({ startingPrice: value + 5000, riderValue: value, isOwnRider: false }), null);
+});
+
+test("getAuctionStartPriceIssue — tom/udeladt pris = intet issue (defaulter til Værdi)", () => {
+  assert.equal(getAuctionStartPriceIssue({ startingPrice: null, riderValue: 20000, isOwnRider: true }), null);
+  assert.equal(getAuctionStartPriceIssue({ startingPrice: undefined, riderValue: 20000, isOwnRider: false }), null);
+  assert.equal(getAuctionStartPriceIssue({ startingPrice: "", riderValue: 20000, isOwnRider: true }), null);
+});
+
+test("getAuctionStartPriceIssue — ugyldig (NaN) pris flagges", () => {
+  assert.deepEqual(
+    getAuctionStartPriceIssue({ startingPrice: "abc", riderValue: 20000, isOwnRider: true }),
+    { code: "invalid_start_price" },
+  );
 });
 
 test("getMinimumAuctionBid is currentPrice + 1 when there is an active bidder", () => {
