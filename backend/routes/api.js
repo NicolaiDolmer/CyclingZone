@@ -109,6 +109,7 @@ import {
   processSeasonEnd,
   processSeasonStart,
   repairSeasonEndFinanceAndBoard,
+  updateRiderValues,
   updateStandings,
 } from "../lib/economyEngine.js";
 import {
@@ -3618,7 +3619,7 @@ router.post("/admin/seasons/:id/rederive-points", requireAdmin, adminWriteLimite
       return res.status(400).json({ error: "Kun aktive eller afsluttede sæsoner kan genberegnes" });
     }
 
-    const result = await rederiveSeasonRacePoints({ supabase, seasonId, updateStandings });
+    const result = await rederiveSeasonRacePoints({ supabase, seasonId, updateStandings, updateRiderValues });
 
     await logActivity("season_points_rederived", {
       meta: {
@@ -3628,6 +3629,7 @@ router.post("/admin/seasons/:id/rederive-points", requireAdmin, adminWriteLimite
         races_skipped_paid: result.racesSkippedPaid,
         races_skipped_no_class: result.racesSkippedNoClass,
         rows_updated: result.rowsUpdated,
+        riders_updated: result.ridersUpdated,
       },
     });
 

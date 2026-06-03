@@ -2,6 +2,27 @@
 
 const PATCHES = [
   {
+    version: "4.60",
+    date: "2026-06-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Prize money",
+        items: [
+          "EN · The Standings page now shows a Prize money column, so you can see at a glance how much every team has earned this season — and stands to be paid out.",
+          "DA · Ranglisten viser nu en Præmiepenge-kolonne, så du med ét blik kan se hvor meget hvert hold har tjent i denne sæson — og står til at få udbetalt.",
+        ],
+      },
+      {
+        category: "Fixes · Prize money",
+        items: [
+          "EN · Re-applying a season's ranking points from the current setup now also refreshes rider market values right away, so a rider's value reflects the latest prize money the moment the points are updated — not only at payout or season end.",
+          "DA · Når en sæsons ranking-point slås igennem fra den aktuelle opsætning, opdateres rytternes markedsværdi nu samtidig, så en rytters værdi afspejler de nyeste præmiepenge i samme øjeblik pointene opdateres — ikke først ved udbetaling eller sæson-slut.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.59",
     date: "2026-06-03",
     label: "Beta",

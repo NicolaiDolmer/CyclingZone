@@ -360,8 +360,40 @@ test("rederiveSeasonRacePoints re-maps points from current config, skips paid + 
     racesSkippedPaid: 1,
     racesSkippedNoClass: 1,
     rowsUpdated: 2,
+    // No updateRiderValues injected → null (back-compat path)
+    ridersUpdated: null,
   });
   assert.deepEqual(updateCalls, ["season-1"]);
+});
+
+test("rederiveSeasonRacePoints refreshes rider values after standings when injected", async () => {
+  const { supabase } = createRederiveDouble({
+    races: [
+      { id: "race-1", race_class: "uci_wt", race_type: "stage_race", prize_paid_at: null },
+    ],
+    racePointsByClass: {
+      uci_wt: [{ result_type: "Klassement", rank: 1, points: 200 }],
+    },
+    raceResults: [
+      { id: "rr-1", race_id: "race-1", result_type: "gc", rank: 1, points_earned: 100, prize_money: 100 * PRIZE_PER_POINT },
+    ],
+  });
+
+  const order = [];
+  const result = await rederiveSeasonRacePoints({
+    supabase,
+    seasonId: "season-1",
+    updateStandings: async () => { order.push("standings"); },
+    updateRiderValues: async (client) => {
+      assert.equal(client, supabase, "updateRiderValues receives the supabase client");
+      order.push("rider-values");
+      return { ridersUpdated: 42 };
+    },
+  });
+
+  // Rider values must refresh AFTER standings, and the count is surfaced.
+  assert.deepEqual(order, ["standings", "rider-values"]);
+  assert.equal(result.ridersUpdated, 42);
 });
 
 test("rederiveSeasonRacePoints validates required deps", async () => {

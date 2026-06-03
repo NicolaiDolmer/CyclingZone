@@ -129,6 +129,7 @@ export async function rederiveSeasonRacePoints({
   supabase,
   seasonId,
   updateStandings,
+  updateRiderValues,
 } = {}) {
   ensureSupabase(supabase);
   if (!seasonId) throw new Error("seasonId is required");
@@ -195,5 +196,16 @@ export async function rederiveSeasonRacePoints({
 
   await updateStandings(seasonId);
 
-  return { racesProcessed, racesSkippedPaid, racesSkippedNoClass, rowsUpdated };
+  // Re-deriving prize_money decouples race_results from rider value unless we
+  // also refresh prize_earnings_bonus → market_value. updateStandings only
+  // re-sums points; without this, admin point edits never reach rider values
+  // (the values still reflect the config from the last payout/season-end).
+  // Injected so the engine stays import-light + unit-testable; the endpoint
+  // wires economyEngine.updateRiderValues in. Skips if not provided.
+  let ridersUpdated = null;
+  if (typeof updateRiderValues === "function") {
+    ({ ridersUpdated } = (await updateRiderValues(supabase)) || {});
+  }
+
+  return { racesProcessed, racesSkippedPaid, racesSkippedNoClass, rowsUpdated, ridersUpdated };
 }
