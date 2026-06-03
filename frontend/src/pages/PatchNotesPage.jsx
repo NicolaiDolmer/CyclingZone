@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "4.65",
+    date: "2026-06-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Dashboard",
+        items: [
+          "EN · You can now customize your dashboard — a new Customize button lets you show or hide each module (auctions, transfers, races, standings, board) and your choice is remembered on this device.",
+          "DA · Du kan nu tilpasse dit dashboard — en ny Tilpas-knap lader dig vise eller skjule hvert modul (auktioner, transfers, løb, rangliste, bestyrelse), og dit valg huskes på denne enhed.",
+          "EN · Two new dashboard modules: Recent results (the latest finished races and their winners) and Rider ranking (this season's top scorers).",
+          "DA · To nye dashboard-moduler: Seneste resultater (de senest afsluttede løb og deres vindere) og Rytterrangliste (sæsonens topscorere).",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.64",
     date: "2026-06-03",
     label: "Beta",

@@ -98,6 +98,37 @@
       "budgetMultiplier": "Budget multiplikator",
       "exceeds": "Overget",
       "exceedsTitle": "Denne kategori scorede over 100% — du har overgået bestyrelsens forventninger her."
+    },
+    "recentResults": {
+      "title": "Seneste resultater",
+      "linkAll": "Se alle →",
+      "empty": "Ingen afsluttede løb endnu denne sæson",
+      "gc": "Samlet vinder",
+      "stage": "Vinder af etape {n}",
+      "aiBadge": "AI"
+    },
+    "riderRanking": {
+      "title": "Rytterrangliste",
+      "linkAll": "Hele ranglisten →",
+      "empty": "Ingen resultater endnu denne sæson",
+      "stageWins": "{count, plural, one {1 etapesejr} other {# etapesejre}}",
+      "gcWins": "{count} GC",
+      "points": "{points} pt",
+      "aiBadge": "AI"
+    }
+  },
+  "customize": {
+    "button": "Tilpas",
+    "heading": "Vis moduler",
+    "reset": "Nulstil til standard",
+    "modules": {
+      "auctions": "Aktive auktioner",
+      "transfers": "Transfers & tilbud",
+      "races": "Kommende løb",
+      "divStandings": "Divisionsrangliste",
+      "board": "Bestyrelsens status",
+      "recentResults": "Seneste resultater",
+      "riderRanking": "Rytterrangliste"
     }
   },
   "board": {
