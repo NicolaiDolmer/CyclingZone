@@ -26,6 +26,7 @@
   },
     "sectionTitle": "Race points · UCI override",
     "intro": "Justér UCI-ranking-point per placering og løbsklasse. Ændringer logges i admin log. Brug \"Reset til baseline\" for at gå tilbage til UCI default.",
+    "appliesToFutureHint": "Gemte ændringer påvirker kun løb der importeres fra nu af. For at slå dem igennem på eksisterende rangliste, kør \"↻ Point fra config\" under Sæson-fanen (allerede udbetalte løb røres ikke).",
     "raceClassTab": "Løbsklasse",
     "rankHeader": "#{rank}",
     "resultTypeLabel": "Benævnelse",

@@ -26,6 +26,7 @@
   },
     "sectionTitle": "Race points · UCI override",
     "intro": "Adjust the UCI ranking points awarded per finishing position, per race class. Changes are audited in the admin log. Use \"Reset to baseline\" to restore UCI defaults.",
+    "appliesToFutureHint": "Saved changes only affect races imported from now on. To apply them to existing standings, run \"↻ Point fra config\" under the Season tab (already-paid races are left untouched).",
     "raceClassTab": "Race class",
     "rankHeader": "#{rank}",
     "resultTypeLabel": "Classification",
