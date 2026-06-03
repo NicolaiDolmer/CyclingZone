@@ -5698,10 +5698,23 @@ router.get("/riders/:id/watchlist-count", requireAuth, async (req, res) => {
   res.json({ count: count || 0 });
 });
 
-// POST /api/riders/:id/view — vis rytter-profil, trigger evt. transferrygte
+// POST /api/riders/:id/view — vis rytter-profil, log besøg (#963) + trigger evt. transferrygte
 router.post("/riders/:id/view", requireAuth, presencePulseLimiter, async (req, res) => {
   const { data: rider } = await supabase.from("riders")
     .select("id, firstname, lastname, team_id").eq("id", req.params.id).single();
+
+  // Besøgs-logging (#963) — datafundament for popularitet (#957). Fire-and-forget:
+  // må aldrig fejle endpointet. Daily-dedup pr. (bruger, rytter, dag) håndhæves af
+  // rider_profile_views_daily_uniq; ignoreDuplicates → ON CONFLICT DO NOTHING.
+  if (rider?.id && req.user?.id) {
+    supabase.from("rider_profile_views").upsert(
+      { rider_id: rider.id, user_id: req.user.id },
+      { onConflict: "user_id,rider_id,view_date", ignoreDuplicates: true },
+    ).then(({ error }) => {
+      if (error) console.error("[rider-view-log] insert failed:", error.message);
+    });
+  }
+
   if (rider?.team_id && rider.team_id !== req.team?.id && Math.random() < 0.3) {
     await notifyTeamOwner(rider.team_id, "transfer_interest",
       "Transferrygte 👀",

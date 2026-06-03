@@ -779,7 +779,10 @@ export default function RiderStatsPage() {
     setLoading(false);
     loadWatchlistCount();
 
-    if (riderRes.data?.team_id) {
+    // Log besøg for ALLE ryttere (#963) — ikke kun hold-ejede. Endpointet
+    // håndterer både besøgs-logging og det (team-gated) transferrygte internt.
+    // Fyrer én gang pr. profil-mount (useEffect [id]) — ikke pr. re-render.
+    if (riderRes.data?.id) {
       const h = await authHeaders();
       fetch(`${API}/api/riders/${id}/view`, { method: "POST", headers: h }).catch(() => {});
     }
