@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.63",
+    date: "2026-06-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixes · Notifications",
+        items: [
+          "EN · Discord direct messages are working again. Notifications for outbids, won auctions, and transfer offers had quietly stopped sending; they now arrive as expected for managers who have linked their Discord.",
+          "DA · Discord-beskeder virker igen. Notifikationer ved overbud, vundne auktioner og transfertilbud var holdt op med at blive sendt; de leveres nu som forventet til managers der har forbundet deres Discord.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.62",
     date: "2026-06-03",
     label: "Beta",

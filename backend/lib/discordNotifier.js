@@ -94,6 +94,15 @@ export async function sendWebhook(webhookUrl, payload) {
 
 const DISCORD_API = "https://discord.com/api/v10";
 
+// Bot-token kan komme under to navne: production-Railway sætter historisk
+// DISCORD_BOT_TOKEN, mens den kanoniske MCP/scripts-konvention (og
+// docs/DISCORD_MCP_SETUP.md) bruger DISCORD_TOKEN. Accepter begge så ét token
+// under ét navn virker overalt — uden navne-mismatch der tavst dræber DMs
+// (2026-06-03: prod-DMs fejlede med 401 fordi token lå under forkert navn).
+export function getBotToken() {
+  return process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN || null;
+}
+
 async function getDmRecipient(teamId) {
   if (!teamId) return null;
   const { data: team } = await supabase
@@ -177,9 +186,9 @@ async function postDm(channelId, botToken, payload) {
  * fejler pga. config (token mangler/roteret) eller data (user uden discord_id).
  */
 export async function sendDM(discordId, payload) {
-  const botToken = process.env.DISCORD_BOT_TOKEN;
+  const botToken = getBotToken();
   if (!botToken) {
-    console.warn("[discord-dm:skip] DISCORD_BOT_TOKEN ikke sat — DM ikke sendt", { discordId: discordId ? "set" : "missing" });
+    console.warn("[discord-dm:skip] DISCORD_BOT_TOKEN/DISCORD_TOKEN ikke sat — DM ikke sendt", { discordId: discordId ? "set" : "missing" });
     return;
   }
   if (!discordId) {
@@ -247,8 +256,8 @@ export async function notifyDiscordDM({ teamId, type, title, description, fields
  * suitable for displaying to the manager in ProfilePage.
  */
 export async function sendTestDM(discordId) {
-  const botToken = process.env.DISCORD_BOT_TOKEN;
-  if (!botToken) throw new Error("DISCORD_BOT_TOKEN er ikke sat på serveren");
+  const botToken = getBotToken();
+  if (!botToken) throw new Error("DISCORD_BOT_TOKEN/DISCORD_TOKEN er ikke sat på serveren");
   if (!discordId) throw new Error("Intet Discord-ID");
   let channelId;
   try {
