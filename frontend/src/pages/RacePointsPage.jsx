@@ -26,8 +26,14 @@ const CLASS_META = {
 const TYPE_ORDER = [
   "Klassement", "Klassiker", "Etapeplacering",
   "Pointtroje", "Bjergtroje", "Ungdomstroje",
-  "EtapelobHold", "KlassikerHold", "Forertroje",
+  "EtapelobHold", "KlassikerHold",
+  "Forertroje", "PointtrojeDag", "BjergtrojeDag", "UngdomstrojeDag",
 ];
+
+// Per-day jersey types: each has exactly one rank=1 row and renders as a compact single-row card.
+const PER_DAY_JERSEY_TYPES = new Set([
+  "Forertroje", "PointtrojeDag", "BjergtrojeDag", "UngdomstrojeDag",
+]);
 
 const TYPE_META = {
   Klassement:     { label: "Samlet klassement", desc: "GC-placering i etapeløb" },
@@ -38,7 +44,10 @@ const TYPE_META = {
   Ungdomstroje:   { label: "Ungdomstrøje",       desc: "Top 3 i U25-konkurrencen" },
   EtapelobHold:   { label: "Hold (etapeløb)",    desc: "Bedste hold i etapeløb" },
   KlassikerHold:  { label: "Hold (klassiker)",   desc: "Bedste hold i klassiker" },
-  Forertroje:     { label: "Førertrøje",         desc: "Pr. dag i førerposition" },
+  Forertroje:     { label: "Førertrøje",         desc: "Pr. dag i førertrøjen" },
+  PointtrojeDag:  { label: "Pointtrøje (pr. dag)",   desc: "Pr. dag i pointtrøjen" },
+  BjergtrojeDag:  { label: "Bjergtrøje (pr. dag)",   desc: "Pr. dag i bjergtrøjen" },
+  UngdomstrojeDag:{ label: "Ungdomstrøje (pr. dag)", desc: "Pr. dag i ungdomstrøjen" },
 };
 
 const PRIZE_EXAMPLES = [
@@ -168,7 +177,7 @@ export default function RacePointsPage() {
             const displayRows = isExpanded ? rows : rows.slice(0, 15);
             const hasMore = rows.length > 15;
 
-            if (rType === "Forertroje" && rows.length === 1) {
+            if (PER_DAY_JERSEY_TYPES.has(rType) && rows.length === 1) {
               const pt = rows[0].points;
               return (
                 <div key={rType} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
@@ -179,7 +188,7 @@ export default function RacePointsPage() {
                     </div>
                   </div>
                   <div className="px-4 py-4 flex items-center justify-between">
-                    <p className="text-cz-2 text-sm">Pr. dag i førerposition</p>
+                    <p className="text-cz-2 text-sm">{meta.desc}</p>
                     <div className="text-right">
                       <p className="font-mono font-bold text-cz-accent-t">{fmt(pt)} pt</p>
                       <p className="text-xs text-cz-3">{fmtPrize(pt)}</p>

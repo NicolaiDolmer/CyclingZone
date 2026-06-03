@@ -2,6 +2,34 @@
 
 const PATCHES = [
   {
+    version: "4.58",
+    date: "2026-06-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Rankings",
+        items: [
+          "EN · The rider rankings now break wins into clear categories. One-day classic wins get their own \"Classic wins\" column instead of being counted as overall (GC) wins, and \"Total wins\" now adds up every win type (stage, GC, classic, points, mountain and youth), shown to the right. There are new columns for prize money earned, Top 3 and Top 10 finishes, plus optional \"days in jersey\" columns (yellow, green, polka, white). Use the new \"Columns\" button to show or hide the optional columns, and your choice is remembered. Refs #781, #782, #924, #925.",
+          "DA · Rytterranglisten deler nu sejre op i tydelige kategorier. Sejre i endagsløb får deres egen \"Klassikersejre\"-kolonne i stedet for at tælle som samlede (GC) sejre, og \"Sejre i alt\" lægger nu alle sejrstyper sammen (etape, GC, klassiker, point, bjerg og ungdom), vist til højre. Der er nye kolonner for tjent præmie, Top 3 og Top 10, samt valgfrie \"dage i trøje\"-kolonner (gul, grøn, prik, hvid). Brug den nye \"Kolonner\"-knap til at vise eller skjule de valgfrie kolonner, og dit valg huskes. Refs #781, #782, #924, #925.",
+        ],
+      },
+      {
+        category: "New · Standings",
+        items: [
+          "EN · The team standings now have a \"Team classification\" column showing how many team-classification wins each team has taken this season, so the team competition is finally visible on the list.",
+          "DA · Holdranglisten har nu en \"Holdkonkurrence\"-kolonne, der viser hvor mange holdkonkurrence-sejre hvert hold har taget i sæsonen, så holdkonkurrencen endelig er synlig på listen.",
+        ],
+      },
+      {
+        category: "Fixes · Points and prizes",
+        items: [
+          "EN · The points and prize overview only listed the daily rate for the leader's (yellow) jersey. It now also shows the daily rate for the points, mountain and youth jerseys, so it is clear what you earn for holding each jersey per stage.",
+          "DA · Point- og præmieoversigten viste kun den daglige sats for førertrøjen (gul). Den viser nu også den daglige sats for point-, bjerg- og ungdomstrøjen, så det er tydeligt hvad du tjener for at holde hver trøje pr. etape.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.57",
     date: "2026-06-03",
     label: "Beta",

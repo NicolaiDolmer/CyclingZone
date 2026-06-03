@@ -36,6 +36,7 @@ export default function StandingsPage() {
   const [myTeamId, setMyTeamId] = useState(null);
   const [season, setSeason] = useState(null);
   const [racePoints, setRacePoints] = useState({});
+  const [teamComp, setTeamComp] = useState({});
   const [races, setRaces] = useState([]);
 
   async function loadAll() {
@@ -80,7 +81,7 @@ export default function StandingsPage() {
       // Paginér: PostgREST capper ved 1000 → ellers undertæller progression-grafen.
       const results = await fetchAllRows(() => supabase
         .from("race_results")
-        .select("rider:rider_id(team_id), prize_money, race_id")
+        .select("rider:rider_id(team_id), team_id, result_type, rank, prize_money, race_id")
         .in("race_id", racesRes.data.map(r => r.id))
         .order("id", { ascending: true }));
 
@@ -100,6 +101,16 @@ export default function StandingsPage() {
         });
       });
       setRacePoints(prog);
+
+      // Holdkonkurrence: tæl team-classification-sejre — result_type='team', rider_id NULL, team_id sat.
+      const comp = {};
+      (results || []).forEach(r => {
+        if (r.result_type !== "team" || !r.team_id) return;
+        const c = comp[r.team_id] || (comp[r.team_id] = { wins: 0, podiums: 0 });
+        if (r.rank === 1) c.wins += 1;
+        if (r.rank <= 3) c.podiums += 1;
+      });
+      setTeamComp(comp);
     }
     setLoading(false);
   }
@@ -167,6 +178,10 @@ export default function StandingsPage() {
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs w-8">#</th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs">{t("thTeam")}</th>
                   <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden sm:table-cell">{t("thStageWins")}</th>
+                  <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden lg:table-cell" title={t("thTeamComp")}>
+                    <span className="hidden xl:inline">{t("thTeamComp")}</span>
+                    <span className="xl:hidden">{t("thTeamCompShort")}</span>
+                  </th>
                   <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden md:table-cell">{t("thPodiums")}</th>
                   <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs">{t("thPoints")}</th>
                   <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs hidden lg:table-cell w-20">{t("thProgress")}</th>
@@ -191,7 +206,7 @@ export default function StandingsPage() {
                       {/* Separator before relegation zone */}
                       {i === divStandings.length - 2 && canRelegate && divStandings.length > 4 && (
                         <tr aria-hidden="true">
-                          <td colSpan={6} style={{ padding: 0, lineHeight: 0, border: 0 }}>
+                          <td colSpan={7} style={{ padding: 0, lineHeight: 0, border: 0 }}>
                             <div style={{ height: 2, background: "linear-gradient(to right, rgb(var(--danger) / 0.6) 40%, transparent)" }} />
                           </td>
                         </tr>
@@ -222,6 +237,7 @@ export default function StandingsPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden sm:table-cell font-mono">{s.stage_wins || 0}</td>
+                        <td className="px-4 py-3.5 text-right text-cz-2 hidden lg:table-cell font-mono">{teamComp[s.team_id]?.wins || 0}</td>
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden md:table-cell font-mono">{s.podiums || 0}</td>
                         <td className="px-4 py-3.5 text-right">
                           <span className="font-mono font-bold" style={{ color: isMe ? "rgb(var(--accent-t))" : color }}>
@@ -243,7 +259,7 @@ export default function StandingsPage() {
                       {/* Separator after promotion zone */}
                       {i === 1 && canPromote && divStandings.length > 2 && (
                         <tr aria-hidden="true">
-                          <td colSpan={6} style={{ padding: 0, lineHeight: 0, border: 0 }}>
+                          <td colSpan={7} style={{ padding: 0, lineHeight: 0, border: 0 }}>
                             <div style={{ height: 2, background: "linear-gradient(to right, rgb(var(--success) / 0.6) 40%, transparent)" }} />
                           </td>
                         </tr>
