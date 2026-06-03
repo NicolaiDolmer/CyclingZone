@@ -621,6 +621,7 @@ export default function RiderStatsPage() {
   const [onWatchlist, setOnWatchlist]       = useState(false);
   const [watchlistId, setWatchlistId]       = useState(null);
   const [watchlistCount, setWatchlistCount] = useState(0);
+  const [visits, setVisits]                 = useState(null);
   const [results, setResults]               = useState([]);
   const [seasonRows, setSeasonRows]         = useState([]);
   const [loading, setLoading]               = useState(true);
@@ -665,6 +666,15 @@ export default function RiderStatsPage() {
       const data = await res.json();
       setWatchlistCount(data.count || 0);
     } catch { /* non-critical: count badge stays at previous value */ }
+  }
+
+  // Popularitet (#957): unikke besøgende 24t/7d + trend. Non-critical — fejler stille.
+  async function loadVisits() {
+    try {
+      const h = await authHeaders();
+      const res = await fetch(`${API}/api/riders/${id}/view-count`, { headers: h });
+      setVisits(await res.json());
+    } catch { /* non-critical: visit line just stays hidden */ }
   }
 
   async function toggleWatchlist() {
@@ -801,7 +811,7 @@ export default function RiderStatsPage() {
     } catch { /* non-critical: deadline-day banner falls back to inactive */ }
   }
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); loadBidTimeline(); }, [id]);
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); loadBidTimeline(); loadVisits(); }, [id]);
 
   function pushOverbidToast({ riderName, amount }) {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -1082,6 +1092,25 @@ export default function RiderStatsPage() {
             </div>
             {watchlistCount > 0 && (
               <p className="text-cz-3 text-xs mt-1">{t("header.watchlistCount", { count: watchlistCount })}</p>
+            )}
+            {visits && visits.views7d > 0 && (
+              <p className="text-cz-3 text-xs mt-1 flex items-center gap-1.5 flex-wrap">
+                <span>{t("header.visitors", { count: visits.views7d })}</span>
+                {visits.isNew ? (
+                  <span className="text-[10px] uppercase font-semibold bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">
+                    {t("header.visitorsNew")}
+                  </span>
+                ) : visits.trend7dPct != null && visits.trend7dPct !== 0 ? (
+                  <span
+                    className={visits.trend7dPct > 0 ? "text-cz-success" : "text-cz-danger"}
+                    title={t(visits.trend7dPct > 0 ? "header.visitorsTrendUp" : "header.visitorsTrendDown", { pct: Math.abs(visits.trend7dPct) })}
+                  >
+                    {visits.trend7dPct > 0 ? "↑" : "↓"}{Math.abs(visits.trend7dPct)}%
+                  </span>
+                ) : null}
+                <span className="text-cz-3 opacity-50" aria-hidden="true">·</span>
+                <span>{t("header.visitors24h", { count: visits.views24h })}</span>
+              </p>
             )}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {rider.is_u25 && <span className="text-xs uppercase bg-cz-info-bg0/20 text-cz-info px-2 py-0.5 rounded">{t("header.u25")}</span>}

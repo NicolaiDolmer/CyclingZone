@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.64",
+    date: "2026-06-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Riders",
+        items: [
+          "EN · Each rider profile now shows how many unique managers have visited it in the last 24 hours and the last 7 days. Once enough history has built up, a trend arrow shows whether interest is rising or falling.",
+          "DA · Hver rytterprofil viser nu hvor mange unikke managers der har besøgt den de seneste 24 timer og de seneste 7 dage. Når der er nok historik, viser en trend-pil om interessen stiger eller falder.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.63",
     date: "2026-06-03",
     label: "Beta",

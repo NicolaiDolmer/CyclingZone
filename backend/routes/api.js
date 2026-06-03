@@ -50,6 +50,7 @@ import {
 } from "../lib/seasonTransition.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { fetchAllRows } from "../lib/supabasePagination.js";
+import { aggregateRiderViews } from "../lib/riderProfileViews.js";
 import {
   PAUSE_LEVELS,
   buildPauseErrorBody,
@@ -5755,6 +5756,34 @@ router.get("/riders/:id/watchlist-count", requireAuth, async (req, res) => {
   const { count } = await supabase.from("rider_watchlist")
     .select("id", { count: "exact", head: true }).eq("rider_id", req.params.id);
   res.json({ count: count || 0 });
+});
+
+// GET /api/riders/:id/view-count — popularitet (#957): unikke besøgende seneste
+// 24t + 7d + trend, aggregeret fra rider_profile_views (#963) via service_role.
+// Læsning sker server-side fordi tabellen bevidst ingen authenticated SELECT-policy
+// har (aggregeret-only, samme mønster som watchlist-count). Vi henter de seneste
+// 14 dages rows (dækker både aktuel 7d + forrige 7d til trenden) og aggregerer i JS.
+router.get("/riders/:id/view-count", requireAuth, async (req, res) => {
+  const nowMs = Date.now();
+  const sinceIso = new Date(nowMs - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [viewsRes, oldestRes] = await Promise.all([
+    supabase.from("rider_profile_views")
+      .select("user_id, viewed_at")
+      .eq("rider_id", req.params.id)
+      .gte("viewed_at", sinceIso),
+    // Systemets logging-alder afgør cold-start (#957): er der nok historik til at
+    // en hel forrige 7d-periode kan have data? Ældste viewed_at globalt svarer.
+    supabase.from("rider_profile_views")
+      .select("viewed_at").order("viewed_at", { ascending: true }).limit(1),
+  ]);
+
+  const oldestIso = oldestRes.data?.[0]?.viewed_at ?? null;
+  const agg = aggregateRiderViews(viewsRes.data || [], {
+    nowMs,
+    oldestViewedAtMs: oldestIso ? new Date(oldestIso).getTime() : null,
+  });
+  res.json(agg);
 });
 
 // POST /api/riders/:id/view — vis rytter-profil, log besøg (#963) + trigger evt. transferrygte
