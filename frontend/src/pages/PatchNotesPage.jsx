@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.61",
+    date: "2026-06-03",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixes · Rider values",
+        items: [
+          "EN · Rider market values are a rolling average of prize money earned across seasons. An empty placeholder season was being counted in that average, which dragged every rider's prize bonus down. It no longer counts, so values reflect the seasons that were actually raced.",
+          "DA · Rytternes markedsværdi er et løbende gennemsnit af optjente præmiepenge på tværs af sæsoner. En tom placeholder-sæson blev talt med i det gennemsnit og trak alle rytteres præmie-bonus ned. Den tæller ikke længere med, så værdierne afspejler de sæsoner der faktisk blev kørt.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.60",
     date: "2026-06-03",
     label: "Beta",

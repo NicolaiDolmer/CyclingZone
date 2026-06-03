@@ -684,20 +684,28 @@ function createRiderValuesSupabase({ seasons, races, results, riders }) {
                     },
                   };
                 }
-                // Completed-season window: .eq("status","completed").order().limit()
+                // Completed-season window: .eq("status","completed")
+                //   .gt("race_days_total",0).order().limit()
                 assert.equal(value, "completed");
                 return {
-                  order(orderColumn, orderOptions) {
-                    assert.equal(orderColumn, "number");
-                    assert.deepEqual(orderOptions, { ascending: false });
+                  gt(gtColumn, gtValue) {
+                    assert.equal(gtColumn, "race_days_total");
+                    assert.equal(gtValue, 0);
                     return {
-                      limit(limitValue) {
-                        assert.equal(limitValue, 3);
-                        const completed = clone(state.seasons)
-                          .filter(s => s.status === "completed")
-                          .sort((a, b) => b.number - a.number)
-                          .slice(0, limitValue);
-                        return Promise.resolve({ data: completed, error: null });
+                      order(orderColumn, orderOptions) {
+                        assert.equal(orderColumn, "number");
+                        assert.deepEqual(orderOptions, { ascending: false });
+                        return {
+                          limit(limitValue) {
+                            assert.equal(limitValue, 3);
+                            const completed = clone(state.seasons)
+                              .filter(s => s.status === "completed")
+                              .filter(s => (Number(s.race_days_total) || 0) > gtValue)
+                              .sort((a, b) => b.number - a.number)
+                              .slice(0, limitValue);
+                            return Promise.resolve({ data: completed, error: null });
+                          },
+                        };
                       },
                     };
                   },
@@ -1771,9 +1779,9 @@ test("updateRiderValues recomputes prize_earnings_bonus from the last 3 complete
   // so the formula reduces bit-for-bit to the old equal-weight mean.
   const supabase = createRiderValuesSupabase({
     seasons: [
-      { id: "season-3", number: 3, status: "completed" },
-      { id: "season-2", number: 2, status: "completed" },
-      { id: "season-1", number: 1, status: "completed" },
+      { id: "season-3", number: 3, status: "completed", race_days_total: 60 },
+      { id: "season-2", number: 2, status: "completed", race_days_total: 60 },
+      { id: "season-1", number: 1, status: "completed", race_days_total: 60 },
     ],
     races: [
       { id: "race-1", season_id: "season-3" },
@@ -1805,7 +1813,7 @@ test("updateRiderValues: anchor + active season uses progress-weighted divisor",
   const supabase = createRiderValuesSupabase({
     seasons: [
       { id: "season-2", number: 2, status: "active", race_days_completed: 6, race_days_total: 60 },
-      { id: "season-1", number: 1, status: "completed" },
+      { id: "season-1", number: 1, status: "completed", race_days_total: 60 },
     ],
     races: [
       { id: "race-s1", season_id: "season-1" },
@@ -1831,7 +1839,7 @@ test("updateRiderValues: brand-new active season (0% progress) does not dip the 
   const supabase = createRiderValuesSupabase({
     seasons: [
       { id: "season-2", number: 2, status: "active", race_days_completed: 0, race_days_total: 60 },
-      { id: "season-1", number: 1, status: "completed" },
+      { id: "season-1", number: 1, status: "completed", race_days_total: 60 },
     ],
     races: [{ id: "race-s1", season_id: "season-1" }],
     results: [
