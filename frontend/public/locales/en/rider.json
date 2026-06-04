@@ -68,6 +68,37 @@
     "potentialRow": "Potential",
     "loadingDevelopment": "Loading development..."
   },
+  "racePreview": {
+    "title": "Cycling Zones",
+    "beta": "Beta",
+    "disclaimer": "New physiological model, calculated from current skills. Does not affect race results yet.",
+    "powerProfile": "Power profile",
+    "derivedAbilities": "Derived abilities",
+    "zones": {
+      "ftp": "FTP",
+      "vo2max": "VO2max power",
+      "zone2": "Zone 2",
+      "pmax": "Peak power"
+    },
+    "curve": {
+      "p5s": "5s",
+      "p15s": "15s",
+      "p1m": "1 min",
+      "p5m": "5 min"
+    },
+    "derived": {
+      "climbing": "Climbing",
+      "time_trial": "Time trial",
+      "sprint": "Sprint",
+      "punch": "Punch",
+      "endurance": "Endurance",
+      "cobble_classics": "Cobbles & classics",
+      "acceleration": "Acceleration",
+      "recovery": "Recovery",
+      "tactics": "Tactics",
+      "positioning": "Positioning"
+    }
+  },
   "skills": {
     "fl": {
       "short": "FL",

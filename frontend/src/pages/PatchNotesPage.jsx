@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.69",
+    date: "2026-06-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Rider profiles",
+        items: [
+          "EN · Rider profiles now show a Cycling Zones preview (beta): physiological power numbers (FTP, VO2max, Zone 2, peak power and a 5s/15s/1min/5min power curve) plus derived abilities like climbing, sprint and time trial. It is calculated from current skills and does not affect race results yet. Refs #676.",
+          "DA · Rytterprofiler viser nu et Cycling Zones-preview (beta): fysiologiske effekttal (FTP, VO2max, Zone 2, maksimal effekt og en 5s/15s/1min/5min effektkurve) plus udledte evner som klatring, sprint og enkeltstart. Det er beregnet ud fra nuværende evner og påvirker endnu ikke løbsresultater. Refs #676.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.68",
     date: "2026-06-04",
     label: "Beta",
