@@ -151,6 +151,7 @@ docs/brand/
 ├── MOODBOARD.md             # ~35 reference brands with takeaways
 ├── DECISIONS_LOG.md         # Single source of truth for what's been decided
 ├── HANDOFF_PROMPT.md        # First-session prompt for new AI contexts
+├── LAUNCH_MINIMUM.md        # TdF launch baseline (#671) — interim brand shipped now (pre-V2)
 ├── logo-explorations.html   # Current visual state — always reflects active decision
 └── (future) BRAND_GUIDELINES.md   # Phase 5 output
 
