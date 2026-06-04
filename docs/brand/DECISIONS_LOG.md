@@ -73,6 +73,8 @@ Per user request for "most professional approach, one thing at a time":
 
 **Phase 2 active.** P1 (dark canvas) locked 2026-05-19. **P2 — Light mode canvas** now active in `logo-explorations.html` — 4 candidates varying only the light surface, wordmark + accent locked.
 
+**Asset production started 2026-06-04** (decoupled from the in-flight P2 colour pick — only locked marks were produced). Outlined SVG masters for the wordmark (5 variants) + F1a stacked mark + F1b `CZ` monogram shipped to `frontend/public/brand/`; production `favicon.svg` swapped from the Arial-Black placeholder to the locked F1b. See [`ASSETS.md`](ASSETS.md). Pending: PNG/ICO raster, OG-image refresh, Discord/social, Phase 4 site-font integration.
+
 ## ⏳ Queued
 
 | # | Decision | Triggers after |

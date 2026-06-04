@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **#676-fundament er LIVE i prod** (Cycling Zones-preview på rytterprofiler, fanen "Evner"). Ejer-verify på cycling-zone.vercel.app + vurdér om physiology-balancen skal rebalanceres (formula_version 2 — tallene er pt. komprimerede). Launch-spor mod 20/6: landing [#672](https://github.com/NicolaiDolmer/CyclingZone/issues/672), brand [#671](https://github.com/NicolaiDolmer/CyclingZone/issues/671), UX-audit [#864](https://github.com/NicolaiDolmer/CyclingZone/issues/864). Race-engine **simulator** = [#1021](https://github.com/NicolaiDolmer/CyclingZone/issues/1021) (sæson 3, ikke launch-kritisk).
+> **🎯 Next action:** **Næste session (efter genstart) = whitespace/density** ([#1027](https://github.com/NicolaiDolmer/CyclingZone/issues/1027), pre-launch UI-overhaul). Start Ryttersiden: fuld bredde, sikre token-lette gevinster nu; filter-rail = visuelle eksempler + snak i separat session; header + nav/IA = dedikeret planlægnings-session. Detalje: `docs/brand/UI_NAV_IA.md`. **Brand:** asset-masters + favicon live via PR [#1026](https://github.com/NicolaiDolmer/CyclingZone/pull/1026); P2 light-canvas-beslutning afventer ([#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481), `HANDOFF_PROMPT.md`). **#864 Clarity:** token sat, kræver session-genstart for at MCP loader den — verificér først i næste session. **#676-fundament LIVE** — ejer-verify + evt. rebalance ([#1025](https://github.com/NicolaiDolmer/CyclingZone/issues/1025)). Race-engine **simulator** = [#1021](https://github.com/NicolaiDolmer/CyclingZone/issues/1021) (ikke launch-kritisk).
 >
 > **🤖 Working agent:** Ingen aktiv session.
 >
