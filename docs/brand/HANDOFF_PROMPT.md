@@ -9,7 +9,7 @@
 ```bash
 git status
 git add docs/brand/ docs/TONE_OF_VOICE.md
-git commit -m "wip(brand): handoff state — Phase 1 D1 awaiting choice"
+git commit -m "wip(brand): handoff state — Phase 1 locked, P2 light-canvas pending"
 git push origin main
 ```
 
@@ -71,10 +71,10 @@ Lave Cycling Zones komplette brand identity "once and for all" — logo, favicon
 
 ## Faser (full map — se PROJECT_PLAN.md for detaljer)
 
-1. **Decisions Sprint** — 5 visuelle beslutninger → lås logo-retning (IN PROGRESS)
-2. **Asset Production** — final SVG, alle størrelser, favicon-set, Discord, social, OG-image
-3. **Design System Extension** — typography scale, color tokens, spacing, component patterns
-4. **UI Integration** — anvend brand i eksisterende UI, light + dark mode parity
+1. **Decisions Sprint** — ✅ **LOCKED 2026-05-20** (wordmark Bebas Neue + twin lines, F1a stacked, F1b CZ Inter Tight Black, dark canvas #0e0f15). Farve-palet: dark P1 locked, **light canvas P2 = aktiv pending beslutning**.
+2. **Asset Production** — 🟡 startet 2026-06-04: outlinede SVG-masters i `frontend/public/brand/` + favicon swappet (PR #1026). Mangler: PNG/ICO-raster, OG-image-refresh, Discord/social. Se `ASSETS.md`.
+3. **Design System Extension** — typography scale, color tokens, spacing, component patterns (gates på P2/P3 farve-lock)
+4. **UI Integration** — anvend brand i eksisterende UI, light + dark mode parity. **Bemærk: nav-IA + whitespace-overvejelser ligger i `docs/brand/UI_NAV_IA.md`.**
 5. **Documentation** — brand guidelines mini-doc, future decision framework
 
 ## Self-correcting hints
@@ -87,9 +87,15 @@ Lave Cycling Zones komplette brand identity "once and for all" — logo, favicon
 
 ## Hvad du skal gøre LIGE NU
 
-1. Bekræft at du har læst PROJECT_PLAN, DECISIONS_LOG, BRAND_BRIEF og åbnet logo-explorations.html i preview
-2. Fortæl mig hvilken decision der er IN PROGRESS i DECISIONS_LOG.md
-3. Vent på mit svar (A/B/C/D eller custom) ELLER på en ny instruktion
+State (per 2026-06-04): Phase 1 LOCKED. Asset-masters shippet i `frontend/public/brand/` + favicon swappet (PR #1026 — tjek om merged: `gh pr view 1026`). Font-outlining-teknikken er dokumenteret i `docs/brand/ASSETS.md` (fonttools + google/fonts OFL) — genbrug den, opfind ikke ny. **Aktiv beslutning: P2 light-mode canvas** (4 koncept-kandidater i logo-explorations.html: A newsprint #f5edcf, B velodrome #f0e6cf, C race-bib #faf8ee, D cobblestone #e8e7e3).
+
+1. Bekræft at du har læst PROJECT_PLAN, DECISIONS_LOG, ASSETS.md, BRAND_BRIEF og åbnet logo-explorations.html i preview.
+2. **Primær opgave:** Render P2-kandidaterne for mig (preview-screenshot), giv din ærlige anbefaling, og bed mig vælge A/B/C/D. Når jeg har valgt → log i DECISIONS_LOG.md MED DET SAMME → fortsæt til P3 (accent-gul-refinement). Én beslutning ad gangen.
+3. **Alternativ (hvis jeg hellere vil have autonomt arbejde):** refresh `frontend/public/og-cycling-zone.svg` — den bruger i dag `<text font-family="DM Sans">` + en gammel "C"-mark, som social-scrapers renderer i fallback-font. Erstat med den outlinede wordmark + F1a-mark fra `frontend/public/brand/`, BEHOLD copy ordret, verificér i preview uden font-fald.
+
+Pre-flight før commit (CLAUDE.md): frontend `node --test` + `npm run build` grønne; PatchNotes ved brugerrettet ændring; PR med Brugerverifikation-sektion; Refs #481. Rører du visuelle snapshots: kør alle 3 playwright core-smoke-projekter.
+
+(Valgfrit først, 10 sek: bekræft Clarity er live nu — "hent sessions sidste 7 dage fra Clarity". Virker det, er #864 unblocked. Fejler det med "An error occurred", rapportér og fortsæt med brand — Clarity fejlsøges separat.)
 
 Genstart ikke. Bed ikke om tilladelse til at fortsætte. Resume bare. Verdens-klasse standard fra første tur.
 ```
@@ -100,8 +106,8 @@ Genstart ikke. Bed ikke om tilladelse til at fortsætte. Resume bare. Verdens-kl
 
 The new AI should:
 1. Read all the files listed
-2. Confirm it understands the current state (Decision 1 of 5 — Overall Personality, options A/B/C/D)
-3. Either ask you to make the choice OR proceed with your next instruction
+2. Confirm it understands the current state (Phase 1 locked; P2 light-mode canvas is the active A/B/C/D decision)
+3. Either render the P2 candidates and ask you to choose, OR proceed with the OG-image alternative / your next instruction
 
 If the AI tries to restart or asks abstract questions: copy this rule back at it — *"Stop. Read DECISIONS_LOG.md and resume. No restarts."*
 
