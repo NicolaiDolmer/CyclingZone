@@ -68,6 +68,37 @@
     "potentialRow": "Potentiale",
     "loadingDevelopment": "Indlæser udvikling..."
   },
+  "racePreview": {
+    "title": "Cycling Zones",
+    "beta": "Beta",
+    "disclaimer": "Ny fysiologisk model, beregnet ud fra nuværende evner. Påvirker endnu ikke løbsresultater.",
+    "powerProfile": "Effektprofil",
+    "derivedAbilities": "Udledte evner",
+    "zones": {
+      "ftp": "FTP",
+      "vo2max": "VO2max-effekt",
+      "zone2": "Zone 2",
+      "pmax": "Maksimal effekt"
+    },
+    "curve": {
+      "p5s": "5s",
+      "p15s": "15s",
+      "p1m": "1 min",
+      "p5m": "5 min"
+    },
+    "derived": {
+      "climbing": "Klatring",
+      "time_trial": "Enkeltstart",
+      "sprint": "Sprint",
+      "punch": "Punch",
+      "endurance": "Udholdenhed",
+      "cobble_classics": "Brosten & klassikere",
+      "acceleration": "Acceleration",
+      "recovery": "Restitution",
+      "tactics": "Taktik",
+      "positioning": "Positionering"
+    }
+  },
   "skills": {
     "fl": {
       "short": "FL",

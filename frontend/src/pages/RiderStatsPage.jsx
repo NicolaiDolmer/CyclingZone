@@ -91,6 +91,79 @@ function StatRow({ label, icon, value }) {
   );
 }
 
+// Race Engine V1 (#676) — udledte abilities til preview. Ikoner genbruger samme
+// visuelle sprog som de traditionelle skills (STATS ovenfor).
+const DERIVED_ABILITIES = [
+  { key: "climbing",        icon: "▲" },
+  { key: "sprint",          icon: "⚡" },
+  { key: "time_trial",      icon: "⏱" },
+  { key: "punch",           icon: "✦" },
+  { key: "endurance",       icon: "◎" },
+  { key: "cobble_classics", icon: "⬡" },
+  { key: "acceleration",    icon: "▶" },
+  { key: "recovery",        icon: "↺" },
+  { key: "tactics",         icon: "♟" },
+  { key: "positioning",     icon: "⊹" },
+];
+
+// Ét nøgletal (watt/W·kg) i effektprofil-grid'et.
+function PowerStat({ label, value, unit }) {
+  return (
+    <div className="bg-cz-subtle rounded-lg px-3 py-2 flex flex-col">
+      <span className="text-cz-3 text-xs uppercase tracking-wide truncate">{label}</span>
+      <span className="font-mono text-cz-1 text-lg font-bold">
+        {value ?? "-"}
+        <span className="text-cz-3 text-xs font-normal ms-1">{unit}</span>
+      </span>
+    </div>
+  );
+}
+
+// Preview af race-engine-fundamentet (#676): cycling-zones/watt + udledte abilities,
+// tydeligt mærket som beta. Påvirker ikke resultater (PCM kører sæson 2). Data fra
+// GET /api/riders/:id (physiology/abilities) — null indtil backfill er kørt, så
+// rendres komponenten slet ikke før fundamentet findes.
+function RacePhysiologyPreview({ physiology, abilities }) {
+  const { t } = useTranslation("rider");
+  if (!physiology && !abilities) return null;
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
+      <div className="flex items-center gap-2 mb-1">
+        <h3 className="text-cz-1 font-semibold">{t("racePreview.title")}</h3>
+        <span className="text-[10px] uppercase font-bold tracking-wide px-1.5 py-0.5 rounded bg-cz-accent/15 text-cz-accent border border-cz-accent/30">
+          {t("racePreview.beta")}
+        </span>
+      </div>
+      <p className="text-cz-3 text-xs mb-4">{t("racePreview.disclaimer")}</p>
+
+      {physiology && (
+        <div className="mb-5">
+          <h4 className="text-cz-2 text-xs uppercase tracking-wide mb-2">{t("racePreview.powerProfile")}</h4>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <PowerStat label={t("racePreview.zones.zone2")}  value={physiology.zone2_power_wkg}  unit="W/kg" />
+            <PowerStat label={t("racePreview.zones.ftp")}    value={physiology.ftp_wkg}          unit="W/kg" />
+            <PowerStat label={t("racePreview.zones.vo2max")} value={physiology.vo2max_power_wkg} unit="W/kg" />
+            <PowerStat label={t("racePreview.zones.pmax")}   value={physiology.pmax_watts}       unit="W" />
+            <PowerStat label={t("racePreview.curve.p5s")}    value={physiology.power_5s_wkg}     unit="W/kg" />
+            <PowerStat label={t("racePreview.curve.p15s")}   value={physiology.power_15s_wkg}    unit="W/kg" />
+            <PowerStat label={t("racePreview.curve.p1m")}    value={physiology.power_1m_wkg}     unit="W/kg" />
+            <PowerStat label={t("racePreview.curve.p5m")}    value={physiology.power_5m_wkg}     unit="W/kg" />
+          </div>
+        </div>
+      )}
+
+      {abilities && (
+        <div>
+          <h4 className="text-cz-2 text-xs uppercase tracking-wide mb-2">{t("racePreview.derivedAbilities")}</h4>
+          {DERIVED_ABILITIES.map((a) => (
+            <StatRow key={a.key} label={t(`racePreview.derived.${a.key}`)} icon={a.icon} value={abilities[a.key]} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SwapOfferButton({ rider, myTeamId }) {
   const { t } = useTranslation("rider");
   const [show, setShow]         = useState(false);
@@ -774,7 +847,11 @@ export default function RiderStatsPage() {
   }
 
   async function loadRider() {
-    const [riderRes, resultsRes, seasonRowsAll] = await Promise.all([
+    // Race-engine-fundamentet (#676) hentes fejl-tolerant ved siden af rytteren, så
+    // en manglende tabel/profil (fx i deploy-vinduet før migrationen er kørt, eller
+    // for ryttere uden backfill) aldrig brækker rytter-siden — preview vises bare ikke.
+    const safe = async (q) => { try { return await q; } catch { return { data: null }; } };
+    const [riderRes, resultsRes, seasonRowsAll, physRes, abilRes] = await Promise.all([
       supabase.from("riders").select(`*, team:team_id(id, name, is_ai, is_bank)`).eq("id", id).single(),
       // Seneste 20 til "Løbsresultater"-listen (visning).
       supabase.from("race_results")
@@ -783,8 +860,12 @@ export default function RiderStatsPage() {
       // ALLE rækker (lette kolonner, pagineret) til sæson-aggregeringen — ellers
       // ville .limit(20) trunkere sejre/præmie-totalerne (PostgREST capper ved 1000).
       fetchAllRiderSeasonRows(id),
+      safe(supabase.from("rider_physiology_profiles").select("*").eq("rider_id", id).maybeSingle()),
+      safe(supabase.from("rider_derived_abilities").select("*").eq("rider_id", id).maybeSingle()),
     ]);
-    setRider(riderRes.data);
+    setRider(riderRes.data
+      ? { ...riderRes.data, physiology: physRes.data || null, abilities: abilRes.data || null }
+      : riderRes.data);
     setResults(resultsRes.data || []);
     setSeasonRows(seasonRowsAll);
     await loadActiveAuctionFull(riderRes.data);
@@ -1216,16 +1297,19 @@ export default function RiderStatsPage() {
       </div>
 
       {tab === "stats" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-          {rider.potentiale != null && (
-            <div className="flex items-center gap-3 py-2 mb-1 border-b border-cz-border">
-              <span className="text-cz-3 w-4 text-center text-sm">◆</span>
-              <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{t("stats.potentialRow")}</span>
-              <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} showValue />
-            </div>
-          )}
-          {localizedSkills.map(s => <StatRow key={s.key} label={s.label} icon={s.icon} value={rider[s.key]} />)}
-        </div>
+        <>
+          <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+            {rider.potentiale != null && (
+              <div className="flex items-center gap-3 py-2 mb-1 border-b border-cz-border">
+                <span className="text-cz-3 w-4 text-center text-sm">◆</span>
+                <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{t("stats.potentialRow")}</span>
+                <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} showValue />
+              </div>
+            )}
+            {localizedSkills.map(s => <StatRow key={s.key} label={s.label} icon={s.icon} value={rider[s.key]} />)}
+          </div>
+          <RacePhysiologyPreview physiology={rider.physiology} abilities={rider.abilities} />
+        </>
       )}
 
       {tab === "season" && (
