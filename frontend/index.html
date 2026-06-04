@@ -31,6 +31,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,900;1,9..40,400&display=swap" rel="stylesheet" />
+    <!-- #481 Phase 4 (PF1): self-hosted brand fonts. @font-face lives in index.css
+         with font-display:swap + metric-matched fallbacks. Preload only the data
+         font's latin subset (used in numbers above the fold) to shrink the swap
+         window; latin-ext + Bebas lazy-load. Self-host avoids #479's CLS regression. -->
+    <link rel="preload" href="/fonts/inter-tight-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <script>
       (function () {
         try {

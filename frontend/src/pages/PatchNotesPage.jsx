@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.75",
+    date: "2026-06-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Brand",
+        items: [
+          "EN · Cycling Zone now renders in its own brand typefaces — a condensed display font for the wordmark and a dedicated font for numbers, stats and prices — together with a refined colour palette: a warmer off-white light mode, cleaner dark surfaces, and status colours (success, warning, error, info) retuned so \"warning\" no longer clashes with the brand gold. Faint text in dark mode is now easier to read. The fonts are self-hosted, so the page no longer shifts around while they load. Refs #481.",
+          "DA · Cycling Zone vises nu med sine egne brand-skrifttyper — en kondenseret display-font til wordmark'et og en dedikeret font til tal, statistik og priser — sammen med en forfinet farvepalet: en varmere off-white lys-tilstand, renere mørke flader, og status-farver (succes, advarsel, fejl, info) justeret så \"advarsel\" ikke længere kolliderer med brand-guld. Svag tekst i mørk tilstand er nemmere at læse nu. Skrifttyperne hostes lokalt, så siden ikke længere hopper rundt mens de indlæses. Refs #481.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.74",
     date: "2026-06-04",
     label: "Beta",
