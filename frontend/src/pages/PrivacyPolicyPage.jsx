@@ -17,13 +17,13 @@ export default function PrivacyPolicyPage() {
         </div>
 
         <p className="text-cz-3 text-sm mb-6">
-          Senest opdateret: 15. maj 2026. Cycling Zone er en åben beta drevet som enkeltmandsvirksomhed.
+          Senest opdateret: 4. juni 2026. Cycling Zone er en åben beta drevet af Dolmer Digital (CVR 46524861).
           Vi behandler så lidt data som muligt, og du bestemmer selv hvad vi må måle.
         </p>
 
         <Section title="Hvem er dataansvarlig?">
           <p>
-            <strong>Cycling Zone v/ Nicolai Dolmer Mikkelsen</strong> (enkeltmandsvirksomhed under registrering, CVR følger primo juni 2026).
+            <strong>Dolmer Digital</strong> (CVR 46524861), enkeltmandsvirksomhed v/ Nicolai Dolmer Mikkelsen. Cycling Zone er et produkt af Dolmer Digital.
           </p>
           <p className="mt-2">
             Henvendelser om dine data — indsigt, sletning, dataportabilitet, indsigelse — kan sendes via Discord (foretrukket) eller via en e-mail oplyst på{" "}
