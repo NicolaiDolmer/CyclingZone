@@ -30,6 +30,28 @@
 
 ---
 
+## 🟢 2026-06-04 — Phase 2 color sub-decisions (multi-agent prep → owner picks, one at a time)
+
+Agent A built each as one-variable side-by-side cards in `logo-explorations.html` ("Phase 2 color sub-decisions" container), every candidate run through `scripts/brand-contrast-check.mjs` (now testing the locked Chalk canvas). Owner picked from rendered screenshots.
+
+| # | Decision | Value | Confirmed | Source |
+|---|---|---|---|---|
+| **D-SURF** | Surface elevation ladder (both canvases) | **Incumbent ladders.** Dark: card `#161824` · elevated `#1f2233`. Light Chalk: card `#fcfbf7` · elevated `#ffffff`. Tight/restrained steps over the wider-step + warm-consistent alternatives; matches the locked Chalk spec + shipped dark tokens, zero churn. All steps pass WCAG UI-separation 12–19:1. | 2026-06-04 | Owner picked incumbent for both dark + light after side-by-side render. |
+| **D-SEM** | Semantic colors (success/error/warning/info) | **Set 2 — warning shifted off gold.** Dark: success `#5fd98a` · error `#fb8484` · warning `#f0a830` · info `#7ab0fb`. Light Chalk: success `#15772f` · error `#a81e1e` · warning `#9a5b00` · info `#1a47c0`. Warning moved to amber-orange so it never collides with brand gold `#e8c547` (Set 1's `#fbbf24` was 1.0:1 same-hue) — protects the "gold = leader" signal. All pass WCAG AA (light warning `#9a5b00` a tight 4.85:1). | 2026-06-04 | Owner picked Set 2 after side-by-side render with the gold-collision called out. |
+| **D-TEXT3** | Dark tertiary text (`--text-3`) AA fix | **`#888ba0`** (5.69:1 on `#0e0f15`, AA). Replaces incumbent `#6b6d7e` (3.75:1, FAILed AA). Comfortable margin while staying a clear step below text-2 `#9da0b3` (7.4:1); the lighter Cand 3 `#9396ab` was rejected for crowding text-2 (0.85:1 apart). One-token change in `index.css` dark, 0 callsites touched. | 2026-06-04 | Owner picked Cand 2 after side-by-side body-text render. |
+| **D-P3B** | Light-mode foreground navy | **Locked navy `#0e0f15`** (same as dark canvas) — NOT the reserved race-night `#0a1024`. One navy across light + dark = simplest 5-year system; the two are close enough that mixing them reads as inconsistency rather than intent. Contrast a non-factor (both ~17:1 AAA on Chalk). Closes the `#0a1024` reservation from 2026-05-19. (Note: sidebar/`on-accent` `#1a1f38` remains a separate navy — out of scope here.) | 2026-06-04 | Owner picked locked navy after side-by-side headline+body+feature-band render on Chalk. |
+
+**Phase 2 color palette now fully locked.** All canvases (dark `#0e0f15` / Chalk `#f4f2ec`), surface ladders, semantic set, the dark `text-3` AA fix, and the light-mode foreground navy are decided. Remaining brand work = Phase 4 UI integration (Track 3) + the two strategy decisions below.
+
+**Phase 4 strategy decisions (surfaced by Agent C's touch-point map) — ✅ RESOLVED 2026-06-04:**
+
+| # | Decision | Value | Source |
+|---|---|---|---|
+| **PF1** | Font loading | **Self-host woff2 + `font-display:swap` + size-adjusted fallback metrics.** Avoids repeating #479 (async-font experiment caused CLS 0→0.092 + mobile Perf −3/−4); render-safe vs adding 2 families to the render-blocking Google Fonts link. | Owner picked self-host. |
+| **PF2** | Gold ownership in rankings | **Gold = the leader (maillot jaune).** Rank-1 gets the gold maillot-bar; "your team" (`isMe`, currently gold in `StandingsPage.jsx`/`TeamsPage.jsx`) is reassigned to a distinct non-gold treatment (navy outline + navy "YOU" badge). Honors the locked "gold = leader" brand rule; resolves the gold-overload collision. | Owner picked gold=leader / you=navy. |
+
+These unblock Track 3 (Phase 4 UI integration). Track 3 build order (per Agent C's map): PR-1 apply locked palette to `index.css`/`tailwind.config.js` (Chalk canvas + surfaces + D-SEM Set 2 + D-TEXT3 `#888ba0`) **+** self-host fonts + `font-data` token (redefine `mono`→Inter Tight, zero-churn) + Bebas sidebar wordmark → PR-2 sidebar micro-interactions (gold dot + hover accent-dash in `NavItem`) → PR-3 gold=leader across ranking surfaces (you→navy) → PR-4 raw-hex→token sweep. Refresh all 3 Playwright projects on the visual PRs.
+
 ## ✅ Confirmed (immutable unless user revisits)
 
 | # | Decision | Value | Confirmed | Source |
