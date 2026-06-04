@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **#676-fundament er LIVE i prod** (Cycling Zones-preview på rytterprofiler, fanen "Evner"). Ejer-verify på cycling-zone.vercel.app + vurdér om physiology-balancen skal rebalanceres (formula_version 2 — tallene er pt. komprimerede). Launch-spor mod 20/6: landing [#672](https://github.com/NicolaiDolmer/CyclingZone/issues/672), brand [#671](https://github.com/NicolaiDolmer/CyclingZone/issues/671), UX-audit [#864](https://github.com/NicolaiDolmer/CyclingZone/issues/864). Race-engine **simulator** = [#1021](https://github.com/NicolaiDolmer/CyclingZone/issues/1021) (sæson 3, ikke launch-kritisk).
+> **🎯 Next action:** **Brand asset-produktion startet** ([#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481)/[#671](https://github.com/NicolaiDolmer/CyclingZone/issues/671)) — PR [#1026](https://github.com/NicolaiDolmer/CyclingZone/pull/1026): outlinede logo/favicon-masters + favicon swappet. **Afventer ejer-verify + merge.** Follow-up: OG-image bruger fallback-font (refresh), PNG/ICO-raster, Phase 4 site-fonts. **#864 blokeret på Clarity API-token** (ejer-action: token + projekt i connector — se #864-kommentar). Andre launch-spor mod 20/6: landing [#672](https://github.com/NicolaiDolmer/CyclingZone/issues/672), UX-audit [#864](https://github.com/NicolaiDolmer/CyclingZone/issues/864). **#676-fundament LIVE i prod** — ejer-verify + evt. physiology-rebalance ([#1025](https://github.com/NicolaiDolmer/CyclingZone/issues/1025)). Race-engine **simulator** = [#1021](https://github.com/NicolaiDolmer/CyclingZone/issues/1021) (sæson 3, ikke launch-kritisk).
 >
 > **🤖 Working agent:** Ingen aktiv session.
 >
