@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.73",
+    date: "2026-06-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Navigation",
+        items: [
+          "EN · The Cycling Zone logo in the mobile top bar now links to your dashboard, matching the desktop sidebar and the usual web convention. The navigation item for the page you are already on is now marked as the current page and no longer looks clickable, so it is clear where you are. Based on click-data from the UI audit. Refs #864.",
+          "DA · Cycling Zone-logoet i den mobile topbar linker nu til dit dashboard, så det matcher desktop-sidebaren og den almindelige web-konvention. Nav-punktet for den side, du allerede er på, markeres nu som den aktuelle side og ser ikke længere klikbart ud, så det er tydeligt, hvor du befinder dig. Baseret på klikdata fra UI-auditten. Refs #864.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.72",
     date: "2026-06-04",
     label: "Beta",
