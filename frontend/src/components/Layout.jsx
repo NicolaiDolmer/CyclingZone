@@ -11,6 +11,12 @@ import LanguageSwitcher from "./LanguageSwitcher";
 
 const API = import.meta.env.VITE_API_URL;
 
+// #1027 Track A — data-tunge tabel-sider får full-bleed content-wrapper, så brede
+// rytter-/auktions-tabeller bruger den tilgængelige bredde (ingen klippede kolonner +
+// side-whitespace samtidig). Alle andre sider beholder den læsbare max-w-6xl.
+// Filter-paneler cappes per-side (max-w-[1600px]) så form-inputs ikke strækkes.
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions"]);
+
 function buildBottomItems(t) {
   return [
     { to: "/profile",     label: t("nav.item.profile") },
@@ -199,6 +205,7 @@ export default function Layout() {
   const [tickerActive, setTickerActive]   = useState(false);
   const heartbeatRef = useRef(null);
   const teamId = team?.id;
+  const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname);
 
   async function fetchOnlineCount(headers) {
     if (!API) return;
@@ -355,7 +362,7 @@ export default function Layout() {
         </div>
 
         <DeadlineDayBanner />
-        <div className="p-4 md:p-6 pb-24 md:pb-10 max-w-6xl mx-auto">
+        <div className={`p-4 md:p-6 pb-24 md:pb-10 mx-auto ${isWideContent ? "max-w-full" : "max-w-6xl"}`}>
           <Outlet />
         </div>
       </main>

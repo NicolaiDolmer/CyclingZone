@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.71",
+    date: "2026-06-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Layout",
+        items: [
+          "EN · Data-heavy pages (Rider Database, Auctions, Rider rankings, Watchlist) now use the full width of wide screens. The big tables previously had their right-hand columns cut off behind a scrollbar while empty side-margins sat unused — now the table fills the available space, so all columns are visible without scrolling on a normal desktop. Filter panels stay at a comfortable width so the input fields don't stretch. Refs #1027, #481.",
+          "DA · Data-tunge sider (Rytterdatabase, Auktioner, Rytterrangliste, Ønskeliste) bruger nu hele bredden på brede skærme. De store tabeller fik før deres højre kolonner klippet væk bag en scrollbar, mens tomme side-margener stod ubrugte — nu fylder tabellen den tilgængelige plads, så alle kolonner er synlige uden at scrolle på en normal desktop. Filter-paneler holder en behagelig bredde, så inputfelterne ikke strækkes. Refs #1027, #481.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.70",
     date: "2026-06-04",
     label: "Beta",

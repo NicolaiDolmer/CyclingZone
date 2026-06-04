@@ -302,7 +302,7 @@ export default function RidersPage() {
         />
       )}
 
-      <div data-tour="riders-filters">
+      <div data-tour="riders-filters" className="max-w-[1600px]">
         <RiderFilters filters={filters} onChange={setFilter} onReset={onReset} showTeamFilter={false} nationalities={nationalities} />
       </div>
 
