@@ -4,9 +4,11 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer udbetaler sæson 1's præmier** (admin → Økonomi → "Se status" → verificér per-hold-overblik → "Udbetal"). Re-derive + rytterværdi-fix er KØRT + verificeret i prod 3/6 (ryttere med præmie: bonus = eksakt sæson-1-sum, diff 0; sæson 0 fortynder ikke mere). Efter udbetaling: verificér finance + reconciliation, luk #893. Derefter resten af #924/#959-V2/#961. Sidebemærkning: top-UCI-ryttere (Pogacar m.fl.) har 0 sæson-1-resultater → 0 præmie-bonus (korrekt, men data-/import-spørgsmål værd at kigge på).
+> **🎯 Next action:** **Race-engine V1 ([#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676))** = kritisk launch-spor mod 20/6 (~14-16 dage; gater #677 + #959-V2). Stadig ikke påbegyndt. Blokeret af **[#675](https://github.com/NicolaiDolmer/CyclingZone/issues/675)**-ADR (Manus) — bekræft ADR-status, ellers er launch-pathen i fare. ✅ 4/6: præmier udbetalt + point opdateret (ejer) → #893 + #505 lukket; #449 (Discord-DM) bekræftet + lukket; #407 unblocket (CVR registreret).
 >
 > **🤖 Working agent:** Ingen aktiv session.
+>
+> **📊 Backlog-cleanup (4. juni):** 307→282 åbne (25 verificeret-done lukket, #563 re-åbnet: OneDrive Phase 7 ikke gjort). `needs-ai-triage`=0, `needs-decision` 35→12, investigations 40→30. Milestone-model: **🏁 TdF Launch** (17) / **Post-launch polish** (28) / **Later** (23) / #323-faser; resten = backlog-pool (labels). **12 ejer-beslutninger + 3 ejer-actions afventer** (se cleanup-tråd). Langsigtet TODO: GitHub Projects v2-board post-launch.
 >
 > **Launch-sprint TdF** (`slice:tdf-launch`): ✅ #787 sprog (PR #971 merged) · ✅ #960 nulstil · ✅ #816 >100% (#972) · ✅ #271 dashboard (lukket) · ✅ [#959](https://github.com/NicolaiDolmer/CyclingZone/issues/959) etape-V1 (frontend) — V2-import udestår · ✅ [#963](https://github.com/NicolaiDolmer/CyclingZone/issues/963) besøgs-log (PR [#992](https://github.com/NicolaiDolmer/CyclingZone/pull/992), afventer merge) · [#961](https://github.com/NicolaiDolmer/CyclingZone/issues/961) hjælp.
 >
@@ -16,9 +18,9 @@
 
 ## Standing context (launch-deadline 20. juni)
 
-- **Præmieudbetaling sæson 1 = klar til ejer (3. juni).** Pausen ophæves bevidst af ejer. Audit-epic [#893](https://github.com/NicolaiDolmer/CyclingZone/issues/893) kode-komplet; PR [#998](https://github.com/NicolaiDolmer/CyclingZone/pull/998) (re-derive→rytterværdier + per-hold-overblik) + [#999](https://github.com/NicolaiDolmer/CyclingZone/pull/999) (sæson 0 ud af værdi-gennemsnit) merged + deployet. Re-derive kørt + verificeret. **Resterer: ejer trykker "Udbetal" → så verificeres finance/reconciliation + #893 lukkes.**
+- **Præmieudbetaling sæson 1 = FÆRDIG (4. juni).** Ejer udbetalte + opdaterede point; audit-epic [#893](https://github.com/NicolaiDolmer/CyclingZone/issues/893) + alle under-issues (#894–#898) + race_points-editor #505 lukket. PR #998/#999 merged + deployet.
 - **Sikkerhed:** [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) SUPABASE_SERVICE_KEY-rotation åben · [#929](https://github.com/NicolaiDolmer/CyclingZone/issues/929) leaked-password = dashboard-toggle (ejer).
 - **TdF launch-prep:** [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676) Race Engine V1 (stor risiko) · [#672](https://github.com/NicolaiDolmer/CyclingZone/issues/672) landing page · [#671](https://github.com/NicolaiDolmer/CyclingZone/issues/671) brand · [#864](https://github.com/NicolaiDolmer/CyclingZone/issues/864) UI/UX-audit-fund.
 - **Ejer-verify udestår:** #793/#19/#896 (claude:done) · merge PR #947 (skill-docs) · #669 fiktive-rytter-auktionstest.
 
-_Opdateret af Claude (Claude Code) 4. juni 2026 — Dashboard-oprydning (PR [#1018](https://github.com/NicolaiDolmer/CyclingZone/pull/1018), afventer ejer-verify): fjernet de 4 redundante stat-kort øverst (saldo/ryttere/auktioner/bestyrelse — info står allerede i header + kort nedenunder) + flyttet Customize-knappen til top-højre som tandhjuls-ikon (var svær at finde, mærkeligt placeret). Dead code (StatCard, ubrugte beregninger, stats.* i18n-nøgler) ryddet i samme PR. verify-local + core-smoke 15/15 grøn; desktop-snapshot opdateret; gear bekræftet synlig top-højre på mobil. PatchNotes 4.66. Refs #1005. Working agent: Ingen aktiv session._
+_Opdateret af Claude (Claude Code) 4. juni 2026 — GitHub backlog-cleanup (multiagent-verifikation, 39 read-only agenter): 25 verificeret-done issues lukket m. PR-evidens, #563 re-åbnet (Phase 7 udestår), 10 investigations besvaret/konverteret in-place, #314 lukket som duplikat af #103, #349 unblocket (fejl-klassificeret), needs-ai-triage tømt (41→0), 3 horisont-milestones indført + tildelt. Ingen kode-ændring → ingen PatchNotes. Working agent: Ingen aktiv session._
