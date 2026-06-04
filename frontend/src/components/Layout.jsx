@@ -86,15 +86,27 @@ function NavItem({ to, label, badge, onClick, location, unread, exact }) {
   const showBadge = badge && unread > 0;
   return (
     <NavLink to={to} onClick={onClick} aria-current={isActive ? "page" : undefined}
-      className={`flex items-center justify-between mx-2 px-3 py-2 rounded-lg text-[13px] transition-all duration-150
+      className={`group relative flex items-center justify-between mx-2 px-3 py-2 rounded-lg text-[13px] transition-all duration-150
         ${isActive
           ? "bg-cz-accent/12 text-cz-accent font-medium cursor-default"
           : "text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover"}`}>
-      <span>{label}</span>
+      <span className="flex items-center gap-2.5 min-w-0">
+        {/* #481 PR-2: gold bullet — active = solid gold, inactive = muted (lights up on hover). Decorative. */}
+        <span aria-hidden="true"
+          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors duration-150
+            ${isActive ? "bg-cz-accent" : "bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2"}`} />
+        <span className="truncate">{label}</span>
+      </span>
       {showBadge && (
-        <span className="bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">
+        <span className="bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none flex-shrink-0">
           {unread > 9 ? "9+" : unread}
         </span>
+      )}
+      {/* #481 PR-2: hover indicator — the wordmark's short thick accent-dash, scales
+          in from the left on hover (inactive only; active needs no affordance). Decorative. */}
+      {!isActive && (
+        <span aria-hidden="true"
+          className="pointer-events-none absolute left-3 bottom-1 h-0.5 w-5 rounded-full bg-cz-accent origin-left scale-x-0 transition-transform duration-200 ease-out group-hover:scale-x-100 motion-reduce:transition-none" />
       )}
     </NavLink>
   );

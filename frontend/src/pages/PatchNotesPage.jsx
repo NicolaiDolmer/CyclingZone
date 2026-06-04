@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.76",
+    date: "2026-06-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Brand",
+        items: [
+          "EN · The sidebar navigation now marks each item with a small gold dot — solid gold for the page you are currently on, dimmed for the rest — and hovering an item slides in a short gold accent line borrowed from the brand wordmark. Together they make it clearer where you are and what you are about to open. Refs #481.",
+          "DA · Sidebar-navigationen markerer nu hvert punkt med en lille guld-prik — solid guld for den side, du er på, dæmpet for resten — og når du holder musen over et punkt, glider en kort guld-accent-streg ind, lånt fra brand-wordmark'et. Tilsammen gør de det tydeligere, hvor du er, og hvad du er ved at åbne. Refs #481.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.75",
     date: "2026-06-04",
     label: "Beta",
