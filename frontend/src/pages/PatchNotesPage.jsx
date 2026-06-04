@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.70",
+    date: "2026-06-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Updated · Brand",
+        items: [
+          "EN · The browser-tab icon is now the new Cycling Zone monogram, replacing the old placeholder. It is the first piece of the refreshed brand identity. Refs #481, #671.",
+          "DA · Browser-fanens ikon er nu det nye Cycling Zone-monogram, der erstatter den gamle placeholder. Det er første del af den opdaterede brand-identitet. Refs #481, #671.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.69",
     date: "2026-06-04",
     label: "Beta",
