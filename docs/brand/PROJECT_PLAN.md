@@ -4,7 +4,7 @@
 > **Goal:** Complete Cycling Zone brand identity (logo, favicon, Discord, design manual, UI/UX-tokens) "once and for all".
 > **Owner:** Nicolai Dolmer Mikkelsen
 > **Started:** 2026-05-18
-> **Status (2026-06-04):** All major decisions LOCKED (wordmark/favicon/fonts re-validated GO, dark canvas `#0e0f15` + light canvas `#f4f2ec` "Chalk", accent + "gold = leader"). Scope brought forward to ship the real brand **before TdF**. **Asset masters shipped:** outlined SVG wordmark + both favicon forms in `frontend/public/brand/`, production favicon swapped (see [`ASSETS.md`](ASSETS.md)). Remaining: raster set (PNG/ICO via `scripts/brand-export.mjs`), OG refresh, on-light wordmark accent fix for the locked Chalk canvas, then Phase 4 UI integration. Live state: [`DECISIONS_LOG.md`](DECISIONS_LOG.md).
+> **Status (2026-06-04):** All major decisions LOCKED (wordmark/favicon/fonts re-validated GO, dark canvas `#0e0f15` + light canvas `#f4f2ec` "Chalk", accent + "gold = leader"; **body/UI font BF1 resolved = 3-role hybrid** Bebas/DM Sans/Inter Tight). Scope brought forward to ship the real brand **before TdF**. **Asset masters + raster favicon set shipped:** outlined SVG wordmark + both favicon forms in `frontend/public/brand/`, production favicon swapped, raster set (favicon.ico/apple-touch/manifest) live via `scripts/brand-export.mjs` (see [`ASSETS.md`](ASSETS.md)). OG-image refresh + on-light wordmark accent fix for the Chalk canvas done this session. Remaining: open Phase 2 color sub-decisions (surfaces/semantic/text-3 AA/P3b), remaining social+Discord assets, then Phase 4 UI integration. Live state: [`DECISIONS_LOG.md`](DECISIONS_LOG.md).
 
 ---
 
@@ -12,8 +12,8 @@
 
 The earlier plan and `DECISIONS_LOG.md` used "Phase 2" for two different things (asset production vs color palette). Authoritative phases from here:
 
-1. **Phase 1 · Foundation decisions** (wordmark, favicon, fonts). Locked + re-validated GO 2026-06-04. Open sub-decision: body font (BF1).
-2. **Phase 2 · Color decisions** (dark canvas locked `#0e0f15`; light canvas active; accent; surfaces; semantic). Contrast-gated via `scripts/brand-contrast-check.mjs` (WCAG AA).
+1. **Phase 1 · Foundation decisions** (wordmark, favicon, fonts). Locked + re-validated GO 2026-06-04. Body font (BF1) resolved = 3-role hybrid (Bebas/DM Sans/Inter Tight). **Complete.**
+2. **Phase 2 · Color decisions** (dark canvas locked `#0e0f15`; light canvas locked `#f4f2ec` "Chalk"; accent locked; **open: surfaces, semantic, dark `text-3` AA fix, P3b race-night navy**). Contrast-gated via `scripts/brand-contrast-check.mjs` (WCAG AA).
 3. **Phase 3 · Asset production** (master SVGs with outlined text, favicon set, Discord/social/OG) via `scripts/brand-export.mjs`.
 4. **Phase 4 · Design system + UI integration** (tokens in `index.css`/`tailwind.config.js`, type scale, components, apply to live app, light/dark parity, Playwright regression, self-hosted fonts).
 5. **Phase 5 · Documentation** (`BRAND_GUIDELINES.md` + PDF, future-decision framework).

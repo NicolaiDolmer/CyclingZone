@@ -10,7 +10,7 @@ All text is **outlined to SVG `<path>`** — no web-font dependency, so the mark
 | File | Form | Spec source | Use |
 |---|---|---|---|
 | `wordmark-ondark.svg` | Wordmark | C3 | Yellow `#e8c547` text + `#ffd966` twin lines. Place on dark canvas `#0e0f15`. |
-| `wordmark-onlight.svg` | Wordmark | C3 | Navy `#0e0f15` text + `#e8c547` accent lines. Place on light canvas. |
+| `wordmark-onlight.svg` | Wordmark | C3 | Navy `#0e0f15` text + `#a07800` deep-gold accent lines (WCAG-safe on the Chalk canvas; bright gold fails as foreground on light). Place on light canvas. |
 | `wordmark-dark-bg.svg` | Wordmark | C3 + P1 | Same as on-dark but with the navy canvas baked in (standalone use). |
 | `wordmark-mono-black.svg` | Wordmark | C3 | All `#0e0f15` (single-colour print / dark-on-light). |
 | `wordmark-mono-white.svg` | Wordmark | C3 | All `#ffffff` (knockout / white-on-dark). |
@@ -27,7 +27,7 @@ All text is **outlined to SVG `<path>`** — no web-font dependency, so the mark
 | Yellow | `#e8c547` | Accent / mark background |
 | Accent-bright | `#ffd966` | Wordmark twin lines on dark |
 
-Light-mode canvas (P2) is **not yet locked** — awaiting the A/B/C/D pick in `logo-explorations.html`. The on-light wordmark therefore uses navy text + yellow accent lines (works on candidates B/C/D; candidate A "newsprint" would instead use navy lines).
+Light-mode canvas (P2) **locked 2026-06-04 = E "Chalk" `#f4f2ec`** (surface ladder: card `#fcfbf7`, elevated `#ffffff`). The on-light wordmark uses navy `#0e0f15` text + deep-gold `#a07800` accent lines — bright gold `#e8c547` fails WCAG AA as a foreground on any light canvas (1.3–1.6:1), so on Chalk the lines/foreground accent are navy or deep-gold; bright gold is reserved for fills + the "gold = leader" signal.
 
 ## Fonts
 
@@ -52,6 +52,6 @@ The generator script (`gen_brand.py`) is kept out of the repo (throwaway tooling
 ## Follow-ups (not in this slice)
 
 - **PNG / `.ico` raster set** — DONE 2026-06-04 via `scripts/brand-export.mjs` (sharp + png-to-ico, reconciled onto main in #1036). Shipped: `frontend/public/favicon.ico` (CZ monogram 16/32/48), `apple-touch-icon.png` (stacked 180), `brand/icon-192.png` + `brand/icon-512.png` (stacked, for PWA manifest / Discord / social). Wired into `index.html` (`alternate icon` + `apple-touch-icon`).
-- **OG-image refresh** — `frontend/public/og-cycling-zone.svg` still uses `<text font-family="DM Sans">` + an old "C" mark. Social scrapers rasterise SVG **without** loading Google Fonts, so the card currently renders in a fallback font in the wild. Refresh with the outlined wordmark + F1a mark (keep existing copy). Higher value pre-launch.
+- **OG-image refresh** — DONE 2026-06-04. `frontend/public/og-cycling-zone.svg` now embeds the outlined F1a stacked mark + the outlined Bebas wordmark (with twin lines) instead of the old `<text font-family="DM Sans">` "C". Headline uses Chalk `#f4f2ec` on the navy canvas; fairness-promise copy kept. Headline/eyebrow body copy still uses `<text font-family="DM Sans">` — acceptable since scrapers fall back to a near-identical geometric sans for prose, and the load-bearing brand marks (wordmark + stacked) are outlined. If pixel-exact prose is wanted later, outline the headline too.
 - **Discord server icon + banner, social avatars** — derive from `favicon-stacked.svg`; mostly export/cropping once a rasteriser is available.
 - **Site-font integration (Phase 4)** — the app currently loads **DM Sans**, not the locked Bebas Neue + Inter Tight sibling system. Applying the brand fonts to the running UI is Phase 4 (UI Integration), with Playwright snapshot regression — separate from this asset slice.

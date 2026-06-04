@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.74",
+    date: "2026-06-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Brand",
+        items: [
+          "EN · The preview image shown when you share Cycling Zone on social media or Discord now uses the real brand logo and wordmark instead of an old placeholder mark, so a shared link looks like the actual product. Refs #481.",
+          "DA · Forhåndsvisnings-billedet, der vises når du deler Cycling Zone på sociale medier eller Discord, bruger nu det rigtige brand-logo og wordmark i stedet for et gammelt placeholder-mærke, så et delt link ligner det faktiske produkt. Refs #481.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.73",
     date: "2026-06-04",
     label: "Beta",
