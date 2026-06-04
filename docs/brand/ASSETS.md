@@ -51,7 +51,7 @@ The generator script (`gen_brand.py`) is kept out of the repo (throwaway tooling
 
 ## Follow-ups (not in this slice)
 
-- **PNG / `.ico` raster set** (16/32/180 apple-touch, 512 Discord PNG) — needs an SVG rasteriser (resvg / sharp / rsvg-convert); none available in this environment. The outlined `favicon.svg` already covers all modern browsers.
+- **PNG / `.ico` raster set** — DONE 2026-06-04 via `scripts/brand-export.mjs` (sharp + png-to-ico, reconciled onto main in #1036). Shipped: `frontend/public/favicon.ico` (CZ monogram 16/32/48), `apple-touch-icon.png` (stacked 180), `brand/icon-192.png` + `brand/icon-512.png` (stacked, for PWA manifest / Discord / social). Wired into `index.html` (`alternate icon` + `apple-touch-icon`).
 - **OG-image refresh** — `frontend/public/og-cycling-zone.svg` still uses `<text font-family="DM Sans">` + an old "C" mark. Social scrapers rasterise SVG **without** loading Google Fonts, so the card currently renders in a fallback font in the wild. Refresh with the outlined wordmark + F1a mark (keep existing copy). Higher value pre-launch.
 - **Discord server icon + banner, social avatars** — derive from `favicon-stacked.svg`; mostly export/cropping once a rasteriser is available.
 - **Site-font integration (Phase 4)** — the app currently loads **DM Sans**, not the locked Bebas Neue + Inter Tight sibling system. Applying the brand fonts to the running UI is Phase 4 (UI Integration), with Playwright snapshot regression — separate from this asset slice.
