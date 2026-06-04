@@ -24,6 +24,8 @@
 
 **Accent (P3): effectively locked** = gold `#e8c547` (+ bright `#ffd966` in dark). Light-mode foreground accent = navy `#1a1f38` or deep-gold `#a07800`; gold reserved for fills + the leader signal. Remaining color/token work (Phase 2/3): surface ladders, semantic colors, the dark `text-3` fix.
 
+**Phase 4 UI micro-interactions (liked, queued 2026-06-04):** From the `phase1-revalidation.html` sidebar mockup, Nicolai liked (1) the **gold dot/bullet** by each nav item (active = solid gold), and (2) **on hover** of a nav item, animating in the **short accent-dash** from the wordmark's twin-lines as the hover indicator. Build both into the real sidebar nav component in Phase 4.
+
 **Open color decisions to close next** (user wants a recap + to discuss): **P2** light-mode canvas (4 candidates in `logo-explorations.html`), **P3** accent refinement, **P3b** race-night navy in light mode, **P4** surfaces, **P5** semantic colors. Dark canvas `#0e0f15` is the only canvas locked so far.
 
 ---
