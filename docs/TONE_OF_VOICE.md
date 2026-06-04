@@ -1,4 +1,4 @@
-# Tone of voice — CyclingZone player-facing copy
+# Tone of voice — Cycling Zone player-facing copy
 
 > **Established:** 2026-05-18 (tone session efter PR #475 PatchNotes overreach + #366 blokering)
 > **Owner:** Nicolai Dolmer Mikkelsen (founder)
@@ -93,7 +93,7 @@ Brug ikke `Founder Supporter` som samlet navn. Hvis et teknisk felt eller en eks
 
 > Hey, I want to share something I've been thinking about.
 >
-> CyclingZone has been free since the start, and it always will be. But I'm trying to figure out if there's a fair way to make this sustainable long-term, without making the game pay-to-win.
+> Cycling Zone has been free since the start, and it always will be. But I'm trying to figure out if there's a fair way to make this sustainable long-term, without making the game pay-to-win.
 >
 > The promise I want to test is simple: **the game must be fair for everyone. You cannot pay for better riders, faster training, or better results.** Premium, if it exists, would be for things like analytics, identity, and supporting development. Never for advantages.
 >
@@ -105,7 +105,7 @@ Brug ikke `Founder Supporter` som samlet navn. Hvis et teknisk felt eller en eks
 
 > Hej, jeg vil gerne dele noget jeg har tænkt på.
 >
-> CyclingZone har været gratis siden starten, og det vil det altid være. Men jeg prøver at finde ud af, om der er en fair måde at gøre det her bæredygtigt på lang sigt, uden at spillet bliver pay-to-win.
+> Cycling Zone har været gratis siden starten, og det vil det altid være. Men jeg prøver at finde ud af, om der er en fair måde at gøre det her bæredygtigt på lang sigt, uden at spillet bliver pay-to-win.
 >
 > Løftet jeg vil teste er enkelt: **spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater.** Premium, hvis det kommer, ville være for ting som analyse-værktøjer, identitet, og at bakke udviklingen op. Aldrig for fordele.
 >
