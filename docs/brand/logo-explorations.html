@@ -593,6 +593,127 @@
     font-size: 12px;
     color: var(--accent-bright);
   }
+
+  /* ============================================================
+     PHASE 2 COLOR SUB-DECISIONS (Agent A prep, 2026-06-04)
+     P2 light canvas now LOCKED = Chalk #f4f2ec. These four
+     sections prep the OPEN sub-decisions for the owner to pick.
+     ============================================================ */
+  .p2sub {
+    margin-top: 96px;
+    border-top: 2px solid var(--accent);
+    padding-top: 8px;
+  }
+  .p2sub-banner {
+    margin-top: 24px;
+    background: linear-gradient(180deg, rgba(232,197,71,0.10), rgba(232,197,71,0.03));
+    border: 1px solid rgba(232,197,71,0.3);
+    border-radius: 16px;
+    padding: 26px 30px;
+  }
+  .p2sub-banner h2 {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    margin-bottom: 10px;
+  }
+  .p2sub-banner p { color: var(--text-2); font-size: 14px; line-height: 1.6; max-width: 880px; }
+  .p2sub-banner code {
+    font-family: 'Space Grotesk', monospace; color: var(--accent);
+    background: rgba(255,255,255,0.04); padding: 1px 6px; border-radius: 4px; font-size: 12px;
+  }
+  .locked-pill {
+    display: inline-block; margin-left: 8px; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase; color: #0e0f15;
+    background: var(--accent); padding: 2px 8px; border-radius: 999px; vertical-align: middle;
+  }
+
+  .dsec { margin-top: 64px; }
+  .dsec-eyebrow {
+    color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: 0.18em;
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .dsec-title { font-size: 24px; font-weight: 800; letter-spacing: -0.015em; margin-bottom: 8px; }
+  .dsec-deck { color: var(--text-2); font-size: 14px; max-width: 860px; margin-bottom: 24px; line-height: 1.6; }
+  .dsec-deck code {
+    font-family: 'Space Grotesk', monospace; color: var(--accent-bright);
+    background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; font-size: 12px;
+  }
+  .varies {
+    display: inline-block; font-size: 11px; font-weight: 600; color: var(--text-3);
+    border: 1px dashed var(--border); border-radius: 6px; padding: 3px 9px; margin-bottom: 18px;
+    font-family: 'Space Grotesk', monospace;
+  }
+  .varies b { color: var(--accent); }
+
+  /* contrast badge */
+  .cbadge {
+    display: inline-flex; align-items: center; gap: 5px; font-family: 'Space Grotesk', monospace;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.03em; padding: 3px 8px; border-radius: 6px;
+  }
+  .cbadge.pass { background: rgba(74,222,128,0.14); color: #6ee79b; border: 1px solid rgba(74,222,128,0.35); }
+  .cbadge.fail { background: rgba(248,113,113,0.14); color: #fb8d8d; border: 1px solid rgba(248,113,113,0.4); }
+  .cbadge.note { background: rgba(157,160,179,0.14); color: var(--text-2); border: 1px solid var(--border); }
+  /* on-light variant for badges placed over a light mockup */
+  .cbadge.on-light.pass { background: rgba(21,119,47,0.14); color: #0f5c23; border-color: rgba(21,119,47,0.4); }
+  .cbadge.on-light.fail { background: rgba(185,28,28,0.12); color: #9a1414; border-color: rgba(185,28,28,0.4); }
+  .cbadge.on-light.note { background: rgba(0,0,0,0.05); color: rgba(14,15,21,0.6); border-color: rgba(14,15,21,0.15); }
+
+  /* candidate grid */
+  .cand-grid { display: grid; grid-template-columns: 1fr; gap: 22px; }
+  @media (min-width: 900px) { .cand-grid.cols-2 { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1100px) { .cand-grid.cols-3 { grid-template-columns: repeat(3, 1fr); } }
+  .cand {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .cand-head {
+    padding: 14px 18px; border-bottom: 1px solid var(--border-soft);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .cand-name { font-size: 14px; font-weight: 700; color: var(--text-1); }
+  .cand-name .sub { font-family: 'Space Grotesk', monospace; font-size: 10px; color: var(--text-3); font-weight: 500; display: block; margin-top: 2px; }
+  .cand-incumbent { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
+  .cand-body { padding: 18px; }
+
+  /* stacked surface mockup (D-SURF) */
+  .stack { border-radius: 12px; padding: 20px; }
+  .stack-card { border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
+  .stack-panel { border-radius: 8px; padding: 14px; margin-top: 12px; }
+  .stack-lbl { font-family: 'Space Grotesk', monospace; font-size: 9px; letter-spacing: 0.05em; opacity: 0.7; display: block; margin-bottom: 4px; }
+  .stack-line { height: 7px; border-radius: 4px; margin-top: 7px; }
+  .surf-meta { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .surf-chip { font-family: 'Space Grotesk', monospace; font-size: 9px; padding: 3px 7px; border-radius: 5px; border: 1px solid var(--border); color: var(--text-2); }
+  .surf-chip b { color: var(--text-1); }
+
+  /* semantic chips + alert (D-SEM) */
+  .sem-canvas { border-radius: 12px; padding: 18px; }
+  .sem-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .sem-chip { font-family: 'Space Grotesk', monospace; font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 7px; display: flex; align-items: center; gap: 6px; }
+  .sem-chip .hexlbl { font-size: 9px; font-weight: 500; opacity: 0.75; }
+  .sem-alert { border-radius: 9px; padding: 11px 14px; font-size: 12px; line-height: 1.4; display: flex; gap: 9px; align-items: flex-start; }
+  .sem-alert .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .sem-badge-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .sem-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+  .gold-ref { margin-top: 14px; display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--text-3); }
+  .gold-swatch { width: 22px; height: 22px; border-radius: 5px; background: #e8c547; border: 1px solid rgba(0,0,0,0.15); }
+
+  /* text-3 samples (D-TEXT3) */
+  .t3-stage { border-radius: 12px; padding: 22px; }
+  .t3-stage .h { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .t3-stage .b2 { font-size: 13px; margin-bottom: 8px; }
+  .t3-stage .b3 { font-size: 13px; line-height: 1.5; }
+  .t3-ladder { margin-top: 14px; display: flex; flex-direction: column; gap: 3px; }
+  .t3-ladder span { font-family: 'Space Grotesk', monospace; font-size: 11px; }
+
+  /* P3B navy fg (D-P3B) */
+  .p3b-stage { border-radius: 12px; overflow: hidden; }
+  .p3b-pad { padding: 22px 22px 18px; }
+  .p3b-stage .head { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 0.04em; line-height: 1; margin-bottom: 10px; }
+  .p3b-stage .body { font-size: 13px; line-height: 1.55; max-width: 360px; }
+  .p3b-band { padding: 16px 22px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .p3b-band .bt { font-family: 'Inter Tight', sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .p3b-band .bp { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 0.03em; }
 </style>
 </head>
 <body>
@@ -1048,6 +1169,354 @@
       <h3>Pick one, or push back</h3>
       <p>Reply with <code>A</code>, <code>B</code>, <code>C</code>, or <code>D</code>. Or push back: "still not far enough out of the box, give me 4 more". I have more concept directions in reserve: chamois leather, alpine mist, asphalt rain, vintage wool jersey, jacquard pink (Giro), L'Équipe salmon paper.</p>
       <p>Once locked, P3 starts on accent yellow refinement, and P3b on whether race-night #0a1024 becomes the brand foreground in light mode.</p>
+    </div>
+
+  </section>
+
+  <!-- ============================================================
+       PHASE 2 COLOR SUB-DECISIONS (prep-only — owner decides)
+       ============================================================ -->
+  <section class="p2sub">
+    <div class="p2sub-banner">
+      <h2>Phase 2 color sub-decisions <span class="locked-pill">prep only</span></h2>
+      <p>
+        Above is the P2 light-canvas exploration history (now resolved: <strong style="color:var(--text-1)">E "Chalk" <code>#f4f2ec</code></strong>, card <code>#fcfbf7</code>, elevated <code>#ffffff</code> — kept here for context). The four sections below prep the still-<strong style="color:var(--text-1)">open</strong> color sub-decisions on top of the locked Chalk + dark <code>#0e0f15</code> canvases. Each section varies <strong style="color:var(--text-1)">exactly one thing</strong>, shows candidates side-by-side, and carries an inline WCAG contrast badge per candidate (from <code>scripts/brand-contrast-check.mjs</code>). <strong style="color:var(--accent-bright)">Nothing here is decided — this is a picker.</strong>
+      </p>
+    </div>
+
+    <!-- ===================== D-SURF ===================== -->
+    <div class="dsec">
+      <div class="dsec-eyebrow">D-SURF · Surface elevation ladder</div>
+      <div class="dsec-title">How deep should the elevation steps go?</div>
+      <p class="dsec-deck">A panel on a card on the canvas — so you feel the steps, not just see swatches. Two ladders per canvas: the <b>incumbent</b> (current live tokens) and a <b>wider-step</b> alternative. Steps verified as UI/graphic separation (WCAG 3.0); body text on every surface stays AAA.</p>
+      <span class="varies">VARIES: <b>elevation step size only</b> · canvas + text + accent locked</span>
+
+      <h3 style="font-size:14px;color:var(--text-3);margin:18px 0 12px;letter-spacing:0.04em;text-transform:uppercase;">Dark · #0e0f15</h3>
+      <div class="cand-grid cols-2">
+        <!-- DARK incumbent -->
+        <div class="cand">
+          <div class="cand-head">
+            <div class="cand-name">Incumbent ladder<span class="sub">canvas · card #161824 · elev #1f2233</span></div>
+            <span class="cand-incumbent">Incumbent</span>
+          </div>
+          <div class="cand-body">
+            <div class="stack" style="background:#0e0f15;border:1px solid #2a2d3a;">
+              <span class="stack-lbl" style="color:#9da0b3;">CANVAS #0e0f15</span>
+              <div class="stack-card" style="background:#161824;">
+                <span class="stack-lbl" style="color:#9da0b3;">CARD #161824</span>
+                <div style="color:#ededf2;font-size:13px;font-weight:600;">Race-Day Strategy</div>
+                <div class="stack-panel" style="background:#1f2233;">
+                  <span class="stack-lbl" style="color:#9da0b3;">ELEVATED PANEL #1f2233</span>
+                  <div style="color:#ededf2;font-size:12px;">Sprinter rotation</div>
+                  <div class="stack-line" style="background:#272a3d;width:80%;"></div>
+                  <div class="stack-line" style="background:#272a3d;width:55%;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="surf-meta">
+              <span class="surf-chip"><b>#0e0f15</b> canvas</span>
+              <span class="surf-chip"><b>#161824</b> card · <span class="cbadge pass" style="padding:1px 5px;">15.1:1</span></span>
+              <span class="surf-chip"><b>#1f2233</b> elev · <span class="cbadge pass" style="padding:1px 5px;">13.5:1</span></span>
+              <span class="surf-chip"><b>#272a3d</b> overlay</span>
+            </div>
+            <p style="font-size:12px;color:var(--text-2);margin-top:12px;line-height:1.5;">Tight, restrained steps (~Whoop). Subtle separation; relies on borders for definition. Lowest risk, already shipped.</p>
+          </div>
+        </div>
+        <!-- DARK alt -->
+        <div class="cand">
+          <div class="cand-head">
+            <div class="cand-name">Wider-step ladder<span class="sub">canvas · card #1a1d2b · elev #242838</span></div>
+          </div>
+          <div class="cand-body">
+            <div class="stack" style="background:#0e0f15;border:1px solid #2a2d3a;">
+              <span class="stack-lbl" style="color:#9da0b3;">CANVAS #0e0f15</span>
+              <div class="stack-card" style="background:#1a1d2b;">
+                <span class="stack-lbl" style="color:#9da0b3;">CARD #1a1d2b</span>
+                <div style="color:#ededf2;font-size:13px;font-weight:600;">Race-Day Strategy</div>
+                <div class="stack-panel" style="background:#242838;">
+                  <span class="stack-lbl" style="color:#9da0b3;">ELEVATED PANEL #242838</span>
+                  <div style="color:#ededf2;font-size:12px;">Sprinter rotation</div>
+                  <div class="stack-line" style="background:#2e3346;width:80%;"></div>
+                  <div class="stack-line" style="background:#2e3346;width:55%;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="surf-meta">
+              <span class="surf-chip"><b>#0e0f15</b> canvas</span>
+              <span class="surf-chip"><b>#1a1d2b</b> card · <span class="cbadge pass" style="padding:1px 5px;">14.4:1</span></span>
+              <span class="surf-chip"><b>#242838</b> elev · <span class="cbadge pass" style="padding:1px 5px;">12.5:1</span></span>
+              <span class="surf-chip"><b>#2e3346</b> overlay</span>
+            </div>
+            <p style="font-size:12px;color:var(--text-2);margin-top:12px;line-height:1.5;">More felt depth without borders — elevation reads on its own. Slightly more "layered app" feel; risk = can drift muddy if pushed further.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="font-size:14px;color:var(--text-3);margin:24px 0 12px;letter-spacing:0.04em;text-transform:uppercase;">Light · Chalk #f4f2ec</h3>
+      <div class="cand-grid cols-2">
+        <!-- CHALK incumbent -->
+        <div class="cand">
+          <div class="cand-head">
+            <div class="cand-name">Incumbent ladder<span class="sub">canvas · card #fcfbf7 · elev #ffffff</span></div>
+            <span class="cand-incumbent">Locked P2</span>
+          </div>
+          <div class="cand-body">
+            <div class="stack" style="background:#f4f2ec;border:1px solid #e5e0d5;">
+              <span class="stack-lbl" style="color:rgba(14,15,21,0.55);">CANVAS #f4f2ec</span>
+              <div class="stack-card" style="background:#fcfbf7;border:1px solid #ece7da;">
+                <span class="stack-lbl" style="color:rgba(14,15,21,0.55);">CARD #fcfbf7</span>
+                <div style="color:#0e0f15;font-size:13px;font-weight:600;">Race-Day Strategy</div>
+                <div class="stack-panel" style="background:#ffffff;border:1px solid #efe9db;">
+                  <span class="stack-lbl" style="color:rgba(14,15,21,0.55);">ELEVATED PANEL #ffffff</span>
+                  <div style="color:#0e0f15;font-size:12px;">Sprinter rotation</div>
+                  <div class="stack-line" style="background:#ece7da;width:80%;"></div>
+                  <div class="stack-line" style="background:#ece7da;width:55%;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="surf-meta">
+              <span class="surf-chip"><b>#f4f2ec</b> canvas</span>
+              <span class="surf-chip"><b>#fcfbf7</b> card · <span class="cbadge pass" style="padding:1px 5px;">18.5:1</span></span>
+              <span class="surf-chip"><b>#ffffff</b> elev · <span class="cbadge pass" style="padding:1px 5px;">19.1:1</span></span>
+            </div>
+            <p style="font-size:12px;color:var(--text-2);margin-top:12px;line-height:1.5;">Warm-to-neutral climb: canvas warm, card warmer-white, elevated pure white = "lift = clean". Matches the locked Chalk spec exactly.</p>
+          </div>
+        </div>
+        <!-- CHALK alt -->
+        <div class="cand">
+          <div class="cand-head">
+            <div class="cand-name">Warm-consistent ladder<span class="sub">canvas · card #faf7ef · elev #fffdf8</span></div>
+          </div>
+          <div class="cand-body">
+            <div class="stack" style="background:#f4f2ec;border:1px solid #e5e0d5;">
+              <span class="stack-lbl" style="color:rgba(14,15,21,0.55);">CANVAS #f4f2ec</span>
+              <div class="stack-card" style="background:#faf7ef;border:1px solid #ece7da;">
+                <span class="stack-lbl" style="color:rgba(14,15,21,0.55);">CARD #faf7ef</span>
+                <div style="color:#0e0f15;font-size:13px;font-weight:600;">Race-Day Strategy</div>
+                <div class="stack-panel" style="background:#fffdf8;border:1px solid #f0ebdd;">
+                  <span class="stack-lbl" style="color:rgba(14,15,21,0.55);">ELEVATED PANEL #fffdf8</span>
+                  <div style="color:#0e0f15;font-size:12px;">Sprinter rotation</div>
+                  <div class="stack-line" style="background:#ece7da;width:80%;"></div>
+                  <div class="stack-line" style="background:#ece7da;width:55%;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="surf-meta">
+              <span class="surf-chip"><b>#f4f2ec</b> canvas</span>
+              <span class="surf-chip"><b>#faf7ef</b> card · <span class="cbadge pass" style="padding:1px 5px;">17.9:1</span></span>
+              <span class="surf-chip"><b>#fffdf8</b> elev · <span class="cbadge pass" style="padding:1px 5px;">18.8:1</span></span>
+            </div>
+            <p style="font-size:12px;color:var(--text-2);margin-top:12px;line-height:1.5;">Keeps warmth all the way up — never hits clinical pure-white. More cohesive "paper" feel; cost = less crisp lift on the top surface.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== D-SEM ===================== -->
+    <div class="dsec">
+      <div class="dsec-eyebrow">D-SEM · Semantic colors</div>
+      <div class="dsec-title">success / error / warning / info — without fighting gold</div>
+      <p class="dsec-deck">Two candidate sets, on <b>both</b> canvases, as chips + a sample alert + badges. The constraint that bites: <b>warning must not collide with brand gold <code>#e8c547</code></b>. Set 1's dark warning <code>#fbbf24</code> is visually the same hue as gold (1.0:1 separation) — Set 2 shifts warning toward orange to break the clash. All values shown pass AA as text on their canvas.</p>
+      <span class="varies">VARIES: <b>semantic hue set only</b> · canvas + text + accent locked</span>
+
+      <div class="cand-grid cols-2">
+        <!-- SET 1 -->
+        <div class="cand">
+          <div class="cand-head"><div class="cand-name">Set 1 · Current (AA-corrected)<span class="sub">closest to live tokens</span></div><span class="cand-incumbent">Incumbent</span></div>
+          <div class="cand-body">
+            <!-- dark -->
+            <div class="sem-canvas" style="background:#0e0f15;border:1px solid #2a2d3a;">
+              <div class="sem-row">
+                <span class="sem-chip" style="background:rgba(74,222,128,0.14);color:#4ade80;">success <span class="hexlbl">#4ade80 · 11.0:1</span></span>
+                <span class="sem-chip" style="background:rgba(248,113,113,0.14);color:#f87171;">error <span class="hexlbl">#f87171 · 6.9:1</span></span>
+                <span class="sem-chip" style="background:rgba(251,191,36,0.14);color:#fbbf24;">warning <span class="hexlbl">#fbbf24 · 11.5:1</span></span>
+                <span class="sem-chip" style="background:rgba(96,165,250,0.14);color:#60a5fa;">info <span class="hexlbl">#60a5fa · 7.5:1</span></span>
+              </div>
+              <div class="sem-alert" style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);color:#ededf2;">
+                <span class="dot" style="background:#fbbf24;"></span>
+                <span><strong style="color:#fbbf24;">Warning:</strong> transfer window closes in 12 min.</span>
+              </div>
+              <div class="gold-ref"><span class="gold-swatch"></span><span><b style="color:#fbbf24;">Gold collision:</b> warning #fbbf24 vs accent #e8c547 = <span class="cbadge fail" style="padding:2px 6px;">1.0:1 same hue</span></span></div>
+            </div>
+            <!-- light -->
+            <div class="sem-canvas" style="background:#f4f2ec;border:1px solid #e5e0d5;margin-top:14px;">
+              <div class="sem-row">
+                <span class="sem-chip" style="background:rgba(21,119,47,0.1);color:#15772f;">success <span class="hexlbl">#15772f · 5.1:1</span></span>
+                <span class="sem-chip" style="background:rgba(185,28,28,0.1);color:#b91c1c;">error <span class="hexlbl">#b91c1c · 5.8:1</span></span>
+                <span class="sem-chip" style="background:rgba(161,78,8,0.1);color:#a14e08;">warning <span class="hexlbl">#a14e08 · 5.2:1</span></span>
+                <span class="sem-chip" style="background:rgba(29,78,216,0.1);color:#1d4ed8;">info <span class="hexlbl">#1d4ed8 · 6.0:1</span></span>
+              </div>
+              <div class="sem-alert" style="background:rgba(161,78,8,0.08);border:1px solid rgba(161,78,8,0.3);color:#0e0f15;">
+                <span class="dot" style="background:#a14e08;"></span>
+                <span><strong style="color:#a14e08;">Warning:</strong> transfer window closes in 12 min.</span>
+              </div>
+              <div class="sem-badge-row">
+                <span class="sem-badge" style="background:#15772f;color:#fff;">WON</span>
+                <span class="sem-badge" style="background:#b91c1c;color:#fff;">DNF</span>
+                <span class="sem-badge" style="background:#a14e08;color:#fff;">RISK</span>
+              </div>
+            </div>
+            <p style="font-size:12px;color:var(--text-2);margin-top:12px;line-height:1.5;"><strong style="color:#fb8d8d;">Cost:</strong> dark warning is the same hue as the brand gold — in a gold-accented UI, "warning" and "leader/accent" become visually indistinguishable. On light, warning needed deepening (<code style="font-size:11px;">#b45309→#a14e08</code>) to clear AA.</p>
+          </div>
+        </div>
+        <!-- SET 2 -->
+        <div class="cand">
+          <div class="cand-head"><div class="cand-name">Set 2 · Warning shifted off gold<span class="sub">amber→orange separation</span></div></div>
+          <div class="cand-body">
+            <!-- dark -->
+            <div class="sem-canvas" style="background:#0e0f15;border:1px solid #2a2d3a;">
+              <div class="sem-row">
+                <span class="sem-chip" style="background:rgba(95,217,138,0.14);color:#5fd98a;">success <span class="hexlbl">#5fd98a · 10.7:1</span></span>
+                <span class="sem-chip" style="background:rgba(251,132,132,0.14);color:#fb8484;">error <span class="hexlbl">#fb8484 · 8.0:1</span></span>
+                <span class="sem-chip" style="background:rgba(240,168,48,0.14);color:#f0a830;">warning <span class="hexlbl">#f0a830 · 9.4:1</span></span>
+                <span class="sem-chip" style="background:rgba(122,176,251,0.14);color:#7ab0fb;">info <span class="hexlbl">#7ab0fb · 8.6:1</span></span>
+              </div>
+              <div class="sem-alert" style="background:rgba(240,168,48,0.12);border:1px solid rgba(240,168,48,0.3);color:#ededf2;">
+                <span class="dot" style="background:#f0a830;"></span>
+                <span><strong style="color:#f0a830;">Warning:</strong> transfer window closes in 12 min.</span>
+              </div>
+              <div class="gold-ref"><span class="gold-swatch"></span><span><b style="color:#f0a830;">Gold separation:</b> warning #f0a830 is amber-orange, reads distinct from #e8c547 gold.</span></div>
+            </div>
+            <!-- light -->
+            <div class="sem-canvas" style="background:#f4f2ec;border:1px solid #e5e0d5;margin-top:14px;">
+              <div class="sem-row">
+                <span class="sem-chip" style="background:rgba(21,114,47,0.1);color:#15722f;">success <span class="hexlbl">#15722f · 5.4:1</span></span>
+                <span class="sem-chip" style="background:rgba(168,30,30,0.1);color:#a81e1e;">error <span class="hexlbl">#a81e1e · 6.5:1</span></span>
+                <span class="sem-chip" style="background:rgba(154,91,0,0.1);color:#9a5b00;">warning <span class="hexlbl">#9a5b00 · 4.9:1</span></span>
+                <span class="sem-chip" style="background:rgba(26,71,192,0.1);color:#1a47c0;">info <span class="hexlbl">#1a47c0 · 6.9:1</span></span>
+              </div>
+              <div class="sem-alert" style="background:rgba(154,91,0,0.08);border:1px solid rgba(154,91,0,0.3);color:#0e0f15;">
+                <span class="dot" style="background:#9a5b00;"></span>
+                <span><strong style="color:#9a5b00;">Warning:</strong> transfer window closes in 12 min.</span>
+              </div>
+              <div class="sem-badge-row">
+                <span class="sem-badge" style="background:#15722f;color:#fff;">WON</span>
+                <span class="sem-badge" style="background:#a81e1e;color:#fff;">DNF</span>
+                <span class="sem-badge" style="background:#9a5b00;color:#fff;">RISK</span>
+              </div>
+            </div>
+            <p style="font-size:12px;color:var(--text-2);margin-top:12px;line-height:1.5;"><strong style="color:#6ee79b;">Benefit:</strong> warning reads as its own signal, never confused with the gold leader-accent. <strong style="color:var(--text-3);">Cost:</strong> very slightly less "standard traffic-light" familiar; light warning #9a5b00 is a tight pass (4.85:1).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== D-TEXT3 ===================== -->
+    <div class="dsec">
+      <div class="dsec-eyebrow">D-TEXT3 · Dark tertiary text AA fix</div>
+      <div class="dsec-title">Lift the faint tertiary text above AA — but keep it clearly faint</div>
+      <p class="dsec-deck">The incumbent dark <code>text-3 #6b6d7e</code> is <b>3.75:1</b> on <code>#0e0f15</code> — fails AA (need 4.5) for normal text. Three lightened candidates, all passing AA, all still clearly below <code>text-2 #9da0b3</code> (7.4:1) so the faint→muted→body hierarchy holds. Shown as real body-text samples.</p>
+      <span class="varies">VARIES: <b>text-3 lightness only</b> · canvas + text-1/text-2 locked</span>
+
+      <div class="cand-grid cols-2">
+        <!-- incumbent -->
+        <div class="cand">
+          <div class="cand-head"><div class="cand-name">Incumbent #6b6d7e<span class="sub">current live token</span></div><span class="cbadge fail">3.75:1 FAIL</span></div>
+          <div class="cand-body">
+            <div class="t3-stage" style="background:#0e0f15;border:1px solid #2a2d3a;">
+              <div class="h" style="color:#ededf2;">Tour de France · Stage 14</div>
+              <div class="b2" style="color:#9da0b3;">text-2 — Marker: Col du Galibier, 2642 m. Bjergankomst.</div>
+              <div class="b3" style="color:#6b6d7e;">text-3 — Last updated 4 min ago · auto-refresh on · 18 riders tracked. This caption-tier text is where the incumbent fails AA.</div>
+              <div class="t3-ladder">
+                <span style="color:#ededf2;">text-1 #ededf2 — 16.4:1 AAA</span>
+                <span style="color:#9da0b3;">text-2 #9da0b3 — 7.4:1 AAA</span>
+                <span style="color:#6b6d7e;">text-3 #6b6d7e — 3.75:1 FAIL</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- cand 1 -->
+        <div class="cand">
+          <div class="cand-head"><div class="cand-name">Candidate 1 · #7e8194<span class="sub">minimal lift</span></div><span class="cbadge pass">4.97:1 AA</span></div>
+          <div class="cand-body">
+            <div class="t3-stage" style="background:#0e0f15;border:1px solid #2a2d3a;">
+              <div class="h" style="color:#ededf2;">Tour de France · Stage 14</div>
+              <div class="b2" style="color:#9da0b3;">text-2 — Marker: Col du Galibier, 2642 m. Bjergankomst.</div>
+              <div class="b3" style="color:#7e8194;">text-3 — Last updated 4 min ago · auto-refresh on · 18 riders tracked. Smallest lift that clears AA; stays clearly faint.</div>
+              <div class="t3-ladder">
+                <span style="color:#9da0b3;">text-2 #9da0b3 — 7.4:1</span>
+                <span style="color:#7e8194;">text-3 #7e8194 — 4.97:1 AA</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- cand 2 -->
+        <div class="cand">
+          <div class="cand-head"><div class="cand-name">Candidate 2 · #888ba0<span class="sub">comfortable margin</span></div><span class="cbadge pass">5.69:1 AA</span></div>
+          <div class="cand-body">
+            <div class="t3-stage" style="background:#0e0f15;border:1px solid #2a2d3a;">
+              <div class="h" style="color:#ededf2;">Tour de France · Stage 14</div>
+              <div class="b2" style="color:#9da0b3;">text-2 — Marker: Col du Galibier, 2642 m. Bjergankomst.</div>
+              <div class="b3" style="color:#888ba0;">text-3 — Last updated 4 min ago · auto-refresh on · 18 riders tracked. Safe AA margin, still a step below text-2.</div>
+              <div class="t3-ladder">
+                <span style="color:#9da0b3;">text-2 #9da0b3 — 7.4:1</span>
+                <span style="color:#888ba0;">text-3 #888ba0 — 5.69:1 AA</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- cand 3 -->
+        <div class="cand">
+          <div class="cand-head"><div class="cand-name">Candidate 3 · #9396ab<span class="sub">close to text-2</span></div><span class="cbadge pass">6.55:1 AA</span></div>
+          <div class="cand-body">
+            <div class="t3-stage" style="background:#0e0f15;border:1px solid #2a2d3a;">
+              <div class="h" style="color:#ededf2;">Tour de France · Stage 14</div>
+              <div class="b2" style="color:#9da0b3;">text-2 — Marker: Col du Galibier, 2642 m. Bjergankomst.</div>
+              <div class="b3" style="color:#9396ab;">text-3 — Last updated 4 min ago · auto-refresh on · 18 riders tracked. Strong contrast — but note it crowds text-2.</div>
+              <div class="t3-ladder">
+                <span style="color:#9da0b3;">text-2 #9da0b3 — 7.4:1</span>
+                <span style="color:#9396ab;">text-3 #9396ab — 6.55:1 AA</span>
+              </div>
+              <p style="font-size:11px;color:var(--text-3);margin-top:8px;">⚠ Only 0.85:1 below text-2 — the tertiary/muted distinction starts to blur.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== D-P3B ===================== -->
+    <div class="dsec">
+      <div class="dsec-eyebrow">D-P3B · Race-night navy in light mode</div>
+      <div class="dsec-title">Locked navy vs reserved race-night navy as a light-mode foreground</div>
+      <p class="dsec-deck">You reserved race-night <code>#0a1024</code> as a possible light-mode foreground/feature-band color vs the locked dark-canvas navy <code>#0e0f15</code>. Both as foreground on Chalk: headline + body + a feature-band. <b>Contrast is a non-factor</b> — both clear AAA by a mile (17.1 vs 16.9). This is purely a warmth/character call: <code>#0a1024</code> is a cooler, more saturated "night blue"; <code>#0e0f15</code> is near-neutral ink.</p>
+      <span class="varies">VARIES: <b>foreground navy hue only</b> · Chalk canvas + accent locked</span>
+
+      <div class="cand-grid cols-2">
+        <!-- locked navy -->
+        <div class="cand">
+          <div class="cand-head"><div class="cand-name">Locked navy #0e0f15<span class="sub">same as dark canvas — one navy everywhere</span></div><span class="cbadge on-light pass">17.1:1 AAA</span></div>
+          <div class="cand-body">
+            <div class="p3b-stage" style="background:#f4f2ec;border:1px solid #e5e0d5;">
+              <div class="p3b-pad">
+                <div class="head" style="color:#0e0f15;">CYCLING ZONE</div>
+                <div class="body" style="color:#0e0f15;">Draft your team, bid in live auctions, set tactics across a full season. The foreground ink is <b>#0e0f15</b> — the exact navy used for the dark-mode canvas, so the brand runs one navy in both themes.</div>
+              </div>
+              <div class="p3b-band" style="background:#0e0f15;">
+                <span class="bt" style="color:#e8c547;">Maillot jaune · leader</span>
+                <span class="bp" style="color:#e8c547;">49 DKK/mo</span>
+              </div>
+            </div>
+            <p style="font-size:12px;color:var(--text-2);margin-top:12px;line-height:1.5;"><strong style="color:#6ee79b;">Benefit:</strong> single navy token across light + dark = simplest system, zero new color to maintain. <strong style="color:var(--text-3);">Cost:</strong> near-neutral, slightly less "cinematic" than the reserved option.</p>
+          </div>
+        </div>
+        <!-- race-night navy -->
+        <div class="cand">
+          <div class="cand-head"><div class="cand-name">Race-night navy #0a1024<span class="sub">reserved 2026-05-19 — cooler, saturated</span></div><span class="cbadge on-light pass">16.9:1 AAA</span></div>
+          <div class="cand-body">
+            <div class="p3b-stage" style="background:#f4f2ec;border:1px solid #e5e0d5;">
+              <div class="p3b-pad">
+                <div class="head" style="color:#0a1024;">CYCLING ZONE</div>
+                <div class="body" style="color:#0a1024;">Draft your team, bid in live auctions, set tactics across a full season. The foreground ink is <b>#0a1024</b> — a cooler, more saturated "night blue" that reads as a distinct brand-navy, separate from the dark canvas.</div>
+              </div>
+              <div class="p3b-band" style="background:#0a1024;">
+                <span class="bt" style="color:#e8c547;">Maillot jaune · leader</span>
+                <span class="bp" style="color:#e8c547;">49 DKK/mo</span>
+              </div>
+            </div>
+            <p style="font-size:12px;color:var(--text-2);margin-top:12px;line-height:1.5;"><strong style="color:#6ee79b;">Benefit:</strong> more character — the cool night-blue gives light mode its own signature feature-band. <strong style="color:var(--text-3);">Cost:</strong> a second navy token to maintain; the two navies are close enough that mixing them in one view can look like an inconsistency rather than intent.</p>
+          </div>
+        </div>
+      </div>
     </div>
 
   </section>
