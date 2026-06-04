@@ -265,6 +265,13 @@ export default function RiderRankingsPage() {
         <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">◉</p>
           <p>{search ? t("rankings.noResultsFor", { q: search }) : t("rankings.noResults")}</p>
+          {(ownerFilter !== "all" || search) && (
+            <button onClick={() => { setOwnerFilter("all"); setSearch(""); }}
+              className="mt-4 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
+                rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
+              {t("common:controls.clearFilters")}
+            </button>
+          )}
         </div>
       ) : (
         <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">

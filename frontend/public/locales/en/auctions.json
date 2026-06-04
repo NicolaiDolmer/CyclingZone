@@ -160,6 +160,7 @@
   },
   "error": {
     "bidFailed": "The bid could not be placed",
-    "proxyFailed": "Failed to set auto-bid"
+    "proxyFailed": "Failed to set auto-bid",
+    "insufficientBalance": "Bid exceeds your available balance"
   }
 }

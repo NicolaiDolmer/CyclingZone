@@ -19,6 +19,7 @@
   "notePlaceholder": "Note...",
   "addNote": "+ note",
   "startAuction": "Start auktion",
+  "auctionError": "Kunne ikke starte auktionen. Prøv igen.",
   "pagination": "Viser {from}–{to} af {total}",
   "prev": "← Forrige",
   "next": "Næste →",

@@ -65,5 +65,18 @@
     "minutesAgo": "{m}m siden",
     "hoursAgo": "{h}t siden",
     "daysAgo": "{d}d siden"
+  },
+  "controls": {
+    "watchlistAdd": "Tilføj til ønskeliste",
+    "watchlistRemove": "Fjern fra ønskeliste",
+    "compareSelect": "Vælg til sammenligning",
+    "compareRemove": "Fjern fra sammenligning",
+    "compareMax": "Max {max} ryttere kan sammenlignes",
+    "compareButton": "⇄ Sammenlign",
+    "compareSelectedLabel": "valgt",
+    "compareMinHint": "(vælg mindst 2)",
+    "clear": "Ryd",
+    "noFilterResults": "Ingen ryttere matcher dine filtre",
+    "clearFilters": "Ryd alle filtre"
   }
 }

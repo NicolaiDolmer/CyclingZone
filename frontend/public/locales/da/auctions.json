@@ -160,6 +160,7 @@
   },
   "error": {
     "bidFailed": "Buddet kunne ikke placeres",
-    "proxyFailed": "Fejl ved sæt autobud"
+    "proxyFailed": "Fejl ved sæt autobud",
+    "insufficientBalance": "Buddet overstiger din tilgængelige saldo"
   }
 }

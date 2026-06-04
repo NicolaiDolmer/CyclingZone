@@ -8,11 +8,14 @@
  *
  * Stopper event propagation så klik på stjernen ikke trigger row-navigation.
  */
+import { useTranslation } from "react-i18next";
+
 export default function WatchlistStar({ active, onToggle, className = "" }) {
+  const { t } = useTranslation("common");
   return (
     <button
       onClick={e => { e.stopPropagation(); onToggle(); }}
-      title={active ? "Fjern fra ønskeliste" : "Tilføj til ønskeliste"}
+      title={active ? t("controls.watchlistRemove") : t("controls.watchlistAdd")}
       className={`text-lg transition-all hover:scale-110 flex-shrink-0 ${active ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"} ${className}`}
     >
       {active ? "★" : "☆"}
