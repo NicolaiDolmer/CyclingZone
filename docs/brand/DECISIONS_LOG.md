@@ -7,6 +7,19 @@
 
 ---
 
+## 🟢 2026-06-04 — Phase 1 re-validated (GO) + brought forward to pre-TdF
+
+| # | Decision | Value | Confirmed | Source |
+|---|---|---|---|---|
+| **RV1** | Phase 1 foundation re-validation | **GO.** Locked direction (Bebas all-caps wordmark + twin lines, dual-form favicon F1a/F1b, sibling fonts, accent `#e8c547`, dark canvas `#0e0f15`) confirmed in real product context: sidebar, landing, browser tab 16px, Discord, light + dark. | 2026-06-04 | `phase1-revalidation.html` go/no-go; user "Jeg synes det ser godt ud. Du får go." |
+| **SCOPE** | #481 timeline | **Brought forward: ship the real brand to production before TdF.** (Was: defer logo to V2 post-TdF per #671. #671 stays the consistency baseline; #481 now lands on top before launch.) | 2026-06-04 | User: "Ægte brand live før TdF." |
+
+**Spawned sub-decision (pending visual):** **BF1 — body/UI font.** The locked sibling system implies the app body font moves `DM Sans` → `Inter Tight`. User wants a side-by-side before deciding. Comparison: `font-comparison.html`. Options: (a) Inter Tight everywhere (full sibling system), (b) keep DM Sans as body + Inter Tight only for the CZ favicon.
+
+**Open color decisions to close next** (user wants a recap + to discuss): **P2** light-mode canvas (4 candidates in `logo-explorations.html`), **P3** accent refinement, **P3b** race-night navy in light mode, **P4** surfaces, **P5** semantic colors. Dark canvas `#0e0f15` is the only canvas locked so far.
+
+---
+
 ## ✅ Confirmed (immutable unless user revisits)
 
 | # | Decision | Value | Confirmed | Source |
