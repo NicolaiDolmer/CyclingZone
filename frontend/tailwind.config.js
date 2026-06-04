@@ -18,9 +18,24 @@ export default {
         8:  "0.08",
         12: "0.12",
       },
+      fontFamily: {
+        // #481 Phase 4 (PF1): Inter Tight is the de-facto data font. `mono` is
+        // redefined to it so all ~366 existing `font-mono` data sites inherit the
+        // brand workhorse with zero churn; `data` is the explicit alias for new
+        // code. `display` = Bebas wordmark. Each lists its metric-matched Arial
+        // fallback (see index.css @font-face) so the swap is CLS-free.
+        mono:    ['"Inter Tight"', '"Inter Tight Fallback"', "system-ui", "sans-serif"],
+        data:    ['"Inter Tight"', '"Inter Tight Fallback"', "system-ui", "sans-serif"],
+        // Bebas is super-condensed; a normal-width metric fallback can't match it
+        // without grotesque distortion, and the wordmark (2 sidebar sites) drives
+        // no content reflow — so we lean on Impact, a naturally-condensed system
+        // face of similar width, for the brief swap window instead.
+        display: ['"Bebas Neue"', "Impact", '"Arial Narrow"', "sans-serif"],
+      },
       colors: {
         "cz-body":      "var(--bg-body)",
         "cz-card":      "var(--bg-card)",
+        "cz-elevated":  "var(--bg-elevated)",
         "cz-subtle":    "var(--bg-subtle)",
         "cz-border":    "var(--border)",
         "cz-1":         "var(--text-1)",

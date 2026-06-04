@@ -112,7 +112,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
           CZ
         </div>
         <div className="min-w-0">
-          <p className="text-cz-sidebar-1 text-xs font-bold leading-tight">Cycling Zone</p>
+          <p className="text-cz-sidebar-1 text-sm font-display uppercase tracking-wide leading-none">Cycling Zone</p>
           <p className="text-cz-sidebar-3 text-[10px] truncate">{team?.name || "…"}</p>
         </div>
       </button>
@@ -346,7 +346,7 @@ export default function Layout() {
           <button onClick={() => setMobileOpen(true)} className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-xl">☰</button>
           <Link to="/dashboard" aria-label={t("nav.item.dashboard")} className="flex items-center gap-2 rounded hover:opacity-80 transition-opacity">
             <div className="w-6 h-6 bg-cz-accent rounded flex items-center justify-center text-[9px] font-black text-cz-on-accent">CZ</div>
-            <span className="text-cz-sidebar-1 text-sm font-bold">Cycling Zone</span>
+            <span className="text-cz-sidebar-1 text-base font-display uppercase tracking-wide leading-none">Cycling Zone</span>
           </Link>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
