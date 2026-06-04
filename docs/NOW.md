@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer udbetaler sæson 1's præmier** (admin → Økonomi → "Se status" → verificér per-hold-overblik → "Udbetal"). Re-derive + rytterværdi-fix er KØRT + verificeret i prod 3/6 (ryttere med præmie: bonus = eksakt sæson-1-sum, diff 0; sæson 0 fortynder ikke mere). Efter udbetaling: verificér finance + reconciliation, luk #893. Derefter resten af #924/#959-V2/#961. Sidebemærkning: top-UCI-ryttere (Pogacar m.fl.) har 0 sæson-1-resultater → 0 præmie-bonus (korrekt, men data-/import-spørgsmål værd at kigge på).
+> **🎯 Next action:** **Race-engine V1 ([#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676))** = kritisk launch-spor mod 20/6 (~14-16 dage; gater #677 + #959-V2). Stadig ikke påbegyndt. Blokeret af **[#675](https://github.com/NicolaiDolmer/CyclingZone/issues/675)**-ADR (Manus) — bekræft ADR-status, ellers er launch-pathen i fare. ✅ 4/6: præmier udbetalt + point opdateret (ejer) → #893 + #505 lukket; #449 (Discord-DM) bekræftet + lukket; #407 unblocket (CVR registreret).
 >
 > **🤖 Working agent:** Ingen aktiv session.
 >
@@ -18,7 +18,7 @@
 
 ## Standing context (launch-deadline 20. juni)
 
-- **Præmieudbetaling sæson 1 = klar til ejer (3. juni).** Pausen ophæves bevidst af ejer. Audit-epic [#893](https://github.com/NicolaiDolmer/CyclingZone/issues/893) kode-komplet; PR [#998](https://github.com/NicolaiDolmer/CyclingZone/pull/998) (re-derive→rytterværdier + per-hold-overblik) + [#999](https://github.com/NicolaiDolmer/CyclingZone/pull/999) (sæson 0 ud af værdi-gennemsnit) merged + deployet. Re-derive kørt + verificeret. **Resterer: ejer trykker "Udbetal" → så verificeres finance/reconciliation + #893 lukkes.**
+- **Præmieudbetaling sæson 1 = FÆRDIG (4. juni).** Ejer udbetalte + opdaterede point; audit-epic [#893](https://github.com/NicolaiDolmer/CyclingZone/issues/893) + alle under-issues (#894–#898) + race_points-editor #505 lukket. PR #998/#999 merged + deployet.
 - **Sikkerhed:** [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) SUPABASE_SERVICE_KEY-rotation åben · [#929](https://github.com/NicolaiDolmer/CyclingZone/issues/929) leaked-password = dashboard-toggle (ejer).
 - **TdF launch-prep:** [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676) Race Engine V1 (stor risiko) · [#672](https://github.com/NicolaiDolmer/CyclingZone/issues/672) landing page · [#671](https://github.com/NicolaiDolmer/CyclingZone/issues/671) brand · [#864](https://github.com/NicolaiDolmer/CyclingZone/issues/864) UI/UX-audit-fund.
 - **Ejer-verify udestår:** #793/#19/#896 (claude:done) · merge PR #947 (skill-docs) · #669 fiktive-rytter-auktionstest.
