@@ -1,7 +1,7 @@
 # UI navigation & information-architecture — exploration
 
-> **Status:** Exploration / parked. Raised by Nicolai 2026-06-04. Connects to [#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481) Phase 4 (UI Integration) + [#864](https://github.com/NicolaiDolmer/CyclingZone/issues/864) (UX audit). **Likely post-launch** (large layout change; do not bundle into the 2026-06-20 TdF launch).
-> **Purpose:** Capture the considerations so a future UI session can resume with a best-practice working method, not a cold start.
+> **Status:** **Active — PRE-LAUNCH** (decided 2026-06-04: Nicolai wants the full overhaul done before the 2026-06-20 TdF launch). Tracked in [#1027](https://github.com/NicolaiDolmer/CyclingZone/issues/1027). Connects to [#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481) Phase 4 (UI Integration) + [#864](https://github.com/NicolaiDolmer/CyclingZone/issues/864) (UX audit).
+> **Purpose:** Capture the considerations so the UI sessions resume with a best-practice working method, not a cold start.
 
 ## The prompt Nicolai raised
 
@@ -35,13 +35,17 @@ Independent of nav. The whitespace comes from a **max-width content container** 
 
 These two are likely the **higher-impact, lower-risk** win versus the nav restructure, and can ship sooner / independently.
 
-## Sequencing (important)
+## Decided plan (2026-06-04)
 
-The brand **colour palette is not locked yet** (P2 light canvas + P3 accent pending in `logo-explorations.html`). A nav/layout redesign should ride on **locked design-system tokens** so we don't redo it twice. Order:
+All of it before launch — but staged so the big pieces are planned, not improvised:
 
-1. Lock brand palette (P2/P3) → 2. derive design-system tokens (Phase 3) → 3. THEN do nav-IA + page-density redesign (Phase 4) on those tokens.
+- **Track A — Whitespace/density: starts the NEXT session.** Implement the safe, token-light width wins now (data-dense pages reclaim the side-margins). **The filter-rail relocation is NOT implemented unilaterally** — Nicolai wants visual examples + a dedicated discussion session first. The next session may *produce* filter-placement mockups for that discussion, but not decide/build it.
+- **Track B — Top-header upgrade** and **Track C — Nav/sidebar IA restructure**: planned optimally in a **dedicated planning session** (visual options + `AskUserQuestion`) before execution.
+- **Method (Nicolai's requirement):** visual examples + `AskUserQuestion` throughout, enough questions to raise quality, ONE visual decision at a time.
 
-The page-density fixes (full-width table, filter-rail) are token-light and *could* be pulled forward if launch needs them — but the nav restructure should wait for locked tokens.
+## Sequencing / token risk
+
+The brand **colour palette is not locked yet** (P2 light canvas + P3 accent pending in `logo-explorations.html`). Whitespace (Track A) is **structural / token-light** → safe to do now. Heavy *styling* of the header/nav (Track B/C) should ride on **locked design-system tokens** to avoid redoing it twice — consider locking the palette (P2/P3) before B/C styling. Order: A now → (palette-lock) → B/C planned + executed on tokens.
 
 ## Best-practice working method for the UI session (when we get there)
 
