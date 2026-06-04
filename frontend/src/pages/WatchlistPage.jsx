@@ -42,6 +42,7 @@ export default function WatchlistPage() {
   const [noteText, setNoteText] = useState("");
   const [page, setPage] = useState(1);
   const [compareIds, setCompareIds] = useState([]);
+  const [actionError, setActionError] = useState("");
 
   function toggleCompare(riderId) {
     setCompareIds(prev => {
@@ -105,7 +106,11 @@ export default function WatchlistPage() {
         }));
       }
       navigate("/auctions");
-    } else { const d = await res.json(); alert(d.error); }
+    } else {
+      // #864-fund 5: ingen rå backend-fejl via native alert() — vis oversat in-app besked.
+      setActionError(t("auctionError"));
+      setTimeout(() => setActionError(""), 5000);
+    }
   }
 
   const riderFilters = useClientRiderFilters(entries.map(e => e.rider));
@@ -153,6 +158,12 @@ export default function WatchlistPage() {
         </button>
       </div>
 
+      {actionError && (
+        <div role="alert" className="mb-4 px-4 py-2.5 rounded-lg bg-cz-danger/10 border border-cz-danger/30 text-cz-danger text-sm">
+          {actionError}
+        </div>
+      )}
+
       {entries.length === 0 ? (
         <div className="text-center py-20 text-cz-3">
           <p className="text-5xl mb-4">⭐</p>
@@ -197,6 +208,18 @@ export default function WatchlistPage() {
                   </tr>
                 </thead>
                 <tbody>
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={11 + STATS.length} className="px-3 py-12 text-center">
+                        <p className="text-cz-3 text-sm">{t("common:controls.noFilterResults")}</p>
+                        <button onClick={riderFilters.onReset}
+                          className="mt-3 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
+                            rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
+                          {t("common:controls.clearFilters")}
+                        </button>
+                      </td>
+                    </tr>
+                  )}
                   {visible.map(entry => {
                     const r = entry.rider;
                     const isFree = !r.team_id;

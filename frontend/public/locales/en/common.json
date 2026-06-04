@@ -65,5 +65,18 @@
     "minutesAgo": "{m}m ago",
     "hoursAgo": "{h}h ago",
     "daysAgo": "{d}d ago"
+  },
+  "controls": {
+    "watchlistAdd": "Add to watchlist",
+    "watchlistRemove": "Remove from watchlist",
+    "compareSelect": "Select for comparison",
+    "compareRemove": "Remove from comparison",
+    "compareMax": "Max {max} riders can be compared",
+    "compareButton": "⇄ Compare",
+    "compareSelectedLabel": "selected",
+    "compareMinHint": "(select at least 2)",
+    "clear": "Clear",
+    "noFilterResults": "No riders match your filters",
+    "clearFilters": "Clear all filters"
   }
 }

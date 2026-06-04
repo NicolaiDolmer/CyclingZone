@@ -19,6 +19,7 @@
   "notePlaceholder": "Note...",
   "addNote": "+ note",
   "startAuction": "Start auction",
+  "auctionError": "Could not start the auction. Please try again.",
   "pagination": "Showing {from}–{to} of {total}",
   "prev": "← Previous",
   "next": "Next →",

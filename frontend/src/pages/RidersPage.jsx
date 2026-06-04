@@ -133,6 +133,7 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, 
 
 export default function RidersPage() {
   const { t } = useTranslation("riders");
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [riders, setRiders] = useState([]);
@@ -337,7 +338,18 @@ export default function RidersPage() {
                 </tr>
               </thead>
               <tbody>
-                {riders.map(r => (
+                {riders.length === 0 ? (
+                  <tr>
+                    <td colSpan={9 + STATS.length} className="px-3 py-12 text-center">
+                      <p className="text-cz-3 text-sm">{tCommon("controls.noFilterResults")}</p>
+                      <button onClick={onReset}
+                        className="mt-3 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
+                          rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
+                        {tCommon("controls.clearFilters")}
+                      </button>
+                    </td>
+                  </tr>
+                ) : riders.map(r => (
                   <RiderRow key={r.id} rider={r}
                     onSelect={r => navigate(`/riders/${r.id}`)}
                     watchlist={watchlist}

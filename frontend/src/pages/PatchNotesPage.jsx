@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.72",
+    date: "2026-06-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Auctions & lists",
+        items: [
+          "EN · When a bid exceeded your available balance, the auction showed a raw internal text instead of a readable message — it now reads \"Bid exceeds your available balance\". Filtering the Rider Database, Watchlist or Rider Rankings down to zero matches now shows a clear message with a \"Clear all filters\" button instead of a blank table. The watchlist star and compare controls are now translated, and a failed \"Start auction\" no longer shows a raw browser pop-up. Based on click-data from the UI audit. Refs #864, #670.",
+          "DA · Når et bud oversteg din tilgængelige saldo, viste auktionen en rå intern tekst i stedet for en læsbar besked — der står nu \"Buddet overstiger din tilgængelige saldo\". Filtrerer du Rytterdatabasen, Ønskelisten eller Rytterranglisten ned til nul match, vises nu en tydelig besked med en \"Ryd alle filtre\"-knap i stedet for en tom tabel. Ønskeliste-stjernen og sammenlign-knapperne er nu oversat, og en fejlet \"Start auktion\" viser ikke længere en rå browser-popup. Baseret på klikdata fra UI-auditten. Refs #864, #670.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.71",
     date: "2026-06-04",
     label: "Beta",
