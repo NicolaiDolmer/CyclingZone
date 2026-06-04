@@ -1083,7 +1083,7 @@ export default function AuctionsPage() {
   const tickerCount = recentBidEvents.length;
 
   return (
-    <div className="max-w-[1400px] mx-auto">
+    <div className="max-w-full">
       <OnboardingTour pageKey="auctions" steps={auctionsTourSteps} />
       <ConfettiModal
         show={!!celebration}
@@ -1146,7 +1146,7 @@ export default function AuctionsPage() {
       </div>
 
       {!loading && myTeamId && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 max-w-[1600px]">
           <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
             <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.balance")}</p>
             <p className="text-cz-accent-t font-mono font-bold text-sm leading-tight">
@@ -1244,14 +1244,16 @@ export default function AuctionsPage() {
         />
       </div>
 
-      <RiderFilters
-        filters={riderFilters.filters}
-        onChange={riderFilters.onChange}
-        onReset={riderFilters.onReset}
-        showTeamFilter={false}
-        nationalities={riderFilters.nationalities}
-        showAuctionPriceFilter={true}
-      />
+      <div className="max-w-[1600px]">
+        <RiderFilters
+          filters={riderFilters.filters}
+          onChange={riderFilters.onChange}
+          onReset={riderFilters.onReset}
+          showTeamFilter={false}
+          nationalities={riderFilters.nationalities}
+          showAuctionPriceFilter={true}
+        />
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-16" role="status" aria-label={t("auctions:page.loadingAria")}>

@@ -165,7 +165,9 @@ export default function WatchlistPage() {
         </div>
       ) : (
         <>
-          <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange} onReset={riderFilters.onReset} showTeamFilter={false} nationalities={riderFilters.nationalities} />
+          <div className="max-w-[1600px]">
+            <RiderFilters filters={riderFilters.filters} onChange={riderFilters.onChange} onReset={riderFilters.onReset} showTeamFilter={false} nationalities={riderFilters.nationalities} />
+          </div>
 
           {/* Table */}
           <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
