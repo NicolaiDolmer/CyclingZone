@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cycling Zone: brand workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0a0b10; --card:#14161e; --t1:#f5f5f5; --t2:#9aa0aa; --t3:#6b7280; --border:#232732; --gold:#e8c547; --gold-b:#ffd966; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--t1); font-family:'Inter Tight',system-ui,sans-serif; padding:56px 32px 100px; -webkit-font-smoothing:antialiased; }
+  .container { max-width:960px; margin:0 auto; }
+  .wm { font-family:'Bebas Neue',sans-serif; font-size:44px; letter-spacing:2px; color:var(--gold); line-height:1; }
+  .wm-lines { width:240px; height:0; margin:8px 0 0; border-top:1.6px solid var(--gold-b); position:relative; }
+  .wm-lines::after { content:""; position:absolute; left:0; top:5px; width:28px; height:0; border-top:2.4px solid var(--gold-b); border-radius:2px; }
+  .eyebrow { color:var(--t3); font-size:12px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; margin:22px 0 6px; }
+  .lead { color:var(--t2); font-size:15px; max-width:660px; line-height:1.6; margin-bottom:8px; }
+  h2 { font-size:13px; font-weight:700; color:var(--gold); letter-spacing:0.1em; text-transform:uppercase; margin:40px 0 14px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:760px){ .grid { grid-template-columns:1fr; } }
+  a.card { display:block; text-decoration:none; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 20px; transition:border-color .15s, transform .15s; }
+  a.card:hover { border-color:var(--gold); transform:translateY(-1px); }
+  .card .t { font-size:16px; font-weight:700; color:var(--t1); display:flex; align-items:center; gap:10px; }
+  .card .d { font-size:13px; color:var(--t2); margin-top:6px; line-height:1.5; }
+  .pill { font-size:10px; font-weight:700; padding:3px 8px; border-radius:999px; letter-spacing:0.04em; text-transform:uppercase; }
+  .pill.active { background:rgba(232,197,71,0.16); color:var(--gold); }
+  .pill.go { background:rgba(74,222,128,0.16); color:#4ade80; }
+  .pill.rec { background:rgba(125,211,252,0.16); color:#7dd3fc; }
+  .pill.open { background:rgba(255,255,255,0.06); color:var(--t3); }
+  .docs { display:flex; flex-wrap:wrap; gap:8px; }
+  .docs a { font-family:'Space Grotesk',monospace; font-size:12px; color:var(--t2); text-decoration:none; background:var(--card); border:1px solid var(--border); border-radius:8px; padding:7px 12px; }
+  .docs a:hover { color:var(--gold); border-color:var(--gold); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="wm">CYCLING ZONE</div>
+  <div class="wm-lines"></div>
+  <div class="eyebrow">Brand workspace · #481</div>
+  <p class="lead">Live exploration pages for the brand identity overhaul. Pick the active decision, view it, react. Markdown sources (plan, decisions, brief) linked at the bottom.</p>
+
+  <h2>Visual decisions</h2>
+  <div class="grid">
+    <a class="card" href="/phase1-revalidation.html">
+      <div class="t">Phase 1 foundation <span class="pill go">GO</span></div>
+      <div class="d">Locked direction (Bebas wordmark, dual-form favicon, sibling fonts) shown in real context. Confirmed 2026-06-04.</div>
+    </a>
+    <a class="card" href="/logo-explorations.html">
+      <div class="t">Light-mode canvas <span class="pill active">Active</span></div>
+      <div class="d">P2: 4 concept candidates (Newsprint / Velodrome / Race-bib / Cobblestone). The next decision after the font.</div>
+    </a>
+    <a class="card" href="/font-hybrid.html">
+      <div class="t">Font: hybrid roles <span class="pill rec">Recommended</span></div>
+      <div class="d">DM Sans for reading + Inter Tight for data, shown per component. Where Inter Tight earns its place.</div>
+    </a>
+    <a class="card" href="/font-comparison.html">
+      <div class="t">Font: full swap <span class="pill open">Reference</span></div>
+      <div class="d">DM Sans vs Inter Tight as the single body font, side by side, dark + light.</div>
+    </a>
+  </div>
+
+  <h2>Sources of truth</h2>
+  <div class="docs">
+    <a href="/PROJECT_PLAN.md">PROJECT_PLAN.md</a>
+    <a href="/DECISIONS_LOG.md">DECISIONS_LOG.md</a>
+    <a href="/BRAND_BRIEF.md">BRAND_BRIEF.md</a>
+    <a href="/LAUNCH_MINIMUM.md">LAUNCH_MINIMUM.md</a>
+    <a href="/MOODBOARD.md">MOODBOARD.md</a>
+  </div>
+</div>
+</body>
+</html>
