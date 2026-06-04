@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.68",
+    date: "2026-06-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Architecture · Race engine",
+        items: [
+          "EN · Published the Race Engine Architecture V1 decision record: CyclingZone will use physiology-first rider profiles, stage demand vectors, seeded simulation, and derived traditional abilities as the foundation for the TdF race-engine build. Refs #675.",
+          "DA · Race Engine Architecture V1-beslutningen er publiceret: CyclingZone bygger videre på fysiologiske rytterprofiler, etape-demand vectors, seeded simulation og afledte traditionelle abilities som fundament for TdF-race-enginen. Refs #675.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.67",
     date: "2026-06-04",
     label: "Beta",
