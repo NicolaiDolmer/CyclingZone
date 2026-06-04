@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.70",
+    date: "2026-06-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Polish · Consistency",
+        items: [
+          "EN · Small consistency pass: the name is now written 'Cycling Zone' everywhere in-app. Groundwork for a visual refresh that is on the way.",
+          "DA · Lille konsistens-rettelse: navnet skrives nu 'Cycling Zone' overalt i appen. Forarbejde til en visuel opdatering, der er på vej.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.69",
     date: "2026-06-04",
     label: "Beta",
