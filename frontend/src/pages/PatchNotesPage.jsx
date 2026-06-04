@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.67",
+    date: "2026-06-04",
+    label: "Beta",
+    changes: [
+      {
+        category: "Updated · Privacy",
+        items: [
+          "EN · The privacy policy now lists the registered data controller: Dolmer Digital (Danish CVR 46524861), the company behind Cycling Zone.",
+          "DA · Privatlivspolitikken angiver nu den registrerede dataansvarlige: Dolmer Digital (CVR 46524861), virksomheden bag Cycling Zone.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.66",
     date: "2026-06-04",
     label: "Beta",
