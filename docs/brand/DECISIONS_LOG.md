@@ -7,6 +7,29 @@
 
 ---
 
+## 🟢 2026-06-04 — Phase 1 re-validated (GO) + brought forward to pre-TdF
+
+| # | Decision | Value | Confirmed | Source |
+|---|---|---|---|---|
+| **RV1** | Phase 1 foundation re-validation | **GO.** Locked direction (Bebas all-caps wordmark + twin lines, dual-form favicon F1a/F1b, sibling fonts, accent `#e8c547`, dark canvas `#0e0f15`) confirmed in real product context: sidebar, landing, browser tab 16px, Discord, light + dark. | 2026-06-04 | `phase1-revalidation.html` go/no-go; user "Jeg synes det ser godt ud. Du får go." |
+| **SCOPE** | #481 timeline | **Brought forward: ship the real brand to production before TdF.** (Was: defer logo to V2 post-TdF per #671. #671 stays the consistency baseline; #481 now lands on top before launch.) | 2026-06-04 | User: "Ægte brand live før TdF." |
+
+**BF1 — body/UI font: ✅ RESOLVED 2026-06-04 = hybrid (3-role).** DM Sans for prose/reading; **Inter Tight for data** (stat tables, rankings, KPI numbers, prices/watts, dates/timers, dense chrome); Bebas for display/wordmark. Implement as a single `font-data` token applied to numeric/data components, DM Sans stays the default body. Comparisons: `font-comparison.html` (full swap) + `font-hybrid.html` (the chosen hybrid). User: "Lås som anbefalet."
+
+**Contrast gate (`scripts/brand-contrast-check.mjs`, WCAG AA) — 2 findings to honor:** (1) **gold `#e8c547` as a foreground accent FAILS on every light canvas** (1.3–1.6:1) — in light mode the accent/lines/CTA text must be **navy or deep-gold `#a07800`**, not bright gold. This is a sub-decision riding on the light-canvas pick (P2). (2) Dark `text-3 #6b6d7e` fails AA at 3.75:1 — fix in Phase 4 token pass.
+
+**P2 light-mode canvas: ✅ RESOLVED 2026-06-04 = E "Chalk" `#f4f2ec`** (refined warm near-white; surface ladder card `#fcfbf7`, elevated `#ffffff`). Chosen over current cream `#f0ede6` (too beige), C Race-bib `#faf8ee` (flatter), and A Newsprint (too large a yellow commitment). Comparison: `light-canvas-v2.html`. User: "Vi vælger E."
+
+**New brand rule: ✅ "Gold = the leader" (maillot jaune).** A's yellow + maillot-jaune story is reused as a *semantic accent*, not a canvas: rank-1 team/rider gets a gold-bar + "Maillot jaune" treatment in every ranking/standings; the L'Auto heritage story lives as a feature-band (in A's `#f5edcf`) on landing/about, plus the OG/social image. Gold-as-fill is WCAG-safe on light; gold as thin foreground is not (use navy or deep-gold).
+
+**Accent (P3): effectively locked** = gold `#e8c547` (+ bright `#ffd966` in dark). Light-mode foreground accent = navy `#1a1f38` or deep-gold `#a07800`; gold reserved for fills + the leader signal. Remaining color/token work (Phase 2/3): surface ladders, semantic colors, the dark `text-3` fix.
+
+**Phase 4 UI micro-interactions (liked, queued 2026-06-04):** From the `phase1-revalidation.html` sidebar mockup, Nicolai liked (1) the **gold dot/bullet** by each nav item (active = solid gold), and (2) **on hover** of a nav item, animating in the **short accent-dash** from the wordmark's twin-lines as the hover indicator. Build both into the real sidebar nav component in Phase 4.
+
+**Open color decisions to close next** (user wants a recap + to discuss): **P2** light-mode canvas (4 candidates in `logo-explorations.html`), **P3** accent refinement, **P3b** race-night navy in light mode, **P4** surfaces, **P5** semantic colors. Dark canvas `#0e0f15` is the only canvas locked so far.
+
+---
+
 ## ✅ Confirmed (immutable unless user revisits)
 
 | # | Decision | Value | Confirmed | Source |

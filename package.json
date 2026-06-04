@@ -9,6 +9,7 @@
     "doctor": "pwsh -File scripts/agent-doctor.ps1",
     "codex:doctor": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/codex-session-start.ps1",
     "check:warnings": "node scripts/check-eslint-warning-budget.mjs",
+    "brand:export": "node scripts/brand-export.mjs",
     "lint:sql": "node scripts/lint-sql-strings.mjs",
     "test:lint-sql": "node --test scripts/lint-sql-strings.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
@@ -21,7 +22,9 @@
     "audit:sentry": "infisical run --env=dev -- node scripts/sentry-issues.mjs"
   },
   "devDependencies": {
-    "lint-staged": "^17.0.5"
+    "lint-staged": "^17.0.5",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",

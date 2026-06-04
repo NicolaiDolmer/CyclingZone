@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cycling Zone: Phase 1 foundation re-validation (go/no-go)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --page-bg: #0a0b10;
+    --page-card: #14161e;
+    --page-card-2: #1a1d28;
+    --page-text-1: #f5f5f5;
+    --page-text-2: #9aa0aa;
+    --page-text-3: #6b7280;
+    --page-border: #232732;
+    --page-border-soft: #1c1f29;
+
+    /* BRAND TOKENS (locked / live) */
+    --gold: #e8c547;
+    --gold-bright: #ffd966;
+    --navy-canvas: #0e0f15;   /* dark-mode body (P1 locked) */
+    --navy-sidebar: #1a1f38;  /* sidebar + on-accent (live) */
+    --cream: #f0ede6;         /* light-mode body (live; refinement = P2) */
+    --white: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--page-bg);
+    color: var(--page-text-1);
+    font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+    padding: 56px 32px 120px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1280px; margin: 0 auto; }
+
+  /* HEADER */
+  .eyebrow { color: var(--gold); font-size: 12px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 14px; }
+  h1 { font-size: 40px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.08; margin-bottom: 14px; }
+  h1 .light { color: var(--page-text-3); font-weight: 600; }
+  .deck { font-size: 16px; color: var(--page-text-2); max-width: 820px; line-height: 1.65; }
+  .deck em { color: var(--gold-bright); font-style: normal; font-weight: 600; }
+
+  .locked-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+  .chip { font-size: 12px; font-weight: 600; padding: 7px 13px; border-radius: 999px; background: rgba(232,197,71,0.08); border: 1px solid rgba(232,197,71,0.25); color: var(--gold-bright); }
+  .chip .k { color: var(--page-text-3); font-weight: 500; }
+
+  /* SECTION */
+  section { margin-top: 60px; }
+  .s-eyebrow { color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 10px; }
+  .s-title { font-size: 24px; font-weight: 800; letter-spacing: -0.015em; margin-bottom: 8px; }
+  .s-deck { color: var(--page-text-2); font-size: 14px; max-width: 800px; margin-bottom: 24px; line-height: 1.6; }
+  .s-deck code, .inline-code { font-family: 'Space Grotesk', monospace; color: var(--gold); background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+  .canvas-card { border: 1px solid var(--page-border); border-radius: 14px; overflow: hidden; }
+  .canvas-tag { padding: 9px 16px; font-family: 'Space Grotesk', monospace; font-size: 11px; letter-spacing: 0.05em; background: var(--page-card-2); border-bottom: 1px solid var(--page-border-soft); color: var(--page-text-3); display: flex; justify-content: space-between; }
+  .canvas-tag b { color: var(--page-text-1); font-weight: 700; }
+
+  /* WORDMARK STAGE */
+  .wm-stage { aspect-ratio: 16 / 7; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .wm-stage svg { width: 84%; height: auto; }
+
+  /* SIDEBAR MOCK */
+  .app-mock { display: flex; min-height: 320px; }
+  .sidebar { width: 210px; background: var(--navy-sidebar); padding: 20px 14px; flex-shrink: 0; }
+  .sb-brand { padding: 4px 8px 18px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 14px; }
+  .sb-brand svg { width: 100%; height: auto; }
+  .sb-nav { display: flex; flex-direction: column; gap: 3px; }
+  .sb-item { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 8px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.55); }
+  .sb-item .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.5; }
+  .sb-item.active { background: rgba(232,197,71,0.14); color: var(--gold-bright); font-weight: 600; }
+  .sb-item.active .dot { background: var(--gold); opacity: 1; }
+  .app-body { flex: 1; padding: 24px; }
+  .app-body.dark { background: var(--navy-canvas); }
+  .app-body.light { background: var(--cream); }
+  .app-h { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 1px; line-height: 1; }
+  .app-body.dark .app-h { color: var(--white); }
+  .app-body.light .app-h { color: var(--navy-canvas); }
+  .app-sub { font-size: 13px; margin-top: 6px; }
+  .app-body.dark .app-sub { color: rgba(255,255,255,0.55); }
+  .app-body.light .app-sub { color: rgba(14,15,21,0.6); }
+  .app-card { margin-top: 16px; border-radius: 10px; padding: 16px; }
+  .app-body.dark .app-card { background: #181a23; border: 1px solid #2a2d3a; }
+  .app-body.light .app-card { background: #fff; border: 1px solid #e5e0d5; }
+  .app-card .row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+  .app-body.dark .app-card .row { color: #ededf2; }
+  .app-body.light .app-card .row { color: #1c1b26; }
+  .pill { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--gold); color: var(--navy-sidebar); }
+  .app-btn { margin-top: 14px; display: inline-block; background: var(--gold); color: var(--navy-sidebar); font-weight: 700; font-size: 12px; padding: 8px 16px; border-radius: 7px; }
+
+  /* LANDING HERO */
+  .hero { aspect-ratio: 16 / 9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 30px; text-align: center; }
+  .hero.dark { background: radial-gradient(120% 120% at 50% 0%, #161a2e 0%, var(--navy-canvas) 60%); }
+  .hero.light { background: var(--cream); }
+  .hero svg { width: 64%; height: auto; }
+  .hero-tag { font-size: 14px; font-weight: 500; letter-spacing: 0.01em; }
+  .hero.dark .hero-tag { color: rgba(255,255,255,0.7); }
+  .hero.light .hero-tag { color: rgba(14,15,21,0.65); }
+  .hero-cta { background: var(--gold); color: var(--navy-sidebar); font-weight: 700; font-size: 13px; padding: 11px 22px; border-radius: 8px; letter-spacing: 0.01em; }
+
+  /* BROWSER TAB STRIP */
+  .browser { background: var(--page-card-2); border: 1px solid var(--page-border); border-radius: 12px 12px 0 0; padding: 12px 14px 0; }
+  .tabs { display: flex; gap: 6px; align-items: flex-end; }
+  .tab { display: flex; align-items: center; gap: 8px; background: #0e0f15; border: 1px solid var(--page-border); border-bottom: none; border-radius: 8px 8px 0 0; padding: 9px 14px; font-size: 12px; color: var(--page-text-2); max-width: 200px; }
+  .tab.active { background: #fff; color: #1c1b26; font-weight: 600; }
+  .tab .tab-fav { flex-shrink: 0; display: block; }
+  .urlbar { margin-top: 10px; background: #0e0f15; border: 1px solid var(--page-border); border-radius: 8px; padding: 8px 14px; font-family: 'Space Grotesk', monospace; font-size: 12px; color: var(--page-text-3); }
+  .urlbar b { color: var(--page-text-1); font-weight: 500; }
+
+  /* FAVICON LADDER */
+  .fav-grid { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-end; }
+  .fav-cell { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .fav-cell .cap { font-family: 'Space Grotesk', monospace; font-size: 10px; color: var(--page-text-3); letter-spacing: 0.05em; }
+  .fav-note { margin-top: 18px; font-size: 13px; color: var(--page-text-2); line-height: 1.6; }
+  .fav-note b { color: var(--page-text-1); }
+  .swatch-block { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+  /* DISCORD */
+  .discord { background: #313338; border-radius: 12px; padding: 18px 20px; display: flex; gap: 14px; }
+  .dc-avatar { width: 46px; height: 46px; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
+  .dc-avatar svg { width: 100%; height: 100%; display: block; }
+  .dc-msg { flex: 1; }
+  .dc-name { font-size: 14px; font-weight: 600; color: #f2f3f5; }
+  .dc-name .bot { font-size: 10px; background: #5865f2; color: #fff; padding: 1px 5px; border-radius: 4px; margin-left: 7px; font-weight: 600; vertical-align: middle; }
+  .dc-embed { margin-top: 8px; background: #2b2d31; border-left: 4px solid var(--gold); border-radius: 4px; padding: 12px 14px; max-width: 440px; }
+  .dc-embed .t { font-size: 14px; font-weight: 700; color: var(--gold-bright); }
+  .dc-embed .b { font-size: 13px; color: #dbdee1; margin-top: 4px; line-height: 1.5; }
+
+  /* TYPE SYSTEM */
+  .type-card { border: 1px solid var(--page-border); border-radius: 12px; padding: 22px 24px; }
+  .type-label { font-family: 'Space Grotesk', monospace; font-size: 11px; color: var(--gold); letter-spacing: 0.05em; margin-bottom: 8px; }
+  .type-bebas { font-family: 'Bebas Neue', sans-serif; font-size: 46px; letter-spacing: 1px; color: var(--white); line-height: 1; }
+  .type-inter { font-family: 'Inter Tight', sans-serif; }
+  .type-inter .big { font-size: 22px; font-weight: 800; color: var(--white); letter-spacing: -0.01em; }
+  .type-inter .body { font-size: 14px; color: var(--page-text-2); margin-top: 6px; line-height: 1.6; max-width: 560px; }
+
+  /* DECISION CALLOUT */
+  .callout { margin-top: 30px; background: rgba(232,197,71,0.06); border: 1px solid rgba(232,197,71,0.28); border-radius: 14px; padding: 24px 28px; }
+  .callout h3 { color: var(--gold); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
+  .callout p { font-size: 14px; color: var(--page-text-2); line-height: 1.7; margin-bottom: 10px; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout strong { color: var(--page-text-1); }
+  .callout .vote { display: flex; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
+  .vote-opt { flex: 1; min-width: 220px; background: var(--page-card); border: 1px solid var(--page-border); border-radius: 10px; padding: 14px 16px; }
+  .vote-opt .h { font-weight: 700; color: var(--page-text-1); font-size: 14px; margin-bottom: 4px; }
+  .vote-opt .d { font-size: 12.5px; color: var(--page-text-3); line-height: 1.55; }
+  .vote-opt.go .h { color: var(--gold-bright); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="eyebrow">#481 · Phase 1 foundation · Re-validation before production</div>
+  <h1>Is this the foundation we build the whole brand on? <span class="light">One go/no-go, shown in the real product.</span></h1>
+  <p class="deck">Phase 1 was locked 2026-05-20. Before I mass-produce every asset and wire it into the live app, here is that locked direction rendered <em>where players actually meet it</em>: app sidebar, landing hero, browser tab, Discord, in both dark and light. Look at it in context, then give one verdict: <em>go</em> (build it out) or <em>adjust</em> (one thing still feels off).</p>
+
+  <div class="locked-row">
+    <span class="chip"><span class="k">Wordmark</span> &nbsp;Bebas Neue, ALL CAPS + twin lines</span>
+    <span class="chip"><span class="k">Favicon ≥48px</span> &nbsp;Stacked CYCLING / ZONE</span>
+    <span class="chip"><span class="k">Favicon ≤32px</span> &nbsp;Inter Tight Black "CZ"</span>
+    <span class="chip"><span class="k">Fonts</span> &nbsp;Bebas (display) + Inter Tight (UI)</span>
+    <span class="chip"><span class="k">Accent</span> &nbsp;#e8c547 gold</span>
+    <span class="chip"><span class="k">Dark canvas</span> &nbsp;#0e0f15</span>
+  </div>
+
+  <!-- 1. WORDMARK ISOLATED -->
+  <section>
+    <div class="s-eyebrow">1 · The wordmark, isolated</div>
+    <div class="s-title">The mark itself, dark and light</div>
+    <p class="s-deck">All-caps Bebas Neue, tight tracking, with the twin movement-lines (long thin underline + short rounded accent dash). Gold on the dark canvas, navy on the cream light canvas. <b style="color:var(--page-text-2)">Note:</b> exact light-mode line/accent treatment is a separate upcoming decision (P2/P3); here it is shown gold.</p>
+    <div class="two-col">
+      <div class="canvas-card">
+        <div class="canvas-tag"><span>Dark canvas</span><b>#0e0f15</b></div>
+        <div class="wm-stage" style="background:#0e0f15;">
+          <svg viewBox="0 0 480 140" xmlns="http://www.w3.org/2000/svg">
+            <text x="240" y="70" font-family="'Bebas Neue',sans-serif" font-size="64" fill="#e8c547" text-anchor="middle" letter-spacing="2">CYCLING ZONE</text>
+            <line x1="60" y1="92" x2="420" y2="92" stroke="#ffd966" stroke-width="1.8"/>
+            <line x1="218" y1="106" x2="262" y2="106" stroke="#ffd966" stroke-width="2.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+      <div class="canvas-card">
+        <div class="canvas-tag"><span>Light canvas (live cream)</span><b>#f0ede6</b></div>
+        <div class="wm-stage" style="background:#f0ede6;">
+          <svg viewBox="0 0 480 140" xmlns="http://www.w3.org/2000/svg">
+            <text x="240" y="70" font-family="'Bebas Neue',sans-serif" font-size="64" fill="#0e0f15" text-anchor="middle" letter-spacing="2">CYCLING ZONE</text>
+            <line x1="60" y1="92" x2="420" y2="92" stroke="#c69b1f" stroke-width="1.8"/>
+            <line x1="218" y1="106" x2="262" y2="106" stroke="#c69b1f" stroke-width="2.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. APP SIDEBAR -->
+  <section>
+    <div class="s-eyebrow">2 · The highest-frequency context</div>
+    <div class="s-title">In the app sidebar</div>
+    <p class="s-deck">This is where active players see the brand most: top-left of every page. Sidebar stays dark navy in both themes (the live "option A"). The wordmark sits where the current title-case "Cycling Zone" sits today.</p>
+    <div class="two-col">
+      <div class="canvas-card">
+        <div class="canvas-tag"><span>App · dark mode</span><b>#0e0f15 body</b></div>
+        <div class="app-mock">
+          <div class="sidebar">
+            <div class="sb-brand">
+              <svg viewBox="0 0 200 64" xmlns="http://www.w3.org/2000/svg">
+                <text x="14" y="34" font-family="'Bebas Neue',sans-serif" font-size="30" fill="#e8c547" letter-spacing="1.2">CYCLING ZONE</text>
+                <line x1="14" y1="46" x2="186" y2="46" stroke="#ffd966" stroke-width="1.2"/>
+                <line x1="14" y1="53" x2="34" y2="53" stroke="#ffd966" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="sb-nav">
+              <div class="sb-item active"><span class="dot"></span>Dashboard</div>
+              <div class="sb-item"><span class="dot"></span>Riders</div>
+              <div class="sb-item"><span class="dot"></span>Auctions</div>
+              <div class="sb-item"><span class="dot"></span>My Team</div>
+              <div class="sb-item"><span class="dot"></span>Rankings</div>
+            </div>
+          </div>
+          <div class="app-body dark">
+            <div class="app-h">DASHBOARD</div>
+            <div class="app-sub">Round 12 · transfer window closes Thursday 23:00</div>
+            <div class="app-card">
+              <div class="row"><span>Tadej Onley</span><span class="pill">FTP 6.0</span></div>
+            </div>
+            <span class="app-btn">Open squad</span>
+          </div>
+        </div>
+      </div>
+      <div class="canvas-card">
+        <div class="canvas-tag"><span>App · light mode</span><b>#f0ede6 body</b></div>
+        <div class="app-mock">
+          <div class="sidebar">
+            <div class="sb-brand">
+              <svg viewBox="0 0 200 64" xmlns="http://www.w3.org/2000/svg">
+                <text x="14" y="34" font-family="'Bebas Neue',sans-serif" font-size="30" fill="#e8c547" letter-spacing="1.2">CYCLING ZONE</text>
+                <line x1="14" y1="46" x2="186" y2="46" stroke="#ffd966" stroke-width="1.2"/>
+                <line x1="14" y1="53" x2="34" y2="53" stroke="#ffd966" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="sb-nav">
+              <div class="sb-item active"><span class="dot"></span>Dashboard</div>
+              <div class="sb-item"><span class="dot"></span>Riders</div>
+              <div class="sb-item"><span class="dot"></span>Auctions</div>
+              <div class="sb-item"><span class="dot"></span>My Team</div>
+              <div class="sb-item"><span class="dot"></span>Rankings</div>
+            </div>
+          </div>
+          <div class="app-body light">
+            <div class="app-h">DASHBOARD</div>
+            <div class="app-sub">Round 12 · transfer window closes Thursday 23:00</div>
+            <div class="app-card">
+              <div class="row"><span>Tadej Onley</span><span class="pill">FTP 6.0</span></div>
+            </div>
+            <span class="app-btn">Open squad</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. LANDING HERO -->
+  <section>
+    <div class="s-eyebrow">3 · First impression</div>
+    <div class="s-title">Landing hero</div>
+    <p class="s-deck">The public landing / founder page. Big wordmark, tagline, single gold CTA. This is the page TdF traffic lands on.</p>
+    <div class="two-col">
+      <div class="canvas-card">
+        <div class="canvas-tag"><span>Landing · dark</span><b>#0e0f15</b></div>
+        <div class="hero dark">
+          <svg viewBox="0 0 480 140" xmlns="http://www.w3.org/2000/svg">
+            <text x="240" y="70" font-family="'Bebas Neue',sans-serif" font-size="64" fill="#e8c547" text-anchor="middle" letter-spacing="2">CYCLING ZONE</text>
+            <line x1="60" y1="92" x2="420" y2="92" stroke="#ffd966" stroke-width="1.8"/>
+            <line x1="218" y1="106" x2="262" y2="106" stroke="#ffd966" stroke-width="2.8" stroke-linecap="round"/>
+          </svg>
+          <div class="hero-tag">Build your team. Race the world. A fair cycling manager.</div>
+          <div class="hero-cta">Start your team</div>
+        </div>
+      </div>
+      <div class="canvas-card">
+        <div class="canvas-tag"><span>Landing · light</span><b>#f0ede6</b></div>
+        <div class="hero light">
+          <svg viewBox="0 0 480 140" xmlns="http://www.w3.org/2000/svg">
+            <text x="240" y="70" font-family="'Bebas Neue',sans-serif" font-size="64" fill="#0e0f15" text-anchor="middle" letter-spacing="2">CYCLING ZONE</text>
+            <line x1="60" y1="92" x2="420" y2="92" stroke="#c69b1f" stroke-width="1.8"/>
+            <line x1="218" y1="106" x2="262" y2="106" stroke="#c69b1f" stroke-width="2.8" stroke-linecap="round"/>
+          </svg>
+          <div class="hero-tag">Build your team. Race the world. A fair cycling manager.</div>
+          <div class="hero-cta">Start your team</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. BROWSER TAB / SMALL FAVICON -->
+  <section>
+    <div class="s-eyebrow">4 · The make-or-break legibility test</div>
+    <div class="s-title">Browser tab at 16px</div>
+    <p class="s-deck">The reason the favicon splits into two forms: the stacked CYCLING/ZONE is mush at 16px, so the small form is the Inter Tight Black <span class="inline-code">CZ</span>. This is that exact worst case, a real tab strip at real size.</p>
+    <div class="browser">
+      <div class="tabs">
+        <div class="tab active">
+          <svg class="tab-fav" width="16" height="16" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="6" fill="#e8c547"/>
+            <text x="16" y="23" font-family="'Inter Tight',sans-serif" font-weight="900" font-size="17" fill="#1a1f38" text-anchor="middle" letter-spacing="-0.03em">CZ</text>
+          </svg>
+          Cycling Zone
+        </div>
+        <div class="tab">
+          <svg class="tab-fav" width="16" height="16" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="6" fill="#1d9bf0"/></svg>
+          Strava
+        </div>
+        <div class="tab">
+          <svg class="tab-fav" width="16" height="16" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="6" fill="#ff424d"/></svg>
+          Pro Cycling Stats
+        </div>
+      </div>
+      <div class="urlbar">cycling-zone.vercel.app &nbsp;·&nbsp; <b>Cycling Zone · Dashboard</b></div>
+    </div>
+    <p class="fav-note">If you can read <b>CZ</b> in the active tab above without squinting, the small form passes. If it still feels heavy/cramped, that is a tuning note we capture before producing the real <span class="inline-code">.ico</span>.</p>
+  </section>
+
+  <!-- 5. FAVICON SYSTEM -->
+  <section>
+    <div class="s-eyebrow">5 · The dual-form favicon system</div>
+    <div class="s-title">Where each form lives</div>
+    <p class="s-deck">Stacked form for big surfaces (Discord, social, app icon, OG). CZ monogram for small chrome (tab, address bar, OS). Same gold square, navy ink.</p>
+    <div class="fav-grid">
+      <div class="fav-cell">
+        <svg width="128" height="128" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <rect width="64" height="64" rx="12" fill="#e8c547"/>
+          <text x="32" y="31" font-family="'Bebas Neue',sans-serif" font-size="19" fill="#1a1f38" text-anchor="middle" letter-spacing="1">CYCLING</text>
+          <line x1="13" y1="37" x2="51" y2="37" stroke="#1a1f38" stroke-width="1.1"/>
+          <text x="32" y="54" font-family="'Bebas Neue',sans-serif" font-size="19" fill="#1a1f38" text-anchor="middle" letter-spacing="3">ZONE</text>
+        </svg>
+        <span class="cap">F1a · 128px (stacked)</span>
+      </div>
+      <div class="fav-cell">
+        <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <rect width="64" height="64" rx="11" fill="#e8c547"/>
+          <text x="32" y="31" font-family="'Bebas Neue',sans-serif" font-size="19" fill="#1a1f38" text-anchor="middle" letter-spacing="1">CYCLING</text>
+          <line x1="13" y1="37" x2="51" y2="37" stroke="#1a1f38" stroke-width="1.1"/>
+          <text x="32" y="54" font-family="'Bebas Neue',sans-serif" font-size="19" fill="#1a1f38" text-anchor="middle" letter-spacing="3">ZONE</text>
+        </svg>
+        <span class="cap">F1a · 64px</span>
+      </div>
+      <div class="fav-cell">
+        <svg width="48" height="48" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="6" fill="#e8c547"/>
+          <text x="16" y="23" font-family="'Inter Tight',sans-serif" font-weight="900" font-size="17" fill="#1a1f38" text-anchor="middle" letter-spacing="-0.03em">CZ</text>
+        </svg>
+        <span class="cap">F1b · 48px (CZ)</span>
+      </div>
+      <div class="fav-cell">
+        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="6" fill="#e8c547"/>
+          <text x="16" y="23" font-family="'Inter Tight',sans-serif" font-weight="900" font-size="17" fill="#1a1f38" text-anchor="middle" letter-spacing="-0.03em">CZ</text>
+        </svg>
+        <span class="cap">F1b · 32px</span>
+      </div>
+      <div class="fav-cell">
+        <svg width="16" height="16" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="6" fill="#e8c547"/>
+          <text x="16" y="23" font-family="'Inter Tight',sans-serif" font-weight="900" font-size="17" fill="#1a1f38" text-anchor="middle" letter-spacing="-0.03em">CZ</text>
+        </svg>
+        <span class="cap">F1b · 16px</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. DISCORD -->
+  <section>
+    <div class="s-eyebrow">6 · Community surface</div>
+    <div class="s-title">Discord avatar + bot embed</div>
+    <p class="s-deck">The server icon is a circular crop of the stacked form. The auction bot already posts gold-accented embeds (<span class="inline-code">0xe8c547</span>), shown with the brand voice.</p>
+    <div class="two-col">
+      <div class="canvas-card" style="padding:22px; background:#1e1f22;">
+        <div class="discord">
+          <div class="dc-avatar">
+            <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+              <rect width="64" height="64" fill="#e8c547"/>
+              <text x="32" y="31" font-family="'Bebas Neue',sans-serif" font-size="19" fill="#1a1f38" text-anchor="middle" letter-spacing="1">CYCLING</text>
+              <line x1="13" y1="37" x2="51" y2="37" stroke="#1a1f38" stroke-width="1.1"/>
+              <text x="32" y="54" font-family="'Bebas Neue',sans-serif" font-size="19" fill="#1a1f38" text-anchor="middle" letter-spacing="3">ZONE</text>
+            </svg>
+          </div>
+          <div class="dc-msg">
+            <div class="dc-name">Cycling Zone <span class="bot">BOT</span></div>
+            <div class="dc-embed">
+              <div class="t">New auction · Tadej Onley</div>
+              <div class="b">Bidding is open. Current price 4.2M. You have 15 minutes before close.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="canvas-card" style="padding:22px; display:flex; gap:24px; align-items:center; justify-content:center; background:#1e1f22;">
+        <div class="swatch-block">
+          <svg width="72" height="72" viewBox="0 0 64 64" style="border-radius:50%" xmlns="http://www.w3.org/2000/svg">
+            <rect width="64" height="64" fill="#e8c547"/>
+            <text x="32" y="31" font-family="'Bebas Neue',sans-serif" font-size="19" fill="#1a1f38" text-anchor="middle" letter-spacing="1">CYCLING</text>
+            <line x1="13" y1="37" x2="51" y2="37" stroke="#1a1f38" stroke-width="1.1"/>
+            <text x="32" y="54" font-family="'Bebas Neue',sans-serif" font-size="19" fill="#1a1f38" text-anchor="middle" letter-spacing="3">ZONE</text>
+          </svg>
+          <span class="cap" style="font-family:'Space Grotesk',monospace; font-size:10px; color:var(--page-text-3)">Stacked (circular)</span>
+        </div>
+        <div class="swatch-block">
+          <svg width="72" height="72" viewBox="0 0 32 32" style="border-radius:50%" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" fill="#e8c547"/>
+            <text x="16" y="23" font-family="'Inter Tight',sans-serif" font-weight="900" font-size="17" fill="#1a1f38" text-anchor="middle" letter-spacing="-0.03em">CZ</text>
+          </svg>
+          <span class="cap" style="font-family:'Space Grotesk',monospace; font-size:10px; color:var(--page-text-3)">CZ (circular)</span>
+        </div>
+      </div>
+    </div>
+    <p class="fav-note">Two candidates for the round server icon: <b>stacked</b> reads as the full name; <b>CZ</b> reads instantly at small Discord sizes. We pick one when we produce assets.</p>
+  </section>
+
+  <!-- 7. FONT PAIRING -->
+  <section>
+    <div class="s-eyebrow">7 · The sibling-font system</div>
+    <div class="s-title">Bebas (display) + Inter Tight (UI)</div>
+    <p class="s-deck">Bebas carries headings and the wordmark; Inter Tight carries everything you read. <b style="color:var(--page-text-2)">Implication to confirm:</b> the live app body font is currently <span class="inline-code">DM Sans</span>, so adopting Inter Tight as the UI sibling means swapping the app body font.</p>
+    <div class="type-card" style="background:#0e0f15;">
+      <div class="type-label">DISPLAY · Bebas Neue</div>
+      <div class="type-bebas">RACE THE WORLD · DRAFT YOUR TEAM · WIN THE SEASON</div>
+      <div style="height:22px"></div>
+      <div class="type-label">UI · Inter Tight</div>
+      <div class="type-inter">
+        <div class="big">Set your tactics before the stage</div>
+        <div class="body">Pick your captain, assign domestiques, and choose whether to chase the breakaway or save your sprinter for the line. Every decision compounds across the season; strategy beats spending.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DECISION -->
+  <div class="callout">
+    <h3>Your verdict</h3>
+    <p>This is the foundation everything else gets built and shipped on before TdF. If it is right, the next steps are pure production: master SVGs, the full favicon set, Discord + social assets, then wiring it into the live app.</p>
+    <div class="vote">
+      <div class="vote-opt go">
+        <div class="h">GO · build it out</div>
+        <div class="d">The foundation holds. Proceed to asset production + then close the open color decisions (light canvas P2, accent P3).</div>
+      </div>
+      <div class="vote-opt">
+        <div class="h">ADJUST · one thing first</div>
+        <div class="d">Something specific feels off (tracking, the lines, the CZ weight, gold tone, the DM Sans → Inter Tight swap). Name it and I iterate this view before we produce anything.</div>
+      </div>
+    </div>
+    <p style="margin-top:16px"><strong>Open decisions still waiting</strong> (not part of this go/no-go): light-mode canvas has 4 strong candidates queued in <span class="inline-code">logo-explorations.html</span> (Newsprint / Velodrome / Race-bib / Cobblestone), plus accent refinement (P3) and race-night navy in light mode (P3b).</p>
+  </div>
+
+</div>
+</body>
+</html>

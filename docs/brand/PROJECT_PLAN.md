@@ -4,9 +4,21 @@
 > **Goal:** Complete Cycling Zone brand identity (logo, favicon, Discord, design manual, UI/UX-tokens) "once and for all".
 > **Owner:** Nicolai Dolmer Mikkelsen
 > **Started:** 2026-05-18
-> **Status:** **Phase 1 LOCKED 2026-05-20** — Bebas Neue wordmark + dual-form favicon system (stacked F1a ≥48px, Inter Tight Black CZ F1b ≤32px) + sibling-font system. Colour palette: dark canvas P1 locked, light canvas P2 in flight. **Asset production started 2026-06-04** — outlined SVG masters (wordmark + both favicon forms) shipped to `frontend/public/brand/`, production favicon swapped. See [`ASSETS.md`](ASSETS.md).
+> **Status (2026-06-04):** All major decisions LOCKED (wordmark/favicon/fonts re-validated GO, dark canvas `#0e0f15` + light canvas `#f4f2ec` "Chalk", accent + "gold = leader"). Scope brought forward to ship the real brand **before TdF**. **Asset masters shipped:** outlined SVG wordmark + both favicon forms in `frontend/public/brand/`, production favicon swapped (see [`ASSETS.md`](ASSETS.md)). Remaining: raster set (PNG/ICO via `scripts/brand-export.mjs`), OG refresh, on-light wordmark accent fix for the locked Chalk canvas, then Phase 4 UI integration. Live state: [`DECISIONS_LOG.md`](DECISIONS_LOG.md).
 
 ---
+
+## Canonical roadmap (reconciled 2026-06-04)
+
+The earlier plan and `DECISIONS_LOG.md` used "Phase 2" for two different things (asset production vs color palette). Authoritative phases from here:
+
+1. **Phase 1 · Foundation decisions** (wordmark, favicon, fonts). Locked + re-validated GO 2026-06-04. Open sub-decision: body font (BF1).
+2. **Phase 2 · Color decisions** (dark canvas locked `#0e0f15`; light canvas active; accent; surfaces; semantic). Contrast-gated via `scripts/brand-contrast-check.mjs` (WCAG AA).
+3. **Phase 3 · Asset production** (master SVGs with outlined text, favicon set, Discord/social/OG) via `scripts/brand-export.mjs`.
+4. **Phase 4 · Design system + UI integration** (tokens in `index.css`/`tailwind.config.js`, type scale, components, apply to live app, light/dark parity, Playwright regression, self-hosted fonts).
+5. **Phase 5 · Documentation** (`BRAND_GUIDELINES.md` + PDF, future-decision framework).
+
+The legacy "five phases" and "recommended phase order" sections (here and in `DECISIONS_LOG.md`) are kept for history; this block supersedes their numbering.
 
 ## North star
 
@@ -151,6 +163,7 @@ docs/brand/
 ├── MOODBOARD.md             # ~35 reference brands with takeaways
 ├── DECISIONS_LOG.md         # Single source of truth for what's been decided
 ├── HANDOFF_PROMPT.md        # First-session prompt for new AI contexts
+├── LAUNCH_MINIMUM.md        # TdF launch baseline (#671) — interim brand shipped now (pre-V2)
 ├── logo-explorations.html   # Current visual state — always reflects active decision
 └── (future) BRAND_GUIDELINES.md   # Phase 5 output
 

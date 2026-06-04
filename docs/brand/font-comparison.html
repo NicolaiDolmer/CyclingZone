@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cycling Zone: body font — DM Sans vs Inter Tight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --page-bg: #0a0b10;
+    --page-card: #14161e;
+    --page-text-1: #f5f5f5;
+    --page-text-2: #9aa0aa;
+    --page-text-3: #6b7280;
+    --page-border: #232732;
+    --gold: #e8c547;
+    --gold-bright: #ffd966;
+    --navy-canvas: #0e0f15;
+    --navy-sidebar: #1a1f38;
+    --cream: #f0ede6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--page-bg);
+    color: var(--page-text-1);
+    font-family: 'Inter Tight', system-ui, sans-serif;
+    line-height: 1.5;
+    padding: 48px 32px 110px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1240px; margin: 0 auto; }
+  .eyebrow { color: var(--gold); font-size: 12px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 12px; }
+  h1 { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 12px; }
+  .deck { font-size: 15px; color: var(--page-text-2); max-width: 840px; line-height: 1.65; }
+  .deck b { color: var(--page-text-1); }
+  .inline { font-family: 'Space Grotesk', monospace; color: var(--gold); background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+
+  .legend { display: flex; gap: 22px; margin-top: 20px; flex-wrap: wrap; }
+  .legend .item { font-size: 13px; color: var(--page-text-2); }
+  .legend .item b { color: var(--page-text-1); }
+  .tag-dm { color: #7dd3fc; font-weight: 700; }
+  .tag-it { color: var(--gold-bright); font-weight: 700; }
+
+  .mode-label { margin: 44px 0 14px; font-family: 'Space Grotesk', monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--page-text-3); display: flex; align-items: center; gap: 12px; }
+  .mode-label::after { content: ""; flex: 1; height: 1px; background: var(--page-border); }
+
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 880px) { .duo { grid-template-columns: 1fr; } }
+
+  .pane { border-radius: 16px; overflow: hidden; border: 1px solid var(--page-border); }
+  .pane-head { padding: 11px 18px; font-family: 'Space Grotesk', monospace; font-size: 12px; letter-spacing: 0.04em; display: flex; justify-content: space-between; align-items: center; }
+  .pane.dm .pane-head { background: rgba(125,211,252,0.1); color: #7dd3fc; border-bottom: 1px solid var(--page-border); }
+  .pane.it .pane-head { background: rgba(255,217,102,0.1); color: var(--gold-bright); border-bottom: 1px solid var(--page-border); }
+  .pane-head .px { opacity: 0.7; }
+
+  /* The actual app surface inside each pane */
+  .surface { padding: 24px 24px 28px; }
+  .surface.dark { background: var(--navy-canvas); }
+  .surface.light { background: var(--cream); }
+
+  .pane.dm .surface :is(.body-font) { font-family: 'DM Sans', sans-serif; }
+  .pane.it .surface :is(.body-font) { font-family: 'Inter Tight', sans-serif; }
+
+  .display { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 1px; line-height: 1; margin-bottom: 4px; }
+  .surface.dark .display { color: #fff; }
+  .surface.light .display { color: var(--navy-canvas); }
+  .kicker { font-size: 12px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 18px; }
+  .surface.dark .kicker { color: var(--page-text-3); }
+  .surface.light .kicker { color: #8a8576; }
+
+  .sub { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 8px; }
+  .surface.dark .sub { color: #ededf2; }
+  .surface.light .sub { color: #1c1b26; }
+  .para { font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
+  .surface.dark .para { color: #c3c5cf; }
+  .surface.light .para { color: #45434f; }
+
+  /* stat table */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+  th, td { text-align: right; padding: 8px 10px; font-size: 13px; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; }
+  .surface.dark thead th { color: var(--page-text-3); border-bottom: 1px solid #2a2d3a; }
+  .surface.light thead th { color: #8a8576; border-bottom: 1px solid #ddd6c8; }
+  .surface.dark tbody td { color: #d7d9e2; border-bottom: 1px solid #20222c; }
+  .surface.light tbody td { color: #36343f; border-bottom: 1px solid #e7e1d3; }
+  tbody tr td:first-child { font-weight: 600; }
+  .surface.dark tbody tr td:first-child { color: #fff; }
+  .surface.light tbody tr td:first-child { color: #1c1b26; }
+  .num-strong { color: var(--gold) !important; font-weight: 700; }
+
+  .ui-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .btn { font-size: 13px; font-weight: 700; padding: 9px 16px; border-radius: 8px; background: var(--gold); color: var(--navy-sidebar); letter-spacing: 0.01em; }
+  .badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(232,197,71,0.16); color: var(--gold); letter-spacing: 0.02em; }
+  .surface.light .badge { background: rgba(198,155,31,0.18); color: #9a7a14; }
+  .meta { font-size: 12px; }
+  .surface.dark .meta { color: var(--page-text-3); }
+  .surface.light .meta { color: #8a8576; }
+
+  .price { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .surface.dark .price { color: #fff; }
+  .surface.light .price { color: var(--navy-canvas); }
+  .price small { font-size: 13px; font-weight: 600; color: var(--page-text-3); }
+
+  .callout { margin-top: 40px; background: rgba(232,197,71,0.06); border: 1px solid rgba(232,197,71,0.28); border-radius: 14px; padding: 22px 26px; }
+  .callout h3 { color: var(--gold); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
+  .callout p { font-size: 14px; color: var(--page-text-2); line-height: 1.7; margin-bottom: 10px; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout b { color: var(--page-text-1); }
+  .callout .tag-dm, .callout .tag-it { font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="eyebrow">#481 · Body-font decision · One variable, isolated</div>
+  <h1>Body font: DM Sans vs Inter Tight</h1>
+  <p class="deck">Headings and the wordmark stay <b>Bebas Neue</b> either way. The only thing changing below is the <b>body / UI font</b> the whole app is set in. Same content, same layout, same gold. <span class="inline">DM Sans</span> is what runs in production today; <span class="inline">Inter Tight</span> is the proposed sibling that pairs with the Bebas wordmark and the Inter Tight Black CZ favicon. Read the paragraphs, then scan the numbers in the table (tabular figures) since this is a data-dense manager game.</p>
+  <div class="legend">
+    <div class="item"><span class="tag-dm">DM Sans</span> &middot; humanist, friendly, slightly rounded. Geometric-humanist. Google default-ish.</div>
+    <div class="item"><span class="tag-it">Inter Tight</span> &middot; tighter Inter, condensed workhorse, neutral, dense-data friendly.</div>
+  </div>
+
+  <!-- DARK -->
+  <div class="mode-label">Dark mode · canvas #0e0f15</div>
+  <div class="duo">
+    <div class="pane dm">
+      <div class="pane-head"><span>DM Sans &middot; current</span><span class="px">body 14px</span></div>
+      <div class="surface dark">
+        <div class="display">RIDER PROFILE</div>
+        <div class="kicker body-font">UCI WorldTour &middot; Climber &middot; Age 24</div>
+        <div class="sub body-font">Tadej Onley</div>
+        <p class="para body-font">A pure climber with one of the highest power-to-weight numbers in the peloton. Strong in the third week of a Grand Tour, where the mountains decide the race. You can build a season around him, but his sprint is weak: protect him on flat stages and let the rouleurs do the work before the climbs.</p>
+        <table class="body-font">
+          <thead><tr><th>Ability</th><th>Rating</th><th>Percentile</th><th>FTP</th></tr></thead>
+          <tbody>
+            <tr><td>Climbing</td><td class="num-strong">94</td><td>99.2%</td><td>6.04 W/kg</td></tr>
+            <tr><td>Time trial</td><td>71</td><td>78.4%</td><td>5.18 W/kg</td></tr>
+            <tr><td>Sprint</td><td>38</td><td>11.0%</td><td>1180 W</td></tr>
+            <tr><td>Endurance</td><td>88</td><td>95.6%</td><td>4.92 W/kg</td></tr>
+          </tbody>
+        </table>
+        <div class="ui-row body-font">
+          <span class="btn">Place bid</span>
+          <span class="badge">Watchlisted</span>
+          <span class="meta">12 managers watching</span>
+        </div>
+        <div class="price body-font">4.20M <small>current price</small></div>
+      </div>
+    </div>
+
+    <div class="pane it">
+      <div class="pane-head"><span>Inter Tight &middot; proposed</span><span class="px">body 14px</span></div>
+      <div class="surface dark">
+        <div class="display">RIDER PROFILE</div>
+        <div class="kicker body-font">UCI WorldTour &middot; Climber &middot; Age 24</div>
+        <div class="sub body-font">Tadej Onley</div>
+        <p class="para body-font">A pure climber with one of the highest power-to-weight numbers in the peloton. Strong in the third week of a Grand Tour, where the mountains decide the race. You can build a season around him, but his sprint is weak: protect him on flat stages and let the rouleurs do the work before the climbs.</p>
+        <table class="body-font">
+          <thead><tr><th>Ability</th><th>Rating</th><th>Percentile</th><th>FTP</th></tr></thead>
+          <tbody>
+            <tr><td>Climbing</td><td class="num-strong">94</td><td>99.2%</td><td>6.04 W/kg</td></tr>
+            <tr><td>Time trial</td><td>71</td><td>78.4%</td><td>5.18 W/kg</td></tr>
+            <tr><td>Sprint</td><td>38</td><td>11.0%</td><td>1180 W</td></tr>
+            <tr><td>Endurance</td><td>88</td><td>95.6%</td><td>4.92 W/kg</td></tr>
+          </tbody>
+        </table>
+        <div class="ui-row body-font">
+          <span class="btn">Place bid</span>
+          <span class="badge">Watchlisted</span>
+          <span class="meta">12 managers watching</span>
+        </div>
+        <div class="price body-font">4.20M <small>current price</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIGHT -->
+  <div class="mode-label">Light mode · canvas #f0ede6 (live cream)</div>
+  <div class="duo">
+    <div class="pane dm">
+      <div class="pane-head"><span>DM Sans &middot; current</span><span class="px">body 14px</span></div>
+      <div class="surface light">
+        <div class="display">RIDER PROFILE</div>
+        <div class="kicker body-font">UCI WorldTour &middot; Climber &middot; Age 24</div>
+        <div class="sub body-font">Tadej Onley</div>
+        <p class="para body-font">A pure climber with one of the highest power-to-weight numbers in the peloton. Strong in the third week of a Grand Tour, where the mountains decide the race. You can build a season around him, but his sprint is weak: protect him on flat stages and let the rouleurs do the work before the climbs.</p>
+        <table class="body-font">
+          <thead><tr><th>Ability</th><th>Rating</th><th>Percentile</th><th>FTP</th></tr></thead>
+          <tbody>
+            <tr><td>Climbing</td><td class="num-strong">94</td><td>99.2%</td><td>6.04 W/kg</td></tr>
+            <tr><td>Time trial</td><td>71</td><td>78.4%</td><td>5.18 W/kg</td></tr>
+            <tr><td>Sprint</td><td>38</td><td>11.0%</td><td>1180 W</td></tr>
+            <tr><td>Endurance</td><td>88</td><td>95.6%</td><td>4.92 W/kg</td></tr>
+          </tbody>
+        </table>
+        <div class="ui-row body-font">
+          <span class="btn">Place bid</span>
+          <span class="badge">Watchlisted</span>
+          <span class="meta">12 managers watching</span>
+        </div>
+        <div class="price body-font">4.20M <small>current price</small></div>
+      </div>
+    </div>
+
+    <div class="pane it">
+      <div class="pane-head"><span>Inter Tight &middot; proposed</span><span class="px">body 14px</span></div>
+      <div class="surface light">
+        <div class="display">RIDER PROFILE</div>
+        <div class="kicker body-font">UCI WorldTour &middot; Climber &middot; Age 24</div>
+        <div class="sub body-font">Tadej Onley</div>
+        <p class="para body-font">A pure climber with one of the highest power-to-weight numbers in the peloton. Strong in the third week of a Grand Tour, where the mountains decide the race. You can build a season around him, but his sprint is weak: protect him on flat stages and let the rouleurs do the work before the climbs.</p>
+        <table class="body-font">
+          <thead><tr><th>Ability</th><th>Rating</th><th>Percentile</th><th>FTP</th></tr></thead>
+          <tbody>
+            <tr><td>Climbing</td><td class="num-strong">94</td><td>99.2%</td><td>6.04 W/kg</td></tr>
+            <tr><td>Time trial</td><td>71</td><td>78.4%</td><td>5.18 W/kg</td></tr>
+            <tr><td>Sprint</td><td>38</td><td>11.0%</td><td>1180 W</td></tr>
+            <tr><td>Endurance</td><td>88</td><td>95.6%</td><td>4.92 W/kg</td></tr>
+          </tbody>
+        </table>
+        <div class="ui-row body-font">
+          <span class="btn">Place bid</span>
+          <span class="badge">Watchlisted</span>
+          <span class="meta">12 managers watching</span>
+        </div>
+        <div class="price body-font">4.20M <small>current price</small></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <h3>How to read this</h3>
+    <p><span class="tag-dm">DM Sans</span> is warmer and a touch more rounded; it feels friendly and approachable. Slightly wider, so dense tables breathe a little more but fit a little less.</p>
+    <p><span class="tag-it">Inter Tight</span> is more neutral and condensed; it packs data tighter and reads as more "tool / precise / pro analyst". It is the true sibling of the Bebas wordmark and the Inter Tight CZ favicon, so the whole system rhymes.</p>
+    <p><b>Trade-off:</b> Inter Tight buys system-coherence and data-density (good for a manager game full of tables); DM Sans buys warmth and is a zero-cost no-op (already shipped). Either works. The brand-purist answer is Inter Tight; the pragmatic answer is keep DM Sans. Look at the numbers row in both and trust your gut.</p>
+  </div>
+
+</div>
+</body>
+</html>
