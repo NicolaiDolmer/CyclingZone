@@ -61,6 +61,27 @@ test("checkDebtWarnings — sender notification for hvert team med negativ saldo
   assert.equal(calls[1].userId, "user-2");
 });
 
+test("checkDebtWarnings — emitter metadata.{titleCode, messageCode} for locale-rendering (#678 Track 3)", async () => {
+  const calls = [];
+  const supabaseClient = createSupabaseStub({
+    teams: [
+      { id: "team-1", name: "Alpha", balance: -120, user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false },
+    ],
+  });
+
+  await checkDebtWarnings({
+    supabaseClient,
+    now: new Date("2026-05-24T08:00:00Z"),
+    notifyUserFn: async (args) => { calls.push(args); return { delivered: true, deduped: false }; },
+  });
+
+  assert.equal(calls.length, 1);
+  // DA-fallback bevaret (legacy + dedup-signatur), men koderne driver EN-rendering.
+  assert.equal(calls[0].title, "⚠️ Negativ saldo");
+  assert.equal(calls[0].metadata?.titleCode, "notif.debtWarning.title");
+  assert.equal(calls[0].metadata?.messageCode, "notif.debtWarning.message");
+});
+
 test("checkDebtWarnings — message er statisk på tværs af forskellige balance-værdier (#607)", async () => {
   const calls = [];
   const notifyUserFn = async (args) => { calls.push(args); return { delivered: true, deduped: false }; };

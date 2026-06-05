@@ -49,6 +49,9 @@ test("præcis ved 50% sæson-progress → låst (PROGRESS)", () => {
   const r = getBoardRenegotiationLock({ board: completedPlan(), activeSeason: season(50) });
   assert.equal(r.locked, true);
   assert.equal(r.code, "BOARD_RENEGOTIATION_LOCKED_PROGRESS");
+  // #678 Track 3: { code, params }-kontrakt til frontend resolveApiError.
+  assert.equal(r.errorCode, "board_renegotiation_locked_progress");
+  assert.deepEqual(r.errorParams, { percent: RENEGOTIATION_SEASON_PROGRESS_LOCK_PCT });
 });
 
 test("slutfase (≤5 race-days tilbage) → låst (WINDOW)", () => {
@@ -56,6 +59,9 @@ test("slutfase (≤5 race-days tilbage) → låst (WINDOW)", () => {
   const r = getBoardRenegotiationLock({ board: completedPlan(), activeSeason: season(completed) });
   assert.equal(r.locked, true);
   assert.equal(r.code, "BOARD_RENEGOTIATION_LOCKED_WINDOW");
+  // #678 Track 3: { code, params }-kontrakt til frontend resolveApiError.
+  assert.equal(r.errorCode, "board_renegotiation_locked_window");
+  assert.deepEqual(r.errorParams, { raceDays: REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT });
 });
 
 test("flerårig plan mid-plan (sæson 2+) låses uafhængigt af season_id", () => {

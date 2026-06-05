@@ -98,8 +98,16 @@ export async function checkDebtWarnings({
         supabase: supabaseClient,
         userId: team.user_id,
         type: "board_update",
+        // title/message er DA fallback for legacy rows + dedup-signatur (#607).
+        // #678 Track 3: metadata.{titleCode, messageCode} driver locale-rendering
+        // via NotificationsPage → renderBackendMessage, så engelske spillere ser
+        // engelsk i stedet for den hardcodede danske streng.
         title: "⚠️ Negativ saldo",
         message: "Dit hold har negativ saldo. Tjek Økonomi-siden for detaljer.",
+        metadata: {
+          titleCode: "notif.debtWarning.title",
+          messageCode: "notif.debtWarning.message",
+        },
         now,
       });
       if (result?.delivered) sent += 1;

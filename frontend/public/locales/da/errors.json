@@ -109,6 +109,13 @@
     "swap_missing": "Byttehandel ikke fundet",
     "not_involved": "Du er ikke involveret i denne handel",
     "not_awaiting_confirmation": "Ugyldig handling",
-    "already_confirmed": "Du har allerede bekræftet"
+    "already_confirmed": "Du har allerede bekræftet",
+    "board_dna_required_plan": "Klub-DNA skal vælges før bestyrelsesplanen kan forhandles",
+    "board_dna_required_sign": "Klub-DNA skal vælges før bestyrelsesplanen kan signeres",
+    "board_renegotiation_locked_window": "Sæsonens slutfase er begyndt. Bestyrelsesplanen kan ikke gen-forhandles de sidste {raceDays} race-days.",
+    "board_renegotiation_locked_progress": "Bestyrelsesplanen kan ikke gen-forhandles midt i en igangværende sæson (efter {percent}% af sæsonen er kørt). Vent til planen udløber eller sæsonen slutter.",
+    "board_unavailable": "Bestyrelsesfunktioner er ikke tilgængelige endnu",
+    "dna_requires_season_1": "Du skal afslutte sæson 1 før DNA kan vælges",
+    "dna_already_chosen": "Klub-DNA er allerede valgt og kan ikke skiftes (drift kommer i senere slice)"
   }
 }

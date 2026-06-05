@@ -372,6 +372,10 @@ export function getBoardRenegotiationLock({ board, activeSeason } = {}) {
       locked: true,
       code: "BOARD_RENEGOTIATION_LOCKED_WINDOW",
       reason: `Saesonens slutfase er begyndt. Bestyrelsesplanen kan ikke gen-forhandles de sidste ${REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT} race-days.`,
+      // #678 Track 3: { code, params }-kontrakt så frontend resolveApiError kan
+      // vise EN-tekst i stedet for den danske `reason`-fallback.
+      errorCode: "board_renegotiation_locked_window",
+      errorParams: { raceDays: REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT },
     };
   }
 
@@ -381,6 +385,8 @@ export function getBoardRenegotiationLock({ board, activeSeason } = {}) {
       locked: true,
       code: "BOARD_RENEGOTIATION_LOCKED_PROGRESS",
       reason: `Bestyrelsesplanen kan ikke gen-forhandles midt i en igangvaerende saeson (efter ${RENEGOTIATION_SEASON_PROGRESS_LOCK_PCT}% af saesonen er koert). Vent til planen udloeber eller saesonen slutter.`,
+      errorCode: "board_renegotiation_locked_progress",
+      errorParams: { percent: RENEGOTIATION_SEASON_PROGRESS_LOCK_PCT },
     };
   }
 
