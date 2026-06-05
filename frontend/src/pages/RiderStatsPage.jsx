@@ -7,6 +7,7 @@ import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { statColor } from "../lib/statColor";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
+import { resolveApiError } from "../lib/apiError";
 import PotentialeStars from "../components/PotentialeStars";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { RacePriceModal } from "../components/RacePriceModal";
@@ -210,7 +211,7 @@ function SwapOfferButton({ rider, myTeamId }) {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) { setResult({ ok: true, msg: t("swapOffer.toast.success") }); setShow(false); }
-      else        { setResult({ ok: false, msg: `${t("swapOffer.toast.errorPrefix")} ${data.error}` }); }
+      else        { setResult({ ok: false, msg: `${t("swapOffer.toast.errorPrefix")} ${resolveApiError(data, t)}` }); }
     } catch {
       setResult({ ok: false, msg: t("auth:error.connectionFailed") });
     } finally {
@@ -302,7 +303,7 @@ function LoanOfferButton({ rider }) {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) { setResult({ ok: true, msg: t("loanOffer.toast.success") }); setShow(false); }
-      else        { setResult({ ok: false, msg: `${t("loanOffer.toast.errorPrefix")} ${data.error}` }); }
+      else        { setResult({ ok: false, msg: `${t("loanOffer.toast.errorPrefix")} ${resolveApiError(data, t)}` }); }
     } catch {
       setResult({ ok: false, msg: t("auth:error.connectionFailed") });
     } finally {
@@ -387,7 +388,7 @@ function DirectOfferButton({ rider }) {
         logEvent("transfer_offer_sent", { rider_id: rider.id, amount });
         setResult({ ok: true, msg: t("directOffer.toast.success") }); setShow(false);
       }
-      else        { setResult({ ok: false, msg: `${t("directOffer.toast.errorPrefix")} ${data.error}` }); }
+      else        { setResult({ ok: false, msg: `${t("directOffer.toast.errorPrefix")} ${resolveApiError(data, t)}` }); }
     } catch {
       setResult({ ok: false, msg: t("auth:error.connectionFailed") });
     } finally {
@@ -1006,7 +1007,7 @@ export default function RiderStatsPage() {
     }
     let data = {};
     try { data = await res.json(); } catch { /* ignore */ }
-    return { ok: false, error: data.error || t("auctionPanel.errorFallback") };
+    return { ok: false, error: resolveApiError(data, t, t("auctionPanel.errorFallback")) };
   }
 
   async function handleConfirmRaceBid() {
@@ -1026,7 +1027,7 @@ export default function RiderStatsPage() {
     if (res.ok) { loadActiveAuctionFull(rider); return { ok: true }; }
     let data = {};
     try { data = await res.json(); } catch { /* ignore */ }
-    return { ok: false, error: data.error || t("auctionPanel.proxyErrorFallback") };
+    return { ok: false, error: resolveApiError(data, t, t("auctionPanel.proxyErrorFallback")) };
   }
 
   async function handleRemoveProxy(auctionId) {
@@ -1079,7 +1080,7 @@ export default function RiderStatsPage() {
       navigate("/auctions");
     } else {
       const data = await res.json();
-      setAuctionError(data.error || t("blocked.errorFallback"));
+      setAuctionError(resolveApiError(data, t, t("blocked.errorFallback")));
       setTimeout(() => setAuctionError(null), 5000);
     }
   }

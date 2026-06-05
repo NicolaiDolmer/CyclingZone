@@ -1539,9 +1539,9 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
   const { data: rider } = await supabase
     .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
   if (!rider || rider.team_id !== req.team.id)
-    return res.status(403).json({ error: "Du ejer ikke denne rytter" });
+    return res.status(403).json({ error: "Du ejer ikke denne rytter", errorCode: "rider_not_owned" });
   if (rider.is_retired)
-    return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke sættes til salg" });
+    return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke sættes til salg", errorCode: "rider_retired_listing" });
 
   // #247: maks én aktiv listing pr. rytter. Tjekkes først her, og DB-niveau
   // partial unique index (uniq_transfer_listings_one_active_per_rider) fanger
@@ -1553,7 +1553,7 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     .in("status", ["open", "negotiating"])
     .maybeSingle();
   if (existingListing) {
-    return res.status(409).json({ error: "Rytteren er allerede til salg på transfermarkedet" });
+    return res.status(409).json({ error: "Rytteren er allerede til salg på transfermarkedet", errorCode: "rider_already_listed" });
   }
 
   const { data, error } = await supabase
@@ -1564,7 +1564,7 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     // 23505 = unique_violation fra uniq_transfer_listings_one_active_per_rider
     // ved race mellem SELECT-tjek og INSERT (typisk dobbeltklik).
     if (error.code === "23505") {
-      return res.status(409).json({ error: "Rytteren er allerede til salg på transfermarkedet" });
+      return res.status(409).json({ error: "Rytteren er allerede til salg på transfermarkedet", errorCode: "rider_already_listed" });
     }
     return res.status(500).json({ error: error.message });
   }
@@ -1602,8 +1602,13 @@ router.delete("/transfers/:id", requireAuth, marketWriteLimiter, async (req, res
       not_owner: "Ikke din liste",
       already_closed: "Listingen er allerede lukket",
     }[issue.code];
+    const errorCode = {
+      not_found: "listing_not_found",
+      not_owner: "listing_not_owner",
+      already_closed: "listing_already_closed",
+    }[issue.code];
     const status = issue.code === "already_closed" ? 400 : 403;
-    return res.status(status).json({ error: message });
+    return res.status(status).json({ error: message, errorCode });
   }
   // 'withdrawn' matcher status-enum'en (open|negotiating|sold|withdrawn) og parallelt
   // mønster i transfer_offers/swap_offers withdraw-flows. 'closed' er ikke i CHECK-
@@ -1628,9 +1633,9 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
 
   const { data: rider } = await supabase
     .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
-  if (!rider || !rider.team_id) return res.status(404).json({ error: "Rytter ikke fundet eller har intet hold" });
-  if (rider.is_retired) return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke handles" });
-  if (rider.team_id === req.team.id) return res.status(400).json({ error: "Du kan ikke byde på din egen rytter" });
+  if (!rider || !rider.team_id) return res.status(404).json({ error: "Rytter ikke fundet eller har intet hold", errorCode: "rider_not_found_or_no_team" });
+  if (rider.is_retired) return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke handles", errorCode: "rider_retired_trade" });
+  if (rider.team_id === req.team.id) return res.status(400).json({ error: "Du kan ikke byde på din egen rytter", errorCode: "cannot_bid_own_rider" });
 
   const { data: sellerTeam } = await supabase
     .from("teams")
@@ -1638,13 +1643,13 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
     .eq("id", rider.team_id)
     .single();
   if (sellerTeam?.is_bank) {
-    return res.status(400).json({ error: "AI-ryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet." });
+    return res.status(400).json({ error: "AI-ryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet.", errorCode: "ai_rider_no_direct_offer" });
   }
 
   // Check buyer balance
   const buyerState = await getTeamMarketState(supabase, req.team.id);
   if (offer_amount > buyerState.balance)
-    return res.status(400).json({ error: "Du har ikke råd til dette tilbud" });
+    return res.status(400).json({ error: "Du har ikke råd til dette tilbud", errorCode: "cannot_afford_offer" });
 
   // Check squad size limits for buyer.
   // #19/#267: +2 soft-cap buffer gælder kun i åbent vindue; lukket → hard-cap.
@@ -1652,7 +1657,11 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
     softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
   });
   if (squadViolation)
-    return res.status(400).json({ error: `Dit hold er fyldt (${squadViolation.effectiveCap} ryttere — Div ${buyerState.division || 3} cap ${squadViolation.maxRiders}${squadViolation.softCapBuffer ? ` + ${squadViolation.softCapBuffer} buffer i transfervinduet` : ""})` });
+    return res.status(400).json({
+      error: `Dit hold er fyldt (${squadViolation.effectiveCap} ryttere — Div ${buyerState.division || 3} cap ${squadViolation.maxRiders}${squadViolation.softCapBuffer ? ` + ${squadViolation.softCapBuffer} buffer i transfervinduet` : ""})`,
+      errorCode: squadViolation.softCapBuffer ? "squad_full_buffer" : "squad_full",
+      errorParams: { effectiveCap: squadViolation.effectiveCap, division: buyerState.division || 3, maxRiders: squadViolation.maxRiders, buffer: squadViolation.softCapBuffer },
+    });
 
   // S-02e · Hard-block ved aktivt lag 2 (salary cap) eller lag 3 (signing-restriktion).
   const signingBlock = await assertSigningAllowed({
@@ -1770,15 +1779,15 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     .select(`*, rider:rider_id(id, firstname, lastname, team_id, uci_points)`)
     .eq("id", req.params.id).single();
 
-  if (!offer) return res.status(404).json({ error: "Tilbud ikke fundet" });
+  if (!offer) return res.status(404).json({ error: "Tilbud ikke fundet", errorCode: "offer_not_found" });
 
   const isSeller = offer.seller_team_id === req.team.id;
   const isBuyer = offer.buyer_team_id === req.team.id;
-  if (!isSeller && !isBuyer) return res.status(403).json({ error: "Ikke involveret i dette tilbud" });
+  if (!isSeller && !isBuyer) return res.status(403).json({ error: "Ikke involveret i dette tilbud", errorCode: "not_involved_offer" });
 
   if (action === "archive") {
     if (!["accepted", "rejected", "withdrawn"].includes(offer.status)) {
-      return res.status(400).json({ error: "Kun afsluttede tilbud kan arkiveres" });
+      return res.status(400).json({ error: "Kun afsluttede tilbud kan arkiveres", errorCode: "only_closed_offers_archivable" });
     }
 
     const archiveField = isSeller ? "seller_archived_at" : "buyer_archived_at";
@@ -1796,7 +1805,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     // Soft balance check — final check happens at confirmation
     const { data: buyer } = await supabase.from("teams").select("balance").eq("id", offer.buyer_team_id).single();
     if (!buyer || buyer.balance < price)
-      return res.status(400).json({ error: "Køber har ikke råd" });
+      return res.status(400).json({ error: "Køber har ikke råd", errorCode: "buyer_cannot_afford" });
 
     await supabase.from("transfer_offers").update({
       status: "awaiting_confirmation",
@@ -1859,7 +1868,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
 
     const { data: buyer } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
     if (!buyer || buyer.balance < price)
-      return res.status(400).json({ error: "Du har ikke råd" });
+      return res.status(400).json({ error: "Du har ikke råd", errorCode: "cannot_afford" });
 
     // S-02e · Hard-block ved aktivt lag 2/3 (genkontrol — sat kan have ændret sig siden offer).
     const signingBlock = await assertSigningAllowed({
@@ -1899,7 +1908,13 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     });
 
     if (!result.ok) {
-      return res.status(result.status).json({ error: result.error });
+      // Forward the structured { code, params } from transferExecution so EN
+      // players get a localized message instead of the raw DA `error` (#678).
+      return res.status(result.status).json({
+        error: result.error,
+        errorCode: result.code,
+        ...(result.errorParams ? { errorParams: result.errorParams } : {}),
+      });
     }
 
     // Executed transfer changes rider ownership; drop /api/riders cache.
@@ -1920,7 +1935,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
   // CANCEL — either party can cancel only before both parties have accepted.
   if (action === "cancel" && offer.status === "awaiting_confirmation") {
     if (getTransferCancelIssue(offer)) {
-      return res.status(400).json({ error: "Handlen er accepteret af begge parter og kan ikke annulleres af manager" });
+      return res.status(400).json({ error: "Handlen er accepteret af begge parter og kan ikke annulleres af manager", errorCode: "deal_locked_both_confirmed" });
     }
     await supabase.from("transfer_offers").update({ status: "withdrawn" }).eq("id", offer.id);
     const otherTeamId = isSeller ? offer.buyer_team_id : offer.seller_team_id;
@@ -1931,7 +1946,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     return res.json({ success: true, action: "cancelled" });
   }
   if (action === "cancel" && getTransferCancelIssue(offer)) {
-    return res.status(400).json({ error: "Handlen er accepteret af begge parter og kan ikke annulleres af manager" });
+    return res.status(400).json({ error: "Handlen er accepteret af begge parter og kan ikke annulleres af manager", errorCode: "deal_locked_both_confirmed" });
   }
 
   // NEW OFFER — buyer sends new amount (counter to counter)
@@ -1960,7 +1975,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     return res.json({ success: true, action: "withdrawn" });
   }
 
-  return res.status(400).json({ error: "Ugyldig handling" });
+  return res.status(400).json({ error: "Ugyldig handling", errorCode: "invalid_action" });
 });
 
 // POST /api/transfers/:id/offer — legacy route (listing-based offer)
@@ -1975,25 +1990,29 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
     .select("*, rider:rider_id(id, firstname, lastname, team_id)")
     .eq("id", req.params.id).single();
   if (!listing || listing.status !== "open")
-    return res.status(404).json({ error: "Listing ikke fundet" });
+    return res.status(404).json({ error: "Listing ikke fundet", errorCode: "listing_unavailable" });
   if (listing.seller_team_id === req.team.id)
-    return res.status(400).json({ error: "Kan ikke byde på eget udbud" });
+    return res.status(400).json({ error: "Kan ikke byde på eget udbud", errorCode: "cannot_bid_own_listing" });
   const { data: listingSeller } = await supabase
     .from("teams")
     .select("is_bank")
     .eq("id", listing.seller_team_id)
     .single();
   if (listingSeller?.is_bank)
-    return res.status(400).json({ error: "AI-ryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet." });
+    return res.status(400).json({ error: "AI-ryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet.", errorCode: "ai_rider_no_direct_offer" });
   const listingBuyerState = await getTeamMarketState(supabase, req.team.id);
   if (offer_amount > listingBuyerState.balance)
-    return res.status(400).json({ error: "Du har ikke råd til dette tilbud" });
+    return res.status(400).json({ error: "Du har ikke råd til dette tilbud", errorCode: "cannot_afford_offer" });
   // #19/#267: +2 soft-cap buffer kun i åbent vindue; lukket → hard-cap.
   const listingSquadViolation = getIncomingSquadViolation(listingBuyerState, {
     softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
   });
   if (listingSquadViolation)
-    return res.status(400).json({ error: `Dit hold er fyldt (${listingSquadViolation.effectiveCap} ryttere — Div ${listingBuyerState.division || 3} cap ${listingSquadViolation.maxRiders}${listingSquadViolation.softCapBuffer ? ` + ${listingSquadViolation.softCapBuffer} buffer i transfervinduet` : ""})` });
+    return res.status(400).json({
+      error: `Dit hold er fyldt (${listingSquadViolation.effectiveCap} ryttere — Div ${listingBuyerState.division || 3} cap ${listingSquadViolation.maxRiders}${listingSquadViolation.softCapBuffer ? ` + ${listingSquadViolation.softCapBuffer} buffer i transfervinduet` : ""})`,
+      errorCode: listingSquadViolation.softCapBuffer ? "squad_full_buffer" : "squad_full",
+      errorParams: { effectiveCap: listingSquadViolation.effectiveCap, division: listingBuyerState.division || 3, maxRiders: listingSquadViolation.maxRiders, buffer: listingSquadViolation.softCapBuffer },
+    });
   const { data, error } = await supabase.from("transfer_offers")
     .insert({
       listing_id: listing.id,
@@ -2055,27 +2074,27 @@ router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res
   const requested = requestedRes.data;
 
   if (!offered || offered.team_id !== req.team.id)
-    return res.status(400).json({ error: "Din tilbudte rytter tilhører ikke dit hold" });
+    return res.status(400).json({ error: "Din tilbudte rytter tilhører ikke dit hold", errorCode: "offered_rider_not_owned" });
   if (offered.is_retired)
-    return res.status(409).json({ error: "Din tilbudte rytter er pensioneret og kan ikke handles" });
+    return res.status(409).json({ error: "Din tilbudte rytter er pensioneret og kan ikke handles", errorCode: "offered_rider_retired" });
   if (!requested || !requested.team_id)
-    return res.status(404).json({ error: "Målrytter ikke fundet eller har intet hold" });
+    return res.status(404).json({ error: "Målrytter ikke fundet eller har intet hold", errorCode: "target_rider_not_found" });
   if (requested.is_retired)
-    return res.status(409).json({ error: "Målrytteren er pensioneret og kan ikke handles" });
+    return res.status(409).json({ error: "Målrytteren er pensioneret og kan ikke handles", errorCode: "target_rider_retired" });
   if (requested.team_id === req.team.id)
-    return res.status(400).json({ error: "Du kan ikke bytte med dig selv" });
+    return res.status(400).json({ error: "Du kan ikke bytte med dig selv", errorCode: "cannot_swap_self" });
   const { data: requestedTeam } = await supabase
     .from("teams")
     .select("is_bank")
     .eq("id", requested.team_id)
     .single();
   if (requestedTeam?.is_bank)
-    return res.status(400).json({ error: "AI-ryttere kan ikke indgå i direkte byttehandler. Brug auktioner i stedet." });
+    return res.status(400).json({ error: "AI-ryttere kan ikke indgå i direkte byttehandler. Brug auktioner i stedet.", errorCode: "ai_rider_no_swap" });
 
   if (cash_adjustment > 0) {
     const proposingState = await getTeamMarketState(supabase, req.team.id);
     if (proposingState.balance < cash_adjustment)
-      return res.status(400).json({ error: "Du har ikke råd til den ønskede kontantbetaling" });
+      return res.status(400).json({ error: "Du har ikke råd til den ønskede kontantbetaling", errorCode: "cannot_afford_cash_adjustment" });
   }
 
   const { data, error } = await supabase.from("swap_offers").insert({
@@ -2115,12 +2134,12 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
       requested:requested_rider_id(id, firstname, lastname, team_id)`)
     .eq("id", req.params.id).single();
 
-  if (!swap) return res.status(404).json({ error: "Byttehandel ikke fundet" });
+  if (!swap) return res.status(404).json({ error: "Byttehandel ikke fundet", errorCode: "swap_not_found" });
 
   const isProposing  = swap.proposing_team_id === req.team.id;
   const isReceiving  = swap.receiving_team_id === req.team.id;
   if (!isProposing && !isReceiving)
-    return res.status(403).json({ error: "Ikke involveret i denne byttehandel" });
+    return res.status(403).json({ error: "Ikke involveret i denne byttehandel", errorCode: "not_involved_swap" });
 
   // ACCEPT — receiving team accepts → awaiting proposing confirmation
   if (action === "accept" && isReceiving && swap.status === "pending") {
@@ -2187,7 +2206,7 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
     if (effectiveCash > 0) {
       const { data: proposingTeam } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
       if (!proposingTeam || proposingTeam.balance < effectiveCash)
-        return res.status(400).json({ error: "Du har ikke råd til det kontra-tilbud" });
+        return res.status(400).json({ error: "Du har ikke råd til det kontra-tilbud", errorCode: "cannot_afford_counter" });
     }
     await supabase.from("swap_offers").update({
       status: "awaiting_confirmation",
@@ -2213,7 +2232,13 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
     });
 
     if (!result.ok) {
-      return res.status(result.status).json({ error: result.error });
+      // Forward the structured { code, params } from transferExecution so EN
+      // players get a localized message instead of the raw DA `error` (#678).
+      return res.status(result.status).json({
+        error: result.error,
+        errorCode: result.code,
+        ...(result.errorParams ? { errorParams: result.errorParams } : {}),
+      });
     }
 
     // Executed swap moves two riders between teams; drop /api/riders cache.
@@ -2227,7 +2252,7 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
   // CANCEL — either party can cancel only before both parties have accepted.
   if (action === "cancel" && swap.status === "awaiting_confirmation") {
     if (getSwapCancelIssue(swap)) {
-      return res.status(400).json({ error: "Byttehandlen er accepteret af begge parter og kan ikke annulleres af manager" });
+      return res.status(400).json({ error: "Byttehandlen er accepteret af begge parter og kan ikke annulleres af manager", errorCode: "swap_locked_both_confirmed" });
     }
     await supabase.from("swap_offers").update({ status: "withdrawn" }).eq("id", swap.id);
     const otherTeamId = isProposing ? swap.receiving_team_id : swap.proposing_team_id;
@@ -2237,7 +2262,7 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
     return res.json({ success: true, action: "cancelled" });
   }
   if (action === "cancel" && getSwapCancelIssue(swap)) {
-    return res.status(400).json({ error: "Byttehandlen er accepteret af begge parter og kan ikke annulleres af manager" });
+    return res.status(400).json({ error: "Byttehandlen er accepteret af begge parter og kan ikke annulleres af manager", errorCode: "swap_locked_both_confirmed" });
   }
 
   // WITHDRAW — proposing team withdraws pending offer
@@ -2246,7 +2271,7 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
     return res.json({ success: true, action: "withdrawn" });
   }
 
-  return res.status(400).json({ error: "Ugyldig handling" });
+  return res.status(400).json({ error: "Ugyldig handling", errorCode: "invalid_action" });
 });
 
 // ── Loan Agreements ───────────────────────────────────────────────────────────
@@ -2282,22 +2307,22 @@ router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
   if (end_season < start_season)
     return res.status(400).json({ error: "end_season skal være >= start_season" });
   if (end_season > start_season)
-    return res.status(400).json({ error: "Lejeaftale kan max dække 1 sæson — sæt start og slut til samme sæsonnummer" });
+    return res.status(400).json({ error: "Lejeaftale kan max dække 1 sæson — sæt start og slut til samme sæsonnummer", errorCode: "loan_max_one_season" });
 
   const { data: rider } = await supabase
     .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
   if (!rider || !rider.team_id)
-    return res.status(404).json({ error: "Rytter ikke fundet eller har intet hold" });
+    return res.status(404).json({ error: "Rytter ikke fundet eller har intet hold", errorCode: "rider_not_found_or_no_team" });
   if (rider.is_retired)
-    return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke lejes" });
+    return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke lejes", errorCode: "rider_retired_loan" });
   if (rider.team_id === req.team.id)
-    return res.status(400).json({ error: "Du kan ikke leje din egen rytter" });
+    return res.status(400).json({ error: "Du kan ikke leje din egen rytter", errorCode: "cannot_loan_own_rider" });
 
   // Check no active loan already exists for this rider
   const { data: existing } = await supabase.from("loan_agreements")
     .select("id").eq("rider_id", rider_id).in("status", ["pending","active"]).limit(1);
   if (existing && existing.length > 0)
-    return res.status(400).json({ error: "Rytteren er allerede udlejet eller har et afventende lejeforslag" });
+    return res.status(400).json({ error: "Rytteren er allerede udlejet eller har et afventende lejeforslag", errorCode: "rider_already_loaned" });
 
   const borrowerState = await getTeamMarketState(supabase, req.team.id);
   // #19/#267: soft-cap buffer kun i åbent vindue; lukket vindue bruger hard-cap.
@@ -2305,7 +2330,11 @@ router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
     softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
   });
   if (proposalSquadViolation)
-    return res.status(400).json({ error: `Dit hold er fyldt (${proposalSquadViolation.effectiveCap} ryttere — Div ${borrowerState.division || 3} cap ${proposalSquadViolation.maxRiders}${proposalSquadViolation.softCapBuffer ? ` + ${proposalSquadViolation.softCapBuffer} buffer i transfervinduet` : ""}). Lejeaftalen kan ikke oprettes.` });
+    return res.status(400).json({
+      error: `Dit hold er fyldt (${proposalSquadViolation.effectiveCap} ryttere — Div ${borrowerState.division || 3} cap ${proposalSquadViolation.maxRiders}${proposalSquadViolation.softCapBuffer ? ` + ${proposalSquadViolation.softCapBuffer} buffer i transfervinduet` : ""}). Lejeaftalen kan ikke oprettes.`,
+      errorCode: proposalSquadViolation.softCapBuffer ? "squad_full_loan_propose_buffer" : "squad_full_loan_propose",
+      errorParams: { effectiveCap: proposalSquadViolation.effectiveCap, division: borrowerState.division || 3, maxRiders: proposalSquadViolation.maxRiders, buffer: proposalSquadViolation.softCapBuffer },
+    });
 
   const { data, error } = await supabase.from("loan_agreements").insert({
     rider_id,
@@ -2342,12 +2371,12 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     .from("loan_agreements")
     .select(`*, rider:rider_id(id, firstname, lastname, team_id)`)
     .eq("id", req.params.id).single();
-  if (!loan) return res.status(404).json({ error: "Lejeaftale ikke fundet" });
+  if (!loan) return res.status(404).json({ error: "Lejeaftale ikke fundet", errorCode: "loan_not_found" });
 
   const isLender   = loan.from_team_id === req.team.id;
   const isBorrower = loan.to_team_id   === req.team.id;
   if (!isLender && !isBorrower)
-    return res.status(403).json({ error: "Ikke involveret i denne lejeaftale" });
+    return res.status(403).json({ error: "Ikke involveret i denne lejeaftale", errorCode: "not_involved_loan" });
 
   // ACCEPT — lending team accepts
   if (action === "accept" && isLender && loan.status === "pending") {
@@ -2358,13 +2387,17 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
       softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
     });
     if (activationSquadViolation)
-      return res.status(400).json({ error: `Lejerens hold er fyldt (${activationSquadViolation.effectiveCap} ryttere — Div ${borrowerState.division || 3} cap ${activationSquadViolation.maxRiders}${activationSquadViolation.softCapBuffer ? ` + ${activationSquadViolation.softCapBuffer} buffer i transfervinduet` : ""}). Lejeaftalen kan ikke aktiveres.` });
+      return res.status(400).json({
+        error: `Lejerens hold er fyldt (${activationSquadViolation.effectiveCap} ryttere — Div ${borrowerState.division || 3} cap ${activationSquadViolation.maxRiders}${activationSquadViolation.softCapBuffer ? ` + ${activationSquadViolation.softCapBuffer} buffer i transfervinduet` : ""}). Lejeaftalen kan ikke aktiveres.`,
+        errorCode: activationSquadViolation.softCapBuffer ? "squad_full_loan_accept_buffer" : "squad_full_loan_accept",
+        errorParams: { effectiveCap: activationSquadViolation.effectiveCap, division: borrowerState.division || 3, maxRiders: activationSquadViolation.maxRiders, buffer: activationSquadViolation.softCapBuffer },
+      });
 
     // Deduct first season's loan fee from borrower if > 0
     if (loan.loan_fee > 0) {
       const { data: borrower } = await supabase.from("teams").select("balance").eq("id", loan.to_team_id).single();
       if (!borrower)
-        return res.status(400).json({ error: "Lejer-hold ikke fundet" });
+        return res.status(400).json({ error: "Lejer-hold ikke fundet", errorCode: "borrower_team_not_found" });
       // #44: lejegebyret må ikke pushe lejer i underbalance ift. eksisterende auktioner.
       const { commitment: borrowerCommitment } = await fetchTeamCommitment(supabase, loan.to_team_id);
       const spendIssue = getSpendIssue({
@@ -2375,6 +2408,8 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
       if (spendIssue?.code === "insufficient_available_balance") {
         return res.status(400).json({
           error: `Lejer har kun ${spendIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilgængelig efter aktive bud — kan ikke betale lejegebyr på ${loan.loan_fee.toLocaleString("da-DK")} CZ$`,
+          errorCode: "loan_fee_insufficient",
+          errorParams: { available: spendIssue.availableBalance, fee: loan.loan_fee },
         });
       }
       // Slice 07c: balance + finance_transactions atomic via RPC.
@@ -2450,6 +2485,7 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
   if (action === "cancel" && getLoanCancelIssue(loan)) {
     return res.status(400).json({
       error: "Lejeaftalen er aktiv og kan ikke annulleres ensidigt — kontakt en admin.",
+      errorCode: "loan_active_no_unilateral_cancel",
     });
   }
 
@@ -2459,7 +2495,7 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     const price = loan.buy_option_price;
     const { data: borrower } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
     if (!borrower)
-      return res.status(400).json({ error: "Hold ikke fundet" });
+      return res.status(400).json({ error: "Hold ikke fundet", errorCode: "team_not_found" });
     // #44: købsoption må ikke pushe i underbalance ift. eksisterende auktioner.
     const { commitment: buyerCommitment } = await fetchTeamCommitment(supabase, req.team.id);
     const buyoutIssue = getSpendIssue({
@@ -2470,6 +2506,8 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     if (buyoutIssue?.code === "insufficient_available_balance") {
       return res.status(400).json({
         error: `Du har kun ${buyoutIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilgængelig efter aktive bud — kan ikke udnytte købsoption på ${price.toLocaleString("da-DK")} CZ$`,
+        errorCode: "buyout_insufficient",
+        errorParams: { available: buyoutIssue.availableBalance, price },
       });
     }
 
@@ -2488,7 +2526,7 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
       .select("id");
     if (claimErr) return res.status(500).json({ error: claimErr.message });
     if (!claimedRider || claimedRider.length === 0)
-      return res.status(409).json({ error: "Rytteren er ikke længere tilgængelig for købsoption — den er allerede involveret i en anden handel." });
+      return res.status(409).json({ error: "Rytteren er ikke længere tilgængelig for købsoption — den er allerede involveret i en anden handel.", errorCode: "buyout_rider_unavailable" });
 
     // Slice 07c: balance + finance_transactions atomic via RPC.
     // 07d Fase B / #240: borrower aktiverer købsoption → req.user.id = køber.
