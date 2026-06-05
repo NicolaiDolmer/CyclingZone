@@ -11,6 +11,7 @@ import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
 import { resolveApiError } from "../lib/apiError";
+import { useModalA11y } from "../hooks/useModalA11y";
 import {
   resolveBoardFeedbackHeadline,
   resolveBoardFeedbackSummary,
@@ -32,13 +33,13 @@ function buildBoardTourSteps(t) {
 }
 
 const GOAL_CHANGE_STYLE = {
-  relaxed:   { accent: "text-green-300", box: "border-cz-success/30 bg-cz-success-bg0/8" },
-  tightened: { accent: "text-red-300",   box: "border-cz-danger/30 bg-cz-danger-bg0/8" },
-  replaced:  { accent: "text-blue-300",  box: "border-blue-500/20 bg-cz-info-bg0/8" },
+  relaxed:   { accent: "text-cz-success", box: "border-cz-success/30 bg-cz-success-bg0/8" },
+  tightened: { accent: "text-cz-danger",   box: "border-cz-danger/30 bg-cz-danger-bg0/8" },
+  replaced:  { accent: "text-cz-info",  box: "border-cz-info/20 bg-cz-info-bg0/8" },
 };
 
 const GOAL_STATUS_STYLE = {
-  behind:        { color: "text-red-400",     icon: "!" },
+  behind:        { color: "text-cz-danger",     icon: "!" },
   near_miss:     { color: "text-cz-accent-t", icon: "~" },
   on_track:      { color: "text-cz-3",        icon: null },
   watch:         { color: "text-cz-accent-t", icon: "~" },
@@ -58,6 +59,15 @@ function getGoalStatusMeta(t, status) {
   if (!style) return null;
   const labelKey = STATUS_LABEL_KEYS[status];
   return { label: labelKey ? t(labelKey) : null, color: style.color, icon: style.icon };
+}
+
+// #1073 · skærmlæser-alternativ for status-glyfferne (✓/!/~/○). Uden dette læses
+// symbolerne op som "multiplication sign" / "tilde" uden betydning.
+function getGoalStatusA11yLabel(t, { achieved, status }) {
+  if (achieved) return t("a11y.goalStatus.achieved");
+  if (status === "behind") return t("a11y.goalStatus.behind");
+  if (status === "near_miss" || status === "watch") return t("a11y.goalStatus.nearMiss");
+  return t("a11y.goalStatus.pending");
 }
 
 function getPlanLabel(t, planType) {
@@ -183,6 +193,7 @@ function BoardMembersGrid({ members = [], onSelect }) {
 // #1030 · Klik på et bestyrelsesmedlem → portræt + fuld karakter-beskrivelse.
 function BoardMemberDialog({ member, onClose }) {
   const { t } = useTranslation("board");
+  const dialogRef = useModalA11y(onClose);
   if (!member) return null;
   const roleLabel = member.is_chairman
     ? t("members.chairman")
@@ -194,7 +205,8 @@ function BoardMemberDialog({ member, onClose }) {
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl">
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="board-member-dialog-title"
+        className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl">
         <div className="flex items-start gap-3 mb-4">
           <div className={`relative w-12 h-12 rounded-full bg-cz-subtle border flex items-center justify-center text-2xl flex-shrink-0
             ${member.is_chairman ? "border-cz-accent/40" : "border-cz-border"}`}>
@@ -206,12 +218,12 @@ function BoardMemberDialog({ member, onClose }) {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-cz-1 font-semibold text-base leading-snug">{resolveMemberLabel(t, member)}</p>
+            <p id="board-member-dialog-title" className="text-cz-1 font-semibold text-base leading-snug">{resolveMemberLabel(t, member)}</p>
             <p className={`text-xs uppercase tracking-wider mt-0.5 ${member.is_chairman ? "text-cz-accent-t font-semibold" : "text-cz-3"}`}>
               {roleLabel}
             </p>
           </div>
-          <button onClick={onClose} className="text-cz-3 hover:text-cz-2 text-xl leading-none flex-shrink-0 px-1">×</button>
+          <button onClick={onClose} aria-label={t("a11y.closeDialog")} className="text-cz-3 hover:text-cz-2 text-xl leading-none flex-shrink-0 px-1"><span aria-hidden="true">×</span></button>
         </div>
         {resolveMemberShortDescription(t, member) && (
           <p className="text-cz-2 text-sm leading-relaxed">{resolveMemberShortDescription(t, member)}</p>
@@ -316,13 +328,15 @@ function ClubDnaBadge({ dna, onSelect }) {
 // #1030 · DNA-detalje-dialog — fuld beskrivelse + forklaring på at DNA er låst for sæsonen.
 function ClubDnaDialog({ dna, onClose }) {
   const { t } = useTranslation("board");
+  const dialogRef = useModalA11y(onClose);
   if (!dna) return null;
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl">
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="club-dna-dialog-title"
+        className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-12 h-12 rounded-full bg-cz-subtle border border-cz-border
             flex items-center justify-center text-2xl flex-shrink-0">
@@ -330,9 +344,9 @@ function ClubDnaDialog({ dna, onClose }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-cz-3 text-xs uppercase tracking-wider">{t("dna.badge.label")}</p>
-            <p className="text-cz-1 font-semibold text-base leading-snug">{getDnaCopy(t, dna, "label")}</p>
+            <p id="club-dna-dialog-title" className="text-cz-1 font-semibold text-base leading-snug">{getDnaCopy(t, dna, "label")}</p>
           </div>
-          <button onClick={onClose} className="text-cz-3 hover:text-cz-2 text-xl leading-none flex-shrink-0 px-1">×</button>
+          <button onClick={onClose} aria-label={t("a11y.closeDialog")} className="text-cz-3 hover:text-cz-2 text-xl leading-none flex-shrink-0 px-1"><span aria-hidden="true">×</span></button>
         </div>
         {getDnaCopy(t, dna, "shortDescription") && (
           <p className="text-cz-2 text-sm leading-relaxed">{getDnaCopy(t, dna, "shortDescription")}</p>
@@ -373,18 +387,24 @@ function MemberReactionPanel({ reaction, compact = false }) {
 
 function SatisfactionMeter({ value }) {
   const { t } = useTranslation("board");
-  const color = value >= 70 ? "#4ade80" : value >= 40 ? "#e8c547" : "#f87171";
+  // #1072 WCAG: tidligere injicerede komponenten en rå hex via inline style — bright
+  // guld (#e8c547) som tekst på Chalk ≈1.6:1 = AA-fail i light-mode. Nu tema-adaptive
+  // semantiske tokens; teksten bruger cz-accent-t (deep-gold, kontrast-sikker i begge
+  // temaer), mens bar-fyldet beholder den lyse cz-accent (grafisk fyld, ikke tekst).
+  const tone = value >= 70 ? "success" : value >= 40 ? "mid" : "danger";
+  const textClass = tone === "success" ? "text-cz-success" : tone === "mid" ? "text-cz-accent-t" : "text-cz-danger";
+  const barClass = tone === "success" ? "bg-cz-success" : tone === "mid" ? "bg-cz-accent" : "bg-cz-danger";
   const labelKey = value >= 80 ? "veryHappy" : value >= 60 ? "happy" :
     value >= 40 ? "neutral" : value >= 20 ? "unhappy" : "veryUnhappy";
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5">
       <div className="flex items-center justify-between mb-3">
         <p className="text-cz-3 text-xs uppercase tracking-wider">{t("satisfactionMeter.label")}</p>
-        <span className="font-mono font-bold text-lg" style={{ color }}>{value}%</span>
+        <span className={`font-data font-bold text-lg ${textClass}`}>{value}%</span>
       </div>
       <div className="bg-cz-subtle rounded-full h-3 mb-2">
-        <div className="h-3 rounded-full transition-all duration-500"
-          style={{ width: `${value}%`, backgroundColor: color }} />
+        <div className={`h-3 rounded-full transition-all duration-500 ${barClass}`}
+          style={{ width: `${value}%` }} />
       </div>
       <div className="flex items-center justify-between">
         <p className="text-cz-2 text-sm font-medium">{t(`satisfactionMeter.${labelKey}`)}</p>
@@ -410,20 +430,21 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
   const containerClass = achieved
     ? "bg-cz-success-bg0/8 border-cz-success/30"
     : isBehind && isRequired ? "bg-cz-danger-bg0/5 border-cz-danger/30"
-    : isBehind ? "bg-cz-subtle border-cz-danger/30/50"
+    : isBehind ? "bg-cz-subtle border-cz-danger/50"
     : "bg-cz-subtle border-cz-border";
 
   const iconContent = achieved ? "✓" : isBehind ? "!" : isNearMiss ? "~" : "○";
   const iconClass = achieved ? "bg-cz-success-bg text-cz-success"
-    : isBehind && isRequired ? "bg-cz-danger-bg text-red-600"
-    : isBehind ? "bg-cz-danger-bg text-red-400"
+    : isBehind && isRequired ? "bg-cz-danger-bg text-cz-danger"
+    : isBehind ? "bg-cz-danger-bg text-cz-danger"
     : isNearMiss ? "bg-cz-accent/10 text-cz-accent-t"
     : "bg-cz-subtle text-cz-3";
 
   return (
     <div className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${containerClass}`}>
       <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold ${iconClass}`}>
-        {iconContent}
+        <span aria-hidden="true">{iconContent}</span>
+        <span className="sr-only">{getGoalStatusA11yLabel(t, { achieved, status })}</span>
       </div>
       <div className="flex-1">
         {/* #1030 · Affordance: mål-headeren er klikbar (åbner samme mini-dialog som
@@ -431,7 +452,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
         {onSelect ? (
           <button type="button" onClick={onSelect}
             className="flex items-start justify-between gap-2 w-full text-left rounded -mx-1 px-1 hover:bg-cz-subtle/40 transition-colors group/goal">
-            <span className={`text-sm font-medium ${achieved ? "text-green-300" : "text-cz-2"} group-hover/goal:text-cz-1`}>{getBoardGoalLabel(t, goal)}</span>
+            <span className={`text-sm font-medium ${achieved ? "text-cz-success" : "text-cz-2"} group-hover/goal:text-cz-1`}>{getBoardGoalLabel(t, goal)}</span>
             {!achieved && evaluation?.actual != null && (
               <span className="text-xs font-mono text-cz-3 flex-shrink-0">
                 {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}/{goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
@@ -440,7 +461,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
           </button>
         ) : (
           <div className="flex items-start justify-between gap-2">
-            <p className={`text-sm font-medium ${achieved ? "text-green-300" : "text-cz-2"}`}>{getBoardGoalLabel(t, goal)}</p>
+            <p className={`text-sm font-medium ${achieved ? "text-cz-success" : "text-cz-2"}`}>{getBoardGoalLabel(t, goal)}</p>
             {!achieved && evaluation?.actual != null && (
               <span className="text-xs font-mono text-cz-3 flex-shrink-0">
                 {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}/{goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
@@ -538,6 +559,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
 
 function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClose }) {
   const { t } = useTranslation("board");
+  const dialogRef = useModalA11y(onClose);
   const status = evaluation?.status;
   const statusMeta = !achieved && status ? getGoalStatusMeta(t, status) : null;
   const memberReaction = evaluation?.member_reaction || null;
@@ -546,7 +568,7 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
   const isNearMiss = status === "near_miss" || status === "watch";
   const iconContent = achieved ? "✓" : isBehind ? "!" : isNearMiss ? "~" : "○";
   const iconCls = achieved ? "bg-cz-success-bg text-cz-success"
-    : isBehind ? "bg-cz-danger-bg text-red-400"
+    : isBehind ? "bg-cz-danger-bg text-cz-danger"
     : isNearMiss ? "bg-cz-accent/10 text-cz-accent-t"
     : "bg-cz-subtle text-cz-3";
 
@@ -555,18 +577,20 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-lg bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl">
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="goal-mini-dialog-title"
+        className="w-full max-w-lg bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl">
         <div className="flex items-start gap-3 mb-4">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${iconCls}`}>
-            {iconContent}
+            <span aria-hidden="true">{iconContent}</span>
+            <span className="sr-only">{getGoalStatusA11yLabel(t, { achieved, status })}</span>
           </div>
           <div className="flex-1">
-            <p className="text-cz-1 font-semibold text-base leading-snug">{getBoardGoalLabel(t, goal)}</p>
+            <p id="goal-mini-dialog-title" className="text-cz-1 font-semibold text-base leading-snug">{getBoardGoalLabel(t, goal)}</p>
             {statusMeta?.label && (
               <p className={`text-sm mt-0.5 ${statusMeta.color}`}>{statusMeta.label}</p>
             )}
           </div>
-          <button onClick={onClose} className="text-cz-3 hover:text-cz-2 text-xl leading-none flex-shrink-0 px-1">×</button>
+          <button onClick={onClose} aria-label={t("a11y.closeDialog")} className="text-cz-3 hover:text-cz-2 text-xl leading-none flex-shrink-0 px-1"><span aria-hidden="true">×</span></button>
         </div>
 
         {evaluation?.actual != null && (
@@ -629,6 +653,7 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
 }
 
 function PlanTimelineBar({ planDuration, seasonsCompleted, snapshots }) {
+  const { t } = useTranslation("board");
   if (planDuration <= 1) return null;
   return (
     // #920: scroll vandret når de N cirkler er bredere end kortet (lange planer /
@@ -645,16 +670,21 @@ function PlanTimelineBar({ planDuration, seasonsCompleted, snapshots }) {
           <div key={i} className="flex items-center gap-1">
             <div className={`relative w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all
               ${isCompleted
-                ? metPct >= 75 ? "bg-cz-success-bg border-green-500/50 text-cz-success"
-                  : metPct >= 50 ? "bg-cz-accent/10 border-[#e8c547]/50 text-cz-accent-t"
-                  : "bg-cz-danger-bg border-red-500/30 text-cz-danger"
+                ? metPct >= 75 ? "bg-cz-success-bg border-cz-success/50 text-cz-success"
+                  : metPct >= 50 ? "bg-cz-accent/10 border-cz-accent/50 text-cz-accent-t"
+                  : "bg-cz-danger-bg border-cz-danger/30 text-cz-danger"
                 : isCurrent
-                ? "bg-cz-accent/10 border-[#e8c547] text-cz-accent-t"
+                ? "bg-cz-accent/10 border-cz-accent text-cz-accent-t"
                 : "bg-cz-subtle border-cz-border text-cz-3"}`}>
-              {isCompleted ? (metPct >= 50 ? "✓" : "✗") : seasonNum}
+              {isCompleted ? (
+                <>
+                  <span aria-hidden="true">{metPct >= 50 ? "✓" : "✗"}</span>
+                  <span className="sr-only">{metPct >= 50 ? t("a11y.seasonComplete.good") : t("a11y.seasonComplete.poor")}</span>
+                </>
+              ) : seasonNum}
             </div>
             {i < planDuration - 1 && (
-              <div className={`w-6 h-0.5 ${isCompleted ? "bg-cz-subtle0" : "bg-cz-subtle"}`} />
+              <div className={`w-6 h-0.5 ${isCompleted ? "bg-cz-border" : "bg-cz-subtle"}`} />
             )}
           </div>
         );
@@ -717,17 +747,24 @@ function SeasonSnapshotGrid({ snapshots }) {
           {snapshots.map(s => (
             <tr key={s.id} className="border-t border-cz-border">
               <td className="py-2 text-cz-2">{t("snapshot.seasonNumber", { number: s.season_number })}</td>
-              <td className="py-2 text-center text-cz-2">{s.division_rank ? `#${s.division_rank}` : t("snapshot.rankNone")}</td>
-              <td className="py-2 text-center text-cz-2">{s.stage_wins}</td>
-              <td className="py-2 text-center text-cz-2">{s.gc_wins}</td>
-              <td className="py-2 text-center">
+              {/* #1072 · gold=leder: division-#1 får maillot-guld (deep-gold cz-accent-t =
+                  WCAG-sikker som tekst i begge temaer), resten neutral. font-data på alle
+                  tal-celler → tabular-justering (de havde ingen numerisk font før). */}
+              <td className="py-2 text-center font-data">
+                {s.division_rank
+                  ? <span className={s.division_rank === 1 ? "text-cz-accent-t font-bold" : "text-cz-2"}>#{s.division_rank}</span>
+                  : <span className="text-cz-3">{t("snapshot.rankNone")}</span>}
+              </td>
+              <td className="py-2 text-center text-cz-2 font-data">{s.stage_wins}</td>
+              <td className="py-2 text-center text-cz-2 font-data">{s.gc_wins}</td>
+              <td className="py-2 text-center font-data">
                 <span className={s.goals_met >= s.goals_total * 0.7
                   ? "text-cz-success" : s.goals_met >= s.goals_total * 0.4
                   ? "text-cz-accent-t" : "text-cz-danger"}>
                   {s.goals_met}/{s.goals_total}
                 </span>
               </td>
-              <td className="py-2 text-right">
+              <td className="py-2 text-right font-data">
                 <span className={s.satisfaction_delta > 0
                   ? "text-cz-success" : s.satisfaction_delta < 0
                   ? "text-cz-danger" : "text-cz-2"}>
@@ -770,7 +807,7 @@ function BoardIdentityCard({ identityProfile, title }) {
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("identity.u25")}</p>
-          <p className="font-mono font-bold text-sm text-[#7dd3fc]">{identityProfile.u25_share_pct ?? 0}%</p>
+          <p className="font-mono font-bold text-sm text-cz-info">{identityProfile.u25_share_pct ?? 0}%</p>
         </div>
       </div>
       <div className="grid sm:grid-cols-3 xl:grid-cols-6 gap-3 mt-4">
@@ -812,10 +849,10 @@ function BoardIdentityCard({ identityProfile, title }) {
 }
 
 const OUTCOME_STYLE = {
-  approved: { accent: "text-green-300",   box: "border-cz-success/30 bg-cz-success-bg0/8" },
+  approved: { accent: "text-cz-success",   box: "border-cz-success/30 bg-cz-success-bg0/8" },
   partial:  { accent: "text-cz-accent-t", box: "border-cz-accent/30 bg-cz-accent/10" },
-  tradeoff: { accent: "text-blue-300",    box: "border-blue-500/20 bg-cz-info-bg0/8" },
-  rejected: { accent: "text-red-300",     box: "border-cz-danger/30 bg-cz-danger-bg0/8" },
+  tradeoff: { accent: "text-cz-info",    box: "border-cz-info/20 bg-cz-info-bg0/8" },
+  rejected: { accent: "text-cz-danger",     box: "border-cz-danger/30 bg-cz-danger-bg0/8" },
 };
 
 function BoardRequestPanel({ requestOptions, requestStatus, requestError, requestingType, onRequest }) {
@@ -838,7 +875,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
           <p className="text-cz-1 font-semibold text-sm">{t("request.subheading")}</p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className={`text-sm font-semibold ${usedThisSeason ? "text-cz-accent-t" : "text-green-300"}`}>
+          <p className={`text-sm font-semibold ${usedThisSeason ? "text-cz-accent-t" : "text-cz-success"}`}>
             {usedThisSeason ? t("request.used") : t("request.ready")}
           </p>
         </div>
@@ -902,7 +939,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
 
       {requestError && (
         <div className="rounded-xl border border-cz-danger/30 bg-cz-danger-bg0/8 p-4 mt-4">
-          <p className="text-red-300 text-sm">{requestError}</p>
+          <p className="text-cz-danger text-sm">{requestError}</p>
         </div>
       )}
 
@@ -920,7 +957,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
                   onClick={() => onRequest(option.type)}
                   disabled={disabled || Boolean(requestingType)}
                   className="w-full mt-4 py-2.5 rounded-lg text-sm font-semibold border transition-all
-                    bg-cz-accent text-cz-on-accent border-[#e8c547]/40 hover:brightness-110
+                    bg-cz-accent text-cz-on-accent border-cz-accent/40 hover:brightness-110
                     disabled:bg-cz-subtle disabled:text-cz-3 disabled:border-cz-border disabled:cursor-not-allowed"
                 >
                   {isBusy ? t("request.sending") : t("request.send")}
@@ -990,7 +1027,7 @@ function BoardConsequencesPanel({ consequences = [] }) {
               <div className="flex items-start gap-3">
                 <span className="text-xl flex-shrink-0">{style.emoji}</span>
                 <div className="flex-1">
-                  <p className={`text-sm font-semibold ${isCritical ? "text-red-300" : "text-cz-accent-t"}`}>
+                  <p className={`text-sm font-semibold ${isCritical ? "text-cz-danger" : "text-cz-accent-t"}`}>
                     {t(`consequence.layer${c.layer}.label`)}
                   </p>
                   <p className="text-cz-3 text-xs mt-1 leading-relaxed">{describeConsequence(t, c)}</p>
@@ -1072,7 +1109,7 @@ function BoardFeedSection({ items = [] }) {
                 : "bg-cz-subtle border-cz-border"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
-                  <p className={`text-sm font-medium ${isCritical ? "text-red-300" : "text-cz-2"}`}>
+                  <p className={`text-sm font-medium ${isCritical ? "text-cz-danger" : "text-cz-2"}`}>
                     {item.title}
                   </p>
                   <p className="text-cz-3 text-xs mt-1 leading-relaxed">{item.message}</p>
@@ -1113,11 +1150,11 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
     ? "bg-cz-danger-bg0/8 border-cz-danger/40"
     : isWarning
       ? "bg-cz-accent/10 border-cz-accent/40"
-      : "bg-cz-info-bg0/10 border-blue-500/30";
+      : "bg-cz-info-bg0/10 border-cz-info/30";
 
   const accentClass = isCritical
-    ? "text-red-300"
-    : isWarning ? "text-cz-accent-t" : "text-blue-300";
+    ? "text-cz-danger"
+    : isWarning ? "text-cz-accent-t" : "text-cz-info";
 
   return (
     <div className={`rounded-xl p-4 mb-5 border ${containerClass}`}>
@@ -1237,7 +1274,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
             const status = evalItem?.status;
             const meta = !ach && status ? getGoalStatusMeta(t, status) : null;
             const icon = ach ? "✓" : status === "behind" ? "!" : (status === "near_miss" || status === "watch") ? "~" : "○";
-            const iconCls = ach ? "text-cz-success" : status === "behind" ? "text-red-400"
+            const iconCls = ach ? "text-cz-success" : status === "behind" ? "text-cz-danger"
               : (status === "near_miss" || status === "watch") ? "text-cz-accent-t" : "text-cz-3";
             const cumProgress = g.cumulative && g.type === "stage_wins" ? (cumulative_stats?.stage_wins ?? 0)
               : g.cumulative && g.type === "gc_wins" ? (cumulative_stats?.gc_wins ?? 0) : undefined;
@@ -1245,7 +1282,8 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
               <button key={i} type="button"
                 onClick={() => onGoalClick(g, evalItem, ach, cumProgress)}
                 className="flex items-center gap-2 text-left w-full hover:bg-cz-subtle/60 rounded-md px-1 py-1 transition-colors group">
-                <span className={`text-xs font-bold flex-shrink-0 w-4 text-center ${iconCls}`}>{icon}</span>
+                <span className={`text-xs font-bold flex-shrink-0 w-4 text-center ${iconCls}`} aria-hidden="true">{icon}</span>
+                <span className="sr-only">{getGoalStatusA11yLabel(t, { achieved: ach, status })}</span>
                 <span className="text-xs text-cz-2 flex-1 line-clamp-1 group-hover:text-cz-1">{getBoardGoalLabel(t, g)}</span>
                 {meta?.label && <span className={`text-[10px] flex-shrink-0 ${meta.color}`}>{meta.label}</span>}
               </button>
@@ -1289,9 +1327,9 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
           )}
 
           {showMidReviewBanner && (
-            <div className="bg-cz-info-bg0/10 border border-blue-500/20 rounded-xl p-4">
-              <p className="text-blue-300 text-sm font-semibold">{t("plan.midReviewHeading")}</p>
-              <p className="text-blue-300/60 text-xs mt-1">{t("plan.midReviewBody", { current: Math.floor(plan_duration / 2), total: plan_duration })}</p>
+            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-xl p-4">
+              <p className="text-cz-info text-sm font-semibold">{t("plan.midReviewHeading")}</p>
+              <p className="text-cz-info/60 text-xs mt-1">{t("plan.midReviewBody", { current: Math.floor(plan_duration / 2), total: plan_duration })}</p>
             </div>
           )}
 
@@ -1425,13 +1463,16 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
             <div className="w-5 h-5 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
           </div>
         ) : previewError ? (
-          <p className="text-red-300 text-sm">{previewError}</p>
+          <p className="text-cz-danger text-sm">{previewError}</p>
         ) : (
           <div className="flex flex-col gap-2">
             {preview.map((g, i) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-cz-subtle border border-cz-border">
                 <div className="w-5 h-5 rounded-full bg-cz-subtle text-cz-3 flex items-center justify-center
-                  flex-shrink-0 mt-0.5 text-xs">○</div>
+                  flex-shrink-0 mt-0.5 text-xs">
+                  <span aria-hidden="true">○</span>
+                  <span className="sr-only">{t("a11y.goalStatus.pending")}</span>
+                </div>
                 <div className="flex-1">
                   <p className="text-cz-2 text-sm">{getBoardGoalLabel(t, g)}</p>
                   <div className="flex gap-3 mt-1">
@@ -1487,9 +1528,9 @@ function WizardStep2({ goals, goalIdx, negotiated, pendingNegotiate, onAccept, o
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
         <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("wizard.requirementsHeading")}</p>
         <div className={`flex items-start gap-3 p-4 rounded-lg border
-          ${current?.negotiated ? "bg-cz-info-bg0/5 border-blue-500/20" : "bg-cz-subtle border-cz-border"}`}>
+          ${current?.negotiated ? "bg-cz-info-bg0/5 border-cz-info/20" : "bg-cz-subtle border-cz-border"}`}>
           <div className="w-6 h-6 rounded-full bg-cz-accent/10 border border-cz-accent/30
-            flex items-center justify-center flex-shrink-0 text-xs text-cz-accent-t">◎</div>
+            flex items-center justify-center flex-shrink-0 text-xs text-cz-accent-t" aria-hidden="true">◎</div>
           <div className="flex-1">
             <p className="text-cz-1 font-semibold">{getBoardGoalLabel(t, current)}</p>
             <div className="flex flex-wrap gap-3 mt-2">
@@ -1525,9 +1566,9 @@ function WizardStep2({ goals, goalIdx, negotiated, pendingNegotiate, onAccept, o
         </div>
       ) : (
         <div>
-          <div className="bg-cz-info-bg0/10 border border-blue-500/20 rounded-xl p-4 mb-4">
-            <p className="text-blue-300 text-sm font-medium">{t("wizard.compromiseHeading")}</p>
-            <p className="text-blue-300/60 text-xs mt-1">{t("wizard.compromiseBody")}</p>
+          <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-xl p-4 mb-4">
+            <p className="text-cz-info text-sm font-medium">{t("wizard.compromiseHeading")}</p>
+            <p className="text-cz-info/60 text-xs mt-1">{t("wizard.compromiseBody")}</p>
           </div>
           <button onClick={onAcceptNegotiated}
             className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-xl text-sm hover:brightness-110 transition-all">
@@ -1550,7 +1591,7 @@ function WizardStep3({ finalGoals, planType, onSign, saving }) {
     <div>
       <div className="text-center mb-8">
         <div className="w-14 h-14 rounded-full bg-cz-success-bg border border-cz-success/30
-          flex items-center justify-center text-2xl mx-auto mb-4">✍</div>
+          flex items-center justify-center text-2xl mx-auto mb-4" aria-hidden="true">✍</div>
         <h2 className="text-cz-1 font-bold text-xl">{t("wizard.step3Title")}</h2>
         <p className="text-cz-2 text-sm mt-1">
           {t("wizard.step3Subtitle", { plan: getPlanLabel(t, planType), count: duration })}
@@ -1562,9 +1603,12 @@ function WizardStep3({ finalGoals, planType, onSign, saving }) {
         <div className="flex flex-col gap-2">
           {finalGoals.map((g, i) => (
             <div key={i} className={`flex items-start gap-3 p-3 rounded-lg border
-              ${g.negotiated ? "bg-cz-info-bg0/5 border-blue-500/20" : "bg-cz-subtle border-cz-border"}`}>
+              ${g.negotiated ? "bg-cz-info-bg0/5 border-cz-info/20" : "bg-cz-subtle border-cz-border"}`}>
               <div className="w-5 h-5 rounded-full bg-cz-subtle text-cz-3 flex items-center
-                justify-center flex-shrink-0 mt-0.5 text-xs">○</div>
+                justify-center flex-shrink-0 mt-0.5 text-xs">
+                <span aria-hidden="true">○</span>
+                <span className="sr-only">{t("a11y.goalStatus.pending")}</span>
+              </div>
               <div className="flex-1">
                 <p className="text-cz-2 text-sm font-medium">{getBoardGoalLabel(t, g)}</p>
                 <div className="flex gap-3 mt-1">
@@ -2006,6 +2050,12 @@ export default function BoardPage() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
+  // #1073 · Wizard-modalen rendres inline (ikke en mountet komponent), så a11y-hooket
+  // kaldes her — før evt. early-return — med active styret af wizardPlanType. Escape
+  // lukker kun når luk-knappen også er synlig (ikke under setup / multi-renewal-trin>0).
+  const wizardClosable = !wizardIsSetup && !(renewalQueue.length > 1 && renewalQueueIdx > 0);
+  const wizardDialogRef = useModalA11y(wizardClosable ? closeWizard : null, Boolean(wizardPlanType));
+
   if (loading) return (
     <div className="flex justify-center py-16">
       <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
@@ -2020,7 +2070,7 @@ export default function BoardPage() {
   const isMultiRenewal = !wizardIsSetup && renewalQueue.length > 1;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto board-a11y">
       <OnboardingTour pageKey="board" steps={buildBoardTourSteps(t)} />
       <div className="flex items-center justify-between mb-5">
         <div>
@@ -2147,7 +2197,7 @@ export default function BoardPage() {
       {/* S-02h · Wizard modal overlay — vises oven på dashboard (ikke full-page takeover) */}
       {wizardPlanType && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm overflow-y-auto py-6 px-4">
-          <div className="w-full max-w-2xl">
+          <div ref={wizardDialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t("wizard.dialogAria")} className="w-full max-w-2xl">
             {/* Onboarding-header (sæson 2 setup) */}
             {wizardIsSetup && (
               <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-xl p-4 mb-6">
@@ -2199,7 +2249,12 @@ export default function BoardPage() {
                         ${wizardStep === n ? "bg-cz-accent text-cz-on-accent"
                           : wizardStep > n ? "bg-cz-success-bg text-cz-success"
                           : "bg-cz-subtle text-cz-3"}`}>
-                        {wizardStep > n ? "✓" : n}
+                        {wizardStep > n ? (
+                          <>
+                            <span aria-hidden="true">✓</span>
+                            <span className="sr-only">{t("a11y.wizardStepDone")}</span>
+                          </>
+                        ) : n}
                       </div>
                       <span className={`text-xs ${wizardStep === n ? "text-cz-2" : "text-cz-3"}`}>{t(`wizard.steps.${labelKey}`)}</span>
                     </div>

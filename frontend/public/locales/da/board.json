@@ -356,7 +356,22 @@
     "singleRenewalHeading": "{plan} udløbet",
     "singleRenewalBody": "Forhandl en ny {plan} med bestyrelsen.",
     "backToPlan": "← Tilbage til {plan}",
-    "backToOverview": "← Tilbage til oversigt"
+    "backToOverview": "← Tilbage til oversigt",
+    "dialogAria": "Forhandling af bestyrelsesplan"
+  },
+  "a11y": {
+    "closeDialog": "Luk dialog",
+    "goalStatus": {
+      "achieved": "Opnået",
+      "behind": "Bagud",
+      "nearMiss": "Tæt på",
+      "pending": "Afventer"
+    },
+    "seasonComplete": {
+      "good": "Sæson gennemført: mål nået",
+      "poor": "Sæson gennemført: mål ikke nået"
+    },
+    "wizardStepDone": "Gennemført"
   },
   "satisfactionExplainer": {
     "heading": "Hvad betyder tilfredshed?",

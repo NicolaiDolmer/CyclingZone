@@ -356,7 +356,22 @@
     "singleRenewalHeading": "{plan} expired",
     "singleRenewalBody": "Negotiate a new {plan} with the board.",
     "backToPlan": "← Back to {plan}",
-    "backToOverview": "← Back to overview"
+    "backToOverview": "← Back to overview",
+    "dialogAria": "Board plan negotiation"
+  },
+  "a11y": {
+    "closeDialog": "Close dialog",
+    "goalStatus": {
+      "achieved": "Achieved",
+      "behind": "Behind",
+      "nearMiss": "Near miss",
+      "pending": "Pending"
+    },
+    "seasonComplete": {
+      "good": "Season completed: targets met",
+      "poor": "Season completed: targets missed"
+    },
+    "wizardStepDone": "Completed"
   },
   "satisfactionExplainer": {
     "heading": "What does satisfaction mean?",
