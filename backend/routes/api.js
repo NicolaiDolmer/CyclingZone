@@ -836,7 +836,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       const secs = (new Date(tw.closes_at) - Date.now()) / 1000;
       ddActive = secs > 0 && secs <= 86400;
     }
-    if (!ddActive) return res.status(403).json({ error: "Flash Auktioner er kun tilgængelige under Deadline Day" });
+    if (!ddActive) return res.status(403).json({ error: "Flash Auktioner er kun tilgængelige under Deadline Day", errorCode: "flash_deadline_day_only" });
   }
 
   // Verify rider belongs to this team
@@ -851,16 +851,16 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // #669: fiktive ryttere (pcm_id NULL) kan kun auktioneres af admin under test —
   // forhindrer at en tester trækker en endnu-ukalibreret rytter i spil økonomisk.
   if (rider.pcm_id === null && !(await isViewerAdmin(req))) {
-    return res.status(403).json({ error: "Rytteren er ikke tilgængelig" });
+    return res.status(403).json({ error: "Rytteren er ikke tilgængelig", errorCode: "rider_unavailable" });
   }
 
   // Block: rider awaits transfer to a previous auction winner.
   const auctionStartIssue = getAuctionStartIssue({ rider });
   if (auctionStartIssue) {
     if (auctionStartIssue.code === "rider_retired") {
-      return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke sættes på auktion" });
+      return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke sættes på auktion", errorCode: "rider_retired_auction" });
     }
-    return res.status(409).json({ error: "Rytteren er vundet på en auktion og afventer overførsel til det nye hold" });
+    return res.status(409).json({ error: "Rytteren er vundet på en auktion og afventer overførsel til det nye hold", errorCode: "rider_pending_transfer_auction" });
   }
 
   // Allow auction if:
@@ -876,7 +876,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       .single();
     // If owned by a human manager (not AI), block the auction
     if (owningTeam && !owningTeam.is_ai && owningTeam.user_id) {
-      return res.status(403).json({ error: "Denne rytter tilhører en anden manager" });
+      return res.status(403).json({ error: "Denne rytter tilhører en anden manager", errorCode: "rider_other_manager" });
     }
   }
 
@@ -898,13 +898,13 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   const priceIssue = getAuctionStartPriceIssue({ startingPrice: starting_price, riderValue, isOwnRider });
   if (priceIssue) {
     if (priceIssue.code === "invalid_start_price") {
-      return res.status(400).json({ error: "Ugyldig startpris" });
+      return res.status(400).json({ error: "Ugyldig startpris", errorCode: "invalid_start_price" });
     }
     const formatted = riderValue.toLocaleString("da-DK");
     if (priceIssue.code === "own_price_out_of_range") {
-      return res.status(400).json({ error: `Startpris skal være mellem 0 og rytterens Værdi (${formatted} CZ$)` });
+      return res.status(400).json({ error: `Startpris skal være mellem 0 og rytterens Værdi (${formatted} CZ$)`, errorCode: "start_price_own_range", errorParams: { value: riderValue } });
     }
-    return res.status(400).json({ error: `Startpris skal mindst matche rytterens Værdi (${formatted} CZ$)` });
+    return res.status(400).json({ error: `Startpris skal mindst matche rytterens Værdi (${formatted} CZ$)`, errorCode: "start_price_min_value", errorParams: { value: riderValue } });
   }
 
   const price = (starting_price === null || starting_price === undefined || starting_price === "")
@@ -940,7 +940,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       proxiesByAuctionId,
     }) + price;
     if ((Number(teamState.balance) || 0) < totalCommitment) {
-      return res.status(400).json({ error: "Startbuddet overstiger din disponible balance inkl. aktive auktionsføringer" });
+      return res.status(400).json({ error: "Startbuddet overstiger din disponible balance inkl. aktive auktionsføringer", errorCode: "start_bid_exceeds_balance" });
     }
 
     // Squad-cap er ikke længere en hard block (#29) — håndhæves ved vindue-luk via squadEnforcement.
@@ -1068,7 +1068,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     const { data: auctionRider } = await supabase
       .from("riders").select("team_id").eq("id", auction.rider_id).single();
     if (auctionRider?.team_id === req.team.id) {
-      return res.status(400).json({ error: "Du kan ikke byde på din egen rytter" });
+      return res.status(400).json({ error: "Du kan ikke byde på din egen rytter", errorCode: "cannot_bid_own_rider" });
     }
   }
   // #44: worst-case commitment EXKL. denne auktion. Hvis manageren allerede leder
@@ -1096,6 +1096,8 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   if (bidIssue?.code === "bid_below_minimum") {
     return res.status(400).json({
       error: `Bud skal være mindst ${bidIssue.minimumBid.toLocaleString("da-DK")} CZ$`,
+      errorCode: "bid_below_minimum",
+      errorParams: { min: bidIssue.minimumBid },
     });
   }
 
@@ -1106,6 +1108,8 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     });
     return res.status(400).json({
       error: `Du har ${availableBalance.toLocaleString("da-DK")} CZ$ tilbage efter eksisterende bud`,
+      errorCode: "insufficient_balance_after_bids",
+      errorParams: { available: availableBalance },
     });
   }
 
@@ -1153,9 +1157,9 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   });
   if (bidInsertError) {
     if (isLateBidTriggerError(bidInsertError)) {
-      return res.status(400).json({ error: "Auktionen er udløbet" });
+      return res.status(400).json({ error: "Auktionen er udløbet", errorCode: "auction_expired" });
     }
-    return res.status(500).json({ error: "Bud kunne ikke gemmes" });
+    return res.status(500).json({ error: "Bud kunne ikke gemmes", errorCode: "bid_save_failed" });
   }
 
   // Update auction (price + leader only — no extension yet).
@@ -1275,7 +1279,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
 
   const numericMax = Number(req.body.max_amount);
   if (!Number.isFinite(numericMax) || numericMax <= 0) {
-    return res.status(400).json({ error: "Ugyldigt max-loft" });
+    return res.status(400).json({ error: "Ugyldigt max-loft", errorCode: "invalid_proxy_max" });
   }
 
   const { data: auction } = await supabase
@@ -1296,7 +1300,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     const { data: auctionRider } = await supabase
       .from("riders").select("team_id").eq("id", auction.rider_id).single();
     if (auctionRider?.team_id === req.team.id) {
-      return res.status(400).json({ error: "Du kan ikke sætte autobud på din egen rytter" });
+      return res.status(400).json({ error: "Du kan ikke sætte autobud på din egen rytter", errorCode: "cannot_proxy_own_rider" });
     }
   }
 
@@ -1306,6 +1310,8 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   if (numericMax < minRequired) {
     return res.status(400).json({
       error: `Max-loft skal være mindst ${minRequired.toLocaleString("da-DK")} CZ$`,
+      errorCode: "proxy_below_minimum",
+      errorParams: { min: minRequired },
     });
   }
   const openingBidAmount = getProxyOpeningBidAmount({
@@ -1336,6 +1342,8 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   if (proxyIssue?.code === "insufficient_available_balance") {
     return res.status(400).json({
       error: `Du har ${proxyIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilbage efter eksisterende bud og autobud`,
+      errorCode: "insufficient_balance_after_proxy",
+      errorParams: { available: proxyIssue.availableBalance },
     });
   }
 
@@ -1356,7 +1364,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     { onConflict: "auction_id,team_id" }
   );
   if (proxyUpsertError) {
-    return res.status(500).json({ error: "Autobud kunne ikke gemmes" });
+    return res.status(500).json({ error: "Autobud kunne ikke gemmes", errorCode: "proxy_save_failed" });
   }
 
   const proxyBidTime = new Date();
@@ -1383,9 +1391,9 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     });
     if (bidInsertError) {
       if (isLateBidTriggerError(bidInsertError)) {
-        return res.status(400).json({ error: "Auktionen er udløbet" });
+        return res.status(400).json({ error: "Auktionen er udløbet", errorCode: "auction_expired" });
       }
-      return res.status(500).json({ error: "Autobud kunne ikke placeres" });
+      return res.status(500).json({ error: "Autobud kunne ikke placeres", errorCode: "proxy_place_failed" });
     }
 
     const { error: auctionUpdateError } = await supabase
@@ -1396,7 +1404,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       })
       .eq("id", auction.id);
     if (auctionUpdateError) {
-      return res.status(500).json({ error: "Autobud kunne ikke opdatere auktionen" });
+      return res.status(500).json({ error: "Autobud kunne ikke opdatere auktionen", errorCode: "proxy_update_failed" });
     }
 
     const riderName = `${auction.rider?.firstname || "Ukendt"} ${auction.rider?.lastname || "rytter"}`.trim();
