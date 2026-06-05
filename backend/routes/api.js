@@ -6535,8 +6535,13 @@ router.post("/board/dna-choose", requireAuth, boardWriteLimiter, async (req, res
     try {
       result = await chooseDnaForTeam({ supabase, teamId: req.team.id, dnaKey: dna_key });
     } catch (e) {
+      // #678 Track 3: chooseDnaForTeam kaster player-facing danske beskeder
+      // (sæson-1-gate, allerede-valgt). Propagér errorCode/errorParams så
+      // frontend resolveApiError kan vise EN-tekst for engelske spillere.
       const body = { error: e.message };
       if (e.code) body.code = e.code;
+      if (e.errorCode) body.errorCode = e.errorCode;
+      if (e.errorParams) body.errorParams = e.errorParams;
       return res.status(e.status || 500).json(body);
     }
 
@@ -6578,6 +6583,7 @@ router.post("/board/proposal", requireAuth, boardWriteLimiter, async (req, res) 
       return res.status(409).json({
         error: "Klub-DNA skal vælges før bestyrelsesplanen kan forhandles",
         code: "BOARD_DNA_REQUIRED",
+        errorCode: "board_dna_required_plan",
       });
     }
     const board = context.boards.find(b => b.plan_type === plan_type) || null;
@@ -6618,6 +6624,7 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
       return res.status(409).json({
         error: "Klub-DNA skal vælges før bestyrelsesplanen kan signeres",
         code: "BOARD_DNA_REQUIRED",
+        errorCode: "board_dna_required_sign",
       });
     }
     const existingBoard = boards.find(b => b.plan_type === plan_type) || null;
@@ -6629,7 +6636,12 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
     // locked:false). Samme guard rammer /board/renew nedenfor.
     const signLock = getBoardRenegotiationLock({ board: existingBoard, activeSeason });
     if (signLock.locked) {
-      return res.status(409).json({ error: signLock.reason, code: signLock.code });
+      return res.status(409).json({
+        error: signLock.reason,
+        code: signLock.code,
+        errorCode: signLock.errorCode,
+        errorParams: signLock.errorParams,
+      });
     }
 
     const planDuration = getPlanDuration(plan_type);
@@ -6758,8 +6770,12 @@ router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) =
     if (loansRes.error) return res.status(500).json({ error: loansRes.error.message });
     if (snapshotsRes.error) return res.status(500).json({ error: snapshotsRes.error.message });
     if (isMissingTable(requestLogRes.error, "board_request_log")) {
+      // #678 Track 3: intern SQL/migration-instruktion må ALDRIG eksponeres til
+      // spilleren. Log til ops og returnér en generisk, lokaliserbar besked.
+      console.warn("[board/request] board_request_log-tabellen mangler — kør SQL-migrationen for board_request_log");
       return res.status(503).json({
-        error: "Board requests er ikke aktiveret endnu. Kør SQL-migrationen for board_request_log først.",
+        error: "Bestyrelsesfunktioner er ikke tilgængelige endnu",
+        errorCode: "board_unavailable",
       });
     }
     if (requestLogRes.error) return res.status(500).json({ error: requestLogRes.error.message });

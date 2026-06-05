@@ -111,6 +111,10 @@
     "autoBidPlaced": {
       "title": "Autobud afgivet",
       "message": "{bidderName}'s autobud bød {amount} CZ$ på {riderName}"
+    },
+    "debtWarning": {
+      "title": "⚠️ Negativ saldo",
+      "message": "Dit hold har negativ saldo. Tjek Økonomi-siden for detaljer."
     }
   },
   "error": {

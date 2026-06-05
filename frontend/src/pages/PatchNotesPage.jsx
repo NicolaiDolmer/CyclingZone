@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.79",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Board",
+        items: [
+          "EN · Board messages now appear in English for English players. Choosing your club DNA, negotiating or signing a board plan, and the mid-season renegotiation lock previously fell back to Danish even in English mode — they are now fully localised. A negative-balance notification also showed up in Danish for English players and is now translated too. Refs #678.",
+          "DA · Bestyrelses-beskeder vises stadig på dansk for danske spillere uden ændringer — men engelske spillere så tidligere dansk tekst ved DNA-valg, forhandling/signering af bestyrelsesplaner og midt-sæson-låsen. Det er nu fuldt oversat. En notifikation om negativ saldo blev også vist på dansk for engelske spillere og er nu oversat. Refs #678.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.78",
     date: "2026-06-05",
     label: "Beta",

@@ -10,6 +10,7 @@ import BoardEmptyState from "../components/BoardEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
+import { resolveApiError } from "../lib/apiError";
 
 const API = import.meta.env.VITE_API_URL;
 const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
@@ -1630,10 +1631,12 @@ export default function BoardPage() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      // #678 Track 3: resolveApiError foretrækker errorCode → errors:api.* (EN/DA)
+      // og falder tilbage til den lokale t()-streng for u-kodede svar.
       return {
-        error: data?.code === "BOARD_DNA_REQUIRED"
-          ? data.error || t("dna.requiredBeforePlan")
-          : data.error || t("wizard.errorProposal"),
+        error: resolveApiError(data, t, data?.code === "BOARD_DNA_REQUIRED"
+          ? t("dna.requiredBeforePlan")
+          : t("wizard.errorProposal")),
       };
     }
     return data;
@@ -1743,9 +1746,9 @@ export default function BoardPage() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setPreviewError(data?.code === "BOARD_DNA_REQUIRED"
-          ? data.error || t("dna.requiredBeforePlan")
-          : data.error || t("wizard.errorSign"));
+        setPreviewError(resolveApiError(data, t, data?.code === "BOARD_DNA_REQUIRED"
+          ? t("dna.requiredBeforePlan")
+          : t("wizard.errorSign")));
         return;
       }
 
@@ -1799,7 +1802,7 @@ export default function BoardPage() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setRequestErrors(e => ({ ...e, [planType]: data.error || t("errors.requestFallback") }));
+        setRequestErrors(e => ({ ...e, [planType]: resolveApiError(data, t, t("errors.requestFallback")) }));
         return;
       }
 
@@ -1828,7 +1831,7 @@ export default function BoardPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setDnaError(data.error || t("dna.errorFallback"));
+        setDnaError(resolveApiError(data, t, t("dna.errorFallback")));
         return;
       }
       const data = await res.json().catch(() => ({}));

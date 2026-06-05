@@ -111,6 +111,10 @@
     "autoBidPlaced": {
       "title": "Autobid placed",
       "message": "{bidderName}'s autobid placed {amount} CZ$ on {riderName}"
+    },
+    "debtWarning": {
+      "title": "⚠️ Negative balance",
+      "message": "Your team has a negative balance. Check the Finances page for details."
     }
   },
   "error": {

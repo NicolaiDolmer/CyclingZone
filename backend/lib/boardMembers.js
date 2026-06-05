@@ -236,6 +236,7 @@ export async function chooseDnaForTeam({ supabase, teamId, dnaKey } = {}) {
   if (!existing.season_1_identity_basis) {
     const err = new Error("Du skal afslutte sæson 1 før DNA kan vælges");
     err.status = 409;
+    err.errorCode = "dna_requires_season_1"; // #678 Track 3 — EN-resolve via resolveApiError
     throw err;
   }
 
@@ -255,6 +256,7 @@ export async function chooseDnaForTeam({ supabase, teamId, dnaKey } = {}) {
       const err = new Error("Klub-DNA er allerede valgt og kan ikke skiftes (drift kommer i senere slice)");
       err.status = 409;
       err.code = "DNA_ALREADY_CHOSEN";
+      err.errorCode = "dna_already_chosen"; // #678 Track 3 — EN-resolve via resolveApiError
       throw err;
     }
 
