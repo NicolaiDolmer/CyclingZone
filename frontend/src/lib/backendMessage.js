@@ -19,7 +19,7 @@
 //   const title   = renderBackendMessage({ code: meta.titleCode,   params: meta.titleParams   }, t, n.title);
 //   const message = renderBackendMessage({ code: meta.messageCode, params: meta.messageParams }, t, n.message);
 
-import { formatNumber } from "./intl";
+import { formatNumber } from "./intl.js";
 
 // Param-keys der formateres med 2 decimaler (modifier-faktorer 1.00 osv).
 const TWO_DECIMAL_KEYS = new Set(["modifier"]);

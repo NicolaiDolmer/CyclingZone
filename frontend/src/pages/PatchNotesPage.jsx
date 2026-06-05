@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.77",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Auctions",
+        items: [
+          "EN · Error messages in the auction flow now appear in English for English players. Bidding, auto-bids and the \"too many actions\" rate-limit notices previously fell back to Danish even in English mode — they are now fully localised, with amounts formatted to your language. Refs #678.",
+          "DA · Fejlbeskeder i auktions-flowet vises nu på dansk for danske spillere uden ændringer — men engelske spillere så tidligere dansk tekst ved bud, autobud og \"for mange handlinger\"-beskeder. Det er nu fuldt oversat, med beløb formateret efter dit sprog. Refs #678.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.76",
     date: "2026-06-04",
     label: "Beta",

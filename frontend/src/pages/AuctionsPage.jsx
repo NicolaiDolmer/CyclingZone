@@ -35,6 +35,7 @@ import {
 } from "../lib/auctionLogic";
 import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { formatNumber } from "../lib/intl";
+import { resolveApiError } from "../lib/apiError";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -927,7 +928,7 @@ export default function AuctionsPage() {
     }
     let data = {};
     try { data = await res.json(); } catch { /* non-JSON error response — fall back to default error message below */ }
-    return { ok: false, error: data.error || t("auctions:error.bidFailed") };
+    return { ok: false, error: resolveApiError(data, t, t("auctions:error.bidFailed")) };
   }
 
   async function handleConfirmRaceBid() {
@@ -948,7 +949,7 @@ export default function AuctionsPage() {
     if (res.ok) { loadAll(); return { ok: true }; }
     let data = {};
     try { data = await res.json(); } catch { /* ignore */ }
-    return { ok: false, error: data.error || t("auctions:error.proxyFailed") };
+    return { ok: false, error: resolveApiError(data, t, t("auctions:error.proxyFailed")) };
   }
 
   async function handleRemoveProxy(auctionId) {

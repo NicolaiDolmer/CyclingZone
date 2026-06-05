@@ -24,7 +24,7 @@ function userOrIpKey(req) {
   return `ip:${ipKeyGenerator(req.ip)}`;
 }
 
-function buildLimiter({ name, windowMs, max, message }) {
+function buildLimiter({ name, windowMs, max, message, errorCode }) {
   return rateLimit({
     windowMs,
     limit: max,
@@ -36,7 +36,10 @@ function buildLimiter({ name, windowMs, max, message }) {
       const retryAfter = Math.ceil(windowMs / 1000);
       res.set("Retry-After", String(retryAfter));
       res.status(429).json({
+        // `error` kept as legacy DA fallback; `errorCode` resolves via the
+        // frontend errors:api.* namespace so EN players see English (#678).
         error: message,
+        errorCode,
         code: "rate_limited",
         limiter: name,
         retry_after_seconds: retryAfter,
@@ -52,6 +55,7 @@ export const bidLimiter = buildLimiter({
   windowMs: 60_000,
   max: 60,
   message: "For mange bud på kort tid. Prøv igen om et øjeblik.",
+  errorCode: "rate_bid",
 });
 
 // Auction create / market writes (transfer create/cancel, swaps, loans,
@@ -62,6 +66,7 @@ export const marketWriteLimiter = buildLimiter({
   windowMs: 60_000,
   max: 30,
   message: "For mange markedshandlinger på kort tid. Vent et øjeblik.",
+  errorCode: "rate_market",
 });
 
 // Board interactions — proposals, signs, requests, bonus accept/decline, DNA.
@@ -71,6 +76,7 @@ export const boardWriteLimiter = buildLimiter({
   windowMs: 60_000,
   max: 15,
   message: "For mange bestyrelseshandlinger på kort tid. Vent et øjeblik.",
+  errorCode: "rate_board",
 });
 
 // Admin writes — single admin operator, but season-end / beta-reset flows fire
@@ -90,6 +96,7 @@ export const presencePulseLimiter = buildLimiter({
   windowMs: 60_000,
   max: 120,
   message: "For mange forespørgsler på kort tid. Vent et øjeblik.",
+  errorCode: "rate_request",
 });
 
 // Internal export for tests so they can exercise the same factory without
