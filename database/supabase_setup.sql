@@ -263,8 +263,11 @@ CREATE TABLE IF NOT EXISTS public.board_request_log (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_board_request_log_team_season_unique
-ON public.board_request_log(team_id, season_number)
+-- Én request pr. board (plan) pr. sæson. Parallelle 1/3/5-års-planer betyder
+-- op til 3 requests/hold/sæson (én pr. plan). Per-(board_id, season_number)
+-- afløste det oprindelige per-team-index (migration 2026-04-24).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_board_request_log_board_season_unique
+ON public.board_request_log(board_id, season_number)
 WHERE season_number IS NOT NULL;
 
 -- ── FINANCE TRANSACTIONS ──────────────────────────────────────
