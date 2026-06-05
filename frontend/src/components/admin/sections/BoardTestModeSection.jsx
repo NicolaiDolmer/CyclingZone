@@ -49,30 +49,38 @@ export default function BoardTestModeSection({ getAuth, onMsg }) {
     <>
       <div className="flex items-center justify-between gap-2 mb-2">
         <p className="text-xs text-cz-3">
-          Åbner bestyrelsen for alle testere uden reelle pengekonsekvenser (sponsor-modifier
-          tvinges 1.0, ingen board-bonus-udbetalinger, tvangssalg/pullout suppress). Hard-blocks
-          (lønloft / indkøbsrestriktioner) håndhæves stadig. Ryddes automatisk ved sæson-skift.
+          Åbner bestyrelsen for alle testere (nulstiller board-profiler til baseline + starter
+          onboarding-forhandlingen 5yr→3yr→1yr). <strong>LIVE</strong> = ægte økonomi: sponsor-modifier,
+          board-bonusser og tvangssalg/pullout virker for alvor. <strong>TEST</strong> = frosset økonomi
+          (sponsor-modifier 1.0, ingen board-udbetalinger, tvangssalg/pullout suppress). Hard-blocks
+          (lønloft / indkøbsrestriktioner) håndhæves i begge. Ryddes automatisk ved sæson-skift.
         </p>
         <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full border ${
           boardTestMode === true
             ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40"
             : "bg-cz-subtle text-cz-3 border-cz-border"
         }`}>
-          {boardTestMode === null ? "status ukendt" : boardTestMode ? "TEST AKTIV" : "test inaktiv"}
+          {boardTestMode === null ? "status ukendt" : boardTestMode ? "ØKONOMI FROSSET" : "økonomi ægte"}
         </span>
       </div>
       <div className="flex flex-wrap gap-2">
         <button
+          onClick={() => handleBoardTest("open-live", "Åbn bestyrelsen LIVE med ÆGTE økonomi?\n\n• Nulstiller board-profiler til ren baseline (signerede planer ryddes)\n• Åbner onboarding-forhandling (5yr→3yr→1yr) for alle testere\n• Board-økonomien er ÆGTE — sponsor-modifier, bonusser og tvangssalg/pullout virker for alvor\n\nHandlingen kan ikke fortrydes (board-profiler nulstilles).")}
+          disabled={loading["open-live"]}
+          className="px-3 py-2 text-xs bg-cz-accent text-white border border-cz-accent rounded-lg hover:opacity-90 disabled:opacity-50 transition-all">
+          {loading["open-live"] ? "..." : "Åbn board LIVE (ægte økonomi)"}
+        </button>
+        <button
           onClick={() => handleBoardTest("open-test", "Åbn bestyrelsen for test med frosset økonomi?\n\n• Nulstiller board-profiler til ren baseline (signerede planer ryddes)\n• Åbner onboarding-forhandling (5yr→3yr→1yr) for alle testere\n• Fryser board-økonomien (ingen rigtige penge flytter sig)\n\nHandlingen kan ikke fortrydes (board-profiler nulstilles).")}
           disabled={loading["open-test"]}
           className="px-3 py-2 text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 rounded-lg hover:bg-cz-accent/20 disabled:opacity-50 transition-all">
-          {loading["open-test"] ? "..." : "Åbn board for test"}
+          {loading["open-test"] ? "..." : "Åbn board for test (frosset)"}
         </button>
         <button
           onClick={() => handleBoardTest("close-test", "Luk board-test-tilstanden?\n\nØkonomi-frysningen ophæves (board_test_mode=false). Board-data og window-state efterlades urørt.")}
           disabled={loading["close-test"]}
           className="px-3 py-2 text-xs bg-cz-subtle text-cz-2 border border-cz-border rounded-lg hover:bg-cz-hover disabled:opacity-50 transition-all">
-          {loading["close-test"] ? "..." : "Luk board-test"}
+          {loading["close-test"] ? "..." : "Ophæv frysning"}
         </button>
       </div>
       {result && (

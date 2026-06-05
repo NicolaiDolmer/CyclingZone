@@ -163,7 +163,7 @@ import {
   getActiveConsequencesForTeam,
 } from "../lib/boardConsequences.js";
 import { isBoardTestModeActive } from "../lib/boardTestMode.js";
-import { openBoardTestMode, closeBoardTestMode } from "../lib/boardTestModeService.js";
+import { openBoardTestMode, openBoardLive, closeBoardTestMode } from "../lib/boardTestModeService.js";
 import {
   getIncomingSquadViolation,
   getTeamMarketState,
@@ -7015,6 +7015,16 @@ router.post("/admin/beta/reset-board", requireAdmin, adminWriteLimiter, async (r
 router.post("/admin/board/open-test", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     res.json(await openBoardTestMode(supabase));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/board/open-live — #1062: åbn bestyrelsen LIVE med ægte økonomi.
+// Samme onboarding-sti som open-test, men board_test_mode=false → konsekvenser virker.
+router.post("/admin/board/open-live", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    res.json(await openBoardLive(supabase));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
