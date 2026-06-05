@@ -906,6 +906,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       currentSeasonId: seasonId,
       division: teamStanding.division,
       standings,
+      // #54 · Afgræns cumulative + u25-baseline til den aktuelle plan-cyklus.
+      planStartSeasonNumber: board.plan_start_season_number,
     });
 
     const context = {

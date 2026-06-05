@@ -16,14 +16,29 @@ export async function loadGoalContextForBoard({
   currentSeasonId,
   division = null,
   standings = null,
+  planStartSeasonNumber = null,
 }) {
   // Plan-season-ids: alle tidligere snapshots i denne plan + nuværende sæson.
   // (Nuværende sæson har endnu ikke et snapshot på dette tidspunkt — den
   // tilføjes efter evaluateBoardSeason.)
-  const { data: prevSnapshots } = await supabase
+  //
+  // #54 · Afgræns til den AKTUELLE plan-cyklus. board_plan_snapshots akkumulerer
+  // under samme board_id på tværs af cyklusser: ved plan-fornyelse genbruges
+  // board-rowet (seasons_completed nulstilles, plan_start_season_number rykker
+  // frem), så season_within_plan kolliderer mellem cyklusser. Uden cyklus-filter
+  // ville cumulative monument/jersey/transfer + u25-baselinen spænde over hele
+  // boardets historik (gamle planer). Læse-stien i /board/status filtrerer
+  // allerede sådan (season_number >= plan_start_season_number, api.js:6196).
+  // season_number indgår ikke i select'en — .gte() filtrerer server-side på
+  // kolonnen uanset om den returneres, og vi bruger den ikke i resultatet.
+  let snapshotQuery = supabase
     .from("board_plan_snapshots")
     .select("season_id, u25_stat_sum, u25_count, season_within_plan")
-    .eq("board_id", boardId)
+    .eq("board_id", boardId);
+  if (planStartSeasonNumber != null) {
+    snapshotQuery = snapshotQuery.gte("season_number", planStartSeasonNumber);
+  }
+  const { data: prevSnapshots } = await snapshotQuery
     .order("season_within_plan", { ascending: true });
 
   const planSeasonIds = [

@@ -6215,6 +6215,8 @@ router.get("/board/status", requireAuth, async (req, res) => {
             boardId: board.id,
             currentSeasonId: activeSeason.id,
             division: currentStanding?.division ?? null,
+            // #54 · Afgræns cumulative + u25-baseline til den aktuelle plan-cyklus.
+            planStartSeasonNumber: board.plan_start_season_number,
           });
         } catch (e) {
           console.warn(`[board/status] loadGoalContextForBoard failed for board ${board.id}:`, e?.message);
