@@ -301,7 +301,6 @@ export default function RidersPage() {
       {showEmptyState && myTeam && (
         <RidersEmptyState
           balance={myTeam.balance}
-          division={myTeam.division}
           onFilterByBudget={() => setFilter("max_uci", String(myTeam.balance ?? ""))}
           onStartTour={() => startTour("riders")}
         />

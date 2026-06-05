@@ -39,8 +39,6 @@
     "title": "Build your first team",
     "intro": "You have no riders yet. Use the filters below to find the riders that fit your strategy and budget.",
     "balance": "Your balance",
-    "squadMin": "Squad minimum (Division {division})",
-    "squadMinRiders": "{count} riders",
     "tipValue": "<strong>Value filters</strong> = price ceiling in CZ$. Set max below your balance to see only affordable riders.",
     "tipStats": "<strong>Stat filters</strong> = sport attributes (BJ, SP, TT...). Start broad and narrow down later.",
     "tipBudget": "<strong>U25 / Free agent</strong> = budget-friendly paths: younger potential or riders without a contract.",

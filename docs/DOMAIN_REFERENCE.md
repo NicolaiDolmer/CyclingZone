@@ -10,9 +10,9 @@
 | Divisioner | 3 niveauer: 1 (Elite), 2 (Professional), 3 (Amateur) |
 | Oprykning | Top 2 per division rykker op |
 | Nedrykning | Bund 2 per division rykker ned |
-| Hold-min | Div 1: 20, Div 2: 15, Div 3: 8 ryttere |
-| Hold-max | Div 1: 30, Div 2: 20, Div 3: 10 ryttere |
-| Race-minimum | 8 ryttere på hold for at deltage |
+| Hold-min | Ingen — roster-floor fjernet 2026-06-05 (`MARKET_SQUAD_LIMITS.min=0`; et hold må have 0 ryttere) |
+| Hold-max | 30 ryttere (ensrettet, #838) |
+| Race-minimum | Ikke håndhævet (`MIN_RIDERS_FOR_RACE=8` er ubrugt — afventer race-engine [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676)) |
 
 ---
 

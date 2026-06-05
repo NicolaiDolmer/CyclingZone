@@ -7,11 +7,8 @@
 import { Trans, useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 
-const SQUAD_MIN_BY_DIVISION = { 1: 20, 2: 14, 3: 8 };
-
-export default function RidersEmptyState({ balance, division, onFilterByBudget, onStartTour }) {
+export default function RidersEmptyState({ balance, onFilterByBudget, onStartTour }) {
   const { t } = useTranslation("riders");
-  const squadMin = SQUAD_MIN_BY_DIVISION[division] || SQUAD_MIN_BY_DIVISION[3];
   const balanceLabel = formatNumber(balance ?? 0);
 
   return (
@@ -26,16 +23,10 @@ export default function RidersEmptyState({ balance, division, onFilterByBudget, 
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-2 mb-3">
+      <div className="mb-3">
         <div className="bg-cz-subtle rounded-lg px-3 py-2 border border-cz-border">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("emptyState.balance")}</p>
           <p className="text-cz-accent-t font-mono font-bold text-sm mt-0.5">{balanceLabel} CZ$</p>
-        </div>
-        <div className="bg-cz-subtle rounded-lg px-3 py-2 border border-cz-border">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">
-            {t("emptyState.squadMin", { division: division || 3 })}
-          </p>
-          <p className="text-cz-1 font-mono font-bold text-sm mt-0.5">{t("emptyState.squadMinRiders", { count: squadMin })}</p>
         </div>
       </div>
 

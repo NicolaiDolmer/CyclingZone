@@ -420,9 +420,10 @@ import_log         id, import_type, filename, rows_processed, rows_updated,
 ## Hardcoded Konstanter
 
 ```js
-// Squad limits per division (#838: max ensrettet til ét fælles loft på 30)
-{ 1: {min:20, max:30}, 2: {min:14, max:30}, 3: {min:8, max:30} }
-MIN_RIDERS_FOR_RACE = 8
+// Squad limits per division (#838: max=30; 2026-06-05: roster-floor fjernet, min=0)
+MARKET_SQUAD_LIMITS = { 1: {min:0, max:30}, 2: {min:0, max:30}, 3: {min:0, max:30} }
+// DIVISION_SQUAD_LIMITS (board-intern, frivilligt min_riders-mål) bevarer 20/14/8 + max 30/20/10
+MIN_RIDERS_FOR_RACE = 8 // ubrugt/ikke-håndhævet (afventer race-engine #676)
 
 // Salary = 10% af rider market_value, min 1 CZ$
 // Interest på negativ balance = 10% per sæson

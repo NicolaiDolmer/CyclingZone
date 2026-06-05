@@ -39,8 +39,6 @@
     "title": "Byg dit første hold",
     "intro": "Du har endnu ingen ryttere. Brug filtrene nedenfor til at finde rytterne der passer til din strategi og dit budget.",
     "balance": "Din balance",
-    "squadMin": "Squad-minimum (Division {division})",
-    "squadMinRiders": "{count} ryttere",
     "tipValue": "<strong>Værdi-filtre</strong> = pris-loft i CZ$. Sæt max under din balance for at se kun overkommelige ryttere.",
     "tipStats": "<strong>Stat-filtre</strong> = sportsegenskaber (BJ, SP, TT...). Start bredt og indsnævr senere.",
     "tipBudget": "<strong>U25 / Fri agent</strong> = budget-venlige veje: yngre potentiale eller ryttere uden kontrakt.",

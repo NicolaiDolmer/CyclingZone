@@ -10,12 +10,13 @@
 // #838: max ensrettet til ét fælles loft på 30 for alle divisioner. Skal matche
 // backend MARKET_SQUAD_LIMITS (marketUtils.js) — frontend kan ikke importere
 // backend-bundlen, så værdierne dupes bevidst her.
+// Roster-floor fjernet 2026-06-05: min=0 → dashboard viser aldrig "under minimum".
 const MAX_SQUAD_SIZE = 30;
 
 export const DASHBOARD_SQUAD_LIMITS = {
-  1: { min: 20, max: MAX_SQUAD_SIZE },
-  2: { min: 14, max: MAX_SQUAD_SIZE },
-  3: { min: 8, max: MAX_SQUAD_SIZE },
+  1: { min: 0, max: MAX_SQUAD_SIZE },
+  2: { min: 0, max: MAX_SQUAD_SIZE },
+  3: { min: 0, max: MAX_SQUAD_SIZE },
 };
 
 export function getSquadLimits(division) {

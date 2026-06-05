@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.83",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Squad size",
+        items: [
+          "EN · There is no longer a minimum squad size. You can now sell, release, or transfer riders all the way down to an empty roster, and when the transfer window closes the game no longer auto-buys riders or fines you for having too few. The squad cap of 30 riders still applies, and the dashboard no longer shows a \"below minimum\" warning.",
+          "DA · Der er ikke længere et minimum for trup-størrelsen. Du kan nu sælge, frigive eller bytte ryttere helt ned til en tom trup, og når transfervinduet lukker, auto-køber spillet ikke længere ryttere eller giver dig bøde for at have for få. Loftet på 30 ryttere gælder stadig, og dashboardet viser ikke længere en \"under minimum\"-advarsel.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.82",
     date: "2026-06-05",
     label: "Beta",

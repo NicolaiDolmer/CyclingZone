@@ -656,7 +656,8 @@ router.get("/deadline-day/ticker", requireAuth, async (req, res) => {
 // GET /api/deadline-day/squads
 router.get("/deadline-day/squads", requireAuth, async (req, res) => {
   try {
-    const LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
+    // Roster-floor fjernet 2026-06-05: min=0 → Panic Board flagger aldrig "critical"/"warning" for under-min.
+    const LIMITS = { 1: { min: 0, max: 30 }, 2: { min: 0, max: 20 }, 3: { min: 0, max: 10 } };
     const [{ data: teams }, { data: riders }] = await Promise.all([
       // Filter matcher v3.83 cron-fix (a57b8d9): kun aktive manager-hold tæller mod
       // squad-minimum. Frosne hold (is_frozen=true) + AI-hold + bank + eierløse rows
@@ -677,8 +678,9 @@ router.get("/deadline-day/squads", requireAuth, async (req, res) => {
 
     const squads = teams.map(t => {
       const count = countByTeam[t.id] || 0;
-      const { min, max } = LIMITS[t.division] || { min: 8, max: 30 };
-      const status = count < min ? "critical" : count <= min + 1 ? "warning" : "ok";
+      const { min, max } = LIMITS[t.division] || { min: 0, max: 30 };
+      // min=0 (roster-floor fjernet) → aldrig critical/warning; kun et reelt min>0 flagger.
+      const status = min > 0 && count < min ? "critical" : min > 0 && count <= min + 1 ? "warning" : "ok";
       return { id: t.id, name: t.name, division: t.division, riders: count, min, max, status };
     });
     res.json(squads);
@@ -1748,13 +1750,15 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
     supabase.from("riders").select("team_id").in("team_id", uniqueTeamIds),
     supabase.from("teams").select("id, division").in("id", uniqueTeamIds),
   ]);
-  const SQUAD_MINS = { 1: 20, 2: 14, 3: 8 };
+  // Roster-floor fjernet 2026-06-05: min=0 → seller_squad_critical-flaget fyrer aldrig.
+  const SQUAD_MINS = { 1: 0, 2: 0, 3: 0 };
   const teamDiv = Object.fromEntries((squadTeams || []).map(t => [t.id, t.division]));
   const riderCounts = {};
   for (const r of (squadRiders || [])) riderCounts[r.team_id] = (riderCounts[r.team_id] || 0) + 1;
   const squadCritical = (teamId) => {
     const min = SQUAD_MINS[teamDiv[teamId]];
-    return min != null && (riderCounts[teamId] || 0) <= min;
+    // min=0 (roster-floor fjernet) → hastebudsignalet fyrer aldrig.
+    return min > 0 && (riderCounts[teamId] || 0) <= min;
   };
 
   res.json({
@@ -5012,7 +5016,8 @@ router.put("/admin/deadline-day/override", requireAdmin, adminWriteLimiter, asyn
 // squad-violations, kalender-status.
 router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
   try {
-    const LIMITS = { 1: { min: 20, max: 30 }, 2: { min: 14, max: 20 }, 3: { min: 8, max: 10 } };
+    // Roster-floor fjernet 2026-06-05: min=0 → squad-violations rapporterer kun "over_max".
+    const LIMITS = { 1: { min: 0, max: 30 }, 2: { min: 0, max: 20 }, 3: { min: 0, max: 10 } };
 
     const [
       { data: window },

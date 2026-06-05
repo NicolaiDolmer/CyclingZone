@@ -25,6 +25,11 @@ export const PLAN_PENALTY_MODIFIERS = {
   "5yr": 0.6,
 };
 
+// NB: Dette er bestyrelsens INTERNE squad-referencer (board-flavor + det
+// FRIVILLIGE min_riders-mål + squad_status thin/healthy/full). Det er IKKE den
+// hårde roster-floor — den blev fjernet 2026-06-05 i MARKET_SQUAD_LIMITS
+// (marketUtils.js, min=0). Bestyrelsens squad-størrelse-mål er opt-in mod
+// belønning og tvinger intet, så disse værdier bevares bevidst.
 export const DIVISION_SQUAD_LIMITS = {
   1: { min: 20, max: 30 },
   2: { min: 14, max: 20 },

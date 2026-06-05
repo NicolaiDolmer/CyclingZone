@@ -5,6 +5,7 @@ import {
   getIncomingSquadViolation,
   getOutgoingSquadViolation,
   getTeamMarketState,
+  MARKET_SQUAD_LIMITS,
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "./marketUtils.js";
 
@@ -96,7 +97,10 @@ test("getIncomingSquadViolation skalerer soft-cap til alle divisioner", () => {
   );
 });
 
-test("getOutgoingSquadViolation blocks teams from dropping below the division minimum", () => {
+// Generisk mekanik-test: funktionen blokerer FORTSAT hvis den får en eksplicit
+// min>0 (bevares for fremtidig config / board-injektion). I prod er den reelle
+// floor 0 (se MARKET_SQUAD_LIMITS-testen nedenfor), så den fyrer aldrig.
+test("getOutgoingSquadViolation blocks when given an explicit positive minimum", () => {
   const issue = getOutgoingSquadViolation({
     division: 1,
     total_count: 20,
@@ -105,6 +109,19 @@ test("getOutgoingSquadViolation blocks teams from dropping below the division mi
 
   assert.equal(issue?.minRiders, 20);
   assert.equal(issue?.totalAfter, 19);
+});
+
+test("MARKET_SQUAD_LIMITS har min=0 i alle divisioner (roster-floor fjernet 2026-06-05)", () => {
+  assert.equal(MARKET_SQUAD_LIMITS[1].min, 0);
+  assert.equal(MARKET_SQUAD_LIMITS[2].min, 0);
+  assert.equal(MARKET_SQUAD_LIMITS[3].min, 0);
+});
+
+test("getOutgoingSquadViolation tillader salg helt ned til 0 med division-default limits", () => {
+  // Uden eksplicit squad_limits falder funktionen tilbage til getSquadLimits(division).min = 0,
+  // så en manager kan sælge sin sidste rytter (future_count 1 → 0) uden violation.
+  assert.equal(getOutgoingSquadViolation({ division: 3, future_count: 1 }), null);
+  assert.equal(getOutgoingSquadViolation({ division: 1, future_count: 1 }), null);
 });
 
 // #268: outgoingCount-query bruger chained .eq + .not + .neq for at finde
@@ -241,7 +258,7 @@ test("getTeamMarketState includes active loan agreements in the total squad coun
   assert.equal(teamState.active_loan_count, 2);
   assert.equal(teamState.total_count, 17);
   assert.equal(teamState.future_count, 17);
-  assert.deepEqual(teamState.squad_limits, { min: 14, max: 30 });
+  assert.deepEqual(teamState.squad_limits, { min: 0, max: 30 });
 });
 
 // #268: future_count skal trække outgoing-pending ryttere (team_id=mit,

@@ -1,14 +1,15 @@
 /**
  * S-03 Trupstørrelse-håndhævelse
  *
- * Når et transfervindue lukker, sikrer cron at hver human-manager har:
- *   - D1: 20-30 ryttere
- *   - D2: 14-20 ryttere
- *   - D3: 8-10 ryttere
+ * Når et transfervindue lukker, sikrer cron at hver human-manager holder sig
+ * inden for division-grænserne (max = 30 for alle; min = 0 siden 2026-06-05 —
+ * intet trup-floor, så kun over-max håndhæves i prod).
  *
  * Mekanik pr. afvigende manager:
  *   - Under min: auto-køb cheapeste tilgængelige AI-/fri-rytter til 150% market_value
- *     (opretter nødlån via createEmergencyLoan hvis balance utilstrækkelig)
+ *     (opretter nødlån via createEmergencyLoan hvis balance utilstrækkelig).
+ *     INERT i prod (min=0); grenen er stadig konfig-/param-styret (limitsOverride)
+ *     og dækkes af unit-tests med en injiceret min>0.
  *   - Over max: auto-sælg seneste-erhvervede rytter tilbage til ai_team_id (eller fri agent)
  *     med fuld market_value som kredit
  *   - Bøde: 100K CZ$ + 200 fradrag-points pr. afvigende rytter (begge retninger)
@@ -307,6 +308,10 @@ export async function enforceTeamSquadCompliance({
   notifyTeamOwner = NOOP,
   createEmergencyLoanFn,
   now = new Date(),
+  // Injicerbar limits-override (default = division-konfigurationen). I prod er
+  // min=0 (intet trup-floor) → under-min-grenen er inert og kun over-max
+  // håndhæves. Tests injicerer min>0 for at dække auto-køb-maskineriet.
+  limitsOverride = null,
 }) {
   const snapshot = await getSquadSnapshot(supabase, teamId);
   const { team, ownedRiders, activeLoanCount } = snapshot;
@@ -318,7 +323,7 @@ export async function enforceTeamSquadCompliance({
     return { ok: true, code: "skipped_frozen", teamId };
   }
 
-  const limits = getSquadLimits(team.division);
+  const limits = limitsOverride ?? getSquadLimits(team.division);
   const effectiveCount = ownedRiders.length + activeLoanCount;
 
   let purchases = [];
@@ -435,6 +440,9 @@ export async function processSquadEnforcementCron({
   now = new Date(),
   onError = () => {},
   captureExceptionFn,
+  // Override af squad-grænser pr. team (default = division-konfig). Bruges af
+  // tests til at dække under-min-maskineriet; prod udelader → min=0 (intet floor).
+  limitsOverride = null,
 }) {
   // Find seneste lukkede vindue der ikke er enforced endnu.
   // closed_at IS NOT NULL skelner deadline-lukkede vinduer fra racing-windows
@@ -502,6 +510,7 @@ export async function processSquadEnforcementCron({
         notifyTeamOwner,
         createEmergencyLoanFn,
         now,
+        limitsOverride,
       });
       results.push(result);
     } catch (error) {
