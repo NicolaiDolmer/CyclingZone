@@ -872,7 +872,19 @@ export function countGoalsMet(goals, standing, team, context = {}) {
   if (!goals?.length) return 0;
 
   return parseBoardGoals(goals).filter((goal) => {
-    if (goal.cumulative) return false;
+    if (goal.cumulative) {
+      // #1074 · Cumulative stage/gc-mål blev altid ekskluderet fra "opfyldt"
+      // (returnerede false), men taltes stadig i goals_total → goals_met/goals_total-
+      // ratio'en kunne aldrig nå 100% for multi-year-planer med cumulative-mål,
+      // hvilket gjorde bonus-offer (lag 6, kræver ≥75% opfyldt) matematisk næsten
+      // umulig. De tæller nu som opfyldt når den fulde kumulative optælling når
+      // målet (kan nås i en hvilken som helst sæson — ikke pro-rated, ikke
+      // sæson-gated, modsat de defer-til-final-typer der håndteres af evaluateGoal).
+      const cum = goal.type === "stage_wins" ? (context.cumulativeStats?.stageWins ?? 0)
+        : goal.type === "gc_wins" ? (context.cumulativeStats?.gcWins ?? 0)
+        : null;
+      return cum != null && cum >= goal.target;
+    }
     return evaluateGoal(goal, standing, team, context) === true;
   }).length;
 }

@@ -13,6 +13,7 @@ import {
   buildGoalLabel,
   buildNegotiatedGoal,
   computeU25StatSum,
+  countGoalsMet,
   evaluateGoal,
   evaluateGoalProgress,
   generateBoardGoals,
@@ -375,4 +376,33 @@ test("generateBoardGoals new goals carry correct metadata category + weight", ()
   const bal = generateBoardGoals({ focus: "balanced", planType: "1yr" });
   const rank = bal.find((g) => g.type === "relative_rank");
   assert.equal(rank.category, "ranking");
+});
+
+// =====================================================================
+// #1074 · countGoalsMet medregner opfyldte cumulative stage/gc-mål
+// (før: altid ekskluderet → goals_met/goals_total kunne aldrig nå 100% for
+// multi-year-planer → bonus-offer matematisk umulig).
+// =====================================================================
+
+test("#1074 · opfyldte cumulative stage/gc-mål tæller med i countGoalsMet", () => {
+  const goals = [
+    { type: "stage_wins", target: 6, cumulative: true },
+    { type: "gc_wins", target: 2, cumulative: true },
+    { type: "top_n_finish", target: 3 },
+  ];
+  const standing = { rank_in_division: 2 };
+  // Alle mål opfyldt → ratio kan nå 100% (bonus-offer-eligibility mulig).
+  assert.equal(
+    countGoalsMet(goals, standing, null, { cumulativeStats: { stageWins: 6, gcWins: 2 } }),
+    3,
+    "2 cumulative + 1 ranking opfyldt"
+  );
+  // Cumulative ikke nået → tæller ikke (men over-tæller heller ikke).
+  assert.equal(
+    countGoalsMet(goals, standing, null, { cumulativeStats: { stageWins: 3, gcWins: 0 } }),
+    1,
+    "kun top_n_finish opfyldt"
+  );
+  // Uden cumulativeStats → cumulative tæller som ikke-opfyldt (graceful).
+  assert.equal(countGoalsMet(goals, standing, null, {}), 1);
 });
