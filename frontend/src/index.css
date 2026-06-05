@@ -203,3 +203,14 @@ tr:hover .sticky-name-cell {
 .font-data {
   font-variant-numeric: tabular-nums;
 }
+
+/* #1073: tastatur-fokus-affordance for bestyrelsessiden (var hover-only → fokus
+   usynligt). Én scoped regel dækker alle interaktive elementer inkl. modalerne
+   (de rendres inde i .board-a11y-roden). Ringen bruger --accent-t (deep-gold på
+   light, bright på dark) så den holder WCAG-kontrast i begge temaer — bright
+   --accent ville fejle 3:1 på Chalk. focus-visible → ingen mus-/snapshot-støj. */
+.board-a11y :is(a, button, input, select, textarea, [tabindex="0"]):focus-visible {
+  outline: 2px solid rgb(var(--accent-t));
+  outline-offset: 2px;
+  border-radius: 4px;
+}

@@ -2,6 +2,29 @@
 
 const PATCHES = [
   {
+    version: "4.89",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · The board",
+        items: [
+          "EN · The board's pop-up dialogs (board member portraits, your club DNA, and the plan-negotiation steps) can now be used fully with a keyboard and screen reader: focus stays inside the open dialog, Escape closes it, the close buttons are properly labelled, and the goal status icons now read out their meaning. Refs #1073.",
+          "DA · Bestyrelsens pop op-dialoger (portrætter af bestyrelsesmedlemmer, dit klub-DNA og trinene i plan-forhandlingen) kan nu bruges fuldt ud med tastatur og skærmlæser: fokus bliver inde i den åbne dialog, Escape lukker den, luk-knapperne er korrekt mærket, og mål-status-ikonerne læses nu op med deres betydning. Refs #1073.",
+          "EN · The board page now matches the rest of the app's look: the satisfaction figure uses readable, theme-correct colors (fixing a hard-to-read gold on the light theme), numbers line up neatly, and the division leader is highlighted in gold in your season history. Refs #1072.",
+          "DA · Bestyrelsessiden følger nu resten af appens udseende: tilfredsheds-tallet bruger læsbare, tema-korrekte farver (retter en svært læselig guld på det lyse tema), tal står pænt på linje, og division-føreren fremhæves med guld i din sæson-historik. Refs #1072.",
+        ],
+      },
+      {
+        category: "Fixed · Profiles",
+        items: [
+          "EN · The offline indicator dot on manager and team profile pages was invisible due to a missing color — offline managers now show a clear grey dot next to their last-seen time. Refs #1072.",
+          "DA · Den grå offline-prik på manager- og holdprofiler var usynlig på grund af en manglende farve — offline-managere viser nu en tydelig grå prik ved siden af deres sidst set-tidspunkt. Refs #1072.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.88",
     date: "2026-06-05",
     label: "Beta",
