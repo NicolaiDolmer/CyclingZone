@@ -16,6 +16,11 @@ import NextActionsCard from "../components/NextActionsCard";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import useDashboardLayout from "../lib/useDashboardLayout";
+import {
+  resolveBoardFeedbackHeadline,
+  resolveBoardFeedbackSummary,
+  resolveCategoryLabel,
+} from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
 
 const API = import.meta.env.VITE_API_URL;
@@ -718,13 +723,13 @@ export default function DashboardPage() {
               </div>
               {boardOutlook?.feedback && (
                 <div className="mt-4 pt-4 border-t border-cz-border">
-                  <p className="text-cz-1 text-sm font-medium">{boardOutlook.feedback.headline}</p>
-                  <p className="text-cz-2 text-xs mt-1">{boardOutlook.feedback.summary}</p>
+                  <p className="text-cz-1 text-sm font-medium">{resolveBoardFeedbackHeadline(t, boardOutlook.feedback)}</p>
+                  <p className="text-cz-2 text-xs mt-1">{resolveBoardFeedbackSummary(t, boardOutlook.feedback)}</p>
                   <div className="grid sm:grid-cols-4 gap-3 mt-3">
                     {Object.values(boardOutlook.score_breakdown?.categories || {}).map((category) => (
                       <div key={category.key} className="bg-cz-subtle rounded-lg p-3 border border-cz-border">
                         <div className="flex items-center justify-between gap-1 mb-1">
-                          <p className="text-cz-3 text-[10px] uppercase tracking-wider truncate">{category.label}</p>
+                          <p className="text-cz-3 text-[10px] uppercase tracking-wider truncate">{resolveCategoryLabel(t, category)}</p>
                           <span className="flex items-center gap-1 flex-shrink-0">
                             {category.score_pct > 100 && (
                               <span

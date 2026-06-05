@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, corsHeaders, json, TEST_TEAM } from "./fixtures.js";
 
 // i18n Fase 3+: oversatte sider skal bruge regex der matcher BÅDE DA + EN,
 // så testen ikke break'er afhængigt af LanguageDetector's valg (localStorage/
@@ -217,6 +217,87 @@ test("translated manager pages do not leak raw i18n keys or hardcoded Danish in 
         hardcodedDanish
       );
     }
+  }
+});
+
+// #917/#694 · Standard-fixturen er baseline-fase (is_baseline_phase:true), så det
+// interaktive board (bestyrelsesmedlemmer + arketype-copy) renderes ikke. Denne
+// override leverer en non-baseline payload så medlems-grid'en (arketype-labels +
+// beskrivelser via i18n-koder) faktisk rendres — forward-guard mod EN-leak i
+// boardArchetypes-copy. Feedback-templates er unit-dækket i src/lib/boardCopy.test.js.
+const NONBASELINE_BOARD_STATUS = {
+  is_baseline_phase: false,
+  setup_next_plan_type: null,
+  plans: { "5yr": null, "3yr": null, "1yr": null },
+  team: TEST_TEAM,
+  riders: [],
+  standing: null,
+  identity_profile: null,
+  auto_accept: null,
+  active_loans_count: 0,
+  team_dna: {
+    key: "skandinavisk_udvikling",
+    emoji: "🌱",
+    label_key: "dna.skandinavisk_udvikling.label",
+    short_description_key: "dna.skandinavisk_udvikling.shortDescription",
+    long_description_key: "dna.skandinavisk_udvikling.longDescription",
+    label: "Skandinavisk udviklingshold",
+    short_description: "Ungdom, balance og nordisk arv",
+    long_description: "",
+  },
+  team_members: [
+    {
+      archetype_key: "sponsoraten", selection_kind: "identity", alignment_score: 8, is_chairman: true,
+      label_key: "archetypes.sponsoraten.label", label: "Sponsoraten", emoji: "💰",
+      short_description_key: "archetypes.sponsoraten.shortDescription", short_description: "Vogter sponsorforhold og økonomisk disciplin",
+      long_description_key: "archetypes.sponsoraten.longDescription", long_description: "",
+    },
+    {
+      archetype_key: "talentspejderen", selection_kind: "identity", alignment_score: 6, is_chairman: false,
+      label_key: "archetypes.talentspejderen.label", label: "Talentspejderen", emoji: "🔭",
+      short_description_key: "archetypes.talentspejderen.shortDescription", short_description: "Tror på langsigtet ungdomsudvikling",
+      long_description_key: "archetypes.talentspejderen.longDescription", long_description: "",
+    },
+    {
+      archetype_key: "gc_elsker", selection_kind: "wildcard", alignment_score: 4, is_chairman: false,
+      label_key: "archetypes.gc_elsker.label", label: "GC-elsker", emoji: "⛰️",
+      short_description_key: "archetypes.gc_elsker.shortDescription", short_description: "Tre uger eller intet, Tour er alt",
+      long_description_key: "archetypes.gc_elsker.longDescription", long_description: "",
+    },
+  ],
+  active_consequences: [],
+  bonus_offer: null,
+  dna_suggestions: [],
+};
+
+test("interactive board renders archetype copy in English without Danish leak", async ({ page }) => {
+  await login(page);
+
+  // Override registreret efter fixtures → højere prioritet for board/status.
+  await page.route("**/api/board/status**", async (route) => {
+    if (route.request().method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(route.request()) });
+    }
+    if (route.request().method() !== "GET") return route.fallback();
+    return json(route, NONBASELINE_BOARD_STATUS);
+  });
+
+  await page.goto("/board");
+  await forceEnglish(page);
+  await expect(page.locator("main")).toBeVisible();
+
+  // Medlems-grid'en renderer arketype-label + kort beskrivelse via i18n-koder.
+  await expect(page.locator("main")).toContainText("The Sponsor Director");
+  await expect(page.locator("main")).toContainText("Guards sponsor relationships");
+
+  const mainText = await page.locator("main").innerText();
+  // Råtekst-nøgler må aldrig lække.
+  for (const rawKey of ["archetypes.sponsoraten.label", "archetypes.gc_elsker.label"]) {
+    expect(mainText, `leaked raw i18n key "${rawKey}"`).not.toContain(rawKey);
+  }
+  // Hardcodet dansk arketype-copy må ikke vises i EN-mode.
+  for (const danish of [/Sponsoraten/, /Vogter sponsorforhold/, /Talentspejderen/, /Tre uger eller intet/]) {
+    expect(mainText, `leaked hardcoded Danish ${danish}`).not.toMatch(danish);
   }
 });
 
