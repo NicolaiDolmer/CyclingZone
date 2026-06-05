@@ -7,7 +7,7 @@
   "tour": {
     "plans": {
       "title": "Three plans run in parallel",
-      "body": "1yr, 3yr and 5yr appear side by side in the dashboard. Each panel shows satisfaction, sponsor× modifier and top targets with status icons. Click a target to see the board's reaction."
+      "body": "Switch between the 1-, 3- and 5-year plans with the tabs — one plan at a time, full width. Each shows its standing, satisfaction, sponsor× modifier and targets with status icons. Click a target to see the board's reaction."
     },
     "satisfaction": {
       "title": "Satisfaction drives sponsor and consequences",
@@ -99,7 +99,19 @@
     "behind": "At risk",
     "near_miss": "Close",
     "on_track": "On track",
-    "watch": "Watch"
+    "watch": "Watch",
+    "benchmark": {
+      "belowPar": "Below par",
+      "onTrack": "On track",
+      "good": "Good",
+      "great": "Great",
+      "outstanding": "Outstanding"
+    },
+    "trend": {
+      "up": "Satisfaction trending up",
+      "down": "Satisfaction trending down",
+      "flat": "Satisfaction steady"
+    }
   },
   "changeKind": {
     "relaxed": "Eased",
@@ -286,7 +298,6 @@
     "negotiateExpired": "Negotiate new plan →",
     "goalsLabel": "Targets",
     "seasonsRemaining": "{count, plural, one {1 season left} other {# seasons left}}",
-    "moreGoals": "+{count} more {count, plural, one {target} other {targets}}",
     "hideDetails": "Hide details",
     "showDetails": "Show details",
     "timelineHeading": "Plan timeline",
@@ -296,7 +307,13 @@
     "seasonGoalsLabel": "Season targets",
     "outlookHeading": "The board's assessment",
     "renew": "Renew plan (status quo)",
-    "renewLocked": "Renegotiation is locked for the rest of the season."
+    "renewLocked": "Renegotiation is locked for the rest of the season.",
+    "standingHeading": "Standing",
+    "negotiationOrder": "Plans are negotiated longest-first: 5 → 3 → 1 years."
+  },
+  "tabs": {
+    "aria": "Plan horizons",
+    "select": "View {plan}"
   },
   "snapshot": {
     "heading": "Season history",

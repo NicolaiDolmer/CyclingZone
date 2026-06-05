@@ -61,6 +61,33 @@ function getGoalStatusMeta(t, status) {
   return { label: labelKey ? t(labelKey) : null, color: style.color, icon: style.icon };
 }
 
+// #955 · kvalitativ standing-label for et plan-panel ud fra bestyrelsens
+// tilfredshed (0-100). UX-research: kvalitative labels slår rå %. 5 trin spejler
+// >100%-skalaen fra #816 (Below par → Outstanding). Ingen backend-ændring.
+const BENCHMARK_BUCKETS = [
+  { min: 85, key: "outstanding", color: "text-cz-success" },
+  { min: 70, key: "great",       color: "text-cz-success" },
+  { min: 55, key: "good",        color: "text-cz-accent-t" },
+  { min: 40, key: "onTrack",     color: "text-cz-accent-t" },
+  { min: 0,  key: "belowPar",    color: "text-cz-danger" },
+];
+function getBenchmarkMeta(t, satisfaction) {
+  const sat = satisfaction ?? 0;
+  const bucket = BENCHMARK_BUCKETS.find(b => sat >= b.min) || BENCHMARK_BUCKETS[BENCHMARK_BUCKETS.length - 1];
+  return { label: t(`status.benchmark.${bucket.key}`), color: bucket.color };
+}
+
+// #955 · trend-pil ud fra seneste afsluttede sæsons satisfaction_delta.
+function getSatisfactionTrend(snapshots) {
+  if (!snapshots?.length) return null;
+  const latest = snapshots.reduce((a, b) =>
+    (b.season_within_plan ?? b.season_number ?? 0) > (a.season_within_plan ?? a.season_number ?? 0) ? b : a);
+  const delta = latest?.satisfaction_delta ?? 0;
+  if (delta > 0) return { glyph: "▲", color: "text-cz-success", key: "up" };
+  if (delta < 0) return { glyph: "▼", color: "text-cz-danger", key: "down" };
+  return { glyph: "→", color: "text-cz-3", key: "flat" };
+}
+
 // #1073 · skærmlæser-alternativ for status-glyfferne (✓/!/~/○). Uden dette læses
 // symbolerne op som "multiplication sign" / "tilde" uden betydning.
 function getGoalStatusA11yLabel(t, { achieved, status }) {
@@ -1209,27 +1236,28 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
 
   const nonCumGoals = goals.filter(g => !g.cumulative);
   const cumGoals = goals.filter(g => g.cumulative);
-  const topGoals = nonCumGoals.slice(0, 3);
   const goalsAchieved = nonCumGoals.filter(g => goalAchieved(g, goals.indexOf(g))).length;
   const modifier = satisfactionToModifier(board.satisfaction);
   const satColor = board.satisfaction >= 70 ? "text-cz-success"
     : board.satisfaction >= 40 ? "text-cz-accent-t" : "text-cz-danger";
+  const benchmark = getBenchmarkMeta(t, board.satisfaction);
+  const trend = getSatisfactionTrend(snapshots);
   const showMidReviewBanner = plan_duration > 1
     && seasons_completed === Math.floor(plan_duration / 2);
 
   return (
     <div className={`bg-cz-card border rounded-xl flex flex-col ${is_expired ? "border-cz-accent/40" : "border-cz-border"}`}>
-      {/* Compact header */}
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
+      {/* Full-bredde header (#955 fane-rework) */}
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0
               ${is_expired ? "bg-cz-accent/10 border border-cz-accent/30 text-cz-accent-t" : "bg-cz-subtle border border-cz-border text-cz-2"}`}>
               {planType === "5yr" ? "5" : planType === "3yr" ? "3" : "1"}
             </div>
             <div>
-              <p className="text-cz-1 font-semibold text-sm">{getPlanLabel(t, planType)}</p>
-              <p className="text-cz-3 text-[11px]">{getFocusLabel(t, board.focus)}</p>
+              <p className="text-cz-1 font-semibold text-base">{getPlanLabel(t, planType)}</p>
+              <p className="text-cz-3 text-xs">{getFocusLabel(t, board.focus)}</p>
             </div>
           </div>
           {/* #1030 · Affordance: tilfredsheds-tallet ligner et drilbart KPI-tal →
@@ -1237,66 +1265,67 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
           <button type="button" onClick={scrollToSatisfactionExplainer}
             title={t("satisfactionExplainer.heading")}
             className="text-right flex-shrink-0 rounded px-1 -mx-1 hover:bg-cz-subtle/40 transition-colors group/sat">
-            <p className={`font-mono font-bold text-sm ${satColor} underline-offset-2 group-hover/sat:underline`}>{board.satisfaction}%</p>
-            <p className="text-cz-3 text-[10px]">×{modifier.toFixed(2)}</p>
+            <p className={`font-data font-bold text-base ${satColor} underline-offset-2 group-hover/sat:underline`}>{board.satisfaction}%</p>
+            <p className="text-cz-3 text-[11px] font-data">×{modifier.toFixed(2)}</p>
           </button>
         </div>
 
         {is_expired ? (
           <button onClick={onNegotiate}
-            className="w-full py-2 text-xs font-semibold bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 rounded-lg hover:bg-cz-accent/20 transition-all">
+            className="w-full py-2.5 text-sm font-semibold bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 rounded-lg hover:bg-cz-accent/20 transition-all">
             {t("plan.negotiateExpired")}
           </button>
         ) : (
           <>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-cz-3 text-[10px]">{t("plan.goalsLabel")}</span>
-              <span className="text-cz-2 text-[10px] font-mono">{goalsAchieved}/{nonCumGoals.length}</span>
+            {/* #955 · standing = kvalitativ label + trend-pil + bar + tal */}
+            <div className="flex items-center justify-between gap-3 mb-1.5">
+              <div className="flex items-baseline gap-2 min-w-0">
+                <span className="text-cz-3 text-[11px] uppercase tracking-wider">{t("plan.standingHeading")}</span>
+                <span className={`text-sm font-semibold ${benchmark.color}`}>{benchmark.label}</span>
+                {trend && (
+                  <>
+                    <span aria-hidden="true" className={`text-xs ${trend.color}`}>{trend.glyph}</span>
+                    <span className="sr-only">{t(`status.trend.${trend.key}`)}</span>
+                  </>
+                )}
+              </div>
+              <span className="text-cz-2 text-xs font-data flex-shrink-0">{t("plan.goalsLabel")} {goalsAchieved}/{nonCumGoals.length}</span>
             </div>
-            <div className="bg-cz-subtle rounded-full h-1">
-              <div className="h-1 rounded-full bg-cz-accent transition-all"
+            <div className="bg-cz-subtle rounded-full h-1.5">
+              <div className="h-1.5 rounded-full bg-cz-accent transition-all"
                 style={{ width: `${nonCumGoals.length ? (goalsAchieved / nonCumGoals.length) * 100 : 0}%` }} />
             </div>
             {seasons_remaining != null && plan_duration > 1 && (
-              <p className="text-cz-3 text-[10px] mt-1 text-right">{t("plan.seasonsRemaining", { count: seasons_remaining })}</p>
+              <p className="text-cz-3 text-[11px] mt-1.5 text-right">{t("plan.seasonsRemaining", { count: seasons_remaining })}</p>
             )}
           </>
         )}
       </div>
 
-      {/* Top 3 goals — klikbare → GoalMiniDialog */}
-      {!is_expired && topGoals.length > 0 && (
-        <div className="border-t border-cz-border px-4 py-3 flex flex-col gap-1.5">
-          {topGoals.map((g, i) => {
-            const gIdx = goals.indexOf(g);
-            const ach = goalAchieved(g, gIdx);
-            const evalItem = outlook?.goal_evaluations?.[gIdx];
-            const status = evalItem?.status;
-            const meta = !ach && status ? getGoalStatusMeta(t, status) : null;
-            const icon = ach ? "✓" : status === "behind" ? "!" : (status === "near_miss" || status === "watch") ? "~" : "○";
-            const iconCls = ach ? "text-cz-success" : status === "behind" ? "text-cz-danger"
-              : (status === "near_miss" || status === "watch") ? "text-cz-accent-t" : "text-cz-3";
-            const cumProgress = g.cumulative && g.type === "stage_wins" ? (cumulative_stats?.stage_wins ?? 0)
-              : g.cumulative && g.type === "gc_wins" ? (cumulative_stats?.gc_wins ?? 0) : undefined;
-            return (
-              <button key={i} type="button"
-                onClick={() => onGoalClick(g, evalItem, ach, cumProgress)}
-                className="flex items-center gap-2 text-left w-full hover:bg-cz-subtle/60 rounded-md px-1 py-1 transition-colors group">
-                <span className={`text-xs font-bold flex-shrink-0 w-4 text-center ${iconCls}`} aria-hidden="true">{icon}</span>
-                <span className="sr-only">{getGoalStatusA11yLabel(t, { achieved: ach, status })}</span>
-                <span className="text-xs text-cz-2 flex-1 line-clamp-1 group-hover:text-cz-1">{getBoardGoalLabel(t, g)}</span>
-                {meta?.label && <span className={`text-[10px] flex-shrink-0 ${meta.color}`}>{meta.label}</span>}
-              </button>
-            );
-          })}
-          {nonCumGoals.length > 3 && (
-            // #1030 · Affordance: lignede et "vis flere"-link men var død plain-tekst →
-            // gør den til en knap der åbner detalje-visningen med alle mål.
-            <button type="button" onClick={() => setDetailOpen(true)}
-              className="text-cz-3 hover:text-cz-2 text-[10px] text-right mt-0.5 underline-offset-2 hover:underline transition-colors">
-              {t("plan.moreGoals", { count: nonCumGoals.length - 3 })}
-            </button>
-          )}
+      {/* #955 · Mål — fuld liste (alle mål), klikbare → GoalMiniDialog. Full bredde
+          giver plads til hele listen, så top-3-trunkeringen + "+N mere"-affordancen
+          (#1030) ikke længere er nødvendig — alt vises direkte. */}
+      {!is_expired && goals.length > 0 && (
+        <div className="border-t border-cz-border px-5 py-4">
+          <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">
+            {plan_duration > 1 ? t("plan.planGoalsLabel") : t("plan.seasonGoalsLabel")}
+          </p>
+          <div className="flex flex-col gap-2">
+            {goals.map((g, i) => {
+              const ach = goalAchieved(g, i);
+              const evalItem = outlook?.goal_evaluations?.[i];
+              const cumProg = g.cumulative && g.type === "stage_wins" ? (cumulative_stats?.stage_wins ?? 0)
+                : g.cumulative && g.type === "gc_wins" ? (cumulative_stats?.gc_wins ?? 0)
+                : undefined;
+              return (
+                <GoalCard key={i} goal={g} achieved={ach}
+                  evaluation={evalItem}
+                  cumulativeProgress={cumProg}
+                  onSelect={() => onGoalClick(g, evalItem, ach, cumProg)}
+                />
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -1309,9 +1338,9 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
         </button>
       </div>
 
-      {/* Expanded detail */}
+      {/* Expanded detail — historik/vurdering/requests (mål-listen vises nu altid i primær-området) */}
       {detailOpen && (
-        <div className="border-t border-cz-border p-4 flex flex-col gap-4">
+        <div className="border-t border-cz-border p-5 flex flex-col gap-4">
           {plan_duration > 1 && (
             <div>
               <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("plan.timelineHeading")}</p>
@@ -1336,28 +1365,6 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
           {plan_duration > 1 && cumGoals.length > 0 && (
             <CumulativeStatsRow goals={cumGoals} cumStats={cumulative_stats} />
           )}
-
-          <div>
-            <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">
-              {plan_duration > 1 ? t("plan.planGoalsLabel") : t("plan.seasonGoalsLabel")}
-            </p>
-            <div className="flex flex-col gap-2">
-              {goals.map((g, i) => {
-                const ach = goalAchieved(g, i);
-                const evalItem = outlook?.goal_evaluations?.[i];
-                const cumProg = g.cumulative && g.type === "stage_wins" ? (cumulative_stats?.stage_wins ?? 0)
-                  : g.cumulative && g.type === "gc_wins" ? (cumulative_stats?.gc_wins ?? 0)
-                  : undefined;
-                return (
-                  <GoalCard key={i} goal={g} achieved={ach}
-                    evaluation={evalItem}
-                    cumulativeProgress={cumProg}
-                    onSelect={() => onGoalClick(g, evalItem, ach, cumProg)}
-                  />
-                );
-              })}
-            </div>
-          </div>
 
           {plan_duration > 1 && snapshots?.length > 0 && (
             <SeasonSnapshotGrid snapshots={snapshots} />
@@ -1638,6 +1645,8 @@ export default function BoardPage() {
   const { t } = useTranslation("board");
   // Plandata
   const [plans, setPlans] = useState({ "5yr": null, "3yr": null, "1yr": null });
+  // #955 · aktiv plan-fane (5/3/1-år vises én ad gangen, fuld bredde)
+  const [activePlanTab, setActivePlanTab] = useState(PLAN_SEQUENCE[0]);
   const [setupNextPlanType, setSetupNextPlanType] = useState(null);
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
@@ -2145,31 +2154,69 @@ export default function BoardPage() {
         <BoardConsequencesPanel consequences={activeConsequences} />
       )}
 
-      {/* S-02h · Tre kompakte plan-paneler side om side (lg:grid-cols-3, mobile: stacker) */}
+      {/* #955 · Plan-faner — én plan ad gangen i fuld bredde (erstatter 3-kolonne grid). */}
       {!isBaselinePhase && (
-        <div className="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {PLAN_SEQUENCE.map(planType => (
+        <div className="mt-5" data-tour="board-plans">
+          <div role="tablist" aria-label={t("tabs.aria")} className="flex gap-1 border-b border-cz-border">
+            {PLAN_SEQUENCE.map(planType => {
+              const pd = plans[planType];
+              const isActive = activePlanTab === planType;
+              const num = planType === "5yr" ? "5" : planType === "3yr" ? "3" : "1";
+              const expired = pd?.is_expired;
+              const sat = pd?.board?.satisfaction;
+              const dotColor = sat == null ? "bg-cz-3/40"
+                : sat >= 70 ? "bg-cz-success" : sat >= 40 ? "bg-cz-accent" : "bg-cz-danger";
+              return (
+                <button key={planType} type="button" role="tab"
+                  id={`plan-tab-${planType}`}
+                  aria-selected={isActive}
+                  aria-controls={`plan-panel-${planType}`}
+                  aria-label={t("tabs.select", { plan: getPlanLabel(t, planType) })}
+                  onClick={() => setActivePlanTab(planType)}
+                  className={`group relative flex items-center gap-2 px-3 sm:px-4 py-2.5 text-sm transition-colors -mb-px
+                    ${isActive ? "text-cz-1 font-semibold" : "text-cz-3 hover:text-cz-2"}`}>
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
+                    ${expired ? "bg-cz-accent/10 border border-cz-accent/40 text-cz-accent-t"
+                      : isActive ? "bg-cz-accent/12 border border-cz-accent/30 text-cz-accent-t"
+                      : "bg-cz-subtle border border-cz-border text-cz-3"}`}>{num}</span>
+                  <span className="hidden sm:inline">{getPlanLabel(t, planType)}</span>
+                  {sat != null && (
+                    <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />
+                  )}
+                  {/* aktiv fane = solid guld-streg; inaktiv = micro-interaction accent-dash ved hover (#1050-mønster) */}
+                  <span aria-hidden="true"
+                    className={`pointer-events-none absolute left-0 right-0 bottom-0 h-0.5 rounded-full bg-cz-accent origin-left transition-transform duration-200 ease-out motion-reduce:transition-none
+                      ${isActive ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"}`} />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* #818 · forklar forhandlingsrækkefølge (5→3→1 år) */}
+          <p className="text-cz-3 text-[11px] mt-2 px-1">{t("plan.negotiationOrder")}</p>
+
+          <div className="mt-4" role="tabpanel" id={`plan-panel-${activePlanTab}`} aria-labelledby={`plan-tab-${activePlanTab}`}>
             <DashboardPlanPanel
-              key={planType}
-              planType={planType}
-              planData={plans[planType]}
+              key={activePlanTab}
+              planType={activePlanTab}
+              planData={plans[activePlanTab]}
               team={team}
               riders={riders}
               standing={standing}
               activeLoanCount={activeLoanCount}
-              requestError={requestErrors[planType] || ""}
+              requestError={requestErrors[activePlanTab] || ""}
               requestingType={
-                requestingType.startsWith(`${planType}:`)
+                requestingType.startsWith(`${activePlanTab}:`)
                   ? requestingType.split(":").slice(1).join(":")
                   : ""
               }
-              onRequest={(requestType) => sendBoardRequest(planType, requestType)}
-              onRenew={() => renewContract(planType)}
-              onNegotiate={() => openWizard(planType, false)}
+              onRequest={(requestType) => sendBoardRequest(activePlanTab, requestType)}
+              onRenew={() => renewContract(activePlanTab)}
+              onNegotiate={() => openWizard(activePlanTab, false)}
               onGoalClick={(goal, evaluation, achieved, cumProgress) =>
                 setGoalMiniDialog({ goal, evaluation, achieved, cumulativeProgress: cumProgress })}
             />
-          ))}
+          </div>
         </div>
       )}
 

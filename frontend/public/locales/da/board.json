@@ -7,7 +7,7 @@
   "tour": {
     "plans": {
       "title": "Tre planer kører parallelt",
-      "body": "1yr, 3yr og 5yr vises side om side i dashboardet. Hvert panel viser tilfredshed, sponsor×-modifier og top-mål med status-ikoner. Klik et mål for at se bestyrelsens reaktion."
+      "body": "Skift mellem 1-, 3- og 5-årsplanen med fanerne — én plan ad gangen, fuld bredde. Hver viser sin status, tilfredshed, sponsor×-modifier og mål med status-ikoner. Klik et mål for at se bestyrelsens reaktion."
     },
     "satisfaction": {
       "title": "Tilfredshed driver sponsor og konsekvenser",
@@ -99,7 +99,19 @@
     "behind": "I fare",
     "near_miss": "Tæt på",
     "on_track": "På sporet",
-    "watch": "Hold øje"
+    "watch": "Hold øje",
+    "benchmark": {
+      "belowPar": "Under niveau",
+      "onTrack": "På sporet",
+      "good": "God",
+      "great": "Stærk",
+      "outstanding": "Fremragende"
+    },
+    "trend": {
+      "up": "Tilfredsheden stiger",
+      "down": "Tilfredsheden falder",
+      "flat": "Tilfredsheden er stabil"
+    }
   },
   "changeKind": {
     "relaxed": "Lempet",
@@ -286,7 +298,6 @@
     "negotiateExpired": "Forhandl ny plan →",
     "goalsLabel": "Mål",
     "seasonsRemaining": "{count, plural, one {1 sæson tilbage} other {# sæsoner tilbage}}",
-    "moreGoals": "+{count} {count, plural, one {mål} other {mål}} mere",
     "hideDetails": "Skjul detaljer",
     "showDetails": "Vis detaljer",
     "timelineHeading": "Planforløb",
@@ -296,7 +307,13 @@
     "seasonGoalsLabel": "Sæsonmål",
     "outlookHeading": "Bestyrelsens vurdering",
     "renew": "Forny plan (status quo)",
-    "renewLocked": "Genforhandling er låst resten af sæsonen."
+    "renewLocked": "Genforhandling er låst resten af sæsonen.",
+    "standingHeading": "Status",
+    "negotiationOrder": "Planer forhandles længst først: 5 → 3 → 1 år."
+  },
+  "tabs": {
+    "aria": "Planhorisonter",
+    "select": "Vis {plan}"
   },
   "snapshot": {
     "heading": "Sæsonhistorik",
