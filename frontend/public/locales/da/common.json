@@ -78,5 +78,8 @@
     "clear": "Ryd",
     "noFilterResults": "Ingen ryttere matcher dine filtre",
     "clearFilters": "Ryd alle filtre"
+  },
+  "race": {
+    "editionYear": "{year}-udgave"
   }
 }

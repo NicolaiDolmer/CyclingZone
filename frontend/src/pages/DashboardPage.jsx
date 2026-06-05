@@ -353,10 +353,10 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          <div className="text-right">
-            <p className="text-cz-accent-t font-mono font-bold text-xl">{formatNumber(team?.balance)} CZ$</p>
+          <Link to="/finance" className="block text-right group" title={t("common:sidebar.balance")}>
+            <p className="text-cz-accent-t font-mono font-bold text-xl group-hover:underline">{formatNumber(team?.balance)} CZ$</p>
             <p className="text-cz-3 text-xs">{t("common:sidebar.balance")}</p>
-          </div>
+          </Link>
           {/* Customize-knap (#1005) — vis/skjul moduler. Top-højre = konventionel
               placering for view-indstillinger, så den er let at finde (#957-follow-up). */}
           <DashboardCustomizeMenu
@@ -523,10 +523,10 @@ export default function DashboardPage() {
         {/* My auctions + winning */}
         {isVisible("auctions") && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.auctions.title")}</h2>
-            <Link to="/auctions" className="text-xs text-cz-accent-t hover:underline">{t("dashboard:cards.auctions.linkAll")}</Link>
-          </div>
+          <Link to="/auctions" className="flex items-center justify-between mb-4 group">
+            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.auctions.title")}</h2>
+            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.auctions.linkAll")}</span>
+          </Link>
           {myActiveAuctions.length === 0 ? (
             <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.auctions.empty")}</p>
           ) : (
@@ -569,10 +569,10 @@ export default function DashboardPage() {
         {/* Pending transfers + offers */}
         {isVisible("transfers") && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.transfers.title")}</h2>
-            <Link to="/transfers" className="text-xs text-cz-accent-t hover:underline">{t("dashboard:cards.transfers.linkAll")}</Link>
-          </div>
+          <Link to="/transfers" className="flex items-center justify-between mb-4 group">
+            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.transfers.title")}</h2>
+            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.transfers.linkAll")}</span>
+          </Link>
           {activeMarketOffers.length === 0 && pendingIncoming === 0 ? (
             <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.transfers.empty")}</p>
           ) : (
@@ -618,17 +618,17 @@ export default function DashboardPage() {
         {/* Upcoming races */}
         {isVisible("races") && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.races.title")}</h2>
-            <Link to="/races" className="text-xs text-cz-accent-t hover:underline">{t("dashboard:cards.races.linkAll")}</Link>
-          </div>
+          <Link to="/races" className="flex items-center justify-between mb-4 group">
+            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.races.title")}</h2>
+            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.races.linkAll")}</span>
+          </Link>
           {nextRaces.length === 0 ? (
             <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.races.empty")}</p>
           ) : (
             <div className="flex flex-col gap-2">
-              {nextRaces.map((race, i) => (
-                <div key={race.id}
-                  className={`flex items-center justify-between py-2.5 ${i < nextRaces.length - 1 ? "border-b border-cz-border" : ""}`}>
+              {nextRaces.map((race) => (
+                <Link key={race.id} to="/races"
+                  className="flex items-center justify-between py-2.5 border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle rounded px-1 -mx-1 transition-all">
                   <div>
                     <p className="text-cz-1 text-sm font-medium">{race.name}</p>
                     <p className="text-cz-3 text-xs mt-0.5">
@@ -642,10 +642,10 @@ export default function DashboardPage() {
                       ? <p className="text-cz-2 text-sm">{race.pool_race.date_text}</p>
                       : <p className="text-cz-3 text-sm">{t("dashboard:cards.races.dateTbd")}</p>}
                     {race.edition_year && (
-                      <p className="text-cz-accent-t text-xs font-mono">{race.edition_year}-udgave</p>
+                      <p className="text-cz-accent-t text-xs font-mono">{t("common:race.editionYear", { year: race.edition_year })}</p>
                     )}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
@@ -655,10 +655,10 @@ export default function DashboardPage() {
         {/* My division standings */}
         {isVisible("divStandings") && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.standings.title", { division: team?.division })}</h2>
-            <Link to="/standings" className="text-xs text-cz-accent-t hover:underline">{t("dashboard:cards.standings.linkAll")}</Link>
-          </div>
+          <Link to="/standings" className="flex items-center justify-between mb-4 group">
+            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.standings.title", { division: team?.division })}</h2>
+            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.standings.linkAll")}</span>
+          </Link>
           {divStandings.length === 0 ? (
             <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.standings.empty")}</p>
           ) : (
@@ -667,13 +667,14 @@ export default function DashboardPage() {
                 const isMe = s.team_id === team?.id;
                 const maxPts = divStandings[0]?.total_points || 1;
                 return (
-                  <div key={s.id} className={`flex items-center gap-3 py-1.5 ${isMe ? "bg-cz-accent/10 -mx-2 px-2 rounded-lg" : ""}`}>
+                  <Link key={s.id} to="/standings"
+                    className={`flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isMe ? "bg-cz-accent/10" : "hover:bg-cz-subtle"}`}>
                     <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isMe ? "text-cz-accent-t" : "text-cz-3"}`}>#{i+1}</span>
                     <p className={`text-sm w-28 truncate flex-shrink-0 ${isMe ? "text-cz-accent-t font-medium" : "text-cz-2"}`}>{s.team?.name}</p>
                     <div className="flex-1">
                       <MiniBar value={s.total_points || 0} max={maxPts} color={isMe ? "rgb(var(--accent))" : "var(--text-3)"} />
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -684,10 +685,10 @@ export default function DashboardPage() {
         {/* Board status */}
         {isVisible("board") && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.board.title")}</h2>
-            <Link to="/board" className="text-xs text-cz-accent-t hover:underline">{t("dashboard:cards.board.linkAll")}</Link>
-          </div>
+          <Link to="/board" className="flex items-center justify-between mb-4 group">
+            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.board.title")}</h2>
+            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.board.linkAll")}</span>
+          </Link>
           {!board ? (
             <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.board.empty")}</p>
           ) : (
@@ -755,10 +756,10 @@ export default function DashboardPage() {
         {/* Recent results (#1005) */}
         {isVisible("recentResults") && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.recentResults.title")}</h2>
-            <Link to="/resultater" className="text-xs text-cz-accent-t hover:underline">{t("dashboard:cards.recentResults.linkAll")}</Link>
-          </div>
+          <Link to="/resultater" className="flex items-center justify-between mb-4 group">
+            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.recentResults.title")}</h2>
+            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.recentResults.linkAll")}</span>
+          </Link>
           {recentResults.length === 0 ? (
             <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.recentResults.empty")}</p>
           ) : (
@@ -792,10 +793,10 @@ export default function DashboardPage() {
         {/* Rider ranking (#1005) */}
         {isVisible("riderRanking") && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.riderRanking.title")}</h2>
-            <Link to="/rider-rankings" className="text-xs text-cz-accent-t hover:underline">{t("dashboard:cards.riderRanking.linkAll")}</Link>
-          </div>
+          <Link to="/rider-rankings" className="flex items-center justify-between mb-4 group">
+            <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.riderRanking.title")}</h2>
+            <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.riderRanking.linkAll")}</span>
+          </Link>
           {riderRanking.length === 0 ? (
             <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.riderRanking.empty")}</p>
           ) : (
