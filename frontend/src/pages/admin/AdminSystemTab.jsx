@@ -270,9 +270,9 @@ export default function AdminSystemTab() {
         )}
       </AdminSection>
 
-      {/* #805 · Board-test-tilstand: admin-handling for en live feature — altid
+      {/* #805/#1062 · Board-åbning: admin-handling for en live feature — altid
           synlig for admin (uden for BETA_ENABLED-gaten, modsat de destruktive resets). */}
-      <AdminSection title="Bestyrelse — test med frosset økonomi">
+      <AdminSection title="Bestyrelse — åbn for test (frosset) eller live (ægte økonomi)">
         <BoardTestModeSection getAuth={getAuth} onMsg={showMsg} />
       </AdminSection>
 
