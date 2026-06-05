@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.78",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Transfers",
+        items: [
+          "EN · Error messages across transfers, swaps and loans now appear in English for English players. Listing a rider, sending offers and counter-offers, proposing swaps, and creating or accepting loans previously fell back to Danish even in English mode — including squad-full warnings and \"can't afford\" notices. They are now fully localised, with amounts formatted to your language. Refs #678.",
+          "DA · Fejlbeskeder på tværs af transfers, byttehandler og lejeaftaler vises stadig på dansk for danske spillere uden ændringer — men engelske spillere så tidligere dansk tekst ved salg, tilbud, modbud, byttehandler og lejeaftaler. Det er nu fuldt oversat, med beløb formateret efter dit sprog. Refs #678.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.77",
     date: "2026-06-05",
     label: "Beta",

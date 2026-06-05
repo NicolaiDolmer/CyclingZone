@@ -248,6 +248,7 @@ function describeTransferIssue(issue, { rider, buyerState, sellerState }) {
   if (issue.code === "seller_squad_too_small") {
     return {
       error: `Sælger må ikke komme under ${issue.minRiders} ryttere i Division ${sellerState.division} — handlen er annulleret`,
+      errorParams: { minRiders: issue.minRiders, division: sellerState.division },
       notificationTitle: "Transfer annulleret",
       notificationMessage: `${rider.firstname} ${rider.lastname} kunne ikke sælges, fordi sælgeren ellers ville komme under ${issue.minRiders} ryttere i Division ${sellerState.division}.`,
     };
@@ -256,6 +257,7 @@ function describeTransferIssue(issue, { rider, buyerState, sellerState }) {
   if (issue.code === "buyer_squad_full") {
     return {
       error: `Købers hold kan max have ${issue.maxRiders} ryttere i Division ${buyerState.division} — handlen er annulleret`,
+      errorParams: { maxRiders: issue.maxRiders, division: buyerState.division },
       notificationTitle: "Transfer annulleret",
       notificationMessage: `${rider.firstname} ${rider.lastname} kunne ikke overdrages, fordi købers hold allerede er fuldt.`,
     };
@@ -340,7 +342,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     await withdrawTransferOffer(supabase, offer.id);
     await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id);
     await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id);
-    return failure(400, message.error, issue.code);
+    return failure(400, message.error, issue.code, message.errorParams ? { errorParams: message.errorParams } : {});
   }
 
   // #19: parkér = sæt pending_team_id (kræver at rytteren ikke allerede er

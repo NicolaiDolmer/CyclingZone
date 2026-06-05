@@ -11,6 +11,7 @@ import { BidConfirmModal } from "../components/BidConfirmModal";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber, formatDate } from "../lib/intl";
+import { resolveApiError } from "../lib/apiError";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -1115,7 +1116,7 @@ export default function TransfersPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) { showMsg(t("toast.offerSent")); loadAll(); setTab("sent"); }
-      else showMsg(`❌ ${data.error}`, "error");
+      else showMsg(`❌ ${resolveApiError(data, t)}`, "error");
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
     }
@@ -1132,7 +1133,7 @@ export default function TransfersPage() {
         showMsg(t("toast.listingRemoved"));
         loadAll();
       } else {
-        showMsg(`❌ ${data.error || t("toast.listingRemoveFailed")}`, "error");
+        showMsg(`❌ ${resolveApiError(data, t, t("toast.listingRemoveFailed"))}`, "error");
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -1176,7 +1177,7 @@ export default function TransfersPage() {
         }
         loadAll();
       } else {
-        showMsg(`❌ ${data.error}`, "error");
+        showMsg(`❌ ${resolveApiError(data, t)}`, "error");
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -1213,7 +1214,7 @@ export default function TransfersPage() {
         }
         loadAll();
       } else {
-        showMsg(`❌ ${data.error}`, "error");
+        showMsg(`❌ ${resolveApiError(data, t)}`, "error");
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -1233,7 +1234,7 @@ export default function TransfersPage() {
         setShowNewSwap(false);
         loadAll();
       } else {
-        showMsg(`❌ ${data.error}`, "error");
+        showMsg(`❌ ${resolveApiError(data, t)}`, "error");
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -1257,7 +1258,7 @@ export default function TransfersPage() {
         }
         loadAll();
       } else {
-        showMsg(`❌ ${data.error}`, "error");
+        showMsg(`❌ ${resolveApiError(data, t)}`, "error");
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -1273,7 +1274,7 @@ export default function TransfersPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) { showMsg(t("toast.loanProposalSent")); setShowNewLoan(false); loadAll(); }
-      else showMsg(`❌ ${data.error}`, "error");
+      else showMsg(`❌ ${resolveApiError(data, t)}`, "error");
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
     }

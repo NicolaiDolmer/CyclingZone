@@ -9,6 +9,7 @@ import { getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber, formatDate } from "../lib/intl";
 import PotentialeStars from "../components/PotentialeStars";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
+import { resolveApiError } from "../lib/apiError";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -47,7 +48,7 @@ function RiderActionModal({ rider, onClose, onAction }) {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) { setMsg(t("actionModal.auction.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
-      else setMsg(`${t("actionModal.errorPrefix")}${data.error}`);
+      else setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`);
     } catch {
       setMsg(t("auth:error.connectionFailed"));
     } finally {
@@ -66,7 +67,7 @@ function RiderActionModal({ rider, onClose, onAction }) {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) { setMsg(t("actionModal.transfer.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
-      else setMsg(`${t("actionModal.errorPrefix")}${data.error}`);
+      else setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`);
     } catch {
       setMsg(t("auth:error.connectionFailed"));
     } finally {
