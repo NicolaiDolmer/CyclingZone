@@ -6,11 +6,12 @@ const ME = "team-me";
 const RIVAL = "team-rival";
 
 test("getSquadLimits — fallback til division 3 ved ukendt division", () => {
-  assert.deepEqual(getSquadLimits(1), { min: 20, max: 30 });
-  assert.deepEqual(getSquadLimits(2), { min: 14, max: 30 });
-  assert.deepEqual(getSquadLimits(3), { min: 8, max: 30 });
-  assert.deepEqual(getSquadLimits(undefined), { min: 8, max: 30 });
-  assert.deepEqual(getSquadLimits(null), { min: 8, max: 30 });
+  // Roster-floor fjernet 2026-06-05: min=0 i alle divisioner; kun max=30 håndhæves.
+  assert.deepEqual(getSquadLimits(1), { min: 0, max: 30 });
+  assert.deepEqual(getSquadLimits(2), { min: 0, max: 30 });
+  assert.deepEqual(getSquadLimits(3), { min: 0, max: 30 });
+  assert.deepEqual(getSquadLimits(undefined), { min: 0, max: 30 });
+  assert.deepEqual(getSquadLimits(null), { min: 0, max: 30 });
 });
 
 test("computeDashboardSquadStats — ingen pending, ingen lån = ownedNow = futureRiderCount", () => {
@@ -43,7 +44,7 @@ test("computeDashboardSquadStats — pending-incoming inkluderes (#250 hovedrapp
   assert.equal(stats.outgoingCount, 0);
   assert.equal(stats.pendingIncomingCount, 2);
   assert.equal(stats.futureRiderCount, 8);
-  assert.equal(stats.warning, null, "8 ryttere i D3 = på minimum, ingen warning");
+  assert.equal(stats.warning, null, "8 ryttere i D3 = inden for cap, ingen warning");
 });
 
 test("computeDashboardSquadStats — pending-outgoing trækkes fra (#250 sæson 0 sælger-side)", () => {
@@ -70,10 +71,8 @@ test("computeDashboardSquadStats — pending-outgoing trækkes fra (#250 sæson 
   assert.equal(stats.ownedNow, 9);
   assert.equal(stats.outgoingCount, 2);
   assert.equal(stats.futureRiderCount, 7, "9 - 2 udgående = 7");
-  assert.equal(stats.warning?.type, "under", "7 i D3 < min 8 = warning");
-  assert.equal(stats.warning.count, 1, "skal købe 1 rytter mere");
-  assert.equal(stats.warning.limit, 8);
-  assert.equal(stats.warning.division, 3);
+  // Roster-floor fjernet 2026-06-05: 7 ryttere udløser ikke længere en under-warning.
+  assert.equal(stats.warning, null, "intet trup-minimum → ingen under-warning");
 });
 
 test("computeDashboardSquadStats — pending-out som peger på MIT eget hold tæller IKKE som outgoing", () => {
@@ -164,7 +163,8 @@ test("computeDashboardSquadStats — aktive lån tæller med i squad-størrelsen
   assert.equal(stats.warning?.type, "over");
 });
 
-test("computeDashboardSquadStats — division 1 cap=30 + warning under 20", () => {
+test("computeDashboardSquadStats — division 1 cap=30, ingen under-warning (floor fjernet)", () => {
+  // Roster-floor fjernet 2026-06-05: 19 ryttere i D1 udløser ikke længere en under-warning.
   const riders = Array.from({ length: 19 }, () => ({ pending_team_id: null }));
   const stats = computeDashboardSquadStats({
     riders,
@@ -174,12 +174,11 @@ test("computeDashboardSquadStats — division 1 cap=30 + warning under 20", () =
     division: 1,
   });
   assert.equal(stats.futureRiderCount, 19);
-  assert.equal(stats.warning?.type, "under");
-  assert.equal(stats.warning.limit, 20);
-  assert.equal(stats.warning.division, 1);
+  assert.equal(stats.warning, null);
 });
 
-test("computeDashboardSquadStats — tom riders-array (nyt hold)", () => {
+test("computeDashboardSquadStats — tom riders-array (0 ryttere er tilladt, ingen warning)", () => {
+  // Roster-floor fjernet 2026-06-05: et hold må have 0 ryttere → ingen under-warning.
   const stats = computeDashboardSquadStats({
     riders: [],
     pendingIncomingCount: 0,
@@ -190,5 +189,5 @@ test("computeDashboardSquadStats — tom riders-array (nyt hold)", () => {
   assert.equal(stats.ownedNow, 0);
   assert.equal(stats.outgoingCount, 0);
   assert.equal(stats.futureRiderCount, 0);
-  assert.equal(stats.warning?.type, "under");
+  assert.equal(stats.warning, null);
 });

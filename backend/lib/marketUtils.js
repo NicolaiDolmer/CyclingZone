@@ -1,11 +1,14 @@
-// #838: ét fælles roster-loft for alle divisioner. Max er ensrettet til 30;
-// min-grænserne forbliver division-specifikke (prestige-optrapning opad).
+// #838: ét fælles roster-loft for alle divisioner. Max er ensrettet til 30.
+// Roster-FLOOR fjernet 2026-06-05: ingen division kræver længere et minimum
+// antal ryttere — en manager kan sælge/afgive helt ned til 0. Hard-cap'en
+// (max) er uændret. min=0 gør getOutgoingSquadViolation til en no-op og
+// deaktiverer squadEnforcement-cron'ens under-min auto-køb + bøde.
 export const MAX_SQUAD_SIZE = 30;
 
 export const MARKET_SQUAD_LIMITS = {
-  1: { min: 20, max: MAX_SQUAD_SIZE },
-  2: { min: 14, max: MAX_SQUAD_SIZE },
-  3: { min: 8, max: MAX_SQUAD_SIZE },
+  1: { min: 0, max: MAX_SQUAD_SIZE },
+  2: { min: 0, max: MAX_SQUAD_SIZE },
+  3: { min: 0, max: MAX_SQUAD_SIZE },
 };
 
 // #267: under et åbent transfervindue må manageren overskride division-cap
@@ -172,7 +175,9 @@ export function getIncomingSquadViolation(
 export function getOutgoingSquadViolation(teamState, outgoingCount = 1) {
   const baseCount = teamState?.future_count ?? teamState?.total_count ?? 0;
   const totalAfter = baseCount - outgoingCount;
-  const minRiders = teamState?.squad_limits?.min || getSquadLimits(teamState?.division).min;
+  // ?? (ikke ||) så en eksplicit min=0 ikke fejlagtigt falder tilbage til
+  // division-defaulten — 0 er en gyldig (og nu normal) floor.
+  const minRiders = teamState?.squad_limits?.min ?? getSquadLimits(teamState?.division).min;
 
   if (totalAfter < minRiders) {
     return { totalAfter, minRiders };

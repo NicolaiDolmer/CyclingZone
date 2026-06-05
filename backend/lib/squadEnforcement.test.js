@@ -417,6 +417,8 @@ test("enforceTeamSquadCompliance: D3 hold med 5 ryttere → auto-køb 3 + 300K b
     },
     createEmergencyLoanFn: async () => { throw new Error("Should not be called — balance is sufficient"); },
     now: new Date("2026-05-04T12:00:00Z"),
+    // Prod har min=0 (intet floor); injicér min>0 for at dække auto-køb-maskineriet.
+    limitsOverride: { min: 8, max: 10 },
   });
 
   assert.equal(result.ok, true);
@@ -523,6 +525,8 @@ test("enforceTeamSquadCompliance: utilstrækkelig balance → nødlån oprettes"
       team.balance += amount;
     },
     now: new Date("2026-05-04T12:00:00Z"),
+    // Prod har min=0 (intet floor); injicér min>0 for at dække nødlån-stien.
+    limitsOverride: { min: 8, max: 10 },
   });
 
   assert.equal(result.ok, true);
@@ -579,6 +583,32 @@ test("enforceTeamSquadCompliance: frosset hold skippes (ingen auto-køb, ingen b
   assert.equal(supabase.state.riderUpdates.length, 0);
 });
 
+test("enforceTeamSquadCompliance: prod-default (min=0) → tomt hold er no-op (ingen tvangskøb/bøde)", async () => {
+  // Roster-floor fjernet 2026-06-05: uden limitsOverride bruges division-konfig
+  // (min=0), så selv et hold med 0 ryttere er "inden for limits" — ingen auto-køb,
+  // ingen bøde. Låser at floorّen reelt er væk på den sti cron'en kører i prod.
+  const supabase = createMockSupabase({
+    teams: [{ id: "t1", name: "Tom", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
+    riders: [],
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: "season-1",
+    notifyTeamOwner: async () => { throw new Error("Should not notify — min=0, intet floor"); },
+    createEmergencyLoanFn: async () => { throw new Error("Should not loan — min=0, intet floor"); },
+    now: new Date("2026-05-04T12:00:00Z"),
+    // limitsOverride bevidst udeladt → division-default (min=0).
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "within_limits");
+  assert.equal(result.totalCount, 0);
+  assert.equal(supabase.state.financeTransactions.length, 0);
+  assert.equal(supabase.state.notifications.length, 0);
+});
+
 test("processSquadEnforcementCron: atomic claim sætter completed_at + iter alle teams", async () => {
   const supabase = createMockSupabase({
     teams: [
@@ -612,6 +642,7 @@ test("processSquadEnforcementCron: atomic claim sætter completed_at + iter alle
     notifyTeamOwner: async () => {},
     createEmergencyLoanFn: async () => {},
     now: new Date("2026-05-04T12:00:00Z"),
+    limitsOverride: { min: 8, max: 10 }, // prod min=0; injicér min>0 så t2 (5 ryttere) er afvigende
   });
 
   assert.equal(result.claimed, true);
@@ -739,6 +770,7 @@ test("processSquadEnforcementCron: stale started_at + completed_at null → repl
     notifyTeamOwner: async () => {},
     createEmergencyLoanFn: async () => {},
     now: new Date("2026-05-04T12:00:00Z"), // 15 min efter stalled start
+    limitsOverride: { min: 8, max: 10 }, // prod min=0; injicér min>0 så t2 (5 ryttere) replay-enforces
   });
 
   assert.equal(result.claimed, true);
@@ -818,6 +850,7 @@ test("enforceTeamSquadCompliance: fine får idempotency_key=squad_fine:${windowI
     notifyTeamOwner: async () => {},
     createEmergencyLoanFn: async () => {},
     now: new Date("2026-05-04T12:00:00Z"),
+    limitsOverride: { min: 8, max: 10 }, // prod min=0; injicér min>0 for at trigge fine-stien
   });
 
   assert.equal(result.code, "auto_purchased");
@@ -852,6 +885,7 @@ test("enforceTeamSquadCompliance: uden windowId → idempotency_key=null (backwa
     supabase, teamId: "t1", seasonId: "season-1",
     notifyTeamOwner: async () => {}, createEmergencyLoanFn: async () => {},
     now: new Date("2026-05-04T12:00:00Z"),
+    limitsOverride: { min: 8, max: 10 }, // prod min=0; injicér min>0 for at trigge fine-stien
   });
 
   assert.equal(result.code, "auto_purchased");
@@ -899,6 +933,7 @@ test("processSquadEnforcementCron: replay med samme windowId → fines er idempo
     notifyTeamOwner: async () => {},
     createEmergencyLoanFn: async () => {},
     now: new Date("2026-05-04T12:00:00Z"), // 15 min efter stale
+    limitsOverride: { min: 8, max: 10 }, // prod min=0; injicér min>0 så t1 (5 ryttere) rammer fine-replay-stien
   });
 
   assert.equal(result.claimed, true);
