@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.82",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Dashboard",
+        items: [
+          "EN · The dashboard is now clickable where you would expect. Each card heading (Auctions, Transfers, Races, Standings, Board, Results, Rider ranking) is a single link to its full page, your balance in the top corner links to Finance, and the division standings and upcoming races rows now open their pages just like the auction and transfer rows already did. The race edition year (e.g. \"2024 edition\") also showed in Danish for English players and is now translated. Refs #1031 #864.",
+          "DA · Dashboardet er nu klikbart der hvor du forventer det. Hver kort-overskrift (Auktioner, Transfers, Løb, Stilling, Bestyrelse, Resultater, Rytterrangliste) er ét link til sin fulde side, din saldo i øverste hjørne linker til Økonomi, og divisions-stilling- og kommende løb-rækkerne åbner nu deres sider ligesom auktions- og transfer-rækkerne allerede gjorde. Løbsudgavens årstal (fx \"2024-udgave\") blev også vist på dansk for engelske spillere og er nu oversat. Refs #1031 #864.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.80",
     date: "2026-06-05",
     label: "Beta",
