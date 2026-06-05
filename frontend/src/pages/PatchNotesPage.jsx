@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.90",
+    date: "2026-06-06",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · The board",
+        items: [
+          "EN · The board's 5, 3 and 1-year plans are now shown as tabs, one plan at a time in full width, instead of three cramped columns. Each plan leads with a plain-language standing (Below par / On track / Good / Great / Outstanding) plus a trend arrow, lists all of its targets without truncation, and a short note explains that plans are negotiated longest-first (5 to 3 to 1 years). Refs #955, #818, #816, #101.",
+          "DA · Bestyrelsens 5-, 3- og 1-årsplaner vises nu som faner, én plan ad gangen i fuld bredde, i stedet for tre sammenpressede kolonner. Hver plan indledes med en status i klar tale (Under niveau / På sporet / God / Stærk / Fremragende) plus en trend-pil, viser alle sine mål uden afkortning, og en kort note forklarer at planer forhandles længst først (5 til 3 til 1 år). Refs #955, #818, #816, #101.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.89",
     date: "2026-06-05",
     label: "Beta",
