@@ -5,7 +5,7 @@
  *  - Tier 3 with images (4 bobby issues)
  *  - Tier 2 (13 jeppek image-only)
  */
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 
 const REPO = 'NicolaiDolmer/CyclingZone';
@@ -430,9 +430,10 @@ for (const issue of issues) {
   let lastErr = null;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const titleQ = issue.title.replace(/"/g, '\\"');
-      const cmd = `gh issue create --repo ${REPO} --title "${titleQ}" --label "claude:todo" --label "type:${issue.labelType}" --body-file ${tmpFile}`;
-      url = execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+      // execFileSync (no shell) — passes the title as argv, so no manual quote
+      // escaping is needed. Avoids the incomplete-sanitization class entirely.
+      const args = ['issue', 'create', '--repo', REPO, '--title', issue.title, '--label', 'claude:todo', '--label', `type:${issue.labelType}`, '--body-file', tmpFile];
+      url = execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
       break;
     } catch (e) {
       lastErr = e.message;
