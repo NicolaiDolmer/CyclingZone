@@ -143,7 +143,9 @@
     "count": "{count, plural, one {1 medlem} other {# medlemmer}}",
     "chairman": "Formand",
     "chairmanTitle": "Bestyrelsesformand",
-    "wildcard": "Wildcard"
+    "wildcard": "Wildcard",
+    "identityMatch": "Identitetsmatch",
+    "viewProfile": "Se bestyrelsesmedlem"
   },
   "dna": {
     "sectionLabel": "Klub-DNA",
@@ -158,7 +160,12 @@
     "saving": "Gemmer…",
     "choose": "Vælg dette DNA",
     "badge": {
-      "label": "Klubbens DNA"
+      "label": "Klubbens DNA",
+      "viewHint": "Se klubbens DNA"
+    },
+    "locked": {
+      "heading": "Låst for sæsonen",
+      "body": "Klubbens DNA er låst for sæsonen og kan ikke skiftes. Det former målvægtning, klub-tradition-mål og hvilke bestyrelsesmedlemmer du får."
     },
     "skandinavisk_udvikling": {
       "label": "Skandinavisk udviklingshold",

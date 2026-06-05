@@ -114,10 +114,18 @@ function formatCash(value) {
   return `${formatNumber(num)} CZ$`;
 }
 
+// #1030 · Affordance: satisfaction-tallet i plan-panelet scroller ned til den
+// (tidligere frakoblede) tilfredshedsforklaring nederst på siden.
+function scrollToSatisfactionExplainer() {
+  if (typeof document === "undefined") return;
+  document.getElementById("board-satisfaction-explainer")
+    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
 // ── S-02c · Board-medlems-komponenter ──────────────────────────────────────────
 
 // 5-kolonne avatar-grid (mobile-stackbar). Vises mellem BoardIdentityCard og plan-kort.
-function BoardMembersGrid({ members = [] }) {
+function BoardMembersGrid({ members = [], onSelect }) {
   const { t } = useTranslation("board");
   if (!members.length) return null;
   return (
@@ -128,8 +136,13 @@ function BoardMembersGrid({ members = [] }) {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {members.map((member) => (
-          <div key={member.archetype_key}
+          // #1030 · Affordance: kortet ser klikbart ud (avatar, formand-stjerne) →
+          // gør det klikbart → dialog med portræt + fuld beskrivelse.
+          <button key={member.archetype_key} type="button"
+            onClick={() => onSelect?.(member)}
+            title={t("members.viewProfile")}
             className={`bg-cz-subtle border rounded-lg p-3 flex flex-col items-center text-center gap-2
+              hover:bg-cz-subtle/60 hover:border-cz-accent/40 transition-colors
               ${member.is_chairman ? "border-cz-accent/40" : "border-cz-border"}`}>
             <div className="relative w-12 h-12 rounded-full bg-cz-card border border-cz-border
               flex items-center justify-center text-2xl">
@@ -152,8 +165,52 @@ function BoardMembersGrid({ members = [] }) {
                 <p className="text-cz-3 text-[9px] uppercase tracking-wider mt-1">{t("members.wildcard")}</p>
               )}
             </div>
-          </div>
+          </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// #1030 · Klik på et bestyrelsesmedlem → portræt + fuld karakter-beskrivelse.
+function BoardMemberDialog({ member, onClose }) {
+  const { t } = useTranslation("board");
+  if (!member) return null;
+  const roleLabel = member.is_chairman
+    ? t("members.chairman")
+    : member.selection_kind === "wildcard"
+      ? t("members.wildcard")
+      : t("members.identityMatch");
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <div className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl">
+        <div className="flex items-start gap-3 mb-4">
+          <div className={`relative w-12 h-12 rounded-full bg-cz-subtle border flex items-center justify-center text-2xl flex-shrink-0
+            ${member.is_chairman ? "border-cz-accent/40" : "border-cz-border"}`}>
+            <span aria-hidden>{member.emoji}</span>
+            {member.is_chairman && (
+              <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-cz-accent
+                text-cz-on-accent text-[9px] font-bold flex items-center justify-center border border-cz-card"
+                title={t("members.chairmanTitle")}>★</span>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-cz-1 font-semibold text-base leading-snug">{member.label}</p>
+            <p className={`text-xs uppercase tracking-wider mt-0.5 ${member.is_chairman ? "text-cz-accent-t font-semibold" : "text-cz-3"}`}>
+              {roleLabel}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-cz-3 hover:text-cz-2 text-xl leading-none flex-shrink-0 px-1">×</button>
+        </div>
+        {member.short_description && (
+          <p className="text-cz-2 text-sm leading-relaxed">{member.short_description}</p>
+        )}
+        {member.long_description && (
+          <p className="text-cz-3 text-sm mt-3 leading-relaxed">{member.long_description}</p>
+        )}
       </div>
     </div>
   );
@@ -222,11 +279,15 @@ function ClubDnaSelectionCard({ suggestions = [], onChoose, busy = false, error 
 }
 
 // Vises efter DNA er valgt — kompakt badge der bekræfter valget + giver kontekst.
-function ClubDnaBadge({ dna }) {
+// #1030 · Affordance: badge'en ligner et åbnbart kort → gør den klikbar → dialog
+// med fuld beskrivelse + "DNA låst for sæsonen".
+function ClubDnaBadge({ dna, onSelect }) {
   const { t } = useTranslation("board");
   if (!dna) return null;
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-4 mt-4 flex items-start gap-4">
+    <button type="button" onClick={onSelect} title={t("dna.badge.viewHint")}
+      className="w-full text-left bg-cz-card border border-cz-border rounded-xl p-4 mt-4 flex items-start gap-4
+        hover:border-cz-accent/40 hover:bg-cz-subtle/40 transition-colors group">
       <div className="w-12 h-12 rounded-full bg-cz-subtle border border-cz-border
         flex items-center justify-center text-2xl flex-shrink-0">
         <span aria-hidden>{dna.emoji}</span>
@@ -238,6 +299,43 @@ function ClubDnaBadge({ dna }) {
         {getDnaCopy(t, dna, "longDescription") && (
           <p className="text-cz-3 text-[11px] mt-1 italic leading-relaxed">{getDnaCopy(t, dna, "longDescription")}</p>
         )}
+      </div>
+      <span aria-hidden className="text-cz-3 group-hover:text-cz-2 text-lg flex-shrink-0 self-center transition-colors">›</span>
+    </button>
+  );
+}
+
+// #1030 · DNA-detalje-dialog — fuld beskrivelse + forklaring på at DNA er låst for sæsonen.
+function ClubDnaDialog({ dna, onClose }) {
+  const { t } = useTranslation("board");
+  if (!dna) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <div className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-12 h-12 rounded-full bg-cz-subtle border border-cz-border
+            flex items-center justify-center text-2xl flex-shrink-0">
+            <span aria-hidden>{dna.emoji}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-cz-3 text-xs uppercase tracking-wider">{t("dna.badge.label")}</p>
+            <p className="text-cz-1 font-semibold text-base leading-snug">{getDnaCopy(t, dna, "label")}</p>
+          </div>
+          <button onClick={onClose} className="text-cz-3 hover:text-cz-2 text-xl leading-none flex-shrink-0 px-1">×</button>
+        </div>
+        {getDnaCopy(t, dna, "shortDescription") && (
+          <p className="text-cz-2 text-sm leading-relaxed">{getDnaCopy(t, dna, "shortDescription")}</p>
+        )}
+        {getDnaCopy(t, dna, "longDescription") && (
+          <p className="text-cz-3 text-sm mt-3 italic leading-relaxed">{getDnaCopy(t, dna, "longDescription")}</p>
+        )}
+        <div className="mt-4 pt-4 border-t border-cz-border">
+          <p className="text-cz-2 text-xs font-semibold">🔒 {t("dna.locked.heading")}</p>
+          <p className="text-cz-3 text-xs mt-1 leading-relaxed">{t("dna.locked.body")}</p>
+        </div>
       </div>
     </div>
   );
@@ -287,7 +385,7 @@ function SatisfactionMeter({ value }) {
   );
 }
 
-function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
+function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) {
   const { t } = useTranslation("board");
   const [identityExpanded, setIdentityExpanded] = useState(false);
   // S-02c: medlem-reaktion expand — klik på goal viser portræt + citat
@@ -319,14 +417,28 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation }) {
         {iconContent}
       </div>
       <div className="flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <p className={`text-sm font-medium ${achieved ? "text-green-300" : "text-cz-2"}`}>{getBoardGoalLabel(t, goal)}</p>
-          {!achieved && evaluation?.actual != null && (
-            <span className="text-xs font-mono text-cz-3 flex-shrink-0">
-              {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}/{goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
-            </span>
-          )}
-        </div>
+        {/* #1030 · Affordance: mål-headeren er klikbar (åbner samme mini-dialog som
+            de kompakte plan-paneler), så samme data ikke er død plain-tekst her. */}
+        {onSelect ? (
+          <button type="button" onClick={onSelect}
+            className="flex items-start justify-between gap-2 w-full text-left rounded -mx-1 px-1 hover:bg-cz-subtle/40 transition-colors group/goal">
+            <span className={`text-sm font-medium ${achieved ? "text-green-300" : "text-cz-2"} group-hover/goal:text-cz-1`}>{getBoardGoalLabel(t, goal)}</span>
+            {!achieved && evaluation?.actual != null && (
+              <span className="text-xs font-mono text-cz-3 flex-shrink-0">
+                {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}/{goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
+              </span>
+            )}
+          </button>
+        ) : (
+          <div className="flex items-start justify-between gap-2">
+            <p className={`text-sm font-medium ${achieved ? "text-green-300" : "text-cz-2"}`}>{getBoardGoalLabel(t, goal)}</p>
+            {!achieved && evaluation?.actual != null && (
+              <span className="text-xs font-mono text-cz-3 flex-shrink-0">
+                {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}/{goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
+              </span>
+            )}
+          </div>
+        )}
         {goal.cumulative && cumulativeProgress !== undefined && (
           <div className="flex items-center gap-2 mt-1.5">
             <div className="flex-1 bg-cz-subtle rounded-full h-1">
@@ -1089,10 +1201,14 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
               <p className="text-cz-3 text-[11px]">{getFocusLabel(t, board.focus)}</p>
             </div>
           </div>
-          <div className="text-right flex-shrink-0">
-            <p className={`font-mono font-bold text-sm ${satColor}`}>{board.satisfaction}%</p>
+          {/* #1030 · Affordance: tilfredsheds-tallet ligner et drilbart KPI-tal →
+              gør det klikbart → scroll til tilfredshedsforklaringen nederst. */}
+          <button type="button" onClick={scrollToSatisfactionExplainer}
+            title={t("satisfactionExplainer.heading")}
+            className="text-right flex-shrink-0 rounded px-1 -mx-1 hover:bg-cz-subtle/40 transition-colors group/sat">
+            <p className={`font-mono font-bold text-sm ${satColor} underline-offset-2 group-hover/sat:underline`}>{board.satisfaction}%</p>
             <p className="text-cz-3 text-[10px]">×{modifier.toFixed(2)}</p>
-          </div>
+          </button>
         </div>
 
         {is_expired ? (
@@ -1142,7 +1258,12 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
             );
           })}
           {nonCumGoals.length > 3 && (
-            <p className="text-cz-3 text-[10px] text-right mt-0.5">{t("plan.moreGoals", { count: nonCumGoals.length - 3 })}</p>
+            // #1030 · Affordance: lignede et "vis flere"-link men var død plain-tekst →
+            // gør den til en knap der åbner detalje-visningen med alle mål.
+            <button type="button" onClick={() => setDetailOpen(true)}
+              className="text-cz-3 hover:text-cz-2 text-[10px] text-right mt-0.5 underline-offset-2 hover:underline transition-colors">
+              {t("plan.moreGoals", { count: nonCumGoals.length - 3 })}
+            </button>
           )}
         </div>
       )}
@@ -1189,16 +1310,20 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
               {plan_duration > 1 ? t("plan.planGoalsLabel") : t("plan.seasonGoalsLabel")}
             </p>
             <div className="flex flex-col gap-2">
-              {goals.map((g, i) => (
-                <GoalCard key={i} goal={g} achieved={goalAchieved(g)}
-                  evaluation={outlook?.goal_evaluations?.[i]}
-                  cumulativeProgress={
-                    g.cumulative && g.type === "stage_wins" ? (cumulative_stats?.stage_wins ?? 0)
-                    : g.cumulative && g.type === "gc_wins" ? (cumulative_stats?.gc_wins ?? 0)
-                    : undefined
-                  }
-                />
-              ))}
+              {goals.map((g, i) => {
+                const ach = goalAchieved(g);
+                const evalItem = outlook?.goal_evaluations?.[i];
+                const cumProg = g.cumulative && g.type === "stage_wins" ? (cumulative_stats?.stage_wins ?? 0)
+                  : g.cumulative && g.type === "gc_wins" ? (cumulative_stats?.gc_wins ?? 0)
+                  : undefined;
+                return (
+                  <GoalCard key={i} goal={g} achieved={ach}
+                    evaluation={evalItem}
+                    cumulativeProgress={cumProg}
+                    onSelect={() => onGoalClick(g, evalItem, ach, cumProg)}
+                  />
+                );
+              })}
             </div>
           </div>
 
@@ -1518,6 +1643,9 @@ export default function BoardPage() {
   const [requestErrors, setRequestErrors] = useState({ "5yr": "", "3yr": "", "1yr": "" });
   // S-02h: GoalMiniDialog + multi-plan renewal queue
   const [goalMiniDialog, setGoalMiniDialog] = useState(null); // { goal, evaluation, achieved, cumulativeProgress }
+  // #1030: medlem-portræt + DNA-detalje-dialoger (affordance-pakke)
+  const [memberDialog, setMemberDialog] = useState(null); // decoreret member-objekt
+  const [dnaDialogOpen, setDnaDialogOpen] = useState(false);
   const [renewalQueue, setRenewalQueue] = useState([]); // ['3yr', '1yr'] sorted by PLAN_SEQUENCE
   const [renewalQueueIdx, setRenewalQueueIdx] = useState(0);
 
@@ -1943,7 +2071,7 @@ export default function BoardPage() {
       <BoardIdentityCard identityProfile={identityProfile} />
 
       {/* S-02f · Klub-DNA */}
-      {!isBaselinePhase && teamDna && <ClubDnaBadge dna={teamDna} />}
+      {!isBaselinePhase && teamDna && <ClubDnaBadge dna={teamDna} onSelect={() => setDnaDialogOpen(true)} />}
       {!isBaselinePhase && !teamDna && dnaSuggestions.length > 0 && (
         <ClubDnaSelectionCard
           suggestions={dnaSuggestions}
@@ -1955,7 +2083,7 @@ export default function BoardPage() {
 
       {/* S-02c · Bestyrelse-medlems-grid */}
       {!isBaselinePhase && teamDna && teamMembers.length > 0 && (
-        <BoardMembersGrid members={teamMembers} />
+        <BoardMembersGrid members={teamMembers} onSelect={setMemberDialog} />
       )}
 
       {/* S-02e · Bonus-tilbud (lag 6) */}
@@ -2004,8 +2132,8 @@ export default function BoardPage() {
       {/* S-02b: Bestyrelse-feed */}
       {!isBaselinePhase && <BoardFeedSection items={boardFeed} />}
 
-      {/* Tilfredshedsforklaring */}
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-5">
+      {/* Tilfredshedsforklaring — #1030: scroll-mål fra plan-panelets tilfredsheds-tal */}
+      <div id="board-satisfaction-explainer" className="bg-cz-card border border-cz-border rounded-xl p-5 mt-5 scroll-mt-4">
         <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("satisfactionExplainer.heading")}</h2>
         <div className="grid sm:grid-cols-3 gap-3">
           {[
@@ -2166,6 +2294,16 @@ export default function BoardPage() {
           cumulativeProgress={goalMiniDialog.cumulativeProgress}
           onClose={() => setGoalMiniDialog(null)}
         />
+      )}
+
+      {/* #1030 · Medlem-portræt-dialog */}
+      {memberDialog && (
+        <BoardMemberDialog member={memberDialog} onClose={() => setMemberDialog(null)} />
+      )}
+
+      {/* #1030 · Klub-DNA-detalje-dialog */}
+      {dnaDialogOpen && teamDna && (
+        <ClubDnaDialog dna={teamDna} onClose={() => setDnaDialogOpen(false)} />
       )}
     </div>
   );

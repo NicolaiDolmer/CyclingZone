@@ -143,7 +143,9 @@
     "count": "{count, plural, one {1 member} other {# members}}",
     "chairman": "Chairman",
     "chairmanTitle": "Board chairman",
-    "wildcard": "Wildcard"
+    "wildcard": "Wildcard",
+    "identityMatch": "Identity match",
+    "viewProfile": "View board member"
   },
   "dna": {
     "sectionLabel": "Club DNA",
@@ -158,7 +160,12 @@
     "saving": "Saving…",
     "choose": "Choose this DNA",
     "badge": {
-      "label": "Club DNA"
+      "label": "Club DNA",
+      "viewHint": "View club DNA"
+    },
+    "locked": {
+      "heading": "Locked for the season",
+      "body": "Your club DNA is set for the season and can't be changed. It shapes target weighting, club tradition targets and which board members you get."
     },
     "skandinavisk_udvikling": {
       "label": "Scandinavian development team",

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.85",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · The board",
+        items: [
+          "EN · The board page is more interactive. Board members and your club DNA can now be tapped to open a detail card, plan goals open the same goal card whether you see them in the compact panel or the full list, the \"+N more\" goals link expands the details, and tapping a satisfaction figure jumps to the explanation of what satisfaction means. Refs #1030.",
+          "DA · Bestyrelses-siden er mere interaktiv. Bestyrelsesmedlemmer og klubbens DNA kan nu trykkes på for at åbne et detalje-kort, plan-mål åbner det samme mål-kort, uanset om du ser dem i det kompakte panel eller den fulde liste, \"+N mål mere\"-linket folder detaljerne ud, og et tryk på et tilfredsheds-tal hopper ned til forklaringen af hvad tilfredshed betyder. Refs #1030.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.84",
     date: "2026-06-05",
     label: "Beta",
