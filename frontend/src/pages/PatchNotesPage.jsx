@@ -16,6 +16,20 @@ const PATCHES = [
     ],
   },
   {
+    version: "4.81",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Riders",
+        items: [
+          "EN · On the Rider Database, the whole row is now a single click target. Clicking anywhere on a rider, including the potential stars and stat bars, opens that rider's profile. Column headers that cannot be sorted (Team, Status, Compare) no longer look interactive, so it is clearer what you can actually click. Refs #1029.",
+          "DA · På Rytterdatabasen er hele rækken nu ét klikmål. Klik hvor som helst på en rytter, inklusive potentiale-stjerner og stat-bjælker, åbner rytterens profil. Kolonne-overskrifter der ikke kan sorteres (Hold, Status, Sammenlign) ser ikke længere klikbare ud, så det er tydeligere hvad du kan klikke på. Refs #1029.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.80",
     date: "2026-06-05",
     label: "Beta",
