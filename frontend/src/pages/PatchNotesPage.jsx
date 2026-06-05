@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.84",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · The board",
+        items: [
+          "EN · The board is now open for everyone. You can negotiate your club's long-term plan (five-year, then three-year, then one-year), choose your club DNA, and agree on goals with the board. Your season is judged against those goals, with real consequences for the club's finances. Refs #1062.",
+          "DA · Bestyrelsen er nu åben for alle. Du kan forhandle din klubs langsigtede plan (femårig, så treårig, så etårig), vælge din klubs DNA og aftale mål med bestyrelsen. Din sæson bedømmes op mod de mål, med rigtige konsekvenser for klubbens økonomi. Refs #1062.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.83",
     date: "2026-06-05",
     label: "Beta",
