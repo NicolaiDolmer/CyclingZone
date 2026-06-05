@@ -79,6 +79,27 @@ pwsh -File scripts/prune-merged-worktrees.ps1 -Execute   # udfør
 
 Det enumererer **alle** worktrees via `git worktree list` (layout-uafhængigt) og genbruger den delte, squash-bevidste merge-detektion (`scripts/lib/git-merge-detection.ps1`). Sletter kun når ancestry-merge **eller** en merged PR (via `gh`) bekræfter det — er `gh` ubestemt for en squash-branch, **beholdes** branchen. Springer altid primær checkout, aktiv session, locked worktrees, detached HEAD, branches der lever på origin, og worktrees med uncommitted changes (medmindre `-Force`) over. Default er dry-run; intet slettes uden `-Execute`.
 
+Genvej (dry-run + udfør):
+
+```powershell
+npm run cleanup:worktrees        # dry-run: rapportér hvad der ville ryge
+npm run cleanup:worktrees:run    # -Execute: udfør oprydningen
+```
+
+### Efter-merge-rutine (forebyg ophobning)
+
+Rod-årsagen til at branches + worktrees hober sig op er **at man bliver boende på en feature-branch efter merge** i stedet for at vende hjem til main. Den ene vane der forhindrer det:
+
+```bash
+# Lige efter en PR er merged:
+git checkout main && git pull && git branch -d <din-branch>
+```
+
+To værn fanger det hvis vanen glipper:
+
+1. **`scripts/check-stale-branches.sh`** (SessionStart-hook) advarer nu **også** hvis hovedmappen (primær worktree) ikke står på main — `⚠ Hovedmappen står på '<branch>', ikke main`. Så afsporingen fanges ved næste session-start, før den når at hobe sig op.
+2. **`npm run cleanup:worktrees`** gør den periodiske sweep til en 10-sekunders rutine (dry-run først, så `:run`).
+
 ## Gotchas
 
 ### Delt node_modules
