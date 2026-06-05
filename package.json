@@ -8,6 +8,8 @@
     "check:patchnotes": "node scripts/check-patch-notes-version.js",
     "doctor": "pwsh -File scripts/agent-doctor.ps1",
     "codex:doctor": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/codex-session-start.ps1",
+    "cleanup:worktrees": "pwsh -File scripts/prune-merged-worktrees.ps1",
+    "cleanup:worktrees:run": "pwsh -File scripts/prune-merged-worktrees.ps1 -Execute",
     "check:warnings": "node scripts/check-eslint-warning-budget.mjs",
     "brand:export": "node scripts/brand-export.mjs",
     "lint:sql": "node scripts/lint-sql-strings.mjs",
