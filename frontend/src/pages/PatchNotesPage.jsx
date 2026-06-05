@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.87",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · The board",
+        items: [
+          "EN · On your board plans, newer goal types — signing a star rider, developing your U25 riders, or finishing ahead of rival managers in your division — were not counted in your \"goals met\" tally or the goal status icons on the plan panels, even after you had achieved them; only the older goal types were. Every goal type now counts correctly, so your plan progress reflects what you have actually accomplished. Refs #55.",
+          "DA · På dine bestyrelses-planer blev nyere måltyper — at signere en stjernerytter, udvikle dine U25-ryttere eller slutte foran rival-managere i din division — ikke talt med i din \"mål opfyldt\"-optælling eller mål-status-ikonerne på plan-panelerne, selv efter du havde opnået dem; kun de ældre måltyper gjorde. Alle måltyper tælles nu korrekt, så din plan-fremgang afspejler det, du faktisk har opnået. Refs #55.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.86",
     date: "2026-06-05",
     label: "Beta",

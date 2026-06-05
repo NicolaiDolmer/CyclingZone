@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { satisfactionToModifier, getPlanDuration } from "../lib/boardUtils";
+import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved } from "../lib/boardUtils";
 import { getCountryDisplay } from "../lib/countryUtils";
 import { formatNumber } from "../lib/intl";
 import { Flag } from "../components/Flag";
@@ -1152,34 +1152,19 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
   const goals = typeof board.current_goals === "string"
     ? JSON.parse(board.current_goals) : (board.current_goals || []);
 
-  function goalAchieved(goal) {
-    if (goal.cumulative) {
-      if (goal.type === "stage_wins") return (cumulative_stats?.stage_wins || 0) >= goal.target;
-      if (goal.type === "gc_wins") return (cumulative_stats?.gc_wins || 0) >= goal.target;
-    }
-    const sponsorIncome = team?.sponsor_income ?? 0;
-    const planStartSponsorIncome = board?.plan_start_sponsor_income ?? sponsorIncome;
-    switch (goal.type) {
-      case "min_u25_riders": return (riders || []).filter(r => r.is_u25).length >= goal.target;
-      case "min_national_riders":
-        return (riders || []).filter(r => (r.nationality_code || "").toUpperCase() === goal.nationality_code).length >= goal.target;
-      case "min_riders": return (riders || []).length >= goal.target;
-      case "top_n_finish": return standing ? (standing.rank_in_division || 99) <= goal.target : false;
-      case "stage_wins": return standing ? (standing.stage_wins || 0) >= goal.target : false;
-      case "gc_wins": return standing ? (standing.gc_wins || 0) >= goal.target : false;
-      case "no_outstanding_debt": return activeLoanCount === 0;
-      case "sponsor_growth": {
-        if (!planStartSponsorIncome) return false;
-        return ((sponsorIncome - planStartSponsorIncome) / planStartSponsorIncome * 100) >= goal.target;
-      }
-      default: return false;
-    }
+  // #55 · "Opnået" afgøres af bestyrelsens egen evaluering (status "ahead") for
+  // ALLE måltyper; den lokale fallback (kun legacy-typer) bruges kun når outlook
+  // mangler. Ren logik + de 7 nye typer dækkes af lib/boardUtils.test.js.
+  function goalAchieved(goal, goalIndex) {
+    return isBoardGoalAchieved(goal, outlook?.goal_evaluations?.[goalIndex], {
+      cumulativeStats: cumulative_stats, riders, standing, team, board, activeLoanCount,
+    });
   }
 
   const nonCumGoals = goals.filter(g => !g.cumulative);
   const cumGoals = goals.filter(g => g.cumulative);
   const topGoals = nonCumGoals.slice(0, 3);
-  const goalsAchieved = nonCumGoals.filter(g => goalAchieved(g)).length;
+  const goalsAchieved = nonCumGoals.filter(g => goalAchieved(g, goals.indexOf(g))).length;
   const modifier = satisfactionToModifier(board.satisfaction);
   const satColor = board.satisfaction >= 70 ? "text-cz-success"
     : board.satisfaction >= 40 ? "text-cz-accent-t" : "text-cz-danger";
@@ -1237,8 +1222,8 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
       {!is_expired && topGoals.length > 0 && (
         <div className="border-t border-cz-border px-4 py-3 flex flex-col gap-1.5">
           {topGoals.map((g, i) => {
-            const ach = goalAchieved(g);
             const gIdx = goals.indexOf(g);
+            const ach = goalAchieved(g, gIdx);
             const evalItem = outlook?.goal_evaluations?.[gIdx];
             const status = evalItem?.status;
             const meta = !ach && status ? getGoalStatusMeta(t, status) : null;
@@ -1311,7 +1296,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
             </p>
             <div className="flex flex-col gap-2">
               {goals.map((g, i) => {
-                const ach = goalAchieved(g);
+                const ach = goalAchieved(g, i);
                 const evalItem = outlook?.goal_evaluations?.[i];
                 const cumProg = g.cumulative && g.type === "stage_wins" ? (cumulative_stats?.stage_wins ?? 0)
                   : g.cumulative && g.type === "gc_wins" ? (cumulative_stats?.gc_wins ?? 0)

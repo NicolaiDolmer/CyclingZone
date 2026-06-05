@@ -904,6 +904,24 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
   const cumulativeStageWins = context.cumulativeStats?.stageWins ?? 0;
   const cumulativeGcWins = context.cumulativeStats?.gcWins ?? 0;
 
+  // #55 · Autoritativt "opnået"-flag til binær visning (✓ + mål-tæller på
+  // BoardPage). `status` ("ahead") pro-rater målet midt-i-plan for cumulative/
+  // multi-year-typer (stage_wins/gc_wins/monument_podium/jersey_wins +
+  // profitable_transfers/u25_development_delta) og ville derfor markere et mål
+  // som opnået på "on pace" frem for "fuldt nået". `met` bruger den fulde
+  // sæson-slut-regel (evaluateGoal med fuldt mål), så frontend ikke skal
+  // genimplementere mål-logikken (rod-årsag bag #55). Beregnes FØR switch'en så
+  // alle return-stier (inkl. relative_rank's early return) bærer flaget.
+  let met = evaluateGoal(goal, standing, team, { ...context, isFinalSeason: true }) === true;
+  // evaluateGoal returnerer null for cumulative stage_wins/gc_wins (de tælles
+  // ikke i countGoalsMet-ratio'en), men til binær visning ER de opnået når den
+  // fulde kumulative optælling når målet — ikke det pro-ratede.
+  if (!met && enrichedGoal.cumulative
+    && (enrichedGoal.type === "stage_wins" || enrichedGoal.type === "gc_wins")) {
+    const cumValue = enrichedGoal.type === "stage_wins" ? cumulativeStageWins : cumulativeGcWins;
+    met = cumValue >= enrichedGoal.target;
+  }
+
   let actual = null;
   let target = enrichedGoal.target;
   let score = 0.5;
@@ -1106,6 +1124,7 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
         score_pct: Math.round(score * 100),
         status,
         missing_data: missingData,
+        met,
         rank_in_division: standing.rank_in_division,
         division_manager_count: divisionManagerCount,
       };
@@ -1131,6 +1150,7 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
     score_pct: Math.round(score * 100),
     status,
     missing_data: missingData,
+    met,
   };
 }
 
