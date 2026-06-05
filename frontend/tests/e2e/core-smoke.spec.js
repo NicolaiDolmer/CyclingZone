@@ -121,6 +121,14 @@ const TRANSLATED_PAGE_SMOKE = [
     rawKeys: ["auctions:page.title", "page.title", "empty.notInvolved"],
   },
   {
+    // #678 Track 4: AuctionHistoryPage var divergeret (hardcodet dansk). Stat-kort-
+    // labels renderer data-uafhængigt → stabile canaries uden mock-afhængighed.
+    path: "/auctions/history",
+    en: [/Bought/i, /Spent/i, /Earned/i],
+    da: [/Brugt/, /Tjent/],
+    rawKeys: ["auctions:history.statSpent", "history.statSpent", "history.statEarned"],
+  },
+  {
     path: "/team",
     en: [/Transfer window open/i, /Squad \(/i],
     da: [/Transfervindue åbent/i, /Trup \(/i],

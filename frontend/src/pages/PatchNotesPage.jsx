@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.80",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Auctions",
+        items: [
+          "EN · The auction history page now appears in English for English players. Tabs, the Bought/Sold/Spent/Earned summary, filters, table headers and pagination previously stayed in Danish even in English mode. They are now fully localised, with amounts formatted to your language. Refs #678.",
+          "DA · Auktionshistorik-siden vises stadig på dansk for danske spillere uden ændringer, men engelske spillere så tidligere dansk tekst i faner, Købt/Solgt/Brugt/Tjent-oversigten, filtre, tabel-overskrifter og sideskift. Det er nu fuldt oversat, med beløb formateret efter dit sprog. Refs #678.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.79",
     date: "2026-06-05",
     label: "Beta",
