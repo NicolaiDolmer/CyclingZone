@@ -15,10 +15,10 @@ function timeAgo(dateStr, t) {
   const m = Math.floor(diff / 60000);
   const h = Math.floor(diff / 3600000);
   const d = Math.floor(diff / 86400000);
-  if (m < 1) return t("time.justNow");
-  if (m < 60) return t("time.minutesAgo", { m });
-  if (h < 24) return t("time.hoursAgo", { h });
-  if (d < 7) return t("time.daysAgo", { d });
+  if (m < 1) return t("common:time.justNow");
+  if (m < 60) return t("common:time.minutesAgo", { m });
+  if (h < 24) return t("common:time.hoursAgo", { h });
+  if (d < 7) return t("common:time.daysAgo", { d });
   return formatDate(dateStr);
 }
 
@@ -44,7 +44,7 @@ function getAuctionLeaderId(auction) {
 
 export default function AuctionHistoryPage() {
   const navigate = useNavigate();
-  const { t } = useTranslation("common");
+  const { t } = useTranslation(["auctions", "common"]);
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [myTeamId, setMyTeamId] = useState(null);
@@ -142,7 +142,7 @@ export default function AuctionHistoryPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-cz-1 mb-3">{t("nav.item.auctions")}</h1>
+        <h1 className="text-xl font-bold text-cz-1 mb-3">{t("common:nav.item.auctions")}</h1>
         <div className="flex gap-2">
           <NavLink to="/auctions" end
             className={({ isActive }) =>
@@ -150,7 +150,7 @@ export default function AuctionHistoryPage() {
                 isActive
                   ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                   : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            Aktive
+            {t("history.tabActive")}
           </NavLink>
           <NavLink to="/auctions/history"
             className={({ isActive }) =>
@@ -158,7 +158,7 @@ export default function AuctionHistoryPage() {
                 isActive
                   ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                   : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            Historik ({total})
+            {t("history.tabHistory", { count: total })}
           </NavLink>
         </div>
       </div>
@@ -166,10 +166,10 @@ export default function AuctionHistoryPage() {
       {/* My stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {[
-          { label: "Købt", value: myWins, color: "text-cz-accent-t" },
-          { label: "Solgt", value: mySales, color: "text-cz-info" },
-          { label: "Brugt", value: `${formatNumber(totalSpent)} CZ$`, color: "text-cz-danger" },
-          { label: "Tjent", value: `${formatNumber(totalEarned)} CZ$`, color: "text-cz-success" },
+          { label: t("history.statBought"), value: myWins, color: "text-cz-accent-t" },
+          { label: t("history.statSold"), value: mySales, color: "text-cz-info" },
+          { label: t("history.statSpent"), value: `${formatNumber(totalSpent)} CZ$`, color: "text-cz-danger" },
+          { label: t("history.statEarned"), value: `${formatNumber(totalEarned)} CZ$`, color: "text-cz-success" },
         ].map(s => (
           <div key={s.label} className="bg-cz-card border border-cz-border rounded-xl p-3 text-center">
             <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{s.label}</p>
@@ -181,16 +181,16 @@ export default function AuctionHistoryPage() {
       {/* Filter tabs */}
       <div className="flex gap-2 mb-5 flex-wrap">
         {[
-          { key: "all", label: "Alle" },
-          { key: "won", label: `Købt (${myWins})` },
-          { key: "sold", label: `Solgt (${mySales})` },
-        ].map(t => (
-          <button key={t.key} onClick={() => setFilter(t.key)}
+          { key: "all", label: t("history.filterAll") },
+          { key: "won", label: t("history.filterBought", { count: myWins }) },
+          { key: "sold", label: t("history.filterSold", { count: mySales }) },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setFilter(tab.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${filter === t.key
+              ${filter === tab.key
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {t.label}
+            {tab.label}
           </button>
         ))}
       </div>
@@ -203,10 +203,10 @@ export default function AuctionHistoryPage() {
         <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">◈</p>
           <p>
-            {filter === "won" ? "Du har ikke vundet nogen auktioner endnu"
-              : filter === "sold" ? "Du har ikke solgt nogen ryttere endnu"
-              : filter === "lost" ? "Ingen tabte auktioner i historikken"
-              : "Ingen afsluttede auktioner endnu"}
+            {filter === "won" ? t("history.emptyWon")
+              : filter === "sold" ? t("history.emptySold")
+              : filter === "lost" ? t("history.emptyLost")
+              : t("history.emptyAll")}
           </p>
         </div>
       ) : (
@@ -214,13 +214,13 @@ export default function AuctionHistoryPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-cz-border">
-                <th className="px-2 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">Nation</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">Rytter</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">Status</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">Sælger</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">Vinder</th>
-                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">Pris</th>
-                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase hidden md:table-cell">Tidspunkt</th>
+                <th className="px-2 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("history.colNation")}</th>
+                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("table.rider")}</th>
+                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("history.colStatus")}</th>
+                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("table.seller")}</th>
+                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("history.colWinner")}</th>
+                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("history.colPrice")}</th>
+                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase hidden md:table-cell">{t("history.colTime")}</th>
               </tr>
             </thead>
             <tbody>
@@ -242,7 +242,10 @@ export default function AuctionHistoryPage() {
                         className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
                         {a.rider?.firstname} {a.rider?.lastname}
                       </RiderLink>
-                      <p className="text-cz-3 text-xs mt-0.5">UCI: {formatNumber(a.rider?.uci_points)} pt — Løn: {a.rider?.salary ? `${formatNumber(a.rider.salary)} CZ$` : "—"}</p>
+                      <p className="text-cz-3 text-xs mt-0.5">{t("history.riderMeta", {
+                        points: formatNumber(a.rider?.uci_points),
+                        salary: a.rider?.salary ? `${formatNumber(a.rider.salary)} CZ$` : t("history.salaryNone"),
+                      })}</p>
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <div className="flex flex-wrap items-center gap-1">
@@ -258,7 +261,7 @@ export default function AuctionHistoryPage() {
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       {noSale ? (
-                        <span className="text-cz-3 text-xs">Ingen bud</span>
+                        <span className="text-cz-3 text-xs">{t("history.noBids")}</span>
                       ) : (
                         <TeamLink id={a.winner?.id} stopPropagation className="text-cz-2">{a.winner?.name || "—"}</TeamLink>
                       )}
@@ -292,18 +295,18 @@ export default function AuctionHistoryPage() {
           {total > PER_PAGE && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-cz-border">
               <span className="text-cz-3 text-xs">
-                Side {page} af {Math.ceil(total / PER_PAGE)}
+                {t("history.pageOf", { page, total: Math.ceil(total / PER_PAGE) })}
               </span>
               <div className="flex gap-2">
                 <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
                   className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
                     hover:bg-cz-subtle disabled:opacity-30 disabled:cursor-not-allowed">
-                  ← Forrige
+                  ← {t("history.prev")}
                 </button>
                 <button disabled={page * PER_PAGE >= total} onClick={() => setPage(p => p + 1)}
                   className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
                     hover:bg-cz-subtle disabled:opacity-30 disabled:cursor-not-allowed">
-                  Næste →
+                  {t("history.next")} →
                 </button>
               </div>
             </div>
