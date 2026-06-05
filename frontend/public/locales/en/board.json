@@ -376,6 +376,498 @@
       "effect": "Sponsor × < 1.0, reduced"
     }
   },
+  "category": {
+    "results": "Results",
+    "economy": "Finances",
+    "identity": "Identity",
+    "ranking": "Ranking"
+  },
+  "overallStatus": {
+    "veryStrong": "Very strong",
+    "onTrack": "On track",
+    "uncertain": "Uncertain",
+    "underPressure": "Under pressure"
+  },
+  "feedback": {
+    "awaitingData": {
+      "headline": "The board is waiting for more data",
+      "summary": "The season's signals are still too thin for a clear assessment."
+    },
+    "expired": {
+      "headline": "The plan has expired",
+      "summary": "The board will negotiate a new plan based on the latest evaluation and the team's current direction."
+    },
+    "awaitingFirstMarkers": {
+      "headline": "The board is waiting for the season's first markers",
+      "summary": "{personalitySummary} For now expectations are intact, but the sporting answers only come once the season takes shape.{profileHint}"
+    },
+    "veryHappy": {
+      "headline": "The board is very satisfied",
+      "summary": "{strong} is driving the plan forward, and {weakLower} is still under control."
+    },
+    "steadyProgress": {
+      "headline": "The board sees steady progress",
+      "summary": "{strong} is on track, but {weakLower} needs more focus to keep the plan healthy."
+    },
+    "awaitingNext": {
+      "headline": "The board is waiting for the next step",
+      "summary": "{weak} is lagging behind the plan, and the pressure rises if the trend does not turn soon."
+    },
+    "concerned": {
+      "headline": "The board is concerned",
+      "summary": "{weak} is clearly below expectations, and the team lacks visible progress in the current plan."
+    },
+    "signalHint": {
+      "nationalCoreStrong": "The {country} core gives the team a clear identity in the board's eyes.",
+      "nationalCoreWeak": "The {country} core still gives the team a clear identity the board will not let go of easily.",
+      "starHigh": "Big-name riders strengthen the sponsor project, but they also keep expectations high.",
+      "starHighWeak": "Big-name riders keep the sponsors interested, but they also push the board to demand more output.",
+      "starMedium": "The team's profiles give the sponsor project a little extra weight."
+    }
+  },
+  "archetypes": {
+    "sponsoraten": {
+      "label": "The Sponsor Director",
+      "shortDescription": "Guards sponsor relationships and financial discipline",
+      "longDescription": "A former commercial director. Keeps an eye on sponsor deals, the balance sheet and financial risk. Grows nervous around debt and crosses his fingers for sponsor growth every season.",
+      "reactions": {
+        "feedback_positive": [
+          "The sponsors are happy. This holds up.",
+          "Now we can finally show the numbers off.",
+          "This looks like a well-run project.",
+          "Earnings are keeping up with the ambition, perfect.",
+          "The board can rest easy now."
+        ],
+        "feedback_warning": [
+          "We need to watch the balance from here.",
+          "The sponsors are eyeing the numbers nervously.",
+          "We should not chase results on borrowed time.",
+          "Luck is not a plan, we need stability.",
+          "If this turns, it gets expensive."
+        ],
+        "feedback_negative": [
+          "This will not hold in the long run.",
+          "The sponsors are calling, and not to praise us.",
+          "The numbers are saying what we do not want to hear.",
+          "We lose trust every time this repeats.",
+          "If this continues, there is no budget next year."
+        ],
+        "goal_proposal": [
+          "This secures the cash flow.",
+          "The sponsor deal will reward this.",
+          "Realistic and budget-friendly, yes please.",
+          "This gives us room to plan.",
+          "Conservative, but that is the strength."
+        ],
+        "goal_achievement": [
+          "Exactly what we hoped for, good work.",
+          "The sponsors called us themselves to say thanks.",
+          "This keeps the budget down to the last detail.",
+          "Solid numbers, this is how we build on.",
+          "Trust grows with every quarter."
+        ],
+        "goal_failure": [
+          "We miss it again, and the sponsors feel it.",
+          "This is no longer just an accounting problem.",
+          "We are bleeding more than expected.",
+          "The investors are asking questions now.",
+          "This puts next season's sponsor negotiation at risk."
+        ]
+      }
+    },
+    "traditionalisten": {
+      "label": "The Traditionalist",
+      "shortDescription": "Weighs the club's heritage and national identity",
+      "longDescription": "Sits on the board because he was there in the previous century, or nearly. Wants the club to remind people where it came from. Least enthusiastic about modern flair.",
+      "reactions": {
+        "feedback_positive": [
+          "The club carries its heritage with pride.",
+          "This is what the board dreamed of back in the 90s.",
+          "The team looks like itself again.",
+          "People recognise the club in the peloton.",
+          "The soul is intact, that is what matters most."
+        ],
+        "feedback_warning": [
+          "We are losing ourselves a little in the chase.",
+          "Where has the club's identity gone?",
+          "This looks more like other teams than ours.",
+          "Tradition is not a bonus box.",
+          "Something recognisable is missing."
+        ],
+        "feedback_negative": [
+          "We have become a stranger on our own road.",
+          "The club is no longer recognisable.",
+          "It is like watching another club ride in our jersey.",
+          "This is a break with everything the club stands for.",
+          "Our fans are weeping, and I nearly am too."
+        ],
+        "goal_proposal": [
+          "This looks like the club's DNA.",
+          "That is how it has always been with us.",
+          "Our fans will feel it.",
+          "It is continuity, yes.",
+          "The board recognises the club in this."
+        ],
+        "goal_achievement": [
+          "True club spirit, this is how it should be.",
+          "The forefathers would smile.",
+          "This is why we exist.",
+          "This is how you build a club that lasts.",
+          "The identity stands clearer now."
+        ],
+        "goal_failure": [
+          "It is a hard blow to the heritage.",
+          "We owe the club an apology.",
+          "This would never have happened in the old days.",
+          "We are losing ground on the home turf we own.",
+          "Where has the pride gone?"
+        ]
+      }
+    },
+    "talentspejderen": {
+      "label": "The Talent Scout",
+      "shortDescription": "Believes in long-term youth development",
+      "longDescription": "A former sporting director for a development team. Would rather see a 22-year-old win five years from now than a 32-year-old win today. Knows every U25 stat by heart.",
+      "reactions": {
+        "feedback_positive": [
+          "The talents get room, and they deliver.",
+          "This is exactly how you build the future.",
+          "In five years everyone will understand this choice.",
+          "The youth is blossoming, rarely seen this clearly.",
+          "The next generation is stepping up now."
+        ],
+        "feedback_warning": [
+          "We must not forget the youth in the chase.",
+          "The talents are getting too little racing.",
+          "Where is the U25 rotation?",
+          "We have better riders in the second team than we are showing.",
+          "We are selling the future for a single win."
+        ],
+        "feedback_negative": [
+          "We are leaving a whole generation on the bench.",
+          "The young riders burn out without racing in their legs.",
+          "This is no future for the club.",
+          "The talents will flee to other teams next year.",
+          "We have misunderstood what a team is."
+        ],
+        "goal_proposal": [
+          "This opens doors for the young riders.",
+          "Mapped-out development, we will take it.",
+          "The young riders need exactly this.",
+          "This is how you grow a team organically.",
+          "This will lift more than one board metric."
+        ],
+        "goal_achievement": [
+          "The talents delivered, just as predicted.",
+          "This development creates decades of value.",
+          "The U25s have taken the step, wonderful to see.",
+          "This is how you send a signal to the scouts.",
+          "This confirms the whole development philosophy."
+        ],
+        "goal_failure": [
+          "The young riders did not get the chance, our mistake.",
+          "We carry the blame for stalled development.",
+          "Talent takes longer to recover from this.",
+          "We lost something we built over years.",
+          "Better rotation would have solved this."
+        ]
+      }
+    },
+    "resultatjaegeren": {
+      "label": "The Results Hunter",
+      "shortDescription": "Wants to win now, everything else is excuses",
+      "longDescription": "An ex-sporting director with three Tour podiums on his CV. Patience is not a personal strength. Judges a team on wins, podiums and points totals, full stop.",
+      "reactions": {
+        "feedback_positive": [
+          "Wins. Finally, wins.",
+          "This is what I was hired to see.",
+          "The results speak for themselves.",
+          "The rivals are looking nervous now.",
+          "This is a winning team, finally."
+        ],
+        "feedback_warning": [
+          "The wins are too few and too small.",
+          "We are racing top-10 but not top-3.",
+          "Taking part is not enough.",
+          "The rivals do not feel us yet.",
+          "Where is the killer edge that wins races?"
+        ],
+        "feedback_negative": [
+          "This is unacceptable.",
+          "The results are a disaster.",
+          "We are invisible in the peloton.",
+          "This team should win more, much more.",
+          "How many races must we lose before we act?"
+        ],
+        "goal_proposal": [
+          "Finally, something with teeth.",
+          "We win this, or we swap the bikes out.",
+          "That is how you set demands.",
+          "We will take it. Next target?",
+          "The chase is what makes it fun, bring it on."
+        ],
+        "goal_achievement": [
+          "The win is in the bag, keep going.",
+          "This is the club we know from the good years.",
+          "The rivals saw it coming, and could not stop us.",
+          "Finally we are delivering, keep going.",
+          "This is what the board was elected to see."
+        ],
+        "goal_failure": [
+          "This is embarrassing.",
+          "We lost to teams we should crush.",
+          "Step forward and explain.",
+          "That is not a team, it is an excuse.",
+          "The next plan sharpens the demands considerably."
+        ]
+      }
+    },
+    "pragmatikeren": {
+      "label": "The Pragmatist",
+      "shortDescription": "Seeks the balance between ambition and caution",
+      "longDescription": "A former industry board chair. Looks at everything as a risk and reward ratio. Rarely euphoric, rarely panicked, rarely in agreement with himself two days running.",
+      "reactions": {
+        "feedback_positive": [
+          "This looks like a healthy balance.",
+          "Risk and reward are matched well.",
+          "The team is delivering on several fronts, good.",
+          "It is sustainable, which is what we are after.",
+          "No red flags, plenty of green."
+        ],
+        "feedback_warning": [
+          "This is on a knife's edge, keep watch.",
+          "We are losing a little on every front.",
+          "It is balancing too close to the edge.",
+          "A little more discipline and it turns.",
+          "We are missing one metric that pulls its weight."
+        ],
+        "feedback_negative": [
+          "The risk outweighs the reward considerably.",
+          "This will not survive another stress test.",
+          "We are losing on both sides of the table.",
+          "This is not a plan anymore, it is drift.",
+          "The board cannot defend this."
+        ],
+        "goal_proposal": [
+          "Realistic, we back it.",
+          "It matches where we are now.",
+          "That is how you avoid overstretching.",
+          "It is pragmatic and clear, yes.",
+          "This is a good middle path."
+        ],
+        "goal_achievement": [
+          "As expected, solid work.",
+          "This is what pragmatism is for.",
+          "The team delivered without drama.",
+          "This is what sustainability looks like.",
+          "The next target can be built on top of this."
+        ],
+        "goal_failure": [
+          "This should have been within reach.",
+          "Disappointing, with no clear excuses.",
+          "We will choose the next plan with tighter demands.",
+          "This worries me more than it should.",
+          "The board expects an open evaluation."
+        ]
+      }
+    },
+    "ungdomsidealisten": {
+      "label": "The Youth Idealist",
+      "shortDescription": "The club's future is built on young legs",
+      "longDescription": "A teacher and former coach in the lower-division system. Wants the club to be known for nurturing talent, without selling it off afterwards. Understands that every winner was young once.",
+      "reactions": {
+        "feedback_positive": [
+          "The young riders get room, that is what it is all about.",
+          "The club is a hatchery for the future.",
+          "The U25 imprint is clear and beautiful.",
+          "Talent grows here, as it should.",
+          "This will be remembered fondly."
+        ],
+        "feedback_warning": [
+          "We are pushing the young riders into too much racing.",
+          "Or, is there even room for U25 at all?",
+          "Talent without patience burns out.",
+          "We are losing focus on what matters most, the youth.",
+          "Where is the long-term line?"
+        ],
+        "feedback_negative": [
+          "The young riders are suffering, it is heartbreaking to watch.",
+          "The club is selling its own future.",
+          "This team has forgotten where it came from.",
+          "The talents are fleeing to places where they are seen.",
+          "We are betraying a whole generation right now."
+        ],
+        "goal_proposal": [
+          "This gives the young riders room, perfect.",
+          "The board is 100% behind it.",
+          "That is how you build the future.",
+          "This will bear fruit in years to come.",
+          "The U25s will feel seen by this."
+        ],
+        "goal_achievement": [
+          "The young riders took responsibility, and delivered.",
+          "This is the reward for patience.",
+          "We have created an environment they blossom in.",
+          "The club can be proud of its development work.",
+          "This is what a healthy generation looks like."
+        ],
+        "goal_failure": [
+          "We did not give them enough room, regrettably.",
+          "This is a hard lesson for the whole system.",
+          "We owe the young riders a better structure.",
+          "A damaging signal to future talents.",
+          "If this continues, the academy will not call."
+        ]
+      }
+    },
+    "nationalist_purist": {
+      "label": "The Nationalist Purist",
+      "shortDescription": "The club should represent its home country",
+      "longDescription": "A former national-team coach. Believes a club without a national core is just a sponsor in jerseys. Would rather have one home-grown talent than two foreign stars.",
+      "reactions": {
+        "feedback_positive": [
+          "The home-grown core still shines.",
+          "We are the club from our country, no doubt about it.",
+          "The home-soil pride is intact.",
+          "Our fans hear their own language in the peloton.",
+          "This is how a club should sound."
+        ],
+        "feedback_warning": [
+          "Our national identity is slipping away.",
+          "Fewer home-grown riders, that matters.",
+          "We are losing the connection to the fan base.",
+          "Home and club should be closely tied.",
+          "Where is the next local star?"
+        ],
+        "feedback_negative": [
+          "The club has become an airport of sponsors.",
+          "The national connection is broken.",
+          "The fans can no longer see themselves in the team.",
+          "This is a commercial transaction, not a club.",
+          "We are ashamed of how the roster is put together."
+        ],
+        "goal_proposal": [
+          "Home colours, of course.",
+          "This affirms the club's roots.",
+          "The board stands firmly behind this.",
+          "This is how the club stays itself.",
+          "It is what the original sponsor would have chosen."
+        ],
+        "goal_achievement": [
+          "The home-grown core delivered, fantastic.",
+          "This will resonate across the whole country.",
+          "This is how you become a national treasure.",
+          "Every home win is worth twice as much.",
+          "This makes the club irreplaceable."
+        ],
+        "goal_failure": [
+          "The home country's gaze weighs heavy now.",
+          "This wounds the club at its core.",
+          "We have let down more than just the board.",
+          "This makes recruitment harder.",
+          "We are losing ground we cannot win back easily."
+        ]
+      }
+    },
+    "klassiker_purist": {
+      "label": "The Classics Purist",
+      "shortDescription": "Monuments are what make a club immortal",
+      "longDescription": "A former classics rider himself. Believes GC racing is statistics, Roubaix is history. Would rather have one Monument than five stage wins.",
+      "reactions": {
+        "feedback_positive": [
+          "We are heading for a Monument, I can feel it.",
+          "The classics spirit hangs in the air.",
+          "This is where the club belongs.",
+          "Rock-solid roles for the spring campaign.",
+          "Rare quality on the roads that count."
+        ],
+        "feedback_warning": [
+          "The classics ambition is too soft.",
+          "We are missing a hard man for the Roubaix type.",
+          "Where is the spring focus?",
+          "This team would never win Liège.",
+          "That is stage racing, not the heritage."
+        ],
+        "feedback_negative": [
+          "We are classics-less, this is embarrassing.",
+          "The spring months vanish without a trace.",
+          "The team rides past the Monuments without looking up.",
+          "This is the wrong club identity for this sport.",
+          "We will not be remembered for any of this."
+        ],
+        "goal_proposal": [
+          "Monuments, finally on the agenda.",
+          "This is what the club was born for.",
+          "Spring focus, the board is cheering.",
+          "This is how you write history.",
+          "We will take it and ride home with a cobblestone."
+        ],
+        "goal_achievement": [
+          "A Monument! This is where sport becomes eternal.",
+          "This goes in the books forever.",
+          "The spring is ours, as it should be.",
+          "Cobble by cobble, that is how you build a club.",
+          "This is the kind of thing members remember."
+        ],
+        "goal_failure": [
+          "The spring campaign flopped, unacceptable.",
+          "The Monuments are laughing at us this year.",
+          "This rips the heart out of the classics soul.",
+          "We need to reinvent the spring plan.",
+          "No one takes the club seriously on the Roubaix ramp after this."
+        ]
+      }
+    },
+    "gc_elsker": {
+      "label": "The GC Romantic",
+      "shortDescription": "Three weeks or nothing, the Tour is everything",
+      "longDescription": "A former GC director. The board's biggest dreamer. Wants to build the team up to win a Grand Tour. Does not understand why anyone bothers racing otherwise.",
+      "reactions": {
+        "feedback_positive": [
+          "The GC path is set, we are building towards the Tour.",
+          "This is a true grand-tour-rider build.",
+          "The mountains are waiting for us.",
+          "The three-week form is starting to shine.",
+          "We have a team that can win big."
+        ],
+        "feedback_warning": [
+          "The GC structure is too soft.",
+          "Where are the domestiques for the high mountains?",
+          "We lack the third-week resilience.",
+          "This team cracks in the Pyrenees.",
+          "The Tour dream is on pause."
+        ],
+        "feedback_negative": [
+          "We do not have a GC man on the team, unacceptable.",
+          "This team would lose 20 minutes on day one.",
+          "The Tour is further away than ever.",
+          "The board did not get what we were promised.",
+          "This is not a serious World Tour project."
+        ],
+        "goal_proposal": [
+          "GC focus, finally heading for the big game.",
+          "This is where the career is built.",
+          "The Tour is the goal, and this is the step.",
+          "The board accepts without hesitation.",
+          "This is how you raise a captain project."
+        ],
+        "goal_achievement": [
+          "The GC result is solid, keep climbing.",
+          "This is what roads to the Tour are built on.",
+          "The mountains gave respect, good work.",
+          "We are heading for the chapter everyone will read.",
+          "This is the step before the three weeks."
+        ],
+        "goal_failure": [
+          "The GC project is bleeding, this does not help.",
+          "We are further from the Tour now than before the season.",
+          "This is a regression, not an adjustment.",
+          "The mountains crushed us, this must never happen again.",
+          "We lack a plan for where the star is going to come from."
+        ]
+      }
+    }
+  },
   "errors": {
     "loginRequired": "You must be logged in.",
     "requestFallback": "Could not send the board request."

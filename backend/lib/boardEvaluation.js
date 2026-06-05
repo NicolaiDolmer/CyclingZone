@@ -90,6 +90,7 @@ export function buildBoardOutlook({ board, standing, team, context = {} } = {}) 
     score_breakdown: performance.scoreBreakdown,
     overall_score: performance.adjustedOverallScore,
     status_label: describeOverallStatus(performance.adjustedOverallScore),
+    status_label_key: describeOverallStatusKey(performance.adjustedOverallScore),
   };
 
   return attachMembersOverlay({
@@ -193,6 +194,8 @@ function calculatePerformanceBreakdown(goalEvaluations, personality, identityPro
     return [key, {
       key,
       label,
+      // #917/#694 · i18n-kode (frontend resolver via board.json, DA-label = fallback).
+      label_key: `category.${key}`,
       score: roundNumber(score),
       score_pct: Math.round(score * 100),
       weight: roundNumber(weights[key]),
@@ -314,7 +317,9 @@ function getAdjustedCategoryWeights(personality) {
   );
 }
 
-function buildBoardSignalHint(identityProfile, overallScore) {
+// #917/#694 · Strukturerede signal-hints: hver hint har en i18n-nøgle + params
+// (frontend resolver via board.json) OG en dansk `text` som fallback/notif-kilde.
+function buildBoardSignalHints(identityProfile, overallScore) {
   const hints = [];
   const nationalCore = identityProfile?.national_core;
   const starProfile = identityProfile?.star_profile;
@@ -322,27 +327,58 @@ function buildBoardSignalHint(identityProfile, overallScore) {
   if (nationalCore?.established && nationalCore?.code) {
     hints.push(
       overallScore >= 0.72
-        ? `Den ${nationalCore.code}-praegede kerne giver holdet en tydelig identitet i boardets oejne.`
-        : `Den ${nationalCore.code}-praegede kerne giver stadig holdet en tydelig identitet, som bestyrelsen ikke slipper let.`
+        ? {
+          key: "feedback.signalHint.nationalCoreStrong",
+          params: { country: nationalCore.code },
+          text: `Den ${nationalCore.code}-praegede kerne giver holdet en tydelig identitet i boardets oejne.`,
+        }
+        : {
+          key: "feedback.signalHint.nationalCoreWeak",
+          params: { country: nationalCore.code },
+          text: `Den ${nationalCore.code}-praegede kerne giver stadig holdet en tydelig identitet, som bestyrelsen ikke slipper let.`,
+        }
     );
   }
 
   if (["high", "elite"].includes(starProfile?.level)) {
     hints.push(
       overallScore >= 0.72
-        ? "Store profiler styrker sponsorprojektet, men de holder ogsa forventningerne hoje."
-        : "Store profiler holder sponsorernes interesse oppe, men de faar ogsa boardet til at forlange mere output."
+        ? {
+          key: "feedback.signalHint.starHigh",
+          params: {},
+          text: "Store profiler styrker sponsorprojektet, men de holder ogsa forventningerne hoje.",
+        }
+        : {
+          key: "feedback.signalHint.starHighWeak",
+          params: {},
+          text: "Store profiler holder sponsorernes interesse oppe, men de faar ogsa boardet til at forlange mere output.",
+        }
     );
   } else if (starProfile?.level === "medium" && overallScore >= 0.90) {
-    hints.push("Holdets profiler giver sponsorprojektet lidt ekstra tyngde.");
+    hints.push({
+      key: "feedback.signalHint.starMedium",
+      params: {},
+      text: "Holdets profiler giver sponsorprojektet lidt ekstra tyngde.",
+    });
   }
 
-  return hints.join(" ");
+  return hints;
+}
+
+function buildBoardSignalHint(identityProfile, overallScore) {
+  return buildBoardSignalHints(identityProfile, overallScore)
+    .map((hint) => hint.text)
+    .join(" ");
 }
 
 function appendBoardSignalHint(summary, identityProfile, overallScore) {
   const signalHint = buildBoardSignalHint(identityProfile, overallScore);
   return signalHint ? `${summary} ${signalHint}` : summary;
+}
+
+// #917/#694 · Map et struktureret hint-array til API-formen (kun key + params).
+function serializeSignalHints(hints) {
+  return hints.map(({ key, params }) => ({ key, params }));
 }
 
 function buildBoardFeedback({ scoreBreakdown, personality, identityProfile, context = {} } = {}) {
@@ -353,12 +389,21 @@ function buildBoardFeedback({ scoreBreakdown, personality, identityProfile, cont
       headline: "Bestyrelsen afventer mere data",
       summary: "Ssonens spor er endnu for spinkle til en tydelig vurdering.",
       tone: "neutral",
+      headline_key: "feedback.awaitingData.headline",
+      summary_key: "feedback.awaitingData.summary",
+      summary_base: "Ssonens spor er endnu for spinkle til en tydelig vurdering.",
+      signal_hints: [],
     };
   }
 
   const strongestCategory = [...categoryEntries].sort((a, b) => b.score - a.score)[0];
   const weakestCategory = [...categoryEntries].sort((a, b) => a.score - b.score)[0];
   const overallScore = scoreBreakdown.adjusted_overall_score ?? scoreBreakdown.overall_score ?? 0.6;
+  // #917/#694 · Kategori-keys til frontend-resolve af {strong}/{weak}-params.
+  const categoryParams = {
+    strongCategory: strongestCategory.key,
+    weakCategory: weakestCategory.key,
+  };
 
   if (context.isExpired) {
     return {
@@ -367,6 +412,10 @@ function buildBoardFeedback({ scoreBreakdown, personality, identityProfile, cont
       tone: "neutral",
       strongest_category: strongestCategory.key,
       weakest_category: weakestCategory.key,
+      headline_key: "feedback.expired.headline",
+      summary_key: "feedback.expired.summary",
+      summary_base: "Bestyrelsen vil forhandle en ny plan ud fra den seneste evaluering og holdets nuvaerende retning.",
+      signal_hints: [],
     };
   }
 
@@ -374,71 +423,89 @@ function buildBoardFeedback({ scoreBreakdown, personality, identityProfile, cont
     const profileHint = identityProfile?.summary
       ? ` Holdet laeser de som ${identityProfile.summary.toLowerCase()}.`
       : "";
+    const summaryBase = `${personality.summary} Indtil videre er forventningerne intakte, men de sportslige svar kommer forst nar saesonen tager form.${profileHint}`;
+    const signalHints = buildBoardSignalHints(identityProfile, overallScore);
     return {
       headline: "Bestyrelsen afventer saesonens forste markorer",
-      summary: appendBoardSignalHint(
-        `${personality.summary} Indtil videre er forventningerne intakte, men de sportslige svar kommer forst nar saesonen tager form.${profileHint}`,
-        identityProfile,
-        overallScore
-      ),
+      summary: appendBoardSignalHint(summaryBase, identityProfile, overallScore),
       tone: "neutral",
       strongest_category: strongestCategory.key,
       weakest_category: weakestCategory.key,
+      headline_key: "feedback.awaitingFirstMarkers.headline",
+      summary_key: "feedback.awaitingFirstMarkers.summary",
+      summary_base: summaryBase,
+      // NB: personalitySummary + profileHint stammer fra boardIdentity.js (uden for
+      // denne slices scope) og forbliver dansk indtil opfølgnings-issuet. Den
+      // forbindende sætning + headline er fuldt oversat.
+      summary_params: { personalitySummary: personality.summary || "", profileHint },
+      signal_hints: serializeSignalHints(signalHints),
     };
   }
 
   if (overallScore >= 0.90) {
+    const summaryBase = `${strongestCategory.label} driver planen frem, og ${weakestCategory.label.toLowerCase()} er stadig under kontrol.`;
+    const signalHints = buildBoardSignalHints(identityProfile, overallScore);
     return {
       headline: "Bestyrelsen er meget tilfreds",
-      summary: appendBoardSignalHint(
-        `${strongestCategory.label} driver planen frem, og ${weakestCategory.label.toLowerCase()} er stadig under kontrol.`,
-        identityProfile,
-        overallScore
-      ),
+      summary: appendBoardSignalHint(summaryBase, identityProfile, overallScore),
       tone: "positive",
       strongest_category: strongestCategory.key,
       weakest_category: weakestCategory.key,
+      headline_key: "feedback.veryHappy.headline",
+      summary_key: "feedback.veryHappy.summary",
+      summary_base: summaryBase,
+      summary_params: categoryParams,
+      signal_hints: serializeSignalHints(signalHints),
     };
   }
 
   if (overallScore >= 0.72) {
+    const summaryBase = `${strongestCategory.label} er pa sporet, men ${weakestCategory.label.toLowerCase()} kraever mere fokus for at holde planen sund.`;
+    const signalHints = buildBoardSignalHints(identityProfile, overallScore);
     return {
       headline: "Bestyrelsen ser stabil fremgang",
-      summary: appendBoardSignalHint(
-        `${strongestCategory.label} er pa sporet, men ${weakestCategory.label.toLowerCase()} kraever mere fokus for at holde planen sund.`,
-        identityProfile,
-        overallScore
-      ),
+      summary: appendBoardSignalHint(summaryBase, identityProfile, overallScore),
       tone: "steady",
       strongest_category: strongestCategory.key,
       weakest_category: weakestCategory.key,
+      headline_key: "feedback.steadyProgress.headline",
+      summary_key: "feedback.steadyProgress.summary",
+      summary_base: summaryBase,
+      summary_params: categoryParams,
+      signal_hints: serializeSignalHints(signalHints),
     };
   }
 
   if (overallScore >= 0.55) {
+    const summaryBase = `${weakestCategory.label} halter efter planen, og presset stiger hvis udviklingen ikke vender snart.`;
+    const signalHints = buildBoardSignalHints(identityProfile, overallScore);
     return {
       headline: "Bestyrelsen afventer naeste skridt",
-      summary: appendBoardSignalHint(
-        `${weakestCategory.label} halter efter planen, og presset stiger hvis udviklingen ikke vender snart.`,
-        identityProfile,
-        overallScore
-      ),
+      summary: appendBoardSignalHint(summaryBase, identityProfile, overallScore),
       tone: "warning",
       strongest_category: strongestCategory.key,
       weakest_category: weakestCategory.key,
+      headline_key: "feedback.awaitingNext.headline",
+      summary_key: "feedback.awaitingNext.summary",
+      summary_base: summaryBase,
+      summary_params: categoryParams,
+      signal_hints: serializeSignalHints(signalHints),
     };
   }
 
+  const summaryBase = `${weakestCategory.label} ligger klart under forventning, og holdet mangler tydelig fremgang i den nuvaerende plan.`;
+  const signalHints = buildBoardSignalHints(identityProfile, overallScore);
   return {
     headline: "Bestyrelsen er bekymret",
-    summary: appendBoardSignalHint(
-      `${weakestCategory.label} ligger klart under forventning, og holdet mangler tydelig fremgang i den nuvaerende plan.`,
-      identityProfile,
-      overallScore
-    ),
+    summary: appendBoardSignalHint(summaryBase, identityProfile, overallScore),
     tone: "negative",
     strongest_category: strongestCategory.key,
     weakest_category: weakestCategory.key,
+    headline_key: "feedback.concerned.headline",
+    summary_key: "feedback.concerned.summary",
+    summary_base: summaryBase,
+    summary_params: categoryParams,
+    signal_hints: serializeSignalHints(signalHints),
   };
 }
 
@@ -447,6 +514,14 @@ function describeOverallStatus(score) {
   if (score >= 0.72) return "Pa sporet";
   if (score >= 0.55) return "Usikkert";
   return "Under pres";
+}
+
+// #917/#694 · i18n-kode for status_label (frontend resolver via board.json).
+function describeOverallStatusKey(score) {
+  if (score >= 0.90) return "overallStatus.veryStrong";
+  if (score >= 0.72) return "overallStatus.onTrack";
+  if (score >= 0.55) return "overallStatus.uncertain";
+  return "overallStatus.underPressure";
 }
 
 function getExpectationBaseline(personality) {

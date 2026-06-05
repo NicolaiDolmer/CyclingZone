@@ -426,9 +426,13 @@ export function sampleReactionForFeedback({ archetype, tone = "neutral", seed = 
   return {
     archetype_key: archetype.key,
     label: archetype.label,
+    // #917/#694 · i18n-koder (frontend resolver via board.json; DA = fallback).
+    label_key: `archetypes.${archetype.key}.label`,
     emoji: archetype.emoji,
     short_description: archetype.short_description,
+    short_description_key: `archetypes.${archetype.key}.shortDescription`,
     quote: templates[idx],
+    quote_key: `archetypes.${archetype.key}.reactions.${bucket}.${idx}`,
     bucket,
   };
 }
@@ -459,9 +463,13 @@ export function sampleReactionForGoal({ archetype, goalContext = {}, seed = "" }
   return {
     archetype_key: archetype.key,
     label: archetype.label,
+    // #917/#694 · i18n-koder (frontend resolver via board.json; DA = fallback).
+    label_key: `archetypes.${archetype.key}.label`,
     emoji: archetype.emoji,
     short_description: archetype.short_description,
+    short_description_key: `archetypes.${archetype.key}.shortDescription`,
     quote: templates[idx],
+    quote_key: `archetypes.${archetype.key}.reactions.${bucket}.${idx}`,
     bucket,
   };
 }

@@ -6078,9 +6078,13 @@ function decorateTeamBoardMembers(teamBoardMembers = []) {
         is_chairman: member.is_chairman,
         assigned_at: member.assigned_at,
         label: archetype.label,
+        // #917/#694 · i18n-koder (frontend resolver via board.json; DA = fallback).
+        label_key: `archetypes.${member.archetype_key}.label`,
         emoji: archetype.emoji,
         short_description: archetype.short_description,
+        short_description_key: `archetypes.${member.archetype_key}.shortDescription`,
         long_description: archetype.long_description,
+        long_description_key: `archetypes.${member.archetype_key}.longDescription`,
       };
     })
     .filter(Boolean);

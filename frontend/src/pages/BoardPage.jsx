@@ -11,6 +11,14 @@ import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
 import { resolveApiError } from "../lib/apiError";
+import {
+  resolveBoardFeedbackHeadline,
+  resolveBoardFeedbackSummary,
+  resolveMemberLabel,
+  resolveMemberShortDescription,
+  resolveMemberLongDescription,
+  resolveReactionQuote,
+} from "../lib/boardCopy";
 
 const API = import.meta.env.VITE_API_URL;
 const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
@@ -154,8 +162,8 @@ function BoardMembersGrid({ members = [], onSelect }) {
               )}
             </div>
             <div>
-              <p className="text-cz-1 font-medium text-xs leading-tight">{member.label}</p>
-              <p className="text-cz-3 text-[10px] mt-0.5 leading-tight line-clamp-2">{member.short_description}</p>
+              <p className="text-cz-1 font-medium text-xs leading-tight">{resolveMemberLabel(t, member)}</p>
+              <p className="text-cz-3 text-[10px] mt-0.5 leading-tight line-clamp-2">{resolveMemberShortDescription(t, member)}</p>
               {member.is_chairman && (
                 <p className="text-cz-accent-t text-[9px] uppercase tracking-wider mt-1 font-semibold">
                   {t("members.chairman")}
@@ -198,18 +206,18 @@ function BoardMemberDialog({ member, onClose }) {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-cz-1 font-semibold text-base leading-snug">{member.label}</p>
+            <p className="text-cz-1 font-semibold text-base leading-snug">{resolveMemberLabel(t, member)}</p>
             <p className={`text-xs uppercase tracking-wider mt-0.5 ${member.is_chairman ? "text-cz-accent-t font-semibold" : "text-cz-3"}`}>
               {roleLabel}
             </p>
           </div>
           <button onClick={onClose} className="text-cz-3 hover:text-cz-2 text-xl leading-none flex-shrink-0 px-1">×</button>
         </div>
-        {member.short_description && (
-          <p className="text-cz-2 text-sm leading-relaxed">{member.short_description}</p>
+        {resolveMemberShortDescription(t, member) && (
+          <p className="text-cz-2 text-sm leading-relaxed">{resolveMemberShortDescription(t, member)}</p>
         )}
-        {member.long_description && (
-          <p className="text-cz-3 text-sm mt-3 leading-relaxed">{member.long_description}</p>
+        {resolveMemberLongDescription(t, member) && (
+          <p className="text-cz-3 text-sm mt-3 leading-relaxed">{resolveMemberLongDescription(t, member)}</p>
         )}
       </div>
     </div>
@@ -343,6 +351,7 @@ function ClubDnaDialog({ dna, onClose }) {
 
 // Medlem-citat-panel inde i GoalCard expand eller PlanCard outlook-feedback.
 function MemberReactionPanel({ reaction, compact = false }) {
+  const { t } = useTranslation("board");
   if (!reaction?.quote) return null;
   return (
     <div className={`flex items-start gap-2 ${compact ? "p-2" : "p-3"} bg-cz-subtle border border-cz-border rounded-lg`}>
@@ -351,9 +360,9 @@ function MemberReactionPanel({ reaction, compact = false }) {
         <span aria-hidden>{reaction.emoji}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className={`text-cz-1 font-medium ${compact ? "text-xs" : "text-sm"}`}>{reaction.label}</p>
+        <p className={`text-cz-1 font-medium ${compact ? "text-xs" : "text-sm"}`}>{resolveMemberLabel(t, reaction)}</p>
         <p className={`text-cz-2 italic mt-0.5 ${compact ? "text-[11px]" : "text-xs"} leading-relaxed`}>
-          &ldquo;{reaction.quote}&rdquo;
+          &ldquo;{resolveReactionQuote(t, reaction)}&rdquo;
         </p>
       </div>
     </div>
@@ -1319,8 +1328,8 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
           {outlook?.feedback && (
             <div className="bg-cz-subtle border border-cz-border rounded-xl p-4">
               <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("plan.outlookHeading")}</p>
-              <p className="text-cz-1 text-sm font-semibold">{outlook.feedback.headline}</p>
-              <p className="text-cz-2 text-sm mt-1">{formatBoardCopy(outlook.feedback.summary)}</p>
+              <p className="text-cz-1 text-sm font-semibold">{resolveBoardFeedbackHeadline(t, outlook.feedback)}</p>
+              <p className="text-cz-2 text-sm mt-1">{resolveBoardFeedbackSummary(t, outlook.feedback)}</p>
               {outlook.feedback.dominant_member && (
                 <div className="mt-3"><MemberReactionPanel reaction={outlook.feedback.dominant_member} /></div>
               )}

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.88",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · The board",
+        items: [
+          "EN · In English, large parts of the board still showed up in Danish: your named board members' titles and descriptions, their reactions to your plans and goals, and the board's overall assessment headlines and summaries. These are now fully translated, so the board reads in English when you play in English. Refs #917, #694.",
+          "DA · På engelsk blev store dele af bestyrelsen stadig vist på dansk: dine navngivne bestyrelsesmedlemmers titler og beskrivelser, deres reaktioner på dine planer og mål, samt bestyrelsens overordnede vurderings-overskrifter og -opsummeringer. De er nu fuldt oversat, så bestyrelsen læses på engelsk når du spiller på engelsk. Refs #917, #694.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.87",
     date: "2026-06-05",
     label: "Beta",
