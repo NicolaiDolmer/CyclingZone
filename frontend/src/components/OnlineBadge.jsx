@@ -13,7 +13,7 @@ function timeAgo(dateStr) {
 export default function OnlineBadge({ isOnline, lastSeen }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isOnline ? "bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.8)]" : "bg-cz-border"}`} />
+      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isOnline ? "bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.8)]" : "bg-cz-subtle0"}`} />
       <span className={`text-xs ${isOnline ? "text-cz-success" : "text-cz-3"}`}>
         {isOnline ? "Online nu" : timeAgo(lastSeen)}
       </span>
