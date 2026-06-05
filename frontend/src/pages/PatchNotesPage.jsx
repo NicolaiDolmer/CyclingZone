@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.86",
+    date: "2026-06-05",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · The board",
+        items: [
+          "EN · On your three-year and five-year plan, the cumulative stage-win and GC-win goals counted from zero until the season ended, even when your team had already won stages this season. They now include the current season's wins as you earn them, so the progress toward those long-term goals updates straight away. Refs #979.",
+          "DA · På din tre-årige og fem-årige plan talte de samlede etapesejr- og GC-sejr-mål fra nul indtil sæsonen sluttede, selv når dit hold allerede havde vundet etaper i denne sæson. De medregner nu den indeværende sæsons sejre, efterhånden som du vinder dem, så fremgangen mod de langsigtede mål opdateres med det samme. Refs #979.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.85",
     date: "2026-06-05",
     label: "Beta",

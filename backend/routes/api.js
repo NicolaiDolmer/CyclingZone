@@ -6221,6 +6221,15 @@ router.get("/board/status", requireAuth, async (req, res) => {
         }
       }
 
+      // #979 · Cumulative wins = afsluttede sæsoner (board.cumulative_*) + indeværende
+      // sæsons in-progress wins (currentStanding.*). board.cumulative_* persisteres FØRST
+      // ved season-end (economyEngine.processTeamSeasonEnd), så uden currentStanding ville
+      // 3yr/5yr-delmålene vise 0 midt i sæsonen. Beregnes én gang og genbruges til både
+      // outlook-evaluering og det returnerede cumulative_stats-display, så de ikke kan drifte
+      // fra hinanden (præcis den inkonsistens der var root cause for #979).
+      const cumulativeStageWins = (board.cumulative_stage_wins || 0) + (currentStanding?.stage_wins || 0);
+      const cumulativeGcWins = (board.cumulative_gc_wins || 0) + (currentStanding?.gc_wins || 0);
+
       const outlook = buildBoardOutlook({
         board,
         standing: currentStanding,
@@ -6235,8 +6244,8 @@ router.get("/board/status", requireAuth, async (req, res) => {
           isExpired,
           recentSnapshots: boardSnapshots.slice(-3).reverse(),
           cumulativeStats: {
-            stageWins: (board.cumulative_stage_wins || 0) + (currentStanding?.stage_wins || 0),
-            gcWins: (board.cumulative_gc_wins || 0) + (currentStanding?.gc_wins || 0),
+            stageWins: cumulativeStageWins,
+            gcWins: cumulativeGcWins,
           },
           ...goalContext,
           // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
@@ -6273,8 +6282,8 @@ router.get("/board/status", requireAuth, async (req, res) => {
         seasons_completed: seasonsCompleted,
         plan_progress_pct: planProgressPct,
         cumulative_stats: {
-          stage_wins: board.cumulative_stage_wins || 0,
-          gc_wins: board.cumulative_gc_wins || 0,
+          stage_wins: cumulativeStageWins,
+          gc_wins: cumulativeGcWins,
         },
         snapshots: boardSnapshots,
         is_expired: isExpired,
