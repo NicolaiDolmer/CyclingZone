@@ -339,12 +339,23 @@ test("buildNegotiatedGoal halves penalty + reduces target where possible", () =>
 // generateBoardGoals integration — 3 nye 5. mål
 // =====================================================================
 
-test("generateBoardGoals youth_development includes u25_development_delta as 5th goal", () => {
-  const goals = generateBoardGoals({ focus: "youth_development", planType: "1yr" });
+test("generateBoardGoals youth_development includes u25_development_delta as 5th goal (multi-year)", () => {
+  const goals = generateBoardGoals({ focus: "youth_development", planType: "3yr" });
   assert.equal(goals.length, 5);
   const types = goals.map((g) => g.type);
   assert.ok(types.includes("u25_development_delta"),
-    `youth_development should include u25_development_delta, got: ${types.join(",")}`);
+    `youth_development (multi-year) should include u25_development_delta, got: ${types.join(",")}`);
+});
+
+// #57 · u25_development_delta kan aldrig evalueres på en 1yr-plan (kræver et
+// plan-start-snapshot som baseline; 1yr = 1 sæson har aldrig et tidligere
+// snapshot → altid awaiting_data) → ekskluderet fra 1yr-pakker.
+test("#57 · generateBoardGoals youth_development 1yr ekskluderer u25_development_delta", () => {
+  const goals = generateBoardGoals({ focus: "youth_development", planType: "1yr" });
+  const types = goals.map((g) => g.type);
+  assert.ok(!types.includes("u25_development_delta"),
+    `1yr youth må ikke indeholde u25_development_delta, got: ${types.join(",")}`);
+  assert.equal(goals.length, 4, "1yr youth = 4 mål (uden u25_development_delta)");
 });
 
 test("generateBoardGoals star_signing includes signature_rider as 5th goal", () => {
@@ -364,7 +375,7 @@ test("generateBoardGoals balanced includes relative_rank as 5th goal", () => {
 });
 
 test("generateBoardGoals new goals carry correct metadata category + weight", () => {
-  const youth = generateBoardGoals({ focus: "youth_development", planType: "1yr" });
+  const youth = generateBoardGoals({ focus: "youth_development", planType: "3yr" });
   const u25Delta = youth.find((g) => g.type === "u25_development_delta");
   assert.equal(u25Delta.category, "identity");
 

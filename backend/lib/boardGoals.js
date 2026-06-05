@@ -289,7 +289,13 @@ export function generateBoardGoals({
     ],
   };
 
-  const selectedGoals = baseGoals[focus] || baseGoals.balanced;
+  const selectedGoals = (baseGoals[focus] || baseGoals.balanced)
+    // #57 · u25_development_delta kan aldrig evalueres på en 1-årig plan: den
+    // kræver et plan-start-snapshot som baseline (delta = (current_avg −
+    // plan_start_avg) / seasons_completed), men en 1yr-plan (= 1 sæson) har aldrig
+    // et tidligere snapshot → målet returnerer altid awaiting_data. Hold det ude
+    // af 1yr-pakker (kun multi-year, hvor en baseline findes).
+    .filter((goal) => isMultiYear || goal.type !== "u25_development_delta");
   return selectedGoals.map((goal) => addGoalMetadata({
     ...goal,
     satisfaction_penalty: Math.round(goal.satisfaction_penalty * penaltyModifier),
