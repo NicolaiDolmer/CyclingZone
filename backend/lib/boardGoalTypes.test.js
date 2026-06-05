@@ -417,3 +417,71 @@ test("#1074 · opfyldte cumulative stage/gc-mål tæller med i countGoalsMet", (
   // Uden cumulativeStats → cumulative tæller som ikke-opfyldt (graceful).
   assert.equal(countGoalsMet(goals, standing, null, {}), 1);
 });
+
+// =====================================================================
+// #55 · evaluateGoalProgress.met — autoritativt "opnået"-flag (fuldt mål).
+// Forward-guard: `met` MÅ ikke følge den pro-ratede `status` ("ahead") midt-i-
+// plan for cumulative/multi-year-typer, ellers over-tæller BoardPage opnåede mål.
+// =====================================================================
+
+test("#55 · monument_podium: status pro-rates midt-i-plan men met kræver fuldt mål", () => {
+  const goal = { type: "monument_podium", target: 4 };
+  // 5yr-plan, sæson 1: pro-rated target = max(1, ceil(4*1/5)) = 1.
+  const onPace = evaluateGoalProgress(goal, null, null, {
+    planDuration: 5, seasonsCompleted: 1, cumulativeMonumentPodiums: 1,
+  });
+  assert.equal(onPace.status, "ahead", "1 podie møder det pro-ratede mål → status ahead");
+  assert.equal(onPace.met, false, "men det fulde mål (4) er IKKE nået → met false");
+
+  const fullyMet = evaluateGoalProgress(goal, null, null, {
+    planDuration: 5, seasonsCompleted: 1, cumulativeMonumentPodiums: 4,
+  });
+  assert.equal(fullyMet.met, true, "4 podier = fuldt mål → met true");
+});
+
+test("#55 · profitable_transfers: defer-til-final i status, men met = fuldt mål nået", () => {
+  const goal = { type: "profitable_transfers", target: 200000 };
+  // Mid-plan: evaluateGoal defererer (null) → met false; status pro-rates ikke til ahead.
+  const midNotMet = evaluateGoalProgress(goal, null, null, {
+    planDuration: 3, seasonsCompleted: 1, cumulativeTransferBalance: 50000,
+  });
+  assert.equal(midNotMet.met, false);
+  // Fuldt mål allerede nået tidligt → met true (evaluateGoal med isFinalSeason).
+  const earlyMet = evaluateGoalProgress(goal, null, null, {
+    planDuration: 3, seasonsCompleted: 1, cumulativeTransferBalance: 250000,
+  });
+  assert.equal(earlyMet.met, true);
+});
+
+test("#55 · legacy non-cumulative type: met = nuværende tilstand møder målet", () => {
+  const goal = { type: "top_n_finish", target: 3 };
+  assert.equal(evaluateGoalProgress(goal, { rank_in_division: 2 }, null, {}).met, true);
+  assert.equal(evaluateGoalProgress(goal, { rank_in_division: 5 }, null, {}).met, false);
+});
+
+test("#55 · relative_rank (early-return case) bærer met-flaget", () => {
+  // relative_rank har en tidlig return i evaluateGoalProgress (rich payload) —
+  // den SKAL også indeholde met, ellers falder frontend til fallback (default:false)
+  // og under-tæller netop denne type (default 'balanced'-focus-mål).
+  const goal = { type: "relative_rank", target: 3 };
+  const met = evaluateGoalProgress(goal, { rank_in_division: 2 }, null, { divisionManagerCount: 10 });
+  assert.equal(met.met, true, "slår 8 managere (≥3) → met true");
+  assert.ok("rank_in_division" in met && "division_manager_count" in met, "rich payload bevaret");
+  const notMet = evaluateGoalProgress(goal, { rank_in_division: 9 }, null, { divisionManagerCount: 10 });
+  assert.equal(notMet.met, false, "slår kun 1 manager (<3) → met false");
+});
+
+test("#55 · cumulative stage_wins: met = fuld kumulativ optælling, ikke pro-rated", () => {
+  const goal = { type: "stage_wins", target: 6, cumulative: true };
+  // 3yr-plan, sæson 1: pro-rated target = max(1, 6*1/3) = 2. 2 sejre = on pace.
+  const onPace = evaluateGoalProgress(goal, null, null, {
+    planDuration: 3, seasonsCompleted: 1, cumulativeStats: { stageWins: 2 },
+  });
+  assert.equal(onPace.status, "ahead", "2 sejre møder pro-rated mål → status ahead");
+  assert.equal(onPace.met, false, "men fuldt mål (6) er ikke nået → met false");
+  // Fuldt mål nået → met true.
+  const fullyMet = evaluateGoalProgress(goal, null, null, {
+    planDuration: 3, seasonsCompleted: 1, cumulativeStats: { stageWins: 6 },
+  });
+  assert.equal(fullyMet.met, true);
+});
