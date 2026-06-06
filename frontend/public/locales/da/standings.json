@@ -17,6 +17,7 @@
   "promotionBadge": "↑ Op",
   "relegationBadge": "↓ Ned",
   "penaltyTooltip": "Trupstørrelse-fradrag: {penalty} point ({earned} optjent − {penalty} fradrag)",
+  "legendLeader": "Fører (nr. 1)",
   "legendPromotion": "Oprykningszone (top 2)",
   "legendRelegation": "Nedrykningszone (bund 2)",
   "racesPlayed": "{count} løb spillet"

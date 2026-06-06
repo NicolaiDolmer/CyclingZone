@@ -670,14 +670,16 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-1">
               {divStandings.map((s, i) => {
                 const isMe = s.team_id === team?.id;
+                const isLeader = i === 0;
                 const maxPts = divStandings[0]?.total_points || 1;
                 return (
                   <Link key={s.id} to="/standings"
-                    className={`flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isMe ? "bg-cz-accent/10" : "hover:bg-cz-subtle"}`}>
-                    <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isMe ? "text-cz-accent-t" : "text-cz-3"}`}>#{i+1}</span>
-                    <p className={`text-sm w-28 truncate flex-shrink-0 ${isMe ? "text-cz-accent-t font-medium" : "text-cz-2"}`}>{s.team?.name}</p>
+                    style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
+                    className={`flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/[0.08]" : "hover:bg-cz-subtle"}`}>
+                    <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{i+1}</span>
+                    <p className={`text-sm w-28 truncate flex-shrink-0 ${isMe ? "text-cz-1 font-medium" : "text-cz-2"}`}>{s.team?.name}</p>
                     <div className="flex-1">
-                      <MiniBar value={s.total_points || 0} max={maxPts} color={isMe ? "rgb(var(--accent))" : "var(--text-3)"} />
+                      <MiniBar value={s.total_points || 0} max={maxPts} color={isLeader ? "rgb(var(--accent))" : "var(--text-3)"} />
                     </div>
                   </Link>
                 );

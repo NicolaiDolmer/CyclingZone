@@ -123,21 +123,20 @@ export default function TeamsPage() {
                 return (
                   <div key={team.id}
                     onClick={() => navigate(`/teams/${team.id}`)}
-                    className={`bg-cz-card border rounded-xl p-4 cursor-pointer
-                      hover:border-cz-border transition-all group
-                      ${isMe ? "border-[#e8c547]/25 shadow-[0_0_15px_rgba(232,197,71,0.05)]" : "border-cz-border"}`}>
+                    style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
+                    className={`bg-cz-card border border-cz-border rounded-xl p-4 cursor-pointer
+                      hover:border-cz-border transition-all group`}>
 
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className={`font-semibold text-sm group-hover:text-cz-accent-t transition-colors
-                            ${isMe ? "text-cz-accent-t" : "text-cz-1"}`}>
+                          <p className="font-semibold text-sm group-hover:text-cz-accent-t transition-colors text-cz-1">
                             {team.name}
                           </p>
                           {isMe && (
-                            <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t
-                              px-1.5 py-0.5 rounded-full border border-cz-accent/30">{t("list.youBadge")}</span>
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full"
+                              style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("list.youBadge")}</span>
                           )}
                         </div>
                         {team.manager_name && (

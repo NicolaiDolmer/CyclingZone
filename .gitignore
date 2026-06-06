@@ -70,3 +70,6 @@ docs/WEEKLY_PLANNING_GUIDE.md
 # secret-leak-incidents.log above. Gitleaks allowlist eksisterer som
 # defensiv backup hvis logfilen alligevel ender staged.
 .claude/secret-leak-stats.log
+
+# Playwright MCP tool artifacts (browser-nav snapshots/logs)
+.playwright-mcp/

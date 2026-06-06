@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.91",
+    date: "2026-06-06",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Standings",
+        items: [
+          "EN · Gold now means one thing: the leader. The rank-1 team in a division carries a gold \"Leader\" jersey badge across the standings, season-end results and your dashboard — sitting alongside the green/red promotion and relegation markers, never replacing them. Your own team, which used to be gold (clashing with that signal), now stands out with a clean neutral highlight instead. Refs #481.",
+          "DA · Guld betyder nu én ting: føreren. Det førende hold i en division får et guld-\"Fører\"-trøjemærke på ranglisten, sæson-resultaterne og dit dashboard — ved siden af de grønne/røde op- og nedryknings-markører, aldrig i stedet for dem. Dit eget hold, der før var guld (og kolliderede med det signal), fremhæves nu i stedet med en ren, neutral markering. Refs #481.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.90",
     date: "2026-06-06",
     label: "Beta",
