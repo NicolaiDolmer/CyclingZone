@@ -14,6 +14,8 @@ const plan5yr = {
     current_goals: [
       { type: "stage_wins_total", target: 3, label: "Win 3 stages", importance: "required" },
       { type: "relative_rank", target: 5, label: "Top 5 in division" },
+      // #815 · gammel DB-label med vilje → frontenden skal omdøbe til "højt omdømme".
+      { type: "signature_rider", target: 1, label: "Mindst 1 stjerne-rytter (popularity >= 75)" },
     ],
   },
   plan_duration: 5,
@@ -27,7 +29,7 @@ const plan5yr = {
   ],
   is_expired: false,
   renew_locked: false,
-  outlook: { goal_evaluations: [{ status: "on_track", actual: 1, target: 3 }, { status: "watch" }] },
+  outlook: { goal_evaluations: [{ status: "on_track", actual: 1, target: 3 }, { status: "watch" }, { status: "behind", actual: 0, target: 1 }] },
   request_status: null,
   request_options: [],
 };
@@ -70,7 +72,9 @@ const NON_BASELINE_BOARD = {
   team_members: [],
   active_consequences: [],
   bonus_offer: null,
-  team_dna: { key: "climb_dna", emoji: "🧬", label: "Mountain Soul", short_description: "Built for the climbs.", long_description: "Your club leans into mountainous terrain." },
+  team_dna: { key: "climb_dna", emoji: "🧬", label: "Mountain Soul", short_description: "Built for the climbs.", long_description: "Your club leans into mountainous terrain.",
+    // #102 · DNA goal_weighting → "Hvad vægter dette board?"-panel (>1.0 = boostet).
+    goal_weighting: { u25_development_delta: 1.4, min_national_riders: 1.2, signature_rider: 0.8 } },
   dna_suggestions: [],
 };
 
@@ -104,4 +108,42 @@ test("board plans render as tabs; standing label switches per tab (#955)", async
   await expect(panel.getByText("1-årsplan").first()).toBeVisible();
   await expect(panel.getByText("Under niveau", { exact: true })).toBeVisible();
   await expect(panel.getByText("Stærk", { exact: true })).toHaveCount(0);
+});
+
+test("'Hvad vægter dette board?'-panel viser samlet tilfredshed + top-vægtede måltyper (#102/#165)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await page.route("**/api/board/status", route =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(NON_BASELINE_BOARD) }));
+
+  await login(page);
+  await page.goto("/board");
+
+  const drivers = page.getByTestId("board-drivers");
+  await expect(drivers).toBeVisible();
+
+  // #165 · samlet tilfredsheds-bar (gnsn. af 5yr=75 + 1yr=30 = 53%).
+  await expect(drivers.getByText("Hvad vægter dette board?")).toBeVisible();
+  await expect(drivers.getByText("Samlet tilfredshed")).toBeVisible();
+
+  // #102 · top-vægtede måltyper (>1.0): u25 (1.4) + national kerne (1.2), IKKE signature (0.8).
+  await expect(drivers.getByText("U25-udvikling")).toBeVisible();
+  await expect(drivers.getByText("National kerne")).toBeVisible();
+  await expect(drivers.getByText("Rytter med højt omdømme")).toHaveCount(0);
+});
+
+test("signature_rider-mål vises som 'højt omdømme', ikke 'popularity'/'stjerne-rytter' (#815)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await page.route("**/api/board/status", route =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(NON_BASELINE_BOARD) }));
+
+  await login(page);
+  await page.goto("/board");
+
+  // 5-årsplan er default → signature_rider-målet er i listen, omdøbt på trods af gammel DB-label.
+  const panel = page.getByRole("tabpanel");
+  await expect(panel.getByText("Mindst 1 rytter med højt omdømme")).toBeVisible();
+  await expect(panel.getByText(/popularity/i)).toHaveCount(0);
+  await expect(panel.getByText(/stjerne-rytter/i)).toHaveCount(0);
 });

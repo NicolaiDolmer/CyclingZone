@@ -107,8 +107,13 @@ function getFocusLabel(t, focus) {
 
 function getBoardGoalLabel(t, goal) {
   if (!goal) return "";
+  // #815 · "stjerne-rytter (popularity >= 75)" → "højt omdømme". Type-styret så
+  // ALLEREDE gemte planer (med den gamle label i DB) også omdøbes i visningen.
+  if (goal.type === "signature_rider") {
+    return t("goal.signatureRider", { count: goal.target ?? 1 });
+  }
   if (goal.label_key) {
-    const translated = t(goal.label_key, { defaultValue: "" });
+    const translated = t(goal.label_key, { count: goal.target, target: goal.target, defaultValue: "" });
     if (translated) return translated;
   }
   if (goal.type === "min_national_riders" && goal.nationality_code) {
@@ -116,6 +121,19 @@ function getBoardGoalLabel(t, goal) {
     return t("goal.minNationalRiders", { target: goal.target, country: country.name || country.code });
   }
   return goal.label || "";
+}
+
+// #102 · kort type-navn til "Hvad vægter dette board?"-panelet (DNA goal_weighting).
+function getGoalTypeLabel(t, type) {
+  if (!type) return "";
+  return t(`goalType.${type}`, { defaultValue: type });
+}
+
+// #989/#1096/#815 · "Hvordan måles dette?"-forklaring pr. måltype (genbrugs-primitiv).
+// Returnerer "" hvis måltypen ikke har en forklaring → render skjules.
+function getGoalHelpText(t, goal) {
+  if (!goal?.type) return "";
+  return t(`goalHelp.${goal.type}`, { target: goal.target, defaultValue: "" });
 }
 
 function getDnaCopy(t, dna, field) {
@@ -349,6 +367,72 @@ function ClubDnaBadge({ dna, onSelect }) {
       </div>
       <span aria-hidden className="text-cz-3 group-hover:text-cz-2 text-lg flex-shrink-0 self-center transition-colors">›</span>
     </button>
+  );
+}
+
+// #102/#165 · "Hvad vægter dette board?"-panel.
+//  - #102: de 2-3 højest-vægtede måltyper fra DNA'ets goal_weighting (>1.0 = boostet).
+//  - #165: boardets SAMLEDE tilfredshed (gnsn. på tværs af aktive planer) som bar
+//          + kvalitativ benchmark-label (genbruger getBenchmarkMeta fra >100%-issuet).
+function BoardDriversPanel({ dna, plans }) {
+  const { t } = useTranslation("board");
+
+  // #165 · aggregér satisfaction fra de planer der findes (1yr/3yr/5yr).
+  const sats = Object.values(plans || {})
+    .map((p) => p?.board?.satisfaction)
+    .filter((s) => typeof s === "number");
+  const overall = sats.length ? Math.round(sats.reduce((a, b) => a + b, 0) / sats.length) : null;
+  const benchmark = overall != null ? getBenchmarkMeta(t, overall) : null;
+  const barColor = overall == null ? "bg-cz-3/30"
+    : overall >= 70 ? "bg-cz-success" : overall >= 40 ? "bg-cz-accent" : "bg-cz-danger";
+
+  // #102 · top-vægtede måltyper (kun boostede, >1.0), højeste først, maks 3.
+  const topWeighted = Object.entries(dna?.goal_weighting || {})
+    .filter(([, w]) => Number(w) > 1.0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, 3)
+    .map(([type]) => type);
+
+  if (overall == null && !topWeighted.length) return null;
+
+  return (
+    <div data-testid="board-drivers" className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
+      <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("drivers.heading")}</p>
+
+      {overall != null && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-cz-2 text-sm">{t("drivers.satisfactionLabel")}</span>
+            <span className="flex items-center gap-2">
+              {benchmark && <span className={`text-xs font-semibold ${benchmark.color}`}>{benchmark.label}</span>}
+              <span className="font-data font-bold text-sm text-cz-1">{overall}%</span>
+            </span>
+          </div>
+          <div className="bg-cz-subtle rounded-full h-2" role="progressbar"
+            aria-valuenow={overall} aria-valuemin={0} aria-valuemax={100}
+            aria-label={t("drivers.satisfactionLabel")}>
+            <div className={`h-2 rounded-full transition-all ${barColor}`} style={{ width: `${overall}%` }} />
+          </div>
+        </div>
+      )}
+
+      {topWeighted.length > 0 && (
+        <div>
+          <p className="text-cz-3 text-[11px] mb-2">
+            {dna?.emoji ? `${dna.emoji} ` : ""}{t("drivers.weightsLabel")}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {topWeighted.map((type) => (
+              <span key={type}
+                className="text-xs bg-cz-subtle text-cz-2 px-2.5 py-1 rounded-full border border-cz-accent/30">
+                {getGoalTypeLabel(t, type)}
+              </span>
+            ))}
+          </div>
+          <p className="text-cz-3 text-[11px] mt-2 leading-relaxed">{t("drivers.weightHint")}</p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -658,6 +742,15 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
           {goal.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/70">{t("goal.satisfactionPenalty", { count: goal.satisfaction_penalty })}</span>}
           {goal.negotiated && <span className="text-xs text-cz-info/70">{t("goal.negotiated")}</span>}
         </div>
+
+        {/* #989/#1096/#815 · "Hvordan måles dette?" — forklarer evalueringen for de
+            måltyper hvor formatet/kriteriet ikke er selvforklarende. */}
+        {getGoalHelpText(t, goal) && (
+          <div className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 mb-4">
+            <p className="text-[11px] text-cz-3 uppercase tracking-wider mb-1">{t("goalHelp.heading")}</p>
+            <p className="text-cz-2 text-xs leading-relaxed">{getGoalHelpText(t, goal)}</p>
+          </div>
+        )}
 
         {identityRationale && (
           <div className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 mb-4">
@@ -2125,6 +2218,7 @@ export default function BoardPage() {
 
       {/* S-02f · Klub-DNA */}
       {!isBaselinePhase && teamDna && <ClubDnaBadge dna={teamDna} onSelect={() => setDnaDialogOpen(true)} />}
+      {!isBaselinePhase && teamDna && <BoardDriversPanel dna={teamDna} plans={plans} />}
       {!isBaselinePhase && !teamDna && dnaSuggestions.length > 0 && (
         <ClubDnaSelectionCard
           suggestions={dnaSuggestions}

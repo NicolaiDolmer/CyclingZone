@@ -81,6 +81,7 @@
   },
   "goal": {
     "minNationalRiders": "Min. {target} riders from {country}",
+    "signatureRider": "{count, plural, one {At least 1 high-renown rider} other {At least # high-renown riders}}",
     "required": "Required",
     "negotiated": "Negotiated",
     "tightenedBadge": "🔒 Tightened",
@@ -94,6 +95,32 @@
     "progress": "Progress",
     "obligatory": "Mandatory",
     "boardReaction": "The board's reaction"
+  },
+  "goalType": {
+    "u25_development_delta": "U25 development",
+    "signature_rider": "High-renown rider",
+    "min_national_riders": "National core",
+    "profitable_transfers": "Profitable transfers",
+    "monument_podium": "Monument podiums",
+    "jersey_wins": "Stage-race jerseys",
+    "relative_rank": "Division ranking",
+    "top_n_finish": "Division finish",
+    "stage_wins": "Stage wins",
+    "gc_wins": "Overall wins",
+    "sponsor_growth": "Sponsor growth",
+    "domestic_dominance": "Home dominance"
+  },
+  "goalHelp": {
+    "heading": "How is this measured?",
+    "signature_rider": "Counts riders whose renown is 75 or higher. Renown reflects a rider's fame — an earned reputation system (results, wins, rankings, national honours) is on the way; for now it is a fixed rating.",
+    "top_n_finish": "Evaluated on your final standing in the last season of the plan — not an average across the plan's seasons.",
+    "u25_development_delta": "The average stat-point gain per U25 rider per season. Develop young riders so their stats rise over the season."
+  },
+  "drivers": {
+    "heading": "What drives this board?",
+    "satisfactionLabel": "Overall satisfaction",
+    "weightsLabel": "This board cares most about",
+    "weightHint": "Meeting these goals moves board satisfaction more than the others."
   },
   "status": {
     "behind": "At risk",
