@@ -81,6 +81,7 @@
   },
   "goal": {
     "minNationalRiders": "Min. {target} ryttere fra {country}",
+    "signatureRider": "{count, plural, one {Mindst 1 rytter med højt omdømme} other {Mindst # ryttere med højt omdømme}}",
     "required": "Krav",
     "negotiated": "Forhandlet",
     "tightenedBadge": "🔒 Strammet",
@@ -94,6 +95,32 @@
     "progress": "Fremgang",
     "obligatory": "Obligatorisk",
     "boardReaction": "Bestyrelsens reaktion"
+  },
+  "goalType": {
+    "u25_development_delta": "U25-udvikling",
+    "signature_rider": "Rytter med højt omdømme",
+    "min_national_riders": "National kerne",
+    "profitable_transfers": "Profitable handler",
+    "monument_podium": "Monument-podier",
+    "jersey_wins": "Etapeløb-trøjer",
+    "relative_rank": "Divisions-rangering",
+    "top_n_finish": "Divisions-placering",
+    "stage_wins": "Etapesejre",
+    "gc_wins": "Samlede sejre",
+    "sponsor_growth": "Sponsor-vækst",
+    "domestic_dominance": "Hjemlands-dominans"
+  },
+  "goalHelp": {
+    "heading": "Hvordan måles dette?",
+    "signature_rider": "Tæller ryttere med et omdømme på 75 eller derover. Omdømme afspejler en rytters berømmelse — et optjent omdømme-system (resultater, sejre, ranglister, nationale titler) er på vej; indtil da er det en fast værdi.",
+    "top_n_finish": "Vurderes på din slutplacering i planens SIDSTE sæson — ikke et gennemsnit over planens sæsoner.",
+    "u25_development_delta": "Den gennemsnitlige stat-point-gevinst pr. U25-rytter pr. sæson. Udvikl unge ryttere, så deres stats stiger over sæsonen."
+  },
+  "drivers": {
+    "heading": "Hvad vægter dette board?",
+    "satisfactionLabel": "Samlet tilfredshed",
+    "weightsLabel": "Dette board vægter højest",
+    "weightHint": "At opfylde disse mål rykker bestyrelsens tilfredshed mere end de øvrige."
   },
   "status": {
     "behind": "I fare",

@@ -233,11 +233,15 @@ export function generateBoardGoals({
         satisfaction_bonus: 15,
         satisfaction_penalty: 10,
       },
-      // S-02d · Q-batch 1B Q13: 1 rytter med popularity >= 75
+      // S-02d · Q-batch 1B Q13: 1 rytter med højt omdømme (popularity >= 75).
+      // #815: player-facing = "omdømme/renown" (IKKE "stjerne" — det kolliderede med
+      // potentiale-stjernerne og var hele forvirringen). Tærsklen popularity>=75
+      // forklares i goalHelp (frontend), ikke i selve labelen.
       {
         type: "signature_rider",
         target: 1,
-        label: "Mindst 1 stjerne-rytter (popularity >= 75)",
+        label: "Mindst 1 rytter med højt omdømme",
+        label_key: "goal.signatureRider",
         satisfaction_bonus: 18,
         satisfaction_penalty: 10,
       },
@@ -1219,7 +1223,10 @@ export function buildGoalLabel(goal = {}) {
         ? `Mindst ${goal.target} etapeloeb-troejer over planperioden`
         : `Mindst ${goal.target} etapeloeb-troeje${goal.target !== 1 ? "r" : ""} (point/bjerg/young)`;
     case "signature_rider":
-      return `${goal.target === 1 ? "Mindst 1 stjerne-rytter" : `Mindst ${goal.target} stjerne-ryttere`} (popularity >= 75)`;
+      // #815 · omdøbt fra "stjerne-rytter (popularity >= 75)" → "højt omdømme".
+      return goal.target === 1
+        ? "Mindst 1 rytter med højt omdømme"
+        : `Mindst ${goal.target} ryttere med højt omdømme`;
     case "profitable_transfers":
       return `Netto transfer-balance >= ${formatTransferThreshold(goal.target)} over planperioden`;
     case "u25_development_delta":

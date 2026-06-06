@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "4.92",
+    date: "2026-06-06",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · The board",
+        items: [
+          "EN · New \"What drives this board?\" panel on the board page: a single overall-satisfaction bar (averaged across your 5/3/1-year plans) with a plain-language label, plus the two-to-three goal types your club's DNA weights most — so you can see at a glance what moves the board. Refs #102, #165.",
+          "DA · Nyt \"Hvad vægter dette board?\"-panel på bestyrelsessiden: én samlet tilfredsheds-bar (gennemsnit på tværs af dine 5/3/1-årsplaner) med en label i klar tale, plus de to-tre måltyper din klubs DNA vægter højest — så du med ét blik kan se, hvad der rykker bestyrelsen. Refs #102, #165.",
+          "EN · The board's \"sign a star rider\" goal is renamed to \"high-renown rider\" — the old wording clashed with the potential-star rating you see on riders. It now shows your progress (e.g. 0/1) and a \"How is this measured?\" note explaining the threshold. A fuller earned-renown system (rising with results, wins and honours) is coming. Refs #815.",
+          "DA · Bestyrelsens \"signér en stjerne-rytter\"-mål er omdøbt til \"rytter med højt omdømme\" — den gamle formulering kolliderede med potentiale-stjernerne du ser på ryttere. Det viser nu din fremgang (fx 0/1) og en \"Hvordan måles dette?\"-note der forklarer tærsklen. Et fuldt optjent omdømme-system (stiger med resultater, sejre og titler) er på vej. Refs #815.",
+          "EN · The 3-year \"top X in division\" goal and the U25 development goal now each carry a short \"How is this measured?\" note, clarifying that the ranking is judged on the plan's final season and that U25 development means average stat-points gained per young rider per season. Refs #989, #1096.",
+          "DA · 3-årsplanens \"top X i divisionen\"-mål og U25-udviklingsmålet har nu hver en kort \"Hvordan måles dette?\"-note, der gør klart at placeringen vurderes på planens sidste sæson, og at U25-udvikling betyder gennemsnitlige stat-points pr. ung rytter pr. sæson. Refs #989, #1096.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.91",
     date: "2026-06-06",
     label: "Beta",

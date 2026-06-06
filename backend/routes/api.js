@@ -6363,6 +6363,10 @@ router.get("/board/status", requireAuth, async (req, res) => {
         long_description: dnaArchetype.long_description,
         long_description_key: `dna.${dnaArchetype.key}.longDescription`,
         chosen_at: teamRes.data?.team_dna_chosen_at || null,
+        // #102 · "Hvad vægter dette board?"-panel: eksponér DNA'ets mål-vægtning
+        // (referencedata, ikke følsomt) så frontenden kan vise de højest-vægtede
+        // måltyper. Multiplikator > 1.0 = boostet, < 1.0 = nedtonet.
+        goal_weighting: dnaArchetype.goal_weighting || {},
       } : null,
       dna_suggestions: dnaSuggestions,
       active_loans_count: activeLoanCount,
