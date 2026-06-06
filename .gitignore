@@ -51,6 +51,11 @@ scripts/discord/.candidates.md
 scripts/discord/.thread-dump.md
 scripts/discord/.thread-dumps.txt
 scripts/discord/.gh-err.txt
+scripts/discord/.new-threads.md
+scripts/discord/.channels.md
+scripts/discord/.recent-threads.md
+scripts/discord/.channel-dump.md
+scripts/discord/.open-issues.txt
 
 # Personlig planlægning (Emmas kalender, ADHD-profil, familietid) — lever i OneDrive/CyclingZone-context/
 docs/WEEKLY_PLANNING_GUIDE.md
