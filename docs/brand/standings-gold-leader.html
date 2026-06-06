@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cycling Zone — Gold = the leader (PR-3 owner gate)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'DM Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  .tnum { font-variant-numeric:tabular-nums; font-family:'Inter Tight',sans-serif; }
+
+  /* ---- intro band (neutral) ---- */
+  .intro { background:#15171f; color:#ededf2; padding:40px 32px 34px; }
+  .intro .wrap { max-width:1280px; margin:0 auto; }
+  .eyebrow { color:#e8c547; font-size:12px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; margin-bottom:10px; font-family:'Inter Tight',sans-serif; }
+  h1 { font-size:30px; font-weight:800; letter-spacing:-0.02em; margin-bottom:12px; }
+  .deck { font-size:15px; color:#9da0b3; max-width:920px; line-height:1.65; }
+  .deck b { color:#ededf2; } .deck .g { color:#ffd966; }
+  .legend { display:flex; gap:26px; flex-wrap:wrap; margin-top:20px; font-size:13px; color:#9da0b3; }
+  .legend div { display:flex; align-items:center; gap:8px; }
+  .sw { width:26px; height:14px; border-radius:3px; flex:none; }
+
+  /* ---- mode sections ---- */
+  .mode { padding:38px 32px 48px; }
+  .mode .wrap { max-width:1280px; margin:0 auto; }
+  .mode-title { font-family:'Inter Tight',sans-serif; font-size:13px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; margin-bottom:22px; display:flex; align-items:center; gap:12px; }
+  .mode-title .pill { font-size:11px; padding:3px 10px; border-radius:999px; letter-spacing:0.04em; }
+
+  .grid { display:grid; grid-template-columns:1fr; gap:22px; }
+  @media(min-width:1080px){ .grid { grid-template-columns:repeat(3,1fr); } }
+
+  .card { border-radius:14px; overflow:hidden; border:1px solid var(--border); background:var(--card); }
+  .card-head { padding:13px 16px; border-bottom:1px solid var(--border); }
+  .card-head .nm { font-size:14px; font-weight:700; font-family:'Inter Tight',sans-serif; }
+  .card-head .meta { font-size:12px; color:var(--t3); margin-top:3px; line-height:1.4; }
+  .tag { display:inline-block; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; padding:2px 8px; border-radius:999px; margin-top:9px; font-family:'Inter Tight',sans-serif; }
+  .tag.base { background:var(--subtle); color:var(--t3); }
+  .tag.new  { background:rgba(95,217,138,0.16); color:var(--succ); }
+
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--t3); padding:10px 14px; font-family:'Inter Tight',sans-serif; }
+  th.r, td.r { text-align:right; }
+  td { padding:11px 14px; border-top:1px solid var(--border); font-size:13px; color:var(--t1); }
+  tr.row { position:relative; }
+  .rank { font-family:'Inter Tight',sans-serif; font-weight:700; font-size:13px; color:var(--t3); }
+  .rank.podium { color:var(--t2); }
+  .team { font-weight:600; }
+  .teamline { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .badge { font-size:8.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; padding:2px 7px; border-radius:999px; font-family:'Inter Tight',sans-serif; line-height:1.3; }
+  .b-prom { background:var(--succ-bg); color:var(--succ); }
+  .b-rel  { background:var(--dang-bg); color:var(--dang); }
+  .pts { font-family:'Inter Tight',sans-serif; font-weight:700; }
+
+  /* zone bars (incumbent) */
+  .z-prom { box-shadow: inset 3px 0 0 var(--succ); }
+  .z-rel  { box-shadow: inset 3px 0 0 var(--dang); }
+
+  /* ---------- OLD: you = gold ---------- */
+  .old-me { background:var(--accent-soft); }
+  .old-me .team, .old-me .pts, .old-me .rank { color:var(--accent-t) !important; }
+  .b-you-gold { background:var(--accent-soft); color:var(--accent-t); border:1px solid var(--accent-bd); }
+
+  /* ---------- NEW: gold = leader ---------- */
+  /* leader (rank 1) gold treatment */
+  .lead-soft { background:var(--accent-soft); }
+  .lead-bar  { box-shadow: inset 3px 0 0 #e8c547; }
+  .lead .rank, .lead .pts { color:var(--accent-t) !important; }
+  .b-maillot { background:#e8c547; color:#1a1f38; display:inline-flex; align-items:center; gap:4px; }
+  .b-maillot svg { width:11px; height:11px; }
+
+  /* you = neutral foreground ring + inverted badge (NOT gold) */
+  .new-me { box-shadow: inset 0 0 0 1.6px var(--me-ring); }
+  .new-me.z-prom { box-shadow: inset 0 0 0 1.6px var(--me-ring), inset 3px 0 0 var(--succ); }
+  .b-you { background:var(--me-badge-bg); color:var(--me-badge-fg); }
+
+  .note { font-size:12.5px; color:var(--t3); margin-top:16px; line-height:1.6; max-width:1280px; }
+  .note b { color:var(--t2); }
+
+  /* ===== DARK tokens ===== */
+  .dark { background:#0e0f15; --card:#161824; --subtle:#14161e; --border:#2a2d3a;
+    --t1:#ededf2; --t2:#9da0b3; --t3:#888ba0;
+    --accent-t:#ffd966; --accent-soft:rgba(232,197,71,0.10); --accent-bd:rgba(232,197,71,0.30);
+    --succ:#5fd98a; --succ-bg:rgba(95,217,138,0.12); --dang:#fb8484; --dang-bg:rgba(251,132,132,0.12);
+    --me-ring:rgba(237,237,242,0.55); --me-badge-bg:#ededf2; --me-badge-fg:#0e0f15; }
+  .dark .mode-title { color:#9da0b3; } .dark .mode-title .pill { background:#161824; color:#888ba0; }
+
+  /* ===== LIGHT (Chalk) tokens ===== */
+  .light { background:#f4f2ec; --card:#fcfbf7; --subtle:#ece9e1; --border:#e5e0d5;
+    --t1:#0e0f15; --t2:#66637a; --t3:#9896b0;
+    --accent-t:#a07800; --accent-soft:rgba(232,197,71,0.18); --accent-bd:rgba(160,120,0,0.35);
+    --succ:#15772f; --succ-bg:#dcfce7; --dang:#a81e1e; --dang-bg:#fee2e2;
+    --me-ring:#1a1f38; --me-badge-bg:#1a1f38; --me-badge-fg:#f4f2ec; }
+  .light .mode-title { color:#66637a; } .light .mode-title .pill { background:#fcfbf7; color:#9896b0; border:1px solid #e5e0d5; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <div class="wrap">
+    <div class="eyebrow">Brand · #481 Track 3 · PR-3 owner gate</div>
+    <h1>Gold = the leader (maillot jaune)</h1>
+    <p class="deck">
+      Decision <b>PF2</b> reassigns brand gold on every ranking surface: <b class="g">rank 1 (the leader)</b> earns the gold
+      "maillot jaune" treatment, and <b>your own team</b> — currently gold — moves to a distinct <b>non-gold</b> marker so gold
+      stops meaning two things at once. Below: the live division-standings table, <b>before</b> vs two ways to apply it
+      (<b>A</b> = gold left-bar, <b>B</b> = gold jersey-chip), in <b>dark</b> and <b>light</b>. The choice to make is how the
+      leader signal co-exists with the promotion/relegation zone-bars, and how strong the "you" marker should be.
+    </p>
+    <div class="legend">
+      <div><span class="sw" style="background:#e8c547"></span> Gold = leader (rank 1)</div>
+      <div><span class="sw" style="background:#5fd98a"></span> Promotion zone</div>
+      <div><span class="sw" style="background:#fb8484"></span> Relegation zone</div>
+      <div><span class="sw" style="background:transparent;box-shadow:inset 0 0 0 1.6px #cfd2e0"></span> You (neutral ring)</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== DARK ===================== -->
+<section class="mode dark">
+  <div class="wrap">
+    <div class="mode-title">Dark mode <span class="pill">canvas #0e0f15</span></div>
+    <div class="grid" id="grid-dark"></div>
+    <p class="note">
+      <b>Dark-mode "you":</b> navy can't be used as an outline here (the canvas <i>is</i> navy), so "you" uses a neutral
+      light ring + inverted badge. <b>A vs B:</b> in A the leader's gold bar replaces the green promotion bar on rank 1 (zone shown by the OPRYK badge only); in B the green bar stays and gold rides as a jersey-chip next to the name.
+    </p>
+  </div>
+</section>
+
+<!-- ===================== LIGHT ===================== -->
+<section class="mode light">
+  <div class="wrap">
+    <div class="mode-title">Light mode <span class="pill">Chalk #f4f2ec</span></div>
+    <div class="grid" id="grid-light"></div>
+    <p class="note">
+      <b>Light-mode "you":</b> navy ring + solid navy "YOU" badge (PF2 as written). <b>Gold as text</b> (rank number, points)
+      uses deep-gold <b>#a07800</b> for WCAG AA; the maillot bar/chip stay bright <b>#e8c547</b> as a fill (legible at any contrast).
+    </p>
+  </div>
+</section>
+
+<script>
+  const TEAMS = [
+    { rank:1, name:"Skybound Racing",     wins:6, pts:1240, zone:"prom", leader:true },
+    { rank:2, name:"Vortex Pro Cycling",  wins:4, pts:1180, zone:"prom" },
+    { rank:3, name:"Iron Peloton",        wins:3, pts:1095 },
+    { rank:4, name:"Nordic Vélo",         wins:2, pts:1020, me:true },
+    { rank:5, name:"Crest Continental",   wins:1, pts:940 },
+    { rank:6, name:"Apex Cadence",        wins:2, pts:870 },
+    { rank:7, name:"Granite Riders",      wins:0, pts:760, zone:"rel" },
+    { rank:8, name:"Hollow Tactics",      wins:0, pts:690, zone:"rel" },
+  ];
+  const JERSEY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 3 4 6l1.6 2.4L7 7.4V21h10V7.4l1.4 1L20 6l-4-3-1.2.9a2.8 2.8 0 0 1-5.6 0L8 3z"/></svg>';
+
+  function badges(t, variant) {
+    let b = "";
+    if (variant === "B" && t.leader) b += `<span class="badge b-maillot">${JERSEY}Leader</span>`;
+    if (t.zone === "prom") b += `<span class="badge b-prom">Promotion</span>`;
+    if (t.zone === "rel")  b += `<span class="badge b-rel">Relegation</span>`;
+    return b;
+  }
+
+  function row(t, mode) {
+    // mode: 'old' | 'A' | 'B'
+    let cls = "row", rankCls = "rank" + (t.rank <= 3 ? " podium" : ""), teamExtra = "", youBadge = "";
+    if (mode === "old") {
+      if (t.zone === "prom") cls += " z-prom";
+      if (t.zone === "rel")  cls += " z-rel";
+      if (t.me) { cls += " old-me"; youBadge = `<span class="badge b-you-gold">You</span>`; }
+    } else {
+      // NEW (A or B): leader gets gold, you gets neutral
+      if (t.leader) {
+        cls += " lead lead-soft";
+        if (mode === "A") cls += " lead-bar";          // gold bar replaces zone bar
+        else if (t.zone === "prom") cls += " z-prom";  // B keeps green bar
+      } else {
+        if (t.zone === "prom") cls += " z-prom";
+        if (t.zone === "rel")  cls += " z-rel";
+      }
+      if (t.me) { cls += " new-me"; youBadge = `<span class="badge b-you">You</span>`; }
+    }
+    const lead = (mode === "A" && t.leader) ? `<span class="badge b-maillot">${JERSEY}Leader</span>` : "";
+    const bdg = mode === "old" ? oldBadges(t) : badges(t, mode);
+    return `<tr class="${cls}">
+      <td><span class="${rankCls}">${t.rank}</span></td>
+      <td><div class="teamline"><span class="team">${t.name}</span>${lead}${youBadge}${bdg}</div></td>
+      <td class="r tnum">${t.wins}</td>
+      <td class="r tnum pts">${t.pts.toLocaleString("da-DK")}</td>
+    </tr>`;
+  }
+  function oldBadges(t) {
+    let b = "";
+    if (t.zone === "prom") b += `<span class="badge b-prom">Promotion</span>`;
+    if (t.zone === "rel")  b += `<span class="badge b-rel">Relegation</span>`;
+    return b;
+  }
+
+  function table(mode) {
+    const rows = TEAMS.map(t => row(t, mode)).join("");
+    return `<table><thead><tr>
+        <th style="width:42px">#</th><th>Team</th><th class="r">Wins</th><th class="r">Points</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  const CARDS = [
+    { mode:"old", nm:"Before — current", meta:"Your team = gold. Rank 1 looks like any podium row.", tag:"base", tagcls:"base" },
+    { mode:"A",   nm:"After · A — maillot bar", meta:"Gold left-bar on rank 1 (overrides zone bar). You = neutral ring.", tag:"new", tagcls:"new" },
+    { mode:"B",   nm:"After · B — maillot chip", meta:"Green zone bar stays; gold rides as a jersey-chip. You = neutral ring.", tag:"new", tagcls:"new" },
+  ];
+
+  function render(gridId) {
+    const html = CARDS.map(c => `
+      <div class="card">
+        <div class="card-head">
+          <div class="nm">${c.nm}</div>
+          <div class="meta">${c.meta}</div>
+          <span class="tag ${c.tagcls}">${c.tag === "base" ? "current" : "proposed"}</span>
+        </div>
+        ${table(c.mode)}
+      </div>`).join("");
+    document.getElementById(gridId).innerHTML = html;
+  }
+  render("grid-dark");
+  render("grid-light");
+</script>
+</body>
+</html>

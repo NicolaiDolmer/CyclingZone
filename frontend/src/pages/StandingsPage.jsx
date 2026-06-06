@@ -4,6 +4,7 @@ import { fetchAllRows } from "../lib/supabasePagination";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import TeamLink from "../components/TeamLink";
+import LeaderBadge from "../components/LeaderBadge";
 import { formatNumber } from "../lib/intl";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 
@@ -213,11 +214,14 @@ export default function StandingsPage() {
                   const ptsWidth = Math.round((eff / maxPts) * 100);
                   const isPromotion = i < 2 && canPromote;
                   const isRelegation = i >= divStandings.length - 2 && canRelegate;
-                  const rowStyle = isPromotion
-                    ? { boxShadow: "inset 3px 0 0 #4ade80" }
-                    : isRelegation
-                    ? { boxShadow: "inset 3px 0 0 #f87171" }
-                    : {};
+                  const isLeader = i === 0;
+                  // Zone bar (green/red) + the neutral "you" ring can co-exist; gold
+                  // never overrides a zone bar — the leader signal is the chip (PF2 B).
+                  const bars = [];
+                  if (isPromotion) bars.push("inset 3px 0 0 #4ade80");
+                  else if (isRelegation) bars.push("inset 3px 0 0 #f87171");
+                  if (isMe) bars.push("inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)");
+                  const rowStyle = bars.length ? { boxShadow: bars.join(", ") } : {};
                   return (
                     <Fragment key={s.id}>
                       {/* Separator before relegation zone */}
@@ -232,9 +236,7 @@ export default function StandingsPage() {
                         onClick={() => navigate(`/teams/${s.team_id}`)}
                         style={rowStyle}
                         className={`border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle transition-colors
-                          ${isMe ? "bg-cz-accent/10/60" : ""}
-                          ${isPromotion && !isMe ? "bg-cz-success-bg" : ""}
-                          ${isRelegation && !isMe ? "bg-cz-danger-bg" : ""}`}>
+                          ${isLeader ? "bg-cz-accent/[0.08]" : isPromotion ? "bg-cz-success-bg" : isRelegation ? "bg-cz-danger-bg" : ""}`}>
                         <td className="px-4 py-3.5">
                           <span className={`font-mono font-bold text-sm
                             ${i === 0 ? "text-cz-accent-t" : i === 1 ? "text-cz-2" : i === 2 ? "text-cz-2" : "text-cz-3"}`}>
@@ -243,14 +245,15 @@ export default function StandingsPage() {
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <TeamLink id={s.team_id} stopPropagation className={`font-medium ${isMe ? "text-cz-accent-t" : "text-cz-1"}`}>{s.team?.name}</TeamLink>
-                            {isMe && <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-1.5 py-0.5 rounded-full">{t("youBadge")}</span>}
+                            <TeamLink id={s.team_id} stopPropagation className="font-medium text-cz-1">{s.team?.name}</TeamLink>
+                            {isLeader && <LeaderBadge />}
+                            {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("youBadge")}</span>}
                             {isPromotion && <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded font-medium">{t("promotionBadge")}</span>}
                             {isRelegation && <span className="text-[9px] bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded font-medium">{t("relegationBadge")}</span>}
                           </div>
                           {/* Mini progress bar */}
                           <div className="mt-1.5 bg-cz-subtle rounded-full h-1 w-full max-w-32">
-                            <div className="h-1 rounded-full" style={{ width: `${ptsWidth}%`, backgroundColor: isMe ? "rgb(var(--accent-t))" : `${color}60` }} />
+                            <div className="h-1 rounded-full" style={{ width: `${ptsWidth}%`, backgroundColor: `${color}60` }} />
                           </div>
                         </td>
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden sm:table-cell font-mono">{s.stage_wins || 0}</td>
@@ -260,7 +263,7 @@ export default function StandingsPage() {
                           {formatNumber(prizeEarned[s.team_id] || 0)} <span className="text-cz-3 text-[10px]">CZ$</span>
                         </td>
                         <td className="px-4 py-3.5 text-right">
-                          <span className="font-mono font-bold" style={{ color: isMe ? "rgb(var(--accent-t))" : color }}>
+                          <span className="font-mono font-bold" style={{ color }}>
                             {formatNumber(eff)}
                           </span>
                           {penalty > 0 && (
@@ -273,7 +276,7 @@ export default function StandingsPage() {
                           )}
                         </td>
                         <td className="px-4 py-3.5 text-right hidden lg:table-cell">
-                          <MiniSparkline points={prog} color={isMe ? "rgb(var(--accent-t))" : color} />
+                          <MiniSparkline points={prog} color={color} />
                         </td>
                       </tr>
                       {/* Separator after promotion zone */}
@@ -293,6 +296,10 @@ export default function StandingsPage() {
 
           {/* Legend */}
           <div className="px-4 py-3 border-t border-cz-border flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs text-cz-accent-t">
+              <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: "#e8c547" }} />
+              {t("legendLeader")}
+            </div>
             <div className="flex items-center gap-1.5 text-xs text-cz-success/70">
               <span className="w-2 h-2 rounded-sm bg-cz-success-bg border border-cz-success/30" />
               {t("legendPromotion")}

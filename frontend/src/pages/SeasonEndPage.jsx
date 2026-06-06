@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
+import LeaderBadge from "../components/LeaderBadge";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
 
@@ -382,12 +383,14 @@ export default function SeasonEndPage() {
                       const isMe = s.team_id === myTeamId;
                       const isPromotion = isCompleted && i < 2 && div < 3;
                       const isRelegation = isCompleted && i >= divStandings.length - 2 && div > 1;
+                      const isLeader = i === 0;
                       const prog = pointsByTeam[s.team_id] || [];
-                      const rowStyle = isPromotion
-                        ? { boxShadow: "inset 3px 0 0 #4ade80" }
-                        : isRelegation
-                        ? { boxShadow: "inset 3px 0 0 #f87171" }
-                        : {};
+                      // Zone bar + neutral "you" ring co-exist; gold = the leader chip (PF2 B).
+                      const bars = [];
+                      if (isPromotion) bars.push("inset 3px 0 0 #4ade80");
+                      else if (isRelegation) bars.push("inset 3px 0 0 #f87171");
+                      if (isMe) bars.push("inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)");
+                      const rowStyle = bars.length ? { boxShadow: bars.join(", ") } : {};
                       return (
                         <Fragment key={s.id}>
                           {/* Separator before relegation zone */}
@@ -401,9 +404,7 @@ export default function SeasonEndPage() {
                           <tr
                             style={rowStyle}
                             className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle cursor-pointer transition-colors
-                              ${isPromotion && !isMe ? "bg-emerald-50" : ""}
-                              ${isRelegation && !isMe ? "bg-cz-danger-bg" : ""}
-                              ${isMe ? "bg-cz-accent/10/60" : ""}`}
+                              ${isLeader ? "bg-cz-accent/[0.08]" : isPromotion ? "bg-emerald-50" : isRelegation ? "bg-cz-danger-bg" : ""}`}
                             onClick={() => navigate(`/teams/${s.team_id}`)}>
                             <td className="px-4 py-3">
                               <span className={`font-mono font-bold text-sm
@@ -413,10 +414,11 @@ export default function SeasonEndPage() {
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
-                                <span className={`font-medium ${isMe ? "text-cz-accent-t" : "text-cz-1"}`}>
+                                <span className="font-medium text-cz-1">
                                   {s.team?.name}
                                 </span>
-                                {isMe && <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-1.5 py-0.5 rounded-full">Dig</span>}
+                                {isLeader && <LeaderBadge />}
+                                {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>Dig</span>}
                                 {isPromotion && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">↑ Op</span>}
                                 {isRelegation && <span className="text-[9px] bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded font-medium">↓ Ned</span>}
                               </div>

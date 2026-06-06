@@ -88,6 +88,12 @@
   --accent-t:    160 120 0;
   --on-accent:   #1a1f38;
 
+  /* "You" marker (#481 PR-3) — neutral, NOT gold (gold now = the leader).
+     Navy on the light canvas; channel format so /<alpha> works. */
+  --me-ring:      26 31 56;     /* navy #1a1f38 */
+  --me-badge-bg:  26 31 56;     /* navy fill */
+  --me-badge-fg:  244 242 236;  /* chalk text */
+
   /* Sidebar — always dark (option A) */
   --bg-sidebar:       #1a1f38;
   --bg-sidebar-hover: rgba(255, 255, 255, 0.06);
@@ -122,6 +128,12 @@
   --accent:      232 197 71;
   --accent-t:    255 217 102;
   --on-accent:   #1a1f38;
+
+  /* "You" marker (#481 PR-3) — neutral light, since navy is unusable on the
+     navy canvas. Mirrors the light-mode tokens above, inverted. */
+  --me-ring:      237 237 242;  /* neutral light #ededf2 */
+  --me-badge-bg:  237 237 242;  /* light fill */
+  --me-badge-fg:  14 15 21;     /* navy text #0e0f15 */
 
   /* Sidebar identisk i begge temaer (option A) */
 

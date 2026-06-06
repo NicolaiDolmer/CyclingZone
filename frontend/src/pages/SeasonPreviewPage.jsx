@@ -83,7 +83,7 @@ export default function SeasonPreviewPage() {
               <div key={t.id} className={`flex items-center gap-3 ${isMe ? "opacity-100" : "opacity-80"}`}>
                 <span className="text-cz-3 font-mono text-xs w-5 text-right">{t.rank}</span>
                 <div className="w-28 flex-shrink-0">
-                  <p className={`text-sm font-medium truncate cursor-pointer hover:text-cz-accent-t ${isMe ? "text-cz-accent-t" : "text-cz-1"}`}
+                  <p className={`text-sm truncate cursor-pointer hover:text-cz-accent-t text-cz-1 ${isMe ? "font-bold" : "font-medium"}`}
                     onClick={() => navigate(`/teams/${t.id}`)}>
                     {t.name}
                   </p>
@@ -125,14 +125,14 @@ export default function SeasonPreviewPage() {
           const color = DIV_COLORS[t.division] || "#e8c547";
           return (
             <div key={t.id}
-              className={`bg-cz-card border rounded-xl p-5 cursor-pointer hover:border-cz-border transition-all
-                ${isMe ? "border-[#e8c547]/25" : "border-cz-border"}`}
+              style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
+              className="bg-cz-card border border-cz-border rounded-xl p-5 cursor-pointer hover:border-cz-border transition-all"
               onClick={() => navigate(`/teams/${t.id}`)}>
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className={`font-bold text-sm ${isMe ? "text-cz-accent-t" : "text-cz-1"}`}>{t.name}</p>
-                    {isMe && <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-1.5 py-0.5 rounded-full">Dig</span>}
+                    <p className="font-bold text-sm text-cz-1">{t.name}</p>
+                    {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>Dig</span>}
                   </div>
                   <p className="text-xs mt-0.5" style={{ color: `${color}80` }}>Division {t.division} — #{t.rank} styrke</p>
                 </div>

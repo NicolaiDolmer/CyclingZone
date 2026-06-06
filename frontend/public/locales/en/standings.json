@@ -17,6 +17,7 @@
   "promotionBadge": "↑ Up",
   "relegationBadge": "↓ Down",
   "penaltyTooltip": "Squad size deduction: {penalty} points ({earned} earned − {penalty} deduction)",
+  "legendLeader": "Leader (rank 1)",
   "legendPromotion": "Promotion zone (top 2)",
   "legendRelegation": "Relegation zone (bottom 2)",
   "racesPlayed": "{count} races played"
