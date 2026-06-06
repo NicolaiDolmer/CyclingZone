@@ -1,0 +1,36 @@
+{
+  "description": "Population baseline (mean/std pr. legacy stat) til ryttertype-z-score (#49). Fittet over aktive (ikke-retired) ryttere.",
+  "n": 8989,
+  "mean": {
+    "stat_fl": 62.564,
+    "stat_bj": 58.835,
+    "stat_kb": 60.308,
+    "stat_bk": 62.4,
+    "stat_tt": 57.585,
+    "stat_prl": 58.104,
+    "stat_bro": 58.108,
+    "stat_sp": 61.819,
+    "stat_acc": 63.152,
+    "stat_ned": 62.005,
+    "stat_udh": 60.69,
+    "stat_mod": 60.803,
+    "stat_res": 58.858,
+    "stat_ftr": 62.265
+  },
+  "std": {
+    "stat_fl": 4.901,
+    "stat_bj": 5.931,
+    "stat_kb": 5.845,
+    "stat_bk": 5.382,
+    "stat_tt": 5.352,
+    "stat_prl": 5.212,
+    "stat_bro": 5.32,
+    "stat_sp": 4.924,
+    "stat_acc": 4.871,
+    "stat_ned": 4.853,
+    "stat_udh": 5.607,
+    "stat_mod": 5.283,
+    "stat_res": 4.747,
+    "stat_ftr": 5.503
+  }
+}

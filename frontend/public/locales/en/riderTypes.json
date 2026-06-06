@@ -1,0 +1,24 @@
+{
+  "filter": {
+    "label": "Rider type",
+    "all": "All types"
+  },
+  "badge": {
+    "ariaLabel": "Rider type: {primary} / {secondary}",
+    "ariaLabelSingle": "Rider type: {primary}"
+  },
+  "types": {
+    "sprinter": "Sprinter",
+    "leadout": "Lead-out",
+    "climber": "Climber",
+    "puncheur": "Puncheur",
+    "tt": "Time-trialist",
+    "classics": "Classics specialist",
+    "gc": "GC contender",
+    "goat": "GOAT",
+    "allrounder": "All-rounder",
+    "rouleur": "Rouleur",
+    "baroudeur": "Baroudeur",
+    "domestique": "Domestique"
+  }
+}

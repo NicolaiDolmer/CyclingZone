@@ -13,6 +13,7 @@ import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
+import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey } from "../lib/riderAge";
 import { getRiderMarketValue } from "../lib/marketValues";
@@ -111,6 +112,7 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, 
       <td className="px-3 py-2.5 hidden sm:table-cell">
         <div className="flex flex-wrap items-center gap-1">
           <RiderBadges badges={[ageBadgeKey(rider), isInAuction && "auction"]} />
+          <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} />
         </div>
       </td>
       <td className="px-3 py-2.5 text-right">
@@ -227,7 +229,7 @@ export default function RidersPage() {
     const statKeys = STATS.map(s => s.key).join(", ");
     let query = supabase
       .from("riders")
-      .select(`id, firstname, lastname, birthdate, uci_points, salary, market_value, prize_earnings_bonus, is_u25, nationality_code, potentiale,
+      .select(`id, firstname, lastname, birthdate, uci_points, salary, market_value, prize_earnings_bonus, is_u25, nationality_code, potentiale, primary_type, secondary_type,
         ${statKeys}, team:team_id(id, name)`, { count: "exact" })
       .range((filters.page - 1) * 50, filters.page * 50 - 1);
 

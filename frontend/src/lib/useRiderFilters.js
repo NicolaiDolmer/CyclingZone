@@ -55,6 +55,11 @@ export function useClientRiderFilters(riders = []) {
     if (filters.team_id) result = result.filter(r => r.team_id === filters.team_id);
     if (filters.nationality_code) result = result.filter(r => r.nationality_code === filters.nationality_code);
 
+    // Ryttertype (#49): match primær ELLER sekundær — som top-2-visningen.
+    if (filters.rider_type) {
+      result = result.filter(r => r.primary_type === filters.rider_type || r.secondary_type === filters.rider_type);
+    }
+
     if (filters.min_potentiale) result = result.filter(r => r.potentiale != null && r.potentiale >= parseFloat(filters.min_potentiale));
     if (filters.max_potentiale) result = result.filter(r => r.potentiale != null && r.potentiale <= parseFloat(filters.max_potentiale));
 
@@ -116,6 +121,13 @@ export function buildSupabaseQuery(query, filters) {
   if (filters.free_agent) query = query.is("team_id", null);
   if (filters.team_id) query = query.eq("team_id", filters.team_id);
   if (filters.nationality_code) query = query.eq("nationality_code", filters.nationality_code);
+
+  // Ryttertype (#49): match primær ELLER sekundær. Egen .or() AND'es med øvrige
+  // filtre (inkl. navne-.or() ovenfor) af PostgREST. rider_type er en kontrolleret
+  // nøgle (RIDER_TYPE_KEYS), så ingen injection i or-strengen.
+  if (filters.rider_type) {
+    query = query.or(`primary_type.eq.${filters.rider_type},secondary_type.eq.${filters.rider_type}`);
+  }
 
   if (filters.min_potentiale) query = query.gte("potentiale", parseFloat(filters.min_potentiale));
   if (filters.max_potentiale) query = query.lte("potentiale", parseFloat(filters.max_potentiale));
