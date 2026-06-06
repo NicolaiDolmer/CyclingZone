@@ -14,6 +14,7 @@ import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { readFileSync } from "node:fs";
 import {
   calculateAuctionEnd,
   isAuctionExpired,
@@ -124,6 +125,12 @@ import {
 } from "../lib/economyConstants.js";
 import { incrementBalanceWithAudit } from "../lib/balanceRpc.js";
 import { calculateRiderMarketValue } from "../lib/marketUtils.js";
+import {
+  predictBaseValue,
+  riderOverall,
+  riderSpecialty,
+  ABILITY_KEYS,
+} from "../lib/riderValuation.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
   annotateGoalWithIdentityBasis,
@@ -241,6 +248,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env"), quiet: true });
 
 const router = express.Router();
+
+// #1101 rider-valuation model (committet JSON). Indlæses én gang ved opstart;
+// mangler den (fx før første fit), degraderer valuation-fladerne pænt (null).
+let VALUATION_MODEL = null;
+try {
+  VALUATION_MODEL = JSON.parse(
+    readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8")
+  );
+} catch {
+  VALUATION_MODEL = null;
+}
 
 // Log to public activity feed
 async function logActivity(type, data = {}) {
@@ -754,6 +772,21 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
   if (data.pcm_id === null && !(await isViewerAdmin(req))) {
     return res.status(404).json({ error: "Rider not found" });
   }
+
+  // #1101 SHADOW: vedhæft den data-drevne base_value som PREVIEW (beta-chip).
+  // Beregnes live fra modellen — styrer endnu intet i økonomien. null hvis model
+  // mangler eller rytter ingen abilities har.
+  if (VALUATION_MODEL) {
+    const { data: ab } = await supabase
+      .from("rider_derived_abilities")
+      .select("*")
+      .eq("rider_id", data.id)
+      .maybeSingle();
+    data.base_value_preview = predictBaseValue(data, ab, VALUATION_MODEL, {
+      asOf: VALUATION_MODEL.fitted_at,
+    });
+  }
+
   res.json(data);
 });
 
@@ -3167,6 +3200,84 @@ router.get("/admin/auctions/active", requireAdmin, async (req, res) => {
   }));
 
   res.json({ auctions: enriched });
+});
+
+// GET /api/admin/rider-valuation-preview — #1101 SHADOW: sammenlign gammel
+// (uci-afledt market_value) med ny data-drevet base_value for hele populationen,
+// så ejer kan godkende fordelingen FØR cutover. Beregner live fra modellen, så
+// fladen virker uafhængigt af om backfill er kørt. Påvirker intet i økonomien.
+router.get("/admin/rider-valuation-preview", requireAdmin, async (req, res) => {
+  if (!VALUATION_MODEL) {
+    return res.status(503).json({ error: "Valuation model not fitted yet" });
+  }
+  const asOf = VALUATION_MODEL.fitted_at;
+
+  const [riders, abilities] = await Promise.all([
+    fetchAllRows(() => supabase
+      .from("riders")
+      .select("id, firstname, lastname, birthdate, potentiale, popularity, is_u25, uci_points, prize_earnings_bonus, nationality_code, pcm_id, is_retired")
+      .order("id")),
+    fetchAllRows(() => supabase
+      .from("rider_derived_abilities")
+      .select("*")
+      .order("rider_id")),
+  ]);
+  const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));
+
+  const rows = [];
+  for (const r of riders) {
+    if (r.is_retired) continue;
+    const ab = abilityByRider.get(r.id);
+    const newValue = predictBaseValue(r, ab, VALUATION_MODEL, { asOf });
+    if (newValue == null) continue;
+    const oldValue = calculateRiderMarketValue(r);
+    rows.push({
+      id: r.id,
+      name: `${r.firstname} ${r.lastname}`,
+      nationality_code: r.nationality_code,
+      is_fictional: r.pcm_id == null,
+      specialty: riderSpecialty(ab),
+      overall: riderOverall(ab, VALUATION_MODEL),
+      old_value: oldValue,
+      new_value: newValue,
+      delta: newValue - oldValue,
+      pct: oldValue > 0 ? Math.round(((newValue - oldValue) / oldValue) * 100) : null,
+    });
+  }
+
+  const pctile = (arr, p) => {
+    if (!arr.length) return null;
+    const s = [...arr].sort((a, b) => a - b);
+    return s[Math.min(s.length - 1, Math.floor(p * s.length))];
+  };
+  const olds = rows.map((r) => r.old_value);
+  const news = rows.map((r) => r.new_value);
+  const distribution = {
+    count: rows.length,
+    old: { p10: pctile(olds, 0.1), median: pctile(olds, 0.5), p90: pctile(olds, 0.9), max: olds.length ? Math.max(...olds) : null },
+    new: { p10: pctile(news, 0.1), median: pctile(news, 0.5), p90: pctile(news, 0.9), max: news.length ? Math.max(...news) : null },
+  };
+
+  // Koefficient-aflæsning (standardiseret) sorteret efter styrke — "hvad
+  // betaler managers for". Kun ability-features har en label-nøgle frontend-side.
+  const coefficients = (VALUATION_MODEL.feature_keys || [])
+    .map((k) => ({ key: k, weight: VALUATION_MODEL.coef?.[k] ?? 0, is_ability: ABILITY_KEYS.includes(k) }))
+    .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
+
+  res.json({
+    model: {
+      fitted_at: VALUATION_MODEL.fitted_at,
+      n_train: VALUATION_MODEL.n_train,
+      lambda: VALUATION_MODEL.lambda,
+      cv_r2: VALUATION_MODEL.cv_r2,
+      train_r2: VALUATION_MODEL.train_r2,
+      convexity_exponent: VALUATION_MODEL.convexity_exponent,
+      floor: VALUATION_MODEL.floor,
+    },
+    coefficients,
+    distribution,
+    riders: rows,
+  });
 });
 
 // POST /api/admin/auctions/:id/cancel — annuller aktiv auktion

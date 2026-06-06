@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import EconomyAdminSection from "../../components/admin/EconomyAdminSection";
+import ValuationPreviewSection from "../../components/admin/ValuationPreviewSection";
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
@@ -142,6 +143,10 @@ export default function AdminEconomyTab() {
 
       <AdminSection title="Økonomi">
         <EconomyAdminSection getAuth={getAuth} onMsg={showMsg} />
+      </AdminSection>
+
+      <AdminSection title="Rytter-værdi: ny model (forhåndsvisning · #1101)">
+        <ValuationPreviewSection getAuth={getAuth} onMsg={showMsg} />
       </AdminSection>
 
       <AdminSection title="Manuel balancejustering">

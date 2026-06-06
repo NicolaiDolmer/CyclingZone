@@ -49,7 +49,9 @@
     "highestBidLabel": "Højeste bud: {amount} CZ$",
     "valueLabel": "Værdi CZ$",
     "bestStat": "Bedste: {label} ({value})",
-    "typeDefault": "Allround"
+    "typeDefault": "Allround",
+    "newValueBeta": "Ny værdi (beta): {amount} CZ$",
+    "newValueBetaTooltip": "Forhåndsvisning af det kommende evne-baserede værdisystem. Bruges endnu ikke til køb, salg eller løn."
   },
   "blocked": {
     "pendingTransfer": "🔒 Rytteren er vundet på auktion og afventer overførsel til det nye hold. Kan ikke handles før overførslen er gennemført.",
