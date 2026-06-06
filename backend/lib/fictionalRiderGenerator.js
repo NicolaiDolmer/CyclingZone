@@ -45,7 +45,9 @@ function weightedPick(rng, items) {
 }
 
 // Box-Muller — bruger to rng()-kald, så determinismen bevares.
-function gaussian(rng, mean, sd) {
+// Eksporteret så race-simulatoren (#1102 slice 2) genbruger samme seeded
+// normalfordeling (issue-krav: "genbrug makeRng/Box-Muller").
+export function gaussian(rng, mean, sd) {
   let u = 0;
   let v = 0;
   while (u === 0) u = rng();
