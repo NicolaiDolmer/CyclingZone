@@ -9,6 +9,8 @@
 
 TdF 2026 = første ekstern acquisition-test for CyclingZone. Beta skal være ærlig nok til at sende folk ind i.
 
+> **Opdatering 6. juni 2026 — relaunch-pivot (epic [#1105](https://github.com/NicolaiDolmer/CyclingZone/issues/1105)):** 20/6 er en **HARD RELAUNCH til en frisk, juridisk uafhængig sæson 1** (fiktive ryttere + eget værdisystem + egen race-afvikling, al PCM/UCI væk). Alle — gamle testere + nye spillere — starter lige; beta-testere får et permanent founder-badge. Race-afvikling kører en **light egen motor** (#1102) + PCM-fallback til launch; den fulde kalibrerede engine (#1021) modnes post-launch. Dette afløser den tidligere "sæson 1+2 PCM → engine sæson 3-4"-faseplan og opdaterer succeskriterierne nedenfor.
+
 ## Spor parallelt indtil 2026-06-20
 
 Fire spor kører samtidig, alle skal være færdige til 2026-06-20.
@@ -59,14 +61,17 @@ Fire spor kører samtidig, alle skal være færdige til 2026-06-20.
 
 ## Succeskriterier 2026-06-20
 
-Beta er "fuldt fungerende" når:
-- [ ] Egen race-engine live, sæson 2 kører på den
-- [ ] Fiktive ryttere live, ingen PCM-data eksponeret player-facing
-- [ ] EN+DA-translation: kritiske flows uden DA-leaks i EN-mode
-- [ ] Landing page med fairness-løfte, founder-waitlist, sign-up-flow
-- [ ] Discord-struktur klar (welcome-flow + organiserede kanaler)
-- [ ] Brand-minimum: accent-farve + font + wordmark konsistent på website
-- [ ] Sæson 1-data preserveret som historik, sæson 2 starter rent
+Beta er "fuldt fungerende" når (relaunch-model, opdateret 6/6):
+- [ ] **Hard relaunch til frisk, uafhængig sæson 1** kørt (#1103) — alle starter lige
+- [ ] Egen race-afvikling live: light-motor (#1102) + PCM-fallback bag flag; fuld engine (#1021) modnes post-launch
+- [ ] Fiktive ryttere live (#669/#677), ingen PCM-data eller rigtige navne eksponeret player-facing
+- [ ] Eget værdisystem live (`base_value`, ikke uci_points) (#1101)
+- [ ] Beta-testere har permanent founder-badge (#1103)
+- [ ] EN+DA-translation: kritiske flows uden DA-leaks i EN-mode (#678)
+- [ ] Landing page med fairness-løfte, founder-waitlist, euro/pr-dag-priser (#672/#1104) + domæne (#352)
+- [ ] Roadmap-voting live (#954)
+- [ ] Discord-struktur klar (welcome-flow + organiserede kanaler) (#679)
+- [ ] Brand-minimum: accent-farve + font + wordmark konsistent på website (#671)
 
 ## Succeskriterier 2026-07-26 (TdF-slut)
 
