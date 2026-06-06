@@ -72,6 +72,8 @@ const RIDERS = [
     stat_mod: 69,
     stat_res: 67,
     stat_ftr: 75,
+    primary_type: "sprinter",
+    secondary_type: "leadout",
     team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
   },
   {
@@ -86,6 +88,8 @@ const RIDERS = [
     prize_earnings_bonus: 0,
     is_u25: false,
     potentiale: 74,
+    primary_type: "climber",
+    secondary_type: "gc",
     team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name },
   },
 ];

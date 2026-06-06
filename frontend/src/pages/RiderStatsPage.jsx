@@ -9,6 +9,7 @@ import { statColor } from "../lib/statColor";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import PotentialeStars from "../components/PotentialeStars";
+import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { RacePriceModal } from "../components/RacePriceModal";
 import { ConfettiModal } from "../components/ConfettiModal";
@@ -1197,7 +1198,9 @@ export default function RiderStatsPage() {
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {rider.is_u25 && <span className="text-xs uppercase bg-cz-info-bg0/20 text-cz-info px-2 py-0.5 rounded">{t("header.u25")}</span>}
               {isRetired && <span className="text-xs uppercase bg-cz-danger-bg0/20 text-cz-danger px-2 py-0.5 rounded">{t("header.retired")}</span>}
-              <span className="text-xs uppercase bg-cz-subtle text-cz-2 px-2 py-0.5 rounded font-medium">{typeLabel}</span>
+              {rider.primary_type
+                ? <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} size="md" />
+                : <span className="text-xs uppercase bg-cz-subtle text-cz-2 px-2 py-0.5 rounded font-medium">{typeLabel}</span>}
               {rider.nationality_code && (
                 <span className="text-cz-2 text-sm inline-flex items-center gap-1">
                   <Flag code={rider.nationality_code} /> {getCountryName(rider.nationality_code, i18n.language)}

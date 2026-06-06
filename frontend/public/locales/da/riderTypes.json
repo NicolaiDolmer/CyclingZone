@@ -1,0 +1,24 @@
+{
+  "filter": {
+    "label": "Ryttertype",
+    "all": "Alle typer"
+  },
+  "badge": {
+    "ariaLabel": "Ryttertype: {primary} / {secondary}",
+    "ariaLabelSingle": "Ryttertype: {primary}"
+  },
+  "types": {
+    "sprinter": "Sprinter",
+    "leadout": "Lead-out",
+    "climber": "Bjergrytter",
+    "puncheur": "Bakkerytter",
+    "tt": "Tidskører",
+    "classics": "Brostensrytter",
+    "gc": "Etapeløbsrytter",
+    "goat": "GOAT",
+    "allrounder": "Allrounder",
+    "rouleur": "Rouleur",
+    "baroudeur": "Baroudeur",
+    "domestique": "Hjælperytter"
+  }
+}

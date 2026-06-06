@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.94",
+    date: "2026-06-06",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Rider types",
+        items: [
+          "EN · Riders now show a rider type — their two strongest roles, like \"Sprinter / Lead-out\" or \"Climber / GC contender\" — on the rider profile and in the rider list. The type is read from a rider's stats relative to the whole field (so it reflects what they're genuinely good at, not just high numbers), across 12 roles: Sprinter, Lead-out, Climber, Puncheur, Time-trialist, Classics specialist, GC contender, GOAT, All-rounder, Rouleur, Baroudeur and Domestique. You can also filter the rider list by type. Refs #49, #92.",
+          "DA · Ryttere viser nu en ryttertype — deres to stærkeste roller, fx \"Sprinter / Lead-out\" eller \"Bjergrytter / Etapeløbsrytter\" — på rytterprofilen og i rytterlisten. Typen aflæses af rytterens stats i forhold til hele feltet (så den afspejler hvad de reelt er gode til, ikke bare høje tal), på tværs af 12 roller: Sprinter, Lead-out, Bjergrytter, Bakkerytter, Tidskører, Brostensrytter, Etapeløbsrytter, GOAT, Allrounder, Rouleur, Baroudeur og Hjælperytter. Du kan også filtrere rytterlisten på type. Refs #49, #92.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.93",
     date: "2026-06-06",
     label: "Beta",

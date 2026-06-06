@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "./Flag";
 import { formatNumber } from "../lib/intl";
+import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys";
 
 export const STAT_KEYS = [
   "stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
@@ -47,6 +48,7 @@ export const DEFAULT_FILTERS = {
   sort: "uci_points",
   sort_dir: "desc",
   nationality_code: "",
+  rider_type: "",
   min_uci: "",
   max_uci: "",
   min_salary: "",
@@ -67,7 +69,7 @@ export const DEFAULT_FILTERS = {
 // #960: alle ikke-stat filter-nøgler, i samme rækkefølge som chips'ene nedenfor.
 // Bruges både til "har aktivt filter"-tjek og til "Nulstil alt (N)"-tælleren.
 const BASIC_FILTER_KEYS = [
-  "q", "nationality_code", "min_uci", "max_uci", "min_salary", "max_salary",
+  "q", "nationality_code", "rider_type", "min_uci", "max_uci", "min_salary", "max_salary",
   "min_age", "max_age", "min_potentiale", "max_potentiale",
   "min_auction_price", "max_auction_price", "u25", "u23", "free_agent", "team_id",
 ];
@@ -118,6 +120,7 @@ export default function RiderFilters({
   showAuctionPriceFilter = false,
 }) {
   const { t, i18n } = useTranslation("riderFilters");
+  const { t: tTypes } = useTranslation("riderTypes");
   const [statsOpen, setStatsOpen] = useState(false);
   const countryLocale = i18n.language;
   const sortedNationalities = useMemo(
@@ -183,6 +186,19 @@ export default function RiderFilters({
               <option value="">{t("fields.countryAll")}</option>
               {sortedNationalities.map(code => (
                 <option key={code} value={code}>{getCountryName(code, countryLocale)}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Rider type (#49) */}
+          <div>
+            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{tTypes("filter.label")}</label>
+            <select value={filters.rider_type} onChange={e => onChange("rider_type", e.target.value)}
+              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
+                text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
+              <option value="">{tTypes("filter.all")}</option>
+              {RIDER_TYPE_KEYS.map(key => (
+                <option key={key} value={key}>{tTypes(`types.${key}`)}</option>
               ))}
             </select>
           </div>
@@ -331,6 +347,7 @@ export default function RiderFilters({
               onRemove={() => onChange("nationality_code", "")}
             />
           )}
+          {filters.rider_type && <Chip t={t} label={tTypes(`types.${filters.rider_type}`)} onRemove={() => onChange("rider_type", "")} />}
           {filters.min_uci && <Chip t={t} label={t("chips.value.min", { amount: formatNumber(parseInt(filters.min_uci)) })} onRemove={() => onChange("min_uci", "")} />}
           {filters.max_uci && <Chip t={t} label={t("chips.value.max", { amount: formatNumber(parseInt(filters.max_uci)) })} onRemove={() => onChange("max_uci", "")} />}
           {filters.min_salary && <Chip t={t} label={t("chips.salary.min", { amount: formatNumber(parseInt(filters.min_salary)) })} onRemove={() => onChange("min_salary", "")} />}
