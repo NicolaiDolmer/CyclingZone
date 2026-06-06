@@ -1238,6 +1238,14 @@ export default function RiderStatsPage() {
               {riderValueAmount}
             </p>
             <p className="text-cz-3 text-xs mt-0.5">{t("header.valueLabel")}</p>
+            {/* #1101 SHADOW: data-drevet ny værdi som beta-chip — påvirker intet endnu. */}
+            {rider.base_value_preview != null && (
+              <p className="mt-1 sm:flex sm:justify-end" title={t("header.newValueBetaTooltip")}>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 text-[11px] font-mono">
+                  {t("header.newValueBeta", { amount: formatNumber(rider.base_value_preview) })}
+                </span>
+              </p>
+            )}
             {bestStat && <p className="text-cz-2 text-xs mt-2">{t("header.bestStat", { label: bestStat.label, value: rider[bestStat.key] })}</p>}
           </div>
         </div>

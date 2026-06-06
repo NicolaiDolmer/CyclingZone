@@ -179,6 +179,12 @@ async function main() {
   const spreadPred = std(trainPred, mean(trainPred));
   const convexity = Math.min(CONVEXITY_CAP, Math.max(1, spreadActual / (spreadPred || 1)));
 
+  // Blødt gulv = p5 af de faktiske kontesterede salgspriser. Modellen er kun
+  // trænet på handlede (desirable) ryttere; for den aldrig-handlede hale klamper
+  // predictBaseValue op til dette gulv så ingen rytter bliver reelt gratis.
+  const actualPrices = logPrices.map((v) => Math.exp(v)).sort((a, c) => a - c);
+  const floor = Math.round(pct(actualPrices, 0.05));
+
   const model = {
     version: 1,
     fitted_at: fittedAt,
@@ -189,6 +195,7 @@ async function main() {
     train_r2: Number(trainR2.toFixed(4)),
     log_mean: Number(logMean.toFixed(6)),
     convexity_exponent: Number(convexity.toFixed(4)),
+    floor,
     intercept,
     coef,
     means,
@@ -200,6 +207,7 @@ async function main() {
   // --- Rapport ---
   console.log(`\nBedste λ=${best.lambda} · CV R²=${best.cv.toFixed(3)} · train R²=${trainR2.toFixed(3)}`);
   console.log(`Konveksitets-eksponent: ${convexity.toFixed(3)} (actual/pred log-spread = ${spreadActual.toFixed(3)}/${spreadPred.toFixed(3)})`);
+  console.log(`Blødt gulv (p5 af faktiske salg): ${floor.toLocaleString("da-DK")} CZ$`);
   console.log("\nKoefficienter (standardiseret — større |værdi| = stærkere prisdriver):");
   Object.entries(coef)
     .sort((a, c) => Math.abs(c[1]) - Math.abs(a[1]))

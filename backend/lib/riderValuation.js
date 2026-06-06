@@ -20,15 +20,15 @@ export const FEATURE_KEYS = Object.freeze([
   "age", "age_sq", "potentiale", "popularity", "is_u25",
 ]);
 
-const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
-
-// Alder i hele år pr. en reference-dato. Deterministisk når asOf gives.
+// Alder i hele kalenderår pr. en reference-dato. Deterministisk når asOf gives.
 export function riderAge(birthdate, asOf) {
   if (!birthdate) return null;
-  const born = new Date(birthdate).getTime();
-  if (Number.isNaN(born)) return null;
-  const ref = asOf ? new Date(asOf).getTime() : Date.now();
-  const age = (ref - born) / MS_PER_YEAR;
+  const born = new Date(birthdate);
+  if (Number.isNaN(born.getTime())) return null;
+  const ref = asOf ? new Date(asOf) : new Date();
+  let age = ref.getUTCFullYear() - born.getUTCFullYear();
+  const m = ref.getUTCMonth() - born.getUTCMonth();
+  if (m < 0 || (m === 0 && ref.getUTCDate() < born.getUTCDate())) age -= 1;
   return age > 0 && age < 60 ? age : null;
 }
 
@@ -86,7 +86,13 @@ export function predictBaseValue(rider, abilities, model, { asOf } = {}) {
   }
 
   if (!Number.isFinite(value) || value <= 0) return null;
-  return Math.round(value);
+
+  // Blødt gulv (#1101 ejer-valg): modellen er kun trænet på ryttere gode nok til
+  // at blive budt på (~15k+), så den ekstrapolerer den aldrig-handlede hale til
+  // nær-gratis tal. Klam op til de billigste faktiske handler (model.floor =
+  // p5 af reelle salg) så ingen rytter bliver reelt gratis.
+  const floor = model.floor ?? 0;
+  return Math.round(Math.max(floor, value));
 }
 
 // Value-vægtet overall 0-99 (til display/sortering). Bruger modellens

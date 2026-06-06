@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.93",
+    date: "2026-06-06",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Rider value",
+        items: [
+          "EN · Rider profiles now show a \"New value (beta)\" chip next to the current value. It previews an upcoming valuation that's learned from what managers actually pay in auctions (abilities, age and more) instead of IRL UCI points. It does not affect buying, selling or salary yet — it's there so we can verify the new numbers before switching over. Refs #1101.",
+          "DA · Rytterprofiler viser nu en \"Ny værdi (beta)\"-chip ved siden af den nuværende værdi. Den forhåndsviser et kommende værdisystem, der er lært af hvad managers faktisk betaler i auktioner (evner, alder m.m.) i stedet for IRL UCI-point. Den påvirker endnu ikke køb, salg eller løn — den er der, så vi kan verificere de nye tal før vi skifter over. Refs #1101.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.92",
     date: "2026-06-06",
     label: "Beta",
