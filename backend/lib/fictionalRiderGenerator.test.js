@@ -72,14 +72,31 @@ test("nationality_code er gyldig ISO2 (to store bogstaver)", () => {
   for (const r of gen().riders) assert.match(r.nationality_code, /^[A-Z]{2}$/);
 });
 
-test("alle 14 stats til stede som heltal i [40,88]", () => {
+test("alle 14 stats til stede som heltal i [50,85] (ægte PCM-skala)", () => {
   for (const r of gen().riders) {
     for (const key of STAT_KEYS) {
       assert.equal(typeof r[key], "number");
       assert.ok(Number.isInteger(r[key]), `${key} skal være heltal`);
-      assert.ok(r[key] >= 40 && r[key] <= 88, `${key}=${r[key]} uden for [40,88]`);
+      assert.ok(r[key] >= 50 && r[key] <= 85, `${key}=${r[key]} uden for [50,85]`);
     }
   }
+});
+
+// Forward-guard (#1122): den ægte PCM-skala er HÅRDT [50,85]; en fiktiv stat
+// udenfor ville clampe evnerne til 1/99 ved kilden (abilityDerivation.js). Stor
+// N fanger sjældne gaussiske haler som en 100-rytter-batch kan misse.
+test("stat-skala holder [50,85] over stor population (forward-guard)", () => {
+  const { riders } = generateFictionalRiders({ seed: 999, count: 3000, referenceYear: REF_YEAR });
+  let min = Infinity;
+  let max = -Infinity;
+  for (const r of riders) {
+    for (const key of STAT_KEYS) {
+      if (r[key] < min) min = r[key];
+      if (r[key] > max) max = r[key];
+    }
+  }
+  assert.ok(min >= 50, `mindste stat ${min} < 50`);
+  assert.ok(max <= 85, `største stat ${max} > 85`);
 });
 
 test("birthdate er YYYY-MM-DD og is_u25 er konsistent", () => {
