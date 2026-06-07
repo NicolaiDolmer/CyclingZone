@@ -1,0 +1,47 @@
+{
+  "title": "Season {number}",
+  "titleFallback": "Season snapshot",
+  "subtitle": "{status} · calendar, final standings and season winners",
+  "statusOngoing": "Ongoing",
+  "statusCompleted": "Completed",
+  "financeReport": "📊 Finance report",
+  "seasonOption": "Season {number} — {status}",
+  "empty": {
+    "title": "No results yet",
+    "body": "Finish races and seasons to see results here"
+  },
+  "status": {
+    "completed": "Completed",
+    "active": "Live",
+    "scheduled": "Upcoming"
+  },
+  "winners": {
+    "prize": { "title": "Prize leader", "secondary": "+{amount} earned", "empty": "No prizes yet" },
+    "transfer": { "title": "Biggest transfer", "fallback": "Transfer", "empty": "No transfers" },
+    "active": { "title": "Most active", "secondary": "{count} transfers", "empty": "No deals" },
+    "stageKing": { "title": "Stage king", "secondary": "{count, plural, one {# stage win} other {# stage wins}}", "empty": "No stages raced" }
+  },
+  "calendar": {
+    "heading": "📅 Calendar — {count} races",
+    "expectedTotal": "Total expected pool for the season:",
+    "expectedTotalTooltip": "Live-calculated sum of the expected pool for all the season's races",
+    "summary": "{completed} completed · {scheduled} upcoming",
+    "stageRace": "Stage race · {count, plural, one {# stage} other {# stages}}",
+    "oneDay": "One-day race",
+    "edition": "{year} edition"
+  },
+  "division": "Division {div}",
+  "promotionNote": "Top 2 promoted ↑",
+  "relegationNote": "Bottom 2 relegated ↓",
+  "table": {
+    "rank": "#",
+    "team": "Team",
+    "stageWins": "Stage wins",
+    "points": "Points",
+    "progression": "Trend"
+  },
+  "you": "You",
+  "promotion": "↑ Up",
+  "relegation": "↓ Down",
+  "myProgression": "Your team's points progression"
+}

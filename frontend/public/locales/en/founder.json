@@ -1,0 +1,131 @@
+{
+  "metaTitle": "Join the Founder waitlist · Cycling Zone",
+  "languageLabel": "Language",
+  "badgeBeta": "Open beta",
+  "badgeFair": "Fair premium",
+  "badgeGdpr": "GDPR-compliant",
+  "heroEyebrow": "Open beta, fair premium discussion",
+  "heroHeadline": "Build your cycling team. Race the world. Back a fair manager game.",
+  "heroSub": "Cycling Zone is a browser-based cycling manager where tactics, long-term planning and community rivalry matter. I'm exploring premium, but the rule is simple: ",
+  "heroSubStrong": "the game must be fair for everyone. You cannot pay for better riders, faster training, or better results.",
+  "ctaPrimary": "Join the Founder waitlist",
+  "ctaSecondary": "Read the full promise",
+  "promiseTitle": "Cycling Zone must stay fair",
+  "promiseBody": "Premium can unlock identity, convenience, analytics and ways to back development. It cannot unlock better race results, faster training, stronger riders, transfer advantages, improved scouting odds or hidden power.",
+  "promiseFootnote": "This promise appears here and near any future pricing info. It's the most important trust message in the whole premium conversation.",
+  "tiersTitle": "What might fair premium look like?",
+  "tiersSub": "Decisions made 2026-05-14. The survey tests different price points, so Premium varies between 29/49/69 DKK depending on which link you clicked.",
+  "variantLabel": "Variant:",
+  "founderNoteTitle": "Where does the Founder waitlist fit?",
+  "founderNoteBody": "Founder is not a separate paid tier. It's an early waitlist status for the first 100 players who want to be considered if payment opens later. Joining is non-binding, and you are charged nothing today.",
+  "tierFree": {
+    "name": "Free Manager",
+    "price": "0 DKK",
+    "tagline": "New / casual players",
+    "bullets": [
+      "Full competitive access",
+      "Nothing cut from the core game",
+      "Free players stay competitive, forever"
+    ]
+  },
+  "tierSupporter": {
+    "name": "Premium",
+    "priceSuffix": "DKK/mo",
+    "altYearTemplate": "{annual} DKK/yr (= 10 months)",
+    "tagline": "Engaged players",
+    "bullets": [
+      "Premium badge on profile",
+      "Profile themes + cosmetics",
+      "Discord role",
+      "Saved filters + extended history"
+    ]
+  },
+  "tierPro": {
+    "name": "Pro Analyst",
+    "priceSuffix": "DKK/mo",
+    "tagline": "Hardcore managers",
+    "bullets": [
+      "Advanced analytics",
+      "Rider comparison",
+      "Scouting dashboards",
+      "Transfer watchlists + data export"
+    ]
+  },
+  "tierPatron": {
+    "name": "Patron",
+    "price": "149 DKK/mo",
+    "tagline": "Superfans / early believers",
+    "bullets": [
+      "Founder badge + cosmetics",
+      "Dev Q&A",
+      "Roadmap votes (non-balance)",
+      "Credit in the game"
+    ]
+  },
+  "fairnessTitle": "What may be sold, and what must never be sold",
+  "fairnessSub": "The brand promise as concrete rules. Rock-solid.",
+  "soldCol": "May be sold",
+  "notSoldCol": "May NOT be sold (pay-to-win)",
+  "sold": [
+    "Premium badge",
+    "Profile themes / cosmetics",
+    "Discord role",
+    "Saved dashboards",
+    "Extended history",
+    "Analytics & rider comparison",
+    "Data export",
+    "Roadmap votes (non-balance)"
+  ],
+  "notSold": [
+    "Faster training",
+    "Better race outcomes",
+    "Larger transfer budget",
+    "Better scouting odds",
+    "Exclusive ranked races for paying users",
+    "Paid currency that alters balance",
+    "Power features",
+    "Votes that change balance / economy"
+  ],
+  "benefitsTitle": "What do Founder waitlist members get?",
+  "benefitsBody": "Founder status is identity and a thank-you, never competitive advantage. The final list is decided together with the community before payment opens.",
+  "benefitsList": [
+    { "title": "Permanent founder badge", "desc": "Identity mark that can't be bought later." },
+    { "title": "Discord Founder role", "desc": "Strong community signal." },
+    { "title": "Profile theme or cosmetic frame", "desc": "Early-founder value." },
+    { "title": "Name on the Founder Wall", "desc": "For early believers." },
+    { "title": "Monthly dev updates", "desc": "Builds trust + transparency." },
+    { "title": "Vote on non-balance roadmap topics", "desc": "Never about balance or competitive advantage." }
+  ],
+  "formSectionTitle": "Join the Founder waitlist",
+  "formSectionSub": "It's NOT binding. You are charged nothing today. The goal is to hear whether enough cyclists want to back the project financially before I build payment.",
+  "faqTitle": "Questions I've heard",
+  "faqItems": [
+    {
+      "q": "Is Cycling Zone becoming pay-to-win?",
+      "a": "No. The competitive core must stay fair. Premium is about identity, convenience, analytics and ways to back development."
+    },
+    {
+      "q": "Can free players compete?",
+      "a": "Yes. Free players have full access to the competitive core game. That's the foundation of fairness."
+    },
+    {
+      "q": "Can premium users buy stronger riders or faster training?",
+      "a": "No. Those features must not be sold. Period."
+    },
+    {
+      "q": "Why ask about premium now?",
+      "a": "To hear whether Cycling Zone can become sustainable before I build the wrong thing. Better to learn before investing."
+    },
+    {
+      "q": "Is payment live now?",
+      "a": "No. Waitlist first, payment later, and only if the community response is positive. You're charged nothing when joining."
+    },
+    {
+      "q": "What happens if people don't want premium?",
+      "a": "Then premium waits, and focus returns to retention, gameplay and community growth. That's the whole point of asking first."
+    }
+  ],
+  "footerPrivacy": "Privacy policy",
+  "footerBack": "← Back to Cycling Zone",
+  "footerSprintRef": "Refs #361/#362/#363. Foundation #359."
+}

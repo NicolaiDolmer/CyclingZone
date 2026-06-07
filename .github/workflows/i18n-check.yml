@@ -87,12 +87,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    # Advisory (Refs #678) — fanger HELE player-facing sider uden useTranslation
-    # der render hardkodet dansk (usynlige for de øvrige i18n-guards). Der findes
-    # kendte pre-eksisterende leaks (Resultater/SeasonEnd/Founder) der konverteres
-    # separat, så jobbet er continue-on-error indtil KNOWN_TODO-listen er tom —
-    # derefter promotes til required (samme modning som key-coverage).
-    continue-on-error: true
+    # REQUIRED (Refs #678) — fanger HELE player-facing sider uden useTranslation
+    # der render hardkodet dansk (usynlige for de øvrige i18n-guards). Var
+    # advisory mens de kendte pre-eksisterende leaks (Resultater/SeasonEnd/Founder)
+    # blev konverteret; KNOWN_TODO-listen er nu tom, så jobbet er promoted til
+    # required — en ny uoversat player-facing side blokerer nu PR'en.
     steps:
       - uses: actions/checkout@v6
 

@@ -1,0 +1,131 @@
+{
+  "metaTitle": "Skriv dig på Founder-waitlisten · Cycling Zone",
+  "languageLabel": "Sprog",
+  "badgeBeta": "Open beta",
+  "badgeFair": "Fair premium",
+  "badgeGdpr": "GDPR-compliant",
+  "heroEyebrow": "Open beta, fair premium-samtale",
+  "heroHeadline": "Byg dit cykelhold. Kør mod verden. Bak et fair managerspil op.",
+  "heroSub": "Cycling Zone er et browserbaseret cykelmanagerspil, hvor taktik, langsigtet planlægning og community-rivalitet betyder noget. Jeg undersøger premium, men reglen er enkel: ",
+  "heroSubStrong": "spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater.",
+  "ctaPrimary": "Skriv dig på Founder-waitlisten",
+  "ctaSecondary": "Læs hele løftet",
+  "promiseTitle": "Cycling Zone skal forblive fair",
+  "promiseBody": "Premium kan låse op for identitet, bekvemmelighed, analyser og måder at bakke udviklingen op. Det kan IKKE låse op for bedre løbsresultater, hurtigere træning, stærkere ryttere, transfer-fordele, bedre scout-odds eller skjult magt.",
+  "promiseFootnote": "Dette løfte vises både her og ved enhver fremtidig pris-info. Det er den vigtigste tillids-besked i hele samtalen om premium.",
+  "tiersTitle": "Hvad kunne fair premium se ud som?",
+  "tiersSub": "Beslutninger truffet 2026-05-14. Surveyen tester forskellige prispunkter, så Premium varierer mellem 29/49/69 DKK afhængig af, hvor du klikker fra.",
+  "variantLabel": "Variant:",
+  "founderNoteTitle": "Hvor passer Founder-waitlisten ind?",
+  "founderNoteBody": "Founder er ikke en separat betalt tier. Det er en early waitlist-status for de første 100 spillere, der vil overvejes, hvis betaling åbner senere. Tilmelding er uforpligtende, og du opkræves ingenting i dag.",
+  "tierFree": {
+    "name": "Free Manager",
+    "price": "0 DKK",
+    "tagline": "Nye / casual spillere",
+    "bullets": [
+      "Fuld konkurrencemæssig adgang",
+      "Intet skåret væk fra core-spillet",
+      "Free players forbliver konkurrencedygtige, for altid"
+    ]
+  },
+  "tierSupporter": {
+    "name": "Premium",
+    "priceSuffix": "DKK/md",
+    "altYearTemplate": "{annual} DKK/år (= 10 måneder)",
+    "tagline": "Engagerede spillere",
+    "bullets": [
+      "Premium-badge på profil",
+      "Profiltemaer + kosmetik",
+      "Discord-rolle",
+      "Gemte filtre + udvidet historik"
+    ]
+  },
+  "tierPro": {
+    "name": "Pro Analyst",
+    "priceSuffix": "DKK/md",
+    "tagline": "Hardcore managers",
+    "bullets": [
+      "Avanceret analytics",
+      "Rytter-sammenligning",
+      "Scouting-dashboards",
+      "Transfer-watchlists + dataeksport"
+    ]
+  },
+  "tierPatron": {
+    "name": "Patron",
+    "price": "149 DKK/md",
+    "tagline": "Superfans / tidlige troende",
+    "bullets": [
+      "Founder-badge + kosmetik",
+      "Dev Q&A",
+      "Roadmap-stemmer (non-balance)",
+      "Kreditering i spillet"
+    ]
+  },
+  "fairnessTitle": "Hvad må sælges, og hvad må aldrig sælges",
+  "fairnessSub": "Brand-løftet i konkrete regler. Klippe-fast.",
+  "soldCol": "Må sælges",
+  "notSoldCol": "Må IKKE sælges (pay-to-win)",
+  "sold": [
+    "Premium-badge",
+    "Profiltemaer / kosmetik",
+    "Discord-rolle",
+    "Gemte dashboards",
+    "Udvidet historik",
+    "Analytics & rytter-sammenligning",
+    "Dataeksport",
+    "Roadmap-stemmer (non-balance)"
+  ],
+  "notSold": [
+    "Hurtigere træning",
+    "Bedre løbsudfald",
+    "Større transferbudget",
+    "Bedre scout-odds",
+    "Eksklusive ranked-løb for betalere",
+    "Paid currency der ændrer balance",
+    "Power-features",
+    "Stemmer der ændrer balance / økonomi"
+  ],
+  "benefitsTitle": "Hvad får Founder-waitlist-medlemmer?",
+  "benefitsBody": "Founder-status er identitet og en tak, aldrig konkurrencefordele. Den endelige liste fastlægges sammen med community før betaling åbner.",
+  "benefitsList": [
+    { "title": "Permanent founder-badge", "desc": "Identitets-mærke der ikke kan købes senere." },
+    { "title": "Discord Founder-rolle", "desc": "Stærkt community-signal." },
+    { "title": "Profil-tema eller kosmetisk frame", "desc": "Early-founder værdi." },
+    { "title": "Navn på Founder Wall", "desc": "Til tidlige troende." },
+    { "title": "Månedlige dev-opdateringer", "desc": "Bygger tillid + transparens." },
+    { "title": "Stemme på non-balance roadmap-emner", "desc": "Aldrig om balance eller konkurrencefordele." }
+  ],
+  "formSectionTitle": "Skriv dig på Founder-waitlisten",
+  "formSectionSub": "Det er IKKE bindende. Du opkræves ingenting i dag. Formålet er at høre, om der er nok cyklister, der vil bakke projektet op økonomisk, inden jeg bygger betaling.",
+  "faqTitle": "Spørgsmål vi har hørt",
+  "faqItems": [
+    {
+      "q": "Bliver Cycling Zone pay-to-win?",
+      "a": "Nej. Den konkurrencemæssige kerne skal forblive fair. Premium handler om identitet, bekvemmelighed, analyser og måder at bakke udviklingen op."
+    },
+    {
+      "q": "Kan free players konkurrere?",
+      "a": "Ja. Free players har fuld adgang til det konkurrencemæssige core-spil. Det er fundamentet for fairness."
+    },
+    {
+      "q": "Kan premium-brugere købe stærkere ryttere eller hurtigere træning?",
+      "a": "Nej. De features må ikke sælges. Punktum."
+    },
+    {
+      "q": "Hvorfor spørge om premium nu?",
+      "a": "For at høre, om Cycling Zone kan blive bæredygtigt, før jeg bygger det forkerte. Bedre at lære før investering."
+    },
+    {
+      "q": "Er betaling live nu?",
+      "a": "Nej. Waitlist først, betaling senere, og kun hvis community-svaret er positivt. Du opkræves intet ved tilmelding."
+    },
+    {
+      "q": "Hvad sker der hvis folk ikke vil have premium?",
+      "a": "Så venter premium, og fokus går tilbage til retention, gameplay og community-vækst. Det er hele pointen med at spørge først."
+    }
+  ],
+  "footerPrivacy": "Privatlivspolitik",
+  "footerBack": "← Tilbage til Cycling Zone",
+  "footerSprintRef": "Refs #361/#362/#363. Foundation #359."
+}

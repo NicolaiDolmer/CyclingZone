@@ -40,11 +40,11 @@ const EXEMPT = new Map([
 // Kendte, endnu-ikke-konverterede player-facing leaks (#678 follow-up). Listet
 // her så de er SYNLIGE i guard-output i stedet for tavst at slippe igennem.
 // Fjern efterhånden som hver side konverteres til useTranslation.
-const KNOWN_TODO = new Map([
-  ["ResultaterPage.jsx",       "Player-facing — hardkodet dansk, mangler i18n-konvertering."],
-  ["SeasonEndPage.jsx",        "Player-facing — hardkodet dansk, mangler i18n-konvertering."],
-  ["FounderSupporterPage.jsx", "Player-facing — hardkodet dansk, mangler i18n-konvertering."],
-]);
+//
+// TOM — alle #678-follow-up-sider (Resultater/SeasonEnd/Founder) er nu
+// konverteret til useTranslation. Jobbet i i18n-check.yml er derfor promoted
+// fra continue-on-error til required.
+const KNOWN_TODO = new Map([]);
 
 // Fjern // line- og /* block */-kommentarer (groft, godt nok til en guard).
 function stripComments(src) {

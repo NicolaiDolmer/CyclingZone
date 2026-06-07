@@ -28,7 +28,7 @@ const CORE_PAGES = [
   { path: "/team", heading: "E2E Racing", snapshot: "team.png" },
   { path: "/finance", heading: /^(Finanser|Finance)$/, snapshot: "finance.png" },
   { path: "/board", heading: "Bestyrelse", snapshot: "board.png" },
-  { path: "/seasons", heading: /Sæson/, snapshot: "seasons.png" },
+  { path: "/seasons", heading: /^(Sæson|Season)/, snapshot: "seasons.png" },
   // Inbox har meget dynamisk indhold (notifikations-list med timestamps, count-
   // badges, ulæst-prikker) der falder uden for `main`-text-masken og naturligt
   // varierer mellem CI-runs. Højere threshold dækker mobile-webkit-flaky uden

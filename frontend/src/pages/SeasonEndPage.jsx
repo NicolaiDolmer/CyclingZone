@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, Fragment, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { useNavigate, useParams } from "react-router-dom";
@@ -9,10 +10,11 @@ import LeaderBadge from "../components/LeaderBadge";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
 
-const RACE_STATUS_LABEL = {
-  completed: { label: "Afsluttet", cls: "bg-cz-success-bg text-cz-success border-cz-success/30" },
-  active:    { label: "Igang",     cls: "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" },
-  scheduled: { label: "Kommende",  cls: "bg-cz-subtle text-cz-3 border-cz-border" },
+// Label resolves via t("status.<key>") ved render — se seasonEnd-namespacet.
+const RACE_STATUS_CLS = {
+  completed: "bg-cz-success-bg text-cz-success border-cz-success/30",
+  active:    "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30",
+  scheduled: "bg-cz-subtle text-cz-3 border-cz-border",
 };
 
 function formatCZ(amount) {
@@ -40,6 +42,7 @@ function MiniLineChart({ data, color }) {
 }
 
 export default function SeasonEndPage() {
+  const { t } = useTranslation("seasonEnd");
   const navigate = useNavigate();
   const { seasonId: urlSeasonId } = useParams();
   const [seasons, setSeasons] = useState([]);
@@ -220,11 +223,10 @@ export default function SeasonEndPage() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-cz-1">
-            {selectedSeason ? `Sæson ${selectedSeason.number}` : "Sæson-snapshot"}
+            {selectedSeason ? t("title", { number: selectedSeason.number }) : t("titleFallback")}
           </h1>
           <p className="text-cz-3 text-sm">
-            {selectedSeason?.status === "active" ? "Igangværende" : "Afsluttet"} ·
-            kalender, slutstilling og sæsonens vindere
+            {t("subtitle", { status: selectedSeason?.status === "active" ? t("statusOngoing") : t("statusCompleted") })}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -232,7 +234,7 @@ export default function SeasonEndPage() {
             <button
               onClick={() => navigate(`/seasons/${selectedSeason.id}/finance/${myTeamId}`)}
               className="text-sm bg-cz-card border border-cz-border hover:border-cz-accent rounded-lg px-3 py-2 text-cz-2 hover:text-cz-1 transition-colors">
-              📊 Finansrapport
+              {t("financeReport")}
             </button>
           )}
           <select
@@ -244,7 +246,7 @@ export default function SeasonEndPage() {
             className="bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
             {seasons.map(s => (
               <option key={s.id} value={s.id}>
-                Sæson {s.number} — {s.status === "active" ? "Igangværende" : "Afsluttet"}
+                {t("seasonOption", { number: s.number, status: s.status === "active" ? t("statusOngoing") : t("statusCompleted") })}
               </option>
             ))}
           </select>
@@ -254,8 +256,8 @@ export default function SeasonEndPage() {
       {standings.length === 0 ? (
         <div className="text-center py-20 text-cz-3">
           <p className="text-5xl mb-4">🏁</p>
-          <p className="text-lg font-medium text-cz-3">Ingen resultater endnu</p>
-          <p className="text-sm mt-2">Afslut løb og sæsoner for at se resultater her</p>
+          <p className="text-lg font-medium text-cz-3">{t("empty.title")}</p>
+          <p className="text-sm mt-2">{t("empty.body")}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-6">
@@ -263,39 +265,39 @@ export default function SeasonEndPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <WinnerCard
               icon="💰"
-              title="Præmie-leader"
+              title={t("winners.prize.title")}
               primary={winners.prize?.team?.name || "—"}
-              secondary={winners.prize ? `+${formatCZ(winners.prize.amount)} tjent` : "Ingen præmier endnu"}
+              secondary={winners.prize ? t("winners.prize.secondary", { amount: formatCZ(winners.prize.amount) }) : t("winners.prize.empty")}
               hasData={!!winners.prize?.team?.id}
               onClick={() => winners.prize?.team?.id && navigate(`/teams/${winners.prize.team.id}`)}
             />
             <WinnerCard
               icon="💸"
-              title="Største transfer"
+              title={t("winners.transfer.title")}
               primary={winners.biggestTransfer ? formatCZ(winners.biggestTransfer.amount) : "—"}
               secondary={winners.biggestTransfer
-                ? (winners.biggestTransfer.description || winners.biggestTransfer.team?.name || "Transfer")
-                : "Ingen transfers"}
+                ? (winners.biggestTransfer.description || winners.biggestTransfer.team?.name || t("winners.transfer.fallback"))
+                : t("winners.transfer.empty")}
               hasData={!!winners.biggestTransfer?.team?.id}
               onClick={() => winners.biggestTransfer?.team?.id && navigate(`/teams/${winners.biggestTransfer.team.id}`)}
             />
             <WinnerCard
               icon="🔄"
-              title="Mest aktive"
+              title={t("winners.active.title")}
               primary={winners.mostActive?.team?.name || "—"}
-              secondary={winners.mostActive ? `${winners.mostActive.count} transfers` : "Ingen handler"}
+              secondary={winners.mostActive ? t("winners.active.secondary", { count: winners.mostActive.count }) : t("winners.active.empty")}
               hasData={!!winners.mostActive?.team?.id}
               onClick={() => winners.mostActive?.team?.id && navigate(`/teams/${winners.mostActive.team.id}`)}
             />
             <WinnerCard
               icon="🚴"
-              title="Stage-king"
+              title={t("winners.stageKing.title")}
               primary={winners.stageKing?.rider
                 ? `${winners.stageKing.rider.firstname} ${winners.stageKing.rider.lastname}`
                 : "—"}
               secondary={winners.stageKing
-                ? `${winners.stageKing.count} etapesejr${winners.stageKing.count === 1 ? "" : "e"}`
-                : "Ingen etaper kørt"}
+                ? t("winners.stageKing.secondary", { count: winners.stageKing.count })
+                : t("winners.stageKing.empty")}
               hasData={!!winners.stageKing?.rider?.id}
               onClick={() => winners.stageKing?.rider?.id && navigate(`/riders/${winners.stageKing.rider.id}`)}
             />
@@ -306,21 +308,23 @@ export default function SeasonEndPage() {
             <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
               <div className="px-5 py-3 border-b border-cz-border flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <h2 className="font-bold text-cz-1 text-sm">📅 Kalender — {races.length} løb</h2>
+                  <h2 className="font-bold text-cz-1 text-sm">{t("calendar.heading", { count: races.length })}</h2>
                   {seasonExpectedTotal > 0 && (
-                    <p className="text-cz-3 text-xs mt-0.5" title="Live-beregnet sum af forventet pulje for alle sæsonens løb">
-                      Total forventet pulje for sæsonen: <span className="text-cz-2 font-mono">{formatExpectedPrize(seasonExpectedTotal)}</span>
+                    <p className="text-cz-3 text-xs mt-0.5" title={t("calendar.expectedTotalTooltip")}>
+                      {t("calendar.expectedTotal")} <span className="text-cz-2 font-mono">{formatExpectedPrize(seasonExpectedTotal)}</span>
                     </p>
                   )}
                 </div>
                 <span className="text-cz-3 text-xs">
-                  {races.filter(r => r.status === "completed").length} afsluttet ·
-                  {" "}{races.filter(r => r.status === "scheduled").length} kommende
+                  {t("calendar.summary", {
+                    completed: races.filter(r => r.status === "completed").length,
+                    scheduled: races.filter(r => r.status === "scheduled").length,
+                  })}
                 </span>
               </div>
               <div className="divide-y divide-cz-border">
                 {races.map(race => {
-                  const meta = RACE_STATUS_LABEL[race.status] || RACE_STATUS_LABEL.scheduled;
+                  const statusKey = RACE_STATUS_CLS[race.status] ? race.status : "scheduled";
                   const expectedPrize = computeExpectedRacePrize({
                     raceClass: race.race_class,
                     raceType: race.race_type,
@@ -335,13 +339,13 @@ export default function SeasonEndPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-cz-1 text-sm font-medium truncate">{race.name}</p>
                         <p className="text-cz-3 text-xs">
-                          {race.race_type === "stage_race" ? `Etapeløb · ${race.stages} etaper` : "Enkeltdagsløb"}
-                          {race.edition_year ? ` · ${race.edition_year}-udgave` : ""}
+                          {race.race_type === "stage_race" ? t("calendar.stageRace", { count: race.stages }) : t("calendar.oneDay")}
+                          {race.edition_year ? ` · ${t("calendar.edition", { year: race.edition_year })}` : ""}
                           {expectedPrize > 0 ? <span className="text-cz-2 font-mono"> · {formatExpectedPrize(expectedPrize)}</span> : ""}
                         </p>
                       </div>
-                      <span className={`text-[9px] uppercase px-2 py-0.5 rounded-full border flex-shrink-0 ${meta.cls}`}>
-                        {meta.label}
+                      <span className={`text-[9px] uppercase px-2 py-0.5 rounded-full border flex-shrink-0 ${RACE_STATUS_CLS[statusKey]}`}>
+                        {t(`status.${statusKey}`)}
                       </span>
                     </div>
                   );
@@ -360,22 +364,22 @@ export default function SeasonEndPage() {
               <div key={div} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-cz-border"
                   style={{ borderLeft: `3px solid ${color}` }}>
-                  <h2 className="font-bold text-sm" style={{ color }}>Division {div}</h2>
+                  <h2 className="font-bold text-sm" style={{ color }}>{t("division", { div })}</h2>
                   {isCompleted && div < 3 && (
-                    <span className="text-xs text-cz-3">Top 2 rykker op ↑</span>
+                    <span className="text-xs text-cz-3">{t("promotionNote")}</span>
                   )}
                   {isCompleted && div > 1 && (
-                    <span className="text-xs text-cz-3">Bund 2 rykker ned ↓</span>
+                    <span className="text-xs text-cz-3">{t("relegationNote")}</span>
                   )}
                 </div>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-cz-border">
-                      <th className="px-4 py-2.5 text-left text-cz-3 font-medium text-xs w-8">#</th>
-                      <th className="px-4 py-2.5 text-left text-cz-3 font-medium text-xs">Hold</th>
-                      <th className="px-4 py-2.5 text-right text-cz-3 font-medium text-xs hidden sm:table-cell">Etapesejre</th>
-                      <th className="px-4 py-2.5 text-right text-cz-3 font-medium text-xs">Point</th>
-                      <th className="px-4 py-2.5 text-right text-cz-3 font-medium text-xs hidden md:table-cell">Udvikling</th>
+                      <th className="px-4 py-2.5 text-left text-cz-3 font-medium text-xs w-8">{t("table.rank")}</th>
+                      <th className="px-4 py-2.5 text-left text-cz-3 font-medium text-xs">{t("table.team")}</th>
+                      <th className="px-4 py-2.5 text-right text-cz-3 font-medium text-xs hidden sm:table-cell">{t("table.stageWins")}</th>
+                      <th className="px-4 py-2.5 text-right text-cz-3 font-medium text-xs">{t("table.points")}</th>
+                      <th className="px-4 py-2.5 text-right text-cz-3 font-medium text-xs hidden md:table-cell">{t("table.progression")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -418,9 +422,9 @@ export default function SeasonEndPage() {
                                   {s.team?.name}
                                 </span>
                                 {isLeader && <LeaderBadge />}
-                                {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>Dig</span>}
-                                {isPromotion && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">↑ Op</span>}
-                                {isRelegation && <span className="text-[9px] bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded font-medium">↓ Ned</span>}
+                                {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("you")}</span>}
+                                {isPromotion && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">{t("promotion")}</span>}
+                                {isRelegation && <span className="text-[9px] bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded font-medium">{t("relegation")}</span>}
                               </div>
                             </td>
                             <td className="px-4 py-3 text-right text-cz-2 hidden sm:table-cell">
@@ -455,7 +459,7 @@ export default function SeasonEndPage() {
           {/* Full point progression for my team */}
           {myTeamId && pointsByTeam[myTeamId]?.length > 1 && races.length > 1 && (
             <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-              <h2 className="text-cz-1 font-semibold text-sm mb-4">Dit holds pointudvikling</h2>
+              <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("myProgression")}</h2>
               <PointChart
                 data={pointsByTeam[myTeamId]}
                 labels={races.map(r => r.name)}
