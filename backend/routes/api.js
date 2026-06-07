@@ -3215,7 +3215,7 @@ router.get("/admin/rider-valuation-preview", requireAdmin, async (req, res) => {
   const [riders, abilities] = await Promise.all([
     fetchAllRows(() => supabase
       .from("riders")
-      .select("id, firstname, lastname, birthdate, potentiale, popularity, is_u25, uci_points, prize_earnings_bonus, nationality_code, pcm_id, is_retired")
+      .select("id, firstname, lastname, primary_type, uci_points, prize_earnings_bonus, nationality_code, pcm_id, is_retired")
       .order("id")),
     fetchAllRows(() => supabase
       .from("rider_derived_abilities")

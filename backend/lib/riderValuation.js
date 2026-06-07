@@ -4,118 +4,83 @@
 // marketUtils.js og frontend/marketValues.js. I shadow-fasen bruges denne kun
 // til at BEREGNE + VISE base_value; den styrer endnu ikke økonomien.
 //
-// Modellen er en ridge-regression på log(slutpris) trænet af
-// scripts/fitRiderValuationModel.js og persisteret i riderValuationModel.json.
+// MODEL v2 (anchor-kalibreret, 7/6-2026) — afløser v1 (ridge på 141 uci-ankrede
+// auktionssalg → uci-cirkularitet, virkede ikke for fiktiv launch-population):
+//
+//   ln(base_value) = a + b·output + offset[primary_type]
+//
+//   output (0-99) = vægtet snit af de POSITIVE type-vægte (riderTypes.js) på de
+//     rå abilities → "hvor god er rytteren til sit speciale".
+//   offset[type]  = type-fixed-effect (forventet præmie/omdømme pr. type), fittet
+//     af ejer-kalibrerede anchors.
+//   INGEN bund (ejer-direktiv): dårligste ryttere ≈ 1.000; spil-data forfiner på sigt.
+//
+// Modellen fittes manuelt (ejer-godkendt) af scripts/fitRiderValuationModel.js fra
+// backend/lib/riderValuationAnchors.json og persisteres i riderValuationModel.json.
 // Se docs/decisions/rider-valuation-model-v1.md.
 
-// De 10 udledte abilities (rider_derived_abilities), 0-99.
-export const ABILITY_KEYS = Object.freeze([
-  "climbing", "time_trial", "sprint", "punch", "endurance",
-  "cobblestone", "acceleration", "recovery", "tactics", "positioning",
-]);
+import { RIDER_TYPES, ABILITY_KEYS } from "./riderTypes.js";
 
-// Fuld feature-rækkefølge. Koefficienterne i modellen er [intercept, ...FEATURE_KEYS].
-export const FEATURE_KEYS = Object.freeze([
-  ...ABILITY_KEYS,
-  "age", "age_sq", "potentiale", "popularity", "is_u25",
-]);
+export { ABILITY_KEYS };
 
-// Alder i hele kalenderår pr. en reference-dato. Deterministisk når asOf gives.
-export function riderAge(birthdate, asOf) {
-  if (!birthdate) return null;
-  const born = new Date(birthdate);
-  if (Number.isNaN(born.getTime())) return null;
-  const ref = asOf ? new Date(asOf) : new Date();
-  let age = ref.getUTCFullYear() - born.getUTCFullYear();
-  const m = ref.getUTCMonth() - born.getUTCMonth();
-  if (m < 0 || (m === 0 && ref.getUTCDate() < born.getUTCDate())) age -= 1;
-  return age > 0 && age < 60 ? age : null;
-}
+const WEIGHTS_BY_TYPE = Object.freeze(
+  Object.fromEntries(RIDER_TYPES.map((t) => [t.key, t.weights]))
+);
 
-// Byg den rå (ikke-standardiserede) feature-vektor for en rytter.
-// abilities: rider_derived_abilities-række. rider: riders-række.
-// Manglende værdier returneres som null og erstattes ved predict af modellens
-// feature-mean (→ standardiseret bidrag 0 = neutral).
-export function featurizeRider(rider = {}, abilities = {}, { asOf } = {}) {
-  const f = {};
+// Type-output (0-99): vægtet snit af de POSITIVE vægte for rytterens primær-type.
+// Manglende type/abilities → snit af alle tilgængelige abilities (neutral fallback).
+export function outputScore(abilities = {}, primaryType = null) {
+  const weights = WEIGHTS_BY_TYPE[primaryType];
+  if (weights) {
+    let sum = 0, wsum = 0;
+    for (const [k, w] of Object.entries(weights)) {
+      if (w <= 0) continue;
+      const v = Number(abilities?.[k]);
+      if (Number.isFinite(v)) { sum += v * w; wsum += w; }
+    }
+    if (wsum > 0) return sum / wsum;
+  }
+  // Fallback: snit af alle abilities.
+  let sum = 0, n = 0;
   for (const k of ABILITY_KEYS) {
     const v = Number(abilities?.[k]);
-    f[k] = Number.isFinite(v) ? v : null;
+    if (Number.isFinite(v)) { sum += v; n += 1; }
   }
-  const age = riderAge(rider?.birthdate, asOf);
-  f.age = age;
-  f.age_sq = age == null ? null : age * age;
-  const pot = Number(rider?.potentiale);
-  f.potentiale = Number.isFinite(pot) ? pot : null;
-  // popularity: null behandles som 0 (de fleste ryttere har 0 i dag).
-  const pop = Number(rider?.popularity);
-  f.popularity = Number.isFinite(pop) ? pop : 0;
-  f.is_u25 = rider?.is_u25 ? 1 : 0;
-  return f;
+  return n > 0 ? sum / n : 0;
 }
 
 // Forudsig base_value (CZ$, heltal) for en rytter ud fra en fittet model.
-// model: { intercept, coef:{key:val}, means:{key:val}, stds:{key:val},
-//          convexity_exponent, log_mean }
+// model: { a, b, offset: { type: number } }
+// rider: riders-række (kræver primary_type). abilities: rider_derived_abilities-række.
 // Returnerer null hvis abilities mangler helt (kan ikke værdisættes meningsfuldt).
-export function predictBaseValue(rider, abilities, model, { asOf } = {}) {
-  if (!model || !model.coef) return null;
+// Fjerde argument (opts) accepteres for bagudkompatibilitet, men ignoreres
+// (modellen bruger hverken alder eller asOf).
+export function predictBaseValue(rider, abilities, model /*, opts */) {
+  if (!model || !Number.isFinite(Number(model.a)) || !Number.isFinite(Number(model.b))) return null;
   const haveAbilities = ABILITY_KEYS.some((k) => Number.isFinite(Number(abilities?.[k])));
   if (!haveAbilities) return null;
 
-  const f = featurizeRider(rider, abilities, { asOf });
-
-  // Standardiseret lineær prædiktor i log-rummet.
-  let logPred = model.intercept ?? 0;
-  for (const k of FEATURE_KEYS) {
-    const mean = model.means?.[k] ?? 0;
-    const std = model.stds?.[k] || 1;
-    const raw = f[k] == null ? mean : f[k]; // manglende → neutral
-    const z = (raw - mean) / std;
-    logPred += (model.coef[k] ?? 0) * z;
-  }
-
-  let value = Math.exp(logPred);
-
-  // Mild konveksitets-justering omkring den geometriske middelpris: løft
-  // afstanden fra log-middel med en eksponent ≥1 (1.0 = ingen ændring).
-  const gamma = model.convexity_exponent ?? 1;
-  if (gamma !== 1 && Number.isFinite(model.log_mean)) {
-    const adjLog = model.log_mean + (logPred - model.log_mean) * gamma;
-    value = Math.exp(adjLog);
-  }
+  const type = rider?.primary_type ?? null;
+  const O = outputScore(abilities, type);
+  const offset = model.offset?.[type] ?? 0;
+  const value = Math.exp(model.a + model.b * O + offset);
 
   if (!Number.isFinite(value) || value <= 0) return null;
-
-  // Blødt gulv (#1101 ejer-valg): modellen er kun trænet på ryttere gode nok til
-  // at blive budt på (~15k+), så den ekstrapolerer den aldrig-handlede hale til
-  // nær-gratis tal. Klam op til de billigste faktiske handler (model.floor =
-  // p5 af reelle salg) så ingen rytter bliver reelt gratis.
-  const floor = model.floor ?? 0;
-  return Math.round(Math.max(floor, value));
+  return Math.max(1, Math.round(value));
 }
 
-// Value-vægtet overall 0-99 (til display/sortering). Bruger modellens
-// ability-koefficienter (positive dele, normaliseret) hvis givet, ellers lige
-// vægt. Afspejler "hvor værdifuld er denne rytters evneprofil".
-export function riderOverall(abilities = {}, model = null) {
-  let weights;
-  if (model?.coef) {
-    const pos = ABILITY_KEYS.map((k) => Math.max(0, model.coef[k] ?? 0));
-    const sum = pos.reduce((s, v) => s + v, 0);
-    weights = sum > 0 ? pos.map((v) => v / sum) : null;
-  }
-  if (!weights) weights = ABILITY_KEYS.map(() => 1 / ABILITY_KEYS.length);
-
-  let score = 0;
-  ABILITY_KEYS.forEach((k, i) => {
+// Display-overall 0-99: simpelt snit af rytterens abilities. Bruges kun til
+// admin-preview-visning/sortering (ikke til værdiberegningen).
+export function riderOverall(abilities = {} /*, model */) {
+  let sum = 0, n = 0;
+  for (const k of ABILITY_KEYS) {
     const v = Number(abilities?.[k]);
-    score += (Number.isFinite(v) ? v : 0) * weights[i];
-  });
-  return Math.round(Math.max(0, Math.min(99, score)));
+    if (Number.isFinite(v)) { sum += v; n += 1; }
+  }
+  return n > 0 ? Math.round(Math.max(0, Math.min(99, sum / n))) : 0;
 }
 
-// Rytterens primære speciale = den højeste ability (til label/rolle-udledning).
+// Rytterens primære speciale = den højeste ability (til label/visning).
 export function riderSpecialty(abilities = {}) {
   let best = null;
   let bestVal = -1;

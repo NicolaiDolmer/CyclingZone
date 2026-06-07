@@ -1,82 +1,174 @@
 {
-  "version": 1,
-  "fitted_at": "2026-06-06",
-  "n_train": 141,
-  "target": "log(current_price)",
-  "lambda": 10,
-  "cv_r2": 0.4086,
-  "train_r2": 0.6175,
-  "log_mean": 11.281708,
-  "convexity_exponent": 1.3524,
-  "floor": 20002,
-  "intercept": 11.28170819732913,
-  "coef": {
-    "climbing": 0.13271154906719382,
-    "time_trial": 0.26077406373715734,
-    "sprint": 0.07679094647796016,
-    "punch": -0.039908667669018454,
-    "endurance": -0.09287070654251989,
-    "cobblestone": 0.004790539877737371,
-    "acceleration": -0.158480008023549,
-    "recovery": 0.23382219990307082,
-    "tactics": 0.3933383605256699,
-    "positioning": 0.013525734570823284,
-    "age": -0.16509933584592523,
-    "age_sq": -0.24985110872156868,
-    "potentiale": 0.2637591504964497,
-    "popularity": 0.4518348275237884,
-    "is_u25": -0.023596137425490875
+  "version": 2,
+  "method": "log-linear: ln(value)=a+b*output+offset[primary_type] (anchor-calibrated)",
+  "fitted_at": "2026-06-07",
+  "n_anchor": 22,
+  "r2_log": 0.8447,
+  "a": 6.140206,
+  "b": 0.126263,
+  "offset": {
+    "gc": 0.312798,
+    "brostensrytter": 0.438653,
+    "tt": -0.531502,
+    "sprinter": 0.004196,
+    "rouleur": -0.502925,
+    "puncheur": -0.731849
   },
-  "means": {
-    "climbing": 83.06382978723404,
-    "time_trial": 78.70212765957447,
-    "sprint": 76.43262411347517,
-    "punch": 89.19858156028369,
-    "endurance": 90.26950354609929,
-    "cobblestone": 73.50354609929079,
-    "acceleration": 71.01418439716312,
-    "recovery": 90.78014184397163,
-    "tactics": 70.19148936170212,
-    "positioning": 70.36879432624113,
-    "age": 27.354609929078013,
-    "age_sq": 775.9787234042553,
-    "potentiale": 4.283687943262412,
-    "popularity": 18.93617021276596,
-    "is_u25": 0.3049645390070922
-  },
-  "stds": {
-    "climbing": 12.316288451447319,
-    "time_trial": 10.307846409445784,
-    "sprint": 15.522714979927677,
-    "punch": 7.916425027881667,
-    "endurance": 7.738527937996382,
-    "cobblestone": 11.191197220431702,
-    "acceleration": 23.992902560360676,
-    "recovery": 7.794426266951542,
-    "tactics": 3.1418359668822022,
-    "positioning": 2.854413895740201,
-    "age": 5.263462646608395,
-    "age_sq": 287.8600050823836,
-    "potentiale": 0.7128629834105895,
-    "popularity": 24.293773175856483,
-    "is_u25": 0.4603924075778006
-  },
-  "feature_keys": [
-    "climbing",
-    "time_trial",
-    "sprint",
-    "punch",
-    "endurance",
-    "cobblestone",
-    "acceleration",
-    "recovery",
-    "tactics",
-    "positioning",
-    "age",
-    "age_sq",
-    "potentiale",
-    "popularity",
-    "is_u25"
+  "anchors_fit": [
+    {
+      "name": "Tadej Pogacar",
+      "type": "gc",
+      "output": 88.9,
+      "target": 100000000,
+      "predicted": 47671689
+    },
+    {
+      "name": "Mathieu van der Poel",
+      "type": "brostensrytter",
+      "output": 91.7,
+      "target": 85000000,
+      "predicted": 76509482
+    },
+    {
+      "name": "Filippo Ganna",
+      "type": "tt",
+      "output": 89.8,
+      "target": 35000000,
+      "predicted": 22909911
+    },
+    {
+      "name": "Jasper Philipsen",
+      "type": "sprinter",
+      "output": 86.1,
+      "target": 25000000,
+      "predicted": 24668015
+    },
+    {
+      "name": "Jonathan Milan",
+      "type": "sprinter",
+      "output": 84.1,
+      "target": 20000000,
+      "predicted": 19163020
+    },
+    {
+      "name": "Tim Merlier",
+      "type": "sprinter",
+      "output": 85.4,
+      "target": 18000000,
+      "predicted": 22540641
+    },
+    {
+      "name": "Paul Magnier",
+      "type": "sprinter",
+      "output": 81.9,
+      "target": 17000000,
+      "predicted": 14359077
+    },
+    {
+      "name": "Michael Matthews",
+      "type": "brostensrytter",
+      "output": 71.9,
+      "target": 9000000,
+      "predicted": 6297938
+    },
+    {
+      "name": "Toms Skujins",
+      "type": "rouleur",
+      "output": 77.3,
+      "target": 8000000,
+      "predicted": 4884533
+    },
+    {
+      "name": "Quinn Simmons",
+      "type": "rouleur",
+      "output": 79.7,
+      "target": 8000000,
+      "predicted": 6558003
+    },
+    {
+      "name": "Florian Vermeersch",
+      "type": "brostensrytter",
+      "output": 77.4,
+      "target": 8000000,
+      "predicted": 12701000
+    },
+    {
+      "name": "Kévin Vauquelin",
+      "type": "gc",
+      "output": 70.9,
+      "target": 7000000,
+      "predicted": 4911660
+    },
+    {
+      "name": "Magnus Sheffield",
+      "type": "tt",
+      "output": 74.6,
+      "target": 6000000,
+      "predicted": 3361472
+    },
+    {
+      "name": "Mathys Rondel",
+      "type": "gc",
+      "output": 66.6,
+      "target": 6000000,
+      "predicted": 2841904
+    },
+    {
+      "name": "Jonas Abrahamsen",
+      "type": "rouleur",
+      "output": 83,
+      "target": 5000000,
+      "predicted": 9989768
+    },
+    {
+      "name": "Antonio Tiberi",
+      "type": "gc",
+      "output": 73.1,
+      "target": 5000000,
+      "predicted": 6457103
+    },
+    {
+      "name": "Andreas Leknessund",
+      "type": "gc",
+      "output": 68.8,
+      "target": 5000000,
+      "predicted": 3736103
+    },
+    {
+      "name": "Marc Soler",
+      "type": "gc",
+      "output": 69.3,
+      "target": 3500000,
+      "predicted": 3979572
+    },
+    {
+      "name": "Clément Champoussin",
+      "type": "puncheur",
+      "output": 75.3,
+      "target": 3000000,
+      "predicted": 2999999
+    },
+    {
+      "name": "Ethan Hayter",
+      "type": "tt",
+      "output": 80.2,
+      "target": 2500000,
+      "predicted": 6817203
+    },
+    {
+      "name": "Luca Vergallito",
+      "type": "gc",
+      "output": 61.1,
+      "target": 500000,
+      "predicted": 1419111
+    },
+    {
+      "name": "Krists Neilands",
+      "type": "gc",
+      "output": 58.4,
+      "target": 500000,
+      "predicted": 1013419
+    }
   ],
-  "notes": "Ridge på kontesterede menneske-salg. SHADOW — styrer ikke økonomi før cutover (#1101 slice 2)."
+  "notes": "Eget data-drevet base_value. SHADOW — styrer ikke økonomi før cutover (#1101 slice 2). INGEN bund; spil-resultater forfiner på sigt (ejer-beslutning B, 7/6)."
 }

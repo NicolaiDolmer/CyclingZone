@@ -1,7 +1,55 @@
-# Rider Valuation Model v1 — data-drevet `base_value`
+# Rider Valuation Model — data-drevet `base_value`
 
 > Beslutnings-doc for [#1101](https://github.com/NicolaiDolmer/CyclingZone/issues/1101) (del af relaunch-epic [#1105](https://github.com/NicolaiDolmer/CyclingZone/issues/1105)).
-> Locked via ejer-Q&A 6. juni 2026. Denne fil er **kilden** til designvalgene — ikke lokal-only.
+> v1 locked via ejer-Q&A 6. juni; **v2 (CURRENT) locked via ejer-kalibrerings-session 7. juni 2026.** Denne fil er **kilden** til designvalgene — ikke lokal-only.
+
+## v2 (anchor-kalibreret, 7/6-2026) — CURRENT
+
+**Pivot væk fra v1's salgs-regression.** v1 (ridge på 141 kontesterede uci-ankrede
+auktionssalg) virkede ikke til relaunch: (a) træningssættets udbudspriser var
+uci-afledte → den uci-cirkularitet vi vil væk fra, og (b) den var trænet på den
+gamle population — efter evne-system-v2 (#1122) re-derivede alle ryttere blev
+modellens means/stds stale (og v1 brugte `tactics`/`positioning` som v2 fjernede).
+
+**Ny model:**
+```
+ln(base_value) = a + b·output + offset[primary_type]
+```
+- **`output` (0-99):** vægtet snit af de POSITIVE type-vægte (`riderTypes.js`) på de
+  rå abilities → "hvor god er rytteren til sit speciale". Fanger specialisering uden
+  at være afhængig af percentil/population.
+- **`offset[type]`:** type-fixed-effect = forventet præmie/omdømme pr. type
+  (ejer-Q3: "jo mere du kan tjene i præmiepenge/omdømme, jo mere værdi"). Fittet, ikke håndsat.
+- **Ingen bund** (ejer-direktiv 7/6): dårligste ryttere ≈ 1.000 (spredt under/over).
+
+**Kalibrering:** 22 ejer-vurderede anchors (`backend/lib/riderValuationAnchors.json`),
+indsamlet via copy-paste-skema med output + top-evner. Fit: OLS af ln(mål) på output
+(a, b), derefter type-offset = gennemsnitlig residual pr. type. Manuel re-fit,
+ejer-godkendt — ingen auto-læring.
+
+**Resultat (fit 7/6):** a=6,140 · b=0,1263 · R²(log)=0,845 (n=22).
+Type-hierarki udledt af dataen: brostensrytter ×1,55 · gc ×1,37 · sprinter ×1,0 ·
+rouleur ×0,60 · tt ×0,59 · puncheur ×0,48 (tt/puncheur usikre — få punkter).
+Prod-fordeling (8994 ryttere): p10 ~3.900 · median ~46k · p90 ~620k · max ~124M; 0 NULL.
+
+**Bevidst svaghed (ejer-beslutning B, 7/6):** den glatte model underpriser de
+absolutte superstjerner (Pogačar fit 48M vs ejer-mål 100M) fordi gc rummer både den
+dyreste OG mange billige ryttere. Ejer valgte at lade **spil-resultater** løfte de
+ægte stjerner over tid frem for at påtvinge ekstra top-konveksitet nu.
+
+**Follow-ups (data-drevet fase):** ungdoms-/potentiale-præmie (ejer Q4/Q5 — "ung >
+gammel", "algoritmen regner det selv ud fra data"), versatilitets-præmie (Q6),
+popularitet/fans (Q9 — bygges ind når omdømme-motoren findes), dynamisk glidning mod
+faktisk handelspris ved auktions-/transfer-afslutning. Cutover (slice 2) uændret nedenfor.
+
+**Artefakter:** `riderValuation.js` (`outputScore`, `predictBaseValue`, `riderOverall`,
+`riderSpecialty`) · `riderValuationModel.json` (a/b/offset) ·
+`riderValuationAnchors.json` (ejer-anchors) · `fitRiderValuationModel.js` ·
+`backfillRiderBaseValue.js`.
+
+---
+
+## v1 (historik, 6/6) — afløst af v2 ovenfor
 
 ## Hvorfor
 
