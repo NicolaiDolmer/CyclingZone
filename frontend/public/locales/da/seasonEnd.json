@@ -1,0 +1,47 @@
+{
+  "title": "Sæson {number}",
+  "titleFallback": "Sæson-snapshot",
+  "subtitle": "{status} · kalender, slutstilling og sæsonens vindere",
+  "statusOngoing": "Igangværende",
+  "statusCompleted": "Afsluttet",
+  "financeReport": "📊 Finansrapport",
+  "seasonOption": "Sæson {number} — {status}",
+  "empty": {
+    "title": "Ingen resultater endnu",
+    "body": "Afslut løb og sæsoner for at se resultater her"
+  },
+  "status": {
+    "completed": "Afsluttet",
+    "active": "Igang",
+    "scheduled": "Kommende"
+  },
+  "winners": {
+    "prize": { "title": "Præmie-leader", "secondary": "+{amount} tjent", "empty": "Ingen præmier endnu" },
+    "transfer": { "title": "Største transfer", "fallback": "Transfer", "empty": "Ingen transfers" },
+    "active": { "title": "Mest aktive", "secondary": "{count} transfers", "empty": "Ingen handler" },
+    "stageKing": { "title": "Stage-king", "secondary": "{count, plural, one {# etapesejr} other {# etapesejre}}", "empty": "Ingen etaper kørt" }
+  },
+  "calendar": {
+    "heading": "📅 Kalender — {count} løb",
+    "expectedTotal": "Total forventet pulje for sæsonen:",
+    "expectedTotalTooltip": "Live-beregnet sum af forventet pulje for alle sæsonens løb",
+    "summary": "{completed} afsluttet · {scheduled} kommende",
+    "stageRace": "Etapeløb · {count, plural, one {# etape} other {# etaper}}",
+    "oneDay": "Enkeltdagsløb",
+    "edition": "{year}-udgave"
+  },
+  "division": "Division {div}",
+  "promotionNote": "Top 2 rykker op ↑",
+  "relegationNote": "Bund 2 rykker ned ↓",
+  "table": {
+    "rank": "#",
+    "team": "Hold",
+    "stageWins": "Etapesejre",
+    "points": "Point",
+    "progression": "Udvikling"
+  },
+  "you": "Dig",
+  "promotion": "↑ Op",
+  "relegation": "↓ Ned",
+  "myProgression": "Dit holds pointudvikling"
+}

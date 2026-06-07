@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { Link, useParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
@@ -17,20 +18,22 @@ import { fetchAllRows } from "../lib/supabasePagination";
 // V2 (efter launch) udvider importen så pr.-etape-klassementer + tider gemmes.
 
 // De endelige klassementer ("Samlet"-fanen), i visnings-rækkefølge.
+// Label kommer fra t(`detail.classification.${key}`).
 const CLASSIFICATIONS = [
-  { key: "gc",       label: "Samlet (GC)" },
-  { key: "points",   label: "Pointkonkurrence" },
-  { key: "mountain", label: "Bjergkonkurrence" },
-  { key: "young",    label: "Ungdom" },
-  { key: "team",     label: "Holdkonkurrence" },
+  { key: "gc" },
+  { key: "points" },
+  { key: "mountain" },
+  { key: "young" },
+  { key: "team" },
 ];
 
 // Daglige trøjebærere — vist som badges på hver etape-fane.
+// Label kommer fra t(`detail.jersey.${dayType}`).
 const JERSEYS = [
-  { dayType: "leader",       label: "Fører",  bg: "#e8c547", fg: "#1a1a1a" },
-  { dayType: "points_day",   label: "Point",  bg: "#22c55e", fg: "#052e16" },
-  { dayType: "mountain_day", label: "Bjerg",  bg: "#ef4444", fg: "#ffffff" },
-  { dayType: "young_day",    label: "Ungdom", bg: "#f1f5f9", fg: "#1a1a1a" },
+  { dayType: "leader",       bg: "#e8c547", fg: "#1a1a1a" },
+  { dayType: "points_day",   bg: "#22c55e", fg: "#052e16" },
+  { dayType: "mountain_day", bg: "#ef4444", fg: "#ffffff" },
+  { dayType: "young_day",    bg: "#f1f5f9", fg: "#1a1a1a" },
 ];
 
 function riderName(res) {
@@ -43,6 +46,7 @@ function byRank(a, b) {
 }
 
 export default function RaceDetailPage() {
+  const { t } = useTranslation("races");
   const { raceId } = useParams();
 
   const [race, setRace] = useState(null);
@@ -120,10 +124,10 @@ export default function RaceDetailPage() {
 
   if (notFound) return (
     <div className="max-w-4xl mx-auto">
-      <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">← Løbsbibliotek</Link>
+      <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{t("detail.backToLibrary")}</Link>
       <div className="text-center py-16 text-cz-3">
         <p className="text-4xl mb-3">🏁</p>
-        <p>Løbet blev ikke fundet</p>
+        <p>{t("empty.raceNotFound")}</p>
       </div>
     </div>
   );
@@ -134,14 +138,14 @@ export default function RaceDetailPage() {
     <div className="max-w-4xl mx-auto space-y-5">
       {/* Header */}
       <div>
-        <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-2 inline-block">← Løbsbibliotek</Link>
+        <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-2 inline-block">{t("detail.backToLibrary")}</Link>
         <h1 className="text-xl font-bold text-cz-1">{race.name}</h1>
         <p className="text-cz-3 text-sm">
           {race.race_type === "stage_race"
-            ? `Etapeløb · ${race.stages} ${race.stages === 1 ? "etape" : "etaper"}`
-            : "Enkeltdagsløb"}
-          {race.season?.number != null && ` · Sæson ${race.season.number}`}
-          {race.edition_year && ` · ${race.edition_year}-udgave`}
+            ? t("raceType.stageRaceWithStages", { count: race.stages })
+            : t("raceType.oneDay")}
+          {race.season?.number != null && ` · ${t("library.seasonOption", { number: race.season.number })}`}
+          {race.edition_year && ` · ${t("common.edition", { year: race.edition_year })}`}
           {race.pool_race?.date_text && ` · ${race.pool_race.date_text}`}
         </p>
       </div>
@@ -149,7 +153,7 @@ export default function RaceDetailPage() {
       {!hasAnyResults && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-10 text-center text-cz-3">
           <p className="text-4xl mb-3">🏁</p>
-          <p className="text-sm">Ingen resultater importeret for dette løb endnu</p>
+          <p className="text-sm">{t("empty.noResultsImportedRace")}</p>
         </div>
       )}
 
@@ -158,11 +162,11 @@ export default function RaceDetailPage() {
           {/* Tabs: Samlet + Etape 1..N */}
           <div className="flex gap-2 flex-wrap">
             <TabButton active={activeTab === "samlet"} onClick={() => setActiveTab("samlet")}>
-              Samlet
+              {t("detail.tabOverall")}
             </TabButton>
             {stageNumbers.map(n => (
               <TabButton key={n} active={activeTab === `stage-${n}`} onClick={() => setActiveTab(`stage-${n}`)}>
-                Etape {n}
+                {t("detail.tabStage", { number: n })}
               </TabButton>
             ))}
           </div>
@@ -178,11 +182,11 @@ export default function RaceDetailPage() {
       {hasAnyResults && !isStageRace && (
         <div className="space-y-5">
           <ResultTable
-            title="Resultat"
+            title={t("detail.tableResult")}
             rows={(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
           />
           {finalByType.team?.length > 0 && (
-            <ResultTable title="Holdkonkurrence" rows={finalByType.team} />
+            <ResultTable title={t("detail.classification.team")} rows={finalByType.team} />
           )}
         </div>
       )}
@@ -201,10 +205,11 @@ function TabButton({ active, onClick, children }) {
 }
 
 function OverallTab({ finalByType }) {
+  const { t } = useTranslation("races");
   const any = CLASSIFICATIONS.some(c => finalByType[c.key]?.length > 0);
   if (!any) return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-8 text-center text-cz-3 text-sm">
-      Ingen samlede klassementer registreret
+      {t("detail.noOverall")}
     </div>
   );
   return (
@@ -212,13 +217,14 @@ function OverallTab({ finalByType }) {
       {CLASSIFICATIONS.map(c => {
         const rows = finalByType[c.key];
         if (!rows?.length) return null;
-        return <ResultTable key={c.key} title={c.label} rows={rows} />;
+        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} />;
       })}
     </div>
   );
 }
 
 function StageTab({ stage, results }) {
+  const { t } = useTranslation("races");
   const rows = results
     .filter(r => r.result_type === "stage" && (r.stage_number ?? 1) === stage)
     .sort(byRank);
@@ -231,14 +237,14 @@ function StageTab({ stage, results }) {
     <div className="space-y-5">
       {jerseys.length > 0 && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-4">
-          <p className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">Trøjer efter etapen</p>
+          <p className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("detail.jerseysAfterStage")}</p>
           <div className="flex flex-wrap gap-2">
             {jerseys.map(j => (
               <div key={j.dayType}
                 className="flex items-center gap-2 rounded-full border border-cz-border bg-cz-subtle ps-2 pe-3 py-1">
                 <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full"
                   style={{ backgroundColor: j.bg, color: j.fg }}>
-                  {j.label}
+                  {t(`detail.jersey.${j.dayType}`)}
                 </span>
                 <RiderLink id={j.holder.rider?.id}
                   className="text-cz-1 text-xs font-medium hover:text-cz-accent-t transition-colors">
@@ -253,12 +259,13 @@ function StageTab({ stage, results }) {
         </div>
       )}
 
-      <ResultTable title={`Etape ${stage} — målrækkefølge`} rows={rows} />
+      <ResultTable title={t("detail.stageFinishOrder", { number: stage })} rows={rows} />
     </div>
   );
 }
 
 function ResultTable({ title, rows }) {
+  const { t } = useTranslation("races");
   const showPoints = rows.some(r => (r.points_earned ?? 0) > 0);
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
@@ -266,7 +273,7 @@ function ResultTable({ title, rows }) {
         <h2 className="font-semibold text-cz-1 text-sm">{title}</h2>
       </div>
       {rows.length === 0 ? (
-        <div className="px-4 py-8 text-center text-cz-3 text-sm">Ingen resultater</div>
+        <div className="px-4 py-8 text-center text-cz-3 text-sm">{t("detail.noResults")}</div>
       ) : (
         <table className="w-full text-sm">
           <tbody className="divide-y divide-cz-border">
@@ -286,7 +293,7 @@ function ResultTable({ title, rows }) {
                 </td>
                 <td className="px-2 py-2 text-cz-3 text-xs">
                   <TeamLink id={r.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
-                    {r.rider?.team?.name || r.team_name || "Fri"}
+                    {r.rider?.team?.name || r.team_name || t("common.free")}
                   </TeamLink>
                 </td>
                 {showPoints && (

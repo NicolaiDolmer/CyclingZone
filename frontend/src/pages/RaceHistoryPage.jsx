@@ -1,4 +1,5 @@
-﻿import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { Link, useParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
@@ -7,6 +8,7 @@ import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
 
 export default function RaceHistoryPage() {
+  const { t } = useTranslation("races");
   const { raceSlug } = useParams();
   const raceName = decodeURIComponent(raceSlug);
 
@@ -96,10 +98,10 @@ export default function RaceHistoryPage() {
 
   if (!editions.length) return (
     <div className="max-w-4xl mx-auto">
-      <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">← Løbsbibliotek</Link>
+      <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{t("history.backToLibrary")}</Link>
       <div className="text-center py-16 text-cz-3">
         <p className="text-4xl mb-3">🏁</p>
-        <p>Ingen data fundet for &quot;{raceName}&quot;</p>
+        <p>{t("empty.noHistory", { name: raceName })}</p>
       </div>
     </div>
   );
@@ -109,13 +111,13 @@ export default function RaceHistoryPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-2 inline-block">← Løbsbibliotek</Link>
+        <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-2 inline-block">{t("history.backToLibrary")}</Link>
         <h1 className="text-xl font-bold text-cz-1">{raceName}</h1>
         <p className="text-cz-3 text-sm">
           {editions[0].race_type === "stage_race"
-            ? `Etapeløb · ${editions[0].stages} etaper`
-            : "Enkeltdagsløb"}
-          {" · "}{editions.length} {editions.length === 1 ? "udgave" : "udgaver"}
+            ? t("raceType.stageRaceWithStages", { count: editions[0].stages })
+            : t("raceType.oneDay")}
+          {" · "}{t("history.editionsCount", { count: editions.length })}
         </p>
       </div>
 
@@ -123,15 +125,15 @@ export default function RaceHistoryPage() {
         {/* Editions list */}
         <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-cz-border">
-            <h2 className="font-semibold text-cz-1 text-sm">Udgaver</h2>
+            <h2 className="font-semibold text-cz-1 text-sm">{t("history.editions")}</h2>
           </div>
           <div className="divide-y divide-cz-border">
             {editions.map(ed => (
               <div key={ed.id} className="px-4 py-3 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-cz-2 text-sm font-medium">Sæson {ed.season?.number}</p>
+                  <p className="text-cz-2 text-sm font-medium">{t("history.season", { number: ed.season?.number })}</p>
                   {ed.edition_year && (
-                    <p className="text-cz-3 text-xs">{ed.edition_year}-udgave</p>
+                    <p className="text-cz-3 text-xs">{t("common.edition", { year: ed.edition_year })}</p>
                   )}
                 </div>
                 <div className="text-right">
@@ -150,7 +152,7 @@ export default function RaceHistoryPage() {
                       </p>
                     </div>
                   ) : (
-                    <span className="text-cz-3 text-xs">Ingen resultater</span>
+                    <span className="text-cz-3 text-xs">{t("history.noResults")}</span>
                   )}
                 </div>
               </div>
@@ -161,11 +163,11 @@ export default function RaceHistoryPage() {
         {/* Best riders */}
         <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-cz-border">
-            <h2 className="font-semibold text-cz-1 text-sm">Bedste ryttere</h2>
-            <p className="text-cz-3 text-xs">Akkumuleret på tværs af alle udgaver</p>
+            <h2 className="font-semibold text-cz-1 text-sm">{t("history.bestRiders")}</h2>
+            <p className="text-cz-3 text-xs">{t("history.bestRidersSub")}</p>
           </div>
           {riderStats.length === 0 ? (
-            <div className="px-4 py-8 text-center text-cz-3 text-sm">Ingen resultater endnu</div>
+            <div className="px-4 py-8 text-center text-cz-3 text-sm">{t("history.noResultsYet")}</div>
           ) : (
             <div className="divide-y divide-cz-border">
               {riderStats.map((s, i) => (
@@ -184,10 +186,10 @@ export default function RaceHistoryPage() {
                     </p>
                     <p className="text-cz-3 text-[10px]">
                       {[
-                        s.gc_wins > 0 && `${s.gc_wins} GC`,
-                        s.stage_wins > 0 && `${s.stage_wins} etapesejre`,
-                        s.top3 > 0 && `${s.top3} top-3`,
-                      ].filter(Boolean).join(" · ") || "Ingen sejre"}
+                        s.gc_wins > 0 && t("history.statGc", { count: s.gc_wins }),
+                        s.stage_wins > 0 && t("history.statStageWins", { count: s.stage_wins }),
+                        s.top3 > 0 && t("history.statTop3", { count: s.top3 }),
+                      ].filter(Boolean).join(" · ") || t("history.noWins")}
                     </p>
                   </div>
                   <span className="text-cz-accent-t font-mono text-xs font-bold flex-shrink-0">
@@ -203,8 +205,8 @@ export default function RaceHistoryPage() {
       {/* Accumulated bar chart */}
       {riderStats.length > 0 && riderStats[0].total_points > 0 && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-          <h2 className="font-semibold text-cz-1 text-sm mb-0.5">Akkumuleret point-total</h2>
-          <p className="text-cz-3 text-xs mb-5">Top ryttere efter samlede point på tværs af alle udgaver</p>
+          <h2 className="font-semibold text-cz-1 text-sm mb-0.5">{t("history.accumulatedTitle")}</h2>
+          <p className="text-cz-3 text-xs mb-5">{t("history.accumulatedSub")}</p>
           <div className="space-y-3">
             {riderStats.map((s, i) => {
               const pct = maxPoints > 0 ? (s.total_points / maxPoints) * 100 : 0;

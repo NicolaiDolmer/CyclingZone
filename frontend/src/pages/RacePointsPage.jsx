@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
@@ -11,16 +12,17 @@ const CLASS_ORDER = [
   "ProSeries", "Class1", "Class2",
 ];
 
-const CLASS_META = {
-  TourFrance:      { label: "Tour de France", badge: "Grand Tour" },
-  GiroVuelta:      { label: "Giro / Vuelta",  badge: "Grand Tour" },
-  Monuments:       { label: "Monuments",      badge: "Endagsløb" },
-  OtherWorldTourA: { label: "WorldTour A",    badge: "WorldTour" },
-  OtherWorldTourB: { label: "WorldTour B",    badge: "WorldTour" },
-  OtherWorldTourC: { label: "WorldTour C",    badge: "WorldTour" },
-  ProSeries:       { label: "ProSeries",      badge: "Continental" },
-  Class1:          { label: "Klasse 1",       badge: "Continental" },
-  Class2:          { label: "Klasse 2",       badge: "Continental" },
+// Badge-i18n-nøgle pr. klasse (label kommer fra t(`classOption.${c}`)).
+const CLASS_BADGE = {
+  TourFrance:      "grandTour",
+  GiroVuelta:      "grandTour",
+  Monuments:       "oneDay",
+  OtherWorldTourA: "worldTour",
+  OtherWorldTourB: "worldTour",
+  OtherWorldTourC: "worldTour",
+  ProSeries:       "continental",
+  Class1:          "continental",
+  Class2:          "continental",
 };
 
 const TYPE_ORDER = [
@@ -35,28 +37,13 @@ const PER_DAY_JERSEY_TYPES = new Set([
   "Forertroje", "PointtrojeDag", "BjergtrojeDag", "UngdomstrojeDag",
 ]);
 
-const TYPE_META = {
-  Klassement:     { label: "Samlet klassement", desc: "GC-placering i etapeløb" },
-  Klassiker:      { label: "Klassiker",          desc: "Samlet placering i endagsløb" },
-  Etapeplacering: { label: "Etapeplacering",     desc: "Pr. etape i etapeløb" },
-  Pointtroje:     { label: "Pointtrøje",         desc: "Top 3 i pointkonkurrencen" },
-  Bjergtroje:     { label: "Bjergtrøje",         desc: "Top 3 i bjergkonkurrencen" },
-  Ungdomstroje:   { label: "Ungdomstrøje",       desc: "Top 3 i U25-konkurrencen" },
-  EtapelobHold:   { label: "Hold (etapeløb)",    desc: "Bedste hold i etapeløb" },
-  KlassikerHold:  { label: "Hold (klassiker)",   desc: "Bedste hold i klassiker" },
-  Forertroje:     { label: "Førertrøje",         desc: "Pr. dag i førertrøjen" },
-  PointtrojeDag:  { label: "Pointtrøje (pr. dag)",   desc: "Pr. dag i pointtrøjen" },
-  BjergtrojeDag:  { label: "Bjergtrøje (pr. dag)",   desc: "Pr. dag i bjergtrøjen" },
-  UngdomstrojeDag:{ label: "Ungdomstrøje (pr. dag)", desc: "Pr. dag i ungdomstrøjen" },
-};
-
 const PRIZE_EXAMPLES = [
-  { label: "Tour de France-sejr", points: 1300 },
-  { label: "Monument-sejr",       points: 800 },
-  { label: "Etapesejr (TdF)",     points: 210 },
-  { label: "ProSeries-sejr",      points: 200 },
-  { label: "Klasse 1-sejr",       points: 125 },
-  { label: "Klasse 2-sejr",       points: 40 },
+  { key: "tourWin",      points: 1300 },
+  { key: "monumentWin",  points: 800 },
+  { key: "tourStageWin", points: 210 },
+  { key: "proSeriesWin", points: 200 },
+  { key: "class1Win",    points: 125 },
+  { key: "class2Win",    points: 40 },
 ];
 
 function fmt(n) {
@@ -68,6 +55,7 @@ function fmtPrize(pts) {
 }
 
 export default function RacePointsPage() {
+  const { t } = useTranslation("races");
   const [grouped, setGrouped] = useState({});
   const [loading, setLoading] = useState(true);
   const [activeClass, setActiveClass] = useState("TourFrance");
@@ -102,22 +90,22 @@ export default function RacePointsPage() {
   );
 
   const classData = grouped[activeClass] || {};
-  const availableTypes = TYPE_ORDER.filter(t => classData[t]?.length > 0);
+  const availableTypes = TYPE_ORDER.filter(type => classData[type]?.length > 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-cz-1">Point- og præmieoversigt</h1>
-          <p className="text-cz-3 text-sm">Sådan beregnes dine løbspræmier fra UCI-placeringer</p>
+          <h1 className="text-xl font-bold text-cz-1">{t("points.title")}</h1>
+          <p className="text-cz-3 text-sm">{t("points.subtitle")}</p>
         </div>
         <Link
           to="/help"
           className="flex-shrink-0 flex items-center gap-1.5 text-xs text-cz-3 hover:text-cz-2 transition-colors mt-1"
-          title="Hjælp & Regler"
+          title={t("points.help")}
         >
           <span className="w-5 h-5 rounded-full border border-cz-border flex items-center justify-center text-xs font-bold leading-none">?</span>
-          <span className="hidden sm:inline">Hjælp & Regler</span>
+          <span className="hidden sm:inline">{t("points.help")}</span>
         </Link>
       </div>
 
@@ -125,12 +113,12 @@ export default function RacePointsPage() {
       <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-xl p-4 space-y-3">
         <div className="flex items-center gap-2">
           <span className="text-lg">💰</span>
-          <span className="font-semibold text-cz-1">Præmieformlen: 1 UCI-point = 1.500 CZ$</span>
+          <span className="font-semibold text-cz-1">{t("points.formula", { amount: fmt(PRIZE_PER_POINT) })}</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {PRIZE_EXAMPLES.map(ex => (
-            <div key={ex.label} className="bg-cz-card rounded-lg px-3 py-2 border border-amber-100">
-              <p className="text-xs text-cz-2 truncate">{ex.label}</p>
+            <div key={ex.key} className="bg-cz-card rounded-lg px-3 py-2 border border-amber-100">
+              <p className="text-xs text-cz-2 truncate">{t(`points.prizeExample.${ex.key}`)}</p>
               <p className="font-mono font-bold text-cz-accent-t text-sm">{fmt(ex.points)} pt</p>
               <p className="text-xs text-cz-3">{fmtPrize(ex.points)}</p>
             </div>
@@ -150,28 +138,29 @@ export default function RacePointsPage() {
                 : "bg-cz-card border border-cz-border text-cz-2 hover:border-cz-accent/30 hover:text-cz-accent-t"
               }`}
           >
-            {CLASS_META[c]?.label ?? c}
+            {t(`classOption.${c}`)}
           </button>
         ))}
       </div>
 
       {/* Active class subtitle */}
-      {CLASS_META[activeClass] && (
+      {CLASS_BADGE[activeClass] && (
         <p className="text-xs text-cz-3 -mt-2">
-          {CLASS_META[activeClass].badge} · {CLASS_META[activeClass].label}
+          {t(`classBadge.${CLASS_BADGE[activeClass]}`)} · {t(`classOption.${activeClass}`)}
         </p>
       )}
 
       {/* Result type tables */}
       {availableTypes.length === 0 ? (
         <div className="text-center py-12 text-cz-3">
-          <p>Ingen pointdata for denne klasse</p>
+          <p>{t("points.noClassData")}</p>
         </div>
       ) : (
         <div className="space-y-4">
           {availableTypes.map(rType => {
             const rows = classData[rType] || [];
-            const meta = TYPE_META[rType] || { label: rType, desc: "" };
+            const label = t(`points.type.${rType}.label`);
+            const desc = t(`points.type.${rType}.desc`);
             const expandKey = `${activeClass}__${rType}`;
             const isExpanded = expanded[expandKey];
             const displayRows = isExpanded ? rows : rows.slice(0, 15);
@@ -183,12 +172,12 @@ export default function RacePointsPage() {
                 <div key={rType} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
                   <div className="px-4 py-3 border-b border-cz-border flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold text-cz-1 text-sm">{meta.label}</h3>
-                      <p className="text-xs text-cz-3">{meta.desc}</p>
+                      <h3 className="font-semibold text-cz-1 text-sm">{label}</h3>
+                      <p className="text-xs text-cz-3">{desc}</p>
                     </div>
                   </div>
                   <div className="px-4 py-4 flex items-center justify-between">
-                    <p className="text-cz-2 text-sm">{meta.desc}</p>
+                    <p className="text-cz-2 text-sm">{desc}</p>
                     <div className="text-right">
                       <p className="font-mono font-bold text-cz-accent-t">{fmt(pt)} pt</p>
                       <p className="text-xs text-cz-3">{fmtPrize(pt)}</p>
@@ -201,16 +190,16 @@ export default function RacePointsPage() {
             return (
               <div key={rType} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-cz-border">
-                  <h3 className="font-semibold text-cz-1 text-sm">{meta.label}</h3>
-                  <p className="text-xs text-cz-3">{meta.desc}</p>
+                  <h3 className="font-semibold text-cz-1 text-sm">{label}</h3>
+                  <p className="text-xs text-cz-3">{desc}</p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-cz-border text-left">
-                        <th className="px-4 py-2 font-medium text-cz-2 text-xs w-14">Plads</th>
-                        <th className="px-4 py-2 font-medium text-cz-2 text-xs">UCI-point</th>
-                        <th className="px-4 py-2 font-medium text-cz-2 text-xs text-right">Præmie</th>
+                        <th className="px-4 py-2 font-medium text-cz-2 text-xs w-14">{t("points.thRank")}</th>
+                        <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("points.thUciPoints")}</th>
+                        <th className="px-4 py-2 font-medium text-cz-2 text-xs text-right">{t("points.thPrize")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-cz-border">
@@ -239,7 +228,7 @@ export default function RacePointsPage() {
                       onClick={() => toggleExpand(expandKey)}
                       className="text-xs text-cz-accent-t hover:underline"
                     >
-                      {isExpanded ? "Skjul ↑" : `Vis alle ${rows.length} pladser ↓`}
+                      {isExpanded ? t("points.showLess") : t("points.showAll", { count: rows.length })}
                     </button>
                   </div>
                 )}

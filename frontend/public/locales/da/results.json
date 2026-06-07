@@ -1,0 +1,26 @@
+{
+  "title": "Resultater",
+  "subtitle": {
+    "active": "Sæson {number} · aktiv",
+    "noSeason": "Ingen aktiv sæson"
+  },
+  "hub": {
+    "standings": { "label": "Ranglisten", "desc": "Holdranglisten for aktiv sæson" },
+    "riderRankings": { "label": "Rytterrangliste", "desc": "Individuelle resultater for alle ryttere" },
+    "library": { "label": "Løbsbibliotek", "desc": "Alle løb på tværs af sæsoner — søg & filtrér" },
+    "seasonSnapshot": { "label": "Sæson-snapshot", "desc": "Kalender, slutstilling og sæsonens vindere" },
+    "hallOfFame": { "label": "Hall of Fame", "desc": "Rekorder og manager-rangliste" },
+    "points": { "label": "Point & præmier", "desc": "UCI-point og præmieformler pr. løbsklasse" }
+  },
+  "emptyNoSeason": "Ingen aktiv sæson — resultater vises her når sæsonen er i gang",
+  "topTeams": "Tophold — Sæson {number}",
+  "topScorers": "Topscorere — Sæson {number}",
+  "teamMeta": "{stageWins, plural, one {# etapesejr} other {# etapesejre}} · {gcWins} GC",
+  "freeAgent": "Fri agent",
+  "riderStageWins": "{count, plural, one {# etapesejr} other {# etapesejre}}",
+  "riderGcWins": "{count} GC",
+  "points": "{count} pt",
+  "seeAllStandings": "Se hele ranglisten →",
+  "seeAllRiders": "Se alle ryttere →",
+  "emptyNoResults": "Ingen løbsresultater importeret endnu denne sæson"
+}

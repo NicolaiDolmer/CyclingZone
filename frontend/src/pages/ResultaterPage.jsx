@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { Link, useNavigate } from "react-router-dom";
@@ -10,16 +11,18 @@ import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 // Realtime: opdatér top-hold/-ryttere live efter en resultat-import (#783).
 const REALTIME_TABLES = ["season_standings", "race_results"];
 
+// Label + desc resolves via t() ved render — se results-namespacet (hub.*).
 const HUB_LINKS = [
-  { to: "/standings",          label: "Ranglisten",      desc: "Holdranglisten for aktiv sæson",              icon: "🏆" },
-  { to: "/rider-rankings",     label: "Rytterrangliste",  desc: "Individuelle resultater for alle ryttere",    icon: "🚴" },
-  { to: "/races?tab=library",  label: "Løbsbibliotek",    desc: "Alle løb på tværs af sæsoner — søg & filtrér", icon: "📖" },
-  { to: "/seasons",            label: "Sæson-snapshot",   desc: "Kalender, slutstilling og sæsonens vindere",  icon: "📅" },
-  { to: "/hall-of-fame",       label: "Hall of Fame",     desc: "Rekorder og manager-rangliste",               icon: "👑" },
-  { to: "/races?tab=points",   label: "Point & præmier",  desc: "UCI-point og præmieformler pr. løbsklasse",   icon: "💰" },
+  { to: "/standings",          key: "standings",      icon: "🏆" },
+  { to: "/rider-rankings",     key: "riderRankings",  icon: "🚴" },
+  { to: "/races?tab=library",  key: "library",        icon: "📖" },
+  { to: "/seasons",            key: "seasonSnapshot", icon: "📅" },
+  { to: "/hall-of-fame",       key: "hallOfFame",     icon: "👑" },
+  { to: "/races?tab=points",   key: "points",         icon: "💰" },
 ];
 
 export default function ResultaterPage() {
+  const { t } = useTranslation("results");
   const navigate = useNavigate();
   const [season, setSeason] = useState(null);
   const [topTeams, setTopTeams] = useState([]);
@@ -90,9 +93,9 @@ export default function ResultaterPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-cz-1">Resultater</h1>
+        <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
         <p className="text-cz-3 text-sm">
-          {season ? `Sæson ${season.number} · aktiv` : "Ingen aktiv sæson"}
+          {season ? t("subtitle.active", { number: season.number }) : t("subtitle.noSeason")}
         </p>
       </div>
 
@@ -103,9 +106,9 @@ export default function ResultaterPage() {
             className="bg-cz-card border border-cz-border rounded-xl p-4 hover:border-cz-accent/30 hover:shadow-sm transition-all group text-center">
             <div className="text-2xl mb-2">{link.icon}</div>
             <p className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">
-              {link.label}
+              {t(`hub.${link.key}.label`)}
             </p>
-            <p className="text-cz-3 text-xs mt-0.5 leading-snug">{link.desc}</p>
+            <p className="text-cz-3 text-xs mt-0.5 leading-snug">{t(`hub.${link.key}.desc`)}</p>
           </Link>
         ))}
       </div>
@@ -113,7 +116,7 @@ export default function ResultaterPage() {
       {!season ? (
         <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">◉</p>
-          <p>Ingen aktiv sæson — resultater vises her når sæsonen er i gang</p>
+          <p>{t("emptyNoSeason")}</p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
@@ -121,7 +124,7 @@ export default function ResultaterPage() {
           {topTeams.length > 0 && (
             <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
               <div className="px-4 py-3 border-b border-cz-border">
-                <h2 className="font-semibold text-cz-1 text-sm">Tophold — Sæson {season.number}</h2>
+                <h2 className="font-semibold text-cz-1 text-sm">{t("topTeams", { number: season.number })}</h2>
               </div>
               <div className="divide-y divide-cz-border">
                 {topTeams.map((s, i) => (
@@ -135,17 +138,17 @@ export default function ResultaterPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-cz-1 text-sm truncate">{s.team?.name}</p>
                       <p className="text-cz-3 text-xs">
-                        {s.stage_wins || 0} etapesejre · {s.gc_wins || 0} GC
+                        {t("teamMeta", { stageWins: s.stage_wins || 0, gcWins: s.gc_wins || 0 })}
                       </p>
                     </div>
                     <span className="font-mono font-bold text-cz-accent-t text-sm">
-                      {formatNumber(s.total_points || 0)} pt
+                      {t("points", { count: formatNumber(s.total_points || 0) })}
                     </span>
                   </div>
                 ))}
               </div>
               <div className="px-4 py-2 border-t border-cz-border">
-                <Link to="/standings" className="text-xs text-cz-accent-t hover:underline">Se hele ranglisten →</Link>
+                <Link to="/standings" className="text-xs text-cz-accent-t hover:underline">{t("seeAllStandings")}</Link>
               </div>
             </div>
           )}
@@ -154,7 +157,7 @@ export default function ResultaterPage() {
           {topRiders.length > 0 && (
             <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
               <div className="px-4 py-3 border-b border-cz-border">
-                <h2 className="font-semibold text-cz-1 text-sm">Topscorere — Sæson {season.number}</h2>
+                <h2 className="font-semibold text-cz-1 text-sm">{t("topScorers", { number: season.number })}</h2>
               </div>
               <div className="divide-y divide-cz-border">
                 {topRiders.map((a, i) => (
@@ -172,19 +175,19 @@ export default function ResultaterPage() {
                         {a.rider.firstname} {a.rider.lastname}
                       </p>
                       <p className="text-cz-3 text-xs">
-                        {a.rider.team?.name || "Fri agent"}
-                        {a.stage_wins > 0 && ` · ${a.stage_wins} etapesejre`}
-                        {a.gc_wins > 0 && ` · ${a.gc_wins} GC`}
+                        {a.rider.team?.name || t("freeAgent")}
+                        {a.stage_wins > 0 && ` · ${t("riderStageWins", { count: a.stage_wins })}`}
+                        {a.gc_wins > 0 && ` · ${t("riderGcWins", { count: a.gc_wins })}`}
                       </p>
                     </div>
                     <span className="font-mono font-bold text-cz-accent-t text-sm">
-                      {formatNumber(a.points || 0)} pt
+                      {t("points", { count: formatNumber(a.points || 0) })}
                     </span>
                   </RiderLink>
                 ))}
               </div>
               <div className="px-4 py-2 border-t border-cz-border">
-                <Link to="/rider-rankings" className="text-xs text-cz-accent-t hover:underline">Se alle ryttere →</Link>
+                <Link to="/rider-rankings" className="text-xs text-cz-accent-t hover:underline">{t("seeAllRiders")}</Link>
               </div>
             </div>
           )}
@@ -192,7 +195,7 @@ export default function ResultaterPage() {
           {topTeams.length === 0 && topRiders.length === 0 && (
             <div className="md:col-span-2 text-center py-12 text-cz-3">
               <p className="text-4xl mb-3">◉</p>
-              <p>Ingen løbsresultater importeret endnu denne sæson</p>
+              <p>{t("emptyNoResults")}</p>
             </div>
           )}
         </div>
