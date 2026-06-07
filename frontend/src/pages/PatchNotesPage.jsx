@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.96",
+    date: "2026-06-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Board negotiation",
+        items: [
+          "EN · In the board plan negotiation, the \"Negotiate down\" button no longer does nothing when a target can't be lowered — it's now clearly disabled and labelled \"Can't be negotiated\" instead of silently ignoring your click. Refs #864.",
+          "DA · I bestyrelsens planforhandling gør \"Forhandl ned\"-knappen ikke længere ingenting når et mål ikke kan sænkes — den er nu tydeligt deaktiveret og mærket \"Kan ikke forhandles\" i stedet for tavst at ignorere dit klik. Refs #864.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.95",
     date: "2026-06-07",
     label: "Beta",

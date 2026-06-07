@@ -374,6 +374,7 @@
     "goalCounter": "Mål {current}/{total}",
     "alreadyNegotiated": "Allerede forhandlet",
     "negotiateDown": "Forhandl ned ↓",
+    "cannotNegotiate": "Kan ikke forhandles",
     "accept": "Accepter →",
     "compromiseHeading": "Bestyrelsen har accepteret kompromis",
     "compromiseBody": "Straf halveret. Accepter det forhandlede mål?",

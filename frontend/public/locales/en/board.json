@@ -374,6 +374,7 @@
     "goalCounter": "Target {current}/{total}",
     "alreadyNegotiated": "Already negotiated",
     "negotiateDown": "Negotiate down ↓",
+    "cannotNegotiate": "Can't be negotiated",
     "accept": "Accept →",
     "compromiseHeading": "The board has accepted a compromise",
     "compromiseBody": "Penalty halved. Accept the negotiated target?",
