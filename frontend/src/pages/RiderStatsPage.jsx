@@ -93,19 +93,29 @@ function StatRow({ label, icon, value }) {
   );
 }
 
-// Race Engine V1 (#676) — udledte abilities til preview. Ikoner genbruger samme
+// Evne-system v2 (#1122) — 16 synlige evner i 4 kategorier (fysiske/tekniske/
+// taktisk-mentale). hidden_potential er skjult per design. Ikoner genbruger samme
 // visuelle sprog som de traditionelle skills (STATS ovenfor).
 const DERIVED_ABILITIES = [
-  { key: "climbing",        icon: "▲" },
-  { key: "sprint",          icon: "⚡" },
-  { key: "time_trial",      icon: "⏱" },
-  { key: "punch",           icon: "✦" },
-  { key: "endurance",       icon: "◎" },
-  { key: "cobble_classics", icon: "⬡" },
-  { key: "acceleration",    icon: "▶" },
-  { key: "recovery",        icon: "↺" },
-  { key: "tactics",         icon: "♟" },
-  { key: "positioning",     icon: "⊹" },
+  // Fysiske
+  { key: "climbing",     icon: "▲" },
+  { key: "time_trial",   icon: "⏱" },
+  { key: "prolog",       icon: "⧗" },
+  { key: "flat",         icon: "▬" },
+  { key: "tempo",        icon: "◈" },
+  { key: "sprint",       icon: "⚡" },
+  { key: "acceleration", icon: "▶" },
+  { key: "punch",        icon: "✦" },
+  { key: "endurance",    icon: "◎" },
+  { key: "recovery",     icon: "↺" },
+  { key: "durability",   icon: "⬣" },
+  // Tekniske
+  { key: "descending",   icon: "▽" },
+  { key: "cobblestone",  icon: "⬡" },
+  { key: "positioning",  icon: "⊹" },
+  // Taktisk/mentale
+  { key: "aggression",   icon: "➹" },
+  { key: "tactics",      icon: "♟" },
 ];
 
 // Ét nøgletal (watt/W·kg) i effektprofil-grid'et.

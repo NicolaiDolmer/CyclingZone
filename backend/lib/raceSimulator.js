@@ -30,7 +30,7 @@ export const ENGINE_VERSION = 1;
 // ∪ {randomness}). 'randomness' er IKKE en ability — den skalerer kun støjen.
 export const ABILITY_KEYS = Object.freeze([
   "climbing", "time_trial", "sprint", "punch", "endurance",
-  "cobble_classics", "acceleration", "recovery", "tactics", "positioning",
+  "cobblestone", "acceleration", "recovery", "tactics", "positioning",
 ]);
 
 const ABILITY_MAX = 99;

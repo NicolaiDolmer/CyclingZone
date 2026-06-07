@@ -91,14 +91,20 @@
     "derived": {
       "climbing": "Climbing",
       "time_trial": "Time trial",
+      "prolog": "Prologue",
+      "flat": "Flat",
+      "tempo": "Tempo",
       "sprint": "Sprint",
+      "acceleration": "Acceleration",
       "punch": "Punch",
       "endurance": "Endurance",
-      "cobble_classics": "Cobbles & classics",
-      "acceleration": "Acceleration",
       "recovery": "Recovery",
-      "tactics": "Tactics",
-      "positioning": "Positioning"
+      "durability": "Durability",
+      "descending": "Descending",
+      "cobblestone": "Cobbles",
+      "positioning": "Positioning",
+      "aggression": "Aggression",
+      "tactics": "Tactics"
     }
   },
   "skills": {

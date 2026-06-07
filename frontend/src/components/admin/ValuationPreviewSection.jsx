@@ -7,7 +7,7 @@ const PAGE_SIZE = 50;
 // Dansk label pr. ability/feature (admin-only flade → ingen i18n).
 const FEATURE_LABELS = {
   climbing: "Klatring", time_trial: "Enkeltstart", sprint: "Sprint", punch: "Punch",
-  endurance: "Udholdenhed", cobble_classics: "Brosten", acceleration: "Acceleration",
+  endurance: "Udholdenhed", cobblestone: "Brosten", acceleration: "Acceleration",
   recovery: "Restitution", tactics: "Taktik", positioning: "Positionering",
   age: "Alder", age_sq: "Alder²", potentiale: "Potentiale", popularity: "Popularitet",
   is_u25: "U25",

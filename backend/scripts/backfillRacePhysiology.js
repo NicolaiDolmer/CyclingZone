@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { STAT_KEYS } from "../lib/fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy, FORMULA_VERSION } from "../lib/physiologySeeding.js";
-import { deriveAbilities, buildAbilityPool, FORMULA_VERSION as ABILITY_FORMULA_VERSION } from "../lib/abilityDerivation.js";
+import { deriveAbilities, FORMULA_VERSION as ABILITY_FORMULA_VERSION } from "../lib/abilityDerivation.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -58,7 +58,7 @@ function spread(values) {
 async function main() {
   console.log(`=== Race physiology + abilities backfill ${DRY_RUN ? "(DRY-RUN)" : "(APPLY)"} ===`);
 
-  const select = ["id", "height", "weight", ...STAT_KEYS].join(", ");
+  const select = ["id", "height", "weight", "birthdate", "potentiale", ...STAT_KEYS].join(", ");
   const riders = await fetchAllRows(() =>
     supabase.from("riders").select(select).order("id", { ascending: true }),
   );
@@ -74,11 +74,10 @@ async function main() {
   console.log(`\n📊 Physiology (formula_version=${FORMULA_VERSION}) — ${profiles.length} ryttere, ${missingBody} brugte default-krop`);
   console.log(`  ftp_wkg: ${spread(profiles.map((p) => p.ftp_wkg))}`);
 
-  // ── Fase 2: udledte abilities (percentil mod den seedede pool) ──────────────
+  // ── Fase 2: udledte abilities (v2 — direkte fra PCM-stats, ingen pool) ──────
   let abilities = [];
   if (!PHYSIOLOGY_ONLY) {
-    const pool = buildAbilityPool(profiles);
-    abilities = profiles.map((p, i) => ({ ...deriveAbilities(p, riders[i], { pool }), generated_at: now }));
+    abilities = profiles.map((p, i) => ({ ...deriveAbilities(p, riders[i]), generated_at: now }));
     console.log(`\n📊 Abilities (formula_version=${ABILITY_FORMULA_VERSION}) — ${abilities.length} ryttere`);
     console.log(`  climbing: ${spread(abilities.map((a) => a.climbing))}`);
     console.log(`  sprint:   ${spread(abilities.map((a) => a.sprint))}`);
