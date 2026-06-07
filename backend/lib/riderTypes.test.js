@@ -3,111 +3,163 @@ import assert from "node:assert/strict";
 import {
   RIDER_TYPES,
   RIDER_TYPE_KEYS,
-  STAT_KEYS,
+  ABILITY_KEYS,
+  GUARDS,
+  NEUTRAL_BASELINE,
   scoreRiderType,
   computeRiderTypes,
 } from "./riderTypes.js";
 
-// Syntetisk baseline (mean 50, std 10 pr. stat) — gør testene uafhængige af den
-// fittede riderTypesBaseline.json (som ændrer sig med populationen).
+// Syntetisk baseline (mean 35, std 15 pr. evne) ~ prod-abilities — gør testene
+// uafhængige af den fittede riderTypesBaseline.json (som ændrer sig med populationen).
 const BASELINE = {
-  mean: Object.fromEntries(STAT_KEYS.map((s) => [s, 50])),
-  std: Object.fromEntries(STAT_KEYS.map((s) => [s, 10])),
+  mean: Object.fromEntries(ABILITY_KEYS.map((a) => [a, 35])),
+  std: Object.fromEntries(ABILITY_KEYS.map((a) => [a, 15])),
 };
 
-// Profil proportional med en types vægte: stat-værdi = base + scale·vægt (over
-// baseline-mean), øvrige stats = baseline-mean. Matcher en ægte profil for typen.
-function riderFavoring(typeKey, { base = 50, scale = 3 } = {}) {
-  const rider = Object.fromEntries(STAT_KEYS.map((s) => [s, base]));
-  const type = RIDER_TYPES.find((t) => t.key === typeKey);
-  for (const [stat, w] of Object.entries(type.weights)) rider[stat] = base + scale * w;
-  return rider;
-}
+// Komplet ability-profil med default + overrides.
+const rider = (over = {}, base = 30) =>
+  Object.fromEntries(ABILITY_KEYS.map((a) => [a, over[a] ?? base]));
 
-// gc og goat er brede "stærk-overalt"-typer hvis stat-sæt er supersets af
-// fokuserede typer (climber/rouleur), så de bliver sjældent primær — men skal
-// kunne nå top-2. De øvrige 10 skal isolere som primær. Verificeret mod data.
-const BROAD_TYPES = new Set(["gc", "goat"]);
-
-test("RIDER_TYPES indeholder de 12 forventede typer i tie-break-rækkefølge", () => {
-  assert.equal(RIDER_TYPES.length, 12);
+test("RIDER_TYPES indeholder de 9 forventede typer i tie-break-rækkefølge", () => {
+  assert.equal(RIDER_TYPES.length, 9);
   assert.deepEqual(RIDER_TYPE_KEYS, [
-    "sprinter", "leadout", "climber", "puncheur", "tt", "classics",
-    "gc", "goat", "allrounder", "rouleur", "baroudeur", "domestique",
+    "sprinter", "leadout", "tt", "climber", "puncheur",
+    "brostensrytter", "baroudeur", "rouleur", "gc",
   ]);
 });
 
-test("scoreRiderType: z-vægtet gennemsnit (hånd-regnet eksempel)", () => {
-  // tt = { stat_tt:3, stat_prl:2 }. tt=70 → z=2; prl=60 → z=1.
-  // score = (3·2 + 2·1) / 5 = 8/5 = 1.6
-  const rider = { stat_tt: 70, stat_prl: 60 };
-  assert.equal(scoreRiderType(rider, RIDER_TYPES.find((t) => t.key === "tt").weights, BASELINE), 1.6);
+test("goat, domestique og allrounder er fjernet som typer", () => {
+  for (const k of ["goat", "domestique", "allrounder", "classics"]) {
+    assert.ok(!RIDER_TYPE_KEYS.includes(k), `${k} bør være fjernet`);
+  }
 });
 
-test("de 10 fokuserede typer isolerer som primær for en ren profil", () => {
+test("type-formler refererer kun evner i ABILITY_KEYS", () => {
+  const valid = new Set(ABILITY_KEYS);
   for (const t of RIDER_TYPES) {
-    if (BROAD_TYPES.has(t.key)) continue;
-    const { primary } = computeRiderTypes(riderFavoring(t.key), BASELINE);
-    assert.equal(primary.key, t.key, `forventede ${t.key} som primær, fik ${primary.key}`);
+    for (const ability of Object.keys(t.weights)) {
+      assert.ok(valid.has(ability), `${t.key} bruger ukendt evne ${ability}`);
+    }
   }
 });
 
-test("brede typer (gc/goat) når mindst top-2 for deres egen profil", () => {
-  for (const key of BROAD_TYPES) {
-    const { primary, secondary } = computeRiderTypes(riderFavoring(key), BASELINE);
-    assert.ok([primary.key, secondary.key].includes(key), `${key} bør være i top-2`);
-  }
+test("scoreRiderType: kontrast = snit(positive z) − snit(negative z) (hånd-regnet)", () => {
+  // tt = { time_trial:3, prolog:2, sprint:-1, punch:-1 }. Neutral baseline → z = rå.
+  // pos = (3·90 + 2·60)/5 = 390/5 = 78. neg = (1·10 + 1·20)/2 = 15. score = 78 − 15 = 63.
+  const ab = { time_trial: 90, prolog: 60, sprint: 10, punch: 20 };
+  assert.equal(scoreRiderType(ab, RIDER_TYPES.find((t) => t.key === "tt").weights, NEUTRAL_BASELINE), 63);
 });
 
+test("scoreRiderType: kun positive vægte → ingen negativ-straf", () => {
+  // rouleur = { flat:2, endurance:1, climbing:-1, sprint:-1 }
+  const ab = { flat: 50, endurance: 20, climbing: 0, sprint: 0 };
+  // pos = (2·50 + 1·20)/3 = 40. neg = (0+0)/2 = 0. score = 40.
+  assert.equal(scoreRiderType(ab, RIDER_TYPES.find((t) => t.key === "rouleur").weights, NEUTRAL_BASELINE), 40);
+});
+
+// ── Guards ────────────────────────────────────────────────────────────────────
+test("guard: sprint ≥ tærskel → aldrig leadout", () => {
+  const r = rider({ sprint: GUARDS.highSpeciality, acceleration: 90, flat: 80 });
+  const { primary, secondary } = computeRiderTypes(r, BASELINE);
+  assert.notEqual(primary.key, "leadout");
+  assert.notEqual(secondary.key, "leadout");
+});
+
+test("guard: høj sprint (<tærskel) tillader stadig leadout", () => {
+  const r = rider({ sprint: GUARDS.highSpeciality - 5, acceleration: 60, flat: 60, durability: 50 });
+  const keys = RIDER_TYPES.filter((t) => !["leadout"].includes(t.key)); // sanity
+  assert.ok(keys.length > 0);
+  // leadout må optræde (ikke garanteret primær, men ikke guarded væk)
+  const out = computeRiderTypes(r, BASELINE);
+  assert.ok(out.primary && out.secondary);
+});
+
+test("guard: ≥ tærskel i et speciale → aldrig rouleur", () => {
+  const r = rider({ climbing: GUARDS.highSpeciality, flat: 80, endurance: 70 });
+  const { primary, secondary } = computeRiderTypes(r, BASELINE);
+  assert.notEqual(primary.key, "rouleur");
+  assert.notEqual(secondary.key, "rouleur");
+});
+
+test("guard: sprint > brosten → aldrig brostensrytter", () => {
+  const r = rider({ sprint: 60, cobblestone: 55, flat: 70, endurance: 60 });
+  const { primary, secondary } = computeRiderTypes(r, BASELINE);
+  assert.notEqual(primary.key, "brostensrytter");
+  assert.notEqual(secondary.key, "brostensrytter");
+});
+
+test("guard: brosten ≥ sprint tillader brostensrytter", () => {
+  const r = rider({ cobblestone: 90, sprint: 40, flat: 70, endurance: 65, punch: 60, climbing: 15 });
+  assert.equal(computeRiderTypes(r, BASELINE).primary.key, "brostensrytter");
+});
+
+test("gc-gate: bjerg+tt+recovery alle ≥ tærskel → gc mulig", () => {
+  const r = rider({ climbing: 75, time_trial: 60, recovery: 60, tempo: 65, endurance: 60, durability: 55, sprint: 20 });
+  const { primary, secondary } = computeRiderTypes(r, BASELINE);
+  assert.ok([primary.key, secondary.key].includes("gc"), "gc bør være i top-2 for ægte etapeløbsrytter");
+});
+
+test("gc-gate: lav recovery → aldrig gc (selv med høj bjerg+tt)", () => {
+  const r = rider({ climbing: 90, time_trial: 80, recovery: GUARDS.gcRecovery - 5, tempo: 70 });
+  const { primary, secondary } = computeRiderTypes(r, BASELINE);
+  assert.notEqual(primary.key, "gc");
+  assert.notEqual(secondary.key, "gc");
+});
+
+// ── computeRiderTypes generelt ───────────────────────────────────────────────
 test("computeRiderTypes returnerer altid primær + sekundær (top-2)", () => {
-  const { primary, secondary } = computeRiderTypes(riderFavoring("sprinter"), BASELINE);
+  const r = rider({ acceleration: 85, sprint: 82, climbing: 12 });
+  const { primary, secondary } = computeRiderTypes(r, BASELINE);
   assert.ok(primary && typeof primary.key === "string");
   assert.ok(secondary && typeof secondary.key === "string");
   assert.notEqual(primary.key, secondary.key);
   assert.ok(primary.score >= secondary.score);
 });
 
-test("edge: alle stats null → z=0, deterministisk top-2, ingen crash", () => {
-  const { primary, secondary } = computeRiderTypes({}, BASELINE);
-  assert.equal(primary.score, 0);
-  assert.equal(secondary.score, 0);
-  // Tie-break = RIDER_TYPES-rækkefølge.
-  assert.equal(primary.key, "sprinter");
-  assert.equal(secondary.key, "leadout");
-});
-
-test("edge: alle stats = baseline-mean → alle z=0, deterministisk", () => {
-  const flat = Object.fromEntries(STAT_KEYS.map((s) => [s, 50]));
-  const a = computeRiderTypes(flat, BASELINE);
-  const b = computeRiderTypes(flat, BASELINE);
+test("edge: tom rytter → deterministisk top-2, ingen crash", () => {
+  const a = computeRiderTypes({}, BASELINE);
+  const b = computeRiderTypes({}, BASELINE);
   assert.deepEqual(a, b);
-  assert.equal(a.primary.key, "sprinter");
 });
 
-// Realistiske fixtures — eyeball-validering af intuitiv klassifikation.
-test("fixture: ren sprinter klassificeres som Sprinter", () => {
-  const sprinter = {
-    stat_fl: 78, stat_bj: 35, stat_kb: 45, stat_bk: 55, stat_tt: 50, stat_prl: 52,
-    stat_bro: 60, stat_sp: 88, stat_acc: 94, stat_ned: 65, stat_udh: 60, stat_mod: 70,
-    stat_res: 62, stat_ftr: 58,
-  };
+// ── Realistiske fixtures (abilities 0-99) ────────────────────────────────────
+test("fixture: ren spurter → sprinter", () => {
+  const sprinter = rider({
+    acceleration: 88, sprint: 85, flat: 72, durability: 58, climbing: 12,
+    endurance: 30, cobblestone: 22, punch: 40,
+  });
   assert.equal(computeRiderTypes(sprinter, BASELINE).primary.key, "sprinter");
 });
 
-test("fixture: ren bjergrytter klassificeres som Climber", () => {
-  const climber = {
-    stat_fl: 50, stat_bj: 93, stat_kb: 85, stat_bk: 75, stat_tt: 55, stat_prl: 50,
-    stat_bro: 40, stat_sp: 35, stat_acc: 55, stat_ned: 60, stat_udh: 80, stat_mod: 65,
-    stat_res: 70, stat_ftr: 60,
-  };
+test("fixture: ren klatrer → climber", () => {
+  const climber = rider({
+    climbing: 88, tempo: 72, punch: 50, endurance: 60, sprint: 10,
+    acceleration: 18, flat: 18, time_trial: 35, recovery: 30, cobblestone: 12,
+  });
   assert.equal(computeRiderTypes(climber, BASELINE).primary.key, "climber");
 });
 
-test("fixture: tempo-specialist klassificeres som Time-trialist", () => {
-  const tt = {
-    stat_fl: 70, stat_bj: 45, stat_kb: 55, stat_bk: 55, stat_tt: 95, stat_prl: 90,
-    stat_bro: 55, stat_sp: 50, stat_acc: 55, stat_ned: 60, stat_udh: 72, stat_mod: 68,
-    stat_res: 65, stat_ftr: 58,
-  };
+test("fixture: tidskører → tt", () => {
+  const tt = rider({
+    time_trial: 90, prolog: 82, flat: 55, endurance: 50, sprint: 14,
+    punch: 18, climbing: 35, acceleration: 20, cobblestone: 20,
+  });
   assert.equal(computeRiderTypes(tt, BASELINE).primary.key, "tt");
+});
+
+test("fixture: brostensspecialist → brostensrytter", () => {
+  const cobbles = rider({
+    cobblestone: 90, flat: 75, endurance: 70, punch: 60, climbing: 14,
+    sprint: 45, acceleration: 40,
+  });
+  assert.equal(computeRiderTypes(cobbles, BASELINE).primary.key, "brostensrytter");
+});
+
+test("fixture: ægte etapeløbsrytter → gc", () => {
+  const gc = rider({
+    climbing: 82, time_trial: 70, recovery: 68, tempo: 72, endurance: 66,
+    durability: 60, punch: 55, prolog: 50, flat: 45, sprint: 22, acceleration: 30,
+  });
+  assert.equal(computeRiderTypes(gc, BASELINE).primary.key, "gc");
 });

@@ -10,15 +10,12 @@
   "types": {
     "sprinter": "Sprinter",
     "leadout": "Lead-out",
+    "tt": "Time-trialist",
     "climber": "Climber",
     "puncheur": "Puncheur",
-    "tt": "Time-trialist",
-    "classics": "Classics specialist",
-    "gc": "GC contender",
-    "goat": "GOAT",
-    "allrounder": "All-rounder",
-    "rouleur": "Rouleur",
+    "brostensrytter": "Cobbles specialist",
     "baroudeur": "Baroudeur",
-    "domestique": "Domestique"
+    "rouleur": "Rouleur",
+    "gc": "GC contender"
   }
 }
