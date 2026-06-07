@@ -64,12 +64,12 @@ function printSummary({ riders, coverage }) {
   }
 
   console.log("\n  Udsnit (første 12):");
-  console.log("  " + "navn".padEnd(26) + "nat  rolle        tier        alder uci   nøglestats");
+  console.log("  " + "navn".padEnd(26) + "nat  arketype     tier        alder uci   nøglestats");
   for (const r of riders.slice(0, 12)) {
     const name = `${r.firstname} ${r.lastname}`.slice(0, 25).padEnd(26);
     const m = r._meta;
     const keystats = `bj${r.stat_bj} sp${r.stat_sp} tt${r.stat_tt}`;
-    console.log(`  ${name}${r.nationality_code.padEnd(5)}${m.role.padEnd(13)}${m.tier.padEnd(12)}${String(m.age).padEnd(6)}${String(r.uci_points).padEnd(6)}${keystats}`);
+    console.log(`  ${name}${r.nationality_code.padEnd(5)}${m.archetype.padEnd(13)}${m.tier.padEnd(12)}${String(m.age).padEnd(6)}${String(r.uci_points).padEnd(6)}${keystats}`);
   }
 }
 

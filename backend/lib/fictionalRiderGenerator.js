@@ -71,27 +71,61 @@ export function toInsertPayload(riders) {
   return riders.map(({ _meta, ...row }) => row);
 }
 
-// ── Rolle-arketyper: hvilke stats løftes over tier-basen ──────────────────────
-const ROLES = [
-  { value: "sprinter",   weight: 14, primary: ["stat_sp", "stat_acc", "stat_fl"], secondary: ["stat_res", "stat_ftr"], heightMean: 182, bmi: 22.5 },
-  { value: "climber",    weight: 18, primary: ["stat_bj", "stat_kb", "stat_bk"], secondary: ["stat_udh", "stat_acc"], heightMean: 174, bmi: 19.5 },
-  { value: "tt",         weight: 10, primary: ["stat_tt", "stat_prl"], secondary: ["stat_fl", "stat_udh"], heightMean: 184, bmi: 22.0 },
-  { value: "classics",   weight: 12, primary: ["stat_bro", "stat_fl", "stat_ftr"], secondary: ["stat_acc", "stat_res"], heightMean: 183, bmi: 22.8 },
-  { value: "allrounder", weight: 16, primary: ["stat_bj", "stat_tt", "stat_udh"], secondary: ["stat_kb", "stat_res"], heightMean: 178, bmi: 21.0 },
-  { value: "domestique", weight: 30, primary: [], secondary: ["stat_udh", "stat_res", "stat_mod"], heightMean: 179, bmi: 21.2 },
+// ── Type-arketyper: sigter de 9 AFLEDTE ryttertyper direkte (#669/#677-launch) ─
+// Hver arketype svarer til en type i riderTypes.js og booster de stats, der via
+// abilityDerivation.js driver den types POSITIV-vægtede abilities, og dæmper off-
+// type-stats (rolle-svaghed ON, ejer-beslutning). Det gør den afledte type
+// pålidelig (≈ den tilsigtede) frem for at lade z-score+guards default'e alt til tt.
+//   • boost: stat → +løft oven på tier-basen (signatur-stat løftes mest).
+//   • damp:  stats der trækkes ned, så typen bliver skarp.
+//   • minStats: hårdt gulv så type-GUARDS i riderTypes.js opfyldes ved ALLE tiers
+//       (gc kræver climbing/tt/recovery samtidigt høje; mapping PCM→ability: 72→63,
+//       67→49 ≥ guard-tærskler 57/43).
+//   • capSprint/capSpeciality: loft så leadout (sprint<79) / rouleur (intet
+//       speciale ≥79) ikke guardes ud (ability 79 ↔ PCM ~78).
+const ARCHETYPES = [
+  { type: "sprinter",       boost: { stat_sp: 12, stat_acc: 9, stat_fl: 6 },                                   damp: ["stat_bj", "stat_kb", "stat_udh"], heightMean: 182, bmi: 22.8 },
+  { type: "leadout",        boost: { stat_sp: 7,  stat_acc: 8, stat_fl: 7,  stat_mod: 5 },                     damp: ["stat_bj", "stat_kb"],             heightMean: 181, bmi: 22.5, capSprint: 76 },
+  { type: "tt",             boost: { stat_tt: 12, stat_prl: 10, stat_fl: 5 },                                  damp: ["stat_sp", "stat_bk", "stat_bj"],  heightMean: 185, bmi: 22.2 },
+  { type: "climber",        boost: { stat_bj: 12, stat_kb: 8, stat_bk: 5,  stat_udh: 5 },                      damp: ["stat_sp", "stat_acc", "stat_fl"], heightMean: 173, bmi: 19.5 },
+  { type: "puncheur",       boost: { stat_bk: 11, stat_kb: 8, stat_bj: 6,  stat_udh: 5 },                      damp: ["stat_tt", "stat_sp"],             heightMean: 176, bmi: 21.0 },
+  { type: "brostensrytter", boost: { stat_bro: 13, stat_fl: 7, stat_udh: 5, stat_bk: 5 },                      damp: ["stat_bj", "stat_sp"],             heightMean: 184, bmi: 23.2 },
+  { type: "baroudeur",      boost: { stat_ftr: 11, stat_fl: 5, stat_bk: 5,  stat_udh: 6, stat_ned: 5, stat_res: 5 }, damp: ["stat_tt"],                  heightMean: 179, bmi: 21.3 },
+  { type: "rouleur",        boost: { stat_fl: 6,  stat_udh: 5, stat_res: 4 },                                  damp: [],                                 heightMean: 180, bmi: 21.6, capSpeciality: 76 },
+  { type: "gc",             boost: { stat_bj: 10, stat_tt: 9, stat_res: 8, stat_kb: 7, stat_udh: 5, stat_mod: 5 }, damp: ["stat_sp"],                   heightMean: 177, bmi: 20.3, minStats: { stat_bj: 72, stat_tt: 67, stat_res: 67 } },
+];
+const ARCHETYPE_BY_TYPE = Object.fromEntries(ARCHETYPES.map((a) => [a.type, a]));
+
+// Stats der tæller som "speciale" for rouleur-cap'en (matcher riderTypes.js).
+const SPECIALITY_STATS = ["stat_bj", "stat_kb", "stat_bk", "stat_bro", "stat_tt", "stat_sp"];
+
+// ── Styrke-tiers: eksakt kvote (ikke vægtet sampling) → præcis værdi-pyramide ──
+// statMean = overall stat-niveau pr. tier; tier styrer hvor højt arketypens
+// boostede signatur-stats lander → afledt ability-output → base_value-bånd.
+// Kvote = andel af count (ejer-spec ~800: 12 super / 60 stjerner / 230 solide /
+// resten domestik). uci/popularity bevarer de gamle generated price/market/salary
+// indtil #1101 cutover; potential/popularity styrer demografi.
+const TIERS = [
+  { value: "superstar",  fraction: 12 / 800,  statMean: 70, uci: [1800, 4000], potential: [3.0, 5.0], popularity: [70, 100] },
+  { value: "star",       fraction: 60 / 800,  statMean: 64, uci: [700, 1800],  potential: [3.0, 6.0], popularity: [45, 85] },
+  { value: "solid",      fraction: 230 / 800, statMean: 60, uci: [120, 700],   potential: [2.0, 5.0], popularity: [10, 50] },
+  { value: "domestique", fraction: null,      statMean: 53, uci: [1, 120],     potential: [1.0, 4.0], popularity: [0, 18] }, // rest
 ];
 
-// ── Styrke-tiers: få stjerner, mange domestikker ──────────────────────────────
-// statMean = overall stat-niveau pr. tier, kalibreret mod den ægte PCM-fordeling
-// (se buildStats). Spændet er bevidst smalt (56→66): i ægte data dominerer rytter-
-// specialisering (rolle) over tier, så tier giver kun et let overall-løft. uci/
-// potential/popularity er urørt (styrer økonomi/demografi, ikke stat-skalaen).
-const TIERS = [
-  { value: "star",       weight: 4,  statMean: 66, uci: [800, 3500], potential: [3.0, 5.0], popularity: [55, 100] },
-  { value: "strong",     weight: 16, statMean: 62, uci: [150, 800],  potential: [3.0, 6.0], popularity: [25, 70] },
-  { value: "average",    weight: 40, statMean: 59, uci: [20, 150],   potential: [2.0, 5.0], popularity: [5, 35] },
-  { value: "domestique", weight: 40, statMean: 56, uci: [1, 25],     potential: [1.0, 4.0], popularity: [0, 15] },
-];
+// Tier-aware type-fordeling (vægte) — realistisk peloton: ledere (gc/klatrer/
+// sprinter/tt/puncheur/brosten) i toppen, hjælpere (rouleur/leadout/baroudeur)
+// i bunden. Sikrer også at GUARD-tunge typer (gc) kun lander hvor de kan opfylde
+// guarden. Gulv på sjældne typer håndhæves efter sampling (ENSURE_MIN_TYPES).
+const TIER_TYPE_WEIGHTS = {
+  superstar:  { gc: 3, climber: 3, sprinter: 2, tt: 2, puncheur: 1, brostensrytter: 2 },
+  star:       { gc: 3, climber: 4, sprinter: 3, tt: 3, puncheur: 2, brostensrytter: 2, baroudeur: 1, leadout: 1 },
+  solid:      { gc: 2, climber: 4, sprinter: 2, tt: 3, puncheur: 2, brostensrytter: 2, baroudeur: 3, leadout: 2, rouleur: 2 },
+  domestique: { climber: 4, sprinter: 1, tt: 2, puncheur: 2, brostensrytter: 1, baroudeur: 4, leadout: 4, rouleur: 4 },
+};
+
+// Globalt gulv på sjældne typer (ejer-spec: etape-variation kræver dybde i alle
+// discipliner). Håndhæves ved at promovere de billigste over-repræsenterede typer.
+const ENSURE_MIN_TYPES = { gc: 30, sprinter: 40 };
 
 // Default-nationalitetsvægte: afspejler prod-feltet (2026-05-31) + garanteret
 // repræsentation af ikke-vestlige nationer (se GUARANTEED) for at teste hybrid-
@@ -128,18 +162,29 @@ const STAT_CEIL = 85;
 // sikkerhedsnet for de sjældne gaussiske haler (ikke en aktiv stat-grænse, som
 // det gamle [40,88] var). Specialisering bevares: rolle-primær løftes mærkbart
 // over base, så sprintere ≫ klatrere i sprint osv.
-function buildStats(rng, tier, role) {
+function buildStats(rng, tier, archetype) {
   const stats = {};
   for (const key of STAT_KEYS) {
-    let v = gaussian(rng, tier.statMean, 4);
-    if (role.primary.includes(key)) v += intBetween(rng, 6, 12);
-    else if (role.secondary.includes(key)) v += intBetween(rng, 2, 5);
+    let v = gaussian(rng, tier.statMean, 3.5);
+    if (archetype.boost[key]) v += archetype.boost[key] + intBetween(rng, -2, 2);
+    else if (archetype.damp?.includes(key)) v -= intBetween(rng, 5, 10);
     stats[key] = Math.round(clamp(v, STAT_FLOOR, STAT_CEIL));
+  }
+  // Hårdt gulv → opfyld type-GUARDS ved alle tiers (fx gc's climbing/tt/recovery).
+  if (archetype.minStats) {
+    for (const [key, floor] of Object.entries(archetype.minStats)) {
+      if (stats[key] < floor) stats[key] = Math.round(clamp(floor, STAT_FLOOR, STAT_CEIL));
+    }
+  }
+  // Loft → undgå at leadout/rouleur guardes ud (sprint/speciale < 79 ability ↔ PCM ~78).
+  if (archetype.capSprint != null) stats.stat_sp = Math.min(stats.stat_sp, archetype.capSprint);
+  if (archetype.capSpeciality != null) {
+    for (const key of SPECIALITY_STATS) stats[key] = Math.min(stats[key], archetype.capSpeciality);
   }
   return stats;
 }
 
-function buildDemographics(rng, tier, role, referenceYear) {
+function buildDemographics(rng, tier, archetype, referenceYear) {
   const age = Math.round(clamp(gaussian(rng, 27, 4.5), 18, 39));
   const birthYear = referenceYear - age;
   const birthMonth = intBetween(rng, 1, 12);
@@ -148,8 +193,8 @@ function buildDemographics(rng, tier, role, referenceYear) {
   // U25 = under 25 ved referenceåret (matcher import_riders.py-logikken).
   const is_u25 = birthYear > referenceYear - 25;
 
-  const height = Math.round(clamp(gaussian(rng, role.heightMean, 5), 165, 196));
-  const weight = Math.round(role.bmi * (height / 100) ** 2);
+  const height = Math.round(clamp(gaussian(rng, archetype.heightMean, 5), 165, 196));
+  const weight = Math.round(archetype.bmi * (height / 100) ** 2);
 
   // Potentiale: tier-interval, løftet for unge, sænket for ældre; 0.5-trin.
   const [pLo, pHi] = tier.potential;
@@ -211,6 +256,36 @@ export function generateFictionalRiders({
   const rng = makeRng(seed);
   const usedFolded = new Set(existingFoldedNames);
 
+  // ── Tier-sekvens via eksakt kvote (ikke Poisson-sampling) ───────────────────
+  const tierSeq = [];
+  const domestiqueTier = TIERS.find((t) => t.fraction == null);
+  for (const t of TIERS) {
+    if (t.fraction == null) continue;
+    const n = Math.min(Math.round(t.fraction * count), count - tierSeq.length);
+    for (let k = 0; k < n; k++) tierSeq.push(t);
+  }
+  while (tierSeq.length < count) tierSeq.push(domestiqueTier);
+  tierSeq.length = count;
+  for (let i = tierSeq.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [tierSeq[i], tierSeq[j]] = [tierSeq[j], tierSeq[i]];
+  }
+
+  // ── Type-sekvens: tier-aware vægtet pick + gulv på sjældne typer ─────────────
+  const typeSeq = tierSeq.map((t) => {
+    const weights = TIER_TYPE_WEIGHTS[t.value];
+    return weightedPick(rng, Object.entries(weights).map(([value, weight]) => ({ value, weight })));
+  });
+  for (const [type, min] of Object.entries(ENSURE_MIN_TYPES)) {
+    let have = typeSeq.filter((x) => x === type).length;
+    for (let i = 0; i < typeSeq.length && have < min; i++) {
+      if (TIER_TYPE_WEIGHTS[tierSeq[i].value][type] == null) continue; // tier tillader ikke typen
+      if (typeSeq[i] === type || ENSURE_MIN_TYPES[typeSeq[i]]) continue; // stjæl ikke fra andet gulv
+      typeSeq[i] = type;
+      have++;
+    }
+  }
+
   // Byg nationalitets-sekvens: garanterede nationer først, resten vægtet, så
   // deterministisk blandet, så garanterede ikke altid klumper i starten.
   const nationalities = [];
@@ -239,12 +314,12 @@ export function generateFictionalRiders({
     }
     coverage.byCluster[clusterKey] = (coverage.byCluster[clusterKey] || 0) + 1;
 
-    const tier = weightedPick(rng, TIERS.map((t) => ({ value: t, weight: t.weight })));
-    const role = weightedPick(rng, ROLES.map((r) => ({ value: r, weight: r.weight })));
+    const tier = tierSeq[i];
+    const archetype = ARCHETYPE_BY_TYPE[typeSeq[i]];
 
     const { firstname, lastname } = makeUniqueName(rng, cluster, usedFolded);
-    const stats = buildStats(rng, tier, role);
-    const demo = buildDemographics(rng, tier, role, referenceYear);
+    const stats = buildStats(rng, tier, archetype);
+    const demo = buildDemographics(rng, tier, archetype, referenceYear);
     const uci_points = intBetween(rng, tier.uci[0], tier.uci[1]);
     const popularity = intBetween(rng, tier.popularity[0], tier.popularity[1]);
 
@@ -264,7 +339,7 @@ export function generateFictionalRiders({
       // Bevidst udeladt (DB udleder/defaulter): id, price, market_value, salary,
       // team_id, ai_team_id, pending_team_id, prize_earnings_bonus, is_retired,
       // created_at, updated_at, acquired_at.
-      _meta: { tier: tier.value, role: role.value, age: demo.age, cluster: clusterKey },
+      _meta: { tier: tier.value, archetype: archetype.type, age: demo.age, cluster: clusterKey },
     });
   }
 
