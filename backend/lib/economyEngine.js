@@ -32,6 +32,8 @@ import {
 } from "./boardConsequences.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
+import { developRidersForSeason } from "./riderProgressionEngine.js";
+import { U25_ABILITY_KEYS } from "./boardGoals.js";
 import {
   DIVISION_CAPACITY,
   FINANCE_ACTOR_TYPE,
@@ -119,7 +121,8 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
   const [ridersRes, boardsRes] = await Promise.all([
     supabaseClient
       .from("riders")
-      .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}`)
+      // #1137 · join abilities så u25_development_delta måles på det motoren udvikler.
+      .select(`team_id, ${BOARD_IDENTITY_RIDER_SELECT}, rider_derived_abilities(${U25_ABILITY_KEYS.join(", ")})`)
       .in("team_id", teamIds),
     supabaseClient
       .from("board_profiles")
@@ -351,12 +354,29 @@ export async function processSeasonStart(seasonId, deps = {}) {
   const payrollResults = (payrollOutcome && payrollOutcome.results) ||
     (Array.isArray(payrollOutcome) ? payrollOutcome : []);
 
+  // #1137 · Passiv rytterudvikling: vækst mod loft / fald efter peak / semi-auto
+  // retirement + base_value-recompute. Kører fra sæson 2 (sæson 1 = launch-baseline,
+  // intet at udvikle fra). Idempotent via rider_development_log. Isoleret: en fejl
+  // her må ikke rulle sponsor/payroll tilbage (allerede skrevet) → fang + rapportér.
+  const developFn = deps.developRidersForSeason ?? developRidersForSeason;
+  let progression = null;
+  if (Number.isFinite(seasonNumber) && seasonNumber >= 2) {
+    try {
+      progression = await developFn({ supabase: supabaseClient, seasonId, seasonNumber });
+      console.log(`  ✅ Rytterudvikling: ${progression.developed} udviklet · ${progression.grew}↑ ${progression.declined}↓ · ${progression.retired} pensioneret`);
+    } catch (err) {
+      console.error(`  ⚠️ Rytterudvikling fejlede (transition fuldføres; kan re-køres): ${err.message}`);
+      progression = { error: err.message };
+    }
+  }
+
   return {
     sponsor: results,
     payroll: {
       results: payrollResults,
       summary: payrollSummary,
     },
+    progression,
   };
 }
 
