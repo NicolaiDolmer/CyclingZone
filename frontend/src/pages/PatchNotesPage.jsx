@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.99",
+    date: "2026-06-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Rider types",
+        items: [
+          "EN · Rider types have been reworked. Each rider now gets a primary and secondary type derived from the new ability system, with sharper, more realistic classifications: pure sprinters are now classed as sprinters (not lead-outs), cobble specialists as cobbled-classics riders, and the GC label is reserved for true stage-race contenders (high climbing, time-trial and recovery). The \"GOAT\", \"domestique\" and \"all-rounder\" labels have been retired. Refs #49.",
+          "DA · Ryttertyperne er omarbejdet. Hver rytter får nu en primær og sekundær type udledt af det nye evne-system, med skarpere og mere realistiske klassifikationer: rene spurtere klassificeres nu som sprintere (ikke lead-outs), brostensspecialister som brostensryttere, og Etapeløbsrytter-mærket er forbeholdt ægte klassementryttere (høj bjerg, enkeltstart og restitution). Mærkerne \"GOAT\", \"hjælperytter\" og \"allrounder\" er udgået. Refs #49.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.98",
     date: "2026-06-07",
     label: "Beta",

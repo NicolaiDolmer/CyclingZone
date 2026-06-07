@@ -10,15 +10,12 @@
   "types": {
     "sprinter": "Sprinter",
     "leadout": "Lead-out",
+    "tt": "Tidskører",
     "climber": "Bjergrytter",
     "puncheur": "Bakkerytter",
-    "tt": "Tidskører",
-    "classics": "Brostensrytter",
-    "gc": "Etapeløbsrytter",
-    "goat": "GOAT",
-    "allrounder": "Allrounder",
-    "rouleur": "Rouleur",
+    "brostensrytter": "Brostensrytter",
     "baroudeur": "Baroudeur",
-    "domestique": "Hjælperytter"
+    "rouleur": "Rouleur",
+    "gc": "Etapeløbsrytter"
   }
 }

@@ -1,91 +1,122 @@
-// Ryttertyper (#49 / #92) — eneste sandhedskilde for klassifikationsformlerne.
+// Ryttertyper (#49 / #1101-kæden) — eneste sandhedskilde for klassifikationsformlerne.
 //
-// En ryttertype udledes deterministisk af de 14 legacy stats (stat_fl…stat_ftr).
-// Hver stat normaliseres FØRST til en z-score mod populationens middel/spredning
-// (baseline), og #49's vægte anvendes så på z-scoren. Type = RELATIV styrke mod
-// feltet, ikke absolut niveau.
+// En ryttertype udledes deterministisk af de game-abilities (rider_derived_abilities,
+// abilityDerivation.js). Metoden er KONTRAST på z-score (ejer-kalibreret 2026-06-07):
 //
-// Hvorfor z-score og ikke rå vægtet sum: verificeret mod alle 8.989 ryttere gav
-// rå #49-formler en degenereret fordeling (33%+ "sprinter", gc/goat døde), fordi
-// en absolut score belønner de stats der globalt er højest. Z-score spreder
-// fordelingen realistisk. Samme princip som rider_derived_abilities
-// (abilityDerivation.js percentil-skalering). Se docs/decisions.
+//   1. z-score pr. evne mod populationen (baseline) — fjerner median-skævhed: nogle
+//      evner er høje for alle (flad/acceleration), andre kun for specialister (klatring),
+//      så et råt gennemsnit ville favorisere de første. z-score centrerer hver evne.
+//   2. KONTRAST pr. type: speciale-evner (positiv vægt) MINUS modsatte evner (negativ
+//      vægt). score = snit(positive z) − snit(negative z). Det adskiller overlappende
+//      typer skarpt (en ren sprinter trækkes ned af høj klatring).
+//   3. GUARDS (ejer-regler) udelukker urealistiske typer for en given rytter.
 //
-// FASE 1 bevidst på legacy stats (ikke rider_derived_abilities): vi får et
-// fungerende system nu og holder bagefter gammel type op mod den nye ability-
-// model, så hjemmelavede ryttere får realistiske evner (#1105, separat fase).
+// Hvorfor ikke råt gennemsnit (v1) eller percentil: råt gennemsnit gav 30% sprinter +
+// død gc (median-skævhed); percentil mætter i toppen (alle stjerner ~99 → kan ikke
+// skelnes). z-score+kontrast løser begge. Verificeret mod 8.989 prod-ryttere.
 //
-// Baseline gives som PARAMETER (ren funktion — ingen fs/JSON-import her), præcis
-// som riderValuation.js tager modellen ind. Produktion: backfillRiderTypes.js
-// loader backend/lib/riderTypesBaseline.json (fittet af fitRiderTypesBaseline.js)
-// og persisterer primary_type/secondary_type på riders. Frontend LÆSER bare de
-// kolonner — den genberegner ikke (ingen formel-dublet på tværs af front/back).
+// 9 typer (goat, domestique, allrounder fjernet — sidstnævnte "for ligegyldig", ejer).
 //
-// Forkortelse → DB-felt: Fl=stat_fl, Bj=stat_bj, Kb=stat_kb, Bk=stat_bk,
-// Tt=stat_tt, Prl=stat_prl, Bro=stat_bro, Sp=stat_sp, Acc=stat_acc,
-// Ned=stat_ned, Udh=stat_udh, Mod=stat_mod, Res=stat_res, Ftr=stat_ftr.
+// Baseline (mean/std pr. evne) gives som PARAMETER (ren funktion — ingen fs/JSON her).
+// Produktion: backfillRiderTypes.js loader riderTypesBaseline.json (fittet af
+// fitRiderTypesBaseline.js over rider_derived_abilities) og persisterer primary_type/
+// secondary_type på riders. Frontend LÆSER bare kolonnerne (ingen formel-dublet).
 
-export const STAT_KEYS = Object.freeze([
-  "stat_fl", "stat_bj", "stat_kb", "stat_bk", "stat_tt", "stat_prl",
-  "stat_bro", "stat_sp", "stat_acc", "stat_ned", "stat_udh", "stat_mod",
-  "stat_res", "stat_ftr",
+// De evner type-formlerne + guards kan referere (kolonner i rider_derived_abilities).
+export const ABILITY_KEYS = Object.freeze([
+  "climbing", "time_trial", "prolog", "flat", "tempo", "sprint", "acceleration",
+  "punch", "endurance", "recovery", "durability", "descending", "cobblestone", "aggression",
 ]);
 
-// Rækkefølgen er TIE-BREAK-prioritet: ved lige score vinder den tidligste type.
-// Mere markante/specialiserede typer står først.
+// Kontrast-vægte: positiv = speciale, negativ = modsat (straffes). Rækkefølgen er
+// TIE-BREAK-prioritet (markante specialister først; brede typer sidst) + dropdown-orden.
+// cobblestone vægtet højt (brostensrytter) + time_trial højt (gc) per ejer-feedback.
 export const RIDER_TYPES = Object.freeze([
-  { key: "sprinter",   weights: { stat_acc: 3, stat_sp: 2, stat_fl: 1, stat_mod: 1 } },
-  { key: "leadout",    weights: { stat_sp: 3, stat_acc: 2, stat_fl: 1, stat_mod: 1 } },
-  { key: "climber",    weights: { stat_bj: 3, stat_kb: 2, stat_bk: 1, stat_udh: 1 } },
-  { key: "puncheur",   weights: { stat_bk: 3, stat_kb: 2, stat_fl: 2, stat_mod: 2, stat_bj: 1, stat_udh: 1 } },
-  { key: "tt",         weights: { stat_tt: 3, stat_prl: 2 } },
-  { key: "classics",   weights: { stat_bro: 3, stat_fl: 2, stat_udh: 2, stat_bk: 1 } },
-  { key: "gc",         weights: { stat_bj: 3, stat_res: 3, stat_tt: 2, stat_kb: 2, stat_fl: 1, stat_mod: 1, stat_udh: 1, stat_prl: 1, stat_bk: 1 } },
-  { key: "goat",       weights: { stat_fl: 3, stat_bj: 3, stat_udh: 3, stat_kb: 2, stat_bk: 2 } },
-  { key: "allrounder", weights: { stat_udh: 2, stat_fl: 1, stat_tt: 1, stat_bk: 1, stat_kb: 1 } },
-  { key: "rouleur",    weights: { stat_fl: 2, stat_udh: 1 } },
-  { key: "baroudeur",  weights: { stat_ftr: 3, stat_fl: 2, stat_bk: 1, stat_udh: 1, stat_res: 1, stat_mod: 1, stat_sp: 1, stat_ned: 1 } },
-  { key: "domestique", weights: { stat_udh: 2, stat_res: 2, stat_mod: 2, stat_fl: 1 } },
+  { key: "sprinter",       weights: { acceleration: 3, sprint: 2, flat: 1, durability: 1, climbing: -2, endurance: -1 } },
+  { key: "leadout",        weights: { sprint: 3, acceleration: 2, flat: 1, durability: 1, climbing: -2 } },
+  { key: "tt",             weights: { time_trial: 3, prolog: 2, sprint: -1, punch: -1 } },
+  { key: "climber",        weights: { climbing: 3, tempo: 2, punch: 1, endurance: 1, sprint: -2, acceleration: -1, flat: -1 } },
+  { key: "puncheur",       weights: { punch: 3, tempo: 2, climbing: 1, endurance: 1, time_trial: -1, sprint: -1 } },
+  { key: "brostensrytter", weights: { cobblestone: 5, flat: 2, endurance: 1, punch: 1, climbing: -2 } },
+  { key: "baroudeur",      weights: { aggression: 3, flat: 1, punch: 1, endurance: 1, descending: 1, recovery: 1, time_trial: -1 } },
+  { key: "rouleur",        weights: { flat: 2, endurance: 1, climbing: -1, sprint: -1 } },
+  { key: "gc",             weights: { climbing: 3, time_trial: 3, recovery: 2, tempo: 2, endurance: 1, durability: 1, sprint: -2 } },
 ]);
 
 export const RIDER_TYPE_KEYS = Object.freeze(RIDER_TYPES.map((t) => t.key));
 
-// Neutral baseline (mean 0, std 1 pr. stat) = ingen z-transformation (rå stats).
-// Kun en fallback; produktion SKAL give den fittede baseline.
-export const NEUTRAL_BASELINE = Object.freeze({
-  mean: Object.freeze(Object.fromEntries(STAT_KEYS.map((s) => [s, 0]))),
-  std: Object.freeze(Object.fromEntries(STAT_KEYS.map((s) => [s, 1]))),
+// Guard-tærskler i ABILITY-enheder (0-99), mappet fra ejer's PCM-tærskler via samme
+// lineære skala som abilityDerivation (PCM 50-85 → 1-99): PCM 78→79, 70→57, 65→43.
+export const GUARDS = Object.freeze({
+  highSpeciality: 79,  // PCM 78: ≥ → ikke leadout (egen spurt) / ikke rouleur (har speciale)
+  gcClimbing: 57,      // PCM 70
+  gcTimeTrial: 43,     // PCM 65
+  gcRecovery: 43,      // PCM 65
 });
 
-// z-score for én stat mod baseline. Manglende/ikke-numerisk stat → 0 (= mean).
-function statZ(rider, stat, baseline) {
-  const v = Number(rider?.[stat]);
+// Evner der tæller som "et reelt speciale" for rouleur-guarden (bjerg, kb, bk, brosten, tt, sprint).
+const SPECIALITY_ABILITIES = Object.freeze(["climbing", "tempo", "punch", "cobblestone", "time_trial", "sprint"]);
+
+// Neutral baseline (mean 0, std 1) = ingen z-transformation. Kun fallback; produktion
+// SKAL give den fittede baseline (ellers degenererer klassifikationen til råt gennemsnit).
+export const NEUTRAL_BASELINE = Object.freeze({
+  mean: Object.freeze(Object.fromEntries(ABILITY_KEYS.map((a) => [a, 0]))),
+  std: Object.freeze(Object.fromEntries(ABILITY_KEYS.map((a) => [a, 1]))),
+});
+
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+// z-score for én evne mod baseline. Manglende/ikke-numerisk → 0 (= mean).
+function abilityZ(abilities, ability, baseline) {
+  const v = Number(abilities?.[ability]);
   if (!Number.isFinite(v)) return 0;
-  const mean = baseline?.mean?.[stat] ?? 0;
-  const std = baseline?.std?.[stat] || 1;
+  const mean = baseline?.mean?.[ability] ?? 0;
+  const std = baseline?.std?.[ability] || 1;
   return (v - mean) / std;
 }
 
-// Vægtet gennemsnit af z-scores for én types stats. Skala er z (~ -3..+3);
-// kun den RELATIVE rangering mellem typer betyder noget for klassifikationen.
-export function scoreRiderType(rider = {}, weights = {}, baseline = NEUTRAL_BASELINE) {
-  let weighted = 0;
-  let weightSum = 0;
-  for (const [stat, w] of Object.entries(weights)) {
-    weighted += statZ(rider, stat, baseline) * w;
-    weightSum += w;
+// Kontrast-score for én type: snit(positive z) − snit(negative z). Skala er z;
+// kun den relative rangering mellem typer afgør klassifikationen.
+export function scoreRiderType(abilities = {}, weights = {}, baseline = NEUTRAL_BASELINE) {
+  let pos = 0, posW = 0, neg = 0, negW = 0;
+  for (const [ability, w] of Object.entries(weights)) {
+    const z = abilityZ(abilities, ability, baseline);
+    if (w > 0) { pos += z * w; posW += w; } else if (w < 0) { neg += z * -w; negW += -w; }
   }
-  if (weightSum === 0) return 0;
-  return weighted / weightSum;
+  const posAvg = posW ? pos / posW : 0;
+  const negAvg = negW ? neg / negW : 0;
+  return posAvg - negAvg;
 }
 
-// Beregn primær + sekundær type for en rytter (top-2 altid).
+// Hvilke typer er udelukket for denne rytter (ejer-guards). Returnerer et Set af keys.
+function guardedOut(abilities) {
+  const out = new Set();
+  // sprint ≥ tærskel → ikke leadout (rytteren ER spurteren, ikke hjælperen)
+  if (num(abilities.sprint) >= GUARDS.highSpeciality) out.add("leadout");
+  // ≥ tærskel i et reelt speciale → ikke rouleur (hjælperytter): du har et speciale
+  if (SPECIALITY_ABILITIES.some((a) => num(abilities[a]) >= GUARDS.highSpeciality)) out.add("rouleur");
+  // sprint > brosten → ikke brostensrytter (en ægte spurter er ikke brostensrytter)
+  if (num(abilities.sprint) > num(abilities.cobblestone)) out.add("brostensrytter");
+  // gc kun for ægte etapeløbsryttere: bjerg + tt + recovery alle høje samtidig
+  const isGc = num(abilities.climbing) >= GUARDS.gcClimbing
+    && num(abilities.time_trial) >= GUARDS.gcTimeTrial
+    && num(abilities.recovery) >= GUARDS.gcRecovery;
+  if (!isGc) out.add("gc");
+  return out;
+}
+
+// Beregn primær + sekundær type for en rytter ud fra dens abilities (top-2 efter guards).
 // Returnerer { primary: {key, score}, secondary: {key, score} }.
-// Deterministisk: ved lige score afgøres rækkefølgen af RIDER_TYPES-ordenen
-// (stabil sortering), så samme stats + baseline → samme klassifikation hver gang.
-export function computeRiderTypes(rider = {}, baseline = NEUTRAL_BASELINE) {
-  const scored = RIDER_TYPES.map((t) => ({ key: t.key, score: scoreRiderType(rider, t.weights, baseline) }));
-  // Stabil sort (Node garanterer): lige scores beholder RIDER_TYPES-rækkefølgen.
-  scored.sort((a, b) => b.score - a.score);
+// Deterministisk: ved lige score afgøres rækkefølgen af RIDER_TYPES-ordenen (stabil sort).
+export function computeRiderTypes(abilities = {}, baseline = NEUTRAL_BASELINE) {
+  const out = guardedOut(abilities);
+  let scored = RIDER_TYPES
+    .filter((t) => !out.has(t.key))
+    .map((t) => ({ key: t.key, score: scoreRiderType(abilities, t.weights, baseline) }));
+  // Defensivt: hvis guards skulle fjerne næsten alt, fald tilbage til alle typer.
+  if (scored.length < 2) {
+    scored = RIDER_TYPES.map((t) => ({ key: t.key, score: scoreRiderType(abilities, t.weights, baseline) }));
+  }
+  scored.sort((a, b) => b.score - a.score); // stabil: lige scores beholder RIDER_TYPES-orden
   return { primary: scored[0], secondary: scored[1] };
 }
