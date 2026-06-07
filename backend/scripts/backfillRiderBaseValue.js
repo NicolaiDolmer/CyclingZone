@@ -8,8 +8,8 @@
 //   node scripts/backfillRiderBaseValue.js            # apply
 //   node scripts/backfillRiderBaseValue.js --dry-run  # beregn + rapportér gammel vs ny
 //
-// asOf-datoen tages fra modellens fitted_at, så alder (og dermed base_value)
-// er reproducerbar mellem fit og backfill.
+// Deterministisk: base_value afhænger kun af rytterens abilities + primary_type +
+// den committede model (ingen alder/dato). Re-kør efter enhver re-fit/re-derive.
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -36,7 +36,6 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 const model = JSON.parse(readFileSync(MODEL_PATH, "utf8"));
-const asOf = model.fitted_at;
 
 const pct = (sortedAsc, p) =>
   sortedAsc[Math.min(sortedAsc.length - 1, Math.floor(p * sortedAsc.length))];
@@ -60,10 +59,10 @@ async function updateInBatches(updates) {
 }
 
 async function main() {
-  console.log(`=== Backfill base_value ${DRY_RUN ? "(DRY-RUN)" : "(APPLY)"} — model ${model.fitted_at} (λ=${model.lambda}, R²=${model.cv_r2}) ===`);
+  console.log(`=== Backfill base_value ${DRY_RUN ? "(DRY-RUN)" : "(APPLY)"} — model v${model.version} ${model.fitted_at} (R²log=${model.r2_log}, n_anchor=${model.n_anchor}) ===`);
 
   const [riders, abilities] = await Promise.all([
-    fetchAllRows(() => supabase.from("riders").select("id, birthdate, potentiale, popularity, is_u25, uci_points, prize_earnings_bonus").order("id")),
+    fetchAllRows(() => supabase.from("riders").select("id, primary_type, uci_points, prize_earnings_bonus").order("id")),
     fetchAllRows(() => supabase.from("rider_derived_abilities").select("*").order("rider_id")),
   ]);
   const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));
@@ -74,7 +73,7 @@ async function main() {
   const newVals = [];
   for (const r of riders) {
     const ab = abilityByRider.get(r.id);
-    const bv = predictBaseValue(r, ab, model, { asOf });
+    const bv = predictBaseValue(r, ab, model);
     if (bv == null) { noAbilities++; continue; }
     updates.push({ id: r.id, base_value: bv });
     oldVals.push(calculateRiderMarketValue(r));

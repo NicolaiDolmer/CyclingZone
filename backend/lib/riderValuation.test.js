@@ -3,9 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   ABILITY_KEYS,
-  FEATURE_KEYS,
-  riderAge,
-  featurizeRider,
+  outputScore,
   predictBaseValue,
   riderOverall,
   riderSpecialty,
@@ -17,63 +15,59 @@ const abilities = (val = 50, extra = {}) => {
   return { ...a, ...extra };
 };
 
-// Minimal model: alle coef=0 → predict = exp(intercept) for enhver rytter m. abilities.
-const flatModel = (intercept, { floor = 0, convexity = 1 } = {}) => {
-  const coef = {}, means = {}, stds = {};
-  for (const k of FEATURE_KEYS) { coef[k] = 0; means[k] = 0; stds[k] = 1; }
-  return { intercept, coef, means, stds, convexity_exponent: convexity, log_mean: intercept, floor };
-};
-
-test("riderAge computes whole years against a reference date", () => {
-  assert.equal(riderAge("2000-06-06", "2026-06-06"), 26);
-  assert.equal(riderAge(null, "2026-06-06"), null);
-  assert.equal(riderAge("not-a-date", "2026-06-06"), null);
+test("outputScore averages the positive type-weights (flat abilities → that value)", () => {
+  // Alle abilities = 50 → vægtet snit = 50 uanset type.
+  assert.equal(outputScore(abilities(50), "gc"), 50);
+  assert.equal(outputScore(abilities(50), "sprinter"), 50);
 });
 
-test("featurizeRider maps abilities + derives age/age_sq", () => {
-  const f = featurizeRider({ birthdate: "2000-06-06", potentiale: 5, popularity: 10, is_u25: false }, abilities(60), { asOf: "2026-06-06" });
-  assert.equal(f.climbing, 60);
-  assert.equal(f.age, 26);
-  assert.equal(f.age_sq, 26 * 26);
-  assert.equal(f.potentiale, 5);
-  assert.equal(f.popularity, 10);
-  assert.equal(f.is_u25, 0);
+test("outputScore rewards a rider strong in their speciale", () => {
+  // gc vægter climbing/time_trial/tempo/recovery højt.
+  const strongGc = outputScore(abilities(40, { climbing: 90, time_trial: 90, tempo: 90, recovery: 90 }), "gc");
+  const weakGc = outputScore(abilities(40), "gc");
+  assert.ok(strongGc > weakGc, `stærk gc (${strongGc}) skal slå svag (${weakGc})`);
 });
 
-test("featurizeRider treats null popularity as 0", () => {
-  const f = featurizeRider({ popularity: null }, abilities(), {});
-  assert.equal(f.popularity, 0);
+test("outputScore falls back to mean of abilities for unknown type", () => {
+  assert.equal(outputScore(abilities(60), null), 60);
+  assert.equal(outputScore(abilities(60), "ikke-en-type"), 60);
 });
 
-test("predictBaseValue returns exp(intercept) for a zero-coefficient model", () => {
-  const m = flatModel(Math.log(50000));
-  const v = predictBaseValue({ birthdate: "2000-06-06" }, abilities(50), m, { asOf: "2026-06-06" });
-  assert.ok(Math.abs(v - 50000) < 1, `forventede ~50000, fik ${v}`);
+test("predictBaseValue = exp(a + b·output + offset[type])", () => {
+  const model = { a: Math.log(1000), b: 0, offset: {} };
+  // b=0 → output irrelevant → exp(a) = 1000.
+  assert.equal(predictBaseValue({ primary_type: "gc" }, abilities(50), model), 1000);
 });
 
-test("predictBaseValue clamps to the soft floor", () => {
-  const m = flatModel(Math.log(1000), { floor: 20000 });
-  const v = predictBaseValue({}, abilities(50), m, {});
-  assert.equal(v, 20000);
+test("predictBaseValue applies the type-offset", () => {
+  const model = { a: Math.log(1000), b: 0, offset: { gc: Math.log(2) } };
+  assert.equal(predictBaseValue({ primary_type: "gc" }, abilities(50), model), 2000);
+  // Type uden offset → neutral (offset 0).
+  assert.equal(predictBaseValue({ primary_type: "sprinter" }, abilities(50), model), 1000);
+});
+
+test("predictBaseValue rises with output when b>0", () => {
+  const model = { a: 0, b: 0.05, offset: {} };
+  const lo = predictBaseValue({ primary_type: "gc" }, abilities(40), model);
+  const hi = predictBaseValue({ primary_type: "gc" }, abilities(80), model);
+  assert.ok(hi > lo, `højere output skal give højere værdi (${hi} > ${lo})`);
 });
 
 test("predictBaseValue returns null when abilities are missing", () => {
-  const m = flatModel(Math.log(50000));
-  assert.equal(predictBaseValue({}, {}, m, {}), null);
-  assert.equal(predictBaseValue({}, null, m, {}), null);
+  const model = { a: 1, b: 0.1, offset: {} };
+  assert.equal(predictBaseValue({ primary_type: "gc" }, {}, model), null);
+  assert.equal(predictBaseValue({ primary_type: "gc" }, null, model), null);
 });
 
-test("predictBaseValue returns null without a model", () => {
-  assert.equal(predictBaseValue({}, abilities(), null, {}), null);
+test("predictBaseValue returns null without a usable model", () => {
+  assert.equal(predictBaseValue({ primary_type: "gc" }, abilities(), null), null);
+  assert.equal(predictBaseValue({ primary_type: "gc" }, abilities(), { offset: {} }), null);
 });
 
-test("convexity exponent widens spread away from log_mean", () => {
-  // intercept over log_mean → gamma>1 skubber værdien endnu højere.
-  const m = flatModel(Math.log(100000), { convexity: 2 });
-  m.log_mean = Math.log(50000);
-  // Med coef=0 er logPred=intercept=ln(100000); adj = log_mean + (logPred-log_mean)*2
-  const v = predictBaseValue({}, abilities(), m, {});
-  assert.ok(v > 100000, `gamma>1 skal hæve værdien over rå, fik ${v}`);
+test("predictBaseValue has no floor (worst riders can be small)", () => {
+  // Lav a + lav output → lille værdi, ingen klamp opad til et gulv.
+  const model = { a: Math.log(800), b: 0, offset: {} };
+  assert.equal(predictBaseValue({ primary_type: "gc" }, abilities(50), model), 800);
 });
 
 test("riderSpecialty returns the top ability", () => {
@@ -81,11 +75,8 @@ test("riderSpecialty returns the top ability", () => {
   assert.equal(riderSpecialty(abilities(40, { sprint: 88 })), "sprint");
 });
 
-test("riderOverall stays within 0-99 and weights by model coefs", () => {
-  const m = flatModel(0);
-  m.coef.climbing = 1; // kun klatring vægter
-  const climber = riderOverall(abilities(20, { climbing: 90 }), m);
-  const sprinter = riderOverall(abilities(20, { sprint: 90 }), m);
-  assert.ok(climber >= 0 && climber <= 99);
-  assert.ok(climber > sprinter, "klatrer skal score højere når kun climbing vægter");
+test("riderOverall is the mean of abilities, clamped 0-99", () => {
+  assert.equal(riderOverall(abilities(50)), 50);
+  const high = riderOverall(abilities(99));
+  assert.ok(high >= 0 && high <= 99);
 });

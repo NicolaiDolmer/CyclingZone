@@ -1,0 +1,27 @@
+{
+  "note": "Ejer-kalibrerede rytter-værdi-anchors (#1101, 7/6-2026). Navn→mål-værdi i CZ$. Bruges af scripts/fitRiderValuationModel.js til at fitte ln(value)=a+b·output+offset[type]. Navne matches mod riders (firstname+lastname, accent-ufølsomt). Manuel re-fit; ejer-godkendt.",
+  "anchors": [
+    { "name": "Tadej Pogacar", "target": 100000000 },
+    { "name": "Mathieu van der Poel", "target": 85000000 },
+    { "name": "Filippo Ganna", "target": 35000000 },
+    { "name": "Jasper Philipsen", "target": 25000000 },
+    { "name": "Jonathan Milan", "target": 20000000 },
+    { "name": "Tim Merlier", "target": 18000000 },
+    { "name": "Paul Magnier", "target": 17000000 },
+    { "name": "Michael Matthews", "target": 9000000 },
+    { "name": "Toms Skujins", "target": 8000000 },
+    { "name": "Quinn Simmons", "target": 8000000 },
+    { "name": "Florian Vermeersch", "target": 8000000 },
+    { "name": "Kevin Vauquelin", "target": 7000000 },
+    { "name": "Magnus Sheffield", "target": 6000000 },
+    { "name": "Mathys Rondel", "target": 6000000 },
+    { "name": "Jonas Abrahamsen", "target": 5000000 },
+    { "name": "Antonio Tiberi", "target": 5000000 },
+    { "name": "Andreas Leknessund", "target": 5000000 },
+    { "name": "Marc Soler", "target": 3500000 },
+    { "name": "Clement Champoussin", "target": 3000000 },
+    { "name": "Ethan Hayter", "target": 2500000 },
+    { "name": "Luca Vergallito", "target": 500000 },
+    { "name": "Krists Neilands", "target": 500000 }
+  ]
+}
