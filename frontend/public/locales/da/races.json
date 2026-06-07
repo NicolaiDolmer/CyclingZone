@@ -1,0 +1,234 @@
+{
+  "title": "Løb",
+  "subtitle": {
+    "withSeason": "Sæson {number} — {count} løb",
+    "noSeason": "Ingen aktiv sæson",
+    "noSeasonWithCount": "Ingen aktiv sæson — {count} løb",
+    "library": "{count} løb på tværs af alle sæsoner",
+    "points": "UCI-pointtabeller og præmieformel"
+  },
+  "tabs": {
+    "calendar": "📅 Kalender",
+    "library": "📚 Bibliotek",
+    "world": "🌍 Verdens-kalender",
+    "points": "💰 Point & præmier",
+    "submit": "📤 Indberét resultater",
+    "approve": "⚙ Godkend ({count})"
+  },
+  "raceType": {
+    "stageRace": "Etapeløb",
+    "oneDay": "Enkeltdagsløb",
+    "oneDayShort": "Enkeltdag",
+    "stages": "{count, plural, one {# etape} other {# etaper}}",
+    "stageRaceWithStages": "Etapeløb · {count, plural, one {# etape} other {# etaper}}",
+    "stageRaceParen": "Etapeløb ({count})"
+  },
+  "classOption": {
+    "TourFrance": "Tour de France",
+    "GiroVuelta": "Giro / Vuelta",
+    "Monuments": "Monuments",
+    "OtherWorldTourA": "WorldTour A",
+    "OtherWorldTourB": "WorldTour B",
+    "OtherWorldTourC": "WorldTour C",
+    "ProSeries": "ProSeries",
+    "Class1": "Klasse 1",
+    "Class2": "Klasse 2"
+  },
+  "classBadge": {
+    "grandTour": "Grand Tour",
+    "oneDay": "Endagsløb",
+    "worldTour": "WorldTour",
+    "continental": "Continental"
+  },
+  "status": {
+    "completed": "Afsluttet",
+    "active": "Igang",
+    "scheduled": "Kommende"
+  },
+  "submission": {
+    "pending": "Afventer",
+    "approved": "Godkendt",
+    "rejected": "Afvist"
+  },
+  "common": {
+    "free": "Fri",
+    "dash": "—",
+    "edition": "{year}-udgave",
+    "loading": "Indlæser…",
+    "points": "{count} pt"
+  },
+  "timeAgo": {
+    "days": "{count}d siden",
+    "hours": "{count}t siden",
+    "now": "Lige nu"
+  },
+  "empty": {
+    "icon": "🏁",
+    "noRacesSeason": "Ingen løb i denne sæson endnu",
+    "addRaceAdmin": "Tilføj løb i Admin-panelet",
+    "noRacesMatch": "Ingen løb matcher filtrene",
+    "raceNotFound": "Løbet blev ikke fundet",
+    "noResultsImportedRace": "Ingen resultater importeret for dette løb endnu",
+    "noHistory": "Ingen data fundet for \"{name}\""
+  },
+  "calendar": {
+    "upcoming": "Kommende",
+    "completed": "Afsluttede",
+    "resultsImported": "{count} resultater importeret",
+    "expectedPool": "Forventet pulje {amount}",
+    "expectedPoolTooltip": "Live-beregnet forventet pulje baseret på race-class × race-type × etaper",
+    "selectPrompt": "Vælg et løb for at se detaljer",
+    "noResultsYet": "Ingen resultater importeret endnu",
+    "submitCta": "Indberét resultater →",
+    "viewFull": "Se fulde resultater →",
+    "viewFullWithStages": "Se fulde resultater + alle etaper →"
+  },
+  "library": {
+    "searchLabel": "Søg løb",
+    "searchPlaceholder": "Tour, Giro, Roubaix…",
+    "seasonLabel": "Sæson",
+    "allSeasons": "Alle sæsoner",
+    "seasonOption": "Sæson {number}",
+    "seasonOptionActive": "Sæson {number} (aktiv)",
+    "classLabel": "Klasse",
+    "allClasses": "Alle klasser",
+    "statusLabel": "Status",
+    "allStatuses": "Alle",
+    "filteredCount": "{filtered} af {total} løb",
+    "clearFilters": "Ryd filtre",
+    "thRace": "Løb",
+    "thSeason": "Sæson",
+    "thClass": "Klasse",
+    "thType": "Type",
+    "thDate": "Dato",
+    "thStatus": "Status",
+    "seasonLink": "Sæson {number} →"
+  },
+  "world": {
+    "loading": "Indlæser verdens-kalender…",
+    "totalRaces": "{count} løb totalt på tværs af verdens-kalenderen",
+    "classSummary": "{count} løb · {days} dage",
+    "filteredOn": "Filtreret på {class}.",
+    "clearFilter": "Ryd filter",
+    "thRace": "Løb",
+    "thClass": "Klasse",
+    "thType": "Type",
+    "thStages": "Etaper",
+    "thDate": "Dato"
+  },
+  "submit": {
+    "heading": "Indberét løbsresultater",
+    "introBefore": "Upload en Excel-fil med resultater fra PCM. Kolonner:",
+    "introAfter": "Du kan efterfølgende rette navnematching inden du indsender. Admin godkender inden resultaterne er officielle.",
+    "columnsHint": "Placering | Rytternavn",
+    "raceLabel": "Løb",
+    "stageLabel": "Etape",
+    "typeLabel": "Type",
+    "dropTitle": "📁 Klik for at uploade PCM Excel-fil (.xlsx, .xls)",
+    "dropFormat": "Forventet format: Placering i kolonne A, Rytternavn i kolonne B",
+    "uploadedCount": "{count} ryttere uploadet",
+    "autoMatch": "Auto-match navne",
+    "thFromPcm": "Fra PCM",
+    "thMatchedTo": "Matchet til",
+    "notMatched": "⚠ Ikke matchet",
+    "submitting": "Indsender…",
+    "submitCta": "Indsend til godkendelse",
+    "mySubmissions": "Mine indberetninger",
+    "msgSelectRace": "❌ Vælg et løb",
+    "msgUnmatched": "❌ {count} ryttere er ikke matchet — ret dem manuelt",
+    "msgSubmitted": "✅ Resultater indsendt — afventer godkendelse fra admin",
+    "msgError": "❌ {message}"
+  },
+  "resultType": {
+    "stage": "Etape",
+    "gc": "Samlet",
+    "points": "Point",
+    "mountain": "Bjerg",
+    "young": "Unge"
+  },
+  "approve": {
+    "nonePending": "Ingen afventende indberetninger",
+    "submittedBy": "Indsendt af {user} · {date}",
+    "approve": "✓ Godkend",
+    "reject": "✕ Afvis",
+    "rejectPlaceholder": "Årsag til afvisning…",
+    "send": "Send",
+    "thRider": "Rytter",
+    "thTeam": "Hold",
+    "thType": "Type",
+    "errorGeneric": "Kunne ikke godkende indberetningen. Prøv igen."
+  },
+  "points": {
+    "title": "Point- og præmieoversigt",
+    "subtitle": "Sådan beregnes dine løbspræmier fra UCI-placeringer",
+    "help": "Hjælp & Regler",
+    "formula": "Præmieformlen: 1 UCI-point = {amount} CZ$",
+    "noClassData": "Ingen pointdata for denne klasse",
+    "thRank": "Plads",
+    "thUciPoints": "UCI-point",
+    "thPrize": "Præmie",
+    "showLess": "Skjul ↑",
+    "showAll": "Vis alle {count} pladser ↓",
+    "prizeExample": {
+      "tourWin": "Tour de France-sejr",
+      "monumentWin": "Monument-sejr",
+      "tourStageWin": "Etapesejr (TdF)",
+      "proSeriesWin": "ProSeries-sejr",
+      "class1Win": "Klasse 1-sejr",
+      "class2Win": "Klasse 2-sejr"
+    },
+    "type": {
+      "Klassement": { "label": "Samlet klassement", "desc": "GC-placering i etapeløb" },
+      "Klassiker": { "label": "Klassiker", "desc": "Samlet placering i endagsløb" },
+      "Etapeplacering": { "label": "Etapeplacering", "desc": "Pr. etape i etapeløb" },
+      "Pointtroje": { "label": "Pointtrøje", "desc": "Top 3 i pointkonkurrencen" },
+      "Bjergtroje": { "label": "Bjergtrøje", "desc": "Top 3 i bjergkonkurrencen" },
+      "Ungdomstroje": { "label": "Ungdomstrøje", "desc": "Top 3 i U25-konkurrencen" },
+      "EtapelobHold": { "label": "Hold (etapeløb)", "desc": "Bedste hold i etapeløb" },
+      "KlassikerHold": { "label": "Hold (klassiker)", "desc": "Bedste hold i klassiker" },
+      "Forertroje": { "label": "Førertrøje", "desc": "Pr. dag i førertrøjen" },
+      "PointtrojeDag": { "label": "Pointtrøje (pr. dag)", "desc": "Pr. dag i pointtrøjen" },
+      "BjergtrojeDag": { "label": "Bjergtrøje (pr. dag)", "desc": "Pr. dag i bjergtrøjen" },
+      "UngdomstrojeDag": { "label": "Ungdomstrøje (pr. dag)", "desc": "Pr. dag i ungdomstrøjen" }
+    }
+  },
+  "detail": {
+    "backToLibrary": "← Løbsbibliotek",
+    "tabOverall": "Samlet",
+    "tabStage": "Etape {number}",
+    "noOverall": "Ingen samlede klassementer registreret",
+    "tableResult": "Resultat",
+    "jerseysAfterStage": "Trøjer efter etapen",
+    "stageFinishOrder": "Etape {number} — målrækkefølge",
+    "noResults": "Ingen resultater",
+    "classification": {
+      "gc": "Samlet (GC)",
+      "points": "Pointkonkurrence",
+      "mountain": "Bjergkonkurrence",
+      "young": "Ungdom",
+      "team": "Holdkonkurrence"
+    },
+    "jersey": {
+      "leader": "Fører",
+      "points_day": "Point",
+      "mountain_day": "Bjerg",
+      "young_day": "Ungdom"
+    }
+  },
+  "history": {
+    "backToLibrary": "← Løbsbibliotek",
+    "editionsCount": "{count, plural, one {# udgave} other {# udgaver}}",
+    "editions": "Udgaver",
+    "season": "Sæson {number}",
+    "noResults": "Ingen resultater",
+    "bestRiders": "Bedste ryttere",
+    "bestRidersSub": "Akkumuleret på tværs af alle udgaver",
+    "noResultsYet": "Ingen resultater endnu",
+    "statGc": "{count} GC",
+    "statStageWins": "{count} etapesejre",
+    "statTop3": "{count} top-3",
+    "noWins": "Ingen sejre",
+    "accumulatedTitle": "Akkumuleret point-total",
+    "accumulatedSub": "Top ryttere efter samlede point på tværs af alle udgaver"
+  }
+}

@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
@@ -7,45 +8,48 @@ import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { formatDateTime } from "../lib/intl";
 
+// Labels resolves via t() ved render — se races-namespacet (resultType.*, classOption.*, status.*).
 const RESULT_TYPES = [
-  { key: "stage", label: "Etape" },
-  { key: "gc", label: "Samlet" },
-  { key: "points", label: "Point" },
-  { key: "mountain", label: "Bjerg" },
-  { key: "young", label: "Unge" },
+  { key: "stage" },
+  { key: "gc" },
+  { key: "points" },
+  { key: "mountain" },
+  { key: "young" },
 ];
 
 const RACE_CLASS_OPTIONS = [
-  { value: "TourFrance",      label: "Tour de France" },
-  { value: "GiroVuelta",      label: "Giro / Vuelta" },
-  { value: "Monuments",       label: "Monuments" },
-  { value: "OtherWorldTourA", label: "WorldTour A" },
-  { value: "OtherWorldTourB", label: "WorldTour B" },
-  { value: "OtherWorldTourC", label: "WorldTour C" },
-  { value: "ProSeries",       label: "ProSeries" },
-  { value: "Class1",          label: "Klasse 1" },
-  { value: "Class2",          label: "Klasse 2" },
+  { value: "TourFrance" },
+  { value: "GiroVuelta" },
+  { value: "Monuments" },
+  { value: "OtherWorldTourA" },
+  { value: "OtherWorldTourB" },
+  { value: "OtherWorldTourC" },
+  { value: "ProSeries" },
+  { value: "Class1" },
+  { value: "Class2" },
 ];
 
 const RACE_STATUS_OPTIONS = [
-  { value: "completed", label: "Afsluttet" },
-  { value: "active",    label: "Igang" },
-  { value: "scheduled", label: "Kommende" },
+  { value: "completed" },
+  { value: "active" },
+  { value: "scheduled" },
 ];
 
-function timeAgo(dateStr) {
+// timeAgo tager en t-funktion så strengene følger den aktive locale.
+function timeAgo(t, dateStr) {
   if (!dateStr) return "—";
   const diff = new Date() - new Date(dateStr);
   const d = Math.floor(diff / 86400000);
   const h = Math.floor(diff / 3600000);
-  if (d > 0) return `${d}d siden`;
-  if (h > 0) return `${h}t siden`;
-  return "Lige nu";
+  if (d > 0) return t("timeAgo.days", { count: d });
+  if (h > 0) return t("timeAgo.hours", { count: h });
+  return t("timeAgo.now");
 }
 
 const VALID_TABS = ["calendar", "library", "world", "points", "submit", "approve"];
 
 export default function RacesPage() {
+  const { t } = useTranslation("races");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -234,10 +238,10 @@ export default function RacesPage() {
   }
 
   async function submitResults() {
-    if (!uploadRaceId) { setSubmitMsg("❌ Vælg et løb"); return; }
+    if (!uploadRaceId) { setSubmitMsg(t("submit.msgSelectRace")); return; }
     const unmatched = editingRows.filter(r => !r.rider_id);
     if (unmatched.length > 0) {
-      setSubmitMsg(`❌ ${unmatched.length} ryttere er ikke matchet — ret dem manuelt`);
+      setSubmitMsg(t("submit.msgUnmatched", { count: unmatched.length }));
       return;
     }
     setSubmitting(true);
@@ -252,11 +256,11 @@ export default function RacesPage() {
       p_rows: rows,
     });
     if (error) {
-      setSubmitMsg(`❌ ${error.message}`);
+      setSubmitMsg(t("submit.msgError", { message: error.message }));
       setSubmitting(false);
       return;
     }
-    setSubmitMsg("✅ Resultater indsendt — afventer godkendelse fra admin");
+    setSubmitMsg(t("submit.msgSubmitted"));
     setEditingRows([]);
     loadAll();
     setSubmitting(false);
@@ -273,7 +277,9 @@ export default function RacesPage() {
     if (res.ok) {
       loadAll();
     } else {
-      alert(data.error);
+      // #678: læk ikke rå backend-fejl i UI'et — log til konsol, vis venlig oversat besked.
+      console.error("approve-results failed:", data.error);
+      alert(t("approve.errorGeneric"));
     }
   }
 
@@ -301,13 +307,15 @@ export default function RacesPage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-cz-1">Løb</h1>
+          <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
           <p className="text-cz-3 text-sm">
             {tab === "library"
-              ? `${libRaces.length} løb på tværs af alle sæsoner`
+              ? t("subtitle.library", { count: libRaces.length })
               : tab === "points"
-              ? "UCI-pointtabeller og præmieformel"
-              : `${season ? `Sæson ${season.number}` : "Ingen aktiv sæson"} — ${races.length} løb`}
+              ? t("subtitle.points")
+              : season
+              ? t("subtitle.withSeason", { number: season.number, count: races.length })
+              : t("subtitle.noSeasonWithCount", { count: races.length })}
           </p>
         </div>
       </div>
@@ -315,17 +323,17 @@ export default function RacesPage() {
       {/* Tabs */}
       <div className="flex gap-2 mb-5 flex-wrap">
         {[
-          { key: "calendar", label: "📅 Kalender" },
-          { key: "library", label: "📚 Bibliotek" },
-          { key: "world", label: "🌍 Verdens-kalender" },
-          { key: "points", label: "💰 Point & præmier" },
-          { key: "submit", label: "📤 Indberét resultater" },
-          ...(isAdmin ? [{ key: "approve", label: `⚙ Godkend (${pending.filter(p => p.status === "pending").length})` }] : []),
-        ].map(t => (
-          <button key={t.key} onClick={() => changeTab(t.key)}
+          { key: "calendar", label: t("tabs.calendar") },
+          { key: "library", label: t("tabs.library") },
+          { key: "world", label: t("tabs.world") },
+          { key: "points", label: t("tabs.points") },
+          { key: "submit", label: t("tabs.submit") },
+          ...(isAdmin ? [{ key: "approve", label: t("tabs.approve", { count: pending.filter(p => p.status === "pending").length }) }] : []),
+        ].map(tb => (
+          <button key={tb.key} onClick={() => changeTab(tb.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${tab === t.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {t.label}
+              ${tab === tb.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+            {tb.label}
           </button>
         ))}
       </div>
@@ -337,7 +345,7 @@ export default function RacesPage() {
             {/* Upcoming */}
             {racesByStatus.upcoming.length > 0 && (
               <div className="mb-5">
-                <h2 className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">Kommende</h2>
+                <h2 className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("calendar.upcoming")}</h2>
                 <div className="flex flex-col gap-2">
                   {racesByStatus.upcoming.map(race => {
                     const expectedPrize = computeExpectedRacePrize({
@@ -355,7 +363,7 @@ export default function RacesPage() {
                         <div>
                           <p className="text-cz-1 font-semibold text-sm">{race.name}</p>
                           <p className="text-cz-3 text-xs mt-0.5">
-                            {race.race_type === "stage_race" ? `Etapeløb · ${race.stages} etaper` : "Enkeltdagsløb"}
+                            {race.race_type === "stage_race" ? t("raceType.stageRaceWithStages", { count: race.stages }) : t("raceType.oneDay")}
                           </p>
                         </div>
                         <div className="text-right">
@@ -363,11 +371,11 @@ export default function RacesPage() {
                             <p className="text-cz-3 text-xs">{race.pool_race.date_text}</p>
                           )}
                           {race.edition_year && (
-                            <p className="text-cz-accent-t text-xs font-mono mt-0.5">{race.edition_year}-udgave</p>
+                            <p className="text-cz-accent-t text-xs font-mono mt-0.5">{t("common.edition", { year: race.edition_year })}</p>
                           )}
                           {expectedPrize > 0 && (
-                            <p className="text-cz-2 text-xs font-mono mt-0.5" title="Live-beregnet forventet pulje baseret på race-class × race-type × etaper">
-                              Forventet pulje {formatExpectedPrize(expectedPrize)}
+                            <p className="text-cz-2 text-xs font-mono mt-0.5" title={t("calendar.expectedPoolTooltip")}>
+                              {t("calendar.expectedPool", { amount: formatExpectedPrize(expectedPrize) })}
                             </p>
                           )}
                         </div>
@@ -382,7 +390,7 @@ export default function RacesPage() {
             {/* Completed */}
             {racesByStatus.completed.length > 0 && (
               <div>
-                <h2 className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">Afsluttede</h2>
+                <h2 className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("calendar.completed")}</h2>
                 <div className="flex flex-col gap-2">
                   {racesByStatus.completed.map(race => (
                     <div key={race.id}
@@ -393,11 +401,11 @@ export default function RacesPage() {
                         <div>
                           <p className="text-cz-1 font-medium text-sm">{race.name}</p>
                           <p className="text-cz-3 text-xs mt-0.5">
-                            {race.results?.length || 0} resultater importeret
+                            {t("calendar.resultsImported", { count: race.results?.length || 0 })}
                           </p>
                         </div>
                         <span className="text-[9px] uppercase bg-cz-success-bg text-cz-success border border-cz-success/30 px-2 py-0.5 rounded-full">
-                          Afsluttet
+                          {t("status.completed")}
                         </span>
                       </div>
                     </div>
@@ -409,8 +417,8 @@ export default function RacesPage() {
             {races.length === 0 && (
               <div className="text-center py-16 text-cz-3">
                 <p className="text-4xl mb-3">🏁</p>
-                <p>Ingen løb i denne sæson endnu</p>
-                {isAdmin && <p className="text-xs mt-2">Tilføj løb i Admin-panelet</p>}
+                <p>{t("empty.noRacesSeason")}</p>
+                {isAdmin && <p className="text-xs mt-2">{t("empty.addRaceAdmin")}</p>}
               </div>
             )}
           </div>
@@ -421,9 +429,9 @@ export default function RacesPage() {
               <div className="bg-cz-card border border-cz-border rounded-xl p-5 sticky top-4">
                 <h2 className="text-cz-1 font-bold text-base mb-1">{selectedRace.name}</h2>
                 <p className="text-cz-3 text-xs mb-1">
-                  {selectedRace.race_type === "stage_race" ? `${selectedRace.stages} etaper` : "Enkeltdagsløb"}
+                  {selectedRace.race_type === "stage_race" ? t("raceType.stages", { count: selectedRace.stages }) : t("raceType.oneDay")}
                   {selectedRace.pool_race?.date_text && ` · ${selectedRace.pool_race.date_text}`}
-                  {selectedRace.edition_year && ` · ${selectedRace.edition_year}-udgave`}
+                  {selectedRace.edition_year && ` · ${t("common.edition", { year: selectedRace.edition_year })}`}
                 </p>
                 {(() => {
                   const expected = computeExpectedRacePrize({
@@ -433,8 +441,8 @@ export default function RacesPage() {
                     racePoints,
                   });
                   return expected > 0 ? (
-                    <p className="text-cz-2 text-xs font-mono mb-4" title="Live-beregnet forventet pulje baseret på race-class × race-type × etaper">
-                      Forventet pulje {formatExpectedPrize(expected)}
+                    <p className="text-cz-2 text-xs font-mono mb-4" title={t("calendar.expectedPoolTooltip")}>
+                      {t("calendar.expectedPool", { amount: formatExpectedPrize(expected) })}
                     </p>
                   ) : <div className="mb-4" />;
                 })()}
@@ -447,10 +455,10 @@ export default function RacesPage() {
 
                 {!selectedRace.loading && selectedRace.results?.length === 0 && (
                   <div className="text-center py-8 text-cz-3 text-sm">
-                    <p>Ingen resultater importeret endnu</p>
+                    <p>{t("calendar.noResultsYet")}</p>
                     <button onClick={() => changeTab("submit")}
                       className="mt-3 text-cz-accent-t text-xs hover:underline">
-                      Indberét resultater →
+                      {t("calendar.submitCta")}
                     </button>
                   </div>
                 )}
@@ -459,14 +467,14 @@ export default function RacesPage() {
                   <div>
                     <Link to={`/races/${selectedRace.id}`}
                       className="inline-flex items-center gap-1 mb-4 text-xs font-medium text-cz-accent-t hover:underline">
-                      Se fulde resultater {selectedRace.race_type === "stage_race" ? "+ alle etaper " : ""}→
+                      {selectedRace.race_type === "stage_race" ? t("calendar.viewFullWithStages") : t("calendar.viewFull")}
                     </Link>
                     {RESULT_TYPES.map(rt => {
                       const rows = selectedRace.results.filter(r => r.result_type === rt.key).slice(0, 10);
                       if (!rows.length) return null;
                       return (
                         <div key={rt.key} className="mb-4">
-                          <p className="text-cz-2 text-xs uppercase tracking-wider mb-2 font-semibold">{rt.label}</p>
+                          <p className="text-cz-2 text-xs uppercase tracking-wider mb-2 font-semibold">{t(`resultType.${rt.key}`)}</p>
                           <table className="w-full text-xs">
                             <tbody>
                               {rows.map(r => (
@@ -476,7 +484,7 @@ export default function RacesPage() {
                                     <RiderLink id={r.rider?.id}
                                       className="cursor-pointer hover:text-cz-accent-t transition-colors block">
                                       <span className="text-cz-1">{r.rider?.firstname} {r.rider?.lastname}</span>
-                                      <span className="text-cz-3 ms-2">{r.rider?.team?.name || "Fri"}</span>
+                                      <span className="text-cz-3 ms-2">{r.rider?.team?.name || t("common.free")}</span>
                                     </RiderLink>
                                   </td>
                                   <td className="py-1.5 text-right text-cz-success font-mono">
@@ -495,7 +503,7 @@ export default function RacesPage() {
             ) : (
               <div className="bg-cz-card border border-cz-border rounded-xl p-8 text-center text-cz-3 sticky top-4">
                 <p className="text-3xl mb-2">🏁</p>
-                <p className="text-sm">Vælg et løb for at se detaljer</p>
+                <p className="text-sm">{t("calendar.selectPrompt")}</p>
               </div>
             )}
           </div>
@@ -508,40 +516,42 @@ export default function RacesPage() {
           {/* Filter bar */}
           <div className="bg-cz-card border border-cz-border rounded-xl p-4 mb-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
-              <label className="block text-cz-3 text-xs mb-1">Søg løb</label>
+              <label className="block text-cz-3 text-xs mb-1">{t("library.searchLabel")}</label>
               <input type="text" value={libSearch} onChange={e => setLibSearch(e.target.value)}
-                placeholder="Tour, Giro, Roubaix…"
+                placeholder={t("library.searchPlaceholder")}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent/40" />
             </div>
             <div>
-              <label className="block text-cz-3 text-xs mb-1">Sæson</label>
+              <label className="block text-cz-3 text-xs mb-1">{t("library.seasonLabel")}</label>
               <select value={libFilterSeason} onChange={e => setLibFilterSeason(e.target.value)}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
-                <option value="">Alle sæsoner</option>
+                <option value="">{t("library.allSeasons")}</option>
                 {libSeasons.map(s => (
                   <option key={s.id} value={s.id}>
-                    Sæson {s.number}{s.status === "active" ? " (aktiv)" : ""}
+                    {s.status === "active"
+                      ? t("library.seasonOptionActive", { number: s.number })
+                      : t("library.seasonOption", { number: s.number })}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-cz-3 text-xs mb-1">Klasse</label>
+              <label className="block text-cz-3 text-xs mb-1">{t("library.classLabel")}</label>
               <select value={libFilterClass} onChange={e => setLibFilterClass(e.target.value)}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
-                <option value="">Alle klasser</option>
+                <option value="">{t("library.allClasses")}</option>
                 {RACE_CLASS_OPTIONS.map(c => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
+                  <option key={c.value} value={c.value}>{t(`classOption.${c.value}`)}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-cz-3 text-xs mb-1">Status</label>
+              <label className="block text-cz-3 text-xs mb-1">{t("library.statusLabel")}</label>
               <select value={libFilterStatus} onChange={e => setLibFilterStatus(e.target.value)}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
-                <option value="">Alle</option>
+                <option value="">{t("library.allStatuses")}</option>
                 {RACE_STATUS_OPTIONS.map(s => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
+                  <option key={s.value} value={s.value}>{t(`status.${s.value}`)}</option>
                 ))}
               </select>
             </div>
@@ -550,14 +560,14 @@ export default function RacesPage() {
           {(libFilterSeason || libFilterClass || libFilterStatus || libSearch) && (
             <div className="flex items-center justify-between mb-3 px-1">
               <p className="text-cz-3 text-xs">
-                {filteredLibRaces.length} af {libRaces.length} løb
+                {t("library.filteredCount", { filtered: filteredLibRaces.length, total: libRaces.length })}
               </p>
               <button
                 onClick={() => {
                   setLibFilterSeason(""); setLibFilterClass(""); setLibFilterStatus(""); setLibSearch("");
                 }}
                 className="text-cz-accent-t text-xs hover:underline">
-                Ryd filtre
+                {t("library.clearFilters")}
               </button>
             </div>
           )}
@@ -569,7 +579,7 @@ export default function RacesPage() {
           ) : filteredLibRaces.length === 0 ? (
             <div className="text-center py-16 text-cz-3">
               <p className="text-4xl mb-3">🏁</p>
-              <p>Ingen løb matcher filtrene</p>
+              <p>{t("empty.noRacesMatch")}</p>
             </div>
           ) : (
             <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
@@ -577,12 +587,12 @@ export default function RacesPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-cz-subtle">
                     <tr className="border-b border-cz-border text-left">
-                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">Løb</th>
-                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">Sæson</th>
-                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">Klasse</th>
-                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">Type</th>
-                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">Dato</th>
-                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">Status</th>
+                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("library.thRace")}</th>
+                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("library.thSeason")}</th>
+                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("library.thClass")}</th>
+                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("library.thType")}</th>
+                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("library.thDate")}</th>
+                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("library.thStatus")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-cz-border">
@@ -599,25 +609,25 @@ export default function RacesPage() {
                               <button
                                 onClick={(e) => { e.stopPropagation(); navigate(`/seasons/${r.season.id}`); }}
                                 className="text-cz-accent-t hover:underline">
-                                Sæson {r.season.number} →
+                                {t("library.seasonLink", { number: r.season.number })}
                               </button>
                             ) : "—"}
                           </td>
                           <td className="px-4 py-2.5 text-cz-2 text-xs">
-                            {classMeta?.label ?? r.race_class ?? "—"}
+                            {classMeta ? t(`classOption.${r.race_class}`) : (r.race_class ?? "—")}
                           </td>
                           <td className="px-4 py-2.5 text-cz-2 text-xs">
-                            {r.race_type === "stage_race" ? `Etapeløb (${r.stages})` : "Enkeltdag"}
+                            {r.race_type === "stage_race" ? t("raceType.stageRaceParen", { count: r.stages }) : t("raceType.oneDayShort")}
                           </td>
                           <td className="px-4 py-2.5 text-cz-2 text-xs">
-                            {r.edition_year ? `${r.edition_year}-udgave` : "—"}
+                            {r.edition_year ? t("common.edition", { year: r.edition_year }) : "—"}
                           </td>
                           <td className="px-4 py-2.5 text-xs">
                             <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] uppercase
                               ${r.status === "completed" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
                                 : r.status === "active" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                                 : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-                              {statusMeta?.label ?? r.status}
+                              {statusMeta ? t(`status.${r.status}`) : r.status}
                             </span>
                           </td>
                         </tr>
@@ -634,12 +644,12 @@ export default function RacesPage() {
       {/* Verdens-kalender tab (Slice 09) — read-only katalog af alle løb */}
       {tab === "world" && (
         <div>
-          {worldLoading && <p className="text-cz-3 text-sm">Indlæser verdens-kalender…</p>}
+          {worldLoading && <p className="text-cz-3 text-sm">{t("world.loading")}</p>}
           {!worldLoading && (
             <>
               <div className="bg-cz-card border border-cz-border rounded-xl p-4 mb-4">
                 <p className="text-cz-2 font-medium text-sm mb-3">
-                  {worldPool.length} løb totalt på tværs af verdens-kalenderen
+                  {t("world.totalRaces", { count: worldPool.length })}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
                   {RACE_CLASS_OPTIONS.map(opt => {
@@ -654,9 +664,9 @@ export default function RacesPage() {
                             ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t"
                             : "border-cz-border text-cz-2 hover:bg-cz-subtle"}`}
                       >
-                        <span className="truncate">{opt.label}</span>
+                        <span className="truncate">{t(`classOption.${opt.value}`)}</span>
                         <span className="text-cz-3 text-xs whitespace-nowrap ms-2">
-                          {s.count} løb · {s.raceDays} dage
+                          {t("world.classSummary", { count: s.count, days: s.raceDays })}
                         </span>
                       </button>
                     );
@@ -664,9 +674,9 @@ export default function RacesPage() {
                 </div>
                 {worldFilterClass && (
                   <p className="text-cz-3 text-xs mt-2">
-                    Filtreret på {worldFilterClass}.{" "}
+                    {t("world.filteredOn", { class: t(`classOption.${worldFilterClass}`) })}{" "}
                     <button onClick={() => setWorldFilterClass("")} className="text-cz-accent-t underline">
-                      Ryd filter
+                      {t("world.clearFilter")}
                     </button>
                   </p>
                 )}
@@ -677,11 +687,11 @@ export default function RacesPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-cz-subtle text-cz-3 text-xs">
                       <tr>
-                        <th className="text-left px-3 py-2">Løb</th>
-                        <th className="text-left px-3 py-2">Klasse</th>
-                        <th className="text-left px-3 py-2">Type</th>
-                        <th className="text-right px-3 py-2">Etaper</th>
-                        <th className="text-left px-3 py-2">Dato</th>
+                        <th className="text-left px-3 py-2">{t("world.thRace")}</th>
+                        <th className="text-left px-3 py-2">{t("world.thClass")}</th>
+                        <th className="text-left px-3 py-2">{t("world.thType")}</th>
+                        <th className="text-right px-3 py-2">{t("world.thStages")}</th>
+                        <th className="text-left px-3 py-2">{t("world.thDate")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -691,7 +701,7 @@ export default function RacesPage() {
                           <tr key={r.id} className="border-t border-cz-border hover:bg-cz-subtle/50">
                             <td className="px-3 py-2 text-cz-1">{r.name}</td>
                             <td className="px-3 py-2 text-cz-2">{r.race_class}</td>
-                            <td className="px-3 py-2 text-cz-2">{r.race_type === "single" ? "Endags" : "Etape"}</td>
+                            <td className="px-3 py-2 text-cz-2">{r.race_type === "single" ? t("raceType.oneDayShort") : t("resultType.stage")}</td>
                             <td className="px-3 py-2 text-right text-cz-2">{r.stages}</td>
                             <td className="px-3 py-2 text-cz-3">{r.date_text || "—"}</td>
                           </tr>
@@ -716,31 +726,30 @@ export default function RacesPage() {
       {tab === "submit" && (
         <div className="max-w-2xl">
           <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
-            <h2 className="text-cz-1 font-semibold text-sm mb-4">Indberét løbsresultater</h2>
+            <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("submit.heading")}</h2>
             <p className="text-cz-3 text-xs mb-5 leading-relaxed">
-              Upload en Excel-fil med resultater fra PCM. Kolonner: <span className="text-cz-2 font-mono">Placering | Rytternavn</span>.
-              Du kan efterfølgende rette navnematching inden du indsender. Admin godkender inden resultaterne er officielle.
+              {t("submit.introBefore")} <span className="text-cz-2 font-mono">{t("submit.columnsHint")}</span>. {t("submit.introAfter")}
             </p>
 
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div>
-                <label className="block text-cz-3 text-xs mb-1">Løb</label>
+                <label className="block text-cz-3 text-xs mb-1">{t("submit.raceLabel")}</label>
                 <select value={uploadRaceId} onChange={e => setUploadRaceId(e.target.value)}
                   className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
                   {races.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-cz-3 text-xs mb-1">Etape</label>
+                <label className="block text-cz-3 text-xs mb-1">{t("submit.stageLabel")}</label>
                 <input type="number" min={1} value={uploadStage}
                   onChange={e => setUploadStage(parseInt(e.target.value))}
                   className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
               </div>
               <div>
-                <label className="block text-cz-3 text-xs mb-1">Type</label>
+                <label className="block text-cz-3 text-xs mb-1">{t("submit.typeLabel")}</label>
                 <select value={uploadResultType} onChange={e => setUploadResultType(e.target.value)}
                   className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
-                  {RESULT_TYPES.map(rt => <option key={rt.key} value={rt.key}>{rt.label}</option>)}
+                  {RESULT_TYPES.map(rt => <option key={rt.key} value={rt.key}>{t(`resultType.${rt.key}`)}</option>)}
                 </select>
               </div>
             </div>
@@ -748,8 +757,8 @@ export default function RacesPage() {
             <label className="block cursor-pointer mb-4">
               <div className="border-2 border-dashed border-cz-border hover:border-cz-accent/40
                 rounded-xl p-6 text-center transition-all">
-                <p className="text-cz-3 text-sm">📁 Klik for at uploade PCM Excel-fil (.xlsx, .xls)</p>
-                <p className="text-cz-3 text-xs mt-1">Forventet format: Placering i kolonne A, Rytternavn i kolonne B</p>
+                <p className="text-cz-3 text-sm">{t("submit.dropTitle")}</p>
+                <p className="text-cz-3 text-xs mt-1">{t("submit.dropFormat")}</p>
               </div>
               <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
             </label>
@@ -757,10 +766,10 @@ export default function RacesPage() {
             {editingRows.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-cz-2 text-xs">{editingRows.length} ryttere uploadet</p>
+                  <p className="text-cz-2 text-xs">{t("submit.uploadedCount", { count: editingRows.length })}</p>
                   <button onClick={matchRiders}
                     className="px-3 py-1.5 bg-cz-info-bg0/10 text-cz-info border border-blue-500/20 rounded-lg text-xs hover:bg-cz-info-bg0/20">
-                    Auto-match navne
+                    {t("submit.autoMatch")}
                   </button>
                 </div>
 
@@ -769,8 +778,8 @@ export default function RacesPage() {
                     <thead className="sticky top-0 bg-cz-card">
                       <tr className="border-b border-cz-border">
                         <th className="px-3 py-2 text-left text-cz-3 w-10">#</th>
-                        <th className="px-3 py-2 text-left text-cz-3">Fra PCM</th>
-                        <th className="px-3 py-2 text-left text-cz-3">Matchet til</th>
+                        <th className="px-3 py-2 text-left text-cz-3">{t("submit.thFromPcm")}</th>
+                        <th className="px-3 py-2 text-left text-cz-3">{t("submit.thMatchedTo")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -782,7 +791,7 @@ export default function RacesPage() {
                             {row.matched ? (
                               <span className="text-cz-success text-xs">✓ {row.matched_name}</span>
                             ) : (
-                              <span className="text-cz-danger text-xs">⚠ Ikke matchet</span>
+                              <span className="text-cz-danger text-xs">{t("submit.notMatched")}</span>
                             )}
                           </td>
                         </tr>
@@ -801,7 +810,7 @@ export default function RacesPage() {
                 <button onClick={submitResults} disabled={submitting}
                   className="w-full py-2.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm
                     hover:brightness-110 disabled:opacity-50 transition-all">
-                  {submitting ? "Indsender..." : "Indsend til godkendelse"}
+                  {submitting ? t("submit.submitting") : t("submit.submitCta")}
                 </button>
               </div>
             )}
@@ -810,19 +819,19 @@ export default function RacesPage() {
           {/* My past submissions */}
           {pending.filter(p => p.submitted_by === userId).length > 0 && (
             <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-              <h3 className="text-cz-1 font-semibold text-sm mb-3">Mine indberetninger</h3>
+              <h3 className="text-cz-1 font-semibold text-sm mb-3">{t("submit.mySubmissions")}</h3>
               <div className="flex flex-col gap-2">
                 {pending.filter(p => p.submitted_by === userId).map(p => (
                   <div key={p.id} className="flex items-center justify-between py-2 border-b border-cz-border last:border-0">
                     <div>
                       <p className="text-cz-1 text-sm">{p.race?.name}</p>
-                      <p className="text-cz-3 text-xs">{timeAgo(p.submitted_at)}</p>
+                      <p className="text-cz-3 text-xs">{timeAgo(t, p.submitted_at)}</p>
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full border
                       ${p.status === "pending" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" :
                         p.status === "approved" ? "bg-cz-success-bg text-cz-success border-cz-success/30" :
                         "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
-                      {p.status === "pending" ? "Afventer" : p.status === "approved" ? "Godkendt" : "Afvist"}
+                      {p.status === "pending" ? t("submission.pending") : p.status === "approved" ? t("submission.approved") : t("submission.rejected")}
                     </span>
                   </div>
                 ))}
@@ -838,7 +847,7 @@ export default function RacesPage() {
           {pending.filter(p => p.status === "pending").length === 0 ? (
             <div className="text-center py-16 text-cz-3">
               <p className="text-4xl mb-3">✅</p>
-              <p>Ingen afventende indberetninger</p>
+              <p>{t("approve.nonePending")}</p>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
@@ -856,6 +865,7 @@ export default function RacesPage() {
 }
 
 function PendingSubmission({ submission, onApprove, onReject }) {
+  const { t } = useTranslation("races");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [rejectNote, setRejectNote] = useState("");
@@ -875,17 +885,17 @@ function PendingSubmission({ submission, onApprove, onReject }) {
         <div>
           <p className="text-cz-1 font-semibold">{submission.race?.name}</p>
           <p className="text-cz-3 text-xs mt-0.5">
-            Indsendt af {submission.submitter?.username} · {formatDateTime(submission.submitted_at)}
+            {t("approve.submittedBy", { user: submission.submitter?.username, date: formatDateTime(submission.submitted_at) })}
           </p>
         </div>
         <div className="flex gap-2">
           <button onClick={onApprove}
             className="px-3 py-1.5 bg-cz-success-bg text-cz-success border border-cz-success/30 rounded-lg text-xs hover:bg-cz-success-bg">
-            ✓ Godkend
+            {t("approve.approve")}
           </button>
           <button onClick={() => setShowReject(!showReject)}
             className="px-3 py-1.5 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-xs hover:bg-cz-danger-bg">
-            ✕ Afvis
+            {t("approve.reject")}
           </button>
         </div>
       </div>
@@ -893,30 +903,30 @@ function PendingSubmission({ submission, onApprove, onReject }) {
       {showReject && (
         <div className="flex gap-2 mb-4">
           <input type="text" value={rejectNote} onChange={e => setRejectNote(e.target.value)}
-            placeholder="Årsag til afvisning..."
+            placeholder={t("approve.rejectPlaceholder")}
             className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
           <button onClick={() => onReject(rejectNote)}
             className="px-3 py-2 bg-cz-danger-bg text-cz-danger rounded-lg text-sm">
-            Send
+            {t("approve.send")}
           </button>
         </div>
       )}
 
-      {loading ? <div className="text-cz-3 text-sm">Indlæser...</div> : (
+      {loading ? <div className="text-cz-3 text-sm">{t("common.loading")}</div> : (
         <div className="max-h-60 overflow-y-auto">
           <table className="w-full text-xs">
             <thead><tr className="border-b border-cz-border">
               <th className="py-1.5 text-left text-cz-3 w-8">#</th>
-              <th className="py-1.5 text-left text-cz-3">Rytter</th>
-              <th className="py-1.5 text-left text-cz-3">Hold</th>
-              <th className="py-1.5 text-left text-cz-3">Type</th>
+              <th className="py-1.5 text-left text-cz-3">{t("approve.thRider")}</th>
+              <th className="py-1.5 text-left text-cz-3">{t("approve.thTeam")}</th>
+              <th className="py-1.5 text-left text-cz-3">{t("approve.thType")}</th>
             </tr></thead>
             <tbody>
               {rows.map(r => (
                 <tr key={r.id} className="border-b border-cz-border">
                   <td className="py-1.5 text-cz-2 font-mono">{r.rank}</td>
                   <td className="py-1.5 text-cz-1">{r.rider?.firstname} {r.rider?.lastname}</td>
-                  <td className="py-1.5 text-cz-2">{r.rider?.team?.name || "Fri"}</td>
+                  <td className="py-1.5 text-cz-2">{r.rider?.team?.name || t("common.free")}</td>
                   <td className="py-1.5 text-cz-2">{r.result_type}</td>
                 </tr>
               ))}

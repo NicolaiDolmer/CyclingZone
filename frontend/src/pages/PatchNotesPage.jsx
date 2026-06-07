@@ -2,6 +2,34 @@
 
 const PATCHES = [
   {
+    version: "4.98",
+    date: "2026-06-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · English results, season & founder pages",
+        items: [
+          "EN · Three more pages now display fully in English when your language is set to English: the Results hub, the Season snapshot (calendar, final standings and season winners) and the public Founder waitlist landing page. They previously showed Danish regardless of your language setting. The Founder page now also follows your chosen app language instead of always opening in Danish. Refs #678.",
+          "DA · Tre sider mere vises nu fuldt på engelsk når dit sprog er sat til engelsk: Resultater-hubben, Sæson-snapshot (kalender, slutstilling og sæsonens vindere) og den offentlige Founder-waitlist-landingsside. Tidligere viste de dansk uanset sprogvalg. Founder-siden følger nu også dit valgte sprog i appen i stedet for altid at åbne på dansk. Refs #678.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "4.97",
+    date: "2026-06-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · English race pages",
+        items: [
+          "EN · The race pages (calendar, library, world calendar, points & prizes, result submission and per-race results) now display fully in English when your language is set to English. They previously showed Danish regardless of your language setting. Result classifications and jerseys now use consistent English names (general classification, points jersey, mountains jersey, young rider jersey). A raw server error that could pop up when approving a submission is now a friendly message. Refs #678.",
+          "DA · Løbssiderne (kalender, bibliotek, verdens-kalender, point & præmier, resultat-indberetning og resultater pr. løb) vises nu fuldt på engelsk når dit sprog er sat til engelsk. Tidligere viste de dansk uanset sprogvalg. Klassementer og trøjer bruger nu konsistente navne, og en rå server-fejl ved godkendelse af en indberetning er nu en venlig besked. Refs #678.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.95",
     date: "2026-06-07",
     label: "Beta",

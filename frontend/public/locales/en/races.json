@@ -1,0 +1,234 @@
+{
+  "title": "Races",
+  "subtitle": {
+    "withSeason": "Season {number} — {count} races",
+    "noSeason": "No active season",
+    "noSeasonWithCount": "No active season — {count} races",
+    "library": "{count} races across all seasons",
+    "points": "UCI points tables and prize formula"
+  },
+  "tabs": {
+    "calendar": "📅 Calendar",
+    "library": "📚 Library",
+    "world": "🌍 World calendar",
+    "points": "💰 Points & prizes",
+    "submit": "📤 Submit results",
+    "approve": "⚙ Approve ({count})"
+  },
+  "raceType": {
+    "stageRace": "Stage race",
+    "oneDay": "One-day race",
+    "oneDayShort": "One-day",
+    "stages": "{count, plural, one {# stage} other {# stages}}",
+    "stageRaceWithStages": "Stage race · {count, plural, one {# stage} other {# stages}}",
+    "stageRaceParen": "Stage race ({count})"
+  },
+  "classOption": {
+    "TourFrance": "Tour de France",
+    "GiroVuelta": "Giro / Vuelta",
+    "Monuments": "Monuments",
+    "OtherWorldTourA": "WorldTour A",
+    "OtherWorldTourB": "WorldTour B",
+    "OtherWorldTourC": "WorldTour C",
+    "ProSeries": "ProSeries",
+    "Class1": "Class 1",
+    "Class2": "Class 2"
+  },
+  "classBadge": {
+    "grandTour": "Grand Tour",
+    "oneDay": "One-day",
+    "worldTour": "WorldTour",
+    "continental": "Continental"
+  },
+  "status": {
+    "completed": "Completed",
+    "active": "Live",
+    "scheduled": "Upcoming"
+  },
+  "submission": {
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected"
+  },
+  "common": {
+    "free": "Free",
+    "dash": "—",
+    "edition": "{year} edition",
+    "loading": "Loading…",
+    "points": "{count} pt"
+  },
+  "timeAgo": {
+    "days": "{count}d ago",
+    "hours": "{count}h ago",
+    "now": "Just now"
+  },
+  "empty": {
+    "icon": "🏁",
+    "noRacesSeason": "No races this season yet",
+    "addRaceAdmin": "Add races in the Admin panel",
+    "noRacesMatch": "No races match the filters",
+    "raceNotFound": "Race not found",
+    "noResultsImportedRace": "No results imported for this race yet",
+    "noHistory": "No data found for \"{name}\""
+  },
+  "calendar": {
+    "upcoming": "Upcoming",
+    "completed": "Completed",
+    "resultsImported": "{count} results imported",
+    "expectedPool": "Expected pool {amount}",
+    "expectedPoolTooltip": "Live-calculated expected pool based on race class × race type × stages",
+    "selectPrompt": "Select a race to see details",
+    "noResultsYet": "No results imported yet",
+    "submitCta": "Submit results →",
+    "viewFull": "View full results →",
+    "viewFullWithStages": "View full results + all stages →"
+  },
+  "library": {
+    "searchLabel": "Search races",
+    "searchPlaceholder": "Tour, Giro, Roubaix…",
+    "seasonLabel": "Season",
+    "allSeasons": "All seasons",
+    "seasonOption": "Season {number}",
+    "seasonOptionActive": "Season {number} (active)",
+    "classLabel": "Class",
+    "allClasses": "All classes",
+    "statusLabel": "Status",
+    "allStatuses": "All",
+    "filteredCount": "{filtered} of {total} races",
+    "clearFilters": "Clear filters",
+    "thRace": "Race",
+    "thSeason": "Season",
+    "thClass": "Class",
+    "thType": "Type",
+    "thDate": "Date",
+    "thStatus": "Status",
+    "seasonLink": "Season {number} →"
+  },
+  "world": {
+    "loading": "Loading world calendar…",
+    "totalRaces": "{count} races in total across the world calendar",
+    "classSummary": "{count} races · {days} days",
+    "filteredOn": "Filtered on {class}.",
+    "clearFilter": "Clear filter",
+    "thRace": "Race",
+    "thClass": "Class",
+    "thType": "Type",
+    "thStages": "Stages",
+    "thDate": "Date"
+  },
+  "submit": {
+    "heading": "Submit race results",
+    "introBefore": "Upload an Excel file with results from PCM. Columns:",
+    "introAfter": "You can correct the name matching before submitting. An admin approves before the results become official.",
+    "columnsHint": "Rank | Rider name",
+    "raceLabel": "Race",
+    "stageLabel": "Stage",
+    "typeLabel": "Type",
+    "dropTitle": "📁 Click to upload PCM Excel file (.xlsx, .xls)",
+    "dropFormat": "Expected format: Rank in column A, Rider name in column B",
+    "uploadedCount": "{count} riders uploaded",
+    "autoMatch": "Auto-match names",
+    "thFromPcm": "From PCM",
+    "thMatchedTo": "Matched to",
+    "notMatched": "⚠ Not matched",
+    "submitting": "Submitting…",
+    "submitCta": "Submit for approval",
+    "mySubmissions": "My submissions",
+    "msgSelectRace": "❌ Select a race",
+    "msgUnmatched": "❌ {count} riders are not matched — fix them manually",
+    "msgSubmitted": "✅ Results submitted — awaiting admin approval",
+    "msgError": "❌ {message}"
+  },
+  "resultType": {
+    "stage": "Stage",
+    "gc": "Overall",
+    "points": "Points",
+    "mountain": "Mountains",
+    "young": "Youth"
+  },
+  "approve": {
+    "nonePending": "No pending submissions",
+    "submittedBy": "Submitted by {user} · {date}",
+    "approve": "✓ Approve",
+    "reject": "✕ Reject",
+    "rejectPlaceholder": "Reason for rejection…",
+    "send": "Send",
+    "thRider": "Rider",
+    "thTeam": "Team",
+    "thType": "Type",
+    "errorGeneric": "Could not approve the submission. Please try again."
+  },
+  "points": {
+    "title": "Points & prize overview",
+    "subtitle": "How your race prizes are calculated from UCI placements",
+    "help": "Help & Rules",
+    "formula": "Prize formula: 1 UCI point = {amount} CZ$",
+    "noClassData": "No points data for this class",
+    "thRank": "Rank",
+    "thUciPoints": "UCI points",
+    "thPrize": "Prize",
+    "showLess": "Hide ↑",
+    "showAll": "Show all {count} ranks ↓",
+    "prizeExample": {
+      "tourWin": "Tour de France win",
+      "monumentWin": "Monument win",
+      "tourStageWin": "Stage win (TdF)",
+      "proSeriesWin": "ProSeries win",
+      "class1Win": "Class 1 win",
+      "class2Win": "Class 2 win"
+    },
+    "type": {
+      "Klassement": { "label": "General classification", "desc": "GC placement in stage races" },
+      "Klassiker": { "label": "Classics", "desc": "Overall placement in one-day races" },
+      "Etapeplacering": { "label": "Stage placement", "desc": "Per stage in stage races" },
+      "Pointtroje": { "label": "Points jersey", "desc": "Top 3 in the points competition" },
+      "Bjergtroje": { "label": "Mountains jersey", "desc": "Top 3 in the mountains competition" },
+      "Ungdomstroje": { "label": "Young rider jersey", "desc": "Top 3 in the U25 competition" },
+      "EtapelobHold": { "label": "Team (stage race)", "desc": "Best team in stage races" },
+      "KlassikerHold": { "label": "Team (classic)", "desc": "Best team in classics" },
+      "Forertroje": { "label": "Leader's jersey", "desc": "Per day in the leader's jersey" },
+      "PointtrojeDag": { "label": "Points jersey (per day)", "desc": "Per day in the points jersey" },
+      "BjergtrojeDag": { "label": "Mountains jersey (per day)", "desc": "Per day in the mountains jersey" },
+      "UngdomstrojeDag": { "label": "Young rider jersey (per day)", "desc": "Per day in the young rider jersey" }
+    }
+  },
+  "detail": {
+    "backToLibrary": "← Race library",
+    "tabOverall": "Overall",
+    "tabStage": "Stage {number}",
+    "noOverall": "No overall classifications recorded",
+    "tableResult": "Result",
+    "jerseysAfterStage": "Jerseys after the stage",
+    "stageFinishOrder": "Stage {number} — finish order",
+    "noResults": "No results",
+    "classification": {
+      "gc": "Overall (GC)",
+      "points": "Points classification",
+      "mountain": "Mountains classification",
+      "young": "Young rider",
+      "team": "Team classification"
+    },
+    "jersey": {
+      "leader": "Leader",
+      "points_day": "Points",
+      "mountain_day": "Mountains",
+      "young_day": "Youth"
+    }
+  },
+  "history": {
+    "backToLibrary": "← Race library",
+    "editionsCount": "{count, plural, one {# edition} other {# editions}}",
+    "editions": "Editions",
+    "season": "Season {number}",
+    "noResults": "No results",
+    "bestRiders": "Best riders",
+    "bestRidersSub": "Accumulated across all editions",
+    "noResultsYet": "No results yet",
+    "statGc": "{count} GC",
+    "statStageWins": "{count} stage wins",
+    "statTop3": "{count} top-3",
+    "noWins": "No wins",
+    "accumulatedTitle": "Accumulated points total",
+    "accumulatedSub": "Top riders by total points across all editions"
+  }
+}

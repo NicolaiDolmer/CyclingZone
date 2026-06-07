@@ -74,6 +74,8 @@ import halloffameDa from "../../public/locales/da/halloffame.json";
 import halloffameEn from "../../public/locales/en/halloffame.json";
 import riderTypesDa from "../../public/locales/da/riderTypes.json";
 import riderTypesEn from "../../public/locales/en/riderTypes.json";
+import racesDa from "../../public/locales/da/races.json";
+import racesEn from "../../public/locales/en/races.json";
 
 const PSEUDO_ENABLED = (() => {
   if (typeof window === "undefined") return false;
@@ -96,11 +98,11 @@ i18n
     supportedLngs: SUPPORTED,
     nonExplicitSupportedLngs: true,
     load: "languageOnly",
-    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help", "board", "rider", "riders", "riderFilters", "riderTypes", "notifications", "team", "finance", "backendMessages", "profile", "activity", "standings", "headtohead", "watchlist", "halloffame"],
+    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help", "board", "rider", "riders", "riderFilters", "riderTypes", "notifications", "team", "finance", "backendMessages", "profile", "activity", "standings", "headtohead", "watchlist", "halloffame", "races"],
     defaultNS: "common",
     resources: {
-      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, help: helpDa, board: boardDa, admin: adminDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, riderTypes: riderTypesDa, notifications: notificationsDa, team: teamDa, finance: financeDa, backendMessages: backendMessagesDa, profile: profileDa, activity: activityDa, standings: standingsDa, headtohead: headtoheadDa, watchlist: watchlistDa, halloffame: halloffameDa },
-      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, help: helpEn, board: boardEn, admin: adminEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, notifications: notificationsEn, team: teamEn, finance: financeEn, backendMessages: backendMessagesEn, profile: profileEn, activity: activityEn, standings: standingsEn, headtohead: headtoheadEn, watchlist: watchlistEn, halloffame: halloffameEn },
+      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, help: helpDa, board: boardDa, admin: adminDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, riderTypes: riderTypesDa, notifications: notificationsDa, team: teamDa, finance: financeDa, backendMessages: backendMessagesDa, profile: profileDa, activity: activityDa, standings: standingsDa, headtohead: headtoheadDa, watchlist: watchlistDa, halloffame: halloffameDa, races: racesDa },
+      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, help: helpEn, board: boardEn, admin: adminEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, notifications: notificationsEn, team: teamEn, finance: financeEn, backendMessages: backendMessagesEn, profile: profileEn, activity: activityEn, standings: standingsEn, headtohead: headtoheadEn, watchlist: watchlistEn, halloffame: halloffameEn, races: racesEn },
     },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],

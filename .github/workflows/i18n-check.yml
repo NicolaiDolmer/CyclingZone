@@ -8,6 +8,7 @@ on:
       - 'scripts/i18n-check-keys.mjs'
       - 'scripts/i18n-check-namespace-inline.mjs'
       - 'scripts/i18n-check-nav-strings.mjs'
+      - 'scripts/i18n-check-page-untranslated.mjs'
       - '.github/workflows/i18n-check.yml'
   push:
     branches: [main]
@@ -17,6 +18,7 @@ on:
       - 'scripts/i18n-check-keys.mjs'
       - 'scripts/i18n-check-namespace-inline.mjs'
       - 'scripts/i18n-check-nav-strings.mjs'
+      - 'scripts/i18n-check-page-untranslated.mjs'
   workflow_dispatch:
 
 permissions:
@@ -80,3 +82,24 @@ jobs:
 
       - name: Run i18n nav-strings guard
         run: node scripts/i18n-check-nav-strings.mjs
+
+  page-untranslated:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Advisory (Refs #678) — fanger HELE player-facing sider uden useTranslation
+    # der render hardkodet dansk (usynlige for de øvrige i18n-guards). Der findes
+    # kendte pre-eksisterende leaks (Resultater/SeasonEnd/Founder) der konverteres
+    # separat, så jobbet er continue-on-error indtil KNOWN_TODO-listen er tom —
+    # derefter promotes til required (samme modning som key-coverage).
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Run i18n page-untranslated guard
+        run: node scripts/i18n-check-page-untranslated.mjs
