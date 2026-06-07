@@ -22,7 +22,7 @@ export const GENERATOR_VERSION = 1;
 // skal være ⊆ disse ∪ {"randomness"}.
 export const ABILITY_DIMENSIONS = Object.freeze([
   "climbing", "time_trial", "sprint", "punch", "endurance",
-  "cobble_classics", "acceleration", "recovery", "tactics", "positioning",
+  "cobblestone", "acceleration", "recovery", "tactics", "positioning",
 ]);
 
 export const PROFILE_TYPES = Object.freeze([
@@ -43,8 +43,8 @@ export const DEMAND_VECTORS = Object.freeze({
   high_mountain: Object.freeze({ climbing: 0.50, endurance: 0.20, punch: 0.08, recovery: 0.08, tactics: 0.04, randomness: 0.10 }),
   itt:           Object.freeze({ time_trial: 0.68, endurance: 0.16, positioning: 0.06, recovery: 0.04, randomness: 0.06 }),
   ttt:           Object.freeze({ time_trial: 0.50, tactics: 0.18, positioning: 0.14, endurance: 0.12, randomness: 0.06 }),
-  cobbles:       Object.freeze({ cobble_classics: 0.40, punch: 0.14, positioning: 0.12, endurance: 0.12, acceleration: 0.06, tactics: 0.04, randomness: 0.12 }),
-  classic:       Object.freeze({ endurance: 0.20, punch: 0.18, climbing: 0.14, cobble_classics: 0.12, positioning: 0.08, tactics: 0.06, sprint: 0.04, randomness: 0.18 }),
+  cobbles:       Object.freeze({ cobblestone: 0.40, punch: 0.14, positioning: 0.12, endurance: 0.12, acceleration: 0.06, tactics: 0.04, randomness: 0.12 }),
+  classic:       Object.freeze({ endurance: 0.20, punch: 0.18, climbing: 0.14, cobblestone: 0.12, positioning: 0.08, tactics: 0.06, sprint: 0.04, randomness: 0.18 }),
 });
 
 // Plausible finale-typer pr. terræn (display + senere modifier). Første = mest typisk.

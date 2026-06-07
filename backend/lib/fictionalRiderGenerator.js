@@ -82,11 +82,15 @@ const ROLES = [
 ];
 
 // ── Styrke-tiers: få stjerner, mange domestikker ──────────────────────────────
+// statMean = overall stat-niveau pr. tier, kalibreret mod den ægte PCM-fordeling
+// (se buildStats). Spændet er bevidst smalt (56→66): i ægte data dominerer rytter-
+// specialisering (rolle) over tier, så tier giver kun et let overall-løft. uci/
+// potential/popularity er urørt (styrer økonomi/demografi, ikke stat-skalaen).
 const TIERS = [
-  { value: "star",       weight: 4,  statMean: 78, uci: [800, 3500], potential: [3.0, 5.0], popularity: [55, 100] },
-  { value: "strong",     weight: 16, statMean: 70, uci: [150, 800],  potential: [3.0, 6.0], popularity: [25, 70] },
-  { value: "average",    weight: 40, statMean: 62, uci: [20, 150],   potential: [2.0, 5.0], popularity: [5, 35] },
-  { value: "domestique", weight: 40, statMean: 54, uci: [1, 25],     potential: [1.0, 4.0], popularity: [0, 15] },
+  { value: "star",       weight: 4,  statMean: 66, uci: [800, 3500], potential: [3.0, 5.0], popularity: [55, 100] },
+  { value: "strong",     weight: 16, statMean: 62, uci: [150, 800],  potential: [3.0, 6.0], popularity: [25, 70] },
+  { value: "average",    weight: 40, statMean: 59, uci: [20, 150],   potential: [2.0, 5.0], popularity: [5, 35] },
+  { value: "domestique", weight: 40, statMean: 56, uci: [1, 25],     potential: [1.0, 4.0], popularity: [0, 15] },
 ];
 
 // Default-nationalitetsvægte: afspejler prod-feltet (2026-05-31) + garanteret
@@ -108,13 +112,29 @@ const DEFAULT_NATIONALITY_WEIGHTS = [
 // Nationer der ALTID skal være repræsenteret mindst én gang (RFC-default).
 const GUARANTEED = ["CN", "JP", "KR", "CO", "DZ", "ER"];
 
+// Den ægte PCM-stat-skala er HÅRDT [50,85] (verificeret mod prod 2026-06-07:
+// 8.969 PCM-ryttere, alle 14 stats i præcis [50,85] — 0 udenfor). Fiktive ryttere
+// SKAL holde sig på samme skala: ellers clampes deres outliers til evne-1/99 ved
+// kilden i evne-systemet (#1122, abilityDerivation.js: PCM 50→spil-1, 85→spil-99).
+// Skalaen er fast (empirisk om PCM), derfor hardcodet — ikke koblet til evne-
+// systemets tuning-ankre (CALIBRATION), selvom de tilfældigvis er samme tal nu.
+const STAT_FLOOR = 50;
+const STAT_CEIL = 85;
+
+// Kalibreret mod den ægte poolede PCM-fordeling (prod 2026-06-07): mean ~60.5,
+// sd ~5.6, median 60, p99 ~75, max 85 — dvs. 85 er EKSTREMT sjældent (~1% af
+// stats > 75). Modellen holder sig inden for [50,85] ved konstruktion: smalt
+// tier-spænd + moderate rolle-boosts + stram gaussian (sd 4). clamp er kun et
+// sikkerhedsnet for de sjældne gaussiske haler (ikke en aktiv stat-grænse, som
+// det gamle [40,88] var). Specialisering bevares: rolle-primær løftes mærkbart
+// over base, så sprintere ≫ klatrere i sprint osv.
 function buildStats(rng, tier, role) {
   const stats = {};
   for (const key of STAT_KEYS) {
-    let v = gaussian(rng, tier.statMean, 6);
-    if (role.primary.includes(key)) v += intBetween(rng, 8, 16);
-    else if (role.secondary.includes(key)) v += intBetween(rng, 3, 8);
-    stats[key] = Math.round(clamp(v, 40, 88));
+    let v = gaussian(rng, tier.statMean, 4);
+    if (role.primary.includes(key)) v += intBetween(rng, 6, 12);
+    else if (role.secondary.includes(key)) v += intBetween(rng, 2, 5);
+    stats[key] = Math.round(clamp(v, STAT_FLOOR, STAT_CEIL));
   }
   return stats;
 }

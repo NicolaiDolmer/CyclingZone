@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "4.95",
+    date: "2026-06-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Rider abilities",
+        items: [
+          "EN · The beta ability preview on rider profiles is rebuilt and expanded from 10 to 16 abilities, grouped into physical, technical and tactical. New ones include prologue, flat, tempo, durability, descending and aggression, and \"cobbles\" is now its own ability separate from climbing-style classics. Abilities now read more directly from a rider's stats, so specialists stand out: a pure sprinter is genuinely weak in the mountains, while a climber keeps the acceleration to attack uphill without having a flat sprint. Still beta and being tuned, and it does not affect race results yet. Refs #1122.",
+          "DA · Beta-evnerne på rytterprofiler er bygget om og udvidet fra 10 til 16 evner, grupperet i fysiske, tekniske og taktiske. Nye er bl.a. prolog, fladt, tempo, modstandskraft, nedkørsel og angrebslyst, og \"brosten\" er nu sin egen evne adskilt fra klatre-prægede klassikere. Evnerne aflæses nu mere direkte af rytterens stats, så specialister træder frem: en ren sprinter er reelt svag i bjergene, mens en klatrer beholder accelerationen til at angribe opad uden at have en flad spurt. Stadig beta og under justering, og det påvirker endnu ikke resultater. Refs #1122.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.94",
     date: "2026-06-06",
     label: "Beta",

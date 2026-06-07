@@ -43,7 +43,7 @@ test("ENGINE_VERSION + ABILITY_KEYS = de 10 forventede", () => {
   assert.equal(ENGINE_VERSION, 1);
   assert.equal(ABILITY_KEYS.length, 10);
   assert.deepEqual([...ABILITY_KEYS].sort(), [
-    "acceleration", "climbing", "cobble_classics", "endurance", "positioning",
+    "acceleration", "climbing", "cobblestone", "endurance", "positioning",
     "punch", "recovery", "sprint", "tactics", "time_trial",
   ]);
 });

@@ -1,0 +1,351 @@
+[
+  {
+    "id": "04b8fdd4-fd98-4c63-a728-4c49d093ca17",
+    "name": "Frederik Andersen",
+    "before": {
+      "stat_fl": 64,
+      "stat_bj": 62,
+      "stat_kb": 57,
+      "stat_bk": 56,
+      "stat_tt": 62,
+      "stat_prl": 47,
+      "stat_bro": 47,
+      "stat_sp": 51,
+      "stat_acc": 46,
+      "stat_ned": 53,
+      "stat_udh": 55,
+      "stat_mod": 59,
+      "stat_res": 59,
+      "stat_ftr": 58
+    },
+    "patch": {
+      "stat_prl": 50,
+      "stat_bro": 50,
+      "stat_acc": 50
+    }
+  },
+  {
+    "id": "2849b82f-fd4f-4b84-b002-790b289149ef",
+    "name": "Harry Ward",
+    "before": {
+      "stat_fl": 78,
+      "stat_bj": 88,
+      "stat_kb": 88,
+      "stat_bk": 86,
+      "stat_tt": 88,
+      "stat_prl": 81,
+      "stat_bro": 88,
+      "stat_sp": 83,
+      "stat_acc": 75,
+      "stat_ned": 83,
+      "stat_udh": 88,
+      "stat_mod": 71,
+      "stat_res": 78,
+      "stat_ftr": 85
+    },
+    "patch": {
+      "stat_bj": 85,
+      "stat_kb": 85,
+      "stat_bk": 85,
+      "stat_tt": 85,
+      "stat_bro": 85,
+      "stat_udh": 85
+    }
+  },
+  {
+    "id": "32efc136-d8d0-4a7f-b027-62f4829b3f12",
+    "name": "Sergio Mendoza",
+    "before": {
+      "stat_fl": 62,
+      "stat_bj": 86,
+      "stat_kb": 69,
+      "stat_bk": 81,
+      "stat_tt": 81,
+      "stat_prl": 62,
+      "stat_bro": 64,
+      "stat_sp": 75,
+      "stat_acc": 77,
+      "stat_ned": 72,
+      "stat_udh": 72,
+      "stat_mod": 68,
+      "stat_res": 66,
+      "stat_ftr": 75
+    },
+    "patch": {
+      "stat_bj": 85
+    }
+  },
+  {
+    "id": "4066bf71-e54d-41d7-87da-ae5bc34aaf7e",
+    "name": "Bastien Delcroix",
+    "before": {
+      "stat_fl": 56,
+      "stat_bj": 45,
+      "stat_kb": 54,
+      "stat_bk": 54,
+      "stat_tt": 53,
+      "stat_prl": 56,
+      "stat_bro": 43,
+      "stat_sp": 79,
+      "stat_acc": 72,
+      "stat_ned": 47,
+      "stat_udh": 57,
+      "stat_mod": 49,
+      "stat_res": 64,
+      "stat_ftr": 64
+    },
+    "patch": {
+      "stat_bj": 50,
+      "stat_bro": 50,
+      "stat_ned": 50,
+      "stat_mod": 50
+    }
+  },
+  {
+    "id": "81cbf3c3-2017-439f-94ed-3eb859d72361",
+    "name": "Takumi Suzuki",
+    "before": {
+      "stat_fl": 54,
+      "stat_bj": 61,
+      "stat_kb": 53,
+      "stat_bk": 57,
+      "stat_tt": 55,
+      "stat_prl": 52,
+      "stat_bro": 53,
+      "stat_sp": 51,
+      "stat_acc": 52,
+      "stat_ned": 40,
+      "stat_udh": 62,
+      "stat_mod": 51,
+      "stat_res": 64,
+      "stat_ftr": 52
+    },
+    "patch": {
+      "stat_ned": 50
+    }
+  },
+  {
+    "id": "9f51aef6-81e6-4b71-b67a-bea18243500f",
+    "name": "Gustavo Rodrigues",
+    "before": {
+      "stat_fl": 58,
+      "stat_bj": 52,
+      "stat_kb": 59,
+      "stat_bk": 58,
+      "stat_tt": 56,
+      "stat_prl": 46,
+      "stat_bro": 56,
+      "stat_sp": 46,
+      "stat_acc": 58,
+      "stat_ned": 57,
+      "stat_udh": 70,
+      "stat_mod": 61,
+      "stat_res": 48,
+      "stat_ftr": 56
+    },
+    "patch": {
+      "stat_prl": 50,
+      "stat_sp": 50,
+      "stat_res": 50
+    }
+  },
+  {
+    "id": "aadb7e08-76d1-4f23-b988-53fe67bc4359",
+    "name": "Woojin Kang",
+    "before": {
+      "stat_fl": 52,
+      "stat_bj": 57,
+      "stat_kb": 43,
+      "stat_bk": 40,
+      "stat_tt": 55,
+      "stat_prl": 53,
+      "stat_bro": 51,
+      "stat_sp": 46,
+      "stat_acc": 57,
+      "stat_ned": 51,
+      "stat_udh": 47,
+      "stat_mod": 63,
+      "stat_res": 61,
+      "stat_ftr": 49
+    },
+    "patch": {
+      "stat_kb": 50,
+      "stat_bk": 50,
+      "stat_sp": 50,
+      "stat_udh": 50,
+      "stat_ftr": 50
+    }
+  },
+  {
+    "id": "b461fa7f-de7e-451d-a002-60545c1af4f0",
+    "name": "Johan Bergström",
+    "before": {
+      "stat_fl": 88,
+      "stat_bj": 70,
+      "stat_kb": 72,
+      "stat_bk": 76,
+      "stat_tt": 76,
+      "stat_prl": 81,
+      "stat_bro": 88,
+      "stat_sp": 71,
+      "stat_acc": 76,
+      "stat_ned": 67,
+      "stat_udh": 80,
+      "stat_mod": 82,
+      "stat_res": 71,
+      "stat_ftr": 88
+    },
+    "patch": {
+      "stat_fl": 85,
+      "stat_bro": 85,
+      "stat_ftr": 85
+    }
+  },
+  {
+    "id": "bd542899-7d92-4231-bad0-eecb150d9f1d",
+    "name": "Nicolò Serra",
+    "before": {
+      "stat_fl": 70,
+      "stat_bj": 57,
+      "stat_kb": 40,
+      "stat_bk": 40,
+      "stat_tt": 56,
+      "stat_prl": 65,
+      "stat_bro": 48,
+      "stat_sp": 65,
+      "stat_acc": 69,
+      "stat_ned": 53,
+      "stat_udh": 60,
+      "stat_mod": 63,
+      "stat_res": 63,
+      "stat_ftr": 59
+    },
+    "patch": {
+      "stat_kb": 50,
+      "stat_bk": 50,
+      "stat_bro": 50
+    }
+  },
+  {
+    "id": "c8c624f4-7cdc-448a-8ca1-67c38ad995fe",
+    "name": "Long Yang",
+    "before": {
+      "stat_fl": 71,
+      "stat_bj": 82,
+      "stat_kb": 74,
+      "stat_bk": 67,
+      "stat_tt": 86,
+      "stat_prl": 71,
+      "stat_bro": 79,
+      "stat_sp": 70,
+      "stat_acc": 66,
+      "stat_ned": 84,
+      "stat_udh": 77,
+      "stat_mod": 75,
+      "stat_res": 81,
+      "stat_ftr": 60
+    },
+    "patch": {
+      "stat_tt": 85
+    }
+  },
+  {
+    "id": "d4dc2435-1eea-495b-bebe-2378cfc7b510",
+    "name": "Andrea Sorrentino",
+    "before": {
+      "stat_fl": 50,
+      "stat_bj": 74,
+      "stat_kb": 56,
+      "stat_bk": 48,
+      "stat_tt": 62,
+      "stat_prl": 48,
+      "stat_bro": 61,
+      "stat_sp": 66,
+      "stat_acc": 51,
+      "stat_ned": 59,
+      "stat_udh": 70,
+      "stat_mod": 53,
+      "stat_res": 65,
+      "stat_ftr": 42
+    },
+    "patch": {
+      "stat_bk": 50,
+      "stat_prl": 50,
+      "stat_ftr": 50
+    }
+  },
+  {
+    "id": "e8ef243e-b181-4351-82dc-7b49a115f25d",
+    "name": "Iván Sánchez",
+    "before": {
+      "stat_fl": 78,
+      "stat_bj": 70,
+      "stat_kb": 52,
+      "stat_bk": 60,
+      "stat_tt": 48,
+      "stat_prl": 53,
+      "stat_bro": 48,
+      "stat_sp": 56,
+      "stat_acc": 61,
+      "stat_ned": 47,
+      "stat_udh": 53,
+      "stat_mod": 58,
+      "stat_res": 48,
+      "stat_ftr": 65
+    },
+    "patch": {
+      "stat_tt": 50,
+      "stat_bro": 50,
+      "stat_ned": 50,
+      "stat_res": 50
+    }
+  },
+  {
+    "id": "f1941e90-ac89-4131-864e-d260b2db8854",
+    "name": "Bin Wang",
+    "before": {
+      "stat_fl": 50,
+      "stat_bj": 69,
+      "stat_kb": 81,
+      "stat_bk": 72,
+      "stat_tt": 55,
+      "stat_prl": 44,
+      "stat_bro": 57,
+      "stat_sp": 55,
+      "stat_acc": 66,
+      "stat_ned": 51,
+      "stat_udh": 69,
+      "stat_mod": 53,
+      "stat_res": 49,
+      "stat_ftr": 55
+    },
+    "patch": {
+      "stat_prl": 50,
+      "stat_res": 50
+    }
+  },
+  {
+    "id": "fc500377-524d-47e1-96d7-4459e3a25940",
+    "name": "Marco Vitali",
+    "before": {
+      "stat_fl": 56,
+      "stat_bj": 55,
+      "stat_kb": 46,
+      "stat_bk": 50,
+      "stat_tt": 59,
+      "stat_prl": 64,
+      "stat_bro": 47,
+      "stat_sp": 75,
+      "stat_acc": 61,
+      "stat_ned": 52,
+      "stat_udh": 56,
+      "stat_mod": 52,
+      "stat_res": 50,
+      "stat_ftr": 71
+    },
+    "patch": {
+      "stat_kb": 50,
+      "stat_bro": 50
+    }
+  }
+]

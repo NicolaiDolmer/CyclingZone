@@ -1,83 +1,118 @@
-// Race Engine V1 (#676) — udled 0-99 game-abilities fra physiology.
+// Evne-system v2 (#1122 / #1101-kæden) — udled 0-99 game-abilities fra de legacy
+// PCM-stats. Designet: docs/decisions/rider-ability-system-v2.md (source of truth).
 //
-// Ren, deterministisk. Reproducérbar fra rider_physiology_profiles + legacy soft-
-// skills + formula_version. Formler forankret i ADR §"Ability derivation model".
+// KALIBRERINGS-MODEL (ejer-besluttet 2026-06-07, i tuning-løkken):
+//   Hver disciplin-evne afledes DIREKTE af sin primære PCM-stat, lineært remappet
+//   fra PCM-skalaen [50,85] → spil [1,99]. PCM 50 → 1, PCM 85 → 99.
+//   Konsekvenser (alle ønskede, verificeret mod prod 2026-06-07):
+//   • §1.1 Specialisering er GRATIS: PCM-stats er allerede skæve pr. rytter (en
+//     sprinter har lav stat_bj, høj stat_sp), så climbing≪sprint falder ud af sig
+//     selv — ingen kunstig kontrast-mekanik.
+//   • §1.2 Top-tung af konstruktion: kun ~0-3 ryttere har en stat ≥85 (→ 99), snit-
+//     statten ~60 → evne ~29. Toppen er sjælden uden en separat kurve.
+//   • §1.3 Døde evner væk: hver evne spredes over hele 1-99 fordi stat-spredningen
+//     remappes lineært (ikke klumpet om 60).
+//   • acceleration ≠ flad sprint: stat_acc (kan accelerere/angribe, også opad) er en
+//     ANDEN stat end stat_sp (flad spurt) — en klatrer beholder ok acceleration.
 //
-// Skalering: PERCENTIL mod den nuværende rytter-pool (ADR-anbefaling) frem for
-// hardcodede globale antagelser — så balancen overlever youth/fiktive/long-tail-
-// ryttere. Pool bygges af buildAbilityPool() og injiceres, så funktionen forbliver
-// ren + testbar. Hver formels vægte summerer til 1.0 og hver komponent er 0..1, så
-// score = round(sum * 99) ∈ [0,99]. Med fast pool er hver ability monoton i sin
-// primære physiology-driver (percentilen vokser når metrikken vokser).
+// Ren + deterministisk. physiology-parametren beholdes i signaturen (rider_id +
+// race-engine-kompat) men driver IKKE længere evnerne — abilities ← stats.
 
-export const FORMULA_VERSION = 1;
+export const FORMULA_VERSION = 2;
 
-// Physiology-metrikker der percentil-skaleres. (Soft skills udledes direkte fra
-// legacy 0-99 stats og percentil-skaleres ikke — de er allerede på spil-skalaen.)
-export const POOL_METRICS = Object.freeze([
-  "ftp_wkg", "ftp_watts", "power_5m_wkg", "power_5s_wkg", "power_15s_wkg",
-  "power_1m_wkg", "pmax_watts", "zone2_power_wkg", "time_to_exhaustion_ftp_min",
-  "high_intensity_energy_kj", "fatigue_resistance", "recovery_rate",
+// ── Kalibrerings-ankre (§6) — ejer tuner her ──────────────────────────────────
+export const CALIBRATION = Object.freeze({
+  pcmFloor: 50,   // PCM-stat der mapper til spil-1
+  pcmCeil: 85,    // PCM-stat der mapper til spil-99 (stats >85 clampes til 99)
+  asOfYear: 2026, // alder = asOfYear − fødselsår (til aggression/tactics/hidden)
+});
+
+// 16 synlige evner i 4 kategorier (§3). Rækkefølge = visnings-/lagrings-orden.
+export const VISIBLE_ABILITIES = Object.freeze([
+  // Fysiske (11)
+  "climbing", "time_trial", "prolog", "flat", "tempo", "sprint", "acceleration",
+  "punch", "endurance", "recovery", "durability",
+  // Tekniske (3)
+  "descending", "cobblestone", "positioning",
+  // Taktisk/mentale (2)
+  "aggression", "tactics",
 ]);
 
+// Skjulte evner (§3). potentiale forbliver en eksisterende riders-kolonne; her
+// udleder vi kun hidden_potential.
+export const HIDDEN_ABILITIES = Object.freeze(["hidden_potential"]);
+
+export const ALL_ABILITY_KEYS = Object.freeze([...VISIBLE_ABILITIES, ...HIDDEN_ABILITIES]);
+
+// Disciplin-evne → primær PCM-stat (§3 "Kilde"). Ren 50-85 → 1-99-mapping, så
+// specialisering er indbygget (skæve PCM-stats pr. rytter). aggression er IKKE her:
+// den har et ungdoms-tilt og beregnes separat. positioning/tactics/hidden er afledte.
+export const PRIMARY_STAT = Object.freeze({
+  climbing: "stat_bj", time_trial: "stat_tt", prolog: "stat_prl", flat: "stat_fl",
+  tempo: "stat_kb", sprint: "stat_sp", acceleration: "stat_acc", punch: "stat_bk",
+  endurance: "stat_udh", recovery: "stat_res", durability: "stat_mod",
+  descending: "stat_ned", cobblestone: "stat_bro",
+});
+
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
-const norm = (s) => clamp(s ?? 60, 0, 99) / 99;     // legacy 0-99 → 0..1 (neutral 60)
-const score = (x) => clamp(Math.round(x * 99), 0, 99);
 
-// Byg percentil-pool: ét sorteret array pr. metrik fra alle physiology-profiler.
-export function buildAbilityPool(profiles = []) {
-  const pool = {};
-  for (const m of POOL_METRICS) {
-    pool[m] = profiles
-      .map((p) => Number(p[m]))
-      .filter((n) => Number.isFinite(n))
-      .sort((a, b) => a - b);
-  }
-  return pool;
+// PCM-stat → fraktion ∈ [0,1] på ankrene [pcmFloor, pcmCeil]. Ugyldig stat → 0.
+function pcmFrac(stat) {
+  const v = Number(stat);
+  if (!Number.isFinite(v)) return 0;
+  return clamp((v - CALIBRATION.pcmFloor) / (CALIBRATION.pcmCeil - CALIBRATION.pcmFloor), 0, 1);
 }
 
-// Andel af pool-værdier ≤ value ∈ [0,1]. Monoton ikke-aftagende i value. Tom pool
-// → 0.5 (neutral), så en enkelt rytter uden pool stadig får midter-abilities.
-function percentile(sortedAsc, value) {
-  if (!sortedAsc || sortedAsc.length === 0) return 0.5;
-  let lo = 0;
-  let hi = sortedAsc.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (sortedAsc[mid] <= value) lo = mid + 1;
-    else hi = mid;
+// Fraktion ∈ [0,1] → spil-score ∈ [1,99] (frac 0 → 1, frac 1 → 99).
+const scoreFrac = (f) => clamp(Math.round(1 + clamp(f, 0, 1) * 98), 1, 99);
+
+// Deterministisk støj ∈ [0,1) fra rider_id (FNV-1a). Kun til skjult potentiale.
+function hashNoise(id) {
+  const s = String(id ?? "");
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
   }
-  return lo / sortedAsc.length;
+  return (h >>> 0) / 4294967296;
 }
 
-// physiology: rider_physiology_profiles-række (eller seedet payload).
-// riderRow:   legacy stat_*-felter (til soft skills) + weight som fallback.
-// pool:       fra buildAbilityPool() — udelades → alle percentiler = 0.5.
-export function deriveAbilities(physiology = {}, riderRow = {}, { pool } = {}) {
-  const P = (m) => percentile(pool?.[m], Number(physiology[m]) || 0);
+function ageFrom(birthdate, asOfYear) {
+  if (!birthdate) return 25; // snit-alder fallback
+  const year = new Date(birthdate).getFullYear();
+  if (!Number.isFinite(year)) return 25;
+  return clamp(asOfYear - year, 16, 45);
+}
 
-  // Soft skills (ikke physiology): udled fra legacy stats, ellers neutral via norm().
-  const weight = Number(physiology.weight_kg) || Number(riderRow.weight) || 70;
-  const weight_penalty = clamp((weight - 62) / (84 - 62), 0, 1); // 62kg→0, 84kg→1
-  const lightness = 1 - weight_penalty;       // klatre-fordel for lette ryttere
-  const weight_stability = weight_penalty;    // brosten-fordel for tunge ryttere
-  const technical_skill = 0.5 * norm(riderRow.stat_bro) + 0.5 * norm(riderRow.stat_ned);
-  const positioning = 0.5 * norm(riderRow.stat_ned) + 0.5 * norm(riderRow.stat_ftr);
-  const tactics = 0.5 * norm(riderRow.stat_ftr) + 0.5 * norm(riderRow.stat_mod);
-  const aero_proxy = norm(riderRow.stat_tt);
+// physiology: rider_physiology_profiles-række (kun til rider_id-fallback).
+// riderRow:   legacy stat_*-felter + birthdate + potentiale + id.
+// opts.pool:   accepteres for bagudkompat (v1) men ignoreres — v2 bruger ingen pool.
+export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CALIBRATION.asOfYear } = {}) {
+  // Alders-/potentiale-afledte komponenter (til afledte evner).
+  const age = ageFrom(riderRow.birthdate, asOfYear);
+  const youth = clamp((32 - age) / (32 - 21), 0, 1);       // 21→1, 32→0
+  const experience = clamp((age - 20) / (31 - 20), 0, 1);  // 20→0, 31+→1
+  const potRaw = Number(riderRow.potentiale);
+  const potential = Number.isFinite(potRaw) ? clamp((potRaw - 1) / 5, 0, 1) : 0.4; // 1-6 → 0..1
 
-  return {
-    rider_id: physiology.rider_id ?? riderRow.id,
-    formula_version: FORMULA_VERSION,
-    climbing:        score(0.50 * P("ftp_wkg") + 0.20 * P("power_5m_wkg") + 0.15 * P("fatigue_resistance") + 0.15 * lightness),
-    time_trial:      score(0.30 * P("ftp_watts") + 0.25 * P("ftp_wkg") + 0.20 * P("time_to_exhaustion_ftp_min") + 0.15 * aero_proxy + 0.10 * positioning),
-    sprint:          score(0.35 * P("pmax_watts") + 0.25 * P("power_5s_wkg") + 0.20 * P("power_15s_wkg") + 0.10 * positioning + 0.10 * P("recovery_rate")),
-    punch:           score(0.35 * P("power_1m_wkg") + 0.25 * P("power_5m_wkg") + 0.20 * P("high_intensity_energy_kj") + 0.20 * P("recovery_rate")),
-    endurance:       score(0.35 * P("zone2_power_wkg") + 0.30 * P("time_to_exhaustion_ftp_min") + 0.25 * P("fatigue_resistance") + 0.10 * P("recovery_rate")),
-    cobble_classics: score(0.25 * P("ftp_watts") + 0.20 * P("power_1m_wkg") + 0.20 * P("fatigue_resistance") + 0.20 * technical_skill + 0.15 * weight_stability),
-    acceleration:    score(0.60 * P("pmax_watts") + 0.40 * P("power_5s_wkg")),
-    recovery:        score(0.60 * P("recovery_rate") + 0.40 * P("fatigue_resistance")),
-    tactics:         score(tactics),
-    positioning:     score(positioning),
-  };
+  const out = { rider_id: physiology.rider_id ?? riderRow.id, formula_version: FORMULA_VERSION };
+
+  // ── Direkte disciplin-evner: primær PCM-stat, 50-85 → 1-99 ────────────────────
+  for (const [ability, stat] of Object.entries(PRIMARY_STAT)) {
+    out[ability] = scoreFrac(pcmFrac(riderRow[stat]));
+  }
+
+  // aggression får et let ungdoms-tilt (unge ryttere angriber oftere) oven på ftr.
+  const aggressionFrac = 0.85 * pcmFrac(riderRow.stat_ftr) + 0.15 * youth;
+  out.aggression = scoreFrac(aggressionFrac);
+
+  // ── Afledte evner (ingen egen disciplin-stat) ─────────────────────────────────
+  // positioning: flad-placering + nedkørsel + offensiv vej-fornemmelse (§3).
+  out.positioning = scoreFrac(0.50 * pcmFrac(riderRow.stat_fl) + 0.30 * pcmFrac(riderRow.stat_ned) + 0.20 * pcmFrac(riderRow.stat_ftr));
+  // tactics: erfaring (alder) + angrebsiver (§3 — Mod bruges IKKE, nu durability).
+  out.tactics = scoreFrac(0.55 * experience + 0.45 * aggressionFrac);
+  // hidden_potential: potentiale + ungdom + seeded støj (delvist ukendt per design).
+  out.hidden_potential = scoreFrac(0.60 * potential + 0.25 * youth + 0.15 * hashNoise(riderRow.id ?? physiology.rider_id));
+
+  return out;
 }

@@ -11,7 +11,7 @@
 // De 10 udledte abilities (rider_derived_abilities), 0-99.
 export const ABILITY_KEYS = Object.freeze([
   "climbing", "time_trial", "sprint", "punch", "endurance",
-  "cobble_classics", "acceleration", "recovery", "tactics", "positioning",
+  "cobblestone", "acceleration", "recovery", "tactics", "positioning",
 ]);
 
 // Fuld feature-rækkefølge. Koefficienterne i modellen er [intercept, ...FEATURE_KEYS].

@@ -91,14 +91,20 @@
     "derived": {
       "climbing": "Klatring",
       "time_trial": "Enkeltstart",
+      "prolog": "Prolog",
+      "flat": "Fladt",
+      "tempo": "Tempo",
       "sprint": "Sprint",
+      "acceleration": "Acceleration",
       "punch": "Punch",
       "endurance": "Udholdenhed",
-      "cobble_classics": "Brosten & klassikere",
-      "acceleration": "Acceleration",
       "recovery": "Restitution",
-      "tactics": "Taktik",
-      "positioning": "Positionering"
+      "durability": "Modstandskraft",
+      "descending": "Nedkørsel",
+      "cobblestone": "Brosten",
+      "positioning": "Positionering",
+      "aggression": "Angrebslyst",
+      "tactics": "Taktik"
     }
   },
   "skills": {
