@@ -474,6 +474,13 @@ export async function transitionToNextSeason({
     });
   }
 
+  // #1137 · Passiv rytterudvikling (kun sæson ≥ 2). processSeasonStart kører den
+  // isoleret; her surfacer vi summary i transition-loggen så admin ser udvikling/
+  // pensioneringer pr. transition.
+  if (seasonStartResult && typeof seasonStartResult === "object" && seasonStartResult.progression) {
+    log.push({ phase: "rider_progression", ...seasonStartResult.progression });
+  }
+
   log.push({
     phase: "admin_log",
     ...(await writeAdminLog(supabase, {

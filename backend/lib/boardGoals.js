@@ -184,11 +184,14 @@ export function generateBoardGoals({
         satisfaction_bonus: 12,
         satisfaction_penalty: 8,
       },
-      // S-02d · Q-batch 1B Q13: gnsn. >=3 stat-points/saeson paa U25-ryttere
+      // #1137 · gnsn. U25-udvikling/sæson, målt i ability-points (progressions-motoren
+      // udvikler abilities, ikke PCM-stats). Target kalibreret til ability-rummet:
+      // preview viste median U25 ability-sum-vækst ~+17/sæson, så 8 kræver reel
+      // ungdomsudvikling uden at være trivielt. Ejer-justerbart mod board-dynamik.
       {
         type: "u25_development_delta",
-        target: 3,
-        label: "Gennemsnitlig U25-stat-gevinst >= 3 stat-points/saeson",
+        target: 8,
+        label: "Gennemsnitlig U25-udvikling >= 8 points/sæson",
         satisfaction_bonus: 18,
         satisfaction_penalty: 8,
       },
@@ -864,17 +867,36 @@ export function evaluateGoal(goal, standing, team, context = {}) {
   }
 }
 
-// S-02d · sum af 12 stat-felter på U25-ryttere. Bruges af u25_development_delta
+// #1137 · sum af U25-rytternes udviklings-værdi. Bruges af u25_development_delta
 // + ved snapshot i processSeasonEnd så plan-start-baseline kan beregnes.
+//
+// MÅLER NU DE AFLEDTE ABILITIES (det progressions-motoren faktisk udvikler), når
+// rytter-rowen har en joinet `rider_derived_abilities`. Falder tilbage til legacy
+// PCM-stats for rows/kald uden join (eksisterende snapshots + test-fixtures), så
+// skiftet er bagudkompatibelt. Før #1137 var stats statiske → delta altid 0 →
+// board-ungdomsmålet (#813) var uopfyldeligt; abilities ændrer sig nu over sæsoner.
+export const U25_ABILITY_KEYS = [
+  "climbing", "time_trial", "prolog", "flat", "tempo", "sprint", "acceleration",
+  "punch", "endurance", "recovery", "durability", "descending", "cobblestone", "positioning", "aggression",
+];
+const U25_STAT_KEYS = [
+  "stat_fl", "stat_bj", "stat_kb", "stat_bk", "stat_tt", "stat_bro",
+  "stat_sp", "stat_acc", "stat_udh", "stat_mod", "stat_res", "stat_ftr",
+];
+
+function riderDevAbilities(rider) {
+  const a = rider?.rider_derived_abilities;
+  if (Array.isArray(a)) return a[0] ?? null;
+  return a && typeof a === "object" ? a : null;
+}
+
 export function computeU25StatSum(riders = []) {
-  const STAT_KEYS = [
-    "stat_fl", "stat_bj", "stat_kb", "stat_bk", "stat_tt", "stat_bro",
-    "stat_sp", "stat_acc", "stat_udh", "stat_mod", "stat_res", "stat_ftr",
-  ];
   return (riders || [])
     .filter((rider) => rider?.is_u25)
     .reduce((sum, rider) => {
-      return sum + STAT_KEYS.reduce((s, key) => s + Number(rider?.[key] || 0), 0);
+      const ab = riderDevAbilities(rider);
+      if (ab) return sum + U25_ABILITY_KEYS.reduce((s, k) => s + Number(ab[k] || 0), 0);
+      return sum + U25_STAT_KEYS.reduce((s, k) => s + Number(rider?.[k] || 0), 0);
     }, 0);
 }
 

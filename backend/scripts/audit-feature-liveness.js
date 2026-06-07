@@ -102,6 +102,15 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // at opsamle nu, så popularitet (#957) har historik. Skriv-path verificeret i
   // POST /api/riders/:id/view. Fjern denne whitelist-entry når tabellen har rows.
   "rider_profile_views",
+  // Light race-motor (#1102) skriver run-snapshots når RACE_ENGINE_V2_ENABLED er ON;
+  // flaget er seedet OFF, så tabellen er bevidst tom indtil motoren aktiveres.
+  // Skriv-path verificeret i raceRunner.js. Fjern når flag tændes + tabellen har rows.
+  "race_simulation_runs",
+  // Progression L0 (#1137) skriver én row pr. (rytter, sæson) ved season-transition
+  // (sæson ≥2 — sæson 1 = launch-baseline). Bevidst tom indtil første transition efter
+  // launch fylder den. Skriv-path verificeret i riderProgressionEngine.js. Fjern når
+  // tabellen har rows.
+  "rider_development_log",
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)

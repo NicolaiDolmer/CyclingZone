@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.00",
+    date: "2026-06-07",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Rider development",
+        items: [
+          "EN · Riders now develop over time. A new progression engine means riders are no longer frozen. Young riders with high potential grow toward their ceiling each season (fastest in their early twenties), peak around age 28, then gradually decline, while veterans retire automatically with a notification. Development is strongest in a rider's specialty, and a rider's value rises and falls with their abilities. This is the foundation and it begins working from season two. A dedicated Development tab to chart each rider's journey will follow. Refs #1137.",
+          "DA · Ryttere udvikler sig nu over tid. En ny udviklings-motor betyder at ryttere ikke længere er statiske. Unge ryttere med højt potentiale vokser mod deres loft hver sæson (hurtigst i start-tyverne), topper omkring 28-årsalderen og falder derefter gradvist, mens veteraner trækker sig automatisk med en notifikation. Udviklingen er størst i rytterens speciale, og en rytters værdi stiger og falder med dens evner. Dette er fundamentet, og det træder i kraft fra sæson to. En dedikeret Udvikling-fane der tegner hver rytters rejse følger. Refs #1137.",
+        ],
+      },
+    ],
+  },
+  {
     version: "4.99",
     date: "2026-06-07",
     label: "Beta",
