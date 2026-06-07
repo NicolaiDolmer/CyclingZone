@@ -1,8 +1,8 @@
 # Slice — Fiktive ryttere ([#669](https://github.com/NicolaiDolmer/CyclingZone/issues/669))
 
-> **Status:** Fase 5 (admin-gated prod-intro til live-test) **LIVE**. Generator (#847) + admin-gate (#850) merged til main. **25 fiktive ryttere indsat i prod**, RLS-gated + verificeret via rolle-impersonation (anon/ikke-admin: 0 fiktive, admin: 25, alle ser stadig 8.699 PCM). Ejer-verify: ryttere ser fine ud ✅; **auktion-test pending** (ikke-admin skal få 403).
+> **Status:** Fase 6 (launch-population-kalibrering, relaunch-epic #1105) **LEVERET** — generator tunet til ~800-rytters kurateret felt, verificeret end-to-end gennem hele værdi-kæden. Fase 5 (admin-gated prod-intro) live (25 ryttere, RLS-gated). Generator (#847) + admin-gate (#850) merged.
 > Single source of truth for opgaven. Alt state, beslutninger og næste skridt lever her + i issue #669.
-> **Reversibelt:** ét `DELETE FROM riders WHERE pcm_id IS NULL` + RLS tilbage til `USING (true)`. **Næste:** ejer auktion-test → evt. generator-kalibrering (star-rate/rolle-svagheder) → senere fuld PCM-udskiftning (#676).
+> **Reversibelt:** ét `DELETE FROM riders WHERE pcm_id IS NULL` + RLS tilbage til `USING (true)`. **Næste:** relaunch-orchestrator #1103 indsætter launch-populationen (gated, ejer-go) → fuld PCM-udskiftning ved cutover.
 
 ## Mål (revideret scope — ejer-beslutning 2026-05-31)
 
@@ -212,3 +212,29 @@ Mål: lade fiktive ryttere "leve" i prod til en realistisk test, **uden at teste
 - **2026-05-31 (Fase 2)** — Generator i **Node/JS** (genbrug af `foldName*` + `node --test`-dækning), kun-INSERT, audit-fil committes. (Claude — godkendes med RFC)
 - **2026-05-31 (Fase 4)** — Betalt Supabase preview-branch **droppet**; verifikation via lokal **PGlite**-integrationstest i stedet. (ejer)
 - **2026-05-31 (Fase 4)** — Arbejdet flyttet til eget **git worktree** for parallel-session-isolation; hovedmappe frigjort til `main`. (ejer)
+- **2026-06-07 (Fase 6)** — Launch-population: **stat-kilde = V1-arketype-stats** (ikke #677-fysiologi — race-motoren blev "light" #1102, og kæden virker); **skala ~800 kurateret** (ikke ~9000); **værdi-pyramide** ~12 super / 60 stjerner / 230 solide / 500 domestik; **rolle-svagheder ON**; **gulv på sjældne typer**. (ejer)
+- **2026-06-07 (Fase 6)** — Audit committes **ikke** som ~570 KB JSON: populationen er fuldt reproducerbar fra seed+params+kode → låst i `fictionalLaunchPopulation.js` i stedet (IDs er DB-tildelte, reversibilitet via `pcm_id IS NULL`). (Claude)
+- **2026-06-07 (Fase 6)** — Kalibrering **låst som den er** trods solid-bånd lidt under runde tal (støtte-typer er genuint billige) + tt-i-toppen (dækket af #1101-beslutning B). (ejer)
+
+## Fase 6 — Launch-population-kalibrering (relaunch-epic #1105)
+
+Mål: tune generatoren fra "V1-bevis (~100, vilkårlig fordeling)" til det **kuraterede ~800-rytters felt** der bliver den friske sæson 1. Bygger på den **afledte** værdi-kæde (evne-v2 #1123 → type-v2 #1133 → værdi-v2 #1101): generatoren sætter kun de 14 PCM-stats [50,85]; abilities/type/`base_value` afledes nedstrøms.
+
+**Nøgle-indsigt:** type-mix og værdi-pyramide kan **ikke** styres med simple rolle-vægte — z-score+kontrast+guards (riderTypes.js) transformerer stats→type, og log-lineær `exp(a+b·output)` (riderValuation.js) er stærkt eksponentiel. Løsning = **empirisk kalibrering** via `scripts/previewFictionalPopulation.js` (kører hele kæden mod de committede baseline-/model-JSON, rapporterer pyramide-bånd + type-fordeling).
+
+**Redesign af `fictionalRiderGenerator.js`:**
+- **9 type-arketyper** (afløser de 6 roller) sigter de afledte typer direkte: boost af stats bag typens positiv-vægtede abilities + **damp** af off-type-stats (rolle-svaghed ON). `minStats`-gulv opfylder gc-guarden ved alle tiers; `capSprint`/`capSpeciality` undgår at leadout/rouleur guardes ud.
+- **Eksakt tier-kvote** (12/60/230/498 @ 800) i stedet for Poisson-vægtet sampling → præcis pyramide + **løser star-rate-punktet** fra Fase 4-spot-checket.
+- **Tier-aware type-fordeling**: ledere (gc/klatrer/sprinter/tt/puncheur/brosten) i toppen, hjælpere (rouleur/leadout/baroudeur) i bunden = realistisk peloton. **Gulv** (gc≥30, sprinter≥40) håndhæves efter sampling.
+
+**Verificeret kalibrering (seed 2026, stabilt på tværs af seeds):** pyramide super 10 / stjerne 68 / solid 161 / domestik 561 (min 310, median 50k, max 54M); alle 9 typer repræsenteret; rolle-svagheder gør typerne skarpe; 30 nationaliteter med PCM-lignende spredning; alder 18–39. Backend **1103/1103 node --test grøn** (inkl. ny chain-integration der låser pyramide-formen) + PGlite-integration 6/6 + eslint clean.
+
+**Leverancer (denne slice):**
+- `lib/fictionalRiderGenerator.js` — tunet generator (9 arketyper, tier-kvote, type-gulv, rolle-svagheder).
+- `lib/fictionalLaunchPopulation.js` — låste launch-params (seed 2026, count 800, refYear 2026) + `generateLaunchPopulation()`; **integrations-søm for orchestrator #1103**.
+- `scripts/previewFictionalPopulation.js` — kalibrerings-/preview-harness (kører hele kæden, rapporterer fordeling + per-type showcase).
+- Tests: udvidet `fictionalRiderGenerator.test.js` + ny `fictionalLaunchPopulation.test.js` (chain-pyramide-lås).
+
+**Gated (IKKE i denne slice):** prod-insert af de 800 + udskiftning af PCM-feltet = relaunch-orchestrator **#1103** (reset → population → abilities → type → base_value → frisk sæson 1), kører på ejer-go. De 25 Fase-5-test-ryttere ryddes som del af reset.
+
+**Åbent / follow-ups:** (a) type-baseline (`riderTypesBaseline.json`) bør re-fittes over den fiktive population ved relaunch for selv-konsistens (pt. fittet over PCM — abilities er på samme [1,99]-skala, så afvigelsen er lille). (b) tt-type dominerer toppen (model-konsekvens, #1101-beslutning B). (c) #677-fysiologi-stats udskudt til post-launch (#1021).

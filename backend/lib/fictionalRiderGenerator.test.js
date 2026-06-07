@@ -156,15 +156,65 @@ test("garanterede ikke-vestlige nationer er repræsenteret", () => {
 
 // ── Arketype ↔ stats korrelerer ───────────────────────────────────────────────
 
-test("sprintere har højere sprint end klatrere (aggregeret)", () => {
-  const { riders } = generateFictionalRiders({ seed: 5, count: 400, referenceYear: REF_YEAR });
-  const avg = (role, key) => {
-    const subset = riders.filter((r) => r._meta.role === role);
+test("arketyper booster signatur-stats over andre arketyper (aggregeret)", () => {
+  const { riders } = generateFictionalRiders({ seed: 5, count: 800, referenceYear: REF_YEAR });
+  const avg = (archetype, key) => {
+    const subset = riders.filter((r) => r._meta.archetype === archetype);
     return subset.reduce((s, r) => s + r[key], 0) / subset.length;
   };
   assert.ok(avg("sprinter", "stat_sp") > avg("climber", "stat_sp") + 5);
   assert.ok(avg("climber", "stat_bj") > avg("sprinter", "stat_bj") + 5);
   assert.ok(avg("tt", "stat_tt") > avg("sprinter", "stat_tt") + 5);
+  assert.ok(avg("brostensrytter", "stat_bro") > avg("climber", "stat_bro") + 5);
+});
+
+// Rolle-svaghed ON (ejer-beslutning): off-type-stats dæmpes, så typen bliver skarp.
+test("rolle-svagheder dæmper off-type-stats (signatur ≫ dæmpet)", () => {
+  const { riders } = generateFictionalRiders({ seed: 5, count: 800, referenceYear: REF_YEAR });
+  const avg = (archetype, key) => {
+    const subset = riders.filter((r) => r._meta.archetype === archetype);
+    return subset.reduce((s, r) => s + r[key], 0) / subset.length;
+  };
+  // climber dæmper stat_sp (sprint) → klart under dens boostede stat_bj (bjerg).
+  assert.ok(avg("climber", "stat_bj") > avg("climber", "stat_sp") + 10);
+  // sprinter dæmper stat_bj → klart under dens boostede stat_sp.
+  assert.ok(avg("sprinter", "stat_sp") > avg("sprinter", "stat_bj") + 10);
+});
+
+// ── Tier-kvote (eksakt — løser star-rate-punktet) ─────────────────────────────
+
+test("tier-kvote er eksakt ved launch-skala (12/60/230/498 @ 800)", () => {
+  const { riders } = generateFictionalRiders({ seed: 2026, count: 800, referenceYear: REF_YEAR });
+  const byTier = {};
+  for (const r of riders) byTier[r._meta.tier] = (byTier[r._meta.tier] || 0) + 1;
+  assert.equal(byTier.superstar, 12);
+  assert.equal(byTier.star, 60);
+  assert.equal(byTier.solid, 230);
+  assert.equal(byTier.domestique, 498);
+});
+
+test("tier-kvote summerer altid til count (også ved skæve tal)", () => {
+  for (const count of [37, 113, 500, 1234]) {
+    const { riders } = generateFictionalRiders({ seed: 3, count, referenceYear: REF_YEAR });
+    const total = riders.length;
+    assert.equal(total, count);
+    const tiers = new Set(riders.map((r) => r._meta.tier));
+    assert.ok(tiers.has("domestique"), "domestique-tier (rest) skal altid findes");
+  }
+});
+
+// ── Type-gulv på sjældne typer (etape-variation) ──────────────────────────────
+
+test("sjældne typer holder globalt gulv (gc≥30, sprinter≥40 @ 800)", () => {
+  const { riders } = generateFictionalRiders({ seed: 2026, count: 800, referenceYear: REF_YEAR });
+  const byType = {};
+  for (const r of riders) byType[r._meta.archetype] = (byType[r._meta.archetype] || 0) + 1;
+  assert.ok(byType.gc >= 30, `gc=${byType.gc} under gulv 30`);
+  assert.ok(byType.sprinter >= 40, `sprinter=${byType.sprinter} under gulv 40`);
+  // Alle 9 typer skal være repræsenteret (dybde i hver disciplin).
+  for (const t of ["sprinter", "leadout", "tt", "climber", "puncheur", "brostensrytter", "baroudeur", "rouleur", "gc"]) {
+    assert.ok((byType[t] || 0) > 0, `type ${t} mangler helt`);
+  }
 });
 
 // ── Coverage-rapport ──────────────────────────────────────────────────────────
