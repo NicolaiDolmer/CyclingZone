@@ -1604,11 +1604,18 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
   );
 }
 
-function WizardStep2({ goals, goalIdx, negotiated, pendingNegotiate, onAccept, onNegotiate, onAcceptNegotiated }) {
+function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pendingNegotiate, onAccept, onNegotiate, onAcceptNegotiated }) {
   const { t } = useTranslation("board");
   const current = goals[goalIdx];
   const total = goals.length;
   const negotiationsUsed = Object.values(negotiated).filter(Boolean).length;
+  // #864 affordance: "Forhandl ned" var altid aktiveret, men handleren
+  // returnerede tavst hvis målet ikke havde en forhandlings-option → dead-click
+  // (brugere spam-klikkede uden respons). Deaktivér + forklar når der ikke er
+  // noget at forhandle om, så klik altid giver feedback.
+  const alreadyNegotiated = Boolean(negotiated[goalIdx]);
+  const hasNegotiationOption = Boolean(negotiationOptions[goalIdx]);
+  const negotiateDisabled = alreadyNegotiated || !hasNegotiationOption;
 
   return (
     <div>
@@ -1652,12 +1659,17 @@ function WizardStep2({ goals, goalIdx, negotiated, pendingNegotiate, onAccept, o
 
       {!pendingNegotiate ? (
         <div className="flex gap-3">
-          <button onClick={onNegotiate} disabled={negotiated[goalIdx]}
+          <button onClick={onNegotiate} disabled={negotiateDisabled}
+            title={!hasNegotiationOption && !alreadyNegotiated ? t("wizard.cannotNegotiate") : undefined}
             className={`flex-1 py-3 rounded-xl text-sm font-medium border transition-all
-              ${negotiated[goalIdx]
-                ? "bg-cz-subtle text-cz-3 border-cz-border cursor-not-allowed"
+              ${negotiateDisabled
+                ? "bg-cz-subtle text-cz-3 border-cz-border cursor-not-allowed opacity-60"
                 : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-2"}`}>
-            {negotiated[goalIdx] ? t("wizard.alreadyNegotiated") : t("wizard.negotiateDown")}
+            {alreadyNegotiated
+              ? t("wizard.alreadyNegotiated")
+              : !hasNegotiationOption
+                ? t("wizard.cannotNegotiate")
+                : t("wizard.negotiateDown")}
           </button>
           <button onClick={onAccept}
             className="flex-1 py-3 bg-cz-accent text-cz-on-accent font-bold rounded-xl text-sm hover:brightness-110 transition-all">
@@ -2429,6 +2441,7 @@ export default function BoardPage() {
                 goals={finalGoals}
                 goalIdx={goalIdx}
                 negotiated={negotiated}
+                negotiationOptions={negotiationOptions}
                 pendingNegotiate={pendingNegotiate}
                 onAccept={acceptCurrentGoal}
                 onNegotiate={negotiateCurrentGoal}
