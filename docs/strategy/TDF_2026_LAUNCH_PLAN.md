@@ -10,10 +10,14 @@
 TdF 2026 = første ekstern acquisition-test for CyclingZone. Beta skal være ærlig nok til at sende folk ind i.
 
 > **Opdatering 6. juni 2026 — relaunch-pivot (epic [#1105](https://github.com/NicolaiDolmer/CyclingZone/issues/1105)):** 20/6 er en **HARD RELAUNCH til en frisk, juridisk uafhængig sæson 1** (fiktive ryttere + eget værdisystem + egen race-afvikling, al PCM/UCI væk). Alle — gamle testere + nye spillere — starter lige; beta-testere får et permanent founder-badge. Race-afvikling kører en **light egen motor** (#1102) + PCM-fallback til launch; den fulde kalibrerede engine (#1021) modnes post-launch. Dette afløser den tidligere "sæson 1+2 PCM → engine sæson 3-4"-faseplan og opdaterer succeskriterierne nedenfor.
+>
+> **Produktkompas 8. juni 2026:** [Living World Product Doctrine](../superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) + [#1145](https://github.com/NicolaiDolmer/CyclingZone/issues/1145). Relaunch-sporet skal først bevise løb, træning, ungdom og transfer/auktion; senere dybde er evidens-gated.
 
 ## Spor parallelt indtil 2026-06-20
 
 Fire spor kører samtidig, alle skal være færdige til 2026-06-20.
+
+> **Historisk faseplan:** Spor A-tabellen nedenfor beskriver den tidligere PCM-sandkasse. Relaunch-pivoten ovenfor og #1105 er kanonisk ved konflikt.
 
 ### Spor A — Sæson 1 sandkasse (PCM, midlertidig)
 

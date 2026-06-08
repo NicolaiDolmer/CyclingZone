@@ -1,12 +1,12 @@
 # LAUNCH ROADMAP — Cycling Zone
 
-_Intern master-plan. Opdateret 2026-05-05 efter runtime status-afstemning. Launch-dato: åben (ikke låst). Beslutning: kvalitet > deadline._
+_Historisk roadmap fra 2026-05-05. Den aktuelle plan er hard relaunch 2026-06-20 via [#1105](https://github.com/NicolaiDolmer/CyclingZone/issues/1105) og [`docs/strategy/TDF_2026_LAUNCH_PLAN.md`](strategy/TDF_2026_LAUNCH_PLAN.md). Langsigtet produktretning: [Living World Product Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) + [#1145](https://github.com/NicolaiDolmer/CyclingZone/issues/1145). Historiske leverancer nedenfor bevares som reference._
 
 ---
 
 ## Status
 
-- **Open beta:** Live, ~19 managers tester transfermarked. Ingen løb køres pt.
+- **Historisk snapshot 2026-05-05:** Open beta var live med ~19 managers og uden aktiv løbsafvikling.
 - **Launch-event:** Full data-reset + sæson 0 (transfer-fase) → sæson 1 (første løbs-sæson).
 - **P0-slices: 6/6 leveret** (S-01, S-02, S-03, S-04, S-05, S-06). **P1-tasks: ~15** (helst før launch). **P2-spor: 7** (post-launch).
 - **Audit-baseret:** P0-status verificeret mod runtime 2026-05-04 og genafstemt 2026-05-05 for S-02/S-03/S-06. Se `.claude/learnings/2026-05-04-noter-fil-stale.md` for hvorfor.

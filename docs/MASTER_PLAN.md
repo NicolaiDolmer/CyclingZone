@@ -1,6 +1,6 @@
 # MASTER PLAN — CyclingZone styring, prioritering og AI-arbejdsmodel
 
-> **Status:** Aktiv styringskontrakt fra 2026-05-19.  
+> **Status 2026-06-08:** Historisk masterplan for validation-, brand- og AI-arbejdsmodellen. Aktuel launch-execution styres af [#1105](https://github.com/NicolaiDolmer/CyclingZone/issues/1105), `docs/strategy/TDF_2026_LAUNCH_PLAN.md` og `docs/NOW.md`. Langsigtet produktretning styres af [Living World Product Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) + [#1145](https://github.com/NicolaiDolmer/CyclingZone/issues/1145).
 > **Formål:** Én varig plan for hvad der skal gøres, i hvilken rækkefølge, og hvilken agent der bør udføre hvad.  
 > **Scope:** Validation sprint, Discord community, brand identity, i18n/oversættelse, commercial readiness og GitHub/AI-workflow.  
 > **Regel:** Hvis `docs/NOW.md`, GitHub-issues eller en agent-session er i konflikt med denne fil, skal konflikten afklares og dokumenteres her eller i `NOW.md` før nyt arbejde startes.
@@ -25,7 +25,9 @@ CyclingZone skal styres fra GitHub, ikke fra løse chat-tråde. Chat med Manus, 
 
 ---
 
-## 2. Overordnet prioriteringsregel frem til 2026-06-17
+## 2. Historisk prioriteringsregel frem til 2026-06-17
+
+> Dette afsnit dokumenterer validation-sprintens prioritering. Det må ikke overstyre den aktuelle 20/6-relaunch-kritiske sti eller Living World-doktrinens fire produktmotorer: løb, træning, ungdom og transfer/auktion.
 
 Frem til validation sprinten er afsluttet, skal alt arbejde prioriteres efter om det hjælper med at validere forretningen eller fastholde beta-spillere.
 

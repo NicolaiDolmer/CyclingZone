@@ -4,6 +4,12 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 
 ---
 
+## 🧭 Godkendt produktretning
+
+- **Living World Product Doctrine (2026-06-08):** Design godkendt og committed. [#1145](https://github.com/NicolaiDolmer/CyclingZone/issues/1145) er produkt-overbygning; GitHub-epics ejer implementation.
+- **Fire produktmotorer:** løb, træning, ungdomsudvikling og transfer/auktion.
+- **Planlagt reduktion:** #1139 skjuler Hall of Fame og fjerner manager-XP/login-streak som power-system. Punkterne under "Implementeret & live" beskriver fortsat runtime indtil ændringen faktisk er leveret.
+
 ## ✅ Implementeret & live
 
 ### Transfers & Lejeaftaler
