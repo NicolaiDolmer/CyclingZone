@@ -272,6 +272,9 @@ function apiResponse(pathname) {
   if (pathname.endsWith("/api/deadline-day/status")) return { active: false };
   if (pathname.endsWith("/api/deadline-day/ticker")) return { items: [] };
   if (pathname.endsWith("/api/race-pool")) return [];
+  if (pathname.endsWith("/api/scouting/me")) {
+    return { slots: { total: 3, used: 0, remaining: 3 }, maxLevel: 3, levels: {}, teamId: TEST_TEAM.id };
+  }
 
   return {};
 }

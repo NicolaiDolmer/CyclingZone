@@ -153,6 +153,7 @@ const SECTION_DEFS = [
       { id: "salary", kind: "text" },
       { id: "stats", kind: "text" },
       { id: "development", kind: "text" },
+      { id: "scouting", kind: "text" },
       { id: "u25u23", kind: "text" },
     ],
   },

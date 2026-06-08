@@ -12,7 +12,8 @@ import { ageBadgeKey } from "../lib/riderAge";
 import { statStyle } from "../lib/statColor";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
-import PotentialeStars from "../components/PotentialeStars";
+import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
+import { useScouting } from "../lib/useScouting";
 import WatchlistStar from "../components/WatchlistStar";
 import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSelection";
 
@@ -35,6 +36,7 @@ const PAGE_SIZE = 50;
 export default function WatchlistPage() {
   const navigate = useNavigate();
   const { t } = useTranslation("watchlist");
+  const scouting = useScouting();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
@@ -256,7 +258,7 @@ export default function WatchlistPage() {
                           {r.salary ? formatNumber(r.salary) : "—"}
                         </td>
                         <td className="px-3 py-2.5">
-                          <PotentialeStars value={r.potentiale} birthdate={r.birthdate} />
+                          <ScoutablePotentiale rider={r} scouting={scouting} />
                         </td>
                         {STATS.map(key => (
                           <td key={key} className="px-1.5 py-2.5 text-center">

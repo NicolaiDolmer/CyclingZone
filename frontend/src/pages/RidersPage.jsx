@@ -17,7 +17,8 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey } from "../lib/riderAge";
 import { getRiderMarketValue } from "../lib/marketValues";
-import PotentialeStars from "../components/PotentialeStars";
+import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
+import { useScouting } from "../lib/useScouting";
 import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
 import WatchlistStar from "../components/WatchlistStar";
@@ -87,7 +88,7 @@ function StatBar({ value }) {
   );
 }
 
-function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, compareActive, compareDisabled, onToggleCompare, t }) {
+function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, compareActive, compareDisabled, onToggleCompare, scouting, t }) {
   // #1029 affordance: hele rækken er ét klikmål (navigerer til rytter-detalje).
   // Data-cellerne (stjerner, stat-bjælker) er rent display — kun de eksplicitte
   // knapper (Compare/Watchlist) + interne links (navn/hold) stopper propagation.
@@ -126,7 +127,7 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, 
         </span>
       </td>
       <td className="px-3 py-2.5">
-        <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} />
+        <ScoutablePotentiale rider={rider} scouting={scouting} />
       </td>
       {STATS.map(({ key }) => (
         <td key={key} className="px-1.5 py-2.5 w-14">
@@ -153,6 +154,7 @@ export default function RidersPage() {
   );
   const [nationalities, setNationalities] = useState([]);
   const [myTeam, setMyTeam] = useState(null);
+  const scouting = useScouting();
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [compareIds, setCompareIds] = useState([]);
 
@@ -363,6 +365,7 @@ export default function RidersPage() {
                     compareActive={compareIds.includes(r.id)}
                     compareDisabled={compareIds.length >= MAX_COMPARE}
                     onToggleCompare={toggleCompare}
+                    scouting={scouting}
                     t={t} />
                 ))}
               </tbody>
