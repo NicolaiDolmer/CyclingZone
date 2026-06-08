@@ -17,6 +17,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { developRiderSeason, buildCaps } from "./riderProgression.js";
+import { resolveTrainingModifier } from "./training.js";
 import { notifyTeamOwner } from "./notificationService.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -53,13 +54,16 @@ async function runBatched(items, concurrency, fn) {
  * @param {object}  args.supabase       — service-role client
  * @param {string}  args.seasonId       — UUID på den NYE sæson (udviklingen hører til)
  * @param {number}  args.seasonNumber   — sæson-nummer (alder + seed)
+ * @param {string}  [args.trainingSeasonId] — UUID på den AFSLUTTEDE sæson hvis træningsfokus
+ *                  (#1163) skal biase udviklingen. Udeladt → ingen træningsbias (ren passiv).
  * @param {object}  [args.model]        — base_value-model (default: riderValuationModel.json)
  * @param {boolean} [args.notify=true]  — send retirement-notifikationer
  * @param {Date}    [args.now]          — til notifikations-dedup (default new Date())
  * @returns {Promise<object>} summary
  */
 export async function developRidersForSeason({
-  supabase, seasonId, seasonNumber, model = defaultModel(), notify = true, now = new Date(),
+  supabase, seasonId, seasonNumber, trainingSeasonId = null,
+  model = defaultModel(), notify = true, now = new Date(),
   notifyTeamOwnerFn = notifyTeamOwner,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
@@ -69,6 +73,20 @@ export async function developRidersForSeason({
   const alreadyRows = await fetchAllRows(() =>
     supabase.from("rider_development_log").select("rider_id").eq("season_id", seasonId));
   const alreadyDeveloped = new Set(alreadyRows.map((r) => r.rider_id));
+
+  // ── Træningsfokus (#1163): planer fra den afsluttede sæson biaser udviklingen.
+  //    Keyet (team,rider) så kun rytterens NUVÆRENDE holds plan tæller. Gated:
+  //    uden trainingSeasonId køres ren passiv udvikling (uændret #1137-adfærd).
+  const trainingByTeamRider = new Map();
+  if (trainingSeasonId) {
+    const planRows = await fetchAllRows(() => supabase
+      .from("training_plans")
+      .select("team_id, rider_id, focus, intensity")
+      .eq("season_id", trainingSeasonId));
+    for (const p of planRows) {
+      trainingByTeamRider.set(`${p.team_id}:${p.rider_id}`, { focus: p.focus, intensity: p.intensity });
+    }
+  }
 
   // ── Load aktive ryttere + abilities (+ loft) ──────────────────────────────────
   const [riders, abilityRows] = await Promise.all([
@@ -89,6 +107,7 @@ export async function developRidersForSeason({
     season_id: seasonId, season_number: seasonNumber,
     candidates: 0, skipped_already_done: 0, developed: 0,
     grew: 0, declined: 0, retired: 0, caps_initialised: 0,
+    trained: 0, training_setbacks: 0,
   };
 
   for (const r of riders) {
@@ -112,9 +131,14 @@ export async function developRidersForSeason({
       summary.caps_initialised++;
     }
 
+    // Træningsbias: rytterens nuværende holds plan fra den afsluttede sæson.
+    const plan = r.team_id ? trainingByTeamRider.get(`${r.team_id}:${r.id}`) : null;
+    const training = resolveTrainingModifier(plan, r.id, seasonNumber);
+    if (training) { summary.trained++; if (training.setbackHit) summary.training_setbacks++; }
+
     const { next, retirement } = developRiderSeason(
       { id: r.id, primary_type: r.primary_type, potentiale: r.potentiale, age },
-      abilities, caps, seasonNumber
+      abilities, caps, seasonNumber, undefined, training
     );
 
     // Vækst/fald-tælling (signaturen er den højeste evne-bevægelse).

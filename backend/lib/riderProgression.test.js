@@ -161,3 +161,42 @@ test("developRiderSeason: 34-årig falder målbart (acceptkriterie #1137)", () =
   const { next } = developRiderSeason(rider, ab, caps, 1);
   assert.ok(next.sprint < 80, "evne falder efter peak");
 });
+
+// ── Træningsbias (#1163) ────────────────────────────────────────────────────────
+
+test("stepAbility: growthMult > 1 lukker mere af gabet (men aldrig over loft)", () => {
+  const base = stepAbility(60, 90, 21, 28, true, 0.5);
+  const boosted = stepAbility(60, 90, 21, 28, true, 0.5, PROGRESSION_CONFIG, 1.6);
+  assert.ok(boosted > base, "bias accelererer vækst");
+  assert.ok(boosted <= 90, "bias bryder aldrig loftet");
+});
+
+test("stepAbility: growthMult påvirker ikke decline-fasen", () => {
+  const plain = stepAbility(80, 99, 34, 28, true, 0.5);
+  const trained = stepAbility(80, 99, 34, 28, true, 0.5, PROGRESSION_CONFIG, 1.6);
+  assert.equal(plain, trained, "træning fremskynder ikke fald efter peak");
+});
+
+test("developRiderSeason: træningsfokus vokser fokus-evne mere end uden træning", () => {
+  const rider = { id: "r1", primary_type: "climber", potentiale: 5, age: 21 };
+  const ab = { climbing: 55, sprint: 50, endurance: 55 };
+  const caps = buildCaps(ab, "climber", 5);
+  const training = {
+    focusAbilities: new Set(["climbing"]),
+    focusMult: 1.6, offFocusMult: 0.9, setbackHit: false,
+  };
+  const plain = developRiderSeason(rider, ab, caps, 1).next;
+  const trained = developRiderSeason(rider, ab, caps, 1, undefined, training).next;
+  assert.ok(trained.climbing > plain.climbing, "fokus-evne vokser mere med træning");
+  assert.ok(trained.climbing <= caps.climbing, "stadig under loftet");
+});
+
+test("developRiderSeason: ingen training-arg → identisk med før (bagudkompatibel)", () => {
+  const rider = { id: "r1", primary_type: "gc", potentiale: 4, age: 23 };
+  const ab = { climbing: 60, time_trial: 58, endurance: 62 };
+  const caps = buildCaps(ab, "gc", 4);
+  assert.deepEqual(
+    developRiderSeason(rider, ab, caps, 2),
+    developRiderSeason(rider, ab, caps, 2, undefined, null)
+  );
+});

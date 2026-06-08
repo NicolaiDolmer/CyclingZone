@@ -97,6 +97,7 @@ import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { deriveScoutState, canScout } from "../lib/scouting.js";
+import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity } from "../lib/training.js";
 import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import {
   computeDebtRatio,
@@ -881,6 +882,92 @@ router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, r
     // Returnér frisk state så UI'et kan opdatere slots + niveau uden ekstra round-trip.
     const { state: next } = await loadScoutState(req.team.id);
     res.json({ ok: true, riderId, level: next.levels[riderId] ?? 0, slots: next.slots, maxLevel: next.maxLevel });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRÆNING (#1163 — progression L2 teaser: sæson-granulær træningsfokus)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Hjælper: hent aktiv sæson-id + holdets træningsstate (ledger → slots + planer).
+async function loadTrainingState(teamId) {
+  const { data: season } = await supabase
+    .from("seasons").select("id").eq("status", "active").maybeSingle();
+  const activeSeasonId = season?.id ?? null;
+  const { data: rows, error } = await supabase
+    .from("training_plans").select("rider_id, season_id, focus, intensity").eq("team_id", teamId);
+  if (error) throw new Error(error.message);
+  return { activeSeasonId, state: deriveTrainingState(rows, activeSeasonId) };
+}
+
+// GET /api/training/me — holdets træningsstate: slots (total/used/remaining),
+// gyldige fokus/intensiteter og per-rytter aktiv plan (kun den aktive sæson).
+router.get("/training/me", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const { state } = await loadTrainingState(req.team.id);
+    res.json({ ...state, teamId: req.team.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/training/:riderId — sæt/ændr en træningsfokus på en EGEN rytter.
+// Body: { focus, intensity }. Ny plan forbruger ét slot; om-målretning af en
+// eksisterende plan koster ikke et nyt slot (upsert på (team,rider,season)).
+router.post("/training/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const riderId = req.params.riderId;
+  const { focus, intensity } = req.body ?? {};
+  if (!isValidFocus(focus)) return res.status(400).json({ error: "invalid_focus" });
+  if (!isValidIntensity(intensity)) return res.status(400).json({ error: "invalid_intensity" });
+  try {
+    const { activeSeasonId, state } = await loadTrainingState(req.team.id);
+    if (!activeSeasonId) return res.status(409).json({ error: "No active season" });
+
+    // Træning er KUN for egne ryttere (du former din egen trup).
+    const { data: rider } = await supabase
+      .from("riders").select("id, team_id").eq("id", riderId).maybeSingle();
+    if (!rider) return res.status(404).json({ error: "Rider not found" });
+    if (rider.team_id !== req.team.id) {
+      return res.status(403).json({ error: "not_own_rider", message: "You can only train your own riders." });
+    }
+
+    const hasPlan = Boolean(state.plans[riderId]);
+    const guard = canTrain(hasPlan, state.slots.remaining);
+    if (!guard.ok) return res.status(409).json({ error: guard.reason });
+
+    const { error: upErr } = await supabase
+      .from("training_plans")
+      .upsert(
+        { team_id: req.team.id, rider_id: riderId, season_id: activeSeasonId, focus, intensity, updated_at: new Date().toISOString() },
+        { onConflict: "team_id,rider_id,season_id" }
+      );
+    if (upErr) throw new Error(upErr.message);
+
+    const { state: next } = await loadTrainingState(req.team.id);
+    res.json({ ok: true, riderId, plan: next.plans[riderId] ?? null, slots: next.slots });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/training/:riderId — fjern en træningsfokus (frigør slottet).
+router.delete("/training/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const riderId = req.params.riderId;
+  try {
+    const { activeSeasonId } = await loadTrainingState(req.team.id);
+    if (!activeSeasonId) return res.status(409).json({ error: "No active season" });
+    const { error: delErr } = await supabase
+      .from("training_plans")
+      .delete()
+      .eq("team_id", req.team.id).eq("rider_id", riderId).eq("season_id", activeSeasonId);
+    if (delErr) throw new Error(delErr.message);
+    const { state: next } = await loadTrainingState(req.team.id);
+    res.json({ ok: true, riderId, plan: null, slots: next.slots });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

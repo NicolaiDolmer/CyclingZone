@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.03",
+    date: "2026-06-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Training focus",
+        items: [
+          "EN · You can now set a training focus for your key riders. On your own rider's Development tab, pick a focus (such as VO2max, Threshold, Sprint, Endurance, Technique or Aero) and an intensity (Easy, Normal or Hard). The focus pushes the trained abilities faster toward that rider's ceiling, while other abilities grow a little slower, so you are choosing what to specialise in. Harder training grows faster but carries a risk of a setback that costs part of the season's gains. You have a limited number of focus slots each season, so you cannot train everyone at maximum, and it is free. Training shapes permanent ability and its effect lands at the season change. This is the first layer of a deeper training system. Refs #1163.",
+          "DA · Du kan nu sætte et træningsfokus for dine nøgleryttere. På din egen rytters Udvikling-fane vælger du et fokus (som VO2max, Tærskel, Spurt, Udholdenhed, Teknik eller Aero) og en intensitet (Let, Normal eller Hård). Fokus skubber de trænede evner hurtigere mod rytterens loft, mens andre evner vokser en anelse langsommere, så du vælger hvad der skal specialiseres i. Hårdere træning vokser hurtigere, men har en risiko for et tilbageslag der koster en del af sæsonens fremgang. Du har et begrænset antal fokus-slots hver sæson, så du kan ikke træne alle på maks, og det er gratis. Træning former permanent evne, og effekten slår igennem ved sæson-skiftet. Dette er det første lag af et dybere træningssystem. Refs #1163.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.02",
     date: "2026-06-08",
     label: "Beta",

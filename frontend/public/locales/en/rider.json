@@ -380,5 +380,31 @@
     "scoutTitle": "Use a scout slot to narrow this rider's potential estimate",
     "noSlots": "No scout slots left this season",
     "levelTitle": "Scouting level — higher means a more precise estimate"
+  },
+  "training": {
+    "title": "Training focus",
+    "intro": "Set a season-long training focus for this key rider. It nudges the trained abilities faster toward their ceiling.",
+    "gatedNote": "Training shapes permanent ability and applies at the next season change.",
+    "slotsLeft": "{remaining}/{total} focus slots",
+    "focus": "Focus",
+    "intensity": "Intensity",
+    "focus_vo2max": "VO2max (climbing intervals)",
+    "focus_threshold": "Threshold / TT",
+    "focus_sprint": "Sprint",
+    "focus_endurance": "Endurance (Zone 2)",
+    "focus_technique": "Technique",
+    "focus_aero": "Aero",
+    "intensity_easy": "Easy",
+    "intensity_normal": "Normal",
+    "intensity_hard": "Hard",
+    "set": "Set focus",
+    "update": "Update focus",
+    "remove": "Remove",
+    "saving": "Saving…",
+    "noSlots": "No focus slots left this season",
+    "current": "Current focus",
+    "assistantNoRisk": "Faster targeted growth, no setback risk.",
+    "assistantRisk": "Faster targeted growth, but ~{risk}% risk of a setback (lost gains) this season.",
+    "tradeoff": "Other abilities grow a little slower."
   }
 }
