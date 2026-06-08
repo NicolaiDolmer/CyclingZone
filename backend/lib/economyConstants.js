@@ -44,6 +44,29 @@ export const DIVISION_CAPACITY = 20;
 // economyEngine.processDivisionEnd.
 export const FIRST_PROMOTION_RELEGATION_SEASON = 3;
 
+// -- Saeson-skift kontrol-flags (#1155, ejer-beslutning 2026-06-08) ------------
+// Tre bevidste produktbeslutninger for det foerste rigtige saeson-skift (S1->S2).
+// Alle er rene applikationskode-gates (ingen migration) og taendes igen ved at
+// saette true + deploy. Holdt som flags frem for slettet kode saa de er trivielle
+// at genaktivere naar systemerne er klar.
+
+// Saeson-transition skal vaere en BEVIDST manuel admin-handling -- aldrig en cron.
+// Sat false efter at den automatiske cron 2026-05-21 fyrede 4 skift i traek
+// (0->1->2->3->4). Vindue-luk, final whistle og squad-tjek forbliver automatiske;
+// kun selve skiftet til ny saeson kraever nu et eksplicit admin-tryk.
+export const SEASON_AUTO_TRANSITION_ENABLED = false;
+
+// Rytter-vaerdi-genberegning (prize_earnings_bonus /3, #1156) ved saeson-slut.
+// Slaaet fra indtil vaerdimodellen giver mening at koere ved transition (ejeren
+// haandterer vaerdier separat indtil da). Naar true: processSeasonEnd kalder
+// updateRiderValues som foer.
+export const SEASON_VALUE_RECALC_ENABLED = false;
+
+// Passiv rytterudvikling (#1137) ved saeson-start (kun saeson >= 2). Slaaet fra
+// indtil progressions-systemet er faerdigbygget. Naar true: processSeasonStart
+// koerer developRidersForSeason som foer.
+export const SEASON_RIDER_PROGRESSION_ENABLED = false;
+
 // SALARY_RATE = 0.10 lever i database/2026-05-04-salary-generated-column.sql som
 // GENERATED-formel og kan ikke skrives fra applikationskode. Defineret her som info-only.
 export const SALARY_RATE_INFO = 0.10;

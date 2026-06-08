@@ -42,6 +42,8 @@ import {
   FIRST_PROMOTION_RELEGATION_SEASON,
   MAX_DIVISION,
   MIN_DIVISION,
+  SEASON_RIDER_PROGRESSION_ENABLED,
+  SEASON_VALUE_RECALC_ENABLED,
   SPONSOR_INCOME_BASE,
 } from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -358,9 +360,17 @@ export async function processSeasonStart(seasonId, deps = {}) {
   // retirement + base_value-recompute. Kører fra sæson 2 (sæson 1 = launch-baseline,
   // intet at udvikle fra). Idempotent via rider_development_log. Isoleret: en fejl
   // her må ikke rulle sponsor/payroll tilbage (allerede skrevet) → fang + rapportér.
+  // #1155: rytterudvikling (#1137) gated bag SEASON_RIDER_PROGRESSION_ENABLED
+  // (ejer-beslutning 2026-06-08 — slået fra indtil progressions-systemet er
+  // færdigbygget). Tests injicerer deps.developRidersForSeason og kører kaldet
+  // uafhængigt af flaget.
   const developFn = deps.developRidersForSeason ?? developRidersForSeason;
   let progression = null;
-  if (Number.isFinite(seasonNumber) && seasonNumber >= 2) {
+  if (
+    Number.isFinite(seasonNumber) &&
+    seasonNumber >= 2 &&
+    (deps.developRidersForSeason || SEASON_RIDER_PROGRESSION_ENABLED)
+  ) {
     try {
       progression = await developFn({ supabase: supabaseClient, seasonId, seasonNumber });
       console.log(`  ✅ Rytterudvikling: ${progression.developed} udviklet · ${progression.grew}↑ ${progression.declined}↓ · ${progression.retired} pensioneret`);
@@ -708,9 +718,16 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     .eq("id", seasonId);
   throwIfSupabaseError(completeError, "Could not mark season completed");
 
-  // Recalculate rider values and salaries based on last 3 completed seasons
-  const updateRiderValuesFn = deps.updateRiderValues ?? updateRiderValues;
-  await updateRiderValuesFn(supabaseClient);
+  // Recalculate rider values and salaries based on last 3 completed seasons.
+  // #1155: gated bag SEASON_VALUE_RECALC_ENABLED (ejer-beslutning 2026-06-08 —
+  // slået fra indtil værdimodellen giver mening ved transition). Tests injicerer
+  // deps.updateRiderValues og kører kaldet uafhængigt af flaget.
+  if (deps.updateRiderValues || SEASON_VALUE_RECALC_ENABLED) {
+    const updateRiderValuesFn = deps.updateRiderValues ?? updateRiderValues;
+    await updateRiderValuesFn(supabaseClient);
+  } else {
+    console.log("  ⏸  Rytter-værdi-recalc sprunget over (SEASON_VALUE_RECALC_ENABLED=false, #1155)");
+  }
 
   // S-02a: Når sæson 1 (baseline) slutter, åbn sekventiel onboarding for sæson 2.
   // Inline frem for cron (Q-A 2026-05-05): én truth-path, ingen race conditions.

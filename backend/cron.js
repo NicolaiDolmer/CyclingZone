@@ -25,6 +25,7 @@ import { notifyAuctionWon, getDefaultWebhook, sendWebhook, getBotToken } from ".
 import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
 import { processSeasonAutoTransitionCron } from "./lib/seasonAutoTransition.js";
+import { SEASON_AUTO_TRANSITION_ENABLED } from "./lib/economyConstants.js";
 import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
@@ -403,8 +404,16 @@ export function startCron() {
   // Every 5 minutes: squad enforcement (kun aktiv på lukkede vinduer der ikke er enforced)
   setInterval(trackedTick("squad enforcement", runSquadEnforcementCron), 5 * 60 * 1000);
 
-  // Every 5 minutes: season auto-transition (kun fyrer når window er fuldt-wrapped).
-  setInterval(trackedTick("season auto-transition", runSeasonAutoTransitionCron), 5 * 60 * 1000);
+  // Season auto-transition (#1155): DEAKTIVERET — sæson-skift er nu en bevidst
+  // manuel admin-handling (ejer-beslutning 2026-06-08). Den automatiske cron
+  // fyrede 2026-05-21 fire skift i træk (0→1→2→3→4). Vindue-luk, final whistle
+  // og squad-tjek forbliver automatiske ovenfor; kun selve sæson-skiftet er manuelt.
+  // Tændes igen ved SEASON_AUTO_TRANSITION_ENABLED=true i economyConstants.js.
+  if (SEASON_AUTO_TRANSITION_ENABLED) {
+    setInterval(trackedTick("season auto-transition", runSeasonAutoTransitionCron), 5 * 60 * 1000);
+  } else {
+    console.log("  ⏸  Season auto-transition cron DEAKTIVERET (manuelt sæson-skift, #1155)");
+  }
 
   // Every 24 hours: check debt (#607 — 6h → 24h. notifyUser-dedup virker nu da
   // message er statisk; matcher cadence-pattern fra processDailySeasonCountCheck).
