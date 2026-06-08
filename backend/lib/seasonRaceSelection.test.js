@@ -131,24 +131,30 @@ test("stageRaceQuota=2 fra whitelist IDs → vælger prioriterede stage races f�
   assert.equal(stageNames[1], "Volta ao Algarve");
 });
 
-test("tom prioritizedStageRaceIds + quota>0 → quota fyldes alfabetisk i Phase 1", () => {
+test("tom prioritizedStageRaceIds + quota>0 → quota fyldes seedet (ikke alfabetisk)", () => {
   const pool = [
     makeRace({ id: "z", name: "Zeta Tour", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
     makeRace({ id: "a", name: "Alpha Tour", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
     makeRace({ id: "b", name: "Beta Tour", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
   ];
-  const result = selectSeasonRaces({
+  const opts = {
     pool,
     raceDaysTarget: 15,
     overshootTolerance: 5,
     stageRaceQuota: 2,
     prioritizedStageRaceIds: [],
-  });
-  // Tom whitelist → Phase 1 fylder quota alfabetisk: Alpha, Beta (i denne rækkefølge).
-  // Phase 3 supplerer evt. resten (Zeta passer i target+tolerance).
-  // Vi tester RÆKKEFØLGEN af de første 2 valg fra quota'en.
-  const firstTwo = result.selected.slice(0, 2).map((r) => r.name);
-  assert.deepEqual(firstTwo, ["Alpha Tour", "Beta Tour"]);
+    seed: 1,
+  };
+  const result = selectSeasonRaces(opts);
+  // Tom whitelist → quota fyldes fra det seedet-shufflede supplement (ikke alfabetisk).
+  const stageCount = result.selected.filter((r) => r.race_type === "stage_race").length;
+  assert.ok(stageCount >= 2, "quota=2 skal give mindst 2 etapeløb");
+  // Samme seed → samme udvælgelse (reproducerbar).
+  const again = selectSeasonRaces(opts);
+  assert.deepEqual(
+    result.selected.map((r) => r.name),
+    again.selected.map((r) => r.name),
+  );
 });
 
 test("stale prioritizedStageRaceIds (ikke i pool) ignoreres stille", () => {
@@ -166,22 +172,26 @@ test("stale prioritizedStageRaceIds (ikke i pool) ignoreres stille", () => {
   assert.equal(result.selected[0].name, "Tour of Oman");
 });
 
-test("stageRaceQuota > whitelist-matches → supplér alfabetisk fra remaining", () => {
+test("stageRaceQuota > whitelist-matches → whitelist først, supplér seedet fra remaining", () => {
   const pool = [
-    makeRace({ id: "oman", name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
+    makeRace({ id: "oman", name: "Tour of Oman", race_class: "ProSeries", race_type: "stage_race", stages: 4 }),
     makeRace({ id: "z", name: "Zeta Tour", race_class: "ProSeries", race_type: "stage_race", stages: 4 }),
     makeRace({ id: "b", name: "Beta Tour", race_class: "ProSeries", race_type: "stage_race", stages: 4 }),
     makeRace({ id: "a", name: "Alpha Tour", race_class: "ProSeries", race_type: "stage_race", stages: 4 }),
   ];
   const result = selectSeasonRaces({
     pool,
-    raceDaysTarget: 13,
-    overshootTolerance: 5,
+    raceDaysTarget: 12,
+    overshootTolerance: 0,
     stageRaceQuota: 3,
     prioritizedStageRaceIds: ["oman"],
+    seed: 1,
   });
-  const firstThree = result.selected.slice(0, 3).map((r) => r.name);
-  assert.deepEqual(firstThree, ["Tour of Oman", "Alpha Tour", "Beta Tour"]);
+  // Whitelist-prioritet bevares: oman vælges først. Resten af quota'en (2) fyldes
+  // seedet fra remaining (Alpha/Beta/Zeta) — rækkefølgen er ikke alfabetisk.
+  assert.equal(result.selected[0].name, "Tour of Oman");
+  const stageCount = result.selected.filter((r) => r.race_type === "stage_race").length;
+  assert.equal(stageCount, 3, "quota=3: oman + 2 supplement (12 dage = target)");
 });
 
 test("stageRaceQuota > total stage races → tag alle uden crash", () => {
@@ -250,18 +260,18 @@ test("quota dedup'er — samme race vælges ikke to gange via whitelist + fill",
   assert.equal(omanCount, 1);
 });
 
-test("selectFirstSeasonRaces — default quota=8 men whitelist tom = alfabetisk fallback", () => {
+test("selectFirstSeasonRaces — default quota=8 garanterer mindst 8 etapeløb (seedet fill)", () => {
   const stageRaces = Array.from({ length: 10 }, (_, i) =>
     makeRace({ id: `s${i}`, name: `StageRace${i}`, race_class: "ProSeries", race_type: "stage_race", stages: 5 }),
   );
   const singles = Array.from({ length: 30 }, (_, i) =>
     makeRace({ id: `sg${i}`, name: `Single${i}`, race_class: "ProSeries", stages: 1 }),
   );
-  // Ingen prioritizedStageRaceIds = tom default → algoritmen fylder quota=8 alfabetisk
+  // Tom whitelist → quota=8 fyldes fra det seedet-shufflede supplement (ikke alfabetisk).
+  // Phase 3-fill kan tilføje flere etapeløb, så quota er et minimum, ikke et loft.
   const result = selectFirstSeasonRaces([...stageRaces, ...singles], { raceDaysTarget: 60 });
   const selectedStage = result.selected.filter((r) => r.race_type === "stage_race").length;
-  // Quota=8 garantier 8 stage races (alfabetisk fra tom whitelist)
-  assert.equal(selectedStage, 8);
+  assert.ok(selectedStage >= 8, `quota=8 garanterer mindst 8 etapeløb (fik ${selectedStage})`);
   assert.equal(FIRST_SEASON_STAGE_RACE_QUOTA, 8);
 });
 
@@ -331,4 +341,22 @@ test("determinisme — quota+boost giver samme output ved gentagne kald", () => 
     a.selected.map((r) => r.name),
     b.selected.map((r) => r.name),
   );
+});
+
+test("#1124 — fill er seedet og varieret (ikke alfabetisk)", () => {
+  // 50 ens single-løb; target = 30. Alfabetisk fill ville altid tage R00..R29.
+  const pool = Array.from({ length: 50 }, (_, i) => {
+    const n = String(i).padStart(2, "0");
+    return makeRace({ id: `r${n}`, name: `R${n}`, race_class: "ProSeries", stages: 1 });
+  });
+  const seedA = selectSeasonRaces({ pool, raceDaysTarget: 30, seed: 1 }).selected.map((r) => r.name);
+  const seedB = selectSeasonRaces({ pool, raceDaysTarget: 30, seed: 2 }).selected.map((r) => r.name);
+
+  assert.equal(seedA.length, 30);
+  assert.equal(seedB.length, 30);
+  // Forskellige seeds → forskelligt udvalg (seedet, ikke fast).
+  assert.notDeepEqual(seedA, seedB);
+  // Ikke alfabetisk: udvalget er ikke præcis de 30 alfabetisk første (R00..R29).
+  const firstThirtyAlpha = pool.slice(0, 30).map((r) => r.name);
+  assert.notDeepEqual([...seedA].sort(), firstThirtyAlpha);
 });
