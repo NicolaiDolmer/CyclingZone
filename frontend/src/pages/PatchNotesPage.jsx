@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.01",
+    date: "2026-06-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Rider values",
+        items: [
+          "EN · Rider values now build up over three seasons. A rider's results-based value is the average of their prize money across a rolling three-season window, with seasons not yet raced counting as zero. Values therefore start lower in season one (one third of the season's prize money) and grow over the first three seasons, instead of reacting fully to a single season. Riders with strong rankings stay anchored by their ranking, and salaries follow values as usual. Refs #1155.",
+          "DA · Rytterværdier bygger nu op over tre sæsoner. En rytters resultat-baserede værdi er gennemsnittet af dens præmiepenge over et rullende tre-sæsons-vindue, hvor sæsoner der endnu ikke er kørt tæller som nul. Værdier starter derfor lavere i sæson 1 (en tredjedel af sæsonens præmiepenge) og vokser over de første tre sæsoner, i stedet for at reagere fuldt på en enkelt sæson. Ryttere med stærke ranglister forbliver forankret af deres rangering, og lønninger følger værdierne som altid. Refs #1155.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.00",
     date: "2026-06-07",
     label: "Beta",

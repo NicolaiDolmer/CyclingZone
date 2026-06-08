@@ -1807,9 +1807,10 @@ test("updateRiderValues recomputes prize_earnings_bonus from the last 3 complete
   ]);
 });
 
-test("updateRiderValues: anchor + active season uses progress-weighted divisor", async () => {
-  // Completed S1 = 100k (weight 1); active S2 at 10% (6/60 race days), rider
-  // earned 8k so far. divisor = max(1 + 0.10, 1) = 1.10 → (100000+8000)/1.10 ≈ 98182.
+test("updateRiderValues: completed anchor + active season both divide by the fixed window", async () => {
+  // Completed S1 = 100k; active S2 at 10% (6/60), rider earned 8k so far. The
+  // active season's progress no longer affects the divisor — it is always 3.
+  // (100000 + 8000) / 3 = 36000.
   const supabase = createRiderValuesSupabase({
     seasons: [
       { id: "season-2", number: 2, status: "active", race_days_completed: 6, race_days_total: 60 },
@@ -1829,13 +1830,13 @@ test("updateRiderValues: anchor + active season uses progress-weighted divisor",
   await updateRiderValues(supabase);
 
   assert.deepEqual(supabase.state.riderUpdates, [
-    { id: "rider-1", payload: { prize_earnings_bonus: 98182 } },
+    { id: "rider-1", payload: { prize_earnings_bonus: 36000 } },
   ]);
 });
 
-test("updateRiderValues: brand-new active season (0% progress) does not dip the value", async () => {
+test("updateRiderValues: season 2 start dampens a completed season 1 to one third", async () => {
   // Completed S1 = 100k; active S2 just started (0 race days, no prizes yet).
-  // Active weight 0 → divisor = max(1+0, 1) = 1 → value stays 100k (no dip).
+  // Season 2 value = (s1 + s2 + s3) / 3 = (100000 + 0 + 0) / 3 = 33333.
   const supabase = createRiderValuesSupabase({
     seasons: [
       { id: "season-2", number: 2, status: "active", race_days_completed: 0, race_days_total: 60 },
@@ -1851,14 +1852,14 @@ test("updateRiderValues: brand-new active season (0% progress) does not dip the 
   await updateRiderValues(supabase);
 
   assert.deepEqual(supabase.state.riderUpdates, [
-    { id: "rider-1", payload: { prize_earnings_bonus: 100000 } },
+    { id: "rider-1", payload: { prize_earnings_bonus: 33333 } },
   ]);
 });
 
-test("updateRiderValues: lone active season floors the divisor at 1 (no annualization)", async () => {
+test("updateRiderValues: lone active season 1 divides by the full 3-window (dampened)", async () => {
   // Open-beta season 1: only an active season, no completed anchor. At 10%
-  // progress a rider earned 8k. WITHOUT the floor this would annualize to
-  // 8000/0.10 = 80000; the max(Σw,1) floor keeps it at 8000/1 = 8000.
+  // progress a rider earned 8k. The fixed window divides by 3 regardless:
+  // 8000 / 3 = 2667 (future seasons 2 and 3 count as 0).
   const supabase = createRiderValuesSupabase({
     seasons: [
       { id: "season-1", number: 1, status: "active", race_days_completed: 6, race_days_total: 60 },
@@ -1873,7 +1874,7 @@ test("updateRiderValues: lone active season floors the divisor at 1 (no annualiz
   await updateRiderValues(supabase);
 
   assert.deepEqual(supabase.state.riderUpdates, [
-    { id: "rider-1", payload: { prize_earnings_bonus: 8000 } },
+    { id: "rider-1", payload: { prize_earnings_bonus: 2667 } },
   ]);
 });
 

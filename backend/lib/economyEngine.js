@@ -1167,23 +1167,30 @@ async function fetchAllRows(buildQuery, pageSize = SUPABASE_PAGE_SIZE) {
   return rows;
 }
 
+// Fixed valuation window: prize_earnings_bonus averages a rider's prize earnings
+// over this many seasons, dividing by the window size even before it is full
+// (owner decision 2026-06-08). See updateRiderValues JSDoc.
+const VALUATION_WINDOW_SEASONS = 3;
+
 /**
  * Recalculates prize_earnings_bonus for every rider.
  *
- * prize_earnings_bonus = progress-weighted average of the rider's total prize
- * earnings across the rolling window of the up to 3 most recent seasons.
+ * prize_earnings_bonus = the rider's total prize earnings summed over a fixed
+ * 3-season window, divided by 3. Seasons not yet raced count as 0.
  *
- * Window: the up to 3 newest seasons by `number`. A `completed` season has
- * weight 1; the single `active` season (if any) occupies the newest slot with
- * weight = its progress (race_days_completed / race_days_total, clamped 0..1).
+ *   prize_earnings_bonus = round( Σ earnings_s / 3 )
  *
- *   prize_earnings_bonus = round( Σ earnings_s / max( Σ w_s , 1 ) )
+ * Window: the up to 3 newest seasons by `number` (the single `active` season, if
+ * any, occupies the newest slot; older slots are `completed` seasons with
+ * race_days_total > 0). Empty placeholder/seed seasons (race_days_total = 0) are
+ * excluded so they never consume a window slot.
  *
- * The max(…, 1) floor keeps a lone partially-complete active season (e.g. open-
- * beta season 1 with no completed seasons yet) from annualizing a single early
- * prize into an inflated value. With ≥1 completed season anchoring the average
- * the floor never binds → pure progress-weighting. With NO active season the
- * formula reduces bit-for-bit to the legacy "mean over completed seasons".
+ * The divisor is ALWAYS 3 (the window size), not the number of seasons that
+ * actually have data (owner decision 2026-06-08). This deliberately dampens early
+ * values and lets them build up over the first three seasons:
+ *   season 1 → s1/3, season 2 → (s1+s2)/3, season 3 → (s1+s2+s3)/3.
+ * From season 3 onward the window is always full, so this matches the prior
+ * "mean over 3 completed seasons" behaviour; only seasons 1-2 change.
  *
  * Called both at season end (processDivisionEnd) and at prize payout
  * (paySeasonPrizesToDate) so values track the active season's prizes live (R3,
@@ -1195,7 +1202,7 @@ async function fetchAllRows(buildQuery, pageSize = SUPABASE_PAGE_SIZE) {
 export async function updateRiderValues(supabaseClient) {
   const { data: activeSeason } = await supabaseClient
     .from("seasons")
-    .select("id, number, race_days_completed, race_days_total")
+    .select("id, number")
     .eq("status", "active")
     .maybeSingle();
 
@@ -1219,18 +1226,6 @@ export async function updateRiderValues(supabaseClient) {
   ]
     .sort((a, b) => b.number - a.number)
     .slice(0, 3);
-
-  // Per-season weight: completed = 1, active = progress (clamped 0..1).
-  const activeTotalDays = Number(activeSeason?.race_days_total) || 0;
-  const activeDoneDays = Number(activeSeason?.race_days_completed) || 0;
-  const activeProgress = activeTotalDays > 0
-    ? Math.min(1, Math.max(0, activeDoneDays / activeTotalDays))
-    : 0;
-
-  const seasonWeight = {};
-  for (const s of windowSeasons) {
-    seasonWeight[s.id] = s.isActive ? activeProgress : 1;
-  }
 
   const seasonIds = windowSeasons.map(s => s.id);
 
@@ -1274,12 +1269,10 @@ export async function updateRiderValues(supabaseClient) {
       .select("id")
   ));
 
-  // Divisor = Σ season weights, floored at 1 (see JSDoc). With no active season
-  // this equals the completed-season count → identical to the legacy mean.
-  const divisor = Math.max(
-    seasonIds.reduce((sum, sid) => sum + (seasonWeight[sid] || 0), 0),
-    1
-  );
+  // Fixed 3-season window: divide by 3 regardless of how many seasons have data,
+  // so not-yet-raced seasons count as 0 and early values build up (see JSDoc +
+  // owner decision 2026-06-08). seasonIds still scopes the numerator below.
+  const divisor = VALUATION_WINDOW_SEASONS;
 
   const updates = [];
 
