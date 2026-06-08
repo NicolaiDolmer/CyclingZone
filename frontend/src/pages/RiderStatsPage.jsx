@@ -9,7 +9,9 @@ import { statColor } from "../lib/statColor";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
+import TrainingFocus from "../components/rider/TrainingFocus";
 import { useScouting } from "../lib/useScouting";
+import { useTraining } from "../lib/useTraining";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { RacePriceModal } from "../components/RacePriceModal";
@@ -704,6 +706,7 @@ export default function RiderStatsPage() {
   const { t, i18n } = useTranslation("rider");
 
   const scouting = useScouting();
+  const training = useTraining();
   const [rider, setRider]                   = useState(null);
   const [onWatchlist, setOnWatchlist]       = useState(false);
   const [watchlistId, setWatchlistId]       = useState(null);
@@ -1427,6 +1430,7 @@ export default function RiderStatsPage() {
 
       {tab === "development" && (
         <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-xl p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
+          {isMyRider && !isRetired && <TrainingFocus rider={rider} training={training} />}
           <RiderDevelopmentTab uciHistory={uciHistory} statHistory={statHistory} stats={localizedSkills} />
         </Suspense>
       )}

@@ -135,3 +135,29 @@ test("pensionerede ryttere udvikles ikke (filtreret på is_retired)", async () =
   const summary = await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: MODEL });
   assert.equal(summary.developed, 0);
 });
+
+test("træningsfokus (#1163) biaser udvikling når trainingSeasonId er sat", async () => {
+  const mkState = () => {
+    const s = seedState({
+      riders: [{ id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2005-01-01", base_value: 100000, is_u25: true, is_retired: false, team_id: "team-1", firstname: "Ung", lastname: "Talent" }],
+      abilities: [{ rider_id: "r1", climbing: 55, tempo: 55, endurance: 55, ability_caps: null }],
+    });
+    s.training_plans = [{ team_id: "team-1", rider_id: "r1", season_id: "s1", focus: "vo2max", intensity: "hard" }];
+    return s;
+  };
+
+  // Uden trainingSeasonId → ren passiv (ingen bias indlæses).
+  const plain = mkState();
+  const sumPlain = await developRidersForSeason({ supabase: createMockSupabase(plain), seasonId: "s2", seasonNumber: 2, model: MODEL });
+  assert.equal(sumPlain.trained, 0);
+
+  // Med trainingSeasonId → planen for den afsluttede sæson biaser udviklingen.
+  const trained = mkState();
+  const sumTrained = await developRidersForSeason({ supabase: createMockSupabase(trained), seasonId: "s2", seasonNumber: 2, trainingSeasonId: "s1", model: MODEL });
+  assert.equal(sumTrained.trained, 1);
+
+  const climbPlain = plain.rider_derived_abilities[0].climbing;
+  const climbTrained = trained.rider_derived_abilities[0].climbing;
+  assert.ok(climbTrained > climbPlain, "vo2max-fokus (climbing) vokser mere end uden træning");
+  assert.ok(climbTrained <= trained.rider_derived_abilities[0].ability_caps.climbing, "stadig under loftet");
+});

@@ -118,7 +118,9 @@ export function abilityCap(baselineAbility, primaryType, ability, potentiale, cf
 //   peakAge  : type-peak
 //   isSignature : true hvis positiv type-vægt (styrer fald-hastighed)
 //   noiseUnit: seededUnit(`${rider_id}:${season}:${ability}`) ∈ [0,1)
-export function stepAbility(current, cap, age, peakAge, isSignature, noiseUnit, cfg = PROGRESSION_CONFIG) {
+//   growthMult: træningsbias på vækst-fraktionen (#1163); 1 = ingen træning.
+//               Påvirker KUN vækst-fasen (alder ≤ peak) — træning fremskynder ikke decline.
+export function stepAbility(current, cap, age, peakAge, isSignature, noiseUnit, cfg = PROGRESSION_CONFIG, growthMult = 1) {
   const c = Number(current);
   if (!Number.isFinite(c)) return current;
 
@@ -128,7 +130,7 @@ export function stepAbility(current, cap, age, peakAge, isSignature, noiseUnit, 
     if (gap <= 0) return Math.round(c);
     const baseFrac = lookup(cfg.growthFractionByAge, age, "maxAge", "frac");
     const noise = (noiseUnit * 2 - 1) * cfg.growthNoise; // [-growthNoise, +growthNoise]
-    const frac = clamp(baseFrac * (1 + noise), 0, 1);
+    const frac = clamp(baseFrac * (1 + noise) * (Number(growthMult) || 1), 0, 1);
     return clamp(Math.round(c + gap * frac), 0, 99);
   }
   // Fald efter peak.
@@ -154,8 +156,10 @@ export function retirementDecision(age, riderId, season, cfg = PROGRESSION_CONFI
 //   abilities : { climbing, sprint, ... } current-værdier
 //   caps      : { climbing, sprint, ... } uforanderlige lofter (abilityCap pr. evne)
 //   season    : sæson-nummer (seed-komponent)
+//   training  : bias-modifier fra training.resolveTrainingModifier(...) | null (#1163).
+//               { focusAbilities:Set, focusMult, offFocusMult } — biaser vækst pr. evne.
 // Returnerer { next: {<ability>: value}, changed: [...], retirement: {...} }.
-export function developRiderSeason(rider, abilities, caps, season, cfg = PROGRESSION_CONFIG) {
+export function developRiderSeason(rider, abilities, caps, season, cfg = PROGRESSION_CONFIG, training = null) {
   const age = Number(rider.age);
   const type = rider.primary_type;
   const peakAge = peakAgeForType(type, cfg);
@@ -168,7 +172,10 @@ export function developRiderSeason(rider, abilities, caps, season, cfg = PROGRES
     const isSig = signatureFactor(type, ability, cfg) >= 1.0;
     const cap = caps?.[ability] ?? abilityCap(cur, type, ability, rider.potentiale, cfg);
     const noiseUnit = seededUnit(`grow:${rider.id}:${season}:${ability}`);
-    const val = stepAbility(cur, cap, age, peakAge, isSig, noiseUnit, cfg);
+    const growthMult = training
+      ? (training.focusAbilities.has(ability) ? training.focusMult : training.offFocusMult)
+      : 1;
+    const val = stepAbility(cur, cap, age, peakAge, isSig, noiseUnit, cfg, growthMult);
     next[ability] = val;
     if (val !== Math.round(Number(cur))) changed.push(ability);
   }

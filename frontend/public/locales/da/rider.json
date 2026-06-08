@@ -380,5 +380,31 @@
     "scoutTitle": "Brug et scout-slot til at indsnævre rytterens potentiale-estimat",
     "noSlots": "Ingen scout-slots tilbage i denne sæson",
     "levelTitle": "Scout-niveau — højere betyder et mere præcist estimat"
+  },
+  "training": {
+    "title": "Træningsfokus",
+    "intro": "Sæt et sæson-langt træningsfokus for denne nøglerytter. Det rykker de trænede evner hurtigere mod deres loft.",
+    "gatedNote": "Træning former permanent evne og slår igennem ved næste sæson-skift.",
+    "slotsLeft": "{remaining}/{total} fokus-slots",
+    "focus": "Fokus",
+    "intensity": "Intensitet",
+    "focus_vo2max": "VO2max (bjerg-intervaller)",
+    "focus_threshold": "Tærskel / TT",
+    "focus_sprint": "Spurt",
+    "focus_endurance": "Udholdenhed (Zone 2)",
+    "focus_technique": "Teknik",
+    "focus_aero": "Aero",
+    "intensity_easy": "Let",
+    "intensity_normal": "Normal",
+    "intensity_hard": "Hård",
+    "set": "Sæt fokus",
+    "update": "Opdatér fokus",
+    "remove": "Fjern",
+    "saving": "Gemmer…",
+    "noSlots": "Ingen fokus-slots tilbage i denne sæson",
+    "current": "Nuværende fokus",
+    "assistantNoRisk": "Hurtigere målrettet vækst, ingen risiko for tilbageslag.",
+    "assistantRisk": "Hurtigere målrettet vækst, men ~{risk}% risiko for tilbageslag (tabt fremgang) denne sæson.",
+    "tradeoff": "Andre evner vokser en anelse langsommere."
   }
 }
