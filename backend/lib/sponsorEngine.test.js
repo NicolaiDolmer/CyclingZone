@@ -33,9 +33,9 @@ test("computeVariableSponsor gives top team max variable and bottom team base on
     divisionSize: 4,
   });
 
-  assert.equal(top.total, 350_000);
+  assert.equal(top.total, 2_650_000);
   assert.equal(top.variable, 150_000);
-  assert.equal(bottom.total, 200_000);
+  assert.equal(bottom.total, 2_500_000);
   assert.equal(bottom.variable, 0);
 });
 
@@ -54,9 +54,9 @@ test("computeSponsorForSeason uses division-relative points and rank from previo
   });
 
   assert.equal(result.mode, "variable");
-  assert.equal(result.base, 200_000);
+  assert.equal(result.base, 2_500_000);
   assert.equal(result.variable, 75_000);
-  assert.equal(result.gross_sponsor, 275_000);
+  assert.equal(result.gross_sponsor, 2_575_000);
   assert.equal(result.last_season_rank, 2);
   assert.equal(result.median_points, 120);
 });

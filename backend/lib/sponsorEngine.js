@@ -1,7 +1,10 @@
 import { SPONSOR_INCOME_BASE } from "./economyConstants.js";
 
 export const FIRST_VARIABLE_SPONSOR_SEASON = 2;
-export const VARIABLE_SPONSOR_BASE = 200_000;
+// Sæson 2+ sponsor-base (ejer-beslutning 2026-06-08: hævet 200k → 2,5M). Den
+// performance-baserede pulje (VARIABLE_SPONSOR_POOL) lægges oveni, og board-
+// modifier + pullout-faktor anvendes på gross_sponsor i economyEngine.
+export const VARIABLE_SPONSOR_BASE = 2_500_000;
 export const VARIABLE_SPONSOR_POOL = 150_000;
 
 function clamp(value, min, max) {
