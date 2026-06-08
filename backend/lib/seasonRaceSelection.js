@@ -17,16 +17,33 @@
 // Tom array eller missing → ren alfabetisk fallback. Stale IDs ignoreres stille.
 
 import { WORLD_TOUR_CLASSES } from "./racePoolImport.js";
+import { makeRng } from "./fictionalRiderGenerator.js";
 
 export const DEFAULT_RACE_DAYS_TARGET = 60;
 export const DEFAULT_OVERSHOOT_TOLERANCE = 5;
 export const DEFAULT_STAGE_RACE_QUOTA = 0;
 export const FIRST_SEASON_STAGE_RACE_QUOTA = 8;
+export const DEFAULT_SELECTION_SEED = 1;
 
-function deterministicSort(a, b) {
-  if (a.race_class !== b.race_class) return a.race_class.localeCompare(b.race_class);
-  if (a.race_type !== b.race_type) return a.race_type.localeCompare(b.race_type);
-  return (a.name || "").localeCompare(b.name || "");
+// #1124: tidligere udfyldte vi quota-supplement + fill ALFABETISK (race_class →
+// race_type → name), så kalenderen blev forudsigelig og biased mod tidlige navne.
+// Nu shuffler vi seedet i stedet: output afhænger kun af (indhold, seed), så hver
+// sæson får en varieret men reproducerbar sammensætning. Whitelist-rækkefølgen
+// (prioriterede etapeløb + boost-singles) shuffles IKKE — den er ejer-valgt.
+function makeStableShuffler(seed) {
+  const rng = makeRng(seed);
+  const keyOf = (r) => r.id ?? `${r.name}|${r.race_class}`;
+  return (arr) => {
+    const a = arr.slice().sort((x, y) => {
+      const kx = keyOf(x); const ky = keyOf(y);
+      return kx < ky ? -1 : kx > ky ? 1 : 0;
+    });
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
 }
 
 export function selectSeasonRaces({
@@ -38,9 +55,11 @@ export function selectSeasonRaces({
   stageRaceQuota = DEFAULT_STAGE_RACE_QUOTA,
   prioritizedStageRaceIds = [],
   boostSingleRaceIds = [],
+  seed = DEFAULT_SELECTION_SEED,
 } = {}) {
   const includeSet = includeClasses ? new Set(includeClasses) : null;
   const excludeSet = new Set(excludeClasses);
+  const shuffle = makeStableShuffler(seed);
 
   const candidates = pool.filter((r) => {
     if (includeSet && !includeSet.has(r.race_class)) return false;
@@ -79,9 +98,9 @@ export function selectSeasonRaces({
 
     // Supplér med remaining stage races (alfabetisk) hvis quota ikke fyldt
     if (quotaTaken < stageRaceQuota) {
-      const remaining = stageCandidates
-        .filter((r) => !usedKeys.has(keyFor(r)))
-        .sort(deterministicSort);
+      const remaining = shuffle(
+        stageCandidates.filter((r) => !usedKeys.has(keyFor(r))),
+      );
       for (const race of remaining) {
         if (quotaTaken >= stageRaceQuota) break;
         if (totalRaceDays >= raceDaysTarget) break;
@@ -108,8 +127,8 @@ export function selectSeasonRaces({
     }
   }
 
-  // Phase 3 — Fyld resten deterministisk
-  const remaining = candidates.filter((r) => !usedKeys.has(keyFor(r))).sort(deterministicSort);
+  // Phase 3 — Fyld resten seedet-shuffled (varieret, ikke alfabetisk)
+  const remaining = shuffle(candidates.filter((r) => !usedKeys.has(keyFor(r))));
   const omitted = [];
   for (const race of remaining) {
     const stages = Number(race.stages) || 1;

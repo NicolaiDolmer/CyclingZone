@@ -200,6 +200,7 @@ import {
   selectFirstSeasonRaces,
   selectSeasonRaces,
   DEFAULT_RACE_DAYS_TARGET,
+  DEFAULT_SELECTION_SEED,
 } from "../lib/seasonRaceSelection.js";
 import {
   cancelBetaMarket,
@@ -4074,7 +4075,7 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
     // Hent gemt whitelist fra seasons-tabellen som fallback hvis body ikke override'er
     const { data: season, error: seasonError } = await supabase
       .from("seasons")
-      .select("stage_race_priority, single_race_boost")
+      .select("number, stage_race_priority, single_race_boost")
       .eq("id", seasonId)
       .maybeSingle();
     if (seasonError) return res.status(500).json({ error: seasonError.message });
@@ -4098,6 +4099,9 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
           raceDaysTarget: Number(race_days_target),
           prioritizedStageRaceIds,
           boostSingleRaceIds,
+          // #1124: seed = sæson-nummer → hver sæson får en varieret, men
+          // reproducerbar kalender (samme sæson → samme udvælgelse).
+          seed: season?.number ?? DEFAULT_SELECTION_SEED,
           ...quotaOverride,
         })
       : selectSeasonRaces({
@@ -4107,6 +4111,7 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
           raceDaysTarget: Number(race_days_target),
           prioritizedStageRaceIds,
           boostSingleRaceIds,
+          seed: season?.number ?? DEFAULT_SELECTION_SEED,
           ...quotaOverride,
         });
 
