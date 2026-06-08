@@ -200,7 +200,6 @@ import {
   selectFirstSeasonRaces,
   selectSeasonRaces,
   DEFAULT_RACE_DAYS_TARGET,
-  DEFAULT_SELECTION_SEED,
 } from "../lib/seasonRaceSelection.js";
 import {
   cancelBetaMarket,
@@ -4075,7 +4074,7 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
     // Hent gemt whitelist fra seasons-tabellen som fallback hvis body ikke override'er
     const { data: season, error: seasonError } = await supabase
       .from("seasons")
-      .select("number, stage_race_priority, single_race_boost")
+      .select("stage_race_priority, single_race_boost")
       .eq("id", seasonId)
       .maybeSingle();
     if (seasonError) return res.status(500).json({ error: seasonError.message });
@@ -4094,14 +4093,19 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
         ? undefined
         : { stageRaceQuota: Number(stage_race_quota) };
 
+    // #1124: tilfældigt seed pr. generering → admin får et nyt varieret forslag
+    // hver gang "generér" trykkes (re-roll), og gemmer det han kan lide. Eksplicit
+    // body.seed gør det reproducerbart (bruges ikke af UI'et i dag).
+    const selectionSeed = Number.isInteger(req.body?.seed)
+      ? req.body.seed
+      : Math.floor(Math.random() * 2_147_483_647);
+
     const result = use_first_season_default
       ? selectFirstSeasonRaces(pool || [], {
           raceDaysTarget: Number(race_days_target),
           prioritizedStageRaceIds,
           boostSingleRaceIds,
-          // #1124: seed = sæson-nummer → hver sæson får en varieret, men
-          // reproducerbar kalender (samme sæson → samme udvælgelse).
-          seed: season?.number ?? DEFAULT_SELECTION_SEED,
+          seed: selectionSeed,
           ...quotaOverride,
         })
       : selectSeasonRaces({
@@ -4111,7 +4115,7 @@ router.post("/admin/seasons/:seasonId/race-selection/preview", requireAdmin, adm
           raceDaysTarget: Number(race_days_target),
           prioritizedStageRaceIds,
           boostSingleRaceIds,
-          seed: season?.number ?? DEFAULT_SELECTION_SEED,
+          seed: selectionSeed,
           ...quotaOverride,
         });
 
