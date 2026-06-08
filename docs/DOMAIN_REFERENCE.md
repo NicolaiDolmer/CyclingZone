@@ -95,7 +95,7 @@
 ### Rytterværdi (pris)
 ```
 Baseværdi (CZ$) = max(5, uci_points) × 4000
-Præmiebonus = gennemsnit af rytterens præmiepenge i de seneste op til 3 afsluttede sæsoner
+Præmiebonus = rytterens samlede præmiepenge over et fast 3-sæsons-vindue ÷ 3 (sæsoner uden resultater tæller som 0). Sæson 1 = s1/3; bygger op til fuldt 3-sæsons-snit fra sæson 3. (Ejer-beslutning 2026-06-08; tidligere ÷ antal reelle sæsoner.)
 Rytterens markedsværdi (CZ$) = baseværdi + prize_earnings_bonus
 Implementeret som generated column i DB: market_value = max(5, uci_points) * 4000 + prize_earnings_bonus
 Brug ALDRIG uci_points direkte som pris — brug altid market_value eller samme beregning.

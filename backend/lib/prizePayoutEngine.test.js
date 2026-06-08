@@ -260,7 +260,7 @@ function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, com
   return supabase;
 }
 
-test("paySeasonPrizesToDate triggers progress-weighted rider-value recalc after paying", async () => {
+test("paySeasonPrizesToDate triggers fixed-window rider-value recalc after paying", async () => {
   const supabase = makePayoutSupabase({
     pendingRace: {
       id: "race-1",
@@ -270,7 +270,7 @@ test("paySeasonPrizesToDate triggers progress-weighted rider-value recalc after 
       ],
     },
     riders: [{ id: "rider-1" }],
-    // Open-beta season 1: lone active season at 10% → floor keeps bonus = 8000.
+    // Open-beta season 1: lone active season at 10% → fixed /3 window dampens it.
     activeSeason: { id: "season-1", number: 1, race_days_completed: 6, race_days_total: 60 },
     completedSeasons: [],
   });
@@ -283,9 +283,10 @@ test("paySeasonPrizesToDate triggers progress-weighted rider-value recalc after 
   // Payout happened...
   assert.equal(supabase.state.rpcCalls.length, 1);
   assert.equal(supabase.state.racesPaidAt.length, 1);
-  // ...and the rider value was recalculated with the floored divisor (no annualization).
+  // ...and the rider value was recalculated over the fixed 3-season window:
+  // round(8000 / 3) = 2667 (season 1 deliberately dampened to one third).
   assert.deepEqual(supabase.state.riderUpdates, [
-    { id: "rider-1", prize_earnings_bonus: 8000 },
+    { id: "rider-1", prize_earnings_bonus: 2667 },
   ]);
 });
 

@@ -72,12 +72,12 @@ function makeClient({ seasons, races, raceResults, riders }) {
   return { client: { from }, updatedRiders };
 }
 
-test("updateRiderValues excludes empty placeholder seasons (race_days_total=0) from the value average", async () => {
+test("updateRiderValues divides by a fixed 3-season window and excludes empty placeholder seasons", async () => {
   const { client, updatedRiders } = makeClient({
     seasons: [
-      // Active season, halfway through → weight 0.5
+      // Active season, halfway through (progress no longer affects the divisor)
       { id: "active", number: 2, status: "active", race_days_completed: 5, race_days_total: 10 },
-      // Real completed season → weight 1
+      // Real completed season
       { id: "prev", number: 1, status: "completed", race_days_completed: 8, race_days_total: 8 },
       // Empty placeholder (like prod season 0) → MUST be excluded
       { id: "seed", number: 0, status: "completed", race_days_completed: 0, race_days_total: 0 },
@@ -90,15 +90,38 @@ test("updateRiderValues excludes empty placeholder seasons (race_days_total=0) f
     raceResults: [
       { rider_id: "rider-1", race_id: "r-active", prize_money: 1000 },
       { rider_id: "rider-1", race_id: "r-prev", prize_money: 600 },
+      // Earnings on the empty placeholder season MUST be ignored (filter guard).
+      { rider_id: "rider-1", race_id: "r-seed", prize_money: 5000 },
     ],
     riders: [{ id: "rider-1" }],
   });
 
   const result = await updateRiderValues(client);
 
-  // Window = active (0.5) + prev (1); seed excluded → divisor = 1.5.
-  // earnings = 1000 + 600 = 1600 → bonus = round(1600 / 1.5) = 1067.
-  // If seed leaked in, divisor would be 2.5 → bonus 640 (regression guard).
-  assert.equal(updatedRiders["rider-1"].prize_earnings_bonus, 1067);
+  // Fixed window: divisor = 3 regardless of how many seasons have data.
+  // Window = active + prev; seed excluded (race_days_total=0) so its 5000 is not
+  // counted. earnings = 1000 + 600 = 1600 → bonus = round(1600 / 3) = 533.
+  // If the placeholder filter regressed, earnings would include 5000 → 2200.
+  // If the divisor reverted to the season-weight count (1.5), bonus would be 1067.
+  assert.equal(updatedRiders["rider-1"].prize_earnings_bonus, 533);
+  assert.equal(result.ridersUpdated, 1);
+});
+
+test("updateRiderValues dampens season 1 to one third (fixed /3, future seasons count as 0)", async () => {
+  const { client, updatedRiders } = makeClient({
+    seasons: [
+      // Only season 1 has been raced (just completed at the S1->S2 transition).
+      { id: "s1", number: 1, status: "completed", race_days_completed: 9, race_days_total: 9 },
+    ],
+    races: [{ id: "r1", season_id: "s1" }],
+    raceResults: [{ rider_id: "rider-1", race_id: "r1", prize_money: 900 }],
+    riders: [{ id: "rider-1" }],
+  });
+
+  const result = await updateRiderValues(client);
+
+  // Owner model 2026-06-08: seasons 2 and 3 have no results yet → count as 0, but
+  // the divisor stays 3. bonus = round(900 / 3) = 300 (not 900).
+  assert.equal(updatedRiders["rider-1"].prize_earnings_bonus, 300);
   assert.equal(result.ridersUpdated, 1);
 });
