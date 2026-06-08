@@ -74,3 +74,4 @@ docs/WEEKLY_PLANNING_GUIDE.md
 
 # Playwright MCP tool artifacts (browser-nav snapshots/logs)
 .playwright-mcp/
+.superpowers/
