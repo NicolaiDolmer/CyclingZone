@@ -111,6 +111,10 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // launch fylder den. Skriv-path verificeret i riderProgressionEngine.js. Fjern når
   // tabellen har rows.
   "rider_development_log",
+  // Scouting L1 (#1138) skriver én row pr. scout-handling. Bevidst tom ved oprettelse —
+  // fyldes når brugere scouter ryttere (slots/sæson). Skriv-path verificeret i
+  // POST /api/scouting/:riderId. Fjern denne whitelist-entry når tabellen har rows.
+  "scout_actions",
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)

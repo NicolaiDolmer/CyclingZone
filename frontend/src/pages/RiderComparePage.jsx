@@ -6,7 +6,8 @@ import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
-import PotentialeStars from "../components/PotentialeStars";
+import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
+import { useScouting } from "../lib/useScouting";
 import { statColor, statStyle } from "../lib/statColor";
 
 const MAX_COMPARE = 3;
@@ -92,6 +93,7 @@ function RiderSearch({ onSelect, excluded }) {
 export default function RiderComparePage() {
   const { t } = useTranslation("rider");
   const [searchParams, setSearchParams] = useSearchParams();
+  const scouting = useScouting();
   const [fullRiders, setFullRiders] = useState([]);
   const initialIdsRef = useRef(searchParams.get("ids") || "");
 
@@ -206,7 +208,7 @@ export default function RiderComparePage() {
                 </div>
                 {fullRiders.map(r => (
                   <div key={r.id} className="px-2">
-                    <PotentialeStars value={r.potentiale} birthdate={r.birthdate} showValue />
+                    <ScoutablePotentiale rider={r} scouting={scouting} />
                   </div>
                 ))}
               </div>

@@ -8,7 +8,8 @@ import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { statColor } from "../lib/statColor";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
-import PotentialeStars from "../components/PotentialeStars";
+import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
+import { useScouting } from "../lib/useScouting";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { RacePriceModal } from "../components/RacePriceModal";
@@ -702,6 +703,7 @@ export default function RiderStatsPage() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation("rider");
 
+  const scouting = useScouting();
   const [rider, setRider]                   = useState(null);
   const [onWatchlist, setOnWatchlist]       = useState(false);
   const [watchlistId, setWatchlistId]       = useState(null);
@@ -1223,7 +1225,7 @@ export default function RiderStatsPage() {
             {rider.potentiale != null && (
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-cz-3 text-xs uppercase tracking-wider">{t("header.potential")}</span>
-                <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} large showValue />
+                <ScoutablePotentiale rider={rider} scouting={scouting} showScout large />
               </div>
             )}
             <p className="text-cz-2 text-sm mt-2">
@@ -1325,7 +1327,7 @@ export default function RiderStatsPage() {
               <div className="flex items-center gap-3 py-2 mb-1 border-b border-cz-border">
                 <span className="text-cz-3 w-4 text-center text-sm">◆</span>
                 <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{t("stats.potentialRow")}</span>
-                <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} showValue />
+                <ScoutablePotentiale rider={rider} scouting={scouting} />
               </div>
             )}
             {localizedSkills.map(s => <StatRow key={s.key} label={s.label} icon={s.icon} value={rider[s.key]} />)}

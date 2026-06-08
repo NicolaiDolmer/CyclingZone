@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.02",
+    date: "2026-06-08",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Scouting",
+        items: [
+          "EN · A rider's potential is no longer shown as an exact star rating until you have scouted them. Unscouted riders now display an uncertain estimate (a star range plus a short verdict like \"High ceiling\"), widest for young, unproven talents and narrower for established riders. You have a limited number of scout slots each season; spending one on a rider tightens your estimate, and scouting fully reveals the exact potential. Estimates are personal to your team, so two managers can read the same talent differently. Your own riders are always shown exactly. Scouting is free and does not cost money. Refs #1138.",
+          "DA · En rytters potentiale vises ikke længere som et eksakt stjerne-tal før du har scoutet rytteren. Uscoutede ryttere viser nu et usikkert estimat (et stjerne-interval plus en kort vurdering som \"Højt loft\"), bredest for unge, uafprøvede talenter og smallere for etablerede ryttere. Du har et begrænset antal scout-slots hver sæson; bruger du et på en rytter, strammes dit estimat, og fuld scouting afslører det eksakte potentiale. Estimater er personlige for dit hold, så to managere kan vurdere samme talent forskelligt. Dine egne ryttere vises altid eksakt. Scouting er gratis og koster ikke penge. Refs #1138.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.01",
     date: "2026-06-08",
     label: "Beta",

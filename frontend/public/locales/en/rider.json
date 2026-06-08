@@ -367,5 +367,18 @@
     "teamFree": "Free agent",
     "empty": "Search for a rider above to start comparing",
     "potential": "Potential"
+  },
+  "scouting": {
+    "label_worldclass": "World-class prospect",
+    "label_high": "High ceiling",
+    "label_solid": "Solid prospect",
+    "label_rotation": "Squad rotation",
+    "label_limited": "Limited upside",
+    "scout": "Scout",
+    "rescout": "Scout again",
+    "scouting": "Scouting…",
+    "scoutTitle": "Use a scout slot to narrow this rider's potential estimate",
+    "noSlots": "No scout slots left this season",
+    "levelTitle": "Scouting level — higher means a more precise estimate"
   }
 }

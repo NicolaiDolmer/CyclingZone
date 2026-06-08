@@ -367,5 +367,18 @@
     "teamFree": "Fri agent",
     "empty": "Søg efter en rytter ovenfor for at starte sammenligning",
     "potential": "Potentiale"
+  },
+  "scouting": {
+    "label_worldclass": "Verdensklasse-emne",
+    "label_high": "Højt loft",
+    "label_solid": "Solidt emne",
+    "label_rotation": "Rotationsrytter",
+    "label_limited": "Begrænset potentiale",
+    "scout": "Scout",
+    "rescout": "Scout igen",
+    "scouting": "Scouter…",
+    "scoutTitle": "Brug et scout-slot til at indsnævre rytterens potentiale-estimat",
+    "noSlots": "Ingen scout-slots tilbage i denne sæson",
+    "levelTitle": "Scout-niveau — højere betyder et mere præcist estimat"
   }
 }

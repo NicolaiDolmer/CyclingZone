@@ -96,6 +96,7 @@ import {
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
+import { deriveScoutState, canScout } from "../lib/scouting.js";
 import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import {
   computeDebtRatio,
@@ -817,6 +818,69 @@ router.get("/riders/:id/bid-timeline", requireAuth, async (req, res) => {
   try {
     const payload = await buildRiderBidTimeline(supabase, req.params.id);
     res.json(payload);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCOUTING (#1138 — progression L1: skjult potentiale, begrænset kapacitet)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Hjælper: hent aktiv sæson-id + holdets scout-state (ledger → slots + niveauer).
+async function loadScoutState(teamId) {
+  const { data: season } = await supabase
+    .from("seasons").select("id").eq("status", "active").maybeSingle();
+  const activeSeasonId = season?.id ?? null;
+  const { data: rows, error } = await supabase
+    .from("scout_actions").select("rider_id, season_id").eq("team_id", teamId);
+  if (error) throw new Error(error.message);
+  return { activeSeasonId, state: deriveScoutState(rows, activeSeasonId) };
+}
+
+// GET /api/scouting/me — holdets scout-state: slots (total/used/remaining),
+// maxLevel og per-rytter niveau. Frontend bruger niveauet til at beregne
+// estimat-bredden (display-lag v1).
+router.get("/scouting/me", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const { state } = await loadScoutState(req.team.id);
+    res.json({ ...state, teamId: req.team.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/scouting/:riderId — brug ét scout-slot på en rytter (indsnævrer
+// estimatet ét niveau). Håndhæver slot-kapacitet + maxLevel. Idempotens er
+// bevidst FRA: hver handling forbruger et slot (det er ressource-mekanikken).
+router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const riderId = req.params.riderId;
+  try {
+    const { activeSeasonId, state } = await loadScoutState(req.team.id);
+    if (!activeSeasonId) return res.status(409).json({ error: "No active season" });
+
+    // Rytteren skal findes (og ikke være ens egen — egne ryttere vises eksakt).
+    const { data: rider } = await supabase
+      .from("riders").select("id, team_id").eq("id", riderId).maybeSingle();
+    if (!rider) return res.status(404).json({ error: "Rider not found" });
+    if (rider.team_id && rider.team_id === req.team.id) {
+      return res.status(400).json({ error: "own_rider", message: "Own riders are already fully known." });
+    }
+
+    const currentLevel = state.levels[riderId] ?? 0;
+    const guard = canScout(currentLevel, state.slots.remaining);
+    if (!guard.ok) return res.status(409).json({ error: guard.reason });
+
+    const { error: insErr } = await supabase
+      .from("scout_actions")
+      .insert({ team_id: req.team.id, rider_id: riderId, season_id: activeSeasonId });
+    if (insErr) throw new Error(insErr.message);
+
+    // Returnér frisk state så UI'et kan opdatere slots + niveau uden ekstra round-trip.
+    const { state: next } = await loadScoutState(req.team.id);
+    res.json({ ok: true, riderId, level: next.levels[riderId] ?? 0, slots: next.slots, maxLevel: next.maxLevel });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

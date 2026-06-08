@@ -9,7 +9,8 @@ import { statStyle } from "../lib/statColor";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { RacePriceModal } from "../components/RacePriceModal";
 import { Flag } from "../components/Flag";
-import PotentialeStars from "../components/PotentialeStars";
+import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
+import { useScouting } from "../lib/useScouting";
 import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
@@ -128,7 +129,7 @@ function Countdown({ end, status }) {
 }
 
 // ── Auction table row ─────────────────────────────────────────────────────────
-function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats }) {
+function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
   const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -237,7 +238,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
 
       {/* Potentiale */}
       <td className="px-3 py-1.5">
-        <PotentialeStars value={r?.potentiale} birthdate={r?.birthdate} />
+        <ScoutablePotentiale rider={r} scouting={scouting} showScout />
       </td>
 
       {/* Sælger — lige før stats */}
@@ -351,7 +352,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
   );
 }
 
-function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats }) {
+function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
   const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -431,7 +432,7 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggl
       {r?.potentiale != null && (
         <div className="mt-2 flex items-center gap-1.5">
           <span className="text-cz-3 text-[9px] uppercase tracking-wider">{t("auctions:card.potential")}</span>
-          <PotentialeStars value={r.potentiale} birthdate={r.birthdate} showValue />
+          <ScoutablePotentiale rider={r} scouting={scouting} showScout />
         </div>
       )}
       {visibleStatsArr.length > 0 && (
@@ -1368,6 +1369,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
             isFirst={sectionId === "main" && i === 0}
             isFlashing={sharedProps.flashingAuctionIds.has(a.id)}
             visibleStats={sharedProps.visibleStats}
+            scouting={sharedProps.scouting}
           />
         ))}
       </div>
@@ -1398,6 +1400,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
                   isFirst={sectionId === "main" && i === 0}
                   isFlashing={sharedProps.flashingAuctionIds.has(a.id)}
                   visibleStats={sharedProps.visibleStats}
+                  scouting={sharedProps.scouting}
                 />
               ))}
             </tbody>
@@ -1428,7 +1431,8 @@ function AuctionsContent(props) {
     feedEvents, auctionsById, myTeamId, now, showFeed,
     ...rest
   } = props;
-  const sharedProps = { myTeamId, ...rest };
+  const scouting = useScouting();
+  const sharedProps = { myTeamId, scouting, ...rest };
   const mySituationVisibleCount = mySituationBuckets.leading.length + mySituationBuckets.overbid.length + mySituationBuckets.selling.length;
 
   const isEmpty = filter === "my-situation"
