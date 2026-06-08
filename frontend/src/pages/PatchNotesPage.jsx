@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.04",
+    date: "2026-06-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Season 2 and your board",
+        items: [
+          "EN · Season 2 has begun. Your sponsor income for the new season has been paid out, and the board is now open. Go to the Board page to choose your Club DNA, a lasting identity for your team that shapes which board members you get and what they expect of you. After choosing your DNA you negotiate your board's plans (the 5-year first, then the 3-year, then the 1-year). The earlier test setup has been cleared, so every manager starts fresh and picks their own DNA. Refs #1155.",
+          "DA · Sæson 2 er begyndt. Din sponsorindtægt for den nye sæson er udbetalt, og bestyrelsen er nu åben. Gå til Bestyrelse-siden for at vælge dit Klub-DNA, en blivende identitet for dit hold der former hvilke bestyrelsesmedlemmer du får, og hvad de forventer af dig. Når du har valgt dit DNA, forhandler du bestyrelsens planer (først den 5-årige, så den 3-årige, så den 1-årige). Den tidligere test-opsætning er ryddet, så hver manager starter på en frisk tavle og vælger sit eget DNA. Refs #1155.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.03",
     date: "2026-06-08",
     label: "Beta",
