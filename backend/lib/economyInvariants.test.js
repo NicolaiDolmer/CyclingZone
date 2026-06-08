@@ -637,14 +637,14 @@ test("processSeasonStart bruger variabel sponsor fra forrige sæsons standings f
   });
 
   assert.equal(financeRows.length, 1);
-  assert.equal(financeRows[0].delta, 275_000);
+  assert.equal(financeRows[0].delta, 2_575_000);
   // #666: description er nu null; struktureret metadata.code + .params driver i18n.
   assert.equal(financeRows[0].description, null);
   assert.equal(financeRows[0].metadata?.code, "tx.sponsor.seasonStartVariable");
-  assert.equal(financeRows[0].metadata?.params?.base, 200_000);
+  assert.equal(financeRows[0].metadata?.params?.base, 2_500_000);
   assert.equal(financeRows[0].metadata?.params?.variable, 75_000);
   // #535: processSeasonStart returnerer nu { sponsor: [...], payroll: {...} }
-  assert.equal(result.sponsor[0].sponsor, 275_000);
+  assert.equal(result.sponsor[0].sponsor, 2_575_000);
   assert.equal(result.sponsor[0].sponsor_breakdown.mode, "variable");
 });
 

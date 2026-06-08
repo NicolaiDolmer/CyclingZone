@@ -192,11 +192,11 @@ test("buildTransitionPlan — sæson 1 → 2 preview viser variabel sponsor", as
   });
 
   assert.equal(plan.to_season.number, 2);
-  assert.equal(plan.sponsor_breakdown[0].sponsor_base, 350000);
+  assert.equal(plan.sponsor_breakdown[0].sponsor_base, 2_650_000);
   assert.equal(plan.sponsor_breakdown[0].sponsor_mode, "variable");
-  assert.equal(plan.sponsor_breakdown[1].sponsor_base, 275000);
-  assert.equal(plan.sponsor_breakdown[2].sponsor_base, 200000);
-  assert.equal(plan.sponsor_base_total, 825000);
+  assert.equal(plan.sponsor_breakdown[1].sponsor_base, 2_575_000);
+  assert.equal(plan.sponsor_breakdown[2].sponsor_base, 2_500_000);
+  assert.equal(plan.sponsor_base_total, 7_725_000);
 });
 
 test("buildTransitionPlan — already_transitioned=true når sæson 1 allerede eksisterer", async () => {
