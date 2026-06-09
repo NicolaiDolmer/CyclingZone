@@ -6,8 +6,8 @@
     "loadingAria": "Indlæser transfers"
   },
   "window": {
-    "open": "Transfervinduet er åbent — du kan sende og acceptere tilbud",
-    "closed": "Transfervinduet er lukket — transfer-, bytte- og lejeaftaler kan forhandles nu, men rytterregistreringer gennemføres først ved næste åbning.",
+    "open": "Transfervinduet er åbent. Du kan sende og acceptere tilbud",
+    "closed": "Transfervinduet er lukket. Transfer-, bytte- og lejeaftaler kan forhandles nu, men rytterregistreringer gennemføres først ved næste åbning.",
     "closedShort": "Transfervindue lukket",
     "windowClosed": "Vindue lukket"
   },
@@ -23,7 +23,7 @@
     "pending": "Afventer svar",
     "countered": "Modbud sendt",
     "awaitingConfirmation": "Afventer bekræftelse",
-    "windowPending": "Aftalt — afventer vindue",
+    "windowPending": "Aftalt · afventer vindue",
     "accepted": "Accepteret",
     "rejected": "Afvist",
     "withdrawn": "Trukket tilbage"
@@ -83,9 +83,9 @@
       "messagePlaceholder": "Valgfri besked..."
     },
     "awaiting": {
-      "sellerAccepted": "Du har accepteret — afventer købers bekræftelse",
-      "buyerConfirmed": "Du har bekræftet — afventer sælgers bekræftelse",
-      "windowPending": "Handel aftalt — gennemføres ved transfervinduets åbning"
+      "sellerAccepted": "Du har accepteret · afventer købers bekræftelse",
+      "buyerConfirmed": "Du har bekræftet · afventer sælgers bekræftelse",
+      "windowPending": "Handel aftalt · gennemføres ved transfervinduets åbning"
     }
   },
   "swapCard": {
@@ -112,8 +112,8 @@
       "cashPayLabel": "Kontantbetaling (CZ$) · positiv = du betaler, negativ = du modtager"
     },
     "awaiting": {
-      "selfConfirmed": "Du har bekræftet — afventer den anden part",
-      "windowPending": "Byttehandel aftalt — gennemføres ved transfervinduets åbning"
+      "selfConfirmed": "Du har bekræftet · afventer den anden part",
+      "windowPending": "Byttehandel aftalt · gennemføres ved transfervinduets åbning"
     }
   },
   "loanCard": {
@@ -150,7 +150,7 @@
   "newSwap": {
     "title": "Foreslå byttehandel",
     "offeredLabel": "Din rytter du tilbyder",
-    "selectRider": "— Vælg rytter —",
+    "selectRider": "Vælg rytter…",
     "requestedLabel": "Rytter du ønsker (søg på efternavn)",
     "lastnamePlaceholder": "Efternavn...",
     "selectedRider": "Valgt: {firstname} {lastname} ({team})",
@@ -170,7 +170,7 @@
     "seasonLabel": "Sæson (max 1 sæson)",
     "seasonPlaceholder": "fx. 3",
     "feeLabel": "Lejegebyr per sæson (CZ$)",
-    "buyOptionLabel": "Købsoption (CZ$) — valgfri",
+    "buyOptionLabel": "Købsoption (CZ$) · valgfri",
     "buyOptionPlaceholder": "Efterlad tom for ingen option",
     "sending": "Sender...",
     "submit": "Send forslag",
@@ -222,9 +222,9 @@
     "offerSent": "✅ Tilbud sendt!",
     "listingRemoved": "✅ Rytter fjernet fra transferlisten",
     "listingRemoveFailed": "Kunne ikke fjerne listingen",
-    "offerAcceptedBuyer": "✅ Accepteret — køber skal nu bekræfte handlen",
-    "offerAcceptedSeller": "✅ Accepteret — sælger skal nu bekræfte handlen",
-    "confirmedAwaiting": "✅ Bekræftet — afventer den anden parts bekræftelse",
+    "offerAcceptedBuyer": "✅ Accepteret · køber skal nu bekræfte handlen",
+    "offerAcceptedSeller": "✅ Accepteret · sælger skal nu bekræfte handlen",
+    "confirmedAwaiting": "✅ Bekræftet · afventer den anden parts bekræftelse",
     "dealCancelled": "Handel annulleret",
     "transferRejected": "Transfer afvist",
     "counterSent": "↔ Modbud sendt",
@@ -232,8 +232,8 @@
     "offerWithdrawn": "Tilbud trukket tilbage",
     "offerArchived": "Tilbud arkiveret",
     "updated": "✅ Opdateret",
-    "swapAccepted": "✅ Accepteret — afventer bekræftelse",
-    "swapConfirmedAwaiting": "✅ Bekræftet — afventer den anden part",
+    "swapAccepted": "✅ Accepteret · afventer bekræftelse",
+    "swapConfirmedAwaiting": "✅ Bekræftet · afventer den anden part",
     "swapCancelled": "Byttehandel annulleret",
     "swapRejected": "Byttehandel afvist",
     "proposalWithdrawn": "Forslag trukket tilbage",

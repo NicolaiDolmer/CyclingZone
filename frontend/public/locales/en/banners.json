@@ -1,9 +1,9 @@
 {
   "survey": {
-    "message": "Help shape Cycling Zone — take our 5 min survey",
+    "message": "Help shape Cycling Zone. Take our 5 min survey",
     "cta": "Take the survey",
     "dismissAriaLabel": "Dismiss banner",
     "regionAriaLabel": "Survey invitation",
-    "adminPreviewHint": "(Admin preview — only visible to you until flag is flipped)"
+    "adminPreviewHint": "(Admin preview, only visible to you until flag is flipped)"
   }
 }

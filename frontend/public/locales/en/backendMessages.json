@@ -1,20 +1,20 @@
 {
   "tx": {
     "sponsor": {
-      "seasonStartIntro": "Sponsor income — Season start (intro {amount} ×{modifier})",
-      "seasonStartIntroPullout": "Sponsor income — Season start (intro {amount} ×{modifier} · sponsor pullout active)",
-      "seasonStartVariable": "Sponsor income — Season start (base {base} + variable {variable} ×{modifier})",
-      "seasonStartVariablePullout": "Sponsor income — Season start (base {base} + variable {variable} ×{modifier} · sponsor pullout active)",
-      "seasonStartFallback": "Sponsor income — Season start (fallback {amount} ×{modifier})",
-      "seasonStartFallbackPullout": "Sponsor income — Season start (fallback {amount} ×{modifier} · sponsor pullout active)"
+      "seasonStartIntro": "Sponsor income · Season start (intro {amount} ×{modifier})",
+      "seasonStartIntroPullout": "Sponsor income · Season start (intro {amount} ×{modifier} · sponsor pullout active)",
+      "seasonStartVariable": "Sponsor income · Season start (base {base} + variable {variable} ×{modifier})",
+      "seasonStartVariablePullout": "Sponsor income · Season start (base {base} + variable {variable} ×{modifier} · sponsor pullout active)",
+      "seasonStartFallback": "Sponsor income · Season start (fallback {amount} ×{modifier})",
+      "seasonStartFallbackPullout": "Sponsor income · Season start (fallback {amount} ×{modifier} · sponsor pullout active)"
     },
-    "salary": "Season salaries — {count} riders",
+    "salary": "Season salaries · {count} riders",
     "interest": "Interest on debt (10% of {amount} pts)",
-    "bonus": "Division bonus — Division {division}, rank {rank}",
+    "bonus": "Division bonus · Division {division}, rank {rank}",
     "loanReceivedShort": "Short-term loan taken out (fee: {fee} CZ$)",
     "loanReceivedLong": "Long-term loan taken out (fee: {fee} CZ$)",
     "loanRepayment": "Loan installment paid",
-    "loanRepaymentFinal": "Loan installment paid — loan fully repaid! 🎉",
+    "loanRepaymentFinal": "Loan installment paid. Loan fully repaid! 🎉",
     "loanRepaymentRemaining": "Loan installment paid (remaining: {remaining} CZ$)",
     "loanInterest": "Loan interest charged ({rate}%)",
     "emergencyLoan": "Emergency loan opened automatically (fee: {feeRate}%, interest: {interestRate}%/season)",
@@ -25,11 +25,11 @@
   },
   "forecast": {
     "warning": {
-      "negativeNet": "Expected deficit: {value} CZ$ next season — sell a rider, reduce active loans, or negotiate a better sponsor.",
-      "debtNearCeiling": "Debt is {ratio}% of cap ({totalDebt} / {ceiling} CZ$) — the board is worried.",
-      "debtGrowing": "Debt is {ratio}% of cap — watch the interest burden.",
-      "debtTrend": "At the current deficit you'll hit the debt cap within 2 seasons — act now.",
-      "salaryExceedsSponsor": "Salaries ({salary} CZ$) exceed sponsor ({sponsor} CZ$) — quiet operations no longer cover the wages."
+      "negativeNet": "Expected deficit: {value} CZ$ next season. Sell a rider, reduce active loans, or negotiate a better sponsor.",
+      "debtNearCeiling": "Debt is {ratio}% of cap ({totalDebt} / {ceiling} CZ$). The board is worried.",
+      "debtGrowing": "Debt is {ratio}% of cap. Watch the interest burden.",
+      "debtTrend": "At the current deficit you'll hit the debt cap within 2 seasons. Act now.",
+      "salaryExceedsSponsor": "Salaries ({salary} CZ$) exceed sponsor ({sponsor} CZ$). Quiet operations no longer cover the wages."
     }
   },
   "notif": {
@@ -73,7 +73,7 @@
     },
     "boardChairmanReplaced": {
       "title": "The board has chosen a new chairman",
-      "message": "After two disappointing plan seasons, the board has replaced the chairman. {chairmanLabel} takes over — expect a new tone in upcoming negotiations."
+      "message": "After two disappointing plan seasons, the board has replaced the chairman. {chairmanLabel} takes over. Expect a new tone in upcoming negotiations."
     },
     "boardForcedListing": {
       "title": "The board demands a sale",
@@ -106,7 +106,7 @@
     },
     "boardAutoAccepted": {
       "title": "The board chose {planLabel} for you",
-      "message": "You didn't negotiate your {planLabel} in time — the board picked focus \"{focus}\" and default goals. You can still request changes once the plan is running."
+      "message": "You didn't negotiate your {planLabel} in time. The board picked focus \"{focus}\" and default goals. You can still request changes once the plan is running."
     },
     "autoBidPlaced": {
       "title": "Autobid placed",
@@ -118,9 +118,9 @@
     }
   },
   "error": {
-    "repayInsufficient": "You only have {available} CZ$ available — the rest is locked in active bids or autobids",
+    "repayInsufficient": "You only have {available} CZ$ available. The rest is locked in active bids or autobids",
     "boardSigningRestriction": "The board blocks purchases above {threshold} CZ$ (satisfaction below {satisfaction}%).",
-    "boardSalaryCap": "Salary cap set by the board ({cap} CZ$). You cannot increase the team's total salary — sell a rider first.",
+    "boardSalaryCap": "Salary cap set by the board ({cap} CZ$). You cannot increase the team's total salary. Sell a rider first.",
     "squadFineDeducted": "Fine: {fineAmount} CZ$ · Deduction: {penaltyPoints} points",
     "debtCapReached": "Debt cap of {ceiling} CZ$ reached for this division"
   },

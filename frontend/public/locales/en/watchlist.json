@@ -1,6 +1,6 @@
 {
   "title": "Talent scout",
-  "subtitle": "{count} riders on your watchlist — only visible to you",
+  "subtitle": "{count} riders on your watchlist, only visible to you",
   "addRiders": "+ Add riders",
   "emptyTitle": "Your watchlist is empty",
   "emptyBody": "Click the ⭐ next to a rider in the rider database to add them here",

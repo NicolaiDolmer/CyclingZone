@@ -5,7 +5,7 @@
   "statusOngoing": "Igangværende",
   "statusCompleted": "Afsluttet",
   "financeReport": "📊 Finansrapport",
-  "seasonOption": "Sæson {number} — {status}",
+  "seasonOption": "Sæson {number} · {status}",
   "empty": {
     "title": "Ingen resultater endnu",
     "body": "Afslut løb og sæsoner for at se resultater her"
@@ -22,7 +22,7 @@
     "stageKing": { "title": "Stage-king", "secondary": "{count, plural, one {# etapesejr} other {# etapesejre}}", "empty": "Ingen etaper kørt" }
   },
   "calendar": {
-    "heading": "📅 Kalender — {count} løb",
+    "heading": "📅 Kalender · {count} løb",
     "expectedTotal": "Total forventet pulje for sæsonen:",
     "expectedTotalTooltip": "Live-beregnet sum af forventet pulje for alle sæsonens løb",
     "summary": "{completed} afsluttet · {scheduled} kommende",

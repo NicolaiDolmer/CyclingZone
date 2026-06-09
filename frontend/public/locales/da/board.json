@@ -7,7 +7,7 @@
   "tour": {
     "plans": {
       "title": "Tre planer kører parallelt",
-      "body": "Skift mellem 1-, 3- og 5-årsplanen med fanerne — én plan ad gangen, fuld bredde. Hver viser sin status, tilfredshed, sponsor×-modifier og mål med status-ikoner. Klik et mål for at se bestyrelsens reaktion."
+      "body": "Skift mellem 1-, 3- og 5-årsplanen med fanerne. Én plan ad gangen, fuld bredde. Hver viser sin status, tilfredshed, sponsor×-modifier og mål med status-ikoner. Klik et mål for at se bestyrelsens reaktion."
     },
     "satisfaction": {
       "title": "Tilfredshed driver sponsor og konsekvenser",
@@ -112,8 +112,8 @@
   },
   "goalHelp": {
     "heading": "Hvordan måles dette?",
-    "signature_rider": "Tæller ryttere med et omdømme på 75 eller derover. Omdømme afspejler en rytters berømmelse — et optjent omdømme-system (resultater, sejre, ranglister, nationale titler) er på vej; indtil da er det en fast værdi.",
-    "top_n_finish": "Vurderes på din slutplacering i planens SIDSTE sæson — ikke et gennemsnit over planens sæsoner.",
+    "signature_rider": "Tæller ryttere med et omdømme på 75 eller derover. Omdømme afspejler en rytters berømmelse. Et optjent omdømme-system (resultater, sejre, ranglister, nationale titler) er på vej; indtil da er det en fast værdi.",
+    "top_n_finish": "Vurderes på din slutplacering i planens SIDSTE sæson, ikke et gennemsnit over planens sæsoner.",
     "u25_development_delta": "Den gennemsnitlige stat-point-gevinst pr. U25-rytter pr. sæson. Udvikl unge ryttere, så deres stats stiger over sæsonen."
   },
   "drivers": {

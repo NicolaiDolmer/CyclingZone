@@ -6,8 +6,8 @@
     "loadingAria": "Loading transfers"
   },
   "window": {
-    "open": "Transfer window is open — you can send and accept offers",
-    "closed": "Transfer window is closed — transfer, swap and loan deals can still be negotiated now, but rider registrations complete at the next opening.",
+    "open": "Transfer window is open. You can send and accept offers",
+    "closed": "Transfer window is closed. Transfer, swap and loan deals can still be negotiated now, but rider registrations complete at the next opening.",
     "closedShort": "Transfer window closed",
     "windowClosed": "Window closed"
   },
@@ -23,7 +23,7 @@
     "pending": "Awaiting response",
     "countered": "Counter sent",
     "awaitingConfirmation": "Awaiting confirmation",
-    "windowPending": "Agreed — awaiting window",
+    "windowPending": "Agreed · awaiting window",
     "accepted": "Accepted",
     "rejected": "Rejected",
     "withdrawn": "Withdrawn"
@@ -83,9 +83,9 @@
       "messagePlaceholder": "Optional message..."
     },
     "awaiting": {
-      "sellerAccepted": "You accepted — awaiting buyer's confirmation",
-      "buyerConfirmed": "You confirmed — awaiting seller's confirmation",
-      "windowPending": "Deal agreed — completes when transfer window opens"
+      "sellerAccepted": "You accepted · awaiting buyer's confirmation",
+      "buyerConfirmed": "You confirmed · awaiting seller's confirmation",
+      "windowPending": "Deal agreed · completes when transfer window opens"
     }
   },
   "swapCard": {
@@ -112,8 +112,8 @@
       "cashPayLabel": "Cash payment (CZ$) · positive = you pay, negative = you receive"
     },
     "awaiting": {
-      "selfConfirmed": "You confirmed — awaiting the other party",
-      "windowPending": "Swap agreed — completes when transfer window opens"
+      "selfConfirmed": "You confirmed · awaiting the other party",
+      "windowPending": "Swap agreed · completes when transfer window opens"
     }
   },
   "loanCard": {
@@ -150,7 +150,7 @@
   "newSwap": {
     "title": "Propose swap",
     "offeredLabel": "Your rider to offer",
-    "selectRider": "— Select rider —",
+    "selectRider": "Select rider…",
     "requestedLabel": "Rider you want (search by lastname)",
     "lastnamePlaceholder": "Lastname...",
     "selectedRider": "Selected: {firstname} {lastname} ({team})",
@@ -170,7 +170,7 @@
     "seasonLabel": "Season (max 1 season)",
     "seasonPlaceholder": "e.g. 3",
     "feeLabel": "Loan fee per season (CZ$)",
-    "buyOptionLabel": "Buy option (CZ$) — optional",
+    "buyOptionLabel": "Buy option (CZ$) · optional",
     "buyOptionPlaceholder": "Leave blank for no option",
     "sending": "Sending...",
     "submit": "Send proposal",
@@ -222,9 +222,9 @@
     "offerSent": "✅ Offer sent!",
     "listingRemoved": "✅ Rider removed from transfer list",
     "listingRemoveFailed": "Could not remove listing",
-    "offerAcceptedBuyer": "✅ Accepted — buyer must now confirm the deal",
-    "offerAcceptedSeller": "✅ Accepted — seller must now confirm the deal",
-    "confirmedAwaiting": "✅ Confirmed — awaiting the other party's confirmation",
+    "offerAcceptedBuyer": "✅ Accepted · buyer must now confirm the deal",
+    "offerAcceptedSeller": "✅ Accepted · seller must now confirm the deal",
+    "confirmedAwaiting": "✅ Confirmed · awaiting the other party's confirmation",
     "dealCancelled": "Deal cancelled",
     "transferRejected": "Transfer rejected",
     "counterSent": "↔ Counter sent",
@@ -232,8 +232,8 @@
     "offerWithdrawn": "Offer withdrawn",
     "offerArchived": "Offer archived",
     "updated": "✅ Updated",
-    "swapAccepted": "✅ Accepted — awaiting confirmation",
-    "swapConfirmedAwaiting": "✅ Confirmed — awaiting the other party",
+    "swapAccepted": "✅ Accepted · awaiting confirmation",
+    "swapConfirmedAwaiting": "✅ Confirmed · awaiting the other party",
     "swapCancelled": "Swap cancelled",
     "swapRejected": "Swap rejected",
     "proposalWithdrawn": "Proposal withdrawn",

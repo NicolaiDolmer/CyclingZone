@@ -66,8 +66,8 @@
       "BjergtrojeDag": "Mountain jersey (per day held)",
       "PointtrojeDag": "Points jersey (per day held)",
       "UngdomstrojeDag": "Youth jersey (per day held)",
-      "EtapelobHold": "Team — stage race",
-      "KlassikerHold": "Team — one-day"
+      "EtapelobHold": "Team · stage race",
+      "KlassikerHold": "Team · one-day"
     }
   }
 }

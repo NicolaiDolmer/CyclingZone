@@ -379,7 +379,7 @@
     "scouting": "Scouting…",
     "scoutTitle": "Use a scout slot to narrow this rider's potential estimate",
     "noSlots": "No scout slots left this season",
-    "levelTitle": "Scouting level — higher means a more precise estimate"
+    "levelTitle": "Scouting level. Higher means a more precise estimate"
   },
   "training": {
     "title": "Training focus",

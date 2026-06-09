@@ -330,7 +330,7 @@
           "Admin lukker transfervinduet og starter ny sæson.",
           "Ved sæsonstart: ventende transfers behandles, sponsorpenge udbetales først, dernæst trækkes lånerenter og lønninger (følger den aktuelle markedsværdi). Nødlån oprettes kun hvis sponsor+balance ikke kan dække.",
           "Løb køres i Pro Cycling Manager og resultaterne indberettes af en manager og godkendes af admin.",
-          "Ved sæsonafslutning: point tælles op, divisionsbonus udbetales, op/nedrykning afgøres (fra sæson 3 og frem), og bestyrelsesplaner evalueres. Løn og renter trækkes IKKE ved sæsonslut længere — det er flyttet til næste sæsons start (v3.78)."
+          "Ved sæsonafslutning: point tælles op, divisionsbonus udbetales, op/nedrykning afgøres (fra sæson 3 og frem), og bestyrelsesplaner evalueres. Løn og renter trækkes IKKE ved sæsonslut længere. Det er flyttet til næste sæsons start (v3.78)."
         ]
       },
       "racesAndResults": {

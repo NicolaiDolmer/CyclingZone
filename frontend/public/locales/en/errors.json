@@ -1,20 +1,20 @@
 {
   "supabase": {
     "invalidCredentials": "Wrong email or password",
-    "emailNotConfirmed": "Email not confirmed — check your inbox (and spam folder)",
+    "emailNotConfirmed": "Email not confirmed. Check your inbox (and spam folder)",
     "userAlreadyRegistered": "An account with this email already exists",
     "passwordTooShort": "Password must be at least 6 characters",
-    "rateLimited": "Too many attempts — wait a moment and try again",
+    "rateLimited": "Too many attempts. Wait a moment and try again",
     "invalidEmail": "That email address doesn't look valid",
-    "sessionMissing": "Your session has expired — log in again",
-    "tokenExpired": "The link has expired — request a new one",
+    "sessionMissing": "Your session has expired. Log in again",
+    "tokenExpired": "The link has expired. Request a new one",
     "passwordSameAsOld": "The new password must differ from the current one",
-    "unknown": "Something went wrong — try again"
+    "unknown": "Something went wrong. Try again"
   },
   "generic": {
-    "networkError": "Couldn't reach the server — check your connection",
-    "serverError": "The server returned an error — try again shortly",
-    "unknown": "Unexpected error — try again"
+    "networkError": "Couldn't reach the server. Check your connection",
+    "serverError": "The server returned an error. Try again shortly",
+    "unknown": "Unexpected error. Try again"
   },
   "api": {
     "flash_deadline_day_only": "Flash auctions are only available during Deadline Day",

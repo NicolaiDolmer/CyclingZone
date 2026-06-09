@@ -8,20 +8,20 @@
   "nextActions": {
     "title": "Next move",
     "loading": "Checking what needs you…",
-    "allClear": "You're all caught up — nothing needs your action right now.",
+    "allClear": "You're all caught up. Nothing needs your action right now.",
     "transferOffers": "{count, plural, one {1 transfer offer needs your decision} other {# transfer offers need your decision}}",
     "swapOffers": "{count, plural, one {1 swap proposal needs your decision} other {# swap proposals need your decision}}",
     "loanRequests": "{count, plural, one {1 loan request needs your decision} other {# loan requests need your decision}}",
     "urgentAuctions": "{count, plural, one {1 auction ends within the hour} other {# auctions end within the hour}}"
   },
   "squadWarning": {
-    "over": "Squad too large — max {limit} in Division {division}. Sell {count, plural, one {1 rider} other {# riders}}.",
-    "under": "Squad too small — min {limit} in Division {division}. Buy {count, plural, one {1 more rider} other {# more riders}}.",
+    "over": "Squad too large. Max {limit} in Division {division}. Sell {count, plural, one {1 rider} other {# riders}}.",
+    "under": "Squad too small. Min {limit} in Division {division}. Buy {count, plural, one {1 more rider} other {# more riders}}.",
     "ctaMyTeam": "My Team →"
   },
   "discordNudge": {
     "title": "Get DMs for overbids, transfer offers, and board signals",
-    "subtitle": "Add your Discord ID under Profile — you'll stay in the loop even when the app isn't open.",
+    "subtitle": "Add your Discord ID under Profile. You'll stay in the loop even when the app isn't open.",
     "cta": "Add",
     "dismissAria": "Hide"
   },
@@ -76,7 +76,7 @@
       "dateTbd": "Date TBD"
     },
     "standings": {
-      "title": "Division {division} — Standings",
+      "title": "Division {division} · Standings",
       "linkAll": "Full standings →",
       "empty": "No season data yet"
     },
@@ -88,7 +88,7 @@
       "focus": "Focus",
       "budgetMultiplier": "Budget multiplier",
       "exceeds": "Exceeded",
-      "exceedsTitle": "This category scored above 100% — you exceeded the board's expectations here."
+      "exceedsTitle": "This category scored above 100%. You exceeded the board's expectations here."
     },
     "recentResults": {
       "title": "Recent results",
@@ -131,23 +131,23 @@
   },
   "forecast": {
     "loading": "Calculating forecast…",
-    "title": "Next season — forecast",
+    "title": "Next season · forecast",
     "subtitle": "Expected cashflow based on roster + loans + sponsor",
     "tier": {
       "green": {
         "label": "Green",
         "headline": "Healthy finances",
-        "summary": "Expected surplus and debt under control — you can play offensive."
+        "summary": "Expected surplus and debt under control. You can play offensive."
       },
       "yellow": {
         "label": "Yellow",
         "headline": "Under pressure",
-        "summary": "Deficit or rising debt — consider selling or lowering salary."
+        "summary": "Deficit or rising debt. Consider selling or lowering salary."
       },
       "red": {
         "label": "Red",
         "headline": "Bankruptcy risk",
-        "summary": "Heavy deficit or debt near the cap — act now."
+        "summary": "Heavy deficit or debt near the cap. Act now."
       }
     },
     "projectedLabel": "Expected net next season",
@@ -194,7 +194,7 @@
     }
   },
   "onboardingProgress": {
-    "header": "Get started — {completed}/{total} steps complete",
+    "header": "Get started · {completed}/{total} steps complete",
     "steps": {
       "team_named": "Name your team and manager",
       "first_rider_owned": "Buy your first rider",
@@ -211,8 +211,8 @@
     "dismissAria": "Hide"
   },
   "onboardingComplete": {
-    "title": "You're ready — the basics are done",
-    "body": "All four getting-started steps are checked off. Next phase is building your team across multiple seasons — follow Deadline Day, deliver on the board's targets, and fight for promotion.",
+    "title": "You're ready. The basics are done",
+    "body": "All four getting-started steps are checked off. Next phase is building your team across multiple seasons. Follow Deadline Day, deliver on the board's targets, and fight for promotion.",
     "nextLinks": {
       "deadlineDay": {
         "label": "Deadline Day",
