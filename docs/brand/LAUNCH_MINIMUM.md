@@ -71,9 +71,11 @@ Audit 2026-06-04 found production copy already consistent on this (no `we`/`vi`/
 
 ---
 
-## Logo — explicitly out of scope for launch
+## Logo — wired into the live UI for launch (updated 2026-06-09)
 
-Per #671: **"Logo udskudt til V2 efter TdF."** The current `frontend/public/favicon.svg` (gold rounded square) and `og-cycling-zone.svg` stay as-is for launch. The full logo/monogram/lockup/asset system is #481 Phase 2+, post-TdF.
+> **Superseded:** the original "logo udskudt til V2 efter TdF" stance. Owner directive 2026-06-09 brought the produced #481 brand forward — ship it on the site **now**, not post-TdF.
+
+The #481 marks (produced 2026-06-04, see `ASSETS.md`) are now wired into the running app via [`frontend/src/components/Brand.jsx`](../../frontend/src/components/Brand.jsx): outlined wordmark (with twin movement-lines) in the sidebar + landing top-bar, the CZ monogram replacing all hand-rolled gold-letter tiles, and the stacked mark on the login hero. Favicon / app-icons / OG / Discord rasters were already wired in Phase 4. Usage rules: [`GUIDELINES.md`](GUIDELINES.md). The full asset *system* (extended marketing lockups, motion) remains #481 Phase 2+ follow-up, but the launch identity is now the real brand, not a placeholder.
 
 ---
 

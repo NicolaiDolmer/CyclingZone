@@ -8,6 +8,7 @@ import DeadlineDayBanner from "./DeadlineDayBanner";
 import DeadlineDayTicker from "./DeadlineDayTicker";
 import MobileQuickNav from "./MobileQuickNav";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { Wordmark, Monogram } from "./Brand";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -119,13 +120,14 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       {/* Logo + team */}
       <button
         onClick={() => navigate("/dashboard")}
+        aria-label="Cycling Zone"
         className="flex items-center gap-2.5 px-4 py-4 border-b border-cz-sidebar-border w-full text-left hover:bg-cz-sidebar-hover transition-colors">
-        <div className="w-7 h-7 bg-cz-accent rounded-md flex items-center justify-center text-[10px] font-black text-cz-on-accent flex-shrink-0">
-          CZ
-        </div>
+        {/* #481: locked brand lockup — CZ monogram + outlined wordmark (with twin
+            movement-lines). Sidebar canvas is always navy → forceDark wordmark. */}
+        <Monogram className="w-7 h-7" />
         <div className="min-w-0">
-          <p className="text-cz-sidebar-1 text-sm font-display uppercase tracking-wide leading-none">Cycling Zone</p>
-          <p className="text-cz-sidebar-3 text-[10px] truncate">{team?.name || "…"}</p>
+          <Wordmark forceDark className="h-5 w-auto" alt="" />
+          <p className="text-cz-sidebar-3 text-[10px] truncate mt-1">{team?.name || "…"}</p>
         </div>
       </button>
 
@@ -357,8 +359,8 @@ export default function Layout() {
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border sticky top-0 z-20">
           <button onClick={() => setMobileOpen(true)} className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-xl">☰</button>
           <Link to="/dashboard" aria-label={t("nav.item.dashboard")} className="flex items-center gap-2 rounded hover:opacity-80 transition-opacity">
-            <div className="w-6 h-6 bg-cz-accent rounded flex items-center justify-center text-[9px] font-black text-cz-on-accent">CZ</div>
-            <span className="text-cz-sidebar-1 text-base font-display uppercase tracking-wide leading-none">Cycling Zone</span>
+            <Monogram className="w-6 h-6" />
+            <Wordmark forceDark className="h-5 w-auto" alt="" />
           </Link>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
