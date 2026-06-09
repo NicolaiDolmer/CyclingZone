@@ -236,3 +236,29 @@ test("dryRun skriver ingen team_id", ...)
 - **Spec-dækning:** retire (T2), reset (T5 komponerer runFullBetaReset), population (T5), backfill-kæde (T1+T5), startholds (T4), sæson 0→1 (T5), founder-badge+undtagelse (T3), prod-guard (T5), dry-run-verifikation (T6). Alle spec-krav har en task.
 - **Type-konsistens:** `runPhysiologyBackfill`/`runRiderTypesBackfill`/`runBaseValueBackfill`, `retireLegacyRiders`, `grantFounderBadges`/`FOUNDER_BADGE_KEY`, `allocateStarterSquads`, `runRelaunch` — navne bruges konsistent på tværs af tasks.
 - **Bevidste ikke-placeholders:** Task 1, 3 og 4 har et eksplicit "læs filen / bekræft skema FØR du skriver kode"-trin frem for opfundne signaturer. Det er ikke et placeholder — det er kravet om at de eksakte interne signaturer hentes fra runtime-koden ved eksekvering (verificér-før-claim). De ydre kontrakter (argument- og return-form) ER defineret her.
+
+---
+
+## Runtime-kontrakter (verificeret 2026-06-09, build-session)
+
+> Disse blev læst direkte fra runtime/DB denne session, så Task 1/3/4's "bekræft skema"-trin allerede er afdækket. Verificér stadig at koden ikke er drevet siden, men opfind ikke nyt.
+
+**`achievements`-tabel (DB, prod-skema):** `id text PK · category text NOT NULL · title text NOT NULL · description text NOT NULL · icon text DEFAULT '🏆' · is_secret bool DEFAULT false · sort_order int DEFAULT 0`. Eksisterende rows er **danske** (fx `{id:"auction_10_wins", category:"auktioner", title:"10 auktioner vundet", ...}`).
+
+**`manager_achievements`-INSERT-form** (`achievementEngine.js:296`): `{ user_id, achievement_id, unlocked_at }`. **Nøglekolonnen er `achievement_id`** (ikke `achievement_key`) — Task 3's `.neq(...)` skal bruge `achievement_id`.
+
+**`resetBetaAchievements`** ([betaResetService.js:389-403](../../../backend/lib/betaResetService.js)) sletter i dag `manager_achievements.delete().in("user_id", userIds).select("id")`. Founder-undtagelse = tilføj `.neq("achievement_id", FOUNDER_BADGE_KEY)` før `.select`. Sæt `FOUNDER_BADGE_KEY = "founder_badge"`.
+
+**Founder-badge-def til upsert** (matcher kontrakten + DA-konvention — `category` afgøres af ejer, se nedenfor): `{ id:"founder_badge", category:<…>, title:<…>, description:<…>, icon:<…>, is_secret:false, sort_order:0 }`.
+
+**Backfill-kerner — alle 3 funktioner er allerede eksporteret + rene:** `seedPhysiologyFromLegacy`/`deriveAbilities` (physiology), `computeRiderTypes`+`ABILITY_KEYS`/`RIDER_TYPE_KEYS` (types, baseline `riderTypesBaseline.json`), `predictBaseValue` (base_value, model `riderValuationModel.json`). De 3 CLI'er deler mønster: env→`createClient`→`fetchAllRows`→compute→`updateInBatches`/`upsertBatched`(500)/`WRITE_CONCURRENCY=25`→`--dry-run`-gren. Ekstraktion = flyt `main()`-kroppen til `run*Backfill(supabase,{dryRun})`. base_value er bekræftet **SHADOW** (kun `riders.base_value`, ikke wired til price/market/salary).
+
+**Allokerings-input (Task 4):** efter insert har fiktive ryttere IKKE `_meta` (kun in-memory). Pool læses fra DB-kolonner: `birthdate` (→ alder vs `referenceYear=2026`), `potentiale` (decimal 1.0-6.0), `base_value` (SHADOW, fra backfill). "Ingen stjerne" = ekskludér top-fraktion på `base_value`; "ung" = alder 18-21 & `potentiale ≥ tærskel`; fairness = snake-draft på `base_value`.
+
+**Test-konvention:** in-memory fake-supabase fra [betaResetService.test.js:18-125](../../../backend/lib/betaResetService.test.js) — understøtter `eq/in/not/select/update/delete/insert`. Genbrug/udvid den (tilføj `.neq()`) for Task 3's reset-test frem for at opfinde en ny mock. `node --test` (built-in), `*.test.js` ved siden af kilden.
+
+**`getBetaManagerTeams(supabase)`** ([betaResetService.js:42](../../../backend/lib/betaResetService.js)) selekterer `id, user_id, balance, sponsor_income` for `is_ai=false ∧ is_bank=false ∧ is_frozen=false ∧ is_test_account=false`. Samme selector til både startholds-allokering (`.id`) og founder-grant (`.user_id`).
+
+**To åbne ejer-beslutninger (spec-review, blokerer kun Task 3/4-kode):**
+1. **Founder-badge copy + sprog** — `achievements`-tabellen er i dag 100% dansk; EN-first-reglen trækker mod engelsk. Default: matchede dansk for tabel-konsistens (`category:"milepæle"`). Kræver ejer-OK på endelig title/description/icon (permanent, ses for evigt).
+2. **Startholds-konstanter** — `STARTER_YOUTH=4 + STARTER_DOMESTIQUES=4`, ung-alder 18-21, `potentiale`-tærskel, stjerne-cutoff-fraktion, fairness-tolerance. Default-sæt i `starterSquadAllocator.js`, tunbart.
