@@ -14,7 +14,12 @@ async function authHeaders() {
 }
 
 function AchievementBadge({ achievement }) {
+  const { t } = useTranslation("achievements");
   const isLocked = !achievement.unlocked;
+  // i18n pr. achievement-id; DB-værdien (kanonisk engelsk) er fallback for badges
+  // uden oversættelse endnu (#1103 — founder_badge er første tosprogede badge).
+  const title = t(`${achievement.id}.title`, { defaultValue: achievement.title });
+  const description = t(`${achievement.id}.description`, { defaultValue: achievement.description });
   return (
     <div className="group relative">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all text-lg
@@ -23,9 +28,9 @@ function AchievementBadge({ achievement }) {
       </div>
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 w-44
         opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-        <p className="text-cz-1 text-xs font-bold">{isLocked && achievement.is_secret ? "???" : achievement.title}</p>
+        <p className="text-cz-1 text-xs font-bold">{isLocked && achievement.is_secret ? "???" : title}</p>
         {(!isLocked || !achievement.is_secret) && (
-          <p className="text-cz-2 text-[10px] mt-0.5 leading-relaxed">{achievement.description}</p>
+          <p className="text-cz-2 text-[10px] mt-0.5 leading-relaxed">{description}</p>
         )}
         {achievement.unlocked_at && (
           <p className="text-cz-accent-t/60 text-[9px] mt-1">

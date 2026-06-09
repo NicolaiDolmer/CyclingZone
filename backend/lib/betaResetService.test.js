@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   cancelBetaMarket,
+  resetBetaAchievements,
   resetBetaBalances,
   resetBetaBoardProfiles,
   resetBetaRiderHistory,
@@ -10,6 +11,7 @@ import {
   resetBetaSeasons,
   runFullBetaReset,
 } from "./betaResetService.js";
+import { FOUNDER_BADGE_KEY } from "./founderBadge.js";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -31,6 +33,7 @@ function createBetaResetSupabase(initialState) {
     function matches(row) {
       return filters.every((filter) => {
         if (filter.type === "eq") return row[filter.column] === filter.value;
+        if (filter.type === "neq") return row[filter.column] !== filter.value;
         if (filter.type === "in") return filter.values.includes(row[filter.column]);
         if (filter.type === "not-is-null") return row[filter.column] !== null && row[filter.column] !== undefined;
         return true;
@@ -73,6 +76,10 @@ function createBetaResetSupabase(initialState) {
     const query = {
       eq(column, value) {
         filters.push({ type: "eq", column, value });
+        return query;
+      },
+      neq(column, value) {
+        filters.push({ type: "neq", column, value });
         return query;
       },
       in(column, values) {
@@ -153,8 +160,12 @@ function createInitialState() {
     season_standings: [{ id: "standing-1" }],
     users: [{ id: "user-1", xp: 200, level: 3 }, { id: "user-frozen", xp: 200, level: 3 }],
     xp_log: [{ id: "xp-1", user_id: "user-1" }, { id: "xp-frozen", user_id: "user-frozen" }],
-    achievements: [{ id: "achievement-1" }],
-    manager_achievements: [{ id: "ma-1", user_id: "user-1" }, { id: "ma-frozen", user_id: "user-frozen" }],
+    achievements: [{ id: "achievement-1" }, { id: "founder_badge" }],
+    manager_achievements: [
+      { id: "ma-1", user_id: "user-1", achievement_id: "auction_first_win" },
+      { id: "ma-founder", user_id: "user-1", achievement_id: "founder_badge" },
+      { id: "ma-frozen", user_id: "user-frozen", achievement_id: "auction_first_win" },
+    ],
     board_profiles: [
       {
         id: "board-1",
@@ -314,5 +325,17 @@ test("runFullBetaReset completes the full test reset suite without touching AI o
   assert.equal(supabase.state.users.find((user) => user.id === "user-frozen").level, 3);
   assert.deepEqual(supabase.state.races, []);
   assert.deepEqual(supabase.state.seasons, []);
-  assert.deepEqual(supabase.state.manager_achievements.map((row) => row.id), ["ma-frozen"]);
+  // founder_badge overlever (ma-founder); ma-1 slettet; frozen-bruger urørt.
+  assert.deepEqual(supabase.state.manager_achievements.map((row) => row.id).sort(), ["ma-founder", "ma-frozen"]);
+});
+
+test("resetBetaAchievements sletter alle manager-achievements UNDTAGEN founder_badge", async () => {
+  const supabase = createBetaResetSupabase(createInitialState());
+
+  const result = await resetBetaAchievements(supabase);
+
+  // user-1 er eneste beta-manager (frozen ekskluderet): ma-1 slettes, ma-founder overlever.
+  assert.equal(result.manager_achievements, 1);
+  assert.deepEqual(supabase.state.manager_achievements.map((row) => row.id).sort(), ["ma-founder", "ma-frozen"]);
+  assert.equal(FOUNDER_BADGE_KEY, "founder_badge");
 });
