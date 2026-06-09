@@ -113,6 +113,27 @@ test("predictBaseValue v3: kvadratisk led (c>0) strækker toppen relativt mere",
   assert.ok(liftHi > liftLo, `c>0 skal løfte toppen relativt mere (${liftHi} > ${liftLo})`);
 });
 
+test("predictBaseValue klamper output OPAD til model.output_max (ekstrapolations-guard)", () => {
+  const model = { a: 0, b: 0.1, c: 0.001, offset: {}, output_max: 80 };
+  const atMax = predictBaseValue({ primary_type: "gc" }, abilities(80), model);
+  const beyond = predictBaseValue({ primary_type: "gc" }, abilities(99), model);
+  assert.equal(beyond, atMax, `output over output_max skal klampes (${beyond} = ${atMax})`);
+});
+
+test("predictBaseValue klamper IKKE nedad (ingen bund, ejer-direktiv)", () => {
+  const model = { a: Math.log(1000), b: 0.1, offset: {}, output_max: 80 };
+  const lo = predictBaseValue({ primary_type: "gc" }, abilities(10), model);
+  const mid = predictBaseValue({ primary_type: "gc" }, abilities(40), model);
+  assert.ok(lo < mid, `lavt output skal fortsat give lav værdi (${lo} < ${mid})`);
+});
+
+test("predictBaseValue uden output_max er uklampet (bagudkompatibel)", () => {
+  const model = { a: 0, b: 0.1, c: 0.001, offset: {} };
+  const hi = predictBaseValue({ primary_type: "gc" }, abilities(99), model);
+  const lower = predictBaseValue({ primary_type: "gc" }, abilities(80), model);
+  assert.ok(hi > lower, `uden output_max skal kurven fortsætte (${hi} > ${lower})`);
+});
+
 test("v3 med alpha<1 værdsætter alsidighed: bred elite slår smal specialist", () => {
   // "Pogacar-profil": elite i ALT. "MvdP-profil": uslåelig på specialet, hul i klatring.
   const broad = abilities(85, { climbing: 96, tempo: 99, endurance: 99 });
