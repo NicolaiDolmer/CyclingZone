@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.06",
+    date: "2026-06-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Brand identity",
+        items: [
+          "EN · The new Cycling Zone logo is now live across the site. The real outlined wordmark (with its twin movement-lines) and the CZ monogram now appear in the sidebar, on the login screen and on the landing page, replacing the old placeholder letter-tiles. It is the same identity you already see in the browser tab and on shared links, now carried through the whole product. Refs #481, #671.",
+          "DA · Det nye Cycling Zone-logo er nu live på hele siden. Det rigtige outlinede wordmark (med dets twin movement-lines) og CZ-monogrammet vises nu i sidebaren, på login-skærmen og på landingssiden, og erstatter de gamle placeholder-bogstavsfliser. Det er den samme identitet, du allerede ser i browser-fanen og på delte links, nu ført igennem hele produktet. Refs #481, #671.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.05",
     date: "2026-06-09",
     label: "Beta",

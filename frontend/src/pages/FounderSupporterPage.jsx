@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../lib/language.jsx";
 import FounderSupporterWaitlistForm from "../components/waitlist/FounderSupporterWaitlistForm.jsx";
+import { Wordmark, Monogram } from "../components/Brand.jsx";
 
 // Landing page for Founder waitlist (#361, Session B naming locked in #500).
 // Public route, no auth. Embedder waitlist-form (#362) som sektion.
@@ -177,11 +178,10 @@ export default function FounderSupporterPage() {
       {/* ----- Sticky top-bar ----- */}
       <header className="sticky top-0 z-40 bg-cz-body/90 backdrop-blur-md border-b border-cz-border">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-          <Link to="/" className="flex items-center gap-2 group">
-            <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-cz-accent shadow-[0_0_20px_rgba(232,197,71,0.3)]">
-              <span className="text-cz-on-accent font-black text-base">C</span>
-            </span>
-            <span className="text-cz-1 font-bold text-sm tracking-tight hidden sm:inline">Cycling Zone</span>
+          <Link to="/" aria-label="Cycling Zone" className="flex items-center gap-2.5 group">
+            {/* #481: locked monogram + theme-aware outlined wordmark (with twin lines). */}
+            <Monogram className="w-9 h-9 shadow-[0_0_20px_rgba(232,197,71,0.3)]" />
+            <Wordmark className="h-5 w-auto hidden sm:block" alt="" />
           </Link>
           <LanguageToggle language={lang} onChange={handleLangChange} label={t("languageLabel")} />
         </div>

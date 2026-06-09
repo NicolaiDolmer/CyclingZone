@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
 import { mapSupabaseAuthError } from "../lib/authErrors";
 import LanguageSwitcher from "../components/LanguageSwitcher";
+import { StackedMark } from "../components/Brand";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -224,12 +225,9 @@ export default function LoginPage() {
 
       <div className="relative z-10 w-full max-w-sm">
         <div className="text-center mb-10">
-          <div
-            className="inline-flex items-center justify-center w-16 h-16
-              rounded-2xl bg-cz-accent mb-5 shadow-[0_0_40px_rgba(232,197,71,0.3)]"
-          >
-            <span className="text-cz-on-accent font-black text-3xl">C</span>
-          </div>
+          {/* #481: real stacked CYCLING/ZONE brand mark (replaces the placeholder "C" tile). */}
+          <StackedMark className="w-16 h-16 mb-5 shadow-[0_0_40px_rgba(232,197,71,0.3)]" />
+
           <h1 className="text-2xl font-bold text-cz-1 tracking-tight">
             {t("auth:page.title")}
           </h1>
